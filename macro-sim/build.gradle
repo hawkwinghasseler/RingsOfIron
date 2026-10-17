@@ -1,0 +1,9 @@
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-macro-sim'
+
+dependencies {
+  api "com.badlogicgames.gdx:gdx:$gdxVersion"
+  api project(':core-engine')
+  api project(':physics-exterior')
+}
+

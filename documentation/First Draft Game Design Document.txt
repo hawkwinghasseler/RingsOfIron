@@ -1,0 +1,81 @@
+﻿Comprehensive Game Design Document (GDD): Space Battle Sim
+1. Executive Summary & Architecture
+* Game Title: Space Battle Sim
+* Genre: Hard Sci-Fi Space Flight Simulator & Open-World Sandbox
+* Target Audience: Enthusiasts of rigorous physics-based space flight, tactical ship management, and deep sandbox progression.
+* Core Technology Stack: Developed using LibGDX with external libraries such as Box2D, structured around a modular Gradle build system (desktop, core, common subprojects).
+* Data Persistence: Game state, sector positions, station inventories, and ship configurations are serialized using plain text or pretty-printed JSON structure on disk for debugging and manual editing.
+
+
+________________
+
+
+2. Physics & Simulation Architecture
+Simulation Bubble & Orbital Mechanics
+* Local Physics Bubble: Active collision and rigid-body dynamics via Box2D are restricted to a localized simulation bubble surrounding the player vessel.
+* On-Rails Celestial Mechanics: Bodies outside the player bubble exist on-rails, executing predefined orbital mechanics and scheduled orbital maneuvers.
+* Fixed Timestep Loop: The physics engine operates on a fixed timestep update loop coupled with variable render interpolation.
+Flight Dynamics & Controls
+* Full Newtonian Physics: Vessel movement is governed strictly by inertia, momentum, zero-G drift, and vector translation.
+* Input Paradigm: Keyboard and gamepad controls provide full thruster axis control, mapping translational and rotational inputs independently.
+* Exterior HUD Layout: Piloting via the external camera view renders vector velocity indicators, prograde/retrograde markers, target lead reticles, missile arcs, radar proximity scanners, and propellant/structural gauges.
+
+
+________________
+
+
+3. Ship Interior, Crew, & Subsystems
+Port Construction & 2D Tile Layout
+* Grid-Based Construction: While docked at ports, stations, or planets, players construct and modify vessels on a 2D tile-based grid, placing functional rooms, life support, power conduits, and cargo bays.
+* Character Proximity Interactivity: Players interact with interior ship controls and consoles by walking around the interior view, triggering character proximity prompts that automatically display contextual interaction menus.
+* AI Crew Simulation: Crew members navigate the interior tile grid autonomously, driven by role-based task queues that prioritize alerts, hull breaches, fires, and repairs.
+* Subsystem Damage States: Interior modules suffer localized degradation, electrical short circuits, fires, and depressurization/hull breaches requiring manual or automated mitigation.
+Boarding & Salvage Operations
+* Internal Crew Combat: Boarding disabled vessels transitions gameplay into room-by-room internal crew combat on the 2D ship grid.
+* Salvage & Logistics: Scrapping and component extraction are ordered via the command UI layer; crew members physically carry salvaged goods and raw components back to ship cargo storage tiles.
+
+
+________________
+
+
+4. World Economy & Simulation
+Supply & Demand Dynamics
+* Celestial Nodes: Settled planets, moons, asteroids, and orbital stations run a localized simulation tracking commodity supply and demand.
+* Event-Driven Fluctuations: Player actions and simulated NPC trade fleets directly shift local node inventories, dynamically altering available contracts and mission board availability.
+
+
+________________
+
+
+5. Progression, Death, Factions, & Scope
+Organizational Rank & Budget System
+* Sponsoring Factions: Character progression is tied directly to military or corporate rank within a sponsoring organization.
+* Global Faction Standing: Inter-faction relations are tracked via global standing values per faction, governing bounty placements and hostile response triggers.
+* Rank-Based Scaling: Game difficulty and financial scaling are governed by player rank and asset net worth threshold scaling. Promotions grant recurrent budgets for ship procurement and outfitting.
+* Single-Ship Command Scope: The game maintains an exclusive single-ship focus; the player always commands and pilots one vessel directly via its interior and exterior systems.
+* Survival Priority: Total player death is rare; ships are vulnerable to being disabled or abandoned, allowing crew evacuation and surrender mechanics rather than instant permanent failure.
+
+
+________________
+
+
+6. Rendering, Viewports, & Audio Architecture
+Viewports & Camera Switching
+* Stationary Console Switch: The player must be physically seated at a command console on the interior grid to toggle the viewpoint to exterior space.
+* Viewport Scaling: Game world rendering utilizes a LibGDX ExtendViewport. UI elements overlay via a LibGDX ScreenViewport, structured with Scene2d and 9-patch grids.
+Audio Spatialization
+* Internal Audio: Proximity-based with volume reduction and muffling for sounds outside the player's current room. External vacuum sounds are muted entirely inside.
+* External Audio & "Spacer Ears": In exterior view, internal sounds are heavily attenuated, supplemented by a dedicated spatial audio layer tracking nearby external sources such as weapon fire and engine thrusters.
+
+
+________________
+
+
+7. Combat, Asset Management, & Modding Architecture
+Combat & Damage Resolution
+* Component-Based Targeting: Exterior combat resolves damage directly via component-based targeting, where weapons inflict direct damage to specific exterior tiles or internal modules.
+Asset Management Pipeline
+* Centralized Asset Registry: Textures, audio tracks, and media files are managed via centralized asset registry keys mapped directly to underlying asset bundles.
+Modding Architecture
+* TOML Definitions: Game objects, items, components, and tiles are defined in external .toml configuration files loaded at startup.
+* Groovy Script Integration: Mod folders support embedded Groovy scripts loaded via TOML files that link into various global or object-specific triggers, enabling custom room logic and event handling.

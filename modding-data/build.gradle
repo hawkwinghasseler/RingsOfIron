@@ -1,0 +1,9 @@
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-modding-data'
+
+dependencies {
+  api "com.badlogicgames.gdx:gdx:$gdxVersion"
+  api "org.apache.groovy:groovy-all:$groovyVersion"
+  api project(':core-engine')
+}
+

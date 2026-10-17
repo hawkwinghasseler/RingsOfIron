@@ -1,0 +1,10 @@
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-audio-spatial'
+
+dependencies {
+  api "com.badlogicgames.gdx:gdx:$gdxVersion"
+  api project(':core-engine')
+  api project(':physics-exterior')
+  api project(':interior-grid')
+}
+

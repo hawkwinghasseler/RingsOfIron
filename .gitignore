@@ -1,0 +1,35 @@
+## Gradle
+.gradle/
+build/
+bin/
+out/
+local.properties
+gradle-app.setting
+.kotlin/
+
+## IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+## Eclipse
+.classpath
+.project
+.settings/
+.metadata/
+.externalToolBuilders/
+
+## VS Code
+.vscode/
+
+## OS / misc
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.tmp
+hs_err_pid*
+
+## Keep the Gradle wrapper jar
+!gradle/wrapper/gradle-wrapper.jar

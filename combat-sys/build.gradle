@@ -1,0 +1,11 @@
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-combat-sys'
+
+dependencies {
+  api "com.badlogicgames.gdx:gdx:$gdxVersion"
+  api "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
+  api project(':core-engine')
+  api project(':physics-exterior')
+  api project(':interior-grid')
+}
+
