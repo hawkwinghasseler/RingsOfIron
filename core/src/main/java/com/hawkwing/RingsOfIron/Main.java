@@ -21,7 +21,8 @@ import com.ringsofiron.interiorgrid.*;
  * Controls:
  *   Left Click         - Toggle fire on a floor tile
  *   Right Click        - Toggle bulkhead seal on a tile
- *   Middle Click       - Destroy a hull tile (create breach)
+ *   Middle Click       - Destroy a wall tile (hull: breach; wedge: whole piece)
+ *   D                  - Open/seal the doors in the edge wall
  *   F                  - Extinguish all fires
  *   V                  - Restore all vacuum tiles to full oxygen
  *   P                  - Toggle power (destroy/restore reactor)
@@ -36,16 +37,31 @@ public class Main extends ApplicationAdapter {
     private static final int WORLD_H = 18;         // tiles tall
 
     // --- Ship blueprint (inner dimensions determined by '#' border) ---
+    // Text rows read top-to-bottom; the grid stores them bottom-left first, +y up (Box2D).
     private static final String[] BLUEPRINT = {
-        "####################",
-        "#..................#",
-        "#..R+++++++++++H..#",
-        "#..................#",
-        "#..L...........#..#",  // internal bulkhead wall in middle of row
-        "#..................#",
-        "#..................#",
-        "####################"
+        "####################  ",
+        "#..................#  ",
+        "#..R++++++++++++HH.#  ",  // S reactor (1x1), S helm slot (2x1)
+        "#..................#  ",
+        "#..LL..........I...#  ",  // S life support slot, full-tile internal wall
+        "#..................#  ",
+        "#..................#  ",
+        "####################  "
     };
+    /** Grid column whose left edge carries the thin dividing wall. */
+    private static final int EDGE_WALL_X = 10;
+
+    private static ChassisBlueprint createBlueprint() {
+        ChassisBlueprint bp = new ChassisBlueprint(BLUEPRINT).tileSize(1f);
+        // Thin wall splitting the hold, with a bulkhead door at y = 3
+        for (int y = 1; y <= 6; y++) {
+            bp.edgeWall(EDGE_WALL_X, y, Side.LEFT, WeightClass.LIGHT, y == 3);
+        }
+        // Heavy 1x2 armor wedge on the starboard side, sloped face outward
+        bp.hullPiece(new HullPiece(HullPiece.Shape.WEDGE, 20, 3, 1, 2, 0,
+                WeightClass.HEAVY, MaterialTable.DEFAULT_MATERIAL));
+        return bp;
+    }
 
     // --- ECS / Module objects ---
     private Engine engine;
@@ -87,7 +103,7 @@ public class Main extends ApplicationAdapter {
 
     private void buildShip() {
         // Parse blueprint
-        ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(BLUEPRINT, 1f);
+        ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(createBlueprint());
         grid = result.grid;
 
         // Create ship entity
@@ -100,8 +116,9 @@ public class Main extends ApplicationAdapter {
         // Spawn subsystem entities from blueprint
         for (ChassisBlueprintLoader.SubsystemPlacement placement : result.subsystems) {
             Entity subsysEntity = new Entity();
-            SubsystemComponent sub = new SubsystemComponent(placement.x, placement.y, placement.type);
+            SubsystemComponent sub = new SubsystemComponent(placement.footprint, placement.type);
             subsysEntity.add(sub);
+            placement.footprint.installed = subsysEntity;
             engine.addEntity(subsysEntity);
             subsysRegistry.registerSubsystem(subsysEntity);
         }
@@ -138,6 +155,7 @@ public class Main extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.F)) extinguishAllFires();
         if (Gdx.input.isKeyJustPressed(Input.Keys.V)) restoreAllOxygen();
         if (Gdx.input.isKeyJustPressed(Input.Keys.P)) toggleReactor();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.D)) toggleEdgeDoors();
 
         // Convert mouse → tile coordinates
         Vector3 worldPos = camera.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
@@ -175,7 +193,15 @@ public class Main extends ApplicationAdapter {
     private void breachHull(int x, int y) {
         Tile t = grid.getTile(x, y);
         if (t == null || !t.isWall()) return;
-        t.integrity = 0f;
+        t.setIntegrity(0f);
+        grid.gridDirty = true;
+    }
+
+    private void toggleEdgeDoors() {
+        for (int y = 0; y < grid.height; y++) {
+            EdgeWall wall = grid.getEdge(EDGE_WALL_X, y, Side.LEFT);
+            if (wall != null && wall.hasBulkhead) wall.bulkheadSealed = !wall.bulkheadSealed;
+        }
     }
 
     private void extinguishAllFires() {
@@ -234,11 +260,15 @@ public class Main extends ApplicationAdapter {
                 float px = offX + x * TILE_PX;
                 float py = offY + y * TILE_PX;
 
-                Color c = tileColor(tile);
+                // Wedge tiles are drawn as one triangle per piece below
+                Color c = (tile.piece != null && tile.piece.hasSlopedFace())
+                        ? tileColor(null) : tileColor(tile);
                 shapeRenderer.setColor(c);
                 shapeRenderer.rect(px + 1, py + 1, TILE_PX - 2, TILE_PX - 2);
             }
         }
+
+        drawHullPieces(offX, offY);
 
         shapeRenderer.end();
 
@@ -264,6 +294,8 @@ public class Main extends ApplicationAdapter {
         }
         shapeRenderer.end();
 
+        drawEdgeWalls(offX, offY);
+
         // Draw subsystem icons as small filled circles
         drawSubsystems(offX, offY);
     }
@@ -272,7 +304,7 @@ public class Main extends ApplicationAdapter {
         if (tile == null || tile.isVoid()) return new Color(0.05f, 0.05f, 0.1f, 1f);
 
         if (tile.isWall()) {
-            if (tile.integrity <= 0f) return new Color(0.6f, 0.1f, 0.0f, 1f); // Breached = dark red
+            if (tile.getIntegrity() <= 0f) return new Color(0.6f, 0.1f, 0.0f, 1f); // Breached = dark red
             return new Color(0.35f, 0.35f, 0.4f, 1f); // Hull = grey
         }
 
@@ -300,16 +332,75 @@ public class Main extends ApplicationAdapter {
         return new Color(0.15f * o2, 0.22f * o2, 0.22f * o2, 1f);
     }
 
+    /** Fills each sloped hull piece as a triangle. Call inside a Filled batch. */
+    private void drawHullPieces(float offX, float offY) {
+        for (HullPiece piece : grid.hullPieces) {
+            if (!piece.hasSlopedFace()) continue;
+            float x0 = offX + piece.originX * TILE_PX, y0 = offY + piece.originY * TILE_PX;
+            float x1 = x0 + piece.width() * TILE_PX, y1 = y0 + piece.height() * TILE_PX;
+            // Footprint corners counter-clockwise; the wedge leaves out the one opposite its right angle
+            float[][] corners = {{x0, y0}, {x1, y0}, {x1, y1}, {x0, y1}};
+            int skip = (2 + piece.rotation) % 4;
+            float[] v = new float[6];
+            for (int i = 0, k = 0; i < 4; i++) {
+                if (i == skip) continue;
+                v[k++] = corners[i][0];
+                v[k++] = corners[i][1];
+            }
+            shapeRenderer.setColor(piece.isDestroyed()
+                    ? new Color(0.6f, 0.1f, 0.0f, 1f) : new Color(0.45f, 0.45f, 0.5f, 1f));
+            shapeRenderer.triangle(v[0], v[1], v[2], v[3], v[4], v[5]);
+        }
+    }
+
+    /** Thin walls on tile edges: grey wall, green open door, yellow sealed door. */
+    private void drawEdgeWalls(float offX, float offY) {
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        float t = 4f;
+        for (int y = 0; y <= grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                EdgeWall w = grid.edgeH[y][x];
+                if (w == null || w.isDestroyed()) continue;
+                shapeRenderer.setColor(edgeWallColor(w));
+                shapeRenderer.rect(offX + x * TILE_PX, offY + y * TILE_PX - t / 2, TILE_PX, t);
+            }
+        }
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x <= grid.width; x++) {
+                EdgeWall w = grid.edgeV[y][x];
+                if (w == null || w.isDestroyed()) continue;
+                shapeRenderer.setColor(edgeWallColor(w));
+                shapeRenderer.rect(offX + x * TILE_PX - t / 2, offY + y * TILE_PX, t, TILE_PX);
+            }
+        }
+        shapeRenderer.end();
+    }
+
+    private Color edgeWallColor(EdgeWall w) {
+        if (!w.hasBulkhead) return Color.LIGHT_GRAY;
+        return w.bulkheadSealed ? Color.YELLOW : Color.GREEN;
+    }
+
     private void drawSubsystems(float offX, float offY) {
         com.badlogic.ashley.core.ComponentMapper<SubsystemComponent> sm =
                 com.badlogic.ashley.core.ComponentMapper.getFor(SubsystemComponent.class);
+
+        // Mount outlines
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(Color.CYAN);
+        for (MountFootprint m : grid.mounts) {
+            shapeRenderer.rect(offX + m.originX * TILE_PX + 2, offY + m.originY * TILE_PX + 2,
+                    m.width() * TILE_PX - 4, m.height() * TILE_PX - 4);
+        }
+        shapeRenderer.end();
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         for (Entity e : subsysRegistry.subsystems) {
             SubsystemComponent sub = sm.get(e);
             if (sub == null) continue;
-            float cx = offX + sub.gridX * TILE_PX + TILE_PX * 0.5f;
-            float cy = offY + sub.gridY * TILE_PX + TILE_PX * 0.5f;
+            MountFootprint f = sub.footprint;
+            float cx = offX + (f.originX + f.width() * 0.5f) * TILE_PX;
+            float cy = offY + (f.originY + f.height() * 0.5f) * TILE_PX;
             float r = TILE_PX * 0.25f;
 
             if (!sub.isOperational) {
@@ -328,8 +419,8 @@ public class Main extends ApplicationAdapter {
         for (Entity e : subsysRegistry.subsystems) {
             SubsystemComponent sub = sm.get(e);
             if (sub == null) continue;
-            float tx = offX + sub.gridX * TILE_PX + 4;
-            float ty = offY + sub.gridY * TILE_PX + TILE_PX - 4;
+            float tx = offX + sub.footprint.originX * TILE_PX + 4;
+            float ty = offY + (sub.footprint.originY + sub.footprint.height()) * TILE_PX - 4;
             font.setColor(Color.WHITE);
             font.getData().setScale(0.7f);
             String label = sub.type.name().substring(0, Math.min(3, sub.type.name().length()));
@@ -353,6 +444,7 @@ public class Main extends ApplicationAdapter {
         font.draw(batch, "[L-Click]  Toggle fire on tile", lx, ly); ly -= lineH;
         font.draw(batch, "[R-Click]  Toggle bulkhead seal (yellow X)", lx, ly); ly -= lineH;
         font.draw(batch, "[M-Click]  Breach hull tile", lx, ly); ly -= lineH;
+        font.draw(batch, "[D]        Open/seal edge-wall door", lx, ly); ly -= lineH;
         font.draw(batch, "[P]        Toggle reactor power", lx, ly); ly -= lineH;
         font.draw(batch, "[F]        Extinguish all fires", lx, ly); ly -= lineH;
         font.draw(batch, "[V]        Restore oxygen to all tiles", lx, ly); ly -= lineH;
