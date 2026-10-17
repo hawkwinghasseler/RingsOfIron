@@ -12,7 +12,9 @@ The `ai-crew` module is responsible for the autonomous behaviors of NPCs aboard 
 To implement this module independently (mocking the `interior-grid` by feeding it a dummy 2D boolean array):
 
 1. **A* Pathfinding Implementation:**
-   - Implement the `IndexedGraph` interface from `gdx-ai`. The graph nodes are the grid tiles. Connections are defined by checking adjacent walkable tiles in the `ShipGridComponent`.
+   - Implement the `IndexedGraph` interface from `gdx-ai`. The graph nodes are the grid tiles. A connection exists between two adjacent tiles when `ShipGridComponent.canPass(x, y, nx, ny)` is true and neither tile lies inside a system mount footprint (`Tile.mount`). `canPass` already handles full-tile walls, thin edge walls between tiles, open and sealed doors, and walls destroyed down to integrity 0 (which no longer block). Crew work a mounted system from a tile next to its footprint.
+   - The grid follows Box2D's orientation (tile [0][0] bottom-left, +y up), so grid positions map to the ship body's local frame with no flip.
+   - Rebuild affected connections when doors open or close and when walls are destroyed.
    - Create a `CrewMovementSystem` that stores an active `GraphPath`. On every update, interpolate the crew member's local float coordinates towards the next tile in the path based on their movement speed.
 
 2. **Job Blackboard System:**
@@ -25,14 +27,35 @@ To implement this module independently (mocking the `interior-grid` by feeding i
    - **Execute:** The behavior tree transitions to executing the task (e.g., `Sequence( MoveTo(task.x, task.y), PlayAnimation(repairing), Wait(5s), CompleteTask() )`).
 
 4. **Internal Combat Logic:**
-   - Implement line-of-sight checks using Bresenham's line algorithm on the local 2D grid.
+   - Implement line-of-sight checks with a supercover grid traversal (Amanatides & Woo, the same `GridRayTraversal` combat uses), not Bresenham, so sight cannot slip between two diagonal walls. Intact full-tile walls and closed edge walls block sight; edge walls are checked whenever the ray crosses a tile boundary.
    - If a hostile entity is within LOS, the behavior tree interrupts the current task and pushes an `EngageCombatTask`.
 
+5. **Crew Injury, Unconsciousness and Death:**
+   Combat applies damage from penetrating hits, spall, fragments and interior blast (`combat-sys/Design.md` section 5.9). This module owns what that damage does:
+
+   | State | Entered when | Effect |
+   |---|---|---|
+   | **Conscious** | Health above `unconsciousThreshold` | Normal |
+   | **Unconscious** | Health at or below `unconsciousThreshold` | Drops its current task and releases it to the board, cannot act or move on its own, still occupies its tile |
+   | **Dead** | Health reaches 0 | Removed from duty; the body stays on its tile |
+
+   - Unconscious crew still occupy their tile, so `GridOccupantQuery.at(x, y)` keeps returning them and **further hits can kill them**.
+   - **Asphyxiation:** crew on a tile whose `oxygenLevel` is below `asphyxiationThreshold` lose health each hazard tick, faster as oxygen falls. They pass out first and then die. A hull breach therefore threatens crew who were never in the line of fire.
+   - **Rescue:** combat posts a `RescueTask` (carry an unconscious crew member to a pressurized tile) for unconscious crew in danger, and `CrewHealthSystem` posts one when crew pass out from asphyxiation. The rescuer moves at reduced speed while carrying, and drops the casualty if knocked out.
+   - **Recovery (default until decided):** unconscious crew on a pressurized tile slowly regain health and wake once above `unconsciousThreshold`. A medic `TreatTask` speeds this up. Dead crew do not recover.
+   - Thresholds and rates live in data (`CrewDef`), e.g. `unconsciousThreshold = 0.25`, `asphyxiationThreshold = 0.3`.
+
+6. **Interfaces this module implements for `combat-sys`:**
+   - `GridOccupantQuery.at(x, y)`: crew entities on a tile, conscious or not.
+   - `CrewDamageSink.applyDamage(crewEntity, amount, cause)`: subtracts health and moves the crew member between the states above.
+   - `DamageTaskSink`: accepts `SealBreachTask`, `RepairTask`, `ExtinguishTask` and `RescueTask` onto the `ShipTaskBoardComponent`.
+
 ## Proposed Components
-- `CrewMemberComponent`: Holds stats, health, role, and current equipped item.
+- `CrewMemberComponent`: Holds stats, health, consciousness state (conscious / unconscious / dead), role, and current equipped item.
 - `BehaviorTreeComponent`: Holds the active `gdx-ai` behavior tree instance.
 - `GridPositionComponent`: Tracks the localized float coordinates of the crew member relative to their parent grid.
 
 ## Proposed Systems
 - `CrewMovementSystem`: Interpolates position along the calculated A* path.
-- `CrewDecisionSystem`: Ticks the behavior trees for all active AI entities.
+- `CrewDecisionSystem`: Ticks the behavior trees for all conscious crew. Unconscious and dead crew are skipped.
+- `CrewHealthSystem`: Applies asphyxiation on the hazard tick, handles recovery, and posts rescue tasks.

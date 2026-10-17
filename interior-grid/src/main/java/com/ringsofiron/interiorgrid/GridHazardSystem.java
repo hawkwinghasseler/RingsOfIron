@@ -12,13 +12,17 @@ import com.badlogic.gdx.utils.Array;
  *
  * Fire behaviour:
  *   - Consumes oxygen in the tile it occupies.
- *   - Spreads to adjacent flammable floor tiles that are not separated by sealed bulkheads.
+ *   - Spreads to adjacent flammable floor tiles that are not separated by sealed bulkheads
+ *     or closed edge walls.
  *   - Extinguishes automatically when oxygenLevel reaches 0.
  *
  * Vacuum behaviour:
  *   - Vacuum spreads from hull breaches (destroyed hull tiles) or void borders.
  *   - Oxygen is rapidly equalised from pressurised tiles into vacuum tiles.
- *   - Sealed bulkheads block spread.
+ *   - Sealed bulkheads and closed edge walls block spread.
+ *
+ * Walls only block while they stand: an internal wall or edge wall at integrity 0 lets
+ * fire and air through, and a hull wall at integrity 0 is a breach to space.
  */
 public class GridHazardSystem extends IteratingSystem {
 
@@ -60,7 +64,7 @@ public class GridHazardSystem extends IteratingSystem {
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 Tile tile = grid.getTile(x, y);
-                if (tile == null || tile.isWall() || tile.isVoid()) continue;
+                if (tile == null || !tile.isOpen()) continue;
 
                 if (isAdjacentToSpace(grid, x, y)) {
                     // This floor tile is directly adjacent to space — bleed oxygen
@@ -84,9 +88,11 @@ public class GridHazardSystem extends IteratingSystem {
     private boolean isAdjacentToSpace(ShipGridComponent grid, int x, int y) {
         int[][] neighbors = {{x+1,y},{x-1,y},{x,y+1},{x,y-1}};
         for (int[] n : neighbors) {
+            // A closed edge wall seals this side, even against open space
+            if (grid.isEdgeBlocked(x, y, n[0], n[1])) continue;
             Tile neighbor = grid.getTile(n[0], n[1]);
             // Out-of-bounds counts as space, and void tiles count as space
-            if (neighbor == null || neighbor.isVoid() || neighbor.isHullBreach() || neighbor.hasVacuum) {
+            if (neighbor == null || neighbor.isSpaceExposed() || neighbor.hasVacuum) {
                 return true;
             }
         }
@@ -99,8 +105,9 @@ public class GridHazardSystem extends IteratingSystem {
 
         int[][] neighbors = {{srcX+1,srcY},{srcX-1,srcY},{srcX,srcY+1},{srcX,srcY-1}};
         for (int[] n : neighbors) {
+            if (!grid.canPass(srcX, srcY, n[0], n[1])) continue;
             Tile neighbor = grid.getTile(n[0], n[1]);
-            if (neighbor == null || neighbor.isWall() || neighbor.isVoid() || neighbor.bulkheadSealed) continue;
+            if (neighbor.bulkheadSealed) continue;
             // Equalise oxygen
             if (neighbor.oxygenLevel > src.oxygenLevel) {
                 float bleed = Math.min(OXYGEN_BLEED_RATE, neighbor.oxygenLevel - src.oxygenLevel);
@@ -135,14 +142,14 @@ public class GridHazardSystem extends IteratingSystem {
                 }
 
                 // Damage tile integrity
-                tile.integrity = Math.max(0f, tile.integrity - 0.1f);
+                tile.setIntegrity(tile.getIntegrity() - 0.1f);
 
                 // Spread to adjacent flammable floor tiles with enough oxygen
                 int[][] neighbors = {{x+1,y},{x-1,y},{x,y+1},{x,y-1}};
                 for (int[] n : neighbors) {
+                    if (!grid.canPass(x, y, n[0], n[1])) continue;
                     Tile neighbor = grid.getTile(n[0], n[1]);
-                    if (neighbor == null || neighbor.hasFire || neighbor.isWall()
-                            || neighbor.isVoid() || neighbor.bulkheadSealed) continue;
+                    if (neighbor.hasFire || neighbor.bulkheadSealed) continue;
                     if (neighbor.isFlammable && neighbor.oxygenLevel >= FIRE_SPREAD_THRESHOLD) {
                         newFires.add(new int[]{n[0], n[1]});
                     }
