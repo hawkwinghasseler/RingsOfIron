@@ -25,10 +25,10 @@ To implement this module independently (mocking the core-engine if necessary):
    - Implement a `FlightControlSystem` that reads player/AI input vectors and applies forces/torques via `body.applyForceToCenter()` and `body.applyTorque()`. Atmospheric drag should be set to 0.
 
 4. **Floating Origin Shift Mechanism:**
-   - Track the distance of the entity with `PlayerControllerComponent` from `(0,0)`.
-   - If distance > `THRESHOLD` (e.g., 5000 meters), calculate a `shiftVector`.
-   - Iterate through *every* `Body` in the Box2D world and apply `body.setTransform(body.getPosition().sub(shiftVector), body.getAngle())`.
-   - Fire a `WorldShiftEvent` so other systems (like rendering cameras or macro-sim tracking) can adjust their coordinates by the `shiftVector`.
+   - Track the entity with `PlayerControllerComponent` relative to the bubble origin, in both position and velocity.
+   - If it is more than 2,000 m from the origin or moving faster than 200 m/s relative to it, rebase: the origin takes the player's position and velocity (kept in doubles), and every `Body` is shifted by `-position` and `-velocity`.
+   - Fire a `WorldShiftEvent` carrying both deltas so other systems (rendering cameras, HUD, audio, macro-sim tracking) can adjust.
+   - See `documentation/orbital-mechanics/Design.md` section 3 for why velocity is shifted too, and how the origin becomes a free-falling orbital anchor.
 
 ## Proposed Components
 - `PhysicsBodyComponent`: Holds the Box2D `Body`.
@@ -36,7 +36,9 @@ To implement this module independently (mocking the core-engine if necessary):
 
 ## Proposed Systems
 - `PhysicsUpdateSystem`: Syncs Box2D state to ECS state.
-- `FloatingOriginSystem`: Monitors player distance and triggers coordinate shifting.
+- `FloatingOriginSystem`: Monitors player distance and relative speed and rebases the origin.
+- `TidalGravitySystem` (planned, from the orbital plan): applies the differential gravity across the bubble each tick.
+- `KinematicTransientSystem` (planned, from the orbital plan): moves bodies passing faster than the Box2D cap along their rails orbits and sweeps them for collisions.
 
 ## Implementation Status
 Implemented in `physics-exterior/src/main/java/com/ringsofiron/physicsexterior/`, with tests in `src/test` (`gradlew :physics-exterior:test`) and a playable demo (`Flight demo.bat`, or `gradlew :lwjgl3:runFlightDemo`).
@@ -51,3 +53,12 @@ Conventions:
 - `TransformComponent` holds the bubble-frame pose: meters, rotation in degrees counter-clockwise. Entities with a transform but no body are treated as fixed in the universe and are moved back by the origin's travel each tick.
 - Ship local frame: +X is the nose, +Y is port. `FlightControlComponent` holds stick input in [-1, 1] (`forward`, `strafe`, `turn`, plus optional `rotationAssist`); `ThrusterComponent` holds the force, torque and fuel limits.
 - Bodies made by `PhysicsManager.createPolygonBody/createCircleBody` never sleep and have zero damping, so a slow drift stays a drift. Density is in kg per square meter.
+
+## Orbital Integration (planned)
+The bubble is currently an inertial frame with no gravity. `documentation/orbital-mechanics/Design.md` defines how it becomes part of a 1:1 real-scale orbital world. The changes that land in this module:
+- **Free-falling anchor.** The origin's double-precision universe state in `PhysicsManager` becomes an orbital anchor: Keplerian elements around the current SOI body, evaluated at sim time. A rebase converts the player's true state back into new anchor elements instead of just copying position and velocity.
+- **Tidal gravity.** World gravity stays zero. Each fixed tick, before the step (alongside `FlightControlSystem.beforeStep`), every dynamic body gets `g(R_anchor + r) − g(R_anchor)`, computed in doubles. Roughly 0.1 m/s² at 25 km in low orbit.
+- **Bubble size.** Rails bodies enter at 20 km from the anchor and leave at 25 km. Entry requires relative speed below about 1,000 m/s; faster bodies are kinematic transients (rendered and swept for collisions, never Box2D bodies) until they slow down.
+- **SOI changes.** When the player crosses into another body's sphere of influence, the anchor is re-parented. Box2D bodies do not move.
+- **Time warp.** Physics warp (1× to 10×) runs more fixed ticks per frame. Rails warp (50× and up) collapses the bubble: every body, the player included, goes onto rails and Box2D idles until warp ends.
+

@@ -17,6 +17,8 @@ To implement this module independently:
 2. **Game Loop:**
    - Implement a fixed-timestep accumulator in the main render loop.
    - Separate systems into two categories: `FixedLogicSystem` (runs on fixed tick, e.g. 60hz) and `RenderSystem` (runs every frame with interpolation alpha).
+   - **Sim time** is a single authoritative `long tick` counter at 60 Hz, owned by `GameEngine`. Seconds are derived as `tick / 60.0` (double) when needed, e.g. by orbital code. Never accumulate game time in a float.
+   - **Time warp** (see `documentation/orbital-mechanics/Design.md` section 6): physics warp (1× to 10×) runs more fixed ticks per frame. Rails warp (50× to 1,000,000×) advances the tick counter in large jumps; per-tick systems such as interior hazards and crew AI must not be run once per skipped tick but get a coarse catch-up update instead. Rails warp is refused while any fire or atmosphere leak is active aboard the player's ship.
 
 3. **UUID System Setup:**
    - Create a `UuidComponent` containing a `String id`.
@@ -25,11 +27,12 @@ To implement this module independently:
 
 4. **Serialization Architecture:**
    - Create a `SerializationService`.
+   - Save the sim `tick`. Bubble bodies are saved as absolute double state vectors relative to their SOI parent, never as bubble-frame floats, so a save does not depend on where the floating origin was.
    - When saving: Iterate over all entities, skip entities marked `TransientComponent`, serialize their components to JSON, replacing direct object references with UUID strings.
    - When loading: Parse JSON, recreate entities, and run a secondary pass to resolve UUID strings back into live Entity references where necessary.
 
 ## Proposed Components
-- `TransformComponent`: Base position/rotation `x, y, rotation`.
+- `TransformComponent`: Base position/rotation `x, y, rotation` in the **bubble frame** (metres, floats, relative to the floating origin). True universe positions are not stored here: they live in `OrbitComponent` for bodies on rails, or in the bubble anchor plus Box2D state for bodies in the bubble.
 - `UuidComponent`: `String id`.
 - `PlayerControllerComponent`: Empty tag component identifying the player's primary actor.
 
