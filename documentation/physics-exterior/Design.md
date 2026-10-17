@@ -37,3 +37,17 @@ To implement this module independently (mocking the core-engine if necessary):
 ## Proposed Systems
 - `PhysicsUpdateSystem`: Syncs Box2D state to ECS state.
 - `FloatingOriginSystem`: Monitors player distance and triggers coordinate shifting.
+
+## Implementation Status
+Implemented in `physics-exterior/src/main/java/com/ringsofiron/physicsexterior/`, with tests in `src/test` (`gradlew :physics-exterior:test`) and a playable demo (`Flight demo.bat`, or `gradlew :lwjgl3:runFlightDemo`).
+
+Where the code differs from the guide above, it follows `documentation/orbital-mechanics/Design.md`:
+- **Box2D unit = 10 m.** Box2D moves a body at most 2 units per step, so at 1 unit = 1 m nothing could exceed 120 m/s. At 10 m per unit the cap is 1,200 m/s relative to the bubble. All public APIs are in SI units; use the static helpers on `PhysicsManager` (`getPosition`, `getVelocity`, `applyForce`, `getInertia`, ...) rather than raw `Body` calls so the scale stays hidden.
+- **Floating origin shifts velocity too.** `FloatingOriginSystem` rebases when the player is more than 2,000 m from the origin or moving faster than 200 m/s relative to it. The origin takes the player's position and velocity, and `PhysicsManager` tracks the origin's universe position and velocity in doubles. The frame is inertial for now (no gravity); the orbital work can later replace it with a free-falling anchor.
+- **`WorldShiftEvent`** carries both the position and velocity deltas plus the new origin state. It and `CollisionEvent` are delivered through Ashley `Signal`s on `PhysicsManager` (`worldShifts`, `collisions`). Collisions are queued during the step and dispatched after it, so listeners may create or destroy bodies.
+- **Force application** happens in `FlightControlSystem.beforeStep`, called by `PhysicsManager` once per fixed tick, so forces are applied exactly once per Box2D step however many ticks run in a frame.
+
+Conventions:
+- `TransformComponent` holds the bubble-frame pose: meters, rotation in degrees counter-clockwise. Entities with a transform but no body are treated as fixed in the universe and are moved back by the origin's travel each tick.
+- Ship local frame: +X is the nose, +Y is port. `FlightControlComponent` holds stick input in [-1, 1] (`forward`, `strafe`, `turn`, plus optional `rotationAssist`); `ThrusterComponent` holds the force, torque and fuel limits.
+- Bodies made by `PhysicsManager.createPolygonBody/createCircleBody` never sleep and have zero damping, so a slow drift stays a drift. Density is in kg per square meter.
