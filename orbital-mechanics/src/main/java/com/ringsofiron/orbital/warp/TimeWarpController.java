@@ -2,6 +2,8 @@ package com.ringsofiron.orbital.warp;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.signals.Signal;
+import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.orbital.events.OrbitalEvent;
 import com.ringsofiron.orbital.events.OrbitalEventSystem;
 import com.ringsofiron.orbital.rails.RailsUniverse;
@@ -14,15 +16,19 @@ import java.util.function.Supplier;
  *   <li><b>Physics warp</b> (1x to 10x): Box2D runs several fixed ticks per frame.</li>
  *   <li><b>Rails warp</b> (50x to 1,000,000x): the bubble is collapsed onto rails, Box2D idles and
  *       the clock jumps forward. It drops back to 1x just before the next event that matters to the
- *       player (their own SOI change, maneuver or impact, or another body coming within
- *       {@link #encounterRadius}), and at once if a guard vetoes (e.g. a fire starts aboard).</li>
+ *       player (their own SOI change, maneuver or impact, another body coming within
+ *       {@link #encounterRadius}, or a time from a registered {@link DropOutSource}), and at once if
+ *       a {@code RailsWarpGuard} vetoes (e.g. a fire starts aboard).</li>
  * </ul>
- * Call {@link #update} once per rendered frame with the real frame time.
+ * In the game the {@link WarpHost} is core-engine's {@link GameEngine}: physics warp is
+ * {@link GameEngine#setPhysicsWarp}, rails warp is {@link GameEngine#advanceRails}.
+ * Call {@link #update} once per rendered frame with the real frame time, outside
+ * {@code GameEngine.update} (a jump requested during an update is deferred by the engine).
  */
 public class TimeWarpController {
     public static final int[] PHYSICS_LEVELS = {1, 2, 3, 5, 10};
     public static final int[] RAILS_LEVELS = {50, 100, 1_000, 10_000, 100_000, 1_000_000};
-    public static final int MAX_PHYSICS_WARP = 10;
+    public static final int MAX_PHYSICS_WARP = GameEngine.MAX_PHYSICS_WARP;
     /** Matches the bubble entry radius in the design: a body this close would enter the bubble. */
     public static final double DEFAULT_ENCOUNTER_RADIUS = 20_000;
 
@@ -33,7 +39,9 @@ public class TimeWarpController {
         PLAYER_EVENT,
         /** Another body is about to come within range. */
         ENCOUNTER,
-        /** A {@link WarpHost} guard refused to keep warping. */
+        /** A registered {@link DropOutSource} asked to stop. */
+        EXTERNAL,
+        /** A {@code RailsWarpGuard} refused to keep warping. */
         VETOED
     }
 
@@ -42,6 +50,8 @@ public class TimeWarpController {
         public boolean rails;
         /** Set when rails warp ended. */
         public DropReason reason;
+        /** For {@link DropReason#VETOED} or a refused request: the guard's reason ("Fire aboard"). */
+        public String blockedReason;
         /** The event or body that caused a drop, if any. */
         public OrbitalEvent event;
         public Entity encounter;
@@ -57,11 +67,17 @@ public class TimeWarpController {
     private final Supplier<Entity> player;
     private final EncounterPredictor.Result encounter = new EncounterPredictor.Result();
     private final WarpChange change = new WarpChange();
+    private final Array<DropOutSource> dropOutSources = new Array<>();
     private double encounterRadius = DEFAULT_ENCOUNTER_RADIUS;
 
     private int warp = 1;
     private boolean rails;
     private double tickAccumulator;
+
+    public TimeWarpController(GameEngine engine, BubbleHandoff bubble, OrbitalEventSystem events,
+                              RailsUniverse universe, EncounterPredictor encounters, Supplier<Entity> player) {
+        this(WarpHost.of(engine), bubble, events, universe, encounters, player);
+    }
 
     public TimeWarpController(WarpHost host, BubbleHandoff bubble, OrbitalEventSystem events,
                               RailsUniverse universe, EncounterPredictor encounters, Supplier<Entity> player) {
@@ -79,6 +95,19 @@ public class TimeWarpController {
 
     public boolean isRailsWarp() {
         return rails;
+    }
+
+    public void addDropOutSource(DropOutSource source) {
+        dropOutSources.add(source);
+    }
+
+    public void removeDropOutSource(DropOutSource source) {
+        dropOutSources.removeValue(source, true);
+    }
+
+    /** Why rails warp is refused right now, or null if it is allowed. */
+    public String getRailsWarpBlockedReason() {
+        return host.railsWarpBlockedReason();
     }
 
     public void setEncounterRadius(double meters) {
@@ -99,7 +128,7 @@ public class TimeWarpController {
             return true;
         }
         if (!rails) {
-            if (!host.railsWarpAllowed()) return false;
+            if (host.railsWarpBlockedReason() != null) return false;
             host.setPhysicsWarp(1);
             bubble.collapseToRails();
             if (universe.orbit(player.get()) == null) {
@@ -150,6 +179,14 @@ public class TimeWarpController {
             reason = DropReason.PLAYER_EVENT;
             dueEvent = next;
         }
+        for (DropOutSource source : dropOutSources) {
+            double t = source.nextDropOutTime();
+            if (t >= tNow && t <= stopAt) {
+                stopAt = t;
+                reason = DropReason.EXTERNAL;
+                dueEvent = null;
+            }
+        }
         encounters.find(p, encounterRadius, tNow, stopAt, encounter);
         if (!Double.isNaN(encounter.time)) {
             stopAt = encounter.time;
@@ -190,6 +227,7 @@ public class TimeWarpController {
         change.reason = reason;
         change.event = event;
         change.encounter = other;
+        change.blockedReason = reason == DropReason.VETOED ? host.railsWarpBlockedReason() : null;
         changes.dispatch(change);
     }
 }

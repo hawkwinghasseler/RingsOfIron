@@ -195,6 +195,15 @@ tasks.register('runAudioDemo', JavaExec) {
   group = 'application'
   description = 'Runs the audio-spatial muffling demo.'
   mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.AudioDemoLauncher'
+tasks.register('runOrbitDemo', JavaExec) {
+  group = 'application'
+  description = 'Runs the orbital-mechanics rails demo.'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.OrbitDemoLauncher'
+// Runs the AI crew demo instead of the main game.
+tasks.register('runCrewDemo', JavaExec) {
+  group = 'application'
+  description = 'Runs the ai-crew demo.'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.CrewDemoLauncher'
   classpath = sourceSets.main.runtimeClasspath
   workingDir = rootProject.file('assets').path
   jvmArgs += "--enable-native-access=ALL-UNNAMED"

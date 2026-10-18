@@ -13,9 +13,8 @@ import com.ringsofiron.orbital.math.StateVector;
  * when its orbit is set. The results go into the event queue so nothing is checked per tick.
  *
  * <p>Exit and impact are analytic (the time the conic reaches a radius). Entry into a moving child
- * SOI is found by sampling the distance with a step small enough that it cannot change by more than
- * half the SOI radius between samples, then bisecting. Only an orbit that grazes the very edge of an
- * SOI can slip between samples.
+ * SOI is found by conservative advancement on the distance (never stepping further than the gap
+ * could close at the maximum relative speed), then bisecting, so no crossing is skipped.
  */
 public class SoiPredictor {
     /** Longest look-ahead per prediction; a REPREDICT event continues the search after it. */
@@ -41,27 +40,36 @@ public class SoiPredictor {
     /** The earliest predicted event for {@code entity} after time t (never null; REPREDICT if nothing sooner). */
     public OrbitalEvent predict(Entity entity, double t) {
         OrbitComponent orbit = universe.orbit(entity);
-        String id = universe.uuidOf(entity);
-        int version = orbit.version;
-        KeplerOrbit k = orbit.getOrbit();
-        Entity parent = universe.entity(orbit.parentUuid);
+        return predict(universe.uuidOf(entity), orbit.parentUuid, orbit.getOrbit(), orbit.version, t);
+    }
+
+    /**
+     * The earliest predicted event for any conic around {@code parentUuid}, e.g. the bubble anchor,
+     * which is not an entity. {@code id} and {@code version} are copied into the event.
+     */
+    public OrbitalEvent predict(String id, String parentUuid, KeplerOrbit k, int version, double t) {
+        Entity parent = universe.entity(parentUuid);
         CelestialBodyComponent parentBody = universe.celestial(parent);
+        if (parentBody == null) {
+            // Parent not loaded yet (or missing): nothing to predict against. Try again later.
+            return new OrbitalEvent(OrbitalEvent.Type.REPREDICT, t + 1, id, null, version);
+        }
 
         double windowEnd = t + horizon;
         OrbitalEvent best = new OrbitalEvent(OrbitalEvent.Type.REPREDICT, windowEnd, id, null, version);
 
-        if (parentBody != null && universe.orbit(parent) != null && k.apoapsis() > parentBody.soiRadius) {
+        if (universe.orbit(parent) != null && k.apoapsis() > parentBody.soiRadius) {
             double exit = k.nextTimeAtRadius(parentBody.soiRadius, t, KeplerOrbit.Crossing.OUTBOUND);
             if (exit < best.time) best = new OrbitalEvent(OrbitalEvent.Type.SOI_EXIT, exit, id, null, version);
         }
-        if (parentBody != null && k.periapsis() < parentBody.radius) {
+        if (k.periapsis() < parentBody.radius) {
             double impact = k.nextTimeAtRadius(parentBody.radius, t, KeplerOrbit.Crossing.INBOUND);
             if (impact < best.time) best = new OrbitalEvent(OrbitalEvent.Type.IMPACT, impact, id, null, version);
         }
 
         universe.childBodies(parent, children);
         for (Entity child : children) {
-            if (child == entity) continue;
+            if (id.equals(universe.uuidOf(child)) || universe.celestial(child) == null) continue;
             double end = best.time;
             double[] scanEnd = {end};
             double entry = findEntry(k, child, t, end, scanEnd);
@@ -93,20 +101,25 @@ public class SoiPredictor {
 
         double relSpeed = RailsUniverse.maxSpeed(k) + RailsUniverse.maxSpeed(c);
         double step = 0.5 * soi / relSpeed;
-        double end = Math.min(t1, t0 + step * MAX_SAMPLES);
-        scanEnd[0] = end;
 
         // Only an outside-to-inside crossing counts. A body that starts on or inside the boundary has
         // just left this SOI (or is about to), so it must get clear before it can enter again.
+        // Steps use conservative advancement: the gap cannot close faster than relSpeed.
         double prevT = t0;
-        boolean outside = gap(k, c, soi, t0) > 0;
-        for (double tt = t0 + step; prevT < end; tt += step) {
-            double sampleT = Math.min(tt, end);
-            double f = gap(k, c, soi, sampleT);
-            if (f <= 0 && outside) return bisect(k, c, soi, prevT, sampleT);
+        double f = gap(k, c, soi, t0);
+        boolean outside = f > 0;
+        int samples = 0;
+        while (prevT < t1 && samples++ < MAX_SAMPLES) {
+            double sampleT = Math.min(prevT + Math.max(step, f / relSpeed), t1);
+            f = gap(k, c, soi, sampleT);
+            if (f <= 0 && outside) {
+                scanEnd[0] = t1;
+                return bisect(k, c, soi, prevT, sampleT);
+            }
             if (f > 0) outside = true;
             prevT = sampleT;
         }
+        scanEnd[0] = prevT;
         return Double.NaN;
     }
 
