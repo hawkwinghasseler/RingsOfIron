@@ -26,9 +26,10 @@ import java.util.List;
  * burns in its {@link ManeuverNodeComponent}, and {@link OrbitalEventSystem} fires them along with SOI
  * changes and impacts. Massive bodies are entities with a {@link CelestialBodyComponent}.
  *
- * <p>The rails universe reads this model's own clock (the time it last processed up to), so a burn
- * planned in the middle of a rails-warp jump is scheduled from the event time, not the jump's end.
- * Do not also add the event system to the engine: {@code MacroSimulation} drives it.
+ * <p>In the game, pass the game's single {@link OrbitalEventSystem} and its {@link RailsUniverse}
+ * (GameWorld owns them). {@link #standalone} builds a private pair for the demo and tests; there the
+ * universe reads this model's own clock (the time it last processed up to), so a burn planned in
+ * the middle of a rails-warp jump is scheduled from the event time, not the jump's end.
  */
 public class OrbitalRailsModel implements RailsModel {
     private static final Family RAILS = Family.all(OrbitComponent.class, UuidComponent.class).get();
@@ -40,16 +41,32 @@ public class OrbitalRailsModel implements RailsModel {
     private final RailsUniverse universe;
     private final OrbitalEventSystem events;
     private final com.ringsofiron.orbital.math.StateVector scratch = new com.ringsofiron.orbital.math.StateVector();
-    private double now;
+    private final double[] now;
 
-    public OrbitalRailsModel(GameEngine engine, double startTime) {
+    /** Over the game's existing event system, which must already be in the engine. */
+    public OrbitalRailsModel(GameEngine engine, RailsUniverse universe, OrbitalEventSystem events) {
+        this(engine, universe, events, new double[]{universe.now()});
+    }
+
+    private OrbitalRailsModel(GameEngine engine, RailsUniverse universe, OrbitalEventSystem events, double[] now) {
         this.engine = engine;
-        this.now = startTime;
-        this.universe = new RailsUniverse(engine.getEcsEngine(), engine.getUuidRegistry(), () -> now);
-        this.events = new OrbitalEventSystem(universe, new OrbitalEventQueue());
-        // Hook the event system's entity listener without letting the engine update it.
+        this.universe = universe;
+        this.events = events;
+        this.now = now;
+    }
+
+    /**
+     * Creates its own universe and event system, for use without GameWorld. The event system is added
+     * to the engine for its entity listener but not processed by it: {@code MacroSimulation} drives it.
+     * Do not use alongside another {@link OrbitalEventSystem} in the same engine.
+     */
+    public static OrbitalRailsModel standalone(GameEngine engine, double startTime) {
+        double[] now = {startTime};
+        RailsUniverse universe = new RailsUniverse(engine.getEcsEngine(), engine.getUuidRegistry(), () -> now[0]);
+        OrbitalEventSystem events = new OrbitalEventSystem(universe, new OrbitalEventQueue());
         engine.getEcsEngine().addSystem(events);
         events.setProcessing(false);
+        return new OrbitalRailsModel(engine, universe, events, now);
     }
 
     public RailsUniverse universe() {
@@ -144,10 +161,10 @@ public class OrbitalRailsModel implements RailsModel {
         // Step the clock event by event, so anything scheduled while applying one starts from its time.
         OrbitalEvent next;
         while ((next = events.getQueue().peek()) != null && next.time <= t) {
-            now = Math.max(now, next.time);
+            now[0] = Math.max(now[0], next.time);
             events.processUntil(next.time);
         }
-        now = Math.max(now, t);
+        now[0] = Math.max(now[0], t);
     }
 
     @Override
@@ -164,7 +181,7 @@ public class OrbitalRailsModel implements RailsModel {
             entries.add(new RailsSnapshot.Entry(e.getComponent(UuidComponent.class).id, o.parentUuid,
                     new KeplerTrajectory(o.getOrbit())));
         }
-        return new RailsSnapshot(now, entries);
+        return new RailsSnapshot(now[0], entries);
     }
 
     private OrbitComponent orbit(String uuid) {

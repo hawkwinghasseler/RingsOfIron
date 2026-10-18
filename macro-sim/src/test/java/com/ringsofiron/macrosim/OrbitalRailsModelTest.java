@@ -37,7 +37,7 @@ class OrbitalRailsModelTest {
     @Test
     void burnsFireThroughTheOrbitalEventSystem() {
         GameEngine engine = new GameEngine();
-        OrbitalRailsModel rails = new OrbitalRailsModel(engine, 0);
+        OrbitalRailsModel rails = OrbitalRailsModel.standalone(engine, 0);
         String planet = addPlanet(engine);
         String ship = addShip(engine);
         StateVector s = new StateVector(7_000e3, 0, 0, Math.sqrt(MU / 7_000e3));
@@ -61,9 +61,30 @@ class OrbitalRailsModelTest {
     }
 
     @Test
+    void sharesTheGamesEventSystem() {
+        GameEngine engine = new GameEngine();
+        com.ringsofiron.orbital.rails.RailsUniverse universe = new com.ringsofiron.orbital.rails.RailsUniverse(
+                engine.getEcsEngine(), engine.getUuidRegistry(), engine::getSimSeconds);
+        com.ringsofiron.orbital.events.OrbitalEventSystem events = new com.ringsofiron.orbital.events.OrbitalEventSystem(
+                universe, new com.ringsofiron.orbital.events.OrbitalEventQueue());
+        engine.addSystem(events);
+        OrbitalRailsModel rails = new OrbitalRailsModel(engine, universe, events);
+        String planet = addPlanet(engine);
+        String ship = addShip(engine);
+        rails.attach(ship, planet, new StateVector(7_000e3, 0, 0, Math.sqrt(MU / 7_000e3)), 0);
+        rails.scheduleBurn(ship, new Burn(1, 50, 0));
+        for (int i = 0; i < 8; i++) engine.update(0.25f); // the game's own system fires the burn
+        assertTrue(rails.trajectoryOf(ship).maxRadius() > 7_100e3, "burn applied");
+        assertTrue(events.getQueue().eventsFor(ship).stream()
+                .noneMatch(ev -> ev.type == com.ringsofiron.orbital.events.OrbitalEvent.Type.MANEUVER), "fired once");
+        rails.processEventsUntil(engine.getSimSeconds()); // driving it from macro-sim too is harmless
+        assertTrue(rails.trajectoryOf(ship).maxRadius() < 7_300e3, "not fired twice");
+    }
+
+    @Test
     void demoEconomyRunsOnTheOrbitalRails() {
         GameEngine engine = new GameEngine();
-        OrbitalRailsModel rails = new OrbitalRailsModel(engine, 0);
+        OrbitalRailsModel rails = OrbitalRailsModel.standalone(engine, 0);
         String planet = addPlanet(engine);
         MacroSimulation sim = MacroSimDemo.build(engine, rails, planet);
         double worstMiss = 0;
