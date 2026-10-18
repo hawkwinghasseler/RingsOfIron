@@ -284,7 +284,7 @@ public class GameWorld implements Disposable {
 
     /**
      * A ship on rails reached a body's surface. The player's ends the game; any other is removed
-     * after the frame, unless macro-sim owns it: it has no way to lose a station or freighter yet.
+     * after the frame, unless macro-sim owns it: macro-sim handles the loss of its own stations and freighters.
      */
     private void onImpact(OrbitalEvent event) {
         Entity ship = universe.entity(event.entityUuid);
