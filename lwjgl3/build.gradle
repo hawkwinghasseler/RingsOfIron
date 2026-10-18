@@ -225,6 +225,18 @@ tasks.register('runOrbitDemo', JavaExec) {
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
+// Runs the game: every module wired together through GameWorld.
+tasks.register('runGame', JavaExec) {
+  group = 'application'
+  description = 'Runs Rings of Iron with every module wired together.'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.GameLauncher'
+  classpath = sourceSets.main.runtimeClasspath
+  workingDir = rootProject.file('assets').path
+  jvmArgs += "--enable-native-access=ALL-UNNAMED"
+  jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
+  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+}
+
 // Runs the AI crew demo instead of the main game.
 tasks.register('runCrewDemo', JavaExec) {
   group = 'application'

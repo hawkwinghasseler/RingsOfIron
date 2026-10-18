@@ -19,9 +19,13 @@ import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
+import com.ringsofiron.interiorgrid.InteriorGridData;
+import com.ringsofiron.interiorgrid.InteriorGridSaveParticipant;
+import com.ringsofiron.interiorgrid.InteriorHazardWarpGuard;
 import com.ringsofiron.interiorgrid.LifeSupportSystem;
 import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.PowerRoutingSystem;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.MacroSimSystem;
 import com.ringsofiron.macrosim.MacroSimulation;
 import com.ringsofiron.macrosim.economy.DefRegistryCommodityCatalog;
@@ -45,7 +49,9 @@ import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
 import com.ringsofiron.physicsexterior.modding.ShipPhysicsAssembler;
 import com.ringsofiron.physicsexterior.systems.FlightControlSystem;
 import com.ringsofiron.physicsexterior.systems.FloatingOriginSystem;
+import com.ringsofiron.physicsexterior.systems.KinematicTransientSystem;
 import com.ringsofiron.physicsexterior.systems.PhysicsUpdateSystem;
+import com.ringsofiron.physicsexterior.systems.TidalGravitySystem;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +62,8 @@ import java.util.function.Consumer;
  * No rendering here, so it runs headless in tests; screens hold a GameWorld and draw it.
  *
  * <p>Wired today: core-engine, physics-exterior, orbital-mechanics (rails, events, time warp),
- * interior-grid (hazards, power, life support, rails-warp guard), ai-crew (crew AI and the NPC
+ * interior-grid (hazards, power, life support, rails-warp guard, saves, ships' interiors and mass
+ * from data), ai-crew (crew AI and the NPC
  * pilot), combat-sys (ballistics and impact damage, hurting crew through ai-crew), audio-spatial
  * (sound, occlusion, listener on the player), modding-data (data and mod loading through
  * {@link #loadContent}, ships get Box2D bodies from their defs), macro-sim (economy, freighter
@@ -126,7 +133,11 @@ public class GameWorld implements Disposable {
 
         // physics-exterior
         engine.addSystem(new FlightControlSystem(physics));
+        // The anchor carries the planet's main pull; bubble bodies feel only the tidal difference.
+        engine.addSystem(new TidalGravitySystem(physics));
         engine.addSystem(new PhysicsUpdateSystem(physics));
+        // Fast passes and stations: drawn and swept for collisions while they stay on rails.
+        engine.addSystem(new KinematicTransientSystem(physics));
         engine.addSystem(new FloatingOriginSystem(physics));
 
         // orbital-mechanics
@@ -155,7 +166,14 @@ public class GameWorld implements Disposable {
         engine.addSystem(new GridHazardSystem());
         engine.addSystem(new PowerRoutingSystem());
         engine.addSystem(new LifeSupportSystem());
-        engine.addRailsWarpGuard(new PlayerShipHazardGuard(this::getPlayer));
+        engine.getSerializationService().addParticipant(new InteriorGridSaveParticipant(engine));
+        // Watches whichever ship the player is flying now.
+        InteriorHazardWarpGuard hazards = new InteriorHazardWarpGuard(null);
+        engine.addRailsWarpGuard(() -> {
+            Entity player = getPlayer();
+            hazards.setGrid(player == null ? null : player.getComponent(ShipGridComponent.class));
+            return hazards.railsWarpBlockedReason();
+        });
 
         // ai-crew
         crew = CrewFactory.install(engine.getEcsEngine());
@@ -194,7 +212,9 @@ public class GameWorld implements Disposable {
         if (content != null) throw new IllegalStateException("Content is already loaded");
         ModdingBootstrap bootstrap = new ModdingBootstrap(assetsDir, modsDir).trustPolicy(modules.modTrust);
         bootstrap.beforeScripts(ctx -> CombatDefs.registerTypes(ctx.defs));
-        bootstrap.beforeScripts(ctx -> ShipPhysicsAssembler.register(ctx, physics));
+        // The interior first: the physics assembler takes the ship's mass from its grid.
+        bootstrap.beforeScripts(InteriorGridData::install);
+        bootstrap.beforeScripts(ctx -> ShipPhysicsAssembler.register(ctx.factory, physics, gridMass(ctx)));
         for (Consumer<ModContext> step : modules.contentRegistrations) bootstrap.beforeScripts(step);
         content = bootstrap.load(engine);
         mergeCombatDefs(CombatDefs.fromRegistry(content.defs));
@@ -233,6 +253,22 @@ public class GameWorld implements Disposable {
         engine.clear();
         physics.dispose();
         audio.dispose();
+    }
+
+    /** Structural mass, center and inertia from the ship's interior grid and the loaded materials. */
+    private static ShipPhysicsAssembler.MassSource gridMass(ModContext ctx) {
+        MaterialTable[] materials = new MaterialTable[1];
+        return (entity, def, out) -> {
+            ShipGridComponent grid = entity.getComponent(ShipGridComponent.class);
+            if (grid == null) return false;
+            if (materials[0] == null) materials[0] = InteriorGridData.toMaterialTable(ctx.defs);
+            ShipGridComponent.MassProperties m = grid.computeMassProperties(materials[0]);
+            out[0] = m.mass;
+            out[1] = m.center.x;
+            out[2] = m.center.y;
+            out[3] = m.inertia;
+            return true;
+        };
     }
 
     private void mergeCombatDefs(CombatDefs loaded) {
