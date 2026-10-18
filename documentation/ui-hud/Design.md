@@ -70,7 +70,7 @@ Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. C
 | `ViewModeController` | EXTERIOR / INTERIOR view mode with change listeners |
 | `modding.ModTrustDialog` | modding-data's `ModTrustPolicy` as a dialog: asks before mod scripts run with full access; can remember the answer per mod set and version (O in the demo) |
 | `ThreatOverlay` | Missiles over the exterior view: dashed predicted paths (red incoming, cyan yours, amber others), a cross where an incoming one meets you, edge arrows with seconds to impact, a blinking MISSILE WARNING banner under 5 s, and a ring ("PD KILL") where point defense hits a missile |
-| `TradeWindow` | Station market (T while in trading range, which a hint under the clock announces): credits, hold, and per commodity the stock, buy and sell prices, what you carry, and Buy 1 / Buy 10 / Sell 1 / Sell all |
+| `TradeWindow` | Station market (T while in trading range, which a hint under the clock announces): credits, hold volume (m3), and per commodity the stock, buy and sell prices, what you carry, and Buy 1 / Buy 10 / Sell 1 / Sell all |
 | `TrafficMap` | Full-screen map (M) of stations and haulers on rails around the body you orbit, with range rings; the wheel zooms toward you |
 
 ### Interfaces other modules fill in

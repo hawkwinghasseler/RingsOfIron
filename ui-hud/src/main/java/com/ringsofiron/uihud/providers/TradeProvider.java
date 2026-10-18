@@ -34,6 +34,7 @@ public interface TradeProvider {
         /** Station the player can trade at; empty when none is in range. */
         public String stationName = "";
         public double credits;
+        /** Hold volume used and total, m³. */
         public double cargoUsed, cargoCapacity;
         /** False when the player's ship has no hold (nothing to trade with). */
         public boolean hasHold;

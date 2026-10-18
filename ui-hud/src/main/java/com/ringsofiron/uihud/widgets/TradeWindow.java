@@ -81,7 +81,9 @@ public class TradeWindow extends Window {
             double done = buying ? provider.buy(commodityId, units) : provider.sell(commodityId, units);
             refresh();
             if (done <= 0) {
-                status.setText(buying ? "Can't buy " + name + ": no stock, hold space or credits"
+                // Refresh reuses line objects, so look this commodity up again.
+                TradeLine now = find(commodityId);
+                status.setText(buying ? "Can't buy " + name + ": " + (now == null ? "it is no longer listed" : buyRefusal(board, now))
                         : "The station won't take " + name);
                 status.setStyle(skin.get("warn", Label.LabelStyle.class));
                 return;
@@ -163,7 +165,7 @@ public class TradeWindow extends Window {
         dockHint.setText(board.hasHold ? "In range of " + board.stationName + "   [T] Trade"
                 : "In range of " + board.stationName + " (no cargo hold)");
         getTitleLabel().setText(board.stationName.toUpperCase(Locale.ROOT) + " MARKET");
-        summary.setText(String.format(Locale.ROOT, "Credits %s     Hold %s / %s", formatCredits(board.credits),
+        summary.setText(String.format(Locale.ROOT, "Credits %s     Hold %s / %s m3", formatCredits(board.credits),
                 formatUnits(board.cargoUsed), formatUnits(board.cargoCapacity)));
         if (!sameCommodities()) rebuildRows();
         for (int i = 0; i < rowWidgets.size; i++) rowWidgets.get(i).update(board.lines.get(i));
@@ -214,6 +216,18 @@ public class TradeWindow extends Window {
     /** The station has stock, the hold has room and the player has credits (the market sells what they afford). */
     static boolean canBuy(TradeBoard board, TradeLine line) {
         return board.hasHold && line.available > 1e-6 && board.freeCargo() > 1e-6 && board.credits > 1e-6;
+    }
+
+    /**
+     * Why a buy filled nothing, given the board as it was before the attempt. With volume left over,
+     * the hold had no bay free for this commodity: each cargo-bay tile carries a single commodity.
+     */
+    static String buyRefusal(TradeBoard board, TradeLine line) {
+        if (!board.hasHold) return "this ship has no cargo hold";
+        if (line.available <= 1e-6) return "the station has none to sell";
+        if (board.credits <= 1e-6) return "no credits";
+        if (board.freeCargo() <= 1e-6) return "the hold is full";
+        return "no free cargo bay for it (each bay holds one commodity)";
     }
 
     static boolean canSell(TradeLine line) {

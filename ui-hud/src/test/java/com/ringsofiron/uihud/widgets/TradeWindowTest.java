@@ -69,4 +69,18 @@ class TradeWindowTest {
         assertEquals("10", TradeWindow.formatUnits(10.01));
         assertEquals("2.5", TradeWindow.formatUnits(2.5));
     }
+
+    @Test
+    void explainsWhyABuyFilledNothing() {
+        TradeBoard b = board(100, 10, 50);
+        assertEquals("no free cargo bay for it (each bay holds one commodity)", TradeWindow.buyRefusal(b, line(b, 10, 0, true)));
+        assertEquals("the station has none to sell", TradeWindow.buyRefusal(b, line(b, 0, 0, true)));
+        TradeBoard full = board(100, 50, 50);
+        assertEquals("the hold is full", TradeWindow.buyRefusal(full, line(full, 10, 0, true)));
+        TradeBoard broke = board(0, 0, 50);
+        assertEquals("no credits", TradeWindow.buyRefusal(broke, line(broke, 10, 0, true)));
+        TradeBoard noHold = board(100, 0, 50);
+        noHold.hasHold = false;
+        assertEquals("this ship has no cargo hold", TradeWindow.buyRefusal(noHold, line(noHold, 10, 0, true)));
+    }
 }
