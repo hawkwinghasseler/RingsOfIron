@@ -12,7 +12,8 @@ origin_x = -9.0
 origin_y = -3.0
 # A turret mount beside each hardpoint in ships.toml (combat wires each weapon to
 # the nearest one): nose (12,2), port and starboard beams (10,4) and (10,1), the
-# launcher (7,4). The weapons console sits aft, away from every hardpoint.
+# launcher (7,4) and the laser (7,1). The weapons console sits aft, away from
+# every hardpoint.
 # Cargo: a hold aft of the crew spaces with two 3 x 2 bays (x 1-3; listed under
 # mounts, since two bays side by side can't be told apart in the map), a walkway
 # at x 4, and two small bays up front. 16 tiles, 40 m3 at 2.5 m3 a tile.
@@ -21,7 +22,7 @@ rows = [
   "#....HHTCCTRR#",
   "#....WW....RR#",
   "#....L.++++.T#",
-  "#....L....TCC#",
+  "#....L.T..TCC#",
   "##############",
 ]
 mounts = [
