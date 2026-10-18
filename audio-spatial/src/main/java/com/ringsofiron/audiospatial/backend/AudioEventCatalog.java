@@ -16,6 +16,10 @@ public class AudioEventCatalog {
     public static final String BREACH_HISS = "event:/hazards/breach_hiss";
     public static final String LASER = "event:/weapons/laser";
     public static final String HULL_IMPACT = "event:/impacts/hull";
+    // Paths named in assets.toml's [audio_event] table (modding-data's AssetRegistry keys
+    // evt_railgun_fire and evt_hull_breach)
+    public static final String RAILGUN = "event:/weapons/railgun";
+    public static final String HULL_BREACH = "event:/interior/hull_breach";
 
     private final ObjectMap<String, SoundEventDef> defs = new ObjectMap<>();
     private SoundEventDef fallback = SoundEventDef.oneShot("", 0.5f, 5f, 200f, 1f);
@@ -32,6 +36,8 @@ public class AudioEventCatalog {
         c.register(SoundEventDef.oneShot(DOOR, 0.35f, 2f, 40f, 0.8f));
         c.register(SoundEventDef.oneShot(LASER, 0.3f, 10f, 600f, 0.6f));
         c.register(SoundEventDef.oneShot(HULL_IMPACT, 0.6f, 20f, 1500f, 1f));
+        c.register(SoundEventDef.oneShot(RAILGUN, 0.4f, 10f, 800f, 0.8f));
+        c.register(SoundEventDef.loop(HULL_BREACH, 2f, 40f, 0.8f));
         return c;
     }
 

@@ -208,4 +208,21 @@ class AudioSystemsTest {
         assertEquals(1, backend.find(AudioEventCatalog.HULL_IMPACT).size);
         assertEquals(0.5f, backend.find(AudioEventCatalog.HULL_IMPACT).first().getParameter("Intensity", 0f), 1e-6f);
     }
+
+    @Test
+    void assetTableEventsAreRegistered() {
+        // Every path in assets.toml's [audio_event] table has playback rules, so none falls back to the beep
+        try {
+            String toml = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get("../assets/assets.toml")));
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"(event:/[^\"]+)\"").matcher(toml);
+            int found = 0;
+            while (m.find()) {
+                found++;
+                assertTrue(backend.getCatalog().contains(m.group(1)), "no definition for " + m.group(1));
+            }
+            assertTrue(found > 0);
+        } catch (java.io.IOException e) {
+            throw new AssertionError(e);
+        }
+    }
 }
