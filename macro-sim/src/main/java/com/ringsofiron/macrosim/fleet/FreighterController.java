@@ -9,6 +9,7 @@ import com.ringsofiron.macrosim.rails.RailsModel.Burn;
 import com.ringsofiron.macrosim.rails.StateVector;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +69,97 @@ public class FreighterController {
             double arrival = f.arrivalTime;
             f.arrivalEventId = events.schedule(arrival, () -> arrive(uuid, f, target, arrival));
         }
+    }
+
+    /**
+     * Forgets a destroyed freighter. Its order is cancelled and what the order held at both stations
+     * is released; the cargo aboard is lost with the ship. The caller removes the entity.
+     */
+    public void lose(String uuid) {
+        FreighterComponent f = freighters.remove(uuid);
+        if (f == null) return;
+        events.cancel(f.arrivalEventId);
+        f.arrivalEventId = 0;
+        TradeOrder o = activeOrders.remove(f.orderId);
+        if (o != null) release(o, f);
+    }
+
+    /**
+     * A station is gone. Orders to or from it are cancelled, and every freighter that was going
+     * there or docked there heads for the nearest of {@code remaining} instead. Cargo it was taking
+     * there is sold where it lands, or dumped if that station does not trade it. Call after the
+     * station is unregistered.
+     */
+    public void stationLost(String stationUuid, Collection<String> remaining, double now) {
+        for (Map.Entry<String, FreighterComponent> e : freighters.entrySet()) {
+            String uuid = e.getKey();
+            FreighterComponent f = e.getValue();
+            TradeOrder o = activeOrders.get(f.orderId);
+            // A loaded freighter no longer needs its seller, only its buyer.
+            boolean orderHit = o != null && (o.toUuid.equals(stationUuid)
+                    || (f.cargoCommodity == null && o.fromUuid.equals(stationUuid)));
+            if (orderHit) {
+                activeOrders.remove(o.id);
+                release(o, f);
+                f.orderId = 0;
+            }
+            boolean bound = stationUuid.equals(f.destinationUuid) || stationUuid.equals(f.dockedAtUuid);
+            if (!orderHit && !bound) continue;
+            boolean inBubble = f.state == FreighterComponent.State.IN_BUBBLE;
+            boolean docked = f.dockedAtUuid != null && !f.dockedAtUuid.equals(stationUuid);
+            if (docked && !stationUuid.equals(f.destinationUuid) && !inBubble) {
+                // Sitting at another station: it already is somewhere safe, so it just waits for work.
+                f.state = FreighterComponent.State.IDLE;
+                continue;
+            }
+            if (inBubble) f.resumeState = FreighterComponent.State.REPOSITIONING;
+            else f.state = FreighterComponent.State.REPOSITIONING;
+            if (stationUuid.equals(f.dockedAtUuid)) f.dockedAtUuid = null;
+            String target = inBubble ? null : nearest(uuid, remaining, now);
+            if (target != null) {
+                fly(uuid, f, target, now, now + UNDOCK_DELAY);
+            } else if (inBubble) {
+                // Re-planned when it leaves the bubble, towards whatever station is nearest then.
+                f.destinationUuid = null;
+                f.dockedAtUuid = null;
+            } else {
+                events.cancel(f.arrivalEventId);
+                f.arrivalEventId = 0;
+                rails.cancelBurns(uuid);
+                f.destinationUuid = null;
+                f.arrivalTime = Double.NaN;
+                f.state = FreighterComponent.State.IDLE;
+            }
+        }
+    }
+
+    /** Frees what an unfinished order held: the seller's reservation if not loaded, the buyer's expected delivery. */
+    private void release(TradeOrder o, FreighterComponent f) {
+        boolean loaded = f.cargoCommodity != null;
+        EconomyNode from = stations.apply(o.fromUuid);
+        EconomyNode to = stations.apply(o.toUuid);
+        if (!loaded && from != null) from.reserveOut(o.commodity, -o.quantity);
+        if (to != null) to.expectIncoming(o.commodity, -(loaded ? f.cargoQuantity : o.quantity));
+        economy.close(o);
+    }
+
+    /** Closest station to the freighter around the same body, or null. */
+    private String nearest(String uuid, Collection<String> candidates, double now) {
+        if (!rails.isOnRails(uuid)) return null;
+        String parent = rails.parentOf(uuid);
+        rails.stateAt(uuid, now, a);
+        String best = null;
+        double bestDistance = Double.POSITIVE_INFINITY;
+        for (String s : candidates) {
+            if (!rails.isOnRails(s) || !parent.equals(rails.parentOf(s))) continue;
+            rails.stateAt(s, now, b);
+            double d = Math.hypot(a.x - b.x, a.y - b.y);
+            if (d < bestDistance) {
+                bestDistance = d;
+                best = s;
+            }
+        }
+        return best;
     }
 
     public FreighterComponent get(String uuid) {
@@ -189,8 +281,19 @@ public class FreighterController {
             f.orderId = 0;
             f.state = FreighterComponent.State.IDLE;
         } else {
+            if (f.cargoQuantity > 0) sellLeftover(f, stations.apply(stationUuid));
             f.state = FreighterComponent.State.IDLE;
         }
+    }
+
+    /** Cargo with no order left (its buyer was lost) goes at the local price, or is dumped. */
+    private void sellLeftover(FreighterComponent f, EconomyNode station) {
+        if (station != null && station.price(f.cargoCommodity) > 0) {
+            station.add(f.cargoCommodity, f.cargoQuantity);
+            f.credits += f.cargoQuantity * station.price(f.cargoCommodity);
+        }
+        f.cargoQuantity = 0;
+        f.cargoCommodity = null;
     }
 
     private void dock(String uuid, FreighterComponent f, String stationUuid, double now) {
