@@ -142,7 +142,7 @@ public class PilotController {
      * {@code dv}: main engine or retro along the nose, RCS across it, each scaled to what
      * is left so the ship does not overshoot in one tick.
      */
-    private void steer(Vector2 dv, float facing, ShipState s, float dt, Controls out) {
+    void steer(Vector2 dv, float facing, ShipState s, float dt, Controls out) {
         pointAt(facing, s, dt, out);
         float step = Math.max(dt, 1e-3f);
         float cos = MathUtils.cos(s.angle), sin = MathUtils.sin(s.angle);
@@ -157,7 +157,7 @@ public class PilotController {
      * Turns toward {@code target} radians, braking the spin to stop on it. Returns the
      * remaining heading error.
      */
-    private float pointAt(float target, ShipState s, float dt, Controls out) {
+    float pointAt(float target, ShipState s, float dt, Controls out) {
         float err = wrap(target - s.angle);
         if (s.maxAngularAccel <= 0f) return err;
         float wanted = Math.signum(err) * (float) Math.sqrt(2f * s.maxAngularAccel * Math.abs(err)) * SAFETY;

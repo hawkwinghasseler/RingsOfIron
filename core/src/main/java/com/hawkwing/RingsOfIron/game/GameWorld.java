@@ -7,6 +7,7 @@ import com.badlogic.gdx.utils.Disposable;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewSaveParticipant;
 import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.aicrew.pilot.NpcCombatSystem;
 import com.ringsofiron.aicrew.pilot.NpcPilotSystem;
 import com.ringsofiron.aicrew.pilot.PilotReference;
 import com.ringsofiron.audiospatial.AudioManager;
@@ -152,6 +153,10 @@ public class GameWorld implements Disposable {
         PilotReference pilotFrame = modules.pilotReference != null
                 ? modules.pilotReference : new TrueStatePilotReference(physics, engine::getSimSeconds);
         engine.addSystem(new NpcPilotSystem(pilotFrame));
+        // ... and its combat pilot flies NPC ships in a fight, dodging combat-sys missiles.
+        NpcCombatSystem npcCombat = new NpcCombatSystem();
+        npcCombat.setThreatSensor(new CombatThreatSensor(engine.getEcsEngine()));
+        engine.addSystem(npcCombat);
 
         // physics-exterior
         engine.addSystem(new FlightControlSystem(physics));
@@ -217,6 +222,8 @@ public class GameWorld implements Disposable {
         missiles = new MissileGuidanceSystem(physics, combatEvents, combatDefs, ballistics, sensors);
         weaponControl = new WeaponControlSystem(physics, combatEvents, combatDefs, ballistics, missiles, sensors,
                 modules.combatSeed + 2);
+        // The crew aboard set each ship's gunnery and tracking skill
+        engine.addSystem(new CrewStationSync());
         engine.addSystem(sensors);
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);

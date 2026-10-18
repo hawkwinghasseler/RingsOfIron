@@ -6,6 +6,10 @@ import com.badlogic.gdx.files.FileHandle;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.Family;
+import com.badlogic.gdx.math.Vector2;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.BehaviorTreeComponent;
 import com.ringsofiron.aicrew.CrewMemberComponent;
@@ -22,6 +26,7 @@ import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
 import com.ringsofiron.audiospatial.backend.AudioParameters;
 import com.ringsofiron.audiospatial.components.AudioEmitterComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
+import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
@@ -156,6 +161,28 @@ class GameScenarioTest {
     }
 
     @Test
+    void theCrewAboardSetGunneryAndTracking() {
+        WeaponsComponent weapons = game.player.getComponent(WeaponsComponent.class);
+        SensorComponent sensor = game.player.getComponent(SensorComponent.class);
+        assertNotNull(weapons);
+        assertTrue(weapons.mounts.size > 0);
+        assertNotNull(sensor);
+        float raiderGunnery = game.raider.getComponent(WeaponsComponent.class).mounts.first().gunnerySkill;
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        for (WeaponMountComponent m : weapons.mounts) assertEquals(0.75f, m.gunnerySkill, 1e-6f, "Cole the marine on the guns");
+        assertEquals(0.5f, sensor.trackingSkill, 1e-6f);
+        assertEquals(raiderGunnery, game.raider.getComponent(WeaponsComponent.class).mounts.first().gunnerySkill,
+                "the raider's crew is not simulated, so it keeps its own");
+
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            if (e.getComponent(GridPositionComponent.class).ship == game.player) world.crew.applyDamage(e, 90f, CrewDamageSink.DamageCause.BLAST);
+        }
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        for (WeaponMountComponent m : weapons.mounts) assertEquals(0f, m.gunnerySkill, 1e-6f, "nobody left on the guns");
+        assertEquals(0f, sensor.trackingSkill, 1e-6f);
+    }
+
+    @Test
     void orbitReadoutWorksWhileFlyingInTheBubble() {
         var info = new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer).getPlayerOrbit();
         assertNotNull(info);
@@ -224,6 +251,45 @@ class GameScenarioTest {
         assertTrue(game.raiderHostile(), "the raider fights back once shot at");
         assertTrue(raiderShots[0] > 0, "and its guns fire on the player");
         assertTrue(intercepts[0] > 0, "point defense engaged a missile");
+    }
+
+    @Test
+    void aProvokedRaiderManeuversToFightAndDodgesMissiles() {
+        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        gun.setTarget(game.raider);
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        game.provokeRaider();
+        NpcCombatComponent combat = game.raider.getComponent(NpcCombatComponent.class);
+        assertNotNull(combat, "the raider has a combat pilot");
+        assertSame(game.player, combat.target);
+
+        // A missile at the raider makes it break
+        assertTrue(gun.launchMissile(), "a launcher is loaded and the raider is locked");
+        boolean evaded = false;
+        for (int i = 0; i < 60 * 10 && !evaded; i++) {
+            world.update(FRAME);
+            evaded = combat.mode == NpcCombatComponent.Mode.EVADING;
+        }
+        assertTrue(evaded, "the raider breaks across the inbound missile");
+
+        // Then it settles into a fight at its preferred range
+        boolean thrusted = false;
+        for (int i = 0; i < 60 * 30; i++) {
+            world.update(FRAME);
+            FlightControlComponent fc = game.raider.getComponent(FlightControlComponent.class);
+            if (Math.abs(fc.forward) > 0.1f || Math.abs(fc.strafe) > 0.1f) thrusted = true;
+        }
+        assertTrue(thrusted, "the raider flies, not just shoots");
+        Vector2 raider = PhysicsManager.getPosition(game.raider.getComponent(PhysicsBodyComponent.class).body, new Vector2());
+        Vector2 player = PhysicsManager.getPosition(game.player.getComponent(PhysicsBodyComponent.class).body, new Vector2());
+        assertEquals(combat.preferredRange, raider.dst(player), 300f, "fighting at its preferred range");
+
+        String save = world.engine.getSerializationService().saveGame();
+        world.engine.getSerializationService().loadGame(save);
+        Entity loadedRaider = null;
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(NpcCombatComponent.class).get())) loadedRaider = e;
+        assertNotNull(loadedRaider, "the fight survives a save");
+        assertSame(world.getPlayer(), loadedRaider.getComponent(NpcCombatComponent.class).target);
     }
 
     @Test
