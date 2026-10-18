@@ -2,6 +2,7 @@ package com.ringsofiron.orbital.rails;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.coreengine.GameEngine;
+import com.ringsofiron.coreengine.RailsWarpGuard;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
@@ -9,13 +10,13 @@ import com.ringsofiron.orbital.components.OrbitComponent;
 import com.ringsofiron.orbital.events.OrbitalEvent;
 import com.ringsofiron.orbital.events.OrbitalEventQueue;
 import com.ringsofiron.orbital.events.OrbitalEventSystem;
+import com.ringsofiron.orbital.events.SoiChange;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.OrbitMath;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.orbital.warp.BubbleHandoff;
 import com.ringsofiron.orbital.warp.EncounterPredictor;
 import com.ringsofiron.orbital.warp.TimeWarpController;
-import com.ringsofiron.orbital.warp.WarpHost;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +34,6 @@ class RailsTest {
     static final double LEO = R_EARTH + 400e3;
 
     GameEngine game;
-    double now;
     RailsUniverse universe;
     OrbitalEventQueue queue;
     OrbitalEventSystem events;
@@ -44,8 +44,7 @@ class RailsTest {
     @BeforeEach
     void setUp() {
         game = new GameEngine();
-        now = 0;
-        universe = new RailsUniverse(game.getEcsEngine(), game.getUuidRegistry(), () -> now);
+        universe = new RailsUniverse(game);
         queue = new OrbitalEventQueue();
         events = new OrbitalEventSystem(universe, queue);
         events.applied.add((signal, event) -> applied.add(event));
@@ -69,8 +68,17 @@ class RailsTest {
     }
 
     void runTo(double t) {
-        now = t;
-        events.processUntil(t);
+        game.setTick((long) Math.ceil(t * 60));
+        events.processUntil(game.getSimSeconds());
+    }
+
+    /** The test's veto switch, registered as a rails warp guard. */
+    boolean allowed = true;
+
+    TimeWarpController warp(Entity player, FakeBubble bubble) {
+        game.addRailsWarpGuard(() -> allowed ? null : "Fire aboard");
+        return new TimeWarpController(game, bubble, events, universe,
+                new EncounterPredictor(game.getEcsEngine(), universe), () -> player);
     }
 
     @Test
@@ -117,7 +125,16 @@ class RailsTest {
         s.add(new ManeuverNodeComponent().add(0, vTransfer - vCirc, 0));
         events.orbitChanged(s);
 
+        List<SoiChange> soi = new ArrayList<>();
+        events.soiChanges.add((sig, c) -> {
+            SoiChange copy = new SoiChange();
+            copy.entityUuid = c.entityUuid;
+            copy.newParentUuid = c.newParentUuid;
+            soi.add(copy);
+        });
         runTo(transferTime + 86400);
+        assertEquals("ship", soi.get(0).entityUuid);
+        assertEquals("moon", soi.get(0).newParentUuid);
         List<OrbitalEvent.Type> types = new ArrayList<>();
         for (OrbitalEvent e : applied) if (e.entityUuid.equals("ship")) types.add(e.type);
         assertTrue(types.contains(OrbitalEvent.Type.SOI_ENTRY), types.toString());
@@ -153,6 +170,37 @@ class RailsTest {
     }
 
     @Test
+    void anchorGetsSoiChanges() {
+        List<String> changes = new ArrayList<>();
+        events.soiChanges.add((sig, c) -> {
+            changes.add(c.toString());
+            if (c.anchor) {
+                // The handed-over conic is the anchor's new orbit and matches the reported state.
+                assertEquals(c.state.x, c.newOrbit.stateAt(c.time).x, 1e-3);
+            }
+        });
+        double r = 2e6;
+        KeplerOrbit escape = KeplerOrbit.fromState(r, 0, 0, OrbitMath.escapeSpeed(MU_MOON, r) * 1.3, MU_MOON, 0);
+        events.setAnchor("moon", escape);
+        double exit = queue.nextFor(OrbitalEventSystem.ANCHOR_ID).time;
+        StateVector before = escape.stateAt(exit).add(universe.orbit(moon).stateAt(exit, new StateVector()));
+        runTo(exit + 1);
+        assertEquals(1, changes.size(), changes.toString());
+        assertTrue(changes.get(0).startsWith("anchor moon -> earth"));
+        assertEquals("earth", events.getAnchorParentUuid());
+        StateVector after = events.getAnchorOrbit().stateAt(exit);
+        assertEquals(before.x, after.x, 1e-3);
+        assertEquals(before.vy, after.vy, 1e-6);
+
+        // A new anchor orbit (a rebase) replaces the old prediction; clearing it stops tracking.
+        events.setAnchor("earth", KeplerOrbit.circular(MU_EARTH, LEO, 0, game.getSimSeconds(), 1));
+        assertNull(queue.nextFor(OrbitalEventSystem.ANCHOR_ID), "no SOI change ahead from LEO");
+        assertFalse(queue.eventsFor(OrbitalEventSystem.ANCHOR_ID).isEmpty(), "but still tracked");
+        events.clearAnchor();
+        assertTrue(queue.eventsFor(OrbitalEventSystem.ANCHOR_ID).isEmpty());
+    }
+
+    @Test
     void impactIsPredicted() {
         List<OrbitalEvent> impacts = new ArrayList<>();
         events.impacts.add((sig, e) -> impacts.add(e));
@@ -171,10 +219,8 @@ class RailsTest {
         // Player in LEO; a second ship slightly lower catches up from behind.
         Entity player = ship("player", KeplerOrbit.circular(MU_EARTH, LEO, 0, 0, 1));
         ship("other", KeplerOrbit.circular(MU_EARTH, LEO - 2000, -0.05, 0, 1));
-        FakeHost host = new FakeHost();
         FakeBubble bubble = new FakeBubble();
-        TimeWarpController warp = new TimeWarpController(host, bubble, events, universe,
-                new EncounterPredictor(game.getEcsEngine(), universe), () -> player);
+        TimeWarpController warp = warp(player, bubble);
         List<TimeWarpController.DropReason> drops = new ArrayList<>();
         warp.changes.add((sig, c) -> { if (c.reason != null) drops.add(c.reason); });
 
@@ -187,8 +233,9 @@ class RailsTest {
         assertEquals(List.of(TimeWarpController.DropReason.ENCOUNTER), drops);
         assertEquals(1, bubble.rebuilds);
         // Dropped within one tick of the encounter, with the other ship just inside 20 km.
-        StateVector a = universe.stateInFrame(player, earth, now, new StateVector());
-        StateVector b = universe.stateInFrame(universe.entity("other"), earth, now, new StateVector());
+        double t = game.getSimSeconds();
+        StateVector a = universe.stateInFrame(player, earth, t, new StateVector());
+        StateVector b = universe.stateInFrame(universe.entity("other"), earth, t, new StateVector());
         double d = Math.hypot(a.x - b.x, a.y - b.y);
         assertTrue(d <= TimeWarpController.DEFAULT_ENCOUNTER_RADIUS && d > 19_000, "distance " + d);
     }
@@ -198,62 +245,76 @@ class RailsTest {
         Entity player = ship("player", KeplerOrbit.circular(MU_EARTH, LEO, 0, 0, 1));
         player.add(new ManeuverNodeComponent().add(3000, 10, 0));
         events.orbitChanged(player);
-        FakeHost host = new FakeHost();
-        TimeWarpController warp = new TimeWarpController(host, new FakeBubble(), events, universe,
-                new EncounterPredictor(game.getEcsEngine(), universe), () -> player);
+        TimeWarpController warp = warp(player, new FakeBubble());
         assertTrue(warp.setWarp(1000));
         while (warp.isRailsWarp()) warp.update(1 / 60f);
-        assertEquals(3000, now, 1.0 / 60);
+        assertEquals(3000, game.getSimSeconds(), 1.0 / 60);
         assertEquals(3000, universe.orbit(player).epoch, 1e-9);  // the burn was applied
 
-        host.allowed = false;
+        allowed = false;
         assertFalse(warp.setWarp(1000));
-        host.allowed = true;
+        allowed = true;
         assertTrue(warp.setWarp(1000));
-        host.allowed = false;   // e.g. a fire starts aboard
+        List<String> reasons = new ArrayList<>();
+        warp.changes.add((sig, c) -> reasons.add(c.blockedReason));
+        allowed = false;   // e.g. a fire starts aboard
         warp.update(1 / 60f);
         assertFalse(warp.isRailsWarp());
+        assertEquals(List.of("Fire aboard"), reasons);
+    }
+
+    @Test
+    void railsWarpStopsForDropOutSource() {
+        Entity player = ship("player", KeplerOrbit.circular(MU_EARTH, LEO, 0, 0, 1));
+        TimeWarpController warp = warp(player, new FakeBubble());
+        warp.addDropOutSource(() -> 5000.0);
+        List<TimeWarpController.DropReason> drops = new ArrayList<>();
+        warp.changes.add((sig, c) -> { if (c.reason != null) drops.add(c.reason); });
+        assertTrue(warp.setWarp(10_000));
+        while (warp.isRailsWarp()) warp.update(1 / 60f);
+        assertEquals(List.of(TimeWarpController.DropReason.EXTERNAL), drops);
+        assertEquals(5000, game.getSimSeconds(), 1.0 / 60);
+    }
+
+    /** Predictions are not saved; they are rebuilt on load and come out the same. */
+    @Test
+    void saveAndLoadRebuildsPredictions() {
+        game.getSerializationService().addParticipant(events);
+        Entity s = add(new UuidComponent("esc"), new OrbitComponent("moon",
+                KeplerOrbit.fromState(2e6, 0, 0, OrbitMath.escapeSpeed(MU_MOON, 2e6) * 1.3, MU_MOON, 0)));
+        s.add(new ManeuverNodeComponent().add(50_000, 5, 1));
+        events.orbitChanged(s);
+        runTo(100);
+        List<OrbitalEvent> before = queue.eventsFor("esc");
+        double xAt1000 = universe.orbit(s).getOrbit().stateAt(1000).x;
+        String save = game.getSerializationService().saveGame();
+
+        game.getSerializationService().loadGame(save);
+        assertEquals(100, game.getSimSeconds(), 1e-9);
+        List<OrbitalEvent> after = queue.eventsFor("esc");
+        assertEquals(before.size(), after.size());
+        for (int i = 0; i < before.size(); i++) {
+            assertEquals(before.get(i).type, after.get(i).type);
+            assertEquals(before.get(i).time, after.get(i).time, 1e-6);
+        }
+        Entity loaded = universe.entity("esc");
+        assertEquals("moon", universe.orbit(loaded).parentUuid);
+        assertEquals(50_000, loaded.getComponent(ManeuverNodeComponent.class).next().time);
+        assertEquals(xAt1000, universe.orbit(loaded).getOrbit().stateAt(1000).x, 1e-6);
     }
 
     @Test
     void physicsWarpIsPassedThrough() {
         Entity player = ship("player", KeplerOrbit.circular(MU_EARTH, LEO, 0, 0, 1));
-        FakeHost host = new FakeHost();
-        TimeWarpController warp = new TimeWarpController(host, new FakeBubble(), events, universe,
-                new EncounterPredictor(game.getEcsEngine(), universe), () -> player);
+        TimeWarpController warp = warp(player, new FakeBubble());
         assertTrue(warp.setWarp(5));
-        assertEquals(5, host.physicsWarp);
+        assertEquals(5, game.getPhysicsWarp());
         assertFalse(warp.isRailsWarp());
         warp.step(1);
-        assertEquals(10, host.physicsWarp);
+        assertEquals(10, game.getPhysicsWarp());
         warp.step(1);
         assertTrue(warp.isRailsWarp());
         assertEquals(50, warp.getWarp());
-    }
-
-    class FakeHost implements WarpHost {
-        long tick;
-        int physicsWarp = 1;
-        boolean allowed = true;
-
-        public long getTick() {
-            return tick;
-        }
-
-        public void setPhysicsWarp(int multiplier) {
-            physicsWarp = multiplier;
-        }
-
-        public boolean railsWarpAllowed() {
-            return allowed;
-        }
-
-        public boolean advanceRails(long ticks) {
-            if (!allowed) return false;
-            tick += ticks;
-            now = tick / 60.0;
-            return true;
-        }
     }
 
     static class FakeBubble implements BubbleHandoff {
