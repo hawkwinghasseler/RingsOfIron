@@ -120,7 +120,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
         viewports.setViewMeters(START_VIEW);
 
         GameWorld.Modules modules = new GameWorld.Modules();
-        modules.modTrust = new com.ringsofiron.uihud.modding.ModTrustDialog(hud.getStage(), hud.getSkin(), null);
+        // Content loads on this thread, so the dialog cannot block: scripts wait, and run once the
+        // player allows them. "Remember" answers are kept between launches.
+        modules.modTrust = new com.ringsofiron.uihud.modding.ModTrustDialog(hud.getStage(), hud.getSkin(),
+                Gdx.app.getPreferences("RingsOfIron"))
+                .onDecision(allowed -> {
+                    if (allowed && world != null && world.getContent() != null) world.getContent().runDeferredScripts();
+                });
         world = new GameWorld(modules);
         game = GameScenario.start(world, assetsDir, modsDir);
         gameHud = new GameHud(world, hud);

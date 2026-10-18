@@ -3,7 +3,6 @@ package com.ringsofiron.aicrew;
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
-import com.badlogic.ashley.systems.IntervalIteratingSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.Side;
@@ -24,7 +23,7 @@ import com.ringsofiron.interiorgrid.crew.SealBreachTask;
  * idempotent, so this scan only catches what they miss (and lets the crew prototype
  * run before they post anything).
  */
-public class ShipHazardScanSystem extends IntervalIteratingSystem {
+public class ShipHazardScanSystem extends FixedIteratingSystem {
 
     public static final float SCAN_INTERVAL = 0.5f;
 
@@ -34,12 +33,12 @@ public class ShipHazardScanSystem extends IntervalIteratingSystem {
     private final ComponentMapper<ShipSubsystemRegistryComponent> regM = ComponentMapper.getFor(ShipSubsystemRegistryComponent.class);
 
     public ShipHazardScanSystem(CrewService service) {
-        super(Family.all(ShipGridComponent.class, ShipTaskBoardComponent.class).get(), SCAN_INTERVAL, 1);
+        super(Family.all(ShipGridComponent.class, ShipTaskBoardComponent.class).get(), 1, SCAN_INTERVAL);
         this.service = service;
     }
 
     @Override
-    protected void processEntity(Entity ship) {
+    protected void processEntity(Entity ship, float dt) {
         scan(ship);
     }
 

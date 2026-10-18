@@ -20,12 +20,18 @@ import com.ringsofiron.uihud.minimap.WireframeMinimap;
 import com.ringsofiron.uihud.providers.InteractorProvider;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
+import com.ringsofiron.uihud.providers.ThreatProvider;
+import com.ringsofiron.uihud.providers.TradeProvider;
+import com.ringsofiron.uihud.providers.TrafficMapProvider;
 import com.ringsofiron.uihud.systems.FlightReadoutSystem;
 import com.ringsofiron.uihud.systems.HudRenderSystem;
 import com.ringsofiron.uihud.systems.InteractPromptSystem;
 import com.ringsofiron.uihud.systems.WireframeSyncSystem;
 import com.ringsofiron.uihud.widgets.AlertList;
 import com.ringsofiron.uihud.widgets.ConsoleWindow;
+import com.ringsofiron.uihud.widgets.ThreatOverlay;
+import com.ringsofiron.uihud.widgets.TradeWindow;
+import com.ringsofiron.uihud.widgets.TrafficMap;
 
 /**
  * Entry point to the ui-hud module: builds the Scene2D stage, the HUD widgets and the ECS
@@ -41,7 +47,8 @@ import com.ringsofiron.uihud.widgets.ConsoleWindow;
  *   // resize(): hud.resize(w, h)
  * </pre>
  *
- * Keys handled by the HUD: E use console, Esc close console, V toggle exterior/interior view.
+ * Keys handled by the HUD: E use console, Esc close console, map or market, V toggle exterior/interior view,
+ * M toggle the traffic map (mouse wheel zooms it while open), T open the station market when in range.
  */
 public class UiHud implements Disposable {
     private final ViewportManager viewports;
@@ -54,6 +61,9 @@ public class UiHud implements Disposable {
     private final Table minimapPanel;
     private final ConsoleWindow consoleWindow;
     private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleLayouts = new ObjectMap<>();
+    private final TrafficMap trafficMap;
+    private final TradeWindow tradeWindow;
+    private final ThreatOverlay threatOverlay;
 
     private final HudRenderSystem hudRenderSystem;
     private final WireframeSyncSystem wireframeSyncSystem;
@@ -100,8 +110,35 @@ public class UiHud implements Disposable {
         promptRow.add(prompt);
         stage.addActor(promptRow);
 
+        // Missile paths and point-defense hits over the world, with a warning banner at the top.
+        Label threatBanner = new Label("", skin, "alert");
+        Table bannerRow = new Table();
+        bannerRow.setFillParent(true);
+        bannerRow.setTouchable(Touchable.disabled);
+        bannerRow.top().padTop(70f);
+        bannerRow.add(threatBanner);
+        threatOverlay = new ThreatOverlay(viewports, skin, threatBanner);
+        stage.addActor(threatOverlay);
+        stage.addActor(bannerRow);
+
+        // Top center, under the clock: shown while a station is in trading range.
+        Label dockHint = new Label("", skin, "prompt");
+        Table dockRow = new Table();
+        dockRow.setFillParent(true);
+        dockRow.setTouchable(Touchable.disabled);
+        dockRow.top().padTop(100f);
+        dockRow.add(dockHint);
+        stage.addActor(dockRow);
+        tradeWindow = new TradeWindow(skin, dockHint);
+
+        trafficMap = new TrafficMap(skin);
+        trafficMap.setFillParent(true);
+        trafficMap.setVisible(false);
+        stage.addActor(trafficMap);
+
         consoleWindow = new ConsoleWindow(skin, () -> interactPromptSystem().setPromptsEnabled(true));
         stage.addActor(consoleWindow);
+        stage.addActor(tradeWindow);
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
@@ -113,12 +150,20 @@ public class UiHud implements Disposable {
             markerLayer.setVisible(exterior);
             // In the interior view the full deck plan is on screen, so the minimap is redundant.
             minimapPanel.setVisible(exterior);
+            threatOverlay.setVisible(exterior);
         });
 
         stage.addListener(new InputListener() {
             @Override
             public boolean keyDown(InputEvent event, int keycode) {
                 return handleKey(keycode);
+            }
+
+            @Override
+            public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY) {
+                if (!trafficMap.isVisible()) return false;
+                trafficMap.zoom((float) Math.pow(1.25f, -amountY));
+                return true;
             }
         });
     }
@@ -134,8 +179,23 @@ public class UiHud implements Disposable {
                 if (consoleWindow.isOpen()) return false;
                 return interactPromptSystem.interact();
             case Input.Keys.ESCAPE:
+                if (trafficMap.isVisible()) {
+                    setTrafficMapVisible(false);
+                    return true;
+                }
+                if (tradeWindow.isOpen()) {
+                    tradeWindow.setOpen(false);
+                    return true;
+                }
                 if (!consoleWindow.isOpen()) return false;
                 consoleWindow.close();
+                return true;
+            case Input.Keys.T:
+                if (!tradeWindow.isOpen() && !tradeWindow.isDocked()) return false;
+                tradeWindow.setOpen(!tradeWindow.isOpen());
+                return true;
+            case Input.Keys.M:
+                setTrafficMapVisible(!trafficMap.isVisible());
                 return true;
             case Input.Keys.V:
                 viewMode.toggle();
@@ -186,6 +246,44 @@ public class UiHud implements Disposable {
     public void setInteractor(InteractorProvider interactor) {
         interactPromptSystem.setInteractor(interactor);
         wireframeSyncSystem.setInteractor(interactor);
+    }
+
+    /** Feeds the missile overlay and warning banner; null clears them. */
+    public void setThreats(ThreatProvider threats) {
+        threatOverlay.setProvider(threats);
+    }
+
+    /** Marks a point-defense hit on a missile; call from combat-sys's intercept event. */
+    public void flashIntercept(float worldX, float worldY, boolean destroyed) {
+        threatOverlay.flashIntercept(worldX, worldY, destroyed);
+    }
+
+    public ThreatOverlay getThreatOverlay() {
+        return threatOverlay;
+    }
+
+    /** Feeds the station market window ([T] while in range of a station); null hides it. */
+    public void setTrade(TradeProvider trade) {
+        tradeWindow.setProvider(trade);
+    }
+
+    public TradeWindow getTradeWindow() {
+        return tradeWindow;
+    }
+
+    /** Off-bubble traffic for the map view (M). Without one the map says there is no data. */
+    public void setTrafficMap(TrafficMapProvider provider) {
+        trafficMap.setProvider(provider);
+    }
+
+    public void setTrafficMapVisible(boolean visible) {
+        if (visible) trafficMap.refresh();
+        trafficMap.setVisible(visible);
+        if (visible) trafficMap.toFront();
+    }
+
+    public TrafficMap getTrafficMap() {
+        return trafficMap;
     }
 
     /** Briefly highlights a tile on the minimap, e.g. from combat-sys's hull-hit event. */

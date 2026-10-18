@@ -128,6 +128,7 @@ public class GameScenario {
         double hold = InteriorGridData.cargoBayVolume(content.defs, FREIGHTER_SHIP);
         world.macroSim.addFreighter("Hauler Kestrel", hold, 20_000, highport);
         for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), hold, 20_000, depot);
+        content.hooks.fireWorldReady();
     }
 
     /** Loads base data and mods and sets up a new game in {@code world}. */
@@ -206,7 +207,7 @@ public class GameScenario {
         return new StateVector().set(s.x, s.y, s.vx, s.vy);
     }
 
-    /** Open deck tiles, scanning from the middle row outwards. */
+    /** Open deck tiles clear of mounted systems, scanning from the middle row outwards. */
     static List<int[]> floorTiles(ShipGridComponent grid) {
         List<int[]> out = new java.util.ArrayList<>();
         if (grid == null) return out;
@@ -215,7 +216,7 @@ public class GameScenario {
             if (y < 0 || y >= grid.height) continue;
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
-                if (t != null && t.isFloor() && t.isOpen()) out.add(new int[]{x, y});
+                if (t != null && t.isFloor() && t.isOpen() && t.mount == null) out.add(new int[]{x, y});
             }
         }
         return out;

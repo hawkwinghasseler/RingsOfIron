@@ -34,5 +34,8 @@ hs_err_pid*
 ## Keep the Gradle wrapper jar
 !gradle/wrapper/gradle-wrapper.jar
 
+## FMOD Engine libraries (licensed separately, install locally)
+fmod/
+
 # Quick saves written by the running game
 assets/saves/

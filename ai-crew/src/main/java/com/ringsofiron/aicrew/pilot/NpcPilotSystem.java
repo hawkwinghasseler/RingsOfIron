@@ -3,7 +3,8 @@ package com.ringsofiron.aicrew.pilot;
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
-import com.badlogic.ashley.systems.IteratingSystem;
+import com.ringsofiron.aicrew.FixedIteratingSystem;
+import com.ringsofiron.coreengine.SimClock;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
@@ -16,7 +17,7 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
  * which physics-exterior's FlightControlSystem turns into thrust each physics tick.
  * Add it before the physics systems so the controls are fresh for the step.
  */
-public class NpcPilotSystem extends IteratingSystem {
+public class NpcPilotSystem extends FixedIteratingSystem {
 
     private final ComponentMapper<NpcPilotComponent> pilotM = ComponentMapper.getFor(NpcPilotComponent.class);
     private final ComponentMapper<PhysicsBodyComponent> bodyM = ComponentMapper.getFor(PhysicsBodyComponent.class);
@@ -30,7 +31,7 @@ public class NpcPilotSystem extends IteratingSystem {
 
     public NpcPilotSystem(PilotReference reference) {
         super(Family.all(NpcPilotComponent.class, PhysicsBodyComponent.class, FlightControlComponent.class,
-                ThrusterComponent.class).get(), -10);
+                ThrusterComponent.class).get(), -10, (float) SimClock.TICK_SECONDS);
         this.reference = reference;
     }
 

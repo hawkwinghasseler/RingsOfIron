@@ -2,14 +2,14 @@ package com.ringsofiron.aicrew;
 
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
-import com.badlogic.ashley.systems.IteratingSystem;
 import com.badlogic.gdx.math.MathUtils;
+import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 
 /**
- * Moves crew along their paths every frame: interpolates the float position toward the
+ * Moves crew along their paths every sim tick: interpolates the float position toward the
  * centre of the next tile at the crew member's speed (slower while carrying). Before
  * each step it checks the step is still open; if a door shut or a wall went up it stops
  * the crew member on their tile and sets {@link GridPositionComponent#pathBlocked} so the
@@ -18,19 +18,19 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
  * Unconscious and dead crew do not move; carried crew ride on their carrier's tile. The
  * player avatar moves from its input instead of a path.
  */
-public class CrewMovementSystem extends IteratingSystem {
+public class CrewMovementSystem extends FixedIteratingSystem {
 
     private final CrewService service;
     private final ComponentMapper<PlayerAvatarComponent> avatarM = ComponentMapper.getFor(PlayerAvatarComponent.class);
 
     public CrewMovementSystem(CrewService service) {
-        super(CrewService.CREW, 10);
+        super(CrewService.CREW, 10, (float) SimClock.TICK_SECONDS);
         this.service = service;
     }
 
     @Override
-    public void update(float deltaTime) {
-        super.update(deltaTime);
+    protected void updateFixed(float dt) {
+        super.updateFixed(dt);
         // Carried crew follow their carriers after everyone has moved
         for (int i = 0; i < getEntities().size(); i++) {
             Entity e = getEntities().get(i);
