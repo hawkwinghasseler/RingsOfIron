@@ -145,8 +145,10 @@ public class GridHazardSystem extends IteratingSystem {
     /**
      * Total opening between every pair of nodes, in tile widths. Node 0 is space and
      * node i + 1 is compartment i. Only the upper triangle is used.
+     *
+     * @param edges if not null, receives one {@link AirflowEdge} per side of each opening
      */
-    float[][] openings(ShipGridComponent grid) {
+    float[][] openings(ShipGridComponent grid, Array<AirflowEdge> edges) {
         int n = grid.compartments.size + 1;
         float[][] open = new float[n][n];
         Side[] sides = Side.values();
@@ -156,7 +158,10 @@ public class GridHazardSystem extends IteratingSystem {
                 if (t.holdsAir()) {
                     int a = node(t.compartment);
                     // A damaged deck plate vents straight to space
-                    if (t.isFloor()) add(open, a, 0, t.leakFactor());
+                    if (t.isFloor() && t.leakFactor() > 0f) {
+                        add(open, a, 0, t.leakFactor());
+                        if (edges != null) edges.add(new AirflowEdge(x, y, null, t.compartment, null, t.leakFactor()));
+                    }
                     for (Side s : sides) {
                         Tile nb = grid.getTile(x + s.dx, y + s.dy);
                         int b;
@@ -167,12 +172,20 @@ public class GridHazardSystem extends IteratingSystem {
                             b = node(nb.compartment);
                         } else continue; // a wall or a seal; wall leaks are counted below
                         EdgeWall e = grid.getEdge(x, y, s);
-                        add(open, a, b, e == null || !e.blocks() ? 1f : e.leakFactor());
+                        float w = e == null || !e.blocks() ? 1f : e.leakFactor();
+                        if (w <= 0f || a == b) continue;
+                        add(open, a, b, w);
+                        if (edges != null) {
+                            edges.add(new AirflowEdge(x, y, s, t.compartment, b == 0 ? null : nb.compartment, w));
+                            if (b != 0) edges.add(new AirflowEdge(x + s.dx, y + s.dy, s.opposite(), nb.compartment, t.compartment, w));
+                        }
                     }
                 } else if (t.isIntactWall() && t.leakFactor() > 0f) {
                     // A leaking wall joins every distinct node it touches
                     int[] touched = new int[4];
                     int count = 0;
+                    // Which node lies across each side of the wall (-1 for none)
+                    int[] across = {-1, -1, -1, -1};
                     for (Side s : sides) {
                         if (grid.isEdgeBlocked(x, y, x + s.dx, y + s.dy)) continue;
                         Tile nb = grid.getTile(x + s.dx, y + s.dy);
@@ -180,23 +193,51 @@ public class GridHazardSystem extends IteratingSystem {
                         if (nb == null || nb.isSpaceExposed()) b = 0;
                         else if (nb.holdsAir()) b = node(nb.compartment);
                         else continue;
+                        across[s.ordinal()] = b;
                         boolean seen = false;
                         for (int i = 0; i < count; i++) seen |= touched[i] == b;
                         if (!seen) touched[count++] = b;
                     }
-                    for (int i = 0; i < count; i++)
-                        for (int j = i + 1; j < count; j++) add(open, touched[i], touched[j], t.leakFactor());
+                    float f = t.leakFactor();
+                    for (int i = 0; i < count; i++) {
+                        for (int j = i + 1; j < count; j++) {
+                            add(open, touched[i], touched[j], f);
+                            if (edges != null) {
+                                addWallLeakEdges(grid, edges, x, y, across, touched[i], touched[j], f);
+                                addWallLeakEdges(grid, edges, x, y, across, touched[j], touched[i], f);
+                            }
+                        }
+                    }
                 }
             }
         }
         return open;
     }
 
+    /**
+     * Records a wall leak between nodes {@code from} and {@code to} on every air tile of
+     * {@code from} that touches the wall, sharing the leak's width between them.
+     */
+    private static void addWallLeakEdges(ShipGridComponent grid, Array<AirflowEdge> edges, int x, int y,
+                                         int[] across, int from, int to, float width) {
+        if (from == 0) return; // space has no tiles to show it on
+        int sidesOfFrom = 0;
+        for (int v : across) if (v == from) sidesOfFrom++;
+        for (Side s : Side.values()) {
+            if (across[s.ordinal()] != from) continue;
+            Tile air = grid.getTile(x + s.dx, y + s.dy);
+            Compartment other = to == 0 ? null : grid.compartments.get(to - 1);
+            edges.add(new AirflowEdge(x + s.dx, y + s.dy, s.opposite(), air.compartment, other, width / sidesOfFrom));
+        }
+    }
+
     private void processAirflow(ShipGridComponent grid, float dt) {
         Array<Compartment> comps = grid.compartments;
         int n = comps.size + 1;
+        grid.airflow.clear();
         if (n == 1) return;
-        float[][] open = openings(grid);
+        Array<AirflowEdge> edges = new Array<>();
+        float[][] open = openings(grid, edges);
 
         double[] pressure = new double[n], k = new double[n], moles = new double[n];
         for (int i = 1; i < n; i++) {
@@ -248,6 +289,20 @@ public class GridHazardSystem extends IteratingSystem {
                 c.smoke += smoke[from] * f;
             }
         }
+        // Share each pair's net flow among the openings between them, by width
+        for (AirflowEdge e : edges) {
+            int a = node(e.room), b = node(e.other);
+            float total = a < b ? open[a][b] : open[b][a];
+            if (total <= 0f) continue;
+            double share = e.width / total / dt;
+            double out = flow[a][b] - flow[b][a];
+            double smokeOut = (moles[a] > 0 ? flow[a][b] / moles[a] * smoke[a] : 0)
+                    - (b > 0 && moles[b] > 0 ? flow[b][a] / moles[b] * smoke[b] : 0);
+            e.flow = (float) (out * share);
+            e.smokeFlow = (float) (smokeOut * share);
+            grid.airflow.add(e);
+        }
+
         // Clear out the last traces so a vented room reads as hard vacuum
         for (Compartment c : comps) {
             if (c.totalMoles() < 1e-3 * c.volume) c.scaleContents(0.0);

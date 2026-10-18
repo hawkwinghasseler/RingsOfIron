@@ -339,7 +339,7 @@ public class Main extends ApplicationAdapter {
         drawEdgeWalls(offX, offY);
 
         // Smoke and flames over the floor, under the system icons
-        particles.draw(shapeRenderer, offX, offY, TILE_PX);
+        particles.draw(grid, shapeRenderer, offX, offY, TILE_PX);
 
         // Draw subsystem icons as small filled circles
         drawSubsystems(offX, offY);

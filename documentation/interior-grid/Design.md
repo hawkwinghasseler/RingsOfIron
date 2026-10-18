@@ -138,6 +138,8 @@ Atmosphere is **conserved**: it only leaves the ship through openings to space. 
 
 Air flows from the higher-pressure side at `FLOW_COEFFICIENT` (2 mol/s per kPa per tile width), carrying that side's mix of gases and smoke, and never more than halfway to equal pressure in one step. A 54-tile room vents through one breached hull tile with a time constant of about 30 s; two rooms joined by an open door equalize in about 15 s.
 
+After each step the net flow through every opening is published on `ShipGridComponent.airflow` as `AirflowEdge`s: the air tile on one side, the direction of the opening (or none for a hole in the deck), the compartments on both sides, and the air and smoke leaving through it per second. An opening between two rooms is listed once from each side. Effects, crew and anything else that reacts to draughts read this list.
+
 There is no "vacuum" state that spreads. A vented room is simply a compartment with no air left. A sealed bulkhead or closed door is airtight, so sealing between a breach and a room stops that room's loss at once.
 
 ## Heat
@@ -170,7 +172,7 @@ Random draws use a seeded generator per `GridHazardSystem`, so runs are reproduc
 - `SubsystemComponent`: tags an entity as a ship system installed in a `MountFootprint`.
 - `ShipSubsystemRegistryComponent`: the ship's list of subsystem entities.
 
-Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartment`, `FloorCovering`, `WeightClass`, `Side`, `MaterialTable`, `ChassisBlueprint`.
+Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartment`, `AirflowEdge`, `FloorCovering`, `WeightClass`, `Side`, `MaterialTable`, `ChassisBlueprint`.
 
 ## Systems
 - `GridHazardSystem`: air flow between compartments and to space, heat, and fire.
