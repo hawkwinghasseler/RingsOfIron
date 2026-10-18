@@ -27,6 +27,7 @@ import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
 import com.ringsofiron.interiorgrid.CompartmentBuilder;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
+import com.ringsofiron.interiorgrid.LifeSupportSystem;
 import com.ringsofiron.interiorgrid.PowerRoutingSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
@@ -164,6 +165,7 @@ public class HudDemo extends ApplicationAdapter {
         engine.addSystem(new FloatingOriginSystem(physics));
         engine.addSystem(new GridHazardSystem());
         engine.addSystem(new PowerRoutingSystem());
+        engine.addSystem(new LifeSupportSystem());
 
         spawnPlayer();
         targetable.clear();
