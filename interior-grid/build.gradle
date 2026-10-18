@@ -4,5 +4,6 @@ eclipse.project.name = appName + '-interior-grid'
 dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
   api project(':core-engine')
+  api project(':modding-data')
 }
 

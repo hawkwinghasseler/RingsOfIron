@@ -51,8 +51,17 @@ public class MountFootprint {
      * width and height; on a square mount it only sets the system's facing.
      */
     public final int rotation;
-    /** The system entity installed here, or null for an empty mount. */
-    public Entity installed;
+    /**
+     * The system entity installed here, or null for an empty mount. Not saved: after a
+     * load, {@link ShipGridComponent#relinkMounts} restores it from the ship's systems.
+     */
+    public transient Entity installed;
+
+    /** For deserialization only; the loader fills in the fields. */
+    @SuppressWarnings("unused")
+    private MountFootprint() {
+        this(MountKind.PRIMARY, MountSize.S, 0, 0, 0);
+    }
 
     public MountFootprint(MountKind kind, MountSize size, int originX, int originY, int rotation) {
         this.kind = kind;
