@@ -8,7 +8,7 @@ The construction rules here are the ones combat's damage model reads (`combat-sy
 ## Implementation Dependencies
 - **`core-engine`**: Requires Ashley ECS to attach grid components to ship entities.
 - **`physics-exterior`**: (Soft Dependency) When rendering the grid in world space, the interior tiles must be offset and rotated by the parent ship's Box2D transform. The grid logic itself runs purely in local coordinates. The grid's structural mass properties feed the ship body's mass and inertia.
-- **`modding-data`**: (Soft Dependency) Chassis blueprints and the material table (mass, hit points and armor per weight class) are data. Until that module exists, `MaterialTable.createDefault()` holds the illustrative `hull_steel` values.
+- **`modding-data`**: (Hard Dependency) Chassis blueprints and the material table come from data. `InteriorGridData.toBlueprint(ChassisDef)` and `toMaterialTable(DefRegistry)` adapt the definitions. `InteriorGridData.install(ctx)`, run from `ModdingBootstrap.beforeScripts`, registers the "ship" assembler, which gives every ship spawned from data its grid, subsystem registry and one entity per installed system. `MaterialTable.createDefault()` remains for tests and the demo.
 
 ## Coordinate System
 The grid uses **Box2D's orientation**. Tile [0][0] is the **bottom-left**, +x is the ship body's local +x and **+y points up**. Grid coordinates are body-local coordinates offset by `gridOriginLocal` and divided by `tileSize`, with no axis flip anywhere:
@@ -191,6 +191,8 @@ A rails warp jump therefore only ever starts with no fire and no venting. Each s
   - `hasActiveHazard()` is true while any fire burns or air vents to space faster than 0.01 mol/s through an opening. Time warp is refused while it holds.
 - `SubsystemComponent`: tags an entity as a ship system installed in a `MountFootprint`.
 - `ShipSubsystemRegistryComponent`: the ship's list of subsystem entities.
+
+`MountFootprint.installed` is not saved (it would drag the whole system entity into the save). After loading, `ShipGridComponent.relinkMounts(registry.subsystems)` restores it.
 
 Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartment`, `AirflowEdge`, `FloorCovering`, `WeightClass`, `Side`, `MaterialTable`, `ChassisBlueprint`.
 

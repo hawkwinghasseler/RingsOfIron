@@ -301,6 +301,23 @@ public class ShipGridComponent implements Component {
         return (t == null || t.mount == null) ? null : t.mount.installed;
     }
 
+    /**
+     * Points every mount at the system entity installed in it, matching each system's
+     * footprint by position. Call after loading a save, since the link is not saved.
+     */
+    public void relinkMounts(Iterable<Entity> subsystems) {
+        for (MountFootprint m : mounts) m.installed = null;
+        for (Entity e : subsystems) {
+            SubsystemComponent sub = e.getComponent(SubsystemComponent.class);
+            if (sub == null) continue;
+            for (MountFootprint m : mounts) {
+                if (m.originX == sub.footprint.originX && m.originY == sub.footprint.originY && m.kind == sub.footprint.kind) {
+                    m.installed = e;
+                }
+            }
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Mass properties
     // -----------------------------------------------------------------------
