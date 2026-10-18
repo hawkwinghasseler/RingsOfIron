@@ -150,6 +150,7 @@ public class GameWorld implements Disposable {
         }
     }
     public final EngineAudio engineAudio;
+    public final CrewAudio crewAudio;
 
     private final ImmutableArray<Entity> players;
     private final OrbitalAnchorBridge anchorBridge;
@@ -273,6 +274,8 @@ public class GameWorld implements Disposable {
         engine.addSystem(audioListener);
         engineAudio = new EngineAudio(this::getPlayer);
         engine.addSystem(engineAudio);
+        crewAudio = new CrewAudio();
+        engine.addSystem(crewAudio);
         // Fires, breaches, alarms and doors aboard every ship
         engine.addSystem(new InteriorHazardAudioSystem());
         engine.addSystem(new AcousticOcclusionSystem(audio.getCatalog()));

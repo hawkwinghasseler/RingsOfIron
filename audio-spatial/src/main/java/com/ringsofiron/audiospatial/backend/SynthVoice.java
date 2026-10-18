@@ -12,7 +12,7 @@ import com.badlogic.gdx.math.MathUtils;
  */
 public class SynthVoice {
 
-    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, AUTOCANNON, LAUNCH, MISSILE, EXPLOSION, BEEP }
+    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, AUTOCANNON, LAUNCH, MISSILE, EXPLOSION, FOOTSTEP, VOICE, BEEP }
 
     final Patch patch;
     final boolean looping;
@@ -43,6 +43,8 @@ public class SynthVoice {
     }
 
     public static Patch patchFor(String path) {
+        // Match on the name only: the "event:" scheme itself contains "vent"
+        if (path.startsWith("event:")) path = path.substring("event:".length());
         // Weapon sounds first: their paths also contain "weapon"
         if (path.contains("autocannon")) return Patch.AUTOCANNON;
         if (path.contains("missile_launch")) return Patch.LAUNCH;
@@ -56,6 +58,8 @@ public class SynthVoice {
         if (path.contains("laser") || path.contains("weapon")) return Patch.LASER;
         if (path.contains("impact")) return Patch.IMPACT;
         if (path.contains("door")) return Patch.DOOR;
+        if (path.contains("footstep")) return Patch.FOOTSTEP;
+        if (path.contains("voice")) return Patch.VOICE;
         return Patch.BEEP;
     }
 
@@ -203,6 +207,22 @@ public class SynthVoice {
                 float rumble = 2.5f * brown * (float) Math.exp(-t * 1.4f);
                 float crack = noise() * (float) Math.exp(-t * 25f);
                 return 0.8f * boom + 0.7f * rumble + 0.5f * crack;
+            }
+            case FOOTSTEP: {
+                // A boot on deck plating: a soft thud dropping 90 -> 55 Hz and a short metal tick
+                float hz = 55f + 35f * (float) Math.exp(-t * 50f);
+                phaseA = step(phaseA, hz);
+                float thud = (float) Math.sin(MathUtils.PI2 * phaseA) * (float) Math.exp(-t * 30f);
+                float tick = 0.3f * sin(1630f, t) * (float) Math.exp(-t * 90f) + (t < 0.004f ? 0.3f * noise() : 0f);
+                return 0.7f * thud + tick;
+            }
+            case VOICE: {
+                // A wordless murmur: a buzzy 130-190 Hz voice, syllables at 5 Hz, falling at the end
+                float hz = 165f + 25f * sin(2.3f, t) - 40f * Math.max(0f, t - duration * 0.6f) / Math.max(duration, 0.01f);
+                phaseA = step(phaseA, hz);
+                float syllables = 0.55f - 0.45f * (float) Math.cos(MathUtils.PI2 * 5f * t);
+                float env = Math.min(1f, t * 40f);
+                return 0.45f * env * syllables * buzz(phaseA, 12);
             }
             default:
                 return 0.3f * sin(440f, t) * (t < duration ? 1f : 0f);

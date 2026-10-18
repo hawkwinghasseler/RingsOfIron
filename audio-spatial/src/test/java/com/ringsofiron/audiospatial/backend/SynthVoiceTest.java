@@ -98,4 +98,24 @@ class SynthVoiceTest {
         }
         assertTrue(catalog.contains(AudioEventCatalog.EXPLOSION));
     }
+
+    @Test
+    void crewFootstepsAndVoicesHaveTheirOwnSounds() {
+        assertEquals(SynthVoice.Patch.FOOTSTEP, SynthVoice.patchFor(AudioEventCatalog.FOOTSTEP));
+        assertEquals(SynthVoice.Patch.VOICE, SynthVoice.patchFor(AudioEventCatalog.VOICE));
+        // Every path starts "event:", which must not read as a vent
+        assertEquals(SynthVoice.Patch.THRUSTER, SynthVoice.patchFor(AudioEventCatalog.THRUSTER));
+        assertEquals(SynthVoice.Patch.DOOR, SynthVoice.patchFor(AudioEventCatalog.DOOR));
+        assertEquals(SynthVoice.Patch.HISS, SynthVoice.patchFor(AudioEventCatalog.BREACH_HISS));
+        for (SynthVoice.Patch patch : new SynthVoice.Patch[]{SynthVoice.Patch.FOOTSTEP, SynthVoice.Patch.VOICE}) {
+            SynthVoice v = new SynthVoice(patch, false, 0.5f);
+            v.targetGain = 1f;
+            v.active = true;
+            v.restart();
+            float[] s = render(v, 20);
+            double energy = 0;
+            for (float x : s) energy += x * x;
+            assertTrue(energy > 1, patch + " is audible: " + energy);
+        }
+    }
 }
