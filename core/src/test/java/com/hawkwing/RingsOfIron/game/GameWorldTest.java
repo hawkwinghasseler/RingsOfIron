@@ -206,6 +206,28 @@ class GameWorldTest {
     }
 
     @Test
+    void modScriptsHeldBackAtLoadRunWhenAllowedLater() {
+        Path root = Paths.get(System.getProperty("user.dir")).getParent();
+        GameWorld.Modules modules = new GameWorld.Modules();
+        modules.modTrust = mods -> false; // as the trust dialog answers on the render thread
+        GameWorld withContent = new GameWorld(modules);
+        try {
+            ModContext ctx = withContent.loadContent(root.resolve("assets"), root.resolve("modding-data/examples/mods"));
+            assertFalse(ctx.defs.has("ship", "corvette_smuggler"));
+            withContent.update(FRAME);
+
+            assertTrue(ctx.runDeferredScripts(), "the player pressed Run scripts");
+            assertTrue(ctx.defs.has("ship", "corvette_smuggler"));
+            assertNotNull(ctx.factory.spawnShip("corvette_smuggler", 50f, 0f, 0f).getComponent(PhysicsBodyComponent.class),
+                    "ships the script defined spawn with the game's assemblers");
+            withContent.update(FRAME);
+            assertFalse(ctx.report.hasErrors(), ctx.report.toString());
+        } finally {
+            withContent.dispose();
+        }
+    }
+
+    @Test
     void shipInteriorsSurviveSaveAndLoad() {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         GameWorld withContent = new GameWorld();

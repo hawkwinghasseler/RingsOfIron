@@ -102,6 +102,7 @@ public class GameScenario {
         depot = world.macroSim.addStation("Deepwell Depot", types[1], EARTH, circular(ORBIT_RADIUS + 2_000e3, 2.5), 1);
         world.macroSim.addFreighter("Hauler Kestrel", 300, 20_000, highport);
         for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), 300, 20_000, depot);
+        content.hooks.fireWorldReady();
     }
 
     /** Loads base data and mods and sets up a new game in {@code world}. */

@@ -91,6 +91,7 @@ public class ModdingBootstrap {
         if (allowed) {
             new GroovyModLoader(engine, factory, defs, assets, hooks, report).runScripts(scriptMods);
         } else {
+            ctx.deferScripts(scriptMods);
             report.warn("mods", "Mod scripts were not run: " + scriptMods);
         }
 

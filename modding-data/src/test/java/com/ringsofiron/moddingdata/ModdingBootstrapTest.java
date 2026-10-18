@@ -115,6 +115,34 @@ class ModdingBootstrapTest {
     }
 
     @Test
+    void scriptsDeniedAtLoadCanRunOnceAllowedLater() {
+        ModContext ctx = loadExamples(ModTrustPolicy.DENY_SCRIPTS);
+        ctx.hooks.fireWorldReady();
+        assertEquals(1, ctx.deferredScripts().size());
+        assertFalse(ctx.defs.has("commodity", "spice_contraband"));
+
+        assertTrue(ctx.runDeferredScripts());
+        assertTrue(ctx.scriptsAllowed);
+        assertTrue(ctx.defs.has("commodity", "spice_contraband"), "the script ran");
+        assertTrue(ctx.deferredScripts().isEmpty());
+        assertFalse(ctx.runDeferredScripts(), "scripts run only once");
+        assertFalse(ctx.report.hasErrors(), ctx.report.toString());
+    }
+
+    @Test
+    void worldReadyHookAddedAfterTheWorldIsUpRunsAtOnce() {
+        ModContext ctx = loadExamples(ModTrustPolicy.DENY_SCRIPTS);
+        int[] calls = {0};
+        ctx.hooks.onWorldReady(() -> calls[0]++);
+        assertEquals(0, calls[0]);
+        ctx.hooks.fireWorldReady();
+        ctx.hooks.fireWorldReady();
+        assertEquals(1, calls[0], "fires once");
+        ctx.hooks.onWorldReady(() -> calls[0]++);
+        assertEquals(2, calls[0], "late hook runs immediately");
+    }
+
+    @Test
     void factorySpawnsShipsWithCoreComponentsAndModuleAssemblers() {
         GameEngine engine = new GameEngine();
         ModContext ctx = new ModdingBootstrap(ASSETS, EXAMPLE_MODS)
