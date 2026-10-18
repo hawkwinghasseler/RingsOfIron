@@ -29,6 +29,10 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
  * (rotation in degrees). {@code max_thrust} drives the main engine and {@code max_torque} the RCS;
  * retro and lateral thrust are fixed fractions of the main engine until defs carry them.
  *
+ * A {@link MassSource} can replace the def's mass afterwards, e.g. with mass properties from the
+ * ship's interior grid. The game wires that, so this module does not depend on interior-grid; the
+ * grid's own assembler must then run first (register this one after it).
+ *
  * The body is created in the world at build time; an entity built but never added to the engine
  * should have its body destroyed by the caller.
  *
@@ -40,10 +44,27 @@ public class ShipPhysicsAssembler implements ComponentAssembler {
     public static final float LATERAL_THRUST_FRACTION = 0.25f;
     public static final float FALLBACK_RADIUS = 5f;
 
+    /** Supplies a ship's real mass properties, overriding the def's {@code mass}. */
+    @FunctionalInterface
+    public interface MassSource {
+        /**
+         * Writes {mass kg, center x m, center y m, inertia about the center kg*m^2} into
+         * {@code out} and returns true, or returns false to keep the def's mass.
+         */
+        boolean massFor(Entity entity, DefEntry def, float[] out);
+    }
+
     private final PhysicsManager physics;
+    private final MassSource massSource;
+    private final float[] massOut = new float[4];
 
     public ShipPhysicsAssembler(PhysicsManager physics) {
+        this(physics, null);
+    }
+
+    public ShipPhysicsAssembler(PhysicsManager physics, MassSource massSource) {
         this.physics = physics;
+        this.massSource = massSource;
     }
 
     /** Registers the assembler for the "ship" def type. */
@@ -52,7 +73,12 @@ public class ShipPhysicsAssembler implements ComponentAssembler {
     }
 
     public static ShipPhysicsAssembler register(EntityFactory factory, PhysicsManager physics) {
-        ShipPhysicsAssembler assembler = new ShipPhysicsAssembler(physics);
+        return register(factory, physics, null);
+    }
+
+    /** Registers the assembler with a mass source, e.g. the interior grid's mass properties. */
+    public static ShipPhysicsAssembler register(EntityFactory factory, PhysicsManager physics, MassSource massSource) {
+        ShipPhysicsAssembler assembler = new ShipPhysicsAssembler(physics, massSource);
         factory.registerAssembler("ship", assembler);
         return assembler;
     }
@@ -76,6 +102,9 @@ public class ShipPhysicsAssembler implements ComponentAssembler {
             body = physics.createCircleBody(entity, x, y, FALLBACK_RADIUS, ship.mass / area,
                     CollisionCategories.CATEGORY_SHIP, CollisionCategories.MASK_ALL);
             PhysicsManager.setPosition(body, x, y, angle);
+        }
+        if (massSource != null && massSource.massFor(entity, def, massOut) && massOut[0] > 0f) {
+            PhysicsManager.setMassData(body, massOut[0], massOut[1], massOut[2], massOut[3]);
         }
         entity.add(new PhysicsBodyComponent(body));
 

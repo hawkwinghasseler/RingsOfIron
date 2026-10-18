@@ -104,4 +104,21 @@ class ShipPhysicsAssemblerTest {
         assertEquals(120000f, PhysicsManager.getMass(body), 1f);
         assertEquals(1, physics.getWorld().getBodyCount());
     }
+
+    @Test
+    void massSourceOverridesTheDefMass() {
+        factory = new EntityFactory(game, defs);
+        ShipPhysicsAssembler.register(factory, physics, (entity, def, out) -> {
+            out[0] = 250_000f;
+            out[1] = -1f;
+            out[2] = 0f;
+            out[3] = 4.0e6f;
+            return true;
+        });
+        defineShip("gridded", null);
+        Body body = factory.spawnShip("gridded", 0f, 0f, 0f).getComponent(PhysicsBodyComponent.class).body;
+        assertEquals(250_000f, PhysicsManager.getMass(body), 1f);
+        assertEquals(4.0e6f, PhysicsManager.getInertia(body), 10f);
+        assertEquals(-1f, body.getLocalCenter().x * PhysicsManager.METERS_PER_UNIT, 1e-4f);
+    }
 }
