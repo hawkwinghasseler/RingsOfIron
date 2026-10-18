@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MacroLossTest {
 
     /** Reservations and expected deliveries at every station match the claimed orders exactly. */
-    private static void assertBooksBalance(MacroSimulation sim) {
+    static void assertBooksBalance(MacroSimulation sim) {
         Map<String, Map<String, Double>> out = new HashMap<>();
         Map<String, Map<String, Double>> in = new HashMap<>();
         for (TradeOrder o : sim.economy().orders()) {
