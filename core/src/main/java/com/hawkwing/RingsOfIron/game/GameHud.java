@@ -12,7 +12,7 @@ import com.ringsofiron.uihud.modding.ModTrustDialog;
 /**
  * Attaches ui-hud to a {@link GameWorld}. Needs a GL context, so screens build it in {@code show()}.
  *
- * <p>Bridges: physics readout, orbit info from orbital-mechanics, the avatar from ai-crew, hull hits
+ * <p>Bridges: physics readout, orbit info and the orbit map from orbital-mechanics, the avatar from ai-crew, hull hits
  * on the player's ship from combat-sys flashed on the minimap, and the view mode driving
  * audio-spatial's listener. Targeting comes from combat-sys through {@link CombatTargetingProvider},
  * which the screen sets once it has the player's {@link PlayerGunnery}.
@@ -33,6 +33,7 @@ public class GameHud implements Disposable {
         hud.addTo(world.engine.getEcsEngine());
         hud.setPhysics(world.physics);
         hud.setOrbitInfo(new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
+        hud.setOrbitPath(new PlayerOrbitPath(world, world.burns));
         hud.setInteractor(world.avatar);
         hud.getViewMode().addListener((previous, current) -> world.audioListener.setMode(toListenerMode(current)));
         world.audioListener.setMode(toListenerMode(hud.getViewMode().getMode()));
