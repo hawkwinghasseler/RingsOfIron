@@ -4,7 +4,10 @@ import com.badlogic.ashley.core.Component;
 import com.badlogic.gdx.ai.btree.BehaviorTree;
 import com.ringsofiron.aicrew.btree.CrewAgent;
 
-/** The crew member's gdx-ai behavior tree and its blackboard. */
+/**
+ * The crew member's gdx-ai behavior tree and its blackboard. Not saved;
+ * {@link CrewSaveParticipant} gives each crew member a fresh tree after a load.
+ */
 public class BehaviorTreeComponent implements Component {
 
     public final BehaviorTree<CrewAgent> tree;

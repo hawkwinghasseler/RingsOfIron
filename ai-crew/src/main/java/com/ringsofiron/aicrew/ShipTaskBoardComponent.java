@@ -11,6 +11,9 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
  * best (see {@link #best}).
  *
  * Finished and cancelled tasks are dropped from {@link #tasks} by {@link #prune()}.
+ *
+ * Tasks are not saved. After a load the board starts empty and ShipHazardScanSystem
+ * and CrewHealthSystem post the jobs that still exist.
  */
 public class ShipTaskBoardComponent implements Component {
 
@@ -22,7 +25,7 @@ public class ShipTaskBoardComponent implements Component {
     /** Distance penalty in {@link #best}, priority points per tile. */
     public static final float DISTANCE_WEIGHT = 0.5f;
 
-    public final Array<CrewTask> tasks = new Array<>();
+    public final transient Array<CrewTask> tasks = new Array<>();
     /** The faction whose crew work this board. Boarders do not take the ship's jobs. */
     public int faction = 0;
 

@@ -11,6 +11,11 @@ public final class PilotBurn {
     public final double prograde;
     public final double radial;
 
+    /** For loading saves. */
+    private PilotBurn() {
+        this(0, 0, 0);
+    }
+
     public PilotBurn(double time, double prograde, double radial) {
         this.time = time;
         this.prograde = prograde;

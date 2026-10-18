@@ -77,6 +77,11 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
         return ship == null ? null : boardM.get(ship);
     }
 
+    /** Drops the cached pathfinders, e.g. after a load replaced every grid. */
+    public void clearPathfinders() {
+        pathfinders.clear();
+    }
+
     /** The pathfinder for a grid, created on first use. */
     public GridPathfinder pathfinder(ShipGridComponent grid) {
         GridPathfinder pf = pathfinders.get(grid);
