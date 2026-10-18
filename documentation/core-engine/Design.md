@@ -39,3 +39,16 @@ To implement this module independently:
 ## Proposed Systems
 - `FixedLogicSystem`: Abstract base class implementing the fixed accumulator logic.
 - `SerializationSystem`: Handles traversing the ECS and converting components to/from JSON maps.
+
+## Implemented API (prototype)
+What other modules can code against today, all in `com.ringsofiron.coreengine`:
+
+- **`SimClock`**: `long getTick()`, `double getSimSeconds()`, `TICKS_PER_SECOND = 60`, `TICK_SECONDS`. `GameEngine` implements it.
+- **`GameEngine.update(frameDelta)`**: one rendered frame. Runs one fixed tick per 1/60 s of accumulated real time (times physics warp, at most 15 ticks per frame per warp step, frame delta capped at 0.25 s), then one normal Ashley pass for every other system. `stepTicks(n)` runs ticks with no frame pass, for headless sims and tests.
+- **`FixedLogicSystem(priority, timeStep)`**: `timeStep` is rounded to whole ticks (0.25 s = every 15 ticks, 1 s = every 60). Under `GameEngine` the shared tick drives all fixed systems in priority order and other systems are paused during ticks. Override `catchUp(ticks, seconds)` for rails warp. In a plain Ashley `Engine` it still runs on its own accumulator, so existing demos and tests keep working.
+- **`RenderSystem`**: `render(delta, alpha)` once per frame with interpolation alpha.
+- **Time warp**: `setPhysicsWarp(1..10)`; `advanceRails(ticks)` jumps the tick and calls each fixed system's `catchUp` once. Called during an update, the jump applies right after that frame. Refused (returns false) while any `RailsWarpGuard` returns a reason; `getRailsWarpBlockedReason()` gives it for the HUD. `TimeWarpController` (orbital-mechanics) decides when to warp and handles the bubble.
+- **Entity references**: `EntityRef` (a UUID string; `EntityRef.of(entity)`, `ref.get(registry)`). Components must not hold raw `Entity` fields; saving one throws. `createEntityWithUuid()` and `getEntity(uuid)` are on `GameEngine`.
+- **`SerializationService`**: `saveGame()` / `loadGame(json)` (plus file variants). Format: `{version, tick, entities: [{<component class>: {fields}}], modules: {<key>: {...}}}`. Skips `TransientComponent` entities and classes passed to `skipComponent`. `registerSerializer` for custom types, `SaveParticipant` for module-global state (read after entities, so refs resolve). Unknown component classes and dangling refs are skipped and listed in `getLastLoadWarnings()`.
+
+Note: Ashley keeps one system per class, so adding a second instance of the same system class replaces the first.

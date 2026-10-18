@@ -49,6 +49,7 @@ public final class CompartmentBuilder {
         int w = grid.width, h = grid.height;
         boolean firstBuild = grid.compartmentLayout == null;
         grid.compartmentLayout = layout(grid);
+        grid.layoutRevision++;
 
         // Remember where the old air was
         Compartment[] oldOwner = new Compartment[w * h];

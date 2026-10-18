@@ -1,6 +1,7 @@
 package com.ringsofiron.coreengine;
 
 import com.badlogic.ashley.core.Entity;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,7 +22,19 @@ public class UuidRegistry {
     public Entity getEntity(String uuid) {
         return entityMap.get(uuid);
     }
-    
+
+    public boolean contains(String uuid) {
+        return entityMap.containsKey(uuid);
+    }
+
+    public int size() {
+        return entityMap.size();
+    }
+
+    public Map<String, Entity> view() {
+        return Collections.unmodifiableMap(entityMap);
+    }
+
     public void clear() {
         entityMap.clear();
     }

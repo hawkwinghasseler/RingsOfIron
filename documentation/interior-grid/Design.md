@@ -160,6 +160,13 @@ A fire is an **intensity** on a tile: 0 is no fire, a new fire starts at 0.05 (`
 
 Random draws use a seeded generator per `GridHazardSystem`, so runs are reproducible. The hazard tick is 0.25 s; all rates are per second.
 
+## Life Support
+`LifeSupportSystem` runs every operational `LIFE_SUPPORT` unit on the hazard tick (0.25 s):
+- A unit serves the compartment it stands in, plus every compartment reachable from there through fully open openings (open doors, gaps a tile wide). Air behind a closed door, a seal or a leaking wall is out of reach.
+- It draws 3 m³/s of air, spread over the whole served volume, and removes 90% of the CO2 and smoke in that air.
+- It releases up to 1.5 mol/s of oxygen into served compartments below standard oxygen partial pressure (21.3 kPa), shared by how far each one is short. It adds no nitrogen, so a vented room only returns to full pressure with air from elsewhere.
+- That is far slower than a large fire uses oxygen, so life support cleans up after a fire rather than holding one back.
+
 ## Power & Subsystem Routing
 `PowerRoutingSystem` runs a breadth-first flood from every footprint tile of each reactor that is switched on and not destroyed, across floor and conduit tiles:
 - Intact full-tile walls and tiles at integrity 0 do not conduct.
@@ -169,6 +176,8 @@ Random draws use a seeded generator per `GridHazardSystem`, so runs are reproduc
 
 ## Components
 - `ShipGridComponent`: tiles, edge walls, hull pieces, mounts, compartments, `gridOriginLocal`, coordinate conversion, placement validation, mass properties.
+  - `layoutRevision` is bumped each time the compartments are rebuilt, on the first hazard tick after a wall, door, seal or tile opens or closes. Caches built on `canPass`/`canFlow`, such as crew pathfinding, compare it against the value they were built at.
+  - `hasActiveHazard()` is true while any fire burns or air vents to space faster than 0.01 mol/s through an opening. Time warp is refused while it holds.
 - `SubsystemComponent`: tags an entity as a ship system installed in a `MountFootprint`.
 - `ShipSubsystemRegistryComponent`: the ship's list of subsystem entities.
 
@@ -178,8 +187,9 @@ Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartm
 - `GridHazardSystem`: air flow between compartments and to space, heat, and fire.
 - `CompartmentBuilder` (helper, not an ECS system): divides the interior into compartments and carries the air over when the layout changes.
 - `PowerRoutingSystem`: calculates subsystem power connectivity.
+- `LifeSupportSystem`: scrubs CO2 and smoke and replenishes oxygen.
 
 ## Open Questions
-- **Life support.** Nothing removes CO2 or smoke or tops up oxygen yet. Powered life support scrubbing its compartment (and what it can reach through open doors) is the natural next step.
+- **Repressurising.** Life support tops up oxygen only. Refilling a vented room with nitrogen (from tanks, at a cost) is still open.
 - **Fire damage.** Fire now burns only the covering and heats tiles. How heat hurts installed systems and crew belongs to those modules, reading `Tile.temperature`.
 - **Walking over mounts.** Crew pathfinding treats mount footprints as blocked (crew work a system from an adjacent tile). If some systems, such as cargo, should be walkable, that becomes a per-type flag.
