@@ -181,7 +181,15 @@ class GameScenarioTest {
         WeaponsComponent weapons = game.player.getComponent(WeaponsComponent.class);
         assertNotNull(weapons);
         assertEquals(5, weapons.mounts.size, "railgun, two point-defense guns, a launcher, a laser");
-        for (WeaponMountComponent m : weapons.mounts) assertNotNull(m.subsystem, m.def.id + " is wired to a system");
+        java.util.Set<Entity> turrets = new java.util.HashSet<>();
+        for (WeaponMountComponent m : weapons.mounts) {
+            assertNotNull(m.subsystem, m.def.id + " is wired to a system");
+            assertEquals(com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.TURRET_MOUNT,
+                    m.subsystem.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class).type,
+                    m.def.id + " is on a turret, not the weapons console");
+            turrets.add(m.subsystem);
+        }
+        assertEquals(5, turrets.size(), "each weapon has a turret of its own");
         assertNotNull(game.raider.getComponent(WeaponsComponent.class));
         assertNotNull(game.player.getComponent(SensorComponent.class));
     }
@@ -272,10 +280,10 @@ class GameScenarioTest {
     @Test
     void crewConsolesAreOnTheShipAndSurviveALoad() {
         java.util.Map<String, int[]> consoles = consolesOn(game.player);
-        // The corvette's chassis has a helm, a reactor and life support, and no weapons console.
-        assertEquals(java.util.Set.of("helm", "reactor", "life_support"), consoles.keySet());
+        // The corvette's chassis has a helm, a weapons console, a reactor and life support.
+        assertEquals(java.util.Set.of("helm", "weapons", "reactor", "life_support"), consoles.keySet());
         assertArrayEquals(new int[]{1, 4}, consoles.get("helm"));
-        assertEquals(3, consolesOn(game.contacts.first()).size(), "the raider has its own");
+        assertEquals(4, consolesOn(game.contacts.first()).size(), "the raider has its own");
 
         String save = world.engine.getSerializationService().saveGame();
         world.engine.getSerializationService().loadGame(save);

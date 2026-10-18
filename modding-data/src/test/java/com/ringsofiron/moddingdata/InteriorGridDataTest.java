@@ -74,18 +74,21 @@ class InteriorGridDataTest {
     }
 
     @Test
-    void corvetteHasItsDrawnAndListedMounts() {
+    void corvetteHasATurretPerWeaponAndAWeaponsConsole() {
         ChassisDef corvette = ctx.defs.require("chassis", "corvette", ChassisDef.class);
         ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(toBlueprint(corvette));
-        int reactors = 0, turrets = 0;
+        int reactors = 0, turrets = 0, consoles = 0;
         for (ChassisBlueprintLoader.SubsystemPlacement p : result.subsystems) {
             if (p.type == SubsystemComponent.SubsystemType.REACTOR) reactors++;
             if (p.type == SubsystemComponent.SubsystemType.TURRET_MOUNT) turrets++;
+            if (p.type == SubsystemComponent.SubsystemType.WEAPONS) consoles++;
         }
         assertEquals(1, reactors);
-        assertEquals(1, turrets, "the turret comes from the mounts list, not the map");
-        assertEquals(5, result.subsystems.size, "helm, reactor, life support, cargo, turret");
+        assertEquals(5, turrets, "nose, both beams, the launcher and the laser");
+        assertEquals(1, consoles);
+        assertEquals(10, result.subsystems.size, "helm, reactor, life support, cargo, weapons console, 5 turrets");
         assertEquals(10, result.grid.width);
+        assertTrue(result.grid.getTile(4, 3).isFlammable(), "the crew spaces are carpeted");
     }
 
     @Test
