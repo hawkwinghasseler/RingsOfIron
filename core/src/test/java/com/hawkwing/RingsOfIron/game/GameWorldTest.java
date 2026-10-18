@@ -98,9 +98,11 @@ class GameWorldTest {
     @Test
     void railsWarpCollapsesTheBubbleAndRebuildsIt() {
         Entity ship = playerInBubble();
+        assertEquals("earth", world.orbitalEvents.getAnchorParentUuid(), "anchor bridged to orbital");
         assertTrue(world.timeWarp.setWarp(1_000));
         assertTrue(world.timeWarp.isRailsWarp());
         assertNull(ship.getComponent(PhysicsBodyComponent.class), "the player is on rails during warp");
+        assertNull(world.orbitalEvents.getAnchorParentUuid(), "no bubble anchor while collapsed");
         assertNotNull(world.universe.orbit(ship));
 
         for (int i = 0; i < 60; i++) world.update(FRAME);
@@ -111,6 +113,7 @@ class GameWorldTest {
 
         assertTrue(world.timeWarp.setWarp(1));
         assertNotNull(ship.getComponent(PhysicsBodyComponent.class), "back in Box2D after warp");
+        assertEquals("earth", world.orbitalEvents.getAnchorParentUuid(), "rails side sees the rebuilt anchor");
         world.update(FRAME);
     }
 

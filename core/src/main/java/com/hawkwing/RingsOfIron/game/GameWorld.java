@@ -33,6 +33,7 @@ import com.ringsofiron.orbital.warp.EncounterPredictor;
 import com.ringsofiron.orbital.warp.TimeWarpController;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.orbital.math.KeplerOrbit;
+import com.ringsofiron.physicsexterior.OrbitalAnchorBridge;
 import com.ringsofiron.physicsexterior.PhysicsSaveParticipant;
 import com.ringsofiron.physicsexterior.RailsBubbleHandoff;
 import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
@@ -95,6 +96,7 @@ public class GameWorld implements Disposable {
     public final AudioListenerSync audioListener;
 
     private final ImmutableArray<Entity> players;
+    private final OrbitalAnchorBridge anchorBridge;
     private final Modules modules;
     private ModContext content;
 
@@ -123,6 +125,8 @@ public class GameWorld implements Disposable {
         orbitalEvents = new OrbitalEventSystem(universe, new OrbitalEventQueue());
         engine.addSystem(orbitalEvents);
         engine.getSerializationService().addParticipant(orbitalEvents);
+        // Keeps orbital's copy of the bubble anchor in step with physics, both ways.
+        anchorBridge = new OrbitalAnchorBridge(physics, orbitalEvents);
         EncounterPredictor encounters = new EncounterPredictor(engine.getEcsEngine(), universe);
         BubbleHandoff bubble = modules.bubble != null
                 ? modules.bubble : new RailsBubbleHandoff(physics, engine.getEcsEngine());
@@ -205,6 +209,7 @@ public class GameWorld implements Disposable {
 
     @Override
     public void dispose() {
+        anchorBridge.dispose();
         engine.clear();
         physics.dispose();
         audio.dispose();
