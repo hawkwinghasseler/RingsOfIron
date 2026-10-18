@@ -43,6 +43,8 @@ public class ShipGridComponent implements Component {
      * walls, doors or seals change. Each tile that holds air points at its compartment.
      */
     public final Array<Compartment> compartments = new Array<>();
+    /** Air moving through every opening, from the last hazard tick. See {@link AirflowEdge}. */
+    public final Array<AirflowEdge> airflow = new Array<>();
     /** The layout the compartments were last built from; null before the first build. */
     boolean[] compartmentLayout;
     /**
