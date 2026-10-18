@@ -44,9 +44,12 @@ public class GridNavGraph implements IndexedGraph<GridNode> {
         return t != null && t.isOpen() && t.mount == null;
     }
 
-    /** True if crew can step from (x, y) to the orthogonal neighbour (nx, ny). */
+    /**
+     * True if crew can step from (x, y) to the orthogonal neighbour (nx, ny). Crew can
+     * always step off a mount, so one placed on a mount footprint is never stuck there.
+     */
     public boolean canStep(int x, int y, int nx, int ny) {
-        return isWalkable(nx, ny) && isWalkable(x, y) && grid.canPass(x, y, nx, ny);
+        return isWalkable(nx, ny) && grid.canPass(x, y, nx, ny);
     }
 
     @Override

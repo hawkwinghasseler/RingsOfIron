@@ -1,7 +1,6 @@
 package com.ringsofiron.aicrew;
 
 import com.badlogic.ashley.core.Entity;
-import com.badlogic.ashley.systems.IteratingSystem;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
@@ -21,23 +20,13 @@ import com.ringsofiron.interiorgrid.crew.RescueTask;
  * </ul>
  * Dead crew are left alone.
  */
-public class CrewHealthSystem extends IteratingSystem {
+public class CrewHealthSystem extends FixedIteratingSystem {
 
     private final CrewService service;
-    private float accumulator;
 
     public CrewHealthSystem(CrewService service) {
-        super(CrewService.CREW, 15);
+        super(CrewService.CREW, 15, GridHazardSystem.HAZARD_TICK);
         this.service = service;
-    }
-
-    @Override
-    public void update(float deltaTime) {
-        accumulator += deltaTime;
-        while (accumulator >= GridHazardSystem.HAZARD_TICK) {
-            accumulator -= GridHazardSystem.HAZARD_TICK;
-            super.update(GridHazardSystem.HAZARD_TICK);
-        }
     }
 
     @Override

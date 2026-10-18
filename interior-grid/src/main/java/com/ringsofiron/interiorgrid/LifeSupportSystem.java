@@ -18,10 +18,13 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
  *       Air behind a closed door, a seal or a leaking wall is out of reach.</li>
  *   <li>It draws {@link #PROCESS_RATE} m³ of air per second, spread over the served
  *       volume, and strips {@link #SCRUB_EFFICIENCY} of the CO2 and smoke in it.</li>
+ *   <li>It releases up to {@link #AIR_SUPPLY_RATE} mol of standard air per second into
+ *       served compartments below standard pressure, shared by shortfall, so a vented
+ *       room comes back to full pressure once it is sealed.</li>
  *   <li>It releases up to {@link #OXYGEN_SUPPLY_RATE} mol of oxygen per second into served
- *       compartments whose oxygen partial pressure is below standard, shared by deficit.
- *       This is the only source of new air aboard; it does not refill nitrogen, so a
- *       vented room needs fresh air from elsewhere to come back to full pressure.</li>
+ *       compartments whose air is short of the standard oxygen share.</li>
+ *   <li>Nothing is released into a compartment that is venting to space. Tanks are not
+ *       modelled: the supply never runs out.</li>
  * </ul>
  * A unit that is switched off, unpowered or destroyed does nothing. Life support is far
  * too slow to keep up with a large fire, which uses oxygen much faster than this.
@@ -34,6 +37,8 @@ public class LifeSupportSystem extends FixedLogicSystem {
     public static final float SCRUB_EFFICIENCY = 0.9f;
     /** Oxygen one unit can release, mol/s. */
     public static final float OXYGEN_SUPPLY_RATE = 1.5f;
+    /** Standard air one unit can release to bring rooms back to standard pressure, mol/s. */
+    public static final float AIR_SUPPLY_RATE = 20f;
     /** Ticks at the same rate as the hazard simulation. */
     public static final float TICK = GridHazardSystem.HAZARD_TICK;
     /** Runs after the hazard step, so it works on that tick's air and airflow. */
@@ -73,8 +78,17 @@ public class LifeSupportSystem extends FixedLogicSystem {
     @Override
     protected void catchUp(long ticks, double seconds) {
         if (entities == null) return;
-        for (int i = 0; i < entities.size(); i++) runAll(entities.get(i), (float) seconds);
+        // After the hazard catch-up nothing flows, so any opening to space counts as venting
+        catchingUp = true;
+        try {
+            for (int i = 0; i < entities.size(); i++) runAll(entities.get(i), (float) seconds);
+        } finally {
+            catchingUp = false;
+        }
     }
+
+    /** During a rails-warp catch-up, when airflow has been settled to zero. */
+    private boolean catchingUp;
 
     private void runAll(Entity entity, float dt) {
         ShipGridComponent grid = gridMapper.get(entity);
@@ -98,28 +112,64 @@ public class LifeSupportSystem extends FixedLogicSystem {
 
         // Scrub: every served room has the same share of its air drawn through
         double drawn = 1.0 - Math.exp(-PROCESS_RATE * SCRUB_EFFICIENCY * dt / totalVolume);
-        double deficitTotal = 0;
         for (Compartment c : served) {
             c.carbonDioxide -= c.carbonDioxide * drawn;
             c.smoke -= c.smoke * drawn;
-            deficitTotal += oxygenDeficit(c);
         }
 
-        // Replenish oxygen, shared by how far each room is below standard
-        if (deficitTotal <= 0) return;
-        double supply = Math.min(OXYGEN_SUPPLY_RATE * dt, deficitTotal);
-        for (Compartment c : served) {
-            double d = oxygenDeficit(c);
-            if (d > 0) c.oxygen += supply * d / deficitTotal;
+        // Refill sealed rooms below standard pressure with standard air, shared by shortfall
+        double deficitTotal = 0;
+        for (Compartment c : served) if (!isVenting(grid, c)) deficitTotal += pressureDeficit(c);
+        if (deficitTotal > 0) {
+            double supply = Math.min(AIR_SUPPLY_RATE * dt, deficitTotal);
+            for (Compartment c : served) {
+                double d = isVenting(grid, c) ? 0 : pressureDeficit(c);
+                if (d <= 0) continue;
+                double moles = supply * d / deficitTotal;
+                c.oxygen += moles * Compartment.STANDARD_O2_FRACTION;
+                c.nitrogen += moles * (1.0 - Compartment.STANDARD_O2_FRACTION);
+            }
+        }
+        // Then top up oxygen burned off by fires and breathing
+        deficitTotal = 0;
+        for (Compartment c : served) if (!isVenting(grid, c)) deficitTotal += oxygenDeficit(c);
+        if (deficitTotal > 0) {
+            double supply = Math.min(OXYGEN_SUPPLY_RATE * dt, deficitTotal);
+            for (Compartment c : served) {
+                double d = isVenting(grid, c) ? 0 : oxygenDeficit(c);
+                if (d > 0) c.oxygen += supply * d / deficitTotal;
+            }
         }
     }
 
-    /** Moles of oxygen needed to bring the compartment to standard oxygen partial pressure. */
+    /** True if air leaves the compartment for space faster than a trickle. */
+    boolean isVenting(ShipGridComponent grid, Compartment c) {
+        for (int i = 0; i < grid.airflow.size; i++) {
+            AirflowEdge e = grid.airflow.get(i);
+            if (e.room == c && e.other == null && (catchingUp || e.flow > ShipGridComponent.VENTING_HAZARD_FLOW)) return true;
+        }
+        return false;
+    }
+
+    /** Moles of gas needed to bring the compartment to standard pressure. */
+    static double pressureDeficit(Compartment c) {
+        double perMole = c.kPaPerMole();
+        if (perMole <= 0) return 0;
+        return Math.max(0, (Compartment.STANDARD_PRESSURE - c.pressure()) / perMole);
+    }
+
+    /**
+     * Moles of oxygen needed to bring the compartment's air to the standard oxygen share,
+     * and no further than standard oxygen partial pressure. Aiming at the share rather
+     * than the partial pressure keeps a room that is still refilling from getting oxygen-rich.
+     */
     static double oxygenDeficit(Compartment c) {
         double perMole = c.kPaPerMole();
         if (perMole <= 0) return 0;
-        double pO2 = c.oxygen * perMole;
-        return Math.max(0, (Compartment.STANDARD_O2_PRESSURE - pO2) / perMole);
+        double others = c.totalMoles() - c.oxygen;
+        double target = Math.min(others * Compartment.STANDARD_O2_FRACTION / (1.0 - Compartment.STANDARD_O2_FRACTION),
+                Compartment.STANDARD_O2_PRESSURE / perMole);
+        return Math.max(0, target - c.oxygen);
     }
 
     /** The compartment the unit's footprint stands in, or one next to it. */

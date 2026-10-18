@@ -45,6 +45,8 @@ public class ShipGridComponent implements Component {
     public final Array<Compartment> compartments = new Array<>();
     /** Air moving through every opening, from the last hazard tick. See {@link AirflowEdge}. */
     public final Array<AirflowEdge> airflow = new Array<>();
+    /** The ship's power circuits, rebuilt by {@link PowerRoutingSystem}. Not saved. */
+    public final transient Array<PowerCircuit> circuits = new Array<>();
     /** The layout the compartments were last built from; null before the first build. */
     boolean[] compartmentLayout;
     /**

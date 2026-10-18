@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.BehaviorTreeComponent;
+import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.interiorgrid.crew.ExtinguishTask;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
 import com.ringsofiron.combatsys.components.MissileComponent;
@@ -23,6 +25,8 @@ import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.uihud.components.InteractableConsoleComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -103,6 +107,26 @@ class GameScenarioTest {
     }
 
     @Test
+    void theCrewPutOutAFireAboard() {
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        List<int[]> floor = GameScenario.floorTiles(grid);
+        int[] spot = floor.get(floor.size() / 2);
+        Tile tile = grid.getTile(spot[0], spot[1]);
+        tile.fuel = 10f;
+        tile.ignite();
+        tile.fireIntensity = 0.3f;
+        boolean fought = false;
+        for (int i = 0; i < 60 * 60 && grid.hasFire(); i++) {
+            world.update(FRAME);
+            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                if (e.getComponent(CrewMemberComponent.class).task instanceof ExtinguishTask) fought = true;
+            }
+        }
+        assertTrue(fought, "a crew member took the firefighting job");
+        assertFalse(grid.hasFire(), "the crew put the fire out");
+    }
+
+    @Test
     void quickSaveLoadsIntoAFreshGame(@TempDir Path dir) {
         for (int i = 0; i < 60; i++) world.update(FRAME);
         FileHandle file = new FileHandle(dir.resolve("quicksave.json").toFile());
@@ -157,7 +181,15 @@ class GameScenarioTest {
         WeaponsComponent weapons = game.player.getComponent(WeaponsComponent.class);
         assertNotNull(weapons);
         assertEquals(5, weapons.mounts.size, "railgun, two point-defense guns, a launcher, a laser");
-        for (WeaponMountComponent m : weapons.mounts) assertNotNull(m.subsystem, m.def.id + " is wired to a system");
+        java.util.Set<Entity> turrets = new java.util.HashSet<>();
+        for (WeaponMountComponent m : weapons.mounts) {
+            assertNotNull(m.subsystem, m.def.id + " is wired to a system");
+            assertEquals(com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.TURRET_MOUNT,
+                    m.subsystem.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class).type,
+                    m.def.id + " is on a turret, not the weapons console");
+            turrets.add(m.subsystem);
+        }
+        assertEquals(5, turrets.size(), "each weapon has a turret of its own");
         assertNotNull(game.raider.getComponent(WeaponsComponent.class));
         assertNotNull(game.player.getComponent(SensorComponent.class));
     }
@@ -248,10 +280,10 @@ class GameScenarioTest {
     @Test
     void crewConsolesAreOnTheShipAndSurviveALoad() {
         java.util.Map<String, int[]> consoles = consolesOn(game.player);
-        // The corvette's chassis has a helm, a reactor and life support, and no weapons console.
-        assertEquals(java.util.Set.of("helm", "reactor", "life_support"), consoles.keySet());
+        // The corvette's chassis has a helm, a weapons console, a reactor and life support.
+        assertEquals(java.util.Set.of("helm", "weapons", "reactor", "life_support"), consoles.keySet());
         assertArrayEquals(new int[]{1, 4}, consoles.get("helm"));
-        assertEquals(3, consolesOn(game.contacts.first()).size(), "the raider has its own");
+        assertEquals(4, consolesOn(game.contacts.first()).size(), "the raider has its own");
 
         String save = world.engine.getSerializationService().saveGame();
         world.engine.getSerializationService().loadGame(save);
