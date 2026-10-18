@@ -32,7 +32,8 @@ import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.LinearTrajectory;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.TrueTrajectory;
-import com.ringsofiron.physicsexterior.anchor.PointMassAnchor;
+import com.ringsofiron.orbital.math.KeplerOrbit;
+import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -169,7 +170,7 @@ public class FlightDemo extends ApplicationAdapter {
         fastPasses.clear();
         fastPassAges.clear();
         if (orbitMode) {
-            physics.setAnchorModel(PointMassAnchor.circular(PLANET_MU, ORBIT_RADIUS, 0.0));
+            physics.setAnchorModel(new KeplerAnchor(KeplerOrbit.circular(PLANET_MU, ORBIT_RADIUS, 0.0, 0.0, 1)));
         }
         frameX = frameY = frameVx = frameVy = 0.0;
         physics.worldShifts.add((signal, shift) -> {
@@ -284,7 +285,7 @@ public class FlightDemo extends ApplicationAdapter {
         double now = physics.getSimSeconds();
         // In orbit the rock falls too, along its own conic; otherwise it flies straight.
         TrueTrajectory path = orbitMode
-                ? new PointMassAnchor(PLANET_MU, startX, startY, vx, vy, now)::stateAt
+                ? new KeplerAnchor(KeplerOrbit.fromState(startX, startY, vx, vy, PLANET_MU, now))::stateAt
                 : new LinearTrajectory(startX, startY, vx, vy, now);
 
         Entity rock = new Entity();

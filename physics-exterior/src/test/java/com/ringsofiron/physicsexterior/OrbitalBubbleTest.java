@@ -7,6 +7,9 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
+import com.ringsofiron.orbital.math.KeplerOrbit;
+import com.ringsofiron.orbital.math.StateVector;
+import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
 import com.ringsofiron.physicsexterior.anchor.PointMassAnchor;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -324,5 +327,38 @@ class OrbitalBubbleTest {
         assertTrue(physics.getPreviousPose(body(ship), pose));
         Vector2 now = PhysicsManager.getPosition(body(ship), new Vector2());
         assertEquals(now.x - 1f, pose[0], 1e-3f);
+    }
+
+    @Test
+    void keplerAnchorAgreesWithIntegratedAnchorAndKeepsShipsOnTheirOrbits() {
+        KeplerAnchor kepler = new KeplerAnchor(KeplerOrbit.circular(EARTH_MU, LOW_ORBIT, 0.0, 0.0, 1));
+        PointMassAnchor integrated = PointMassAnchor.circular(EARTH_MU, LOW_ORBIT, 0.0);
+        double[] a = new double[4], b = new double[4];
+        kepler.stateAt(1380.0, a);
+        integrated.stateAt(1380.0, b);
+        assertEquals(b[0], a[0], 0.01);
+        assertEquals(b[1], a[1], 0.01);
+
+        physics.setAnchorModel(new KeplerAnchor(KeplerOrbit.circular(EARTH_MU, LOW_ORBIT, 0.0, 0.0, 1)));
+        Entity ship = spawnBox(1000f, 2000f);
+        PhysicsManager.setVelocity(body(ship), 1f, 0f);
+        double[] start = new double[4];
+        physics.getTrueState(body(ship), start);
+        int ticks = 60 * 1380;
+        Vector2 p = new Vector2(), v = new Vector2();
+        for (int i = 0; i < ticks; i += 600) {
+            runTicks(Math.min(600, ticks - i));
+            // Rebase onto the ship now and then: the anchor becomes the conic through its state.
+            PhysicsManager.getPosition(body(ship), p);
+            PhysicsManager.getVelocity(body(ship), v);
+            physics.rebaseOrigin(p.x, p.y, v.x, v.y);
+        }
+
+        StateVector expected = KeplerOrbit.fromState(start[0], start[1], start[2], start[3], EARTH_MU, 0.0)
+                .stateAt(ticks / 60.0);
+        double[] actual = new double[4];
+        physics.getTrueState(body(ship), actual);
+        double error = Math.hypot(actual[0] - expected.x, actual[1] - expected.y);
+        assertTrue(error < 1.0, "within 1 m of the ship's own conic: " + error);
     }
 }

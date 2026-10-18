@@ -5,6 +5,7 @@ dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
   api "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
   api project(':core-engine')
+  api project(':orbital-mechanics')
   // Only ShipPhysicsAssembler uses it, and only the game (which has modding-data) calls that.
   compileOnly project(':modding-data')
 
