@@ -50,7 +50,7 @@ public final class TileShade {
         if (smoke > 0f) out.lerp(SMOKE, smoke * 0.6f);
 
         if (tile.fireIntensity > 0f) {
-            float f = 0.35f + 0.65f * MathUtils.clamp(tile.fireIntensity, 0f, 1f);
+            float f = 0.6f + 0.4f * MathUtils.clamp(tile.fireIntensity, 0f, 1f);
             out.lerp(FIRE, f);
             out.a = Math.max(out.a, 0.9f);
         }
