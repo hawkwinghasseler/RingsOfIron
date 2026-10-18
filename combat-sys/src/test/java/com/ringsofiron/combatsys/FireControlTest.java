@@ -59,6 +59,7 @@ class FireControlTest {
     private SensorTrackingSystem sensors;
     private MissileGuidanceSystem missiles;
     private BallisticsSystem ballistics;
+    private WeaponControlSystem weaponControl;
 
     @BeforeAll
     static void loadNatives() {
@@ -76,7 +77,8 @@ class FireControlTest {
         sensors = new SensorTrackingSystem(physics, 7L);
         missiles = new MissileGuidanceSystem(physics, events, defs, ballistics, sensors);
         engine.addSystem(sensors);
-        engine.addSystem(new WeaponControlSystem(physics, events, defs, ballistics, missiles, sensors, 11L));
+        weaponControl = new WeaponControlSystem(physics, events, defs, ballistics, missiles, sensors, 11L);
+        engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
         ImpactResolutionSystem impacts = new ImpactResolutionSystem(physics, events, defs, ballistics,
@@ -307,5 +309,38 @@ class FireControlTest {
             tenth += e.get(9) / guns;
         }
         assertTrue(tenth < 0.5f * first, "walked in: first shots off by " + first + " rad, tenth by " + tenth);
+    }
+
+    @Test
+    void gunsFireOnlyOnThePowerTheyGet() {
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(1500, 0, 0, 0);
+        ship.getComponent(SensorComponent.class).lockedTarget = target;
+        WeaponMountComponent gun = arm(ship, "railgun_mk1", 6f, 0f, 0f);
+        WeaponMountComponent laser = arm(ship, "laser_mk1", 6f, 1f, 0f);
+        double shot = (double) gun.def.powerDraw * gun.def.cooldown;
+        // A store holding two railgun shots and no recharge; the laser gets half of what it asks.
+        double[] store = {2.5 * shot};
+        weaponControl.setPower(new com.ringsofiron.combatsys.WeaponPower() {
+            @Override
+            public boolean tryDraw(WeaponMountComponent mount, double joules) {
+                if (store[0] < joules) return false;
+                store[0] -= joules;
+                return true;
+            }
+
+            @Override
+            public double draw(WeaponMountComponent mount, double joules) {
+                return 0.5 * joules;
+            }
+        });
+        float[] burned = new float[1];
+        events.hullHits.add((s, hit) -> {
+            if (hit.beam) burned[0] += hit.energyAbsorbed;
+        });
+        run(10f);
+        assertEquals(2, gun.shotsFired, "two shots' worth of energy, two shots");
+        assertTrue(laser.shotsFired > 0);
+        assertEquals(0.5f, laser.beamStrength, 1e-6f, "the laser burns at the power it gets");
     }
 }

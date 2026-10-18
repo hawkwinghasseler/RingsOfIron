@@ -17,7 +17,7 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 /**
  * Beams (combat-sys/Design.md 2.5 and 5.6). Each tick, every beam {@link WeaponControlSystem}
  * has burning is cast from its muzzle along its direction to its reach; the first ship, asteroid
- * or station hull it meets takes {@code beamPower * dt} through
+ * or station hull it meets takes {@code beamPower * dt} (less on short power) through
  * {@link ImpactResolutionSystem#burn}. Light has no travel time, so this bypasses ballistics, and
  * a beam that keeps moving across a hull spreads its heat over many tiles.
  *
@@ -102,7 +102,8 @@ public class BeamSystem extends EntitySystem implements PhysicsManager.StepListe
         }
         mount.beamEnd.set(hitX, hitY);
         if (target != null && !target.isScheduledForRemoval()) {
-            impacts.burn(target, hitX, hitY, dx, dy, def.beamPower * dt, target != mount.beamContact);
+            impacts.burn(target, hitX, hitY, dx, dy, def.beamPower * mount.beamStrength * dt,
+                    target != mount.beamContact);
         }
         mount.beamContact = target;
     }

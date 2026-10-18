@@ -75,6 +75,8 @@ public class WeaponMountComponent implements Component {
     public float beamTime;
     /** Whether the beam burned this tick. Set by weapon control. */
     public transient boolean beamOn;
+    /** Share of its power the beam got this tick, 0 to 1; it burns that much of its beam power. */
+    public transient float beamStrength = 1f;
     /** World direction of the beam this tick, unit. Set by weapon control. */
     public final transient Vector2 beamDir = new Vector2();
     /** Where the beam ended this tick (a hull, or its full reach), local meters. Set by BeamSystem. */

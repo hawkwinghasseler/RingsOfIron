@@ -380,13 +380,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         font.draw(batch, "Target: " + (marker == null ? "none" : marker.label) + (gun.gunsReady() ? "" : "   (gun reloading)")
                 + (target == game.raider && game.raiderHostile() ? "   FIRING ON YOU" : ""), left, top - 20f);
         float reload = gun.missileReloadTime();
-        int incoming = 0;
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(COMBAT_ROUNDS)) {
-            MissileComponent m = MISSILES.get(e);
-            if (m != null && m.target == game.player) incoming++;
-        }
-        font.draw(batch, "Missile: " + (reload < 0f ? "offline" : reload > 0f ? String.format("%.0f s", reload) : "ready")
-                + (incoming > 0 ? "   MISSILES INBOUND: " + incoming : ""), left, top - 40f);
+        // Inbound missiles are ui-hud's missile warning.
+        font.draw(batch, "Missile: " + (reload < 0f ? "offline" : reload > 0f ? String.format("%.0f s", reload) : "ready"),
+                left, top - 40f);
         font.setColor(Color.LIGHT_GRAY);
         font.draw(batch, hud.getViewMode().getMode() == ViewMode.INTERIOR
                 ? "WASD walk   E use console   V outside view   Esc quit"

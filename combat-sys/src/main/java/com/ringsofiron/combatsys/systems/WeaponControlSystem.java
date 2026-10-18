@@ -11,6 +11,7 @@ import com.badlogic.gdx.math.RandomXS128;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.combatsys.CombatPhysics;
+import com.ringsofiron.combatsys.WeaponPower;
 import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.SignatureComponent;
@@ -32,7 +33,8 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
  * Turret fire control (combat-sys/Design.md 3.3). Per mount, per tick: pick what to engage, ask
  * {@link FiringSolutionSolver} for the lead on the ship's sensor track of it, slew the barrel
  * toward that within the firing arc, and fire when loaded, the weapon's system works, and the
- * barrel's pointing error at that range is inside the target. Gunnery skill sets aim jitter and
+ * barrel's pointing error at that range is inside the target, and the ship's power grid gives
+ * the shot its energy ({@link #setPower}). Gunnery skill sets aim jitter and
  * how long the gunner takes to engage a new target. Rounds inherit the hardpoint's velocity
  * (spin included) and push the ship back.
  *
@@ -82,6 +84,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     private final SensorTrackingSystem sensors;
     private final RandomXS128 rng;
     private final FiringSolutionSolver solver = new FiringSolutionSolver();
+    private WeaponPower power;
     private ImmutableArray<Entity> ships;
 
     private final ShotFiredEvent shot = new ShotFiredEvent();
@@ -102,6 +105,17 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         this.missiles = missiles;
         this.sensors = sensors;
         this.rng = new RandomXS128(seed);
+    }
+
+    /** Where weapons draw their energy; null (the default) gives them all they want. */
+    public void setPower(WeaponPower power) {
+        this.power = power;
+    }
+
+    /** Takes the energy for one shot: {@code power_draw * cooldown}, all or nothing. */
+    private boolean powerShot(WeaponMountComponent mount) {
+        double joules = (double) mount.def.powerDraw * mount.def.cooldown;
+        return power == null || joules <= 0 || power.tryDraw(mount, joules);
     }
 
     @Override
@@ -209,7 +223,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
                 ? (onTarget || !mount.solution.valid)
                 : (mount.weaponsFree && onTarget && mount.engagedFor >= reactionTime(mount));
         mount.trigger = false;
-        if (!wantsFire || !available || mount.cooldown > 0f) return;
+        if (!wantsFire || !available || mount.cooldown > 0f || !powerShot(mount)) return;
 
         float green = 1.5f - MathUtils.clamp(mount.gunnerySkill, 0f, 1f);
         if (!mount.biasSet || mount.sinceShot > Math.max(BURST_GAP, 3f * def.cooldown)) {
@@ -279,6 +293,9 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
                 + (float) rng.nextGaussian() * def.spreadRad * green * (float) Math.sqrt(2f * k);
         float a = barrel + mount.aimBias;
         mount.beamDir.set(MathUtils.cos(a), MathUtils.sin(a));
+        // The beam burns as hard as the power it gets this tick.
+        double needed = (double) def.powerDraw * dt;
+        mount.beamStrength = power == null || needed <= 0 ? 1f : (float) (power.draw(mount, needed) / needed);
         mount.beamOn = true;
         mount.beamTime = Math.max(0f, mount.beamTime - dt);
     }
@@ -301,7 +318,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         boolean wantsFire = mount.trigger
                 ? track != null
                 : (mount.weaponsFree && inRange && mount.engagedFor >= reactionTime(mount));
-        if (!wantsFire || !available || mount.cooldown > 0f) return;
+        if (!wantsFire || !available || mount.cooldown > 0f || !powerShot(mount)) return;
 
         // Throw it clear toward the target (or along the rail), within the launcher's arc.
         float want = track != null ? dir.set(estPos).sub(muzzle).angleRad() - bodyAngle : mount.facing;

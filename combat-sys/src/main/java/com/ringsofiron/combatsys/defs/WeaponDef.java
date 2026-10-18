@@ -18,7 +18,10 @@ public class WeaponDef {
     public float firingArcDeg = 360f;
     /** Seconds between shots; for a beam, between the starts of two pulses. */
     public float cooldown = 1f;
-    /** Watts drawn while charging. */
+    /**
+     * Watts drawn while charging: each shot takes {@code powerDraw * cooldown} joules from the
+     * ship's power grid. A beam draws this while it burns.
+     */
     public float powerDraw;
     /** Projectile def fired by guns. */
     public String projectile;

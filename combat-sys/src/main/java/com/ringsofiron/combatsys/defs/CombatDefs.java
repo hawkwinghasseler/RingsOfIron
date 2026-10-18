@@ -227,7 +227,7 @@ public class CombatDefs {
         laser.slewRateDeg = 60f;
         laser.firingArcDeg = 300f;
         laser.cooldown = 5f;
-        laser.powerDraw = 8e6f;
+        laser.powerDraw = 5e6f;
         laser.beamPower = 4e6f;
         laser.beamDuration = 2.5f;
         laser.spreadRad = 0.0005f;
