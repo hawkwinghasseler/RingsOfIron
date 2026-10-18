@@ -60,8 +60,19 @@ class GameScenarioTest {
     @Test
     void savesAndLoadsWithTheCrewAboard() {
         for (int i = 0; i < 60; i++) world.update(FRAME);
+        assertFalse(world.macroSim.bubble().inBubble().isEmpty(), "the freighter ahead is in the bubble");
+        String visitor = world.macroSim.bubble().inBubble().iterator().next();
+        double[] before = new double[4];
+        world.physics.getTrueState(world.engine.getEntity(visitor).getComponent(PhysicsBodyComponent.class).body, before);
         String save = world.engine.getSerializationService().saveGame();
         world.engine.getSerializationService().loadGame(save);
+
+        PhysicsBodyComponent visitorBody = world.engine.getEntity(visitor).getComponent(PhysicsBodyComponent.class);
+        assertNotNull(visitorBody, "a ship the bubble took in from the rails gets its body back");
+        double[] after = new double[4];
+        world.physics.getTrueState(visitorBody.body, after);
+        assertEquals(before[0], after[0], 1.0);
+        assertEquals(before[1], after[1], 1.0);
 
         Entity ship = world.getPlayer();
         assertNotNull(ship);
@@ -72,7 +83,8 @@ class GameScenarioTest {
         }
         assertEquals(4, aboard, "the player and three crew, back aboard the loaded ship");
         assertEquals(3, thinking, "the AI crew think again");
-        for (int i = 0; i < 60; i++) world.update(FRAME);
+        for (int i = 0; i < 180; i++) world.update(FRAME);
+        assertTrue(world.macroSim.bubble().inBubble().contains(visitor), "and the game runs on with it");
     }
 
     @Test
