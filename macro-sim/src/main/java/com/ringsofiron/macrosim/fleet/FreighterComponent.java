@@ -29,7 +29,15 @@ public class FreighterComponent implements Component {
     public double cargoQuantity;
     public double credits;
     public long orderId;
+    /**
+     * Sim second of the next arrival, or while {@link #transitBodyUuid} is set, of the expected SOI
+     * crossing; NaN when not travelling.
+     */
     public double arrivalTime = Double.NaN;
+    /** Body the current leg crosses into (a moon, or the parent on the way down); null otherwise. */
+    public String transitBodyUuid;
+    /** Gives up waiting for the crossing after this sim second. */
+    public double transitDeadline = Double.NaN;
     public transient long arrivalEventId;
     public int tripsCompleted;
     public double deltaVUsed;
@@ -37,6 +45,14 @@ public class FreighterComponent implements Component {
     public double lastArrivalMiss;
 
     public FreighterComponent() {
+    }
+
+    /**
+     * Units of cargo this freighter can take on one order. Fleet logic reads the hold only through
+     * here, so a physical cargo bay can replace the fixed {@link #capacity}.
+     */
+    public double holdCapacity() {
+        return capacity;
     }
 
     public FreighterComponent(String displayName, double capacity, double credits) {

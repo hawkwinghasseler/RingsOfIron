@@ -131,10 +131,12 @@ public class StubRailsModel implements RailsModel {
 
     private void fire(String uuid, StubKeplerOrbit orbit, Burn burn) {
         StateVector s = orbit.stateAt(burn.time, scratch);
+        // Same axes as orbital-mechanics' KeplerOrbit.withBurn: along the velocity, and the velocity
+        // turned 90 degrees away from the parent.
         double speed = s.speed();
-        double r = s.distance();
+        int dir = (s.x * s.vy - s.y * s.vx) < 0 ? -1 : 1;
         double px = s.vx / speed, py = s.vy / speed;
-        double qx = s.x / r, qy = s.y / r;
+        double qx = py * dir, qy = -px * dir;
         s.vx += burn.prograde * px + burn.radial * qx;
         s.vy += burn.prograde * py + burn.radial * qy;
         orbits.put(uuid, StubKeplerOrbit.fromState(orbit.mu, s, burn.time));
