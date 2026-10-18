@@ -77,6 +77,7 @@ class OrbitalRailsModelTest {
         assertTrue(rails.trajectoryOf(ship).maxRadius() > 7_100e3, "burn applied");
         assertTrue(events.getQueue().eventsFor(ship).stream()
                 .noneMatch(ev -> ev.type == com.ringsofiron.orbital.events.OrbitalEvent.Type.MANEUVER), "fired once");
+        assertEquals(engine.getSimSeconds(), rails.snapshot().time, 1e-9, "snapshot reads the game's clock");
         rails.processEventsUntil(engine.getSimSeconds()); // driving it from macro-sim too is harmless
         assertTrue(rails.trajectoryOf(ship).maxRadius() < 7_300e3, "not fired twice");
     }
