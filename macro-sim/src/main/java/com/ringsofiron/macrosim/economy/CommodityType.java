@@ -8,12 +8,15 @@ public final class CommodityType {
     public final double basePrice;
     /** Cargo volume of one unit, in cubic meters. */
     public final double unitVolume;
+    /** Mass of one unit, in kilograms. */
+    public final double unitMass;
 
-    public CommodityType(String id, String displayName, double basePrice, double unitVolume) {
+    public CommodityType(String id, String displayName, double basePrice, double unitVolume, double unitMass) {
         this.id = id;
         this.displayName = displayName;
         this.basePrice = basePrice;
         this.unitVolume = unitVolume;
+        this.unitMass = unitMass;
     }
 
     @Override

@@ -52,18 +52,20 @@ public class StationMarket {
     }
 
     /**
-     * Buys up to {@code units}, limited by what the station can sell, the hold's free space and the
+     * Buys up to {@code units}, limited by what the station can sell, the room in the hold and the
      * trader's credits. Returns the units bought.
      */
     public double buy(EconomyNode node, TraderComponent trader, String commodity, double units) {
-        double qty = Math.min(units, Math.min(node.available(commodity), trader.freeCargo()));
+        CommodityType c = economy.catalog().commodity(commodity);
+        double qty = Math.min(units, Math.min(node.available(commodity), trader.room(c)));
         if (qty <= 0) return 0;
         if (buyCost(node, commodity, qty) > trader.credits) qty = affordable(node, commodity, qty, trader.credits);
         if (qty <= 1e-9) return 0;
+        qty = trader.load(c, qty);
+        if (qty <= 0) return 0;
         double cost = buyCost(node, commodity, qty);
         node.remove(commodity, qty);
         trader.credits -= cost;
-        trader.add(commodity, qty);
         economy.updatePrices(node);
         return qty;
     }
@@ -72,8 +74,9 @@ public class StationMarket {
     public double sell(EconomyNode node, TraderComponent trader, String commodity, double units) {
         double qty = Math.min(units, trader.amount(commodity));
         if (qty <= 0 || !stationBuys(node, commodity)) return 0;
+        qty = trader.unload(economy.catalog().commodity(commodity), qty);
+        if (qty <= 0) return 0;
         double value = sellValue(node, commodity, qty);
-        trader.add(commodity, -qty);
         trader.credits += value;
         node.add(commodity, qty);
         economy.updatePrices(node);

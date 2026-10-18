@@ -22,7 +22,7 @@ import java.util.function.Function;
 public class FreighterController {
     /** Seconds between deciding to go and the first possible burn (undocking). */
     public static final double UNDOCK_DELAY = 120;
-    /** Credits charged per m/s of delta-v per unit of hold capacity, a stand-in for fuel cost. */
+    /** Credits charged per m/s of delta-v per m³ of hold capacity, a stand-in for fuel cost. */
     public static final double FUEL_COST_PER_DV = 0.0005;
     /** Orders whose two legs take longer than this are ignored. */
     public static final double MAX_TRIP_SECONDS = 30 * 86400.0;
@@ -198,7 +198,7 @@ public class FreighterController {
 
     /** Profit per hour of an order for this freighter, or 0 if not worth it (or out of reach). */
     private double score(String uuid, FreighterComponent f, TradeOrder o, double now) {
-        double qty = Math.min(o.quantity, f.holdCapacity());
+        double qty = Math.min(o.quantity, f.capacityUnits(economy.catalog().commodity(o.commodity)));
         double start = now + UNDOCK_DELAY;
         double leg1Arrival = start;
         double dv = 0;
@@ -221,7 +221,7 @@ public class FreighterController {
     }
 
     private void start(String uuid, FreighterComponent f, TradeOrder o, double now) {
-        o.quantity = Math.min(o.quantity, f.holdCapacity());
+        o.quantity = Math.min(o.quantity, f.capacityUnits(economy.catalog().commodity(o.commodity)));
         economy.claim(o, uuid, stations.apply(o.fromUuid), stations.apply(o.toUuid));
         activeOrders.put(o.id, o);
         f.orderId = o.id;

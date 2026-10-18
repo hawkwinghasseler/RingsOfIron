@@ -5,6 +5,7 @@ import com.ringsofiron.interiorgrid.ChassisBlueprint;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.HullPiece;
+import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.Side;
@@ -77,18 +78,28 @@ class InteriorGridDataTest {
     void corvetteHasATurretPerWeaponAndAWeaponsConsole() {
         ChassisDef corvette = ctx.defs.require("chassis", "corvette", ChassisDef.class);
         ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(toBlueprint(corvette));
-        int reactors = 0, turrets = 0, consoles = 0;
+        int reactors = 0, turrets = 0, consoles = 0, bays = 0;
         for (ChassisBlueprintLoader.SubsystemPlacement p : result.subsystems) {
             if (p.type == SubsystemComponent.SubsystemType.REACTOR) reactors++;
             if (p.type == SubsystemComponent.SubsystemType.TURRET_MOUNT) turrets++;
             if (p.type == SubsystemComponent.SubsystemType.WEAPONS) consoles++;
+            if (p.type == SubsystemComponent.SubsystemType.CARGO) bays++;
         }
         assertEquals(1, reactors);
         assertEquals(5, turrets, "nose, both beams, the launcher and the laser");
         assertEquals(1, consoles);
-        assertEquals(10, result.subsystems.size, "helm, reactor, life support, cargo, weapons console, 5 turrets");
-        assertEquals(10, result.grid.width);
-        assertTrue(result.grid.getTile(4, 3).isFlammable(), "the crew spaces are carpeted");
+        assertEquals(4, bays, "two in the aft hold, two small ones forward");
+        assertEquals(13, result.subsystems.size, "helm, reactor, life support, 4 cargo bays, weapons console, 5 turrets");
+        assertEquals(14, result.grid.width);
+        assertTrue(result.grid.getTile(8, 3).isFlammable(), "the crew spaces are carpeted");
+        assertFalse(result.grid.getTile(4, 3).isFlammable(), "the hold's walkway is bare deck");
+    }
+
+    @Test
+    void cargoCapacityIsTheVolumeOfTheBays() {
+        // 2.5 m3 a tile: the corvette's 16 bay tiles and the freighter's 120
+        assertEquals(40.0, InteriorGridData.cargoBayVolume(ctx.defs, "corvette_patrol"), 1e-9);
+        assertEquals(300.0, InteriorGridData.cargoBayVolume(ctx.defs, "freighter_hauler"), 1e-9);
     }
 
     @Test

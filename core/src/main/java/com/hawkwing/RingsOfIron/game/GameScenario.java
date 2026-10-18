@@ -11,6 +11,7 @@ import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.bubble.BubbleTransitionListener;
@@ -49,9 +50,10 @@ public class GameScenario {
     /** Where the Moon starts along its orbit, radians from Earth's +x axis. */
     public static final double MOON_ANGLE = 2.0;
     public static final String PLAYER_SHIP = "corvette_patrol";
-    /** What the player starts with for trading at station markets. Placeholder values. */
+    /** The ship the traffic flies, which sizes the freighters' holds. */
+    public static final String FREIGHTER_SHIP = "freighter_hauler";
+    /** What the player starts with for trading at station markets. Placeholder value. */
     public static final double STARTING_CREDITS = 5_000;
-    public static final double STARTING_HOLD = 100;
 
     public final GameWorld world;
     public final ModContext content;
@@ -87,7 +89,9 @@ public class GameScenario {
         player = content.factory.spawnShip(PLAYER_SHIP, 0f, 0f, 90f);
         player.add(new PlayerControllerComponent());
         ShipConsoles.install(player);
-        player.add(new TraderComponent(STARTING_CREDITS, STARTING_HOLD));
+        // Trades go in and out of the corvette's cargo bays
+        player.add(new TraderComponent(STARTING_CREDITS, 0));
+        ShipCargo.attach(player);
         FlightControlComponent controls = player.getComponent(FlightControlComponent.class);
         if (controls != null) controls.rotationAssist = true;
 
@@ -142,9 +146,11 @@ public class GameScenario {
                 circular(ORBIT_RADIUS + 2_000e3, 2.5), 1);
         lunarMine = world.macroSim.addStation("Shackleton Ice", stationType("ice_mine", 2), MOON,
                 circular(MU_MOON, R_MOON + 100e3, 0), 1);
-        world.macroSim.addFreighter("Hauler Kestrel", 300, 20_000, highport);
-        for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), 300, 20_000, depot);
-        for (int i = 0; i < 2; i++) world.macroSim.addFreighter("Lunar Hauler " + (i + 1), 400, 20_000, lunarMine);
+        double hold = InteriorGridData.cargoBayVolume(content.defs, FREIGHTER_SHIP);
+        world.macroSim.addFreighter("Hauler Kestrel", hold, 20_000, highport);
+        for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), hold, 20_000, depot);
+        for (int i = 0; i < 2; i++) world.macroSim.addFreighter("Lunar Hauler " + (i + 1), hold, 20_000, lunarMine);
+        content.hooks.fireWorldReady();
     }
 
     /** Loads base data and mods and sets up a new game in {@code world}. */
@@ -186,6 +192,7 @@ public class GameScenario {
 
     private void relink() {
         player = world.getPlayer();
+        if (player != null) ShipCargo.attach(player);
         avatar = null;
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(PlayerAvatarComponent.class).get())) {
             avatar = e;

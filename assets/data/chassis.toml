@@ -8,33 +8,49 @@
 [chassis.corvette]
 name = "Corvette"
 tile_size = 1.0
-origin_x = -5.0
+origin_x = -9.0
 origin_y = -3.0
 # A turret mount beside each hardpoint in ships.toml (combat wires each weapon to
-# the nearest one): nose (8,2), port and starboard beams (6,4) and (6,1), the
-# launcher (3,4) and the laser (3,1). The weapons console sits aft, away from
+# the nearest one): nose (12,2), port and starboard beams (10,4) and (10,1), the
+# launcher (7,4) and the laser (7,1). The weapons console sits aft, away from
 # every hardpoint.
+# Cargo: a hold aft of the crew spaces with two 3 x 2 bays (x 1-3; listed under
+# mounts, since two bays side by side can't be told apart in the map), a walkway
+# at x 4, and two small bays up front. 16 tiles, 40 m3 at 2.5 m3 a tile.
 rows = [
-  "##########",
-  "#HHT..TRR#",
-  "#WW....RR#",
-  "#L.++++.T#",
-  "#L.T..TCC#",
-  "##########",
+  "##############",
+  "#....HHTCCTRR#",
+  "#....WW....RR#",
+  "#....L.++++.T#",
+  "#....L.T..TCC#",
+  "##############",
+]
+mounts = [
+  { type = "CARGO", size = "M", x = 1, y = 1, rotation = 1 },
+  { type = "CARGO", size = "M", x = 1, y = 3, rotation = 1 },
 ]
 # Carpet through the crew spaces, so a fire here has something to burn
-coverings = [ { covering = "CARPET", x = 1, y = 1, width = 6, height = 4 } ]
+coverings = [ { covering = "CARPET", x = 5, y = 1, width = 6, height = 4 } ]
 
 [chassis.freighter]
 name = "Light Freighter"
 tile_size = 1.0
-origin_x = -7.0
-origin_y = -3.0
+origin_x = -10.0
+origin_y = -6.5
+# Two 12 x 5 cargo bays either side of a conduit spine: 120 tiles, 300 m3 of cargo.
+# Engineering aft (left), the helm forward.
 rows = [
-  "##############",
-  "#HH..I..CC.CC#",
-  "#....I.......#",
-  "#L.+++++++RR.#",
-  "#L.......IRR.#",
-  "##############",
+  "####################",
+  "#...CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "#RR.CCCCCCCCCCCC.HH#",
+  "#RR.CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "#L++++++++++++++++.#",
+  "#L..CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "####################",
 ]
