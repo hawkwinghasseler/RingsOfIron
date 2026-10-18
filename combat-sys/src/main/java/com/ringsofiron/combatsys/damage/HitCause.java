@@ -9,5 +9,7 @@ public enum HitCause {
     /** Warhead fragments. */
     FRAGMENT,
     /** Interior overpressure. */
-    BLAST
+    BLAST,
+    /** Burns: a beam burning through. */
+    FIRE
 }
