@@ -69,7 +69,7 @@ The flight demo shows all of it: `[O]` puts the bubble in a 400 km orbit, `[,]`/
 
 - **Rails warp.** `RailsBubbleHandoff` implements orbital-mechanics' `BubbleHandoff`. Collapsing gives every body, the player's included, an `OrbitComponent` around the anchor's parent (`PhysicsManager.getAnchorParentUuid`) and a `BodyShapeComponent` holding its fixtures and exact mass, then drops the Box2D body. Rebuilding re-anchors a `KeplerAnchor` on the player's orbit and brings back every recorded body within the entry radius and speed; the rest stay on rails, shape kept, for macro-sim's `BubbleTransitionSystem` to bring in later with `rebuild(entity)`.
 
-Still to do: SOI re-parenting of the anchor, once orbital-mechanics emits the player's SOI changes.
+- **SOI changes.** `OrbitalAnchorBridge(physics, orbitalEventSystem)` keeps both sides' anchor in step. Each `anchorChanges` event is forwarded: SET and REBASED call `OrbitalEventSystem.setAnchor` with the anchor's conic (a non-Kepler anchor around a named body is fitted with the conic through its current state), and CLEARED calls `clearAnchor`. When the event system reports the anchor crossing an SOI boundary, the bubble adopts the new parent and conic. Box2D bodies keep their local positions, and the change is not echoed back to rails.
 
 The original plan, for reference:
 The bubble was an inertial frame with no gravity. `documentation/orbital-mechanics/Design.md` defines how it becomes part of a 1:1 real-scale orbital world. The changes that land in this module:
