@@ -14,6 +14,8 @@ import com.ringsofiron.interiorgrid.crew.ExtinguishTask;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
 import com.ringsofiron.combatsys.components.MissileComponent;
+import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
@@ -210,6 +212,41 @@ class GameScenarioTest {
         assertFalse(shots.isEmpty(), "the railgun fired down the barrel with nothing locked");
         assertFalse(game.raiderHostile(), "a shot at nothing does not start a fight");
         for (int i = 0; i < 30; i++) world.update(FRAME);
+    }
+
+    @Test
+    void theGunsGoQuietWhenTheReactorIsKnockedOut() {
+        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        gun.setTarget(null);
+        int[] shots = new int[1];
+        world.combatEvents.shots.add((s, shot) -> {
+            if (shot.shooter == game.player) shots[0]++;
+        });
+        for (int i = 0; i < 60; i++) world.update(FRAME); // power routed, stores charged
+        // What is left in the stores goes in a few shots; then nothing recharges them. The
+        // reactor is held wrecked, or the engineer would start repairing it.
+        for (int i = 0; i < 10 * 60; i++) {
+            wreckReactors();
+            gun.fireGuns();
+            world.update(FRAME);
+        }
+        int afterOutage = shots[0];
+        for (int i = 0; i < 10 * 60; i++) {
+            wreckReactors();
+            gun.fireGuns();
+            world.update(FRAME);
+        }
+        assertEquals(afterOutage, shots[0], "with no reactor the main guns stop firing");
+    }
+
+    private void wreckReactors() {
+        for (Entity e : game.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s != null && s.type == SubsystemComponent.SubsystemType.REACTOR) {
+                s.health = 0f;
+                s.isOperational = false;
+            }
+        }
     }
 
     @Test

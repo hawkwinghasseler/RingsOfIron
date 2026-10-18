@@ -219,6 +219,8 @@ public class GameWorld implements Disposable {
         weaponControl = new WeaponControlSystem(physics, combatEvents, combatDefs, ballistics, missiles, sensors,
                 modules.combatSeed + 2);
         engine.addSystem(sensors);
+        // Shots and beams draw on the ship's power circuits.
+        weaponControl.setPower(new ShipWeaponPower());
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
