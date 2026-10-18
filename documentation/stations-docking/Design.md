@@ -14,7 +14,7 @@ This document collects the design decisions for stations, docking ports, the doc
 - **`ui-hud`**: arming ports, docking alignment readouts, the refit UI.
 
 ## What Exists Today
-Stage 1 (station grids and docking ports) is in. The new `stations-docking` module holds the docking logic; the other modules gained the pieces it needs.
+Stages 1 (station grids and docking ports) and 2 (walking and air across a dock) are in. The new `stations-docking` module holds the docking logic; the other modules gained the pieces it needs.
 
 - **Station grids.** `ChassisDef.station` marks a station layout and `StationTypeDef.blueprint` names it (`station_outpost` and `station_hub` in `chassis.toml`). `DockingData.buildStation` gives a station entity its walkable grid, systems, cargo bays and docking ports. In the bubble, `StationBodies` gives each station a kinematic Box2D body shaped like its grid, which `KinematicTransientSystem` moves along the station's orbit, so ships collide and dock with it. Stations still stay on rails; they have no crew yet.
 - **Docking ports.** `D` in a chassis map is a port of any of the three sizes (`DockingPortLayout`), a `DOCKING_PORT` subsystem with a frame, an opening onto the deck and a sealed door. Ports are passive unless the chassis lists them as active. Ships get their chassis' ports when they spawn; macro-sim's freighters, which fly a default hull, get a passive Medium port on the nose.
@@ -22,18 +22,22 @@ Stage 1 (station grids and docking ports) is in. The new `stations-docking` modu
 - **Clearance.** `requestClearance` asks the nearest station. One that grants it arms its nearest free port of the same size for the asking craft (for 10 minutes), and that port's collar reaches out unless the craft brings its own active collar. One that refuses keeps its ports unarmed and its collar in. A craft can still latch with its own magnets or collar, but is then docked without leave (`DockingPort.permitted` is false).
 - **Rails warp.** A collar still drawing a ship in, or a latch still settling, holds rails warp back. A docked pair goes onto the rails as one body (the follower rides the leader's orbit; a station always leads) and comes back latched (`DockingBubbleHandoff`).
 - **Saves.** Port state and latches are saved with the entity; the joints are rebuilt on load, so a docked ship stays docked.
-- **The game.** Every station in the starting scenario has its interior and ports; Highport is turned so its Small ports face the player. A freighter that comes into the bubble while sitting at a station is latched to a free Medium port there (`StationTraffic`) instead of appearing inside the hull. G arms the selected port and asks for clearance, H picks the next port, U undocks, and a readout shows how the port lines up with the nearest free port of its size. Trading needs the ship docked at the station with its clearance; `MacroSimulation.dockableStation`'s range check is no longer used for the player.
-- **Demo.** `demos/Docking demo.bat` (`gradlew :lwjgl3:runDockingDemo`) has six scenes: passive latch, active collar, station clearance, clearance refused, tearing loose, and a hub with a hauler berthed. P flies the approach until the magnets or collar take over.
-- **Not yet:** the `DockLink` portal between docked grids (walking, air and line of sight across), station crew and loaders, carrying cargo across, forcing doors, refit, and NPC freighters docking under their own power in the bubble.
+- **Walking and air across** (stage 2). When the weld forms, `DockLinks` pairs each opening tile of one port with the opening tile facing it on the other as an interior-grid `GridLink` (one per pair, so a Small dock has one link and a Large dock five). Each port door opens only if its own side agreed to the dock (`DockingPort.consented`: the port was armed, and for that craft if it was armed for one); a station that refused clearance keeps its door shut. While both doors are open, air moves between the two craft's rooms through the link and the avatar walks across (`CrewMovementSystem`); a linked edge never vents to space. Undocking, tearing loose or losing the weld removes the links and shuts both doors (a door torn away stays open, and that port vents). Links are runtime only and are rebuilt whenever the weld is, so they come back after a load or rails warp.
+- **The game.** Every station in the starting scenario has its interior and ports; Highport is turned so its Small ports face the player. A freighter that comes into the bubble while sitting at a station is latched to a free Medium port there (`StationTraffic`) instead of appearing inside the hull. G arms the selected port and asks for clearance, H picks the next port, U undocks, and a readout shows how the port lines up with the nearest free port of its size. In deck view the camera follows the avatar and draws every docked craft's deck, so the player can walk onto a station; U refuses to undock while the avatar is aboard the other craft. Trading needs the ship docked at the station with its clearance; `MacroSimulation.dockableStation`'s range check is no longer used for the player.
+- **Demo.** `demos/Docking demo.bat` (`gradlew :lwjgl3:runDockingDemo`) has seven scenes: passive latch, active collar, station clearance, clearance refused, tearing loose, a hub with a hauler berthed, and walking aboard a station. P flies the approach until the magnets or collar take over; V switches to deck view, where WASD walks the avatar and port doors show green open and red shut.
+- **Not yet:** AI crew planning paths across a link (only the avatar crosses today), line of sight, sound and fire across a link, station crew and loaders, carrying cargo across, forcing doors, refit, and NPC freighters docking under their own power in the bubble.
 
 ## Decisions on the Open Questions
 - **Ports per station type:** every station carries all three sizes, so any ship can berth. The outpost layout has one of each, the hub two of each. All station ports are active, so a station that grants clearance reaches out with its collar.
+- **Which door opens:** each side's own, by its own consent. A craft that armed its port (for anyone, or for this craft) opens its door; one that did not keeps it shut. So docking without clearance opens your door onto the station's shut one, and only forcing it (stage 4) gets you in.
+- **The collar space:** no compartment of its own. Each pair of opening tiles is linked door edge to door edge, and the doors are what holds the air; a torn-off collar shuts both doors unless a door was torn away too.
+- **Station crew:** moved to stage 3 with the loaders, since both need crew planning paths across a link.
 - **Hostile acts and faction standing:** deferred to stage 4, with forcing doors. Proposed default: each hostile act at a station costs standing with the station's faction, more for cutting a door than for prying or hacking it, and docking without clearance costs nothing by itself.
 
 ## Stages
 1. Station grids, docking ports, docking physics, clearance, the docked pair in rails warp, the demo. **Done.**
-2. `DockLink` and doors: the joined collar compartment, port doors opening for permitted craft, walking across, station crew.
-3. Carrying cargo: loaders and crew move market goods tile by tile; trades complete as units arrive.
+2. `DockLink` and doors: port doors opening for the sides that agreed, air and walking across, the demo's walk-aboard scene. **Done.**
+3. Carrying cargo: station crew, crew paths across a link, and loaders and crew moving market goods tile by tile; trades complete as units arrive.
 4. Forcing doors and hostile acts (pry, cut, hack) and faction standing.
 5. Refit and repair while docked.
 6. NPC freighters docking physically in the bubble under their own power.
@@ -89,7 +93,7 @@ The grid works in whole tiles, but each collar sticks out half a tile past the h
 
 - The collar is part of the port subsystem: its integrity, extension and magnet state live on the port, and its Box2D shape is an extra fixture half a tile deep on the hull side of the port's footprint (for active ports, a separate body on the spring joints until it locks).
 - Neither grid gets a tile for it. Once locked, a `DockLink` pairs the opening tiles of the two ports one to one, so pathfinding, line of sight and air treat each pair as neighbours across the link.
-- The joined collar space is one small compartment of its own (opening width × 1 tile) between the two port doors, so a torn collar vents just that space until the doors seal.
+- The joined collar space has no compartment of its own (see Decisions above): air moves straight from the room behind one door to the room behind the other, and only while both doors are open.
 - Fits the existing edge-wall and compartment model with the fewest grid changes. Cross-grid links are needed for cargo carrying anyway.
 
 Rejected alternatives: giving each port a full collar tile that overlaps its mate when docked (two copies of the same space), and spawning a bridge grid on docking (every system would have to handle a third grid that comes and goes).

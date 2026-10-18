@@ -58,8 +58,14 @@ public class DockingPort {
     /** The craft and port this one is latched to, while not {@link State#IDLE}. */
     public String partnerUuid;
     public int partnerPort = -1;
-    /** The other side gave docking clearance, so its port door will open to this craft. */
+    /** The other side gave docking clearance (both sides had armed for this dock). */
     public boolean permitted;
+    /**
+     * This port's own side agreed to the dock (it was armed, by its crew or for the other craft),
+     * so its door opens while latched. A port caught unarmed, or a station that refused
+     * clearance, keeps its door shut.
+     */
+    public boolean consented;
 
     /** How far the active collar is out now, meters. Runtime only. */
     public transient float extension;
@@ -103,6 +109,7 @@ public class DockingPort {
         partnerUuid = null;
         partnerPort = -1;
         permitted = false;
+        consented = false;
     }
 
     @Override

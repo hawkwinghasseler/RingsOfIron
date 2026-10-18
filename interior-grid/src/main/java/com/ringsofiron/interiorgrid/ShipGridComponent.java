@@ -45,6 +45,11 @@ public class ShipGridComponent implements Component {
     public final Array<Compartment> compartments = new Array<>();
     /** Air moving through every opening, from the last hazard tick. See {@link AirflowEdge}. */
     public final Array<AirflowEdge> airflow = new Array<>();
+    /**
+     * Passages from this grid's outer edges onto other craft's grids, while docked. See
+     * {@link GridLink}. Not saved: the docking code makes them again.
+     */
+    public final transient Array<GridLink> links = new Array<>();
     /** The ship's power circuits, rebuilt by {@link PowerRoutingSystem}. Not saved. */
     public final transient Array<PowerCircuit> circuits = new Array<>();
     /** The layout the compartments were last built from; null before the first build. */
@@ -151,6 +156,15 @@ public class ShipGridComponent implements Component {
         if (side == null) return null;
         if (inBounds(x, y)) return getEdge(x, y, side);
         return getEdge(nx, ny, side.opposite());
+    }
+
+    /** The link across the {@code side} edge of tile (x, y) onto another grid, or null. */
+    public GridLink linkAt(int x, int y, Side side) {
+        for (int i = 0; i < links.size; i++) {
+            GridLink l = links.get(i);
+            if (l.x == x && l.y == y && l.side == side) return l;
+        }
+        return null;
     }
 
     /** True if an intact, closed edge wall separates the two adjacent tiles. */

@@ -18,8 +18,17 @@ import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.ashley.core.Family;
 import com.hawkwing.RingsOfIron.game.DockingDemoScene;
+import com.hawkwing.RingsOfIron.game.PlayerDocking;
+import com.ringsofiron.aicrew.CrewMemberComponent;
+import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.interiorgrid.DockingPortLayout;
+import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
@@ -36,15 +45,23 @@ import java.nio.file.Paths;
  * game's own corvette, stations and keys. Run with {@code gradlew :lwjgl3:runDockingDemo}, or
  * {@code demos/Docking demo.bat} on Windows.
  *
- * <p>1-6 pick a scene, R restarts it. W/S thrust, A/D turn, Z/C strafe. G arms your docking port
+ * <p>1-7 pick a scene, R restarts it. W/S thrust, A/D turn, Z/C strafe. G arms your docking port
  * and asks a station for clearance (again to disarm), H picks the next port, U undocks, P flies
- * the approach for you until the magnets or the collar take over. Mouse wheel zooms, Esc quits.
+ * the approach for you until the magnets or the collar take over. V switches to deck view, where
+ * WASD walks your crew avatar (through an open port onto whatever you are docked with) and the
+ * view follows it. Mouse wheel zooms, Esc quits.
  *
  * <p>Drawn: hulls and deck plans, docking collars (yellow), port faces (green while armed, cyan
- * latched, red torn off), and the collar head of an active port while it is out (orange).
+ * latched, red torn off), the collar head of an active port while it is out (orange), port doors
+ * (green open, red shut) and crew (white, you in yellow).
  */
 public class DockingDemo extends ApplicationAdapter {
     private static final float PANEL_WIDTH = 430f;
+    /** Walking pace in deck view, tiles per second (as in the game). */
+    private static final float WALK_SPEED = 1f;
+    private static final float DECK_ZOOM = 0.3f;
+
+    private static final Family CREW = Family.all(CrewMemberComponent.class, GridPositionComponent.class).get();
 
     private final Path assetsDir;
     private DockingDemoScene demo;
@@ -95,10 +112,15 @@ public class DockingDemo extends ApplicationAdapter {
         demo.update(delta);
 
         Body ship = demo.world.docking.bodyOf(demo.player);
-        if (ship != null) {
+        Vector2 walker = demo.deckView ? demo.avatarWorld(tmp) : null;
+        if (walker != null) {
+            camera.position.set(walker.x, walker.y, 0f);
+        } else if (ship != null) {
             Vector2 p = PhysicsManager.getPosition(ship, tmp);
             camera.position.set(p.x, p.y, 0f);
         }
+        // Closer in on deck, to see the avatar walk
+        camera.zoom = walker != null ? DECK_ZOOM : 1f;
         camera.update();
         Gdx.gl.glClearColor(0.02f, 0.02f, 0.05f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -106,6 +128,7 @@ public class DockingDemo extends ApplicationAdapter {
         drawDecks();
         drawBodies();
         drawPorts();
+        drawDoorsAndCrew();
         drawPanel();
     }
 
@@ -116,12 +139,24 @@ public class DockingDemo extends ApplicationAdapter {
             if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i)) demo.load(scenes[i]);
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) demo.load(demo.scene);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.V)) demo.deckView = !demo.deckView;
 
         FlightControlComponent controls = demo.player.getComponent(FlightControlComponent.class);
+        PlayerAvatarComponent walker = demo.avatar.getComponent(PlayerAvatarComponent.class);
+        walker.moveX = 0f;
+        walker.moveY = 0f;
         if (controls != null) {
             controls.forward = 0f;
             controls.turn = 0f;
             controls.strafe = 0f;
+        }
+        if (demo.deckView) {
+            // In the deck's own axes, of whichever craft the avatar is aboard
+            if (Gdx.input.isKeyPressed(Input.Keys.W)) walker.moveY += WALK_SPEED;
+            if (Gdx.input.isKeyPressed(Input.Keys.S)) walker.moveY -= WALK_SPEED;
+            if (Gdx.input.isKeyPressed(Input.Keys.A)) walker.moveX -= WALK_SPEED;
+            if (Gdx.input.isKeyPressed(Input.Keys.D)) walker.moveX += WALK_SPEED;
+        } else if (controls != null) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.X)) controls.rotationAssist = !controls.rotationAssist;
             if (Gdx.input.isKeyPressed(Input.Keys.W)) controls.forward += 1f;
             if (Gdx.input.isKeyPressed(Input.Keys.S)) controls.forward -= 1f;
@@ -213,6 +248,46 @@ public class DockingDemo extends ApplicationAdapter {
         shapes.end();
     }
 
+    /** Every port door (green open, red shut) and every crew member (white; you in yellow). */
+    private void drawDoorsAndCrew() {
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        demo.world.physics.getWorld().getBodies(bodies);
+        for (Body body : bodies) {
+            Entity e = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
+            ShipGridComponent grid = e == null ? null : e.getComponent(ShipGridComponent.class);
+            if (grid == null || demo.world.docking.bodyOf(e) != body) continue;
+            float s = grid.tileSize;
+            for (int y = 0; y < grid.height; y++) {
+                for (int x = 0; x < grid.width; x++) {
+                    MountFootprint m = grid.getTile(x, y).mount;
+                    if (m == null || m.kind != MountFootprint.MountKind.PORT || !DockingPortLayout.isDoorTile(m, x, y)) continue;
+                    EdgeWall door = DockingPortLayout.door(grid, m, x, y);
+                    if (door == null) continue;
+                    Side side = DockingPortLayout.facing(m);
+                    shapes.setColor(door.blocks() ? Color.RED : Color.GREEN);
+                    Vector2 c = grid.tileToLocal(x, y);
+                    float ex = c.x + side.dx * s / 2f, ey = c.y + side.dy * s / 2f;
+                    float hx = side.dy * s * 0.45f, hy = side.dx * s * 0.45f;
+                    Vector2 a = world(body, ex - hx, ey - hy, new Vector2());
+                    Vector2 b = world(body, ex + hx, ey + hy, new Vector2());
+                    shapes.rectLine(a.x, a.y, b.x, b.y, 0.25f);
+                }
+            }
+        }
+        bodies.clear();
+        for (Entity crew : demo.world.engine.getEcsEngine().getEntitiesFor(CREW)) {
+            GridPositionComponent pos = crew.getComponent(GridPositionComponent.class);
+            ShipGridComponent grid = pos.ship == null ? null : pos.ship.getComponent(ShipGridComponent.class);
+            Body body = pos.ship == null ? null : demo.world.docking.bodyOf(pos.ship);
+            if (grid == null || body == null) continue;
+            Vector2 local = pos.toShipLocal(grid, new Vector2());
+            Vector2 at = world(body, local.x, local.y, local);
+            shapes.setColor(crew == demo.avatar ? Color.YELLOW : Color.WHITE);
+            shapes.circle(at.x, at.y, 0.3f * grid.tileSize, 12);
+        }
+        shapes.end();
+    }
+
     private static Vector2 world(Body body, float x, float y, Vector2 out) {
         Vector2 w = body.getWorldPoint(out.set(x * PhysicsManager.UNITS_PER_METER, y * PhysicsManager.UNITS_PER_METER));
         return out.set(w.x * PhysicsManager.METERS_PER_UNIT, w.y * PhysicsManager.METERS_PER_UNIT);
@@ -264,8 +339,15 @@ public class DockingDemo extends ApplicationAdapter {
             scenes.append(s.ordinal() + 1).append(' ').append(s.title).append("   ");
         }
         font.draw(batch, scenes.toString(), x, 44f);
+        if (demo.deckView) {
+            font.setColor(Color.YELLOW);
+            Entity aboard = demo.aboard();
+            font.draw(batch, "Deck view: WASD walks" + (aboard != null && aboard != demo.player
+                    ? ", you're aboard " + PlayerDocking.name(aboard) : "") + "  (V to fly)", x, y - 6f);
+            font.setColor(Color.GRAY);
+        }
         font.draw(batch, "W/S thrust  A/D turn  Z/C strafe  G arm port + clearance  H next port  U undock"
-                + "  P autopilot  R restart  wheel zoom  Esc quit", x, 24f);
+                + "  P autopilot  V deck view  R restart  wheel zoom  Esc quit", x, 24f);
         batch.end();
     }
 

@@ -6,7 +6,13 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
+import com.ringsofiron.aicrew.CrewFactory;
+import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.MountFootprint;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Side;
+import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
@@ -33,13 +39,15 @@ public class DockingDemoScene {
         ACTIVE("Active collar", "Your port has a telescoping collar. Arm it (G) within a few meters: it reaches out,"
                 + " catches the other port (armed or not), draws the ships together and locks."),
         CLEARANCE("Station clearance", "G asks the outpost for clearance. It arms its nearest free Small port for you"
-                + " and its own collar reaches out for your passive port."),
+                + " and its own collar reaches out for your passive port. Once locked, both port doors open (V: deck view)."),
         REFUSED("Clearance refused", "This outpost refuses clearance (G): its ports stay unarmed and its collar stays in."
-                + " Your own magnets can still latch on, but you are docked without leave and its market won't trade."),
+                + " Your own magnets can still latch on, but its port door stays shut and its market won't trade."),
         TEAR("Tearing loose", "Docked at the outpost. Hold W to pull away: past its break force the latch tears, the"
                 + " collars come off and the hull around both ports is damaged. U undocks cleanly instead."),
         HUB("Hub with traffic", "A hub has two ports of each size; a hauler is berthed at a Medium one. Ask for"
-                + " clearance (G) and dock at a Small port beside it.");
+                + " clearance (G) and dock at a Small port beside it."),
+        WALK("Walk aboard", "Docked at the outpost with clearance and both port doors open. Deck view (V) is on: walk"
+                + " (WASD) through the port onto the station and back; air moves between the two. U undocks once you're home.");
 
         public final String title;
         public final String help;
@@ -57,11 +65,15 @@ public class DockingDemoScene {
     public GameWorld world;
     public Scene scene;
     public Entity player;
+    /** The player's crew avatar, aboard the corvette just inside its port. */
+    public Entity avatar;
     /** The station or ship the scene is about. */
     public Entity target;
     public PlayerDocking docking;
     /** Flies the player's selected port in to the nearest free port of its size until the latch takes over. */
     public boolean autopilot;
+    /** Deck view: the keys walk {@link #avatar} instead of flying, and the screen follows it. */
+    public boolean deckView;
     private String notice = "";
     private final Vector2 tmp = new Vector2();
 
@@ -74,6 +86,7 @@ public class DockingDemoScene {
         dispose();
         scene = next;
         autopilot = false;
+        deckView = next == Scene.WALK;
         notice = next.help;
         world = new GameWorld();
         world.loadContent(assetsDir, assetsDir.resolve("no-mods-here"));
@@ -81,6 +94,8 @@ public class DockingDemoScene {
         player.add(new PlayerControllerComponent());
         FlightControlComponent controls = player.getComponent(FlightControlComponent.class);
         if (controls != null) controls.rotationAssist = true;
+        int[] home = insidePort(player, 0);
+        avatar = CrewFactory.spawnPlayer(world.crew, player, "You", home[0], home[1]);
         docking = new PlayerDocking(world, () -> player, message -> notice = message);
 
         switch (next) {
@@ -95,9 +110,11 @@ public class DockingDemoScene {
             case CLEARANCE:
             case REFUSED:
             case TEAR:
+            case WALK:
                 target = station("Outpost Kepler", "station_outpost", next != Scene.REFUSED);
-                park(player, 0, target, smallPort(target), next == Scene.TEAR ? 0f : 25f, 3f, 12f);
-                if (next == Scene.TEAR) world.docking.dockInPlace(player, 0, target, smallPort(target));
+                boolean docked = next == Scene.TEAR || next == Scene.WALK;
+                park(player, 0, target, smallPort(target), docked ? 0f : 25f, docked ? 0f : 3f, docked ? 0f : 12f);
+                if (docked) world.docking.dockInPlace(player, 0, target, smallPort(target));
                 break;
             case HUB:
                 target = station("Highport Hub", "station_hub", true);
@@ -117,6 +134,21 @@ public class DockingDemoScene {
     public void update(float delta) {
         if (autopilot) fly();
         world.update(delta);
+    }
+
+    /** The craft the avatar is aboard: the corvette, or whatever it walked onto. */
+    public Entity aboard() {
+        return avatar.getComponent(GridPositionComponent.class).ship;
+    }
+
+    /** Where the avatar stands, world meters; null if it is aboard nothing. */
+    public Vector2 avatarWorld(Vector2 out) {
+        GridPositionComponent pos = avatar.getComponent(GridPositionComponent.class);
+        ShipGridComponent grid = pos.ship == null ? null : pos.ship.getComponent(ShipGridComponent.class);
+        Body body = pos.ship == null ? null : world.docking.bodyOf(pos.ship);
+        if (grid == null || body == null) return null;
+        Vector2 w = body.getWorldPoint(pos.toShipLocal(grid, out).scl(PhysicsManager.UNITS_PER_METER));
+        return out.set(w.x * PhysicsManager.METERS_PER_UNIT, w.y * PhysicsManager.METERS_PER_UNIT);
     }
 
     public String notice() {
@@ -161,6 +193,26 @@ public class DockingDemoScene {
             if (ports[i].size == size) return i;
         }
         throw new IllegalStateException("no " + size + " port");
+    }
+
+    /** A floor tile just inside port {@code i}: the opening's middle, one tile past its inner end. */
+    static int[] insidePort(Entity ship, int i) {
+        DockingPort p = port(ship, i);
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        MountFootprint m = grid.getTile(p.gridX, p.gridY).mount;
+        Side out = DockingPortLayout.facing(m);
+        int[] door = null;
+        for (int y = m.originY; y < m.originY + m.height(); y++) {
+            for (int x = m.originX; x < m.originX + m.width(); x++) {
+                if (DockingPortLayout.isDoorTile(m, x, y) && (door == null || x + y < door[0] + door[1])) door = new int[]{x, y};
+            }
+        }
+        int along = DockingPortLayout.openingWidth(m) / 2, depth = DockingPortLayout.depth(m);
+        // Along the door row runs at right angles to the facing; step in past the port's depth
+        int x = door[0] + Math.abs(out.dy) * along - out.dx * depth;
+        int y = door[1] + Math.abs(out.dx) * along - out.dy * depth;
+        Tile t = grid.getTile(x, y);
+        return t != null && t.isOpen() ? new int[]{x, y} : door;
     }
 
     static DockingPort port(Entity e, int i) {

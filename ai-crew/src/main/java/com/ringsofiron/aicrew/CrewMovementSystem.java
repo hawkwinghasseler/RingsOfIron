@@ -6,7 +6,9 @@ import com.badlogic.gdx.math.MathUtils;
 import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
+import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Side;
 
 /**
  * Moves crew along their paths every sim tick: interpolates the float position toward the
@@ -16,7 +18,8 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
  * behavior tree re-plans.
  *
  * Unconscious and dead crew do not move; carried crew ride on their carrier's tile. The
- * player avatar moves from its input instead of a path.
+ * player avatar moves from its input instead of a path, and can walk through an open docked
+ * port onto the other craft ({@link GridLink}).
  */
 public class CrewMovementSystem extends FixedIteratingSystem {
 
@@ -37,6 +40,7 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             CrewMemberComponent c = service.crew(e);
             if (c.carriedBy == null) continue;
             GridPositionComponent p = service.position(e), cp = service.position(c.carriedBy);
+            if (p.ship != cp.ship) p.setShip(cp.ship);
             p.x = cp.x;
             p.y = cp.y;
         }
@@ -111,9 +115,32 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         // The tile the leading edge of the body would enter
         int ex = MathUtils.floor(nx + Math.signum(dx) * AVATAR_RADIUS);
         int ey = MathUtils.floor(ny + Math.signum(dy) * AVATAR_RADIUS);
-        if (dx != 0f && ex != cx && !nav.canStep(cx, cy, ex, cy)) nx = dx > 0 ? cx + 1 - AVATAR_RADIUS : cx + AVATAR_RADIUS;
-        if (dy != 0f && ey != cy && !nav.canStep(cx, cy, cx, ey)) ny = dy > 0 ? cy + 1 - AVATAR_RADIUS : cy + AVATAR_RADIUS;
+        GridLink link = null;
+        if (dx != 0f && ex != cx && !nav.canStep(cx, cy, ex, cy)) {
+            link = crossing(nav.grid, cx, cy, dx > 0 ? Side.RIGHT : Side.LEFT);
+            if (link == null) nx = dx > 0 ? cx + 1 - AVATAR_RADIUS : cx + AVATAR_RADIUS;
+        }
+        if (dy != 0f && ey != cy && !nav.canStep(cx, cy, cx, ey)) {
+            link = crossing(nav.grid, cx, cy, dy > 0 ? Side.TOP : Side.BOTTOM);
+            if (link == null) ny = dy > 0 ? cy + 1 - AVATAR_RADIUS : cy + AVATAR_RADIUS;
+        }
         p.x = nx;
         p.y = ny;
+        // Through a docked port: once the middle of the body is over the edge, it is aboard the other craft
+        if (link != null && (MathUtils.floor(nx) != cx || MathUtils.floor(ny) != cy)) {
+            link.carryAcross(nx, ny, across);
+            p.setShip(link.otherShip);
+            p.x = across[0];
+            p.y = across[1];
+        }
+    }
+
+    private final float[] across = new float[2];
+
+    /** The docking link out of tile (x, y) across its {@code side} edge, if it is open to walk through. */
+    private static GridLink crossing(ShipGridComponent grid, int x, int y, Side side) {
+        if (grid.links.size == 0 || grid.getTile(x + side.dx, y + side.dy) != null) return null;
+        GridLink link = grid.linkAt(x, y, side);
+        return link != null && link.canCross() ? link : null;
     }
 }

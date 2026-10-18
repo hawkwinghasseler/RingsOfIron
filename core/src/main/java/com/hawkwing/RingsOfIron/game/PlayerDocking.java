@@ -83,7 +83,10 @@ public class PlayerDocking {
     public String undock() {
         Entity player = ship.get();
         Entity from = player == null ? null : world.docking.dockedTo(player);
-        if (from == null || !world.docking.undock(player)) return "Not docked";
+        if (from == null) return "Not docked";
+        Entity aboard = world.avatar.getAvatarShip();
+        if (aboard != null && aboard != player) return "You're aboard " + name(aboard) + ": walk back to your ship first";
+        if (!world.docking.undock(player)) return "Not docked";
         return "Undocked from " + name(from);
     }
 
@@ -139,7 +142,8 @@ public class PlayerDocking {
         return p.size + (p.active ? " active" : " passive") + ", " + (p.intact() ? state : "collar torn off");
     }
 
-    static String name(Entity e) {
+    /** What the player calls a station or ship. */
+    public static String name(Entity e) {
         StationComponent s = e.getComponent(StationComponent.class);
         if (s != null && s.name != null) return s.name;
         FreighterComponent f = e.getComponent(FreighterComponent.class);

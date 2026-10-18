@@ -28,6 +28,7 @@ import com.badlogic.gdx.utils.IdentityMap;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.ringsofiron.coreengine.UuidRegistry;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.physicsexterior.CollisionCategories;
@@ -116,6 +117,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         float strainForce, strainTorque;
         /** Put {@link #a} straight onto {@link #b} at the latched pose before the first weld. */
         boolean snap;
+        /** The walkway between the two grids while welded; see {@link DockLinks}. */
+        final Array<GridLink> gridLinks = new Array<>();
 
         Link(Entity a, int portA, DockingPort pa, Entity b, int portB, DockingPort pb) {
             this.a = a;
@@ -295,6 +298,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         DockingPort pa = portsMapper.get(a).get(portA);
         DockingPort pb = portsMapper.get(b).get(portB);
         latchRecords(a, portA, pa, b, portB, pb, DockingPort.State.DOCKED, true);
+        pa.consented = true;
+        pb.consented = true;
         Link link = linkFor(a, portA, pa, b, portB, pb);
         link.snap = true;
     }
@@ -686,8 +691,15 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         pb.partnerPort = portA;
         pa.permitted = permitted;
         pb.permitted = permitted;
+        pa.consented = agreed(pa, b);
+        pb.consented = agreed(pb, a);
         pa.clearanceUntil = Double.NaN;
         pb.clearanceUntil = Double.NaN;
+    }
+
+    /** The port's own side wanted this dock: armed by its crew, or for the craft now docking. */
+    private boolean agreed(DockingPort p, Entity other) {
+        return p.armed && (p.armedFor == null || p.armedFor.equals(uuidOf(other)));
     }
 
     /** A saved latch: find its other half and hold it again. */
@@ -792,6 +804,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         link.rigid = true;
         link.strainForce = 0f;
         link.strainTorque = 0f;
+        ShipGridComponent ga = gridMapper.get(link.a), gb = gridMapper.get(link.b);
+        if (ga != null && gb != null) DockLinks.join(link, link.a, weld.bodyA, ga, link.b, weld.bodyB, gb);
     }
 
     /** Angle of b minus angle of a when the two ports are latched: the faces point at each other. In (-pi, pi]. */
@@ -886,6 +900,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     private void dropLink(Link link, boolean releasePorts) {
         destroyJoint(link.joint);
         link.joint = null;
+        DockLinks.unjoin(link, gridMapper.get(link.a), gridMapper.get(link.b), true);
         links.remove(link.pa);
         links.remove(link.pb);
         linkList.removeValue(link, true);
