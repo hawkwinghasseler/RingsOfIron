@@ -209,7 +209,7 @@ public class GameWorld implements Disposable {
         engine.addSystem(new AcousticOcclusionSystem(audio.getCatalog()));
         AudioUpdateSystem audioUpdate = new AudioUpdateSystem(audio);
         engine.addSystem(audioUpdate);
-        physics.collisions.add(new ImpactAudio(audio));
+        new ImpactAudio(audio).attach(physics);
         physics.worldShifts.add(audioUpdate.worldShiftListener());
 
         // Bubble bodies are saved as true states, never as live Box2D bodies.
