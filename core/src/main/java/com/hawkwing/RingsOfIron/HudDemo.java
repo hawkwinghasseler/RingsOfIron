@@ -51,6 +51,7 @@ import com.ringsofiron.uihud.minimap.TileShade;
 import com.ringsofiron.uihud.modding.ModTrustDialog;
 import com.ringsofiron.uihud.providers.InteractorProvider;
 import com.ringsofiron.uihud.providers.SimpleTargetingProvider;
+import com.ringsofiron.uihud.providers.TrafficMapProvider;
 
 import java.util.Arrays;
 
@@ -68,7 +69,8 @@ import java.util.Arrays;
  *   I J K L      - Walk your crew avatar around the deck
  *   E            - Use the console you are standing at (Esc closes it)
  *   F / B / H    - Start a fire / breach the hull / take a hit (watch the minimap)
- *   M            - Show the mod-script trust prompt with two sample mods
+ *   M            - Toggle the traffic map (sample stations and haulers)
+ *   O            - Show the mod-script trust prompt with two sample mods
  *   Mouse wheel  - Zoom
  *   R            - Reset
  *   ESC          - Exit (when no console is open)
@@ -184,6 +186,7 @@ public class HudDemo extends ApplicationAdapter {
         hud.setPhysics(physics);
         hud.setTargeting(targeting);
         hud.setInteractor(avatar);
+        hud.setTrafficMap(HudDemo::sampleTraffic);
         hud.getViewMode().setMode(ViewMode.EXTERIOR);
         avatar.reset();
     }
@@ -298,7 +301,7 @@ public class HudDemo extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.F)) startFire();
         if (Gdx.input.isKeyJustPressed(Input.Keys.B)) breachHull();
         if (Gdx.input.isKeyJustPressed(Input.Keys.H)) takeHit();
-        if (Gdx.input.isKeyJustPressed(Input.Keys.M)) showModPrompt();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.O)) showModPrompt();
 
         controls.clear();
         if (Gdx.input.isKeyPressed(Input.Keys.W)) controls.forward += 1f;
@@ -370,6 +373,39 @@ public class HudDemo extends ApplicationAdapter {
     }
 
     /** Asks about two made-up script mods. Called on the render thread, so it returns at once and the dialog answers later. */
+    /** Sample traffic for the [M] map: two stations and three haulers on circular orbits around Earth. */
+    private static void sampleTraffic(TrafficMapProvider.TrafficFrame out) {
+        double t = com.badlogic.gdx.utils.TimeUtils.millis() / 1000.0 * 60;   // a minute of orbit per second
+        out.frameName = "Earth";
+        out.frameRadius = 6_371e3;
+        out.time = t;
+        TrafficMapProvider.MapBody moon = out.addBody();
+        moon.name = "Moon";
+        moon.radius = 1_737e3;
+        place(moon, 384_400e3, 2.66e-6, t, 0.8);
+        sampleContact(out, TrafficMapProvider.ContactKind.STATION, "Highport", "", 6_771e3, 1.13e-3, t, 0);
+        sampleContact(out, TrafficMapProvider.ContactKind.STATION, "Deepwell Depot", "", 8_771e3, 7.7e-4, t, 2.5);
+        sampleContact(out, TrafficMapProvider.ContactKind.HAULER, "Hauler Kestrel", "to Deepwell Depot, 1.2 h", 7_600e3, 9.5e-4, t, 1.2);
+        sampleContact(out, TrafficMapProvider.ContactKind.HAULER, "Hauler 1", "docked at Deepwell Depot", 8_771e3, 7.7e-4, t, 2.5);
+        sampleContact(out, TrafficMapProvider.ContactKind.HAULER, "Hauler 2", "to Highport, 40 min", 8_000e3, 8.8e-4, t, 4.1);
+        sampleContact(out, TrafficMapProvider.ContactKind.PLAYER, "You", "", 6_771e3, 1.13e-3, t, -0.05);
+    }
+
+    private static void sampleContact(TrafficMapProvider.TrafficFrame out, TrafficMapProvider.ContactKind kind,
+                                      String name, String detail, double r, double w, double t, double phase) {
+        TrafficMapProvider.Contact c = out.addContact();
+        c.kind = kind;
+        c.name = name;
+        c.detail = detail;
+        c.x = r * Math.cos(w * t + phase);
+        c.y = r * Math.sin(w * t + phase);
+    }
+
+    private static void place(TrafficMapProvider.MapBody b, double r, double w, double t, double phase) {
+        b.x = r * Math.cos(w * t + phase);
+        b.y = r * Math.sin(w * t + phase);
+    }
+
     private void showModPrompt() {
         ModManifest a = new ModManifest();
         a.id = "better_raiders";

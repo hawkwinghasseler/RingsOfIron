@@ -50,7 +50,9 @@ To implement this module independently (mocking data providers):
 
 ![HUD demo](hud-demo.png)
 
-Run it with `gradlew :lwjgl3:runHudDemo` (or `HUD demo.bat`). Fly with W/S, A/D, Z/C; Tab cycles the target lock; V toggles exterior/interior view; I/J/K/L walk the avatar; E uses a console; M shows the mod-script prompt; F/B/H start a fire, breach the hull or take a hit so the minimap has something to show.
+![Traffic map in the game](traffic-map.png)
+
+Run it with `gradlew :lwjgl3:runHudDemo` (or `HUD demo.bat`). Fly with W/S, A/D, Z/C; Tab cycles the target lock; V toggles exterior/interior view; I/J/K/L walk the avatar; E uses a console; M opens the traffic map; O shows the mod-script prompt; F/B/H start a fire, breach the hull or take a hit so the minimap has something to show.
 
 Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. Call `addTo(engine)`, forward input to `getInputProcessor()`, and call `draw(delta)` after drawing the world.
 
@@ -62,7 +64,8 @@ Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. C
 | `InteractPromptSystem`, `ConsoleWindow` | "Press [E] to Access ..." within `INTERACT_RADIUS` tiles of an `InteractableConsoleComponent`; per-console layouts via `registerConsoleLayout` |
 | `FlightReadoutSystem` | Speed, heading, view mode, target range/closing/time-to-impact, orbit |
 | `ViewModeController` | EXTERIOR / INTERIOR view mode with change listeners |
-| `modding.ModTrustDialog` | modding-data's `ModTrustPolicy` as a dialog: asks before mod scripts run with full access; can remember the answer per mod set and version (M in the demo) |
+| `modding.ModTrustDialog` | modding-data's `ModTrustPolicy` as a dialog: asks before mod scripts run with full access; can remember the answer per mod set and version (O in the demo) |
+| `TrafficMap` | Full-screen map (M) of stations and haulers on rails around the body you orbit, with range rings; the wheel zooms toward you |
 
 ### Interfaces other modules fill in
 
@@ -71,5 +74,6 @@ These live in `com.ringsofiron.uihud.providers`. The adapters that implement the
 - `TargetingProvider` (combat-sys): locked target, lead point, time to impact. `SimpleTargetingProvider` is the stand-in.
 - `OrbitInfoProvider` (orbital-mechanics): body name, altitude, apoapsis, periapsis, period, impact warning.
 - `InteractorProvider` (ai-crew): the avatar's ship and fractional tile position.
+- `TrafficMapProvider` (macro-sim): the frame body, its moons, stations, haulers with a one-line status, and the player. The game fills it from `RailsModel.snapshot()` in `RailsTrafficMap`.
 - `ViewModeController.Listener`: the wiring layer bridges view-mode changes to audio-spatial's listener mode.
 - `UiHud.flashHullHit(tileX, tileY)`: call from combat-sys's hull-hit event to flash the hit on the minimap.

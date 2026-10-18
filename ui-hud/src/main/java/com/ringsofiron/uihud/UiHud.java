@@ -20,12 +20,14 @@ import com.ringsofiron.uihud.minimap.WireframeMinimap;
 import com.ringsofiron.uihud.providers.InteractorProvider;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
+import com.ringsofiron.uihud.providers.TrafficMapProvider;
 import com.ringsofiron.uihud.systems.FlightReadoutSystem;
 import com.ringsofiron.uihud.systems.HudRenderSystem;
 import com.ringsofiron.uihud.systems.InteractPromptSystem;
 import com.ringsofiron.uihud.systems.WireframeSyncSystem;
 import com.ringsofiron.uihud.widgets.AlertList;
 import com.ringsofiron.uihud.widgets.ConsoleWindow;
+import com.ringsofiron.uihud.widgets.TrafficMap;
 
 /**
  * Entry point to the ui-hud module: builds the Scene2D stage, the HUD widgets and the ECS
@@ -41,7 +43,8 @@ import com.ringsofiron.uihud.widgets.ConsoleWindow;
  *   // resize(): hud.resize(w, h)
  * </pre>
  *
- * Keys handled by the HUD: E use console, Esc close console, V toggle exterior/interior view.
+ * Keys handled by the HUD: E use console, Esc close console or map, V toggle exterior/interior view,
+ * M toggle the traffic map (mouse wheel zooms it while open).
  */
 public class UiHud implements Disposable {
     private final ViewportManager viewports;
@@ -54,6 +57,7 @@ public class UiHud implements Disposable {
     private final Table minimapPanel;
     private final ConsoleWindow consoleWindow;
     private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleLayouts = new ObjectMap<>();
+    private final TrafficMap trafficMap;
 
     private final HudRenderSystem hudRenderSystem;
     private final WireframeSyncSystem wireframeSyncSystem;
@@ -100,6 +104,11 @@ public class UiHud implements Disposable {
         promptRow.add(prompt);
         stage.addActor(promptRow);
 
+        trafficMap = new TrafficMap(skin);
+        trafficMap.setFillParent(true);
+        trafficMap.setVisible(false);
+        stage.addActor(trafficMap);
+
         consoleWindow = new ConsoleWindow(skin, () -> interactPromptSystem().setPromptsEnabled(true));
         stage.addActor(consoleWindow);
 
@@ -120,6 +129,13 @@ public class UiHud implements Disposable {
             public boolean keyDown(InputEvent event, int keycode) {
                 return handleKey(keycode);
             }
+
+            @Override
+            public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY) {
+                if (!trafficMap.isVisible()) return false;
+                trafficMap.zoom((float) Math.pow(1.25f, -amountY));
+                return true;
+            }
         });
     }
 
@@ -134,8 +150,15 @@ public class UiHud implements Disposable {
                 if (consoleWindow.isOpen()) return false;
                 return interactPromptSystem.interact();
             case Input.Keys.ESCAPE:
+                if (trafficMap.isVisible()) {
+                    setTrafficMapVisible(false);
+                    return true;
+                }
                 if (!consoleWindow.isOpen()) return false;
                 consoleWindow.close();
+                return true;
+            case Input.Keys.M:
+                setTrafficMapVisible(!trafficMap.isVisible());
                 return true;
             case Input.Keys.V:
                 viewMode.toggle();
@@ -186,6 +209,21 @@ public class UiHud implements Disposable {
     public void setInteractor(InteractorProvider interactor) {
         interactPromptSystem.setInteractor(interactor);
         wireframeSyncSystem.setInteractor(interactor);
+    }
+
+    /** Off-bubble traffic for the map view (M). Without one the map says there is no data. */
+    public void setTrafficMap(TrafficMapProvider provider) {
+        trafficMap.setProvider(provider);
+    }
+
+    public void setTrafficMapVisible(boolean visible) {
+        if (visible) trafficMap.refresh();
+        trafficMap.setVisible(visible);
+        if (visible) trafficMap.toFront();
+    }
+
+    public TrafficMap getTrafficMap() {
+        return trafficMap;
     }
 
     /** Briefly highlights a tile on the minimap, e.g. from combat-sys's hull-hit event. */
