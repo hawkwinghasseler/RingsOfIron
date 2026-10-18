@@ -57,8 +57,32 @@ public class WeaponMountComponent implements Component {
     public boolean onTarget;
     /** The hardpoint in the bubble frame last tick, local meters. Set by weapon control. */
     public final transient Vector2 muzzle = new Vector2();
-    /** Rounds fired. */
+    /** Rounds fired, or beam pulses started. */
     public int shotsFired;
+
+    /**
+     * Where the gunner's aim is off, radians, on top of each shot's jitter. A new target or a
+     * pause starts it fresh; each shot of a burst then walks it in by part of that shot's miss.
+     * For a beam it is the wander the gunner fights to hold the spot steady.
+     */
+    public float aimBias;
+    /** Whether {@link #aimBias} belongs to the current engagement. */
+    public transient boolean biasSet;
+    /** Seconds since the last shot. */
+    public float sinceShot = Float.MAX_VALUE;
+
+    /** Seconds left in the beam pulse now burning, 0 when off. */
+    public float beamTime;
+    /** Whether the beam burned this tick. Set by weapon control. */
+    public transient boolean beamOn;
+    /** Share of its power the beam got this tick, 0 to 1; it burns that much of its beam power. */
+    public transient float beamStrength = 1f;
+    /** World direction of the beam this tick, unit. Set by weapon control. */
+    public final transient Vector2 beamDir = new Vector2();
+    /** Where the beam ended this tick (a hull, or its full reach), local meters. Set by BeamSystem. */
+    public final transient Vector2 beamEnd = new Vector2();
+    /** What the beam touched last tick, to tell a new contact from a held one. Set by BeamSystem. */
+    public transient Entity beamContact;
 
     public WeaponMountComponent() {
     }

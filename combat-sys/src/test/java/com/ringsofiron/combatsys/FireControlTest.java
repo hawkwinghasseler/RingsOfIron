@@ -18,7 +18,11 @@ import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.defs.MissileDef;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.fire.Track;
+import com.ringsofiron.combatsys.defs.WeaponDef;
+import com.ringsofiron.combatsys.events.HullHitEvent;
+import com.ringsofiron.combatsys.events.ShotFiredEvent;
 import com.ringsofiron.combatsys.systems.BallisticsSystem;
+import com.ringsofiron.combatsys.systems.BeamSystem;
 import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
 import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
@@ -55,6 +59,7 @@ class FireControlTest {
     private SensorTrackingSystem sensors;
     private MissileGuidanceSystem missiles;
     private BallisticsSystem ballistics;
+    private WeaponControlSystem weaponControl;
 
     @BeforeAll
     static void loadNatives() {
@@ -72,10 +77,14 @@ class FireControlTest {
         sensors = new SensorTrackingSystem(physics, 7L);
         missiles = new MissileGuidanceSystem(physics, events, defs, ballistics, sensors);
         engine.addSystem(sensors);
-        engine.addSystem(new WeaponControlSystem(physics, events, defs, ballistics, missiles, sensors, 11L));
+        weaponControl = new WeaponControlSystem(physics, events, defs, ballistics, missiles, sensors, 11L);
+        engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
-        engine.addSystem(new ImpactResolutionSystem(physics, events, defs, ballistics, MaterialTable.createDefault(), 42L));
+        ImpactResolutionSystem impacts = new ImpactResolutionSystem(physics, events, defs, ballistics,
+                MaterialTable.createDefault(), 42L);
+        engine.addSystem(impacts);
+        engine.addSystem(new BeamSystem(physics, impacts));
     }
 
     @AfterEach
@@ -238,5 +247,126 @@ class FireControlTest {
         assertEquals(0f, BallisticsSystem.segmentCircle(0.5f, 0f, 5f, 0f, 1f));
         assertEquals(-1f, BallisticsSystem.segmentCircle(-5f, 2f, 5f, 2f, 1f));
         assertEquals(-1f, BallisticsSystem.segmentCircle(-5f, 0f, -3f, 0f, 1f), "stops short");
+    }
+
+    @Test
+    void aLaserBurnsIntoTheTargetsHull() {
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(1000, 0, 0, 0);
+        ship.getComponent(SensorComponent.class).lockedTarget = target;
+        WeaponMountComponent laser = arm(ship, "laser_mk1", 6f, 0f, 0f);
+        java.util.List<HullHitEvent.Outcome> hits = new java.util.ArrayList<>();
+        events.hullHits.add((s, hit) -> {
+            if (hit.ship == target && hit.beam) hits.add(hit.outcome);
+        });
+        boolean burned = false;
+        for (int i = 0; i < 4 * 60; i++) {
+            engine.update(DT);
+            burned |= laser.beamOn && laser.beamContact == target;
+        }
+        assertEquals(1, laser.shotsFired, "one pulse");
+        assertTrue(burned, "the beam touched the target's hull");
+        assertEquals(1000f - 8f, laser.beamEnd.x, 1f, "and stopped at it");
+        // 4 MW for 2.5 s is 10 MJ: more than one medium steel tile (8 MJ) holds, if the spot holds still.
+        assertTrue(hits.contains(HullHitEvent.Outcome.PENETRATED), "it burned through: " + hits);
+    }
+
+    @Test
+    void gunnersWalkABurstOntoTheTarget() {
+        // A dozen green gunners on fast guns at one stationary target: their first shots scatter
+        // with each one's opening bias; by the tenth shot each has walked it in.
+        WeaponDef gun = new WeaponDef();
+        gun.id = "test_gun";
+        gun.projectile = "autocannon_30mm";
+        gun.cooldown = 0.1f;
+        gun.slewRateDeg = 360f;
+        gun.spreadRad = 0.003f;
+        defs.add(gun);
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(2000, 0, 0, 0);
+        ship.getComponent(SensorComponent.class).lockedTarget = target;
+        int guns = 12;
+        java.util.Map<WeaponMountComponent, java.util.List<Float>> errors = new java.util.HashMap<>();
+        for (int i = 0; i < guns; i++) {
+            WeaponMountComponent m = arm(ship, "test_gun", 7f, 0f, 0f);
+            m.gunnerySkill = 0f;
+            errors.put(m, new java.util.ArrayList<>());
+        }
+        events.shots.add((s, shot) -> {
+            for (WeaponMountComponent m : ship.getComponent(WeaponsComponent.class).mounts) {
+                if (m.shotsFired == errors.get(m).size() + 1 && m.muzzle.dst2(shot.muzzlePoint) < 9f) {
+                    float bearing = (float) Math.atan2(-shot.muzzlePoint.y, 2000f - shot.muzzlePoint.x);
+                    errors.get(m).add(Math.abs(shot.direction.angleRad() - bearing));
+                    return;
+                }
+            }
+        });
+        run(4f);
+        float first = 0f, tenth = 0f;
+        for (java.util.List<Float> e : errors.values()) {
+            assertTrue(e.size() >= 10, "each gun fired a burst: " + e.size());
+            first += e.get(0) / guns;
+            tenth += e.get(9) / guns;
+        }
+        assertTrue(tenth < 0.5f * first, "walked in: first shots off by " + first + " rad, tenth by " + tenth);
+    }
+
+    @Test
+    void gunsFireOnlyOnThePowerTheyGet() {
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(1500, 0, 0, 0);
+        ship.getComponent(SensorComponent.class).lockedTarget = target;
+        WeaponMountComponent gun = arm(ship, "railgun_mk1", 6f, 0f, 0f);
+        WeaponMountComponent laser = arm(ship, "laser_mk1", 6f, 1f, 0f);
+        double shot = (double) gun.def.powerDraw * gun.def.cooldown;
+        // A store holding two railgun shots and no recharge; the laser gets half of what it asks.
+        double[] store = {2.5 * shot};
+        weaponControl.setPower(new com.ringsofiron.combatsys.WeaponPower() {
+            @Override
+            public boolean tryDraw(WeaponMountComponent mount, double joules) {
+                if (store[0] < joules) return false;
+                store[0] -= joules;
+                return true;
+            }
+
+            @Override
+            public double draw(WeaponMountComponent mount, double joules) {
+                return 0.5 * joules;
+            }
+        });
+        float[] burned = new float[1];
+        events.hullHits.add((s, hit) -> {
+            if (hit.beam) burned[0] += hit.energyAbsorbed;
+        });
+        run(10f);
+        assertEquals(2, gun.shotsFired, "two shots' worth of energy, two shots");
+        assertTrue(laser.shotsFired > 0);
+        assertEquals(0.5f, laser.beamStrength, 1e-6f, "the laser burns at the power it gets");
+    }
+
+    @Test
+    void aLightRammerHitsSofterThanAHeavyOne() {
+        boolean[] holed = new boolean[2];
+        float[] mass = {1f, 0f}; // a 1 kg rammer, then one of unknown mass (as heavy as the ship)
+        for (int i = 0; i < 2; i++) {
+            Entity ship = spawnShip(i * 100f, 0, 0, 0);
+            Entity rammer = new Entity();
+            engine.addEntity(rammer);
+            FastPassImpactEvent pass = new FastPassImpactEvent();
+            pass.transientEntity = rammer;
+            pass.target = ship;
+            pass.pointX = i * 100f - 8f;
+            pass.pointY = 0.5f;
+            pass.dirX = 1f;
+            pass.relativeSpeed = 3000f;
+            pass.normalX = -1f;
+            pass.transientMass = mass[i];
+            physics.fastPassImpacts.dispatch(pass);
+            run(0.1f);
+            holed[i] = ship.getComponent(ShipGridComponent.class).getTile(0, 2).isHullBreach();
+        }
+        // 1 kg at 3 km/s is 4.5 MJ, half of it a penetrator: less than a medium hull tile's 8 MJ.
+        assertTrue(!holed[0], "the medium hull stops a 1 kg rammer");
+        assertTrue(holed[1], "but not one as heavy as the ship");
     }
 }

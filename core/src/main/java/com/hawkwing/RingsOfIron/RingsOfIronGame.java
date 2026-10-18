@@ -43,6 +43,8 @@ import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.minimap.TileShade;
 import com.ringsofiron.combatsys.components.DecoyComponent;
 import com.ringsofiron.combatsys.components.MissileComponent;
+import com.ringsofiron.combatsys.components.WeaponMountComponent;
+import com.ringsofiron.combatsys.components.WeaponsComponent;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -52,11 +54,11 @@ import java.nio.file.Paths;
  * {@link GameScenario}. Run with {@code gradlew :lwjgl3:runGame}.
  *
  * <p>Controls, outside: W/S main engine, A/D turn, Z/C strafe, X rotation assist, Tab cycle
- * target, Space fire the guns (the turrets lead the locked target themselves), R launch a missile
- * at it, F drop a decoy, comma/period time warp down/up, mouse wheel zoom. Point defense shoots
- * down incoming missiles by itself. The raider fights back once you shoot at it. V switches to the deck view,
- * where WASD walks your character and E uses the console you stand at. F5 quick-saves, F9
- * loads the quick save. Esc quits.
+ * target, Space fire the guns and laser (the turrets lead the locked target themselves), R launch
+ * a missile at it, F drop a decoy, comma/period time warp down/up, mouse wheel zoom. Point defense
+ * shoots down incoming missiles by itself. The raider fights back once you shoot at it. V switches
+ * to the deck view, where WASD walks your character and E uses the console you stand at. F5
+ * quick-saves, F9 loads the quick save. Esc quits.
  */
 public class RingsOfIronGame extends ApplicationAdapter {
     private static final ComponentMapper<TransformComponent> TRANSFORMS = ComponentMapper.getFor(TransformComponent.class);
@@ -65,6 +67,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private static final ComponentMapper<MissileComponent> MISSILES = ComponentMapper.getFor(MissileComponent.class);
     private static final Family COMBAT_ROUNDS = Family.all(ProjectileComponent.class).get();
     private static final Family DECOYS = Family.all(DecoyComponent.class).get();
+    private static final Family ARMED = Family.all(WeaponsComponent.class).get();
     private static final float INTERIOR_VIEW = 40f;
     private static final float START_VIEW = 160f;
     private static final float STATUS_WIDTH = 420f;
@@ -254,9 +257,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         try {
             game.quickLoad(file);
-            // The load replaced the player's ship, so aim with the loaded one's guns.
+            // The loaded ship's own weapons; its sensor lock comes back with the save.
             gun = new PlayerGunnery(world, game.player);
-            gun.setTarget(game.nextContact(null));
+            if (gun.getTarget() == null) gun.setTarget(game.nextContact(null));
             hud.setTargeting(new CombatTargetingProvider(gun));
             show("Game loaded");
         } catch (RuntimeException e) {
@@ -291,8 +294,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     /**
      * Rounds as streaks along their last tick's flight, missiles as a nose line with a plume
-     * while they burn, decoys as small flares, and a fading ring where a warhead went off or a
-     * missile was shot down. Sizes scale with the zoom so they stay visible.
+     * while they burn, beams as lines from the gun to what they touch, decoys as small flares,
+     * and a fading ring where a warhead went off or a missile was shot down. Sizes scale with
+     * the zoom so they stay visible.
      */
     private void drawCombat(float delta) {
         float px = viewports.getViewMeters() / 400f;
@@ -318,6 +322,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 shapes.setColor(Color.ORANGE);
                 float plume = size * (1f + 2f * m.throttle);
                 shapes.line(p.pos.x - cos * size, p.pos.y - sin * size, p.pos.x - cos * plume, p.pos.y - sin * plume);
+            }
+        }
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(ARMED)) {
+            WeaponsComponent weapons = e.getComponent(WeaponsComponent.class);
+            for (WeaponMountComponent m : weapons.mounts) {
+                if (!m.beamOn) continue;
+                shapes.setColor(e == game.player ? Color.SKY : Color.MAGENTA);
+                shapes.line(m.muzzle.x, m.muzzle.y, m.beamEnd.x, m.beamEnd.y);
             }
         }
         shapes.setColor(Color.WHITE);
@@ -406,13 +418,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         font.draw(batch, "Target: " + (marker == null ? "none" : marker.label) + (gun.gunsReady() ? "" : "   (gun reloading)")
                 + (target == game.raider && game.raiderHostile() ? "   FIRING ON YOU" : ""), left, top - 20f);
         float reload = gun.missileReloadTime();
-        int incoming = 0;
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(COMBAT_ROUNDS)) {
-            MissileComponent m = MISSILES.get(e);
-            if (m != null && m.target == game.player) incoming++;
-        }
-        font.draw(batch, "Missile: " + (reload < 0f ? "offline" : reload > 0f ? String.format("%.0f s", reload) : "ready")
-                + (incoming > 0 ? "   MISSILES INBOUND: " + incoming : ""), left, top - 40f);
+        // Inbound missiles are ui-hud's missile warning.
+        font.draw(batch, "Missile: " + (reload < 0f ? "offline" : reload > 0f ? String.format("%.0f s", reload) : "ready"),
+                left, top - 40f);
         font.setColor(Color.LIGHT_GRAY);
         // Key hints sit to the right of the ship panel, which only shows outside
         Actor shipPanel = hud.getMinimapPanel();

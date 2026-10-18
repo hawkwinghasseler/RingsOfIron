@@ -11,6 +11,7 @@ import com.badlogic.gdx.math.RandomXS128;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.combatsys.CombatPhysics;
+import com.ringsofiron.combatsys.WeaponPower;
 import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.SignatureComponent;
@@ -32,13 +33,18 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
  * Turret fire control (combat-sys/Design.md 3.3). Per mount, per tick: pick what to engage, ask
  * {@link FiringSolutionSolver} for the lead on the ship's sensor track of it, slew the barrel
  * toward that within the firing arc, and fire when loaded, the weapon's system works, and the
- * barrel's pointing error at that range is inside the target. Gunnery skill sets aim jitter and
+ * barrel's pointing error at that range is inside the target, and the ship's power grid gives
+ * the shot its energy ({@link #setPower}). Gunnery skill sets aim jitter and
  * how long the gunner takes to engage a new target. Rounds inherit the hardpoint's velocity
  * (spin included) and push the ship back.
  *
+ * Gunners walk their bursts in: their aim opens with a skill-scaled bias, and each shot takes
+ * out part of the miss they saw on the last one.
+ *
  * Point-defense mounts pick their own target: the incoming missile their ship tracks that will
  * pass closest soonest. Launchers throw a missile at the target's track when loaded; guidance
- * takes it from there.
+ * takes it from there. Beams point straight at the track (light needs no lead) and burn for a
+ * pulse while the gunner fights to hold the spot steady; {@link BeamSystem} finds what they touch.
  *
  * Runs from {@link PhysicsManager.StepListener#beforeStep}, after {@link SensorTrackingSystem}.
  */
@@ -52,6 +58,16 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     public static final float PD_THREAT_MISS = 300f;
     /** Size assumed for a contact with no signature, meters. */
     private static final float DEFAULT_RADIUS = 5f;
+    /** A gunner's opening bias on a new target, in spreads (1 sigma) at gunnery skill 0.5. */
+    public static final float BIAS_SPREADS = 4f;
+    /** Share of the last shot's miss a green and a veteran gunner correct on the next. */
+    public static final float WALK_GREEN = 0.3f, WALK_VETERAN = 0.7f;
+    /** A pause longer than this, seconds (or three cooldowns), and the gunner starts over. */
+    public static final float BURST_GAP = 2f;
+    /** Reach of a beam whose data gives no max range, meters. */
+    public static final float DEFAULT_BEAM_RANGE = 3000f;
+    /** How fast a beam's wander changes, seconds. */
+    public static final float BEAM_WANDER_TIME = 0.5f;
 
     private final ComponentMapper<WeaponsComponent> weaponsMapper = ComponentMapper.getFor(WeaponsComponent.class);
     private final ComponentMapper<PhysicsBodyComponent> bodyMapper = ComponentMapper.getFor(PhysicsBodyComponent.class);
@@ -68,6 +84,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     private final SensorTrackingSystem sensors;
     private final RandomXS128 rng;
     private final FiringSolutionSolver solver = new FiringSolutionSolver();
+    private WeaponPower power;
     private ImmutableArray<Entity> ships;
 
     private final ShotFiredEvent shot = new ShotFiredEvent();
@@ -88,6 +105,17 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         this.missiles = missiles;
         this.sensors = sensors;
         this.rng = new RandomXS128(seed);
+    }
+
+    /** Where weapons draw their energy; null (the default) gives them all they want. */
+    public void setPower(WeaponPower power) {
+        this.power = power;
+    }
+
+    /** Takes the energy for one shot: {@code power_draw * cooldown}, all or nothing. */
+    private boolean powerShot(WeaponMountComponent mount) {
+        double joules = (double) mount.def.powerDraw * mount.def.cooldown;
+        return power == null || joules <= 0 || power.tryDraw(mount, joules);
     }
 
     @Override
@@ -139,9 +167,12 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         if (target != mount.lastTarget) {
             mount.engagedFor = 0f;
             mount.lastTarget = target;
+            mount.biasSet = false;
         }
         mount.engaged = target;
         mount.engagedFor += dt;
+        mount.sinceShot += dt;
+        mount.beamOn = false;
         Track track = sensor == null ? null : sensor.trackFor(target);
         boolean available = available(mount);
 
@@ -152,6 +183,11 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
 
         if (def.mount == WeaponDef.MountType.LAUNCHER) {
             launcher(ship, body, mount, target, track, available, bodyAngle);
+            mount.trigger = false;
+            return;
+        }
+        if (def.mount == WeaponDef.MountType.BEAM) {
+            beam(ship, mount, target, track, available, bodyAngle, dt);
             mount.trigger = false;
             return;
         }
@@ -187,10 +223,17 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
                 ? (onTarget || !mount.solution.valid)
                 : (mount.weaponsFree && onTarget && mount.engagedFor >= reactionTime(mount));
         mount.trigger = false;
-        if (!wantsFire || !available || mount.cooldown > 0f) return;
+        if (!wantsFire || !available || mount.cooldown > 0f || !powerShot(mount)) return;
 
-        float jitter = (float) rng.nextGaussian() * def.spreadRad * (1.5f - mount.gunnerySkill);
-        dir.set(MathUtils.cos(barrel + jitter), MathUtils.sin(barrel + jitter));
+        float green = 1.5f - MathUtils.clamp(mount.gunnerySkill, 0f, 1f);
+        if (!mount.biasSet || mount.sinceShot > Math.max(BURST_GAP, 3f * def.cooldown)) {
+            mount.aimBias = (float) rng.nextGaussian() * def.spreadRad * BIAS_SPREADS * green;
+            mount.biasSet = true;
+        }
+        float error = mount.aimBias + (float) rng.nextGaussian() * def.spreadRad * green;
+        // Burst walking: the gunner sees where this one goes and corrects part of it on the next.
+        mount.aimBias -= walkShare(mount) * error;
+        dir.set(MathUtils.cos(barrel + error), MathUtils.sin(barrel + error));
         float x = muzzle.x + dir.x * def.muzzleOffset, y = muzzle.y + dir.y * def.muzzleOffset;
         Entity e = ballistics.spawn(round, round.mass, x, y,
                 muzzleVel.x + dir.x * round.muzzleSpeed, muzzleVel.y + dir.y * round.muzzleSpeed, ship);
@@ -198,6 +241,63 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         float recoil = round.mass * round.muzzleSpeed;
         CombatPhysics.applyImpulseAt(body, -dir.x * recoil, -dir.y * recoil, muzzle.x, muzzle.y);
         fired(ship, mount, e, x, y);
+    }
+
+    /**
+     * A beam: aim straight at where the track says the target is now, start a pulse when the
+     * barrel is on it (or on the trigger), and keep burning for the pulse while the system works.
+     * The beam's own wander follows gunnery skill.
+     */
+    private void beam(Entity ship, WeaponMountComponent mount, Entity target, Track track, boolean available,
+                      float bodyAngle, float dt) {
+        WeaponDef def = mount.def;
+        mount.solution.invalidate();
+        float reach = def.maxRange > 0f ? def.maxRange : DEFAULT_BEAM_RANGE;
+        float dist = 0f;
+        if (track != null) {
+            track.positionAt(sensors.ageOf(track), estPos);
+            dir.set(estPos).sub(muzzle);
+            dist = dir.len();
+            if (dist > 1e-3f && dist <= reach) {
+                mount.solution.aimDir.set(dir).scl(1f / dist);
+                mount.solution.interceptPoint.set(estPos);
+                mount.solution.timeToImpact = 0f;
+                mount.solution.valid = true;
+            }
+        }
+        float want = mount.solution.valid ? mount.solution.aimDir.angleRad() - bodyAngle : mount.facing;
+        if (def.mount != WeaponDef.MountType.SPINAL) slew(mount, want, dt);
+        float barrel = bodyAngle + mount.aim;
+        boolean onTarget = mount.solution.valid
+                && Math.abs(wrap(barrel - mount.solution.aimDir.angleRad())) * dist < radiusOf(target);
+        mount.onTarget = onTarget;
+
+        if (!available) {
+            mount.beamTime = 0f;
+            return;
+        }
+        if (mount.beamTime <= 0f) {
+            boolean wantsFire = mount.trigger
+                    ? (onTarget || !mount.solution.valid)
+                    : (mount.weaponsFree && onTarget && mount.engagedFor >= reactionTime(mount));
+            if (!wantsFire || mount.cooldown > 0f) return;
+            mount.beamTime = def.beamDuration;
+            mount.aimBias = 0f;
+            dir.set(MathUtils.cos(barrel), MathUtils.sin(barrel));
+            fired(ship, mount, null, muzzle.x, muzzle.y);
+        }
+        // Holding a beam steady is a skill: its spot wanders, and a green gunner's wanders more.
+        float green = 1.5f - MathUtils.clamp(mount.gunnerySkill, 0f, 1f);
+        float k = Math.min(1f, dt / BEAM_WANDER_TIME);
+        mount.aimBias += -mount.aimBias * k
+                + (float) rng.nextGaussian() * def.spreadRad * green * (float) Math.sqrt(2f * k);
+        float a = barrel + mount.aimBias;
+        mount.beamDir.set(MathUtils.cos(a), MathUtils.sin(a));
+        // The beam burns as hard as the power it gets this tick.
+        double needed = (double) def.powerDraw * dt;
+        mount.beamStrength = power == null || needed <= 0 ? 1f : (float) (power.draw(mount, needed) / needed);
+        mount.beamOn = true;
+        mount.beamTime = Math.max(0f, mount.beamTime - dt);
     }
 
     private void launcher(Entity ship, Body body, WeaponMountComponent mount, Entity target, Track track,
@@ -218,7 +318,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         boolean wantsFire = mount.trigger
                 ? track != null
                 : (mount.weaponsFree && inRange && mount.engagedFor >= reactionTime(mount));
-        if (!wantsFire || !available || mount.cooldown > 0f) return;
+        if (!wantsFire || !available || mount.cooldown > 0f || !powerShot(mount)) return;
 
         // Throw it clear toward the target (or along the rail), within the launcher's arc.
         float want = track != null ? dir.set(estPos).sub(muzzle).angleRad() - bodyAngle : mount.facing;
@@ -236,6 +336,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     private void fired(Entity ship, WeaponMountComponent mount, Entity round, float x, float y) {
         mount.cooldown = mount.def.cooldown;
         mount.shotsFired++;
+        mount.sinceShot = 0f;
         shot.shooter = ship;
         shot.round = round;
         shot.weaponDefId = mount.def.id;
@@ -278,6 +379,11 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
             }
         }
         return best;
+    }
+
+    /** Share of the last shot's miss the gunner corrects on the next. */
+    static float walkShare(WeaponMountComponent mount) {
+        return MathUtils.lerp(WALK_GREEN, WALK_VETERAN, MathUtils.clamp(mount.gunnerySkill, 0f, 1f));
     }
 
     private float reactionTime(WeaponMountComponent mount) {
