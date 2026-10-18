@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.combatsys.defs.ProjectileDef;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
@@ -189,6 +190,23 @@ class GameWorldTest {
     }
 
     @Test
+    void modSoundEventsReachTheAudioCatalog() {
+        Path root = Paths.get(System.getProperty("user.dir")).getParent();
+        String modPath = "event:/mods/better_railguns/railgun";
+        GameWorld withContent = new GameWorld(new GameWorld.Modules());
+        try {
+            assertFalse(withContent.audio.getCatalog().contains(modPath));
+            ModContext ctx = withContent.loadContent(root.resolve("assets"), root.resolve("modding-data/examples/mods"));
+            assertFalse(ctx.report.hasErrors(), ctx.report.toString());
+            assertEquals(modPath, ctx.assets.getString("evt_railgun_fire"));
+            assertTrue(withContent.audio.getCatalog().contains(modPath), "the mod's sound plays with its own rules");
+            assertEquals(900f, withContent.audio.getCatalog().get(modPath).maxDistance);
+        } finally {
+            withContent.dispose();
+        }
+    }
+
+    @Test
     void shipInteriorsSurviveSaveAndLoad() {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         GameWorld withContent = new GameWorld();
@@ -234,7 +252,9 @@ class GameWorldTest {
             mount.subsystem = system;
             ship.add(weapons);
             withContent.update(FRAME);
-            new PlayerGunnery(withContent.ballistics, withContent.combatDefs, null).fire(ship);
+            // A round in flight at save time; rounds are transient and stay out of the save.
+            ProjectileDef round = withContent.combatDefs.projectiles.values().iterator().next();
+            withContent.ballistics.spawn(round, round.mass, 20f, 0f, round.muzzleSpeed, 0f, ship);
             withContent.update(FRAME);
             String save = withContent.engine.getSerializationService().saveGame();
 

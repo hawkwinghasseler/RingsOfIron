@@ -114,6 +114,7 @@ public class SerializationService {
                 for (Component component : entity.getComponents()) {
                     if (skipped.contains(component.getClass())) continue;
                     checkNoRawEntityFields(component.getClass());
+                    checkNoNestedEntities(component, component.getClass().getName(), 0);
                     json.writeValue(component.getClass().getName(), component, component.getClass());
                 }
                 json.writeObjectEnd();
@@ -240,5 +241,57 @@ public class SerializationService {
             }
         }
         checkedTypes.add(type);
+    }
+
+    /** How deep {@link #checkNoNestedEntities} follows nested objects. */
+    private static final int MAX_NESTING = 8;
+
+    /**
+     * The same rule for objects held inside a component (an {@code Array<Track>}, a nested
+     * struct): Json would follow a raw Entity in any of them. Checks live values, since a
+     * collection's element type is erased. Types with a registered serializer write themselves
+     * and are not checked.
+     */
+    private void checkNoNestedEntities(Object value, String path, int depth) {
+        if (value == null || depth > MAX_NESTING) return;
+        if (value instanceof Entity) {
+            throw new SerializationException(path
+                + " is a raw Entity; reference entities with EntityRef, or mark the field transient");
+        }
+        Class<?> type = value.getClass();
+        if (type.isPrimitive() || type.isEnum() || value instanceof CharSequence || value instanceof Number
+            || value instanceof Boolean || value instanceof Character || value instanceof EntityRef) return;
+        if (type.isArray()) {
+            if (type.getComponentType().isPrimitive()) return;
+            Object[] items = (Object[]) value;
+            for (int i = 0; i < items.length; i++) checkNoNestedEntities(items[i], path + "[" + i + "]", depth + 1);
+            return;
+        }
+        if (value instanceof Iterable) {
+            int i = 0;
+            for (Object item : (Iterable<?>) value) checkNoNestedEntities(item, path + "[" + i++ + "]", depth + 1);
+            return;
+        }
+        if (value instanceof java.util.Map) {
+            for (Object item : ((java.util.Map<?, ?>) value).values()) checkNoNestedEntities(item, path + "[]", depth + 1);
+            return;
+        }
+        if (json.getSerializer(type) != null) return;
+        String name = type.getName();
+        if (name.startsWith("java.") || name.startsWith("javax.")) return;
+        for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
+            for (Field field : c.getDeclaredFields()) {
+                int mods = field.getModifiers();
+                if (Modifier.isStatic(mods) || Modifier.isTransient(mods) || field.getType().isPrimitive()) continue;
+                Object fieldValue;
+                try {
+                    field.setAccessible(true);
+                    fieldValue = field.get(value);
+                } catch (ReflectiveOperationException | RuntimeException e) {
+                    continue;
+                }
+                checkNoNestedEntities(fieldValue, path + "." + field.getName(), depth + 1);
+            }
+        }
     }
 }

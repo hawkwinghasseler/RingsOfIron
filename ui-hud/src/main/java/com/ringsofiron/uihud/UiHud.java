@@ -107,7 +107,8 @@ public class UiHud implements Disposable {
         orbitPanel.add(orbitMap).row();
         orbitPanel.add(orbitCaption).left().width(orbitMap.getPrefWidth());
         orbitCaption.setWrap(true);
-        root.add(orbitPanel).bottom().right().pad(10f);
+        // Raised clear of the game's key hint line, which runs right of the ship panel.
+        root.add(orbitPanel).bottom().right().pad(10f).padBottom(36f);
 
         Label prompt = new Label("", skin, "prompt");
         Table promptRow = new Table();
@@ -245,6 +246,11 @@ public class UiHud implements Disposable {
 
     public Skin getSkin() {
         return skin;
+    }
+
+    /** The ship panel at the bottom left (hidden in interior view), for laying out around it. */
+    public Table getMinimapPanel() {
+        return minimapPanel;
     }
 
     public WireframeMinimap getMinimap() {

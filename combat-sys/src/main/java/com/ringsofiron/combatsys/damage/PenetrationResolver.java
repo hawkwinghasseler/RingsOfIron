@@ -7,6 +7,7 @@ import com.badlogic.gdx.math.RandomXS128;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.IntArray;
+import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.defs.DamageType;
 import com.ringsofiron.combatsys.defs.Fuse;
 import com.ringsofiron.combatsys.defs.SpallDef;
@@ -56,12 +57,14 @@ public class PenetrationResolver {
     public static final float CREW_BLAST_LETHAL = 2e6f;
     /** Machinery share of a system's hardness that one tile of it can absorb from a single ray. */
     public static final float SUBSYSTEM_TILE_SHARE = 0.25f;
-    /** Below this health a system stops working; at 0 it is destroyed. */
-    public static final float DISABLE_THRESHOLD = 0.3f;
+    /** Below this health a system stops working; at 0 it is destroyed. interior-grid owns the value. */
+    public static final float DISABLE_THRESHOLD = SubsystemComponent.DISABLE_THRESHOLD;
     /** Edge walls are thin: this share of a full tile's hit points and armor. */
     public static final float EDGE_WALL_FRACTION = 0.25f;
     /** How far outside the impact point the traversal starts, tiles (section 5.2 step 3). */
     public static final float START_OUTSIDE_TILES = 1.5f;
+    /** Share of the heat a beam puts into a wall that reaches the open tile behind it, for fires. */
+    public static final float BEAM_HEAT_SOAK = 0.1f;
 
     /** Joules to destroy a whole system of each type. */
     public static float subsystemHardness(SubsystemComponent.SubsystemType type) {
@@ -115,7 +118,8 @@ public class PenetrationResolver {
     private static final ComponentMapper<SubsystemComponent> subsystemMapper =
             ComponentMapper.getFor(SubsystemComponent.class);
 
-    private final MaterialTable materials;
+    private MaterialTable materials;
+    private CombatDefs defs;
     private CrewDamageBridge crew;
 
     // Per-call state (one call at a time).
@@ -137,6 +141,28 @@ public class PenetrationResolver {
 
     public MaterialTable getMaterials() {
         return materials;
+    }
+
+    /** Swaps in another material table, such as the one loaded from data. */
+    public void setMaterials(MaterialTable materials) {
+        this.materials = materials;
+    }
+
+    /**
+     * Where each material's fire chance and ablation factor come from. Null (the default) treats
+     * every material as non-flammable plain steel.
+     */
+    public void setDefs(CombatDefs defs) {
+        this.defs = defs;
+    }
+
+    private float materialFireChance(String material) {
+        return defs == null ? 0f : defs.fireChance(material);
+    }
+
+    private float ablationFactor(String material) {
+        float f = defs == null ? 1f : defs.ablationFactor(material);
+        return f > 0f ? f : 1f;
     }
 
     // ------------------------------------------------------------------
@@ -209,6 +235,162 @@ public class PenetrationResolver {
         absorbed += runSecondaries(DamageType.EXPLOSIVE);
         end();
         return absorbed;
+    }
+
+    /** One tick of a beam on a ship. */
+    public static class BurnResult {
+        /** Whether the beam put energy into anything inside the grid. */
+        public boolean touched;
+        /** First tile the beam burned this tick, or -1. */
+        public int tileX = -1, tileY = -1;
+        /** Energy the ship took, J. */
+        public float absorbed;
+        /** A wall or hull tile gave way this tick. */
+        public boolean burnedThrough;
+
+        void reset() {
+            touched = burnedThrough = false;
+            tileX = tileY = -1;
+            absorbed = 0f;
+        }
+    }
+
+    /**
+     * A beam holding on the hull for one tick (section 5.6). {@code energy} J go into the first
+     * intact thing along the line, scaled by its material's {@code ablation_factor}: a wall
+     * loses {@code energy * ablation / (hitPoints + armor)} of its integrity, with no armor
+     * strip, so armor only slows a beam. Energy left over once a tile gives way burns on into
+     * the next one; holes and open air let it through, and machinery or a person stops it. Heat
+     * soaking through a wall can light the open tile behind it. Energy that leaves the far side
+     * is lost.
+     *
+     * @param localPoint where the beam meets the hull, body-local meters
+     * @param localDir   beam direction, body-local, unit
+     */
+    public BurnResult burn(ShipGridComponent grid, Entity ship, Vector2 localPoint, Vector2 localDir, float energy,
+                           RandomXS128 rng, DamageReport report, final BurnResult out) {
+        begin(grid, ship, rng, report);
+        out.reset();
+        if (energy <= 0f) {
+            end();
+            return out;
+        }
+        final float dirX = localDir.x, dirY = localDir.y;
+        float ex = (localPoint.x - grid.gridOriginLocal.x) / grid.tileSize;
+        float ey = (localPoint.y - grid.gridOriginLocal.y) / grid.tileSize;
+        final float[] left = {energy};
+        final float[] heat = {0f};
+        final boolean[] entered = {false};
+        float maxT = grid.width + grid.height + 2f * START_OUTSIDE_TILES + 2f;
+        GridRayTraversal.traverse(ex - dirX * START_OUTSIDE_TILES, ey - dirY * START_OUTSIDE_TILES, dirX, dirY, maxT,
+                new GridRayTraversal.Visitor() {
+                    @Override
+                    public boolean tile(int x, int y, float tEnter, float tExit) {
+                        Tile tile = PenetrationResolver.this.grid.getTile(x, y);
+                        if (tile == null || tile.isVoid()) return !entered[0];
+                        entered[0] = true;
+                        if (tile.isWall()) {
+                            if (tile.getIntegrity() <= 0f) return true;
+                            float took = burnWall(tile, x, y, left[0], out);
+                            left[0] -= took;
+                            heat[0] = took;
+                            return true;
+                        }
+                        if (heat[0] > 0f) {
+                            tryIgnite(tile, x, y, DamageType.ENERGY, heat[0] * BEAM_HEAT_SOAK / FLOOR_RESISTANCE);
+                            heat[0] = 0f;
+                        }
+                        if (left[0] <= 0f) return false;
+                        if (burnContents(tile, x, y, left[0], out)) {
+                            left[0] = 0f;
+                            return false;
+                        }
+                        return true;
+                    }
+
+                    @Override
+                    public boolean edge(int fromX, int fromY, int toX, int toY, float t) {
+                        if (!entered[0] || left[0] <= 0f) return left[0] > 0f || heat[0] > 0f;
+                        EdgeWall wall = PenetrationResolver.this.grid.getEdgeBetween(fromX, fromY, toX, toY);
+                        if (wall == null || !wall.blocks()) return true;
+                        MaterialTable.ClassStats stats = materials.get(wall.material, wall.weightClass);
+                        float hardness = (stats.hitPoints + stats.armor) * EDGE_WALL_FRACTION;
+                        float ablation = ablationFactor(wall.material);
+                        float took = Math.min(left[0], hardness * wall.integrity / ablation);
+                        wall.integrity = Math.max(0f, wall.integrity - took * ablation / hardness);
+                        left[0] -= took;
+                        heat[0] = took;
+                        touch(out, fromX, fromY, took);
+                        if (wall.isDestroyed()) {
+                            out.burnedThrough = true;
+                            if (report != null) report.structureChanged = true;
+                        }
+                        return true;
+                    }
+                });
+        end();
+        return out;
+    }
+
+    /** Burns into an intact wall tile. Returns the energy it took. */
+    private float burnWall(Tile tile, int x, int y, float energy, BurnResult out) {
+        if (energy <= 0f) return 0f;
+        MaterialTable.ClassStats stats = materials.get(tile.material, tile.weightClass);
+        float hardness = stats.hitPoints + stats.armor;
+        float ablation = ablationFactor(tile.material);
+        float integrity = tile.getIntegrity();
+        float took = Math.min(energy, hardness * integrity / ablation);
+        boolean wasBreach = tile.isHullBreach();
+        damagePiece(tile, took * ablation / hardness);
+        touch(out, x, y, took);
+        if (tile.getIntegrity() <= 0f) {
+            tile.setIntegrity(0f);
+            out.burnedThrough = true;
+            if (!wasBreach && tile.isHullBreach()) addBreach(tile, x, y);
+            if (report != null) report.structureChanged = true;
+        }
+        return took;
+    }
+
+    /** A beam crossing an open tile. Returns true if machinery or a person there stopped it. */
+    private boolean burnContents(Tile tile, int x, int y, float energy, BurnResult out) {
+        Entity system = grid.subsystemAt(x, y);
+        SubsystemComponent sub = system == null ? null : subsystemMapper.get(system);
+        if (sub != null && !sub.isDestroyed()) {
+            damageSubsystem(system, sub, energy / subsystemHardness(sub.type), x, y);
+            touch(out, x, y, energy);
+            tryIgnite(tile, x, y, DamageType.ENERGY, energy / FLOOR_RESISTANCE);
+            return true;
+        }
+        if (crew != null) {
+            occupants.clear();
+            crew.occupantsAt(ship, x, y, occupants);
+            if (occupants.size > 0) {
+                injure(occupants.first(), energy / CREW_JOULES_PER_HP, HitCause.FIRE, x, y);
+                touch(out, x, y, energy);
+                tryIgnite(tile, x, y, DamageType.ENERGY, energy / FLOOR_RESISTANCE);
+                return true;
+            }
+        }
+        if (tile.isPowerConduit() && tile.getIntegrity() > 0f) {
+            // The beam crosses the deck and cuts any conduit in it.
+            damagePiece(tile, energy / CONDUIT_HIT_POINTS);
+            if (tile.getIntegrity() <= 0f) {
+                grid.gridDirty = true;
+                if (report != null) report.structureChanged = true;
+            }
+        }
+        return false;
+    }
+
+    private static void touch(BurnResult out, int x, int y, float energy) {
+        if (energy <= 0f) return;
+        if (!out.touched) {
+            out.touched = true;
+            out.tileX = x;
+            out.tileY = y;
+        }
+        out.absorbed += energy;
     }
 
     private void begin(ShipGridComponent grid, Entity ship, RandomXS128 rng, DamageReport report) {
@@ -534,10 +716,13 @@ public class PenetrationResolver {
         }
     }
 
-    /** Lights a flammable tile with chance {@code fireChance(type) * intensity}, intensity clamped to 1. */
+    /**
+     * Lights a flammable tile with chance {@code (fireChance(type) + material fire_chance) * intensity},
+     * intensity clamped to 1.
+     */
     private void tryIgnite(Tile tile, int x, int y, DamageType type, float intensity) {
         if (!tile.isFlammable() || tile.isBurning()) return;
-        float chance = type.fireChance() * Math.min(1f, intensity);
+        float chance = (type.fireChance() + materialFireChance(tile.material)) * Math.min(1f, intensity);
         if (chance <= 0f || rng.nextFloat() >= chance) return;
         if (tile.ignite() && report != null) report.fires.add(pack(x, y));
     }

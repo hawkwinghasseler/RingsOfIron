@@ -2,8 +2,11 @@ package com.hawkwing.RingsOfIron;
 
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.Family;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.InputMultiplexer;
@@ -20,6 +23,7 @@ import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
+import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
@@ -38,7 +42,10 @@ import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.minimap.TileShade;
-import com.ringsofiron.uihud.providers.SimpleTargetingProvider;
+import com.ringsofiron.combatsys.components.DecoyComponent;
+import com.ringsofiron.combatsys.components.MissileComponent;
+import com.ringsofiron.combatsys.components.WeaponMountComponent;
+import com.ringsofiron.combatsys.components.WeaponsComponent;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -47,9 +54,12 @@ import java.nio.file.Paths;
  * The game: every module running together through {@link GameWorld}, starting from
  * {@link GameScenario}. Run with {@code gradlew :lwjgl3:runGame}.
  *
- * <p>Controls, outside: W/S main engine, A/D turn, Z/C strafe, X rotation assist, Space fire,
- * Tab cycle target, comma/period time warp down/up, mouse wheel zoom. V switches to the deck view,
- * where WASD walks your character and E uses the console you stand at. Esc quits.
+ * <p>Controls, outside: W/S main engine, A/D turn, Z/C strafe, X rotation assist, Tab cycle
+ * target, Space fire the guns and laser (the turrets lead the locked target themselves), R launch
+ * a missile at it, F drop a decoy, comma/period time warp down/up, mouse wheel zoom. Point defense
+ * shoots down incoming missiles by itself. The raider fights back once you shoot at it. V switches
+ * to the deck view, where WASD walks your character and E uses the console you stand at. F5
+ * quick-saves, F9 loads the quick save. Esc quits.
  *
  * <p>Burn planner, shown on the orbit map: N plans a burn, B selects the next one, Up/Down add
  * prograde/retrograde delta-v, Left/Right radial in/out, [ and ] move it along the orbit (Shift for
@@ -59,6 +69,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private static final ComponentMapper<TransformComponent> TRANSFORMS = ComponentMapper.getFor(TransformComponent.class);
     private static final ComponentMapper<HudMarkerComponent> MARKERS = ComponentMapper.getFor(HudMarkerComponent.class);
     private static final ComponentMapper<ProjectileComponent> PROJECTILES = ComponentMapper.getFor(ProjectileComponent.class);
+    private static final ComponentMapper<MissileComponent> MISSILES = ComponentMapper.getFor(MissileComponent.class);
+    private static final Family COMBAT_ROUNDS = Family.all(ProjectileComponent.class).get();
+    private static final Family DECOYS = Family.all(DecoyComponent.class).get();
+    private static final Family ARMED = Family.all(WeaponsComponent.class).get();
     private static final float INTERIOR_VIEW = 40f;
     private static final float START_VIEW = 160f;
     private static final float STATUS_WIDTH = 420f;
@@ -73,7 +87,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private UiHud hud;
     private ViewportManager viewports;
     private PlayerGunnery gun;
-    private SimpleTargetingProvider targeting;
+    /** Flashes for warheads and missiles shot down: {x, y, age}. */
+    private final Array<float[]> explosions = new Array<>();
 
     private ShapeRenderer shapes;
     private SpriteBatch batch;
@@ -114,10 +129,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
         game = GameScenario.start(world, assetsDir, modsDir);
         gameHud = new GameHud(world, hud);
 
-        gun = new PlayerGunnery(world.ballistics, world.combatDefs, null);
-        targeting = new SimpleTargetingProvider(game.player, gun.muzzleSpeed());
-        targeting.setTarget(game.nextContact(null));
-        hud.setTargeting(targeting);
+        gun = new PlayerGunnery(world, game.player);
+        gun.setTarget(game.nextContact(null));
+        hud.setTargeting(new CombatTargetingProvider(gun));
+        world.combatEvents.intercepts.add((signal, hit) -> {
+            if (hit.destroyed && hit.missile != null) explosions.add(new float[]{hit.point.x, hit.point.y, 0f});
+        });
+        world.combatEvents.detonations.add((signal, boom) ->
+                explosions.add(new float[]{boom.worldPoint.x, boom.worldPoint.y, 0f}));
 
         hud.getViewMode().addListener((previous, current) -> {
             if (previous == current) return;
@@ -172,9 +191,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private void handleInput(float delta) {
         boolean consoleOpen = hud.getConsoleWindow().isOpen();
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !consoleOpen) Gdx.app.exit();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F9)) quickLoad();
         if (world.getCrash() != null) return;
         if (Gdx.input.isKeyJustPressed(Input.Keys.PERIOD)) warp(1);
         if (Gdx.input.isKeyJustPressed(Input.Keys.COMMA)) warp(-1);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F5)) quickSave();
 
         FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
         PlayerAvatarComponent walker = game.avatar == null ? null : game.avatar.getComponent(PlayerAvatarComponent.class);
@@ -206,9 +227,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (Gdx.input.isKeyPressed(Input.Keys.Z)) controls.strafe += 1f;
             if (Gdx.input.isKeyPressed(Input.Keys.C)) controls.strafe -= 1f;
         }
-        if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) gun.fire(game.player);
+        if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) gun.fireGuns();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.R) && !gun.launchMissile()) {
+            show(gun.getTarget() == null ? "No target for the missile" : "Launcher reloading");
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F) && gun.dropDecoy()) show("Decoy away");
         planBurns();
-        if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) targeting.setTarget(game.nextContact(targeting.getLockedTarget()));
+        if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) gun.setTarget(game.nextContact(gun.getTarget()));
     }
 
     private void planBurns() {
@@ -245,7 +270,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 0f, h / 2f - 10f, w, com.badlogic.gdx.utils.Align.center, false);
         font.getData().setScale(1f);
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, "Esc quits", 0f, h / 2f - 50f, w, com.badlogic.gdx.utils.Align.center, false);
+        font.draw(batch, "F9 loads the quick save   Esc quits", 0f, h / 2f - 50f, w, com.badlogic.gdx.utils.Align.center, false);
         batch.end();
     }
 
@@ -253,6 +278,40 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (!world.timeWarp.step(direction)) {
             String reason = world.engine.getRailsWarpBlockedReason();
             show("Time warp refused" + (reason == null ? "" : ": " + reason));
+        }
+    }
+
+    private FileHandle quickSaveFile() {
+        return Gdx.files.local("saves/quicksave.json");
+    }
+
+    private void quickSave() {
+        try {
+            String refused = game.quickSave(quickSaveFile());
+            show(refused == null ? "Game saved" : "Can't save: " + refused);
+        } catch (RuntimeException e) {
+            Gdx.app.error("RingsOfIron", "Save failed", e);
+            show("Save failed; see the log");
+        }
+    }
+
+    private void quickLoad() {
+        FileHandle file = quickSaveFile();
+        if (!file.exists()) {
+            show("No quick save yet (F5 saves)");
+            return;
+        }
+        try {
+            game.quickLoad(file);
+            world.clearCrash();
+            // The loaded ship's own weapons; its sensor lock comes back with the save.
+            gun = new PlayerGunnery(world, game.player);
+            if (gun.getTarget() == null) gun.setTarget(game.nextContact(null));
+            hud.setTargeting(new CombatTargetingProvider(gun));
+            show("Game loaded");
+        } catch (RuntimeException e) {
+            Gdx.app.error("RingsOfIron", "Load failed", e);
+            show("Load failed; see the log");
         }
     }
 
@@ -277,6 +336,66 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         shapes.end();
         bodies.clear();
+        drawCombat(Gdx.graphics.getDeltaTime());
+    }
+
+    /**
+     * Rounds as streaks along their last tick's flight, missiles as a nose line with a plume
+     * while they burn, beams as lines from the gun to what they touch, decoys as small flares,
+     * and a fading ring where a warhead went off or a missile was shot down. Sizes scale with
+     * the zoom so they stay visible.
+     */
+    private void drawCombat(float delta) {
+        float px = viewports.getViewMeters() / 400f;
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(COMBAT_ROUNDS)) {
+            ProjectileComponent p = PROJECTILES.get(e);
+            MissileComponent m = MISSILES.get(e);
+            if (m == null) {
+                shapes.setColor(p.owner == game.player ? Color.YELLOW : Color.ORANGE);
+                // A streak at least a few pixels long, behind the round.
+                tmp.set(p.pos).sub(p.prevPos);
+                float len = tmp.len();
+                if (len < 3f * px) tmp.setLength(3f * px);
+                shapes.line(p.pos.x - tmp.x, p.pos.y - tmp.y, p.pos.x, p.pos.y);
+                continue;
+            }
+            float size = Math.max(m.def.hitRadius * 3f, 6f * px);
+            float cos = (float) Math.cos(m.heading), sin = (float) Math.sin(m.heading);
+            shapes.setColor(m.launcher == game.player ? Color.CYAN : Color.RED);
+            shapes.line(p.pos.x - cos * size, p.pos.y - sin * size, p.pos.x + cos * size, p.pos.y + sin * size);
+            if (m.throttle > 0f) {
+                shapes.setColor(Color.ORANGE);
+                float plume = size * (1f + 2f * m.throttle);
+                shapes.line(p.pos.x - cos * size, p.pos.y - sin * size, p.pos.x - cos * plume, p.pos.y - sin * plume);
+            }
+        }
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(ARMED)) {
+            WeaponsComponent weapons = e.getComponent(WeaponsComponent.class);
+            for (WeaponMountComponent m : weapons.mounts) {
+                if (!m.beamOn) continue;
+                shapes.setColor(e == game.player ? Color.SKY : Color.MAGENTA);
+                shapes.line(m.muzzle.x, m.muzzle.y, m.beamEnd.x, m.beamEnd.y);
+            }
+        }
+        shapes.setColor(Color.WHITE);
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(DECOYS)) {
+            DecoyComponent d = e.getComponent(DecoyComponent.class);
+            shapes.circle(d.pos.x, d.pos.y, Math.max(1f, 3f * px), 8);
+        }
+        for (int i = explosions.size - 1; i >= 0; i--) {
+            float[] x = explosions.get(i);
+            x[2] += delta;
+            if (x[2] > 1f) {
+                explosions.removeIndex(i);
+                continue;
+            }
+            shapes.setColor(1f, 0.6f, 0.2f, 1f - x[2]);
+            shapes.circle(x[0], x[1], Math.max(5f, 20f * px) * (0.3f + x[2]), 20);
+        }
+        shapes.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     private void drawFixture(Body body, Shape shape) {
@@ -341,18 +460,25 @@ public class RingsOfIronGame extends ApplicationAdapter {
         font.draw(batch, String.format("Day %d  %02d:%02d:%02d    Warp %dx%s", (long) (t / 86400),
                 (long) (t / 3600) % 24, (long) (t / 60) % 60, (long) t % 60, warp.getWarp(),
                 warp.isRailsWarp() ? " (rails)" : ""), left, top);
-        Entity target = targeting.getLockedTarget();
+        Entity target = gun.getTarget();
         HudMarkerComponent marker = target == null ? null : MARKERS.get(target);
-        font.draw(batch, "Target: " + (marker == null ? "none" : marker.label) + (gun.ready() ? "" : "   (reloading)"),
-                left, top - 20f);
+        font.draw(batch, "Target: " + (marker == null ? "none" : marker.label) + (gun.gunsReady() ? "" : "   (gun reloading)")
+                + (target == game.raider && game.raiderHostile() ? "   FIRING ON YOU" : ""), left, top - 20f);
+        float reload = gun.missileReloadTime();
+        // Inbound missiles are ui-hud's missile warning.
+        font.draw(batch, "Missile: " + (reload < 0f ? "offline" : reload > 0f ? String.format("%.0f s", reload) : "ready"),
+                left, top - 40f);
         font.setColor(Color.LIGHT_GRAY);
+        // Key hints sit to the right of the ship panel, which only shows outside
+        Actor shipPanel = hud.getMinimapPanel();
+        float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
         font.draw(batch, hud.getViewMode().getMode() == ViewMode.INTERIOR
-                ? "WASD walk   E use console   V outside view   Esc quit"
-                : "W/S thrust  A/D turn  Z/C strafe  Space fire  Tab target  , . warp  V deck view  Esc quit",
-                10f, 24f);
+                ? "WASD walk   E use console   V outside view   F5 save  F9 load   Esc quit"
+                : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  F5 save  F9 load  Esc quit",
+                hintX, 24f);
         if (notice != null && noticeTime > 0f) {
             font.setColor(Color.ORANGE);
-            font.draw(batch, notice, left, top - 40f);
+            font.draw(batch, notice, left, top - 60f);
         }
         batch.end();
     }

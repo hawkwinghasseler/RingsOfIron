@@ -78,6 +78,11 @@ public class OrbitalRailsModel implements RailsModel {
     }
 
     @Override
+    public void addImpactListener(ImpactListener listener) {
+        events.impacts.add((signal, event) -> listener.onImpact(event.entityUuid, event.time));
+    }
+
+    @Override
     public double muOf(String bodyUuid) {
         CelestialBodyComponent c = bodies.get(require(bodyUuid));
         if (c == null) throw new IllegalArgumentException("Not a massive body: " + bodyUuid);
@@ -181,7 +186,8 @@ public class OrbitalRailsModel implements RailsModel {
             entries.add(new RailsSnapshot.Entry(e.getComponent(UuidComponent.class).id, o.parentUuid,
                     new KeplerTrajectory(o.getOrbit())));
         }
-        return new RailsSnapshot(now[0], entries);
+        // The universe's clock: the game's in GameWorld, this model's own clock when standalone.
+        return new RailsSnapshot(universe.now(), entries);
     }
 
     private OrbitComponent orbit(String uuid) {

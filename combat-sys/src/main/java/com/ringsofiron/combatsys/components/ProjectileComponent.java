@@ -31,4 +31,6 @@ public class ProjectileComponent implements Component {
      * Used by fragments, which carry a fixed share of a warhead.
      */
     public float penetration = -1f;
+    /** Hit, expired or shot down this tick; waiting to leave the engine. */
+    public transient boolean spent;
 }

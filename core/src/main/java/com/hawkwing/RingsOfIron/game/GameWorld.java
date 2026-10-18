@@ -11,13 +11,20 @@ import com.ringsofiron.aicrew.pilot.NpcPilotSystem;
 import com.ringsofiron.aicrew.pilot.PilotReference;
 import com.ringsofiron.audiospatial.AudioManager;
 import com.ringsofiron.audiospatial.ImpactAudio;
+import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
+import com.ringsofiron.audiospatial.backend.SoundEventDef;
 import com.ringsofiron.audiospatial.systems.AcousticOcclusionSystem;
 import com.ringsofiron.audiospatial.systems.AudioUpdateSystem;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.save.CombatSaveParticipant;
 import com.ringsofiron.combatsys.events.CombatEvents;
+import com.ringsofiron.combatsys.modding.ShipWeaponsAssembler;
 import com.ringsofiron.combatsys.systems.BallisticsSystem;
+import com.ringsofiron.combatsys.systems.BeamSystem;
 import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
+import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
+import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
+import com.ringsofiron.combatsys.systems.WeaponControlSystem;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
@@ -39,6 +46,7 @@ import com.ringsofiron.moddingdata.ModTrustPolicy;
 import com.ringsofiron.moddingdata.ModdingBootstrap;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.events.OrbitalEvent;
+import com.ringsofiron.moddingdata.defs.SoundEventData;
 import com.ringsofiron.orbital.events.OrbitalEventQueue;
 import com.ringsofiron.orbital.events.OrbitalEventSystem;
 import com.ringsofiron.orbital.rails.RailsUniverse;
@@ -70,7 +78,9 @@ import java.util.function.Consumer;
  * <p>Wired today: core-engine, physics-exterior, orbital-mechanics (rails, events, time warp),
  * interior-grid (hazards, power, life support, rails-warp guard, saves, ships' interiors and mass
  * from data), ai-crew (crew AI and the NPC
- * pilot), combat-sys (ballistics and impact damage, hurting crew through ai-crew), audio-spatial
+ * pilot), combat-sys (sensor tracks, turret fire control, missiles and
+ * point defense, ballistics and impact damage, hurting crew through ai-crew; ships get their
+ * weapons from their hardpoints), audio-spatial
  * (sound, occlusion, listener on the player), modding-data (data and mod loading through
  * {@link #loadContent}, ships get Box2D bodies from their defs), macro-sim (economy, freighter
  * traffic and bubble transitions on GameWorld's rails, NPCs entering the bubble flown by ai-crew's
@@ -108,9 +118,17 @@ public class GameWorld implements Disposable {
     public final MacroSimulation macroSim;
     public final CrewService crew;
     public final CombatEvents combatEvents;
-    /** Weapon, projectile, missile and warhead tables; data from {@link #loadContent} is merged in. */
+    /** Weapon, projectile, missile, warhead and material tables; data from {@link #loadContent} is merged in. */
     public final CombatDefs combatDefs;
     public final BallisticsSystem ballistics;
+    public final SensorTrackingSystem sensors;
+    public final WeaponControlSystem weaponControl;
+    /** Flies missiles and decoys; launch and drop them through it. */
+    public final MissileGuidanceSystem missiles;
+    /** Resolves hits; damage uses the loaded material data once {@link #loadContent} has run. */
+    public final ImpactResolutionSystem impacts;
+    /** Finds what each burning beam touches and burns it. */
+    public final BeamSystem beams;
     public final AudioManager audio;
     public final AvatarInteractor avatar;
     public final AudioListenerSync audioListener;
@@ -127,6 +145,7 @@ public class GameWorld implements Disposable {
             this.time = time;
         }
     }
+    public final EngineAudio engineAudio;
 
     private final ImmutableArray<Entity> players;
     private final OrbitalAnchorBridge anchorBridge;
@@ -212,21 +231,37 @@ public class GameWorld implements Disposable {
         combatEvents = new CombatEvents();
         combatDefs = CombatDefs.createDefault();
         ballistics = new BallisticsSystem(physics, combatEvents);
+        // Rounds and missiles fall through the same tidal field as the Box2D bodies.
+        ballistics.setTidalField(physics.getTidalField()::accelAt);
         engine.getSerializationService().addParticipant(new CombatSaveParticipant(engine));
+        // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
+        // and hit, then hits resolve and beams burn. Their step listeners run in the order added here.
+        sensors = new SensorTrackingSystem(physics, modules.combatSeed + 1);
+        missiles = new MissileGuidanceSystem(physics, combatEvents, combatDefs, ballistics, sensors);
+        weaponControl = new WeaponControlSystem(physics, combatEvents, combatDefs, ballistics, missiles, sensors,
+                modules.combatSeed + 2);
+        engine.addSystem(sensors);
+        engine.addSystem(weaponControl);
+        engine.addSystem(missiles);
         engine.addSystem(ballistics);
-        ImpactResolutionSystem impacts = new ImpactResolutionSystem(physics, combatEvents, combatDefs, ballistics,
+        impacts = new ImpactResolutionSystem(physics, combatEvents, combatDefs, ballistics,
                 MaterialTable.createDefault(), modules.combatSeed);
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
         engine.addSystem(impacts);
+        beams = new BeamSystem(physics, impacts);
+        engine.addSystem(beams);
 
         // audio-spatial
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
         audioListener = new AudioListenerSync(this::getPlayer, avatar);
         engine.addSystem(audioListener);
-        engine.addSystem(new AcousticOcclusionSystem());
+        engineAudio = new EngineAudio(this::getPlayer);
+        engine.addSystem(engineAudio);
+        engine.addSystem(new AcousticOcclusionSystem(audio.getCatalog()));
         AudioUpdateSystem audioUpdate = new AudioUpdateSystem(audio);
         engine.addSystem(audioUpdate);
         physics.collisions.add(new ImpactAudio(audio));
+        CombatAudio.install(engine.getEcsEngine(), combatEvents, combatDefs, audio, this::getContent);
         physics.worldShifts.add(audioUpdate.worldShiftListener());
 
         // Bubble bodies are saved as true states, never as live Box2D bodies.
@@ -245,12 +280,27 @@ public class GameWorld implements Disposable {
         // The interior first: the physics assembler takes the ship's mass from its grid.
         bootstrap.beforeScripts(InteriorGridData::install);
         bootstrap.beforeScripts(ctx -> ShipPhysicsAssembler.register(ctx.factory, physics, gridMass(ctx)));
+        // Weapons after the interior: each hardpoint is wired to the nearest weapon system.
+        bootstrap.beforeScripts(ctx -> ShipWeaponsAssembler.register(ctx.factory, combatDefs));
         for (Consumer<ModContext> step : modules.contentRegistrations) bootstrap.beforeScripts(step);
         content = bootstrap.load(engine);
         mergeCombatDefs(CombatDefs.fromRegistry(content.defs));
+        // Armor and hull stats from data, the same table ship mass comes from.
+        if (content.defs.has("material", MaterialTable.DEFAULT_MATERIAL)) {
+            impacts.setMaterials(InteriorGridData.toMaterialTable(content.defs));
+        }
         DefRegistryCommodityCatalog economy = new DefRegistryCommodityCatalog(content.defs);
         if (!economy.commodities().isEmpty()) commodities.set(economy);
+        registerSounds(content, audio.getCatalog());
         return content;
+    }
+
+    /** Gives the audio backends playback rules for every {@code [sound_event.*]} in base data and mods. */
+    static void registerSounds(ModContext content, AudioEventCatalog catalog) {
+        for (SoundEventData s : content.defs.all(SoundEventData.class)) {
+            if (s.path == null || s.path.isEmpty()) continue; // reported by the def validator
+            catalog.register(new SoundEventDef(s.path, s.looping, s.duration, s.minDistance, s.maxDistance, s.volume));
+        }
     }
 
     /**
@@ -280,6 +330,11 @@ public class GameWorld implements Disposable {
     /** How the player's ship was lost, or null while it still flies. */
     public Crash getCrash() {
         return crash;
+    }
+
+    /** Lets the world run again, after loading a save from before the crash. */
+    public void clearCrash() {
+        crash = null;
     }
 
     /**
@@ -349,5 +404,6 @@ public class GameWorld implements Disposable {
         combatDefs.projectiles.putAll(loaded.projectiles);
         combatDefs.missiles.putAll(loaded.missiles);
         combatDefs.warheads.putAll(loaded.warheads);
+        combatDefs.materials.putAll(loaded.materials);
     }
 }

@@ -17,11 +17,13 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.combatsys.CombatPhysics;
 import com.ringsofiron.combatsys.TidalAccel;
+import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.combatsys.damage.SegmentShapeCast;
 import com.ringsofiron.combatsys.defs.ProjectileDef;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.events.ImpactEvent;
+import com.ringsofiron.combatsys.events.InterceptEvent;
 import com.ringsofiron.coreengine.components.TransientComponent;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -37,6 +39,10 @@ import com.ringsofiron.physicsexterior.events.WorldShiftEvent;
  * integrates the round through the coming step with semi-implicit Euler under the tidal field. That catches hits on fast-moving or spinning hulls that a
  * plain world-space ray would miss. Hits are queued on {@link CombatEvents#pendingImpacts}.
  *
+ * Missiles are rounds too (their {@code MissileComponent} adds guidance), and ordinary rounds
+ * are also swept against each missile's {@code hitRadius} in relative motion: that is point
+ * defense. A hit takes the round's relative energy off the missile's hit points.
+ *
  * Every round is on the raycast model for now. Slow defs that the design gives Box2D bullet
  * bodies fly the same way here; both models emit the same {@link ImpactEvent}.
  */
@@ -48,7 +54,10 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
     /** Broadphase padding for how far a ship may move in a tick, meters. */
     private static final float SHIP_MOTION_MARGIN = PhysicsManager.MAX_SPEED * PhysicsManager.TIME_STEP;
 
+    private static final Family MISSILES = Family.all(MissileComponent.class, ProjectileComponent.class).get();
+
     private final ComponentMapper<ProjectileComponent> projectileMapper = ComponentMapper.getFor(ProjectileComponent.class);
+    private final ComponentMapper<MissileComponent> missileMapper = ComponentMapper.getFor(MissileComponent.class);
 
     private final PhysicsManager physics;
     private final CombatEvents events;
@@ -57,6 +66,7 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
 
     private Engine engine;
     private ImmutableArray<Entity> projectiles;
+    private ImmutableArray<Entity> missiles;
     private final Array<Entity> doomed = new Array<>();
     private final ObjectMap<Body, float[]> previousPose = new ObjectMap<>();
     private final Array<Body> bodyBuffer = new Array<>();
@@ -96,6 +106,7 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
     public void addedToEngine(Engine engine) {
         this.engine = engine;
         projectiles = engine.getEntitiesFor(FAMILY);
+        missiles = engine.getEntitiesFor(MISSILES);
         physics.addStepListener(this);
         physics.worldShifts.add(shiftListener);
     }
@@ -138,10 +149,20 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
         events.tick++;
         clock += dt;
 
+        // The bodies are where the last step left them, so first test the segment every round
+        // flew during that step, then fly the survivors on through the step about to run. Two
+        // passes, so a point-defense round and the missile it meets are tested on the same step.
         for (int i = 0; i < projectiles.size(); i++) {
             Entity e = projectiles.get(i);
             ProjectileComponent p = projectileMapper.get(e);
-            if (step(e, p, dt)) doomed.add(e);
+            if (p.spent || e.isScheduledForRemoval()) continue;
+            if (sweep(e, p)) spend(e, p);
+        }
+        for (int i = 0; i < projectiles.size(); i++) {
+            Entity e = projectiles.get(i);
+            ProjectileComponent p = projectileMapper.get(e);
+            if (p.spent || e.isScheduledForRemoval()) continue;
+            if (step(p, dt)) spend(e, p);
         }
         for (int i = 0; i < doomed.size; i++) engine.removeEntity(doomed.get(i));
         doomed.clear();
@@ -149,12 +170,13 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
         recordPoses();
     }
 
-    /** Advances one round; returns true if it is done (hit, expired or left the bubble). */
-    private boolean step(Entity e, ProjectileComponent p, float dt) {
-        // The bodies are where the last step left them, so test the segment the round flew
-        // during that step first, then fly it on through the step about to run.
-        if (sweep(p)) return true;
+    private void spend(Entity e, ProjectileComponent p) {
+        p.spent = true;
+        doomed.add(e);
+    }
 
+    /** Flies one round through the coming step; returns true if it expired or left the bubble. */
+    private boolean step(ProjectileComponent p, float dt) {
         p.age += dt;
         tidal.accelAt(p.pos.x, p.pos.y, accel);
         p.prevPos.set(p.pos);
@@ -165,7 +187,7 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
     }
 
     /** Swept hit test from prevPos to pos. Queues an impact and returns true on a hit. */
-    private boolean sweep(final ProjectileComponent p) {
+    private boolean sweep(Entity self, final ProjectileComponent p) {
         float ax = p.prevPos.x, ay = p.prevPos.y, bx = p.pos.x, by = p.pos.y;
         float pad = SHIP_MOTION_MARGIN;
         float u = PhysicsManager.UNITS_PER_METER;
@@ -210,6 +232,26 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
                 }
             }
         }
+        // Point defense: a round (not a missile) against each missile's circle, in relative motion.
+        if (!missileMapper.has(self)) {
+            Entity struck = null;
+            for (int i = 0; i < missiles.size(); i++) {
+                Entity me = missiles.get(i);
+                ProjectileComponent mp = projectileMapper.get(me);
+                MissileComponent m = missileMapper.get(me);
+                if (mp == p || mp.spent || me.isScheduledForRemoval() || m.launcher == p.owner) continue;
+                float t = segmentCircle(ax - mp.prevPos.x, ay - mp.prevPos.y,
+                        bx - mp.pos.x, by - mp.pos.y, m.def.hitRadius);
+                if (t >= 0f && t < bestT) {
+                    bestT = t;
+                    struck = me;
+                }
+            }
+            if (struck != null) {
+                intercept(p, struck, bestT);
+                return true;
+            }
+        }
         if (bestBody == null) return false;
 
         // Hit point on the body's current pose, back in local meters.
@@ -233,6 +275,45 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
         hit.tick = events.tick;
         if (hit.target != null) events.pendingImpacts.add(hit);
         return true;
+    }
+
+    /**
+     * A round strikes a missile at fraction {@code t} of this step: its energy relative to the
+     * missile comes off the missile's hit points, and at zero the missile breaks up.
+     */
+    private void intercept(ProjectileComponent p, Entity missile, float t) {
+        ProjectileComponent mp = projectileMapper.get(missile);
+        MissileComponent m = missileMapper.get(missile);
+        tmp.set(p.vel).sub(mp.vel);
+        float energy = p.penetration >= 0f ? p.penetration
+                : 0.5f * p.mass * tmp.len2() * p.def.penetrationFactor;
+        m.hitPoints -= energy;
+        InterceptEvent hit = new InterceptEvent();
+        hit.missile = missile;
+        hit.shooter = p.owner;
+        hit.point.set(mp.prevPos).lerp(mp.pos, t);
+        hit.energy = energy;
+        hit.destroyed = m.hitPoints <= 0f;
+        hit.tick = events.tick;
+        if (hit.destroyed) spend(missile, mp);
+        events.intercepts.dispatch(hit);
+    }
+
+    /**
+     * Earliest fraction in [0, 1] at which the segment a-b enters the circle of radius r at the
+     * origin, 0 if it starts inside, or -1 if it misses.
+     */
+    public static float segmentCircle(float ax, float ay, float bx, float by, float r) {
+        float c = ax * ax + ay * ay - r * r;
+        if (c <= 0f) return 0f;
+        float dx = bx - ax, dy = by - ay;
+        float a = dx * dx + dy * dy;
+        if (a < 1e-12f) return -1f;
+        float b = ax * dx + ay * dy;
+        float disc = b * b - a * c;
+        if (disc < 0f) return -1f;
+        float t = (-b - (float) Math.sqrt(disc)) / a;
+        return t >= 0f && t <= 1f ? t : -1f;
     }
 
     private Transform previousOrNow(Body body) {
