@@ -108,6 +108,7 @@ public class Main extends ApplicationAdapter {
         engine = new Engine();
         engine.addSystem(new GridHazardSystem());
         engine.addSystem(new PowerRoutingSystem());
+        engine.addSystem(new LifeSupportSystem());
 
         buildShip();
     }
