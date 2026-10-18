@@ -146,6 +146,33 @@ public final class KeplerOrbit {
         return out.set(c * px - s * py, s * px + c * py, c * pvx - s * pvy, s * pvx + c * pvy);
     }
 
+    /**
+     * Eccentric anomaly (elliptic) or hyperbolic anomaly (hyperbolic) at time t. Together with
+     * {@link #positionAtAnomaly} this draws a conic evenly spaced along its shape rather than in
+     * time, so the tight curve near periapsis stays smooth on long, eccentric orbits.
+     */
+    public double anomalyAt(double t) {
+        double m = meanAnomalyAt(t);
+        return isElliptic() ? KeplerSolver.eccentricAnomaly(m, e) : KeplerSolver.hyperbolicAnomaly(m, e);
+    }
+
+    /** Parent-relative position at an eccentric (or hyperbolic) anomaly; the velocity is set to zero. */
+    public StateVector positionAtAnomaly(double anomaly, StateVector out) {
+        double px, py;
+        if (isElliptic()) {
+            px = a * (Math.cos(anomaly) - e);
+            py = a * Math.sqrt(1 - e * e) * Math.sin(anomaly);
+        } else {
+            double absA = -a;
+            px = absA * (e - Math.cosh(anomaly));
+            py = absA * Math.sqrt(e * e - 1) * Math.sinh(anomaly);
+        }
+        py *= direction;
+        double c = Math.cos(argPeriapsis);
+        double sn = Math.sin(argPeriapsis);
+        return out.set(c * px - sn * py, sn * px + c * py, 0, 0);
+    }
+
     /** Elements of the conic through {@code state} (parent-relative) at time t. */
     public static KeplerOrbit fromState(StateVector state, double mu, double t) {
         return fromState(state.x, state.y, state.vx, state.vy, mu, t);

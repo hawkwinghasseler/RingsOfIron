@@ -79,6 +79,20 @@ class KeplerOrbitTest {
         assertEquals(exact.vy, y[3], 1e-3);
     }
 
+    /** positionAtAnomaly(anomalyAt(t)) is the same point as stateAt(t), for every conic and direction. */
+    @ParameterizedTest
+    @CsvSource({"7.0e6, 0.0, 1", "2.0e7, 0.5, -1", "4.0e8, 0.99, 1", "-1.0e7, 1.5, -1"})
+    void anomalyMatchesStateAt(double a, double e, int direction) {
+        KeplerOrbit orbit = new KeplerOrbit(MU, a, e, 0.7, 0.3, 100, direction);
+        for (int i = 0; i < 50; i++) {
+            double t = 100 + i * 997.0;
+            StateVector s = orbit.stateAt(t);
+            StateVector p = orbit.positionAtAnomaly(orbit.anomalyAt(t), new StateVector());
+            assertEquals(s.x, p.x, 1e-6 * s.radius());
+            assertEquals(s.y, p.y, 1e-6 * s.radius());
+        }
+    }
+
     @Test
     void circularOrbitPeriod() {
         KeplerOrbit leo = KeplerOrbit.circular(MU, R_EARTH + 400e3, 0, 0, 1);
