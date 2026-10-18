@@ -23,7 +23,7 @@ import com.ringsofiron.physicsexterior.events.WorldShiftEvent;
 
 /**
  * Keeps the sound engine in step with the world each frame: places the listener, starts
- * emitters, moves their instances to their entities, passes on occlusion and pressure, and
+ * emitters, moves their instances to their entities, passes on occlusion, transmission and pressure, and
  * advances the backend. Stops and frees an emitter's sound when its entity or component goes.
  *
  * Positions are world (bubble) meters. In {@link AudioListenerComponent.Mode#EXTERIOR} the
@@ -133,6 +133,7 @@ public class AudioUpdateSystem extends EntitySystem implements EntityListener {
         inst.setPosition(tmp.x, tmp.y);
         inst.setVelocity(vx, vy);
         inst.setParameter(AudioParameters.OCCLUSION, em.occlusion);
+        inst.setParameter(AudioParameters.TRANSMISSION, em.transmission);
         inst.setParameter(AudioParameters.PRESSURE, em.pressure);
         for (ObjectFloatMap.Entry<String> p : em.parameters) inst.setParameter(p.key, p.value);
 

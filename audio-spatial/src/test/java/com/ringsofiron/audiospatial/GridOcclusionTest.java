@@ -24,6 +24,9 @@ class GridOcclusionTest {
 
         for (EdgeWall w : wall) w.hasBulkhead = true; // open doors along the whole wall
         assertEquals(0, GridOcclusion.countWalls(g, 1, 1, 8, 1));
+        int[] openings = new int[1];
+        GridOcclusion.trace(g, 1, 1, 8, 1, openings);
+        assertEquals(1, openings[0], "threads one doorway");
         for (EdgeWall w : wall) w.bulkheadSealed = true;
         assertEquals(1, GridOcclusion.countWalls(g, 1, 1, 8, 1));
         for (EdgeWall w : wall) w.integrity = 0f; // blown out

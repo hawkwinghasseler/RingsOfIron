@@ -3,6 +3,7 @@ package com.ringsofiron.audiospatial.components;
 import com.badlogic.ashley.core.Component;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.ObjectFloatMap;
+import com.ringsofiron.audiospatial.SoundField;
 import com.ringsofiron.audiospatial.backend.AudioEventInstance;
 
 /**
@@ -34,10 +35,16 @@ public class AudioEmitterComponent implements Component {
 
     // Runtime state, written by the audio systems
     public transient AudioEventInstance instance;
-    /** Walls and closed doors between this emitter and the listener, last occlusion pass. */
+    /** Walls and sealed doors on the straight line to the listener, last occlusion pass. */
     public int wallCount;
-    /** 0 (clear) to 1 (fully muffled), last occlusion pass. */
+    /** 0 (bright) to 1 (fully muffled), last occlusion pass. */
     public float occlusion;
+    /** Volume through walls and rooms relative to an unobstructed sound, last occlusion pass. */
+    public float transmission = 1f;
+    /** Boundary loss on the route around through the rooms, dB, last occlusion pass. */
+    public float roomLossDb;
+    /** Cached room field for this emitter's tile; rebuilt when the emitter moves or the layout changes. */
+    public transient SoundField soundField;
     /** Air pressure the sound travels through, 0 to 1, last occlusion pass. */
     public float pressure = 1f;
     /** World position this frame. */

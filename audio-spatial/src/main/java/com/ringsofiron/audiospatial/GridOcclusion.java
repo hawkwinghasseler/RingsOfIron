@@ -30,22 +30,39 @@ public final class GridOcclusion {
         return e != null && e.blocks();
     }
 
-    /** Barriers met stepping orthogonally from (x, y) into (nx, ny). */
+    /** An open door in an intact wall: sound passes, but through a narrow opening. */
+    private static boolean edgeIsOpening(ShipGridComponent grid, int x, int y, int nx, int ny) {
+        EdgeWall e = grid.getEdgeBetween(x, y, nx, ny);
+        return e != null && !e.isDestroyed() && e.hasBulkhead && !e.bulkheadSealed;
+    }
+
+    /** Walls met stepping orthogonally from (x, y) into (nx, ny), times {@link #WALL}, plus openings. */
     private static int stepCost(ShipGridComponent grid, int x, int y, int nx, int ny) {
-        int cost = edgeBlocks(grid, x, y, nx, ny) ? 1 : 0;
-        if (isBarrier(grid, nx, ny) && !isBarrier(grid, x, y)) cost++;
+        int cost = edgeBlocks(grid, x, y, nx, ny) ? WALL : edgeIsOpening(grid, x, y, nx, ny) ? 1 : 0;
+        if (isBarrier(grid, nx, ny) && !isBarrier(grid, x, y)) cost += WALL;
         return cost;
     }
+
+    /** Weight of a wall against an opening in {@link #stepCost}, so routes minimise walls first. */
+    private static final int WALL = 1000;
 
     /**
      * The number of walls between tile (x0, y0) and tile (x1, y1). The start tile itself never
      * counts, so a sound mounted inside a wall is not muffled by that wall.
      */
     public static int countWalls(ShipGridComponent grid, int x0, int y0, int x1, int y1) {
+        return trace(grid, x0, y0, x1, y1, null);
+    }
+
+    /**
+     * As {@link #countWalls}, also counting the open doorways the line passes through into
+     * {@code openings[0]} when it is not null.
+     */
+    public static int trace(ShipGridComponent grid, int x0, int y0, int x1, int y1, int[] openings) {
         int dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
         int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
         int err = dx - dy;
-        int x = x0, y = y0, walls = 0;
+        int x = x0, y = y0, cost = 0;
         while (x != x1 || y != y1) {
             int e2 = 2 * err;
             boolean stepX = e2 > -dy, stepY = e2 < dx;
@@ -53,15 +70,16 @@ public final class GridOcclusion {
             if (stepX && stepY) {
                 int viaX = stepCost(grid, x, y, nx, y) + stepCost(grid, nx, y, nx, ny);
                 int viaY = stepCost(grid, x, y, x, ny) + stepCost(grid, x, ny, nx, ny);
-                walls += Math.min(viaX, viaY);
+                cost += Math.min(viaX, viaY);
             } else {
-                walls += stepCost(grid, x, y, nx, ny);
+                cost += stepCost(grid, x, y, nx, ny);
             }
             if (stepX) err -= dy;
             if (stepY) err += dx;
             x = nx;
             y = ny;
         }
-        return walls;
+        if (openings != null) openings[0] = cost % WALL;
+        return cost / WALL;
     }
 }

@@ -56,8 +56,9 @@ public class SimulatedInstance implements AudioEventInstance {
             if (!def.looping && elapsed >= def.duration) playing = false;
         }
         float occlusion = getParameter(AudioParameters.OCCLUSION, 0f);
+        float transmission = getParameter(AudioParameters.TRANSMISSION, 1f);
         float pressure = getParameter(AudioParameters.PRESSURE, 1f);
-        AcousticModel.mix(x - listenerX, y - listenerY, def, occlusion, pressure, mix);
+        AcousticModel.mix(x - listenerX, y - listenerY, def, occlusion, transmission, pressure, mix);
         mix.gain *= getParameter(AudioParameters.INTENSITY, 1f);
         if (!playing) mix.gain = 0f;
     }
