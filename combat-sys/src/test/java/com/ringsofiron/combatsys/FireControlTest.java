@@ -214,7 +214,7 @@ class FireControlTest {
         engine.addEntity(rammer);
         int[] hits = new int[1];
         events.hullHits.add((s, hit) -> {
-            if (hit.ship == ship) hits[0]++;
+            if (hit.ship == ship && hit.ram) hits[0]++;
         });
         FastPassImpactEvent pass = new FastPassImpactEvent();
         pass.transientEntity = rammer;
@@ -226,7 +226,7 @@ class FireControlTest {
         pass.normalX = -1f;
         physics.fastPassImpacts.dispatch(pass);
         run(0.1f);
-        assertEquals(1, hits[0], "the pass resolved as one hull hit");
+        assertEquals(1, hits[0], "the pass resolved as one hull hit, marked as a ram");
         assertTrue(ship.getComponent(ShipGridComponent.class).getTile(0, 2).isHullBreach(), "it holed the hull");
         assertEquals(0, engine.getEntitiesFor(Family.all(ProjectileComponent.class).get()).size(),
                 "the rammer is not put back in flight as a round");

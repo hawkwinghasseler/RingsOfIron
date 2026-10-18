@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 
 /**
  * Plays combat on the audio bus: each weapon's {@code sound} when it fires, a hull impact at
- * every hull hit (louder for harder hits) and at every warhead going off. A weapon's sound is an
+ * every hull hit by a round (louder for harder hits) and at every warhead going off. A weapon's sound is an
  * asset key from the {@code [audio_event]} table (such as {@code evt_railgun_fire}) or an event
  * path; a weapon with none plays {@link #DEFAULT_SHOT}, which the audio catalog plays with its
  * fallback one-shot.
@@ -31,8 +31,12 @@ public final class CombatAudio {
             String path = weapon == null ? null : eventPath(weapon.sound, content.get());
             if (path != null) audio.playOneShot(path, shot.muzzlePoint.x, shot.muzzlePoint.y);
         });
-        events.hullHits.add((signal, hit) -> audio.playOneShot(AudioEventCatalog.HULL_IMPACT,
-                hit.worldPoint.x, hit.worldPoint.y, Math.max(MIN_HIT_INTENSITY, hit.severity)));
+        events.hullHits.add((signal, hit) -> {
+            // Rams are heard through audio-spatial's own fast-pass listener.
+            if (hit.ram) return;
+            audio.playOneShot(AudioEventCatalog.HULL_IMPACT,
+                    hit.worldPoint.x, hit.worldPoint.y, Math.max(MIN_HIT_INTENSITY, hit.severity));
+        });
         events.detonations.add((signal, boom) -> audio.playOneShot(AudioEventCatalog.HULL_IMPACT,
                 boom.worldPoint.x, boom.worldPoint.y, 1f));
     }

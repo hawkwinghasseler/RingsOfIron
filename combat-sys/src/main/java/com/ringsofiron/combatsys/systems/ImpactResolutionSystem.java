@@ -300,6 +300,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         hullHit.outcome = outcome;
         hullHit.energyAbsorbed = absorbed;
         hullHit.severity = MathUtils.clamp(absorbed / SEVERITY_SCALE, 0f, 1f);
+        hullHit.ram = hit.ram;
         hullHit.tick = hit.tick;
         if (result.outcome != PenetrationResolver.Result.Outcome.MISSED) events.hullHits.dispatch(hullHit);
         if (!report.isEmpty()) events.damage.dispatch(report);
