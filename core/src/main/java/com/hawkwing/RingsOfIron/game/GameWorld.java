@@ -5,7 +5,6 @@ import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Disposable;
 import com.ringsofiron.coreengine.GameEngine;
-import com.ringsofiron.coreengine.SerializationService;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
 import com.ringsofiron.interiorgrid.LifeSupportSystem;
@@ -20,7 +19,7 @@ import com.ringsofiron.orbital.warp.BubbleHandoff;
 import com.ringsofiron.orbital.warp.EncounterPredictor;
 import com.ringsofiron.orbital.warp.TimeWarpController;
 import com.ringsofiron.physicsexterior.PhysicsManager;
-import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.physicsexterior.PhysicsSaveParticipant;
 import com.ringsofiron.physicsexterior.systems.FlightControlSystem;
 import com.ringsofiron.physicsexterior.systems.FloatingOriginSystem;
 import com.ringsofiron.physicsexterior.systems.PhysicsUpdateSystem;
@@ -94,9 +93,8 @@ public class GameWorld implements Disposable {
         engine.addSystem(new LifeSupportSystem());
         engine.addRailsWarpGuard(new PlayerShipHazardGuard(this::getPlayer));
 
-        // Live Box2D bodies are rebuilt by the bubble handoff after load, never saved.
-        SerializationService saves = engine.getSerializationService();
-        saves.skipComponent(PhysicsBodyComponent.class);
+        // Bubble bodies are saved as true states, never as live Box2D bodies.
+        PhysicsSaveParticipant.install(physics, engine);
     }
 
     /**
