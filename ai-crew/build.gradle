@@ -6,5 +6,27 @@ dependencies {
   api "com.badlogicgames.gdx:gdx-ai:$aiVersion"
   api project(':core-engine')
   api project(':interior-grid')
+  api project(':physics-exterior')
 }
 
+
+dependencies {
+  testImplementation "org.junit.jupiter:junit-jupiter-api:5.14.3"
+  testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.14.3"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.14.3"
+  // Box2D's native library, so the pilot test can fly a real physics body without a window.
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
+}
+
+test {
+  useJUnitPlatform()
+}
+
+// Prints a headless run of the crew scenario to the console.
+tasks.register('runCrewConsoleDemo', JavaExec) {
+  group = 'application'
+  description = 'Runs the ai-crew scenario headless and prints the ship as text.'
+  mainClass = 'com.ringsofiron.aicrew.demo.CrewConsoleDemo'
+  classpath = sourceSets.main.runtimeClasspath
+}
