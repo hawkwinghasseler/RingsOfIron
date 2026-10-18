@@ -114,6 +114,8 @@ public class PhysicsManager implements Disposable {
     private AnchorModel anchor = new InertialAnchor();
     private String anchorParentUuid;
     private final double[] origin = new double[4];
+    /** Sim second {@link #origin} was evaluated at. */
+    private double originTime;
     private long tick;
     private SimClock clock;
 
@@ -135,7 +137,7 @@ public class PhysicsManager implements Disposable {
         world.step(deltaTime, VELOCITY_ITERATIONS, POSITION_ITERATIONS);
         // An external clock has already advanced for this tick.
         if (clock == null) tick++;
-        anchor.stateAt(getSimSeconds(), origin);
+        updateOrigin();
 
         for (int i = 0; i < stepListeners.size; i++) {
             stepListeners.get(i).afterStep(deltaTime);
@@ -214,7 +216,7 @@ public class PhysicsManager implements Disposable {
 
         // The anchor restarts its free fall from the new state, e.g. the player's true state.
         anchor.reset(origin[0] + dx, origin[1] + dy, origin[2] + dvx, origin[3] + dvy, getSimSeconds());
-        anchor.stateAt(getSimSeconds(), origin);
+        updateOrigin();
         dispatchAnchorChange(AnchorChangeEvent.Kind.REBASED);
 
         shiftEvent.deltaX = dx;
@@ -226,6 +228,21 @@ public class PhysicsManager implements Disposable {
         shiftEvent.originVx = origin[2];
         shiftEvent.originVy = origin[3];
         worldShifts.dispatch(shiftEvent);
+    }
+
+    private void updateOrigin() {
+        originTime = getSimSeconds();
+        anchor.stateAt(originTime, origin);
+    }
+
+    /**
+     * Sim second the origin's state belongs to: the end of the last step, or when the anchor last
+     * changed. Under an external clock that has already moved on to the next tick, it is one tick
+     * behind {@link #getSimSeconds} until that tick's step runs. Placing something from its true
+     * state at this time puts it where the bodies in the world are now.
+     */
+    public double getOriginTime() {
+        return originTime;
     }
 
     /**
@@ -259,7 +276,7 @@ public class PhysicsManager implements Disposable {
      */
     public void setAnchorModel(AnchorModel anchor) {
         this.anchor = anchor;
-        anchor.stateAt(getSimSeconds(), origin);
+        updateOrigin();
         dispatchAnchorChange(AnchorChangeEvent.Kind.SET);
     }
 
@@ -325,7 +342,7 @@ public class PhysicsManager implements Disposable {
 
     /** Re-evaluates the anchor at the current sim time, e.g. after the clock jumped under rails warp or on load. */
     public void syncToClock() {
-        anchor.stateAt(getSimSeconds(), origin);
+        updateOrigin();
     }
 
     /** Sim time in seconds, derived from the tick so it never drifts. */

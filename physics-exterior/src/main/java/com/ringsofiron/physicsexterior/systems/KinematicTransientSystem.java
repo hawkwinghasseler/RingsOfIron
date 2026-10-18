@@ -3,19 +3,24 @@ package com.ringsofiron.physicsexterior.systems;
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntityListener;
 import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.signals.Listener;
 import com.badlogic.ashley.signals.Signal;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.utils.IdentityMap;
+import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.BodyShapeComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
+import com.ringsofiron.physicsexterior.events.AnchorChangeEvent;
 import com.ringsofiron.physicsexterior.events.FastPassImpactEvent;
 import com.ringsofiron.physicsexterior.events.WorldShiftEvent;
 
@@ -29,9 +34,27 @@ import com.ringsofiron.physicsexterior.events.WorldShiftEvent;
  * bodies. Targets are tested at their post-step pose; a transient moves at least 1,000 m/s and a
  * Box2D body at most 1,200 m/s, so the error is under one tick of the target's motion. Each body
  * passed through fires one {@link FastPassImpactEvent} on {@link PhysicsManager#fastPassImpacts}.
+ *
+ * <p>A transient the {@link BodyFactory} gives a body (a station) is not swept: its kinematic body
+ * is put exactly on the trajectory after each step and given the velocity that carries it to the
+ * next tick's point, so Box2D sees it move smoothly and joints to it hold. The system owns those
+ * bodies: one is destroyed when its component or entity goes.
  */
 public class KinematicTransientSystem extends EntitySystem implements PhysicsManager.StepListener {
     private static final Family FAMILY = Family.all(KinematicTransientComponent.class).get();
+    /** Corrections smaller than this, in meters, are left for the next tick's velocity to absorb. */
+    private static final float PLACE_TOLERANCE = 1e-3f;
+
+    /** Decides which transients get a kinematic body, and builds it. */
+    @FunctionalInterface
+    public interface BodyFactory {
+        /**
+         * A body for this transient, with its fixtures in body-local meters and the entity as user
+         * data, anywhere in the world (the system places it and makes it kinematic); or null to
+         * sweep the transient instead.
+         */
+        Body build(Entity entity, KinematicTransientComponent transientBody);
+    }
 
     private final ComponentMapper<KinematicTransientComponent> transientMapper =
             ComponentMapper.getFor(KinematicTransientComponent.class);
@@ -44,10 +67,25 @@ public class KinematicTransientSystem extends EntitySystem implements PhysicsMan
     private final IdentityMap<Body, Hit> hits = new IdentityMap<>();
     private final Sweep sweep = new Sweep();
     private final Listener<WorldShiftEvent> shiftListener = this::onWorldShift;
+    private final Listener<AnchorChangeEvent> anchorListener = this::onAnchorChange;
+    // Remembered per entity because the component is already gone when a removal is reported.
+    private final ObjectMap<Entity, Body> trackedBodies = new ObjectMap<>();
+    private final EntityListener bodyLifecycle = new BodyLifecycle();
+    private final double[] anchorState = new double[4];
+    private BodyFactory bodyFactory;
     private ImmutableArray<Entity> entities;
 
     public KinematicTransientSystem(PhysicsManager physics) {
         this.physics = physics;
+    }
+
+    /** Gives transients bodies from now on; transients already in the engine get theirs now. */
+    public void setBodyFactory(BodyFactory factory) {
+        this.bodyFactory = factory;
+        if (entities == null) return;
+        for (Entity entity : entities) {
+            if (!trackedBodies.containsKey(entity)) bodyLifecycle.entityAdded(entity);
+        }
     }
 
     @Override
@@ -55,12 +93,19 @@ public class KinematicTransientSystem extends EntitySystem implements PhysicsMan
         entities = engine.getEntitiesFor(FAMILY);
         physics.addStepListener(this);
         physics.worldShifts.add(shiftListener);
+        physics.anchorChanges.add(anchorListener);
+        engine.addEntityListener(FAMILY, bodyLifecycle);
+        for (Entity entity : entities) bodyLifecycle.entityAdded(entity);
     }
 
     @Override
     public void removedFromEngine(Engine engine) {
         physics.removeStepListener(this);
         physics.worldShifts.remove(shiftListener);
+        physics.anchorChanges.remove(anchorListener);
+        engine.removeEntityListener(bodyLifecycle);
+        for (Body body : trackedBodies.values()) physics.destroyBody(body);
+        trackedBodies.clear();
         entities = null;
     }
 
@@ -74,15 +119,12 @@ public class KinematicTransientSystem extends EntitySystem implements PhysicsMan
             KinematicTransientComponent kt = transientMapper.get(entity);
             if (kt.trajectory == null) continue;
 
-            kt.trajectory.stateAt(physics.getSimSeconds(), trueState);
-            physics.trueToLocal(trueState, local);
-            kt.x = local[0];
-            kt.y = local[1];
-            kt.vx = local[2];
-            kt.vy = local[3];
-            kt.relativeSpeed = Vector2.len(kt.vx, kt.vy);
-
-            if (kt.hasPrevious) sweep(entity, kt);
+            locate(kt, physics.getOriginTime());
+            if (kt.body != null) {
+                place(kt);
+            } else if (kt.hasPrevious) {
+                sweep(entity, kt);
+            }
             kt.previousX = kt.x;
             kt.previousY = kt.y;
             kt.hasPrevious = true;
@@ -91,7 +133,52 @@ public class KinematicTransientSystem extends EntitySystem implements PhysicsMan
             if (transform != null) {
                 transform.x = kt.x;
                 transform.y = kt.y;
+                transform.rotation = kt.angle * MathUtils.radiansToDegrees;
             }
+        }
+    }
+
+    /** Bubble-frame position and velocity at sim second {@code t}, which must be the origin's time. */
+    private void locate(KinematicTransientComponent kt, double t) {
+        kt.trajectory.stateAt(t, trueState);
+        physics.trueToLocal(trueState, local);
+        kt.x = local[0];
+        kt.y = local[1];
+        kt.vx = local[2];
+        kt.vy = local[3];
+        kt.relativeSpeed = Vector2.len(kt.vx, kt.vy);
+    }
+
+    /**
+     * Puts the transient's body on its point now ({@link KinematicTransientComponent#x}, y) and
+     * gives it the velocity that reaches next tick's point, both in the bubble frame.
+     */
+    private void place(KinematicTransientComponent kt) {
+        Body body = kt.body;
+        Vector2 p = body.getPosition();
+        float px = p.x * PhysicsManager.METERS_PER_UNIT, py = p.y * PhysicsManager.METERS_PER_UNIT;
+        if (Math.abs(px - kt.x) > PLACE_TOLERANCE || Math.abs(py - kt.y) > PLACE_TOLERANCE
+                || body.getAngle() != kt.angle) {
+            PhysicsManager.setPosition(body, kt.x, kt.y, kt.angle);
+        }
+        double next = physics.getOriginTime() + PhysicsManager.TIME_STEP;
+        kt.trajectory.stateAt(next, trueState);
+        physics.getAnchorModel().stateAt(next, anchorState);
+        float nx = (float) (trueState[0] - anchorState[0]);
+        float ny = (float) (trueState[1] - anchorState[1]);
+        PhysicsManager.setVelocity(body, (nx - kt.x) / PhysicsManager.TIME_STEP, (ny - kt.y) / PhysicsManager.TIME_STEP);
+        body.setAngularVelocity(0f);
+    }
+
+    /** A new anchor (rails warp rebuilt the bubble, a save loaded) moves the frame: re-place every body. */
+    private void onAnchorChange(Signal<AnchorChangeEvent> signal, AnchorChangeEvent change) {
+        if (change.kind != AnchorChangeEvent.Kind.SET || entities == null) return;
+        for (Entity entity : entities) {
+            KinematicTransientComponent kt = transientMapper.get(entity);
+            if (kt.body == null || kt.trajectory == null) continue;
+            locate(kt, physics.getOriginTime());
+            place(kt);
+            kt.hasPrevious = false;
         }
     }
 
@@ -160,6 +247,33 @@ public class KinematicTransientSystem extends EntitySystem implements PhysicsMan
             // Same frame change as PhysicsManager applies to previous body poses.
             kt.previousX += shift.deltaVx * PhysicsManager.TIME_STEP - shift.deltaX;
             kt.previousY += shift.deltaVy * PhysicsManager.TIME_STEP - shift.deltaY;
+        }
+    }
+
+    private class BodyLifecycle implements EntityListener {
+        @Override
+        public void entityAdded(Entity entity) {
+            KinematicTransientComponent kt = transientMapper.get(entity);
+            if (bodyFactory == null || kt == null || kt.body != null) return;
+            Body body = bodyFactory.build(entity, kt);
+            if (body == null) return;
+            body.setType(BodyDef.BodyType.KinematicBody);
+            if (body.getUserData() == null) body.setUserData(entity);
+            kt.body = body;
+            trackedBodies.put(entity, body);
+            if (kt.trajectory != null) {
+                locate(kt, physics.getOriginTime());
+                place(kt);
+            }
+        }
+
+        @Override
+        public void entityRemoved(Entity entity) {
+            Body body = trackedBodies.remove(entity);
+            if (body == null) return;
+            KinematicTransientComponent kt = transientMapper.get(entity);
+            if (kt != null && kt.body == body) kt.body = null;
+            physics.destroyBody(body);
         }
     }
 

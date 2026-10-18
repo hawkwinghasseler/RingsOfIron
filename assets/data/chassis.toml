@@ -3,7 +3,13 @@
 #   '.' floor  '+' power conduit  ' ' void
 #   R reactor, S shield, T turret (square mounts); L life support, H helm,
 #   W weapons console, C cargo, A airlock (rectangular slots)
+#   D docking port, drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium, 7 x 3 Large.
+#     The end tiles are frame, the rest the opening, with the port door on its
+#     outer edge. It faces the side with only space beyond it. Ports are passive
+#     unless listed under ports = [ { x, y, active = true } ] (any tile of the port).
 # Rows read top to bottom; listed coordinates have (0, 0) at the bottom-left tile.
+# A chassis marked station = true is a station layout, named by a station type's
+# blueprint in economy.json.
 
 [chassis.corvette]
 name = "Corvette"
@@ -17,8 +23,10 @@ origin_y = -3.0
 # Cargo: a hold aft of the crew spaces with two 3 x 2 bays (x 1-3; listed under
 # mounts, since two bays side by side can't be told apart in the map), a walkway
 # at x 4, and two small bays up front. 16 tiles, 40 m3 at 2.5 m3 a tile.
+# A Small passive docking port on the port (+y) side opens onto the walkway beside
+# the hold.
 rows = [
-  "##############",
+  "###DDD########",
   "#....HHTCCTRR#",
   "#....WW....RR#",
   "#....L.++++.T#",
@@ -38,19 +46,99 @@ tile_size = 1.0
 origin_x = -10.0
 origin_y = -6.5
 # Two 12 x 5 cargo bays either side of a conduit spine: 120 tiles, 300 m3 of cargo.
-# Engineering aft (left), the helm forward.
+# Engineering aft (left), the helm forward, and a Medium passive docking port in
+# the bow at the end of the spine.
 rows = [
   "####################",
   "#...CCCCCCCCCCCC...#",
   "#...CCCCCCCCCCCC...#",
   "#RR.CCCCCCCCCCCC.HH#",
-  "#RR.CCCCCCCCCCCC...#",
-  "#...CCCCCCCCCCCC...#",
-  "#L++++++++++++++++.#",
-  "#L..CCCCCCCCCCCC...#",
-  "#...CCCCCCCCCCCC...#",
+  "#RR.CCCCCCCCCCCC..DD",
+  "#...CCCCCCCCCCCC..DD",
+  "#L++++++++++++++++DD",
+  "#L..CCCCCCCCCCCC..DD",
+  "#...CCCCCCCCCCCC..DD",
   "#...CCCCCCCCCCCC...#",
   "#...CCCCCCCCCCCC...#",
   "#...CCCCCCCCCCCC...#",
   "####################",
+]
+
+# Stations. Every station type carries docking ports of all three sizes, so any ship
+# can berth: an outpost one of each, a hub two of each. Station ports are active, so
+# a station that grants docking clearance reaches out with its collar.
+
+[chassis.station_outpost]
+name = "Outpost"
+station = true
+tile_size = 1.0
+origin_x = -12.0
+origin_y = -8.0
+# Small port on top, Medium below, Large on the left; cargo forward of the large
+# port and an engineering room (reactor and life support) to starboard.
+rows = [
+  "#########DDD############",
+  "#......................#",
+  "#..CCCCCCC.............#",
+  "#..CCCCCCC.............#",
+  "#..CCCCCCC.............#",
+  "DDD...........IIIIIII..#",
+  "DDD...........I.....I..#",
+  "DDD...........I.RRR.I..#",
+  "DDD...........I.RRR.I..#",
+  "DDD...........I.RRR.I..#",
+  "DDD...........I.L...I..#",
+  "DDD...........I.L...I..#",
+  "#.............III.III..#",
+  "#......................#",
+  "#......DDDDD...........#",
+  "#######DDDDD############",
+]
+ports = [
+  { x = 10, y = 15, active = true },
+  { x = 9, y = 0, active = true },
+  { x = 1, y = 7, active = true },
+]
+
+[chassis.station_hub]
+name = "Hub"
+station = true
+tile_size = 1.0
+origin_x = -16.0
+origin_y = -12.0
+# Two Small ports on top, two Medium below, a Large port at each end; cargo bays
+# along the top and the reactor core in the middle.
+rows = [
+  "#######DDD############DDD#######",
+  "#..............................#",
+  "#..............................#",
+  "#...CCCCCCC..........CCCCCCC...#",
+  "#...CCCCCCC..........CCCCCCC...#",
+  "#...CCCCCCC..........CCCCCCC...#",
+  "#..............................#",
+  "#........IIIIII..IIIIII........#",
+  "#........I............I........#",
+  "DDD......I...RRR......I......DDD",
+  "DDD......I...RRR......I......DDD",
+  "DDD......I...RRR......I......DDD",
+  "DDD......I............I......DDD",
+  "DDD......I..L.........I......DDD",
+  "DDD......I..L.........I......DDD",
+  "DDD......I............I......DDD",
+  "#........I............I........#",
+  "#........IIIIII..IIIIII........#",
+  "#..............................#",
+  "#..............................#",
+  "#..............................#",
+  "#..............................#",
+  "#....DDDDD............DDDDD....#",
+  "#####DDDDD############DDDDD#####",
+]
+ports = [
+  { x = 8, y = 23, active = true },
+  { x = 23, y = 23, active = true },
+  { x = 7, y = 0, active = true },
+  { x = 24, y = 0, active = true },
+  { x = 1, y = 11, active = true },
+  { x = 30, y = 11, active = true },
 ]

@@ -12,6 +12,7 @@ import java.util.Map;
  * produces = { food = 50.0 }       # units per cycle, keyed by commodity id
  * consumes = { water = 30.0, machinery = 1.0 }
  * storage = 5000.0                 # units of each good it can hold
+ * blueprint = "station_hub"        # chassis (marked station = true) the station is built from
  * </pre>
  */
 public class StationTypeDef {
@@ -21,4 +22,6 @@ public class StationTypeDef {
     public Map<String, Float> produces = new LinkedHashMap<>();
     public Map<String, Float> consumes = new LinkedHashMap<>();
     public float storage = 1000f;
+    /** Chassis id of the station's interior layout, or null for a station with no interior. */
+    public String blueprint;
 }

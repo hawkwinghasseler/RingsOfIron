@@ -8,11 +8,11 @@
     "fuel":      { "name": "Reaction Mass", "category": "fuel",   "base_price": 8.0,    "mass_per_unit": 1000.0, "volume_per_unit": 1.2 }
   },
   "station_type": {
-    "ice_mine":   { "name": "Ice Mine",          "population": 800,   "produces": { "water": 80.0 },            "consumes": { "food": 4.0, "machinery": 0.5 }, "storage": 8000.0 },
-    "agri_dome":  { "name": "Agricultural Dome", "population": 20000, "produces": { "food": 50.0 },             "consumes": { "water": 30.0, "machinery": 1.0 }, "storage": 5000.0 },
-    "ore_mine":   { "name": "Asteroid Mine",     "population": 1200,  "produces": { "ore": 60.0 },              "consumes": { "food": 6.0, "fuel": 10.0 },      "storage": 10000.0 },
-    "foundry":    { "name": "Foundry",           "population": 5000,  "produces": { "steel": 30.0 },            "consumes": { "ore": 60.0, "fuel": 20.0, "food": 10.0 }, "storage": 6000.0 },
-    "shipyard":   { "name": "Shipyard",          "population": 9000,  "produces": { "machinery": 5.0 },         "consumes": { "steel": 25.0, "food": 15.0 },    "storage": 4000.0 },
-    "fuel_depot": { "name": "Fuel Depot",        "population": 600,   "produces": { "fuel": 100.0 },            "consumes": { "water": 40.0 },                  "storage": 20000.0 }
+    "ice_mine":   { "name": "Ice Mine",          "population": 800,   "produces": { "water": 80.0 },            "consumes": { "food": 4.0, "machinery": 0.5 }, "storage": 8000.0, "blueprint": "station_outpost" },
+    "agri_dome":  { "name": "Agricultural Dome", "population": 20000, "produces": { "food": 50.0 },             "consumes": { "water": 30.0, "machinery": 1.0 }, "storage": 5000.0, "blueprint": "station_hub" },
+    "ore_mine":   { "name": "Asteroid Mine",     "population": 1200,  "produces": { "ore": 60.0 },              "consumes": { "food": 6.0, "fuel": 10.0 },      "storage": 10000.0, "blueprint": "station_outpost" },
+    "foundry":    { "name": "Foundry",           "population": 5000,  "produces": { "steel": 30.0 },            "consumes": { "ore": 60.0, "fuel": 20.0, "food": 10.0 }, "storage": 6000.0, "blueprint": "station_hub" },
+    "shipyard":   { "name": "Shipyard",          "population": 9000,  "produces": { "machinery": 5.0 },         "consumes": { "steel": 25.0, "food": 15.0 },    "storage": 4000.0, "blueprint": "station_hub" },
+    "fuel_depot": { "name": "Fuel Depot",        "population": 600,   "produces": { "fuel": 100.0 },            "consumes": { "water": 40.0 },                  "storage": 20000.0, "blueprint": "station_outpost" }
   }
 }

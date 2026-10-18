@@ -20,6 +20,11 @@ import com.badlogic.gdx.utils.Array;
  *   Primary (square):        'R' reactor, 'S' shield emitter, 'T' turret mount
  *   Auxiliary (rectangular): 'L' life support, 'H' helm, 'W' weapons console,
  *                            'C' cargo, 'A' airlock
+ *   Docking port:            'D', drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium,
+ *                            7 x 3 Large. It faces the side where nothing but space lies
+ *                            beyond it; a port that could face either way goes in
+ *                            {@link ChassisBlueprint#mounts} with its rotation. See
+ *                            {@link DockingPortLayout} for its frame, opening and door.
  *
  * Floor coverings such as carpet are laid over the steel deck from
  * {@link ChassisBlueprint#coverings}, on every floor tile inside each listed rectangle.
@@ -132,6 +137,7 @@ public class ChassisBlueprintLoader {
                     throw new IllegalArgumentException("'" + c + "' at " + x + "," + y + " is " + w + "x" + h
                             + ", which is not a legal " + type.mountKind + " mount size");
                 }
+                if (type.mountKind == MountFootprint.MountKind.PORT) footprint = facingSpace(chars, footprint);
                 grid.placeMount(footprint);
                 subsystems.add(new SubsystemPlacement(footprint, type));
             }
@@ -183,6 +189,41 @@ public class ChassisBlueprintLoader {
         tile.weightClass = weightClass;
     }
 
+    /**
+     * Turns a port drawn in the map to face the side with only space beyond it: a horizontal port
+     * faces up or down, a vertical one left or right.
+     */
+    private static MountFootprint facingSpace(char[][] chars, MountFootprint port) {
+        Side[] sides = port.rotation % 2 == 0 ? new Side[]{Side.TOP, Side.BOTTOM} : new Side[]{Side.LEFT, Side.RIGHT};
+        Side found = null;
+        for (Side side : sides) {
+            if (!spaceBeyond(chars, port, side)) continue;
+            if (found != null) {
+                throw new IllegalArgumentException("Docking port at " + port.originX + "," + port.originY
+                        + " could face " + found + " or " + side + "; list it under mounts with a rotation");
+            }
+            found = side;
+        }
+        if (found == null) {
+            throw new IllegalArgumentException("Docking port at " + port.originX + "," + port.originY
+                    + " has no side facing space");
+        }
+        return new MountFootprint(port.kind, port.size, port.originX, port.originY, DockingPortLayout.rotationFacing(found));
+    }
+
+    /** True if every tile just beyond one side of the footprint is void or off the map. */
+    private static boolean spaceBeyond(char[][] chars, MountFootprint m, Side side) {
+        int height = chars.length, width = height == 0 ? 0 : chars[0].length;
+        for (int y = m.originY; y < m.originY + m.height(); y++) {
+            for (int x = m.originX; x < m.originX + m.width(); x++) {
+                int bx = x + side.dx, by = y + side.dy;
+                if (m.covers(bx, by)) continue;
+                if (bx >= 0 && bx < width && by >= 0 && by < height && chars[by][bx] != ' ') return false;
+            }
+        }
+        return true;
+    }
+
     private static boolean rowMatches(char[] row, boolean[] visitedRow, int x, int w, char c) {
         for (int xx = x; xx < x + w; xx++) {
             if (row[xx] != c || visitedRow[xx]) return false;
@@ -200,6 +241,7 @@ public class ChassisBlueprintLoader {
             case 'W': return SubsystemComponent.SubsystemType.WEAPONS;
             case 'C': return SubsystemComponent.SubsystemType.CARGO;
             case 'A': return SubsystemComponent.SubsystemType.AIRLOCK;
+            case 'D': return SubsystemComponent.SubsystemType.DOCKING_PORT;
             default:  return null;
         }
     }

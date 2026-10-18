@@ -1,0 +1,1093 @@
+package com.ringsofiron.stationsdocking;
+
+import com.badlogic.ashley.core.ComponentMapper;
+import com.badlogic.ashley.core.Engine;
+import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntityListener;
+import com.badlogic.ashley.core.EntitySystem;
+import com.badlogic.ashley.core.Family;
+import com.badlogic.ashley.signals.Signal;
+import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.BodyDef;
+import com.badlogic.gdx.physics.box2d.Fixture;
+import com.badlogic.gdx.physics.box2d.FixtureDef;
+import com.badlogic.gdx.physics.box2d.Joint;
+import com.badlogic.gdx.physics.box2d.MassData;
+import com.badlogic.gdx.physics.box2d.PolygonShape;
+import com.badlogic.gdx.physics.box2d.joints.DistanceJoint;
+import com.badlogic.gdx.physics.box2d.joints.DistanceJointDef;
+import com.badlogic.gdx.physics.box2d.joints.MotorJointDef;
+import com.badlogic.gdx.physics.box2d.joints.PrismaticJoint;
+import com.badlogic.gdx.physics.box2d.joints.PrismaticJointDef;
+import com.badlogic.gdx.physics.box2d.joints.WeldJointDef;
+import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.IdentityMap;
+import com.badlogic.gdx.utils.ObjectSet;
+import com.ringsofiron.coreengine.UuidRegistry;
+import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.physicsexterior.CollisionCategories;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
+import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+
+/**
+ * Docking in the bubble ({@code documentation/stations-docking/Design.md}): port magnets, active
+ * latch collars, the weld between docked craft, undocking and tearing loose.
+ *
+ * <p>Every physics tick, before the step:
+ * <ul>
+ *   <li>Each intact port gets its collar as a fixture on its craft's body, half a tile deep past
+ *   the hull, so collars meet before hulls do.</li>
+ *   <li>An armed passive port pulls on same-sized free ports of other craft within its
+ *   {@link DockingTuning#magnetRange}, at two points across its face so the pull also lines the
+ *   ports up, with eddy damping. Collar faces touching within tolerance latch.</li>
+ *   <li>An armed active port puts its collar head out on a slider (a prismatic joint) and a spring
+ *   (a distance joint). The head's stronger magnet reaches for the other port; on contact the head
+ *   is welded to it (captured), and the slider's motor draws the craft together until the collar
+ *   is home, which latches.</li>
+ *   <li>A latch seats the craft into line with a motor joint, then welds them rigidly. The weld's
+ *   strain, low-pass filtered, tears both collars off past the port's break force or torque.</li>
+ * </ul>
+ * A ship is the entity's {@link PhysicsBodyComponent} body; a station is the kinematic body on its
+ * {@link KinematicTransientComponent}. Latch records live on the ports and are saved; the joints
+ * are made again whenever both craft have bodies (after a load or rails warp).
+ */
+public class DockingSystem extends EntitySystem implements PhysicsManager.StepListener {
+    private static final Family VESSELS = Family.all(DockingPortsComponent.class, UuidComponent.class).get();
+    private static final Family STATIONS = Family.all(StationComponent.class, DockingPortsComponent.class).get();
+    private static final float U = PhysicsManager.UNITS_PER_METER;
+    private static final float M = PhysicsManager.METERS_PER_UNIT;
+    /** Where an active collar's spring is anchored, this far inside the hull behind the port, meters. */
+    private static final float SPRING_BASE = 1f;
+    /** Seconds a latch waits for both craft to have bodies (after a load) before it is dropped. */
+    static final float BODY_GRACE = 5f;
+    /** How long docking clearance keeps a station's port armed for the craft that asked, sim seconds. */
+    public static final double CLEARANCE_SECONDS = 600;
+    /** How far a station hears a request for docking clearance, meters. */
+    public static final float CLEARANCE_RANGE = 5_000f;
+
+    /** Captures, latches, undocks and tears. */
+    public final Signal<DockingEvent> events = new Signal<>();
+    /** Ports only arm while their docking port system has power. Tests without a reactor turn it off. */
+    public boolean requirePower = true;
+
+    private final PhysicsManager physics;
+    private final UuidRegistry uuids;
+    private final ComponentMapper<DockingPortsComponent> portsMapper = ComponentMapper.getFor(DockingPortsComponent.class);
+    private final ComponentMapper<UuidComponent> uuidMapper = ComponentMapper.getFor(UuidComponent.class);
+    private final ComponentMapper<PhysicsBodyComponent> bodyMapper = ComponentMapper.getFor(PhysicsBodyComponent.class);
+    private final ComponentMapper<KinematicTransientComponent> transientMapper =
+            ComponentMapper.getFor(KinematicTransientComponent.class);
+    private final ComponentMapper<StationComponent> stationMapper = ComponentMapper.getFor(StationComponent.class);
+    private final ComponentMapper<ShipGridComponent> gridMapper = ComponentMapper.getFor(ShipGridComponent.class);
+    private final ComponentMapper<SubsystemComponent> subsystemMapper = ComponentMapper.getFor(SubsystemComponent.class);
+
+    /** Latched pairs, under both of their ports. */
+    private final IdentityMap<DockingPort, Link> links = new IdentityMap<>();
+    private final Array<Link> linkList = new Array<>();
+    private final ObjectSet<Joint> liveJoints = new ObjectSet<>();
+    private final Array<Joint> jointBuffer = new Array<>();
+    private final Array<Fixture> fixtureBuffer = new Array<>();
+    private final DockingEvent event = new DockingEvent();
+    private final EntityListener vesselLifecycle = new VesselLifecycle();
+    private final Vector2 v0 = new Vector2(), v1 = new Vector2(), v2 = new Vector2(), v3 = new Vector2();
+    private final Vector2 v4 = new Vector2(), v5 = new Vector2(), v6 = new Vector2(), v7 = new Vector2();
+    private final MassData massCopy = new MassData();
+    private ImmutableArray<Entity> vessels;
+    private ImmutableArray<Entity> stations;
+    private boolean suspended;
+    private float dt = PhysicsManager.TIME_STEP;
+
+    /** A latched pair and the joint holding them. Runtime only; rebuilt from the ports. */
+    static final class Link {
+        final Entity a, b;
+        final DockingPort pa, pb;
+        final int portA, portB;
+        Joint joint;
+        boolean rigid;
+        float seatingTime;
+        boolean hadJoint;
+        float waiting;
+        float strainForce, strainTorque;
+        /** Put {@link #a} straight onto {@link #b} at the latched pose before the first weld. */
+        boolean snap;
+
+        Link(Entity a, int portA, DockingPort pa, Entity b, int portB, DockingPort pb) {
+            this.a = a;
+            this.portA = portA;
+            this.pa = pa;
+            this.b = b;
+            this.portB = portB;
+            this.pb = pb;
+        }
+    }
+
+    /** What a request for docking clearance got. */
+    public static final class Clearance {
+        public enum Outcome { GRANTED, DENIED, NO_FREE_PORT, NO_STATION }
+
+        public Outcome outcome = Outcome.NO_STATION;
+        /** The station asked, or null if none was in range. */
+        public Entity station;
+        /** The station port armed for the asking craft, when granted. */
+        public int port = -1;
+    }
+
+    public DockingSystem(PhysicsManager physics, UuidRegistry uuids) {
+        this.physics = physics;
+        this.uuids = uuids;
+    }
+
+    @Override
+    public void addedToEngine(Engine engine) {
+        vessels = engine.getEntitiesFor(VESSELS);
+        stations = engine.getEntitiesFor(STATIONS);
+        engine.addEntityListener(VESSELS, vesselLifecycle);
+        physics.addStepListener(this);
+    }
+
+    @Override
+    public void removedFromEngine(Engine engine) {
+        physics.removeStepListener(this);
+        engine.removeEntityListener(vesselLifecycle);
+        vessels = null;
+        stations = null;
+        links.clear();
+        linkList.clear();
+    }
+
+    // ------------------------------------------------------------------
+    // Commands
+    // ------------------------------------------------------------------
+
+    /**
+     * Arms a port: magnets on, and an active port puts its collar out. Returns null when armed, or
+     * why it cannot arm (no such port, collar torn off, no power).
+     */
+    public String arm(Entity vessel, int index) {
+        DockingPortsComponent ports = portsMapper.get(vessel);
+        DockingPort port = ports == null ? null : ports.get(index);
+        if (port == null) return "no docking port";
+        if (!port.intact()) return "the collar is torn off";
+        if (!hasPower(vessel, port)) return "the port has no power";
+        port.armed = true;
+        port.armedFor = null;
+        port.clearanceUntil = Double.NaN;
+        return null;
+    }
+
+    /** Disarms a port, and withdraws any docking clearance stations gave the craft. A latch holds. */
+    public void disarm(Entity vessel, int index) {
+        DockingPortsComponent ports = portsMapper.get(vessel);
+        DockingPort port = ports == null ? null : ports.get(index);
+        if (port == null) return;
+        port.armed = false;
+        port.armedFor = null;
+        port.clearanceUntil = Double.NaN;
+        String uuid = uuidOf(vessel);
+        if (uuid == null || stations == null) return;
+        for (Entity station : stations) {
+            for (DockingPort q : portsMapper.get(station).ports) {
+                if (uuid.equals(q.armedFor) && q.isFree()) disarmPort(q);
+            }
+        }
+    }
+
+    /**
+     * Asks the nearest station within {@link #CLEARANCE_RANGE} for clearance to dock with
+     * {@code vessel}'s port {@code index}. A station that grants it arms its nearest free port of
+     * the same size for this craft; its collar then reaches out for it (unless the craft's own
+     * port is active and brings its collar). Without clearance the station's ports stay unarmed.
+     */
+    public Clearance requestClearance(Entity vessel, int index) {
+        Clearance out = new Clearance();
+        DockingPortsComponent ports = portsMapper.get(vessel);
+        DockingPort port = ports == null ? null : ports.get(index);
+        Body body = bodyOf(vessel);
+        String uuid = uuidOf(vessel);
+        if (port == null || body == null || uuid == null || stations == null) return out;
+        Vector2 face = worldPoint(body, port.faceX(), port.faceY(), v0);
+        float best = CLEARANCE_RANGE;
+        for (Entity s : stations) {
+            Body sb = bodyOf(s);
+            if (s == vessel || sb == null) continue;
+            float d = worldPoint(sb, 0f, 0f, v1).dst(face);
+            if (d < best) {
+                best = d;
+                out.station = s;
+            }
+        }
+        if (out.station == null) return out;
+        if (!stationMapper.get(out.station).grantsClearance) {
+            out.outcome = Clearance.Outcome.DENIED;
+            return out;
+        }
+        DockingPortsComponent stationPorts = portsMapper.get(out.station);
+        Body sb = bodyOf(out.station);
+        float nearest = Float.MAX_VALUE;
+        for (int i = 0; i < stationPorts.ports.length; i++) {
+            DockingPort q = stationPorts.ports[i];
+            if (q.size != port.size || !q.isFree() || !q.intact()) continue;
+            if (q.armed && q.armedFor != null && !q.armedFor.equals(uuid)) continue;
+            float d = worldPoint(sb, q.faceX(), q.faceY(), v1).dst(face);
+            if (d < nearest) {
+                nearest = d;
+                out.port = i;
+            }
+        }
+        if (out.port < 0) {
+            out.outcome = Clearance.Outcome.NO_FREE_PORT;
+            return out;
+        }
+        DockingPort q = stationPorts.ports[out.port];
+        q.armed = true;
+        q.armedFor = uuid;
+        q.clearanceUntil = physics.getSimSeconds() + CLEARANCE_SECONDS;
+        // Two collars reaching for each other would only push each other off: the asker's wins.
+        q.holdCollar = port.active;
+        out.outcome = Clearance.Outcome.GRANTED;
+        return out;
+    }
+
+    /**
+     * Lets go at every latched port of {@code vessel}: the magnets disengage and the collar springs
+     * push the craft apart. Both sides' ports disarm. Returns false if it was not docked.
+     */
+    public boolean undock(Entity vessel) {
+        DockingPortsComponent ports = portsMapper.get(vessel);
+        if (ports == null) return false;
+        boolean any = false;
+        for (DockingPort p : ports.ports) {
+            Link link = links.get(p);
+            if (link == null) continue;
+            separate(link, vessel == link.a ? link.a : link.b);
+            any = true;
+        }
+        return any;
+    }
+
+    /**
+     * Latches two ports at once, without flying them together: {@code a} is put onto {@code b} at
+     * the latched pose as soon as both have bodies, then welded. For craft that arrive already
+     * docked (a freighter macro-sim brings into the bubble at its station).
+     */
+    public void dockInPlace(Entity a, int portA, Entity b, int portB) {
+        DockingPort pa = portsMapper.get(a).get(portA);
+        DockingPort pb = portsMapper.get(b).get(portB);
+        latchRecords(a, portA, pa, b, portB, pb, DockingPort.State.DOCKED, true);
+        Link link = linkFor(a, portA, pa, b, portB, pb);
+        link.snap = true;
+    }
+
+    /** The craft {@code vessel} is latched to (the first, if several), or null. */
+    public Entity dockedTo(Entity vessel) {
+        DockingPortsComponent ports = portsMapper.get(vessel);
+        if (ports == null) return null;
+        for (DockingPort p : ports.ports) {
+            if (p.state == DockingPort.State.DOCKED && p.partnerUuid != null) {
+                Entity other = uuids.getEntity(p.partnerUuid);
+                if (other != null) return other;
+            }
+        }
+        return null;
+    }
+
+    /** True while the pair is welded rigidly (seated), not still settling into line. */
+    public boolean isRigid(Entity vessel) {
+        DockingPortsComponent ports = portsMapper.get(vessel);
+        if (ports == null) return false;
+        for (DockingPort p : ports.ports) {
+            Link link = links.get(p);
+            if (link != null && link.joint != null && link.rigid) return true;
+        }
+        return false;
+    }
+
+    /** Filtered strain on {@code vessel}'s latch as a share of its break limit (the worse of force and torque), 0 if not docked. */
+    public float strain(Entity vessel) {
+        DockingPortsComponent ports = portsMapper.get(vessel);
+        if (ports == null) return 0f;
+        float worst = 0f;
+        for (DockingPort p : ports.ports) {
+            Link link = links.get(p);
+            if (link == null) continue;
+            DockingTuning t = p.tuning();
+            worst = Math.max(worst, Math.max(link.strainForce / t.breakForce, link.strainTorque / t.breakTorque));
+        }
+        return worst;
+    }
+
+    /** Why rails warp has to wait (a collar is capturing or the craft are still settling), or null. */
+    public String railsWarpBlockedReason() {
+        if (vessels == null) return null;
+        for (Entity e : vessels) {
+            for (DockingPort p : portsMapper.get(e).ports) {
+                if (p.state == DockingPort.State.CAPTURED) return "docking in progress";
+            }
+        }
+        for (Link link : linkList) {
+            if (!link.rigid && link.joint != null) return "docking in progress";
+        }
+        return null;
+    }
+
+    /**
+     * Rails warp is about to collapse the bubble ({@code true}) or has rebuilt it ({@code false}).
+     * While collapsed, latches whose craft lose their bodies are kept, and collars are drawn in.
+     */
+    public void setSuspended(boolean suspended) {
+        this.suspended = suspended;
+        if (!suspended || vessels == null) return;
+        for (Entity e : vessels) {
+            for (DockingPort p : portsMapper.get(e).ports) {
+                destroyHead(p);
+                if (p.state == DockingPort.State.CAPTURED) releasePair(p);
+            }
+        }
+    }
+
+    public boolean isSuspended() {
+        return suspended;
+    }
+
+    /** Latched pairs, for the bubble handoff. */
+    Array<Link> links() {
+        return linkList;
+    }
+
+    // ------------------------------------------------------------------
+    // Tick
+    // ------------------------------------------------------------------
+
+    @Override
+    public void beforeStep(float deltaTime) {
+        if (vessels == null) return;
+        dt = deltaTime;
+        refreshLiveJoints();
+        double now = physics.getSimSeconds();
+        for (int i = 0; i < vessels.size(); i++) {
+            Entity e = vessels.get(i);
+            DockingPortsComponent ports = portsMapper.get(e);
+            Body body = bodyOf(e);
+            for (int k = 0; k < ports.ports.length; k++) {
+                DockingPort p = ports.ports[k];
+                if (p.head != null && (body == null || !alive(p.guide))) destroyHead(p);
+                updateArming(e, p, now);
+                if (p.state == DockingPort.State.CAPTURED && !captureHeld(p)) releasePair(p);
+                if (p.state == DockingPort.State.DOCKED && links.get(p) == null) adopt(e, k, p);
+            }
+            if (body == null) continue;
+            syncCollars(body, ports);
+            for (int k = 0; k < ports.ports.length; k++) updateCollar(e, k, ports.ports[k], body);
+        }
+        for (int i = 0; i < vessels.size(); i++) {
+            Entity e = vessels.get(i);
+            Body body = bodyOf(e);
+            if (body == null) continue;
+            DockingPortsComponent ports = portsMapper.get(e);
+            for (int k = 0; k < ports.ports.length; k++) attract(e, k, ports.ports[k], body);
+        }
+        for (int i = linkList.size - 1; i >= 0; i--) {
+            if (i < linkList.size) updateLink(linkList.get(i));
+        }
+    }
+
+    /** Clearance runs out; power lost drops the magnets. */
+    private void updateArming(Entity e, DockingPort p, double now) {
+        if (!p.armed || !p.isFree()) return;
+        if (!Double.isNaN(p.clearanceUntil) && now > p.clearanceUntil) {
+            disarmPort(p);
+        } else if (!p.intact() || !hasPower(e, p)) {
+            disarmPort(p);
+        }
+    }
+
+    private static void disarmPort(DockingPort p) {
+        p.armed = false;
+        p.armedFor = null;
+        p.clearanceUntil = Double.NaN;
+        p.holdCollar = false;
+    }
+
+    /** Puts an active port's collar head out while armed, draws it in when not, contracts it once it has hold. */
+    private void updateCollar(Entity e, int index, DockingPort p, Body body) {
+        boolean wantOut = p.active && p.armed && p.intact() && !p.holdCollar && p.isFree();
+        if (wantOut && p.head == null) createHead(e, p, body);
+        if (p.head == null) {
+            p.extension = 0f;
+            return;
+        }
+        p.extension = p.guide.getJointTranslation() * M;
+        if (p.state == DockingPort.State.CAPTURED) {
+            contract(e, index, p);
+            return;
+        }
+        if (p.spring == null) return;
+        float rest = SPRING_BASE + p.collarDepth * 0.5f;
+        float goal = rest + (wantOut ? p.tuning().maxExtension : 0f);
+        float step = DockingTuning.EXTEND_SPEED * dt;
+        p.springTarget = Math.abs(goal - p.springTarget) <= step ? goal : p.springTarget + Math.signum(goal - p.springTarget) * step;
+        p.spring.setLength(p.springTarget * U);
+        if (!wantOut && p.springTarget <= rest + 1e-4f && p.extension < 0.02f) destroyHead(p);
+    }
+
+    private void createHead(Entity owner, DockingPort p, Body body) {
+        DockingTuning t = p.tuning();
+        float d = p.collarDepth;
+        float cx = p.edgeX + p.normalX * d * 0.5f, cy = p.edgeY + p.normalY * d * 0.5f;
+        Vector2 at = worldPoint(body, cx, cy, v0);
+        Vector2 vel = velocityAt(body, at, v1);
+
+        BodyDef def = new BodyDef();
+        def.type = BodyDef.BodyType.DynamicBody;
+        def.position.set(at.x * U, at.y * U);
+        def.angle = body.getAngle();
+        def.allowSleep = false;
+        Body head = physics.getWorld().createBody(def);
+        PolygonShape shape = new PolygonShape();
+        shape.setAsBox(p.width * 0.5f * U, d * 0.5f * U, new Vector2(), MathUtils.atan2(p.normalX, -p.normalY));
+        FixtureDef fd = new FixtureDef();
+        fd.shape = shape;
+        fd.density = t.headMass / (p.width * d * U * U);
+        fd.friction = 0.3f;
+        fd.restitution = 0.05f;
+        fd.filter.categoryBits = (short) (ownerCategory(body) | CollisionCategories.CATEGORY_COLLAR);
+        fd.filter.maskBits = CollisionCategories.MASK_ALL;
+        head.createFixture(fd);
+        shape.dispose();
+        head.setUserData(owner);
+        PhysicsManager.setVelocity(head, vel.x, vel.y);
+        head.setAngularVelocity(body.getAngularVelocity());
+
+        PrismaticJointDef guide = new PrismaticJointDef();
+        guide.bodyA = body;
+        guide.bodyB = head;
+        guide.localAnchorA.set(cx * U, cy * U);
+        guide.localAnchorB.set(0f, 0f);
+        guide.localAxisA.set(p.normalX, p.normalY);
+        guide.referenceAngle = 0f;
+        guide.enableLimit = true;
+        guide.lowerTranslation = 0f;
+        guide.upperTranslation = t.maxExtension * U;
+        guide.collideConnected = false;
+        p.guide = (PrismaticJoint) physics.getWorld().createJoint(guide);
+
+        float rest = SPRING_BASE + d * 0.5f;
+        DistanceJointDef spring = new DistanceJointDef();
+        spring.bodyA = body;
+        spring.bodyB = head;
+        spring.localAnchorA.set((p.edgeX - p.normalX * SPRING_BASE) * U, (p.edgeY - p.normalY * SPRING_BASE) * U);
+        spring.localAnchorB.set(0f, 0f);
+        spring.length = rest * U;
+        spring.frequencyHz = DockingTuning.SPRING_HZ;
+        spring.dampingRatio = DockingTuning.SPRING_DAMPING;
+        spring.collideConnected = false;
+        p.spring = (DistanceJoint) physics.getWorld().createJoint(spring);
+        p.springTarget = rest;
+        p.head = head;
+        p.extension = 0f;
+    }
+
+    /** The captured collar's slider draws the craft together; home means latched. */
+    private void contract(Entity e, int index, DockingPort p) {
+        if (p.extension < DockingTuning.LOCK_EXTENSION) {
+            lock(e, index, p);
+            return;
+        }
+        float speed = Math.min(DockingTuning.CONTRACT_SPEED, 2f * p.extension + 0.02f);
+        p.guide.setMotorSpeed(-speed * U);
+    }
+
+    private void lock(Entity e, int index, DockingPort p) {
+        Entity other = uuids.getEntity(p.partnerUuid);
+        DockingPortsComponent otherPorts = other == null ? null : portsMapper.get(other);
+        DockingPort q = otherPorts == null ? null : otherPorts.get(p.partnerPort);
+        destroyHead(p);
+        if (q == null) {
+            p.release();
+            return;
+        }
+        p.state = DockingPort.State.DOCKED;
+        q.state = DockingPort.State.DOCKED;
+        linkFor(e, index, p, other, p.partnerPort, q);
+        fire(DockingEvent.Kind.DOCKED, e, index, other, p.partnerPort, p.permitted);
+    }
+
+    /** A capture is real while the capturing head's weld to the other craft stands. */
+    private boolean captureHeld(DockingPort p) {
+        if (p.capture != null && alive(p.capture)) return true;
+        Entity other = p.partnerUuid == null ? null : uuids.getEntity(p.partnerUuid);
+        DockingPortsComponent ports = other == null ? null : portsMapper.get(other);
+        DockingPort q = ports == null ? null : ports.get(p.partnerPort);
+        return q != null && q.capture != null && alive(q.capture);
+    }
+
+    /** Magnets of one armed free port pull on matching free ports of other craft; contact latches or captures. */
+    private void attract(Entity e, int index, DockingPort p, Body body) {
+        if (!p.armed || !p.isFree() || !p.intact()) return;
+        if (p.active && !p.holdCollar && p.head == null) return; // collar still coming out
+        DockingTuning t = p.tuning();
+        String ownUuid = uuidOf(e);
+        for (int i = 0; i < vessels.size(); i++) {
+            Entity o = vessels.get(i);
+            if (o == e) continue;
+            Body ob = bodyOf(o);
+            if (ob == null) continue;
+            if (p.armedFor != null && !p.armedFor.equals(uuidOf(o))) continue;
+            DockingPortsComponent oPorts = portsMapper.get(o);
+            for (int k = 0; k < oPorts.ports.length; k++) {
+                DockingPort q = oPorts.ports[k];
+                if (q.size != p.size || !q.isFree() || !q.intact()) continue;
+                // An extended collar does the reaching; this port waits for it.
+                if (q.head != null) continue;
+                if (q.armedFor != null && !q.armedFor.equals(ownUuid) && q.armed) continue;
+                if (p.head != null) {
+                    // The head's frame is turned like its craft's, with its middle at the origin.
+                    float hx = p.normalX * p.collarDepth * 0.5f, hy = p.normalY * p.collarDepth * 0.5f;
+                    if (magnet(p.head, hx, hy, p, ob, q, t.headRange, t.headForce)
+                            && aligned(p.head, hx, hy, p, ob, q, t.latchOffset)) {
+                        capture(e, index, p, o, k, q);
+                        return;
+                    }
+                } else if (magnet(body, p.faceX(), p.faceY(), p, ob, q, t.magnetRange, t.magnetForce)
+                        && aligned(body, p.faceX(), p.faceY(), p, ob, q, t.latchOffset)) {
+                    latch(e, index, p, o, k, q);
+                    return;
+                }
+            }
+        }
+    }
+
+    /**
+     * Pulls the face at local {@code (ax, ay)} of {@code a} (a craft, or a collar head) towards
+     * port {@code q}'s face on {@code b}: two magnets
+     * across the face, each pulling its point towards the mirrored point on the other face, so the
+     * pull also turns the ports square. Returns true if in range and facing.
+     */
+    private boolean magnet(Body a, float ax, float ay, DockingPort p, Body b, DockingPort q, float range, float force) {
+        Vector2 fa = worldPoint(a, ax, ay, v0);
+        Vector2 na = worldVector(a, p.normalX, p.normalY, v1);
+        Vector2 fb = worldPoint(b, q.faceX(), q.faceY(), v2);
+        Vector2 nb = worldVector(b, q.normalX, q.normalY, v3);
+        if (na.dot(nb) > -MathUtils.cos(DockingTuning.MAGNET_CONE)) return false;
+        float rx = fb.x - fa.x, ry = fb.y - fa.y;
+        float dist = (float) Math.sqrt(rx * rx + ry * ry);
+        if (dist > range) return false;
+        // Each port must be in front of the other, not reaching through the hull.
+        if (rx * na.x + ry * na.y < -0.5f || -(rx * nb.x + ry * nb.y) < -0.5f) return false;
+
+        float half = Math.min(p.openingWidth, q.openingWidth) * 0.5f + 0.5f;
+        float per = force * 0.5f;
+        float damping = per / DockingTuning.EDDY_SPEED;
+        float d0 = range / 3f;
+        for (int s = -1; s <= 1; s += 2) {
+            // Tangents are the normals turned left; mated faces have opposite tangents.
+            float pax = fa.x - na.y * half * s, pay = fa.y + na.x * half * s;
+            float pbx = fb.x + nb.y * half * s, pby = fb.y - nb.x * half * s;
+            float dx = pbx - pax, dy = pby - pay;
+            float len = (float) Math.sqrt(dx * dx + dy * dy);
+            float fall = Math.max(0f, 1f - len / range) / (1f + (len / d0) * (len / d0));
+            Vector2 va = velocityAt(a, v4.set(pax, pay), v5);
+            Vector2 vb = velocityAt(b, v6.set(pbx, pby), v7);
+            float fx = -damping * fall * (va.x - vb.x), fy = -damping * fall * (va.y - vb.y);
+            if (len > 1e-4f) {
+                fx += per * fall * dx / len;
+                fy += per * fall * dy / len;
+            }
+            PhysicsManager.applyForce(a, fx, fy, pax, pay);
+            PhysicsManager.applyForce(b, -fx, -fy, pbx, pby);
+        }
+        return true;
+    }
+
+    /** True when the face on {@code a} sits on port {@code q}'s face: touching, centered, square and slow. */
+    private boolean aligned(Body a, float ax, float ay, DockingPort p, Body b, DockingPort q, float lateral) {
+        Vector2 fa = worldPoint(a, ax, ay, v0);
+        Vector2 na = worldVector(a, p.normalX, p.normalY, v1);
+        Vector2 fb = worldPoint(b, q.faceX(), q.faceY(), v2);
+        Vector2 nb = worldVector(b, q.normalX, q.normalY, v3);
+        if (-na.dot(nb) < MathUtils.cos(DockingTuning.LATCH_ANGLE)) return false;
+        float rx = fb.x - fa.x, ry = fb.y - fa.y;
+        float gap = rx * na.x + ry * na.y;
+        float side = Math.abs(-rx * na.y + ry * na.x);
+        if (gap < -0.1f || gap > DockingTuning.LATCH_GAP || side > lateral) return false;
+        Vector2 va = velocityAt(a, fa, v4);
+        Vector2 vb = velocityAt(b, fb, v5);
+        return Vector2.len(va.x - vb.x, va.y - vb.y) <= DockingTuning.LATCH_SPEED;
+    }
+
+    private void latch(Entity a, int portA, DockingPort pa, Entity b, int portB, DockingPort pb) {
+        latchRecords(a, portA, pa, b, portB, pb, DockingPort.State.DOCKED, permittedBetween(pa, pb, a, b));
+        linkFor(a, portA, pa, b, portB, pb);
+        fire(DockingEvent.Kind.DOCKED, a, portA, b, portB, pa.permitted);
+    }
+
+    private void capture(Entity a, int portA, DockingPort pa, Entity b, int portB, DockingPort pb) {
+        Body other = bodyOf(b);
+        WeldJointDef weld = new WeldJointDef();
+        Vector2 at = worldPoint(pa.head, pa.normalX * pa.collarDepth * 0.5f, pa.normalY * pa.collarDepth * 0.5f, v0);
+        weld.initialize(pa.head, other, new Vector2(at.x * U, at.y * U));
+        weld.collideConnected = false;
+        pa.capture = physics.getWorld().createJoint(weld);
+        destroyJoint(pa.spring);
+        pa.spring = null;
+        pa.guide.setMaxMotorForce(0.5f * pa.tuning().breakForce * U);
+        pa.guide.setMotorSpeed(0f);
+        pa.guide.enableMotor(true);
+        latchRecords(a, portA, pa, b, portB, pb, DockingPort.State.CAPTURED, permittedBetween(pa, pb, a, b));
+        fire(DockingEvent.Kind.CAPTURED, a, portA, b, portB, pa.permitted);
+    }
+
+    /** Clearance is permission: the other side's port was armed for this craft, or by its own crew. */
+    private boolean permittedBetween(DockingPort pa, DockingPort pb, Entity a, Entity b) {
+        String ua = uuidOf(a), ub = uuidOf(b);
+        boolean bAgreed = pb.armed && (pb.armedFor == null || pb.armedFor.equals(ua));
+        boolean aAgreed = pa.armed && (pa.armedFor == null || pa.armedFor.equals(ub));
+        return bAgreed && aAgreed;
+    }
+
+    private void latchRecords(Entity a, int portA, DockingPort pa, Entity b, int portB, DockingPort pb,
+                              DockingPort.State state, boolean permitted) {
+        pa.state = state;
+        pb.state = state;
+        pa.partnerUuid = uuidOf(b);
+        pa.partnerPort = portB;
+        pb.partnerUuid = uuidOf(a);
+        pb.partnerPort = portA;
+        pa.permitted = permitted;
+        pb.permitted = permitted;
+        pa.clearanceUntil = Double.NaN;
+        pb.clearanceUntil = Double.NaN;
+    }
+
+    /** A saved latch: find its other half and hold it again. */
+    private void adopt(Entity e, int index, DockingPort p) {
+        Entity other = p.partnerUuid == null ? null : uuids.getEntity(p.partnerUuid);
+        DockingPortsComponent ports = other == null ? null : portsMapper.get(other);
+        DockingPort q = ports == null ? null : ports.get(p.partnerPort);
+        if (q == null || q.state != DockingPort.State.DOCKED || !uuidOf(e).equals(q.partnerUuid) || q.partnerPort != index) {
+            p.release();
+            return;
+        }
+        linkFor(e, index, p, other, p.partnerPort, q);
+    }
+
+    private Link linkFor(Entity a, int portA, DockingPort pa, Entity b, int portB, DockingPort pb) {
+        Link link = links.get(pa);
+        if (link != null) return link;
+        link = new Link(a, portA, pa, b, portB, pb);
+        links.put(pa, link);
+        links.put(pb, link);
+        linkList.add(link);
+        return link;
+    }
+
+    private void updateLink(Link link) {
+        Body ba = bodyOf(link.a), bb = bodyOf(link.b);
+        if (link.joint != null && !alive(link.joint)) link.joint = null;
+        if (ba == null || bb == null) {
+            link.joint = null;
+            if (suspended) return;
+            link.waiting += dt;
+            // A craft that had its weld and lost its body left the bubble: the latch goes with it.
+            if (link.hadJoint || link.waiting > BODY_GRACE) dropLink(link, true);
+            return;
+        }
+        link.waiting = 0f;
+        DockingTuning t = link.pa.tuning();
+        if (link.joint == null) {
+            if (link.snap) snap(link, ba, bb);
+            link.snap = false;
+            link.hadJoint = true;
+            if (seated(link, ba, bb)) {
+                weld(link, ba, bb);
+            } else {
+                MotorJointDef seat = new MotorJointDef();
+                seat.bodyA = ba;
+                seat.bodyB = bb;
+                matedOffset(link.pa, link.pb, v0);
+                seat.linearOffset.set(v0.x * U, v0.y * U);
+                seat.angularOffset = matedReference(link, ba, bb);
+                seat.maxForce = 0.3f * t.breakForce * U;
+                seat.maxTorque = 0.3f * t.breakTorque * U * U;
+                seat.correctionFactor = 0.05f;
+                seat.collideConnected = false;
+                link.joint = physics.getWorld().createJoint(seat);
+                link.rigid = false;
+                link.seatingTime = 0f;
+            }
+            return;
+        }
+        if (!link.rigid) {
+            link.seatingTime += dt;
+            boolean seated = seated(link, ba, bb);
+            if (seated || link.seatingTime > DockingTuning.SEATING_TIME) {
+                destroyJoint(link.joint);
+                // Out of time: weld where they are rather than snap them into line
+                if (seated) weld(link, ba, bb);
+                else weldAsIs(link, ba, bb);
+            }
+            return;
+        }
+        float invDt = 1f / dt;
+        float force = link.joint.getReactionForce(invDt).len() * M;
+        float torque = Math.abs(link.joint.getReactionTorque(invDt)) * M * M;
+        float k = Math.min(1f, dt / DockingTuning.STRAIN_FILTER);
+        link.strainForce += (force - link.strainForce) * k;
+        link.strainTorque += (torque - link.strainTorque) * k;
+        if (link.strainForce > t.breakForce || link.strainTorque > t.breakTorque) tear(link);
+    }
+
+    private void weld(Link link, Body ba, Body bb) {
+        WeldJointDef weld = new WeldJointDef();
+        weld.bodyA = ba;
+        weld.bodyB = bb;
+        weld.localAnchorA.set(link.pa.faceX() * U, link.pa.faceY() * U);
+        weld.localAnchorB.set(link.pb.faceX() * U, link.pb.faceY() * U);
+        weld.referenceAngle = matedReference(link, ba, bb);
+        makeWeld(link, weld);
+    }
+
+    /** Welds the pair in the pose they are in now. */
+    private void weldAsIs(Link link, Body ba, Body bb) {
+        WeldJointDef weld = new WeldJointDef();
+        Vector2 at = ba.getWorldPoint(v0.set(link.pa.faceX() * U, link.pa.faceY() * U));
+        weld.initialize(ba, bb, new Vector2(at));
+        makeWeld(link, weld);
+    }
+
+    private void makeWeld(Link link, WeldJointDef weld) {
+        weld.collideConnected = false;
+        link.joint = physics.getWorld().createJoint(weld);
+        link.rigid = true;
+        link.strainForce = 0f;
+        link.strainTorque = 0f;
+    }
+
+    /** Angle of b minus angle of a when the two ports are latched: the faces point at each other. In (-pi, pi]. */
+    static float matedAngle(DockingPort pa, DockingPort pb) {
+        float angle = MathUtils.atan2(pa.normalY, pa.normalX) - MathUtils.atan2(pb.normalY, pb.normalX) + MathUtils.PI;
+        return MathUtils.atan2(MathUtils.sin(angle), MathUtils.cos(angle));
+    }
+
+    /**
+     * The latched angle of b less a's, as the turn nearest to where the bodies are now: Box2D does
+     * not wrap angles, so a joint told "0" between bodies at 0 and 2 pi would spin one round.
+     */
+    private static float matedReference(Link link, Body ba, Body bb) {
+        float now = bb.getAngle() - ba.getAngle();
+        float off = matedAngle(link.pa, link.pb) - now;
+        return now + MathUtils.atan2(MathUtils.sin(off), MathUtils.cos(off));
+    }
+
+    /** Position of b's origin in a's frame when latched, meters. */
+    static Vector2 matedOffset(DockingPort pa, DockingPort pb, Vector2 out) {
+        float angle = matedAngle(pa, pb);
+        float c = MathUtils.cos(angle), s = MathUtils.sin(angle);
+        float bx = pb.faceX(), by = pb.faceY();
+        return out.set(pa.faceX() - (c * bx - s * by), pa.faceY() - (s * bx + c * by));
+    }
+
+    private boolean seated(Link link, Body ba, Body bb) {
+        Vector2 fa = worldPoint(ba, link.pa.faceX(), link.pa.faceY(), v1);
+        Vector2 fb = worldPoint(bb, link.pb.faceX(), link.pb.faceY(), v2);
+        float angle = bb.getAngle() - ba.getAngle() - matedAngle(link.pa, link.pb);
+        angle = MathUtils.atan2(MathUtils.sin(angle), MathUtils.cos(angle));
+        return fa.dst(fb) < DockingTuning.SEATED_DISTANCE && Math.abs(angle) < DockingTuning.SEATED_ANGLE;
+    }
+
+    /** Puts a onto b at the latched pose, moving with b. */
+    private void snap(Link link, Body ba, Body bb) {
+        float angleA = bb.getAngle() - matedAngle(link.pa, link.pb);
+        Vector2 fb = worldPoint(bb, link.pb.faceX(), link.pb.faceY(), v1);
+        float c = MathUtils.cos(angleA), s = MathUtils.sin(angleA);
+        float fx = link.pa.faceX(), fy = link.pa.faceY();
+        float ox = fb.x - (c * fx - s * fy), oy = fb.y - (s * fx + c * fy);
+        Vector2 vel = velocityAt(bb, v2.set(ox, oy), v3);
+        PhysicsManager.setPosition(ba, ox, oy, angleA);
+        PhysicsManager.setVelocity(ba, vel.x, vel.y);
+        ba.setAngularVelocity(bb.getAngularVelocity());
+    }
+
+    /** Undocking: the weld lets go and the collar springs push the craft apart. */
+    private void separate(Link link, Entity by) {
+        Body ba = bodyOf(link.a), bb = bodyOf(link.b);
+        destroyJoint(link.joint);
+        link.joint = null;
+        if (ba != null && bb != null) {
+            float ma = ba.getType() == BodyDef.BodyType.DynamicBody ? PhysicsManager.getMass(ba) : 0f;
+            float mb = bb.getType() == BodyDef.BodyType.DynamicBody ? PhysicsManager.getMass(bb) : 0f;
+            float mu = ma > 0f && mb > 0f ? ma * mb / (ma + mb) : Math.max(ma, mb);
+            float j = mu * DockingTuning.SEPARATION_SPEED;
+            Vector2 n = worldVector(ba, link.pa.normalX, link.pa.normalY, v1);
+            Vector2 ca = v2.set(ba.getWorldCenter()).scl(M);
+            Vector2 cb = v3.set(bb.getWorldCenter()).scl(M);
+            if (ma > 0f) PhysicsManager.applyImpulse(ba, -n.x * j, -n.y * j, ca.x, ca.y);
+            if (mb > 0f) PhysicsManager.applyImpulse(bb, n.x * j, n.y * j, cb.x, cb.y);
+        }
+        disarmPort(link.pa);
+        disarmPort(link.pb);
+        boolean permitted = link.pa.permitted;
+        dropLink(link, true);
+        Entity other = by == link.a ? link.b : link.a;
+        fire(DockingEvent.Kind.UNDOCKED, by, by == link.a ? link.portA : link.portB, other,
+                by == link.a ? link.portB : link.portA, permitted);
+    }
+
+    /** Past the break limit: the weld goes, both collars tear off and the hull around each port is damaged. */
+    private void tear(Link link) {
+        destroyJoint(link.joint);
+        link.joint = null;
+        boolean permitted = link.pa.permitted;
+        for (int side = 0; side < 2; side++) {
+            Entity e = side == 0 ? link.a : link.b;
+            DockingPort p = side == 0 ? link.pa : link.pb;
+            p.collarIntegrity = 0f;
+            disarmPort(p);
+            Body body = bodyOf(e);
+            if (body != null) removeCollar(body, p);
+            ShipGridComponent grid = gridMapper.get(e);
+            if (grid != null) PortDamage.tear(grid, p);
+        }
+        dropLink(link, true);
+        fire(DockingEvent.Kind.TORN, link.a, link.portA, link.b, link.portB, permitted);
+    }
+
+    private void dropLink(Link link, boolean releasePorts) {
+        destroyJoint(link.joint);
+        link.joint = null;
+        links.remove(link.pa);
+        links.remove(link.pb);
+        linkList.removeValue(link, true);
+        if (releasePorts) {
+            link.pa.release();
+            link.pb.release();
+        }
+    }
+
+    /** Lets go of a capture and its other half: both ports free again. */
+    private void releasePair(DockingPort p) {
+        Entity other = p.partnerUuid == null ? null : uuids.getEntity(p.partnerUuid);
+        DockingPortsComponent ports = other == null ? null : portsMapper.get(other);
+        DockingPort q = ports == null ? null : ports.get(p.partnerPort);
+        if (q != null && q.state == DockingPort.State.CAPTURED) {
+            destroyHead(q);
+            q.release();
+        }
+        destroyHead(p);
+        p.release();
+    }
+
+    private void destroyHead(DockingPort p) {
+        if (p.head != null) physics.destroyBody(p.head);
+        p.head = null;
+        p.guide = null;
+        p.spring = null;
+        p.capture = null;
+        p.extension = 0f;
+    }
+
+    // ------------------------------------------------------------------
+    // Collars on the hull
+    // ------------------------------------------------------------------
+
+    /** Gives every intact port its collar fixture and takes torn ones off. Cheap when nothing changed. */
+    private void syncCollars(Body body, DockingPortsComponent ports) {
+        int intact = 0;
+        for (DockingPort p : ports.ports) if (p.intact()) intact++;
+        int collars = 0;
+        for (Fixture f : body.getFixtureList()) {
+            if ((f.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0) collars++;
+        }
+        if (collars == intact && !anyTornWithCollar(body, ports, collars)) return;
+        boolean[] has = new boolean[ports.ports.length];
+        fixtureBuffer.clear();
+        for (Fixture f : body.getFixtureList()) {
+            if ((f.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) == 0) continue;
+            int k = collarPort(f, ports);
+            if (k >= 0 && ports.ports[k].intact() && !has[k]) has[k] = true;
+            else fixtureBuffer.add(f);
+        }
+        for (Fixture f : fixtureBuffer) destroyFixtureKeepingMass(body, f);
+        fixtureBuffer.clear();
+        for (int k = 0; k < ports.ports.length; k++) {
+            if (ports.ports[k].intact() && !has[k]) addCollar(body, ports.ports[k]);
+        }
+    }
+
+    private boolean anyTornWithCollar(Body body, DockingPortsComponent ports, int collars) {
+        if (collars == 0) return false;
+        for (DockingPort p : ports.ports) if (!p.intact()) return true;
+        return false;
+    }
+
+    /** The port whose collar this fixture is (its middle sits on the collar's middle), or -1. */
+    private int collarPort(Fixture f, DockingPortsComponent ports) {
+        if (!(f.getShape() instanceof PolygonShape)) return -1;
+        PolygonShape poly = (PolygonShape) f.getShape();
+        float cx = 0f, cy = 0f;
+        int n = poly.getVertexCount();
+        for (int i = 0; i < n; i++) {
+            poly.getVertex(i, v0);
+            cx += v0.x;
+            cy += v0.y;
+        }
+        cx = cx / n * M;
+        cy = cy / n * M;
+        for (int k = 0; k < ports.ports.length; k++) {
+            DockingPort p = ports.ports[k];
+            float mx = p.edgeX + p.normalX * p.collarDepth * 0.5f, my = p.edgeY + p.normalY * p.collarDepth * 0.5f;
+            if (Vector2.dst(cx, cy, mx, my) < p.collarDepth * 0.5f) return k;
+        }
+        return -1;
+    }
+
+    /** Adds the collar: half a tile deep past the hull, the port's width, no mass of its own. */
+    static Fixture addCollar(Body body, DockingPort p) {
+        PolygonShape shape = new PolygonShape();
+        float d = p.collarDepth;
+        shape.setAsBox(p.width * 0.5f * U, d * 0.5f * U,
+                new Vector2((p.edgeX + p.normalX * d * 0.5f) * U, (p.edgeY + p.normalY * d * 0.5f) * U),
+                MathUtils.atan2(p.normalX, -p.normalY));
+        FixtureDef fd = new FixtureDef();
+        fd.shape = shape;
+        // Density 0 leaves the craft's mass (often set from its grid) alone.
+        fd.density = 0f;
+        fd.friction = 0.3f;
+        fd.restitution = 0.05f;
+        fd.filter.categoryBits = (short) (ownerCategory(body) | CollisionCategories.CATEGORY_COLLAR);
+        fd.filter.maskBits = CollisionCategories.MASK_ALL;
+        Fixture f = body.createFixture(fd);
+        shape.dispose();
+        return f;
+    }
+
+    private void removeCollar(Body body, DockingPort p) {
+        DockingPortsComponent dummy = new DockingPortsComponent(p);
+        fixtureBuffer.clear();
+        for (Fixture f : body.getFixtureList()) {
+            if ((f.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0 && collarPort(f, dummy) == 0) {
+                fixtureBuffer.add(f);
+            }
+        }
+        for (Fixture f : fixtureBuffer) destroyFixtureKeepingMass(body, f);
+        fixtureBuffer.clear();
+    }
+
+    /** Box2D recomputes mass from densities when a fixture goes; put back what the craft had. */
+    private void destroyFixtureKeepingMass(Body body, Fixture f) {
+        MassData m = body.getMassData();
+        massCopy.mass = m.mass;
+        massCopy.center.set(m.center);
+        massCopy.I = m.I;
+        body.destroyFixture(f);
+        if (body.getType() == BodyDef.BodyType.DynamicBody) body.setMassData(massCopy);
+    }
+
+    /** The hull's collision category: the first fixture that is not a collar. */
+    private static short ownerCategory(Body body) {
+        for (Fixture f : body.getFixtureList()) {
+            short c = f.getFilterData().categoryBits;
+            if ((c & CollisionCategories.CATEGORY_COLLAR) == 0) return c;
+        }
+        return CollisionCategories.CATEGORY_SHIP;
+    }
+
+    // ------------------------------------------------------------------
+    // Lookups
+    // ------------------------------------------------------------------
+
+    /** A ship's Box2D body, a station's kinematic body, or null when it has none in the bubble. */
+    public Body bodyOf(Entity e) {
+        PhysicsBodyComponent pb = bodyMapper.get(e);
+        if (pb != null && pb.body != null) return pb.body;
+        KinematicTransientComponent kt = transientMapper.get(e);
+        return kt == null ? null : kt.body;
+    }
+
+    private String uuidOf(Entity e) {
+        UuidComponent id = uuidMapper.get(e);
+        return id == null ? null : id.id;
+    }
+
+    /** The port's system has power, or the craft has no grid to check (a hull with a fitted port). */
+    private boolean hasPower(Entity vessel, DockingPort port) {
+        if (!requirePower || port.gridX < 0) return true;
+        ShipGridComponent grid = gridMapper.get(vessel);
+        Entity system = grid == null ? null : grid.subsystemAt(port.gridX, port.gridY);
+        SubsystemComponent sub = system == null ? null : subsystemMapper.get(system);
+        return sub == null || (sub.powered && !sub.isDisabled());
+    }
+
+    private void refreshLiveJoints() {
+        liveJoints.clear();
+        physics.getWorld().getJoints(jointBuffer);
+        for (Joint j : jointBuffer) liveJoints.add(j);
+        jointBuffer.clear();
+    }
+
+    private boolean alive(Joint joint) {
+        return joint != null && liveJoints.contains(joint);
+    }
+
+    /**
+     * Destroys a joint unless Box2D already did (with one of its bodies, perhaps since the last
+     * tick): destroying it twice would free native memory twice.
+     */
+    private void destroyJoint(Joint joint) {
+        if (joint == null) return;
+        refreshLiveJoints();
+        if (liveJoints.contains(joint)) {
+            physics.getWorld().destroyJoint(joint);
+            liveJoints.remove(joint);
+        }
+    }
+
+    private static Vector2 worldPoint(Body body, float x, float y, Vector2 out) {
+        Vector2 w = body.getWorldPoint(out.set(x * U, y * U));
+        return out.set(w.x * M, w.y * M);
+    }
+
+    private static Vector2 worldVector(Body body, float x, float y, Vector2 out) {
+        Vector2 w = body.getWorldVector(out.set(x, y));
+        return out.set(w.x, w.y);
+    }
+
+    /** Velocity of the body at world point {@code at} (meters), m/s. */
+    private static Vector2 velocityAt(Body body, Vector2 at, Vector2 out) {
+        Vector2 v = body.getLinearVelocityFromWorldPoint(new Vector2(at.x * U, at.y * U));
+        return out.set(v.x * M, v.y * M);
+    }
+
+    private void fire(DockingEvent.Kind kind, Entity vessel, int port, Entity other, int otherPort, boolean permitted) {
+        event.kind = kind;
+        event.vessel = vessel;
+        event.port = port;
+        event.other = other;
+        event.otherPort = otherPort;
+        event.permitted = permitted;
+        events.dispatch(event);
+    }
+
+    /** Drops a craft's latches when it leaves the engine or loses its ports. */
+    private class VesselLifecycle implements EntityListener {
+        @Override
+        public void entityAdded(Entity entity) {
+        }
+
+        @Override
+        public void entityRemoved(Entity entity) {
+            for (int i = linkList.size - 1; i >= 0; i--) {
+                Link link = linkList.get(i);
+                if (link.a == entity || link.b == entity) dropLink(link, false);
+            }
+            DockingPortsComponent ports = portsMapper.get(entity);
+            if (ports != null) for (DockingPort p : ports.ports) destroyHead(p);
+        }
+    }
+}

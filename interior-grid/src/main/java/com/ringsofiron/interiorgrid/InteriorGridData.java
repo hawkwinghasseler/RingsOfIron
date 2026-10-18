@@ -1,6 +1,7 @@
 package com.ringsofiron.interiorgrid;
 
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.moddingdata.DefRegistry;
 import com.ringsofiron.moddingdata.ModContext;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
@@ -31,22 +32,32 @@ public final class InteriorGridData {
         ctx.factory.registerAssembler("ship", (entity, def, factory) -> {
             ShipDef ship = factory.defs().convert(def, ShipDef.class);
             ChassisDef chassis = factory.defs().require("chassis", ship.chassis, ChassisDef.class);
-            ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(toBlueprint(chassis));
-            CompartmentBuilder.rebuildIfChanged(result.grid);
-
-            ShipSubsystemRegistryComponent registry = new ShipSubsystemRegistryComponent(entity);
-            entity.add(result.grid);
-            entity.add(registry);
-            CargoHoldComponent hold = CargoHoldComponent.forBays(result.grid.tileSize, result.subsystems);
-            if (hold != null) entity.add(hold);
-            for (ChassisBlueprintLoader.SubsystemPlacement p : result.subsystems) {
-                Entity system = factory.engine().createEntityWithUuid();
-                system.add(new SubsystemComponent(p.footprint, p.type));
-                p.footprint.installed = system;
-                factory.engine().addEntity(system);
-                registry.registerSubsystem(system);
-            }
+            installInterior(entity, chassis, factory.engine());
         });
+    }
+
+    /**
+     * Gives {@code entity} the interior of a chassis, as the ship assembler does: its grid with
+     * fresh air, a subsystem registry, one entity per installed system (added to the engine at once)
+     * and an empty cargo hold over its bays when it has any. Stations get theirs this way too.
+     */
+    public static ShipSubsystemRegistryComponent installInterior(Entity entity, ChassisDef chassis, GameEngine engine) {
+        ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(toBlueprint(chassis));
+        CompartmentBuilder.rebuildIfChanged(result.grid);
+
+        ShipSubsystemRegistryComponent registry = new ShipSubsystemRegistryComponent(entity);
+        entity.add(result.grid);
+        entity.add(registry);
+        CargoHoldComponent hold = CargoHoldComponent.forBays(result.grid.tileSize, result.subsystems);
+        if (hold != null) entity.add(hold);
+        for (ChassisBlueprintLoader.SubsystemPlacement p : result.subsystems) {
+            Entity system = engine.createEntityWithUuid();
+            system.add(new SubsystemComponent(p.footprint, p.type));
+            p.footprint.installed = system;
+            engine.addEntity(system);
+            registry.registerSubsystem(system);
+        }
+        return registry;
     }
 
     /** Cargo volume of a ship definition's chassis bays, m³. */
