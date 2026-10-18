@@ -11,7 +11,7 @@ import java.util.List;
  * Plans travel between two near-circular orbits around the same parent as impulsive maneuver nodes:
  * a phased Hohmann transfer (wait, transfer burn, circularisation burn), or a phasing orbit when both
  * are on the same radius. Plans are expressed as rails {@link Burn}s so the same plan can be handed to
- * an in-bubble pilot as goals. Cross-SOI routes are out of scope for the prototype.
+ * an in-bubble pilot as goals. Routes to other bodies are {@link RoutePlanner}'s.
  */
 public final class TransferPlanner {
     private static final double TWO_PI = 2 * Math.PI;
@@ -44,6 +44,15 @@ public final class TransferPlanner {
      * @param minStart earliest sim second the first burn may fire (at or after {@code t})
      */
     public static Plan plan(double mu, StateVector ship, StateVector target, double t, double minStart) {
+        return plan(mu, ship, target, t, minStart, 0);
+    }
+
+    /**
+     * As {@link #plan(double, StateVector, StateVector, double, double)}, never dipping below
+     * {@code minRadius} (the parent's surface plus a margin) on a phasing orbit.
+     */
+    public static Plan plan(double mu, StateVector ship, StateVector target, double t, double minStart,
+                            double minRadius) {
         int dir = (ship.x * ship.vy - ship.y * ship.vx) < 0 ? -1 : 1;
         double r1 = ship.distance();
         double r2 = target.distance();
@@ -59,9 +68,15 @@ public final class TransferPlanner {
             if (lead < 1e-6 || lead > TWO_PI - 1e-6) return new Plan(burns, minStart);
             // Phasing orbit: one lap with period chosen so the target arrives at the burn point with us.
             double period = TWO_PI / n1;
+            // One lap on a lower, faster orbit if the target is not far ahead, else a higher, slower one;
+            // the lower one only if its periapsis stays clear of the surface.
             double k = lead < Math.PI / 2 ? 1 : 2;
             double phasePeriod = period * (k - lead / TWO_PI);
             double aPh = Math.cbrt(mu * Math.pow(phasePeriod / TWO_PI, 2));
+            if (k == 1 && 2 * aPh - r1 < minRadius) {
+                phasePeriod = period * (2 - lead / TWO_PI);
+                aPh = Math.cbrt(mu * Math.pow(phasePeriod / TWO_PI, 2));
+            }
             double vCirc = Math.sqrt(mu / r1);
             double vPh = Math.sqrt(mu * (2 / r1 - 1 / aPh));
             burns.add(new Burn(minStart, vPh - vCirc, 0));
@@ -90,16 +105,12 @@ public final class TransferPlanner {
         // Desired velocity: tangential, in the direction of motion.
         double dvx = -dir * s.y / r * vc - s.vx;
         double dvy = dir * s.x / r * vc - s.vy;
+        // Rails burns are along the velocity and along the velocity turned away from the parent
+        // (orbital-mechanics' KeplerOrbit.withBurn), an orthonormal pair, so project onto it.
         double speed = s.speed();
-        double prograde = (dvx * s.vx + dvy * s.vy) / speed;
-        double radial = (dvx * s.x + dvy * s.y) / r;
-        // Prograde and radial are not orthogonal on an eccentric orbit; solve the 2x2 system exactly.
-        double px = s.vx / speed, py = s.vy / speed, qx = s.x / r, qy = s.y / r;
-        double det = px * qy - py * qx;
-        if (Math.abs(det) > 1e-12) {
-            prograde = (dvx * qy - dvy * qx) / det;
-            radial = (px * dvy - py * dvx) / det;
-        }
+        double ux = s.vx / speed, uy = s.vy / speed;
+        double prograde = dvx * ux + dvy * uy;
+        double radial = (dvx * uy - dvy * ux) * dir;
         return new Burn(t, prograde, radial);
     }
 

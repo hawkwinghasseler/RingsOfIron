@@ -105,6 +105,10 @@ public class MacroSaveParticipant implements SaveParticipant {
             json.writeValue("orderId", f.orderId);
             // JSON has no NaN; a missing arrival time means "not travelling".
             if (!Double.isNaN(f.arrivalTime)) json.writeValue("arrivalTime", f.arrivalTime);
+            if (f.transitBodyUuid != null) {
+                json.writeValue("transitBodyUuid", f.transitBodyUuid);
+                json.writeValue("transitDeadline", f.transitDeadline);
+            }
             json.writeValue("tripsCompleted", f.tripsCompleted);
             json.writeValue("deltaVUsed", f.deltaVUsed);
             json.writeValue("lastArrivalMiss", f.lastArrivalMiss);
@@ -157,6 +161,8 @@ public class MacroSaveParticipant implements SaveParticipant {
             f.cargoQuantity = v.getDouble("cargoQuantity", 0);
             f.orderId = v.getLong("orderId", 0);
             f.arrivalTime = v.has("arrivalTime") ? v.getDouble("arrivalTime") : Double.NaN;
+            f.transitBodyUuid = v.getString("transitBodyUuid", null);
+            f.transitDeadline = v.has("transitDeadline") ? v.getDouble("transitDeadline") : Double.NaN;
             f.tripsCompleted = v.getInt("tripsCompleted", 0);
             f.deltaVUsed = v.getDouble("deltaVUsed", 0);
             f.lastArrivalMiss = v.getDouble("lastArrivalMiss", 0);

@@ -33,7 +33,15 @@ public class FreighterComponent implements Component {
     public double cargoQuantity;
     public double credits;
     public long orderId;
+    /**
+     * Sim second of the next arrival, or while {@link #transitBodyUuid} is set, of the expected SOI
+     * crossing; NaN when not travelling.
+     */
     public double arrivalTime = Double.NaN;
+    /** Body the current leg crosses into (a moon, or the parent on the way down); null otherwise. */
+    public String transitBodyUuid;
+    /** Gives up waiting for the crossing after this sim second. */
+    public double transitDeadline = Double.NaN;
     public transient long arrivalEventId;
     public int tripsCompleted;
     public double deltaVUsed;

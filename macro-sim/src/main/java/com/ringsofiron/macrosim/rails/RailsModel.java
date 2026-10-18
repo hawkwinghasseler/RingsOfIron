@@ -43,6 +43,16 @@ public interface RailsModel {
     /** Gravitational parameter of a massive body, m^3/s^2. */
     double muOf(String bodyUuid);
 
+    /** Sphere-of-influence radius of a massive body, meters; +inf for a root body or without SOIs. */
+    default double soiRadiusOf(String bodyUuid) {
+        return Double.POSITIVE_INFINITY;
+    }
+
+    /** Surface radius of a massive body, meters. */
+    default double radiusOf(String bodyUuid) {
+        return 0;
+    }
+
     /** True if this UUID currently moves on rails (it is not in the bubble). */
     boolean isOnRails(String uuid);
 

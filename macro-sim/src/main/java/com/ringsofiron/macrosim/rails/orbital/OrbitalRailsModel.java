@@ -84,9 +84,23 @@ public class OrbitalRailsModel implements RailsModel {
 
     @Override
     public double muOf(String bodyUuid) {
+        return celestial(bodyUuid).mu;
+    }
+
+    private CelestialBodyComponent celestial(String bodyUuid) {
         CelestialBodyComponent c = bodies.get(require(bodyUuid));
         if (c == null) throw new IllegalArgumentException("Not a massive body: " + bodyUuid);
-        return c.mu;
+        return c;
+    }
+
+    @Override
+    public double soiRadiusOf(String bodyUuid) {
+        return celestial(bodyUuid).soiRadius;
+    }
+
+    @Override
+    public double radiusOf(String bodyUuid) {
+        return celestial(bodyUuid).radius;
     }
 
     @Override
