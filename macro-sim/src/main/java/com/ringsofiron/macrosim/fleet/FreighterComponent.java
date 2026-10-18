@@ -1,6 +1,7 @@
 package com.ringsofiron.macrosim.fleet;
 
 import com.badlogic.ashley.core.Component;
+import com.ringsofiron.macrosim.economy.CommodityType;
 
 /** An NPC hauler that takes trade orders. References are UUID strings, as the save format requires. */
 public class FreighterComponent implements Component {
@@ -23,7 +24,10 @@ public class FreighterComponent implements Component {
     public State resumeState = State.IDLE;
     public String dockedAtUuid;
     public String destinationUuid;
-    /** Cargo hold, in units of any one commodity. */
+    /**
+     * Cargo hold volume, m³, for one commodity at a time. The game sizes it from the bays of the
+     * freighter's chassis; see {@link #capacityUnits}.
+     */
     public double capacity = 400;
     public String cargoCommodity;
     public double cargoQuantity;
@@ -47,12 +51,14 @@ public class FreighterComponent implements Component {
     public FreighterComponent() {
     }
 
-    /**
-     * Units of cargo this freighter can take on one order. Fleet logic reads the hold only through
-     * here, so a physical cargo bay can replace the fixed {@link #capacity}.
-     */
+    /** Volume of the hold, m³. Fleet logic reads the hold only through here and {@link #capacityUnits}. */
     public double holdCapacity() {
         return capacity;
+    }
+
+    /** Units of a commodity the hold carries on one order. */
+    public double capacityUnits(CommodityType commodity) {
+        return commodity.unitVolume > 0 ? holdCapacity() / commodity.unitVolume : holdCapacity();
     }
 
     public FreighterComponent(String displayName, double capacity, double credits) {

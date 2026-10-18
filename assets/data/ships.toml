@@ -7,7 +7,8 @@ texture = "tex_corvette"
 mass = 120000.0
 max_thrust = 2.4e6
 max_torque = 8.0e5
-hull = [[-5.0, -3.0], [5.0, -3.0], [6.5, 0.0], [5.0, 3.0], [-5.0, 3.0]]
+# The aft 4 m is the cargo hold
+hull = [[-9.0, -3.0], [5.0, -3.0], [6.5, 0.0], [5.0, 3.0], [-9.0, 3.0]]
 crew = 4
 # Railgun in the nose, a point-defense autocannon on each beam, a missile launcher on top
 # and a laser below.
@@ -26,5 +27,5 @@ texture = "tex_freighter"
 mass = 300000.0
 max_thrust = 3.0e6
 max_torque = 1.5e6
-hull = [[-7.0, -3.0], [7.0, -3.0], [7.0, 3.0], [-7.0, 3.0]]
+hull = [[-10.0, -6.5], [10.0, -6.5], [10.0, 6.5], [-10.0, 6.5]]
 crew = 3

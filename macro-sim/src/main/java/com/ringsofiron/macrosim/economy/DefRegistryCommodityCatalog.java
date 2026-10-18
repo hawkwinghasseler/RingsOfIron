@@ -31,7 +31,8 @@ public class DefRegistryCommodityCatalog implements CommodityCatalog {
 
     public DefRegistryCommodityCatalog(DefRegistry defs, double cyclesPerDay, double targetStockDays) {
         for (CommodityDef d : defs.all(CommodityDef.class)) {
-            commodities.put(d.id, new CommodityType(d.id, d.name != null ? d.name : d.id, d.basePrice, d.volumePerUnit));
+            commodities.put(d.id, new CommodityType(d.id, d.name != null ? d.name : d.id, d.basePrice, d.volumePerUnit,
+                    d.massPerUnit));
         }
         for (StationTypeDef d : defs.all(StationTypeDef.class)) {
             stationTypes.put(d.id, new StationType(d.id, toDoubles(d.consumes), toDoubles(d.produces), Map.of(),

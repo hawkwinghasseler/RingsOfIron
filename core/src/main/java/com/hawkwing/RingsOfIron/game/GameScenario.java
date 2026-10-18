@@ -11,6 +11,7 @@ import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.bubble.BubbleTransitionListener;
@@ -40,9 +41,10 @@ public class GameScenario {
     public static final double R_EARTH = 6.371e6;
     public static final double ORBIT_RADIUS = R_EARTH + 400e3;
     public static final String PLAYER_SHIP = "corvette_patrol";
-    /** What the player starts with for trading at station markets. Placeholder values. */
+    /** The ship the traffic flies, which sizes the freighters' holds. */
+    public static final String FREIGHTER_SHIP = "freighter_hauler";
+    /** What the player starts with for trading at station markets. Placeholder value. */
     public static final double STARTING_CREDITS = 5_000;
-    public static final double STARTING_HOLD = 100;
 
     public final GameWorld world;
     public final ModContext content;
@@ -70,7 +72,9 @@ public class GameScenario {
         player = content.factory.spawnShip(PLAYER_SHIP, 0f, 0f, 90f);
         player.add(new PlayerControllerComponent());
         ShipConsoles.install(player);
-        player.add(new TraderComponent(STARTING_CREDITS, STARTING_HOLD));
+        // Trades go in and out of the corvette's cargo bays
+        player.add(new TraderComponent(STARTING_CREDITS, 0));
+        ShipCargo.attach(player);
         FlightControlComponent controls = player.getComponent(FlightControlComponent.class);
         if (controls != null) controls.rotationAssist = true;
 
@@ -121,8 +125,9 @@ public class GameScenario {
         String[] types = stationTypes();
         highport = world.macroSim.addStation("Highport", types[0], EARTH, circular(ORBIT_RADIUS, 8e3 / ORBIT_RADIUS), 1);
         depot = world.macroSim.addStation("Deepwell Depot", types[1], EARTH, circular(ORBIT_RADIUS + 2_000e3, 2.5), 1);
-        world.macroSim.addFreighter("Hauler Kestrel", 300, 20_000, highport);
-        for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), 300, 20_000, depot);
+        double hold = InteriorGridData.cargoBayVolume(content.defs, FREIGHTER_SHIP);
+        world.macroSim.addFreighter("Hauler Kestrel", hold, 20_000, highport);
+        for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), hold, 20_000, depot);
         content.hooks.fireWorldReady();
     }
 
@@ -165,6 +170,7 @@ public class GameScenario {
 
     private void relink() {
         player = world.getPlayer();
+        if (player != null) ShipCargo.attach(player);
         avatar = null;
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(PlayerAvatarComponent.class).get())) {
             avatar = e;

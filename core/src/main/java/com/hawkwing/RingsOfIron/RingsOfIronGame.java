@@ -32,6 +32,7 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.orbital.warp.TimeWarpController;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -374,7 +375,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
     }
 
-    /** The deck plan at the ship's pose, in the minimap's colors, with everyone aboard. */
+    /** The deck plan at the ship's pose, in the minimap's colors, with its cargo and everyone aboard. */
     private void drawInterior() {
         TransformComponent pt = TRANSFORMS.get(game.player);
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
@@ -395,6 +396,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 shapes.rect(p.x - s / 2f + 0.03f, p.y - s / 2f + 0.03f, s - 0.06f, s - 0.06f);
             }
         }
+        drawCargo(grid, game.player.getComponent(CargoHoldComponent.class));
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
             GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
             if (pos.ship != game.player) continue;
@@ -404,6 +406,34 @@ public class RingsOfIronGame extends ApplicationAdapter {
         shapes.end();
         shapes.identity();
         Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    /**
+     * A crate on each loaded bay tile, one color per commodity, filled from the tile's aft edge as
+     * far as the stack fills the tile. Inside a filled ShapeRenderer batch.
+     */
+    private void drawCargo(ShipGridComponent grid, CargoHoldComponent hold) {
+        if (hold == null) return;
+        float s = grid.tileSize;
+        float inset = s * 0.12f;
+        for (int i = 0; i < hold.bayTileCount(); i++) {
+            CargoHoldComponent.CargoStack stack = hold.stacks[i];
+            if (stack == null) continue;
+            float fill = hold.fillAt(hold.bayX[i], hold.bayY[i]);
+            Vector2 p = grid.tileToLocal(hold.bayX[i], hold.bayY[i]);
+            float x0 = p.x - s / 2f + inset, y0 = p.y - s / 2f + inset, side = s - 2f * inset;
+            shapes.setColor(0.08f, 0.08f, 0.1f, 0.9f);
+            shapes.rect(x0, y0, side, side);
+            shapes.setColor(commodityColor(stack.commodity));
+            shapes.rect(x0, y0, Math.max(0.05f * side, side * fill), side);
+        }
+    }
+
+    /** A steady, distinct color for each commodity id. */
+    private Color commodityColor(String commodity) {
+        float hue = ((commodity.hashCode() & 0x7fffffff) % 360);
+        color.fromHsv(hue, 0.55f, 0.85f).a = 1f;
+        return color;
     }
 
     private void drawStatus() {

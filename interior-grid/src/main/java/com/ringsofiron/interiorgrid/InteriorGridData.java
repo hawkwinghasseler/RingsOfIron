@@ -23,8 +23,9 @@ public final class InteriorGridData {
 
     /**
      * Registers the "ship" assembler: each ship gets a {@link ShipGridComponent} built from
-     * its chassis, a {@link ShipSubsystemRegistryComponent}, and one entity per installed
-     * system, added to the engine at once.
+     * its chassis, a {@link ShipSubsystemRegistryComponent}, one entity per installed
+     * system, added to the engine at once, and an empty {@link CargoHoldComponent} over its
+     * cargo bays when the chassis has any.
      */
     public static void install(ModContext ctx) {
         ctx.factory.registerAssembler("ship", (entity, def, factory) -> {
@@ -36,6 +37,8 @@ public final class InteriorGridData {
             ShipSubsystemRegistryComponent registry = new ShipSubsystemRegistryComponent(entity);
             entity.add(result.grid);
             entity.add(registry);
+            CargoHoldComponent hold = CargoHoldComponent.forBays(result.grid.tileSize, result.subsystems);
+            if (hold != null) entity.add(hold);
             for (ChassisBlueprintLoader.SubsystemPlacement p : result.subsystems) {
                 Entity system = factory.engine().createEntityWithUuid();
                 system.add(new SubsystemComponent(p.footprint, p.type));
@@ -44,6 +47,13 @@ public final class InteriorGridData {
                 registry.registerSubsystem(system);
             }
         });
+    }
+
+    /** Cargo volume of a ship definition's chassis bays, m³. */
+    public static double cargoBayVolume(DefRegistry defs, String shipId) {
+        ShipDef ship = defs.require("ship", shipId, ShipDef.class);
+        ChassisDef chassis = defs.require("chassis", ship.chassis, ChassisDef.class);
+        return CargoHoldComponent.bayVolume(ChassisBlueprintLoader.load(toBlueprint(chassis)));
     }
 
     /** The blueprint for a chassis definition. */
