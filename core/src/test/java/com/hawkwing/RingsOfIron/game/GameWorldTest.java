@@ -167,10 +167,45 @@ class GameWorldTest {
             assertFalse(ctx.report.hasErrors(), ctx.report.toString());
             assertFalse(ctx.defs.ids("ship").isEmpty());
             String shipId = ctx.defs.ids("ship").iterator().next();
-            assertNotNull(ctx.factory.spawnShip(shipId, 0, 0, 0));
+            Entity ship = ctx.factory.spawnShip(shipId, 0, 0, 0);
+            assertNotNull(ship);
             withContent.update(FRAME);
+
+            ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+            assertNotNull(grid, "interior-grid built the ship's interior from its chassis");
+            float gridMass = grid.computeMassProperties(
+                    com.ringsofiron.interiorgrid.InteriorGridData.toMaterialTable(ctx.defs)).mass;
+            assertEquals(gridMass, com.ringsofiron.physicsexterior.PhysicsManager.getMass(
+                    ship.getComponent(PhysicsBodyComponent.class).body), gridMass * 1e-3f, "Box2D mass comes from the grid");
+            assertFalse(grid.mounts.isEmpty());
+            assertNotNull(grid.mounts.get(0).installed);
         } finally {
             withContent.dispose();
+        }
+    }
+
+    @Test
+    void shipInteriorsSurviveSaveAndLoad() {
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        GameWorld withContent = new GameWorld();
+        GameWorld loaded = new GameWorld();
+        try {
+            ModContext ctx = withContent.loadContent(assets, assets.resolve("no-mods-here"));
+            Entity ship = ctx.factory.spawnShip(ctx.defs.ids("ship").iterator().next(), 0, 0, 0);
+            String uuid = ship.getComponent(UuidComponent.class).id;
+            withContent.update(FRAME);
+            String save = withContent.engine.getSerializationService().saveGame();
+
+            loaded.engine.getSerializationService().loadGame(save);
+            Entity copy = loaded.engine.getEntity(uuid);
+            assertNotNull(copy);
+            ShipGridComponent grid = copy.getComponent(ShipGridComponent.class);
+            assertNotNull(grid);
+            assertFalse(grid.mounts.isEmpty());
+            assertNotNull(grid.mounts.get(0).installed, "mounts relinked to their systems after the load");
+        } finally {
+            withContent.dispose();
+            loaded.dispose();
         }
     }
 

@@ -29,7 +29,7 @@ public class GameHud implements Disposable {
         this.hud = hud;
         hud.addTo(world.engine.getEcsEngine());
         hud.setPhysics(world.physics);
-        hud.setOrbitInfo(new PlayerOrbitInfo(world.universe, world::getPlayer));
+        hud.setOrbitInfo(new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
         hud.setInteractor(world.avatar);
         hud.getViewMode().addListener((previous, current) -> world.audioListener.setMode(toListenerMode(current)));
         world.audioListener.setMode(toListenerMode(hud.getViewMode().getMode()));
