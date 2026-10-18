@@ -168,7 +168,7 @@ public class MacroSimulation {
         return id.id;
     }
 
-    /** Creates a freighter entity docked at a station. Returns its UUID. */
+    /** Creates a freighter entity docked at a station, with a hold of {@code capacity} m³. Returns its UUID. */
     public String addFreighter(String name, double capacity, double credits, String stationUuid) {
         Entity e = engine.createEntity();
         UuidComponent id = new UuidComponent();

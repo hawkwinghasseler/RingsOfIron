@@ -72,6 +72,15 @@ Ship systems install into fixed-size mounts (`MountFootprint`):
 - **Every tile in the footprint belongs to the installed system**, so a hit on any of them damages it. `Tile.mount` points at the footprint, and `MountFootprint.installed` at the system entity; `ShipGridComponent.subsystemAt(x, y)` is the tile→subsystem index combat uses.
 - A footprint must lie entirely on interior floor, may not overlap another mount, and may not have an edge wall running through it.
 
+### Cargo bays
+Cargo is physical: goods sit on the floor tiles of the ship's cargo bays (the footprints of its `CARGO` systems), not in an abstract number. `CargoHoldComponent` on the ship lists the bay tiles and the stack on each:
+
+- Each bay tile holds one stack of a single commodity, piled to `STACK_HEIGHT` (2.5 m, a 3 m deck less headroom), so a 1 m tile holds 2.5 m³. The hold's capacity is the sum over its bay tiles; a tile already holding one good has no room for another.
+- Loading tops up stacks of the same good, then starts new stacks on empty tiles in bay order; unloading takes from the newest stacks first. Each stack keeps its good's m³ and kg per unit.
+- `addMassTo` adds the cargo to the structural mass properties as point masses at the loaded tiles, so a full aft bay moves the center of mass aft and raises the inertia. The game recomputes the ship's Box2D mass whenever `revision` changes.
+- `InteriorGridData` gives every data-spawned ship with bays an empty hold, and `InteriorGridData.cargoBayVolume(defs, shipId)` sizes a ship's hold from its chassis without spawning it (used for rails freighters).
+- The corvette has two 2-tile bays (10 m³); the light freighter two 12×5 bays (300 m³). The deck view draws a crate on each loaded tile, colored by good and filled as far as the stack fills the tile.
+
 ## Damage, Leaks and Zero-Integrity Rules
 Hull, wall and floor tiles, hull pieces and edge walls all take damage to their condition (`integrity`, 1 = intact).
 

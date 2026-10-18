@@ -13,9 +13,10 @@ origin_y = -3.0
 # A turret mount beside each hardpoint in ships.toml (combat wires each weapon to
 # the nearest one): nose (8,2), port and starboard beams (6,4) and (6,1), the
 # launcher (3,4). The weapons console sits aft, away from every hardpoint.
+# Two small cargo bays (C), 2 tiles each: 10 m3 of cargo at 2.5 m3 a tile.
 rows = [
   "##########",
-  "#HHT..TRR#",
+  "#HHTCCTRR#",
   "#WW....RR#",
   "#L.++++.T#",
   "#L....TCC#",
@@ -27,13 +28,22 @@ coverings = [ { covering = "CARPET", x = 1, y = 1, width = 6, height = 4 } ]
 [chassis.freighter]
 name = "Light Freighter"
 tile_size = 1.0
-origin_x = -7.0
-origin_y = -3.0
+origin_x = -10.0
+origin_y = -6.5
+# Two 12 x 5 cargo bays either side of a conduit spine: 120 tiles, 300 m3 of cargo.
+# Engineering aft (left), the helm forward.
 rows = [
-  "##############",
-  "#HH..I..CC.CC#",
-  "#....I.......#",
-  "#L.+++++++RR.#",
-  "#L.......IRR.#",
-  "##############",
+  "####################",
+  "#...CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "#RR.CCCCCCCCCCCC.HH#",
+  "#RR.CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "#L++++++++++++++++.#",
+  "#L..CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "####################",
 ]

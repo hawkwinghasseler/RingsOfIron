@@ -34,6 +34,12 @@ class DefRegistryCatalogTest {
     void baseEconomyFileMapsOntoCommoditiesAndStationTypes() throws Exception {
         DefRegistryCommodityCatalog catalog = loadBaseEconomy();
         assertEquals(12.0, catalog.commodity("water").basePrice, 1e-6);
+        assertEquals(2000.0, catalog.commodity("steel").unitMass, 1e-6);
+        assertEquals(0.5, catalog.commodity("steel").unitVolume, 1e-6);
+        // A freighter's hold is a volume: 300 m³ carries twice as many units of steel as of water
+        FreighterComponent hauler = new FreighterComponent("Hauler", 300, 0);
+        assertEquals(600, hauler.capacityUnits(catalog.commodity("steel")), 1e-6);
+        assertEquals(300, hauler.capacityUnits(catalog.commodity("water")), 1e-6);
         StationType foundry = catalog.stationType("foundry");
         assertEquals(60.0, foundry.inputsPerCycle.get("ore"), 1e-6);
         assertEquals(30.0, foundry.outputsPerCycle.get("steel"), 1e-6);

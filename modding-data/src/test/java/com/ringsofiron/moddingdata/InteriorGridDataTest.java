@@ -5,6 +5,7 @@ import com.ringsofiron.interiorgrid.ChassisBlueprint;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.HullPiece;
+import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.Side;
@@ -77,18 +78,27 @@ class InteriorGridDataTest {
     void corvetteHasATurretPerWeaponAndAWeaponsConsole() {
         ChassisDef corvette = ctx.defs.require("chassis", "corvette", ChassisDef.class);
         ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(toBlueprint(corvette));
-        int reactors = 0, turrets = 0, consoles = 0;
+        int reactors = 0, turrets = 0, consoles = 0, bays = 0;
         for (ChassisBlueprintLoader.SubsystemPlacement p : result.subsystems) {
             if (p.type == SubsystemComponent.SubsystemType.REACTOR) reactors++;
             if (p.type == SubsystemComponent.SubsystemType.TURRET_MOUNT) turrets++;
             if (p.type == SubsystemComponent.SubsystemType.WEAPONS) consoles++;
+            if (p.type == SubsystemComponent.SubsystemType.CARGO) bays++;
         }
         assertEquals(1, reactors);
         assertEquals(4, turrets, "nose, both beams and the launcher");
         assertEquals(1, consoles);
-        assertEquals(9, result.subsystems.size, "helm, reactor, life support, cargo, weapons console, 4 turrets");
+        assertEquals(2, bays);
+        assertEquals(10, result.subsystems.size, "helm, reactor, life support, 2 cargo bays, weapons console, 4 turrets");
         assertEquals(10, result.grid.width);
         assertTrue(result.grid.getTile(4, 3).isFlammable(), "the crew spaces are carpeted");
+    }
+
+    @Test
+    void cargoCapacityIsTheVolumeOfTheBays() {
+        // 2.5 m3 a tile: the corvette's two small bays and the freighter's two big ones
+        assertEquals(10.0, InteriorGridData.cargoBayVolume(ctx.defs, "corvette_patrol"), 1e-9);
+        assertEquals(300.0, InteriorGridData.cargoBayVolume(ctx.defs, "freighter_hauler"), 1e-9);
     }
 
     @Test

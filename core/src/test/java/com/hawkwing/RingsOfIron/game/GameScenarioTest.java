@@ -202,10 +202,10 @@ class GameScenarioTest {
     @Test
     void crewConsolesAreOnTheShipAndSurviveALoad() {
         java.util.Map<String, int[]> consoles = consolesOn(game.player);
-        // The corvette's chassis has a helm, a reactor and life support, and no weapons console.
-        assertEquals(java.util.Set.of("helm", "reactor", "life_support"), consoles.keySet());
+        // The corvette's chassis has a helm, a weapons console, a reactor and life support.
+        assertEquals(java.util.Set.of("helm", "weapons", "reactor", "life_support"), consoles.keySet());
         assertArrayEquals(new int[]{1, 4}, consoles.get("helm"));
-        assertEquals(3, consolesOn(game.contacts.first()).size(), "the raider has its own");
+        assertEquals(4, consolesOn(game.contacts.first()).size(), "the raider has its own");
 
         String save = world.engine.getSerializationService().saveGame();
         world.engine.getSerializationService().loadGame(save);
@@ -217,9 +217,59 @@ class GameScenarioTest {
     void thePlayerCanTrade() {
         com.ringsofiron.macrosim.economy.TraderComponent trader =
                 game.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class);
+        com.ringsofiron.interiorgrid.CargoHoldComponent bays =
+                game.player.getComponent(com.ringsofiron.interiorgrid.CargoHoldComponent.class);
         assertNotNull(trader);
+        assertNotNull(bays, "the corvette has cargo bays");
         assertEquals(GameScenario.STARTING_CREDITS, trader.credits);
-        assertEquals(GameScenario.STARTING_HOLD, trader.freeCargo());
+        assertEquals(bays.capacity(), trader.freeCargo(), 1e-9, "the hold is the bays");
+        assertEquals(10, bays.capacity(), 1e-9);
+    }
+
+    @Test
+    void boughtGoodsSitInTheBaysAndWeighTheShipDown() {
+        var trader = game.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class);
+        var bays = game.player.getComponent(com.ringsofiron.interiorgrid.CargoHoldComponent.class);
+        var body = game.player.getComponent(PhysicsBodyComponent.class).body;
+        world.update(FRAME);
+        float emptyMass = com.ringsofiron.physicsexterior.PhysicsManager.getMass(body);
+
+        var station = world.macroSim.station(game.highport);
+        var market = world.macroSim.market();
+        String good = null;
+        for (var q : market.quotes(station)) {
+            if (q.available > 5) {
+                good = q.commodityId;
+                break;
+            }
+        }
+        assertNotNull(good, "Highport sells something");
+        trader.credits = 1e9;
+        double bought = market.buy(station, trader, good, 1e6);
+        var type = world.macroSim.economy().catalog().commodity(good);
+        assertTrue(bought > 0);
+        assertEquals(bought, bays.amount(good), 1e-9, "the goods are in the bays");
+        assertTrue(bays.usedVolume() <= bays.capacity() + 1e-9);
+        assertEquals(bought * type.unitVolume, bays.usedVolume(), 1e-6);
+
+        world.update(FRAME);
+        float loadedMass = com.ringsofiron.physicsexterior.PhysicsManager.getMass(body);
+        assertEquals(emptyMass + bought * type.unitMass, loadedMass, loadedMass * 1e-5, "cargo weighs the ship down");
+
+        // A load keeps the goods in the bays and their weight on the hull
+        String save = world.engine.getSerializationService().saveGame();
+        world.engine.getSerializationService().loadGame(save);
+        Entity ship = world.getPlayer();
+        world.update(FRAME);
+        var loadedTrader = ship.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class);
+        assertEquals(bought, loadedTrader.amount(good), 1e-9);
+        assertEquals(loadedMass, com.ringsofiron.physicsexterior.PhysicsManager.getMass(
+                ship.getComponent(PhysicsBodyComponent.class).body), loadedMass * 1e-5);
+
+        assertEquals(bought, market.sell(world.macroSim.station(game.highport), loadedTrader, good, 1e6), 1e-9);
+        world.update(FRAME);
+        assertEquals(emptyMass, com.ringsofiron.physicsexterior.PhysicsManager.getMass(
+                ship.getComponent(PhysicsBodyComponent.class).body), emptyMass * 1e-5, "selling lightens it again");
     }
 
     /** Console id to tile, for the consoles aboard {@code ship}. */

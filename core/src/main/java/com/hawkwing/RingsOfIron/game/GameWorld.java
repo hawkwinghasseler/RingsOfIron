@@ -23,6 +23,7 @@ import com.ringsofiron.combatsys.systems.BallisticsSystem;
 import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.InteriorGridSaveParticipant;
@@ -37,6 +38,7 @@ import com.ringsofiron.macrosim.MacroSimulation;
 import com.ringsofiron.macrosim.economy.DefRegistryCommodityCatalog;
 import com.ringsofiron.macrosim.economy.DefaultCommodityCatalog;
 import com.ringsofiron.macrosim.rails.orbital.OrbitalRailsModel;
+import com.ringsofiron.moddingdata.DefRegistry;
 import com.ringsofiron.moddingdata.ModContext;
 import com.ringsofiron.moddingdata.ModTrustPolicy;
 import com.ringsofiron.moddingdata.ModdingBootstrap;
@@ -69,8 +71,8 @@ import java.util.function.Consumer;
  * No rendering here, so it runs headless in tests; screens hold a GameWorld and draw it.
  *
  * <p>Wired today: core-engine, physics-exterior, orbital-mechanics (rails, events, time warp),
- * interior-grid (hazards, power, life support, rails-warp guard, saves, ships' interiors and mass
- * from data), ai-crew (crew AI and the NPC
+ * interior-grid (hazards, power, life support, rails-warp guard, saves, ships' interiors, cargo bays
+ * and mass from data), ai-crew (crew AI and the NPC
  * pilot), combat-sys (ballistics and impact damage, hurting crew through ai-crew), audio-spatial
  * (sound, occlusion, listener on the player), modding-data (data and mod loading through
  * {@link #loadContent}, ships get Box2D bodies from their defs), macro-sim (economy, freighter
@@ -122,6 +124,8 @@ public class GameWorld implements Disposable {
     private final Modules modules;
     private final SwitchableCommodityCatalog commodities = new SwitchableCommodityCatalog(new DefaultCommodityCatalog());
     private ModContext content;
+    /** Materials from the loaded data, for ships' mass. */
+    private MaterialTable materials;
 
     public GameWorld() {
         this(new Modules());
@@ -177,6 +181,8 @@ public class GameWorld implements Disposable {
         engine.addSystem(new PowerRoutingSystem());
         engine.addSystem(new LifeSupportSystem());
         engine.getSerializationService().addParticipant(new InteriorGridSaveParticipant(engine));
+        // Traded goods sit in the ships' cargo bays and weigh them down
+        engine.addSystem(new ShipCargo(this::shipMass));
         // Watches whichever ship the player is flying now.
         InteriorHazardWarpGuard hazards = new InteriorHazardWarpGuard(null);
         engine.addRailsWarpGuard(() -> {
@@ -280,14 +286,29 @@ public class GameWorld implements Disposable {
         audio.dispose();
     }
 
-    /** Structural mass, center and inertia from the ship's interior grid and the loaded materials. */
-    private static ShipPhysicsAssembler.MassSource gridMass(ModContext ctx) {
-        MaterialTable[] materials = new MaterialTable[1];
+    /**
+     * Mass, center and inertia of a ship from its interior grid and the loaded materials, with the
+     * cargo in its bays. Null for a ship without a grid, or before content has loaded.
+     */
+    public ShipGridComponent.MassProperties shipMass(Entity ship) {
+        return content == null ? null : shipMass(ship, content.defs);
+    }
+
+    private ShipGridComponent.MassProperties shipMass(Entity ship, DefRegistry defs) {
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        if (grid == null) return null;
+        if (materials == null) materials = InteriorGridData.toMaterialTable(defs);
+        ShipGridComponent.MassProperties m = grid.computeMassProperties(materials);
+        CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
+        if (hold != null) hold.addMassTo(grid, m);
+        return m;
+    }
+
+    /** A ship's mass for the physics assembler, from {@link #shipMass}. */
+    private ShipPhysicsAssembler.MassSource gridMass(ModContext ctx) {
         return (entity, def, out) -> {
-            ShipGridComponent grid = entity.getComponent(ShipGridComponent.class);
-            if (grid == null) return false;
-            if (materials[0] == null) materials[0] = InteriorGridData.toMaterialTable(ctx.defs);
-            ShipGridComponent.MassProperties m = grid.computeMassProperties(materials[0]);
+            ShipGridComponent.MassProperties m = shipMass(entity, ctx.defs);
+            if (m == null) return false;
             out[0] = m.mass;
             out[1] = m.center.x;
             out[2] = m.center.y;

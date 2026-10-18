@@ -11,12 +11,12 @@ public class DefaultCommodityCatalog implements CommodityCatalog {
     private final Map<String, StationType> stationTypes = new LinkedHashMap<>();
 
     public DefaultCommodityCatalog() {
-        add(new CommodityType("water", "Water", 4, 1.0));
-        add(new CommodityType("food", "Food", 12, 1.0));
-        add(new CommodityType("ore", "Ore", 6, 0.5));
-        add(new CommodityType("metals", "Refined Metals", 25, 0.3));
-        add(new CommodityType("fuel", "Fuel", 15, 1.0));
-        add(new CommodityType("electronics", "Electronics", 120, 0.2));
+        add(new CommodityType("water", "Water", 4, 1.0, 1000));
+        add(new CommodityType("food", "Food", 12, 1.0, 500));
+        add(new CommodityType("ore", "Ore", 6, 0.5, 1250));
+        add(new CommodityType("metals", "Refined Metals", 25, 0.3, 2400));
+        add(new CommodityType("fuel", "Fuel", 15, 1.0, 1000));
+        add(new CommodityType("electronics", "Electronics", 120, 0.2, 100));
 
         add(new StationType("ice_mine", Map.of(), Map.of("water", 40.0), Map.of("food", 6.0), 4, 10));
         add(new StationType("farm", Map.of("water", 20.0), Map.of("food", 15.0), Map.of(), 4, 10));
