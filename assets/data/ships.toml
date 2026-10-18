@@ -1,0 +1,22 @@
+# Spawnable ships: EntityFactory.spawnShip("<id>", x, y, angle).
+
+[ship.corvette_patrol]
+name = "Patrol Corvette"
+chassis = "corvette"
+texture = "tex_corvette"
+mass = 120000.0
+max_thrust = 2.4e6
+max_torque = 8.0e5
+hull = [[-5.0, -3.0], [5.0, -3.0], [6.5, 0.0], [5.0, 3.0], [-5.0, 3.0]]
+crew = 4
+hardpoints = [ { weapon = "railgun_mk1", x = 4.0, y = 0.0, rotation = 0.0 } ]
+
+[ship.freighter_hauler]
+name = "Hauler"
+chassis = "freighter"
+texture = "tex_freighter"
+mass = 300000.0
+max_thrust = 3.0e6
+max_torque = 1.5e6
+hull = [[-7.0, -3.0], [7.0, -3.0], [7.0, 3.0], [-7.0, 3.0]]
+crew = 3
