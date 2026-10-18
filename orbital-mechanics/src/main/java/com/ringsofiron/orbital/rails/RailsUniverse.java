@@ -6,6 +6,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.UuidRegistry;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
@@ -36,9 +37,11 @@ public class RailsUniverse {
     private final ImmutableArray<Entity> celestials;
     private final StateVector scratch = new StateVector();
 
-    /**
-     * @param clock current sim time in seconds; with core-engine's clock pass {@code clock::getSimSeconds}
-     */
+    public RailsUniverse(GameEngine game) {
+        this(game.getEcsEngine(), game.getUuidRegistry(), game::getSimSeconds);
+    }
+
+    /** @param clock current sim time in seconds, e.g. {@code simClock::getSimSeconds} */
     public RailsUniverse(Engine engine, UuidRegistry registry, DoubleSupplier clock) {
         this.registry = registry;
         this.clock = clock;
