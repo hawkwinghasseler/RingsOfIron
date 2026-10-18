@@ -13,6 +13,7 @@ import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.SerializationService;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.physicsexterior.components.BodyShapeComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
@@ -22,9 +23,14 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
  * spin, keyed by entity UUID.
  *
  * Box2D bodies themselves are not saved: {@link PhysicsBodyComponent} and
- * {@link KinematicTransientComponent} are skipped, and whoever builds a ship or rock (its
- * assembler) recreates the body after load. When a body appears on an entity with a saved state,
- * the state is applied to it, whether the body exists before this participant is read or later.
+ * {@link KinematicTransientComponent} are skipped. Instead each body's fixtures and exact mass
+ * are saved as a {@link BodyShapeComponent} snapshot, and on load the body is rebuilt from it on
+ * the same entity, with its state applied. So a ship comes back exactly as it was built (hull
+ * from its def, mass from the interior grid) without running its assembler again, and bodies that
+ * no assembler made (a freighter macro-sim brought into the bubble) come back too.
+ *
+ * Saves from before shapes were recorded hold only states; those are applied when something else
+ * builds the entity's body, whether before this participant is read or later.
  *
  * The anchor's motion model is not saved: the game sets the model for the current parent body
  * (e.g. a Kepler orbit) and this participant restarts it from the saved state at the saved tick.
@@ -79,11 +85,14 @@ public class PhysicsSaveParticipant implements SaveParticipant {
             Body body = bodyMapper.get(entity).body;
             if (body == null) continue;
             physics.getTrueState(body, state);
-            json.writeArrayStart(uuidMapper.get(entity).id);
+            json.writeObjectStart(uuidMapper.get(entity).id);
+            json.writeArrayStart("state");
             for (double v : state) json.writeValue(v);
             json.writeValue((double) body.getAngle());
             json.writeValue((double) body.getAngularVelocity());
             json.writeArrayEnd();
+            json.writeValue("shape", BodyShapeComponent.capture(body), BodyShapeComponent.class);
+            json.writeObjectEnd();
         }
         json.writeObjectEnd();
     }
@@ -99,11 +108,21 @@ public class PhysicsSaveParticipant implements SaveParticipant {
         JsonValue bodies = data.get("bodies");
         if (bodies == null) return;
         for (JsonValue entry = bodies.child; entry != null; entry = entry.next) {
-            double[] saved = entry.asDoubleArray();
+            // Older saves wrote the bare state array, with no shape.
+            double[] saved = entry.isArray() ? entry.asDoubleArray() : entry.get("state").asDoubleArray();
+            JsonValue shapeData = entry.isArray() ? null : entry.get("shape");
             Entity entity = game.getEntity(entry.name);
             Body body = entity == null ? null : bodyMapper.get(entity) == null ? null : bodyMapper.get(entity).body;
-            if (body != null) apply(body, saved);
-            else pending.put(entry.name, saved);
+            if (body == null && entity != null && shapeData != null) {
+                BodyShapeComponent shape = json.readValue(BodyShapeComponent.class, shapeData);
+                body = shape.build(physics, entity, 0f, 0f, 0f);
+                apply(body, saved);
+                entity.add(new PhysicsBodyComponent(body));
+            } else if (body != null) {
+                apply(body, saved);
+            } else if (entity != null) {
+                pending.put(entry.name, saved);
+            }
         }
     }
 
