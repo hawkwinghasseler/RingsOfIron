@@ -202,11 +202,21 @@ public class ShipGridComponent implements Component {
      * is read from {@link #airflow}, so it reflects the last hazard tick.
      */
     public boolean hasActiveHazard() {
+        return hasFire() || isVenting();
+    }
+
+    /** True while any tile is burning. */
+    public boolean hasFire() {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 if (tiles[y][x].isBurning()) return true;
             }
         }
+        return false;
+    }
+
+    /** True while air leaves through some opening to space faster than {@link #VENTING_HAZARD_FLOW}. */
+    public boolean isVenting() {
         for (int i = 0; i < airflow.size; i++) {
             AirflowEdge e = airflow.get(i);
             if (e.other == null && e.flow > VENTING_HAZARD_FLOW) return true;

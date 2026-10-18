@@ -138,7 +138,7 @@ Atmosphere is **conserved**: it only leaves the ship through openings to space. 
 
 Air flows from the higher-pressure side at `FLOW_COEFFICIENT` (2 mol/s per kPa per tile width), carrying that side's mix of gases and smoke, and never more than halfway to equal pressure in one step. A 54-tile room vents through one breached hull tile with a time constant of about 30 s; two rooms joined by an open door equalize in about 15 s.
 
-On top of the bulk flow, rooms joined by an opening **diffuse** into each other. Each swaps an equal number of moles with the other, carrying its own mix, so composition (oxygen, CO2, smoke) evens out while pressure is left alone. The exchange is `DIFFUSION_COEFFICIENT` (0.05 m³/s each way per tile width), about what bulk flow moves at a 1 kPa pressure difference, so bulk flow dominates whenever pressures differ. Two 54-tile rooms joined by one open door at equal pressure take about 25 minutes to mix most of the way. Diffusion does not carry air to space, where bulk flow already does.
+On top of the bulk flow, rooms joined by an opening **diffuse** into each other. Each swaps an equal number of moles with the other, carrying its own mix, so composition (oxygen, CO2, smoke) evens out while pressure is left alone. The exchange is `DIFFUSION_COEFFICIENT` (0.6 m³/s each way per tile width). Two 54-tile rooms joined by one open door at equal pressure mix most of the way in about 2 minutes. Bulk flow moves that much air at about a 12 kPa difference, and fires and breaches drive far larger ones, so bulk flow dominates whenever pressures differ. Diffusion does not carry air to space, where bulk flow already does.
 
 After each step the net flow through every opening is published on `ShipGridComponent.airflow` as `AirflowEdge`s: the air tile on one side, the direction of the opening (or none for a hole in the deck), the compartments on both sides, and the air and smoke leaving through it per second. An opening between two rooms is listed once from each side. Effects, crew and anything else that reacts to draughts read this list.
 
@@ -170,13 +170,22 @@ Random draws use a seeded generator per `GridHazardSystem`, so runs are reproduc
 - That is far slower than a large fire uses oxygen, so life support cleans up after a fire rather than holding one back.
 
 ## Power & Subsystem Routing
-`PowerRoutingSystem` runs a breadth-first flood from every footprint tile of each reactor that is switched on and not destroyed, across floor and conduit tiles:
+`PowerRoutingSystem` runs a breadth-first flood from every footprint tile of each reactor that is switched on and not disabled by damage, across floor and conduit tiles:
 - Intact full-tile walls and tiles at integrity 0 do not conduct.
 - Closed edge walls block power, except where a conduit runs on both sides of the wall (a conduit passes through a thin wall).
-- A system is powered if any tile of its footprint is powered. It is operational when it is switched on (`SubsystemComponent.switchedOn`), powered and not destroyed (`health > 0`). Switching a reactor off is not damage: it powers back up as soon as it is switched on.
-- It runs on a 1 s tick, or on the next frame when damage code sets `ShipGridComponent.gridDirty`.
+- A system is powered if any tile of its footprint is powered. It is operational when it is switched on (`SubsystemComponent.switchedOn`), powered and not disabled by damage (`health >= SubsystemComponent.DISABLE_THRESHOLD`, 0.3). Switching a reactor off is not damage: it powers back up as soon as it is switched on.
+- It runs on a 1 s fixed tick, or on the next frame when damage code sets `ShipGridComponent.gridDirty`.
 
-## Components
+## Ticks and Time Warp
+All three interior systems are core-engine `FixedLogicSystem`s, run after exterior physics in this order: `PowerRoutingSystem` (priority 30, every 1 s), `GridHazardSystem` (31, every 0.25 s), then `LifeSupportSystem` (32, every 0.25 s).
+
+`InteriorHazardWarpGuard` is a core-engine `RailsWarpGuard` for one ship, normally the player's. It refuses rails warp with "Fire aboard" while any tile burns (`ShipGridComponent.hasFire()`), or "Atmosphere venting" while air leaves through an opening to space faster than 0.01 mol/s (`isVenting()`).
+
+A rails warp jump therefore only ever starts with no fire and no venting. Each system gets one `catchUp` call for the whole jump:
+- `GridHazardSystem` cools every tile toward ambient by the exact exponential decay of its loss to the structure, and pools the air of every group of rooms joined by any opening. A group that still reaches space through a slow leak empties.
+- `PowerRoutingSystem` reroutes once.
+- `LifeSupportSystem` runs one long step. Scrubbing decays exponentially over the jump, and oxygen supply is capped by what the rooms are short.
+
 - `ShipGridComponent`: tiles, edge walls, hull pieces, mounts, compartments, `gridOriginLocal`, coordinate conversion, placement validation, mass properties.
   - `layoutRevision` is bumped each time the compartments are rebuilt, on the first hazard tick after a wall, door, seal or tile opens or closes. Caches built on `canPass`/`canFlow`, such as crew pathfinding, compare it against the value they were built at.
   - `hasActiveHazard()` is true while any fire burns or air vents to space faster than 0.01 mol/s through an opening. Time warp is refused while it holds.
@@ -190,6 +199,7 @@ Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartm
 - `CompartmentBuilder` (helper, not an ECS system): divides the interior into compartments and carries the air over when the layout changes.
 - `PowerRoutingSystem`: calculates subsystem power connectivity.
 - `LifeSupportSystem`: scrubs CO2 and smoke and replenishes oxygen.
+- `InteriorHazardWarpGuard` (not an ECS system): refuses rails warp during a fire or venting.
 
 ## Open Questions
 - **Repressurising.** Life support tops up oxygen only. Refilling a vented room with nitrogen (from tanks, at a cost) is still open.

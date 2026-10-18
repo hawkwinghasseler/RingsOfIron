@@ -37,7 +37,7 @@ public class SubsystemComponent implements Component {
      * produces no power; it is not damaged and comes back as soon as it is switched on.
      */
     public boolean switchedOn = true;
-    /** Whether this subsystem is currently operational: switched on, powered and not destroyed. Set by PowerRoutingSystem. */
+    /** Whether this subsystem is currently operational: switched on, powered and not disabled by damage. Set by PowerRoutingSystem. */
     public boolean isOperational = true;
     /** Structural health 0.0 = destroyed, 1.0 = fully intact. Only damage changes it. */
     public float health = 1.0f;
@@ -54,6 +54,17 @@ public class SubsystemComponent implements Component {
 
     public boolean isDestroyed() {
         return health <= 0f;
+    }
+
+    /**
+     * Below this health a system is too damaged to work, even when switched on and
+     * powered. Repairs above it bring the system back.
+     */
+    public static final float DISABLE_THRESHOLD = 0.3f;
+
+    /** True when damage has taken the system below {@link #DISABLE_THRESHOLD}, destroyed included. */
+    public boolean isDisabled() {
+        return health < DISABLE_THRESHOLD;
     }
 
     /** True if tile (x, y) is part of this system's footprint. */
