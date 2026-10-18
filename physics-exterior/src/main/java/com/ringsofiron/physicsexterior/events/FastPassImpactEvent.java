@@ -19,4 +19,6 @@ public class FastPassImpactEvent {
     public float relativeSpeed;
     /** Surface normal at the contact point. */
     public float normalX, normalY;
+    /** The transient's mass in kg, or 0 when nothing knows it. */
+    public float transientMass;
 }
