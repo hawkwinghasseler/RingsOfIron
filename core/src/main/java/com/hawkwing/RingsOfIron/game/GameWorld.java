@@ -20,6 +20,7 @@ import com.ringsofiron.combatsys.save.CombatSaveParticipant;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.modding.ShipWeaponsAssembler;
 import com.ringsofiron.combatsys.systems.BallisticsSystem;
+import com.ringsofiron.combatsys.systems.BeamSystem;
 import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
 import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
@@ -114,7 +115,7 @@ public class GameWorld implements Disposable {
     public final MacroSimulation macroSim;
     public final CrewService crew;
     public final CombatEvents combatEvents;
-    /** Weapon, projectile, missile and warhead tables; data from {@link #loadContent} is merged in. */
+    /** Weapon, projectile, missile, warhead and material tables; data from {@link #loadContent} is merged in. */
     public final CombatDefs combatDefs;
     public final BallisticsSystem ballistics;
     public final SensorTrackingSystem sensors;
@@ -123,6 +124,8 @@ public class GameWorld implements Disposable {
     public final MissileGuidanceSystem missiles;
     /** Resolves hits; damage uses the loaded material data once {@link #loadContent} has run. */
     public final ImpactResolutionSystem impacts;
+    /** Finds what each burning beam touches and burns it. */
+    public final BeamSystem beams;
     public final AudioManager audio;
     public final AvatarInteractor avatar;
     public final AudioListenerSync audioListener;
@@ -209,7 +212,7 @@ public class GameWorld implements Disposable {
         ballistics.setTidalField(physics.getTidalField()::accelAt);
         engine.getSerializationService().addParticipant(new CombatSaveParticipant(engine));
         // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
-        // and hit, then hits resolve. Their step listeners run in the order added here.
+        // and hit, then hits resolve and beams burn. Their step listeners run in the order added here.
         sensors = new SensorTrackingSystem(physics, modules.combatSeed + 1);
         missiles = new MissileGuidanceSystem(physics, combatEvents, combatDefs, ballistics, sensors);
         weaponControl = new WeaponControlSystem(physics, combatEvents, combatDefs, ballistics, missiles, sensors,
@@ -222,6 +225,8 @@ public class GameWorld implements Disposable {
                 MaterialTable.createDefault(), modules.combatSeed);
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
         engine.addSystem(impacts);
+        beams = new BeamSystem(physics, impacts);
+        engine.addSystem(beams);
 
         // audio-spatial
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
@@ -233,7 +238,7 @@ public class GameWorld implements Disposable {
         AudioUpdateSystem audioUpdate = new AudioUpdateSystem(audio);
         engine.addSystem(audioUpdate);
         physics.collisions.add(new ImpactAudio(audio));
-        CombatAudio.install(combatEvents, combatDefs, audio, this::getContent);
+        CombatAudio.install(engine.getEcsEngine(), combatEvents, combatDefs, audio, this::getContent);
         physics.worldShifts.add(audioUpdate.worldShiftListener());
 
         // Bubble bodies are saved as true states, never as live Box2D bodies.
@@ -328,5 +333,6 @@ public class GameWorld implements Disposable {
         combatDefs.projectiles.putAll(loaded.projectiles);
         combatDefs.missiles.putAll(loaded.missiles);
         combatDefs.warheads.putAll(loaded.warheads);
+        combatDefs.materials.putAll(loaded.materials);
     }
 }

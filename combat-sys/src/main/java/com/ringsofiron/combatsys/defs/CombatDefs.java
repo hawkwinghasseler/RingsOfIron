@@ -1,7 +1,9 @@
 package com.ringsofiron.combatsys.defs;
 
 import com.badlogic.gdx.utils.ObjectMap;
+import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.moddingdata.DefRegistry;
+import com.ringsofiron.moddingdata.defs.MaterialDef;
 
 /**
  * In-memory registry of weapon, projectile, missile and warhead defs by id. modding-data fills
@@ -13,6 +15,12 @@ public class CombatDefs {
     public final ObjectMap<String, ProjectileDef> projectiles = new ObjectMap<>();
     public final ObjectMap<String, MissileDef> missiles = new ObjectMap<>();
     public final ObjectMap<String, WarheadDef> warheads = new ObjectMap<>();
+    /**
+     * Construction materials, for how they take damage: {@code fire_chance} and
+     * {@code ablation_factor}. Mass, hit points and armor reach combat through interior-grid's
+     * {@link MaterialTable}.
+     */
+    public final ObjectMap<String, MaterialDef> materials = new ObjectMap<>();
 
     public WeaponDef weapon(String id) {
         return require(weapons.get(id), "weapon", id);
@@ -47,6 +55,22 @@ public class CombatDefs {
         warheads.put(def.id, def);
     }
 
+    public void add(MaterialDef def) {
+        materials.put(def.id, def);
+    }
+
+    /** Extra chance, on top of the damage type's, that damage to this material starts a fire. 0 if unknown. */
+    public float fireChance(String material) {
+        MaterialDef m = material == null ? null : materials.get(material);
+        return m == null ? 0f : m.fireChance;
+    }
+
+    /** How fast a beam burns through this material: 1 for plain steel, lower ablates slower. 1 if unknown. */
+    public float ablationFactor(String material) {
+        MaterialDef m = material == null ? null : materials.get(material);
+        return m == null ? 1f : m.ablationFactor;
+    }
+
     private static <T> T require(T def, String kind, String id) {
         if (def == null) throw new IllegalArgumentException("Unknown " + kind + " def: " + id);
         return def;
@@ -54,6 +78,8 @@ public class CombatDefs {
 
     /** Def type names in data files: {@code [weapon.id]}, {@code [projectile.id]}, ... */
     public static final String WEAPON = "weapon", PROJECTILE = "projectile", MISSILE = "missile", WARHEAD = "warhead";
+    /** modding-data's own type, read here for its damage properties. */
+    public static final String MATERIAL = "material";
 
     /** Binds the combat def classes to their data-file types. Safe to call before or after loading. */
     public static void registerTypes(DefRegistry registry) {
@@ -71,12 +97,19 @@ public class CombatDefs {
         for (ProjectileDef d : registry.all(PROJECTILE, ProjectileDef.class)) defs.add(d);
         for (MissileDef d : registry.all(MISSILE, MissileDef.class)) defs.add(d);
         for (WarheadDef d : registry.all(WARHEAD, WarheadDef.class)) defs.add(d);
+        for (MaterialDef d : registry.all(MATERIAL, MaterialDef.class)) defs.add(d);
         return defs;
     }
 
-    /** The example defs from combat-sys/Design.md section 6, plus a light autocannon. */
+    /** The example defs from combat-sys/Design.md section 6, plus a light autocannon and a laser. */
     public static CombatDefs createDefault() {
         CombatDefs defs = new CombatDefs();
+
+        MaterialDef steel = new MaterialDef();
+        steel.id = MaterialTable.DEFAULT_MATERIAL;
+        steel.fireChance = 0f;
+        steel.ablationFactor = 1f;
+        defs.add(steel);
 
         ProjectileDef slug = new ProjectileDef();
         slug.id = "slug_tungsten_20kg";
@@ -175,7 +208,7 @@ public class CombatDefs {
         autocannon.spreadRad = 0.003f;
         autocannon.pointDefense = true;
         autocannon.maxRange = 4000f;
-        autocannon.sound = "evt_laser_fire";
+        autocannon.sound = "evt_autocannon_fire";
         defs.add(autocannon);
 
         WeaponDef launcher = new WeaponDef();
@@ -185,7 +218,22 @@ public class CombatDefs {
         launcher.cooldown = 8f;
         launcher.missile = harpoon.id;
         launcher.maxRange = 15000f;
+        launcher.sound = "evt_missile_launch";
         defs.add(launcher);
+
+        WeaponDef laser = new WeaponDef();
+        laser.id = "laser_mk1";
+        laser.mount = WeaponDef.MountType.BEAM;
+        laser.slewRateDeg = 60f;
+        laser.firingArcDeg = 300f;
+        laser.cooldown = 5f;
+        laser.powerDraw = 8e6f;
+        laser.beamPower = 4e6f;
+        laser.beamDuration = 2.5f;
+        laser.spreadRad = 0.0005f;
+        laser.maxRange = 3000f;
+        laser.sound = "evt_laser_fire";
+        defs.add(laser);
 
         return defs;
     }

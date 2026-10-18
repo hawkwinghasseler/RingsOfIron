@@ -41,6 +41,8 @@ import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.minimap.TileShade;
 import com.ringsofiron.combatsys.components.DecoyComponent;
 import com.ringsofiron.combatsys.components.MissileComponent;
+import com.ringsofiron.combatsys.components.WeaponMountComponent;
+import com.ringsofiron.combatsys.components.WeaponsComponent;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -62,6 +64,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private static final ComponentMapper<MissileComponent> MISSILES = ComponentMapper.getFor(MissileComponent.class);
     private static final Family COMBAT_ROUNDS = Family.all(ProjectileComponent.class).get();
     private static final Family DECOYS = Family.all(DecoyComponent.class).get();
+    private static final Family ARMED = Family.all(WeaponsComponent.class).get();
     private static final float INTERIOR_VIEW = 40f;
     private static final float START_VIEW = 160f;
     private static final float STATUS_WIDTH = 420f;
@@ -253,8 +256,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     /**
      * Rounds as streaks along their last tick's flight, missiles as a nose line with a plume
-     * while they burn, decoys as small flares, and a fading ring where a warhead went off or a
-     * missile was shot down. Sizes scale with the zoom so they stay visible.
+     * while they burn, beams as lines from the gun to what they touch, decoys as small flares,
+     * and a fading ring where a warhead went off or a missile was shot down. Sizes scale with
+     * the zoom so they stay visible.
      */
     private void drawCombat(float delta) {
         float px = viewports.getViewMeters() / 400f;
@@ -280,6 +284,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 shapes.setColor(Color.ORANGE);
                 float plume = size * (1f + 2f * m.throttle);
                 shapes.line(p.pos.x - cos * size, p.pos.y - sin * size, p.pos.x - cos * plume, p.pos.y - sin * plume);
+            }
+        }
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(ARMED)) {
+            WeaponsComponent weapons = e.getComponent(WeaponsComponent.class);
+            for (WeaponMountComponent m : weapons.mounts) {
+                if (!m.beamOn) continue;
+                shapes.setColor(e == game.player ? Color.SKY : Color.MAGENTA);
+                shapes.line(m.muzzle.x, m.muzzle.y, m.beamEnd.x, m.beamEnd.y);
             }
         }
         shapes.setColor(Color.WHITE);

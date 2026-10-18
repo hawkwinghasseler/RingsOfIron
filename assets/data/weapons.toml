@@ -4,7 +4,8 @@
 #
 # Ships mount weapons through their hardpoints (ships.toml). Turrets aim at the
 # ship's locked target; point_defense mounts pick their own targets, the most
-# urgent incoming missile; launchers throw guided missiles at the locked target.
+# urgent incoming missile; launchers throw guided missiles at the locked target;
+# beams burn beam_power watts into whatever they touch for beam_duration seconds.
 
 [weapon.railgun_mk1]
 mount = "turret"
@@ -26,7 +27,7 @@ projectile = "autocannon_30mm"
 spread_rad = 0.003
 point_defense = true
 max_range = 4000.0
-sound = "evt_laser_fire"
+sound = "evt_autocannon_fire"
 
 [weapon.harpoon_launcher]
 mount = "launcher"
@@ -34,6 +35,19 @@ firing_arc_deg = 360
 cooldown = 8.0
 missile = "harpoon"
 max_range = 15000.0
+sound = "evt_missile_launch"
+
+[weapon.laser_mk1]
+mount = "beam"
+slew_rate_deg = 60
+firing_arc_deg = 300
+cooldown = 5.0
+power_draw = 8.0e6
+beam_power = 4.0e6
+beam_duration = 2.5
+spread_rad = 0.0005
+max_range = 3000.0
+sound = "evt_laser_fire"
 
 [projectile.slug_tungsten_20kg]
 mass = 20.0

@@ -16,7 +16,7 @@ public class WeaponDef {
     public float slewRateDeg = 60f;
     /** Full traverse arc centred on the mount's facing, degrees. 360 is unrestricted. */
     public float firingArcDeg = 360f;
-    /** Seconds between shots. */
+    /** Seconds between shots; for a beam, between the starts of two pulses. */
     public float cooldown = 1f;
     /** Watts drawn while charging. */
     public float powerDraw;
@@ -24,7 +24,14 @@ public class WeaponDef {
     public String projectile;
     /** Missile def fired by launchers. */
     public String missile;
-    /** Aim jitter at gunnery skill 0, radians (1 sigma). */
+    /** Beam: power delivered on the spot it touches, W. */
+    public float beamPower;
+    /** Beam: how long one pulse burns, seconds. */
+    public float beamDuration = 1f;
+    /**
+     * Aim jitter at gunnery skill 0, radians (1 sigma). A gunner's opening bias, which burst
+     * walking takes out, and a beam's wander scale with it too.
+     */
     public float spreadRad = 0.002f;
     /** Distance from the hardpoint along the barrel where rounds appear, meters. */
     public float muzzleOffset = 2f;
@@ -33,7 +40,10 @@ public class WeaponDef {
      * tracks, instead of the ship's locked target.
      */
     public boolean pointDefense;
-    /** Longest range the gunner engages at, meters; 0 means as far as the round can fly. */
+    /**
+     * Longest range the gunner engages at, meters; 0 means as far as the round can fly. A beam
+     * reaches this far, or {@code WeaponControlSystem.DEFAULT_BEAM_RANGE} when 0.
+     */
     public float maxRange;
     /** audio-spatial event played on firing, or null. */
     public String sound;

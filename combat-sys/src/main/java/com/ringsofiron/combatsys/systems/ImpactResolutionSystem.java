@@ -70,6 +70,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
     private final Array<ImpactEvent> batch = new Array<>();
     private final Array<DetonationEvent> detonationBatch = new Array<>();
     private final PenetrationResolver.Result result = new PenetrationResolver.Result();
+    private final PenetrationResolver.BurnResult burnResult = new PenetrationResolver.BurnResult();
     private final DamageReport report = new DamageReport();
     private final HullHitEvent hullHit = new HullHitEvent();
     private final Vector2 localPoint = new Vector2();
@@ -86,6 +87,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         this.defs = defs;
         this.ballistics = ballistics;
         this.resolver = new PenetrationResolver(materials);
+        resolver.setDefs(defs);
         this.seed = seed;
         ramDef.id = "fast_pass.ram";
         ramDef.damageType = DamageType.KINETIC;
@@ -196,6 +198,45 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
     private String uuidOf(Entity e) {
         UuidComponent u = e == null ? null : uuidMapper.get(e);
         return u == null ? "" : u.id;
+    }
+
+    /**
+     * A beam holding on {@code ship} for one tick (section 5.6), resolved at once: beams have no
+     * travel time and push nothing. Publishes a hull hit when the beam first touches the hull
+     * ({@code firstContact}) and whenever it burns through a tile, and the tick's damage report.
+     *
+     * @param worldX world point where the beam meets the hull, local meters
+     * @param dirX   beam direction, world frame, unit
+     * @return what it burned, or null if the ship has no body or interior grid
+     */
+    public PenetrationResolver.BurnResult burn(Entity ship, float worldX, float worldY, float dirX,
+                                               float dirY, float energy, boolean firstContact) {
+        PhysicsBodyComponent bodyComponent = bodyMapper.get(ship);
+        Body body = bodyComponent == null ? null : bodyComponent.body;
+        ShipGridComponent grid = gridMapper.get(ship);
+        if (body == null || grid == null) return null;
+        CombatPhysics.toBodyLocal(body, worldX, worldY, localPoint);
+        CombatPhysics.vectorToBodyLocal(body, dirX, dirY, localRel);
+        report.clear();
+        report.ship = ship;
+        resolver.burn(grid, ship, localPoint, localRel, energy, rngFor(ship), report, burnResult);
+        if (report.structureChanged) grid.gridDirty = true;
+        if (burnResult.touched && (firstContact || burnResult.burnedThrough)) {
+            hullHit.ship = ship;
+            hullHit.tileX = burnResult.tileX;
+            hullHit.tileY = burnResult.tileY;
+            hullHit.worldPoint.set(worldX, worldY);
+            hullHit.outcome = burnResult.burnedThrough ? HullHitEvent.Outcome.PENETRATED : HullHitEvent.Outcome.STOPPED;
+            hullHit.energyAbsorbed = burnResult.absorbed;
+            hullHit.severity = MathUtils.clamp(burnResult.absorbed / SEVERITY_SCALE, 0f, 1f);
+            hullHit.ram = false;
+            hullHit.beam = true;
+            hullHit.tick = physics.getTick();
+            events.hullHits.dispatch(hullHit);
+            hullHit.beam = false;
+        }
+        if (!report.isEmpty()) events.damage.dispatch(report);
+        return burnResult;
     }
 
     /** The per-ship RNG every random draw for damage to that ship comes from. */

@@ -123,7 +123,7 @@ class GameScenarioTest {
     void shipsComeArmedFromTheirHardpoints() {
         WeaponsComponent weapons = game.player.getComponent(WeaponsComponent.class);
         assertNotNull(weapons);
-        assertEquals(4, weapons.mounts.size, "railgun, two point-defense guns, a launcher");
+        assertEquals(5, weapons.mounts.size, "railgun, two point-defense guns, a launcher, a laser");
         for (WeaponMountComponent m : weapons.mounts) assertNotNull(m.subsystem, m.def.id + " is wired to a system");
         assertNotNull(game.raider.getComponent(WeaponsComponent.class));
         assertNotNull(game.player.getComponent(SensorComponent.class));

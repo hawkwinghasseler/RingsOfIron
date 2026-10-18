@@ -33,5 +33,7 @@ public class HullHitEvent {
      * physics-exterior's fastPassImpacts, so listeners that make sound skip them.
      */
     public boolean ram;
+    /** A beam burning, not a round striking: no clang, the laser is heard at the gun. */
+    public boolean beam;
     public long tick;
 }

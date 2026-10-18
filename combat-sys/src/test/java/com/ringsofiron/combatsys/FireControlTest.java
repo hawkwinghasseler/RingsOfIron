@@ -18,7 +18,11 @@ import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.defs.MissileDef;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.fire.Track;
+import com.ringsofiron.combatsys.defs.WeaponDef;
+import com.ringsofiron.combatsys.events.HullHitEvent;
+import com.ringsofiron.combatsys.events.ShotFiredEvent;
 import com.ringsofiron.combatsys.systems.BallisticsSystem;
+import com.ringsofiron.combatsys.systems.BeamSystem;
 import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
 import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
@@ -75,7 +79,10 @@ class FireControlTest {
         engine.addSystem(new WeaponControlSystem(physics, events, defs, ballistics, missiles, sensors, 11L));
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
-        engine.addSystem(new ImpactResolutionSystem(physics, events, defs, ballistics, MaterialTable.createDefault(), 42L));
+        ImpactResolutionSystem impacts = new ImpactResolutionSystem(physics, events, defs, ballistics,
+                MaterialTable.createDefault(), 42L);
+        engine.addSystem(impacts);
+        engine.addSystem(new BeamSystem(physics, impacts));
     }
 
     @AfterEach
@@ -238,5 +245,67 @@ class FireControlTest {
         assertEquals(0f, BallisticsSystem.segmentCircle(0.5f, 0f, 5f, 0f, 1f));
         assertEquals(-1f, BallisticsSystem.segmentCircle(-5f, 2f, 5f, 2f, 1f));
         assertEquals(-1f, BallisticsSystem.segmentCircle(-5f, 0f, -3f, 0f, 1f), "stops short");
+    }
+
+    @Test
+    void aLaserBurnsIntoTheTargetsHull() {
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(1000, 0, 0, 0);
+        ship.getComponent(SensorComponent.class).lockedTarget = target;
+        WeaponMountComponent laser = arm(ship, "laser_mk1", 6f, 0f, 0f);
+        java.util.List<HullHitEvent.Outcome> hits = new java.util.ArrayList<>();
+        events.hullHits.add((s, hit) -> {
+            if (hit.ship == target && hit.beam) hits.add(hit.outcome);
+        });
+        boolean burned = false;
+        for (int i = 0; i < 4 * 60; i++) {
+            engine.update(DT);
+            burned |= laser.beamOn && laser.beamContact == target;
+        }
+        assertEquals(1, laser.shotsFired, "one pulse");
+        assertTrue(burned, "the beam touched the target's hull");
+        assertEquals(1000f - 8f, laser.beamEnd.x, 1f, "and stopped at it");
+        // 4 MW for 2.5 s is 10 MJ: more than one medium steel tile (8 MJ) holds, if the spot holds still.
+        assertTrue(hits.contains(HullHitEvent.Outcome.PENETRATED), "it burned through: " + hits);
+    }
+
+    @Test
+    void gunnersWalkABurstOntoTheTarget() {
+        // A dozen green gunners on fast guns at one stationary target: their first shots scatter
+        // with each one's opening bias; by the tenth shot each has walked it in.
+        WeaponDef gun = new WeaponDef();
+        gun.id = "test_gun";
+        gun.projectile = "autocannon_30mm";
+        gun.cooldown = 0.1f;
+        gun.slewRateDeg = 360f;
+        gun.spreadRad = 0.003f;
+        defs.add(gun);
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(2000, 0, 0, 0);
+        ship.getComponent(SensorComponent.class).lockedTarget = target;
+        int guns = 12;
+        java.util.Map<WeaponMountComponent, java.util.List<Float>> errors = new java.util.HashMap<>();
+        for (int i = 0; i < guns; i++) {
+            WeaponMountComponent m = arm(ship, "test_gun", 7f, 0f, 0f);
+            m.gunnerySkill = 0f;
+            errors.put(m, new java.util.ArrayList<>());
+        }
+        events.shots.add((s, shot) -> {
+            for (WeaponMountComponent m : ship.getComponent(WeaponsComponent.class).mounts) {
+                if (m.shotsFired == errors.get(m).size() + 1 && m.muzzle.dst2(shot.muzzlePoint) < 9f) {
+                    float bearing = (float) Math.atan2(-shot.muzzlePoint.y, 2000f - shot.muzzlePoint.x);
+                    errors.get(m).add(Math.abs(shot.direction.angleRad() - bearing));
+                    return;
+                }
+            }
+        });
+        run(4f);
+        float first = 0f, tenth = 0f;
+        for (java.util.List<Float> e : errors.values()) {
+            assertTrue(e.size() >= 10, "each gun fired a burst: " + e.size());
+            first += e.get(0) / guns;
+            tenth += e.get(9) / guns;
+        }
+        assertTrue(tenth < 0.5f * first, "walked in: first shots off by " + first + " rad, tenth by " + tenth);
     }
 }
