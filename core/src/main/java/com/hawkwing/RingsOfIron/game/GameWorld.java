@@ -13,6 +13,7 @@ import com.ringsofiron.audiospatial.ImpactAudio;
 import com.ringsofiron.audiospatial.systems.AcousticOcclusionSystem;
 import com.ringsofiron.audiospatial.systems.AudioUpdateSystem;
 import com.ringsofiron.combatsys.defs.CombatDefs;
+import com.ringsofiron.combatsys.save.CombatSaveParticipant;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.systems.BallisticsSystem;
 import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
@@ -186,6 +187,7 @@ public class GameWorld implements Disposable {
         combatEvents = new CombatEvents();
         combatDefs = CombatDefs.createDefault();
         ballistics = new BallisticsSystem(physics, combatEvents);
+        engine.getSerializationService().addParticipant(new CombatSaveParticipant(engine));
         engine.addSystem(ballistics);
         ImpactResolutionSystem impacts = new ImpactResolutionSystem(physics, combatEvents, combatDefs, ballistics,
                 MaterialTable.createDefault(), modules.combatSeed);

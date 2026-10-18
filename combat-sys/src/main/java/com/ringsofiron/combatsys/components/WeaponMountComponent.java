@@ -9,7 +9,8 @@ import com.ringsofiron.combatsys.fire.FiringSolution;
 /**
  * One weapon on a ship (combat-sys/Design.md 3.3). A ship with several weapons holds them in a
  * {@link WeaponsComponent}. Angles are in the ship's body frame, radians, counter-clockwise from
- * the nose (+x).
+ * the nose (+x). The entity links are transient; {@code CombatSaveParticipant} saves them by
+ * UUID and relinks them after a load.
  */
 public class WeaponMountComponent implements Component {
     public WeaponDef def;
@@ -22,7 +23,7 @@ public class WeaponMountComponent implements Component {
     /** Seconds until the weapon can fire again. */
     public float cooldown;
     /** What to shoot at; null holds fire. */
-    public Entity target;
+    public transient Entity target;
     /** Whether the gunner may fire; false only aims. */
     public boolean weaponsFree = true;
     /**
@@ -34,14 +35,14 @@ public class WeaponMountComponent implements Component {
      * The ship's WEAPONS (or TURRET_MOUNT) subsystem entity. When set, the mount only works
      * while that system is operational and powered. Null means always available.
      */
-    public Entity subsystem;
+    public transient Entity subsystem;
 
     /** Latest solution on the target, for the HUD lead reticle. Valid when {@code solution.valid}. */
     public final FiringSolution solution = new FiringSolution();
     /** Seconds since the target was assigned; the gunner reacts after a skill-based delay. */
     public float engagedFor;
     /** Last target, to notice a switch. */
-    public Entity lastTarget;
+    public transient Entity lastTarget;
     /** Rounds fired. */
     public int shotsFired;
 

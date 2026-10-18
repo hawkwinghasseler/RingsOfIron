@@ -8,7 +8,7 @@ import com.ringsofiron.combatsys.fire.Track;
 /**
  * A ship's sensors and the tracks they hold, one per sensed contact (combat-sys/Design.md
  * 3.1). Updated by {@code SensorTrackingSystem}; read by weapon control, missile datalinks and
- * the HUD.
+ * the HUD. {@code lockedTarget} is saved by UUID through {@code CombatSaveParticipant}.
  */
 public class SensorComponent implements Component {
     /** meters */
@@ -25,9 +25,10 @@ public class SensorComponent implements Component {
     /** Seconds without a fix before a track is dropped. */
     public float trackTimeout = 3f;
     /** The contact the crew (or player) has selected, or null. */
-    public Entity lockedTarget;
+    public transient Entity lockedTarget;
 
-    public final Array<Track> tracks = new Array<>();
+    /** Not saved: tracks rebuild from fresh fixes within a few fix intervals of a load. */
+    public final transient Array<Track> tracks = new Array<>();
     /** Seconds until the next fix. */
     public float fixTimer;
 
