@@ -96,7 +96,7 @@ public class InteractPromptSystem extends EntitySystem {
         float bestDist2 = INTERACT_RADIUS * INTERACT_RADIUS;
         for (Entity e : consoles) {
             InteractableConsoleComponent c = MAPPER.get(e);
-            if (c.ship != ship) continue;
+            if (!c.isOn(ship)) continue;
             float d2 = avatar.dst2(c.tileX + 0.5f, c.tileY + 0.5f);
             if (d2 <= bestDist2) {
                 bestDist2 = d2;

@@ -58,6 +58,7 @@ public class GameScenario {
 
         player = content.factory.spawnShip(PLAYER_SHIP, 0f, 0f, 90f);
         player.add(new PlayerControllerComponent());
+        ShipConsoles.install(player);
         FlightControlComponent controls = player.getComponent(FlightControlComponent.class);
         if (controls != null) controls.rotationAssist = true;
 
@@ -73,6 +74,7 @@ public class GameScenario {
         }
 
         Entity raider = content.factory.spawnShip(PLAYER_SHIP, 1_200f, 400f, 200f);
+        ShipConsoles.install(raider);
         raider.add(new HudMarkerComponent("Raider", HudMarkerComponent.Kind.HOSTILE).radius(10f));
         PhysicsBodyComponent rb = raider.getComponent(PhysicsBodyComponent.class);
         if (rb != null) PhysicsManager.setVelocity(rb.body, -12f, -3f);

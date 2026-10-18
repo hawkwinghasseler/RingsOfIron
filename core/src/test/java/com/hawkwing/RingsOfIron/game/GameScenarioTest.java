@@ -15,6 +15,7 @@ import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.uihud.components.InteractableConsoleComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
@@ -164,5 +165,30 @@ class GameScenarioTest {
         AudioEmitterComponent loaded = world.getPlayer().getComponent(AudioEmitterComponent.class);
         assertEquals(AudioEventCatalog.THRUSTER, loaded.eventPath);
         assertEquals(1f, loaded.instance.getParameter(AudioParameters.INTENSITY, 0f), 1e-4f);
+    }
+
+    @Test
+    void crewConsolesAreOnTheShipAndSurviveALoad() {
+        java.util.Map<String, int[]> consoles = consolesOn(game.player);
+        // The corvette's chassis has a helm, a reactor and life support, and no weapons console.
+        assertEquals(java.util.Set.of("helm", "reactor", "life_support"), consoles.keySet());
+        assertArrayEquals(new int[]{1, 4}, consoles.get("helm"));
+        assertEquals(3, consolesOn(game.contacts.first()).size(), "the raider has its own");
+
+        String save = world.engine.getSerializationService().saveGame();
+        world.engine.getSerializationService().loadGame(save);
+        Entity ship = world.getPlayer();
+        assertEquals(consoles.keySet(), consolesOn(ship).keySet(), "the consoles find the loaded ship");
+    }
+
+    /** Console id to tile, for the consoles aboard {@code ship}. */
+    private java.util.Map<String, int[]> consolesOn(Entity ship) {
+        java.util.Map<String, int[]> out = new java.util.HashMap<>();
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(
+                com.badlogic.ashley.core.Family.all(InteractableConsoleComponent.class).get())) {
+            InteractableConsoleComponent c = e.getComponent(InteractableConsoleComponent.class);
+            if (c.isOn(ship)) out.put(c.consoleId, new int[]{c.tileX, c.tileY});
+        }
+        return out;
     }
 }
