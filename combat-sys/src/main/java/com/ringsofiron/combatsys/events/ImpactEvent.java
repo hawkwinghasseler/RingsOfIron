@@ -28,6 +28,11 @@ public class ImpactEvent {
      * penetration factor" (the usual case); fragments and spall set it directly.
      */
     public float penetration = -1f;
+    /**
+     * A body ramming through on a fast pass rather than a round: nothing is put back in flight
+     * after it (the body flies on along its own rails path). Section 1.4, "Ramming".
+     */
+    public boolean ram;
     /** Fixed tick number, for deterministic ordering. */
     public long tick;
 }

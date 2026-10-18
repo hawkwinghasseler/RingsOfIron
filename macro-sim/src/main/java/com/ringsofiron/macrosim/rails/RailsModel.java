@@ -28,6 +28,18 @@ public interface RailsModel {
         }
     }
 
+    /** Told when a rails body reaches the surface of the body it orbits. */
+    interface ImpactListener {
+        void onImpact(String uuid, double t);
+    }
+
+    /**
+     * Registers for surface impacts, fired from {@link #processEventsUntil} or from whoever else
+     * processes the rails events. Models without surfaces never call it.
+     */
+    default void addImpactListener(ImpactListener listener) {
+    }
+
     /** Gravitational parameter of a massive body, m^3/s^2. */
     double muOf(String bodyUuid);
 
@@ -58,7 +70,7 @@ public interface RailsModel {
     /** Cancels every pending burn of the entity. */
     void cancelBurns(String uuid);
 
-    /** Fires every due rails event (burns, SOI changes) with time at or before {@code t}, in order. */
+    /** Fires every due rails event (burns, SOI changes, impacts) with time at or before {@code t}, in order. */
     void processEventsUntil(double t);
 
     /** Sim second of the next pending rails event, or {@code +inf}. */

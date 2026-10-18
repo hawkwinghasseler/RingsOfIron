@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.combatsys.defs.ProjectileDef;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
@@ -273,7 +274,9 @@ class GameWorldTest {
             mount.subsystem = system;
             ship.add(weapons);
             withContent.update(FRAME);
-            new PlayerGunnery(withContent.ballistics, withContent.combatDefs, null).fire(ship);
+            // A round in flight at save time; rounds are transient and stay out of the save.
+            ProjectileDef round = withContent.combatDefs.projectiles.values().iterator().next();
+            withContent.ballistics.spawn(round, round.mass, 20f, 0f, round.muzzleSpeed, 0f, ship);
             withContent.update(FRAME);
             String save = withContent.engine.getSerializationService().saveGame();
 

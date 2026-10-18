@@ -2,6 +2,7 @@ package com.ringsofiron.uihud.components;
 
 import com.badlogic.ashley.core.Component;
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.coreengine.components.UuidComponent;
 
 /**
  * A console on a ship's interior grid that the player's avatar can use. When the avatar is
@@ -31,5 +32,17 @@ public class InteractableConsoleComponent implements Component {
         this.ship = ship;
         this.tileX = tileX;
         this.tileY = tileY;
+    }
+
+    /**
+     * True when this console is aboard {@code ship}. The live reference is not saved, so after a
+     * load the console adopts the ship whose UUID matches {@link #shipUuid}.
+     */
+    public boolean isOn(Entity ship) {
+        if (this.ship == null && ship != null && shipUuid != null && !shipUuid.isEmpty()) {
+            UuidComponent id = ship.getComponent(UuidComponent.class);
+            if (id != null && shipUuid.equals(id.id)) this.ship = ship;
+        }
+        return ship != null && this.ship == ship;
     }
 }
