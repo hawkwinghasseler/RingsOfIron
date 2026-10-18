@@ -67,21 +67,14 @@ Docking permission is not required to dock. Without it:
 - Tolerances, magnet strengths, spring constants and break limits are tuning values to set during the prototype.
 
 ## Representing the Half-Tile Collar
-The grid works in whole tiles, but each collar sticks out half a tile past the hull, and two mated collars make one full tile between two separate grids. Three ways to model it:
+The grid works in whole tiles, but each collar sticks out half a tile past the hull, and two mated collars make one full tile between two separate grids. The collar is modeled as part of the port, and joined collars as a portal:
 
-**A. Collar on the port, joined collars as a portal (recommended).**
 - The collar is part of the port subsystem: its integrity, extension and magnet state live on the port, and its Box2D shape is an extra fixture half a tile deep on the hull side of the port's footprint (for active ports, a separate body on the spring joints until it locks).
 - Neither grid gets a tile for it. Once locked, a `DockLink` pairs the opening tiles of the two ports one to one, so pathfinding, line of sight and air treat each pair as neighbours across the link.
 - The joined collar space is one small compartment of its own (opening width × 1 tile) between the two port doors, so a torn collar vents just that space until the doors seal.
 - Fits the existing edge-wall and compartment model with the fewest grid changes. Cross-grid links are needed for cargo carrying anyway.
 
-**B. A full collar tile in each grid, overlapping when docked.**
-- Each port's footprint includes one extra tile row outside the hull, and docked ships overlap by one tile with collision between the collar fixtures filtered off.
-- Each grid keeps its own complete tile, so damage and hazards need no new code. But the two grids hold two copies of the same space, and the hull outline gains a notch when undocked.
-
-**C. A bridge grid spawned on docking.**
-- On lock, a tiny third grid (opening width × 1) is created and welded between the two craft. Crew walk ship → bridge → station.
-- The bridge is a real grid with real tiles, so it takes damage and holds air with no special cases. But every system that works on one grid at a time must also handle a third grid that comes and goes, and that grid has to be saved and restored.
+Rejected alternatives: giving each port a full collar tile that overlaps its mate when docked (two copies of the same space), and spawning a bridge grid on docking (every system would have to handle a third grid that comes and goes).
 
 ## Moving Cargo Across
 - Cargo crosses physically: ship crew or station loaders carry each unit from cargo-bay tiles, through the joined airlocks, to cargo-bay tiles on the other side. It takes time.
@@ -109,6 +102,5 @@ Hacking takes longer than cutting. All three count as hostile acts.
 - Out on rails they keep the abstract, time-based load and unload in `FreighterController`.
 
 ## Open Questions
-- Which collar representation to use (A, B or C above).
 - How many docking ports each station type carries.
 - Whether a hostile act at a station changes faction standing, and by how much.
