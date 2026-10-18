@@ -111,6 +111,7 @@ public class GameWorld implements Disposable {
     public final AudioManager audio;
     public final AvatarInteractor avatar;
     public final AudioListenerSync audioListener;
+    public final EngineAudio engineAudio;
 
     private final ImmutableArray<Entity> players;
     private final OrbitalAnchorBridge anchorBridge;
@@ -200,6 +201,8 @@ public class GameWorld implements Disposable {
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
         audioListener = new AudioListenerSync(this::getPlayer, avatar);
         engine.addSystem(audioListener);
+        engineAudio = new EngineAudio(this::getPlayer);
+        engine.addSystem(engineAudio);
         engine.addSystem(new AcousticOcclusionSystem());
         AudioUpdateSystem audioUpdate = new AudioUpdateSystem(audio);
         engine.addSystem(audioUpdate);
