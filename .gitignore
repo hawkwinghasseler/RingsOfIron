@@ -36,3 +36,6 @@ hs_err_pid*
 
 ## FMOD Engine libraries (licensed separately, install locally)
 fmod/
+
+# Quick saves written by the running game
+assets/saves/

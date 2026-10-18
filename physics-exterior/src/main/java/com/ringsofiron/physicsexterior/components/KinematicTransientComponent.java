@@ -18,6 +18,11 @@ public class KinematicTransientComponent implements Component {
     public TrueTrajectory trajectory;
     /** Half the body's width, in meters. Wide bodies are swept with extra rays at +/- this offset. */
     public float radius;
+    /**
+     * The body's mass in kg, for impact damage. 0 means unknown: the system then uses the mass in
+     * the entity's {@code BodyShapeComponent} if it has one (a body that was in Box2D before).
+     */
+    public float mass;
 
     /** Bubble-frame position and velocity at the current tick, in meters and m/s. Written by the system. */
     public float x, y, vx, vy;
