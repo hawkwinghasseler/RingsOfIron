@@ -148,6 +148,7 @@ There is no "vacuum" state that spreads. A vented room is simply a compartment w
 Every tile (floors and walls) has a temperature. Each hazard tick:
 - neighbouring tiles exchange heat by conduction (`CONDUCTION`, 60 W/K) and, where air connects them, by convection (`CONVECTION`, 300 W/K at standard pressure, scaled down as the room vents);
 - every tile sheds heat into the ship's structure (`AMBIENT_LOSS`, 150 W/K above ambient 293 K);
+- every tile radiates heat into the surrounding structure, `σ × RADIATING_AREA × (T⁴ − 293⁴)` per m² of floor (`RADIATING_AREA` 4, for floor, ceiling and a share of the walls). Radiation grows with T⁴, so it is what holds a fully involved fire near 1400 K;
 - a tile holds `TILE_HEAT_CAPACITY` (20 kJ/K).
 
 Heat therefore spreads out from a fire to the tiles around it, also through walls into the next room, and the ship cools back down once the fire is out. Crew and systems can read tile temperature for burns and heat damage.
@@ -155,18 +156,36 @@ Heat therefore spreads out from a fire to the tiles around it, also through wall
 ## Fire
 A fire is an **intensity** on a tile: 0 is no fire, a new fire starts at 0.05 (`Tile.ignite()`) and grows toward 1, fully involved. `Tile.fireSize()` reports SMALL, MEDIUM or LARGE.
 - **Fuel.** Only a floor covering burns. A tile without one cannot be lit.
-- **Growth.** With standard air a fire gains `FIRE_GROWTH_RATE` (1/30 per s), so a small fire takes about 30 s to become a large one. Growth slows as the room's oxygen falls; below 60% of standard oxygen partial pressure (`FIRE_MIN_OXYGEN`, about 12.6% O2 at 1 atm) the fire shrinks instead, at up to `FIRE_SMOTHER_RATE` (0.25 per s, in vacuum). As the last of its fuel goes, the fire dies down with it.
+- **Growth.** With standard air a fire gains `FIRE_GROWTH_RATE` (1/60 per s), so a small fire takes about a minute to become a large one. Growth slows as the room's oxygen falls; below 60% of standard oxygen partial pressure (`FIRE_MIN_OXYGEN`, about 12.6% O2 at 1 atm) the fire shrinks instead, at up to `FIRE_SMOTHER_RATE` (0.25 per s, in vacuum). As the last of its fuel goes, the fire dies down with it.
 - **Burning.** A fire burns `BURN_RATE × intensity` (0.01 kg/s per m² at full size). Each kg of fuel uses 70 mol of oxygen and gives 55 mol of CO2 and 0.08 kg of smoke. Heat is set separately, so fires burn slowly but hot: a fully involved fire puts `FIRE_HEAT_OUTPUT` (1.2 MW per m²) into its tile, scaled down when fuel or oxygen limits the burn. A carpeted tile burns out in about two and a half minutes at full size, and the carpet is then gone. A fire in a sealed room uses up the room's oxygen and starves itself; an open door or a vent decides how long it can keep going.
-- **Spreading.** Each second, a burning tile has a chance to jump to each neighbouring flammable tile that air connects it to: `SPREAD_RATE × intensity × (0.15 + 0.85 × heat)`, where `heat` runs from 0 at ambient to 1 at `IGNITION_TEMPERATURE` (600 K). Big fires spread to hot tiles quickly; a small fire barely reaches a cold one.
-- **Auto-ignition.** A flammable tile at 600 K or more catches on its own (`AUTO_IGNITION_RATE`, 0.5 per s) if its room has the oxygen, even when the heat reached it through a wall.
+- **Spreading.** Each second, a burning tile has a chance to jump to each neighbouring flammable tile that air connects it to: `SPREAD_RATE × intensity × (0.15 + 0.85 × heat)`, with `SPREAD_RATE` 0.05, where `heat` runs from 0 at ambient to 1 at `IGNITION_TEMPERATURE` (600 K). Big fires spread to hot tiles quickly; a small fire barely reaches a cold one. A fire in a carpeted 9 × 6 room reaches a quarter of it in about two minutes and half of it in three to five.
+- **Auto-ignition.** A flammable tile at 600 K or more catches on its own (`AUTO_IGNITION_RATE`, 0.05 per s) if its room has the oxygen, even when the heat reached it through a wall.
 
 Random draws use a seeded generator per `GridHazardSystem`, so runs are reproducible. The hazard tick is 0.25 s; all rates are per second.
+
+## Heat and Pressure Damage
+`GridHazardSystem` applies damage on each hazard tick, after heat:
+- **Walls and doors.** A full-tile wall (hull or internal) or an edge wall hotter than `STRUCTURE_DAMAGE_TEMPERATURE` (900 K) loses `STRUCTURE_HEAT_DAMAGE` (0.0005) integrity per second for every 100 K above it. An edge wall takes the temperature of the hotter tile beside it. A wall held at 1400 K beside a fully involved fire starts to leak after about 200 s and is destroyed after about 400 s. Floors are left alone, so a fire never burns a hole to space through its own deck.
+- **Systems.** An installed system loses `SYSTEM_HEAT_DAMAGE` (0.00005) health per second for every kelvin its hottest footprint tile is above `SYSTEM_DAMAGE_TEMPERATURE` (450 K). A system in a burning room fails (below 0.3 health) within a few minutes.
+- **Overpressure.** A closed edge wall bursts (integrity 0) when the pressure difference across it exceeds its limit: 150, 300 or 600 kPa for a light, medium or heavy door (`burstPressure(WeightClass)`), and twice that for a plain edge wall. Vacuum counts as 0 kPa, so ordinary venting (101 kPa) never bursts a door. Only one edge bursts per tick, so a pressure spike blows the weakest door and the rooms then even out instead of the whole wall line going at once. A fire in a sealed room can push its pressure past 240 kPa and blow a light door.
+- A wall or system that fails sets `gridDirty`, so the compartments and power routing are rebuilt.
+
+Crew damage from heat and smoke belongs to ai-crew (`CrewHealthSystem`), which reads tile temperature and room air.
+
+## Sounds
+audio-spatial's `InteriorHazardAudioSystem` reads every grid after the hazard tick and keeps one emitter entity (marked `TransientComponent`, never saved) per sound:
+- a fire loop per burning compartment, at the middle of its flames, louder with the fire's size;
+- a breach hiss per opening losing air to space, on the edge of the hole, louder with the flow (full at 150 mol/s);
+- an alarm loop per compartment that is burning, venting, below 70% pressure or below 75% oxygen;
+- a door one-shot whenever a door opens or closes (not when it breaks).
 
 ## Life Support
 `LifeSupportSystem` runs every operational `LIFE_SUPPORT` unit on the hazard tick (0.25 s):
 - A unit serves the compartment it stands in, plus every compartment reachable from there through fully open openings (open doors, gaps a tile wide). Air behind a closed door, a seal or a leaking wall is out of reach.
 - It draws 3 m³/s of air, spread over the whole served volume, and removes 90% of the CO2 and smoke in that air.
-- It releases up to 1.5 mol/s of oxygen into served compartments below standard oxygen partial pressure (21.3 kPa), shared by how far each one is short. It adds no nitrogen, so a vented room only returns to full pressure with air from elsewhere.
+- It releases up to 20 mol/s of standard air (21% oxygen) into served compartments below standard pressure, shared by how far each one is short. A vented 9 × 6 room, once sealed, is back to full pressure in a few minutes. Tanks are not modelled, so the supply never runs out.
+- It then releases up to 1.5 mol/s of oxygen into served compartments whose air is short of the standard 21% share (and below standard oxygen partial pressure), such as after a fire.
+- Nothing is released into a compartment still venting to space.
 - That is far slower than a large fire uses oxygen, so life support cleans up after a fire rather than holding one back.
 
 ## Power & Subsystem Routing
@@ -184,7 +203,7 @@ All three interior systems are core-engine `FixedLogicSystem`s, run after exteri
 A rails warp jump therefore only ever starts with no fire and no venting. Each system gets one `catchUp` call for the whole jump:
 - `GridHazardSystem` cools every tile toward ambient by the exact exponential decay of its loss to the structure, and pools the air of every group of rooms joined by any opening. A group that still reaches space through a slow leak empties.
 - `PowerRoutingSystem` reroutes once.
-- `LifeSupportSystem` runs one long step. Scrubbing decays exponentially over the jump, and oxygen supply is capped by what the rooms are short.
+- `LifeSupportSystem` runs one long step. Scrubbing decays exponentially over the jump, and the air and oxygen supply is capped by what the rooms are short. A room with any opening to space gets nothing.
 
 - `ShipGridComponent`: tiles, edge walls, hull pieces, mounts, compartments, `gridOriginLocal`, coordinate conversion, placement validation, mass properties.
   - `layoutRevision` is bumped each time the compartments are rebuilt, on the first hazard tick after a wall, door, seal or tile opens or closes. Caches built on `canPass`/`canFlow`, such as crew pathfinding, compare it against the value they were built at.
@@ -204,10 +223,9 @@ Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartm
 - `GridHazardSystem`: air flow between compartments and to space, heat, and fire.
 - `CompartmentBuilder` (helper, not an ECS system): divides the interior into compartments and carries the air over when the layout changes.
 - `PowerRoutingSystem`: calculates subsystem power connectivity.
-- `LifeSupportSystem`: scrubs CO2 and smoke and replenishes oxygen.
+- `LifeSupportSystem`: scrubs CO2 and smoke, refills sealed rooms with air and replenishes oxygen.
 - `InteriorHazardWarpGuard` (not an ECS system): refuses rails warp during a fire or venting.
 
 ## Open Questions
-- **Repressurising.** Life support tops up oxygen only. Refilling a vented room with nitrogen (from tanks, at a cost) is still open.
-- **Fire damage.** Fire now burns only the covering and heats tiles. How heat hurts installed systems and crew belongs to those modules, reading `Tile.temperature`.
+- **Air reserves.** Life support refills rooms from an endless supply. Tanks that run dry, at a cost to refill, are still open.
 - **Walking over mounts.** Crew pathfinding treats mount footprints as blocked (crew work a system from an adjacent tile). If some systems, such as cargo, should be walkable, that becomes a per-type flag.

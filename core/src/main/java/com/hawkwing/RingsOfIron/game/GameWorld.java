@@ -15,6 +15,7 @@ import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
 import com.ringsofiron.audiospatial.backend.SoundEventDef;
 import com.ringsofiron.audiospatial.systems.AcousticOcclusionSystem;
 import com.ringsofiron.audiospatial.systems.AudioUpdateSystem;
+import com.ringsofiron.audiospatial.systems.InteriorHazardAudioSystem;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.save.CombatSaveParticipant;
 import com.ringsofiron.combatsys.events.CombatEvents;
@@ -206,6 +207,8 @@ public class GameWorld implements Disposable {
         engine.addSystem(audioListener);
         engineAudio = new EngineAudio(this::getPlayer);
         engine.addSystem(engineAudio);
+        // Fires, breaches, alarms and doors aboard every ship
+        engine.addSystem(new InteriorHazardAudioSystem());
         engine.addSystem(new AcousticOcclusionSystem(audio.getCatalog()));
         AudioUpdateSystem audioUpdate = new AudioUpdateSystem(audio);
         engine.addSystem(audioUpdate);

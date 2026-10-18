@@ -65,16 +65,41 @@ public class GridHazardSystem extends FixedLogicSystem {
     public static final float TILE_HEAT_CAPACITY = 20e3f;
     /** Heat each tile sheds into the ship's structure, W/K above ambient. */
     public static final float AMBIENT_LOSS = 150f;
+    /** Stefan-Boltzmann constant, W/(m² K⁴). */
+    public static final double STEFAN_BOLTZMANN = 5.67e-8;
+    /**
+     * Surface radiating a tile's heat into the surrounding structure, m² per m² of floor
+     * (floor, ceiling and a share of the walls). Radiation grows with T⁴, so it is what
+     * holds a fully involved fire near 1500 K instead of letting it climb without limit.
+     */
+    public static final float RADIATING_AREA = 4f;
     /** Conduction between neighbouring tiles through decks and walls, W/K. */
     public static final float CONDUCTION = 60f;
     /** Extra transfer between tiles connected by air at standard pressure, W/K. */
     public static final float CONVECTION = 300f;
 
+    // --- Damage ------------------------------------------------------------
+    /** Wall and door temperature above which steel starts to lose integrity, K. */
+    public static final float STRUCTURE_DAMAGE_TEMPERATURE = 900f;
+    /** Integrity a wall or door loses per second for every 100 K above {@link #STRUCTURE_DAMAGE_TEMPERATURE}. */
+    public static final float STRUCTURE_HEAT_DAMAGE = 0.0005f;
+    /** Temperature above which an installed system's electronics take damage, K. */
+    public static final float SYSTEM_DAMAGE_TEMPERATURE = 450f;
+    /** Health a system loses per second for every kelvin above {@link #SYSTEM_DAMAGE_TEMPERATURE}. */
+    public static final float SYSTEM_HEAT_DAMAGE = 0.00005f;
+    /**
+     * Pressure difference that blows out a closed door of each weight class, kPa. A plain
+     * edge wall holds twice as much, so a door is what goes first.
+     */
+    public static final float BURST_PRESSURE_LIGHT = 150f, BURST_PRESSURE_MEDIUM = 300f, BURST_PRESSURE_HEAVY = 600f;
+    /** How much more pressure a plain edge wall holds than a door of the same weight class. */
+    public static final float WALL_BURST_FACTOR = 2f;
+
     // --- Fire --------------------------------------------------------------
     /** Oxygen ratio (see {@link Compartment#oxygenRatio()}) below which fires shrink. */
     public static final float FIRE_MIN_OXYGEN = 0.6f;
-    /** Intensity gained per second at full oxygen: about 30 s from a small fire to fully involved. */
-    public static final float FIRE_GROWTH_RATE = 1f / 30f;
+    /** Intensity gained per second at full oxygen: about a minute from a small fire to fully involved. */
+    public static final float FIRE_GROWTH_RATE = 1f / 60f;
     /** Intensity lost per second in vacuum; less as the oxygen approaches the minimum. */
     public static final float FIRE_SMOTHER_RATE = 0.25f;
     /** Below this much fuel per m², a fire's intensity is capped in proportion, so it dies down as the fuel runs out. */
@@ -97,11 +122,11 @@ public class GridHazardSystem extends FixedLogicSystem {
     /** Temperature at which a flammable tile catches fire on its own, K. */
     public static final float IGNITION_TEMPERATURE = 600f;
     /** Chance per second that a fully involved fire jumps to a neighbour at ignition temperature. */
-    public static final float SPREAD_RATE = 0.15f;
+    public static final float SPREAD_RATE = 0.05f;
     /** Share of {@link #SPREAD_RATE} that still applies to a neighbour at ambient temperature. */
     public static final float SPREAD_COLD_FACTOR = 0.15f;
     /** Chance per second that a tile at ignition temperature catches. */
-    public static final float AUTO_IGNITION_RATE = 0.5f;
+    public static final float AUTO_IGNITION_RATE = 0.05f;
 
     private final ComponentMapper<ShipGridComponent> gridMapper = ComponentMapper.getFor(ShipGridComponent.class);
     private final RandomXS128 random;
@@ -215,6 +240,7 @@ public class GridHazardSystem extends FixedLogicSystem {
         processAirflow(grid, dt);
         processFire(grid, dt);
         processHeat(grid, dt);
+        processDamage(grid, dt);
     }
 
     /**
@@ -524,17 +550,116 @@ public class GridHazardSystem extends FixedLogicSystem {
     }
 
     // -----------------------------------------------------------------------
+    // Damage
+    // -----------------------------------------------------------------------
+
+    /**
+     * Heat weakens walls, doors and installed systems, and a large enough pressure
+     * difference blows out a closed edge wall or door. Floors are left alone, so a fire
+     * does not burn a hole to space through the deck it sits on.
+     */
+    private void processDamage(ShipGridComponent grid, float dt) {
+        boolean structureChanged = false;
+        burstThisTick = false;
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile t = grid.tiles[y][x];
+                if (t.isIntactWall() && t.temperature > STRUCTURE_DAMAGE_TEMPERATURE) {
+                    float loss = STRUCTURE_HEAT_DAMAGE * (t.temperature - STRUCTURE_DAMAGE_TEMPERATURE) / 100f * dt;
+                    t.setIntegrity(t.getIntegrity() - loss);
+                    structureChanged |= t.getIntegrity() <= 0f;
+                }
+            }
+        }
+        // Edge walls: bottom edges of each row, then left edges of each column
+        for (int y = 0; y <= grid.height; y++)
+            for (int x = 0; x < grid.width; x++)
+                structureChanged |= damageEdge(grid, grid.edgeH[y][x], x, y - 1, x, y, dt);
+        for (int y = 0; y < grid.height; y++)
+            for (int x = 0; x <= grid.width; x++)
+                structureChanged |= damageEdge(grid, grid.edgeV[y][x], x - 1, y, x, y, dt);
+
+        for (MountFootprint m : grid.mounts) {
+            if (m.installed == null) continue;
+            SubsystemComponent sub = m.installed.getComponent(SubsystemComponent.class);
+            if (sub == null || sub.isDestroyed()) continue;
+            float hottest = 0f;
+            for (int y = m.originY; y < m.originY + m.height(); y++)
+                for (int x = m.originX; x < m.originX + m.width(); x++) {
+                    Tile t = grid.getTile(x, y);
+                    if (t != null) hottest = Math.max(hottest, t.temperature);
+                }
+            if (hottest <= SYSTEM_DAMAGE_TEMPERATURE) continue;
+            boolean wasWorking = !sub.isDisabled();
+            sub.health = Math.max(0f, sub.health - SYSTEM_HEAT_DAMAGE * (hottest - SYSTEM_DAMAGE_TEMPERATURE) * dt);
+            structureChanged |= wasWorking && sub.isDisabled();
+        }
+        if (structureChanged) grid.gridDirty = true;
+    }
+
+    /**
+     * Set once an edge has blown this tick. The pressures read below are from before the
+     * blast, so only one edge may blow per tick; the next tick sees the air rushing out.
+     */
+    private boolean burstThisTick;
+
+    /**
+     * Heat and overpressure on one edge wall between tiles a and b (either may be out of
+     * bounds). Returns true if the wall was destroyed.
+     */
+    private boolean damageEdge(ShipGridComponent grid, EdgeWall e, int ax, int ay, int bx, int by, float dt) {
+        if (e == null || e.isDestroyed()) return false;
+        Tile a = grid.getTile(ax, ay), b = grid.getTile(bx, by);
+        float temperature = Math.max(a == null ? 0f : a.temperature, b == null ? 0f : b.temperature);
+        if (temperature > STRUCTURE_DAMAGE_TEMPERATURE) {
+            e.integrity -= STRUCTURE_HEAT_DAMAGE * (temperature - STRUCTURE_DAMAGE_TEMPERATURE) / 100f * dt;
+        }
+        if (e.blocks() && !burstThisTick) {
+            double pa = sidePressure(a), pb = sidePressure(b);
+            float limit = burstPressure(e.weightClass) * (e.hasBulkhead ? 1f : WALL_BURST_FACTOR);
+            if (!Double.isNaN(pa) && !Double.isNaN(pb) && Math.abs(pa - pb) > limit) {
+                e.integrity = 0f;
+                burstThisTick = true;
+            }
+        }
+        if (e.integrity <= 0f) {
+            e.integrity = 0f;
+            return true;
+        }
+        return false;
+    }
+
+    /** Pressure pushing on a wall from this tile, kPa: its room's, 0 for space, NaN for solid wall. */
+    private static double sidePressure(Tile t) {
+        if (t == null || t.isSpaceExposed()) return 0.0;
+        if (t.compartment != null) return t.compartment.pressure();
+        return Double.NaN;
+    }
+
+    public static float burstPressure(WeightClass w) {
+        switch (w) {
+            case LIGHT: return BURST_PRESSURE_LIGHT;
+            case HEAVY: return BURST_PRESSURE_HEAVY;
+            default: return BURST_PRESSURE_MEDIUM;
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Heat
     // -----------------------------------------------------------------------
 
     private void processHeat(ShipGridComponent grid, float dt) {
         int w = grid.width, h = grid.height;
         float[] delta = new float[w * h];
+        double ambient4 = Math.pow(Compartment.AMBIENT_TEMPERATURE, 4);
+        double radiating = STEFAN_BOLTZMANN * RADIATING_AREA * grid.tileSize * grid.tileSize;
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
                 Tile t = grid.tiles[y][x];
                 if (t.isVoid()) continue;
                 delta[y * w + x] -= AMBIENT_LOSS * (t.temperature - Compartment.AMBIENT_TEMPERATURE);
+                double t2 = (double) t.temperature * t.temperature;
+                delta[y * w + x] -= (float) (radiating * (t2 * t2 - ambient4));
                 exchange(grid, delta, x, y, x + 1, y);
                 exchange(grid, delta, x, y, x, y + 1);
             }
