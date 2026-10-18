@@ -14,6 +14,7 @@ import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.utils.IdentityMap;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.components.BodyShapeComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.events.FastPassImpactEvent;
 import com.ringsofiron.physicsexterior.events.WorldShiftEvent;
@@ -35,6 +36,7 @@ public class KinematicTransientSystem extends EntitySystem implements PhysicsMan
     private final ComponentMapper<KinematicTransientComponent> transientMapper =
             ComponentMapper.getFor(KinematicTransientComponent.class);
     private final ComponentMapper<TransformComponent> transformMapper = ComponentMapper.getFor(TransformComponent.class);
+    private final ComponentMapper<BodyShapeComponent> shapeMapper = ComponentMapper.getFor(BodyShapeComponent.class);
 
     private final PhysicsManager physics;
     private final double[] trueState = new double[4];
@@ -121,6 +123,7 @@ public class KinematicTransientSystem extends EntitySystem implements PhysicsMan
     private FastPassImpactEvent toEvent(Entity entity, KinematicTransientComponent kt, Body body, Hit hit) {
         FastPassImpactEvent event = new FastPassImpactEvent();
         event.transientEntity = entity;
+        event.transientMass = massOf(entity, kt);
         event.target = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
         event.pointX = hit.x;
         event.pointY = hit.y;
@@ -138,6 +141,13 @@ public class KinematicTransientSystem extends EntitySystem implements PhysicsMan
             event.dirY = rvy / speed;
         }
         return event;
+    }
+
+    /** The transient's own mass, else the mass it had as a Box2D body, else 0 (unknown). */
+    private float massOf(Entity entity, KinematicTransientComponent kt) {
+        if (kt.mass > 0f) return kt.mass;
+        BodyShapeComponent shape = shapeMapper.get(entity);
+        return shape != null ? shape.mass : 0f;
     }
 
     private void onWorldShift(Signal<WorldShiftEvent> signal, WorldShiftEvent shift) {

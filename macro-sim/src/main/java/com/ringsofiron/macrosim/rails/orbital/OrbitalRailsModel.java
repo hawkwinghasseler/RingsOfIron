@@ -78,6 +78,11 @@ public class OrbitalRailsModel implements RailsModel {
     }
 
     @Override
+    public void addImpactListener(ImpactListener listener) {
+        events.impacts.add((signal, event) -> listener.onImpact(event.entityUuid, event.time));
+    }
+
+    @Override
     public double muOf(String bodyUuid) {
         CelestialBodyComponent c = bodies.get(require(bodyUuid));
         if (c == null) throw new IllegalArgumentException("Not a massive body: " + bodyUuid);

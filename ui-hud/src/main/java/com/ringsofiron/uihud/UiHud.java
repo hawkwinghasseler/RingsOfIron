@@ -224,6 +224,11 @@ public class UiHud implements Disposable {
         return skin;
     }
 
+    /** The ship panel at the bottom left (hidden in interior view), for laying out around it. */
+    public Table getMinimapPanel() {
+        return minimapPanel;
+    }
+
     public WireframeMinimap getMinimap() {
         return minimap;
     }

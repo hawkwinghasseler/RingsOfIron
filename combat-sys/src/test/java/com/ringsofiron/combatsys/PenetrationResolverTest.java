@@ -7,6 +7,7 @@ import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.combatsys.damage.CrewDamageBridge;
 import com.ringsofiron.combatsys.damage.HitCause;
 import com.ringsofiron.combatsys.damage.PenetrationResolver;
+import com.ringsofiron.combatsys.damage.PenetrationResolver.BurnResult;
 import com.ringsofiron.combatsys.damage.PenetrationResolver.Result;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.defs.DamageType;
@@ -24,6 +25,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.WeightClass;
+import com.ringsofiron.moddingdata.defs.MaterialDef;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -238,5 +240,94 @@ class PenetrationResolverTest {
         for (int i = 0; i < 4; i++) shootFromLeft(grid, 2, 2e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
         assertEquals(0f, grid.getTile(1, 2).getIntegrity(), 1e-6f);
         assertTrue(grid.gridDirty);
+    }
+
+    // ------------------------------------------------------------------
+    // Beams and material properties
+    // ------------------------------------------------------------------
+
+    /** A beam along +x onto the left hull of a box at row y, for one tick's worth of energy. */
+    private BurnResult burnFromLeft(PenetrationResolver r, ShipGridComponent grid, int row, float energy) {
+        report.clear();
+        Vector2 point = new Vector2(grid.gridOriginLocal.x, grid.gridOriginLocal.y + (row + 0.5f) * TILE);
+        return r.burn(grid, ship, point, new Vector2(1, 0), energy, new RandomXS128(1), report, new BurnResult());
+    }
+
+    private float beamHardness(WeightClass weightClass) {
+        MaterialTable.ClassStats steel = materials.get(MaterialTable.DEFAULT_MATERIAL, weightClass);
+        return steel.hitPoints + steel.armor;
+    }
+
+    @Test
+    void aBeamBurnsThroughTheHullThenOnToTheFarSide() {
+        ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.MEDIUM);
+        float quarter = 0.25f * beamHardness(WeightClass.MEDIUM);
+        BurnResult b = burnFromLeft(resolver, grid, 2, quarter);
+        assertTrue(b.touched);
+        assertEquals(0, b.tileX);
+        assertEquals(2, b.tileY);
+        assertEquals(0.75f, grid.getTile(0, 2).getIntegrity(), 1e-4f, "armor does not strip a beam, it only slows it");
+        assertFalse(b.burnedThrough);
+        for (int i = 0; i < 2; i++) burnFromLeft(resolver, grid, 2, quarter);
+        b = burnFromLeft(resolver, grid, 2, quarter);
+        assertTrue(b.burnedThrough);
+        assertTrue(grid.getTile(0, 2).isHullBreach());
+        assertEquals(1, report.breaches.size);
+
+        // Through the hole and across the open deck, onto the far hull from inside.
+        b = burnFromLeft(resolver, grid, 2, quarter);
+        assertEquals(7, b.tileX);
+        assertEquals(0.75f, grid.getTile(7, 2).getIntegrity(), 1e-4f);
+        assertEquals(quarter, b.absorbed, quarter * 1e-4f);
+    }
+
+    @Test
+    void ablativeArmorSlowsABeam() {
+        MaterialTable table = MaterialTable.createDefault();
+        MaterialTable.ClassStats s = table.get(MaterialTable.DEFAULT_MATERIAL, WeightClass.MEDIUM);
+        table.define("composite_armor", s, s, s);
+        CombatDefs defs = CombatDefs.createDefault();
+        MaterialDef composite = new MaterialDef();
+        composite.id = "composite_armor";
+        composite.ablationFactor = 0.6f;
+        defs.add(composite);
+        PenetrationResolver r = new PenetrationResolver(table);
+        r.setDefs(defs);
+
+        ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.MEDIUM);
+        grid.getTile(0, 2).material = "composite_armor";
+        float quarter = 0.25f * beamHardness(WeightClass.MEDIUM);
+        burnFromLeft(r, grid, 2, quarter);
+        burnFromLeft(r, grid, 1, quarter);
+        assertEquals(1f - 0.25f * 0.6f, grid.getTile(0, 2).getIntegrity(), 1e-4f, "composite ablates at 0.6");
+        assertEquals(0.75f, grid.getTile(0, 1).getIntegrity(), 1e-4f, "steel at 1");
+    }
+
+    @Test
+    void aFlammableMaterialCatchesFireFromHits() {
+        CombatDefs defs = CombatDefs.createDefault();
+        MaterialDef deck = new MaterialDef();
+        deck.id = "resin_deck";
+        deck.fireChance = 1f;
+        defs.add(deck);
+        int steelFires = 0, resinFires = 0;
+        for (int seed = 1; seed <= 20; seed++) {
+            for (boolean resin : new boolean[]{false, true}) {
+                PenetrationResolver r = new PenetrationResolver(materials);
+                r.setDefs(defs);
+                ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.LIGHT);
+                if (resin) {
+                    for (int x = 1; x < 7; x++) grid.getTile(x, 2).material = deck.id;
+                }
+                report.clear();
+                Vector2 point = new Vector2(grid.gridOriginLocal.x, grid.gridOriginLocal.y + 2.5f * TILE);
+                r.resolveHit(grid, ship, point, new Vector2(-1, 0), new Vector2(1000, 0), 2e7f, DamageType.KINETIC,
+                        Fuse.contact(), new SpallDef(), 70f, 0.5f, new RandomXS128(seed), report, new Result());
+                if (resin) resinFires += report.fires.size > 0 ? 1 : 0;
+                else steelFires += report.fires.size > 0 ? 1 : 0;
+            }
+        }
+        assertEquals(20, resinFires, "a fire_chance 1 deck lights on every hit");
+        assertTrue(steelFires < 20, "plain steel only sometimes: " + steelFires);
     }
 }

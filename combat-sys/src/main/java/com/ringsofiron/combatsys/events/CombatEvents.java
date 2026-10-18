@@ -24,6 +24,8 @@ public class CombatEvents {
     public final Signal<DamageReport> damage = new Signal<>();
     /** A weapon fired: for muzzle flashes and sound. */
     public final Signal<ShotFiredEvent> shots = new Signal<>();
+    /** A round struck a missile; dispatched at once, during ballistics. */
+    public final Signal<InterceptEvent> intercepts = new Signal<>();
 
     /** Current fixed tick, advanced by {@code BallisticsSystem}. */
     public long tick;

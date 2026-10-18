@@ -12,12 +12,14 @@ import com.ringsofiron.macrosim.economy.CommodityCatalog;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.economy.EconomyNodeComponent;
 import com.ringsofiron.macrosim.economy.EconomySimulation;
+import com.ringsofiron.macrosim.economy.StationMarket;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.fleet.FreighterController;
 import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.macrosim.rails.RailsModel.Burn;
 import com.ringsofiron.macrosim.rails.StateVector;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -39,6 +41,10 @@ public class MacroSimulation {
     public static final double PREDICTION_INTERVAL = 0.5;
     /** How far ahead each prediction looks, sim seconds. Raised by time warp to see the next drop-out. */
     public static final double DEFAULT_PREDICTION_HORIZON = 3600;
+    /** Farthest a ship can be from a station and still trade there, meters. */
+    public static final double DOCK_RANGE = 500;
+    /** Fastest a ship can move relative to a station and still trade there, m/s. */
+    public static final double DOCK_SPEED = 10;
 
     private final GameEngine engine;
     private final RailsModel rails;
@@ -47,9 +53,12 @@ public class MacroSimulation {
     private final MacroEventQueue events = new MacroEventQueue();
     private final EconomySimulation economy;
     private final FreighterController freighters;
+    private final StationMarket market;
     private final BubbleTransitionSystem bubble;
     private final Map<String, EconomyNode> stations = new LinkedHashMap<>();
     private final Set<String> massiveBodies = new HashSet<>();
+    /** Stations and freighters that hit a surface, handled between events (never mid-dispatch). */
+    private final List<String> crashed = new ArrayList<>();
 
     private double now;
     private double nextEconomyPass;
@@ -70,6 +79,7 @@ public class MacroSimulation {
         this.predictionExecutor = predictionExecutor;
         this.economy = new EconomySimulation(catalog);
         this.freighters = new FreighterController(rails, economy, events, stations::get);
+        this.market = new StationMarket(economy);
         this.now = startTime;
         this.nextPrediction = startTime;
         this.bubble = gateway == null ? null : new BubbleTransitionSystem(rails, gateway);
@@ -86,6 +96,9 @@ public class MacroSimulation {
                 }
             });
         }
+        rails.addImpactListener((uuid, t) -> {
+            if ((stations.containsKey(uuid) || freighters.get(uuid) != null) && !crashed.contains(uuid)) crashed.add(uuid);
+        });
         scheduleEconomyPass(startTime + EconomySimulation.PASS_INTERVAL);
     }
 
@@ -173,14 +186,17 @@ public class MacroSimulation {
      */
     public void advanceTo(double t) {
         if (t < now) return;
+        destroyCrashed();
         while (events.nextTime() <= t) {
             double te = events.nextTime();
             rails.processEventsUntil(te);
             now = te;
+            destroyCrashed();
             events.runNext(te);
         }
         rails.processEventsUntil(t);
         now = t;
+        destroyCrashed();
         // No anchor parent: the bubble is not in orbit around anything, so nothing can meet it.
         if (gateway == null || gateway.anchorParentUuid() == null) return;
         updatePrediction();
@@ -241,6 +257,69 @@ public class MacroSimulation {
         StateVector anchor = gateway.anchorStateAt(t, new StateVector());
         rails.stateAt(uuid, t, out);
         return out.setDifference(out, anchor);
+    }
+
+    /**
+     * The nearest station the ship can trade at right now (within {@link #DOCK_RANGE} and slower than
+     * {@link #DOCK_SPEED} relative to it, around the same body), or null. Works for a ship in the
+     * bubble or on rails.
+     */
+    public String dockableStation(String shipUuid) {
+        StateVector ship = new StateVector();
+        String parent;
+        if (rails.isOnRails(shipUuid)) {
+            rails.stateAt(shipUuid, now, ship);
+            parent = rails.parentOf(shipUuid);
+        } else {
+            if (gateway == null) return null;
+            gateway.trueStateOf(shipUuid, now, ship);
+            parent = gateway.anchorParentUuid();
+        }
+        String best = null;
+        double bestDistance = DOCK_RANGE;
+        StateVector station = new StateVector();
+        for (String uuid : stations.keySet()) {
+            if (!rails.isOnRails(uuid) || !rails.parentOf(uuid).equals(parent)) continue;
+            rails.stateAt(uuid, now, station);
+            double distance = Math.hypot(station.x - ship.x, station.y - ship.y);
+            double speed = Math.hypot(station.vx - ship.vx, station.vy - ship.vy);
+            if (distance <= bestDistance && speed < DOCK_SPEED) {
+                best = uuid;
+                bestDistance = distance;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Destroys a station or freighter: it leaves the economy, fleet and bubble cleanly (orders
+     * cancelled, reservations released, cargo lost) and its entity is removed. Returns false if
+     * macro-sim does not own {@code uuid}. Crashes into a surface call this on their own.
+     */
+    public boolean destroy(String uuid) {
+        boolean station = stations.containsKey(uuid);
+        if (!station && freighters.get(uuid) == null) return false;
+        if (station) {
+            stations.remove(uuid);
+            economy.dropOrdersFor(uuid);
+            freighters.stationLost(uuid, stations.keySet(), now);
+        } else {
+            freighters.lose(uuid);
+        }
+        if (bubble != null) bubble.forget(uuid, now);
+        if (rails.isOnRails(uuid)) rails.detach(uuid);
+        Entity e = engine.getEntity(uuid);
+        if (e != null) engine.removeEntity(e);
+        return true;
+    }
+
+    private void destroyCrashed() {
+        while (!crashed.isEmpty()) destroy(crashed.remove(0));
+    }
+
+    /** Buying and selling at stations by hand, for the player's ship. */
+    public StationMarket market() {
+        return market;
     }
 
     public double now() {
