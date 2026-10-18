@@ -23,14 +23,25 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
+import com.ringsofiron.interiorgrid.ChassisBlueprint;
+import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
+import com.ringsofiron.interiorgrid.MaterialTable;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.physicsexterior.CollisionCategories;
+import com.ringsofiron.physicsexterior.LinearTrajectory;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.TrueTrajectory;
+import com.ringsofiron.physicsexterior.anchor.PointMassAnchor;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
+import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
 import com.ringsofiron.physicsexterior.systems.FlightControlSystem;
 import com.ringsofiron.physicsexterior.systems.FloatingOriginSystem;
+import com.ringsofiron.physicsexterior.systems.KinematicTransientSystem;
 import com.ringsofiron.physicsexterior.systems.PhysicsUpdateSystem;
+import com.ringsofiron.physicsexterior.systems.TidalGravitySystem;
 
 import java.util.Locale;
 
@@ -39,11 +50,18 @@ import java.util.Locale;
  *
  * Nothing slows the ship down. Let go of the controls and it keeps its speed and spin forever.
  *
+ * Orbit mode puts the whole bubble in a 400 km orbit around an Earth-sized planet. The bubble falls
+ * freely, so flying feels the same, but tidal gravity slowly pulls neighbors apart: try it at 10x.
+ * Fast passes are rocks crossing the bubble at km/s, too fast for Box2D, swept for hits instead.
+ *
  * Controls:
  *   W / S        - Main engine / retro thrusters
  *   A / D        - Turn left / right
  *   Q / E        - Strafe left / right
  *   X            - Toggle rotation assist (cancels spin when not turning)
+ *   O            - Toggle orbit mode (restarts the scene)
+ *   , / .        - Physics time warp down / up (1x to 10x)
+ *   F            - Send a fast pass (a rock at 2.5 km/s) past the ship
  *   Mouse wheel  - Zoom
  *   R            - Reset
  *   ESC          - Exit
@@ -60,6 +78,24 @@ public class FlightDemo extends ApplicationAdapter {
     // Ship hull, nose along +X, in meters. Convex, counter-clockwise.
     private static final float[] SHIP_HULL = {14f, 0f, 2f, 7f, -10f, 6f, -10f, -6f, 2f, -7f};
     private static final float SHIP_DENSITY = 40f;  // kg per square meter of hull plan
+    // Interior layout of the same hull, 2 m tiles; the body takes its mass from it.
+    // Text rows read top-to-bottom; tile [0][0] is bottom-left at (-10, -6) in ship-local meters.
+    private static final String[] SHIP_INTERIOR = {
+        "######     ",
+        "#....###   ",
+        "#..I....## ",
+        "#..I....## ",
+        "#....###   ",
+        "######     "
+    };
+    private static final float INTERIOR_TILE = 2f;
+
+    private static final double PLANET_MU = 3.986004418e14;   // Earth, m^3/s^2
+    private static final double PLANET_RADIUS = 6_371_000.0;
+    private static final double ORBIT_RADIUS = PLANET_RADIUS + 400_000.0;
+    private static final int[] WARP_LEVELS = {1, 2, 5, 10};
+    private static final float FAST_PASS_SPEED = 2500f;
+    private static final float FAST_PASS_LIFETIME = 4f;
 
     // --- Simulation ---
     private PhysicsManager physics;
@@ -69,6 +105,13 @@ public class FlightDemo extends ApplicationAdapter {
     private Body playerBody;
     private FlightControlComponent controls;
     private ThrusterComponent thrusters;
+    private ShipGridComponent shipGrid;
+    private boolean orbitMode;
+    private int warpIndex;
+    private final Array<Entity> fastPasses = new Array<>();
+    private final Array<float[]> fastPassAges = new Array<>();
+    /** Grid-frame position of the local origin, moved by every rebase so the grid never jumps. */
+    private double frameX, frameY, frameVx, frameVy;
 
     // --- Rendering ---
     private OrthographicCamera camera;
@@ -81,9 +124,11 @@ public class FlightDemo extends ApplicationAdapter {
 
     // --- HUD state ---
     private final Vector2 tmp = new Vector2();
+    private final Vector2 interiorPos = new Vector2();
     private final Vector2 velocity = new Vector2();
     private float impactTimer;
     private float impactSpeed;
+    private String impactLabel = "IMPACT";
 
     @Override
     public void create() {
@@ -116,15 +161,31 @@ public class FlightDemo extends ApplicationAdapter {
         physics = new PhysicsManager();
         engine = new Engine();
         engine.addSystem(new FlightControlSystem(physics));
+        engine.addSystem(new TidalGravitySystem(physics));
         engine.addSystem(new PhysicsUpdateSystem(physics));
+        engine.addSystem(new KinematicTransientSystem(physics));
         floatingOrigin = new FloatingOriginSystem(physics);
         engine.addSystem(floatingOrigin);
+        fastPasses.clear();
+        fastPassAges.clear();
+        if (orbitMode) {
+            physics.setAnchorModel(PointMassAnchor.circular(PLANET_MU, ORBIT_RADIUS, 0.0));
+        }
+        frameX = frameY = frameVx = frameVy = 0.0;
+        physics.worldShifts.add((signal, shift) -> {
+            frameX += shift.deltaX;
+            frameY += shift.deltaY;
+            frameVx += shift.deltaVx;
+            frameVy += shift.deltaVy;
+        });
 
         physics.collisions.add((signal, hit) -> {
             if (hit.entityA == player || hit.entityB == player) {
-                impactSpeed = Math.abs(hit.approachSpeed);
-                impactTimer = 2f;
+                showImpact("IMPACT", Math.abs(hit.approachSpeed));
             }
+        });
+        physics.fastPassImpacts.add((signal, hit) -> {
+            if (hit.target == player) showImpact("FAST PASS HIT", hit.relativeSpeed);
         });
 
         spawnPlayer();
@@ -139,6 +200,13 @@ public class FlightDemo extends ApplicationAdapter {
         playerBody = physics.createPolygonBody(player, 0f, 0f, 0f, SHIP_HULL, SHIP_DENSITY,
                 CollisionCategories.CATEGORY_SHIP, CollisionCategories.MASK_ALL);
         player.add(new PhysicsBodyComponent(playerBody));
+
+        // Mass, center of mass and inertia come from the interior grid, as they will in the game.
+        ChassisBlueprint blueprint = new ChassisBlueprint(SHIP_INTERIOR).tileSize(INTERIOR_TILE).origin(-10f, -6f);
+        shipGrid = ChassisBlueprintLoader.load(blueprint).grid;
+        player.add(shipGrid);
+        ShipGridComponent.MassProperties massProps = shipGrid.computeMassProperties(MaterialTable.createDefault());
+        PhysicsManager.setMassData(playerBody, massProps.mass, massProps.center.x, massProps.center.y, massProps.inertia);
 
         // Size the engines from the hull's mass so handling is independent of the numbers above.
         float mass = PhysicsManager.getMass(playerBody);
@@ -194,12 +262,58 @@ public class FlightDemo extends ApplicationAdapter {
         return v;
     }
 
+    private void showImpact(String label, float speed) {
+        impactLabel = label;
+        impactSpeed = speed;
+        impactTimer = 2f;
+    }
+
+    /** Sends a rock across the bubble at {@link #FAST_PASS_SPEED}, aimed to pass within a few meters of the ship. */
+    private void spawnFastPass() {
+        double[] ship = new double[4];
+        physics.getTrueState(playerBody, ship);
+        float angle = MathUtils.random(MathUtils.PI2);
+        float dirX = MathUtils.cos(angle);
+        float dirY = MathUtils.sin(angle);
+        float miss = MathUtils.random(-12f, 12f);
+        double startX = ship[0] - dirX * 4000.0 - dirY * miss;
+        double startY = ship[1] - dirY * 4000.0 + dirX * miss;
+
+        double vx = ship[2] + dirX * FAST_PASS_SPEED;
+        double vy = ship[3] + dirY * FAST_PASS_SPEED;
+        double now = physics.getSimSeconds();
+        // In orbit the rock falls too, along its own conic; otherwise it flies straight.
+        TrueTrajectory path = orbitMode
+                ? new PointMassAnchor(PLANET_MU, startX, startY, vx, vy, now)::stateAt
+                : new LinearTrajectory(startX, startY, vx, vy, now);
+
+        Entity rock = new Entity();
+        rock.add(new TransformComponent());
+        rock.add(new KinematicTransientComponent(path, 4f));
+        engine.addEntity(rock);
+        fastPasses.add(rock);
+        fastPassAges.add(new float[]{0f});
+    }
+
+    private void ageFastPasses(float delta) {
+        for (int i = fastPasses.size - 1; i >= 0; i--) {
+            float[] age = fastPassAges.get(i);
+            age[0] += delta;
+            if (age[0] > FAST_PASS_LIFETIME) {
+                engine.removeEntity(fastPasses.removeIndex(i));
+                fastPassAges.removeIndex(i);
+            }
+        }
+    }
+
     // -----------------------------------------------------------------------
     @Override
     public void render() {
         float delta = Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
         handleInput();
-        engine.update(delta);
+        float simDelta = delta * WARP_LEVELS[warpIndex];
+        engine.update(simDelta);
+        ageFastPasses(simDelta);
         if (impactTimer > 0f) impactTimer -= delta;
 
         TransformComponent pt = player.getComponent(TransformComponent.class);
@@ -212,7 +326,10 @@ public class FlightDemo extends ApplicationAdapter {
         shapes.setProjectionMatrix(camera.combined);
         drawGrid();
         drawBodies();
+        drawInterior();
+        drawFastPasses();
         drawVelocityVector();
+        drawPlanetDirection();
         drawHud();
     }
 
@@ -222,7 +339,15 @@ public class FlightDemo extends ApplicationAdapter {
             buildScene();
             return;
         }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.O)) {
+            orbitMode = !orbitMode;
+            buildScene();
+            return;
+        }
         if (Gdx.input.isKeyJustPressed(Input.Keys.X)) controls.rotationAssist = !controls.rotationAssist;
+        if (Gdx.input.isKeyJustPressed(Input.Keys.PERIOD)) warpIndex = Math.min(warpIndex + 1, WARP_LEVELS.length - 1);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.COMMA)) warpIndex = Math.max(warpIndex - 1, 0);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F)) spawnFastPass();
 
         controls.clear();
         if (Gdx.input.isKeyPressed(Input.Keys.W)) controls.forward += 1f;
@@ -237,12 +362,16 @@ public class FlightDemo extends ApplicationAdapter {
     // Rendering
     // -----------------------------------------------------------------------
 
-    /** Grid fixed in universe coordinates, so it slides past as the ship drifts and never jumps on a rebase. */
+    /**
+     * Grid that slides past as the ship drifts and never jumps on a rebase. Out of orbit it is fixed
+     * in universe coordinates. In orbit the universe frame moves at km/s, so the grid instead
+     * follows the falling bubble, carried along by each rebase.
+     */
     private void drawGrid() {
         float halfW = viewport.getWorldWidth() / 2f;
         float halfH = viewport.getWorldHeight() / 2f;
-        double originX = physics.getOriginX();
-        double originY = physics.getOriginY();
+        double originX = orbitMode ? frameX : physics.getOriginX();
+        double originY = orbitMode ? frameY : physics.getOriginY();
         double left = originX + camera.position.x - halfW;
         double right = originX + camera.position.x + halfW;
         double bottom = originY + camera.position.y - halfH;
@@ -285,6 +414,69 @@ public class FlightDemo extends ApplicationAdapter {
         if (!thrusters.isOutOfFuel()) drawThrusterFlames();
         shapes.end();
         bodies.clear();
+    }
+
+    private static final Color HULL_TILE_COLOR = new Color(0.3f, 0.55f, 0.65f, 1f);
+    private static final Color FLOOR_TILE_COLOR = new Color(0.12f, 0.25f, 0.3f, 1f);
+
+    /** The ship's interior grid drawn in world space from the body's transform, when zoomed in. */
+    private void drawInterior() {
+        if (viewport.getWorldWidth() > 400f) return;
+        Vector2 p = PhysicsManager.getPosition(playerBody, interiorPos);
+        float cos = MathUtils.cos(playerBody.getAngle());
+        float sin = MathUtils.sin(playerBody.getAngle());
+        float half = shipGrid.tileSize * 0.5f * 0.92f;
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        for (int ty = 0; ty < shipGrid.height; ty++) {
+            for (int tx = 0; tx < shipGrid.width; tx++) {
+                Tile tile = shipGrid.getTile(tx, ty);
+                if (tile.isVoid()) continue;
+                shapes.setColor(tile.wallType == Tile.WallType.NONE ? FLOOR_TILE_COLOR : HULL_TILE_COLOR);
+                Vector2 c = shipGrid.tileToLocal(tx, ty);
+                for (int i = 0; i < 4; i++) {
+                    float lx = c.x + (i == 1 || i == 2 ? half : -half);
+                    float ly = c.y + (i >= 2 ? half : -half);
+                    polygon[i * 2] = p.x + lx * cos - ly * sin;
+                    polygon[i * 2 + 1] = p.y + lx * sin + ly * cos;
+                }
+                shapes.polygon(polygon, 0, 8);
+            }
+        }
+        // Center of mass from the grid.
+        Vector2 com = tmp.set(playerBody.getWorldCenter()).scl(PhysicsManager.METERS_PER_UNIT);
+        shapes.setColor(Color.YELLOW);
+        shapes.circle(com.x, com.y, 0.6f, 8);
+        shapes.end();
+    }
+
+    /** Fast passes as a bright streak covering the last tenth of a second of travel. */
+    private void drawFastPasses() {
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        for (Entity rock : fastPasses) {
+            KinematicTransientComponent kt = rock.getComponent(KinematicTransientComponent.class);
+            if (!kt.hasPrevious) continue;
+            float speed = Math.max(kt.relativeSpeed, 1f);
+            float tail = Math.min(0.1f * speed, 250f);
+            shapes.setColor(Color.ORANGE);
+            shapes.line(kt.x, kt.y, kt.x - kt.vx / speed * tail, kt.y - kt.vy / speed * tail);
+            shapes.setColor(Color.YELLOW);
+            shapes.circle(kt.x, kt.y, kt.radius, 12);
+        }
+        shapes.end();
+    }
+
+    /** In orbit, a short blue line from the ship toward the planet's center. */
+    private void drawPlanetDirection() {
+        if (!orbitMode) return;
+        double ox = physics.getOriginX();
+        double oy = physics.getOriginY();
+        double r = Math.hypot(ox, oy);
+        Vector2 p = PhysicsManager.getPosition(playerBody, tmp);
+        float length = viewport.getWorldWidth() * 0.2f;
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        shapes.setColor(Color.SKY);
+        shapes.line(p.x, p.y, p.x - (float) (ox / r) * length, p.y - (float) (oy / r) * length);
+        shapes.end();
     }
 
     private void drawFixture(Body body, Shape shape) {
@@ -336,12 +528,12 @@ public class FlightDemo extends ApplicationAdapter {
         shapes.line(sx, sy, ex, ey);
     }
 
-    /** Where the ship will be in 5 seconds if nothing changes. */
+    /** Where the ship will be in 5 seconds if nothing changes, relative to the grid. */
     private void drawVelocityVector() {
         PhysicsManager.getVelocity(playerBody, velocity);
         Vector2 p = PhysicsManager.getPosition(playerBody, tmp);
-        float vx = (float) (physics.getOriginVx() + velocity.x);
-        float vy = (float) (physics.getOriginVy() + velocity.y);
+        float vx = (float) ((orbitMode ? frameVx : physics.getOriginVx()) + velocity.x);
+        float vy = (float) ((orbitMode ? frameVy : physics.getOriginVy()) + velocity.y);
         // Draw relative to the grid (universe frame), which is what the eye reads as motion.
         shapes.begin(ShapeRenderer.ShapeType.Line);
         shapes.setColor(Color.LIME);
@@ -367,18 +559,30 @@ public class FlightDemo extends ApplicationAdapter {
         float heading = ((playerBody.getAngle() * MathUtils.radiansToDegrees) % 360f + 360f) % 360f;
 
         font.setColor(Color.WHITE);
-        font.draw(batch, "=== Newtonian Flight Demo ===", x, y); y -= line * 1.5f;
+        font.draw(batch, orbitMode ? "=== Newtonian Flight Demo: 400 km orbit ===" : "=== Newtonian Flight Demo ===", x, y);
+        y -= line * 1.5f;
         font.setColor(Color.LIME);
-        font.draw(batch, fmt("Speed      %8.1f m/s", Math.hypot(vx, vy)), x, y); y -= line;
+        if (orbitMode) {
+            font.draw(batch, fmt("Altitude   %8.3f km", (Math.hypot(ux, uy) - PLANET_RADIUS) / 1000.0), x, y); y -= line;
+            font.draw(batch, fmt("Orbit spd  %8.1f m/s", Math.hypot(vx, vy)), x, y); y -= line;
+            font.setColor(Color.WHITE);
+            font.draw(batch, fmt("Grid speed %8.1f m/s", Math.hypot(frameVx + velocity.x, frameVy + velocity.y)), x, y); y -= line;
+            Vector2 tidal = physics.getTidalField().accelAt(local.x, local.y, new Vector2());
+            font.draw(batch, fmt("Tidal acc  %8.4f m/s^2", tidal.len()), x, y); y -= line;
+        } else {
+            font.draw(batch, fmt("Speed      %8.1f m/s", Math.hypot(vx, vy)), x, y); y -= line;
+        }
         font.setColor(Color.WHITE);
         font.draw(batch, fmt("Velocity   %8.1f, %8.1f m/s", vx, vy), x, y); y -= line;
         font.draw(batch, fmt("Heading    %8.1f deg", heading), x, y); y -= line;
         font.draw(batch, fmt("Spin       %8.1f deg/s", playerBody.getAngularVelocity() * MathUtils.radiansToDegrees), x, y); y -= line;
         font.draw(batch, fmt("Fuel       %8.1f %%", 100f * thrusters.fuel / thrusters.fuelCapacity), x, y); y -= line;
-        font.draw(batch, "Rot assist " + (controls.rotationAssist ? "      ON" : "     OFF"), x, y); y -= line * 1.5f;
+        font.draw(batch, "Rot assist " + (controls.rotationAssist ? "      ON" : "     OFF"), x, y); y -= line;
+        font.draw(batch, fmt("Mass       %8.1f t (from interior grid)", PhysicsManager.getMass(playerBody) / 1000f), x, y); y -= line;
+        font.draw(batch, fmt("Time warp  %8dx", WARP_LEVELS[warpIndex]), x, y); y -= line * 1.5f;
 
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, fmt("Universe pos  %10.1f, %10.1f m", ux, uy), x, y); y -= line;
+        font.draw(batch, fmt(orbitMode ? "Planet-centered pos %12.1f, %12.1f m" : "Universe pos  %10.1f, %10.1f m", ux, uy), x, y); y -= line;
         font.draw(batch, fmt("Local pos     %10.1f, %10.1f m", local.x, local.y), x, y); y -= line;
         font.draw(batch, fmt("Origin rebases %d (at %.0f m or %.0f m/s)", floatingOrigin.getRebaseCount(),
                 floatingOrigin.getRebaseDistance(), floatingOrigin.getRebaseSpeed()), x, y); y -= line * 1.5f;
@@ -386,11 +590,13 @@ public class FlightDemo extends ApplicationAdapter {
         font.setColor(Color.GRAY);
         font.draw(batch, "[W/S] main / retro   [A/D] turn   [Q/E] strafe", x, y); y -= line;
         font.draw(batch, "[X] rotation assist   [wheel] zoom   [R] reset   [ESC] exit", x, y); y -= line;
-        font.draw(batch, "Green line: where you will be in 5 s if you do nothing.", x, y);
+        font.draw(batch, "[O] orbit mode   [,/.] time warp   [F] fast pass", x, y); y -= line;
+        font.draw(batch, "Green line: where you will be in 5 s if you do nothing.", x, y); y -= line;
+        if (orbitMode) font.draw(batch, "Blue line: toward the planet. Tidal gravity slowly pulls nearby rocks apart.", x, y);
 
         if (impactTimer > 0f) {
             font.setColor(Color.RED);
-            font.draw(batch, fmt("IMPACT  %.1f m/s", impactSpeed), hudCamera.viewportWidth / 2f - 50f, hudCamera.viewportHeight - 40f);
+            font.draw(batch, fmt("%s  %.1f m/s", impactLabel, impactSpeed), hudCamera.viewportWidth / 2f - 50f, hudCamera.viewportHeight - 40f);
         }
         batch.end();
     }
