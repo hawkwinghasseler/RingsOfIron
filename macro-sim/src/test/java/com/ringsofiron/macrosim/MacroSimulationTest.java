@@ -81,4 +81,18 @@ class MacroSimulationTest {
             exec.shutdownNow();
         }
     }
+
+    @Test
+    void engineTicksAndRailsWarpDriveTheSimulation() {
+        GameEngine engine = new GameEngine();
+        MacroSimulation sim = MacroSimDemo.build(engine);
+        engine.addSystem(new MacroSimSystem(sim, engine));
+        engine.stepTicks(600);
+        assertEquals(10.0, sim.now(), 1e-9);
+        assertTrue(engine.advanceRails(com.ringsofiron.coreengine.SimClock.secondsToTicks(2 * 86400)));
+        assertEquals(engine.getSimSeconds(), sim.now(), 1e-9);
+        int trips = 0;
+        for (FreighterComponent f : sim.freighters().all().values()) trips += f.tripsCompleted;
+        assertTrue(trips > 0, "freighters traded during the warp jump");
+    }
 }

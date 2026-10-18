@@ -1,24 +1,30 @@
 package com.ringsofiron.macrosim;
 
-import com.badlogic.ashley.core.EntitySystem;
-
-import java.util.function.DoubleSupplier;
+import com.ringsofiron.coreengine.SimClock;
+import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 
 /**
- * Ashley adapter: each engine update advances the macro universe to the current sim time.
- * The supplier will be {@code SimClock::getSimSeconds} once core-engine's clock lands.
+ * Drives {@link MacroSimulation} from core-engine's sim clock: every fixed tick at 1x and physics
+ * warp, and once per rails-warp jump. {@code advanceTo} fires every event inside the jump in time
+ * order, so a jump needs no coarser treatment than a tick.
  */
-public class MacroSimSystem extends EntitySystem {
+public class MacroSimSystem extends FixedLogicSystem {
     private final MacroSimulation sim;
-    private final DoubleSupplier simSeconds;
+    private final SimClock clock;
 
-    public MacroSimSystem(MacroSimulation sim, DoubleSupplier simSeconds) {
+    public MacroSimSystem(MacroSimulation sim, SimClock clock) {
+        super((float) SimClock.TICK_SECONDS);
         this.sim = sim;
-        this.simSeconds = simSeconds;
+        this.clock = clock;
     }
 
     @Override
-    public void update(float deltaTime) {
-        sim.advanceTo(simSeconds.getAsDouble());
+    protected void updateFixed(float deltaTime) {
+        sim.advanceTo(clock.getSimSeconds());
+    }
+
+    @Override
+    protected void catchUp(long ticks, double seconds) {
+        sim.advanceTo(clock.getSimSeconds());
     }
 }
