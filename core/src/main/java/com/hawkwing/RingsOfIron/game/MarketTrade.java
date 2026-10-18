@@ -10,7 +10,7 @@ import com.ringsofiron.uihud.providers.TradeProvider;
 /**
  * ui-hud's market window from macro-sim: the station the player's ship is docked at, its board, and
  * buying and selling with the credits and hold on the ship's {@link TraderComponent}. Trading needs
- * the ship latched to one of the station's docking ports.
+ * the ship latched to one of the station's docking ports, with the station's clearance.
  */
 public class MarketTrade implements TradeProvider {
     private final GameWorld world;
@@ -61,7 +61,8 @@ public class MarketTrade implements TradeProvider {
 
     private EconomyNode dockedStation() {
         Entity player = world.getPlayer();
-        Entity station = player == null ? null : world.docking.dockedTo(player);
+        // A station that refused clearance does not trade with a ship that latched on anyway.
+        Entity station = player == null || !world.docking.dockedWithClearance(player) ? null : world.docking.dockedTo(player);
         UuidComponent id = station == null ? null : station.getComponent(UuidComponent.class);
         return id == null ? null : world.macroSim.station(id.id);
     }

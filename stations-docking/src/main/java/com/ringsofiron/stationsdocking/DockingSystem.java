@@ -138,6 +138,21 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         public int port = -1;
     }
 
+    /** How a port lines up with the nearest free port it could dock with, for a pilot's readout. */
+    public static final class Approach {
+        /** The craft whose port it is, or null when no matching port is within range. */
+        public Entity target;
+        public int port = -1;
+        /** Face to face, meters. */
+        public float distance;
+        /** How far off the target port's centerline, meters. */
+        public float lateral;
+        /** Turn still needed to face the target port square on, radians (-pi, pi]. */
+        public float angle;
+        /** Closing speed along the target port's normal, m/s; negative when drawing apart. */
+        public float closing;
+    }
+
     public DockingSystem(PhysicsManager physics, UuidRegistry uuids) {
         this.physics = physics;
         this.uuids = uuids;
@@ -295,6 +310,16 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             }
         }
         return null;
+    }
+
+    /** True if {@code vessel} is latched somewhere the other side gave it docking clearance. */
+    public boolean dockedWithClearance(Entity vessel) {
+        DockingPortsComponent ports = portsMapper.get(vessel);
+        if (ports == null) return false;
+        for (DockingPort p : ports.ports) {
+            if (p.state == DockingPort.State.DOCKED && p.permitted) return true;
+        }
+        return false;
     }
 
     /** True while the pair is welded rigidly (seated), not still settling into line. */
@@ -1001,6 +1026,52 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     // ------------------------------------------------------------------
     // Lookups
     // ------------------------------------------------------------------
+
+    /**
+     * The nearest free, intact port of the same size as {@code vessel}'s port {@code index} on
+     * another craft within {@code range} meters, and how the two line up. {@link Approach#target}
+     * is null when there is none.
+     */
+    public Approach approach(Entity vessel, int index, float range, Approach out) {
+        out.target = null;
+        out.port = -1;
+        DockingPortsComponent ports = portsMapper.get(vessel);
+        DockingPort port = ports == null ? null : ports.get(index);
+        Body body = bodyOf(vessel);
+        if (port == null || body == null || vessels == null) return out;
+        Vector2 face = worldPoint(body, port.faceX(), port.faceY(), new Vector2());
+        float best = range;
+        for (Entity other : vessels) {
+            if (other == vessel) continue;
+            Body ob = bodyOf(other);
+            if (ob == null) continue;
+            DockingPort[] list = portsMapper.get(other).ports;
+            for (int i = 0; i < list.length; i++) {
+                DockingPort q = list[i];
+                if (q.size != port.size || !q.isFree() || !q.intact()) continue;
+                float d = worldPoint(ob, q.faceX(), q.faceY(), v1).dst(face);
+                if (d < best) {
+                    best = d;
+                    out.target = other;
+                    out.port = i;
+                }
+            }
+        }
+        if (out.target == null) return out;
+        Body ob = bodyOf(out.target);
+        DockingPort q = portsMapper.get(out.target).ports[out.port];
+        Vector2 qFace = worldPoint(ob, q.faceX(), q.faceY(), new Vector2());
+        Vector2 n = worldVector(ob, q.normalX, q.normalY, new Vector2());
+        Vector2 rel = new Vector2(face).sub(qFace);
+        out.distance = rel.len();
+        out.lateral = rel.crs(n);
+        out.angle = matedAngle(port, q) + body.getAngle() - ob.getAngle();
+        out.angle = -MathUtils.atan2(MathUtils.sin(out.angle), MathUtils.cos(out.angle));
+        Vector2 va = velocityAt(body, face, new Vector2());
+        Vector2 vb = velocityAt(ob, qFace, new Vector2());
+        out.closing = -va.sub(vb).dot(n);
+        return out;
+    }
 
     /** A ship's Box2D body, a station's kinematic body, or null when it has none in the bubble. */
     public Body bodyOf(Entity e) {

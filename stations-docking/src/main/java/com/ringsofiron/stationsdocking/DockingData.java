@@ -60,7 +60,12 @@ public final class DockingData {
                 ? defs.require("station_type", typeId, StationTypeDef.class) : null;
         String blueprint = type != null && type.blueprint != null && defs.has("chassis", type.blueprint)
                 ? type.blueprint : DEFAULT_STATION_BLUEPRINT;
-        ChassisDef chassis = defs.require("chassis", blueprint, ChassisDef.class);
+        return buildStation(station, defs.require("chassis", blueprint, ChassisDef.class), blueprint, engine, name, typeId);
+    }
+
+    /** As {@link #buildStation(Entity, DefRegistry, GameEngine, String, String)}, from the layout {@code chassis} (id {@code blueprint}). */
+    public static StationComponent buildStation(Entity station, ChassisDef chassis, String blueprint, GameEngine engine,
+                                                String name, String typeId) {
         InteriorGridData.installInterior(station, chassis, engine);
         station.add(portsFor(station.getComponent(ShipGridComponent.class), chassis));
         StationComponent component = new StationComponent(name, typeId, blueprint);

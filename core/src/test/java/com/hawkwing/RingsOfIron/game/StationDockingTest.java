@@ -141,6 +141,25 @@ class StationDockingTest {
                 .dst(face(stationBody(), port(highport, stationPort))), 0.05f, "at the port");
     }
 
+    @Test
+    void theScreensDockingKeysArmAskAndUndock() {
+        java.util.List<String> notices = new java.util.ArrayList<>();
+        PlayerDocking keys = new PlayerDocking(world, () -> game.player, notices::add);
+        int stationPort = nearestPort(MountFootprint.MountSize.S);
+        parkBeside(stationPort, 1.5f);
+        world.update(FRAME);
+        String[] lines = keys.readout();
+        assertTrue(lines[1].startsWith("To Highport #" + (stationPort + 1)), lines[1]);
+        assertEquals("Highport gives clearance: port " + (stationPort + 1) + " is armed for you", keys.toggleArm());
+        for (int i = 0; i < 60 * 60 && !world.docking.isRigid(game.player); i++) world.update(FRAME);
+        assertTrue(notices.contains("Highport's collar has you; drawing in"), notices.toString());
+        assertTrue(notices.contains("Docked at Highport"), notices.toString());
+        assertTrue(keys.readout()[1].startsWith("Docked at Highport"), keys.readout()[1]);
+        assertEquals("Undocked from Highport", keys.undock());
+        assertEquals("Not docked", keys.undock());
+        keys.dispose();
+    }
+
     // ------------------------------------------------------------------
 
     private int nearestPort(MountFootprint.MountSize size) {
