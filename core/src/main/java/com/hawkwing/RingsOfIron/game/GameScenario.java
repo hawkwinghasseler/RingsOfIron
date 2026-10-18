@@ -1,9 +1,12 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.Family;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
@@ -38,8 +41,9 @@ public class GameScenario {
 
     public final GameWorld world;
     public final ModContext content;
-    public final Entity player;
-    public final Entity avatar;
+    /** The player's ship and avatar; a load replaces them with the loaded entities. */
+    public Entity player;
+    public Entity avatar;
     /** Ships the player can lock: hostiles and traffic in the bubble. */
     public final Array<Entity> contacts = new Array<>();
     public final String highport;
@@ -110,6 +114,37 @@ public class GameScenario {
     }
 
     /** Next contact after {@code current} (wrapping), or null when there are none. */
+    /**
+     * Saves the whole game to {@code file}. Refused (returns a reason) during rails warp, when the
+     * bubble is collapsed onto the rails; null when saved.
+     */
+    public String quickSave(FileHandle file) {
+        if (world.timeWarp.isRailsWarp()) return "drop out of time warp first";
+        world.engine.getSerializationService().saveToFile(file);
+        return null;
+    }
+
+    /**
+     * Replaces the game with the one saved in {@code file}, then points {@link #player},
+     * {@link #avatar} and {@link #contacts} at the loaded entities.
+     */
+    public void quickLoad(FileHandle file) {
+        world.engine.getSerializationService().loadFromFile(file);
+        relink();
+    }
+
+    private void relink() {
+        player = world.getPlayer();
+        avatar = null;
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(PlayerAvatarComponent.class).get())) {
+            avatar = e;
+        }
+        contacts.clear();
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(HudMarkerComponent.class).get())) {
+            if (e != player) contacts.add(e);
+        }
+    }
+
     public Entity nextContact(Entity current) {
         if (contacts.size == 0) return null;
         int i = current == null ? -1 : contacts.indexOf(current, true);

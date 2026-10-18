@@ -33,3 +33,6 @@ hs_err_pid*
 
 ## Keep the Gradle wrapper jar
 !gradle/wrapper/gradle-wrapper.jar
+
+# Quick saves written by the running game
+assets/saves/
