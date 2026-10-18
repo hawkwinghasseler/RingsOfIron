@@ -105,6 +105,31 @@ class DockLinkWalkTest {
     }
 
     @Test
+    void oneDirectionOnScreenWalksTheSameWayAboardEitherCraft() {
+        demo.load(DockingDemoScene.Scene.WALK);
+        PlayerAvatarComponent walker = demo.avatar.getComponent(PlayerAvatarComponent.class);
+        // Straight out of the corvette's port, as the player sees it on screen
+        DockingPort port = DockingDemoScene.port(demo.player, 0);
+        com.badlogic.gdx.math.Vector2 dir = demo.world.docking.bodyOf(demo.player)
+                .getWorldVector(new com.badlogic.gdx.math.Vector2(port.normalX, port.normalY)).cpy().nor();
+        com.badlogic.gdx.math.Vector2 at = new com.badlogic.gdx.math.Vector2();
+        float start = demo.avatarWorld(at).dot(dir);
+        for (int i = 0; i < 60 * 20 && demo.aboard() == demo.player; i++) {
+            DeckView.walk(walker, demo.world.docking.bodyOf(demo.aboard()), dir.x, dir.y, 1f);
+            demo.update(FRAME);
+        }
+        assertSame(demo.target, demo.aboard(), "walked through the port");
+        float crossed = demo.avatarWorld(at).dot(dir);
+        assertTrue(crossed > start, "went the way the key points");
+        for (int i = 0; i < 60; i++) {
+            DeckView.walk(walker, demo.world.docking.bodyOf(demo.aboard()), dir.x, dir.y, 1f);
+            demo.update(FRAME);
+        }
+        assertSame(demo.target, demo.aboard());
+        assertTrue(demo.avatarWorld(at).dot(dir) > crossed + 0.5f, "and keeps going that way aboard the station");
+    }
+
+    @Test
     void dockingWithClearanceOpensBothDoorsAndJoinsTheOpenings() {
         demo.load(DockingDemoScene.Scene.CLEARANCE);
         assertFalse(doorsOpen(demo.player), "the doors start shut");
