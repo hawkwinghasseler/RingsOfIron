@@ -45,3 +45,31 @@ To implement this module independently (mocking data providers):
 ## Proposed Systems
 - `HudRenderSystem`: Projects 3D/2D world coordinates to UI space and updates widget positions.
 - `WireframeSyncSystem`: Reads ship state and feeds it to the Scene2D wireframe minimap.
+
+## Prototype Status
+
+![HUD demo](hud-demo.png)
+
+Run it with `gradlew :lwjgl3:runHudDemo` (or `HUD demo.bat`). Fly with W/S, A/D, Z/C; Tab cycles the target lock; V toggles exterior/interior view; I/J/K/L walk the avatar; E uses a console; M shows the mod-script prompt; F/B/H start a fire, breach the hull or take a hit so the minimap has something to show.
+
+Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. Call `addTo(engine)`, forward input to `getInputProcessor()`, and call `draw(delta)` after drawing the world.
+
+| Class | Role |
+|---|---|
+| `ViewportManager` | World camera (ExtendViewport, meters) and UI camera (ScreenViewport, pixels); `worldToUi` / `uiToWorld` |
+| `HudRenderSystem` | Brackets, nameplates and ranges for `HudMarkerComponent` entities; edge arrows off screen; lead reticle |
+| `WireframeMinimap`, `WireframeSyncSystem` | Live blueprint of the player ship's `ShipGridComponent` with an alert list (fire, breaches, venting, smoke, hull %) |
+| `InteractPromptSystem`, `ConsoleWindow` | "Press [E] to Access ..." within `INTERACT_RADIUS` tiles of an `InteractableConsoleComponent`; per-console layouts via `registerConsoleLayout` |
+| `FlightReadoutSystem` | Speed, heading, view mode, target range/closing/time-to-impact, orbit |
+| `ViewModeController` | EXTERIOR / INTERIOR view mode with change listeners |
+| `modding.ModTrustDialog` | modding-data's `ModTrustPolicy` as a dialog: asks before mod scripts run with full access; can remember the answer per mod set and version (M in the demo) |
+
+### Interfaces other modules fill in
+
+These live in `com.ringsofiron.uihud.providers`. The adapters that implement them are written in the game wiring layer (core), so combat-sys, orbital-mechanics and ai-crew do not depend on ui-hud.
+
+- `TargetingProvider` (combat-sys): locked target, lead point, time to impact. `SimpleTargetingProvider` is the stand-in.
+- `OrbitInfoProvider` (orbital-mechanics): body name, altitude, apoapsis, periapsis, period, impact warning.
+- `InteractorProvider` (ai-crew): the avatar's ship and fractional tile position.
+- `ViewModeController.Listener`: the wiring layer bridges view-mode changes to audio-spatial's listener mode.
+- `UiHud.flashHullHit(tileX, tileY)`: call from combat-sys's hull-hit event to flash the hit on the minimap.

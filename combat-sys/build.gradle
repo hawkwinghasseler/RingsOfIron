@@ -7,5 +7,16 @@ dependencies {
   api project(':core-engine')
   api project(':physics-exterior')
   api project(':interior-grid')
+  // Def classes are filled from TOML by modding-data's DefRegistry (and its Gson mapping).
+  api project(':modding-data')
+
+  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+  // Box2D's native library, so tests can run a real physics world without a window.
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
 }
 
+test {
+  useJUnitPlatform()
+}
