@@ -1,7 +1,8 @@
 package com.hawkwing.RingsOfIron;
 
 import com.badlogic.ashley.core.ComponentMapper;
-import com.badlogic.ashley.core.Engine;
+import com.ringsofiron.coreengine.GameEngine;
+import com.ringsofiron.coreengine.SimClock;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
@@ -75,7 +76,11 @@ public class Main extends ApplicationAdapter {
             ComponentMapper.getFor(SubsystemComponent.class);
 
     // --- ECS / Module objects ---
-    private Engine engine;
+    private GameEngine engine;
+    private InteriorHazardWarpGuard warpGuard;
+    /** Result of the last rails warp attempt, and how long it stays on screen. */
+    private String warpMessage = null;
+    private float warpMessageTime = 0f;
     private Entity shipEntity;
     private ShipGridComponent grid;
     private ShipSubsystemRegistryComponent subsysRegistry;
@@ -105,7 +110,9 @@ public class Main extends ApplicationAdapter {
         font.setColor(Color.WHITE);
 
         // -- ECS Engine --
-        engine = new Engine();
+        engine = new GameEngine();
+        warpGuard = new InteriorHazardWarpGuard(null);
+        engine.addRailsWarpGuard(warpGuard);
         engine.addSystem(new GridHazardSystem());
         engine.addSystem(new PowerRoutingSystem());
         engine.addSystem(new LifeSupportSystem());
@@ -126,6 +133,7 @@ public class Main extends ApplicationAdapter {
         subsysRegistry = new ShipSubsystemRegistryComponent(shipEntity);
         shipEntity.add(subsysRegistry);
         engine.addEntity(shipEntity);
+        warpGuard.setGrid(grid);
 
         // Spawn subsystem entities from blueprint
         for (ChassisBlueprintLoader.SubsystemPlacement placement : result.subsystems) {
@@ -146,6 +154,7 @@ public class Main extends ApplicationAdapter {
         handleInput();
         engine.update(delta);
         particles.update(grid, delta);
+        warpMessageTime -= delta;
 
         // --- Draw ---
         Gdx.gl.glClearColor(0.05f, 0.05f, 0.1f, 1f);
@@ -170,6 +179,7 @@ public class Main extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.V)) restoreAtmosphere();
         if (Gdx.input.isKeyJustPressed(Input.Keys.P)) toggleReactor();
         if (Gdx.input.isKeyJustPressed(Input.Keys.D)) toggleEdgeDoors();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.T)) railsWarp();
 
         // Convert mouse → tile coordinates
         Vector3 worldPos = camera.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
@@ -242,6 +252,14 @@ public class Main extends ApplicationAdapter {
             for (int x = 0; x < grid.width; x++) grid.getTile(x, y).extinguish();
     }
 
+    /** Jumps an hour ahead, unless a fire or venting aboard refuses it. */
+    private void railsWarp() {
+        String blocked = engine.getRailsWarpBlockedReason();
+        if (blocked == null) engine.advanceRails(SimClock.secondsToTicks(3600));
+        warpMessage = blocked == null ? "Warped 1 hour ahead" : "Rails warp refused: " + blocked;
+        warpMessageTime = 3f;
+    }
+
     private void restoreAtmosphere() {
         for (int y = 0; y < grid.height; y++)
             for (int x = 0; x < grid.width; x++) grid.getTile(x, y).temperature = Compartment.AMBIENT_TEMPERATURE;
@@ -263,7 +281,7 @@ public class Main extends ApplicationAdapter {
 
     private void resetShip() {
         // Remove old ship from engine
-        engine.removeAllEntities();
+        engine.getEcsEngine().removeAllEntities();
         buildShip();
         particles.clear();
     }
@@ -485,7 +503,7 @@ public class Main extends ApplicationAdapter {
     }
 
     private Color subsystemColor(SubsystemComponent sub) {
-        if (sub.isDestroyed()) return Color.DARK_GRAY;
+        if (sub.isDisabled()) return Color.DARK_GRAY;
         if (!sub.switchedOn) return Color.BLUE;
         if (sub.isOperational) return Color.YELLOW;
         return Color.RED;
@@ -510,6 +528,7 @@ public class Main extends ApplicationAdapter {
         font.draw(batch, "[P]        Switch reactor off / on", lx, ly); ly -= lineH;
         font.draw(batch, "[F]        Extinguish all fires", lx, ly); ly -= lineH;
         font.draw(batch, "[V]        Fresh air in every room", lx, ly); ly -= lineH;
+        font.draw(batch, "[T]        Rails warp 1 hour (refused during hazards)", lx, ly); ly -= lineH;
         font.draw(batch, "[R]        Reset ship", lx, ly); ly -= lineH;
         font.draw(batch, "[ESC]      Exit", lx, ly); ly -= lineH * 1.5f;
 
@@ -520,11 +539,16 @@ public class Main extends ApplicationAdapter {
         font.setColor(new Color(0.4f, 0.5f, 1f, 1f));
         font.draw(batch, "blue = switched off", lx + 120, ly);
         font.setColor(Color.GRAY);
-        font.draw(batch, "grey = destroyed", lx + 260, ly); ly -= lineH;
+        font.draw(batch, "grey = damaged", lx + 260, ly); ly -= lineH;
         font.setColor(new Color(0.3f, 0.9f, 1f, 1f));
         font.draw(batch, "Cyan cross / wall = leaking (below 50%)", lx, ly); ly -= lineH;
         font.setColor(Color.WHITE);
         font.draw(batch, "White lines divide rooms at 1-wide openings", lx, ly);
+
+        if (warpMessage != null && warpMessageTime > 0f) {
+            font.setColor(Color.ORANGE);
+            font.draw(batch, warpMessage, 560f, 60f);
+        }
 
         drawTileInfo(560f, viewport.getWorldHeight() - 5f, lineH);
         batch.end();

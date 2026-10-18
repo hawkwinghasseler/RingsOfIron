@@ -1,11 +1,13 @@
 package com.ringsofiron.interiorgrid;
 
 import com.badlogic.ashley.core.ComponentMapper;
+import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
-import com.badlogic.ashley.systems.IteratingSystem;
+import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.math.RandomXS128;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 
 /**
  * Simulates atmosphere, heat and fire inside a ship's interior grid. Runs on a fixed
@@ -39,14 +41,24 @@ import com.badlogic.gdx.utils.Array;
  *
  * Random draws come from a seeded generator so runs are reproducible.
  */
-public class GridHazardSystem extends IteratingSystem {
+public class GridHazardSystem extends FixedLogicSystem {
 
     /** Seconds between hazard steps. */
     public static final float HAZARD_TICK = 0.25f;
+    /** Runs after power routing and before life support. */
+    public static final int DEFAULT_PRIORITY = PowerRoutingSystem.DEFAULT_PRIORITY + 1;
 
     // --- Air flow ----------------------------------------------------------
     /** Molar flow through an opening one tile wide, mol/s per kPa of pressure difference. */
     public static final double FLOW_COEFFICIENT = 2.0;
+    /**
+     * Gas mixing through an opening one tile wide between two rooms, m³/s of air swapped
+     * each way. It evens out composition (oxygen, CO2, smoke) without moving net air. Two
+     * 54-tile rooms joined by one door mix most of the way in about 2 minutes. Bulk flow
+     * moves this much air at a pressure difference of about 12 kPa, and fires and breaches
+     * drive far larger differences, so bulk flow dominates whenever pressures differ.
+     */
+    public static final double DIFFUSION_COEFFICIENT = 0.6;
 
     // --- Heat --------------------------------------------------------------
     /** Heat capacity of one tile (its surfaces and the air over it), J/K. */
@@ -94,29 +106,106 @@ public class GridHazardSystem extends IteratingSystem {
     private final ComponentMapper<ShipGridComponent> gridMapper = ComponentMapper.getFor(ShipGridComponent.class);
     private final RandomXS128 random;
 
-    private float accumulator = 0f;
+    private static final Family FAMILY = Family.all(ShipGridComponent.class).get();
+    private ImmutableArray<Entity> entities;
 
     public GridHazardSystem() {
         this(0x5EEDL);
     }
 
     public GridHazardSystem(long seed) {
-        super(Family.all(ShipGridComponent.class).get());
+        super(DEFAULT_PRIORITY, HAZARD_TICK);
         random = new RandomXS128(seed);
     }
 
     @Override
-    public void update(float deltaTime) {
-        accumulator += deltaTime;
-        while (accumulator >= HAZARD_TICK) {
-            accumulator -= HAZARD_TICK;
-            super.update(HAZARD_TICK); // process each entity
-        }
+    public void addedToEngine(Engine engine) {
+        entities = engine.getEntitiesFor(FAMILY);
     }
 
     @Override
-    protected void processEntity(Entity entity, float deltaTime) {
-        step(gridMapper.get(entity), deltaTime);
+    public void removedFromEngine(Engine engine) {
+        entities = null;
+    }
+
+    @Override
+    protected void updateFixed(float deltaTime) {
+        if (entities == null) return;
+        for (int i = 0; i < entities.size(); i++) step(gridMapper.get(entities.get(i)), deltaTime);
+    }
+
+    /**
+     * Rails warp runs only while no fire burns and no air vents (see
+     * {@link ShipGridComponent#hasActiveHazard()}), so the jump skips straight to where
+     * the slow processes settle: heat bleeds back to ambient, and air mixes evenly
+     * between rooms joined by any opening. Rooms that still reach space through a slow
+     * leak have had all the time they need to empty.
+     */
+    @Override
+    protected void catchUp(long ticks, double seconds) {
+        if (entities == null) return;
+        for (int i = 0; i < entities.size(); i++) settle(gridMapper.get(entities.get(i)), seconds);
+    }
+
+    /** Advances one grid by a long quiet stretch of {@code seconds}. Also usable without an engine. */
+    public void settle(ShipGridComponent grid, double seconds) {
+        CompartmentBuilder.rebuildIfChanged(grid);
+
+        // Heat: every tile relaxes toward ambient through its loss to the structure
+        float keep = (float) Math.exp(-seconds * AMBIENT_LOSS / TILE_HEAT_CAPACITY);
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile t = grid.tiles[y][x];
+                t.temperature = Compartment.AMBIENT_TEMPERATURE + (t.temperature - Compartment.AMBIENT_TEMPERATURE) * keep;
+            }
+        }
+        for (Compartment c : grid.compartments) c.temperature = CompartmentBuilder.meanTemperature(grid, c);
+
+        // Air: pool every group of connected rooms; a group open to space empties
+        Array<Compartment> comps = grid.compartments;
+        int n = comps.size + 1;
+        Array<AirflowEdge> edges = new Array<>();
+        float[][] open = openings(grid, edges);
+        int[] group = new int[n];
+        for (int i = 0; i < n; i++) group[i] = i;
+        for (int i = 0; i < n; i++)
+            for (int j = i + 1; j < n; j++)
+                if (open[i][j] > 0f) union(group, i, j);
+        for (int root = 0; root < n; root++) {
+            double o2 = 0, n2 = 0, co2 = 0, smoke = 0, volume = 0;
+            boolean members = false;
+            for (int i = 1; i < n; i++) {
+                if (find(group, i) != root) continue;
+                Compartment c = comps.get(i - 1);
+                o2 += c.oxygen; n2 += c.nitrogen; co2 += c.carbonDioxide; smoke += c.smoke;
+                volume += c.volume;
+                members = true;
+            }
+            if (!members || volume <= 0) continue;
+            boolean vented = find(group, 0) == root;
+            for (int i = 1; i < n; i++) {
+                if (find(group, i) != root) continue;
+                Compartment c = comps.get(i - 1);
+                double f = vented ? 0 : c.volume / volume;
+                c.oxygen = o2 * f; c.nitrogen = n2 * f; c.carbonDioxide = co2 * f; c.smoke = smoke * f;
+            }
+        }
+        // Everything has settled: the openings are still there, but nothing moves through them
+        grid.airflow.clear();
+        grid.airflow.addAll(edges);
+    }
+
+    private static int find(int[] parent, int i) {
+        while (parent[i] != i) {
+            parent[i] = parent[parent[i]];
+            i = parent[i];
+        }
+        return i;
+    }
+
+    private static void union(int[] parent, int a, int b) {
+        int ra = find(parent, a), rb = find(parent, b);
+        if (ra != rb) parent[ra] = rb;
     }
 
     /** Advances one grid by dt seconds. Also usable without an engine. */
@@ -289,6 +378,8 @@ public class GridHazardSystem extends IteratingSystem {
                 c.smoke += smoke[from] * f;
             }
         }
+        double[][] smokeDiffusion = diffuse(comps, open, dt);
+
         // Share each pair's net flow among the openings between them, by width
         for (AirflowEdge e : edges) {
             int a = node(e.room), b = node(e.other);
@@ -298,6 +389,7 @@ public class GridHazardSystem extends IteratingSystem {
             double out = flow[a][b] - flow[b][a];
             double smokeOut = (moles[a] > 0 ? flow[a][b] / moles[a] * smoke[a] : 0)
                     - (b > 0 && moles[b] > 0 ? flow[b][a] / moles[b] * smoke[b] : 0);
+            if (a > 0 && b > 0) smokeOut += smokeDiffusion[a][b] - smokeDiffusion[b][a];
             e.flow = (float) (out * share);
             e.smokeFlow = (float) (smokeOut * share);
             grid.airflow.add(e);
@@ -307,6 +399,47 @@ public class GridHazardSystem extends IteratingSystem {
         for (Compartment c : comps) {
             if (c.totalMoles() < 1e-3 * c.volume) c.scaleContents(0.0);
         }
+    }
+
+    /**
+     * Mixes the gas of every pair of rooms joined by an opening. Each swaps the same
+     * number of moles with the other, carrying its own mix, so pressures are left alone
+     * and only composition evens out. Returns the smoke moved from node a to node b this
+     * step (kg), for the particles.
+     */
+    private double[][] diffuse(Array<Compartment> comps, float[][] open, float dt) {
+        int n = comps.size + 1;
+        double[][] smokeMoved = new double[n][n];
+        double[] o2 = new double[n], n2 = new double[n], co2 = new double[n], smoke = new double[n], moles = new double[n];
+        for (int i = 1; i < n; i++) {
+            Compartment c = comps.get(i - 1);
+            o2[i] = c.oxygen; n2[i] = c.nitrogen; co2[i] = c.carbonDioxide; smoke[i] = c.smoke;
+            moles[i] = c.totalMoles();
+        }
+        for (int i = 1; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                if (open[i][j] <= 0f || moles[i] <= 0 || moles[j] <= 0) continue;
+                Compartment a = comps.get(i - 1), b = comps.get(j - 1);
+                // Moles swapped each way: the volume exchanged at the rooms' mean molar density
+                double density = 0.5 * (moles[i] / a.volume + moles[j] / b.volume);
+                double swap = DIFFUSION_COEFFICIENT * open[i][j] * density * dt;
+                // Never more than a quarter of the way to fully mixed in one step
+                double limit = 0.25 * moles[i] * moles[j] / (moles[i] + moles[j]);
+                swap = Math.min(swap, limit);
+                double fa = swap / moles[i], fb = swap / moles[j];
+                double dO2 = o2[i] * fa - o2[j] * fb;
+                double dN2 = n2[i] * fa - n2[j] * fb;
+                double dCO2 = co2[i] * fa - co2[j] * fb;
+                double dSmoke = smoke[i] * fa - smoke[j] * fb;
+                a.oxygen -= dO2; b.oxygen += dO2;
+                a.nitrogen -= dN2; b.nitrogen += dN2;
+                a.carbonDioxide -= dCO2; b.carbonDioxide += dCO2;
+                a.smoke -= dSmoke; b.smoke += dSmoke;
+                if (dSmoke > 0) smokeMoved[i][j] = dSmoke;
+                else smokeMoved[j][i] = -dSmoke;
+            }
+        }
+        return smokeMoved;
     }
 
     private static int node(Compartment c) {

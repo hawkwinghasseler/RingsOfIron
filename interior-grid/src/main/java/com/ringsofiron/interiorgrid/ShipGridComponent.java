@@ -202,11 +202,21 @@ public class ShipGridComponent implements Component {
      * is read from {@link #airflow}, so it reflects the last hazard tick.
      */
     public boolean hasActiveHazard() {
+        return hasFire() || isVenting();
+    }
+
+    /** True while any tile is burning. */
+    public boolean hasFire() {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 if (tiles[y][x].isBurning()) return true;
             }
         }
+        return false;
+    }
+
+    /** True while air leaves through some opening to space faster than {@link #VENTING_HAZARD_FLOW}. */
+    public boolean isVenting() {
         for (int i = 0; i < airflow.size; i++) {
             AirflowEdge e = airflow.get(i);
             if (e.other == null && e.flow > VENTING_HAZARD_FLOW) return true;
@@ -289,6 +299,23 @@ public class ShipGridComponent implements Component {
     public Entity subsystemAt(int x, int y) {
         Tile t = getTile(x, y);
         return (t == null || t.mount == null) ? null : t.mount.installed;
+    }
+
+    /**
+     * Points every mount at the system entity installed in it, matching each system's
+     * footprint by position. Call after loading a save, since the link is not saved.
+     */
+    public void relinkMounts(Iterable<Entity> subsystems) {
+        for (MountFootprint m : mounts) m.installed = null;
+        for (Entity e : subsystems) {
+            SubsystemComponent sub = e.getComponent(SubsystemComponent.class);
+            if (sub == null) continue;
+            for (MountFootprint m : mounts) {
+                if (m.originX == sub.footprint.originX && m.originY == sub.footprint.originY && m.kind == sub.footprint.kind) {
+                    m.installed = e;
+                }
+            }
+        }
     }
 
     // -----------------------------------------------------------------------

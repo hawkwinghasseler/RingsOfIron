@@ -1,16 +1,18 @@
 package com.ringsofiron.interiorgrid;
 
 import com.badlogic.ashley.core.ComponentMapper;
+import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
-import com.badlogic.ashley.systems.IteratingSystem;
+import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 
 /**
  * Calculates power connectivity across the ship's interior grid using Breadth-First Search.
  *
  * Starting from every footprint tile of each REACTOR that is switched on and not
- * destroyed, the system floods
+ * disabled by damage (see {@link SubsystemComponent#DISABLE_THRESHOLD}), the system floods
  * outward across connected POWER_CONDUIT and FLOOR tiles. A subsystem is powered when
  * any tile of its footprint is reachable.
  *
@@ -21,9 +23,12 @@ import com.badlogic.gdx.utils.Array;
  * Runs once per second to reflect structural changes, or on the next frame when
  * {@link ShipGridComponent#gridDirty} is set.
  */
-public class PowerRoutingSystem extends IteratingSystem {
+public class PowerRoutingSystem extends FixedLogicSystem {
 
     private static final float ROUTING_TICK = 1.0f;
+    /** Interior systems run after exterior physics; power first, so others see this tick's state. */
+    public static final int DEFAULT_PRIORITY = 30;
+    private static final Family FAMILY = Family.all(ShipGridComponent.class, ShipSubsystemRegistryComponent.class).get();
 
     private final ComponentMapper<ShipGridComponent> gridMapper = ComponentMapper.getFor(ShipGridComponent.class);
     private final ComponentMapper<ShipSubsystemRegistryComponent> registryMapper =
@@ -31,26 +36,46 @@ public class PowerRoutingSystem extends IteratingSystem {
     private final ComponentMapper<SubsystemComponent> subsystemMapper =
             ComponentMapper.getFor(SubsystemComponent.class);
 
-    private float accumulator = 0f;
-    private boolean tickDue = false;
+    private ImmutableArray<Entity> entities;
 
     public PowerRoutingSystem() {
-        super(Family.all(ShipGridComponent.class, ShipSubsystemRegistryComponent.class).get());
+        super(DEFAULT_PRIORITY, ROUTING_TICK);
     }
 
     @Override
-    public void update(float deltaTime) {
-        accumulator += deltaTime;
-        tickDue = accumulator >= ROUTING_TICK;
-        if (tickDue) accumulator -= ROUTING_TICK;
-        // Always iterate so dirty grids reroute immediately; processEntity skips the rest
-        super.update(ROUTING_TICK);
+    public void addedToEngine(Engine engine) {
+        entities = engine.getEntitiesFor(FAMILY);
     }
 
     @Override
-    protected void processEntity(Entity entity, float deltaTime) {
+    public void removedFromEngine(Engine engine) {
+        entities = null;
+    }
+
+    @Override
+    protected void updateFixed(float deltaTime) {
+        if (entities == null) return;
+        for (int i = 0; i < entities.size(); i++) route(entities.get(i));
+    }
+
+    /** Runs every frame: grids that damage code marked dirty reroute at once. */
+    @Override
+    protected void updateInterpolated(float alpha) {
+        if (entities == null) return;
+        for (int i = 0; i < entities.size(); i++) {
+            Entity e = entities.get(i);
+            if (gridMapper.get(e).gridDirty) route(e);
+        }
+    }
+
+    @Override
+    protected void catchUp(long ticks, double seconds) {
+        updateFixed(getStepSeconds());
+    }
+
+    /** Recalculates which tiles and systems of one ship are powered. */
+    public void route(Entity entity) {
         ShipGridComponent grid = gridMapper.get(entity);
-        if (!tickDue && !grid.gridDirty) return;
         grid.gridDirty = false;
         ShipSubsystemRegistryComponent registry = registryMapper.get(entity);
 
@@ -65,7 +90,7 @@ public class PowerRoutingSystem extends IteratingSystem {
             // Seed from the reactor's own state, never from last tick's isOperational, so a
             // reactor that was off can come back on
             if (sub == null || sub.type != SubsystemComponent.SubsystemType.REACTOR
-                    || !sub.switchedOn || sub.isDestroyed()) continue;
+                    || !sub.switchedOn || sub.isDisabled()) continue;
             MountFootprint f = sub.footprint;
             for (int y = f.originY; y < f.originY + f.height(); y++) {
                 for (int x = f.originX; x < f.originX + f.width(); x++) {
@@ -116,7 +141,7 @@ public class PowerRoutingSystem extends IteratingSystem {
                     }
                 }
             }
-            sub.isOperational = sub.switchedOn && sub.powered && !sub.isDestroyed();
+            sub.isOperational = sub.switchedOn && sub.powered && !sub.isDisabled();
         }
     }
 
