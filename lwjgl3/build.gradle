@@ -190,6 +190,18 @@ tasks.register('runFlightDemo', JavaExec) {
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
+// Runs the Box2D precision test (large-coordinate floating point check) instead of the main game.
+tasks.register('runPhysicsTest', JavaExec) {
+  group = 'application'
+  description = 'Runs the Box2D precision test.'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.PhysicsTest'
+  classpath = sourceSets.main.runtimeClasspath
+  workingDir = rootProject.file('assets').path
+  jvmArgs += "--enable-native-access=ALL-UNNAMED"
+  jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
+  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+}
+
 // Equivalent to the jar task; here for compatibility with gdx-setup.
 tasks.register('dist') {
   dependsOn 'jar'
