@@ -276,11 +276,19 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
             mount.beamTime = 0f;
             return;
         }
+        // The beam burns as hard as the power it gets this tick.
+        double needed = (double) def.powerDraw * dt;
+        boolean metered = power != null && needed > 0;
         if (mount.beamTime <= 0f) {
             boolean wantsFire = mount.trigger
                     ? (onTarget || !mount.solution.valid)
                     : (mount.weaponsFree && onTarget && mount.engagedFor >= reactionTime(mount));
             if (!wantsFire || mount.cooldown > 0f) return;
+            // A pulse only starts with power to start it.
+            double got = metered ? power.draw(mount, needed) : needed;
+            if (got <= 0) return;
+            mount.beamStrength = metered ? (float) (got / needed) : 1f;
+            metered = false;
             mount.beamTime = def.beamDuration;
             mount.aimBias = 0f;
             dir.set(MathUtils.cos(barrel), MathUtils.sin(barrel));
@@ -293,9 +301,8 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
                 + (float) rng.nextGaussian() * def.spreadRad * green * (float) Math.sqrt(2f * k);
         float a = barrel + mount.aimBias;
         mount.beamDir.set(MathUtils.cos(a), MathUtils.sin(a));
-        // The beam burns as hard as the power it gets this tick.
-        double needed = (double) def.powerDraw * dt;
-        mount.beamStrength = power == null || needed <= 0 ? 1f : (float) (power.draw(mount, needed) / needed);
+        if (metered) mount.beamStrength = (float) (power.draw(mount, needed) / needed);
+        else if (power == null || needed <= 0) mount.beamStrength = 1f;
         mount.beamOn = true;
         mount.beamTime = Math.max(0f, mount.beamTime - dt);
     }

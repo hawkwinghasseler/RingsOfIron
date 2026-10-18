@@ -232,6 +232,8 @@ public class GameWorld implements Disposable {
         // The crew aboard set each ship's gunnery and tracking skill
         engine.addSystem(new CrewStationSync());
         engine.addSystem(sensors);
+        // Shots and beams draw on the ship's power circuits.
+        weaponControl.setPower(new ShipWeaponPower());
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
