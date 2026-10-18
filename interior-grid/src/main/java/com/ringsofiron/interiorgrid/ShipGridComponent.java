@@ -48,6 +48,12 @@ public class ShipGridComponent implements Component {
     /** The layout the compartments were last built from; null before the first build. */
     boolean[] compartmentLayout;
     /**
+     * Bumped every time the compartments are rebuilt, which happens on the first hazard
+     * tick after a wall, door, seal or tile opens or closes. Pathfinding and other caches
+     * keyed on the layout can compare it against the value they were built at.
+     */
+    public int layoutRevision = 0;
+    /**
      * Set by damage code after structural changes so power reroutes on the next frame
      * instead of waiting for the routing tick. Cleared by {@link PowerRoutingSystem}.
      */
@@ -189,6 +195,27 @@ public class ShipGridComponent implements Component {
         Compartment c = compartmentAt(x, y);
         return c == null ? 0f : c.oxygenRatio();
     }
+
+    /**
+     * True while a fire is burning anywhere aboard or air is venting to space faster than
+     * {@link #VENTING_HAZARD_FLOW} mol/s. Time warp is refused while this holds. Venting
+     * is read from {@link #airflow}, so it reflects the last hazard tick.
+     */
+    public boolean hasActiveHazard() {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (tiles[y][x].isBurning()) return true;
+            }
+        }
+        for (int i = 0; i < airflow.size; i++) {
+            AirflowEdge e = airflow.get(i);
+            if (e.other == null && e.flow > VENTING_HAZARD_FLOW) return true;
+        }
+        return false;
+    }
+
+    /** Venting below this rate (mol/s through one opening) does not count as a hazard. */
+    public static final float VENTING_HAZARD_FLOW = 0.01f;
 
     // -----------------------------------------------------------------------
     // Hull pieces and mounts
