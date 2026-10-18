@@ -6,6 +6,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
@@ -50,6 +51,8 @@ public class GameScenario {
     /** The player's ship and avatar; a load replaces them with the loaded entities. */
     public Entity player;
     public Entity avatar;
+    /** A hostile corvette close by, armed like the player's ship; also replaced by a load. */
+    public Entity raider;
     /** Ships the player can lock: hostiles and traffic in the bubble. */
     public final Array<Entity> contacts = new Array<>();
     public final String highport;
@@ -86,12 +89,19 @@ public class GameScenario {
             CrewFactory.spawn(world.crew, player, names[i], roles[i], 0, t[0], t[1]);
         }
 
-        Entity raider = content.factory.spawnShip(PLAYER_SHIP, 1_200f, 400f, 200f);
+        raider = content.factory.spawnShip(PLAYER_SHIP, 1_200f, 400f, 200f);
         ShipConsoles.install(raider);
         raider.add(new HudMarkerComponent("Raider", HudMarkerComponent.Kind.HOSTILE).radius(10f));
         PhysicsBodyComponent rb = raider.getComponent(PhysicsBodyComponent.class);
         if (rb != null) PhysicsManager.setVelocity(rb.body, -12f, -3f);
         contacts.add(raider);
+        // The raider's point defense is always up; it opens fire once the player shoots at it.
+        world.combatEvents.shots.add((signal, shot) -> {
+            if (shot.shooter == player && shot.target == raider) provokeRaider();
+        });
+        world.combatEvents.impacts.add((signal, hit) -> {
+            if (hit.owner == player && hit.target == raider) provokeRaider();
+        });
 
         // Traffic: shown and lockable while it is in the bubble.
         world.macroSim.bubble().addListener(new BubbleTransitionListener() {
@@ -125,6 +135,18 @@ public class GameScenario {
         return new GameScenario(world, assetsDir, modsDir);
     }
 
+    /** Turns the raider on the player: its turrets and launcher engage the player's ship. */
+    public void provokeRaider() {
+        SensorComponent sensor = raider.getComponent(SensorComponent.class);
+        if (sensor != null && sensor.lockedTarget == null) sensor.lockedTarget = player;
+    }
+
+    /** True once the raider is fighting back. */
+    public boolean raiderHostile() {
+        SensorComponent sensor = raider.getComponent(SensorComponent.class);
+        return sensor != null && sensor.lockedTarget == player;
+    }
+
     /** Next contact after {@code current} (wrapping), or null when there are none. */
     /**
      * Saves the whole game to {@code file}. Refused (returns a reason) during rails warp, when the
@@ -138,7 +160,7 @@ public class GameScenario {
 
     /**
      * Replaces the game with the one saved in {@code file}, then points {@link #player},
-     * {@link #avatar} and {@link #contacts} at the loaded entities.
+     * {@link #avatar}, {@link #raider} and {@link #contacts} at the loaded entities.
      */
     public void quickLoad(FileHandle file) {
         world.engine.getSerializationService().loadFromFile(file);
@@ -153,8 +175,11 @@ public class GameScenario {
             avatar = e;
         }
         contacts.clear();
+        raider = null;
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(HudMarkerComponent.class).get())) {
-            if (e != player) contacts.add(e);
+            if (e == player) continue;
+            contacts.add(e);
+            if (e.getComponent(HudMarkerComponent.class).kind == HudMarkerComponent.Kind.HOSTILE) raider = e;
         }
     }
 

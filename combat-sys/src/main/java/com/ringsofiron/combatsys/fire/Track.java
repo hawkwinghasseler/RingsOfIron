@@ -24,6 +24,37 @@ public class Track {
     /** Last fix's noise, 1 sigma, meters: a confidence measure for the HUD. */
     public float sigma;
 
+    /**
+     * Sets the gains for a crew of the given skill, 0 (green) .. 1 (veteran), using the
+     * fading-memory filter's critically damped gains for smoothing factor {@code theta}. A green
+     * crew runs a plain alpha-beta filter (gamma 0) and only leads on velocity; skill brings in
+     * the acceleration term and a faster response.
+     */
+    public void setSkill(float skill) {
+        skill = Math.max(0f, Math.min(1f, skill));
+        if (skill < 0.25f) {
+            float theta = 0.8f;
+            alpha = 1f - theta * theta;
+            beta = (1f - theta) * (1f - theta);
+            gamma = 0f;
+        } else {
+            float theta = 0.85f - 0.2f * skill;
+            float q = 1f - theta;
+            alpha = 1f - theta * theta * theta;
+            beta = 1.5f * q * q * (1f + theta);
+            gamma = 0.5f * q * q * q;
+        }
+    }
+
+    /** Clears the estimate so the next fix starts a fresh track. */
+    public void reset() {
+        p.setZero();
+        v.setZero();
+        a.setZero();
+        fixes = 0;
+        sigma = 0f;
+    }
+
     /** Extrapolates the estimate {@code dt} seconds ahead without a fix. */
     public void predict(float dt) {
         p.mulAdd(v, dt).mulAdd(a, 0.5f * dt * dt);
@@ -45,7 +76,7 @@ public class Track {
         float rx = zx - p.x, ry = zy - p.y;
         if (fixes == 1) {
             // Second fix: take velocity straight from the difference.
-            v.mulAdd(new Vector2(rx, ry), 1f / dt);
+            v.add(rx / dt, ry / dt);
             p.set(zx, zy);
         } else {
             p.add(alpha * rx, alpha * ry);
