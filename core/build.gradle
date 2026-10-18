@@ -3,6 +3,7 @@ eclipse.project.name = appName + '-core'
 
 dependencies {
   api project(':core-engine')
+  api project(':orbital-mechanics')
   api project(':physics-exterior')
   api project(':interior-grid')
   api project(':ai-crew')
