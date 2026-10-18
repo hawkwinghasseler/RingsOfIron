@@ -57,6 +57,12 @@ public class MountFootprint {
      */
     public transient Entity installed;
 
+    /** For deserialization only; the loader fills in the fields. */
+    @SuppressWarnings("unused")
+    private MountFootprint() {
+        this(MountKind.PRIMARY, MountSize.S, 0, 0, 0);
+    }
+
     public MountFootprint(MountKind kind, MountSize size, int originX, int originY, int rotation) {
         this.kind = kind;
         this.size = size;

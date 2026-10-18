@@ -44,6 +44,12 @@ public class SubsystemComponent implements Component {
     /** Whether this subsystem is currently receiving power. Set by PowerRoutingSystem. */
     public boolean powered = false;
 
+    /** For deserialization only; the loader fills in the fields. */
+    @SuppressWarnings("unused")
+    private SubsystemComponent() {
+        this.footprint = null;
+    }
+
     public SubsystemComponent(MountFootprint footprint, SubsystemType type) {
         if (footprint.kind != type.mountKind) {
             throw new IllegalArgumentException(type + " needs a " + type.mountKind + " mount, not " + footprint.kind);

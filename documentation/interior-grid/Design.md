@@ -192,7 +192,11 @@ A rails warp jump therefore only ever starts with no fire and no venting. Each s
 - `SubsystemComponent`: tags an entity as a ship system installed in a `MountFootprint`.
 - `ShipSubsystemRegistryComponent`: the ship's list of subsystem entities.
 
-`MountFootprint.installed` is not saved (it would drag the whole system entity into the save). After loading, `ShipGridComponent.relinkMounts(registry.subsystems)` restores it.
+### Saving
+Register `InteriorGridSaveParticipant` with the `SerializationService`. It installs `ShipGridSerializer`, which writes each grid as plain state: tiles, edge walls, hull pieces, mounts, and each compartment's air keyed by one of its tiles. On load it places the pieces and mounts again, rebuilds the compartments and pours the saved air back in.
+- `ShipSubsystemRegistryComponent` saves `EntityRef`s (`ownerRef`, `subsystemRefs`). Its live `ownerEntity` and `subsystems` are transient.
+- `MountFootprint.installed` is transient too, so a save never drags in a system entity.
+- After every entity is loaded, the participant calls `registry.relink(uuids)` and `grid.relinkMounts(registry.subsystems)` to restore both.
 
 Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartment`, `AirflowEdge`, `FloorCovering`, `WeightClass`, `Side`, `MaterialTable`, `ChassisBlueprint`.
 
