@@ -48,6 +48,8 @@ public class CrewMovementSystem extends IteratingSystem {
         GridPositionComponent p = service.position(e);
         ShipGridComponent grid = service.grid(p.ship);
         if (grid == null) return;
+        // The ship may have been given its UUID after the crew boarded
+        if (p.shipRef == null) p.setShip(p.ship);
         if (!c.isConscious() || c.carriedBy != null) {
             p.stop();
             return;

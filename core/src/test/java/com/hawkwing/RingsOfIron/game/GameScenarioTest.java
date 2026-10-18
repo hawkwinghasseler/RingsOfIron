@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.aicrew.BehaviorTreeComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
@@ -54,6 +55,36 @@ class GameScenarioTest {
         }
         assertEquals(4, aboard, "the player and three crew");
         for (int i = 0; i < 60; i++) world.update(FRAME);
+    }
+
+    @Test
+    void savesAndLoadsWithTheCrewAboard() {
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        assertFalse(world.macroSim.bubble().inBubble().isEmpty(), "the freighter ahead is in the bubble");
+        String visitor = world.macroSim.bubble().inBubble().iterator().next();
+        double[] before = new double[4];
+        world.physics.getTrueState(world.engine.getEntity(visitor).getComponent(PhysicsBodyComponent.class).body, before);
+        String save = world.engine.getSerializationService().saveGame();
+        world.engine.getSerializationService().loadGame(save);
+
+        PhysicsBodyComponent visitorBody = world.engine.getEntity(visitor).getComponent(PhysicsBodyComponent.class);
+        assertNotNull(visitorBody, "a ship the bubble took in from the rails gets its body back");
+        double[] after = new double[4];
+        world.physics.getTrueState(visitorBody.body, after);
+        assertEquals(before[0], after[0], 1.0);
+        assertEquals(before[1], after[1], 1.0);
+
+        Entity ship = world.getPlayer();
+        assertNotNull(ship);
+        int aboard = 0, thinking = 0;
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            if (e.getComponent(GridPositionComponent.class).ship == ship) aboard++;
+            if (e.getComponent(BehaviorTreeComponent.class) != null) thinking++;
+        }
+        assertEquals(4, aboard, "the player and three crew, back aboard the loaded ship");
+        assertEquals(3, thinking, "the AI crew think again");
+        for (int i = 0; i < 180; i++) world.update(FRAME);
+        assertTrue(world.macroSim.bubble().inBubble().contains(visitor), "and the game runs on with it");
     }
 
     @Test

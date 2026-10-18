@@ -5,6 +5,7 @@ import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Disposable;
 import com.ringsofiron.aicrew.CrewFactory;
+import com.ringsofiron.aicrew.CrewSaveParticipant;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.pilot.NpcPilotSystem;
 import com.ringsofiron.aicrew.pilot.PilotReference;
@@ -180,6 +181,7 @@ public class GameWorld implements Disposable {
 
         // ai-crew
         crew = CrewFactory.install(engine.getEcsEngine());
+        CrewSaveParticipant.install(crew, engine);
         avatar = new AvatarInteractor(engine.getEcsEngine());
 
         // combat-sys

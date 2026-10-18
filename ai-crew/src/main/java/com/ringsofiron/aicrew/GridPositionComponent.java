@@ -5,6 +5,8 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.coreengine.EntityRef;
+import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 
@@ -15,15 +17,20 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
  *
  * Also holds the path the crew member is walking, set by the behavior tree and
  * followed by {@link CrewMovementSystem}.
+ *
+ * Saves keep the position and {@link #shipRef}; the path is transient and
+ * {@link CrewSaveParticipant} relinks {@link #ship} after a load.
  */
 public class GridPositionComponent implements Component {
 
     /** The ship entity (holding the ShipGridComponent) this crew member is aboard. */
-    public Entity ship;
+    public transient Entity ship;
+    /** {@link #ship} as saved. Null while the ship has no UUID. */
+    public EntityRef shipRef;
     public float x, y;
 
     /** Tiles to walk through, in order; empty when standing still. */
-    public final Array<GridNode> path = new Array<>();
+    public final transient Array<GridNode> path = new Array<>();
     /** Index in {@link #path} of the tile being walked to. */
     public int pathIndex;
     /** Set by the movement system when the next step became impassable (door shut, wall rebuilt). */
@@ -32,8 +39,14 @@ public class GridPositionComponent implements Component {
     public GridPositionComponent() {}
 
     public GridPositionComponent(Entity ship, int tileX, int tileY) {
-        this.ship = ship;
+        setShip(ship);
         setTile(tileX, tileY);
+    }
+
+    /** Puts this crew member aboard {@code ship}, keeping {@link #shipRef} in step. */
+    public void setShip(Entity ship) {
+        this.ship = ship;
+        shipRef = ship != null && ship.getComponent(UuidComponent.class) != null ? EntityRef.of(ship) : null;
     }
 
     public int tileX() {

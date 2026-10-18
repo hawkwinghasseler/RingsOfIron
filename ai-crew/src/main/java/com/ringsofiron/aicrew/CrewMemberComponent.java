@@ -8,6 +8,11 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
 /**
  * A crew member: stats, health, consciousness state, role and what they are doing.
  * Their place on the ship is in {@link GridPositionComponent}.
+ *
+ * Saves keep who the crew member is and their health, but not the job in hand: the
+ * claimed task and the carry and treatment links are transient. After a load
+ * {@link CrewSaveParticipant} sets carried casualties down where they are and crew pick
+ * their jobs afresh from the hazards and casualties around them.
  */
 public class CrewMemberComponent implements Component {
 
@@ -22,13 +27,13 @@ public class CrewMemberComponent implements Component {
     public CrewDamageSink.DamageCause lastDamageCause;
 
     /** The board task this crew member has claimed, or null. */
-    public CrewTask task;
+    public transient CrewTask task;
     /** The unconscious crew member this one is carrying, or null. */
-    public Entity carrying;
+    public transient Entity carrying;
     /** The crew member carrying this one, or null. */
-    public Entity carriedBy;
+    public transient Entity carriedBy;
     /** The medic treating this crew member, or null. */
-    public Entity treatedBy;
+    public transient Entity treatedBy;
     /** Item in hand, for display. */
     public String equippedItem = "";
 

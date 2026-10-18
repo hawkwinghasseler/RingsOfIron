@@ -32,10 +32,16 @@ public final class CrewFactory {
         GridPositionComponent p = new GridPositionComponent(ship, x, y);
         e.add(c);
         e.add(p);
-        CrewAgent agent = new CrewAgent(e, c, p, service);
-        e.add(new BehaviorTreeComponent(CrewBehaviorTrees.standard(agent), agent));
+        addBrain(service, e);
         engine.addEntity(e);
         return e;
+    }
+
+    /** Gives an AI crew member (with crew and position components) a fresh behavior tree. */
+    public static void addBrain(CrewService service, Entity e) {
+        CrewAgent agent = new CrewAgent(e, e.getComponent(CrewMemberComponent.class),
+                e.getComponent(GridPositionComponent.class), service);
+        e.add(new BehaviorTreeComponent(CrewBehaviorTrees.standard(agent), agent));
     }
 
     /** Spawns the player's avatar, a crew member moved by input rather than AI. */
