@@ -13,6 +13,10 @@ import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.SerializationService;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.orbital.math.KeplerOrbit;
+import com.ringsofiron.physicsexterior.anchor.AnchorModel;
+import com.ringsofiron.physicsexterior.anchor.InertialAnchor;
+import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
 import com.ringsofiron.physicsexterior.components.BodyShapeComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -32,8 +36,12 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
  * Saves from before shapes were recorded hold only states; those are applied when something else
  * builds the entity's body, whether before this participant is read or later.
  *
- * The anchor's motion model is not saved: the game sets the model for the current parent body
- * (e.g. a Kepler orbit) and this participant restarts it from the saved state at the saved tick.
+ * The anchor is saved as its true state, its parent body and that body's gravitational parameter.
+ * On load the current anchor model restarts from the saved state if it pulls with the same mu;
+ * otherwise (a fresh world still on its default inertial anchor, or a save made around another
+ * body) it is replaced with a {@link KeplerAnchor} through the saved state, or an
+ * {@link InertialAnchor} when the save had no gravity. Either way the change is announced on
+ * {@link PhysicsManager#anchorChanges}, so rails tracking picks up the loaded anchor.
  */
 public class PhysicsSaveParticipant implements SaveParticipant {
     public static final String SAVE_KEY = "physics-exterior";
@@ -52,6 +60,8 @@ public class PhysicsSaveParticipant implements SaveParticipant {
     /** Creates the participant, registers it with the game's serializer and skips the live physics components. */
     public static PhysicsSaveParticipant install(PhysicsManager physics, GameEngine game) {
         PhysicsSaveParticipant participant = new PhysicsSaveParticipant(physics, game);
+        // Sim time is the game's, even when a save is loaded before physics has stepped once.
+        if (physics.getClock() == null) physics.setClock(game);
         SerializationService serializer = game.getSerializationService();
         serializer.skipComponent(PhysicsBodyComponent.class);
         serializer.skipComponent(KinematicTransientComponent.class);
@@ -79,6 +89,7 @@ public class PhysicsSaveParticipant implements SaveParticipant {
         json.writeValue(physics.getOriginVy());
         json.writeArrayEnd();
         json.writeValue("anchorParent", physics.getAnchorParentUuid());
+        json.writeValue("anchorMu", physics.getAnchorModel().getMu());
 
         json.writeObjectStart("bodies");
         for (Entity entity : game.getEcsEngine().getEntitiesFor(BODIES)) {
@@ -100,9 +111,20 @@ public class PhysicsSaveParticipant implements SaveParticipant {
     @Override
     public void read(Json json, JsonValue data) {
         double[] anchor = data.get("anchor").asDoubleArray();
-        physics.setAnchorParentUuid(data.getString("anchorParent", physics.getAnchorParentUuid()));
-        physics.getAnchorModel().reset(anchor[0], anchor[1], anchor[2], anchor[3], physics.getSimSeconds());
-        physics.syncToClock();
+        String parent = data.getString("anchorParent", physics.getAnchorParentUuid());
+        double t = physics.getSimSeconds();
+        AnchorModel model = physics.getAnchorModel();
+        // Saves from before mu was recorded keep whatever model the game set up.
+        double mu = data.getDouble("anchorMu", model.getMu());
+        if (Math.abs(mu - model.getMu()) <= 1e-9 * Math.max(1.0, Math.abs(mu))) {
+            model.reset(anchor[0], anchor[1], anchor[2], anchor[3], t);
+        } else if (mu > 0) {
+            model = new KeplerAnchor(KeplerOrbit.fromState(anchor[0], anchor[1], anchor[2], anchor[3], mu, t));
+        } else {
+            model = new InertialAnchor();
+            model.reset(anchor[0], anchor[1], anchor[2], anchor[3], t);
+        }
+        physics.setAnchorModel(model, parent);
 
         pending.clear();
         JsonValue bodies = data.get("bodies");

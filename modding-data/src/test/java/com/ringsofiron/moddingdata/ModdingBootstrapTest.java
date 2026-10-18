@@ -7,6 +7,7 @@ import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.moddingdata.components.DefRefComponent;
 import com.ringsofiron.moddingdata.defs.CommodityDef;
 import com.ringsofiron.moddingdata.defs.ShipDef;
+import com.ringsofiron.moddingdata.defs.SoundEventData;
 import com.ringsofiron.moddingdata.defs.StationTypeDef;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -55,6 +56,26 @@ class ModdingBootstrapTest {
         assertEquals(40, railgun.slewRateDeg, "kept from base data");
         assertTrue(ctx.defs.has("weapon", "railgun_mk2"));
         assertEquals("event:/mods/better_railguns/railgun", ctx.assets.getString("evt_railgun_fire"));
+    }
+
+    @Test
+    void modSoundEventsCarryPlaybackRulesForTheirPath() {
+        ModContext ctx = loadExamples(ModTrustPolicy.WARN_AND_ALLOW);
+        List<SoundEventData> sounds = ctx.defs.all(SoundEventData.class);
+        assertEquals(1, sounds.size());
+        SoundEventData railgun = sounds.get(0);
+        assertEquals(ctx.assets.getString("evt_railgun_fire"), railgun.path, "matches the key the mod re-pointed");
+        assertFalse(railgun.looping);
+        assertEquals(0.6f, railgun.duration);
+        assertEquals(900f, railgun.maxDistance);
+    }
+
+    @Test
+    void soundEventWithoutPathIsReported(@TempDir Path mods) throws IOException {
+        Path data = Files.createDirectories(mods.resolve("quiet/data"));
+        Files.writeString(data.resolve("audio.toml"), "[sound_event.nothing]\nvolume = 0.5\n");
+        ModContext ctx = new ModdingBootstrap(ASSETS, mods).load(new GameEngine());
+        assertTrue(ctx.report.toString().contains("sound_event.nothing has no path"), ctx.report.toString());
     }
 
     @Test

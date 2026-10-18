@@ -11,6 +11,8 @@ import com.ringsofiron.aicrew.pilot.NpcPilotSystem;
 import com.ringsofiron.aicrew.pilot.PilotReference;
 import com.ringsofiron.audiospatial.AudioManager;
 import com.ringsofiron.audiospatial.ImpactAudio;
+import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
+import com.ringsofiron.audiospatial.backend.SoundEventDef;
 import com.ringsofiron.audiospatial.systems.AcousticOcclusionSystem;
 import com.ringsofiron.audiospatial.systems.AudioUpdateSystem;
 import com.ringsofiron.combatsys.defs.CombatDefs;
@@ -41,6 +43,7 @@ import com.ringsofiron.macrosim.rails.orbital.OrbitalRailsModel;
 import com.ringsofiron.moddingdata.ModContext;
 import com.ringsofiron.moddingdata.ModTrustPolicy;
 import com.ringsofiron.moddingdata.ModdingBootstrap;
+import com.ringsofiron.moddingdata.defs.SoundEventData;
 import com.ringsofiron.orbital.events.OrbitalEventQueue;
 import com.ringsofiron.orbital.events.OrbitalEventSystem;
 import com.ringsofiron.orbital.rails.RailsUniverse;
@@ -121,6 +124,7 @@ public class GameWorld implements Disposable {
     public final AudioManager audio;
     public final AvatarInteractor avatar;
     public final AudioListenerSync audioListener;
+    public final EngineAudio engineAudio;
 
     private final ImmutableArray<Entity> players;
     private final OrbitalAnchorBridge anchorBridge;
@@ -221,7 +225,9 @@ public class GameWorld implements Disposable {
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
         audioListener = new AudioListenerSync(this::getPlayer, avatar);
         engine.addSystem(audioListener);
-        engine.addSystem(new AcousticOcclusionSystem());
+        engineAudio = new EngineAudio(this::getPlayer);
+        engine.addSystem(engineAudio);
+        engine.addSystem(new AcousticOcclusionSystem(audio.getCatalog()));
         AudioUpdateSystem audioUpdate = new AudioUpdateSystem(audio);
         engine.addSystem(audioUpdate);
         physics.collisions.add(new ImpactAudio(audio));
@@ -251,7 +257,16 @@ public class GameWorld implements Disposable {
         mergeCombatDefs(CombatDefs.fromRegistry(content.defs));
         DefRegistryCommodityCatalog economy = new DefRegistryCommodityCatalog(content.defs);
         if (!economy.commodities().isEmpty()) commodities.set(economy);
+        registerSounds(content, audio.getCatalog());
         return content;
+    }
+
+    /** Gives the audio backends playback rules for every {@code [sound_event.*]} in base data and mods. */
+    static void registerSounds(ModContext content, AudioEventCatalog catalog) {
+        for (SoundEventData s : content.defs.all(SoundEventData.class)) {
+            if (s.path == null || s.path.isEmpty()) continue; // reported by the def validator
+            catalog.register(new SoundEventDef(s.path, s.looping, s.duration, s.minDistance, s.maxDistance, s.volume));
+        }
     }
 
     /**

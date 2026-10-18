@@ -1,6 +1,7 @@
 package com.ringsofiron.moddingdata;
 
 import com.ringsofiron.moddingdata.defs.ShipDef;
+import com.ringsofiron.moddingdata.defs.SoundEventData;
 import com.ringsofiron.moddingdata.defs.StationTypeDef;
 
 import java.util.Map;
@@ -58,6 +59,18 @@ public final class DefValidator {
             }
             checkCommodities(defs, report, e, st.produces);
             checkCommodities(defs, report, e, st.consumes);
+        }
+
+        for (DefEntry e : defs.entries("sound_event")) {
+            SoundEventData sound;
+            try {
+                sound = defs.convert(e, SoundEventData.class);
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
+            if (sound.path == null || sound.path.isEmpty()) {
+                report.warn(e.lastSource(), e + " has no path, so it cannot be played");
+            }
         }
     }
 
