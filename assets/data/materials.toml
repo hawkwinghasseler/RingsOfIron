@@ -1,0 +1,16 @@
+# Construction materials (combat-sys design, section 6). One row per weight class:
+# mass per full tile (kg), hit points (J to destroy), armor (penetration removed, J).
+
+[material.hull_steel]
+fire_chance = 0.0
+ablation_factor = 1.0
+light  = { mass = 800.0,  hit_points = 2.0e6, armor = 1.0e6 }
+medium = { mass = 2000.0, hit_points = 5.0e6, armor = 3.0e6 }
+heavy  = { mass = 5000.0, hit_points = 1.2e7, armor = 8.0e6 }
+
+[material.composite_armor]
+fire_chance = 0.0
+ablation_factor = 0.6
+light  = { mass = 600.0,  hit_points = 2.5e6, armor = 2.0e6 }
+medium = { mass = 1500.0, hit_points = 6.0e6, armor = 5.0e6 }
+heavy  = { mass = 3800.0, hit_points = 1.4e7, armor = 1.2e7 }
