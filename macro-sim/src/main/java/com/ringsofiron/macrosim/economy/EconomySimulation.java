@@ -86,12 +86,15 @@ public class EconomySimulation {
                 node.prices.remove(c.id);
                 continue;
             }
-            double target = targetStock(node, c.id);
-            double stock = Math.max(1, node.projectedStock(c.id));
-            double factor = Math.pow(target / stock, EconomyNode.PRICE_ELASTICITY);
-            factor = Math.max(EconomyNode.MIN_PRICE_FACTOR, Math.min(EconomyNode.MAX_PRICE_FACTOR, factor));
-            node.prices.put(c.id, c.basePrice * factor);
+            node.prices.put(c.id, priceAt(node, c, node.projectedStock(c.id)));
         }
+    }
+
+    /** The unit price this station's curve gives at a projected stock of {@code stock}. */
+    public double priceAt(EconomyNode node, CommodityType c, double stock) {
+        double factor = Math.pow(targetStock(node, c.id) / Math.max(1, stock), EconomyNode.PRICE_ELASTICITY);
+        factor = Math.max(EconomyNode.MIN_PRICE_FACTOR, Math.min(EconomyNode.MAX_PRICE_FACTOR, factor));
+        return c.basePrice * factor;
     }
 
     public double targetStock(EconomyNode node, String commodity) {

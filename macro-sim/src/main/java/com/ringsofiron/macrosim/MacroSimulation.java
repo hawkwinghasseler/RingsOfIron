@@ -12,6 +12,7 @@ import com.ringsofiron.macrosim.economy.CommodityCatalog;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.economy.EconomyNodeComponent;
 import com.ringsofiron.macrosim.economy.EconomySimulation;
+import com.ringsofiron.macrosim.economy.StationMarket;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.fleet.FreighterController;
 import com.ringsofiron.macrosim.rails.RailsModel;
@@ -39,6 +40,10 @@ public class MacroSimulation {
     public static final double PREDICTION_INTERVAL = 0.5;
     /** How far ahead each prediction looks, sim seconds. Raised by time warp to see the next drop-out. */
     public static final double DEFAULT_PREDICTION_HORIZON = 3600;
+    /** Farthest a ship can be from a station and still trade there, meters. */
+    public static final double DOCK_RANGE = 500;
+    /** Fastest a ship can move relative to a station and still trade there, m/s. */
+    public static final double DOCK_SPEED = 10;
 
     private final GameEngine engine;
     private final RailsModel rails;
@@ -47,6 +52,7 @@ public class MacroSimulation {
     private final MacroEventQueue events = new MacroEventQueue();
     private final EconomySimulation economy;
     private final FreighterController freighters;
+    private final StationMarket market;
     private final BubbleTransitionSystem bubble;
     private final Map<String, EconomyNode> stations = new LinkedHashMap<>();
     private final Set<String> massiveBodies = new HashSet<>();
@@ -70,6 +76,7 @@ public class MacroSimulation {
         this.predictionExecutor = predictionExecutor;
         this.economy = new EconomySimulation(catalog);
         this.freighters = new FreighterController(rails, economy, events, stations::get);
+        this.market = new StationMarket(economy);
         this.now = startTime;
         this.nextPrediction = startTime;
         this.bubble = gateway == null ? null : new BubbleTransitionSystem(rails, gateway);
@@ -241,6 +248,43 @@ public class MacroSimulation {
         StateVector anchor = gateway.anchorStateAt(t, new StateVector());
         rails.stateAt(uuid, t, out);
         return out.setDifference(out, anchor);
+    }
+
+    /**
+     * The nearest station the ship can trade at right now (within {@link #DOCK_RANGE} and slower than
+     * {@link #DOCK_SPEED} relative to it, around the same body), or null. Works for a ship in the
+     * bubble or on rails.
+     */
+    public String dockableStation(String shipUuid) {
+        StateVector ship = new StateVector();
+        String parent;
+        if (rails.isOnRails(shipUuid)) {
+            rails.stateAt(shipUuid, now, ship);
+            parent = rails.parentOf(shipUuid);
+        } else {
+            if (gateway == null) return null;
+            gateway.trueStateOf(shipUuid, now, ship);
+            parent = gateway.anchorParentUuid();
+        }
+        String best = null;
+        double bestDistance = DOCK_RANGE;
+        StateVector station = new StateVector();
+        for (String uuid : stations.keySet()) {
+            if (!rails.isOnRails(uuid) || !rails.parentOf(uuid).equals(parent)) continue;
+            rails.stateAt(uuid, now, station);
+            double distance = Math.hypot(station.x - ship.x, station.y - ship.y);
+            double speed = Math.hypot(station.vx - ship.vx, station.vy - ship.vy);
+            if (distance <= bestDistance && speed < DOCK_SPEED) {
+                best = uuid;
+                bestDistance = distance;
+            }
+        }
+        return best;
+    }
+
+    /** Buying and selling at stations by hand, for the player's ship. */
+    public StationMarket market() {
+        return market;
     }
 
     public double now() {
