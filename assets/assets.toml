@@ -1,0 +1,14 @@
+# Asset keys -> files, relative to this assets folder. Code asks for keys, never paths:
+#   assets.getTexture("tex_libgdx")
+# Mods add or override keys with their own assets.toml (paths relative to the mod folder).
+
+[texture]
+tex_libgdx = "libgdx.png"
+tex_corvette = "libgdx.png"       # placeholder until ship art exists
+tex_freighter = "libgdx.png"      # placeholder
+
+# Audio middleware event paths (audio-spatial); looked up with assets.getString(key).
+[audio_event]
+evt_railgun_fire = "event:/weapons/railgun"
+evt_laser_fire = "event:/weapons/laser"
+evt_hull_breach = "event:/interior/hull_breach"

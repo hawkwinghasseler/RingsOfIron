@@ -1,1 +1,7 @@
+assets.toml
+data/chassis.toml
+data/economy.json
+data/materials.toml
+data/ships.toml
+data/weapons.toml
 libgdx.png

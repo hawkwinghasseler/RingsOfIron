@@ -1,0 +1,5 @@
+id = "better_railguns"
+name = "Better Railguns"
+version = "1.0.0"
+author = "Rings of Iron examples"
+description = "Data-only mod: patches one railgun stat and re-points an audio event."
