@@ -24,8 +24,13 @@ public class WeaponMountComponent implements Component {
     public float cooldown;
     /** What to shoot at; null holds fire. */
     public transient Entity target;
-    /** Whether the gunner may fire; false only aims. */
+    /** Whether the gunner may fire on their own; false only aims, and fires on {@link #trigger}. */
     public boolean weaponsFree = true;
+    /**
+     * Held by the player: fire whenever loaded, as soon as the barrel is on the solution (or at
+     * once, straight down the barrel, with nothing to aim at). Cleared by the caller.
+     */
+    public boolean trigger;
     /**
      * Gunner skill 0 (green) .. 1 (veteran): aim jitter, reaction time and burst walking.
      * ai-crew writes this from the gunner's stats.
@@ -43,6 +48,15 @@ public class WeaponMountComponent implements Component {
     public float engagedFor;
     /** Last target, to notice a switch. */
     public transient Entity lastTarget;
+    /**
+     * What the mount is actually engaging this tick: {@link #target}, else the ship's locked
+     * target, or for point defense the most urgent incoming missile. Set by weapon control.
+     */
+    public transient Entity engaged;
+    /** Whether the barrel was on the solution last tick. */
+    public boolean onTarget;
+    /** The hardpoint in the bubble frame last tick, local meters. Set by weapon control. */
+    public final transient Vector2 muzzle = new Vector2();
     /** Rounds fired. */
     public int shotsFired;
 

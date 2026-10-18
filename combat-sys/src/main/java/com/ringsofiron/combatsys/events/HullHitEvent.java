@@ -28,5 +28,10 @@ public class HullHitEvent {
     public float energyAbsorbed;
     /** 0..1: energy absorbed relative to the toughest hull tile's hit points, clamped. */
     public float severity;
+    /**
+     * A fast pass rammed it rather than a round. audio-spatial already plays those from
+     * physics-exterior's fastPassImpacts, so listeners that make sound skip them.
+     */
+    public boolean ram;
     public long tick;
 }

@@ -56,8 +56,8 @@ public class PenetrationResolver {
     public static final float CREW_BLAST_LETHAL = 2e6f;
     /** Machinery share of a system's hardness that one tile of it can absorb from a single ray. */
     public static final float SUBSYSTEM_TILE_SHARE = 0.25f;
-    /** Below this health a system stops working; at 0 it is destroyed. */
-    public static final float DISABLE_THRESHOLD = 0.3f;
+    /** Below this health a system stops working; at 0 it is destroyed. interior-grid owns the value. */
+    public static final float DISABLE_THRESHOLD = SubsystemComponent.DISABLE_THRESHOLD;
     /** Edge walls are thin: this share of a full tile's hit points and armor. */
     public static final float EDGE_WALL_FRACTION = 0.25f;
     /** How far outside the impact point the traversal starts, tiles (section 5.2 step 3). */
@@ -115,7 +115,7 @@ public class PenetrationResolver {
     private static final ComponentMapper<SubsystemComponent> subsystemMapper =
             ComponentMapper.getFor(SubsystemComponent.class);
 
-    private final MaterialTable materials;
+    private MaterialTable materials;
     private CrewDamageBridge crew;
 
     // Per-call state (one call at a time).
@@ -137,6 +137,11 @@ public class PenetrationResolver {
 
     public MaterialTable getMaterials() {
         return materials;
+    }
+
+    /** Swaps in another material table, such as the one loaded from data. */
+    public void setMaterials(MaterialTable materials) {
+        this.materials = materials;
     }
 
     // ------------------------------------------------------------------

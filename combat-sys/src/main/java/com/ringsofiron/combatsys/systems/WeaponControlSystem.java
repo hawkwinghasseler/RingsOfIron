@@ -1,0 +1,318 @@
+package com.ringsofiron.combatsys.systems;
+
+import com.badlogic.ashley.core.ComponentMapper;
+import com.badlogic.ashley.core.Engine;
+import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntitySystem;
+import com.badlogic.ashley.core.Family;
+import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.RandomXS128;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Body;
+import com.ringsofiron.combatsys.CombatPhysics;
+import com.ringsofiron.combatsys.components.MissileComponent;
+import com.ringsofiron.combatsys.components.SensorComponent;
+import com.ringsofiron.combatsys.components.SignatureComponent;
+import com.ringsofiron.combatsys.components.WeaponMountComponent;
+import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.combatsys.defs.CombatDefs;
+import com.ringsofiron.combatsys.defs.MissileDef;
+import com.ringsofiron.combatsys.defs.ProjectileDef;
+import com.ringsofiron.combatsys.defs.WeaponDef;
+import com.ringsofiron.combatsys.events.CombatEvents;
+import com.ringsofiron.combatsys.events.ShotFiredEvent;
+import com.ringsofiron.combatsys.fire.FiringSolutionSolver;
+import com.ringsofiron.combatsys.fire.Track;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+
+/**
+ * Turret fire control (combat-sys/Design.md 3.3). Per mount, per tick: pick what to engage, ask
+ * {@link FiringSolutionSolver} for the lead on the ship's sensor track of it, slew the barrel
+ * toward that within the firing arc, and fire when loaded, the weapon's system works, and the
+ * barrel's pointing error at that range is inside the target. Gunnery skill sets aim jitter and
+ * how long the gunner takes to engage a new target. Rounds inherit the hardpoint's velocity
+ * (spin included) and push the ship back.
+ *
+ * Point-defense mounts pick their own target: the incoming missile their ship tracks that will
+ * pass closest soonest. Launchers throw a missile at the target's track when loaded; guidance
+ * takes it from there.
+ *
+ * Runs from {@link PhysicsManager.StepListener#beforeStep}, after {@link SensorTrackingSystem}.
+ */
+public class WeaponControlSystem extends EntitySystem implements PhysicsManager.StepListener {
+    private static final Family FAMILY = Family.all(WeaponsComponent.class, PhysicsBodyComponent.class).get();
+    /** Base seconds before a gunner engages a new target, and the extra for a green one. */
+    public static final float REACTION_BASE = 0.2f, REACTION_GREEN = 1.0f;
+    /** Point-defense gunners are drilled for it, and their computers do most of the work. */
+    public static final float PD_REACTION_BASE = 0.05f, PD_REACTION_GREEN = 0.3f;
+    /** Missiles that pass further than this from the ship are no point-defense threat, meters. */
+    public static final float PD_THREAT_MISS = 300f;
+    /** Size assumed for a contact with no signature, meters. */
+    private static final float DEFAULT_RADIUS = 5f;
+
+    private final ComponentMapper<WeaponsComponent> weaponsMapper = ComponentMapper.getFor(WeaponsComponent.class);
+    private final ComponentMapper<PhysicsBodyComponent> bodyMapper = ComponentMapper.getFor(PhysicsBodyComponent.class);
+    private final ComponentMapper<SensorComponent> sensorMapper = ComponentMapper.getFor(SensorComponent.class);
+    private final ComponentMapper<SignatureComponent> signatureMapper = ComponentMapper.getFor(SignatureComponent.class);
+    private final ComponentMapper<MissileComponent> missileMapper = ComponentMapper.getFor(MissileComponent.class);
+    private final ComponentMapper<SubsystemComponent> subsystemMapper = ComponentMapper.getFor(SubsystemComponent.class);
+
+    private final PhysicsManager physics;
+    private final CombatEvents events;
+    private final CombatDefs defs;
+    private final BallisticsSystem ballistics;
+    private final MissileGuidanceSystem missiles;
+    private final SensorTrackingSystem sensors;
+    private final RandomXS128 rng;
+    private final FiringSolutionSolver solver = new FiringSolutionSolver();
+    private ImmutableArray<Entity> ships;
+
+    private final ShotFiredEvent shot = new ShotFiredEvent();
+    private final Vector2 muzzle = new Vector2();
+    private final Vector2 muzzleVel = new Vector2();
+    private final Vector2 shipPos = new Vector2();
+    private final Vector2 shipVel = new Vector2();
+    private final Vector2 estPos = new Vector2();
+    private final Vector2 estVel = new Vector2();
+    private final Vector2 dir = new Vector2();
+
+    public WeaponControlSystem(PhysicsManager physics, CombatEvents events, CombatDefs defs, BallisticsSystem ballistics,
+                               MissileGuidanceSystem missiles, SensorTrackingSystem sensors, long seed) {
+        this.physics = physics;
+        this.events = events;
+        this.defs = defs;
+        this.ballistics = ballistics;
+        this.missiles = missiles;
+        this.sensors = sensors;
+        this.rng = new RandomXS128(seed);
+    }
+
+    @Override
+    public void addedToEngine(Engine engine) {
+        ships = engine.getEntitiesFor(FAMILY);
+        physics.addStepListener(this);
+    }
+
+    @Override
+    public void removedFromEngine(Engine engine) {
+        physics.removeStepListener(this);
+        ships = null;
+    }
+
+    @Override
+    public void update(float deltaTime) {
+        // Work happens on the physics tick; see beforeStep.
+    }
+
+    @Override
+    public void beforeStep(float dt) {
+        for (int i = 0; i < ships.size(); i++) {
+            Entity ship = ships.get(i);
+            if (ship.isScheduledForRemoval()) continue;
+            Body body = bodyMapper.get(ship).body;
+            if (body == null) continue;
+            WeaponsComponent weapons = weaponsMapper.get(ship);
+            SensorComponent sensor = sensorMapper.get(ship);
+            for (int m = 0; m < weapons.mounts.size; m++) {
+                control(ship, body, sensor, weapons.mounts.get(m), dt);
+            }
+        }
+    }
+
+    /** Whether the mount's system can work: no system, or one that is operational. */
+    public boolean available(WeaponMountComponent mount) {
+        if (mount.subsystem == null) return true;
+        SubsystemComponent s = subsystemMapper.get(mount.subsystem);
+        return s == null || (s.isOperational && !s.isDisabled());
+    }
+
+    private void control(Entity ship, Body body, SensorComponent sensor, WeaponMountComponent mount, float dt) {
+        WeaponDef def = mount.def;
+        if (def == null) return;
+        mount.cooldown = Math.max(0f, mount.cooldown - dt);
+
+        Entity target = def.pointDefense ? pickMissileThreat(ship, body, sensor, def)
+                : (mount.target != null ? mount.target : sensor == null ? null : sensor.lockedTarget);
+        if (target != mount.lastTarget) {
+            mount.engagedFor = 0f;
+            mount.lastTarget = target;
+        }
+        mount.engaged = target;
+        mount.engagedFor += dt;
+        Track track = sensor == null ? null : sensor.trackFor(target);
+        boolean available = available(mount);
+
+        CombatPhysics.toWorld(body, mount.hardpoint.x, mount.hardpoint.y, muzzle);
+        CombatPhysics.velocityAt(body, muzzle.x, muzzle.y, muzzleVel);
+        mount.muzzle.set(muzzle);
+        float bodyAngle = body.getAngle();
+
+        if (def.mount == WeaponDef.MountType.LAUNCHER) {
+            launcher(ship, body, mount, target, track, available, bodyAngle);
+            mount.trigger = false;
+            return;
+        }
+
+        ProjectileDef round = def.projectile == null ? null : defs.projectiles.get(def.projectile);
+        if (round == null) return;
+        mount.solution.invalidate();
+        float maxTime = round.maxLifetime;
+        if (def.maxRange > 0f) maxTime = Math.min(maxTime, def.maxRange / round.muzzleSpeed);
+        if (track != null) {
+            float age = sensors.ageOf(track);
+            track.positionAt(age, estPos);
+            track.velocityAt(age, estVel);
+            solver.solve(muzzle.x, muzzle.y, muzzleVel.x, muzzleVel.y, estPos.x, estPos.y, estVel.x, estVel.y,
+                    track.a.x, track.a.y, round.muzzleSpeed, maxTime, ballistics.getTidalField(), mount.solution);
+        }
+
+        // Slew toward the solution, or back to rest with nothing to shoot at.
+        float want = mount.solution.valid ? mount.solution.aimDir.angleRad() - bodyAngle : mount.facing;
+        if (def.mount != WeaponDef.MountType.SPINAL) slew(mount, want, dt);
+        else mount.aim = mount.facing;
+
+        float barrel = bodyAngle + mount.aim;
+        boolean onTarget = false;
+        if (mount.solution.valid) {
+            float error = Math.abs(wrap(barrel - mount.solution.aimDir.angleRad()));
+            float range = mount.solution.timeToImpact * round.muzzleSpeed;
+            onTarget = error * range < radiusOf(target) + def.spreadRad * range;
+        }
+        mount.onTarget = onTarget;
+
+        boolean wantsFire = mount.trigger
+                ? (onTarget || !mount.solution.valid)
+                : (mount.weaponsFree && onTarget && mount.engagedFor >= reactionTime(mount));
+        mount.trigger = false;
+        if (!wantsFire || !available || mount.cooldown > 0f) return;
+
+        float jitter = (float) rng.nextGaussian() * def.spreadRad * (1.5f - mount.gunnerySkill);
+        dir.set(MathUtils.cos(barrel + jitter), MathUtils.sin(barrel + jitter));
+        float x = muzzle.x + dir.x * def.muzzleOffset, y = muzzle.y + dir.y * def.muzzleOffset;
+        Entity e = ballistics.spawn(round, round.mass, x, y,
+                muzzleVel.x + dir.x * round.muzzleSpeed, muzzleVel.y + dir.y * round.muzzleSpeed, ship);
+        // Recoil at the hardpoint: off-centre mounts torque the ship.
+        float recoil = round.mass * round.muzzleSpeed;
+        CombatPhysics.applyImpulseAt(body, -dir.x * recoil, -dir.y * recoil, muzzle.x, muzzle.y);
+        fired(ship, mount, e, x, y);
+    }
+
+    private void launcher(Entity ship, Body body, WeaponMountComponent mount, Entity target, Track track,
+                          boolean available, float bodyAngle) {
+        WeaponDef def = mount.def;
+        MissileDef missile = def.missile == null ? null : defs.missiles.get(def.missile);
+        mount.solution.invalidate();
+        mount.onTarget = false;
+        if (missile == null || missiles == null) return;
+        boolean inRange = false;
+        if (track != null) {
+            track.positionAt(sensors.ageOf(track), estPos);
+            float reach = def.maxRange > 0f ? def.maxRange : missile.seeker.range;
+            inRange = estPos.dst2(muzzle) < reach * reach;
+            mount.solution.interceptPoint.set(estPos);
+            mount.solution.valid = true;
+        }
+        boolean wantsFire = mount.trigger
+                ? track != null
+                : (mount.weaponsFree && inRange && mount.engagedFor >= reactionTime(mount));
+        if (!wantsFire || !available || mount.cooldown > 0f) return;
+
+        // Throw it clear toward the target (or along the rail), within the launcher's arc.
+        float want = track != null ? dir.set(estPos).sub(muzzle).angleRad() - bodyAngle : mount.facing;
+        mount.aim = mount.facing + clampToArc(wrap(want - mount.facing), def);
+        float heading = bodyAngle + mount.aim;
+        dir.set(MathUtils.cos(heading), MathUtils.sin(heading));
+        float x = muzzle.x + dir.x * def.muzzleOffset, y = muzzle.y + dir.y * def.muzzleOffset;
+        float vx = muzzleVel.x + dir.x * missile.ejectSpeed, vy = muzzleVel.y + dir.y * missile.ejectSpeed;
+        Entity e = missiles.launch(missile, ship, mount.subsystem, target, x, y, vx, vy, heading);
+        float kick = (missile.dryMass + missile.propellantMass) * missile.ejectSpeed;
+        CombatPhysics.applyImpulseAt(body, -dir.x * kick, -dir.y * kick, muzzle.x, muzzle.y);
+        fired(ship, mount, e, x, y);
+    }
+
+    private void fired(Entity ship, WeaponMountComponent mount, Entity round, float x, float y) {
+        mount.cooldown = mount.def.cooldown;
+        mount.shotsFired++;
+        shot.shooter = ship;
+        shot.round = round;
+        shot.weaponDefId = mount.def.id;
+        shot.target = mount.engaged;
+        shot.muzzlePoint.set(x, y);
+        shot.direction.set(dir);
+        events.shots.dispatch(shot);
+    }
+
+    /**
+     * The tracked missile, not this ship's own, that will pass within {@link #PD_THREAT_MISS}
+     * soonest, inside the mount's reach. Null when nothing threatens.
+     */
+    private Entity pickMissileThreat(Entity ship, Body body, SensorComponent sensor, WeaponDef def) {
+        if (sensor == null) return null;
+        PhysicsManager.getPosition(body, shipPos);
+        PhysicsManager.getVelocity(body, shipVel);
+        ProjectileDef round = def.projectile == null ? null : defs.projectiles.get(def.projectile);
+        float reach = def.maxRange > 0f ? def.maxRange
+                : round == null ? 0f : round.muzzleSpeed * round.maxLifetime;
+        Entity best = null;
+        float bestTime = Float.MAX_VALUE;
+        for (int i = 0; i < sensor.tracks.size; i++) {
+            Track t = sensor.tracks.get(i);
+            MissileComponent m = missileMapper.get(t.target);
+            if (m == null || m.launcher == ship) continue;
+            float age = sensors.ageOf(t);
+            t.positionAt(age, estPos).sub(shipPos);
+            t.velocityAt(age, estVel).sub(shipVel);
+            float dist = estPos.len();
+            if (dist > reach) continue;
+            float v2 = estVel.len2();
+            float tca = v2 > 1e-6f ? -estPos.dot(estVel) / v2 : 0f;
+            if (tca < 0f) continue; // already going away
+            float missX = estPos.x + estVel.x * tca, missY = estPos.y + estVel.y * tca;
+            if (missX * missX + missY * missY > PD_THREAT_MISS * PD_THREAT_MISS && dist > PD_THREAT_MISS) continue;
+            if (tca < bestTime) {
+                bestTime = tca;
+                best = t.target;
+            }
+        }
+        return best;
+    }
+
+    private float reactionTime(WeaponMountComponent mount) {
+        float green = 1f - MathUtils.clamp(mount.gunnerySkill, 0f, 1f);
+        return mount.def.pointDefense ? PD_REACTION_BASE + PD_REACTION_GREEN * green
+                : REACTION_BASE + REACTION_GREEN * green;
+    }
+
+    private float radiusOf(Entity target) {
+        SignatureComponent s = target == null ? null : signatureMapper.get(target);
+        return s == null ? DEFAULT_RADIUS : s.radius;
+    }
+
+    /** Turns the barrel toward body-frame angle {@code want} at the slew rate, inside the arc. */
+    static void slew(WeaponMountComponent mount, float want, float dt) {
+        WeaponDef def = mount.def;
+        float goal = clampToArc(wrap(want - mount.facing), def);
+        float now = clampToArc(wrap(mount.aim - mount.facing), def);
+        float max = def.slewRateDeg * MathUtils.degreesToRadians * dt;
+        // Inside a restricted arc the barrel cannot swing through the dead zone behind it.
+        float delta = def.firingArcDeg >= 360f ? wrap(goal - now) : goal - now;
+        now += MathUtils.clamp(delta, -max, max);
+        mount.aim = wrap(mount.facing + now);
+    }
+
+    static float clampToArc(float rel, WeaponDef def) {
+        if (def.firingArcDeg >= 360f) return rel;
+        float half = 0.5f * def.firingArcDeg * MathUtils.degreesToRadians;
+        return MathUtils.clamp(rel, -half, half);
+    }
+
+    /** Wraps an angle into [-pi, pi). */
+    static float wrap(float a) {
+        a = (a + MathUtils.PI) % MathUtils.PI2;
+        if (a < 0f) a += MathUtils.PI2;
+        return a - MathUtils.PI;
+    }
+}
