@@ -13,14 +13,16 @@ import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
 /**
  * Steps the Box2D world on a fixed tick and copies each body's pose into its entity's
  * {@link TransformComponent}: x, y in local (bubble) meters, rotation in degrees counter-clockwise.
  *
- * Entities with a {@link TransformComponent} but no body are treated as fixed in the universe:
- * while the floating origin is moving, they are moved back by the origin's travel each tick.
+ * Entities with a {@link TransformComponent} but no body are treated as fixed relative to the
+ * parent body: while the anchor is moving, they are moved back by its travel each tick.
+ * Kinematic transients are excluded; {@code KinematicTransientSystem} places those.
  *
  * Owns body lifetime: when an entity with a {@link PhysicsBodyComponent} leaves the engine, or the
  * component is removed, its body is destroyed.
@@ -29,7 +31,8 @@ public class PhysicsUpdateSystem extends FixedLogicSystem {
     public static final int DEFAULT_PRIORITY = 10;
 
     private static final Family FAMILY = Family.all(PhysicsBodyComponent.class).get();
-    private static final Family BODYLESS = Family.all(TransformComponent.class).exclude(PhysicsBodyComponent.class).get();
+    private static final Family BODYLESS = Family.all(TransformComponent.class)
+            .exclude(PhysicsBodyComponent.class, KinematicTransientComponent.class).get();
 
     private final ComponentMapper<PhysicsBodyComponent> bodyMapper = ComponentMapper.getFor(PhysicsBodyComponent.class);
     private final ComponentMapper<TransformComponent> transformMapper = ComponentMapper.getFor(TransformComponent.class);
@@ -71,13 +74,17 @@ public class PhysicsUpdateSystem extends FixedLogicSystem {
 
     @Override
     protected void updateFixed(float deltaTime) {
+        // Under a GameEngine its clock is the one sim time.
+        if (getClock() != null && physics.getClock() != getClock()) physics.setClock(getClock());
+        double originXBefore = physics.getOriginX();
+        double originYBefore = physics.getOriginY();
         physics.step(deltaTime);
         for (Entity entity : entities) {
             syncTransform(entity);
         }
 
-        float originDx = (float) (physics.getOriginVx() * deltaTime);
-        float originDy = (float) (physics.getOriginVy() * deltaTime);
+        float originDx = (float) (physics.getOriginX() - originXBefore);
+        float originDy = (float) (physics.getOriginY() - originYBefore);
         if (originDx != 0f || originDy != 0f) {
             for (Entity entity : bodyless) {
                 TransformComponent transform = transformMapper.get(entity);
@@ -85,6 +92,15 @@ public class PhysicsUpdateSystem extends FixedLogicSystem {
                 transform.y -= originDy;
             }
         }
+    }
+
+    /**
+     * Rails warp skipped {@code ticks} without stepping. Box2D does not move (the bubble is collapsed
+     * onto rails before rails warp); only the anchor catches up to the new time.
+     */
+    @Override
+    protected void catchUp(long ticks, double seconds) {
+        physics.syncToClock();
     }
 
     private void syncTransform(Entity entity) {

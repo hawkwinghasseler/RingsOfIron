@@ -1,0 +1,12 @@
+# Only the changed field is listed; everything else on railgun_mk1 stays as the base game has it.
+[weapon.railgun_mk1]
+cooldown = 1.0
+
+# A brand-new weapon.
+[weapon.railgun_mk2]
+mount = "spinal"
+slew_rate_deg = 5
+firing_arc_deg = 10
+cooldown = 4.0
+power_draw = 8.0e6
+projectile = "slug_tungsten_20kg"
