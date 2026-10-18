@@ -108,6 +108,7 @@ public class PhysicsManager implements Disposable {
     private final RayCastAdapter rayCastAdapter = new RayCastAdapter();
 
     private AnchorModel anchor = new InertialAnchor();
+    private String anchorParentUuid;
     private final double[] origin = new double[4];
     private long tick;
     private SimClock clock;
@@ -254,6 +255,21 @@ public class PhysicsManager implements Disposable {
     public void setAnchorModel(AnchorModel anchor) {
         this.anchor = anchor;
         anchor.stateAt(getSimSeconds(), origin);
+    }
+
+    /** As {@link #setAnchorModel(AnchorModel)}, also naming the body the bubble falls around. */
+    public void setAnchorModel(AnchorModel anchor, String parentUuid) {
+        this.anchorParentUuid = parentUuid;
+        setAnchorModel(anchor);
+    }
+
+    /** UUID of the celestial body the bubble falls around, or null if none was named. */
+    public String getAnchorParentUuid() {
+        return anchorParentUuid;
+    }
+
+    public void setAnchorParentUuid(String parentUuid) {
+        this.anchorParentUuid = parentUuid;
     }
 
     /** The gravity felt inside the bubble. Shared by Box2D bodies, projectiles and the HUD. */
