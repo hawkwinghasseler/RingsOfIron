@@ -190,6 +190,18 @@ tasks.register('runFlightDemo', JavaExec) {
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
+// Runs the spatial audio demo (walk a ship and hear walls muffle sound) instead of the main game.
+tasks.register('runAudioDemo', JavaExec) {
+  group = 'application'
+  description = 'Runs the audio-spatial muffling demo.'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.AudioDemoLauncher'
+  classpath = sourceSets.main.runtimeClasspath
+  workingDir = rootProject.file('assets').path
+  jvmArgs += "--enable-native-access=ALL-UNNAMED"
+  jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
+  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+}
+
 // Runs the Box2D precision test (large-coordinate floating point check) instead of the main game.
 tasks.register('runPhysicsTest', JavaExec) {
   group = 'application'
