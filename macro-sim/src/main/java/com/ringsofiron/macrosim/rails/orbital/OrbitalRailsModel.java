@@ -181,7 +181,8 @@ public class OrbitalRailsModel implements RailsModel {
             entries.add(new RailsSnapshot.Entry(e.getComponent(UuidComponent.class).id, o.parentUuid,
                     new KeplerTrajectory(o.getOrbit())));
         }
-        return new RailsSnapshot(now[0], entries);
+        // The universe's clock: the game's in GameWorld, this model's own clock when standalone.
+        return new RailsSnapshot(universe.now(), entries);
     }
 
     private OrbitComponent orbit(String uuid) {
