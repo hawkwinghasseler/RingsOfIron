@@ -4,6 +4,8 @@ import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
+import com.badlogic.ashley.signals.Listener;
+import com.badlogic.ashley.signals.Signal;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.RandomXS128;
 import com.badlogic.gdx.math.Vector2;
@@ -28,6 +30,7 @@ import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.physicsexterior.events.FastPassImpactEvent;
 
 /**
  * Drains each tick's impacts and detonations in a fixed order and resolves them
@@ -59,6 +62,11 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
     private final ObjectMap<Entity, RandomXS128> rngs = new ObjectMap<>();
     private final ObjectMap<String, ProjectileDef> fragmentDefs = new ObjectMap<>();
 
+    private final Listener<FastPassImpactEvent> fastPassListener = this::onFastPass;
+    private ToFloatFunction<Entity> transientMass;
+    /** How a ramming body tears into a hull: a blunt kinetic penetrator that never glances off. */
+    private final ProjectileDef ramDef = new ProjectileDef();
+
     private final Array<ImpactEvent> batch = new Array<>();
     private final Array<DetonationEvent> detonationBatch = new Array<>();
     private final PenetrationResolver.Result result = new PenetrationResolver.Result();
@@ -79,6 +87,11 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         this.ballistics = ballistics;
         this.resolver = new PenetrationResolver(materials);
         this.seed = seed;
+        ramDef.id = "fast_pass.ram";
+        ramDef.damageType = DamageType.KINETIC;
+        ramDef.penetrationFactor = 0.5f;
+        ramDef.ricochetAngleDeg = 89f;
+        ramDef.ricochetRestitution = 0f;
     }
 
     /** Where crew on a struck tile are found and hurt. Null (the default) means no crew are modelled. */
@@ -93,12 +106,53 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
     @Override
     public void addedToEngine(Engine engine) {
         physics.addStepListener(this);
+        physics.fastPassImpacts.add(fastPassListener);
     }
 
     @Override
     public void removedFromEngine(Engine engine) {
         physics.removeStepListener(this);
+        physics.fastPassImpacts.remove(fastPassListener);
         rngs.clear();
+    }
+
+    /**
+     * Sets how heavy a fast-pass body is, kg, for ramming damage. Null (the default) treats it as
+     * heavy as whatever it hits, so the struck body's mass decides (design 1.4).
+     */
+    public void setTransientMass(ToFloatFunction<Entity> mass) {
+        this.transientMass = mass;
+    }
+
+    /** A per-entity mass lookup. */
+    public interface ToFloatFunction<T> {
+        float apply(T value);
+    }
+
+    /**
+     * A kinematic transient (a fast pass, over 1 km/s relative) swept through a body. It becomes a
+     * ram impact with the lighter body's mass, resolved like a very large slug on the next tick.
+     */
+    private void onFastPass(Signal<FastPassImpactEvent> signal, FastPassImpactEvent pass) {
+        Entity target = pass.target;
+        PhysicsBodyComponent bc = target == null ? null : bodyMapper.get(target);
+        if (bc == null || bc.body == null || pass.relativeSpeed <= 0f) return;
+        float mass = PhysicsManager.getMass(bc.body);
+        if (transientMass != null) mass = Math.min(mass, transientMass.apply(pass.transientEntity));
+        if (!(mass > 0f)) return;
+        ImpactEvent hit = new ImpactEvent();
+        hit.target = target;
+        hit.owner = pass.transientEntity;
+        hit.worldPoint.set(pass.pointX, pass.pointY);
+        hit.worldNormal.set(pass.normalX, pass.normalY);
+        hit.relVelocity.set(pass.dirX, pass.dirY).scl(pass.relativeSpeed);
+        CombatPhysics.velocityAt(bc.body, pass.pointX, pass.pointY, tmp);
+        hit.velocity.set(hit.relVelocity).add(tmp);
+        hit.mass = mass;
+        hit.def = ramDef;
+        hit.ram = true;
+        hit.tick = events.tick;
+        events.pendingImpacts.add(hit);
     }
 
     @Override
@@ -248,6 +302,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
 
     /** Puts a ricocheting or exiting round back in flight with velocity surface + vOut. */
     private void respawn(ImpactEvent hit, float x, float y, float mass) {
+        if (hit.ram) return;
         Entity e = ballistics.spawn(hit.def, mass, x, y, surfaceVel.x + vOut.x, surfaceVel.y + vOut.y, hit.owner);
         ProjectileComponent p = e.getComponent(ProjectileComponent.class);
         p.ignore = hit.target;

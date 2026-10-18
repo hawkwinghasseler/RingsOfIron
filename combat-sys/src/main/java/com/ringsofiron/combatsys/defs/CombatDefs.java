@@ -161,6 +161,7 @@ public class CombatDefs {
         railgun.powerDraw = 2.0e6f;
         railgun.projectile = slug.id;
         railgun.spreadRad = 0.0005f;
+        railgun.sound = "evt_railgun_fire";
         defs.add(railgun);
 
         WeaponDef autocannon = new WeaponDef();
@@ -174,6 +175,7 @@ public class CombatDefs {
         autocannon.spreadRad = 0.003f;
         autocannon.pointDefense = true;
         autocannon.maxRange = 4000f;
+        autocannon.sound = "evt_laser_fire";
         defs.add(autocannon);
 
         WeaponDef launcher = new WeaponDef();

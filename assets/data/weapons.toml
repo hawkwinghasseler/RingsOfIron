@@ -26,6 +26,7 @@ projectile = "autocannon_30mm"
 spread_rad = 0.003
 point_defense = true
 max_range = 4000.0
+sound = "evt_laser_fire"
 
 [weapon.harpoon_launcher]
 mount = "launcher"

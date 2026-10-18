@@ -5,7 +5,11 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.badlogic.ashley.core.Family;
 import com.ringsofiron.combatsys.components.MissileComponent;
+import com.ringsofiron.combatsys.components.ProjectileComponent;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.physicsexterior.events.FastPassImpactEvent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.SignatureComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
@@ -201,6 +205,31 @@ class FireControlTest {
             lured = m != null && m.seekerLock == decoy;
         }
         assertTrue(lured, "the seeker locked the decoy, which outshines the ship");
+    }
+
+    @Test
+    void aFastPassRamsThroughTheHull() {
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity rammer = new Entity();
+        engine.addEntity(rammer);
+        int[] hits = new int[1];
+        events.hullHits.add((s, hit) -> {
+            if (hit.ship == ship) hits[0]++;
+        });
+        FastPassImpactEvent pass = new FastPassImpactEvent();
+        pass.transientEntity = rammer;
+        pass.target = ship;
+        pass.pointX = -8f;
+        pass.pointY = 0.5f;
+        pass.dirX = 1f;
+        pass.relativeSpeed = 3000f;
+        pass.normalX = -1f;
+        physics.fastPassImpacts.dispatch(pass);
+        run(0.1f);
+        assertEquals(1, hits[0], "the pass resolved as one hull hit");
+        assertTrue(ship.getComponent(ShipGridComponent.class).getTile(0, 2).isHullBreach(), "it holed the hull");
+        assertEquals(0, engine.getEntitiesFor(Family.all(ProjectileComponent.class).get()).size(),
+                "the rammer is not put back in flight as a round");
     }
 
     @Test
