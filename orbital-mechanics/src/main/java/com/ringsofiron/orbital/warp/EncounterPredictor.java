@@ -14,8 +14,9 @@ import com.ringsofiron.orbital.rails.RailsUniverse;
  * Finds the first time another rails body comes within a radius of a reference body (the player),
  * for warp drop-out and bubble-entry prediction.
  *
- * <p>Distances are sampled with a step of {@code radius / (2 * maxRelativeSpeed)}, so the distance
- * cannot change by more than half the radius between samples. Only outside-to-inside crossings
+ * <p>Distances are sampled by conservative advancement: never further ahead than the gap to the
+ * radius divided by the maximum relative speed, and at least {@code radius / (2 * maxRelativeSpeed)}
+ * so that bodies starting inside can be seen to leave. Only outside-to-inside crossings
  * count: bodies already near the player when warp starts do not stop it. If the sample budget runs
  * out first, the scan reports how far it got and the caller warps no further than that this frame.
  */
@@ -63,13 +64,18 @@ public class EncounterPredictor {
             if (end <= t0) break;
             double relSpeed = universe.maxSpeedRelativeTo(reference, frame) + universe.maxSpeedRelativeTo(other, frame);
             double step = 0.5 * radius / Math.max(relSpeed, 1e-6);
-            double scanEnd = Math.min(end, t0 + step * maxSamples);
+            double scanEnd = end;
 
-            boolean outside = distance(reference, other, frame, t0) > radius;
+            // Conservative advancement: the gap to the radius cannot close faster than relSpeed, so
+            // a body d - radius away can be skipped ahead by (d - radius) / relSpeed without missing
+            // a crossing. Far bodies cost a handful of samples; close ones fall back to the fixed step.
+            double d = distance(reference, other, frame, t0);
+            boolean outside = d > radius;
             double prev = t0;
-            for (double t = t0 + step; prev < scanEnd; t += step) {
-                double sample = Math.min(t, scanEnd);
-                double d = distance(reference, other, frame, sample);
+            int samples = 0;
+            while (prev < scanEnd && samples++ < maxSamples) {
+                double sample = Math.min(prev + Math.max(step, (d - radius) / relSpeed), scanEnd);
+                d = distance(reference, other, frame, sample);
                 if (d <= radius && outside) {
                     double hit = bisect(reference, other, frame, radius, prev, sample);
                     if (Double.isNaN(out.time) || hit < out.time) {
@@ -81,6 +87,7 @@ public class EncounterPredictor {
                 if (d > radius) outside = true;
                 prev = sample;
             }
+            if (prev < scanEnd && Double.isNaN(out.time)) scanEnd = prev;
             if (scanEnd < out.scannedUntil && (Double.isNaN(out.time) || scanEnd < out.time)) {
                 out.scannedUntil = scanEnd;
             }
