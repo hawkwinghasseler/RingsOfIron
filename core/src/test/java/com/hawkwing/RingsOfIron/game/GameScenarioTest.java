@@ -181,6 +181,15 @@ class GameScenarioTest {
         assertEquals(consoles.keySet(), consolesOn(ship).keySet(), "the consoles find the loaded ship");
     }
 
+    @Test
+    void thePlayerCanTrade() {
+        com.ringsofiron.macrosim.economy.TraderComponent trader =
+                game.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class);
+        assertNotNull(trader);
+        assertEquals(GameScenario.STARTING_CREDITS, trader.credits);
+        assertEquals(GameScenario.STARTING_HOLD, trader.freeCargo());
+    }
+
     /** Console id to tile, for the consoles aboard {@code ship}. */
     private java.util.Map<String, int[]> consolesOn(Entity ship) {
         java.util.Map<String, int[]> out = new java.util.HashMap<>();

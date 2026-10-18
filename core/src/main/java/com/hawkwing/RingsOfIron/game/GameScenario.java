@@ -10,6 +10,7 @@ import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.bubble.BubbleTransitionListener;
+import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.moddingdata.ModContext;
@@ -35,6 +36,9 @@ public class GameScenario {
     public static final double R_EARTH = 6.371e6;
     public static final double ORBIT_RADIUS = R_EARTH + 400e3;
     public static final String PLAYER_SHIP = "corvette_patrol";
+    /** What the player starts with for trading at station markets. Placeholder values. */
+    public static final double STARTING_CREDITS = 5_000;
+    public static final double STARTING_HOLD = 100;
 
     public final GameWorld world;
     public final ModContext content;
@@ -59,6 +63,7 @@ public class GameScenario {
         player = content.factory.spawnShip(PLAYER_SHIP, 0f, 0f, 90f);
         player.add(new PlayerControllerComponent());
         ShipConsoles.install(player);
+        player.add(new TraderComponent(STARTING_CREDITS, STARTING_HOLD));
         FlightControlComponent controls = player.getComponent(FlightControlComponent.class);
         if (controls != null) controls.rotationAssist = true;
 
