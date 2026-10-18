@@ -148,6 +148,18 @@ public class EconomySimulation {
         return seller.available(commodity) - keep - posted;
     }
 
+    /** Id the next posted order gets; saved so ids stay unique across a load. */
+    public long nextOrderId() {
+        return nextOrderId;
+    }
+
+    /** Replaces the order board with saved orders (open and claimed). */
+    public void restoreOrders(List<TradeOrder> orders, long nextOrderId) {
+        openOrders.clear();
+        openOrders.addAll(orders);
+        this.nextOrderId = nextOrderId;
+    }
+
     /** Open (unclaimed) and claimed orders. */
     public List<TradeOrder> orders() {
         return Collections.unmodifiableList(openOrders);

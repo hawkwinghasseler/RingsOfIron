@@ -52,6 +52,7 @@ public class MacroSimulation {
     private final Set<String> massiveBodies = new HashSet<>();
 
     private double now;
+    private double nextEconomyPass;
     private boolean bubbleSuspended;
     private double predictionHorizon = DEFAULT_PREDICTION_HORIZON;
     private double nextPrediction;
@@ -89,11 +90,49 @@ public class MacroSimulation {
     }
 
     private void scheduleEconomyPass(double at) {
+        nextEconomyPass = at;
         events.schedule(at, () -> {
             economy.pass(stations.values(), EconomySimulation.PASS_INTERVAL);
             freighters.assignIdle(at);
             scheduleEconomyPass(at + EconomySimulation.PASS_INTERVAL);
         });
+    }
+
+    /** Sim second of the next economy pass. */
+    public double nextEconomyPass() {
+        return nextEconomyPass;
+    }
+
+    /**
+     * Clears all macro state and sets the clock, before {@link MacroSaveParticipant} restores a save.
+     * The economy pass resumes at {@code nextEconomyPass}.
+     */
+    void beginRestore(double now, double nextEconomyPass) {
+        events.clear();
+        stations.clear();
+        freighters.clear();
+        if (pendingForecast != null) pendingForecast.cancel(true);
+        pendingForecast = null;
+        this.now = now;
+        this.nextPrediction = now;
+        scheduleEconomyPass(nextEconomyPass);
+    }
+
+    /** Re-attaches a saved economy node to its station entity. */
+    void restoreStation(EconomyNode node) {
+        Entity e = engine.getEntity(node.stationUuid);
+        if (e == null) return;
+        e.add(new EconomyNodeComponent(node));
+        stations.put(node.stationUuid, node);
+        if (bubble != null) bubble.markRailsOnly(node.stationUuid);
+    }
+
+    /** Re-attaches a saved freighter to its entity. */
+    void restoreFreighter(String uuid, FreighterComponent f, com.ringsofiron.macrosim.economy.TradeOrder order) {
+        Entity e = engine.getEntity(uuid);
+        if (e == null) return;
+        e.add(f);
+        freighters.restore(uuid, f, order);
     }
 
     /** Marks a UUID as a massive body (planet, moon): never handed to the bubble or predicted. */

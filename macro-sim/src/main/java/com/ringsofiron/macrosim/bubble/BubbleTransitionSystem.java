@@ -64,6 +64,16 @@ public class BubbleTransitionSystem {
         return forecast;
     }
 
+    /** Replaces the boundary bookkeeping with saved sets (before restoring a save). */
+    public void restore(Set<String> inBubble, Set<String> fastPasses) {
+        this.inBubble.clear();
+        this.inBubble.addAll(inBubble);
+        this.fastPasses.clear();
+        this.fastPasses.addAll(fastPasses);
+        this.railsOnly.clear();
+        this.forecast = null;
+    }
+
     public Set<String> inBubble() {
         return Collections.unmodifiableSet(inBubble);
     }

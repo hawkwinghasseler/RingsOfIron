@@ -49,6 +49,27 @@ public class FreighterController {
         dock(uuid, f, stationUuid, now);
     }
 
+    /** Forgets every freighter and active order (before restoring a save). */
+    public void clear() {
+        freighters.clear();
+        activeOrders.clear();
+    }
+
+    /**
+     * Re-registers a saved freighter as it was: its orbit and pending burns are already back on the
+     * rails, so only the arrival event is rescheduled. {@code order} is its claimed order, or null.
+     */
+    public void restore(String uuid, FreighterComponent f, TradeOrder order) {
+        freighters.put(uuid, f);
+        if (order != null) activeOrders.put(order.id, order);
+        f.arrivalEventId = 0;
+        if (f.destinationUuid != null && !Double.isNaN(f.arrivalTime) && f.state != FreighterComponent.State.IN_BUBBLE) {
+            String target = f.destinationUuid;
+            double arrival = f.arrivalTime;
+            f.arrivalEventId = events.schedule(arrival, () -> arrive(uuid, f, target, arrival));
+        }
+    }
+
     public FreighterComponent get(String uuid) {
         return freighters.get(uuid);
     }
