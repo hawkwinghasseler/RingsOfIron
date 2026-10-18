@@ -35,6 +35,7 @@ public class ModHooks {
     private final List<Hook<Runnable>> worldReady = new ArrayList<>();
     private final List<Hook<TickListener>> tick = new ArrayList<>();
     private String currentMod = "game";
+    private boolean worldReadyFired;
 
     public ModHooks(LoadReport report) {
         this.report = report;
@@ -45,16 +46,21 @@ public class ModHooks {
         this.currentMod = modId;
     }
 
+    /** Runs once the world is built; if it already is (a script allowed late), runs right away. */
     public void onWorldReady(Runnable callback) {
-        worldReady.add(new Hook<>(currentMod, callback));
+        Hook<Runnable> hook = new Hook<>(currentMod, callback);
+        worldReady.add(hook);
+        if (worldReadyFired) run(hook.modId, callback::run);
     }
 
     public void onTick(TickListener callback) {
         tick.add(new Hook<>(currentMod, callback));
     }
 
-    /** Called by the game once the first world is built. */
+    /** Called by the game once the first world is built. Later calls do nothing. */
     public void fireWorldReady() {
+        if (worldReadyFired) return;
+        worldReadyFired = true;
         for (Hook<Runnable> h : new ArrayList<>(worldReady)) {
             run(h.modId, h.callback::run);
         }
