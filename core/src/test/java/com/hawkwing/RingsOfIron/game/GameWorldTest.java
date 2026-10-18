@@ -11,6 +11,8 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.components.OrbitComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
+import com.ringsofiron.aicrew.CrewFactory;
+import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.moddingdata.ModContext;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -136,5 +138,18 @@ class GameWorldTest {
         } finally {
             withContent.dispose();
         }
+    }
+
+    @Test
+    void crewAboardThePlayerShipRunsWithTheGame() {
+        Entity ship = playerOnRails();
+        ShipGridComponent grid = new ShipGridComponent(6, 6, 1f);
+        ship.add(grid);
+        Entity member = CrewFactory.spawn(world.crew, ship, "Ada", CrewRole.ENGINEER, 0, 2, 2);
+
+        for (int i = 0; i < 120; i++) world.update(FRAME);
+
+        assertNotNull(member);
+        assertTrue(world.engine.getEcsEngine().getEntities().contains(member, true));
     }
 }

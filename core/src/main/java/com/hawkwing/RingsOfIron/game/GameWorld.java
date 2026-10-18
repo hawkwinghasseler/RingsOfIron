@@ -4,6 +4,10 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Disposable;
+import com.ringsofiron.aicrew.CrewFactory;
+import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.aicrew.pilot.NpcPilotSystem;
+import com.ringsofiron.aicrew.pilot.PilotReference;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
@@ -33,9 +37,9 @@ import java.util.function.Consumer;
  * No rendering here, so it runs headless in tests; screens hold a GameWorld and draw it.
  *
  * <p>Wired today: core-engine, physics-exterior, orbital-mechanics (rails, events, time warp),
- * interior-grid (hazards, power, life support, rails-warp guard), modding-data (data and mod loading
- * through {@link #loadContent}). Other modules plug in here as they land: ai-crew, combat-sys,
- * ui-hud, audio-spatial, macro-sim.
+ * interior-grid (hazards, power, life support, rails-warp guard), ai-crew (crew AI and the NPC
+ * pilot), modding-data (data and mod loading through {@link #loadContent}). Other modules plug in
+ * here as they land: combat-sys, ui-hud, audio-spatial, macro-sim.
  *
  * <p>Frame order: time warp first (a rails jump must land before the frame's systems see the new
  * tick), then the engine's fixed ticks and every-frame systems.
@@ -52,6 +56,8 @@ public class GameWorld implements Disposable {
          */
         public final List<Consumer<ModContext>> contentRegistrations = new ArrayList<>();
         public ModTrustPolicy modTrust = ModTrustPolicy.WARN_AND_ALLOW;
+        /** Frame the NPC pilot flies in; null means the bubble stands in for the parent body. */
+        public PilotReference pilotReference;
     }
 
     public final GameEngine engine;
@@ -59,6 +65,7 @@ public class GameWorld implements Disposable {
     public final RailsUniverse universe;
     public final OrbitalEventSystem orbitalEvents;
     public final TimeWarpController timeWarp;
+    public final CrewService crew;
 
     private final ImmutableArray<Entity> players;
     private final Modules modules;
@@ -72,6 +79,11 @@ public class GameWorld implements Disposable {
         this.modules = modules;
         engine = new GameEngine();
         players = engine.getEcsEngine().getEntitiesFor(PLAYER);
+
+        // ai-crew's NPC pilot sets flight controls before physics reads them.
+        PilotReference pilotFrame = modules.pilotReference != null
+                ? modules.pilotReference : PilotReference.bubbleOnly(engine::getSimSeconds);
+        engine.addSystem(new NpcPilotSystem(pilotFrame));
 
         // physics-exterior
         physics = new PhysicsManager();
@@ -92,6 +104,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(new PowerRoutingSystem());
         engine.addSystem(new LifeSupportSystem());
         engine.addRailsWarpGuard(new PlayerShipHazardGuard(this::getPlayer));
+
+        // ai-crew
+        crew = CrewFactory.install(engine.getEcsEngine());
 
         // Bubble bodies are saved as true states, never as live Box2D bodies.
         PhysicsSaveParticipant.install(physics, engine);
