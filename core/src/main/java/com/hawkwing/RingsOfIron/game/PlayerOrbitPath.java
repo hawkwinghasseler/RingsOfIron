@@ -1,10 +1,14 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
+import com.ringsofiron.orbital.components.OrbitComponent;
 import com.ringsofiron.orbital.math.StateVector;
+import com.ringsofiron.orbital.rails.RailsUniverse;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import java.util.function.DoubleSupplier;
 
@@ -23,16 +27,19 @@ public class PlayerOrbitPath implements OrbitPathProvider {
     private final PlayerOrbitInfo orbits;
     private final BurnPlanner planner;
     private final DoubleSupplier clock;
+    private final RailsUniverse universe;
+    private final Array<Entity> children = new Array<>();
     private final StateVector s = new StateVector();
 
     public PlayerOrbitPath(GameWorld world, BurnPlanner planner) {
-        this(new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer), planner, world.universe::now);
+        this(world.universe, new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer), planner);
     }
 
-    public PlayerOrbitPath(PlayerOrbitInfo orbits, BurnPlanner planner, DoubleSupplier clock) {
+    public PlayerOrbitPath(RailsUniverse universe, PlayerOrbitInfo orbits, BurnPlanner planner) {
+        this.universe = universe;
         this.orbits = orbits;
         this.planner = planner;
-        this.clock = clock;
+        this.clock = universe::now;
     }
 
     @Override
@@ -46,6 +53,7 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         out.shipX = orbits.state().x;
         out.shipY = orbits.state().y;
         sample(k, now, body, out.current);
+        addBodies(now, out);
 
         ManeuverNodeComponent m = planner.nodes();
         ManeuverNodeComponent.Node selected = planner.selected();
@@ -67,6 +75,36 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         if (selected != null) caption(out.caption, selected, planner.selectedIndex(), m.nodes.size, now, after, body);
         else out.caption.append("N plans a burn");
         return true;
+    }
+
+    /** The parent's moons with their orbits, and the body the parent itself orbits. */
+    private void addBodies(double now, OrbitPath out) {
+        Entity parent = orbits.parent();
+        if (parent == null) return;
+        for (Entity child : universe.childBodies(parent, children)) {
+            MapBody b = addBody(child, parent, now, out);
+            OrbitComponent o = universe.orbit(child);
+            KeplerOrbit k = o.getOrbit();
+            if (k.isElliptic()) {
+                for (int i = 0; i <= SEGMENTS; i++) {
+                    k.positionAtAnomaly(2 * Math.PI * i / SEGMENTS, s);
+                    b.orbit.add((float) s.x, (float) s.y);
+                }
+            }
+        }
+        Entity grandparent = universe.parentOf(parent);
+        if (grandparent != null) addBody(grandparent, parent, now, out);
+    }
+
+    private MapBody addBody(Entity body, Entity frame, double now, OrbitPath out) {
+        CelestialBodyComponent c = universe.celestial(body);
+        MapBody b = out.addBody();
+        b.name = c.name == null ? "" : c.name;
+        b.radius = c.radius;
+        universe.stateInFrame(body, frame, now, s);
+        b.x = s.x;
+        b.y = s.y;
+        return b;
     }
 
     private void sample(KeplerOrbit k, double t, CelestialBodyComponent body, FloatArray out) {

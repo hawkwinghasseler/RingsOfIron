@@ -1,5 +1,6 @@
 package com.ringsofiron.uihud.providers;
 
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 
 /**
@@ -9,6 +10,14 @@ import com.badlogic.gdx.utils.FloatArray;
 public interface OrbitPathProvider {
     /** Fills {@code out} for this frame and returns true, or returns false when there is no orbit to draw. */
     boolean getPlayerPath(OrbitPath out);
+
+    /** Another body in the map's frame: a moon of the parent, or the body the parent orbits. */
+    final class MapBody {
+        public String name = "";
+        public double x, y, radius;
+        /** Its orbit around the parent as x,y pairs, or empty when it is not the parent's moon. */
+        public final FloatArray orbit = new FloatArray();
+    }
 
     /**
      * Plain data for one frame's map. Points are x,y pairs in meters from the parent body's center,
@@ -28,6 +37,16 @@ public interface OrbitPathProvider {
         public int selectedNode = -1;
         /** Text under the map: the selected burn and where it leads. Empty for none. */
         public final StringBuilder caption = new StringBuilder();
+        /** Other bodies, positioned relative to the parent body. */
+        public final Array<MapBody> bodies = new Array<>();
+        private final Array<MapBody> bodyPool = new Array<>();
+
+        public MapBody addBody() {
+            MapBody b = bodyPool.size > 0 ? bodyPool.pop() : new MapBody();
+            b.orbit.clear();
+            bodies.add(b);
+            return b;
+        }
 
         public void clear() {
             bodyName = "";
@@ -38,6 +57,8 @@ public interface OrbitPathProvider {
             nodes.clear();
             selectedNode = -1;
             caption.setLength(0);
+            bodyPool.addAll(bodies);
+            bodies.clear();
         }
     }
 }

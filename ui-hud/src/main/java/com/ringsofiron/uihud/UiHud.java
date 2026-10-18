@@ -108,6 +108,7 @@ public class UiHud implements Disposable {
 
         // Bottom right: the orbit map, with the burn planner's readout under it.
         orbitMap = new OrbitMap(skin.getRegion("white"));
+        orbitMap.setFont(skin.getFont("default-font"));
         Label orbitCaption = new Label("No orbit", skin, "dim");
         orbitMap.setCaption(orbitCaption);
         orbitPanel = new Table();

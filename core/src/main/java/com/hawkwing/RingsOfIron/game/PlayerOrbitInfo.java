@@ -24,6 +24,7 @@ public class PlayerOrbitInfo implements OrbitInfoProvider {
     private final PhysicsManager physics;
     private final double[] trueState = new double[4];
     private CelestialBodyComponent body;
+    private Entity parent;
 
     /** Rails orbits only. */
     public PlayerOrbitInfo(RailsUniverse universe, Supplier<Entity> player) {
@@ -48,15 +49,21 @@ public class PlayerOrbitInfo implements OrbitInfoProvider {
      */
     public KeplerOrbit currentConic() {
         body = null;
+        parent = null;
         Entity ship = player.get();
         if (ship == null) return null;
         OrbitComponent orbit = universe.orbit(ship);
         if (orbit == null) return bubbleConic(ship);
-        Entity parent = universe.parentOf(ship);
+        parent = universe.parentOf(ship);
         body = parent == null ? null : universe.celestial(parent);
         if (body == null) return null;
         orbit.stateAt(universe.now(), state);
         return orbit.getOrbit();
+    }
+
+    /** The entity of {@link #body()}, or null. */
+    public Entity parent() {
+        return parent;
     }
 
     /** The parent body of the last {@link #currentConic()}, or null. */
@@ -73,7 +80,7 @@ public class PlayerOrbitInfo implements OrbitInfoProvider {
         PhysicsBodyComponent pb = physics == null ? null : ship.getComponent(PhysicsBodyComponent.class);
         String parentUuid = physics == null ? null : physics.getAnchorParentUuid();
         if (pb == null || pb.body == null || parentUuid == null) return null;
-        Entity parent = universe.entity(parentUuid);
+        parent = universe.entity(parentUuid);
         body = parent == null ? null : universe.celestial(parent);
         if (body == null) return null;
         physics.getTrueState(pb.body, trueState);

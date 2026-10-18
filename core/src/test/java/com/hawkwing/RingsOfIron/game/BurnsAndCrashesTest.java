@@ -149,4 +149,22 @@ class BurnsAndCrashesTest {
         assertNull(world.engine.getEntity("falling-rock"), "destroyed");
         assertNull(world.getCrash(), "the player is fine");
     }
+
+    @Test
+    void theMapShowsTheMoonAndItsOrbit() {
+        OrbitPathProvider.OrbitPath path = new OrbitPathProvider.OrbitPath();
+        assertTrue(new PlayerOrbitPath(world, world.burns).getPlayerPath(path));
+        assertEquals(1, path.bodies.size);
+        OrbitPathProvider.MapBody moon = path.bodies.first();
+        assertEquals("Moon", moon.name);
+        assertEquals(GameScenario.MOON_DISTANCE, Math.hypot(moon.x, moon.y), 1e3);
+        assertEquals(2 * (PlayerOrbitPath.SEGMENTS + 1), moon.orbit.size);
+    }
+
+    @Test
+    void anIceMineOrbitsTheMoon() {
+        assertEquals(GameScenario.MOON, world.macroSim.rails().parentOf(game.lunarMine));
+        assertNotNull(world.macroSim.station(game.lunarMine));
+        assertEquals("ice_mine", world.macroSim.station(game.lunarMine).stationTypeId);
+    }
 }
