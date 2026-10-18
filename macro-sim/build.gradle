@@ -9,6 +9,9 @@ dependencies {
 
   testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+  // Box2D's native library, so the physics gateway can be tested against a real world.
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
 }
 
 test {
