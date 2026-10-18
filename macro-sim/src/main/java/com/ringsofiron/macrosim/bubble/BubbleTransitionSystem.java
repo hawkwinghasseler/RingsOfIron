@@ -120,6 +120,21 @@ public class BubbleTransitionSystem {
         }
     }
 
+    /**
+     * Forgets bodies this system handed to the bubble that are back on rails by another route (the
+     * bubble collapsing for rails warp and not rebuilding them on drop-out), and tells listeners they
+     * left. Call after the bubble is rebuilt.
+     */
+    public void reconcile(double t) {
+        work.clear();
+        work.addAll(inBubble);
+        for (String uuid : work) {
+            if (!rails.isOnRails(uuid)) continue;
+            inBubble.remove(uuid);
+            for (BubbleTransitionListener l : listeners) l.onExitBubble(uuid, t);
+        }
+    }
+
     private void enter(String uuid, double t) {
         rails.stateAt(uuid, t, body);
         List<Burn> goals = rails.detach(uuid);

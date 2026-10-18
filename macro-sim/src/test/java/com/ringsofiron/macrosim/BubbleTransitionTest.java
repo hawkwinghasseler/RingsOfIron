@@ -117,6 +117,17 @@ class BubbleTransitionTest {
     }
 
     @Test
+    void bodiesAlreadyInsideAreCandidatesButDoNotStopWarp() {
+        rails.attach("near", "p", StubKeplerOrbit.circular(MU, R, 5e3 / R, 0, 1));
+        rails.attach("tug", "p", StubKeplerOrbit.circular(MU, R - 10e3, -0.02, 0, 1));
+        EncounterForecast f = predict(0, 6 * 3600);
+        assertEquals(0, f.entries.get("near"), 1e-9);
+        assertTrue(f.alreadyInside.contains("near"));
+        assertFalse(f.alreadyInside.contains("tug"));
+        assertEquals(f.entries.get("tug"), f.earliestEntry, "warp drops out for the approaching tug only");
+    }
+
+    @Test
     void bodiesOnADifferentRingAreCulledWithoutSampling() {
         rails.attach("far", "p", StubKeplerOrbit.circular(MU, 40_000e3, 0, 0, 1));
         assertTrue(predict(0, 86400 * 30).entries.isEmpty());

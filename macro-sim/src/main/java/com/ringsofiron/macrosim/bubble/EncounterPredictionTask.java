@@ -4,6 +4,7 @@ import com.ringsofiron.macrosim.rails.RailsSnapshot;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.macrosim.rails.Trajectory;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +50,7 @@ public class EncounterPredictionTask implements Callable<EncounterForecast> {
     @Override
     public EncounterForecast call() {
         Map<String, Double> entries = new LinkedHashMap<>();
+        Set<String> inside = new HashSet<>();
         StateVector s = new StateVector();
         StateVector an = new StateVector();
         double until = from + horizon;
@@ -66,6 +68,7 @@ public class EncounterPredictionTask implements Callable<EncounterForecast> {
                 if (d <= radius) {
                     // The last sample known to be outside: never later than the true crossing.
                     entries.put(e.uuid, previous);
+                    if (t == from) inside.add(e.uuid);
                     break;
                 }
                 previous = t;
@@ -73,6 +76,6 @@ public class EncounterPredictionTask implements Callable<EncounterForecast> {
             }
             if (Thread.currentThread().isInterrupted()) break;
         }
-        return new EncounterForecast(from, until, entries);
+        return new EncounterForecast(from, until, entries, inside);
     }
 }

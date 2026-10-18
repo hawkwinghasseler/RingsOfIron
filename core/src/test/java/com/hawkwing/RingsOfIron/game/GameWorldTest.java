@@ -17,6 +17,10 @@ import com.badlogic.gdx.math.Vector2;
 import com.ringsofiron.audiospatial.components.AudioListenerComponent;
 import com.ringsofiron.combatsys.damage.HitCause;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
+import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
+import com.ringsofiron.macrosim.fleet.FreighterComponent;
+import com.ringsofiron.macrosim.rails.RailsModel;
+import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.moddingdata.ModContext;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -226,5 +230,71 @@ class GameWorldTest {
         }
         assertEquals(CrewDamageSink.DamageCause.OTHER, CrewDamageAdapter.toDamageCause(null));
         assertFalse(world.combatDefs.weapons.isEmpty());
+    }
+
+    static StateVector circular(double radius, double angle) {
+        var s = KeplerOrbit.circular(MU_EARTH, radius, angle, 0, 1).stateAt(0);
+        return new StateVector().set(s.x, s.y, s.vx, s.vy);
+    }
+
+    @Test
+    void freightersTradeOnTheGamesRails() {
+        String farm = world.macroSim.addStation("Farm", "farm", "earth", circular(LEO + 1_000e3, 0), 1);
+        String habitat = world.macroSim.addStation("Habitat", "habitat", "earth", circular(LEO + 3_000e3, 2), 1);
+        for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + i, 200, 20_000, i % 2 == 0 ? farm : habitat);
+        assertNotNull(world.universe.orbit(world.engine.getEntity(farm)), "stations orbit on orbital-mechanics rails");
+
+        assertTrue(world.engine.advanceRails(com.ringsofiron.coreengine.SimClock.secondsToTicks(3 * 86400)));
+        assertEquals(world.engine.getSimSeconds(), world.macroSim.now(), 1e-6);
+        int trips = 0;
+        for (FreighterComponent f : world.macroSim.freighters().all().values()) trips += f.tripsCompleted;
+        assertTrue(trips > 0, "freighters traded during the warp jump");
+    }
+
+    /** An NPC on rails 5 km ahead of the bubble, with a burn still planned. */
+    Entity npcAhead() {
+        Entity npc = world.engine.createEntity();
+        npc.add(new UuidComponent("npc"));
+        world.engine.addEntity(npc);
+        world.macroSim.rails().attach("npc", "earth", circular(LEO, 5e3 / LEO), 0);
+        world.macroSim.rails().scheduleBurn("npc", new RailsModel.Burn(600, 3, 0));
+        return npc;
+    }
+
+    @Test
+    void npcNearTheBubbleEntersAndIsFlownByThePilot() {
+        playerInBubble();
+        Entity npc = npcAhead();
+        for (int i = 0; i < 10; i++) world.update(FRAME);
+
+        assertTrue(world.macroSim.bubble().inBubble().contains("npc"));
+        PhysicsBodyComponent body = npc.getComponent(PhysicsBodyComponent.class);
+        assertNotNull(body, "macro-sim handed it to Box2D");
+        assertEquals(5e3, body.body.getPosition().len() * com.ringsofiron.physicsexterior.PhysicsManager.METERS_PER_UNIT, 2.0,
+                "placed at its true state, same tick as the anchor");
+        NpcPilotComponent pilot = npc.getComponent(NpcPilotComponent.class);
+        assertNotNull(pilot, "ai-crew's pilot flies it");
+        assertEquals(1, pilot.burns.size());
+        assertEquals(600, pilot.burns.peek().time, 1e-9);
+    }
+
+    @Test
+    void railsWarpCarriesBubbleNpcsAlongAndBringsThemBack() {
+        playerInBubble();
+        Entity npc = npcAhead();
+        for (int i = 0; i < 10; i++) world.update(FRAME);
+        assertNotNull(npc.getComponent(PhysicsBodyComponent.class));
+
+        assertTrue(world.timeWarp.setWarp(1_000));
+        assertNull(npc.getComponent(PhysicsBodyComponent.class), "collapsed onto rails with the player");
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        assertTrue(world.timeWarp.isRailsWarp(), "a ship already alongside does not stop the warp");
+        assertTrue(world.engine.getSimSeconds() > 900);
+
+        assertTrue(world.timeWarp.setWarp(1));
+        assertNotNull(npc.getComponent(PhysicsBodyComponent.class), "rebuilt next to the player");
+        assertTrue(world.macroSim.bubble().inBubble().contains("npc"));
+        for (int i = 0; i < 10; i++) world.update(FRAME);
+        assertTrue(world.macroSim.bubble().inBubble().contains("npc"));
     }
 }

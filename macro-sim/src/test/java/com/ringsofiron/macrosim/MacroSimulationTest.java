@@ -76,7 +76,8 @@ class MacroSimulationTest {
             assertTrue(sim.bubble().inBubble().contains(ship), "docked freighter 10 km away joins the bubble");
             assertTrue(gateway.transients().contains(stn), "stations stay on rails as kinematic transients");
             assertEquals(FreighterComponent.State.IN_BUBBLE, sim.freighters().get(ship).state);
-            assertEquals(0, sim.nextDropOutTime(), 1.0);
+            // The station was inside the radius from the start, so it does not stop rails warp.
+            assertEquals(Double.POSITIVE_INFINITY, sim.nextDropOutTime());
         } finally {
             exec.shutdownNow();
         }
