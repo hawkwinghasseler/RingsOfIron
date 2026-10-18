@@ -56,8 +56,10 @@ Conventions:
 
 ## Orbital Integration
 Built so far (see `OrbitalBubbleTest`):
-- **Anchor.** `PhysicsManager` keeps the origin's true state through an `AnchorModel` (package `anchor`): `InertialAnchor` by default, or `PointMassAnchor`, a free fall around a point mass integrated with RK4 in doubles. Swap one in with `setAnchorModel`. A rebase calls `AnchorModel.reset` with the player's true state. A Kepler-backed model from the `orbital` package will replace `PointMassAnchor` once that package is on main; nothing else changes.
-- **Sim time.** `PhysicsManager` counts fixed ticks (`getTick`, `getSimSeconds() = tick / 60.0`); `setTick` lines it up with the game clock on load.
+- **Anchor.** `PhysicsManager` keeps the origin's true state through an `AnchorModel` (package `anchor`): `InertialAnchor` by default (no gravity), `KeplerAnchor` (an exact conic from `orbital-mechanics`' `KeplerOrbit`, the one to use in the game), or `PointMassAnchor` (RK4 free fall, kept as an independent check). Swap one in with `setAnchorModel`. A rebase calls `AnchorModel.reset` with the player's true state, so a `KeplerAnchor` restarts on the conic through it.
+- **Sim time.** Under a `GameEngine`, `PhysicsUpdateSystem` hands the engine's `SimClock` to `PhysicsManager`, so physics, rails and the anchor share one tick. After rails warp, `catchUp` moves the anchor to the new time. Without a `GameEngine`, `PhysicsManager` counts its own ticks.
+- **Saving.** `PhysicsSaveParticipant.install(physics, gameEngine)` skips the live `PhysicsBodyComponent` and `KinematicTransientComponent`, and saves the anchor's true state and each bubble body's parent-relative true state, angle and spin by UUID. On load the anchor model restarts from the saved state, and each saved state is applied as soon as an assembler rebuilds that entity's body.
+- **Ships from data.** `ShipPhysicsAssembler.register(ctx, physics)` (in `ModdingBootstrap.beforeScripts`) gives `[ship.*]` spawns a body with the def's hull and mass, and thrusters from `max_thrust` and `max_torque`.
 - **Tidal gravity.** `TidalField.accelAt(localX, localY, out)` (from `physics.getTidalField()`) is the one shared field; `TidalGravitySystem` applies it to every dynamic body before each step. A box released 2 km from the anchor in a 400 km orbit stays within 1 m of its own two-body orbit over a quarter orbit, rebases included. In this non-rotating frame the radial term is 2·n²·d (about 0.06 m/s² at 25 km in low orbit); Hill's 3·n²·d includes the centrifugal term of a rotating frame.
 - **Fast passes.** `KinematicTransientComponent` holds a `TrueTrajectory` (any `stateAt(t)`, e.g. a rails orbit) and a sweep radius. `KinematicTransientSystem` places it each tick from the trajectory minus the anchor, in doubles, sweeps rays from last tick's position (center line plus ±radius), and fires one `FastPassImpactEvent` per body passed through on `physics.fastPassImpacts`. It never gets a Box2D body; the handoff owner removes the component to promote it or send it back to rails.
 - **Handoffs.** `getTrueState(body, out)` and `setTrueState(body, x, y, vx, vy)` convert between Box2D and parent-relative doubles; `trueToLocal` for anything else. `BubbleLimits` holds the enter/exit radii and speed limits.
@@ -65,7 +67,9 @@ Built so far (see `OrbitalBubbleTest`):
 
 The flight demo shows all of it: `[O]` puts the bubble in a 400 km orbit, `[,]`/`[.]` change physics warp, `[F]` sends a 2.5 km/s fast pass past the ship, and the ship's mass comes from an interior grid drawn over the hull when zoomed in.
 
-Still to do: the Kepler anchor adapter, SOI re-parenting of the anchor, rails warp (bubble collapse), and saving bubble bodies as true state vectors through core-engine's save API.
+- **Rails warp.** `RailsBubbleHandoff` implements orbital-mechanics' `BubbleHandoff`. Collapsing gives every body, the player's included, an `OrbitComponent` around the anchor's parent (`PhysicsManager.getAnchorParentUuid`) and a `BodyShapeComponent` holding its fixtures and exact mass, then drops the Box2D body. Rebuilding re-anchors a `KeplerAnchor` on the player's orbit and brings back every recorded body within the entry radius and speed; the rest stay on rails, shape kept, for macro-sim's `BubbleTransitionSystem` to bring in later with `rebuild(entity)`.
+
+Still to do: SOI re-parenting of the anchor, once orbital-mechanics emits the player's SOI changes.
 
 The original plan, for reference:
 The bubble was an inertial frame with no gravity. `documentation/orbital-mechanics/Design.md` defines how it becomes part of a 1:1 real-scale orbital world. The changes that land in this module:

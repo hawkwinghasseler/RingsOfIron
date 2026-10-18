@@ -72,6 +72,7 @@ public class PhysicsSaveParticipant implements SaveParticipant {
         json.writeValue(physics.getOriginVx());
         json.writeValue(physics.getOriginVy());
         json.writeArrayEnd();
+        json.writeValue("anchorParent", physics.getAnchorParentUuid());
 
         json.writeObjectStart("bodies");
         for (Entity entity : game.getEcsEngine().getEntitiesFor(BODIES)) {
@@ -90,6 +91,7 @@ public class PhysicsSaveParticipant implements SaveParticipant {
     @Override
     public void read(Json json, JsonValue data) {
         double[] anchor = data.get("anchor").asDoubleArray();
+        physics.setAnchorParentUuid(data.getString("anchorParent", physics.getAnchorParentUuid()));
         physics.getAnchorModel().reset(anchor[0], anchor[1], anchor[2], anchor[3], physics.getSimSeconds());
         physics.syncToClock();
 

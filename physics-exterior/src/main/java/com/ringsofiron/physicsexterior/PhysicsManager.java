@@ -26,6 +26,7 @@ import com.badlogic.gdx.utils.IdentityMap;
 import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.physicsexterior.anchor.AnchorModel;
 import com.ringsofiron.physicsexterior.anchor.InertialAnchor;
+import com.ringsofiron.physicsexterior.events.AnchorChangeEvent;
 import com.ringsofiron.physicsexterior.events.CollisionEvent;
 import com.ringsofiron.physicsexterior.events.FastPassImpactEvent;
 import com.ringsofiron.physicsexterior.events.WorldShiftEvent;
@@ -96,18 +97,22 @@ public class PhysicsManager implements Disposable {
     public final Signal<WorldShiftEvent> worldShifts = new Signal<>();
     /** Kinematic transients sweeping through bodies, dispatched after the step. */
     public final Signal<FastPassImpactEvent> fastPassImpacts = new Signal<>();
+    /** The anchor's model, parent or orbit changed, or the bubble collapsed onto rails. */
+    public final Signal<AnchorChangeEvent> anchorChanges = new Signal<>();
 
     private final World world;
     private final Array<StepListener> stepListeners = new Array<>();
     private final Array<CollisionEvent> pendingCollisions = new Array<>();
     private final Array<Body> bodyBuffer = new Array<>();
     private final WorldShiftEvent shiftEvent = new WorldShiftEvent();
+    private final AnchorChangeEvent anchorEvent = new AnchorChangeEvent();
     private final TidalField tidalField = new TidalField(this);
     /** Each body's pose at the start of the last step, {x, y, angle} in meters and radians. */
     private final IdentityMap<Body, float[]> previousPoses = new IdentityMap<>();
     private final RayCastAdapter rayCastAdapter = new RayCastAdapter();
 
     private AnchorModel anchor = new InertialAnchor();
+    private String anchorParentUuid;
     private final double[] origin = new double[4];
     private long tick;
     private SimClock clock;
@@ -210,6 +215,7 @@ public class PhysicsManager implements Disposable {
         // The anchor restarts its free fall from the new state, e.g. the player's true state.
         anchor.reset(origin[0] + dx, origin[1] + dy, origin[2] + dvx, origin[3] + dvy, getSimSeconds());
         anchor.stateAt(getSimSeconds(), origin);
+        dispatchAnchorChange(AnchorChangeEvent.Kind.REBASED);
 
         shiftEvent.deltaX = dx;
         shiftEvent.deltaY = dy;
@@ -254,6 +260,38 @@ public class PhysicsManager implements Disposable {
     public void setAnchorModel(AnchorModel anchor) {
         this.anchor = anchor;
         anchor.stateAt(getSimSeconds(), origin);
+        dispatchAnchorChange(AnchorChangeEvent.Kind.SET);
+    }
+
+    /**
+     * As {@link #setAnchorModel(AnchorModel)}, also naming the body the bubble falls around. Also
+     * how an SOI change re-parents the anchor: pass the new parent and the anchor's orbit around it.
+     */
+    public void setAnchorModel(AnchorModel anchor, String parentUuid) {
+        this.anchorParentUuid = parentUuid;
+        setAnchorModel(anchor);
+    }
+
+    /** Tells listeners the bubble has collapsed onto rails; the anchor is not live until it is set again. */
+    public void clearAnchor() {
+        dispatchAnchorChange(AnchorChangeEvent.Kind.CLEARED);
+    }
+
+    private void dispatchAnchorChange(AnchorChangeEvent.Kind kind) {
+        anchorEvent.kind = kind;
+        anchorEvent.model = anchor;
+        anchorEvent.parentUuid = anchorParentUuid;
+        anchorEvent.time = getSimSeconds();
+        anchorChanges.dispatch(anchorEvent);
+    }
+
+    /** UUID of the celestial body the bubble falls around, or null if none was named. */
+    public String getAnchorParentUuid() {
+        return anchorParentUuid;
+    }
+
+    public void setAnchorParentUuid(String parentUuid) {
+        this.anchorParentUuid = parentUuid;
     }
 
     /** The gravity felt inside the bubble. Shared by Box2D bodies, projectiles and the HUD. */
