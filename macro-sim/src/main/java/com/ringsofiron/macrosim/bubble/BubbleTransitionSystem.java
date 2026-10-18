@@ -145,6 +145,16 @@ public class BubbleTransitionSystem {
         }
     }
 
+    /** Drops a destroyed body: its Box2D body or transient goes, and listeners see it leave. */
+    public void forget(String uuid, double t) {
+        railsOnly.remove(uuid);
+        if (fastPasses.contains(uuid)) endFastPass(uuid, t);
+        if (inBubble.remove(uuid)) {
+            gateway.destroyBody(uuid);
+            for (BubbleTransitionListener l : listeners) l.onExitBubble(uuid, t);
+        }
+    }
+
     private void enter(String uuid, double t) {
         rails.stateAt(uuid, t, body);
         List<Burn> goals = rails.detach(uuid);
