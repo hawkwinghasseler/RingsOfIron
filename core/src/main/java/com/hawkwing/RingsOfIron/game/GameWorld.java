@@ -203,7 +203,7 @@ public class GameWorld implements Disposable {
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
         audioListener = new AudioListenerSync(this::getPlayer, avatar);
         engine.addSystem(audioListener);
-        engine.addSystem(new AcousticOcclusionSystem());
+        engine.addSystem(new AcousticOcclusionSystem(audio.getCatalog()));
         AudioUpdateSystem audioUpdate = new AudioUpdateSystem(audio);
         engine.addSystem(audioUpdate);
         physics.collisions.add(new ImpactAudio(audio));
