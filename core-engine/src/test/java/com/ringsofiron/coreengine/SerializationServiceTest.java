@@ -30,6 +30,14 @@ class SerializationServiceTest {
         public Entity target;
     }
 
+    public static class Lock {
+        public Entity target;
+    }
+
+    public static class NestedBadComponent implements Component {
+        public final Array<Lock> locks = new Array<>();
+    }
+
     private static final ComponentMapper<TransformComponent> TRANSFORM = ComponentMapper.getFor(TransformComponent.class);
     private static final ComponentMapper<TargetComponent> TARGET = ComponentMapper.getFor(TargetComponent.class);
     private static final ComponentMapper<UuidComponent> UUID = ComponentMapper.getFor(UuidComponent.class);
@@ -120,6 +128,21 @@ class SerializationServiceTest {
         engine.addEntity(e);
 
         assertThrows(SerializationException.class, () -> engine.getSerializationService().saveGame());
+    }
+
+    @Test
+    void rawEntityInANestedObjectIsRejected() {
+        GameEngine engine = new GameEngine();
+        Entity e = engine.createEntityWithUuid();
+        NestedBadComponent bad = new NestedBadComponent();
+        bad.locks.add(new Lock());
+        bad.locks.first().target = e;
+        e.add(bad);
+        engine.addEntity(e);
+
+        SerializationException ex = assertThrows(SerializationException.class,
+            () -> engine.getSerializationService().saveGame());
+        assertTrue(ex.getMessage().contains("locks[0].target"), ex.getMessage());
     }
 
     @Test
