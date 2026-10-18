@@ -1,0 +1,108 @@
+package com.ringsofiron.uihud.systems;
+
+import com.badlogic.ashley.core.ComponentMapper;
+import com.badlogic.ashley.core.Engine;
+import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntitySystem;
+import com.badlogic.ashley.core.Family;
+import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.ringsofiron.uihud.components.InteractableConsoleComponent;
+import com.ringsofiron.uihud.providers.InteractorProvider;
+
+/**
+ * Finds the nearest {@link InteractableConsoleComponent} within {@link #INTERACT_RADIUS} tiles
+ * of the player's avatar and shows "Press [E] to Access ..." for it. {@link #interact()} (bound
+ * to E by the HUD) opens that console through the {@link ConsoleOpener}.
+ */
+public class InteractPromptSystem extends EntitySystem {
+    public static final int DEFAULT_PRIORITY = 950;
+    /** Tiles between the avatar and the console's tile center. */
+    public static final float INTERACT_RADIUS = 1.5f;
+
+    /** Opens the UI for a console entity; supplied by the HUD facade. */
+    public interface ConsoleOpener {
+        void open(Entity console, InteractableConsoleComponent data);
+    }
+
+    private static final Family CONSOLES = Family.all(InteractableConsoleComponent.class).get();
+    private static final ComponentMapper<InteractableConsoleComponent> MAPPER = ComponentMapper.getFor(InteractableConsoleComponent.class);
+
+    private final Label prompt;
+    private final ConsoleOpener opener;
+    private final Vector2 avatar = new Vector2();
+    private ImmutableArray<Entity> consoles;
+    private InteractorProvider interactor;
+    private Entity nearest;
+    private boolean enabled = true;
+
+    public InteractPromptSystem(Label prompt, ConsoleOpener opener) {
+        super(DEFAULT_PRIORITY);
+        this.prompt = prompt;
+        this.opener = opener;
+        prompt.setVisible(false);
+    }
+
+    public void setInteractor(InteractorProvider interactor) {
+        this.interactor = interactor;
+    }
+
+    /** Disables prompts, e.g. while a console window is already open. */
+    public void setPromptsEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    @Override
+    public void addedToEngine(Engine engine) {
+        consoles = engine.getEntitiesFor(CONSOLES);
+    }
+
+    @Override
+    public void removedFromEngine(Engine engine) {
+        consoles = null;
+        nearest = null;
+    }
+
+    @Override
+    public void update(float deltaTime) {
+        nearest = enabled ? findNearest() : null;
+        if (nearest == null) {
+            prompt.setVisible(false);
+            return;
+        }
+        String text = "Press [E] to Access " + MAPPER.get(nearest).title;
+        if (!prompt.textEquals(text)) prompt.setText(text);
+        prompt.setVisible(true);
+    }
+
+    /** The console currently in reach, or null. */
+    public Entity getNearest() {
+        return nearest;
+    }
+
+    /** Opens the console in reach. Returns false if there is none. */
+    public boolean interact() {
+        if (nearest == null) return false;
+        opener.open(nearest, MAPPER.get(nearest));
+        return true;
+    }
+
+    private Entity findNearest() {
+        if (interactor == null || consoles == null) return null;
+        Entity ship = interactor.getAvatarShip();
+        if (ship == null || !interactor.getAvatarTile(avatar)) return null;
+        Entity best = null;
+        float bestDist2 = INTERACT_RADIUS * INTERACT_RADIUS;
+        for (Entity e : consoles) {
+            InteractableConsoleComponent c = MAPPER.get(e);
+            if (c.ship != ship) continue;
+            float d2 = avatar.dst2(c.tileX + 0.5f, c.tileY + 0.5f);
+            if (d2 <= bestDist2) {
+                bestDist2 = d2;
+                best = e;
+            }
+        }
+        return best;
+    }
+}

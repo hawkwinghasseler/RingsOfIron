@@ -190,6 +190,11 @@ tasks.register('runFlightDemo', JavaExec) {
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
+// Runs the HUD demo (ui-hud): the flight demo with the piloting HUD, minimap and console prompts.
+tasks.register('runHudDemo', JavaExec) {
+  group = 'application'
+  description = 'Runs the ui-hud piloting HUD demo.'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.HudDemoLauncher'
 // Runs the spatial audio demo (walk a ship and hear walls muffle sound) instead of the main game.
 tasks.register('runAudioDemo', JavaExec) {
   group = 'application'

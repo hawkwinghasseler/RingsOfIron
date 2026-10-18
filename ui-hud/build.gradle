@@ -6,5 +6,15 @@ dependencies {
   api project(':core-engine')
   api project(':physics-exterior')
   api project(':interior-grid')
+  api project(':modding-data')
 }
 
+
+dependencies {
+  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+  useJUnitPlatform()
+}
