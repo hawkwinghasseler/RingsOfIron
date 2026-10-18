@@ -15,7 +15,8 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
  * Flies every ship with an {@link NpcPilotComponent}: reads its body, runs the
  * {@link PilotController} and writes the stick into its {@link FlightControlComponent},
  * which physics-exterior's FlightControlSystem turns into thrust each physics tick.
- * Add it before the physics systems so the controls are fresh for the step.
+ * Add it before the physics systems so the controls are fresh for the step. A ship in a
+ * fight ({@link NpcCombatComponent}) is flown by {@link NpcCombatSystem} instead.
  */
 public class NpcPilotSystem extends FixedIteratingSystem {
 
@@ -31,7 +32,7 @@ public class NpcPilotSystem extends FixedIteratingSystem {
 
     public NpcPilotSystem(PilotReference reference) {
         super(Family.all(NpcPilotComponent.class, PhysicsBodyComponent.class, FlightControlComponent.class,
-                ThrusterComponent.class).get(), -10, (float) SimClock.TICK_SECONDS);
+                ThrusterComponent.class).exclude(NpcCombatComponent.class).get(), -10, (float) SimClock.TICK_SECONDS);
         this.reference = reference;
     }
 

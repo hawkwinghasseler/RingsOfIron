@@ -55,12 +55,18 @@ public class CrewDef {
     /** Chance each shot hits. */
     public float hitChance = 0.4f;
 
+    /** Skill at a ship's guns, 0 (green) .. 1 (veteran): aim jitter, reaction and burst walking. */
+    public float gunnerySkill = 0.5f;
+    /** Skill on a ship's sensors, 0 (green) .. 1 (veteran): how well tracks follow a maneuvering target. */
+    public float trackingSkill = 0.5f;
+
     /** A combat-ready default for marines. */
     public static CrewDef marine() {
         CrewDef d = new CrewDef();
         d.weaponDamage = 20f;
         d.hitChance = 0.7f;
         d.maxHealth = 120f;
+        d.gunnerySkill = 0.75f;
         return d;
     }
 

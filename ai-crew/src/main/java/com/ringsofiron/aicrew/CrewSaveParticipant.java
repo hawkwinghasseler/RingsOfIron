@@ -8,13 +8,14 @@ import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.SerializationService;
+import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 
 /**
  * Makes crew save and load cleanly. Saves keep each crew member's stats, health, state
  * and tile, and which ship they are aboard. The job in hand is not saved: after a load
  * every claimed task, carry and treatment is dropped, and crew pick their jobs afresh
  * from what the hazard scan and health systems post. Behavior trees are not saved
- * either; each AI crew member gets a fresh one.
+ * either; each AI crew member gets a fresh one. NPC combat pilots get their targets back.
  *
  * <pre>
  * CrewSaveParticipant.install(crewService, gameEngine);
@@ -23,6 +24,7 @@ import com.ringsofiron.coreengine.SerializationService;
 public class CrewSaveParticipant implements SaveParticipant {
 
     private static final Family CREW = Family.all(CrewMemberComponent.class, GridPositionComponent.class).get();
+    private static final Family FIGHTING = Family.all(NpcCombatComponent.class).get();
 
     private final CrewService service;
     private final GameEngine engine;
@@ -63,6 +65,11 @@ public class CrewSaveParticipant implements SaveParticipant {
                     && e.getComponent(BehaviorTreeComponent.class) == null) {
                 CrewFactory.addBrain(service, e);
             }
+        }
+        ImmutableArray<Entity> fighting = service.engine().getEntitiesFor(FIGHTING);
+        for (int i = 0; i < fighting.size(); i++) {
+            NpcCombatComponent combat = fighting.get(i).getComponent(NpcCombatComponent.class);
+            combat.target = combat.targetRef == null ? null : combat.targetRef.get(engine.getUuidRegistry());
         }
     }
 }

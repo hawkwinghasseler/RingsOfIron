@@ -6,6 +6,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
@@ -136,10 +137,14 @@ public class GameScenario {
         return new GameScenario(world, assetsDir, modsDir);
     }
 
-    /** Turns the raider on the player: its turrets and launcher engage the player's ship. */
+    /**
+     * Turns the raider on the player: its turrets and launcher engage the player's ship, and
+     * ai-crew's combat pilot closes to fighting range, circles and dodges missiles.
+     */
     public void provokeRaider() {
         SensorComponent sensor = raider.getComponent(SensorComponent.class);
         if (sensor != null && sensor.lockedTarget == null) sensor.lockedTarget = player;
+        if (raider.getComponent(NpcCombatComponent.class) == null) raider.add(new NpcCombatComponent(player));
     }
 
     /** True once the raider is fighting back. */
