@@ -72,6 +72,7 @@ class GameScenarioTest {
         }
         assertEquals(4, aboard, "the player and three crew, back aboard the loaded ship");
         assertEquals(3, thinking, "the AI crew think again");
+        for (int i = 0; i < 60; i++) world.update(FRAME);
     }
 
     @Test
