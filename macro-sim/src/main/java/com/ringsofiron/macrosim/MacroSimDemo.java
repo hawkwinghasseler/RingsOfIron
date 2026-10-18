@@ -6,6 +6,7 @@ import com.ringsofiron.macrosim.economy.CommodityType;
 import com.ringsofiron.macrosim.economy.DefaultCommodityCatalog;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
+import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.macrosim.rails.stub.StubKeplerOrbit;
 import com.ringsofiron.macrosim.rails.stub.StubRailsModel;
@@ -32,11 +33,16 @@ public final class MacroSimDemo {
     public static MacroSimulation build(GameEngine engine) {
         StubRailsModel rails = new StubRailsModel();
         rails.addBody(PLANET, EARTH_MU);
+        return build(engine, rails, PLANET);
+    }
+
+    /** The same scenario on any rails model; {@code planet} must already be a massive body in it. */
+    public static MacroSimulation build(GameEngine engine, RailsModel rails, String planet) {
         // Player anchor: a circular orbit 1,500 km up, sharing the orbit with the farm.
         StubKeplerOrbit anchor = StubKeplerOrbit.circular(EARTH_MU, 7_871e3, 0.0, 0, 1);
-        MockBubbleGateway gateway = new MockBubbleGateway(PLANET, anchor);
+        MockBubbleGateway gateway = new MockBubbleGateway(planet, anchor);
         MacroSimulation sim = new MacroSimulation(engine, rails, gateway, new DefaultCommodityCatalog(), null, 0);
-        sim.registerMassiveBody(PLANET);
+        sim.registerMassiveBody(planet);
 
         String[][] stations = {
                 {"Glacier Ice Works", "ice_mine", "11000", "0.4"},
@@ -52,7 +58,7 @@ public final class MacroSimDemo {
             double r = Double.parseDouble(s[2]) * 1e3;
             double phase = Double.parseDouble(s[3]);
             StateVector state = StubKeplerOrbit.circular(EARTH_MU, r, phase, 0, 1).stateAt(0, new StateVector());
-            ids.add(sim.addStation(s[0], s[1], PLANET, state, 0.6));
+            ids.add(sim.addStation(s[0], s[1], planet, state, 0.6));
         }
         for (int i = 0; i < 10; i++) {
             sim.addFreighter("Hauler " + (i + 1), 400, 20_000, ids.get(i % ids.size()));
