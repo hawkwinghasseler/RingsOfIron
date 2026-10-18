@@ -11,7 +11,7 @@ import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.TreatTask;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
-import com.ringsofiron.aicrew.nav.LineOfSight;
+import com.ringsofiron.interiorgrid.GridRayTraversal;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
@@ -92,7 +92,7 @@ public final class CrewTasks {
             GridPositionComponent tp = a.service.position(a.target);
             ShipGridComponent grid = a.grid();
             float dist = Math.abs(tp.x - a.pos.x) + Math.abs(tp.y - a.pos.y);
-            boolean sight = LineOfSight.canSee(grid, a.pos.tileX(), a.pos.tileY(), tp.tileX(), tp.tileY());
+            boolean sight = GridRayTraversal.hasLineOfSight(grid, a.pos.tileX(), a.pos.tileY(), tp.tileX(), tp.tileY());
             a.crew.fireCooldown -= a.dt;
             if (sight && dist <= a.crew.def.weaponRange) {
                 a.pos.stop();
@@ -387,7 +387,7 @@ public final class CrewTasks {
             if (p.ship != op.ship) continue;
             float d = Math.abs(p.x - op.x) + Math.abs(p.y - op.y);
             if (d > range || d >= bestDist) continue;
-            if (!LineOfSight.canSee(grid, op.tileX(), op.tileY(), p.tileX(), p.tileY())) continue;
+            if (!GridRayTraversal.hasLineOfSight(grid, op.tileX(), op.tileY(), p.tileX(), p.tileY())) continue;
             best = e;
             bestDist = d;
         }

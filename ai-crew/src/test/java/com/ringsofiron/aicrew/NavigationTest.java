@@ -5,10 +5,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
-import com.ringsofiron.aicrew.nav.LineOfSight;
 import com.ringsofiron.interiorgrid.ChassisBlueprint;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.GridRayTraversal;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.WeightClass;
@@ -87,11 +87,11 @@ class NavigationTest {
     @Test
     void lineOfSightIsBlockedByWallsAndClosedDoors() {
         ShipGridComponent g = twoRooms();
-        assertTrue(LineOfSight.canSee(g, 1, 2, 7, 2), "straight through the open door");
-        assertFalse(LineOfSight.canSee(g, 1, 3, 7, 3), "thin wall");
+        assertTrue(GridRayTraversal.hasLineOfSight(g, 1, 2, 7, 2), "straight through the open door");
+        assertFalse(GridRayTraversal.hasLineOfSight(g, 1, 3, 7, 3), "thin wall");
         g.getEdge(4, 2, Side.LEFT).bulkheadSealed = true;
-        assertFalse(LineOfSight.canSee(g, 1, 2, 7, 2), "sealed door");
-        assertTrue(LineOfSight.canSee(g, 1, 1, 3, 3), "same room diagonal");
+        assertFalse(GridRayTraversal.hasLineOfSight(g, 1, 2, 7, 2), "sealed door");
+        assertTrue(GridRayTraversal.hasLineOfSight(g, 1, 1, 3, 3), "same room diagonal");
     }
 
     @Test
@@ -103,7 +103,7 @@ class NavigationTest {
                 "#...#",
                 "#####"}, 1f).grid;
         // Walls at (3,3) and (2,2): the diagonal from (2,3) to (3,2) passes exactly through their shared corner
-        assertFalse(LineOfSight.canSee(g, 2, 3, 3, 2));
-        assertTrue(LineOfSight.canSee(g, 1, 1, 3, 1));
+        assertFalse(GridRayTraversal.hasLineOfSight(g, 2, 3, 3, 2));
+        assertTrue(GridRayTraversal.hasLineOfSight(g, 1, 1, 3, 1));
     }
 }
