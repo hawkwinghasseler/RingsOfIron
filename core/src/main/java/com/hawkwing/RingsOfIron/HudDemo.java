@@ -32,6 +32,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.moddingdata.ModManifest;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
@@ -46,8 +47,11 @@ import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.components.InteractableConsoleComponent;
 import com.ringsofiron.uihud.minimap.TileShade;
+import com.ringsofiron.uihud.modding.ModTrustDialog;
 import com.ringsofiron.uihud.providers.InteractorProvider;
 import com.ringsofiron.uihud.providers.SimpleTargetingProvider;
+
+import java.util.Arrays;
 
 /**
  * Interactive demo for the ui-hud module: the flight demo's ship, now with its interior grid,
@@ -63,6 +67,7 @@ import com.ringsofiron.uihud.providers.SimpleTargetingProvider;
  *   I J K L      - Walk your crew avatar around the deck
  *   E            - Use the console you are standing at (Esc closes it)
  *   F / B / H    - Start a fire / breach the hull / take a hit (watch the minimap)
+ *   M            - Show the mod-script trust prompt with two sample mods
  *   Mouse wheel  - Zoom
  *   R            - Reset
  *   ESC          - Exit (when no console is open)
@@ -105,6 +110,7 @@ public class HudDemo extends ApplicationAdapter {
     private final DemoAvatar avatar = new DemoAvatar();
 
     private UiHud hud;
+    private ModTrustDialog modTrust;
     private ViewportManager viewports;
     private ShapeRenderer shapes;
     private float exteriorViewMeters = ViewportManager.DEFAULT_VIEW_METERS;
@@ -119,6 +125,8 @@ public class HudDemo extends ApplicationAdapter {
         shapes = new ShapeRenderer();
         hud = new UiHud();
         viewports = hud.getViewports();
+        modTrust = new ModTrustDialog(hud.getStage(), hud.getSkin(), null)
+                .onDecision(allowed -> Gdx.app.log("HudDemo", "Mod scripts " + (allowed ? "allowed" : "blocked")));
         viewports.resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         hud.getViewMode().addListener((previous, current) -> {
             if (previous == current) return;
@@ -288,6 +296,7 @@ public class HudDemo extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.F)) startFire();
         if (Gdx.input.isKeyJustPressed(Input.Keys.B)) breachHull();
         if (Gdx.input.isKeyJustPressed(Input.Keys.H)) takeHit();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.M)) showModPrompt();
 
         controls.clear();
         if (Gdx.input.isKeyPressed(Input.Keys.W)) controls.forward += 1f;
@@ -356,6 +365,20 @@ public class HudDemo extends ApplicationAdapter {
             grid.gridDirty = true;
         }
         hud.flashHullHit(x, y);
+    }
+
+    /** Asks about two made-up script mods. Called on the render thread, so it returns at once and the dialog answers later. */
+    private void showModPrompt() {
+        ModManifest a = new ModManifest();
+        a.id = "better_raiders";
+        a.name = "Better Raiders";
+        a.version = "1.2.0";
+        a.author = "spacefan";
+        ModManifest b = new ModManifest();
+        b.id = "trade_tweaks";
+        b.name = "Trade Tweaks";
+        b.version = "0.4.1";
+        modTrust.allowScripts(Arrays.asList(a, b));
     }
 
     private boolean touchesFloor(int x, int y) {

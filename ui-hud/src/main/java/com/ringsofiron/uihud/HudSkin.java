@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.ui.CheckBox;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
@@ -17,7 +18,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
  * widgets only look styles up by the names defined here.
  *
  * Style names: Label "default", "title", "dim", "alert", "warn", "prompt"; Window "default";
- * TextButton "default"; drawables "white", "panel", "panel-border", "prompt-bg".
+ * TextButton "default"; CheckBox "default"; drawables "white", "panel", "panel-border", "prompt-bg".
  */
 public final class HudSkin {
     public static final Color HUD_CYAN = new Color(0.45f, 0.85f, 1f, 1f);
@@ -66,6 +67,14 @@ public final class HudSkin {
                 skin.getDrawable("button-up"), skin.getDrawable("button-down"), null, font);
         button.over = skin.getDrawable("button-over");
         skin.add("default", button);
+
+        Drawable boxOff = skin.newDrawable("white", new Color(0.1f, 0.2f, 0.3f, 1f));
+        Drawable boxOn = skin.newDrawable("white", HUD_CYAN);
+        boxOff.setMinWidth(14f);
+        boxOff.setMinHeight(14f);
+        boxOn.setMinWidth(14f);
+        boxOn.setMinHeight(14f);
+        skin.add("default", new CheckBox.CheckBoxStyle(boxOff, boxOn, font, Color.WHITE));
 
         return skin;
     }

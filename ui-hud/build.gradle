@@ -6,6 +6,7 @@ dependencies {
   api project(':core-engine')
   api project(':physics-exterior')
   api project(':interior-grid')
+  api project(':modding-data')
 }
 
 

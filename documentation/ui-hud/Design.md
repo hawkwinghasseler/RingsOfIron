@@ -50,7 +50,7 @@ To implement this module independently (mocking data providers):
 
 ![HUD demo](hud-demo.png)
 
-Run it with `gradlew :lwjgl3:runHudDemo` (or `HUD demo.bat`). Fly with W/S, A/D, Z/C; Tab cycles the target lock; V toggles exterior/interior view; I/J/K/L walk the avatar; E uses a console; F/B/H start a fire, breach the hull or take a hit so the minimap has something to show.
+Run it with `gradlew :lwjgl3:runHudDemo` (or `HUD demo.bat`). Fly with W/S, A/D, Z/C; Tab cycles the target lock; V toggles exterior/interior view; I/J/K/L walk the avatar; E uses a console; M shows the mod-script prompt; F/B/H start a fire, breach the hull or take a hit so the minimap has something to show.
 
 Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. Call `addTo(engine)`, forward input to `getInputProcessor()`, and call `draw(delta)` after drawing the world.
 
@@ -62,6 +62,7 @@ Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. C
 | `InteractPromptSystem`, `ConsoleWindow` | "Press [E] to Access ..." within `INTERACT_RADIUS` tiles of an `InteractableConsoleComponent`; per-console layouts via `registerConsoleLayout` |
 | `FlightReadoutSystem` | Speed, heading, view mode, target range/closing/time-to-impact, orbit |
 | `ViewModeController` | EXTERIOR / INTERIOR view mode with change listeners |
+| `modding.ModTrustDialog` | modding-data's `ModTrustPolicy` as a dialog: asks before mod scripts run with full access; can remember the answer per mod set and version (M in the demo) |
 
 ### Interfaces other modules fill in
 
