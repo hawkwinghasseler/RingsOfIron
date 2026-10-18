@@ -70,6 +70,10 @@ import com.ringsofiron.physicsexterior.systems.FloatingOriginSystem;
 import com.ringsofiron.physicsexterior.systems.KinematicTransientSystem;
 import com.ringsofiron.physicsexterior.systems.PhysicsUpdateSystem;
 import com.ringsofiron.physicsexterior.systems.TidalGravitySystem;
+import com.ringsofiron.stationsdocking.DockingBubbleHandoff;
+import com.ringsofiron.stationsdocking.DockingData;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.stationsdocking.StationBodies;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,7 +92,9 @@ import java.util.function.Consumer;
  * (sound, occlusion, listener on the player), modding-data (data and mod loading through
  * {@link #loadContent}, ships get Box2D bodies from their defs), macro-sim (economy, freighter
  * traffic and bubble transitions on GameWorld's rails, NPCs entering the bubble flown by ai-crew's
- * pilot). ui-hud needs a GL context, so screens attach it with {@link GameHud}.
+ * pilot), stations-docking (stations as walkable grids with real bodies in the bubble, docking
+ * ports on ships and stations, latching, undocking, and a docked pair riding through rails warp
+ * together). ui-hud needs a GL context, so screens attach it with {@link GameHud}.
  *
  * <p>Frame order: time warp first (a rails jump must land before the frame's systems see the new
  * tick), then the engine's fixed ticks and every-frame systems.
@@ -138,6 +144,8 @@ public class GameWorld implements Disposable {
     public final AudioListenerSync audioListener;
     /** The player's planned burns. */
     public final BurnPlanner burns;
+    /** Docking ports, collars and latches of every ship and station in the bubble. */
+    public final DockingSystem docking;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -189,8 +197,17 @@ public class GameWorld implements Disposable {
         engine.addSystem(new TidalGravitySystem(physics));
         engine.addSystem(new PhysicsUpdateSystem(physics));
         // Fast passes and stations: drawn and swept for collisions while they stay on rails.
-        engine.addSystem(new KinematicTransientSystem(physics));
+        // Stations with an interior get a kinematic body shaped like it, which ships dock with.
+        KinematicTransientSystem transients = new KinematicTransientSystem(physics);
+        transients.setBodyFactory(new StationBodies(physics));
+        engine.addSystem(transients);
         engine.addSystem(new FloatingOriginSystem(physics));
+
+        // stations-docking: magnets, collars and latches, after the bodies exist.
+        docking = new DockingSystem(physics, engine.getUuidRegistry());
+        engine.addSystem(docking);
+        // A collar still drawing a ship in, or a latch still settling, holds rails warp back.
+        engine.addRailsWarpGuard(docking::railsWarpBlockedReason);
 
         // orbital-mechanics
         universe = new RailsUniverse(engine);
@@ -200,8 +217,10 @@ public class GameWorld implements Disposable {
         // Keeps orbital's copy of the bubble anchor in step with physics, both ways.
         anchorBridge = new OrbitalAnchorBridge(physics, orbitalEvents);
         EncounterPredictor encounters = new EncounterPredictor(engine.getEcsEngine(), universe);
-        BubbleHandoff bubble = modules.bubble != null
-                ? modules.bubble : new RailsBubbleHandoff(physics, engine.getEcsEngine());
+        // A docked pair goes onto the rails as one body and comes back latched.
+        BubbleHandoff bubble = new DockingBubbleHandoff(modules.bubble != null
+                ? modules.bubble : new RailsBubbleHandoff(physics, engine.getEcsEngine()),
+                docking, physics, engine.getEcsEngine(), engine.getUuidRegistry());
         timeWarp = new TimeWarpController(engine, bubble, orbitalEvents,
                 universe, encounters, this::getPlayer);
         orbitalEvents.impacts.add((signal, event) -> onImpact(event));
@@ -300,6 +319,8 @@ public class GameWorld implements Disposable {
         bootstrap.beforeScripts(ctx -> CombatDefs.registerTypes(ctx.defs));
         // The interior first: the physics assembler takes the ship's mass from its grid.
         bootstrap.beforeScripts(InteriorGridData::install);
+        // Docking ports come from the chassis the interior was built from.
+        bootstrap.beforeScripts(DockingData::install);
         bootstrap.beforeScripts(ctx -> ShipPhysicsAssembler.register(ctx.factory, physics, gridMass(ctx)));
         // Weapons after the interior: each hardpoint is wired to the nearest weapon system.
         bootstrap.beforeScripts(ctx -> ShipWeaponsAssembler.register(ctx.factory, combatDefs));

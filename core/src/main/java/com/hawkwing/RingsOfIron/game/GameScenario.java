@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntityListener;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Array;
@@ -26,7 +27,10 @@ import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.OrbitMath;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
+import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.stationsdocking.DockingData;
+import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
 import java.nio.file.Path;
@@ -38,6 +42,9 @@ import java.util.List;
  * freighter docked at it, which macro-sim brings into the bubble; more traffic hauls between it and a
  * higher depot. The Moon orbits Earth with an ice mine around it that supplies Earth's stations with
  * water. Headless, so tests can start the same game.
+ *
+ * <p>Every station has a walkable interior from its type's blueprint and docking ports of all three
+ * sizes. Highport is turned so its Small ports face the player coming up from behind.
  */
 public class GameScenario {
     public static final String EARTH = "earth";
@@ -67,8 +74,10 @@ public class GameScenario {
     public final Array<Entity> contacts = new Array<>();
     public final String highport;
     public final String depot;
-    /** The ice mine in low lunar orbit. A plain economy node until stations get docking. */
+    /** The ice mine in low lunar orbit. */
     public final String lunarMine;
+    /** Highport's attitude: half a turn, so its Small ports face back along the orbit, towards the player. */
+    public static final float HIGHPORT_ANGLE = (float) Math.PI;
 
     private GameScenario(GameWorld world, Path assetsDir, Path modsDir) {
         this.world = world;
@@ -140,18 +149,46 @@ public class GameScenario {
                 contacts.removeValue(ship, true);
             }
         });
+        // A freighter at a station when it comes into the bubble is latched to a port there.
+        world.macroSim.bubble().addListener(new StationTraffic(world));
+        // Stations are marked while they are in the bubble.
+        world.engine.getEcsEngine().addEntityListener(
+                Family.all(StationComponent.class, KinematicTransientComponent.class).get(), new EntityListener() {
+                    @Override
+                    public void entityAdded(Entity station) {
+                        if (station.getComponent(TransformComponent.class) == null) station.add(new TransformComponent());
+                        ShipGridComponent g = station.getComponent(ShipGridComponent.class);
+                        float radius = g == null ? 20f : Math.max(g.width, g.height) * g.tileSize * 0.5f;
+                        station.add(new HudMarkerComponent(station.getComponent(StationComponent.class).name,
+                                HudMarkerComponent.Kind.STATION).radius(radius));
+                    }
+
+                    @Override
+                    public void entityRemoved(Entity station) {
+                        station.remove(HudMarkerComponent.class);
+                    }
+                });
         // Water is mined only at the Moon; both Earth stations need it.
-        highport = world.macroSim.addStation("Highport", stationType("agri_dome", 0), EARTH,
-                circular(ORBIT_RADIUS, 8e3 / ORBIT_RADIUS), 1);
-        depot = world.macroSim.addStation("Deepwell Depot", stationType("fuel_depot", 1), EARTH,
-                circular(ORBIT_RADIUS + 2_000e3, 2.5), 1);
-        lunarMine = world.macroSim.addStation("Shackleton Ice", stationType("ice_mine", 2), MOON,
-                circular(MU_MOON, R_MOON + 100e3, 0), 1);
+        highport = addStation("Highport", stationType("agri_dome", 0), EARTH,
+                circular(ORBIT_RADIUS, 8e3 / ORBIT_RADIUS), HIGHPORT_ANGLE);
+        depot = addStation("Deepwell Depot", stationType("fuel_depot", 1), EARTH,
+                circular(ORBIT_RADIUS + 2_000e3, 2.5), 0f);
+        lunarMine = addStation("Shackleton Ice", stationType("ice_mine", 2), MOON,
+                circular(MU_MOON, R_MOON + 100e3, 0), 0f);
         double hold = InteriorGridData.cargoBayVolume(content.defs, FREIGHTER_SHIP);
         world.macroSim.addFreighter("Hauler Kestrel", hold, 20_000, highport);
         for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), hold, 20_000, depot);
         for (int i = 0; i < 2; i++) world.macroSim.addFreighter("Lunar Hauler " + (i + 1), hold, 20_000, lunarMine);
         content.hooks.fireWorldReady();
+    }
+
+    /** A macro-sim station with its interior and docking ports from its type's blueprint. */
+    private String addStation(String name, String typeId, String parentUuid, StateVector state, float angle) {
+        String uuid = world.macroSim.addStation(name, typeId, parentUuid, state, 1);
+        StationComponent station = DockingData.buildStation(world.engine.getEntity(uuid), content.defs,
+                world.engine, name, typeId);
+        station.angle = angle;
+        return uuid;
     }
 
     /** Loads base data and mods and sets up a new game in {@code world}. */
@@ -205,7 +242,7 @@ public class GameScenario {
         contacts.clear();
         raider = null;
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(HudMarkerComponent.class).get())) {
-            if (e == player) continue;
+            if (e == player || e.getComponent(StationComponent.class) != null) continue;
             contacts.add(e);
             if (e.getComponent(HudMarkerComponent.class).kind == HudMarkerComponent.Kind.HOSTILE) raider = e;
         }

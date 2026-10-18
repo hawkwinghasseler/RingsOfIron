@@ -50,7 +50,7 @@ import com.ringsofiron.uihud.widgets.TrafficMap;
  * </pre>
  *
  * Keys handled by the HUD: E use console, Esc close console, map or market, V toggle exterior/interior view,
- * M toggle the traffic map (mouse wheel zooms it while open), T open the station market when in range.
+ * M toggle the traffic map (mouse wheel zooms it while open), T open the station market while docked.
  */
 public class UiHud implements Disposable {
     private final ViewportManager viewports;
@@ -287,7 +287,7 @@ public class UiHud implements Disposable {
         return threatOverlay;
     }
 
-    /** Feeds the station market window ([T] while in range of a station); null hides it. */
+    /** Feeds the station market window ([T] while docked at a station); null hides it. */
     public void setTrade(TradeProvider trade) {
         tradeWindow.setProvider(trade);
     }

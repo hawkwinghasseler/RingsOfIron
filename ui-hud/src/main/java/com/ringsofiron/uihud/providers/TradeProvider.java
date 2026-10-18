@@ -31,7 +31,7 @@ public interface TradeProvider {
     }
 
     final class TradeBoard {
-        /** Station the player can trade at; empty when none is in range. */
+        /** Station the player is docked at and can trade with; empty when not docked. */
         public String stationName = "";
         public double credits;
         /** Hold volume used and total, m³. */

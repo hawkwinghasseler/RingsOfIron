@@ -1,14 +1,16 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.economy.MarketQuote;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.uihud.providers.TradeProvider;
 
 /**
- * ui-hud's market window from macro-sim: the station the player's ship is in trading range of, its
- * board, and buying and selling with the credits and hold on the ship's {@link TraderComponent}.
+ * ui-hud's market window from macro-sim: the station the player's ship is docked at, its board, and
+ * buying and selling with the credits and hold on the ship's {@link TraderComponent}. Trading needs
+ * the ship latched to one of the station's docking ports.
  */
 public class MarketTrade implements TradeProvider {
     private final GameWorld world;
@@ -59,10 +61,9 @@ public class MarketTrade implements TradeProvider {
 
     private EconomyNode dockedStation() {
         Entity player = world.getPlayer();
-        String uuid = player == null ? null : world.universe.uuidOf(player);
-        if (uuid == null) return null;
-        String station = world.macroSim.dockableStation(uuid);
-        return station == null ? null : world.macroSim.station(station);
+        Entity station = player == null ? null : world.docking.dockedTo(player);
+        UuidComponent id = station == null ? null : station.getComponent(UuidComponent.class);
+        return id == null ? null : world.macroSim.station(id.id);
     }
 
     private TraderComponent trader() {
