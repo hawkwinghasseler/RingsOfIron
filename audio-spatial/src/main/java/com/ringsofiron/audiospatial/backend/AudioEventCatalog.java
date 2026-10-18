@@ -16,6 +16,12 @@ public class AudioEventCatalog {
     public static final String BREACH_HISS = "event:/hazards/breach_hiss";
     public static final String LASER = "event:/weapons/laser";
     public static final String HULL_IMPACT = "event:/impacts/hull";
+    public static final String AUTOCANNON = "event:/weapons/autocannon";
+    public static final String MISSILE_LAUNCH = "event:/weapons/missile_launch";
+    /** A missile's motor, looped on an emitter that follows the missile. */
+    public static final String MISSILE_FLIGHT = "event:/weapons/missile_flight";
+    /** A warhead going off. */
+    public static final String EXPLOSION = "event:/impacts/explosion";
     // Paths named in assets.toml's [audio_event] table (modding-data's AssetRegistry keys
     // evt_railgun_fire and evt_hull_breach)
     public static final String RAILGUN = "event:/weapons/railgun";
@@ -36,6 +42,10 @@ public class AudioEventCatalog {
         c.register(SoundEventDef.oneShot(DOOR, 0.35f, 2f, 40f, 0.8f));
         c.register(SoundEventDef.oneShot(LASER, 0.45f, 10f, 600f, 0.6f));
         c.register(SoundEventDef.oneShot(HULL_IMPACT, 1.2f, 20f, 1500f, 1f));
+        c.register(SoundEventDef.oneShot(AUTOCANNON, 0.18f, 10f, 700f, 0.7f));
+        c.register(SoundEventDef.oneShot(MISSILE_LAUNCH, 1.2f, 15f, 900f, 0.8f));
+        c.register(SoundEventDef.loop(MISSILE_FLIGHT, 8f, 500f, 0.5f));
+        c.register(SoundEventDef.oneShot(EXPLOSION, 2.5f, 40f, 3000f, 1f));
         c.register(SoundEventDef.oneShot(RAILGUN, 0.45f, 10f, 800f, 0.8f));
         c.register(SoundEventDef.loop(HULL_BREACH, 2f, 40f, 0.8f));
         return c;
