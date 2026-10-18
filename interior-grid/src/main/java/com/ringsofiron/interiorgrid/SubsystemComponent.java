@@ -43,6 +43,8 @@ public class SubsystemComponent implements Component {
     public float health = 1.0f;
     /** Whether this subsystem is currently receiving power. Set by PowerRoutingSystem. */
     public boolean powered = false;
+    /** The power circuit feeding this system, or null when unpowered. Set by PowerRoutingSystem; not saved. */
+    public transient PowerCircuit circuit;
 
     /** For deserialization only; the loader fills in the fields. */
     @SuppressWarnings("unused")
@@ -56,6 +58,16 @@ public class SubsystemComponent implements Component {
         }
         this.footprint = footprint;
         this.type = type;
+    }
+
+    /**
+     * Takes {@code joules} from this system's power circuit, all or nothing. False when the
+     * system is not operational or its circuit's store is short, as it is on a circuit fed
+     * by a damaged reactor or shared with other heavy loads. For a weapon, a shot's energy
+     * is its power draw times its cooldown.
+     */
+    public boolean tryDrawPower(double joules) {
+        return isOperational && circuit != null && circuit.tryDraw(joules);
     }
 
     public boolean isDestroyed() {

@@ -10,16 +10,19 @@ name = "Corvette"
 tile_size = 1.0
 origin_x = -5.0
 origin_y = -3.0
+# A turret mount beside each hardpoint in ships.toml (combat wires each weapon to
+# the nearest one): nose (8,2), port and starboard beams (6,4) and (6,1), the
+# launcher (3,4). The weapons console sits aft, away from every hardpoint.
 rows = [
   "##########",
-  "#HH....RR#",
-  "#......RR#",
-  "#L.++++..#",
-  "#L.....CC#",
+  "#HHT..TRR#",
+  "#WW....RR#",
+  "#L.++++.T#",
+  "#L....TCC#",
   "##########",
 ]
-mounts = [ { type = "TURRET_MOUNT", size = "S", x = 3, y = 3, rotation = 0 } ]
-coverings = [ { covering = "CARPET", x = 2, y = 1, width = 4, height = 1 } ]
+# Carpet through the crew spaces, so a fire here has something to burn
+coverings = [ { covering = "CARPET", x = 1, y = 1, width = 6, height = 4 } ]
 
 [chassis.freighter]
 name = "Light Freighter"

@@ -193,7 +193,15 @@ audio-spatial's `InteriorHazardAudioSystem` reads every grid after the hazard ti
 - Intact full-tile walls and tiles at integrity 0 do not conduct.
 - Closed edge walls block power, except where a conduit runs on both sides of the wall (a conduit passes through a thin wall).
 - A system is powered if any tile of its footprint is powered. It is operational when it is switched on (`SubsystemComponent.switchedOn`), powered and not disabled by damage (`health >= SubsystemComponent.DISABLE_THRESHOLD`, 0.3). Switching a reactor off is not damage: it powers back up as soon as it is switched on.
-- It runs on a 1 s fixed tick, or on the next frame when damage code sets `ShipGridComponent.gridDirty`.
+- It reroutes on a 1 s fixed tick, or on the next frame when damage code sets `ShipGridComponent.gridDirty`.
+
+### Circuits and power draw
+Each connected part of the grid with a working reactor in it is a `PowerCircuit`, listed on `ShipGridComponent.circuits` and set on each powered system as `SubsystemComponent.circuit`.
+- A reactor adds its rated output to its circuit (S 1 MW, M 3 MW, L 10 MW, XL 30 MW), scaled by its health, so a reactor at half health gives half the power.
+- The circuit stores `STORE_SECONDS` (2 s) of its output and recharges every 0.25 s.
+- Burst loads such as weapons call `SubsystemComponent.tryDrawPower(joules)`. It takes the energy all or nothing and is false when the system is not operational or the store is short. `PowerCircuit.draw(joules)` takes what it can. For a weapon, a shot's energy is its `power_draw` times its cooldown, so the corvette's 3 MW reactor keeps its railgun (2 MW) firing at full rate but not at half health.
+- A cut conduit that strands a turret on a part of the grid with no reactor leaves it with no circuit and no power.
+- Rerouting keeps the same circuit object, and its stored energy, while the layout is unchanged. Circuits are not saved; a loaded game starts with full stores. Rails warp ends with full stores.
 
 ## Ticks and Time Warp
 All three interior systems are core-engine `FixedLogicSystem`s, run after exterior physics in this order: `PowerRoutingSystem` (priority 30, every 1 s), `GridHazardSystem` (31, every 0.25 s), then `LifeSupportSystem` (32, every 0.25 s).
