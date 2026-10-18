@@ -50,9 +50,11 @@ public class AudioListenerSync extends EntitySystem {
         listener.ship = ship;
         listener.mode = mode;
 
-        ShipGridComponent grid = grids.get(ship);
-        if (mode == AudioListenerComponent.Mode.INTERIOR && grid != null
-                && avatar.getAvatarShip() == ship && avatar.getAvatarTile(tile)) {
+        // Inside, the listener is wherever the avatar walks, aboard a docked craft too
+        Entity aboard = avatar.getAvatarShip();
+        ShipGridComponent grid = aboard == null ? null : grids.get(aboard);
+        if (mode == AudioListenerComponent.Mode.INTERIOR && grid != null && avatar.getAvatarTile(tile)) {
+            listener.ship = aboard;
             listener.localX = grid.gridOriginLocal.x + tile.x * grid.tileSize;
             listener.localY = grid.gridOriginLocal.y + tile.y * grid.tileSize;
         }

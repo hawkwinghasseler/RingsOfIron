@@ -9,16 +9,19 @@ import com.ringsofiron.interiorgrid.MountFootprint.MountSize;
  */
 public final class DockingTuning {
     public static final DockingTuning SMALL = new DockingTuning(
-            3f, 3_000f, 2f, 6_000f, 2f, 150f, 0.3f, 6e5f, 6e5f);
+            3f, 3_000f, 1f, 6_000f, 1f, 150f, 0.12f, 6e5f, 6e5f);
     public static final DockingTuning MEDIUM = new DockingTuning(
-            4f, 8_000f, 2.5f, 16_000f, 3f, 400f, 0.4f, 1.5e6f, 2.5e6f);
+            4f, 8_000f, 1.25f, 16_000f, 1.5f, 400f, 0.15f, 1.5e6f, 2.5e6f);
     public static final DockingTuning LARGE = new DockingTuning(
-            5f, 20_000f, 3f, 40_000f, 4f, 900f, 0.5f, 4e6f, 8e6f);
+            5f, 20_000f, 1.5f, 40_000f, 2f, 900f, 0.2f, 4e6f, 8e6f);
 
     /** Gap between the two collar faces that still counts as touching, meters. Box2D keeps about 0.15 m. */
     public static final float LATCH_GAP = 0.35f;
-    /** Largest angle between the two ports' facings that still latches, radians (6 degrees). */
-    public static final float LATCH_ANGLE = 0.105f;
+    /**
+     * Largest angle between the two faces that still latches or captures, radians (2 degrees).
+     * Tight, so docked craft line up as one deck; magnets and the collar's tilt square them up first.
+     */
+    public static final float LATCH_ANGLE = 0.035f;
     /** Fastest the two collar faces may close and still latch, m/s. */
     public static final float LATCH_SPEED = 1.0f;
     /** Ports only attract when facing each other to within this many radians of head-on (60 degrees). */
@@ -31,8 +34,25 @@ public final class DockingTuning {
     public static final float CONTRACT_SPEED = 0.3f;
     /** Collar spring stiffness and damping, as Box2D frequency (Hz) and damping ratio. */
     public static final float SPRING_HZ = 4f, SPRING_DAMPING = 0.7f;
-    /** Extension below which a contracting collar has locked, meters. */
-    public static final float LOCK_EXTENSION = 0.05f;
+    /** Farthest an active collar head tilts off its port's axis, radians (20 degrees). */
+    public static final float MAX_TILT = 0.35f;
+    /** How fast the tilt spring turns the head back square, per radian of tilt, 1/s. */
+    public static final float TILT_RATE = 3f;
+    /**
+     * Torque centering a free collar head, as a share of its magnet's pull times half the port
+     * width: weak, so the magnet can tilt the head to the other port's angle.
+     */
+    public static final float TILT_FREE = 0.25f;
+    /** Torque a captured head's tilt spring turns the craft square with, as a share of the break torque. */
+    public static final float TILT_HOLD = 0.15f;
+    /** Friction of collars and collar heads: low, so a collar slides along the other port instead of sticking. */
+    public static final float COLLAR_FRICTION = 0.02f;
+    /**
+     * Extension below which a contracting collar has locked, meters: where the two craft's own
+     * collars meet (Box2D keeps touching shapes about 0.2 m apart). That contact is the collar's
+     * hard stop; the seating then closes the rest.
+     */
+    public static final float LOCK_EXTENSION = 0.3f;
     /** Seating ends and the weld goes rigid once the pose is this close: meters and radians. */
     public static final float SEATED_DISTANCE = 0.02f, SEATED_ANGLE = 0.01f;
     /** Longest the seating may take before the weld is made anyway, seconds. */

@@ -15,6 +15,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.CircleShape;
@@ -35,6 +36,7 @@ import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.orbital.warp.TimeWarpController;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -106,6 +108,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private float noticeTime;
 
     private final Array<Body> bodies = new Array<>();
+    /** The craft whose decks the interior view draws. */
+    private final Array<Entity> decks = new Array<>();
+    private final Vector2 followAt = new Vector2();
     private final Vector2 tmp = new Vector2();
     private final Color color = new Color();
     private final float[] polygon = new float[16];
@@ -187,7 +192,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         noticeTime -= delta;
 
         TransformComponent pt = TRANSFORMS.get(game.player);
-        if (pt != null) viewports.follow(pt.x, pt.y);
+        Vector2 walker = hud.getViewMode().getMode() == ViewMode.INTERIOR ? avatarWorld(followAt) : null;
+        if (walker != null) viewports.follow(walker.x, walker.y);
+        else if (pt != null) viewports.follow(pt.x, pt.y);
 
         Gdx.gl.glClearColor(0.02f, 0.02f, 0.05f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -433,37 +440,64 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
     }
 
-    /** The deck plan at the ship's pose, in the minimap's colors, with its cargo and everyone aboard. */
+    /**
+     * The deck plan of the craft the avatar is aboard, and of any craft docked to it, each at its
+     * own pose, in the minimap's colors, with the cargo and everyone aboard.
+     */
     private void drawInterior() {
-        TransformComponent pt = TRANSFORMS.get(game.player);
-        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
-        if (pt == null || grid == null) return;
-        float s = grid.tileSize;
-        shapes.identity();
-        shapes.translate(pt.x, pt.y, 0f);
-        shapes.rotate(0f, 0f, 1f, pt.rotation);
+        Entity aboard = world.avatar.getAvatarShip();
+        if (aboard == null) aboard = game.player;
+        ShipGridComponent grid = aboard.getComponent(ShipGridComponent.class);
+        if (grid == null) return;
+        decks.clear();
+        decks.add(aboard);
+        for (GridLink link : grid.links) {
+            if (!decks.contains(link.otherShip, true)) decks.add(link.otherShip);
+        }
         Gdx.gl.glEnable(GL20.GL_BLEND);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         boolean blink = hud.getMinimap().blinkOn();
-        for (int y = 0; y < grid.height; y++) {
-            for (int x = 0; x < grid.width; x++) {
-                TileShade.fill(grid.getTile(x, y), blink, color);
-                if (color.a <= 0f) continue;
-                shapes.setColor(color);
-                Vector2 p = grid.tileToLocal(x, y);
-                shapes.rect(p.x - s / 2f + 0.03f, p.y - s / 2f + 0.03f, s - 0.06f, s - 0.06f);
+        for (Entity ship : decks) {
+            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+            Body body = world.docking.bodyOf(ship);
+            if (g == null || body == null) continue;
+            Vector2 at = PhysicsManager.getPosition(body, tmp);
+            shapes.identity();
+            shapes.translate(at.x, at.y, 0f);
+            shapes.rotate(0f, 0f, 1f, body.getAngle() * MathUtils.radiansToDegrees);
+            float s = g.tileSize;
+            for (int y = 0; y < g.height; y++) {
+                for (int x = 0; x < g.width; x++) {
+                    TileShade.fill(g.getTile(x, y), blink, color);
+                    if (color.a <= 0f) continue;
+                    shapes.setColor(color);
+                    Vector2 p = g.tileToLocal(x, y);
+                    shapes.rect(p.x - s / 2f + 0.03f, p.y - s / 2f + 0.03f, s - 0.06f, s - 0.06f);
+                }
             }
-        }
-        drawCargo(grid, game.player.getComponent(CargoHoldComponent.class));
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
-            GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-            if (pos.ship != game.player) continue;
-            shapes.setColor(e == game.avatar ? Color.WHITE : Color.GOLD);
-            shapes.circle(grid.gridOriginLocal.x + pos.x * s, grid.gridOriginLocal.y + pos.y * s, 0.3f * s, 12);
+            drawCargo(g, ship.getComponent(CargoHoldComponent.class));
+            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
+                if (pos.ship != ship) continue;
+                shapes.setColor(e == game.avatar ? Color.WHITE : Color.GOLD);
+                shapes.circle(g.gridOriginLocal.x + pos.x * s, g.gridOriginLocal.y + pos.y * s, 0.3f * s, 12);
+            }
         }
         shapes.end();
         shapes.identity();
         Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    /** Where the avatar stands, world meters, or null when it is aboard nothing in the bubble. */
+    private Vector2 avatarWorld(Vector2 out) {
+        Entity aboard = world.avatar.getAvatarShip();
+        GridPositionComponent pos = game.avatar == null ? null : game.avatar.getComponent(GridPositionComponent.class);
+        ShipGridComponent g = aboard == null ? null : aboard.getComponent(ShipGridComponent.class);
+        Body body = aboard == null ? null : world.docking.bodyOf(aboard);
+        if (pos == null || g == null || body == null) return null;
+        Vector2 local = pos.toShipLocal(g, out).scl(PhysicsManager.UNITS_PER_METER);
+        Vector2 w = body.getWorldPoint(local);
+        return out.set(w.x * PhysicsManager.METERS_PER_UNIT, w.y * PhysicsManager.METERS_PER_UNIT);
     }
 
     /**
@@ -520,7 +554,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Actor shipPanel = hud.getMinimapPanel();
         float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
         font.draw(batch, hud.getViewMode().getMode() == ViewMode.INTERIOR
-                ? "WASD walk   E use console   V outside view   F5 save  F9 load   Esc quit"
+                ? "WASD walk (through an open docked port too)   E use console   V outside view   F5 save  F9 load   Esc quit"
                 : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  F5 save  F9 load  Esc quit",
                 hintX, 24f);
         if (notice != null && noticeTime > 0f) {

@@ -71,7 +71,7 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
         float localY = strafe * thruster.lateralThrust;
         float torque = turn * thruster.maxTorque;
 
-        if (turn == 0f && control.rotationAssist) {
+        if (turn == 0f && control.rotationAssist && !control.assistHeld) {
             // Torque that would cancel the current spin in one tick, within RCS limits.
             float stopTorque = -PhysicsManager.getInertia(body) * body.getAngularVelocity() / deltaTime;
             torque = MathUtils.clamp(stopTorque, -thruster.maxTorque, thruster.maxTorque);

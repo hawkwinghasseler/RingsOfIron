@@ -101,10 +101,15 @@ class StationDockingTest {
         for (int i = 0; i < 120; i++) world.update(FRAME);
         assertSame(highport, world.docking.dockedTo(game.player), "still docked after loading");
         assertTrue(world.docking.isRigid(game.player), "welded again");
+        ShipGridComponent deck = game.player.getComponent(ShipGridComponent.class);
+        assertTrue(deck.links.size > 0, "the walkway through the ports is joined again");
+        assertTrue(deck.links.first().canCross(), "both port doors open again");
+        assertSame(highport, deck.links.first().otherShip);
 
         assertTrue(world.docking.undock(game.player));
         for (int i = 0; i < 120; i++) world.update(FRAME);
         assertNull(world.docking.dockedTo(game.player));
+        assertEquals(0, deck.links.size, "undocked: the walkway is gone");
         board.clear();
         market.collect(board);
         assertFalse(board.isDocked(), "undocked: the market closes");

@@ -22,16 +22,21 @@ import com.badlogic.gdx.physics.box2d.joints.DistanceJointDef;
 import com.badlogic.gdx.physics.box2d.joints.MotorJointDef;
 import com.badlogic.gdx.physics.box2d.joints.PrismaticJoint;
 import com.badlogic.gdx.physics.box2d.joints.PrismaticJointDef;
+import com.badlogic.gdx.physics.box2d.joints.RevoluteJoint;
+import com.badlogic.gdx.physics.box2d.joints.RevoluteJointDef;
+import com.badlogic.gdx.physics.box2d.joints.RopeJointDef;
 import com.badlogic.gdx.physics.box2d.joints.WeldJointDef;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.IdentityMap;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.ringsofiron.coreengine.UuidRegistry;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
@@ -86,6 +91,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     private final ComponentMapper<StationComponent> stationMapper = ComponentMapper.getFor(StationComponent.class);
     private final ComponentMapper<ShipGridComponent> gridMapper = ComponentMapper.getFor(ShipGridComponent.class);
     private final ComponentMapper<SubsystemComponent> subsystemMapper = ComponentMapper.getFor(SubsystemComponent.class);
+    private final ComponentMapper<FlightControlComponent> controlMapper = ComponentMapper.getFor(FlightControlComponent.class);
 
     /** Latched pairs, under both of their ports. */
     private final IdentityMap<DockingPort, Link> links = new IdentityMap<>();
@@ -116,6 +122,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         float strainForce, strainTorque;
         /** Put {@link #a} straight onto {@link #b} at the latched pose before the first weld. */
         boolean snap;
+        /** The walkway between the two grids while welded; see {@link DockLinks}. */
+        final Array<GridLink> gridLinks = new Array<>();
 
         Link(Entity a, int portA, DockingPort pa, Entity b, int portB, DockingPort pb) {
             this.a = a;
@@ -295,6 +303,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         DockingPort pa = portsMapper.get(a).get(portA);
         DockingPort pb = portsMapper.get(b).get(portB);
         latchRecords(a, portA, pa, b, portB, pb, DockingPort.State.DOCKED, true);
+        pa.consented = true;
+        pb.consented = true;
         Link link = linkFor(a, portA, pa, b, portB, pb);
         link.snap = true;
     }
@@ -420,6 +430,19 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         for (int i = linkList.size - 1; i >= 0; i--) {
             if (i < linkList.size) updateLink(linkList.get(i));
         }
+        for (int i = 0; i < vessels.size(); i++) holdAssist(vessels.get(i));
+    }
+
+    /** While a collar or the seating turns a craft into line, its rotation assist must not hold it back. */
+    private void holdAssist(Entity e) {
+        FlightControlComponent control = controlMapper.get(e);
+        if (control == null) return;
+        boolean held = false;
+        for (DockingPort p : portsMapper.get(e).ports) {
+            Link link = p.state == DockingPort.State.DOCKED ? links.get(p) : null;
+            if (p.state == DockingPort.State.CAPTURED || (link != null && !link.rigid)) held = true;
+        }
+        control.assistHeld = held;
     }
 
     /** Clearance runs out; power lost drops the magnets. */
@@ -448,7 +471,9 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             return;
         }
         p.extension = p.guide.getJointTranslation() * M;
-        if (p.state == DockingPort.State.CAPTURED) {
+        boolean captured = p.state == DockingPort.State.CAPTURED;
+        steerTilt(p, captured);
+        if (captured) {
             contract(e, index, p);
             return;
         }
@@ -459,6 +484,25 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         p.springTarget = Math.abs(goal - p.springTarget) <= step ? goal : p.springTarget + Math.signum(goal - p.springTarget) * step;
         p.spring.setLength(p.springTarget * U);
         if (!wantOut && p.springTarget <= rest + 1e-4f && p.extension < 0.02f) destroyHead(p);
+    }
+
+    /**
+     * The tilt spring: turns the head back square on its carriage. Free, it is weak enough for
+     * the head's magnet to lay it flat on the other port; captured, it is what turns the craft
+     * into line while the collar draws in.
+     */
+    private static void steerTilt(DockingPort p, boolean captured) {
+        if (p.tilt == null) return;
+        DockingTuning t = p.tuning();
+        float torque = captured ? DockingTuning.TILT_HOLD * t.breakTorque
+                : DockingTuning.TILT_FREE * t.headForce * p.width * 0.5f;
+        p.tilt.setMaxMotorTorque(torque * U * U);
+        p.tilt.setMotorSpeed(-p.tilt.getJointAngle() * DockingTuning.TILT_RATE);
+    }
+
+    /** How far the head is turned off its port's axis now, radians; 0 with no head. */
+    static float tiltOf(DockingPort p) {
+        return p.tilt == null ? 0f : p.tilt.getJointAngle();
     }
 
     private void createHead(Entity owner, DockingPort p, Body body) {
@@ -473,14 +517,23 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         def.position.set(at.x * U, at.y * U);
         def.angle = body.getAngle();
         def.allowSleep = false;
+        // The carriage runs on the guide and carries the head's pivot; it has no shape of its own.
+        Body carriage = physics.getWorld().createBody(def);
+        MassData mass = new MassData();
+        mass.mass = t.headMass * 0.25f;
+        mass.I = mass.mass * (p.width * U) * (p.width * U) / 12f;
+        carriage.setMassData(mass);
+        carriage.setUserData(owner);
+        PhysicsManager.setVelocity(carriage, vel.x, vel.y);
+        carriage.setAngularVelocity(body.getAngularVelocity());
         Body head = physics.getWorld().createBody(def);
         PolygonShape shape = new PolygonShape();
         shape.setAsBox(p.width * 0.5f * U, d * 0.5f * U, new Vector2(), MathUtils.atan2(p.normalX, -p.normalY));
         FixtureDef fd = new FixtureDef();
         fd.shape = shape;
         fd.density = t.headMass / (p.width * d * U * U);
-        fd.friction = 0.3f;
-        fd.restitution = 0.05f;
+        fd.friction = DockingTuning.COLLAR_FRICTION;
+        fd.restitution = 0f;
         fd.filter.categoryBits = (short) (ownerCategory(body) | CollisionCategories.CATEGORY_COLLAR);
         fd.filter.maskBits = CollisionCategories.MASK_ALL;
         head.createFixture(fd);
@@ -491,7 +544,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
 
         PrismaticJointDef guide = new PrismaticJointDef();
         guide.bodyA = body;
-        guide.bodyB = head;
+        guide.bodyB = carriage;
         guide.localAnchorA.set(cx * U, cy * U);
         guide.localAnchorB.set(0f, 0f);
         guide.localAxisA.set(p.normalX, p.normalY);
@@ -503,9 +556,32 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         p.guide = (PrismaticJoint) physics.getWorld().createJoint(guide);
 
         float rest = SPRING_BASE + d * 0.5f;
+        RevoluteJointDef tilt = new RevoluteJointDef();
+        tilt.bodyA = carriage;
+        tilt.bodyB = head;
+        tilt.localAnchorA.set(0f, 0f);
+        tilt.localAnchorB.set(0f, 0f);
+        tilt.referenceAngle = 0f;
+        tilt.enableLimit = true;
+        tilt.lowerAngle = -DockingTuning.MAX_TILT;
+        tilt.upperAngle = DockingTuning.MAX_TILT;
+        tilt.enableMotor = true;
+        tilt.collideConnected = false;
+        p.tilt = (RevoluteJoint) physics.getWorld().createJoint(tilt);
+
+        // Slack all the way out: it is only there so the head never collides with its own hull
+        RopeJointDef tether = new RopeJointDef();
+        tether.bodyA = body;
+        tether.bodyB = head;
+        tether.localAnchorA.set(cx * U, cy * U);
+        tether.localAnchorB.set(0f, 0f);
+        tether.maxLength = (t.maxExtension + p.width) * U;
+        tether.collideConnected = false;
+        p.tether = physics.getWorld().createJoint(tether);
+
         DistanceJointDef spring = new DistanceJointDef();
         spring.bodyA = body;
-        spring.bodyB = head;
+        spring.bodyB = carriage;
         spring.localAnchorA.set((p.edgeX - p.normalX * SPRING_BASE) * U, (p.edgeY - p.normalY * SPRING_BASE) * U);
         spring.localAnchorB.set(0f, 0f);
         spring.length = rest * U;
@@ -515,17 +591,23 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         p.spring = (DistanceJoint) physics.getWorld().createJoint(spring);
         p.springTarget = rest;
         p.head = head;
+        p.carriage = carriage;
         p.extension = 0f;
+        steerTilt(p, false);
     }
 
-    /** The captured collar's slider draws the craft together; home means latched. */
+    /**
+     * The captured collar's slider draws the craft together while its tilt spring turns them into
+     * line. Home and square means latched; home but still turned waits for the spring.
+     */
     private void contract(Entity e, int index, DockingPort p) {
-        if (p.extension < DockingTuning.LOCK_EXTENSION) {
+        boolean square = Math.abs(tiltOf(p)) < DockingTuning.LATCH_ANGLE;
+        if (p.extension < DockingTuning.LOCK_EXTENSION && square) {
             lock(e, index, p);
             return;
         }
         float speed = Math.min(DockingTuning.CONTRACT_SPEED, 2f * p.extension + 0.02f);
-        p.guide.setMotorSpeed(-speed * U);
+        p.guide.setMotorSpeed(p.extension < DockingTuning.LOCK_EXTENSION ? 0f : -speed * U);
     }
 
     private void lock(Entity e, int index, DockingPort p) {
@@ -655,8 +737,15 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     private void capture(Entity a, int portA, DockingPort pa, Entity b, int portB, DockingPort pb) {
         Body other = bodyOf(b);
         WeldJointDef weld = new WeldJointDef();
-        Vector2 at = worldPoint(pa.head, pa.normalX * pa.collarDepth * 0.5f, pa.normalY * pa.collarDepth * 0.5f, v0);
-        weld.initialize(pa.head, other, new Vector2(at.x * U, at.y * U));
+        // Face on face and square: the weld pulls the head flush onto the port it caught
+        float hx = pa.normalX * pa.collarDepth * 0.5f, hy = pa.normalY * pa.collarDepth * 0.5f;
+        weld.bodyA = pa.head;
+        weld.bodyB = other;
+        weld.localAnchorA.set(hx * U, hy * U);
+        weld.localAnchorB.set(pb.faceX() * U, pb.faceY() * U);
+        float now = other.getAngle() - pa.head.getAngle();
+        float off = matedAngle(pa, pb) - now;
+        weld.referenceAngle = now + MathUtils.atan2(MathUtils.sin(off), MathUtils.cos(off));
         weld.collideConnected = false;
         pa.capture = physics.getWorld().createJoint(weld);
         destroyJoint(pa.spring);
@@ -686,8 +775,15 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         pb.partnerPort = portA;
         pa.permitted = permitted;
         pb.permitted = permitted;
+        pa.consented = agreed(pa, b);
+        pb.consented = agreed(pb, a);
         pa.clearanceUntil = Double.NaN;
         pb.clearanceUntil = Double.NaN;
+    }
+
+    /** The port's own side wanted this dock: armed by its crew, or for the craft now docking. */
+    private boolean agreed(DockingPort p, Entity other) {
+        return p.armed && (p.armedFor == null || p.armedFor.equals(uuidOf(other)));
     }
 
     /** A saved latch: find its other half and hold it again. */
@@ -753,9 +849,10 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             boolean seated = seated(link, ba, bb);
             if (seated || link.seatingTime > DockingTuning.SEATING_TIME) {
                 destroyJoint(link.joint);
-                // Out of time: weld where they are rather than snap them into line
-                if (seated) weld(link, ba, bb);
-                else weldAsIs(link, ba, bb);
+                // The last of it (or, out of time, what the seating could not close) is put
+                // straight, so the two decks always line up as one
+                seat(link, ba, bb);
+                weld(link, ba, bb);
             }
             return;
         }
@@ -778,12 +875,10 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         makeWeld(link, weld);
     }
 
-    /** Welds the pair in the pose they are in now. */
-    private void weldAsIs(Link link, Body ba, Body bb) {
-        WeldJointDef weld = new WeldJointDef();
-        Vector2 at = ba.getWorldPoint(v0.set(link.pa.faceX() * U, link.pa.faceY() * U));
-        weld.initialize(ba, bb, new Vector2(at));
-        makeWeld(link, weld);
+    /** Puts whichever of the pair moves freely exactly at the latched pose against the other. */
+    private void seat(Link link, Body ba, Body bb) {
+        if (ba.getType() == BodyDef.BodyType.DynamicBody) snap(link, ba, bb);
+        else if (bb.getType() == BodyDef.BodyType.DynamicBody) snapOnto(bb, link.pb, ba, link.pa);
     }
 
     private void makeWeld(Link link, WeldJointDef weld) {
@@ -792,6 +887,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         link.rigid = true;
         link.strainForce = 0f;
         link.strainTorque = 0f;
+        ShipGridComponent ga = gridMapper.get(link.a), gb = gridMapper.get(link.b);
+        if (ga != null && gb != null) DockLinks.join(link, link.a, weld.bodyA, ga, link.b, weld.bodyB, gb);
     }
 
     /** Angle of b minus angle of a when the two ports are latched: the faces point at each other. In (-pi, pi]. */
@@ -828,10 +925,15 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
 
     /** Puts a onto b at the latched pose, moving with b. */
     private void snap(Link link, Body ba, Body bb) {
-        float angleA = bb.getAngle() - matedAngle(link.pa, link.pb);
-        Vector2 fb = worldPoint(bb, link.pb.faceX(), link.pb.faceY(), v1);
+        snapOnto(ba, link.pa, bb, link.pb);
+    }
+
+    /** Puts {@code ba} with port {@code pa} face to face on {@code bb}'s port {@code pb}, moving with bb. */
+    private void snapOnto(Body ba, DockingPort pa, Body bb, DockingPort pb) {
+        float angleA = bb.getAngle() - matedAngle(pa, pb);
+        Vector2 fb = worldPoint(bb, pb.faceX(), pb.faceY(), v1);
         float c = MathUtils.cos(angleA), s = MathUtils.sin(angleA);
-        float fx = link.pa.faceX(), fy = link.pa.faceY();
+        float fx = pa.faceX(), fy = pa.faceY();
         float ox = fb.x - (c * fx - s * fy), oy = fb.y - (s * fx + c * fy);
         Vector2 vel = velocityAt(bb, v2.set(ox, oy), v3);
         PhysicsManager.setPosition(ba, ox, oy, angleA);
@@ -886,6 +988,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     private void dropLink(Link link, boolean releasePorts) {
         destroyJoint(link.joint);
         link.joint = null;
+        DockLinks.unjoin(link, gridMapper.get(link.a), gridMapper.get(link.b), true);
         links.remove(link.pa);
         links.remove(link.pb);
         linkList.removeValue(link, true);
@@ -910,9 +1013,13 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
 
     private void destroyHead(DockingPort p) {
         if (p.head != null) physics.destroyBody(p.head);
+        if (p.carriage != null) physics.destroyBody(p.carriage);
         p.head = null;
+        p.carriage = null;
         p.guide = null;
         p.spring = null;
+        p.tilt = null;
+        p.tether = null;
         p.capture = null;
         p.extension = 0f;
     }
@@ -983,8 +1090,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         fd.shape = shape;
         // Density 0 leaves the craft's mass (often set from its grid) alone.
         fd.density = 0f;
-        fd.friction = 0.3f;
-        fd.restitution = 0.05f;
+        fd.friction = DockingTuning.COLLAR_FRICTION;
+        fd.restitution = 0f;
         fd.filter.categoryBits = (short) (ownerCategory(body) | CollisionCategories.CATEGORY_COLLAR);
         fd.filter.maskBits = CollisionCategories.MASK_ALL;
         Fixture f = body.createFixture(fd);

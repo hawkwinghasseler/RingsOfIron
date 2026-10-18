@@ -154,6 +154,9 @@ On top of the bulk flow, rooms joined by an opening **diffuse** into each other.
 
 After each step the net flow through every opening is published on `ShipGridComponent.airflow` as `AirflowEdge`s: the air tile on one side, the direction of the opening (or none for a hole in the deck), the compartments on both sides, and the air and smoke leaving through it per second. An opening between two rooms is listed once from each side. Effects, crew and anything else that reacts to draughts read this list.
 
+### Links to another grid
+A `GridLink` joins the outer edge of one tile to the outer edge of a tile on another craft's grid, as a pair (one on each grid, each the other's `mate`, listed in `ShipGridComponent.links`). Docking makes one per pair of facing port-opening tiles. A linked edge is never an opening to space. When the edge walls on both sides are open, air moves between the two compartments behind them with the same bulk flow and diffusion as an opening between rooms, one tile width per link (or a damaged closed door's leak), after every grid has taken its own step; time-warp catch-up pools the linked rooms. The player's avatar walks over a link when neither door blocks it and lands just inside the facing tile on the other grid, at the same spot along the edge (`GridLink.carryAcross`), now aboard the other craft. AI crew paths, line of sight, sound and fire do not cross links yet. Links are runtime only and not saved; whoever made them makes them again after a load.
+
 There is no "vacuum" state that spreads. A vented room is simply a compartment with no air left. A sealed bulkhead or closed door is airtight, so sealing between a breach and a room stops that room's loss at once.
 
 ## Heat

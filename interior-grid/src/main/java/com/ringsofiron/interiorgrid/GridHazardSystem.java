@@ -157,6 +157,58 @@ public class GridHazardSystem extends FixedLogicSystem {
     protected void updateFixed(float deltaTime) {
         if (entities == null) return;
         for (int i = 0; i < entities.size(); i++) step(gridMapper.get(entities.get(i)), deltaTime);
+        for (int i = 0; i < entities.size(); i++) exchangeAcrossLinks(gridMapper.get(entities.get(i)), deltaTime);
+    }
+
+    /**
+     * Air through this grid's {@link GridLink}s into docked craft: the same pressure-driven flow
+     * and mixing as between two rooms of one ship, for each pair of rooms the links join. Runs
+     * once per pair of links, from the primary side. Call after both grids have stepped.
+     */
+    public void exchangeAcrossLinks(ShipGridComponent grid, float dt) {
+        for (int i = 0; i < grid.links.size; i++) {
+            GridLink l = grid.links.get(i);
+            if (!l.primary) continue;
+            float w = l.flowWidth();
+            if (w <= 0f) continue;
+            Compartment a = grid.compartmentAt(l.x, l.y), b = l.other.compartmentAt(l.ox, l.oy);
+            if (a != null && b != null) exchange(a, b, w, dt);
+        }
+    }
+
+    /** Pressure-driven flow, then mixing, between two rooms joined by an opening {@code width} tiles wide. */
+    static void exchange(Compartment a, Compartment b, float width, float dt) {
+        double ka = a.kPaPerMole(), kb = b.kPaPerMole();
+        double ma = a.totalMoles(), mb = b.totalMoles();
+        double pa = ma * ka, pb = mb * kb;
+        Compartment from = pa >= pb ? a : b, to = from == a ? b : a;
+        double mFrom = from == a ? ma : mb;
+        double dp = Math.abs(pa - pb);
+        if (dp > 1e-9 && mFrom > 0) {
+            double q = FLOW_COEFFICIENT * width * dp * dt;
+            q = Math.min(q, 0.5 * dp / (ka + kb));
+            q = Math.min(q, 0.9 * mFrom);
+            double f = q / mFrom;
+            to.oxygen += from.oxygen * f;
+            to.nitrogen += from.nitrogen * f;
+            to.carbonDioxide += from.carbonDioxide * f;
+            to.smoke += from.smoke * f;
+            from.scaleContents(1.0 - f);
+        }
+        ma = a.totalMoles();
+        mb = b.totalMoles();
+        if (ma <= 0 || mb <= 0) return;
+        double density = 0.5 * (ma / a.volume + mb / b.volume);
+        double swap = Math.min(DIFFUSION_COEFFICIENT * width * density * dt, 0.25 * ma * mb / (ma + mb));
+        double fa = swap / ma, fb = swap / mb;
+        double dO2 = a.oxygen * fa - b.oxygen * fb;
+        double dN2 = a.nitrogen * fa - b.nitrogen * fb;
+        double dCO2 = a.carbonDioxide * fa - b.carbonDioxide * fb;
+        double dSmoke = a.smoke * fa - b.smoke * fb;
+        a.oxygen -= dO2; b.oxygen += dO2;
+        a.nitrogen -= dN2; b.nitrogen += dN2;
+        a.carbonDioxide -= dCO2; b.carbonDioxide += dCO2;
+        a.smoke -= dSmoke; b.smoke += dSmoke;
     }
 
     /**
@@ -170,6 +222,29 @@ public class GridHazardSystem extends FixedLogicSystem {
     protected void catchUp(long ticks, double seconds) {
         if (entities == null) return;
         for (int i = 0; i < entities.size(); i++) settle(gridMapper.get(entities.get(i)), seconds);
+        // Rooms joined across a dock have long since mixed too
+        for (int i = 0; i < entities.size(); i++) {
+            ShipGridComponent grid = gridMapper.get(entities.get(i));
+            for (int k = 0; k < grid.links.size; k++) {
+                GridLink l = grid.links.get(k);
+                if (!l.primary || l.flowWidth() <= 0f) continue;
+                Compartment a = grid.compartmentAt(l.x, l.y), b = l.other.compartmentAt(l.ox, l.oy);
+                if (a != null && b != null && a != b) pool(a, b);
+            }
+        }
+    }
+
+    /** Spreads the gas of two rooms over both, by volume. */
+    private static void pool(Compartment a, Compartment b) {
+        double volume = a.volume + b.volume;
+        if (volume <= 0) return;
+        double fa = a.volume / volume, fb = b.volume / volume;
+        double o2 = a.oxygen + b.oxygen, n2 = a.nitrogen + b.nitrogen, co2 = a.carbonDioxide + b.carbonDioxide,
+                smoke = a.smoke + b.smoke;
+        a.oxygen = o2 * fa; b.oxygen = o2 * fb;
+        a.nitrogen = n2 * fa; b.nitrogen = n2 * fb;
+        a.carbonDioxide = co2 * fa; b.carbonDioxide = co2 * fb;
+        a.smoke = smoke * fa; b.smoke = smoke * fb;
     }
 
     /** Advances one grid by a long quiet stretch of {@code seconds}. Also usable without an engine. */
@@ -279,6 +354,8 @@ public class GridHazardSystem extends FixedLogicSystem {
                     }
                     for (Side s : sides) {
                         Tile nb = grid.getTile(x + s.dx, y + s.dy);
+                        // A docked port's opening joins another craft's room, not space
+                        if (nb == null && grid.links.size > 0 && grid.linkAt(x, y, s) != null) continue;
                         int b;
                         if (nb == null || nb.isSpaceExposed()) b = 0;
                         else if (nb.holdsAir()) {
