@@ -23,9 +23,13 @@ import java.util.List;
  * hull_pieces = [ { shape = "WEDGE", x = 0, y = 0, width = 1, height = 2, rotation = 0, weight_class = "MEDIUM" } ]
  * mounts      = [ { type = "TURRET_MOUNT", size = "S", x = 3, y = 3, rotation = 0 } ]
  * coverings   = [ { covering = "CARPET", x = 2, y = 1, width = 4, height = 1 } ]
+ * ports       = [ { x = 4, y = 5, active = true } ]
  * </pre>
  * Grid coordinates have (0, 0) at the bottom-left tile and +y up; {@code rows} is written
  * top row first, as it reads.
+ *
+ * <p>A chassis marked {@code station = true} is a station's layout, named by a station type's
+ * {@code blueprint}; ships should not use one.
  */
 public class ChassisDef {
     public String id;
@@ -37,6 +41,10 @@ public class ChassisDef {
     public List<HullPiece> hullPieces = new ArrayList<>();
     public List<Mount> mounts = new ArrayList<>();
     public List<Covering> coverings = new ArrayList<>();
+    /** True for a station's layout. */
+    public boolean station;
+    /** Options for docking ports, each naming any tile of the port it applies to. */
+    public List<Port> ports = new ArrayList<>();
 
     public static class EdgeWall {
         public int x, y;
@@ -64,6 +72,13 @@ public class ChassisDef {
         public String size = "S";
         public int x, y;
         public int rotation;
+    }
+
+    /** Settings for the docking port that covers tile (x, y). Ports not listed are passive. */
+    public static class Port {
+        public int x, y;
+        /** An active port extends a telescoping latch collar when armed; a passive one only has magnets. */
+        public boolean active;
     }
 
     public static class Covering {

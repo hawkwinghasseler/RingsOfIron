@@ -249,6 +249,18 @@ tasks.register('runCrewDemo', JavaExec) {
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
+// Runs the docking demo instead of the main game.
+tasks.register('runDockingDemo', JavaExec) {
+  group = 'application'
+  description = 'Runs the stations-docking demo.'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.DockingDemoLauncher'
+  classpath = sourceSets.main.runtimeClasspath
+  workingDir = rootProject.file('assets').path
+  jvmArgs += "--enable-native-access=ALL-UNNAMED"
+  jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
+  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+}
+
 // Runs the Box2D precision test (large-coordinate floating point check) instead of the main game.
 tasks.register('runPhysicsTest', JavaExec) {
   group = 'application'

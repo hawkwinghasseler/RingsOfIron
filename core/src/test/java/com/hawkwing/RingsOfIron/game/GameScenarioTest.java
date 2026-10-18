@@ -30,6 +30,7 @@ import com.ringsofiron.audiospatial.components.AudioEmitterComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
+import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -202,9 +203,16 @@ class GameScenarioTest {
         for (String uuid : world.macroSim.bubble().inBubble()) freighter = world.engine.getEntity(uuid);
         assertNotNull(freighter, "macro-sim handed it to the bubble");
         assertNotNull(freighter.getComponent(PhysicsBodyComponent.class));
-        assertNotNull(freighter.getComponent(NpcPilotComponent.class));
         assertNotNull(freighter.getComponent(HudMarkerComponent.class));
         assertTrue(game.contacts.contains(freighter, true));
+        // It was sitting at Highport, so it comes in latched to one of its Medium ports.
+        Entity highport = world.engine.getEntity(game.highport);
+        assertSame(highport, world.docking.dockedTo(freighter));
+        assertNull(freighter.getComponent(NpcPilotComponent.class), "a docked freighter stays put");
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        assertTrue(world.docking.isRigid(freighter), "welded to the station");
+        assertNotNull(highport.getComponent(KinematicTransientComponent.class).body, "the station has a body");
+        assertTrue(world.docking.strain(freighter) < 0.1f, "riding along easily");
     }
 
     @Test

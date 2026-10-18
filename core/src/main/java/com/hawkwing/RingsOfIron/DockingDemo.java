@@ -1,0 +1,286 @@
+package com.hawkwing.RingsOfIron;
+
+import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.ApplicationAdapter;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.CircleShape;
+import com.badlogic.gdx.physics.box2d.Fixture;
+import com.badlogic.gdx.physics.box2d.PolygonShape;
+import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.utils.Array;
+import com.hawkwing.RingsOfIron.game.DockingDemoScene;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.physicsexterior.CollisionCategories;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.components.FlightControlComponent;
+import com.ringsofiron.stationsdocking.DockingPort;
+import com.ringsofiron.stationsdocking.DockingPortsComponent;
+import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.uihud.minimap.TileShade;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+/**
+ * Docking demo: the game's stations-docking module on its own, one feature per scene, with the
+ * game's own corvette, stations and keys. Run with {@code gradlew :lwjgl3:runDockingDemo}, or
+ * {@code demos/Docking demo.bat} on Windows.
+ *
+ * <p>1-6 pick a scene, R restarts it. W/S thrust, A/D turn, Z/C strafe. G arms your docking port
+ * and asks a station for clearance (again to disarm), H picks the next port, U undocks, P flies
+ * the approach for you until the magnets or the collar take over. Mouse wheel zooms, Esc quits.
+ *
+ * <p>Drawn: hulls and deck plans, docking collars (yellow), port faces (green while armed, cyan
+ * latched, red torn off), and the collar head of an active port while it is out (orange).
+ */
+public class DockingDemo extends ApplicationAdapter {
+    private static final float PANEL_WIDTH = 430f;
+
+    private final Path assetsDir;
+    private DockingDemoScene demo;
+    private OrthographicCamera camera;
+    private OrthographicCamera ui;
+    private ShapeRenderer shapes;
+    private SpriteBatch batch;
+    private BitmapFont font;
+    private float viewMeters = 90f;
+
+    private final Array<Body> bodies = new Array<>();
+    private final Vector2 tmp = new Vector2();
+    private final Color color = new Color();
+    private final float[] polygon = new float[16];
+
+    public DockingDemo() {
+        this(Paths.get("").toAbsolutePath());
+    }
+
+    public DockingDemo(Path assetsDir) {
+        this.assetsDir = assetsDir;
+    }
+
+    @Override
+    public void create() {
+        shapes = new ShapeRenderer();
+        batch = new SpriteBatch();
+        font = new BitmapFont();
+        camera = new OrthographicCamera();
+        ui = new OrthographicCamera();
+        resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        demo = new DockingDemoScene(assetsDir);
+        demo.load(DockingDemoScene.Scene.PASSIVE);
+        Gdx.input.setInputProcessor(new InputAdapter() {
+            @Override
+            public boolean scrolled(float amountX, float amountY) {
+                viewMeters = Math.max(15f, Math.min(600f, viewMeters * (float) Math.pow(1.15f, amountY)));
+                resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+                return true;
+            }
+        });
+    }
+
+    @Override
+    public void render() {
+        float delta = Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
+        handleInput();
+        demo.update(delta);
+
+        Body ship = demo.world.docking.bodyOf(demo.player);
+        if (ship != null) {
+            Vector2 p = PhysicsManager.getPosition(ship, tmp);
+            camera.position.set(p.x, p.y, 0f);
+        }
+        camera.update();
+        Gdx.gl.glClearColor(0.02f, 0.02f, 0.05f, 1f);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        shapes.setProjectionMatrix(camera.combined);
+        drawDecks();
+        drawBodies();
+        drawPorts();
+        drawPanel();
+    }
+
+    private void handleInput() {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) Gdx.app.exit();
+        DockingDemoScene.Scene[] scenes = DockingDemoScene.Scene.values();
+        for (int i = 0; i < scenes.length; i++) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i)) demo.load(scenes[i]);
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.R)) demo.load(demo.scene);
+
+        FlightControlComponent controls = demo.player.getComponent(FlightControlComponent.class);
+        if (controls != null) {
+            controls.forward = 0f;
+            controls.turn = 0f;
+            controls.strafe = 0f;
+            if (Gdx.input.isKeyJustPressed(Input.Keys.X)) controls.rotationAssist = !controls.rotationAssist;
+            if (Gdx.input.isKeyPressed(Input.Keys.W)) controls.forward += 1f;
+            if (Gdx.input.isKeyPressed(Input.Keys.S)) controls.forward -= 1f;
+            if (Gdx.input.isKeyPressed(Input.Keys.A)) controls.turn += 1f;
+            if (Gdx.input.isKeyPressed(Input.Keys.D)) controls.turn -= 1f;
+            if (Gdx.input.isKeyPressed(Input.Keys.Z)) controls.strafe += 1f;
+            if (Gdx.input.isKeyPressed(Input.Keys.C)) controls.strafe -= 1f;
+            // Taking the stick back from the autopilot
+            if (controls.forward != 0f || controls.turn != 0f || controls.strafe != 0f) demo.autopilot = false;
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.G)) demo.docking.toggleArm();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.H)) demo.docking.nextPort();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.U)) demo.docking.undock();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.P)) demo.autopilot = !demo.autopilot;
+    }
+
+    /** Each grid's deck plan under its hull, in the minimap's colors, faintly. */
+    private void drawDecks() {
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        demo.world.physics.getWorld().getBodies(bodies);
+        for (Body body : bodies) {
+            Entity e = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
+            ShipGridComponent grid = e == null ? null : e.getComponent(ShipGridComponent.class);
+            if (grid == null || demo.world.docking.bodyOf(e) != body) continue;
+            Vector2 at = PhysicsManager.getPosition(body, new Vector2());
+            shapes.identity();
+            shapes.translate(at.x, at.y, 0f);
+            shapes.rotate(0f, 0f, 1f, body.getAngle() * com.badlogic.gdx.math.MathUtils.radiansToDegrees);
+            float s = grid.tileSize;
+            for (int y = 0; y < grid.height; y++) {
+                for (int x = 0; x < grid.width; x++) {
+                    TileShade.fill(grid.getTile(x, y), false, color);
+                    if (color.a <= 0f) continue;
+                    color.a *= 0.45f;
+                    shapes.setColor(color);
+                    Vector2 p = grid.tileToLocal(x, y);
+                    shapes.rect(p.x - s / 2f + 0.05f, p.y - s / 2f + 0.05f, s - 0.1f, s - 0.1f);
+                }
+            }
+        }
+        bodies.clear();
+        shapes.end();
+        shapes.identity();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    private void drawBodies() {
+        demo.world.physics.getWorld().getBodies(bodies);
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        for (Body body : bodies) {
+            Entity e = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
+            boolean head = e != null && demo.world.docking.bodyOf(e) != body;
+            HudMarkerComponent marker = e == null ? null : e.getComponent(HudMarkerComponent.class);
+            for (Fixture f : body.getFixtureList()) {
+                boolean collar = (f.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0;
+                if (head) shapes.setColor(Color.ORANGE);
+                else if (collar) shapes.setColor(Color.YELLOW);
+                else if (e == demo.player) shapes.setColor(Color.SKY);
+                else if (marker != null) shapes.setColor(marker.color);
+                else shapes.setColor(Color.LIGHT_GRAY);
+                drawFixture(body, f);
+            }
+        }
+        bodies.clear();
+        shapes.end();
+    }
+
+    /** A tick on each port face: green while armed, cyan latched, red torn off, grey otherwise. */
+    private void drawPorts() {
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        demo.world.physics.getWorld().getBodies(bodies);
+        for (Body body : bodies) {
+            Entity e = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
+            DockingPortsComponent ports = e == null ? null : e.getComponent(DockingPortsComponent.class);
+            if (ports == null || demo.world.docking.bodyOf(e) != body) continue;
+            for (DockingPort p : ports.ports) {
+                if (!p.intact()) shapes.setColor(Color.RED);
+                else if (p.state != DockingPort.State.IDLE) shapes.setColor(Color.CYAN);
+                else if (p.armed) shapes.setColor(Color.GREEN);
+                else shapes.setColor(Color.GRAY);
+                Vector2 c = world(body, p.faceX(), p.faceY(), new Vector2());
+                Vector2 tip = world(body, p.faceX() + p.normalX * 1.5f, p.faceY() + p.normalY * 1.5f, new Vector2());
+                shapes.line(c.x, c.y, tip.x, tip.y);
+                shapes.circle(c.x, c.y, 0.35f, 10);
+            }
+        }
+        bodies.clear();
+        shapes.end();
+    }
+
+    private static Vector2 world(Body body, float x, float y, Vector2 out) {
+        Vector2 w = body.getWorldPoint(out.set(x * PhysicsManager.UNITS_PER_METER, y * PhysicsManager.UNITS_PER_METER));
+        return out.set(w.x * PhysicsManager.METERS_PER_UNIT, w.y * PhysicsManager.METERS_PER_UNIT);
+    }
+
+    private void drawFixture(Body body, Fixture fixture) {
+        if (fixture.getShape() instanceof CircleShape) {
+            Vector2 c = PhysicsManager.getPosition(body, tmp);
+            shapes.circle(c.x, c.y, Math.max(0.3f, fixture.getShape().getRadius() * PhysicsManager.METERS_PER_UNIT), 16);
+        } else if (fixture.getShape() instanceof PolygonShape) {
+            PolygonShape poly = (PolygonShape) fixture.getShape();
+            int n = poly.getVertexCount();
+            for (int i = 0; i < n; i++) {
+                poly.getVertex(i, tmp);
+                Vector2 w = body.getWorldPoint(tmp);
+                polygon[i * 2] = w.x * PhysicsManager.METERS_PER_UNIT;
+                polygon[i * 2 + 1] = w.y * PhysicsManager.METERS_PER_UNIT;
+            }
+            shapes.polygon(polygon, 0, n * 2);
+        }
+    }
+
+    private void drawPanel() {
+        batch.setProjectionMatrix(ui.combined);
+        batch.begin();
+        float h = ui.viewportHeight;
+        float x = 12f, y = h - 12f;
+        font.setColor(Color.WHITE);
+        font.draw(batch, "DOCKING DEMO  -  " + (demo.scene.ordinal() + 1) + ". " + demo.scene.title, x, y);
+        y -= 22f;
+        font.setColor(Color.LIGHT_GRAY);
+        y -= font.draw(batch, demo.scene.help, x, y, PANEL_WIDTH, Align.left, true).height + 12f;
+        font.setColor(Color.ORANGE);
+        if (!demo.notice().equals(demo.scene.help)) {
+            y -= font.draw(batch, demo.notice(), x, y, PANEL_WIDTH, Align.left, true).height + 12f;
+        }
+        font.setColor(Color.SKY);
+        for (String line : demo.docking.readout()) {
+            font.draw(batch, line, x, y);
+            y -= 18f;
+        }
+        if (demo.autopilot) {
+            font.setColor(Color.GREEN);
+            font.draw(batch, "Autopilot flying the approach (P to stop)", x, y);
+        }
+        font.setColor(Color.GRAY);
+        StringBuilder scenes = new StringBuilder();
+        for (DockingDemoScene.Scene s : DockingDemoScene.Scene.values()) {
+            scenes.append(s.ordinal() + 1).append(' ').append(s.title).append("   ");
+        }
+        font.draw(batch, scenes.toString(), x, 44f);
+        font.draw(batch, "W/S thrust  A/D turn  Z/C strafe  G arm port + clearance  H next port  U undock"
+                + "  P autopilot  R restart  wheel zoom  Esc quit", x, 24f);
+        batch.end();
+    }
+
+    @Override
+    public void resize(int width, int height) {
+        float aspect = height == 0 ? 1f : (float) width / height;
+        camera.setToOrtho(false, viewMeters * aspect, viewMeters);
+        ui.setToOrtho(false, width, height);
+    }
+
+    @Override
+    public void dispose() {
+        demo.dispose();
+        shapes.dispose();
+        batch.dispose();
+        font.dispose();
+    }
+}

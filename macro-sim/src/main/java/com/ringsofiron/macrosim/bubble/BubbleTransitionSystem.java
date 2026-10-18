@@ -64,12 +64,15 @@ public class BubbleTransitionSystem {
         return forecast;
     }
 
-    /** Replaces the boundary bookkeeping with saved sets (before restoring a save). */
+    /**
+     * Replaces the boundary bookkeeping with saved sets (before restoring a save). Saved fast passes
+     * are not kept: their kinematic transients are not saved, so each one starts again (and is shown
+     * again) as soon as the next forecast names it, a tick later.
+     */
     public void restore(Set<String> inBubble, Set<String> fastPasses) {
         this.inBubble.clear();
         this.inBubble.addAll(inBubble);
         this.fastPasses.clear();
-        this.fastPasses.addAll(fastPasses);
         this.railsOnly.clear();
         this.forecast = null;
     }

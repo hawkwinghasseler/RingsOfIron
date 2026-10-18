@@ -266,11 +266,13 @@ public class ShipGridComponent implements Component {
 
     /**
      * Checks whether a mount footprint can be placed: every tile in bounds, open floor,
-     * not in another mount, and no edge wall cutting through the footprint.
+     * not in another mount, and no edge wall cutting through the footprint. A docking
+     * port has its own rules instead; see {@link DockingPortLayout}.
      *
      * @return null if legal, otherwise a description of the problem.
      */
     public String validateMount(MountFootprint m) {
+        if (m.kind == MountFootprint.MountKind.PORT) return DockingPortLayout.validate(this, m);
         int x0 = m.originX, y0 = m.originY, x1 = x0 + m.width(), y1 = y0 + m.height();
         for (int y = y0; y < y1; y++) {
             for (int x = x0; x < x1; x++) {
@@ -285,10 +287,15 @@ public class ShipGridComponent implements Component {
         return null;
     }
 
-    /** @throws IllegalArgumentException if {@link #validateMount} rejects the footprint. */
+    /**
+     * Places a mount. A docking port also builds its frame, opening and door into the tiles.
+     *
+     * @throws IllegalArgumentException if {@link #validateMount} rejects the footprint.
+     */
     public void placeMount(MountFootprint m) {
         String problem = validateMount(m);
         if (problem != null) throw new IllegalArgumentException("Illegal " + m.kind + " " + m.size + " mount: " + problem);
+        if (m.kind == MountFootprint.MountKind.PORT) DockingPortLayout.build(this, m);
         for (int y = m.originY; y < m.originY + m.height(); y++) {
             for (int x = m.originX; x < m.originX + m.width(); x++) {
                 getTile(x, y).mount = m;

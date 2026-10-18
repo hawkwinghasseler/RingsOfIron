@@ -126,6 +126,9 @@ Character map:
 | ` ` | Void |
 | `R` `S` `T` | Primary systems: reactor, shield emitter, turret mount |
 | `L` `H` `W` `C` `A` | Auxiliary systems: life support, helm, weapons console, cargo, airlock |
+| `D` | Docking port, drawn over the hull edge (3×1 Small, 5×2 Medium, 7×3 Large) |
+
+A docking port (`DockingPortLayout`, a `PORT` mount of the `DOCKING_PORT` subsystem) is drawn over the hull where it should open: its long side lies along the hull, and it faces the one side with only space beyond it. On loading, its end tiles become hull frame and the tiles between them steel floor (the opening, 1, 3 or 5 tiles wide), with the port door, a sealed medium bulkhead, on the opening's outer edge. The opening must lead onto floor inside. Ports are passive unless the chassis lists them as active (`ports = [{ x, y, active = true }]`, any tile of the port); stations-docking turns each port into a `DockingPort` with its collar and magnets. A chassis marked `station = true` is a station layout, named by a station type's `blueprint`.
 
 System letters are floor tiles. Each solid rectangle of one letter becomes one mount, and its size must be a legal mount for that system's kind (`RR/RR` is an M reactor, `LL` an S life-support slot on its side). Two adjacent mounts of the same type cannot be told apart in the map, so those go in the explicit mount list. The loader throws on any illegal mount, piece or wall.
 

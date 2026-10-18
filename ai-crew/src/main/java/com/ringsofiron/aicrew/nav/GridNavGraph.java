@@ -4,6 +4,7 @@ import com.badlogic.gdx.ai.pfa.Connection;
 import com.badlogic.gdx.ai.pfa.DefaultConnection;
 import com.badlogic.gdx.ai.pfa.indexed.IndexedGraph;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.Tile;
@@ -38,10 +39,10 @@ public class GridNavGraph implements IndexedGraph<GridNode> {
         return grid.inBounds(x, y) ? nodes[y * grid.width + x] : null;
     }
 
-    /** True if crew can stand on tile (x, y). */
+    /** True if crew can stand on tile (x, y): open, and not a mounted system other than a docking port's opening. */
     public boolean isWalkable(int x, int y) {
         Tile t = grid.getTile(x, y);
-        return t != null && t.isOpen() && t.mount == null;
+        return t != null && t.isOpen() && (t.mount == null || t.mount.kind == MountFootprint.MountKind.PORT);
     }
 
     /**

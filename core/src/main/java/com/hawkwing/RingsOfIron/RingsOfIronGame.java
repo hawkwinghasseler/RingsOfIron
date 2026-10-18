@@ -27,6 +27,7 @@ import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
+import com.hawkwing.RingsOfIron.game.PlayerDocking;
 import com.hawkwing.RingsOfIron.game.PlayerGunnery;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -62,6 +63,11 @@ import java.nio.file.Paths;
  * to the deck view, where WASD walks your character and E uses the console you stand at. F5
  * quick-saves, F9 loads the quick save. Esc quits.
  *
+ * <p>Docking: G arms the selected docking port and asks the nearest station for clearance (a
+ * station that gives it reaches out with its collar and draws the ship in), or disarms it; H
+ * selects the next port; U undocks. Docked at a station, T opens its market. The readout under the
+ * notices shows how the port lines up with the nearest free port of its size.
+ *
  * <p>Burn planner, shown on the orbit map: N plans a burn, B selects the next one, Up/Down add
  * prograde/retrograde delta-v, Left/Right radial in/out, [ and ] move it along the orbit (Shift for
  * ten times as much), Delete removes it. Burns fire on their own when due.
@@ -88,6 +94,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private UiHud hud;
     private ViewportManager viewports;
     private PlayerGunnery gun;
+    private PlayerDocking docking;
     /** Flashes for warheads and missiles shot down: {x, y, age}. */
     private final Array<float[]> explosions = new Array<>();
 
@@ -139,6 +146,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gun = new PlayerGunnery(world, game.player);
         gun.setTarget(game.nextContact(null));
         hud.setTargeting(new CombatTargetingProvider(gun));
+        docking = new PlayerDocking(world, () -> game.player, this::show);
         world.combatEvents.intercepts.add((signal, hit) -> {
             if (hit.destroyed && hit.missile != null) explosions.add(new float[]{hit.point.x, hit.point.y, 0f});
         });
@@ -239,6 +247,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
             show(gun.getTarget() == null ? "No target for the missile" : "Launcher reloading");
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.F) && gun.dropDecoy()) show("Decoy away");
+        if (Gdx.input.isKeyJustPressed(Input.Keys.G)) show(docking.toggleArm());
+        if (Gdx.input.isKeyJustPressed(Input.Keys.H)) show(docking.nextPort());
+        if (Gdx.input.isKeyJustPressed(Input.Keys.U)) show(docking.undock());
         planBurns();
         if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) gun.setTarget(game.nextContact(gun.getTarget()));
     }
@@ -516,6 +527,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
             font.setColor(Color.ORANGE);
             font.draw(batch, notice, left, top - 60f);
         }
+        font.setColor(Color.SKY);
+        String[] dock = docking.readout();
+        for (int i = 0; i < dock.length; i++) font.draw(batch, dock[i], left, top - 90f - 20f * i);
+        if (hud.getViewMode().getMode() != ViewMode.INTERIOR) {
+            font.setColor(Color.LIGHT_GRAY);
+            font.draw(batch, "G arm port + ask clearance   H next port   U undock   T trade when docked", hintX, 44f);
+        }
         batch.end();
     }
 
@@ -527,6 +545,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     @Override
     public void dispose() {
         gameHud.dispose();
+        docking.dispose();
         world.dispose();
         shapes.dispose();
         batch.dispose();

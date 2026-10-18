@@ -12,6 +12,7 @@ dependencies {
   api project(':ui-hud')
   api project(':audio-spatial')
   api project(':modding-data')
+  api project(':stations-docking')
 
   api "com.badlogicgames.gdx-controllers:gdx-controllers-core:$gdxControllersVersion"
   api "com.badlogicgames.gdx:gdx-ai:$aiVersion"

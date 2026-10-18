@@ -1,5 +1,6 @@
 package com.ringsofiron.moddingdata;
 
+import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.moddingdata.defs.SoundEventData;
 import com.ringsofiron.moddingdata.defs.StationTypeDef;
@@ -59,6 +60,14 @@ public final class DefValidator {
             }
             checkCommodities(defs, report, e, st.produces);
             checkCommodities(defs, report, e, st.consumes);
+            if (st.blueprint != null) {
+                if (!defs.has("chassis", st.blueprint)) {
+                    report.warn(e.lastSource(), e + " uses unknown blueprint '" + st.blueprint + "'");
+                } else if (!stationChassis(defs, st.blueprint)) {
+                    report.warn(e.lastSource(), e + " uses blueprint '" + st.blueprint
+                            + "', which is not marked station = true");
+                }
+            }
         }
 
         for (DefEntry e : defs.entries("sound_event")) {
@@ -71,6 +80,14 @@ public final class DefValidator {
             if (sound.path == null || sound.path.isEmpty()) {
                 report.warn(e.lastSource(), e + " has no path, so it cannot be played");
             }
+        }
+    }
+
+    private static boolean stationChassis(DefRegistry defs, String id) {
+        try {
+            return defs.require("chassis", id, ChassisDef.class).station;
+        } catch (IllegalArgumentException ex) {
+            return false; // a broken chassis is reported on its own
         }
     }
 

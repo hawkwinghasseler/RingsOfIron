@@ -162,8 +162,8 @@ public class TradeWindow extends Window {
         if (!board.isDocked() && isVisible()) setVisible(false);
         dockHint.setVisible(board.isDocked() && !isVisible());
         if (!board.isDocked()) return;
-        dockHint.setText(board.hasHold ? "In range of " + board.stationName + "   [T] Trade"
-                : "In range of " + board.stationName + " (no cargo hold)");
+        dockHint.setText(board.hasHold ? "Docked at " + board.stationName + "   [T] Trade"
+                : "Docked at " + board.stationName + " (no cargo hold)");
         getTitleLabel().setText(board.stationName.toUpperCase(Locale.ROOT) + " MARKET");
         summary.setText(String.format(Locale.ROOT, "Credits %s     Hold %s / %s m3", formatCredits(board.credits),
                 formatUnits(board.cargoUsed), formatUnits(board.cargoCapacity)));
