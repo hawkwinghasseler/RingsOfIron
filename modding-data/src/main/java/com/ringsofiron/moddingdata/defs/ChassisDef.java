@@ -1,0 +1,74 @@
+package com.ringsofiron.moddingdata.defs;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * A ship hull's interior layout, mirroring interior-grid's {@code ChassisBlueprint} field
+ * for field. Enum values are their names as strings ({@code "TOP"}, {@code "HEAVY"},
+ * {@code "REACTOR"}) so this module does not depend on interior-grid.
+ *
+ * <pre>
+ * [chassis.corvette]
+ * name = "Corvette"
+ * tile_size = 1.0
+ * origin_x = -5.0
+ * origin_y = -3.0
+ * rows = [
+ *   "##########",
+ *   "#HH....RR#",
+ *   ...
+ * ]
+ * edge_walls  = [ { x = 4, y = 2, side = "TOP", weight_class = "LIGHT", bulkhead = true } ]
+ * hull_pieces = [ { shape = "WEDGE", x = 0, y = 0, width = 1, height = 2, rotation = 0, weight_class = "MEDIUM" } ]
+ * mounts      = [ { type = "TURRET_MOUNT", size = "S", x = 3, y = 3, rotation = 0 } ]
+ * coverings   = [ { covering = "CARPET", x = 2, y = 1, width = 4, height = 1 } ]
+ * </pre>
+ * Grid coordinates have (0, 0) at the bottom-left tile and +y up; {@code rows} is written
+ * top row first, as it reads.
+ */
+public class ChassisDef {
+    public String id;
+    public String name;
+    public float tileSize = 1f;
+    public float originX, originY;
+    public String[] rows = new String[0];
+    public List<EdgeWall> edgeWalls = new ArrayList<>();
+    public List<HullPiece> hullPieces = new ArrayList<>();
+    public List<Mount> mounts = new ArrayList<>();
+    public List<Covering> coverings = new ArrayList<>();
+
+    public static class EdgeWall {
+        public int x, y;
+        /** BOTTOM, TOP, LEFT or RIGHT. */
+        public String side;
+        public String weightClass = "MEDIUM";
+        public String material = "hull_steel";
+        public boolean bulkhead;
+    }
+
+    public static class HullPiece {
+        /** BLOCK or WEDGE. */
+        public String shape = "BLOCK";
+        public int x, y;
+        public int width = 1, height = 1;
+        public int rotation;
+        public String weightClass = "MEDIUM";
+        public String material = "hull_steel";
+    }
+
+    public static class Mount {
+        /** A SubsystemType name, e.g. REACTOR. Its mount kind follows from the type. */
+        public String type;
+        /** S, M, L or XL. */
+        public String size = "S";
+        public int x, y;
+        public int rotation;
+    }
+
+    public static class Covering {
+        /** A FloorCovering name, e.g. CARPET. */
+        public String covering;
+        public int x, y, width = 1, height = 1;
+    }
+}
