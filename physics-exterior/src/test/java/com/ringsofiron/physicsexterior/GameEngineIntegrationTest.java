@@ -3,6 +3,9 @@ package com.ringsofiron.physicsexterior;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.badlogic.gdx.utils.JsonReader;
+import com.badlogic.gdx.utils.JsonValue;
+import com.badlogic.gdx.utils.JsonWriter;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
@@ -18,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Physics driven by core-engine's GameEngine: one sim clock, rails catch-up, save and load. */
@@ -92,9 +96,11 @@ class GameEngineIntegrationTest {
     }
 
     @Test
-    void saveAndLoadRestoresTrueStatesWhenBodiesAreRebuilt() {
+    void saveAndLoadRebuildsBodiesWithTheirStateAndMass() {
         Entity ship = spawnShip(1200f, -800f);
         Body body = ship.getComponent(PhysicsBodyComponent.class).body;
+        // Mass from elsewhere (an interior grid), not from fixture density.
+        PhysicsManager.setMassData(body, 42_000f, 1.5f, -0.5f, 3.0e6f);
         PhysicsManager.setVelocity(body, 3f, -2f);
         body.setAngularVelocity(0.2f);
         game.stepTicks(600);
@@ -110,18 +116,58 @@ class GameEngineIntegrationTest {
         // Somewhere else entirely before loading.
         physics.rebaseOrigin(5000f, 0f, 40f, 0f);
         game.getSerializationService().loadGame(save);
-        assertEquals(0, physics.getWorld().getBodyCount(), "old bodies went with the old entities");
+        assertEquals(1, physics.getWorld().getBodyCount(), "the old body went, the saved one came back");
 
         Entity loaded = game.getEntity(uuid);
-        assertNull(loaded.getComponent(PhysicsBodyComponent.class));
-        Body rebuilt = addBody(loaded);
-
+        Body rebuilt = loaded.getComponent(PhysicsBodyComponent.class).body;
+        assertSame(loaded, rebuilt.getUserData());
         double[] after = new double[4];
         physics.getTrueState(rebuilt, after);
         for (int i = 0; i < 2; i++) assertEquals(before[i], after[i], 0.01);
         for (int i = 2; i < 4; i++) assertEquals(before[i], after[i], 1e-3);
         assertEquals(angle, rebuilt.getAngle(), 1e-5f);
         assertEquals(0.2f, rebuilt.getAngularVelocity(), 1e-5f);
+        assertEquals(42_000f, PhysicsManager.getMass(rebuilt), 1f);
+        assertEquals(3.0e6f, PhysicsManager.getInertia(rebuilt), 3.0e6f * 1e-4f);
+        assertEquals(1.5f, rebuilt.getLocalCenter().x * PhysicsManager.METERS_PER_UNIT, 1e-4f);
         assertEquals(600L, physics.getTick());
+
+        // The rebuilt body flies on with the bubble: a few meters at a few m/s, not left behind.
+        float x0 = rebuilt.getPosition().x * PhysicsManager.METERS_PER_UNIT;
+        float y0 = rebuilt.getPosition().y * PhysicsManager.METERS_PER_UNIT;
+        game.stepTicks(60);
+        float moved = (float) Math.hypot(rebuilt.getPosition().x * PhysicsManager.METERS_PER_UNIT - x0,
+                rebuilt.getPosition().y * PhysicsManager.METERS_PER_UNIT - y0);
+        assertTrue(moved > 1f && moved < 10f, "moved " + moved + " m");
+    }
+
+    @Test
+    void stateFromAnOlderSaveWaitsForTheBodyToBeBuilt() {
+        Entity ship = spawnShip(1200f, -800f);
+        Body body = ship.getComponent(PhysicsBodyComponent.class).body;
+        PhysicsManager.setVelocity(body, 3f, -2f);
+        String uuid = ship.getComponent(UuidComponent.class).id;
+        double[] before = new double[4];
+        physics.getTrueState(body, before);
+        // Rewrite the body entries to the old format: the bare state array, no shape.
+        JsonValue root = new JsonReader().parse(game.getSerializationService().saveGame());
+        JsonValue bodies = root.get("modules").get(PhysicsSaveParticipant.SAVE_KEY).get("bodies");
+        for (JsonValue entry = bodies.child; entry != null; entry = entry.next) {
+            JsonValue state = entry.get("state");
+            entry.setType(JsonValue.ValueType.array);
+            entry.child = state.child;
+            for (JsonValue v = entry.child; v != null; v = v.next) v.parent = entry;
+            entry.size = state.size;
+        }
+        String save = root.toJson(JsonWriter.OutputType.json);
+        assertFalse(save.contains("shape"), save);
+
+        game.getSerializationService().loadGame(save);
+        Entity loaded = game.getEntity(uuid);
+        assertNull(loaded.getComponent(PhysicsBodyComponent.class), "nothing to rebuild it from");
+        Body rebuilt = addBody(loaded);
+        double[] after = new double[4];
+        physics.getTrueState(rebuilt, after);
+        for (int i = 0; i < 4; i++) assertEquals(before[i], after[i], 0.01);
     }
 }

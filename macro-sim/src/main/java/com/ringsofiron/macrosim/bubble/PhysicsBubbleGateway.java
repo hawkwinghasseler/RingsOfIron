@@ -78,6 +78,10 @@ public class PhysicsBubbleGateway implements BubbleGateway {
     @Override
     public StateVector trueStateOf(String uuid, double t, StateVector out) {
         PhysicsBodyComponent pb = require(uuid).getComponent(PhysicsBodyComponent.class);
+        if (pb == null || pb.body == null) {
+            throw new IllegalStateException("Bubble entity " + uuid + " has no Box2D body"
+                    + " (was it loaded without physics-exterior's PhysicsSaveParticipant installed?)");
+        }
         physics.getTrueState(pb.body, buf);
         return out.set(buf[0], buf[1], buf[2], buf[3]);
     }
