@@ -115,7 +115,7 @@ public class PenetrationResolver {
     private static final ComponentMapper<SubsystemComponent> subsystemMapper =
             ComponentMapper.getFor(SubsystemComponent.class);
 
-    private final MaterialTable materials;
+    private MaterialTable materials;
     private CrewDamageBridge crew;
 
     // Per-call state (one call at a time).
@@ -137,6 +137,11 @@ public class PenetrationResolver {
 
     public MaterialTable getMaterials() {
         return materials;
+    }
+
+    /** Swaps in another material table, such as the one loaded from data. */
+    public void setMaterials(MaterialTable materials) {
+        this.materials = materials;
     }
 
     // ------------------------------------------------------------------

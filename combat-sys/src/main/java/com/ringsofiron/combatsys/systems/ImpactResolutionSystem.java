@@ -99,6 +99,11 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         resolver.setCrew(crew);
     }
 
+    /** Hull and armor stats damage is resolved against, e.g. the table loaded from data. */
+    public void setMaterials(MaterialTable materials) {
+        resolver.setMaterials(materials);
+    }
+
     public PenetrationResolver getResolver() {
         return resolver;
     }

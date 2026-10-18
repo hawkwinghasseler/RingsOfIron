@@ -121,6 +121,8 @@ public class GameWorld implements Disposable {
     public final WeaponControlSystem weaponControl;
     /** Flies missiles and decoys; launch and drop them through it. */
     public final MissileGuidanceSystem missiles;
+    /** Resolves hits; damage uses the loaded material data once {@link #loadContent} has run. */
+    public final ImpactResolutionSystem impacts;
     public final AudioManager audio;
     public final AvatarInteractor avatar;
     public final AudioListenerSync audioListener;
@@ -216,7 +218,7 @@ public class GameWorld implements Disposable {
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
-        ImpactResolutionSystem impacts = new ImpactResolutionSystem(physics, combatEvents, combatDefs, ballistics,
+        impacts = new ImpactResolutionSystem(physics, combatEvents, combatDefs, ballistics,
                 MaterialTable.createDefault(), modules.combatSeed);
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
         engine.addSystem(impacts);
@@ -255,6 +257,10 @@ public class GameWorld implements Disposable {
         for (Consumer<ModContext> step : modules.contentRegistrations) bootstrap.beforeScripts(step);
         content = bootstrap.load(engine);
         mergeCombatDefs(CombatDefs.fromRegistry(content.defs));
+        // Armor and hull stats from data, the same table ship mass comes from.
+        if (content.defs.has("material", MaterialTable.DEFAULT_MATERIAL)) {
+            impacts.setMaterials(InteriorGridData.toMaterialTable(content.defs));
+        }
         DefRegistryCommodityCatalog economy = new DefRegistryCommodityCatalog(content.defs);
         if (!economy.commodities().isEmpty()) commodities.set(economy);
         registerSounds(content, audio.getCatalog());

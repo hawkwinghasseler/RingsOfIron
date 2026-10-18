@@ -13,11 +13,14 @@ import java.util.function.Supplier;
  * Plays combat on the audio bus: each weapon's {@code sound} when it fires, a hull impact at
  * every hull hit (louder for harder hits) and at every warhead going off. A weapon's sound is an
  * asset key from the {@code [audio_event]} table (such as {@code evt_railgun_fire}) or an event
- * path; weapons with none fire silently.
+ * path; a weapon with none plays {@link #DEFAULT_SHOT}, which the audio catalog plays with its
+ * fallback one-shot.
  */
 public final class CombatAudio {
     /** Quietest a hull hit plays, as an intensity 0..1. */
     public static final float MIN_HIT_INTENSITY = 0.2f;
+    /** Played for a weapon whose data names no sound. */
+    public static final String DEFAULT_SHOT = "event:/weapons/default";
 
     private CombatAudio() {
     }
@@ -36,7 +39,7 @@ public final class CombatAudio {
 
     /** An asset key resolved through the loaded content, or the value itself if it is a path. */
     static String eventPath(String sound, ModContext content) {
-        if (sound == null || sound.isEmpty()) return null;
+        if (sound == null || sound.isEmpty()) return DEFAULT_SHOT;
         if (content != null && content.assets.has(sound)) return content.assets.getString(sound);
         return sound.startsWith("event:") ? sound : null;
     }
