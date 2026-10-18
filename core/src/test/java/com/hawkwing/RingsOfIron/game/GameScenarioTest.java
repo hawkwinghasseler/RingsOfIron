@@ -157,7 +157,15 @@ class GameScenarioTest {
         WeaponsComponent weapons = game.player.getComponent(WeaponsComponent.class);
         assertNotNull(weapons);
         assertEquals(5, weapons.mounts.size, "railgun, two point-defense guns, a launcher, a laser");
-        for (WeaponMountComponent m : weapons.mounts) assertNotNull(m.subsystem, m.def.id + " is wired to a system");
+        java.util.Set<Entity> turrets = new java.util.HashSet<>();
+        for (WeaponMountComponent m : weapons.mounts) {
+            assertNotNull(m.subsystem, m.def.id + " is wired to a system");
+            assertEquals(com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.TURRET_MOUNT,
+                    m.subsystem.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class).type,
+                    m.def.id + " is on a turret, not the weapons console");
+            turrets.add(m.subsystem);
+        }
+        assertEquals(5, turrets.size(), "each weapon has a turret of its own");
         assertNotNull(game.raider.getComponent(WeaponsComponent.class));
         assertNotNull(game.player.getComponent(SensorComponent.class));
     }

@@ -12,13 +12,14 @@ origin_x = -5.0
 origin_y = -3.0
 # A turret mount beside each hardpoint in ships.toml (combat wires each weapon to
 # the nearest one): nose (8,2), port and starboard beams (6,4) and (6,1), the
-# launcher (3,4). The weapons console sits aft, away from every hardpoint.
+# launcher (3,4) and the laser (3,1). The weapons console sits aft, away from
+# every hardpoint.
 rows = [
   "##########",
   "#HHT..TRR#",
   "#WW....RR#",
   "#L.++++.T#",
-  "#L....TCC#",
+  "#L.T..TCC#",
   "##########",
 ]
 # Carpet through the crew spaces, so a fire here has something to burn

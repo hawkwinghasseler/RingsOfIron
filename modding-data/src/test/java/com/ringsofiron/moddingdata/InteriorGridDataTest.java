@@ -84,9 +84,9 @@ class InteriorGridDataTest {
             if (p.type == SubsystemComponent.SubsystemType.WEAPONS) consoles++;
         }
         assertEquals(1, reactors);
-        assertEquals(4, turrets, "nose, both beams and the launcher");
+        assertEquals(5, turrets, "nose, both beams, the launcher and the laser");
         assertEquals(1, consoles);
-        assertEquals(9, result.subsystems.size, "helm, reactor, life support, cargo, weapons console, 4 turrets");
+        assertEquals(10, result.subsystems.size, "helm, reactor, life support, cargo, weapons console, 5 turrets");
         assertEquals(10, result.grid.width);
         assertTrue(result.grid.getTile(4, 3).isFlammable(), "the crew spaces are carpeted");
     }
