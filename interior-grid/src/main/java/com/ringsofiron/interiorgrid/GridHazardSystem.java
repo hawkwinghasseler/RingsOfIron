@@ -47,6 +47,13 @@ public class GridHazardSystem extends IteratingSystem {
     // --- Air flow ----------------------------------------------------------
     /** Molar flow through an opening one tile wide, mol/s per kPa of pressure difference. */
     public static final double FLOW_COEFFICIENT = 2.0;
+    /**
+     * Gas mixing through an opening one tile wide between two rooms, m³/s of air swapped
+     * each way. It evens out composition (oxygen, CO2, smoke) without moving net air. Bulk
+     * flow from a pressure difference of 1 kPa already moves about this much air, so
+     * diffusion only matters once the pressures have evened out.
+     */
+    public static final double DIFFUSION_COEFFICIENT = 0.05;
 
     // --- Heat --------------------------------------------------------------
     /** Heat capacity of one tile (its surfaces and the air over it), J/K. */
@@ -289,6 +296,8 @@ public class GridHazardSystem extends IteratingSystem {
                 c.smoke += smoke[from] * f;
             }
         }
+        double[][] smokeDiffusion = diffuse(comps, open, dt);
+
         // Share each pair's net flow among the openings between them, by width
         for (AirflowEdge e : edges) {
             int a = node(e.room), b = node(e.other);
@@ -298,6 +307,7 @@ public class GridHazardSystem extends IteratingSystem {
             double out = flow[a][b] - flow[b][a];
             double smokeOut = (moles[a] > 0 ? flow[a][b] / moles[a] * smoke[a] : 0)
                     - (b > 0 && moles[b] > 0 ? flow[b][a] / moles[b] * smoke[b] : 0);
+            if (a > 0 && b > 0) smokeOut += smokeDiffusion[a][b] - smokeDiffusion[b][a];
             e.flow = (float) (out * share);
             e.smokeFlow = (float) (smokeOut * share);
             grid.airflow.add(e);
@@ -307,6 +317,47 @@ public class GridHazardSystem extends IteratingSystem {
         for (Compartment c : comps) {
             if (c.totalMoles() < 1e-3 * c.volume) c.scaleContents(0.0);
         }
+    }
+
+    /**
+     * Mixes the gas of every pair of rooms joined by an opening. Each swaps the same
+     * number of moles with the other, carrying its own mix, so pressures are left alone
+     * and only composition evens out. Returns the smoke moved from node a to node b this
+     * step (kg), for the particles.
+     */
+    private double[][] diffuse(Array<Compartment> comps, float[][] open, float dt) {
+        int n = comps.size + 1;
+        double[][] smokeMoved = new double[n][n];
+        double[] o2 = new double[n], n2 = new double[n], co2 = new double[n], smoke = new double[n], moles = new double[n];
+        for (int i = 1; i < n; i++) {
+            Compartment c = comps.get(i - 1);
+            o2[i] = c.oxygen; n2[i] = c.nitrogen; co2[i] = c.carbonDioxide; smoke[i] = c.smoke;
+            moles[i] = c.totalMoles();
+        }
+        for (int i = 1; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                if (open[i][j] <= 0f || moles[i] <= 0 || moles[j] <= 0) continue;
+                Compartment a = comps.get(i - 1), b = comps.get(j - 1);
+                // Moles swapped each way: the volume exchanged at the rooms' mean molar density
+                double density = 0.5 * (moles[i] / a.volume + moles[j] / b.volume);
+                double swap = DIFFUSION_COEFFICIENT * open[i][j] * density * dt;
+                // Never more than a quarter of the way to fully mixed in one step
+                double limit = 0.25 * moles[i] * moles[j] / (moles[i] + moles[j]);
+                swap = Math.min(swap, limit);
+                double fa = swap / moles[i], fb = swap / moles[j];
+                double dO2 = o2[i] * fa - o2[j] * fb;
+                double dN2 = n2[i] * fa - n2[j] * fb;
+                double dCO2 = co2[i] * fa - co2[j] * fb;
+                double dSmoke = smoke[i] * fa - smoke[j] * fb;
+                a.oxygen -= dO2; b.oxygen += dO2;
+                a.nitrogen -= dN2; b.nitrogen += dN2;
+                a.carbonDioxide -= dCO2; b.carbonDioxide += dCO2;
+                a.smoke -= dSmoke; b.smoke += dSmoke;
+                if (dSmoke > 0) smokeMoved[i][j] = dSmoke;
+                else smokeMoved[j][i] = -dSmoke;
+            }
+        }
+        return smokeMoved;
     }
 
     private static int node(Compartment c) {

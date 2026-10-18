@@ -138,6 +138,8 @@ Atmosphere is **conserved**: it only leaves the ship through openings to space. 
 
 Air flows from the higher-pressure side at `FLOW_COEFFICIENT` (2 mol/s per kPa per tile width), carrying that side's mix of gases and smoke, and never more than halfway to equal pressure in one step. A 54-tile room vents through one breached hull tile with a time constant of about 30 s; two rooms joined by an open door equalize in about 15 s.
 
+On top of the bulk flow, rooms joined by an opening **diffuse** into each other. Each swaps an equal number of moles with the other, carrying its own mix, so composition (oxygen, CO2, smoke) evens out while pressure is left alone. The exchange is `DIFFUSION_COEFFICIENT` (0.05 m³/s each way per tile width), about what bulk flow moves at a 1 kPa pressure difference, so bulk flow dominates whenever pressures differ. Two 54-tile rooms joined by one open door at equal pressure take about 25 minutes to mix most of the way. Diffusion does not carry air to space, where bulk flow already does.
+
 After each step the net flow through every opening is published on `ShipGridComponent.airflow` as `AirflowEdge`s: the air tile on one side, the direction of the opening (or none for a hole in the deck), the compartments on both sides, and the air and smoke leaving through it per second. An opening between two rooms is listed once from each side. Effects, crew and anything else that reacts to draughts read this list.
 
 There is no "vacuum" state that spreads. A vented room is simply a compartment with no air left. A sealed bulkhead or closed door is airtight, so sealing between a breach and a room stops that room's loss at once.
