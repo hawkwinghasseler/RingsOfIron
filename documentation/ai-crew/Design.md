@@ -59,3 +59,14 @@ To implement this module independently (mocking the `interior-grid` by feeding i
 - `CrewMovementSystem`: Interpolates position along the calculated A* path.
 - `CrewDecisionSystem`: Ticks the behavior trees for all conscious crew. Unconscious and dead crew are skipped.
 - `CrewHealthSystem`: Applies asphyxiation on the hazard tick, handles recovery, and posts rescue tasks.
+
+## Prototype status
+The first prototype is in `ai-crew/src/main/java/com/ringsofiron/aicrew`. Run `gradlew :ai-crew:runCrewConsoleDemo` for a headless run of a three-room ship (fire, damaged reactor, hull breach, two boarders) printed as text, and `gradlew :ai-crew:test` for the tests.
+
+- **Shared interfaces** live in `interior-grid`, package `com.ringsofiron.interiorgrid.crew`, so `combat-sys` and the hazard simulation can use them without depending on `ai-crew`: `GridOccupantQuery.occupantsAt(ship, x, y, out)`, `CrewDamageSink.applyDamage(crew, amount, cause)`, `DamageTaskSink.post(ship, task)`, and the task classes `SealBreachTask`, `RepairTask`, `ExtinguishTask`, `RescueTask`. `CrewService` implements all three; `CrewFactory.install(engine)` adds the crew systems and returns it.
+- **Pathfinding:** `GridNavGraph` computes connections straight from the grid on each search, so doors and destroyed walls need no rebuild step. `CrewMovementSystem` stops a crew member whose next step became blocked and the tree re-plans. Task work spots are found by breadth-first search (`GridPathfinder.nearest`).
+- **Behavior tree** (`CrewBehaviorTrees.standard`): a `DynamicGuardSelector` of engage (guarded by line of sight to a hostile), work a board task (claim, walk to the work spot, work, complete; rescues pick up, carry to the nearest safe tile and put down) and idle (leave unsafe tiles). Marines also hunt hostiles any crewmate can see.
+- **Task board:** `ShipTaskBoardComponent` on the ship. Crew pick the highest `priority × role affinity − distance`. Posting is idempotent. `ShipHazardScanSystem` posts fire, breach and repair tasks from the grid and cancels stale ones. Boarders (another faction) never take the ship's tasks.
+- **Health:** `CrewHealthSystem` runs on the hazard tick: asphyxiation, burns from hot or burning tiles, recovery on safe tiles (faster with a medic's `TreatTask`), and rescue tasks for unconscious crew on unsafe tiles.
+- **Player avatar:** `PlayerAvatarComponent` marks a crew member moved by input instead of AI; `CrewQueries.playerShipLocal` gives its ship-local position for the HUD and audio listener.
+- **Not yet:** crew opening sealed doors, manning consoles, equipment and space suits, NPC piloting.
