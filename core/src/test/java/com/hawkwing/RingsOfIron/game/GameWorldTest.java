@@ -13,7 +13,15 @@ import com.ringsofiron.orbital.components.OrbitComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
+import com.badlogic.gdx.math.Vector2;
+import com.ringsofiron.audiospatial.components.AudioListenerComponent;
+import com.ringsofiron.combatsys.damage.HitCause;
+import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.moddingdata.ModContext;
+import com.ringsofiron.physicsexterior.CollisionCategories;
+import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.uihud.ViewMode;
+import com.ringsofiron.uihud.providers.OrbitInfoProvider;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
@@ -59,6 +67,19 @@ class GameWorldTest {
         return ship;
     }
 
+    /** The player flying in the bubble, which falls along a low Earth orbit. */
+    Entity playerInBubble() {
+        world.setAnchor("earth", KeplerOrbit.circular(MU_EARTH, LEO, 0, 0, 1));
+        Entity ship = world.engine.createEntity();
+        ship.add(new UuidComponent("player"));
+        ship.add(new PlayerControllerComponent());
+        ship.add(new TransformComponent());
+        ship.add(new PhysicsBodyComponent(world.physics.createCircleBody(ship, 0f, 0f, 5f, 10f,
+                CollisionCategories.CATEGORY_SHIP, (short) -1)));
+        world.engine.addEntity(ship);
+        return ship;
+    }
+
     @Test
     void realTimeAdvancesOneTickPerFrame() {
         playerOnRails();
@@ -75,16 +96,22 @@ class GameWorldTest {
     }
 
     @Test
-    void railsWarpJumpsTheSharedClock() {
-        playerOnRails();
+    void railsWarpCollapsesTheBubbleAndRebuildsIt() {
+        Entity ship = playerInBubble();
         assertTrue(world.timeWarp.setWarp(1_000));
         assertTrue(world.timeWarp.isRailsWarp());
+        assertNull(ship.getComponent(PhysicsBodyComponent.class), "the player is on rails during warp");
+        assertNotNull(world.universe.orbit(ship));
 
         for (int i = 0; i < 60; i++) world.update(FRAME);
 
         // 1 s of real time at 1000x is 1000 s of sim time, plus the 60 ordinary ticks.
         assertEquals(1_000.0, world.engine.getSimSeconds(), 2.0);
         assertEquals(world.engine.getSimSeconds(), world.universe.now(), 1e-9);
+
+        assertTrue(world.timeWarp.setWarp(1));
+        assertNotNull(ship.getComponent(PhysicsBodyComponent.class), "back in Box2D after warp");
+        world.update(FRAME);
     }
 
     @Test
@@ -101,7 +128,7 @@ class GameWorldTest {
 
     @Test
     void saveAndLoadKeepsTimeAndOrbits() {
-        playerOnRails();
+        playerInBubble();
         world.timeWarp.setWarp(1_000);
         for (int i = 0; i < 30; i++) world.update(FRAME);
         long tick = world.engine.getTick();
@@ -151,5 +178,50 @@ class GameWorldTest {
 
         assertNotNull(member);
         assertTrue(world.engine.getEcsEngine().getEntities().contains(member, true));
+    }
+
+    @Test
+    void orbitReadoutShowsThePlayersConic() {
+        playerOnRails();
+        OrbitInfoProvider.OrbitInfo info = new PlayerOrbitInfo(world.universe, world::getPlayer).getPlayerOrbit();
+
+        assertNotNull(info);
+        assertEquals("Earth", info.bodyName);
+        assertEquals(400e3, info.altitude, 1.0);
+        assertEquals(400e3, info.periapsis, 1.0);
+        assertEquals(400e3, info.apoapsis, 1.0);
+        assertEquals(2 * Math.PI * Math.sqrt(LEO * LEO * LEO / MU_EARTH), info.period, 1e-3);
+        assertFalse(info.impactWarning);
+    }
+
+    @Test
+    void avatarFeedsTheHudAndTheInteriorAudioListener() {
+        Entity ship = playerOnRails();
+        ShipGridComponent grid = new ShipGridComponent(6, 6, 2f);
+        ship.add(grid);
+        CrewFactory.spawnPlayer(world.crew, ship, "Joe", 3, 1);
+
+        Vector2 tile = new Vector2();
+        assertSame(ship, world.avatar.getAvatarShip());
+        assertTrue(world.avatar.getAvatarTile(tile));
+        assertEquals(3.5f, tile.x, 1e-6f);
+
+        world.audioListener.setMode(GameHud.toListenerMode(ViewMode.INTERIOR));
+        world.update(FRAME);
+
+        AudioListenerComponent listener = ship.getComponent(AudioListenerComponent.class);
+        assertNotNull(listener);
+        assertEquals(AudioListenerComponent.Mode.INTERIOR, listener.mode);
+        assertEquals(grid.gridOriginLocal.x + 3.5f * 2f, listener.localX, 1e-4f);
+        assertEquals(grid.gridOriginLocal.y + 1.5f * 2f, listener.localY, 1e-4f);
+    }
+
+    @Test
+    void combatHurtsCrewThroughAiCrewWithMatchingCauses() {
+        for (HitCause cause : HitCause.values()) {
+            assertEquals(cause.name(), CrewDamageAdapter.toDamageCause(cause).name());
+        }
+        assertEquals(CrewDamageSink.DamageCause.OTHER, CrewDamageAdapter.toDamageCause(null));
+        assertFalse(world.combatDefs.weapons.isEmpty());
     }
 }
