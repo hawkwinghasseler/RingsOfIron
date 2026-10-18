@@ -43,20 +43,21 @@ To implement this module independently (requires mocking world coordinates and a
 - `AcousticOcclusionSystem`: Calculates the "muffling" value based on grid wall intersections.
 
 ## Prototype Status
-The module builds and is tested headlessly (`gradlew :audio-spatial:test`). FMOD is not wired in yet: the game talks to an `AudioBackend` interface, and two built-in backends stand in until the JNI wrapper and banks exist.
+The module builds and is tested headlessly (`gradlew :audio-spatial:test`). The game talks to an `AudioBackend` interface. An FMOD Studio backend is written but untested against real FMOD, because no FMOD Studio project or banks exist yet; until they do, two built-in backends play placeholder sounds.
 
 ![Spatial audio demo](audio-demo.png)
 
 **Run the demo:** `Audio demo.bat` (or `gradlew :lwjgl3:runAudioDemo`). Walk a small ship with WASD and hear the reactor, alarm, fire and breach hiss muffle as walls and doors come between you. E opens or seals the nearest door, TAB switches between interior and exterior listening, SPACE fires a laser and H hits the hull. Headphones help with the panning.
 
 What exists (`com.ringsofiron.audiospatial`):
-- **`AudioManager`** wraps the backend: `playOneShot(path, x, y[, intensity])`, `createInstance`, `setGlobalParameter`, `loadBank`. `AudioManager.createDefault()` picks the synth backend when libGDX audio runs, otherwise headless. The FMOD backend slots in here.
+- **`AudioManager`** wraps the backend: `playOneShot(path, x, y[, intensity])`, `createInstance`, `setGlobalParameter`, `loadBank`. `AudioManager.createDefault()` picks FMOD when its libraries and banks are installed, otherwise the synth backend when libGDX audio runs, otherwise headless.
 - **Backends** (`backend` package): `AudioBackend` / `AudioEventInstance` mirror FMOD Studio's system and `EventInstance`. `HeadlessAudioBackend` plays nothing but records every instance and its computed mix, for tests and servers. `SynthAudioBackend` plays procedural placeholder sounds through libGDX's `AudioDevice` on a mixer thread with distance rolloff, stereo pan and a real 12 dB/octave low-pass for occlusion.
-- **`AcousticModel`** is the one place the mix curves live: inverse distance rolloff faded to silence at max distance, a low-pass cutoff falling exponentially from 20 kHz (clear) to 350 Hz (fully muffled), a Transmission volume factor from the occlusion pass, and volume ∝ √pressure. The FMOD project's Occlusion (filter), Transmission (volume) and Pressure automation should follow the same curves.
+- **`FmodAudioBackend`** plays through FMOD Studio using LWJGL's `lwjgl-fmod` bindings, which need no JNI code of our own. See **Setting up FMOD** below.
+- **`AcousticModel`** is the one place the mix curves live: inverse distance rolloff faded to silence at max distance, a low-pass cutoff falling exponentially from 20 kHz (clear) to 350 Hz (fully muffled), a Transmission volume factor from the occlusion pass, and volume ∝ √pressure. The FMOD backend applies the same curves in code (see below).
 - **`AudioEventCatalog`** maps event paths (`event:/ship/reactor_hum`, `event:/weapons/laser`, ...) to loop/one-shot, duration and distances. FMOD reads these from banks instead; modding-data's `[audio_event]` table can feed it later.
 - **Components:** `AudioEmitterComponent` (event path, `EXTERIOR` at the entity's transform or `INTERIOR` at a ship-local position aboard a ship, extra parameters, auto-start, self-removing one-shots) and `AudioListenerComponent` (`mode` EXTERIOR/INTERIOR, `ship`, ship-local position).
 - **Systems:** `AcousticOcclusionSystem` (priority 900) then `AudioUpdateSystem` (priority 1000).
-- **Bridges:** `ImpactAudio` listens to `PhysicsManager.collisions` and plays hull impacts scaled by approach speed. `AudioUpdateSystem.worldShiftListener()` listens to `PhysicsManager.worldShifts` so a floating-origin rebase is not heard as a burst of speed. `AudioEmitters.spawnInteriorOneShot` plays a muffled one-shot (a door, a crack) inside a ship.
+- **Bridges:** `ImpactAudio.attach(physics)` listens to `PhysicsManager.collisions` and `fastPassImpacts` and plays hull impacts scaled by approach speed. `AudioUpdateSystem.worldShiftListener()` listens to `PhysicsManager.worldShifts` so a floating-origin rebase is not heard as a burst of speed. `AudioEmitters.spawnInteriorOneShot` plays a muffled one-shot (a door, a crack) inside a ship.
 
 Decisions made while building it:
 - **Two sound paths** (`SoundPropagation`), added as power. Counting walls on a single ray made loudness jump as the player moved one tile (a ray grazing along a wall counts it; one tile over it does not), so a ship-interior sound now reaches the listener two ways:
@@ -72,4 +73,14 @@ Integration owed by other modules (agreed through the scheduler):
 - **ui-hud** sets `AudioListenerComponent.mode` and `ship` when the view switches.
 - **ai-crew / core wiring** copies the player avatar's ship-local position into `localX` / `localY`.
 - **combat-sys, interior-grid, ai-crew** attach `AudioEmitterComponent`s (weapons, fires, breaches via `grid.airflow`, alarms, voices) or call `AudioManager` for one-shots.
-- **FMOD backend:** add the JNI binding as a third `AudioBackend`; nothing else changes.
+
+### Setting up FMOD
+1. Install the **FMOD Engine 2.03.x** from fmod.com (free to register; the 2.03 line matches LWJGL 3.4.3's bindings, and a different minor version fails with a header mismatch).
+2. Copy the core and Studio libraries for your platform into a `fmod/` folder in the project root: `fmod.dll` and `fmodstudio.dll` on Windows (from `api/core/lib/x64` and `api/studio/lib/x64`), `libfmod.so` / `libfmodstudio.so` on Linux, `libfmod.dylib` / `libfmodstudio.dylib` on macOS. The folder is git-ignored. The `fmod.dir` system property points elsewhere.
+3. Build banks from an FMOD Studio project into `assets/audio/banks/` (`Master.bank`, `Master.strings.bank` and any others). Event paths match `AudioEventCatalog`, e.g. `event:/ship/reactor_hum`.
+
+How it behaves:
+- Without the libraries or without banks, the game logs why and uses the built-in audio. Nothing else changes.
+- An event the banks don't have plays on the built-in backend, so banks can be filled in one event at a time.
+- The backend applies the audio systems' parameters itself, so events need no special setup: **Occlusion** drives a 12 dB/octave low-pass the backend adds to each event, and **Transmission** and **Pressure** set the event's volume, all following `AcousticModel`. Every parameter is also passed to the event by name, so a sound designer can use them for extras such as more reverb when muffled, but should not automate volume or a low-pass from these three.
+- Distance rolloff comes from each event's spatializer in FMOD Studio, not from `AudioEventCatalog`. World (x, y) maps to FMOD (x, 0, y), listener facing +y.

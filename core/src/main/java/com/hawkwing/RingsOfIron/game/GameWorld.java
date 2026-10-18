@@ -260,7 +260,7 @@ public class GameWorld implements Disposable {
         engine.addSystem(new AcousticOcclusionSystem(audio.getCatalog()));
         AudioUpdateSystem audioUpdate = new AudioUpdateSystem(audio);
         engine.addSystem(audioUpdate);
-        physics.collisions.add(new ImpactAudio(audio));
+        new ImpactAudio(audio).attach(physics);
         CombatAudio.install(engine.getEcsEngine(), combatEvents, combatDefs, audio, this::getContent);
         physics.worldShifts.add(audioUpdate.worldShiftListener());
 

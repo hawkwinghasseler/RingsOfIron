@@ -12,7 +12,7 @@ import com.badlogic.gdx.math.MathUtils;
  */
 public class SynthVoice {
 
-    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, BEEP }
+    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, AUTOCANNON, LAUNCH, MISSILE, EXPLOSION, BEEP }
 
     final Patch patch;
     final boolean looping;
@@ -43,6 +43,11 @@ public class SynthVoice {
     }
 
     public static Patch patchFor(String path) {
+        // Weapon sounds first: their paths also contain "weapon"
+        if (path.contains("autocannon")) return Patch.AUTOCANNON;
+        if (path.contains("missile_launch")) return Patch.LAUNCH;
+        if (path.contains("missile")) return Patch.MISSILE;
+        if (path.contains("explosion")) return Patch.EXPLOSION;
         if (path.contains("reactor") || path.contains("hum") || path.contains("engine")) return Patch.HUM;
         if (path.contains("fire")) return Patch.FIRE;
         if (path.contains("alarm")) return Patch.ALARM;
@@ -169,6 +174,36 @@ public class SynthVoice {
             }
             case DOOR:
                 return (0.6f * sin(120f, t) + 0.4f * noise()) * (float) Math.exp(-t * 14f);
+            case AUTOCANNON: {
+                // A short "chug": a punchy thump dropping 95 -> 50 Hz under a crack of noise
+                float hz = 50f + 45f * (float) Math.exp(-t * 40f);
+                phaseA = step(phaseA, hz);
+                float thump = (float) Math.sin(MathUtils.PI2 * phaseA) * (float) Math.exp(-t * 22f);
+                float crack = noise() * (float) Math.exp(-t * 55f);
+                return 0.9f * thump + 0.6f * crack;
+            }
+            case LAUNCH: {
+                // Ignition crack, then a rushing whoosh that swells and fades as the missile leaves
+                brown = brown * 0.97f + noise() * 0.08f;
+                float swell = Math.min(1f, t * 12f) * (float) Math.exp(-t * 2.5f);
+                float crack = noise() * (float) Math.exp(-t * 30f);
+                return 0.9f * swell * (1.5f * brown + 0.3f * noise()) + 0.5f * crack;
+            }
+            case MISSILE: {
+                // A rocket motor: rough roar fluttering at 23 Hz, brighter than a ship's thruster
+                brown = brown * 0.985f + noise() * 0.05f;
+                return (1f + 0.25f * sin(23f, t)) * (0.9f * brown + 0.25f * noise());
+            }
+            case EXPLOSION: {
+                // A boom: a crack, a sub-bass drop from 70 to 28 Hz and a long rumbling tail
+                float hz = 28f + 42f * (float) Math.exp(-t * 6f);
+                phaseA = step(phaseA, hz);
+                float boom = (float) Math.sin(MathUtils.PI2 * phaseA) * (float) Math.exp(-t * 2.5f);
+                brown = brown * 0.992f + noise() * 0.04f;
+                float rumble = 2.5f * brown * (float) Math.exp(-t * 1.4f);
+                float crack = noise() * (float) Math.exp(-t * 25f);
+                return 0.8f * boom + 0.7f * rumble + 0.5f * crack;
+            }
             default:
                 return 0.3f * sin(440f, t) * (t < duration ? 1f : 0f);
         }

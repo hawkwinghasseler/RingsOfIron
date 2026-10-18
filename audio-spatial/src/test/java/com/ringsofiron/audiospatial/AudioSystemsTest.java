@@ -210,6 +210,19 @@ class AudioSystemsTest {
     }
 
     @Test
+    void fastPassImpactsPlayHullImpacts() {
+        ImpactAudio impacts = new ImpactAudio(audio);
+        com.ringsofiron.physicsexterior.events.FastPassImpactEvent pass = new com.ringsofiron.physicsexterior.events.FastPassImpactEvent();
+        pass.pointX = 110f;
+        pass.pointY = 50f;
+        pass.relativeSpeed = 3000f; // a railgun slug: full intensity
+        impacts.onFastPass(pass);
+        engine.update(DT);
+        assertEquals(1, backend.find(AudioEventCatalog.HULL_IMPACT).size);
+        assertEquals(1f, backend.find(AudioEventCatalog.HULL_IMPACT).first().getParameter("Intensity", 0f), 1e-6f);
+    }
+
+    @Test
     void assetTableEventsAreRegistered() {
         // Every path in assets.toml's [audio_event] table has playback rules, so none falls back to the beep
         try {
