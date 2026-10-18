@@ -7,7 +7,7 @@ import com.badlogic.gdx.utils.Array;
  *
  * Tiles come from a character map ({@link #rows}, written top-to-bottom as it reads on
  * screen). Everything a character cannot express (edge walls, multi-tile hull pieces,
- * explicit mounts) is listed separately in grid coordinates, where (0, 0) is the
+ * explicit mounts, floor coverings) is listed separately in grid coordinates, where (0, 0) is the
  * bottom-left tile and +y points up, matching Box2D.
  */
 public class ChassisBlueprint {
@@ -27,6 +27,20 @@ public class ChassisBlueprint {
             this.weightClass = weightClass;
             this.material = material;
             this.hasBulkhead = hasBulkhead;
+        }
+    }
+
+    /** A floor covering laid over every floor tile in a rectangle. */
+    public static class CoveringDef {
+        public final FloorCovering covering;
+        public final int x, y, width, height;
+
+        public CoveringDef(FloorCovering covering, int x, int y, int width, int height) {
+            this.covering = covering;
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
         }
     }
 
@@ -51,6 +65,7 @@ public class ChassisBlueprint {
     public final Array<EdgeWallDef> edgeWalls = new Array<>();
     public final Array<HullPiece> hullPieces = new Array<>();
     public final Array<MountDef> mounts = new Array<>();
+    public final Array<CoveringDef> coverings = new Array<>();
 
     public ChassisBlueprint(String... rows) {
         this.rows = rows;
@@ -74,6 +89,12 @@ public class ChassisBlueprint {
 
     public ChassisBlueprint hullPiece(HullPiece piece) {
         hullPieces.add(piece);
+        return this;
+    }
+
+    /** Lays a covering on every floor tile in the rectangle with bottom-left tile (x, y). */
+    public ChassisBlueprint covering(FloorCovering covering, int x, int y, int width, int height) {
+        coverings.add(new CoveringDef(covering, x, y, width, height));
         return this;
     }
 

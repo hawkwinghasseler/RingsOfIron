@@ -9,8 +9,8 @@ import com.badlogic.gdx.utils.Array;
  *   '#' = Outer hull wall, medium (immovable, WallType.HULL)
  *   '1' / '2' / '3' = Outer hull wall, light / medium / heavy
  *   'I' = Full-tile internal wall, medium (WallType.INTERNAL)
- *   '.' = Interior floor tile
- *   '+' = Power conduit tile
+ *   '.' = Interior floor tile (steel deck)
+ *   '+' = Power conduit tile (steel deck)
  *   ' ' = Void (space, not part of the ship)
  *
  * System letters mark floor tiles covered by a mount. Each solid rectangle of one
@@ -20,6 +20,9 @@ import com.badlogic.gdx.utils.Array;
  *   Primary (square):        'R' reactor, 'S' shield emitter, 'T' turret mount
  *   Auxiliary (rectangular): 'L' life support, 'H' helm, 'W' weapons console,
  *                            'C' cargo, 'A' airlock
+ *
+ * Floor coverings such as carpet are laid over the steel deck from
+ * {@link ChassisBlueprint#coverings}, on every floor tile inside each listed rectangle.
  *
  * This class is intentionally independent of the ECS; it simply produces a
  * populated ShipGridComponent and a list of SubsystemPlacement data objects.
@@ -97,6 +100,15 @@ public class ChassisBlueprintLoader {
             grid.setEdge(def.x, def.y, def.side, new EdgeWall(def.weightClass, def.material, def.hasBulkhead));
         }
 
+        for (ChassisBlueprint.CoveringDef def : blueprint.coverings) {
+            for (int y = def.y; y < def.y + def.height; y++) {
+                for (int x = def.x; x < def.x + def.width; x++) {
+                    Tile t = grid.getTile(x, y);
+                    if (t != null && t.isFloor()) t.setCovering(def.covering, grid.tileSize);
+                }
+            }
+        }
+
         for (HullPiece piece : blueprint.hullPieces) {
             grid.placeHullPiece(piece);
         }
@@ -151,11 +163,9 @@ public class ChassisBlueprintLoader {
             case 'I':
                 tile.wallType = Tile.WallType.INTERNAL;
                 tile.floorType = Tile.FloorType.NONE;
-                tile.isFlammable = false;
                 break;
             case '+':
                 tile.floorType = Tile.FloorType.POWER_CONDUIT;
-                tile.isFlammable = false;
                 break;
             case ' ':
                 // Void - already default
@@ -170,7 +180,6 @@ public class ChassisBlueprintLoader {
     private static void makeHull(Tile tile, WeightClass weightClass) {
         tile.wallType = Tile.WallType.HULL;
         tile.floorType = Tile.FloorType.NONE;
-        tile.isFlammable = false;
         tile.weightClass = weightClass;
     }
 

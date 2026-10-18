@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron;
 
+import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.ApplicationAdapter;
@@ -19,13 +20,13 @@ import com.ringsofiron.interiorgrid.*;
  * Interactive demo for the interior-grid module.
  *
  * Controls:
- *   Left Click         - Toggle fire on a floor tile
- *   Right Click        - Toggle bulkhead seal on a tile
- *   Middle Click       - Destroy a wall tile (hull: breach; wedge: whole piece)
+ *   Left Click         - Start / put out a fire on a carpeted tile
+ *   Right Click        - Toggle a bulkhead seal on a tile (seals a breach too)
+ *   Middle Click       - Damage a tile by 12.5%, or the edge wall next to the cursor
  *   D                  - Open/seal the doors in the edge wall
  *   F                  - Extinguish all fires
- *   V                  - Restore all vacuum tiles to full oxygen
- *   P                  - Toggle power (destroy/restore reactor)
+ *   V                  - Refill every room with fresh air and cool the ship down
+ *   P                  - Switch the reactor off / on
  *   R                  - Reset to initial state
  *   ESC                - Exit
  */
@@ -35,9 +36,14 @@ public class Main extends ApplicationAdapter {
     private static final float TILE_PX = 40f;     // pixel size of each tile on screen
     private static final int WORLD_W = 24;         // tiles wide for the virtual viewport
     private static final int WORLD_H = 18;         // tiles tall
+    /** Damage dealt by one middle click, as a share of full condition. */
+    private static final float CLICK_DAMAGE = 0.125f;
+    /** How close (share of a tile) the cursor must be to an edge wall to hit it. */
+    private static final float EDGE_PICK = 0.2f;
 
     // --- Ship blueprint (inner dimensions determined by '#' border) ---
     // Text rows read top-to-bottom; the grid stores them bottom-left first, +y up (Box2D).
+    // Every floor is steel; the rooms left of the dividing wall are carpeted on top.
     private static final String[] BLUEPRINT = {
         "####################  ",
         "#..................#  ",
@@ -57,11 +63,16 @@ public class Main extends ApplicationAdapter {
         for (int y = 1; y <= 6; y++) {
             bp.edgeWall(EDGE_WALL_X, y, Side.LEFT, WeightClass.LIGHT, y == 3);
         }
+        // Carpet over the steel floor of everything left of the dividing wall
+        bp.covering(FloorCovering.CARPET, 1, 1, EDGE_WALL_X - 1, 6);
         // Heavy 1x2 armor wedge on the starboard side, sloped face outward
         bp.hullPiece(new HullPiece(HullPiece.Shape.WEDGE, 20, 3, 1, 2, 0,
                 WeightClass.HEAVY, MaterialTable.DEFAULT_MATERIAL));
         return bp;
     }
+
+    private static final ComponentMapper<SubsystemComponent> SUBSYSTEMS =
+            ComponentMapper.getFor(SubsystemComponent.class);
 
     // --- ECS / Module objects ---
     private Engine engine;
@@ -77,8 +88,8 @@ public class Main extends ApplicationAdapter {
     private BitmapFont font;
 
     // --- State ---
-    private boolean reactorDestroyed = false;
     private float elapsedTime = 0f;
+    private int hoverX = -1, hoverY = -1;
 
     // -----------------------------------------------------------------------
     @Override
@@ -105,6 +116,8 @@ public class Main extends ApplicationAdapter {
         // Parse blueprint
         ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(createBlueprint());
         grid = result.grid;
+        // Divide the interior into rooms and fill them with air before the first frame
+        CompartmentBuilder.rebuildIfChanged(grid);
 
         // Create ship entity
         shipEntity = new Entity();
@@ -153,17 +166,19 @@ public class Main extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) Gdx.app.exit();
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) resetShip();
         if (Gdx.input.isKeyJustPressed(Input.Keys.F)) extinguishAllFires();
-        if (Gdx.input.isKeyJustPressed(Input.Keys.V)) restoreAllOxygen();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.V)) restoreAtmosphere();
         if (Gdx.input.isKeyJustPressed(Input.Keys.P)) toggleReactor();
         if (Gdx.input.isKeyJustPressed(Input.Keys.D)) toggleEdgeDoors();
 
         // Convert mouse → tile coordinates
         Vector3 worldPos = camera.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
         // Grid starts at (2 * TILE_PX, 2 * TILE_PX) to leave some margin
-        float gridOffsetX = 2 * TILE_PX;
-        float gridOffsetY = 2 * TILE_PX;
-        int tx = (int) ((worldPos.x - gridOffsetX) / TILE_PX);
-        int ty = (int) ((worldPos.y - gridOffsetY) / TILE_PX);
+        float gx = (worldPos.x - 2 * TILE_PX) / TILE_PX;
+        float gy = (worldPos.y - 2 * TILE_PX) / TILE_PX;
+        int tx = (int) Math.floor(gx);
+        int ty = (int) Math.floor(gy);
+        hoverX = tx;
+        hoverY = ty;
 
         if (grid.inBounds(tx, ty)) {
             if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
@@ -173,15 +188,16 @@ public class Main extends ApplicationAdapter {
                 toggleBulkhead(tx, ty);
             }
             if (Gdx.input.isButtonJustPressed(Input.Buttons.MIDDLE)) {
-                breachHull(tx, ty);
+                damageAt(tx, ty, gx - tx, gy - ty);
             }
         }
     }
 
     private void toggleFire(int x, int y) {
         Tile t = grid.getTile(x, y);
-        if (t == null || t.isWall() || t.isVoid()) return;
-        t.hasFire = !t.hasFire;
+        if (t == null) return;
+        if (t.isBurning()) t.extinguish();
+        else t.ignite(); // only carpet burns; bare steel will not light
     }
 
     private void toggleBulkhead(int x, int y) {
@@ -190,10 +206,26 @@ public class Main extends ApplicationAdapter {
         t.bulkheadSealed = !t.bulkheadSealed;
     }
 
-    private void breachHull(int x, int y) {
-        Tile t = grid.getTile(x, y);
-        if (t == null || !t.isWall()) return;
-        t.setIntegrity(0f);
+    /** Damages the edge wall the cursor is next to, or else the tile itself. */
+    private void damageAt(int x, int y, float fx, float fy) {
+        Side nearest = null;
+        float best = EDGE_PICK;
+        float[] dist = {fy, 1f - fy, fx, 1f - fx}; // BOTTOM, TOP, LEFT, RIGHT
+        Side[] sides = {Side.BOTTOM, Side.TOP, Side.LEFT, Side.RIGHT};
+        for (int i = 0; i < 4; i++) {
+            if (dist[i] < best && grid.getEdge(x, y, sides[i]) != null) {
+                best = dist[i];
+                nearest = sides[i];
+            }
+        }
+        if (nearest != null) {
+            EdgeWall wall = grid.getEdge(x, y, nearest);
+            wall.integrity = Math.max(0f, wall.integrity - CLICK_DAMAGE);
+        } else {
+            Tile t = grid.getTile(x, y);
+            if (t == null || t.isVoid()) return;
+            t.setIntegrity(t.getIntegrity() - CLICK_DAMAGE);
+        }
         grid.gridDirty = true;
     }
 
@@ -206,41 +238,32 @@ public class Main extends ApplicationAdapter {
 
     private void extinguishAllFires() {
         for (int y = 0; y < grid.height; y++)
-            for (int x = 0; x < grid.width; x++) {
-                Tile t = grid.getTile(x, y);
-                if (t != null) t.hasFire = false;
-            }
+            for (int x = 0; x < grid.width; x++) grid.getTile(x, y).extinguish();
     }
 
-    private void restoreAllOxygen() {
+    private void restoreAtmosphere() {
         for (int y = 0; y < grid.height; y++)
-            for (int x = 0; x < grid.width; x++) {
-                Tile t = grid.getTile(x, y);
-                if (t != null && t.isFloor()) {
-                    t.oxygenLevel = 1.0f;
-                    t.hasVacuum = false;
-                }
-            }
+            for (int x = 0; x < grid.width; x++) grid.getTile(x, y).temperature = Compartment.AMBIENT_TEMPERATURE;
+        for (Compartment c : grid.compartments) {
+            c.temperature = Compartment.AMBIENT_TEMPERATURE;
+            c.fillStandardAir();
+        }
     }
 
     private void toggleReactor() {
-        // Find reactor subsystem and toggle its health
-        com.badlogic.ashley.core.ComponentMapper<SubsystemComponent> sm =
-                com.badlogic.ashley.core.ComponentMapper.getFor(SubsystemComponent.class);
         for (Entity e : subsysRegistry.subsystems) {
-            SubsystemComponent sub = sm.get(e);
+            SubsystemComponent sub = SUBSYSTEMS.get(e);
             if (sub != null && sub.type == SubsystemComponent.SubsystemType.REACTOR) {
-                sub.health = (sub.health > 0) ? 0f : 1f;
-                reactorDestroyed = (sub.health <= 0);
+                sub.switchedOn = !sub.switchedOn;
             }
         }
+        grid.gridDirty = true;
     }
 
     private void resetShip() {
         // Remove old ship from engine
         engine.removeAllEntities();
         buildShip();
-        reactorDestroyed = false;
         elapsedTime = 0f;
     }
 
@@ -252,6 +275,8 @@ public class Main extends ApplicationAdapter {
         float offX = 2 * TILE_PX;
         float offY = 2 * TILE_PX;
 
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
         for (int y = 0; y < grid.height; y++) {
@@ -265,6 +290,35 @@ public class Main extends ApplicationAdapter {
                         ? tileColor(null) : tileColor(tile);
                 shapeRenderer.setColor(c);
                 shapeRenderer.rect(px + 1, py + 1, TILE_PX - 2, TILE_PX - 2);
+
+                // Heat glow, from dull red at 400 K to bright at the ignition temperature
+                float heat = (tile.temperature - 350f) / (GridHazardSystem.IGNITION_TEMPERATURE - 350f);
+                if (heat > 0f && !tile.isVoid()) {
+                    shapeRenderer.setColor(1f, 0.25f, 0.05f, Math.min(0.6f, heat * 0.6f));
+                    shapeRenderer.rect(px + 1, py + 1, TILE_PX - 2, TILE_PX - 2);
+                }
+
+                // Smoke: grey haze over the whole room, thicker as smoke builds up
+                if (tile.compartment != null) {
+                    float smoke = Math.min(0.5f, tile.compartment.smokeDensity() * 80f);
+                    if (smoke > 0.01f) {
+                        shapeRenderer.setColor(0.4f, 0.4f, 0.4f, smoke);
+                        shapeRenderer.rect(px, py, TILE_PX, TILE_PX);
+                    }
+                }
+            }
+        }
+
+        // Fire on top of the smoke: a flickering square that grows with intensity
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile tile = grid.getTile(x, y);
+                if (!tile.isBurning()) continue;
+                float flicker = (float) (Math.sin(elapsedTime * 8 + x * 1.7 + y * 2.3) * 0.5 + 0.5);
+                float size = (0.25f + 0.75f * tile.fireIntensity) * (TILE_PX - 4);
+                shapeRenderer.setColor(1f, 0.35f + flicker * 0.35f, 0f, 1f);
+                shapeRenderer.rect(offX + x * TILE_PX + (TILE_PX - size) / 2,
+                        offY + y * TILE_PX + (TILE_PX - size) / 2, size, size);
             }
         }
 
@@ -283,53 +337,79 @@ public class Main extends ApplicationAdapter {
                 float py = offY + y * TILE_PX;
                 shapeRenderer.rect(px, py, TILE_PX, TILE_PX);
 
+                // Leaking walls and floors: a cyan cross, brighter as the leak grows
+                float leak = tile.isOpen() && !tile.isFloor() ? 0f : tile.leakFactor();
+                if (leak > 0f && tile.getIntegrity() > 0f) {
+                    shapeRenderer.setColor(0.3f, 0.9f, 1f, 0.4f + leak);
+                    shapeRenderer.line(px + 8, py + TILE_PX / 2, px + TILE_PX - 8, py + TILE_PX / 2);
+                    shapeRenderer.line(px + TILE_PX / 2, py + 8, px + TILE_PX / 2, py + TILE_PX - 8);
+                }
+
                 // Draw sealed bulkhead indicator (bright yellow X)
                 if (tile.bulkheadSealed) {
                     shapeRenderer.setColor(Color.YELLOW);
                     shapeRenderer.line(px + 4, py + 4, px + TILE_PX - 4, py + TILE_PX - 4);
                     shapeRenderer.line(px + TILE_PX - 4, py + 4, px + 4, py + TILE_PX - 4);
-                    shapeRenderer.setColor(0.3f, 0.3f, 0.3f, 1f);
                 }
+                shapeRenderer.setColor(0.3f, 0.3f, 0.3f, 1f);
             }
         }
+        drawRoomBoundaries(offX, offY);
         shapeRenderer.end();
 
         drawEdgeWalls(offX, offY);
 
         // Draw subsystem icons as small filled circles
         drawSubsystems(offX, offY);
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     private Color tileColor(Tile tile) {
         if (tile == null || tile.isVoid()) return new Color(0.05f, 0.05f, 0.1f, 1f);
 
-        if (tile.isWall()) {
+        if (tile.isWall() && !tile.isOpen()) {
             if (tile.getIntegrity() <= 0f) return new Color(0.6f, 0.1f, 0.0f, 1f); // Breached = dark red
-            return new Color(0.35f, 0.35f, 0.4f, 1f); // Hull = grey
+            // Hull = grey, darker as it takes damage
+            float shade = 0.2f + 0.2f * tile.getIntegrity();
+            return new Color(shade, shade, shade + 0.05f, 1f);
         }
+        if (tile.isFloor() && tile.getIntegrity() <= 0f) return new Color(0.02f, 0.02f, 0.05f, 1f); // Hole in the deck
 
-        if (tile.hasFire) {
-            // Flicker orange/yellow
-            float t = (float)(Math.sin(elapsedTime * 8 + tile.hashCode()) * 0.5 + 0.5);
-            return new Color(1f, 0.4f + t * 0.3f, 0f, 1f);
+        // Air pressure sets the brightness: a vented room goes dark
+        float p = tile.compartment == null ? 0f : Math.min(1f, tile.compartment.pressureRatio());
+        float light = 0.35f + 0.65f * p;
+
+        if (tile.covering == FloorCovering.CARPET) {
+            return new Color(0.42f * light, 0.12f * light, 0.14f * light, 1f);
         }
-
-        if (tile.hasVacuum || tile.oxygenLevel < 0.05f) {
-            return new Color(0.05f, 0.05f, 0.25f, 1f); // Near-black blue for vacuum
-        }
-
-        // Oxygen tint: full O2 = light blue-green, partial = darker
-        float o2 = tile.oxygenLevel;
-        if (tile.isPowered) {
-            // Powered: add subtle yellow highlight
-            return new Color(0.2f * o2 + 0.1f, 0.25f * o2 + 0.15f, 0.15f, 1f);
-        }
-
         if (tile.isPowerConduit()) {
-            return new Color(0.1f, 0.1f + 0.3f * o2, 0.3f, 1f);
+            return tile.isPowered
+                    ? new Color(0.22f * light, 0.3f * light, 0.45f * light, 1f)
+                    : new Color(0.14f * light, 0.18f * light, 0.3f * light, 1f);
         }
+        // Bare steel deck, with a faint yellow cast where it carries power
+        if (tile.isPowered) return new Color(0.3f * light, 0.3f * light, 0.25f * light, 1f);
+        return new Color(0.26f * light, 0.28f * light, 0.3f * light, 1f);
+    }
 
-        return new Color(0.15f * o2, 0.22f * o2, 0.22f * o2, 1f);
+    /** White lines where two different rooms meet, so the room division is visible. */
+    private void drawRoomBoundaries(float offX, float offY) {
+        shapeRenderer.setColor(1f, 1f, 1f, 0.8f);
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Compartment c = grid.compartmentAt(x, y);
+                if (c == null) continue;
+                Compartment right = grid.compartmentAt(x + 1, y), up = grid.compartmentAt(x, y + 1);
+                if (right != null && right != c && grid.canFlow(x, y, x + 1, y)) {
+                    float lx = offX + (x + 1) * TILE_PX;
+                    shapeRenderer.line(lx, offY + y * TILE_PX + 3, lx, offY + (y + 1) * TILE_PX - 3);
+                }
+                if (up != null && up != c && grid.canFlow(x, y, x, y + 1)) {
+                    float ly = offY + (y + 1) * TILE_PX;
+                    shapeRenderer.line(offX + x * TILE_PX + 3, ly, offX + (x + 1) * TILE_PX - 3, ly);
+                }
+            }
+        }
     }
 
     /** Fills each sloped hull piece as a triangle. Call inside a Filled batch. */
@@ -347,13 +427,14 @@ public class Main extends ApplicationAdapter {
                 v[k++] = corners[i][0];
                 v[k++] = corners[i][1];
             }
+            float shade = 0.25f + 0.2f * piece.integrity;
             shapeRenderer.setColor(piece.isDestroyed()
-                    ? new Color(0.6f, 0.1f, 0.0f, 1f) : new Color(0.45f, 0.45f, 0.5f, 1f));
+                    ? new Color(0.6f, 0.1f, 0.0f, 1f) : new Color(shade, shade, shade + 0.05f, 1f));
             shapeRenderer.triangle(v[0], v[1], v[2], v[3], v[4], v[5]);
         }
     }
 
-    /** Thin walls on tile edges: grey wall, green open door, yellow sealed door. */
+    /** Thin walls on tile edges: grey wall, green open door, yellow sealed door, cyan when leaking. */
     private void drawEdgeWalls(float offX, float offY) {
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         float t = 4f;
@@ -377,14 +458,12 @@ public class Main extends ApplicationAdapter {
     }
 
     private Color edgeWallColor(EdgeWall w) {
-        if (!w.hasBulkhead) return Color.LIGHT_GRAY;
+        if (w.blocks() && w.leakFactor() > 0f) return Color.CYAN;
+        if (!w.hasBulkhead) return new Color(0.5f + 0.3f * w.integrity, 0.5f + 0.3f * w.integrity, 0.5f + 0.3f * w.integrity, 1f);
         return w.bulkheadSealed ? Color.YELLOW : Color.GREEN;
     }
 
     private void drawSubsystems(float offX, float offY) {
-        com.badlogic.ashley.core.ComponentMapper<SubsystemComponent> sm =
-                com.badlogic.ashley.core.ComponentMapper.getFor(SubsystemComponent.class);
-
         // Mount outlines
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         shapeRenderer.setColor(Color.CYAN);
@@ -396,20 +475,13 @@ public class Main extends ApplicationAdapter {
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         for (Entity e : subsysRegistry.subsystems) {
-            SubsystemComponent sub = sm.get(e);
+            SubsystemComponent sub = SUBSYSTEMS.get(e);
             if (sub == null) continue;
             MountFootprint f = sub.footprint;
             float cx = offX + (f.originX + f.width() * 0.5f) * TILE_PX;
             float cy = offY + (f.originY + f.height() * 0.5f) * TILE_PX;
             float r = TILE_PX * 0.25f;
-
-            if (!sub.isOperational) {
-                shapeRenderer.setColor(Color.DARK_GRAY);
-            } else if (sub.powered) {
-                shapeRenderer.setColor(Color.YELLOW);
-            } else {
-                shapeRenderer.setColor(Color.RED);
-            }
+            shapeRenderer.setColor(subsystemColor(sub));
             shapeRenderer.circle(cx, cy, r, 16);
         }
         shapeRenderer.end();
@@ -417,7 +489,7 @@ public class Main extends ApplicationAdapter {
         // Draw subsystem labels
         batch.begin();
         for (Entity e : subsysRegistry.subsystems) {
-            SubsystemComponent sub = sm.get(e);
+            SubsystemComponent sub = SUBSYSTEMS.get(e);
             if (sub == null) continue;
             float tx = offX + sub.footprint.originX * TILE_PX + 4;
             float ty = offY + (sub.footprint.originY + sub.footprint.height()) * TILE_PX - 4;
@@ -427,6 +499,13 @@ public class Main extends ApplicationAdapter {
             font.draw(batch, label, tx, ty);
         }
         batch.end();
+    }
+
+    private Color subsystemColor(SubsystemComponent sub) {
+        if (sub.isDestroyed()) return Color.DARK_GRAY;
+        if (!sub.switchedOn) return Color.BLUE;
+        if (sub.isOperational) return Color.YELLOW;
+        return Color.RED;
     }
 
     private void drawHud() {
@@ -441,33 +520,70 @@ public class Main extends ApplicationAdapter {
         font.draw(batch, "=== Interior Grid Demo ===", lx, ly); ly -= lineH * 1.5f;
 
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, "[L-Click]  Toggle fire on tile", lx, ly); ly -= lineH;
+        font.draw(batch, "[L-Click]  Start / put out fire (carpet only)", lx, ly); ly -= lineH;
         font.draw(batch, "[R-Click]  Toggle bulkhead seal (yellow X)", lx, ly); ly -= lineH;
-        font.draw(batch, "[M-Click]  Breach hull tile", lx, ly); ly -= lineH;
+        font.draw(batch, "[M-Click]  Damage tile, or edge wall by cursor", lx, ly); ly -= lineH;
         font.draw(batch, "[D]        Open/seal edge-wall door", lx, ly); ly -= lineH;
-        font.draw(batch, "[P]        Toggle reactor power", lx, ly); ly -= lineH;
+        font.draw(batch, "[P]        Switch reactor off / on", lx, ly); ly -= lineH;
         font.draw(batch, "[F]        Extinguish all fires", lx, ly); ly -= lineH;
-        font.draw(batch, "[V]        Restore oxygen to all tiles", lx, ly); ly -= lineH;
+        font.draw(batch, "[V]        Fresh air in every room", lx, ly); ly -= lineH;
         font.draw(batch, "[R]        Reset ship", lx, ly); ly -= lineH;
         font.draw(batch, "[ESC]      Exit", lx, ly); ly -= lineH * 1.5f;
 
         font.setColor(Color.YELLOW);
-        font.draw(batch, "Subsystem circles:", lx, ly); ly -= lineH;
-        font.setColor(Color.YELLOW);
-        font.draw(batch, "  Yellow = powered & operational", lx, ly); ly -= lineH;
+        font.draw(batch, "Systems: yellow = running", lx, ly); ly -= lineH;
         font.setColor(Color.RED);
-        font.draw(batch, "  Red    = no power", lx, ly); ly -= lineH;
-        font.setColor(Color.DARK_GRAY);
-        font.draw(batch, "  Gray   = destroyed", lx, ly); ly -= lineH * 1.5f;
-
-        font.setColor(Color.ORANGE);
-        font.draw(batch, "Fire spreads slowly (1 tile/sec).", lx, ly); ly -= lineH;
-        font.setColor(new Color(0.4f, 0.4f, 1f, 1f));
-        font.draw(batch, "Vacuum bleeds from hull breaches.", lx, ly); ly -= lineH;
+        font.draw(batch, "  red = no power", lx, ly);
+        font.setColor(new Color(0.4f, 0.5f, 1f, 1f));
+        font.draw(batch, "blue = switched off", lx + 120, ly);
+        font.setColor(Color.GRAY);
+        font.draw(batch, "grey = destroyed", lx + 260, ly); ly -= lineH;
+        font.setColor(new Color(0.3f, 0.9f, 1f, 1f));
+        font.draw(batch, "Cyan cross / wall = leaking (below 50%)", lx, ly); ly -= lineH;
         font.setColor(Color.WHITE);
-        font.draw(batch, "Bulkhead seals stop both.", lx, ly);
+        font.draw(batch, "White lines divide rooms at 1-wide openings", lx, ly);
 
+        drawTileInfo(560f, viewport.getWorldHeight() - 5f, lineH);
         batch.end();
+    }
+
+    /** Readout for the tile under the cursor and the room it is in. Call inside the batch. */
+    private void drawTileInfo(float x, float y, float lineH) {
+        font.setColor(Color.WHITE);
+        font.draw(batch, "=== Under cursor ===", x, y); y -= lineH * 1.5f;
+        Tile t = grid.getTile(hoverX, hoverY);
+        if (t == null || t.isVoid()) {
+            font.setColor(Color.LIGHT_GRAY);
+            font.draw(batch, t == null ? "(hover over the ship)" : "Space", x, y);
+            return;
+        }
+        font.setColor(Color.LIGHT_GRAY);
+        String kind = t.isWall() ? (t.wallType == Tile.WallType.HULL ? "Hull" : "Internal wall")
+                : t.covering == FloorCovering.CARPET ? "Carpet on steel floor"
+                : t.isPowerConduit() ? "Steel floor, power conduit" : "Steel floor";
+        font.draw(batch, kind + "  (" + hoverX + ", " + hoverY + ")", x, y); y -= lineH;
+        font.draw(batch, String.format("Condition %.0f%%   leak %.0f%%", t.getIntegrity() * 100f,
+                (t.isOpen() && !t.isFloor() ? 0f : t.leakFactor()) * 100f), x, y); y -= lineH;
+        font.draw(batch, String.format("Temperature %.0f K", t.temperature), x, y); y -= lineH;
+        if (t.fuel > 0f || t.isBurning()) {
+            font.setColor(t.isBurning() ? Color.ORANGE : Color.LIGHT_GRAY);
+            font.draw(batch, String.format("Fire: %s (%.0f%%)   fuel %.2f kg", t.fireSize(),
+                    t.fireIntensity * 100f, t.fuel), x, y); y -= lineH;
+        }
+        if (t.bulkheadSealed) {
+            font.setColor(Color.YELLOW);
+            font.draw(batch, "Sealed", x, y); y -= lineH;
+        }
+        y -= lineH * 0.5f;
+
+        Compartment c = t.compartment;
+        if (c == null) return;
+        font.setColor(new Color(0.6f, 0.8f, 1f, 1f));
+        font.draw(batch, String.format("Room %d: %d tiles, %.0f m3", c.id, c.tiles.size, c.volume), x, y); y -= lineH;
+        font.draw(batch, String.format("Pressure %.1f kPa", c.pressure()), x, y); y -= lineH;
+        font.draw(batch, String.format("O2 %.1f%%   CO2 %.2f%%", c.oxygenFraction() * 100f,
+                c.carbonDioxideFraction() * 100f), x, y); y -= lineH;
+        font.draw(batch, String.format("Smoke %.1f g/m3   air %.0f K", c.smokeDensity() * 1000f, c.temperature), x, y);
     }
 
     // -----------------------------------------------------------------------

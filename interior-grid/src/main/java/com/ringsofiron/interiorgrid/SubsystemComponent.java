@@ -32,9 +32,14 @@ public class SubsystemComponent implements Component {
     public final MountFootprint footprint;
     /** The type of subsystem. */
     public SubsystemType type;
-    /** Whether this subsystem is currently operational. */
+    /**
+     * Whether the crew have this system switched on. A reactor that is switched off
+     * produces no power; it is not damaged and comes back as soon as it is switched on.
+     */
+    public boolean switchedOn = true;
+    /** Whether this subsystem is currently operational: switched on, powered and not destroyed. Set by PowerRoutingSystem. */
     public boolean isOperational = true;
-    /** Structural health 0.0 = destroyed, 1.0 = fully intact. */
+    /** Structural health 0.0 = destroyed, 1.0 = fully intact. Only damage changes it. */
     public float health = 1.0f;
     /** Whether this subsystem is currently receiving power. Set by PowerRoutingSystem. */
     public boolean powered = false;
@@ -45,6 +50,10 @@ public class SubsystemComponent implements Component {
         }
         this.footprint = footprint;
         this.type = type;
+    }
+
+    public boolean isDestroyed() {
+        return health <= 0f;
     }
 
     /** True if tile (x, y) is part of this system's footprint. */
