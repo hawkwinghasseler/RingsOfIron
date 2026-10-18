@@ -22,6 +22,10 @@ public class AudioEventCatalog {
     public static final String MISSILE_FLIGHT = "event:/weapons/missile_flight";
     /** A warhead going off. */
     public static final String EXPLOSION = "event:/impacts/explosion";
+    /** One crew footstep on the deck. */
+    public static final String FOOTSTEP = "event:/crew/footstep";
+    /** A crew member calling out: taking a job, or crying out when knocked down. */
+    public static final String VOICE = "event:/crew/voice";
     // Paths named in assets.toml's [audio_event] table (modding-data's AssetRegistry keys
     // evt_railgun_fire and evt_hull_breach)
     public static final String RAILGUN = "event:/weapons/railgun";
@@ -48,6 +52,8 @@ public class AudioEventCatalog {
         c.register(SoundEventDef.oneShot(EXPLOSION, 2.5f, 40f, 3000f, 1f));
         c.register(SoundEventDef.oneShot(RAILGUN, 0.45f, 10f, 800f, 0.8f));
         c.register(SoundEventDef.loop(HULL_BREACH, 2f, 40f, 0.8f));
+        c.register(SoundEventDef.oneShot(FOOTSTEP, 0.12f, 1f, 15f, 0.35f));
+        c.register(SoundEventDef.oneShot(VOICE, 0.6f, 1.5f, 25f, 0.6f));
         return c;
     }
 

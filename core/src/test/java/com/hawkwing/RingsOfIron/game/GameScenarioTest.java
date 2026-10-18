@@ -131,6 +131,8 @@ class GameScenarioTest {
         }
         assertTrue(fought, "a crew member took the firefighting job");
         assertFalse(grid.hasFire(), "the crew put the fire out");
+        assertTrue(world.crewAudio.footstepsPlayed() > 0, "the firefighter's footsteps are heard");
+        assertTrue(world.crewAudio.voicesPlayed() > 0, "the firefighter called out taking the job");
     }
 
     @Test
