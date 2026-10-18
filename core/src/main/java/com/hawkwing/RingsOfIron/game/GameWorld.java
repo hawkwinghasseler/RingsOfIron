@@ -37,6 +37,8 @@ import com.ringsofiron.macrosim.rails.orbital.OrbitalRailsModel;
 import com.ringsofiron.moddingdata.ModContext;
 import com.ringsofiron.moddingdata.ModTrustPolicy;
 import com.ringsofiron.moddingdata.ModdingBootstrap;
+import com.ringsofiron.orbital.components.CelestialBodyComponent;
+import com.ringsofiron.orbital.events.OrbitalEvent;
 import com.ringsofiron.orbital.events.OrbitalEventQueue;
 import com.ringsofiron.orbital.events.OrbitalEventSystem;
 import com.ringsofiron.orbital.rails.RailsUniverse;
@@ -49,6 +51,7 @@ import com.ringsofiron.physicsexterior.OrbitalAnchorBridge;
 import com.ringsofiron.physicsexterior.PhysicsSaveParticipant;
 import com.ringsofiron.physicsexterior.RailsBubbleHandoff;
 import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
+import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.physicsexterior.modding.ShipPhysicsAssembler;
 import com.ringsofiron.physicsexterior.systems.FlightControlSystem;
 import com.ringsofiron.physicsexterior.systems.FloatingOriginSystem;
@@ -111,12 +114,28 @@ public class GameWorld implements Disposable {
     public final AudioManager audio;
     public final AvatarInteractor avatar;
     public final AudioListenerSync audioListener;
+    /** The player's planned burns. */
+    public final BurnPlanner burns;
+
+    /** How the player's ship was lost. */
+    public static final class Crash {
+        public final String bodyName;
+        public final double time;
+
+        Crash(String bodyName, double time) {
+            this.bodyName = bodyName;
+            this.time = time;
+        }
+    }
 
     private final ImmutableArray<Entity> players;
     private final OrbitalAnchorBridge anchorBridge;
     private final Modules modules;
     private final SwitchableCommodityCatalog commodities = new SwitchableCommodityCatalog(new DefaultCommodityCatalog());
     private ModContext content;
+    private Crash crash;
+    private final List<Entity> wrecks = new ArrayList<>();
+    private final double[] trueState = new double[4];
 
     public GameWorld() {
         this(new Modules());
@@ -155,6 +174,10 @@ public class GameWorld implements Disposable {
                 ? modules.bubble : new RailsBubbleHandoff(physics, engine.getEcsEngine());
         timeWarp = new TimeWarpController(engine, bubble, orbitalEvents,
                 universe, encounters, this::getPlayer);
+        orbitalEvents.impacts.add((signal, event) -> onImpact(event));
+        // Planned burns: the event system fires them on rails, this system in the bubble.
+        engine.addSystem(new BubbleBurnSystem(physics, universe));
+        burns = new BurnPlanner(this);
 
         // macro-sim, on the same rails and event system. Prediction runs inline so warp drop-out
         // always sees a current forecast; the bubble pauses while rails warp has it collapsed.
@@ -243,10 +266,53 @@ public class GameWorld implements Disposable {
         return content;
     }
 
-    /** One rendered frame. */
+    /** One rendered frame. Once the player has crashed the world stops. */
     public void update(float frameDelta) {
+        if (crash != null) return;
         timeWarp.update(frameDelta);
         engine.update(frameDelta);
+        for (Entity wreck : wrecks) engine.removeEntity(wreck);
+        wrecks.clear();
+        checkBubbleCrash();
+        if (crash != null && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
+    }
+
+    /** How the player's ship was lost, or null while it still flies. */
+    public Crash getCrash() {
+        return crash;
+    }
+
+    /**
+     * A ship on rails reached a body's surface. The player's ends the game; any other is removed
+     * after the frame, unless macro-sim owns it: it has no way to lose a station or freighter yet.
+     */
+    private void onImpact(OrbitalEvent event) {
+        Entity ship = universe.entity(event.entityUuid);
+        if (ship == null) return;
+        if (ship == getPlayer()) {
+            crash(universe.parentOf(ship), event.time);
+            return;
+        }
+        if (macroSim.freighters().get(event.entityUuid) != null || macroSim.station(event.entityUuid) != null) return;
+        if (!wrecks.contains(ship)) wrecks.add(ship);
+    }
+
+    /** In the bubble the player flies under real physics; crashed once below the surface. */
+    private void checkBubbleCrash() {
+        Entity player = getPlayer();
+        PhysicsBodyComponent pb = player == null ? null : player.getComponent(PhysicsBodyComponent.class);
+        String parentUuid = physics.getAnchorParentUuid();
+        if (crash != null || pb == null || pb.body == null || parentUuid == null) return;
+        Entity parent = universe.entity(parentUuid);
+        CelestialBodyComponent body = parent == null ? null : universe.celestial(parent);
+        if (body == null) return;
+        physics.getTrueState(pb.body, trueState);
+        if (Math.hypot(trueState[0], trueState[1]) < body.radius) crash(parent, engine.getSimSeconds());
+    }
+
+    private void crash(Entity body, double time) {
+        CelestialBodyComponent c = body == null ? null : universe.celestial(body);
+        crash = new Crash(c == null || c.name == null ? "the surface" : c.name, time);
     }
 
     /** The player's primary actor (their ship), or null. */

@@ -19,6 +19,7 @@ import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.Array;
+import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
@@ -49,6 +50,10 @@ import java.nio.file.Paths;
  * <p>Controls, outside: W/S main engine, A/D turn, Z/C strafe, X rotation assist, Space fire,
  * Tab cycle target, comma/period time warp down/up, mouse wheel zoom. V switches to the deck view,
  * where WASD walks your character and E uses the console you stand at. Esc quits.
+ *
+ * <p>Burn planner, shown on the orbit map: N plans a burn, B selects the next one, Up/Down add
+ * prograde/retrograde delta-v, Left/Right radial in/out, [ and ] move it along the orbit (Shift for
+ * ten times as much), Delete removes it. Burns fire on their own when due.
  */
 public class RingsOfIronGame extends ApplicationAdapter {
     private static final ComponentMapper<TransformComponent> TRANSFORMS = ComponentMapper.getFor(TransformComponent.class);
@@ -143,7 +148,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     public void render() {
         float delta = Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
         handleInput(delta);
-        gun.update(delta);
+        if (world.getCrash() == null) gun.update(delta);
         world.update(delta);
         noticeTime -= delta;
 
@@ -161,11 +166,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         gameHud.draw(delta);
         drawStatus();
+        if (world.getCrash() != null) drawCrash();
     }
 
     private void handleInput(float delta) {
         boolean consoleOpen = hud.getConsoleWindow().isOpen();
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !consoleOpen) Gdx.app.exit();
+        if (world.getCrash() != null) return;
         if (Gdx.input.isKeyJustPressed(Input.Keys.PERIOD)) warp(1);
         if (Gdx.input.isKeyJustPressed(Input.Keys.COMMA)) warp(-1);
 
@@ -200,7 +207,46 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (Gdx.input.isKeyPressed(Input.Keys.C)) controls.strafe -= 1f;
         }
         if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) gun.fire(game.player);
+        planBurns();
         if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) targeting.setTarget(game.nextContact(targeting.getLockedTarget()));
+    }
+
+    private void planBurns() {
+        BurnPlanner burns = world.burns;
+        boolean shift = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
+        double dv = shift ? 10 : 1;
+        int steps = shift ? 10 : 1;
+        if (Gdx.input.isKeyJustPressed(Input.Keys.N)) burns.addNode();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.B)) burns.selectNext();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.FORWARD_DEL) || Gdx.input.isKeyJustPressed(Input.Keys.DEL)) {
+            burns.deleteSelected();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) burns.adjust(dv, 0);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) burns.adjust(-dv, 0);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) burns.adjust(0, dv);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) burns.adjust(0, -dv);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT_BRACKET)) burns.shiftTime(steps);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT_BRACKET)) burns.shiftTime(-steps);
+    }
+
+    private void drawCrash() {
+        GameWorld.Crash crash = world.getCrash();
+        viewports.applyUi();
+        batch.setProjectionMatrix(viewports.getUiCamera().combined);
+        batch.begin();
+        float w = viewports.getUiViewport().getWorldWidth();
+        float h = viewports.getUiViewport().getWorldHeight();
+        font.getData().setScale(3f);
+        font.setColor(Color.RED);
+        font.draw(batch, "SHIP LOST", 0f, h / 2f + 40f, w, com.badlogic.gdx.utils.Align.center, false);
+        font.getData().setScale(1.5f);
+        font.setColor(Color.WHITE);
+        font.draw(batch, "You crashed into " + crash.bodyName + " on day " + (long) (crash.time / 86400) + ".",
+                0f, h / 2f - 10f, w, com.badlogic.gdx.utils.Align.center, false);
+        font.getData().setScale(1f);
+        font.setColor(Color.LIGHT_GRAY);
+        font.draw(batch, "Esc quits", 0f, h / 2f - 50f, w, com.badlogic.gdx.utils.Align.center, false);
+        batch.end();
     }
 
     private void warp(int direction) {

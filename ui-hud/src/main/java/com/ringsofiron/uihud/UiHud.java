@@ -19,6 +19,7 @@ import com.ringsofiron.uihud.components.InteractableConsoleComponent;
 import com.ringsofiron.uihud.minimap.WireframeMinimap;
 import com.ringsofiron.uihud.providers.InteractorProvider;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
+import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
 import com.ringsofiron.uihud.systems.FlightReadoutSystem;
 import com.ringsofiron.uihud.systems.HudRenderSystem;
@@ -26,6 +27,7 @@ import com.ringsofiron.uihud.systems.InteractPromptSystem;
 import com.ringsofiron.uihud.systems.WireframeSyncSystem;
 import com.ringsofiron.uihud.widgets.AlertList;
 import com.ringsofiron.uihud.widgets.ConsoleWindow;
+import com.ringsofiron.uihud.widgets.OrbitMap;
 
 /**
  * Entry point to the ui-hud module: builds the Scene2D stage, the HUD widgets and the ECS
@@ -35,7 +37,7 @@ import com.ringsofiron.uihud.widgets.ConsoleWindow;
  *   UiHud hud = new UiHud();
  *   hud.addTo(engine);                       // after physics systems
  *   hud.setPhysics(physics);                 // optional: absolute speed
- *   hud.setTargeting(...); hud.setOrbitInfo(...); hud.setInteractor(...);
+ *   hud.setTargeting(...); hud.setOrbitInfo(...); hud.setOrbitPath(...); hud.setInteractor(...);
  *   inputMultiplexer.addProcessor(hud.getInputProcessor());
  *   // render(): position world camera, draw world, engine.update(dt), then hud.draw(dt)
  *   // resize(): hud.resize(w, h)
@@ -52,6 +54,8 @@ public class UiHud implements Disposable {
     private final Group markerLayer = new Group();
     private final WireframeMinimap minimap;
     private final Table minimapPanel;
+    private final OrbitMap orbitMap;
+    private final Table orbitPanel;
     private final ConsoleWindow consoleWindow;
     private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleLayouts = new ObjectMap<>();
 
@@ -80,7 +84,7 @@ public class UiHud implements Disposable {
         Table flight = new Table();
         flight.setBackground(skin.getDrawable("panel"));
         flight.pad(8f);
-        root.add(flight).top().left().pad(10f).expand().row();
+        root.add(flight).top().left().pad(10f).expand().colspan(2).row();
 
         minimap = new WireframeMinimap(skin.getRegion("white"));
         AlertList alerts = new AlertList(skin);
@@ -91,6 +95,19 @@ public class UiHud implements Disposable {
         minimapPanel.add(minimap).left().bottom();
         minimapPanel.add(alerts).top().left().padLeft(10f).minWidth(150f);
         root.add(minimapPanel).bottom().left().pad(10f);
+
+        // Bottom right: the orbit map, with the burn planner's readout under it.
+        orbitMap = new OrbitMap(skin.getRegion("white"));
+        Label orbitCaption = new Label("No orbit", skin, "dim");
+        orbitMap.setCaption(orbitCaption);
+        orbitPanel = new Table();
+        orbitPanel.setBackground(skin.getDrawable("panel"));
+        orbitPanel.pad(8f);
+        orbitPanel.add(new Label("ORBIT", skin, "title")).left().row();
+        orbitPanel.add(orbitMap).row();
+        orbitPanel.add(orbitCaption).left().width(orbitMap.getPrefWidth());
+        orbitCaption.setWrap(true);
+        root.add(orbitPanel).bottom().right().pad(10f);
 
         Label prompt = new Label("", skin, "prompt");
         Table promptRow = new Table();
@@ -113,6 +130,7 @@ public class UiHud implements Disposable {
             markerLayer.setVisible(exterior);
             // In the interior view the full deck plan is on screen, so the minimap is redundant.
             minimapPanel.setVisible(exterior);
+            orbitPanel.setVisible(exterior);
         });
 
         stage.addListener(new InputListener() {
@@ -183,6 +201,11 @@ public class UiHud implements Disposable {
         flightReadoutSystem.setOrbitInfo(orbitInfo);
     }
 
+    /** Feeds the orbit map; null leaves it empty. */
+    public void setOrbitPath(OrbitPathProvider orbitPath) {
+        orbitMap.setProvider(orbitPath);
+    }
+
     public void setInteractor(InteractorProvider interactor) {
         interactPromptSystem.setInteractor(interactor);
         wireframeSyncSystem.setInteractor(interactor);
@@ -226,6 +249,10 @@ public class UiHud implements Disposable {
 
     public WireframeMinimap getMinimap() {
         return minimap;
+    }
+
+    public OrbitMap getOrbitMap() {
+        return orbitMap;
     }
 
     public ConsoleWindow getConsoleWindow() {

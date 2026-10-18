@@ -23,6 +23,7 @@ public class PlayerOrbitInfo implements OrbitInfoProvider {
     private final StateVector state = new StateVector();
     private final PhysicsManager physics;
     private final double[] trueState = new double[4];
+    private CelestialBodyComponent body;
 
     /** Rails orbits only. */
     public PlayerOrbitInfo(RailsUniverse universe, Supplier<Entity> player) {
@@ -37,27 +38,47 @@ public class PlayerOrbitInfo implements OrbitInfoProvider {
 
     @Override
     public OrbitInfo getPlayerOrbit() {
+        KeplerOrbit k = currentConic();
+        return k == null ? null : fill(body, k);
+    }
+
+    /**
+     * The player's conic around its parent body right now, or null with no ship or no parent.
+     * Afterwards {@link #body()} is that parent and {@link #state()} the ship's state relative to it.
+     */
+    public KeplerOrbit currentConic() {
+        body = null;
         Entity ship = player.get();
         if (ship == null) return null;
         OrbitComponent orbit = universe.orbit(ship);
-        if (orbit == null) return bubbleOrbit(ship);
+        if (orbit == null) return bubbleConic(ship);
         Entity parent = universe.parentOf(ship);
-        CelestialBodyComponent body = parent == null ? null : universe.celestial(parent);
+        body = parent == null ? null : universe.celestial(parent);
         if (body == null) return null;
         orbit.stateAt(universe.now(), state);
-        return fill(body, orbit.getOrbit());
+        return orbit.getOrbit();
     }
 
-    private OrbitInfo bubbleOrbit(Entity ship) {
+    /** The parent body of the last {@link #currentConic()}, or null. */
+    public CelestialBodyComponent body() {
+        return body;
+    }
+
+    /** The ship's state from the last {@link #currentConic()}, relative to its parent. */
+    public StateVector state() {
+        return state;
+    }
+
+    private KeplerOrbit bubbleConic(Entity ship) {
         PhysicsBodyComponent pb = physics == null ? null : ship.getComponent(PhysicsBodyComponent.class);
         String parentUuid = physics == null ? null : physics.getAnchorParentUuid();
         if (pb == null || pb.body == null || parentUuid == null) return null;
         Entity parent = universe.entity(parentUuid);
-        CelestialBodyComponent body = parent == null ? null : universe.celestial(parent);
+        body = parent == null ? null : universe.celestial(parent);
         if (body == null) return null;
         physics.getTrueState(pb.body, trueState);
         state.set(trueState[0], trueState[1], trueState[2], trueState[3]);
-        return fill(body, KeplerOrbit.fromState(state, body.mu, universe.now()));
+        return KeplerOrbit.fromState(state, body.mu, universe.now());
     }
 
     private OrbitInfo fill(CelestialBodyComponent body, KeplerOrbit k) {
