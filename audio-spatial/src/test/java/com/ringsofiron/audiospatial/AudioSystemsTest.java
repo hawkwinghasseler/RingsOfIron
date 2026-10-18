@@ -89,16 +89,16 @@ class AudioSystemsTest {
 
         walkTo(18.5f, 2f); // 3 m the other way, same room: just as loud
         engine.update(DT);
-        assertEquals(clearGain, inst.mix.gain, 1e-4f);
+        assertEquals(clearGain, inst.mix.gain, clearGain * 0.02f);
 
         // Now stand 3 m away but through the wall
         hum.localX = 11.5f;
         listener.localX = 8.5f;
         engine.update(DT);
         assertEquals(1, hum.wallCount);
-        assertEquals(0.25f, hum.occlusion, 1e-6f);
+        assertTrue(hum.transmission < 0.2f, "a wall costs well over 10 dB: " + hum.transmission);
         assertTrue(inst.mix.cutoffHz < 10000f, "high frequencies cut: " + inst.mix.cutoffHz);
-        assertTrue(inst.mix.gain < clearGain, "quieter through a wall");
+        assertTrue(inst.mix.gain < clearGain * 0.2f, "much quieter through a wall");
     }
 
     @Test

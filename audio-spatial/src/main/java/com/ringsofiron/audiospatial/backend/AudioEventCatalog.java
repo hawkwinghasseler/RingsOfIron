@@ -34,9 +34,9 @@ public class AudioEventCatalog {
         c.register(SoundEventDef.loop(FIRE, 2f, 40f, 0.7f));
         c.register(SoundEventDef.loop(BREACH_HISS, 2f, 40f, 0.8f));
         c.register(SoundEventDef.oneShot(DOOR, 0.35f, 2f, 40f, 0.8f));
-        c.register(SoundEventDef.oneShot(LASER, 0.3f, 10f, 600f, 0.6f));
-        c.register(SoundEventDef.oneShot(HULL_IMPACT, 0.6f, 20f, 1500f, 1f));
-        c.register(SoundEventDef.oneShot(RAILGUN, 0.4f, 10f, 800f, 0.8f));
+        c.register(SoundEventDef.oneShot(LASER, 0.45f, 10f, 600f, 0.6f));
+        c.register(SoundEventDef.oneShot(HULL_IMPACT, 1.2f, 20f, 1500f, 1f));
+        c.register(SoundEventDef.oneShot(RAILGUN, 0.45f, 10f, 800f, 0.8f));
         c.register(SoundEventDef.loop(HULL_BREACH, 2f, 40f, 0.8f));
         return c;
     }

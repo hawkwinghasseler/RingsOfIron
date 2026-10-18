@@ -86,7 +86,7 @@ public class AudioDemo extends ApplicationAdapter {
 
         audio = AudioManager.createDefault();
         engine = new Engine();
-        engine.addSystem(new AcousticOcclusionSystem());
+        engine.addSystem(new AcousticOcclusionSystem(audio.getCatalog()));
         engine.addSystem(new AudioUpdateSystem(audio));
 
         buildShip();
@@ -342,9 +342,11 @@ public class AudioDemo extends ApplicationAdapter {
     private String describe(AudioEmitterComponent em) {
         if (!playing(em)) return "off";
         String walls = em.wallCount == 1 ? "1 wall" : em.wallCount + " walls";
+        if (listener.mode != AudioListenerComponent.Mode.INTERIOR) walls = "outside";
+        else if (em.roomLossDb > 0f && !Float.isInfinite(em.roomLossDb)) walls += String.format(Locale.ROOT, ", rooms -%.0f dB", em.roomLossDb);
         if (!(em.instance instanceof SimulatedInstance)) return walls;
         SimulatedInstance s = (SimulatedInstance) em.instance;
-        return String.format(Locale.ROOT, "%s  %5.0f Hz  vol %3.0f%%", walls, s.mix.cutoffHz, 100f * s.mix.gain);
+        return String.format(Locale.ROOT, "%s  %5.0f Hz  vol %4.1f%%", walls, s.mix.cutoffHz, 100f * s.mix.gain);
     }
 
     private void drawHud() {

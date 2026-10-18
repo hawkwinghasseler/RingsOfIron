@@ -2,9 +2,11 @@ package com.ringsofiron.audiospatial;
 
 import com.badlogic.gdx.Gdx;
 import com.ringsofiron.audiospatial.backend.AudioBackend;
+import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
 import com.ringsofiron.audiospatial.backend.AudioEventInstance;
 import com.ringsofiron.audiospatial.backend.AudioParameters;
 import com.ringsofiron.audiospatial.backend.HeadlessAudioBackend;
+import com.ringsofiron.audiospatial.backend.SimulatedBackend;
 import com.ringsofiron.audiospatial.backend.SynthAudioBackend;
 
 /**
@@ -18,6 +20,7 @@ import com.ringsofiron.audiospatial.backend.SynthAudioBackend;
  */
 public class AudioManager {
     private final AudioBackend backend;
+    private final AudioEventCatalog catalog = AudioEventCatalog.withDefaults();
 
     public AudioManager(AudioBackend backend) {
         this.backend = backend;
@@ -40,6 +43,12 @@ public class AudioManager {
 
     public AudioBackend getBackend() {
         return backend;
+    }
+
+    /** Playback rules for each event: the built-in backend's catalog, or the stock one for FMOD. */
+    public AudioEventCatalog getCatalog() {
+        if (backend instanceof SimulatedBackend) return ((SimulatedBackend) backend).getCatalog();
+        return catalog;
     }
 
     public void loadBank(String path) {
