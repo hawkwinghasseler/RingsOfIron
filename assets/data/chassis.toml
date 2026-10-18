@@ -8,22 +8,28 @@
 [chassis.corvette]
 name = "Corvette"
 tile_size = 1.0
-origin_x = -5.0
+origin_x = -9.0
 origin_y = -3.0
 # A turret mount beside each hardpoint in ships.toml (combat wires each weapon to
-# the nearest one): nose (8,2), port and starboard beams (6,4) and (6,1), the
-# launcher (3,4). The weapons console sits aft, away from every hardpoint.
-# Two small cargo bays (C), 2 tiles each: 10 m3 of cargo at 2.5 m3 a tile.
+# the nearest one): nose (12,2), port and starboard beams (10,4) and (10,1), the
+# launcher (7,4). The weapons console sits aft, away from every hardpoint.
+# Cargo: a hold aft of the crew spaces with two 3 x 2 bays (x 1-3; listed under
+# mounts, since two bays side by side can't be told apart in the map), a walkway
+# at x 4, and two small bays up front. 16 tiles, 40 m3 at 2.5 m3 a tile.
 rows = [
-  "##########",
-  "#HHTCCTRR#",
-  "#WW....RR#",
-  "#L.++++.T#",
-  "#L....TCC#",
-  "##########",
+  "##############",
+  "#....HHTCCTRR#",
+  "#....WW....RR#",
+  "#....L.++++.T#",
+  "#....L....TCC#",
+  "##############",
+]
+mounts = [
+  { type = "CARGO", size = "M", x = 1, y = 1, rotation = 1 },
+  { type = "CARGO", size = "M", x = 1, y = 3, rotation = 1 },
 ]
 # Carpet through the crew spaces, so a fire here has something to burn
-coverings = [ { covering = "CARPET", x = 1, y = 1, width = 6, height = 4 } ]
+coverings = [ { covering = "CARPET", x = 5, y = 1, width = 6, height = 4 } ]
 
 [chassis.freighter]
 name = "Light Freighter"

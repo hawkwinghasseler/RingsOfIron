@@ -250,7 +250,7 @@ class GameScenarioTest {
         java.util.Map<String, int[]> consoles = consolesOn(game.player);
         // The corvette's chassis has a helm, a weapons console, a reactor and life support.
         assertEquals(java.util.Set.of("helm", "weapons", "reactor", "life_support"), consoles.keySet());
-        assertArrayEquals(new int[]{1, 4}, consoles.get("helm"));
+        assertArrayEquals(new int[]{5, 4}, consoles.get("helm"));
         assertEquals(4, consolesOn(game.contacts.first()).size(), "the raider has its own");
 
         String save = world.engine.getSerializationService().saveGame();
@@ -269,7 +269,7 @@ class GameScenarioTest {
         assertNotNull(bays, "the corvette has cargo bays");
         assertEquals(GameScenario.STARTING_CREDITS, trader.credits);
         assertEquals(bays.capacity(), trader.freeCargo(), 1e-9, "the hold is the bays");
-        assertEquals(10, bays.capacity(), 1e-9);
+        assertEquals(40, bays.capacity(), 1e-9);
     }
 
     @Test
