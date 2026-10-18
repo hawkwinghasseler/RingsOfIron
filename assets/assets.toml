@@ -12,3 +12,7 @@ tex_freighter = "libgdx.png"      # placeholder
 evt_railgun_fire = "event:/weapons/railgun"
 evt_laser_fire = "event:/weapons/laser"
 evt_hull_breach = "event:/interior/hull_breach"
+evt_autocannon_fire = "event:/weapons/autocannon"
+evt_missile_launch = "event:/weapons/missile_launch"
+evt_missile_flight = "event:/weapons/missile_flight"
+evt_explosion = "event:/impacts/explosion"

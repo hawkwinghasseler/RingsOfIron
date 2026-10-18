@@ -5,6 +5,7 @@ import com.ringsofiron.audiospatial.backend.AudioBackend;
 import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
 import com.ringsofiron.audiospatial.backend.AudioEventInstance;
 import com.ringsofiron.audiospatial.backend.AudioParameters;
+import com.ringsofiron.audiospatial.backend.FmodAudioBackend;
 import com.ringsofiron.audiospatial.backend.HeadlessAudioBackend;
 import com.ringsofiron.audiospatial.backend.SimulatedBackend;
 import com.ringsofiron.audiospatial.backend.SynthAudioBackend;
@@ -27,18 +28,28 @@ public class AudioManager {
     }
 
     /**
-     * The best backend available: the synth backend when libGDX audio is running, otherwise
-     * headless. Swap in the FMOD backend here once it exists.
+     * The best backend available: FMOD when its libraries and banks are installed, with the
+     * built-in backend playing events the banks lack; otherwise the synth backend when libGDX
+     * audio is running, otherwise headless.
      */
     public static AudioManager createDefault() {
+        AudioBackend builtIn = createBuiltIn();
+        if (Gdx.app != null) {
+            FmodAudioBackend fmod = FmodAudioBackend.tryCreate(builtIn);
+            if (fmod != null) return new AudioManager(fmod);
+        }
+        return new AudioManager(builtIn);
+    }
+
+    private static AudioBackend createBuiltIn() {
         if (Gdx.audio != null) {
             try {
-                return new AudioManager(new SynthAudioBackend());
+                return new SynthAudioBackend();
             } catch (RuntimeException e) {
                 if (Gdx.app != null) Gdx.app.error("audio", "No audio device, running silent", e);
             }
         }
-        return new AudioManager(new HeadlessAudioBackend());
+        return new HeadlessAudioBackend();
     }
 
     public AudioBackend getBackend() {
@@ -47,7 +58,8 @@ public class AudioManager {
 
     /** Playback rules for each event: the built-in backend's catalog, or the stock one for FMOD. */
     public AudioEventCatalog getCatalog() {
-        if (backend instanceof SimulatedBackend) return ((SimulatedBackend) backend).getCatalog();
+        AudioBackend b = backend instanceof FmodAudioBackend ? ((FmodAudioBackend) backend).getFallback() : backend;
+        if (b instanceof SimulatedBackend) return ((SimulatedBackend) b).getCatalog();
         return catalog;
     }
 
