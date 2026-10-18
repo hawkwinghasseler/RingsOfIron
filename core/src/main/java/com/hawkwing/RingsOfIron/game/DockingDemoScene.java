@@ -36,8 +36,8 @@ public class DockingDemoScene {
     public enum Scene {
         PASSIVE("Passive latch", "Both ports passive. The other ship's crew armed theirs: arm yours (G) and drift in;"
                 + " the magnets pull the ports together and latch within a few meters."),
-        ACTIVE("Active collar", "Your port has a telescoping collar. Arm it (G) within a few meters: it reaches out,"
-                + " catches the other port (armed or not), draws the ships together and locks."),
+        ACTIVE("Active collar", "Your port has a telescoping collar. Arm it (G) close in: it reaches out, tilts to lie"
+                + " flat on the other port (armed or not), catches it, then draws the ships together and turns them square."),
         CLEARANCE("Station clearance", "G asks the outpost for clearance. It arms its nearest free Small port for you"
                 + " and its own collar reaches out for your passive port. Once locked, both port doors open (V: deck view)."),
         REFUSED("Clearance refused", "This outpost refuses clearance (G): its ports stay unarmed and its collar stays in."
@@ -183,7 +183,7 @@ public class DockingDemoScene {
         return e;
     }
 
-    private static int smallPort(Entity station) {
+    static int smallPort(Entity station) {
         return firstPort(station, MountFootprint.MountSize.S);
     }
 
@@ -224,7 +224,7 @@ public class DockingDemoScene {
      * {@code gap} meters out, {@code lateral} meters off its centerline and turned {@code degrees}
      * off square. Before the first step, so it uses the ports' own frames.
      */
-    private void park(Entity ship, int shipPort, Entity other, int otherPort, float gap, float lateral, float degrees) {
+    void park(Entity ship, int shipPort, Entity other, int otherPort, float gap, float lateral, float degrees) {
         DockingPort q = port(other, otherPort);
         DockingPort p = port(ship, shipPort);
         Body ob = world.docking.bodyOf(other);

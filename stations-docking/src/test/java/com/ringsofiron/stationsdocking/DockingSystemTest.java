@@ -172,7 +172,7 @@ class DockingSystemTest {
     void anActiveCollarReachesOutCapturesAndDrawsTheShipsTogether() {
         Entity a = ship(0f, 0f, 0f, true);
         // Unarmed and passive: docking relies on a's collar, with no say from b.
-        Entity b = ship(13.5f, 0.2f, MathUtils.PI, false);
+        Entity b = ship(12.5f, 0.2f, MathUtils.PI, false);
         assertNull(docking.arm(a, 0));
         game.stepTicks(30);
         assertNotNull(port(a).head, "the collar head is out");
@@ -187,6 +187,47 @@ class DockingSystemTest {
         assertNull(docking.railsWarpBlockedReason());
         assertEquals(0f, face(body(a), port(a)).dst(face(body(b), port(b))), 0.03f);
         assertEquals(List.of(DockingEvent.Kind.CAPTURED, DockingEvent.Kind.DOCKED), events);
+    }
+
+    @Test
+    void aShipComingInTurnedAwayIsCaughtByTheTiltingHeadAndTurnedSquare() {
+        Entity a = ship(0f, 0f, 0f, true);
+        // Ten degrees off square: far too much for a latch, but the head tilts to lie flat on b's
+        // port while its magnet turns b (light, and free to turn) the rest of the way
+        Entity b = ship(12.4f, 0.1f, MathUtils.PI + 10f * MathUtils.degreesToRadians, false);
+        assertNull(docking.arm(a, 0));
+        float tilt = 0f;
+        for (int i = 0; i < 60 * 20 && port(a).state == DockingPort.State.IDLE; i++) {
+            game.stepTicks(1);
+            tilt = Math.max(tilt, Math.abs(DockingSystem.tiltOf(port(a))));
+        }
+        assertEquals(DockingPort.State.CAPTURED, port(a).state);
+        assertTrue(tilt > 1f * MathUtils.degreesToRadians, "the head tilted to meet the port: " + tilt);
+        stepUntil(port(a), DockingPort.State.DOCKED, 30f);
+        game.stepTicks(60 * 4);
+        assertTrue(docking.isRigid(a));
+        assertEquals(0f, face(body(a), port(a)).dst(face(body(b), port(b))), 0.03f, "face to face");
+        float angle = body(b).getAngle() - body(a).getAngle() - MathUtils.PI;
+        assertEquals(0f, MathUtils.atan2(MathUtils.sin(angle), MathUtils.cos(angle)), 0.01f, "square, as one deck");
+    }
+
+    @Test
+    void pushingIntoTheCollarStopsAtFullCompression() {
+        Entity a = ship(0f, 0f, 0f, true);
+        // Turned too far for the head to tilt onto: it only gets pushed in
+        Entity b = ship(12.4f, 0f, MathUtils.PI + 30f * MathUtils.degreesToRadians, false);
+        assertNull(docking.arm(a, 0));
+        game.stepTicks(60 * 3);
+        float least = Float.MAX_VALUE;
+        for (int i = 0; i < 60 * 6; i++) {
+            Body bb = body(b);
+            Vector2 push = bb.getWorldVector(new Vector2(1f, 0f)).cpy().scl(PhysicsManager.getMass(bb) * 20f);
+            PhysicsManager.applyForce(bb, push.x, push.y);
+            game.stepTicks(1);
+            if (port(a).head != null) least = Math.min(least, port(a).extension);
+        }
+        assertTrue(least > -0.06f, "the head stops at its stop, not inside the hull: " + least);
+        assertNotEquals(DockingPort.State.DOCKED, port(a).state, "a ship 30 degrees off never docks");
     }
 
     @Test

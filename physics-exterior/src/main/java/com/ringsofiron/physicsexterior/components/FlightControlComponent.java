@@ -19,6 +19,11 @@ public class FlightControlComponent implements Component {
      * rotationally. Linear motion is never damped.
      */
     public boolean rotationAssist;
+    /**
+     * Set while something outside the pilot is turning the ship into line (a docking collar
+     * drawing it in): rotation assist stands down so it does not fight it. Runtime only.
+     */
+    public transient boolean assistHeld;
 
     public void clear() {
         forward = 0f;

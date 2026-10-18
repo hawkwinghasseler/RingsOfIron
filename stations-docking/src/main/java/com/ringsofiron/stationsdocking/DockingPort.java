@@ -4,6 +4,7 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.Joint;
 import com.badlogic.gdx.physics.box2d.joints.DistanceJoint;
 import com.badlogic.gdx.physics.box2d.joints.PrismaticJoint;
+import com.badlogic.gdx.physics.box2d.joints.RevoluteJoint;
 import com.ringsofiron.interiorgrid.MountFootprint.MountSize;
 
 /**
@@ -69,10 +70,18 @@ public class DockingPort {
 
     /** How far the active collar is out now, meters. Runtime only. */
     public transient float extension;
-    /** The collar head of an active port while it is out, and the joints that carry it. */
+    /**
+     * The collar head of an active port while it is out, and what carries it: the guide is a
+     * slider from the hull to a carriage, the spring pushes the carriage out, and the head turns
+     * on the carriage ({@link #tilt}, sprung back square) so it can lie flat on the other port.
+     * The tether only keeps the head from colliding with its own hull.
+     */
     public transient Body head;
+    public transient Body carriage;
     public transient PrismaticJoint guide;
     public transient DistanceJoint spring;
+    public transient RevoluteJoint tilt;
+    public transient Joint tether;
     /** The weld from the collar head to the captured port's craft. */
     public transient Joint capture;
     /** Spring length the collar is driven towards, meters. */
