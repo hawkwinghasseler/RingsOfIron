@@ -189,6 +189,23 @@ class GameWorldTest {
     }
 
     @Test
+    void modSoundEventsReachTheAudioCatalog() {
+        Path root = Paths.get(System.getProperty("user.dir")).getParent();
+        String modPath = "event:/mods/better_railguns/railgun";
+        GameWorld withContent = new GameWorld(new GameWorld.Modules());
+        try {
+            assertFalse(withContent.audio.getCatalog().contains(modPath));
+            ModContext ctx = withContent.loadContent(root.resolve("assets"), root.resolve("modding-data/examples/mods"));
+            assertFalse(ctx.report.hasErrors(), ctx.report.toString());
+            assertEquals(modPath, ctx.assets.getString("evt_railgun_fire"));
+            assertTrue(withContent.audio.getCatalog().contains(modPath), "the mod's sound plays with its own rules");
+            assertEquals(900f, withContent.audio.getCatalog().get(modPath).maxDistance);
+        } finally {
+            withContent.dispose();
+        }
+    }
+
+    @Test
     void shipInteriorsSurviveSaveAndLoad() {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         GameWorld withContent = new GameWorld();
