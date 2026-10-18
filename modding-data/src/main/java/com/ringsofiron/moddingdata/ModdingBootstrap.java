@@ -5,6 +5,7 @@ import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.moddingdata.defs.CommodityDef;
 import com.ringsofiron.moddingdata.defs.MaterialDef;
 import com.ringsofiron.moddingdata.defs.ShipDef;
+import com.ringsofiron.moddingdata.defs.SoundEventData;
 import com.ringsofiron.moddingdata.defs.StationTypeDef;
 
 import java.nio.file.Path;
@@ -35,6 +36,7 @@ public class ModdingBootstrap {
         defs.registerType("material", MaterialDef.class);
         defs.registerType("commodity", CommodityDef.class);
         defs.registerType("station_type", StationTypeDef.class);
+        defs.registerType("sound_event", SoundEventData.class);
     }
 
     private final Path assetsDir;
