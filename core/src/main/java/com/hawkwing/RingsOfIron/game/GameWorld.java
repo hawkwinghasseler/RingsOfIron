@@ -22,6 +22,11 @@ import com.ringsofiron.interiorgrid.GridHazardSystem;
 import com.ringsofiron.interiorgrid.LifeSupportSystem;
 import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.PowerRoutingSystem;
+import com.ringsofiron.macrosim.MacroSimSystem;
+import com.ringsofiron.macrosim.MacroSimulation;
+import com.ringsofiron.macrosim.economy.DefRegistryCommodityCatalog;
+import com.ringsofiron.macrosim.economy.DefaultCommodityCatalog;
+import com.ringsofiron.macrosim.rails.orbital.OrbitalRailsModel;
 import com.ringsofiron.moddingdata.ModContext;
 import com.ringsofiron.moddingdata.ModTrustPolicy;
 import com.ringsofiron.moddingdata.ModdingBootstrap;
@@ -54,9 +59,9 @@ import java.util.function.Consumer;
  * interior-grid (hazards, power, life support, rails-warp guard), ai-crew (crew AI and the NPC
  * pilot), combat-sys (ballistics and impact damage, hurting crew through ai-crew), audio-spatial
  * (sound, occlusion, listener on the player), modding-data (data and mod loading through
- * {@link #loadContent}, ships get Box2D bodies from their defs). ui-hud needs a GL context, so
- * screens attach it with {@link GameHud}.
- * macro-sim plugs in here when it lands.
+ * {@link #loadContent}, ships get Box2D bodies from their defs), macro-sim (economy, freighter
+ * traffic and bubble transitions on GameWorld's rails, NPCs entering the bubble flown by ai-crew's
+ * pilot). ui-hud needs a GL context, so screens attach it with {@link GameHud}.
  *
  * <p>Frame order: time warp first (a rails jump must land before the frame's systems see the new
  * tick), then the engine's fixed ticks and every-frame systems.
@@ -74,7 +79,7 @@ public class GameWorld implements Disposable {
          */
         public final List<Consumer<ModContext>> contentRegistrations = new ArrayList<>();
         public ModTrustPolicy modTrust = ModTrustPolicy.WARN_AND_ALLOW;
-        /** Frame the NPC pilot flies in; null means the bubble stands in for the parent body. */
+        /** Frame the NPC pilot flies in; null means the true parent-relative state from physics. */
         public PilotReference pilotReference;
         /** Null picks audio-spatial's default: synth when libGDX audio runs, else headless. */
         public AudioManager audio;
@@ -86,6 +91,8 @@ public class GameWorld implements Disposable {
     public final RailsUniverse universe;
     public final OrbitalEventSystem orbitalEvents;
     public final TimeWarpController timeWarp;
+    /** The universe outside the bubble: economy, freighters, bubble entries and exits. */
+    public final MacroSimulation macroSim;
     public final CrewService crew;
     public final CombatEvents combatEvents;
     /** Weapon, projectile, missile and warhead tables; data from {@link #loadContent} is merged in. */
@@ -98,6 +105,7 @@ public class GameWorld implements Disposable {
     private final ImmutableArray<Entity> players;
     private final OrbitalAnchorBridge anchorBridge;
     private final Modules modules;
+    private final SwitchableCommodityCatalog commodities = new SwitchableCommodityCatalog(new DefaultCommodityCatalog());
     private ModContext content;
 
     public GameWorld() {
@@ -109,13 +117,14 @@ public class GameWorld implements Disposable {
         engine = new GameEngine();
         players = engine.getEcsEngine().getEntitiesFor(PLAYER);
 
+        physics = new PhysicsManager();
+
         // ai-crew's NPC pilot sets flight controls before physics reads them.
         PilotReference pilotFrame = modules.pilotReference != null
-                ? modules.pilotReference : PilotReference.bubbleOnly(engine::getSimSeconds);
+                ? modules.pilotReference : new TrueStatePilotReference(physics, engine::getSimSeconds);
         engine.addSystem(new NpcPilotSystem(pilotFrame));
 
         // physics-exterior
-        physics = new PhysicsManager();
         engine.addSystem(new FlightControlSystem(physics));
         engine.addSystem(new PhysicsUpdateSystem(physics));
         engine.addSystem(new FloatingOriginSystem(physics));
@@ -132,6 +141,15 @@ public class GameWorld implements Disposable {
                 ? modules.bubble : new RailsBubbleHandoff(physics, engine.getEcsEngine());
         timeWarp = new TimeWarpController(engine, bubble, orbitalEvents,
                 universe, encounters, this::getPlayer);
+
+        // macro-sim, on the same rails and event system. Prediction runs inline so warp drop-out
+        // always sees a current forecast; the bubble pauses while rails warp has it collapsed.
+        macroSim = new MacroSimulation(engine, new OrbitalRailsModel(engine, universe, orbitalEvents),
+                new GameBubbleGateway(physics, engine.getUuidRegistry()), commodities, null, engine.getSimSeconds());
+        macroSim.bubble().addListener(new NpcBubblePilots(engine.getUuidRegistry()));
+        engine.addSystem(new MacroSimSystem(macroSim, engine));
+        timeWarp.addDropOutSource(macroSim::nextDropOutTime);
+        timeWarp.changes.add((signal, change) -> macroSim.setBubbleSuspended(change.rails));
 
         // interior-grid
         engine.addSystem(new GridHazardSystem());
@@ -180,6 +198,8 @@ public class GameWorld implements Disposable {
         for (Consumer<ModContext> step : modules.contentRegistrations) bootstrap.beforeScripts(step);
         content = bootstrap.load(engine);
         mergeCombatDefs(CombatDefs.fromRegistry(content.defs));
+        DefRegistryCommodityCatalog economy = new DefRegistryCommodityCatalog(content.defs);
+        if (!economy.commodities().isEmpty()) commodities.set(economy);
         return content;
     }
 

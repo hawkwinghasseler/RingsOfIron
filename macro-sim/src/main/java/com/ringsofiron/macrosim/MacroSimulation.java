@@ -52,6 +52,7 @@ public class MacroSimulation {
     private final Set<String> massiveBodies = new HashSet<>();
 
     private double now;
+    private boolean bubbleSuspended;
     private double predictionHorizon = DEFAULT_PREDICTION_HORIZON;
     private double nextPrediction;
     private Future<EncounterForecast> pendingForecast;
@@ -141,8 +142,23 @@ public class MacroSimulation {
         }
         rails.processEventsUntil(t);
         now = t;
+        // No anchor parent: the bubble is not in orbit around anything, so nothing can meet it.
+        if (gateway == null || gateway.anchorParentUuid() == null) return;
         updatePrediction();
-        if (bubble != null) bubble.update(t, PREDICTION_INTERVAL * 2);
+        if (!bubbleSuspended) bubble.update(t, PREDICTION_INTERVAL * 2);
+    }
+
+    /**
+     * Stops bubble entries and exits while the bubble is collapsed for rails warp; prediction keeps
+     * running so warp can drop out for the next encounter. Resuming reconciles with the rebuilt bubble.
+     */
+    public void setBubbleSuspended(boolean suspended) {
+        if (bubbleSuspended && !suspended && bubble != null) bubble.reconcile(now);
+        bubbleSuspended = suspended;
+    }
+
+    public boolean isBubbleSuspended() {
+        return bubbleSuspended;
     }
 
     private void updatePrediction() {
