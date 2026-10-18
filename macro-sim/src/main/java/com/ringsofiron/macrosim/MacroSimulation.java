@@ -19,6 +19,7 @@ import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.macrosim.rails.RailsModel.Burn;
 import com.ringsofiron.macrosim.rails.StateVector;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -56,6 +57,8 @@ public class MacroSimulation {
     private final BubbleTransitionSystem bubble;
     private final Map<String, EconomyNode> stations = new LinkedHashMap<>();
     private final Set<String> massiveBodies = new HashSet<>();
+    /** Stations and freighters that hit a surface, handled between events (never mid-dispatch). */
+    private final List<String> crashed = new ArrayList<>();
 
     private double now;
     private double nextEconomyPass;
@@ -93,6 +96,9 @@ public class MacroSimulation {
                 }
             });
         }
+        rails.addImpactListener((uuid, t) -> {
+            if ((stations.containsKey(uuid) || freighters.get(uuid) != null) && !crashed.contains(uuid)) crashed.add(uuid);
+        });
         scheduleEconomyPass(startTime + EconomySimulation.PASS_INTERVAL);
     }
 
@@ -180,14 +186,17 @@ public class MacroSimulation {
      */
     public void advanceTo(double t) {
         if (t < now) return;
+        destroyCrashed();
         while (events.nextTime() <= t) {
             double te = events.nextTime();
             rails.processEventsUntil(te);
             now = te;
+            destroyCrashed();
             events.runNext(te);
         }
         rails.processEventsUntil(t);
         now = t;
+        destroyCrashed();
         // No anchor parent: the bubble is not in orbit around anything, so nothing can meet it.
         if (gateway == null || gateway.anchorParentUuid() == null) return;
         updatePrediction();
@@ -280,6 +289,32 @@ public class MacroSimulation {
             }
         }
         return best;
+    }
+
+    /**
+     * Destroys a station or freighter: it leaves the economy, fleet and bubble cleanly (orders
+     * cancelled, reservations released, cargo lost) and its entity is removed. Returns false if
+     * macro-sim does not own {@code uuid}. Crashes into a surface call this on their own.
+     */
+    public boolean destroy(String uuid) {
+        boolean station = stations.containsKey(uuid);
+        if (!station && freighters.get(uuid) == null) return false;
+        if (station) {
+            stations.remove(uuid);
+            economy.dropOrdersFor(uuid);
+            freighters.stationLost(uuid, stations.keySet(), now);
+        } else {
+            freighters.lose(uuid);
+        }
+        if (bubble != null) bubble.forget(uuid, now);
+        if (rails.isOnRails(uuid)) rails.detach(uuid);
+        Entity e = engine.getEntity(uuid);
+        if (e != null) engine.removeEntity(e);
+        return true;
+    }
+
+    private void destroyCrashed() {
+        while (!crashed.isEmpty()) destroy(crashed.remove(0));
     }
 
     /** Buying and selling at stations by hand, for the player's ship. */

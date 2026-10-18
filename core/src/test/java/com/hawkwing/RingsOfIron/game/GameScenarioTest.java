@@ -1,5 +1,8 @@
 package com.hawkwing.RingsOfIron.game;
 
+import org.junit.jupiter.api.io.TempDir;
+import com.ringsofiron.coreengine.components.UuidComponent;
+import com.badlogic.gdx.files.FileHandle;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
@@ -96,6 +99,35 @@ class GameScenarioTest {
         assertEquals(3, thinking, "the AI crew think again");
         for (int i = 0; i < 180; i++) world.update(FRAME);
         assertTrue(world.macroSim.bubble().inBubble().contains(visitor), "and the game runs on with it");
+    }
+
+    @Test
+    void quickSaveLoadsIntoAFreshGame(@TempDir Path dir) {
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        FileHandle file = new FileHandle(dir.resolve("quicksave.json").toFile());
+        assertNull(game.quickSave(file));
+        long tick = world.engine.getTick();
+        String playerId = game.player.getComponent(UuidComponent.class).id;
+        int contacts = game.contacts.size;
+
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        GameWorld fresh = new GameWorld();
+        try {
+            GameScenario restarted = GameScenario.start(fresh, assets, assets.resolve("no-mods-here"));
+            restarted.quickLoad(file);
+
+            assertEquals(tick, fresh.engine.getTick());
+            assertSame(fresh.getPlayer(), restarted.player);
+            assertEquals(playerId, restarted.player.getComponent(UuidComponent.class).id);
+            assertNotNull(restarted.player.getComponent(PhysicsBodyComponent.class));
+            assertNotNull(restarted.avatar);
+            assertSame(restarted.player, restarted.avatar.getComponent(GridPositionComponent.class).ship);
+            assertEquals(contacts, restarted.contacts.size, "the raider and the freighter, lockable again");
+            for (int i = 0; i < 120; i++) fresh.update(FRAME);
+            assertSame(restarted.player, fresh.getPlayer());
+        } finally {
+            fresh.dispose();
+        }
     }
 
     @Test

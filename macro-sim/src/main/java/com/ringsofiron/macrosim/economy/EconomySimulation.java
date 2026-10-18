@@ -174,6 +174,11 @@ public class EconomySimulation {
         to.expectIncoming(order.commodity, order.quantity);
     }
 
+    /** Drops the unclaimed orders to or from a station that is gone. Claimed ones are the freighters'. */
+    public void dropOrdersFor(String stationUuid) {
+        openOrders.removeIf(o -> o.claimedBy == null && (o.fromUuid.equals(stationUuid) || o.toUuid.equals(stationUuid)));
+    }
+
     /** Removes a finished or abandoned order and releases whatever it still holds. */
     public void close(TradeOrder order) {
         openOrders.remove(order);
