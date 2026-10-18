@@ -22,7 +22,7 @@ This document collects the design decisions for stations, docking ports, the doc
 
 ## Stations
 - A station is an interior grid like a ship's: rooms, corridors, hull, conduits, systems, docking ports, cargo bays and vendor areas.
-- Its layout comes from a station blueprint. Default choice (not yet confirmed): a station blueprint is a chassis blueprint flagged as a station, and each `StationTypeDef` names its blueprint, so every station type has its own layout and ports.
+- Its layout comes from a chassis blueprint marked as a station. Each `StationTypeDef` names its blueprint, so every station type has its own layout and ports.
 - Stations have an NPC crew run by `ai-crew`. Some of them work as **loaders** who move cargo between the station's bays and docked ships. Station crew are only simulated while the station shares the player's physics bubble.
 - Stations can be damaged and boarded exactly like ships: the same grid damage, air and fire hazards, breaches and internal combat rules.
 - Station markets keep their stock in physical cargo-bay tiles on the station grid, so goods bought or sold move between real tiles.
@@ -66,6 +66,23 @@ Docking permission is not required to dock. Without it:
 - Each port size has a **break force and break torque**. Going past either tears the collar and damages the hull around the port, and the two craft separate.
 - Tolerances, magnet strengths, spring constants and break limits are tuning values to set during the prototype.
 
+## Representing the Half-Tile Collar
+The grid works in whole tiles, but each collar sticks out half a tile past the hull, and two mated collars make one full tile between two separate grids. Three ways to model it:
+
+**A. Collar on the port, joined collars as a portal (recommended).**
+- The collar is part of the port subsystem: its integrity, extension and magnet state live on the port, and its Box2D shape is an extra fixture half a tile deep on the hull side of the port's footprint (for active ports, a separate body on the spring joints until it locks).
+- Neither grid gets a tile for it. Once locked, a `DockLink` pairs the opening tiles of the two ports one to one, so pathfinding, line of sight and air treat each pair as neighbours across the link.
+- The joined collar space is one small compartment of its own (opening width × 1 tile) between the two port doors, so a torn collar vents just that space until the doors seal.
+- Fits the existing edge-wall and compartment model with the fewest grid changes. Cross-grid links are needed for cargo carrying anyway.
+
+**B. A full collar tile in each grid, overlapping when docked.**
+- Each port's footprint includes one extra tile row outside the hull, and docked ships overlap by one tile with collision between the collar fixtures filtered off.
+- Each grid keeps its own complete tile, so damage and hazards need no new code. But the two grids hold two copies of the same space, and the hull outline gains a notch when undocked.
+
+**C. A bridge grid spawned on docking.**
+- On lock, a tiny third grid (opening width × 1) is created and welded between the two craft. Crew walk ship → bridge → station.
+- The bridge is a real grid with real tiles, so it takes damage and holds air with no special cases. But every system that works on one grid at a time must also handle a third grid that comes and goes, and that grid has to be saved and restored.
+
 ## Moving Cargo Across
 - Cargo crosses physically: ship crew or station loaders carry each unit from cargo-bay tiles, through the joined airlocks, to cargo-bay tiles on the other side. It takes time.
 - Buying and selling through the station market sets up these carry jobs; the trade completes as units arrive.
@@ -75,11 +92,11 @@ Crew can force doors and docking ports with tools. All of these take time:
 
 | Door state | Method | Damage | Hostile act |
 |---|---|---|---|
-| Unpowered | Pry open | No | Not decided |
+| Unpowered | Pry open | No | Yes |
 | Locked | Cut through | Damages the door | Yes |
-| Powered and locked | Hack | No | Not decided |
+| Powered and locked | Hack | No | Yes |
 
-Hacking takes longer than cutting.
+Hacking takes longer than cutting. All three count as hostile acts.
 
 ## Refit and Repair While Docked
 - Refit parts are bought used or new from vendors on stations, as physical cargo.
@@ -92,7 +109,6 @@ Hacking takes longer than cutting.
 - Out on rails they keep the abstract, time-based load and unload in `FreighterController`.
 
 ## Open Questions
-- Station blueprint format: a chassis blueprint flagged as a station (default above) or a separate `StationBlueprintDef`.
-- How the half-tile collar is represented on the grid, and how many docking ports each station type carries.
-- Whether prying and hacking count as hostile acts like cutting does.
+- Which collar representation to use (A, B or C above).
+- How many docking ports each station type carries.
 - Whether a hostile act at a station changes faction standing, and by how much.
