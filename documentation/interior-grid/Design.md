@@ -169,6 +169,8 @@ Random draws use a seeded generator per `GridHazardSystem`, so runs are reproduc
 
 ## Components
 - `ShipGridComponent`: tiles, edge walls, hull pieces, mounts, compartments, `gridOriginLocal`, coordinate conversion, placement validation, mass properties.
+  - `layoutRevision` is bumped each time the compartments are rebuilt, on the first hazard tick after a wall, door, seal or tile opens or closes. Caches built on `canPass`/`canFlow`, such as crew pathfinding, compare it against the value they were built at.
+  - `hasActiveHazard()` is true while any fire burns or air vents to space faster than 0.01 mol/s through an opening. Time warp is refused while it holds.
 - `SubsystemComponent`: tags an entity as a ship system installed in a `MountFootprint`.
 - `ShipSubsystemRegistryComponent`: the ship's list of subsystem entities.
 
