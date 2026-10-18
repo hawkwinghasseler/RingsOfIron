@@ -11,6 +11,9 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.components.OrbitComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
+import com.ringsofiron.moddingdata.ModContext;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -111,6 +114,27 @@ class GameWorldTest {
             assertTrue(loaded.engine.getSerializationService().getLastLoadWarnings().isEmpty());
         } finally {
             loaded.dispose();
+        }
+    }
+
+    @Test
+    void loadsBaseDataAndSpawnsShipsFromIt() {
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        boolean[] registered = {false};
+        GameWorld.Modules modules = new GameWorld.Modules();
+        modules.contentRegistrations.add(ctx -> registered[0] = true);
+        GameWorld withContent = new GameWorld(modules);
+        try {
+            ModContext ctx = withContent.loadContent(assets, assets.resolve("no-mods-here"));
+
+            assertTrue(registered[0]);
+            assertFalse(ctx.report.hasErrors(), ctx.report.toString());
+            assertFalse(ctx.defs.ids("ship").isEmpty());
+            String shipId = ctx.defs.ids("ship").iterator().next();
+            assertNotNull(ctx.factory.spawnShip(shipId, 0, 0, 0));
+            withContent.update(FRAME);
+        } finally {
+            withContent.dispose();
         }
     }
 }
