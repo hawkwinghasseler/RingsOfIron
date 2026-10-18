@@ -73,4 +73,29 @@ class SynthVoiceTest {
         for (int i = afterEnd + 4000; i < s.length; i++) tail = Math.max(tail, Math.abs(s[i]));
         assertEquals(0f, tail, 1e-3f);
     }
+
+    @Test
+    void combatSoundsHaveTheirOwnPatches() {
+        assertEquals(SynthVoice.Patch.AUTOCANNON, SynthVoice.patchFor(AudioEventCatalog.AUTOCANNON));
+        assertEquals(SynthVoice.Patch.LAUNCH, SynthVoice.patchFor(AudioEventCatalog.MISSILE_LAUNCH));
+        assertEquals(SynthVoice.Patch.MISSILE, SynthVoice.patchFor(AudioEventCatalog.MISSILE_FLIGHT));
+        assertEquals(SynthVoice.Patch.EXPLOSION, SynthVoice.patchFor(AudioEventCatalog.EXPLOSION));
+        AudioEventCatalog catalog = AudioEventCatalog.withDefaults();
+        for (SynthVoice.Patch p : new SynthVoice.Patch[]{SynthVoice.Patch.AUTOCANNON, SynthVoice.Patch.LAUNCH,
+                SynthVoice.Patch.MISSILE, SynthVoice.Patch.EXPLOSION}) {
+            SynthVoice v = new SynthVoice(p, p == SynthVoice.Patch.MISSILE, 2.5f);
+            v.targetGain = 1f;
+            v.active = true;
+            v.restart();
+            float[] s = render(v, 40);
+            float peak = 0f;
+            for (float x : s) {
+                assertTrue(Float.isFinite(x), p + " produced " + x);
+                peak = Math.max(peak, Math.abs(x));
+            }
+            // Audible but not clipping hard
+            assertTrue(peak > 0.05f && peak < 2f, p + " peak " + peak);
+        }
+        assertTrue(catalog.contains(AudioEventCatalog.EXPLOSION));
+    }
 }
