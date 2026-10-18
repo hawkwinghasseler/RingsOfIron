@@ -61,7 +61,7 @@ To implement this module independently (mocking the `interior-grid` by feeding i
 - `CrewHealthSystem`: Applies asphyxiation on the hazard tick, handles recovery, and posts rescue tasks.
 
 ## Prototype status
-The first prototype is in `ai-crew/src/main/java/com/ringsofiron/aicrew`. Run `gradlew :ai-crew:runCrewConsoleDemo` for a headless run of a three-room ship (fire, damaged reactor, hull breach, two boarders) printed as text, and `gradlew :ai-crew:test` for the tests.
+The first prototype is in `ai-crew/src/main/java/com/ringsofiron/aicrew`. `Crew demo.bat` (`gradlew :lwjgl3:runCrewDemo`) shows it running with mouse controls to start fires, breach the hull, wound crew and spawn boarders. Run `gradlew :ai-crew:runCrewConsoleDemo` for a headless run of a three-room ship (fire, damaged reactor, hull breach, two boarders) printed as text, and `gradlew :ai-crew:test` for the tests.
 
 - **Shared interfaces** live in `interior-grid`, package `com.ringsofiron.interiorgrid.crew`, so `combat-sys` and the hazard simulation can use them without depending on `ai-crew`: `GridOccupantQuery.occupantsAt(ship, x, y, out)`, `CrewDamageSink.applyDamage(crew, amount, cause)`, `DamageTaskSink.post(ship, task)`, and the task classes `SealBreachTask`, `RepairTask`, `ExtinguishTask`, `RescueTask`. `CrewService` implements all three; `CrewFactory.install(engine)` adds the crew systems and returns it.
 - **Pathfinding:** `GridNavGraph` computes connections straight from the grid on each search, so doors and destroyed walls need no rebuild step. `CrewMovementSystem` stops a crew member whose next step became blocked and the tree re-plans. Task work spots are found by breadth-first search (`GridPathfinder.nearest`).
