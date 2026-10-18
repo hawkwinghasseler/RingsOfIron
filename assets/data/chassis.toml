@@ -1,0 +1,36 @@
+# Interior layouts. Same character map as interior-grid's ChassisBlueprintLoader:
+#   '#' hull (medium)  '1'/'2'/'3' hull light/medium/heavy  'I' internal wall
+#   '.' floor  '+' power conduit  ' ' void
+#   R reactor, S shield, T turret (square mounts); L life support, H helm,
+#   W weapons console, C cargo, A airlock (rectangular slots)
+# Rows read top to bottom; listed coordinates have (0, 0) at the bottom-left tile.
+
+[chassis.corvette]
+name = "Corvette"
+tile_size = 1.0
+origin_x = -5.0
+origin_y = -3.0
+rows = [
+  "##########",
+  "#HH....RR#",
+  "#......RR#",
+  "#L.++++..#",
+  "#L.....CC#",
+  "##########",
+]
+mounts = [ { type = "TURRET_MOUNT", size = "S", x = 3, y = 3, rotation = 0 } ]
+coverings = [ { covering = "CARPET", x = 2, y = 1, width = 4, height = 1 } ]
+
+[chassis.freighter]
+name = "Light Freighter"
+tile_size = 1.0
+origin_x = -7.0
+origin_y = -3.0
+rows = [
+  "##############",
+  "#HH..I..CC.CC#",
+  "#....I.......#",
+  "#L.+++++++RR.#",
+  "#L.......IRR.#",
+  "##############",
+]

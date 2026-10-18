@@ -5,5 +5,25 @@ dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
   api "org.apache.groovy:groovy-all:$groovyVersion"
   api project(':core-engine')
+  // TOML 1.0 parser for data files and manifests.
+  implementation "org.tomlj:tomlj:1.1.1"
+  // Maps parsed TOML/JSON trees onto definition POJOs (snake_case keys -> camelCase fields).
+  api "com.google.code.gson:gson:2.11.0"
+
+  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+  // Chassis defs are checked against the real interior-grid blueprint loader.
+  testImplementation project(':interior-grid')
 }
 
+test {
+  useJUnitPlatform()
+}
+
+// Loads base data plus the example mod and prints what was found:  ./gradlew :modding-data:runModdingDemo
+tasks.register('runModdingDemo', JavaExec) {
+  group = 'application'
+  mainClass = 'com.ringsofiron.moddingdata.ModdingDemo'
+  classpath = sourceSets.main.runtimeClasspath
+  args = [rootProject.file('assets').path, project.file('examples/mods').path]
+}
