@@ -167,4 +167,23 @@ class BurnsAndCrashesTest {
         assertNotNull(world.macroSim.station(game.lunarMine));
         assertEquals("ice_mine", world.macroSim.station(game.lunarMine).stationTypeId);
     }
+
+    @Test
+    void haulersFlyBetweenEarthAndTheMoon() {
+        java.util.Set<String> parents = new java.util.HashSet<>();
+        double start = world.engine.getSimSeconds();
+        for (int i = 0; i < 20_000 && world.engine.getSimSeconds() < start + 20 * 86400.0; i++) {
+            if (!world.timeWarp.isRailsWarp()) world.timeWarp.setWarp(100_000);
+            world.update(FRAME);
+            for (String uuid : world.macroSim.freighters().all().keySet()) {
+                if (world.macroSim.rails().isOnRails(uuid)) parents.add(uuid + ">" + world.macroSim.rails().parentOf(uuid));
+            }
+        }
+        assertTrue(world.engine.getSimSeconds() >= start + 20 * 86400.0, "warped 20 days");
+        int crossed = 0;
+        for (String uuid : world.macroSim.freighters().all().keySet()) {
+            if (parents.contains(uuid + ">" + GameScenario.EARTH) && parents.contains(uuid + ">" + GameScenario.MOON)) crossed++;
+        }
+        assertTrue(crossed > 0, "a hauler flew between Earth and the Moon: " + parents);
+    }
 }
