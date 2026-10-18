@@ -26,6 +26,7 @@ import com.ringsofiron.interiorgrid.LifeSupportSystem;
 import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.PowerRoutingSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.macrosim.MacroSaveParticipant;
 import com.ringsofiron.macrosim.MacroSimSystem;
 import com.ringsofiron.macrosim.MacroSimulation;
 import com.ringsofiron.macrosim.economy.DefRegistryCommodityCatalog;
@@ -158,6 +159,8 @@ public class GameWorld implements Disposable {
         macroSim = new MacroSimulation(engine, new OrbitalRailsModel(engine, universe, orbitalEvents),
                 new GameBubbleGateway(physics, engine.getUuidRegistry()), commodities, null, engine.getSimSeconds());
         macroSim.bubble().addListener(new NpcBubblePilots(engine.getUuidRegistry()));
+        // Economy, fleet and bubble state; restores its own components on load.
+        MacroSaveParticipant.register(macroSim, engine.getSerializationService());
         engine.addSystem(new MacroSimSystem(macroSim, engine));
         timeWarp.addDropOutSource(macroSim::nextDropOutTime);
         timeWarp.changes.add((signal, change) -> macroSim.setBubbleSuspended(change.rails));

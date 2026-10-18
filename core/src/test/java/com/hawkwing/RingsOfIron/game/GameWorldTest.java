@@ -332,4 +332,30 @@ class GameWorldTest {
         for (int i = 0; i < 10; i++) world.update(FRAME);
         assertTrue(world.macroSim.bubble().inBubble().contains("npc"));
     }
+    @Test
+    void savesKeepTheEconomyAndTheFleet() {
+        String farm = world.macroSim.addStation("Farm", "farm", "earth", circular(LEO + 1_000e3, 0), 1);
+        String habitat = world.macroSim.addStation("Habitat", "habitat", "earth", circular(LEO + 3_000e3, 2), 1);
+        for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + i, 200, 20_000, i % 2 == 0 ? farm : habitat);
+        assertTrue(world.engine.advanceRails(com.ringsofiron.coreengine.SimClock.secondsToTicks(3 * 86400)));
+        int trips = 0;
+        for (var f : world.macroSim.freighters().all().values()) trips += f.tripsCompleted;
+        String save = world.engine.getSerializationService().saveGame();
+
+        GameWorld loaded = new GameWorld();
+        try {
+            assertTrue(trips > 0);
+            loaded.engine.getSerializationService().loadGame(save);
+            assertEquals(world.macroSim.now(), loaded.macroSim.now(), 1e-6);
+            assertEquals(world.macroSim.stations().size(), loaded.macroSim.stations().size());
+            assertEquals(world.macroSim.freighters().all().size(), loaded.macroSim.freighters().all().size());
+            int loadedTrips = 0;
+            for (var f : loaded.macroSim.freighters().all().values()) loadedTrips += f.tripsCompleted;
+            assertEquals(trips, loadedTrips);
+            assertTrue(loaded.engine.advanceRails(com.ringsofiron.coreengine.SimClock.secondsToTicks(86400)),
+                    "the loaded universe keeps running");
+        } finally {
+            loaded.dispose();
+        }
+    }
 }
