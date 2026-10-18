@@ -26,6 +26,11 @@ public class FreighterController {
     public static final double FUEL_COST_PER_DV = 0.0005;
     /** Orders whose two legs take longer than this are ignored. */
     public static final double MAX_TRIP_SECONDS = 30 * 86400.0;
+    /** Seconds after the predicted SOI crossing to check it happened, and between later checks. */
+    static final double CROSSING_CHECK = 1;
+    static final double CROSSING_RETRY = 60;
+    /** How long past the predicted crossing a freighter keeps waiting for it. */
+    static final double CROSSING_PATIENCE = 6 * 3600;
 
     private final RailsModel rails;
     private final EconomySimulation economy;
@@ -67,7 +72,9 @@ public class FreighterController {
         if (f.destinationUuid != null && !Double.isNaN(f.arrivalTime) && f.state != FreighterComponent.State.IN_BUBBLE) {
             String target = f.destinationUuid;
             double arrival = f.arrivalTime;
-            f.arrivalEventId = events.schedule(arrival, () -> arrive(uuid, f, target, arrival));
+            f.arrivalEventId = f.transitBodyUuid != null
+                    ? events.schedule(arrival, () -> cross(uuid, f, target, arrival))
+                    : events.schedule(arrival, () -> arrive(uuid, f, target, arrival));
         }
     }
 
@@ -189,33 +196,32 @@ public class FreighterController {
         }
     }
 
-    /** Profit per hour of an order for this freighter, or 0 if not worth it. */
+    /** Profit per hour of an order for this freighter, or 0 if not worth it (or out of reach). */
     private double score(String uuid, FreighterComponent f, TradeOrder o, double now) {
-        double qty = Math.min(o.quantity, f.capacity);
-        String parent = rails.parentOf(uuid);
-        if (!parent.equals(rails.parentOf(o.fromUuid)) || !parent.equals(rails.parentOf(o.toUuid))) return 0;
-        double mu = rails.muOf(parent);
+        double qty = Math.min(o.quantity, f.holdCapacity());
         double start = now + UNDOCK_DELAY;
         double leg1Arrival = start;
         double dv = 0;
         if (!o.fromUuid.equals(f.dockedAtUuid)) {
-            TransferPlanner.Plan p1 = TransferPlanner.plan(mu, rails.stateAt(uuid, now, a),
-                    rails.stateAt(o.fromUuid, now, b), now, start);
-            leg1Arrival = p1.arrivalTime;
-            dv += p1.totalDeltaV;
+            RoutePlanner.Route r1 = RoutePlanner.estimate(rails, rails.parentOf(uuid), rails.stateAt(uuid, now, a),
+                    o.fromUuid, now, start);
+            if (r1 == null) return 0;
+            leg1Arrival = r1.arrivalTime;
+            dv += r1.totalDeltaV;
         }
         double t2 = leg1Arrival + UNDOCK_DELAY;
-        TransferPlanner.Plan p2 = TransferPlanner.plan(mu, rails.stateAt(o.fromUuid, leg1Arrival, a),
-                rails.stateAt(o.toUuid, leg1Arrival, b), leg1Arrival, t2);
-        dv += p2.totalDeltaV;
-        double duration = p2.arrivalTime - now;
+        RoutePlanner.Route r2 = RoutePlanner.estimate(rails, rails.parentOf(o.fromUuid),
+                rails.stateAt(o.fromUuid, leg1Arrival, a), o.toUuid, leg1Arrival, t2);
+        if (r2 == null) return 0;
+        dv += r2.totalDeltaV;
+        double duration = r2.arrivalTime - now;
         if (duration > MAX_TRIP_SECONDS) return 0;
-        double profit = qty * o.unitMargin() - dv * FUEL_COST_PER_DV * f.capacity;
+        double profit = qty * o.unitMargin() - dv * FUEL_COST_PER_DV * f.holdCapacity();
         return profit > 0 ? profit / (duration / 3600.0) : 0;
     }
 
     private void start(String uuid, FreighterComponent f, TradeOrder o, double now) {
-        o.quantity = Math.min(o.quantity, f.capacity);
+        o.quantity = Math.min(o.quantity, f.holdCapacity());
         economy.claim(o, uuid, stations.apply(o.fromUuid), stations.apply(o.toUuid));
         activeOrders.put(o.id, o);
         f.orderId = o.id;
@@ -240,22 +246,83 @@ public class FreighterController {
     }
 
     private void fly(String uuid, FreighterComponent f, String targetUuid, double now, double earliest) {
-        String parent = rails.parentOf(uuid);
-        TransferPlanner.Plan plan = TransferPlanner.plan(rails.muOf(parent), rails.stateAt(uuid, now, a),
-                rails.stateAt(targetUuid, now, b), now, earliest);
-        follow(uuid, f, targetUuid, plan.burns, plan.arrivalTime, plan.totalDeltaV);
+        RoutePlanner.Route route = RoutePlanner.plan(rails, rails.parentOf(uuid), rails.stateAt(uuid, now, a),
+                targetUuid, now, earliest);
+        follow(uuid, f, targetUuid, new ArrayList<>(), 0, route, now);
     }
 
-    private void follow(String uuid, FreighterComponent f, String targetUuid, List<Burn> burns,
-                        double arrival, double deltaV) {
+    /**
+     * Flies {@code lead} burns and then {@code route} towards {@code targetUuid}. A route that ends at an
+     * SOI crossing is continued by {@link #cross}; a null route (no way there) drops the job.
+     */
+    private void follow(String uuid, FreighterComponent f, String targetUuid, List<Burn> lead, double leadDeltaV,
+                        RoutePlanner.Route route, double now) {
+        if (route == null) {
+            abandon(uuid, f, now);
+            return;
+        }
         f.dockedAtUuid = null;
         f.destinationUuid = targetUuid;
-        f.arrivalTime = arrival;
-        f.deltaVUsed += deltaV;
+        f.deltaVUsed += leadDeltaV;
         rails.cancelBurns(uuid);
-        for (Burn burn : burns) rails.scheduleBurn(uuid, burn);
+        for (Burn burn : lead) rails.scheduleBurn(uuid, burn);
+        for (Burn burn : route.burns) rails.scheduleBurn(uuid, burn);
+        for (Burn burn : route.burns) f.deltaVUsed += Math.hypot(burn.prograde, burn.radial);
         events.cancel(f.arrivalEventId);
-        f.arrivalEventId = events.schedule(arrival, () -> arrive(uuid, f, targetUuid, arrival));
+        if (route.nextParent != null) {
+            double check = route.crossingTime + CROSSING_CHECK;
+            f.transitBodyUuid = route.nextParent;
+            f.transitDeadline = route.crossingTime + CROSSING_PATIENCE;
+            f.arrivalTime = check;
+            f.arrivalEventId = events.schedule(check, () -> cross(uuid, f, targetUuid, check));
+        } else {
+            double arrival = route.arrivalTime;
+            f.transitBodyUuid = null;
+            f.transitDeadline = Double.NaN;
+            f.arrivalTime = arrival;
+            f.arrivalEventId = events.schedule(arrival, () -> arrive(uuid, f, targetUuid, arrival));
+        }
+    }
+
+    /** The predicted SOI crossing is due: plan the rest of the leg from the real orbit. */
+    private void cross(String uuid, FreighterComponent f, String targetUuid, double now) {
+        if (!rails.isOnRails(uuid)) return; // in the bubble; re-planned on exit
+        if (!f.transitBodyUuid.equals(rails.parentOf(uuid))) {
+            if (now > f.transitDeadline) {
+                abandon(uuid, f, now);
+                return;
+            }
+            double retry = now + CROSSING_RETRY;
+            f.arrivalTime = retry;
+            f.arrivalEventId = events.schedule(retry, () -> cross(uuid, f, targetUuid, retry));
+            return;
+        }
+        String parent = f.transitBodyUuid;
+        f.transitBodyUuid = null;
+        follow(uuid, f, targetUuid, new ArrayList<>(), 0,
+                RoutePlanner.afterCrossing(rails, parent, rails.stateAt(uuid, now, a), targetUuid, now, now + 1), now);
+    }
+
+    /**
+     * No way to the target: the order is dropped and the freighter waits where it is. A freighter
+     * left drifting in transit circularizes first.
+     */
+    private void abandon(String uuid, FreighterComponent f, double now) {
+        TradeOrder o = activeOrders.remove(f.orderId);
+        if (o != null) release(o, f);
+        f.orderId = 0;
+        events.cancel(f.arrivalEventId);
+        f.arrivalEventId = 0;
+        f.transitBodyUuid = null;
+        f.transitDeadline = Double.NaN;
+        f.destinationUuid = null;
+        f.arrivalTime = Double.NaN;
+        f.state = FreighterComponent.State.IDLE;
+        if (f.dockedAtUuid == null && rails.isOnRails(uuid)) {
+            rails.cancelBurns(uuid);
+            double mu = rails.muOf(rails.parentOf(uuid));
+            rails.scheduleBurn(uuid, TransferPlanner.circularize(mu, rails.stateAt(uuid, now + 1, a), now + 1));
+        }
     }
 
     private void arrive(String uuid, FreighterComponent f, String stationUuid, double now) {
@@ -312,6 +379,7 @@ public class FreighterController {
         f.state = FreighterComponent.State.IN_BUBBLE;
         events.cancel(f.arrivalEventId);
         f.arrivalEventId = 0;
+        f.transitBodyUuid = null;
     }
 
     /**
@@ -332,18 +400,12 @@ public class FreighterController {
         double tBurn = now + 1;
         rails.stateAt(uuid, tBurn, a);
         Burn circ = TransferPlanner.circularize(mu, a, tBurn);
-        // State right after the circularisation burn: same position, circular speed, same sense.
-        int dir = (a.x * a.vy - a.y * a.vx) < 0 ? -1 : 1;
-        double r = a.distance();
-        double vc = Math.sqrt(mu / r);
-        a.set(a.x, a.y, -dir * a.y / r * vc, dir * a.x / r * vc);
-        TransferPlanner.Plan plan = TransferPlanner.plan(mu, a, rails.stateAt(target, tBurn, b), tBurn,
+        RoutePlanner.Route route = RoutePlanner.plan(rails, parent, RoutePlanner.circularState(mu, a), target, tBurn,
                 tBurn + UNDOCK_DELAY);
-        List<Burn> burns = new ArrayList<>();
-        burns.add(circ);
-        burns.addAll(plan.burns);
+        List<Burn> lead = new ArrayList<>();
+        lead.add(circ);
         // An idle ship that was pulled away from its dock flies back before taking new work.
         if (f.state == FreighterComponent.State.IDLE) f.state = FreighterComponent.State.REPOSITIONING;
-        follow(uuid, f, target, burns, plan.arrivalTime, plan.totalDeltaV + Math.hypot(circ.prograde, circ.radial));
+        follow(uuid, f, target, lead, Math.hypot(circ.prograde, circ.radial), route, now);
     }
 }
