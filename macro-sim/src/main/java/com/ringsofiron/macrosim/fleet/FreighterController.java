@@ -210,7 +210,7 @@ public class FreighterController {
         dv += p2.totalDeltaV;
         double duration = p2.arrivalTime - now;
         if (duration > MAX_TRIP_SECONDS) return 0;
-        double profit = qty * o.unitMargin() - dv * FUEL_COST_PER_DV * f.capacity;
+        double profit = qty * o.unitMargin() - dv * FUEL_COST_PER_DV * f.holdCapacity();
         return profit > 0 ? profit / (duration / 3600.0) : 0;
     }
 

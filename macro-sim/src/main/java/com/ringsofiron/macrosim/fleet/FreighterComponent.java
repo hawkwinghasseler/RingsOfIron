@@ -43,9 +43,14 @@ public class FreighterComponent implements Component {
     public FreighterComponent() {
     }
 
-    /** Units of a commodity the hold carries. */
+    /** Volume of the hold, m³. Fleet logic reads the hold only through here and {@link #capacityUnits}. */
+    public double holdCapacity() {
+        return capacity;
+    }
+
+    /** Units of a commodity the hold carries on one order. */
     public double capacityUnits(CommodityType commodity) {
-        return commodity.unitVolume > 0 ? capacity / commodity.unitVolume : capacity;
+        return commodity.unitVolume > 0 ? holdCapacity() / commodity.unitVolume : holdCapacity();
     }
 
     public FreighterComponent(String displayName, double capacity, double credits) {
