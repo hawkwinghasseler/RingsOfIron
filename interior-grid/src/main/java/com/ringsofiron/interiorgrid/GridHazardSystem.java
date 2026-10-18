@@ -70,11 +70,12 @@ public class GridHazardSystem extends IteratingSystem {
     /** Share of {@link #FUEL_TAPER} below which the last embers count as burnt out. */
     public static final float BURNT_OUT = 0.05f;
     /** Fuel burned per second by a fully involved fire, kg per m². */
-    public static final float BURN_RATE = 0.04f;
-    /** Energy released per kg of fuel, J. */
-    public static final float HEAT_OF_COMBUSTION = 25e6f;
-    /** Share of the released heat that stays in the burning tile. */
-    public static final float HEAT_TO_TILE = 0.6f;
+    public static final float BURN_RATE = 0.01f;
+    /**
+     * Heat a fully involved fire puts into its tile, W per m². Tuned for gameplay rather
+     * than derived from {@link #BURN_RATE}: fires burn slowly but hot.
+     */
+    public static final float FIRE_HEAT_OUTPUT = 1.2e6f;
     /** Oxygen used per kg of fuel, mol. */
     public static final double OXYGEN_PER_FUEL = 70.0;
     /** Carbon dioxide produced per kg of fuel, mol. */
@@ -300,13 +301,15 @@ public class GridHazardSystem extends IteratingSystem {
                 }
 
                 // Burn fuel and oxygen into heat, smoke and CO2
-                float burned = Math.min(t.fuel, BURN_RATE * area * t.fireIntensity * dt);
+                float wanted = BURN_RATE * area * t.fireIntensity * dt;
+                float burned = Math.min(t.fuel, wanted);
                 burned = (float) Math.min(burned, c.oxygen / OXYGEN_PER_FUEL);
                 t.fuel -= burned;
                 c.oxygen = Math.max(0.0, c.oxygen - burned * OXYGEN_PER_FUEL);
                 c.carbonDioxide += burned * CO2_PER_FUEL;
                 c.smoke += burned * SMOKE_PER_FUEL;
-                t.temperature += burned * HEAT_OF_COMBUSTION * HEAT_TO_TILE / TILE_HEAT_CAPACITY;
+                // Heat follows the share of the wanted burn that fuel and oxygen allowed
+                t.temperature += FIRE_HEAT_OUTPUT * area * t.fireIntensity * dt * (burned / wanted) / TILE_HEAT_CAPACITY;
                 if (t.fuel <= BURNT_OUT * FUEL_TAPER * area) {
                     // The carpet is gone; the steel floor stays
                     t.fuel = 0f;
