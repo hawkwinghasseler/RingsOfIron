@@ -9,10 +9,14 @@ import com.badlogic.gdx.utils.JsonWriter;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.orbital.math.KeplerOrbit;
+import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
 import com.ringsofiron.physicsexterior.anchor.PointMassAnchor;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.physicsexterior.systems.PhysicsUpdateSystem;
 import com.ringsofiron.physicsexterior.systems.TidalGravitySystem;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -169,5 +173,42 @@ class GameEngineIntegrationTest {
         double[] after = new double[4];
         physics.getTrueState(rebuilt, after);
         for (int i = 0; i < 4; i++) assertEquals(before[i], after[i], 0.01);
+    }
+
+    @Test
+    void loadIntoAFreshWorldRestoresTheOrbitingAnchor() {
+        physics.setAnchorModel(new KeplerAnchor(KeplerOrbit.circular(EARTH_MU, LOW_ORBIT, 0.0, 0.0, 1)), "earth");
+        spawnShip(100f, 50f);
+        game.stepTicks(600);
+        double[] before = {physics.getOriginX(), physics.getOriginY(), physics.getOriginVx(), physics.getOriginVy()};
+        String save = game.getSerializationService().saveGame();
+
+        // A new game on its default inertial anchor, as when loading from the title screen.
+        GameEngine fresh = new GameEngine();
+        PhysicsManager freshPhysics = new PhysicsManager();
+        fresh.addSystem(new PhysicsUpdateSystem(freshPhysics));
+        PhysicsSaveParticipant.install(freshPhysics, fresh);
+        List<String> changes = new ArrayList<>();
+        freshPhysics.anchorChanges.add((sig, e) -> changes.add(e.kind + " " + e.parentUuid));
+        try {
+            fresh.getSerializationService().loadGame(save);
+            assertEquals(List.of("SET earth"), changes, "rails tracking hears about the loaded anchor");
+            assertTrue(freshPhysics.getAnchorModel() instanceof KeplerAnchor);
+            assertEquals(EARTH_MU, freshPhysics.getAnchorModel().getMu(), 1.0);
+            assertEquals("earth", freshPhysics.getAnchorParentUuid());
+            assertEquals(before[0], freshPhysics.getOriginX(), 1e-3);
+            assertEquals(before[1], freshPhysics.getOriginY(), 1e-3);
+            assertEquals(before[2], freshPhysics.getOriginVx(), 1e-6);
+            assertEquals(before[3], freshPhysics.getOriginVy(), 1e-6);
+
+            // And it keeps falling along the same orbit.
+            fresh.stepTicks(600);
+            game.stepTicks(600);
+            assertEquals(physics.getOriginX(), freshPhysics.getOriginX(), 1e-2);
+            assertEquals(physics.getOriginY(), freshPhysics.getOriginY(), 1e-2);
+        } finally {
+            fresh.clear();
+            freshPhysics.dispose();
+        }
     }
 }

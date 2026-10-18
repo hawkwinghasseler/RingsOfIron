@@ -8,7 +8,11 @@ import com.ringsofiron.aicrew.BehaviorTreeComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
+import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
+import com.ringsofiron.audiospatial.backend.AudioParameters;
+import com.ringsofiron.audiospatial.components.AudioEmitterComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
+import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.nio.file.Path;
@@ -128,5 +132,37 @@ class GameScenarioTest {
         world.timeWarp.setWarp(1);
         assertNotNull(game.player.getComponent(PhysicsBodyComponent.class));
         for (int i = 0; i < 60; i++) world.update(FRAME);
+    }
+
+    @Test
+    void theEngineIsHeardWhenThrusting() {
+        FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
+        controls.forward = 1f;
+        for (int i = 0; i < 30; i++) world.update(FRAME);
+        AudioEmitterComponent engine = game.player.getComponent(AudioEmitterComponent.class);
+        assertNotNull(engine);
+        assertEquals(AudioEventCatalog.THRUSTER, engine.eventPath);
+        assertEquals(1f, world.engineAudio.getIntensity(), 1e-4f);
+        assertNotNull(engine.instance, "the loop is playing");
+        assertEquals(1f, engine.instance.getParameter(AudioParameters.INTENSITY, 0f), 1e-4f);
+
+        controls.forward = 0f;
+        controls.turn = 1f;
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        assertEquals(EngineAudio.RCS_SHARE, world.engineAudio.getIntensity(), 1e-4f, "RCS is quieter");
+
+        controls.turn = 0f;
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        assertEquals(0f, world.engineAudio.getIntensity(), 1e-4f);
+
+        // After a load the same loop carries on, not a second one.
+        String save = world.engine.getSerializationService().saveGame();
+        world.engine.getSerializationService().loadGame(save);
+        controls = world.getPlayer().getComponent(FlightControlComponent.class);
+        controls.forward = 1f;
+        for (int i = 0; i < 30; i++) world.update(FRAME);
+        AudioEmitterComponent loaded = world.getPlayer().getComponent(AudioEmitterComponent.class);
+        assertEquals(AudioEventCatalog.THRUSTER, loaded.eventPath);
+        assertEquals(1f, loaded.instance.getParameter(AudioParameters.INTENSITY, 0f), 1e-4f);
     }
 }
