@@ -1,0 +1,5 @@
+id = "spice_trade"
+name = "Spice Trade"
+version = "0.2.0"
+description = "Adds a commodity, a station type and a ship, partly from data and partly from script."
+load_after = ["better_railguns"]
