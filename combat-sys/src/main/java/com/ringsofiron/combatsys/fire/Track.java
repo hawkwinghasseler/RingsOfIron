@@ -10,7 +10,7 @@ import com.badlogic.gdx.math.Vector2;
  * velocity and a target that keeps thrusting slips out from under the fire.
  */
 public class Track {
-    public Entity target;
+    public transient Entity target;
     /** Estimated position, velocity and acceleration, local meters. */
     public final Vector2 p = new Vector2();
     public final Vector2 v = new Vector2();

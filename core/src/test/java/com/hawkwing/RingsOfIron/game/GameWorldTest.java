@@ -2,6 +2,10 @@ package com.hawkwing.RingsOfIron.game;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.ringsofiron.combatsys.components.SensorComponent;
+import com.ringsofiron.combatsys.components.WeaponMountComponent;
+import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
@@ -203,6 +207,48 @@ class GameWorldTest {
             assertNotNull(grid);
             assertFalse(grid.mounts.isEmpty());
             assertNotNull(grid.mounts.get(0).installed, "mounts relinked to their systems after the load");
+        } finally {
+            withContent.dispose();
+            loaded.dispose();
+        }
+    }
+
+    @Test
+    void savesKeepWeaponTargetsAndSensorLocks() {
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        GameWorld withContent = new GameWorld();
+        GameWorld loaded = new GameWorld();
+        try {
+            ModContext ctx = withContent.loadContent(assets, assets.resolve("no-mods-here"));
+            String shipId = ctx.defs.ids("ship").iterator().next();
+            Entity ship = ctx.factory.spawnShip(shipId, 0, 0, 0);
+            Entity enemy = ctx.factory.spawnShip(shipId, 500, 0, 0);
+            Entity system = ship.getComponent(ShipSubsystemRegistryComponent.class).subsystems.first();
+            SensorComponent sensor = new SensorComponent();
+            sensor.lockedTarget = enemy;
+            ship.add(sensor);
+            WeaponsComponent weapons = new WeaponsComponent();
+            WeaponMountComponent mount = weapons.add(new WeaponMountComponent(
+                    withContent.combatDefs.weapons.values().iterator().next(), 10, 0, 0));
+            mount.target = enemy;
+            mount.subsystem = system;
+            ship.add(weapons);
+            withContent.update(FRAME);
+            new PlayerGunnery(withContent.ballistics, withContent.combatDefs, null).fire(ship);
+            withContent.update(FRAME);
+            String save = withContent.engine.getSerializationService().saveGame();
+
+            loaded.engine.getSerializationService().loadGame(save);
+            Entity copy = loaded.engine.getEntity(ship.getComponent(UuidComponent.class).id);
+            Entity enemyCopy = loaded.engine.getEntity(enemy.getComponent(UuidComponent.class).id);
+            Entity systemCopy = loaded.engine.getEntity(system.getComponent(UuidComponent.class).id);
+            assertNotNull(enemyCopy);
+            assertNotNull(systemCopy);
+            assertSame(enemyCopy, copy.getComponent(SensorComponent.class).lockedTarget);
+            WeaponMountComponent mountCopy = copy.getComponent(WeaponsComponent.class).mounts.first();
+            assertSame(enemyCopy, mountCopy.target);
+            assertSame(systemCopy, mountCopy.subsystem);
+            for (int i = 0; i < 30; i++) loaded.update(FRAME);
         } finally {
             withContent.dispose();
             loaded.dispose();

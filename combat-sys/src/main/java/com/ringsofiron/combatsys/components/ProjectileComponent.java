@@ -9,6 +9,7 @@ import com.ringsofiron.combatsys.defs.ProjectileDef;
  * A round in flight on the raycast flight model (combat-sys/Design.md section 2.4). Its state
  * lives here in local meters, not in a Box2D body or a {@code TransformComponent}, so it is
  * free of Box2D's speed cap; {@code BallisticsSystem} integrates it and sweeps it for hits.
+ * Rounds are transient entities and never saved, so the entity links are transient too.
  */
 public class ProjectileComponent implements Component {
     public ProjectileDef def;
@@ -21,9 +22,9 @@ public class ProjectileComponent implements Component {
     /** Seconds since spawn. */
     public float age;
     /** The firing ship; the round ignores it until {@code def.armingTime}. Null for none. */
-    public Entity owner;
+    public transient Entity owner;
     /** An entity this round may not hit until {@link #ignoreUntil} (a ship it just ricocheted off). */
-    public Entity ignore;
+    public transient Entity ignore;
     public float ignoreUntil;
     /**
      * Penetration budget override, J; negative means derive it from kinetic energy at impact.
