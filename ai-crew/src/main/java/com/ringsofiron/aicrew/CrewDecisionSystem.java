@@ -3,13 +3,13 @@ package com.ringsofiron.aicrew;
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
-import com.badlogic.ashley.systems.IteratingSystem;
+import com.ringsofiron.coreengine.SimClock;
 
 /**
- * Steps the behavior tree of every conscious crew member each frame. Unconscious and
+ * Steps the behavior tree of every conscious crew member each sim tick. Unconscious and
  * dead crew, and the player avatar, are skipped.
  */
-public class CrewDecisionSystem extends IteratingSystem {
+public class CrewDecisionSystem extends FixedIteratingSystem {
 
     private final ComponentMapper<BehaviorTreeComponent> btM = ComponentMapper.getFor(BehaviorTreeComponent.class);
     private final ComponentMapper<CrewMemberComponent> crewM = ComponentMapper.getFor(CrewMemberComponent.class);
@@ -17,13 +17,13 @@ public class CrewDecisionSystem extends IteratingSystem {
 
     public CrewDecisionSystem() {
         super(Family.all(CrewMemberComponent.class, GridPositionComponent.class, BehaviorTreeComponent.class)
-                .exclude(PlayerAvatarComponent.class).get(), 5);
+                .exclude(PlayerAvatarComponent.class).get(), 5, (float) SimClock.TICK_SECONDS);
     }
 
     @Override
-    public void update(float deltaTime) {
-        time += deltaTime;
-        super.update(deltaTime);
+    protected void updateFixed(float dt) {
+        time += dt;
+        super.updateFixed(dt);
     }
 
     @Override

@@ -5,12 +5,17 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.BehaviorTreeComponent;
+import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.interiorgrid.crew.ExtinguishTask;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Tile;
+import java.util.List;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
@@ -85,6 +90,26 @@ class GameScenarioTest {
         assertEquals(3, thinking, "the AI crew think again");
         for (int i = 0; i < 180; i++) world.update(FRAME);
         assertTrue(world.macroSim.bubble().inBubble().contains(visitor), "and the game runs on with it");
+    }
+
+    @Test
+    void theCrewPutOutAFireAboard() {
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        List<int[]> floor = GameScenario.floorTiles(grid);
+        int[] spot = floor.get(floor.size() / 2);
+        Tile tile = grid.getTile(spot[0], spot[1]);
+        tile.fuel = 10f;
+        tile.ignite();
+        tile.fireIntensity = 0.3f;
+        boolean fought = false;
+        for (int i = 0; i < 60 * 60 && grid.hasFire(); i++) {
+            world.update(FRAME);
+            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                if (e.getComponent(CrewMemberComponent.class).task instanceof ExtinguishTask) fought = true;
+            }
+        }
+        assertTrue(fought, "a crew member took the firefighting job");
+        assertFalse(grid.hasFire(), "the crew put the fire out");
     }
 
     @Test

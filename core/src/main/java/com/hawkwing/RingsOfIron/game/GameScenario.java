@@ -133,7 +133,7 @@ public class GameScenario {
         return new StateVector().set(s.x, s.y, s.vx, s.vy);
     }
 
-    /** Open deck tiles, scanning from the middle row outwards. */
+    /** Open deck tiles clear of mounted systems, scanning from the middle row outwards. */
     static List<int[]> floorTiles(ShipGridComponent grid) {
         List<int[]> out = new java.util.ArrayList<>();
         if (grid == null) return out;
@@ -142,7 +142,7 @@ public class GameScenario {
             if (y < 0 || y >= grid.height) continue;
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
-                if (t != null && t.isFloor() && t.isOpen()) out.add(new int[]{x, y});
+                if (t != null && t.isFloor() && t.isOpen() && t.mount == null) out.add(new int[]{x, y});
             }
         }
         return out;

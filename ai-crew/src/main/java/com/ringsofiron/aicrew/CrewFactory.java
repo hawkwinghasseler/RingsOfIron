@@ -24,9 +24,13 @@ public final class CrewFactory {
         return service;
     }
 
-    /** Spawns an AI crew member on tile (x, y) of {@code ship} and adds them to the engine. */
+    /**
+     * Spawns an AI crew member on tile (x, y) of {@code ship} and adds them to the engine.
+     * Gives the ship a task board if it has none, so the crew have jobs to take.
+     */
     public static Entity spawn(CrewService service, Entity ship, String name, CrewRole role, int faction, int x, int y) {
         Engine engine = service.engine();
+        if (ship != null) ensureBoard(ship);
         Entity e = engine.createEntity();
         CrewMemberComponent c = new CrewMemberComponent(name, role, faction);
         GridPositionComponent p = new GridPositionComponent(ship, x, y);
@@ -47,6 +51,7 @@ public final class CrewFactory {
     /** Spawns the player's avatar, a crew member moved by input rather than AI. */
     public static Entity spawnPlayer(CrewService service, Entity ship, String name, int x, int y) {
         Engine engine = service.engine();
+        if (ship != null) ensureBoard(ship);
         Entity e = engine.createEntity();
         e.add(new CrewMemberComponent(name, CrewRole.CREWMAN, 0));
         e.add(new GridPositionComponent(ship, x, y));
