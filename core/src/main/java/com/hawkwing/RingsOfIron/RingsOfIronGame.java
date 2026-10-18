@@ -5,6 +5,8 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.InputMultiplexer;
@@ -52,10 +54,11 @@ import java.nio.file.Paths;
  * {@link GameScenario}. Run with {@code gradlew :lwjgl3:runGame}.
  *
  * <p>Controls, outside: W/S main engine, A/D turn, Z/C strafe, X rotation assist, Tab cycle
- * target, Space fire the guns (the turrets lead the locked target themselves), R launch a missile
- * at it, F drop a decoy, comma/period time warp down/up, mouse wheel zoom. Point defense shoots
- * down incoming missiles by itself. The raider fights back once you shoot at it. V switches to the deck view,
- * where WASD walks your character and E uses the console you stand at. Esc quits.
+ * target, Space fire the guns and laser (the turrets lead the locked target themselves), R launch
+ * a missile at it, F drop a decoy, comma/period time warp down/up, mouse wheel zoom. Point defense
+ * shoots down incoming missiles by itself. The raider fights back once you shoot at it. V switches
+ * to the deck view, where WASD walks your character and E uses the console you stand at. F5
+ * quick-saves, F9 loads the quick save. Esc quits.
  */
 public class RingsOfIronGame extends ApplicationAdapter {
     private static final ComponentMapper<TransformComponent> TRANSFORMS = ComponentMapper.getFor(TransformComponent.class);
@@ -184,6 +187,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !consoleOpen) Gdx.app.exit();
         if (Gdx.input.isKeyJustPressed(Input.Keys.PERIOD)) warp(1);
         if (Gdx.input.isKeyJustPressed(Input.Keys.COMMA)) warp(-1);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F5)) quickSave();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F9)) quickLoad();
 
         FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
         PlayerAvatarComponent walker = game.avatar == null ? null : game.avatar.getComponent(PlayerAvatarComponent.class);
@@ -227,6 +232,39 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (!world.timeWarp.step(direction)) {
             String reason = world.engine.getRailsWarpBlockedReason();
             show("Time warp refused" + (reason == null ? "" : ": " + reason));
+        }
+    }
+
+    private FileHandle quickSaveFile() {
+        return Gdx.files.local("saves/quicksave.json");
+    }
+
+    private void quickSave() {
+        try {
+            String refused = game.quickSave(quickSaveFile());
+            show(refused == null ? "Game saved" : "Can't save: " + refused);
+        } catch (RuntimeException e) {
+            Gdx.app.error("RingsOfIron", "Save failed", e);
+            show("Save failed; see the log");
+        }
+    }
+
+    private void quickLoad() {
+        FileHandle file = quickSaveFile();
+        if (!file.exists()) {
+            show("No quick save yet (F5 saves)");
+            return;
+        }
+        try {
+            game.quickLoad(file);
+            // The loaded ship's own weapons; its sensor lock comes back with the save.
+            gun = new PlayerGunnery(world, game.player);
+            if (gun.getTarget() == null) gun.setTarget(game.nextContact(null));
+            hud.setTargeting(new CombatTargetingProvider(gun));
+            show("Game loaded");
+        } catch (RuntimeException e) {
+            Gdx.app.error("RingsOfIron", "Load failed", e);
+            show("Load failed; see the log");
         }
     }
 
@@ -384,10 +422,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
         font.draw(batch, "Missile: " + (reload < 0f ? "offline" : reload > 0f ? String.format("%.0f s", reload) : "ready"),
                 left, top - 40f);
         font.setColor(Color.LIGHT_GRAY);
+        // Key hints sit to the right of the ship panel, which only shows outside
+        Actor shipPanel = hud.getMinimapPanel();
+        float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
         font.draw(batch, hud.getViewMode().getMode() == ViewMode.INTERIOR
-                ? "WASD walk   E use console   V outside view   Esc quit"
-                : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  Esc quit",
-                10f, 24f);
+                ? "WASD walk   E use console   V outside view   F5 save  F9 load   Esc quit"
+                : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  F5 save  F9 load  Esc quit",
+                hintX, 24f);
         if (notice != null && noticeTime > 0f) {
             font.setColor(Color.ORANGE);
             font.draw(batch, notice, left, top - 60f);

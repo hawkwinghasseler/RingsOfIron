@@ -1,16 +1,20 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.Family;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.combatsys.components.SensorComponent;
+import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.bubble.BubbleTransitionListener;
+import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.moddingdata.ModContext;
@@ -36,13 +40,17 @@ public class GameScenario {
     public static final double R_EARTH = 6.371e6;
     public static final double ORBIT_RADIUS = R_EARTH + 400e3;
     public static final String PLAYER_SHIP = "corvette_patrol";
+    /** What the player starts with for trading at station markets. Placeholder values. */
+    public static final double STARTING_CREDITS = 5_000;
+    public static final double STARTING_HOLD = 100;
 
     public final GameWorld world;
     public final ModContext content;
-    public final Entity player;
-    public final Entity avatar;
-    /** A hostile corvette close by, armed like the player's ship. */
-    public final Entity raider;
+    /** The player's ship and avatar; a load replaces them with the loaded entities. */
+    public Entity player;
+    public Entity avatar;
+    /** A hostile corvette close by, armed like the player's ship; also replaced by a load. */
+    public Entity raider;
     /** Ships the player can lock: hostiles and traffic in the bubble. */
     public final Array<Entity> contacts = new Array<>();
     public final String highport;
@@ -61,6 +69,8 @@ public class GameScenario {
 
         player = content.factory.spawnShip(PLAYER_SHIP, 0f, 0f, 90f);
         player.add(new PlayerControllerComponent());
+        ShipConsoles.install(player);
+        player.add(new TraderComponent(STARTING_CREDITS, STARTING_HOLD));
         FlightControlComponent controls = player.getComponent(FlightControlComponent.class);
         if (controls != null) controls.rotationAssist = true;
 
@@ -76,6 +86,7 @@ public class GameScenario {
         }
 
         raider = content.factory.spawnShip(PLAYER_SHIP, 1_200f, 400f, 200f);
+        ShipConsoles.install(raider);
         raider.add(new HudMarkerComponent("Raider", HudMarkerComponent.Kind.HOSTILE).radius(10f));
         PhysicsBodyComponent rb = raider.getComponent(PhysicsBodyComponent.class);
         if (rb != null) PhysicsManager.setVelocity(rb.body, -12f, -3f);
@@ -132,6 +143,40 @@ public class GameScenario {
     }
 
     /** Next contact after {@code current} (wrapping), or null when there are none. */
+    /**
+     * Saves the whole game to {@code file}. Refused (returns a reason) during rails warp, when the
+     * bubble is collapsed onto the rails; null when saved.
+     */
+    public String quickSave(FileHandle file) {
+        if (world.timeWarp.isRailsWarp()) return "drop out of time warp first";
+        world.engine.getSerializationService().saveToFile(file);
+        return null;
+    }
+
+    /**
+     * Replaces the game with the one saved in {@code file}, then points {@link #player},
+     * {@link #avatar}, {@link #raider} and {@link #contacts} at the loaded entities.
+     */
+    public void quickLoad(FileHandle file) {
+        world.engine.getSerializationService().loadFromFile(file);
+        relink();
+    }
+
+    private void relink() {
+        player = world.getPlayer();
+        avatar = null;
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(PlayerAvatarComponent.class).get())) {
+            avatar = e;
+        }
+        contacts.clear();
+        raider = null;
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(HudMarkerComponent.class).get())) {
+            if (e == player) continue;
+            contacts.add(e);
+            if (e.getComponent(HudMarkerComponent.class).kind == HudMarkerComponent.Kind.HOSTILE) raider = e;
+        }
+    }
+
     public Entity nextContact(Entity current) {
         if (contacts.size == 0) return null;
         int i = current == null ? -1 : contacts.indexOf(current, true);

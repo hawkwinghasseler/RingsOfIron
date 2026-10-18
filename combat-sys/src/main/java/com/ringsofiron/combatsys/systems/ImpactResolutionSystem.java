@@ -63,7 +63,6 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
     private final ObjectMap<String, ProjectileDef> fragmentDefs = new ObjectMap<>();
 
     private final Listener<FastPassImpactEvent> fastPassListener = this::onFastPass;
-    private ToFloatFunction<Entity> transientMass;
     /** How a ramming body tears into a hull: a blunt kinetic penetrator that never glances off. */
     private final ProjectileDef ramDef = new ProjectileDef();
 
@@ -124,28 +123,17 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
     }
 
     /**
-     * Sets how heavy a fast-pass body is, kg, for ramming damage. Null (the default) treats it as
-     * heavy as whatever it hits, so the struck body's mass decides (design 1.4).
-     */
-    public void setTransientMass(ToFloatFunction<Entity> mass) {
-        this.transientMass = mass;
-    }
-
-    /** A per-entity mass lookup. */
-    public interface ToFloatFunction<T> {
-        float apply(T value);
-    }
-
-    /**
      * A kinematic transient (a fast pass, over 1 km/s relative) swept through a body. It becomes a
      * ram impact with the lighter body's mass, resolved like a very large slug on the next tick.
+     * When the event doesn't know the transient's mass, it counts as heavy as what it hit, so the
+     * struck body's mass decides (design 1.4).
      */
     private void onFastPass(Signal<FastPassImpactEvent> signal, FastPassImpactEvent pass) {
         Entity target = pass.target;
         PhysicsBodyComponent bc = target == null ? null : bodyMapper.get(target);
         if (bc == null || bc.body == null || pass.relativeSpeed <= 0f) return;
         float mass = PhysicsManager.getMass(bc.body);
-        if (transientMass != null) mass = Math.min(mass, transientMass.apply(pass.transientEntity));
+        if (pass.transientMass > 0f) mass = Math.min(mass, pass.transientMass);
         if (!(mass > 0f)) return;
         ImpactEvent hit = new ImpactEvent();
         hit.target = target;

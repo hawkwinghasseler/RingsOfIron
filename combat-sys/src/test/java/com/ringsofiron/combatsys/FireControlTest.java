@@ -343,4 +343,30 @@ class FireControlTest {
         assertTrue(laser.shotsFired > 0);
         assertEquals(0.5f, laser.beamStrength, 1e-6f, "the laser burns at the power it gets");
     }
+
+    @Test
+    void aLightRammerHitsSofterThanAHeavyOne() {
+        boolean[] holed = new boolean[2];
+        float[] mass = {1f, 0f}; // a 1 kg rammer, then one of unknown mass (as heavy as the ship)
+        for (int i = 0; i < 2; i++) {
+            Entity ship = spawnShip(i * 100f, 0, 0, 0);
+            Entity rammer = new Entity();
+            engine.addEntity(rammer);
+            FastPassImpactEvent pass = new FastPassImpactEvent();
+            pass.transientEntity = rammer;
+            pass.target = ship;
+            pass.pointX = i * 100f - 8f;
+            pass.pointY = 0.5f;
+            pass.dirX = 1f;
+            pass.relativeSpeed = 3000f;
+            pass.normalX = -1f;
+            pass.transientMass = mass[i];
+            physics.fastPassImpacts.dispatch(pass);
+            run(0.1f);
+            holed[i] = ship.getComponent(ShipGridComponent.class).getTile(0, 2).isHullBreach();
+        }
+        // 1 kg at 3 km/s is 4.5 MJ, half of it a penetrator: less than a medium hull tile's 8 MJ.
+        assertTrue(!holed[0], "the medium hull stops a 1 kg rammer");
+        assertTrue(holed[1], "but not one as heavy as the ship");
+    }
 }
