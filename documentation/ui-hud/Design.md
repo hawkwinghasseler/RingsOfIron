@@ -54,6 +54,8 @@ To implement this module independently (mocking data providers):
 
 ![Station market in the game](trade-window.png)
 
+![Incoming missile and a point-defense kill](missile-warning.png)
+
 Run it with `gradlew :lwjgl3:runHudDemo` (or `HUD demo.bat`). Fly with W/S, A/D, Z/C; Tab cycles the target lock; V toggles exterior/interior view; I/J/K/L walk the avatar; E uses a console; M opens the traffic map; O shows the mod-script prompt; F/B/H start a fire, breach the hull or take a hit so the minimap has something to show.
 
 Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. Call `addTo(engine)`, forward input to `getInputProcessor()`, and call `draw(delta)` after drawing the world.
@@ -67,6 +69,7 @@ Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. C
 | `FlightReadoutSystem` | Speed, heading, view mode, target range/closing/time-to-impact, orbit |
 | `ViewModeController` | EXTERIOR / INTERIOR view mode with change listeners |
 | `modding.ModTrustDialog` | modding-data's `ModTrustPolicy` as a dialog: asks before mod scripts run with full access; can remember the answer per mod set and version (O in the demo) |
+| `ThreatOverlay` | Missiles over the exterior view: dashed predicted paths (red incoming, cyan yours, amber others), a cross where an incoming one meets you, edge arrows with seconds to impact, a blinking MISSILE WARNING banner under 5 s, and a ring ("PD KILL") where point defense hits a missile |
 | `TradeWindow` | Station market (T while in trading range, which a hint under the clock announces): credits, hold, and per commodity the stock, buy and sell prices, what you carry, and Buy 1 / Buy 10 / Sell 1 / Sell all |
 | `TrafficMap` | Full-screen map (M) of stations and haulers on rails around the body you orbit, with range rings; the wheel zooms toward you |
 
@@ -74,10 +77,11 @@ Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. C
 
 These live in `com.ringsofiron.uihud.providers`. The adapters that implement them are written in the game wiring layer (core), so combat-sys, orbital-mechanics and ai-crew do not depend on ui-hud.
 
-- `TargetingProvider` (combat-sys): locked target, lead point, time to impact. `SimpleTargetingProvider` is the stand-in.
+- `TargetingProvider` (combat-sys): locked target, lead point, time to impact. The game uses combat-sys's tracking through `CombatTargetingProvider`; `SimpleTargetingProvider` is for the demos.
 - `OrbitInfoProvider` (orbital-mechanics): body name, altitude, apoapsis, periapsis, period, impact warning.
 - `InteractorProvider` (ai-crew): the avatar's ship and fractional tile position.
 - `TrafficMapProvider` (macro-sim): the frame body, its moons, stations, haulers with a one-line status, and the player. The game fills it from `RailsModel.snapshot()` in `RailsTrafficMap`.
+- `ThreatProvider` (combat-sys): each missile's position, path end, side and time to impact; `UiHud.flashIntercept` takes combat-sys's intercept events. The game fills it in `CombatThreats`.
 - `TradeProvider` (macro-sim): the station in range, its board, the player's credits and hold, and buy/sell. The game fills it from `MacroSimulation.dockableStation` and `market()` in `MarketTrade`, using the player ship's `TraderComponent`.
 - `ViewModeController.Listener`: the wiring layer bridges view-mode changes to audio-spatial's listener mode.
 - `UiHud.flashHullHit(tileX, tileY)`: call from combat-sys's hull-hit event to flash the hit on the minimap.

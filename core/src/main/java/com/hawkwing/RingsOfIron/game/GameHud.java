@@ -4,6 +4,7 @@ import com.badlogic.ashley.signals.Listener;
 import com.badlogic.gdx.utils.Disposable;
 import com.ringsofiron.audiospatial.components.AudioListenerComponent;
 import com.ringsofiron.combatsys.events.HullHitEvent;
+import com.ringsofiron.combatsys.events.InterceptEvent;
 import com.ringsofiron.uihud.UiHud;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.modding.ModTrustDialog;
@@ -20,6 +21,7 @@ public class GameHud implements Disposable {
     public final UiHud hud;
     private final GameWorld world;
     private final Listener<HullHitEvent> hullHits;
+    private final Listener<InterceptEvent> intercepts;
 
     public GameHud(GameWorld world) {
         this(world, new UiHud());
@@ -42,6 +44,10 @@ public class GameHud implements Disposable {
             if (hit.ship != null && hit.ship == world.getPlayer()) hud.flashHullHit(hit.tileX, hit.tileY);
         };
         world.combatEvents.hullHits.add(hullHits);
+        // combat-sys's missiles and point-defense hits on the threat overlay.
+        hud.setThreats(new CombatThreats(world));
+        intercepts = (signal, hit) -> hud.flashIntercept(hit.point.x, hit.point.y, hit.destroyed);
+        world.combatEvents.intercepts.add(intercepts);
     }
 
     /** The mod-script trust prompt as a dialog; pass to {@link GameWorld.Modules#modTrust} before loading content. */
@@ -65,6 +71,7 @@ public class GameHud implements Disposable {
     @Override
     public void dispose() {
         world.combatEvents.hullHits.remove(hullHits);
+        world.combatEvents.intercepts.remove(intercepts);
         hud.removeFrom(world.engine.getEcsEngine());
         hud.dispose();
     }

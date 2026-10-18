@@ -20,6 +20,7 @@ import com.ringsofiron.uihud.minimap.WireframeMinimap;
 import com.ringsofiron.uihud.providers.InteractorProvider;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
+import com.ringsofiron.uihud.providers.ThreatProvider;
 import com.ringsofiron.uihud.providers.TradeProvider;
 import com.ringsofiron.uihud.providers.TrafficMapProvider;
 import com.ringsofiron.uihud.systems.FlightReadoutSystem;
@@ -28,6 +29,7 @@ import com.ringsofiron.uihud.systems.InteractPromptSystem;
 import com.ringsofiron.uihud.systems.WireframeSyncSystem;
 import com.ringsofiron.uihud.widgets.AlertList;
 import com.ringsofiron.uihud.widgets.ConsoleWindow;
+import com.ringsofiron.uihud.widgets.ThreatOverlay;
 import com.ringsofiron.uihud.widgets.TradeWindow;
 import com.ringsofiron.uihud.widgets.TrafficMap;
 
@@ -61,6 +63,7 @@ public class UiHud implements Disposable {
     private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleLayouts = new ObjectMap<>();
     private final TrafficMap trafficMap;
     private final TradeWindow tradeWindow;
+    private final ThreatOverlay threatOverlay;
 
     private final HudRenderSystem hudRenderSystem;
     private final WireframeSyncSystem wireframeSyncSystem;
@@ -107,6 +110,17 @@ public class UiHud implements Disposable {
         promptRow.add(prompt);
         stage.addActor(promptRow);
 
+        // Missile paths and point-defense hits over the world, with a warning banner at the top.
+        Label threatBanner = new Label("", skin, "alert");
+        Table bannerRow = new Table();
+        bannerRow.setFillParent(true);
+        bannerRow.setTouchable(Touchable.disabled);
+        bannerRow.top().padTop(70f);
+        bannerRow.add(threatBanner);
+        threatOverlay = new ThreatOverlay(viewports, skin, threatBanner);
+        stage.addActor(threatOverlay);
+        stage.addActor(bannerRow);
+
         // Top center, under the clock: shown while a station is in trading range.
         Label dockHint = new Label("", skin, "prompt");
         Table dockRow = new Table();
@@ -136,6 +150,7 @@ public class UiHud implements Disposable {
             markerLayer.setVisible(exterior);
             // In the interior view the full deck plan is on screen, so the minimap is redundant.
             minimapPanel.setVisible(exterior);
+            threatOverlay.setVisible(exterior);
         });
 
         stage.addListener(new InputListener() {
@@ -231,6 +246,20 @@ public class UiHud implements Disposable {
     public void setInteractor(InteractorProvider interactor) {
         interactPromptSystem.setInteractor(interactor);
         wireframeSyncSystem.setInteractor(interactor);
+    }
+
+    /** Feeds the missile overlay and warning banner; null clears them. */
+    public void setThreats(ThreatProvider threats) {
+        threatOverlay.setProvider(threats);
+    }
+
+    /** Marks a point-defense hit on a missile; call from combat-sys's intercept event. */
+    public void flashIntercept(float worldX, float worldY, boolean destroyed) {
+        threatOverlay.flashIntercept(worldX, worldY, destroyed);
+    }
+
+    public ThreatOverlay getThreatOverlay() {
+        return threatOverlay;
     }
 
     /** Feeds the station market window ([T] while in range of a station); null hides it. */
