@@ -248,10 +248,10 @@ class GameScenarioTest {
     @Test
     void crewConsolesAreOnTheShipAndSurviveALoad() {
         java.util.Map<String, int[]> consoles = consolesOn(game.player);
-        // The corvette's chassis has a helm, a reactor and life support, and no weapons console.
-        assertEquals(java.util.Set.of("helm", "reactor", "life_support"), consoles.keySet());
+        // The corvette's chassis has a helm, a weapons console, a reactor and life support.
+        assertEquals(java.util.Set.of("helm", "weapons", "reactor", "life_support"), consoles.keySet());
         assertArrayEquals(new int[]{1, 4}, consoles.get("helm"));
-        assertEquals(3, consolesOn(game.contacts.first()).size(), "the raider has its own");
+        assertEquals(4, consolesOn(game.contacts.first()).size(), "the raider has its own");
 
         String save = world.engine.getSerializationService().saveGame();
         world.engine.getSerializationService().loadGame(save);
