@@ -73,6 +73,7 @@ public class RailsBubbleHandoff implements BubbleHandoff {
             entity.remove(PhysicsBodyComponent.class);
         }
         buffer.clear();
+        physics.clearAnchor();
     }
 
     @Override

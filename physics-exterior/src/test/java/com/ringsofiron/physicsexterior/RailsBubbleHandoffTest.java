@@ -80,6 +80,8 @@ class RailsBubbleHandoffTest {
         Entity wingman = spawn(300f, -150f, 0f, 1f);
         PhysicsManager.setMassData(body(wingman), 42_000f, 1f, 0f, 2.0e6f);
         game.stepTicks(60);
+        java.util.List<String> changes = new java.util.ArrayList<>();
+        physics.anchorChanges.add((signal, e) -> changes.add(e.kind + " " + e.parentUuid));
         double[] before = new double[4];
         physics.getTrueState(body(wingman), before);
         Vector2 offset = PhysicsManager.getPosition(body(wingman), new Vector2())
@@ -92,6 +94,8 @@ class RailsBubbleHandoffTest {
         assertNotNull(wingman.getComponent(BodyShapeComponent.class));
 
         handoff.rebuildFromRails();
+        assertEquals(java.util.Arrays.asList("CLEARED " + EARTH, "SET " + EARTH), changes,
+                "rails code hears the bubble collapse and come back");
         assertEquals(2, physics.getWorld().getBodyCount());
         assertNull(wingman.getComponent(OrbitComponent.class));
         double[] after = new double[4];
