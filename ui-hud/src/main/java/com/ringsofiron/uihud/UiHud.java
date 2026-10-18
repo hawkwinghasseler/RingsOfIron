@@ -20,6 +20,7 @@ import com.ringsofiron.uihud.minimap.WireframeMinimap;
 import com.ringsofiron.uihud.providers.InteractorProvider;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
+import com.ringsofiron.uihud.providers.TradeProvider;
 import com.ringsofiron.uihud.providers.TrafficMapProvider;
 import com.ringsofiron.uihud.systems.FlightReadoutSystem;
 import com.ringsofiron.uihud.systems.HudRenderSystem;
@@ -27,6 +28,7 @@ import com.ringsofiron.uihud.systems.InteractPromptSystem;
 import com.ringsofiron.uihud.systems.WireframeSyncSystem;
 import com.ringsofiron.uihud.widgets.AlertList;
 import com.ringsofiron.uihud.widgets.ConsoleWindow;
+import com.ringsofiron.uihud.widgets.TradeWindow;
 import com.ringsofiron.uihud.widgets.TrafficMap;
 
 /**
@@ -43,8 +45,8 @@ import com.ringsofiron.uihud.widgets.TrafficMap;
  *   // resize(): hud.resize(w, h)
  * </pre>
  *
- * Keys handled by the HUD: E use console, Esc close console or map, V toggle exterior/interior view,
- * M toggle the traffic map (mouse wheel zooms it while open).
+ * Keys handled by the HUD: E use console, Esc close console, map or market, V toggle exterior/interior view,
+ * M toggle the traffic map (mouse wheel zooms it while open), T open the station market when in range.
  */
 public class UiHud implements Disposable {
     private final ViewportManager viewports;
@@ -58,6 +60,7 @@ public class UiHud implements Disposable {
     private final ConsoleWindow consoleWindow;
     private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleLayouts = new ObjectMap<>();
     private final TrafficMap trafficMap;
+    private final TradeWindow tradeWindow;
 
     private final HudRenderSystem hudRenderSystem;
     private final WireframeSyncSystem wireframeSyncSystem;
@@ -104,6 +107,16 @@ public class UiHud implements Disposable {
         promptRow.add(prompt);
         stage.addActor(promptRow);
 
+        // Top center, under the clock: shown while a station is in trading range.
+        Label dockHint = new Label("", skin, "prompt");
+        Table dockRow = new Table();
+        dockRow.setFillParent(true);
+        dockRow.setTouchable(Touchable.disabled);
+        dockRow.top().padTop(100f);
+        dockRow.add(dockHint);
+        stage.addActor(dockRow);
+        tradeWindow = new TradeWindow(skin, dockHint);
+
         trafficMap = new TrafficMap(skin);
         trafficMap.setFillParent(true);
         trafficMap.setVisible(false);
@@ -111,6 +124,7 @@ public class UiHud implements Disposable {
 
         consoleWindow = new ConsoleWindow(skin, () -> interactPromptSystem().setPromptsEnabled(true));
         stage.addActor(consoleWindow);
+        stage.addActor(tradeWindow);
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
@@ -154,8 +168,16 @@ public class UiHud implements Disposable {
                     setTrafficMapVisible(false);
                     return true;
                 }
+                if (tradeWindow.isOpen()) {
+                    tradeWindow.setOpen(false);
+                    return true;
+                }
                 if (!consoleWindow.isOpen()) return false;
                 consoleWindow.close();
+                return true;
+            case Input.Keys.T:
+                if (!tradeWindow.isOpen() && !tradeWindow.isDocked()) return false;
+                tradeWindow.setOpen(!tradeWindow.isOpen());
                 return true;
             case Input.Keys.M:
                 setTrafficMapVisible(!trafficMap.isVisible());
@@ -209,6 +231,15 @@ public class UiHud implements Disposable {
     public void setInteractor(InteractorProvider interactor) {
         interactPromptSystem.setInteractor(interactor);
         wireframeSyncSystem.setInteractor(interactor);
+    }
+
+    /** Feeds the station market window ([T] while in range of a station); null hides it. */
+    public void setTrade(TradeProvider trade) {
+        tradeWindow.setProvider(trade);
+    }
+
+    public TradeWindow getTradeWindow() {
+        return tradeWindow;
     }
 
     /** Off-bubble traffic for the map view (M). Without one the map says there is no data. */

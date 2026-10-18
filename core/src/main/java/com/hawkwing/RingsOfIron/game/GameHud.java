@@ -35,6 +35,8 @@ public class GameHud implements Disposable {
         world.audioListener.setMode(toListenerMode(hud.getViewMode().getMode()));
         // macro-sim's traffic on rails for the [M] map.
         hud.setTrafficMap(new RailsTrafficMap(world));
+        // macro-sim's station markets for the [T] trade window.
+        hud.setTrade(new MarketTrade(world));
         hullHits = (signal, hit) -> {
             if (hit.ship != null && hit.ship == world.getPlayer()) hud.flashHullHit(hit.tileX, hit.tileY);
         };
