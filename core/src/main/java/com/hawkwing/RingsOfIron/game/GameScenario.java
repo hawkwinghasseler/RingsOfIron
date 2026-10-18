@@ -4,6 +4,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
@@ -40,6 +41,8 @@ public class GameScenario {
     public final ModContext content;
     public final Entity player;
     public final Entity avatar;
+    /** A hostile corvette close by, armed like the player's ship. */
+    public final Entity raider;
     /** Ships the player can lock: hostiles and traffic in the bubble. */
     public final Array<Entity> contacts = new Array<>();
     public final String highport;
@@ -72,11 +75,18 @@ public class GameScenario {
             CrewFactory.spawn(world.crew, player, names[i], roles[i], 0, t[0], t[1]);
         }
 
-        Entity raider = content.factory.spawnShip(PLAYER_SHIP, 1_200f, 400f, 200f);
+        raider = content.factory.spawnShip(PLAYER_SHIP, 1_200f, 400f, 200f);
         raider.add(new HudMarkerComponent("Raider", HudMarkerComponent.Kind.HOSTILE).radius(10f));
         PhysicsBodyComponent rb = raider.getComponent(PhysicsBodyComponent.class);
         if (rb != null) PhysicsManager.setVelocity(rb.body, -12f, -3f);
         contacts.add(raider);
+        // The raider's point defense is always up; it opens fire once the player shoots at it.
+        world.combatEvents.shots.add((signal, shot) -> {
+            if (shot.shooter == player && shot.target == raider) provokeRaider();
+        });
+        world.combatEvents.impacts.add((signal, hit) -> {
+            if (hit.owner == player && hit.target == raider) provokeRaider();
+        });
 
         // Traffic: shown and lockable while it is in the bubble.
         world.macroSim.bubble().addListener(new BubbleTransitionListener() {
@@ -107,6 +117,18 @@ public class GameScenario {
     /** Loads base data and mods and sets up a new game in {@code world}. */
     public static GameScenario start(GameWorld world, Path assetsDir, Path modsDir) {
         return new GameScenario(world, assetsDir, modsDir);
+    }
+
+    /** Turns the raider on the player: its turrets and launcher engage the player's ship. */
+    public void provokeRaider() {
+        SensorComponent sensor = raider.getComponent(SensorComponent.class);
+        if (sensor != null && sensor.lockedTarget == null) sensor.lockedTarget = player;
+    }
+
+    /** True once the raider is fighting back. */
+    public boolean raiderHostile() {
+        SensorComponent sensor = raider.getComponent(SensorComponent.class);
+        return sensor != null && sensor.lockedTarget == player;
     }
 
     /** Next contact after {@code current} (wrapping), or null when there are none. */

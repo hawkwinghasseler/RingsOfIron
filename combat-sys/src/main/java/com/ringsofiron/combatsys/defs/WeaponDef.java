@@ -28,6 +28,13 @@ public class WeaponDef {
     public float spreadRad = 0.002f;
     /** Distance from the hardpoint along the barrel where rounds appear, meters. */
     public float muzzleOffset = 2f;
+    /**
+     * Point defense: the mount picks its own targets, the most urgent incoming missile its ship
+     * tracks, instead of the ship's locked target.
+     */
+    public boolean pointDefense;
+    /** Longest range the gunner engages at, meters; 0 means as far as the round can fly. */
+    public float maxRange;
     /** audio-spatial event played on firing, or null. */
     public String sound;
 }

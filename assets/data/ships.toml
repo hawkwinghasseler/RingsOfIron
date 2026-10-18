@@ -9,7 +9,13 @@ max_thrust = 2.4e6
 max_torque = 8.0e5
 hull = [[-5.0, -3.0], [5.0, -3.0], [6.5, 0.0], [5.0, 3.0], [-5.0, 3.0]]
 crew = 4
-hardpoints = [ { weapon = "railgun_mk1", x = 4.0, y = 0.0, rotation = 0.0 } ]
+# Railgun in the nose, a point-defense autocannon on each beam, a missile launcher on top.
+hardpoints = [
+  { weapon = "railgun_mk1", x = 4.0, y = 0.0, rotation = 0.0 },
+  { weapon = "autocannon_mk1", x = 2.0, y = 2.8, rotation = 90.0 },
+  { weapon = "autocannon_mk1", x = 2.0, y = -2.8, rotation = -90.0 },
+  { weapon = "harpoon_launcher", x = -2.0, y = 2.8, rotation = 90.0 },
+]
 
 [ship.freighter_hauler]
 name = "Hauler"

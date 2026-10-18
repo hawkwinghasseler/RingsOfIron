@@ -1,6 +1,10 @@
 # Weapon family from combat-sys design section 6. combat-sys owns the classes
 # (WeaponDef, ProjectileDef, MissileDef, WarheadDef) and binds them with
 # defs.registerType("weapon", WeaponDef.class) etc.
+#
+# Ships mount weapons through their hardpoints (ships.toml). Turrets aim at the
+# ship's locked target; point_defense mounts pick their own targets, the most
+# urgent incoming missile; launchers throw guided missiles at the locked target.
 
 [weapon.railgun_mk1]
 mount = "turret"
@@ -9,7 +13,26 @@ firing_arc_deg = 270
 cooldown = 1.5
 power_draw = 2.0e6
 projectile = "slug_tungsten_20kg"
+spread_rad = 0.0005
 sound = "evt_railgun_fire"
+
+[weapon.autocannon_mk1]
+mount = "turret"
+slew_rate_deg = 120
+firing_arc_deg = 300
+cooldown = 0.1
+power_draw = 5.0e4
+projectile = "autocannon_30mm"
+spread_rad = 0.003
+point_defense = true
+max_range = 4000.0
+
+[weapon.harpoon_launcher]
+mount = "launcher"
+firing_arc_deg = 360
+cooldown = 8.0
+missile = "harpoon"
+max_range = 15000.0
 
 [projectile.slug_tungsten_20kg]
 mass = 20.0
@@ -20,6 +43,16 @@ ricochet_angle_deg = 72
 ricochet_restitution = 0.6
 spall = { count = 6, angle_deg = 25, fraction = 0.3 }
 max_lifetime = 30.0
+
+[projectile.autocannon_30mm]
+mass = 0.4
+muzzle_speed = 1500.0
+damage_type = "kinetic"
+penetration_factor = 0.8
+ricochet_angle_deg = 65
+ricochet_restitution = 0.4
+spall = { count = 2, angle_deg = 20, fraction = 0.2 }
+max_lifetime = 15.0
 
 [missile.harpoon]
 dry_mass = 150.0
@@ -37,6 +70,7 @@ warhead = "frag_heavy"
 [warhead.frag_heavy]
 fragment_count = 40
 fragment_mass = 0.2
+fragment_speed = 2500.0
 fragment_cone_deg = 60
 blast_radius_tiles = 3
 blast_damage = 400000.0

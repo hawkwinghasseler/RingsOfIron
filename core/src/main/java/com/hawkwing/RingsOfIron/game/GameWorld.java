@@ -16,8 +16,12 @@ import com.ringsofiron.audiospatial.systems.AudioUpdateSystem;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.save.CombatSaveParticipant;
 import com.ringsofiron.combatsys.events.CombatEvents;
+import com.ringsofiron.combatsys.modding.ShipWeaponsAssembler;
 import com.ringsofiron.combatsys.systems.BallisticsSystem;
 import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
+import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
+import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
+import com.ringsofiron.combatsys.systems.WeaponControlSystem;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
@@ -67,7 +71,9 @@ import java.util.function.Consumer;
  * <p>Wired today: core-engine, physics-exterior, orbital-mechanics (rails, events, time warp),
  * interior-grid (hazards, power, life support, rails-warp guard, saves, ships' interiors and mass
  * from data), ai-crew (crew AI and the NPC
- * pilot), combat-sys (ballistics and impact damage, hurting crew through ai-crew), audio-spatial
+ * pilot), combat-sys (sensor tracks, turret fire control, missiles and
+ * point defense, ballistics and impact damage, hurting crew through ai-crew; ships get their
+ * weapons from their hardpoints), audio-spatial
  * (sound, occlusion, listener on the player), modding-data (data and mod loading through
  * {@link #loadContent}, ships get Box2D bodies from their defs), macro-sim (economy, freighter
  * traffic and bubble transitions on GameWorld's rails, NPCs entering the bubble flown by ai-crew's
@@ -108,6 +114,10 @@ public class GameWorld implements Disposable {
     /** Weapon, projectile, missile and warhead tables; data from {@link #loadContent} is merged in. */
     public final CombatDefs combatDefs;
     public final BallisticsSystem ballistics;
+    public final SensorTrackingSystem sensors;
+    public final WeaponControlSystem weaponControl;
+    /** Flies missiles and decoys; launch and drop them through it. */
+    public final MissileGuidanceSystem missiles;
     public final AudioManager audio;
     public final AvatarInteractor avatar;
     public final AudioListenerSync audioListener;
@@ -189,7 +199,18 @@ public class GameWorld implements Disposable {
         combatEvents = new CombatEvents();
         combatDefs = CombatDefs.createDefault();
         ballistics = new BallisticsSystem(physics, combatEvents);
+        // Rounds and missiles fall through the same tidal field as the Box2D bodies.
+        ballistics.setTidalField(physics.getTidalField()::accelAt);
         engine.getSerializationService().addParticipant(new CombatSaveParticipant(engine));
+        // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
+        // and hit, then hits resolve. Their step listeners run in the order added here.
+        sensors = new SensorTrackingSystem(physics, modules.combatSeed + 1);
+        missiles = new MissileGuidanceSystem(physics, combatEvents, combatDefs, ballistics, sensors);
+        weaponControl = new WeaponControlSystem(physics, combatEvents, combatDefs, ballistics, missiles, sensors,
+                modules.combatSeed + 2);
+        engine.addSystem(sensors);
+        engine.addSystem(weaponControl);
+        engine.addSystem(missiles);
         engine.addSystem(ballistics);
         ImpactResolutionSystem impacts = new ImpactResolutionSystem(physics, combatEvents, combatDefs, ballistics,
                 MaterialTable.createDefault(), modules.combatSeed);
@@ -222,6 +243,8 @@ public class GameWorld implements Disposable {
         // The interior first: the physics assembler takes the ship's mass from its grid.
         bootstrap.beforeScripts(InteriorGridData::install);
         bootstrap.beforeScripts(ctx -> ShipPhysicsAssembler.register(ctx.factory, physics, gridMass(ctx)));
+        // Weapons after the interior: each hardpoint is wired to the nearest weapon system.
+        bootstrap.beforeScripts(ctx -> ShipWeaponsAssembler.register(ctx.factory, combatDefs));
         for (Consumer<ModContext> step : modules.contentRegistrations) bootstrap.beforeScripts(step);
         content = bootstrap.load(engine);
         mergeCombatDefs(CombatDefs.fromRegistry(content.defs));

@@ -172,6 +172,8 @@ public class CombatDefs {
         autocannon.powerDraw = 5e4f;
         autocannon.projectile = ac.id;
         autocannon.spreadRad = 0.003f;
+        autocannon.pointDefense = true;
+        autocannon.maxRange = 4000f;
         defs.add(autocannon);
 
         WeaponDef launcher = new WeaponDef();
@@ -180,6 +182,7 @@ public class CombatDefs {
         launcher.firingArcDeg = 360f;
         launcher.cooldown = 8f;
         launcher.missile = harpoon.id;
+        launcher.maxRange = 15000f;
         defs.add(launcher);
 
         return defs;

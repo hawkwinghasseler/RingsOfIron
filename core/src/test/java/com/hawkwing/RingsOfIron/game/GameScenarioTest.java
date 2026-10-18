@@ -8,11 +8,17 @@ import com.ringsofiron.aicrew.BehaviorTreeComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
-import com.ringsofiron.combatsys.components.ProjectileComponent;
+import com.ringsofiron.combatsys.components.MissileComponent;
+import com.ringsofiron.combatsys.components.SensorComponent;
+import com.ringsofiron.combatsys.components.WeaponMountComponent;
+import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.combatsys.events.ShotFiredEvent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -109,14 +115,53 @@ class GameScenarioTest {
     }
 
     @Test
-    void theGunFiresOffTheNose() {
-        PlayerGunnery gun = new PlayerGunnery(world.ballistics, world.combatDefs, null);
-        assertNotNull(gun.weapon());
-        Entity shot = gun.fire(game.player);
-        assertNotNull(shot);
-        assertNotNull(shot.getComponent(ProjectileComponent.class));
-        assertNull(gun.fire(game.player), "reloading");
+    void shipsComeArmedFromTheirHardpoints() {
+        WeaponsComponent weapons = game.player.getComponent(WeaponsComponent.class);
+        assertNotNull(weapons);
+        assertEquals(4, weapons.mounts.size, "railgun, two point-defense guns, a launcher");
+        for (WeaponMountComponent m : weapons.mounts) assertNotNull(m.subsystem, m.def.id + " is wired to a system");
+        assertNotNull(game.raider.getComponent(WeaponsComponent.class));
+        assertNotNull(game.player.getComponent(SensorComponent.class));
+    }
+
+    @Test
+    void theGunsFireWhenThePlayerPullsTheTrigger() {
+        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        assertNotNull(gun.primary());
+        gun.setTarget(null);
+        List<ShotFiredEvent> shots = new ArrayList<>();
+        world.combatEvents.shots.add((s, shot) -> {
+            if (shot.shooter == game.player) shots.add(shot);
+        });
+        for (int i = 0; i < 30 && shots.isEmpty(); i++) {
+            gun.fireGuns();
+            world.update(FRAME);
+        }
+        assertFalse(shots.isEmpty(), "the railgun fired down the barrel with nothing locked");
+        assertFalse(game.raiderHostile(), "a shot at nothing does not start a fight");
         for (int i = 0; i < 30; i++) world.update(FRAME);
+    }
+
+    @Test
+    void shootingTheRaiderStartsAFightWithMissilesAndPointDefense() {
+        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        gun.setTarget(game.raider);
+        int[] raiderShots = new int[1], intercepts = new int[1];
+        boolean[] launched = new boolean[1];
+        world.combatEvents.shots.add((s, shot) -> {
+            if (shot.shooter == game.raider) raiderShots[0]++;
+            if (shot.shooter == game.player && shot.round != null
+                    && shot.round.getComponent(MissileComponent.class) != null) launched[0] = true;
+        });
+        world.combatEvents.intercepts.add((s, hit) -> intercepts[0]++);
+        // Let the sensors build a track, then launch; the raider's guns and point defense answer.
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        assertTrue(gun.launchMissile(), "a launcher is loaded, powered, and the raider is locked");
+        for (int i = 0; i < 600; i++) world.update(FRAME);
+        assertTrue(launched[0], "the missile left the rail");
+        assertTrue(game.raiderHostile(), "the raider fights back once shot at");
+        assertTrue(raiderShots[0] > 0, "and its guns fire on the player");
+        assertTrue(intercepts[0] > 0, "point defense engaged a missile");
     }
 
     @Test
