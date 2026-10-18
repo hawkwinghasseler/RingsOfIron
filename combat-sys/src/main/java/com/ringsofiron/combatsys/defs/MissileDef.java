@@ -1,11 +1,24 @@
 package com.ringsofiron.combatsys.defs;
 
+import com.google.gson.annotations.SerializedName;
+
 /** A self-propelled guided missile, the {@code [missile.*]} table. */
 public class MissileDef {
     public enum SeekerType {
-        RADAR,
-        THERMAL,
-        COMMAND
+        @SerializedName(value = "radar", alternate = "RADAR") RADAR,
+        @SerializedName(value = "thermal", alternate = "THERMAL") THERMAL,
+        @SerializedName(value = "command", alternate = "COMMAND") COMMAND
+    }
+
+    /** TOML {@code seeker = { type, fov_deg, range, discrimination }}. */
+    public static class SeekerDef {
+        public SeekerType type = SeekerType.RADAR;
+        /** Full field of view, degrees. */
+        public float fovDeg = 30f;
+        /** meters */
+        public float range = 20000f;
+        /** 0..1: how well the seeker tells its target from a decoy. */
+        public float discrimination = 0.5f;
     }
 
     public String id;
@@ -15,14 +28,16 @@ public class MissileDef {
     /** N */
     public float maxThrust = 30000f;
     public float turnRateDeg = 90f;
-    public SeekerType seekerType = SeekerType.RADAR;
-    public float seekerFovDeg = 30f;
-    public float seekerRange = 20000f;
-    public float discrimination = 0.5f;
+    public SeekerDef seeker = new SeekerDef();
     /** Proportional-navigation gain N, usually 3-5. */
     public float navGain = 4f;
     /** Share of delta-v held back for the terminal phase. */
     public float terminalReserve = 0.3f;
+    /**
+     * Acceleration spent closing along the line of sight while fuel above the reserve remains,
+     * m/s^2. High for "sprint" missiles, low for "hunters" that save delta-v for the endgame.
+     */
+    public float closingBurn = 30f;
     /** Seconds the motor stays dark after launch. */
     public float armingDelay = 0.5f;
     /** Speed the launcher throws the missile clear at, m/s. */

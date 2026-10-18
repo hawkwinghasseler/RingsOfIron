@@ -7,6 +7,8 @@ dependencies {
   api project(':core-engine')
   api project(':physics-exterior')
   api project(':interior-grid')
+  // Def classes are filled from TOML by modding-data's DefRegistry (and its Gson mapping).
+  api project(':modding-data')
 
   testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"

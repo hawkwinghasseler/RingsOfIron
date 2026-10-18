@@ -1,6 +1,7 @@
 package com.ringsofiron.combatsys.defs;
 
 import com.badlogic.gdx.utils.ObjectMap;
+import com.ringsofiron.moddingdata.DefRegistry;
 
 /**
  * In-memory registry of weapon, projectile, missile and warhead defs by id. modding-data fills
@@ -49,6 +50,28 @@ public class CombatDefs {
     private static <T> T require(T def, String kind, String id) {
         if (def == null) throw new IllegalArgumentException("Unknown " + kind + " def: " + id);
         return def;
+    }
+
+    /** Def type names in data files: {@code [weapon.id]}, {@code [projectile.id]}, ... */
+    public static final String WEAPON = "weapon", PROJECTILE = "projectile", MISSILE = "missile", WARHEAD = "warhead";
+
+    /** Binds the combat def classes to their data-file types. Safe to call before or after loading. */
+    public static void registerTypes(DefRegistry registry) {
+        registry.registerType(WEAPON, WeaponDef.class);
+        registry.registerType(PROJECTILE, ProjectileDef.class);
+        registry.registerType(MISSILE, MissileDef.class);
+        registry.registerType(WARHEAD, WarheadDef.class);
+    }
+
+    /** Builds the combat tables from loaded data (modding-data's registry, mods merged in). */
+    public static CombatDefs fromRegistry(DefRegistry registry) {
+        registerTypes(registry);
+        CombatDefs defs = new CombatDefs();
+        for (WeaponDef d : registry.all(WEAPON, WeaponDef.class)) defs.add(d);
+        for (ProjectileDef d : registry.all(PROJECTILE, ProjectileDef.class)) defs.add(d);
+        for (MissileDef d : registry.all(MISSILE, MissileDef.class)) defs.add(d);
+        for (WarheadDef d : registry.all(WARHEAD, WarheadDef.class)) defs.add(d);
+        return defs;
     }
 
     /** The example defs from combat-sys/Design.md section 6, plus a light autocannon. */
@@ -118,10 +141,10 @@ public class CombatDefs {
         harpoon.exhaustVelocity = 3000f;
         harpoon.maxThrust = 60000f;
         harpoon.turnRateDeg = 90f;
-        harpoon.seekerType = MissileDef.SeekerType.RADAR;
-        harpoon.seekerFovDeg = 30f;
-        harpoon.seekerRange = 20000f;
-        harpoon.discrimination = 0.6f;
+        harpoon.seeker.type = MissileDef.SeekerType.RADAR;
+        harpoon.seeker.fovDeg = 30f;
+        harpoon.seeker.range = 20000f;
+        harpoon.seeker.discrimination = 0.6f;
         harpoon.navGain = 4f;
         harpoon.terminalReserve = 0.3f;
         harpoon.armingDelay = 0.6f;
