@@ -1,0 +1,9 @@
+# Playback rules for the event path this mod points evt_railgun_fire at (see ../assets.toml).
+# Without this, the built-in audio backends would play it as a short placeholder.
+[sound_event.better_railgun_fire]
+path = "event:/mods/better_railguns/railgun"
+looping = false
+duration = 0.6
+min_distance = 10.0
+max_distance = 900.0
+volume = 0.9

@@ -11,6 +11,7 @@ import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
 import com.ringsofiron.physicsexterior.anchor.PointMassAnchor;
+import com.ringsofiron.physicsexterior.components.BodyShapeComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.physicsexterior.events.FastPassImpactEvent;
@@ -211,7 +212,9 @@ class OrbitalBubbleTest {
         Entity rock = new Entity();
         rock.add(new TransformComponent());
         // 3 km/s along +X, starting 2 km to the west: crosses the ship in under a second.
-        rock.add(new KinematicTransientComponent(new LinearTrajectory(-2000.0, 1.0, 3000.0, 0.0, 0.0), 2f));
+        KinematicTransientComponent rockPass = new KinematicTransientComponent(new LinearTrajectory(-2000.0, 1.0, 3000.0, 0.0, 0.0), 2f);
+        rockPass.mass = 500f;
+        rock.add(rockPass);
         engine.addEntity(rock);
 
         List<FastPassImpactEvent> impacts = new ArrayList<>();
@@ -230,6 +233,7 @@ class OrbitalBubbleTest {
         assertEquals(-1f, hit.normalX, 1e-3f);
         assertEquals(3000f, hit.relativeSpeed, 1f);
         assertEquals(1f, hit.dirX, 1e-3f);
+        assertEquals(500f, hit.transientMass);
 
         assertEquals(1, physics.getWorld().getBodyCount(), "a fast pass never becomes a Box2D body");
         KinematicTransientComponent kt = rock.getComponent(KinematicTransientComponent.class);
@@ -244,6 +248,10 @@ class OrbitalBubbleTest {
         Entity hulk = new Entity();
         // Center line passes 20 m north of the ship, but the hulk is 30 m wide.
         hulk.add(new KinematicTransientComponent(new LinearTrajectory(-2000.0, 20.0, 3000.0, 0.0, 0.0), 15f));
+        // A ship that was in Box2D before: its mass comes from the shape it kept.
+        BodyShapeComponent shape = new BodyShapeComponent();
+        shape.mass = 2.0e6f;
+        hulk.add(shape);
         engine.addEntity(hulk);
         List<FastPassImpactEvent> impacts = new ArrayList<>();
         physics.fastPassImpacts.add((signal, e) -> impacts.add(e));
@@ -252,6 +260,7 @@ class OrbitalBubbleTest {
 
         assertEquals(1, impacts.size());
         assertEquals(ship, impacts.get(0).target);
+        assertEquals(2.0e6f, impacts.get(0).transientMass);
     }
 
     @Test
