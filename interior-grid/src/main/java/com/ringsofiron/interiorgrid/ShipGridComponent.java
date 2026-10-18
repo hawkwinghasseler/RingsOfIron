@@ -39,6 +39,13 @@ public class ShipGridComponent implements Component {
     public final Array<HullPiece> hullPieces = new Array<>();
     public final Array<MountFootprint> mounts = new Array<>();
     /**
+     * The airtight volumes of the interior, rebuilt by {@link CompartmentBuilder} whenever
+     * walls, doors or seals change. Each tile that holds air points at its compartment.
+     */
+    public final Array<Compartment> compartments = new Array<>();
+    /** The layout the compartments were last built from; null before the first build. */
+    boolean[] compartmentLayout;
+    /**
      * Set by damage code after structural changes so power reroutes on the next frame
      * instead of waiting for the routing tick. Cleared by {@link PowerRoutingSystem}.
      */
@@ -152,6 +159,35 @@ public class ShipGridComponent implements Component {
         return !isEdgeBlocked(x, y, nx, ny);
     }
 
+    /**
+     * True if air, smoke and fire can cross from (x, y) into the adjacent (nx, ny): both
+     * tiles hold air (open and not sealed, see {@link Tile#holdsAir()}) and no closed edge
+     * wall stands between them.
+     */
+    public boolean canFlow(int x, int y, int nx, int ny) {
+        Tile a = getTile(x, y), b = getTile(nx, ny);
+        if (a == null || b == null || !a.holdsAir() || !b.holdsAir()) return false;
+        return !isEdgeBlocked(x, y, nx, ny);
+    }
+
+    /** The compartment whose air fills tile (x, y), or null for walls, sealed tiles and space. */
+    public Compartment compartmentAt(int x, int y) {
+        Tile t = getTile(x, y);
+        return t == null ? null : t.compartment;
+    }
+
+    /** Pressure relative to standard at tile (x, y); 0 where there is no air. */
+    public float pressureRatioAt(int x, int y) {
+        Compartment c = compartmentAt(x, y);
+        return c == null ? 0f : c.pressureRatio();
+    }
+
+    /** Oxygen partial pressure relative to standard at tile (x, y); 0 where there is no air. */
+    public float oxygenRatioAt(int x, int y) {
+        Compartment c = compartmentAt(x, y);
+        return c == null ? 0f : c.oxygenRatio();
+    }
+
     // -----------------------------------------------------------------------
     // Hull pieces and mounts
     // -----------------------------------------------------------------------
@@ -178,7 +214,7 @@ public class ShipGridComponent implements Component {
                 Tile t = getTile(x, y);
                 t.wallType = Tile.WallType.HULL;
                 t.floorType = Tile.FloorType.NONE;
-                t.isFlammable = false;
+                t.setCovering(FloorCovering.NONE, tileSize);
                 t.weightClass = piece.weightClass;
                 t.material = piece.material;
                 t.piece = piece;

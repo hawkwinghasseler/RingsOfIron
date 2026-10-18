@@ -254,7 +254,7 @@ Then apply the tile's contents, each taking part of `absorbed` as damage:
 - **Subsystem:** `SubsystemComponent.health -= absorbed / subsystemHardness(type)`. Below `disableThreshold` (e.g. 0.3) set `isOperational = false`, and at 0 it is destroyed. The lookup uses a per-ship tile→subsystem index built from `ShipSubsystemRegistryComponent`. Subsystems currently only record an anchor tile, so this index needs multi-tile footprints from the blueprint to be accurate.
 - **Crew:** each occupant from `GridOccupantQuery.at(x, y)` takes damage scaled by `absorbed`, applied through `CrewDamageSink` (5.9). Crew have low hardness, so a round passes through people with little energy loss.
 - **Power conduit:** a `POWER_CONDUIT` tile at integrity 0 stops conducting. `PowerRoutingSystem` must skip zero-integrity tiles (see 5.8), and combat requests a reroute on the next routing tick.
-- **Fire:** with probability `fireChance(damageType) × absorbed / R_tile`, set `hasFire` if the tile `isFlammable` and `oxygenLevel > 0.15`. There is no fire in vacuum.
+- **Fire:** with probability `fireChance(damageType) × absorbed / R_tile`, call `tile.ignite()`, which starts a small fire if the tile has a flammable covering (`isFlammable()`). There is no fire in vacuum: `GridHazardSystem` smothers a fire whose compartment is short of oxygen.
 
 Stop when `P ≤ 0`, or apply the def's fuse first (`DELAYED(depthTiles)` detonates at that depth; see 5.5).
 
@@ -266,7 +266,7 @@ Stop when `P ≤ 0`, or apply the def's fuse first (`DELAYED(depthTiles)` detona
 ### 5.5 Explosive damage
 Blast behaves differently inside and outside the hull. This is a hard-sci-fi feature worth leaning into:
 - **In vacuum** (proximity-fused missile, or contact HE on the outer hull), there is no air and so no overpressure. Damage is **fragments only**: `fragmentCount` small penetrator rays cast from the detonation point toward the ship within the warhead's `fragmentCone`. Each is a mini-projectile with its own `P`, resolved as in 5.3–5.4. Near misses pepper a whole flank with shallow hits.
-- **Inside the ship** (delayed-fuse or after penetration), add **overpressure**. Flood-fill from the detonation tile out to `blastRadius` tiles, blocked by intact walls and sealed bulkheads. Each reached tile takes `blastDamage × falloff(distance) × tile.oxygenLevel`. Air pressure carries the blast, so **a compartment that is already vented barely feels it.** That gives crews a real tactical choice: vent a section before taking hits.
+- **Inside the ship** (delayed-fuse or after penetration), add **overpressure**. Flood-fill from the detonation tile out to `blastRadius` tiles, blocked by intact walls and sealed bulkheads. Each reached tile takes `blastDamage × falloff(distance) × pressure`, where `pressure` is `grid.pressureRatioAt(x, y)` (1 at standard, 0 in vacuum). Air pressure carries the blast, so **a compartment that is already vented barely feels it.** That gives crews a real tactical choice: vent a section before taking hits.
 
 ### 5.6 Energy weapons (burn-through)
 A beam does not cast a penetration ray up front. Each tick it adds `power · dt` to the struck hull tile's absorbed energy, using the same `R_tile` accounting with a per-material `ablationFactor`. When the tile reaches 0, the beam advances to the next tile along its line and keeps burning inward. Beams set fires readily (high `fireChance`) and rarely over-penetrate. Their counter is motion: a spinning or juking target spreads the heat across many tiles.
@@ -298,7 +298,7 @@ Penetrating hits, spall, fragments and interior blast all damage crew. Combat on
 | **Dead** | Health reaches 0 | Removed from duty |
 
 - Unconscious crew are still on their tile, so **further hits can kill them**. A second round through the same corridor is deadlier than the first.
-- **Asphyxiation** is the other route to death. Crew on a tile with too little oxygen lose health over time (as `oxygenLevel` falls, which the hazard system already tracks), so they pass out first and then die. A hull breach therefore threatens crew who were never in the line of fire, and unconscious crew in a venting room need rescue.
+- **Asphyxiation** is the other route to death. Crew on a tile with too little oxygen lose health over time (as the oxygen ratio of their compartment, `grid.oxygenRatioAt(x, y)`, falls; the hazard system tracks it), so they pass out first and then die. A hull breach therefore threatens crew who were never in the line of fire, and unconscious crew in a venting room need rescue.
 - Combat posts a `RescueTask` (move an unconscious crew member to a pressurized tile) alongside its other damage tasks. Whether and how unconscious crew recover is `ai-crew`'s call.
 - `CrewDamageSink.applyDamage(crewEntity, amount, cause)` is the third interface combat owns and `ai-crew` implements, next to `GridOccupantQuery` and `DamageTaskSink`.
 
@@ -310,7 +310,7 @@ Per 60 Hz tick:
 3. `BallisticsSystem` / `MissileGuidanceSystem`
 4. `ImpactResolutionSystem` drains that tick's events in `tick, then shipUuid` order
 
-Hazards then evolve on their own 1 s tick. All random draws (fire, spall, gunnery jitter) come from a per-ship seeded RNG, so replays, saves and unit tests are reproducible.
+Hazards then evolve on their own tick (0.25 s). All random draws (fire, spall, gunnery jitter) come from a per-ship seeded RNG, so replays, saves and unit tests are reproducible.
 
 ---
 

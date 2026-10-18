@@ -32,7 +32,7 @@ To implement this module independently (mocking data providers):
    - Create a custom Scene2D `Widget` called `WireframeMinimap`.
    - Pass the player's `ShipGridComponent` data to this widget.
    - Override the `draw(Batch batch, float parentAlpha)` method. Iterate through the grid bounds and draw colored rectangles or lines representing rooms.
-   - Color code tiles based on their state (e.g., red for `hasFire`, blue for `hasVacuum`). Render this widget in the bottom-left corner of the `Stage`.
+   - Color code tiles based on their state (e.g., orange by `fireIntensity`, darker as the compartment's pressure falls, grey haze for smoke). Render this widget in the bottom-left corner of the `Stage`.
 
 5. **Context Menus:**
    - Implement a system that checks the distance between the player's avatar and interactable consoles on the grid.

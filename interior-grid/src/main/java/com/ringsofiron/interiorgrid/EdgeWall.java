@@ -5,8 +5,8 @@ package com.ringsofiron.interiorgrid;
  * {@link ShipGridComponent}. It divides space without spending a tile on the wall.
  *
  * An edge wall may carry a bulkhead door. An open door lets crew, air and fire
- * through; a sealed door blocks them like solid wall. A wall at integrity 0 is
- * destroyed and blocks nothing.
+ * through; a sealed door blocks them like solid wall. Below half integrity the wall
+ * leaks air even while it blocks; at integrity 0 it is destroyed and blocks nothing.
  */
 public class EdgeWall {
 
@@ -31,6 +31,14 @@ public class EdgeWall {
 
     public boolean isDestroyed() {
         return integrity <= 0f;
+    }
+
+    /**
+     * Share of a fully open edge's airflow that seeps through this wall while it blocks.
+     * See {@link Tile#leakFactor(float)}.
+     */
+    public float leakFactor() {
+        return Tile.leakFactor(integrity);
     }
 
     /** True when this edge stops movement, atmosphere and fire. */

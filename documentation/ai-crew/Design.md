@@ -40,7 +40,7 @@ To implement this module independently (mocking the `interior-grid` by feeding i
    | **Dead** | Health reaches 0 | Removed from duty; the body stays on its tile |
 
    - Unconscious crew still occupy their tile, so `GridOccupantQuery.at(x, y)` keeps returning them and **further hits can kill them**.
-   - **Asphyxiation:** crew on a tile whose `oxygenLevel` is below `asphyxiationThreshold` lose health each hazard tick, faster as oxygen falls. They pass out first and then die. A hull breach therefore threatens crew who were never in the line of fire.
+   - **Asphyxiation:** crew on a tile whose compartment oxygen ratio (`ShipGridComponent.oxygenRatioAt`) is below `asphyxiationThreshold` lose health each hazard tick, faster as oxygen falls. They pass out first and then die. A hull breach therefore threatens crew who were never in the line of fire.
    - **Rescue:** combat posts a `RescueTask` (carry an unconscious crew member to a pressurized tile) for unconscious crew in danger, and `CrewHealthSystem` posts one when crew pass out from asphyxiation. The rescuer moves at reduced speed while carrying, and drops the casualty if knocked out.
    - **Recovery (default until decided):** unconscious crew on a pressurized tile slowly regain health and wake once above `unconsciousThreshold`. A medic `TreatTask` speeds this up. Dead crew do not recover.
    - Thresholds and rates live in data (`CrewDef`), e.g. `unconsciousThreshold = 0.25`, `asphyxiationThreshold = 0.3`.

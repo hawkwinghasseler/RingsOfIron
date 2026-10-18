@@ -9,7 +9,8 @@ import com.badlogic.gdx.utils.Array;
 /**
  * Calculates power connectivity across the ship's interior grid using Breadth-First Search.
  *
- * Starting from every footprint tile of each operational REACTOR, the system floods
+ * Starting from every footprint tile of each REACTOR that is switched on and not
+ * destroyed, the system floods
  * outward across connected POWER_CONDUIT and FLOOR tiles. A subsystem is powered when
  * any tile of its footprint is reachable.
  *
@@ -61,7 +62,10 @@ public class PowerRoutingSystem extends IteratingSystem {
         boolean[][] visited = new boolean[grid.height][grid.width];
         for (Entity subsysEntity : registry.subsystems) {
             SubsystemComponent sub = subsystemMapper.get(subsysEntity);
-            if (sub == null || sub.type != SubsystemComponent.SubsystemType.REACTOR || !sub.isOperational) continue;
+            // Seed from the reactor's own state, never from last tick's isOperational, so a
+            // reactor that was off can come back on
+            if (sub == null || sub.type != SubsystemComponent.SubsystemType.REACTOR
+                    || !sub.switchedOn || sub.isDestroyed()) continue;
             MountFootprint f = sub.footprint;
             for (int y = f.originY; y < f.originY + f.height(); y++) {
                 for (int x = f.originX; x < f.originX + f.width(); x++) {
@@ -112,7 +116,7 @@ public class PowerRoutingSystem extends IteratingSystem {
                     }
                 }
             }
-            sub.isOperational = sub.powered && sub.health > 0f;
+            sub.isOperational = sub.switchedOn && sub.powered && !sub.isDestroyed();
         }
     }
 
