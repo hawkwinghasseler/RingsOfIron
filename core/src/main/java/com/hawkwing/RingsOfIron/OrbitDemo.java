@@ -335,20 +335,34 @@ public class OrbitDemo extends ApplicationAdapter {
         shapes.circle(p[0], p[1], (float) (body.getComponent(CelestialBodyComponent.class).soiRadius / scale), 96);
     }
 
-    /** Draws the conic in its parent's frame, offset by where the parent is relative to the focus. */
+    /**
+     * Draws the conic in its parent's frame, offset by where the parent is relative to the focus.
+     * Points are spaced evenly in eccentric (or hyperbolic) anomaly, not in time: a transfer orbit
+     * spends minutes near periapsis and days near apoapsis, so time-spaced points leave long
+     * straight chords around the planet.
+     */
     private void drawOrbit(Entity entity, Color color, double t) {
         OrbitComponent orbit = entity.getComponent(OrbitComponent.class);
         KeplerOrbit k = orbit.getOrbit();
         Entity parent = universe.entity(orbit.parentUuid);
         StateVector parentPos = universe.stateInFrame(parent, earth, t, new StateVector());
         CelestialBodyComponent parentBody = universe.celestial(parent);
-        // Elliptic: one period. Hyperbolic: until it leaves the parent's SOI (or a few days).
-        double span = k.isElliptic() ? k.period() : Math.min(5 * 86400.0,
-                Math.max(1, k.nextTimeAtRadius(Math.min(parentBody.soiRadius, 1e9), t, KeplerOrbit.Crossing.OUTBOUND) - t));
+        double from;
+        double to;
+        if (k.isElliptic()) {
+            from = 0;
+            to = 2 * Math.PI;
+        } else {
+            // From the body now until it leaves the parent's SOI (or a few days out).
+            double span = Math.min(5 * 86400.0, Math.max(1,
+                    k.nextTimeAtRadius(Math.min(parentBody.soiRadius, 1e9), t, KeplerOrbit.Crossing.OUTBOUND) - t));
+            from = k.anomalyAt(t);
+            to = k.anomalyAt(t + span);
+        }
         shapes.setColor(color);
         float px = 0, py = 0;
         for (int i = 0; i <= ORBIT_SEGMENTS; i++) {
-            StateVector s = k.stateAt(t + span * i / ORBIT_SEGMENTS, tmp2);
+            StateVector s = k.positionAtAnomaly(from + (to - from) * i / ORBIT_SEGMENTS, tmp2);
             float x = (float) ((parentPos.x + s.x - focus.x) / scale);
             float y = (float) ((parentPos.y + s.y - focus.y) / scale);
             if (i > 0) shapes.line(px, py, x, y);
