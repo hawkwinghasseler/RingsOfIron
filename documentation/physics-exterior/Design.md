@@ -37,8 +37,8 @@ To implement this module independently (mocking the core-engine if necessary):
 ## Proposed Systems
 - `PhysicsUpdateSystem`: Syncs Box2D state to ECS state.
 - `FloatingOriginSystem`: Monitors player distance and relative speed and rebases the origin.
-- `TidalGravitySystem` (planned, from the orbital plan): applies the differential gravity across the bubble each tick.
-- `KinematicTransientSystem` (planned, from the orbital plan): moves bodies passing faster than the Box2D cap along their rails orbits and sweeps them for collisions.
+- `TidalGravitySystem`: applies the differential gravity across the bubble each tick.
+- `KinematicTransientSystem`: moves bodies passing faster than the Box2D cap along their true trajectories and sweeps them for collisions.
 
 ## Implementation Status
 Implemented in `physics-exterior/src/main/java/com/ringsofiron/physicsexterior/`, with tests in `src/test` (`gradlew :physics-exterior:test`) and a playable demo (`Flight demo.bat`, or `gradlew :lwjgl3:runFlightDemo`).
@@ -54,8 +54,21 @@ Conventions:
 - Ship local frame: +X is the nose, +Y is port. `FlightControlComponent` holds stick input in [-1, 1] (`forward`, `strafe`, `turn`, plus optional `rotationAssist`); `ThrusterComponent` holds the force, torque and fuel limits.
 - Bodies made by `PhysicsManager.createPolygonBody/createCircleBody` never sleep and have zero damping, so a slow drift stays a drift. Density is in kg per square meter.
 
-## Orbital Integration (planned)
-The bubble is currently an inertial frame with no gravity. `documentation/orbital-mechanics/Design.md` defines how it becomes part of a 1:1 real-scale orbital world. The changes that land in this module:
+## Orbital Integration
+Built so far (see `OrbitalBubbleTest`):
+- **Anchor.** `PhysicsManager` keeps the origin's true state through an `AnchorModel` (package `anchor`): `InertialAnchor` by default, or `PointMassAnchor`, a free fall around a point mass integrated with RK4 in doubles. Swap one in with `setAnchorModel`. A rebase calls `AnchorModel.reset` with the player's true state. A Kepler-backed model from the `orbital` package will replace `PointMassAnchor` once that package is on main; nothing else changes.
+- **Sim time.** `PhysicsManager` counts fixed ticks (`getTick`, `getSimSeconds() = tick / 60.0`); `setTick` lines it up with the game clock on load.
+- **Tidal gravity.** `TidalField.accelAt(localX, localY, out)` (from `physics.getTidalField()`) is the one shared field; `TidalGravitySystem` applies it to every dynamic body before each step. A box released 2 km from the anchor in a 400 km orbit stays within 1 m of its own two-body orbit over a quarter orbit, rebases included. In this non-rotating frame the radial term is 2·n²·d (about 0.06 m/s² at 25 km in low orbit); Hill's 3·n²·d includes the centrifugal term of a rotating frame.
+- **Fast passes.** `KinematicTransientComponent` holds a `TrueTrajectory` (any `stateAt(t)`, e.g. a rails orbit) and a sweep radius. `KinematicTransientSystem` places it each tick from the trajectory minus the anchor, in doubles, sweeps rays from last tick's position (center line plus ±radius), and fires one `FastPassImpactEvent` per body passed through on `physics.fastPassImpacts`. It never gets a Box2D body; the handoff owner removes the component to promote it or send it back to rails.
+- **Handoffs.** `getTrueState(body, out)` and `setTrueState(body, x, y, vx, vy)` convert between Box2D and parent-relative doubles; `trueToLocal` for anything else. `BubbleLimits` holds the enter/exit radii and speed limits.
+- **Combat and grid helpers, in SI.** `rayCast` and `queryAABB` in meters, `applyImpulse` and `applyForce` at a point, `getPreviousPose(body, out)` for swept hit tests (kept in step with rebases), and `setMassData` for mass, center of mass and inertia from `ShipGridComponent.computeMassProperties`. `StepListener.afterStep` runs after each step, before collisions are dispatched.
+
+The flight demo shows all of it: `[O]` puts the bubble in a 400 km orbit, `[,]`/`[.]` change physics warp, `[F]` sends a 2.5 km/s fast pass past the ship, and the ship's mass comes from an interior grid drawn over the hull when zoomed in.
+
+Still to do: the Kepler anchor adapter, SOI re-parenting of the anchor, rails warp (bubble collapse), and saving bubble bodies as true state vectors through core-engine's save API.
+
+The original plan, for reference:
+The bubble was an inertial frame with no gravity. `documentation/orbital-mechanics/Design.md` defines how it becomes part of a 1:1 real-scale orbital world. The changes that land in this module:
 - **Free-falling anchor.** The origin's double-precision universe state in `PhysicsManager` becomes an orbital anchor: Keplerian elements around the current SOI body, evaluated at sim time. A rebase converts the player's true state back into new anchor elements instead of just copying position and velocity.
 - **Tidal gravity.** World gravity stays zero. Each fixed tick, before the step (alongside `FlightControlSystem.beforeStep`), every dynamic body gets `g(R_anchor + r) − g(R_anchor)`, computed in doubles. Roughly 0.1 m/s² at 25 km in low orbit.
 - **Bubble size.** Rails bodies enter at 20 km from the anchor and leave at 25 km. Entry requires relative speed below about 1,000 m/s; faster bodies are kinematic transients (rendered and swept for collisions, never Box2D bodies) until they slow down.
