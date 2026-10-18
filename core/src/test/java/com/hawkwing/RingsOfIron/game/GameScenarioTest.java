@@ -1,5 +1,8 @@
 package com.hawkwing.RingsOfIron.game;
 
+import org.junit.jupiter.api.io.TempDir;
+import com.ringsofiron.coreengine.components.UuidComponent;
+import com.badlogic.gdx.files.FileHandle;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
@@ -15,6 +18,7 @@ import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.uihud.components.InteractableConsoleComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
@@ -92,6 +96,35 @@ class GameScenarioTest {
     }
 
     @Test
+    void quickSaveLoadsIntoAFreshGame(@TempDir Path dir) {
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        FileHandle file = new FileHandle(dir.resolve("quicksave.json").toFile());
+        assertNull(game.quickSave(file));
+        long tick = world.engine.getTick();
+        String playerId = game.player.getComponent(UuidComponent.class).id;
+        int contacts = game.contacts.size;
+
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        GameWorld fresh = new GameWorld();
+        try {
+            GameScenario restarted = GameScenario.start(fresh, assets, assets.resolve("no-mods-here"));
+            restarted.quickLoad(file);
+
+            assertEquals(tick, fresh.engine.getTick());
+            assertSame(fresh.getPlayer(), restarted.player);
+            assertEquals(playerId, restarted.player.getComponent(UuidComponent.class).id);
+            assertNotNull(restarted.player.getComponent(PhysicsBodyComponent.class));
+            assertNotNull(restarted.avatar);
+            assertSame(restarted.player, restarted.avatar.getComponent(GridPositionComponent.class).ship);
+            assertEquals(contacts, restarted.contacts.size, "the raider and the freighter, lockable again");
+            for (int i = 0; i < 120; i++) fresh.update(FRAME);
+            assertSame(restarted.player, fresh.getPlayer());
+        } finally {
+            fresh.dispose();
+        }
+    }
+
+    @Test
     void orbitReadoutWorksWhileFlyingInTheBubble() {
         var info = new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer).getPlayerOrbit();
         assertNotNull(info);
@@ -164,5 +197,39 @@ class GameScenarioTest {
         AudioEmitterComponent loaded = world.getPlayer().getComponent(AudioEmitterComponent.class);
         assertEquals(AudioEventCatalog.THRUSTER, loaded.eventPath);
         assertEquals(1f, loaded.instance.getParameter(AudioParameters.INTENSITY, 0f), 1e-4f);
+    }
+
+    @Test
+    void crewConsolesAreOnTheShipAndSurviveALoad() {
+        java.util.Map<String, int[]> consoles = consolesOn(game.player);
+        // The corvette's chassis has a helm, a reactor and life support, and no weapons console.
+        assertEquals(java.util.Set.of("helm", "reactor", "life_support"), consoles.keySet());
+        assertArrayEquals(new int[]{1, 4}, consoles.get("helm"));
+        assertEquals(3, consolesOn(game.contacts.first()).size(), "the raider has its own");
+
+        String save = world.engine.getSerializationService().saveGame();
+        world.engine.getSerializationService().loadGame(save);
+        Entity ship = world.getPlayer();
+        assertEquals(consoles.keySet(), consolesOn(ship).keySet(), "the consoles find the loaded ship");
+    }
+
+    @Test
+    void thePlayerCanTrade() {
+        com.ringsofiron.macrosim.economy.TraderComponent trader =
+                game.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class);
+        assertNotNull(trader);
+        assertEquals(GameScenario.STARTING_CREDITS, trader.credits);
+        assertEquals(GameScenario.STARTING_HOLD, trader.freeCargo());
+    }
+
+    /** Console id to tile, for the consoles aboard {@code ship}. */
+    private java.util.Map<String, int[]> consolesOn(Entity ship) {
+        java.util.Map<String, int[]> out = new java.util.HashMap<>();
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(
+                com.badlogic.ashley.core.Family.all(InteractableConsoleComponent.class).get())) {
+            InteractableConsoleComponent c = e.getComponent(InteractableConsoleComponent.class);
+            if (c.isOn(ship)) out.put(c.consoleId, new int[]{c.tileX, c.tileY});
+        }
+        return out;
     }
 }
