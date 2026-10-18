@@ -5,5 +5,20 @@ dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
   api project(':core-engine')
   api project(':physics-exterior')
+
+  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
+test {
+  useJUnitPlatform()
+}
+
+// Headless run of the macro simulation: a small star system, its economy and freighter traffic.
+tasks.register('runMacroDemo', JavaExec) {
+  group = 'application'
+  description = 'Runs the headless macro-sim demo and prints the economy and traffic report.'
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = 'com.ringsofiron.macrosim.MacroSimDemo'
+  args = project.hasProperty('days') ? [project.property('days')] : []
+}

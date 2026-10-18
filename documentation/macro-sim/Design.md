@@ -38,3 +38,12 @@ To implement this module independently (mocking the Box2D transition logic):
 - `OrbitalEventSystem`: Fires due events from the sim-time queue (maneuver nodes, SOI transitions, impacts).
 - `EncounterPredictionTask`: Background predictions for bubble entry, warp drop-out and map rendering.
 - `BubbleTransitionSystem`: Moves ships between the background math simulation and the active Box2D simulation.
+
+## Prototype Status
+The first prototype lives in `macro-sim/src/main/java/com/ringsofiron/macrosim`. Run `gradlew :macro-sim:runMacroDemo` (optionally `-Pdays=60`) for a headless 30-day report, and `gradlew :macro-sim:test` for the checks.
+
+- **Rails** are reached through the `RailsModel` interface. `StubRailsModel` and `StubKeplerOrbit` implement it with a one-level Kepler model (no SOI changes) until `orbital-mechanics` lands; then an adapter over `OrbitComponent`/`OrbitalEventSystem` replaces them.
+- **Economy:** `EconomySimulation` runs the 5-minute pass (production cycles limited by inputs and storage, daily upkeep, price curve `base · (target / stock)^0.7` clamped to 0.25–4×) and rebuilds the `TradeOrder` board. Definitions come through `CommodityCatalog`; `DefaultCommodityCatalog` hardcodes six commodities and seven station types until `modding-data`'s JSON defs are wired in.
+- **Freighters:** `FreighterController` scores open orders by profit per hour, then flies each leg as maneuver nodes from `TransferPlanner` (phased Hohmann transfer, or a phasing orbit on the same radius) and loads or unloads on arrival. Routes are within one parent body for now.
+- **Bubble:** `EncounterPredictionTask` (background `ExecutorService`) culls by radius band and then uses conservative advancement, so it cannot step over an encounter; its earliest entry is the warp drop-out time. `BubbleTransitionSystem` does entry, fast pass and exit against the anchor through the `BubbleGateway` interface (mocked by `MockBubbleGateway` until `physics-exterior`'s handoff helpers land). Stations always stay on rails and show in the bubble as kinematic transients.
+- **Time:** `MacroSimulation.advanceTo(simSeconds)` fires rails and macro events in time order, so one rails-warp jump gives the same economy as many small steps.
