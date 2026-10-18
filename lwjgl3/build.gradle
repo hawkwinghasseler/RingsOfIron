@@ -190,6 +190,11 @@ tasks.register('runFlightDemo', JavaExec) {
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
+// Runs the spatial audio demo (walk a ship and hear walls muffle sound) instead of the main game.
+tasks.register('runAudioDemo', JavaExec) {
+  group = 'application'
+  description = 'Runs the audio-spatial muffling demo.'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.AudioDemoLauncher'
 tasks.register('runOrbitDemo', JavaExec) {
   group = 'application'
   description = 'Runs the orbital-mechanics rails demo.'
