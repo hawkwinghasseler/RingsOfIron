@@ -88,7 +88,7 @@ public class Main extends ApplicationAdapter {
     private BitmapFont font;
 
     // --- State ---
-    private float elapsedTime = 0f;
+    private final HazardParticles particles = new HazardParticles();
     private int hoverX = -1, hoverY = -1;
 
     // -----------------------------------------------------------------------
@@ -141,10 +141,10 @@ public class Main extends ApplicationAdapter {
     @Override
     public void render() {
         float delta = Gdx.graphics.getDeltaTime();
-        elapsedTime += delta;
 
         handleInput();
         engine.update(delta);
+        particles.update(grid, delta);
 
         // --- Draw ---
         Gdx.gl.glClearColor(0.05f, 0.05f, 0.1f, 1f);
@@ -264,7 +264,7 @@ public class Main extends ApplicationAdapter {
         // Remove old ship from engine
         engine.removeAllEntities();
         buildShip();
-        elapsedTime = 0f;
+        particles.clear();
     }
 
     // -----------------------------------------------------------------------
@@ -298,27 +298,6 @@ public class Main extends ApplicationAdapter {
                     shapeRenderer.rect(px + 1, py + 1, TILE_PX - 2, TILE_PX - 2);
                 }
 
-                // Smoke: grey haze over the whole room, thicker as smoke builds up
-                if (tile.compartment != null) {
-                    float smoke = Math.min(0.5f, tile.compartment.smokeDensity() * 80f);
-                    if (smoke > 0.01f) {
-                        shapeRenderer.setColor(0.4f, 0.4f, 0.4f, smoke);
-                        shapeRenderer.rect(px, py, TILE_PX, TILE_PX);
-                    }
-                }
-            }
-        }
-
-        // Fire on top of the smoke: a flickering square that grows with intensity
-        for (int y = 0; y < grid.height; y++) {
-            for (int x = 0; x < grid.width; x++) {
-                Tile tile = grid.getTile(x, y);
-                if (!tile.isBurning()) continue;
-                float flicker = (float) (Math.sin(elapsedTime * 8 + x * 1.7 + y * 2.3) * 0.5 + 0.5);
-                float size = (0.25f + 0.75f * tile.fireIntensity) * (TILE_PX - 4);
-                shapeRenderer.setColor(1f, 0.35f + flicker * 0.35f, 0f, 1f);
-                shapeRenderer.rect(offX + x * TILE_PX + (TILE_PX - size) / 2,
-                        offY + y * TILE_PX + (TILE_PX - size) / 2, size, size);
             }
         }
 
@@ -358,6 +337,9 @@ public class Main extends ApplicationAdapter {
         shapeRenderer.end();
 
         drawEdgeWalls(offX, offY);
+
+        // Smoke and flames over the floor, under the system icons
+        particles.draw(shapeRenderer, offX, offY, TILE_PX);
 
         // Draw subsystem icons as small filled circles
         drawSubsystems(offX, offY);
