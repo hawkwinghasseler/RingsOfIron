@@ -23,6 +23,7 @@ import com.badlogic.gdx.physics.box2d.WorldManifold;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.IdentityMap;
+import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.physicsexterior.anchor.AnchorModel;
 import com.ringsofiron.physicsexterior.anchor.InertialAnchor;
 import com.ringsofiron.physicsexterior.events.CollisionEvent;
@@ -47,8 +48,10 @@ import com.ringsofiron.physicsexterior.events.WorldShiftEvent;
  * See {@link #getOriginX()}, {@link #rebaseOrigin} and {@link #setAnchorModel}.
  *
  * <h2>Time</h2>
- * Sim time is a {@code long} tick counter at 60 Hz, advanced by one per {@link #step}; seconds are
- * {@code tick / 60.0}. Use {@link #setTick} to line it up with the game's own clock on load.
+ * Sim time is a {@code long} tick counter at 60 Hz; seconds are {@code tick / 60.0}. Under a
+ * {@code GameEngine} the game's {@link SimClock} is the clock ({@link #setClock}, which
+ * {@code PhysicsUpdateSystem} does on its first tick). Without one, this class counts its own
+ * ticks, one per {@link #step}.
  */
 public class PhysicsManager implements Disposable {
     public static final float TIME_STEP = 1f / 60f;
@@ -62,7 +65,7 @@ public class PhysicsManager implements Disposable {
     public static final float MAX_SPEED = 2f * METERS_PER_UNIT / TIME_STEP;
 
     /** Fixed ticks per sim second. */
-    public static final int TICKS_PER_SECOND = 60;
+    public static final int TICKS_PER_SECOND = SimClock.TICKS_PER_SECOND;
 
     /** Called once per fixed tick around the world step. */
     public interface StepListener {
@@ -107,6 +110,7 @@ public class PhysicsManager implements Disposable {
     private AnchorModel anchor = new InertialAnchor();
     private final double[] origin = new double[4];
     private long tick;
+    private SimClock clock;
 
     public PhysicsManager() {
         Box2D.init();
@@ -124,7 +128,8 @@ public class PhysicsManager implements Disposable {
         }
         recordPreviousPoses();
         world.step(deltaTime, VELOCITY_ITERATIONS, POSITION_ITERATIONS);
-        tick++;
+        // An external clock has already advanced for this tick.
+        if (clock == null) tick++;
         anchor.stateAt(getSimSeconds(), origin);
 
         for (int i = 0; i < stepListeners.size; i++) {
@@ -256,20 +261,38 @@ public class PhysicsManager implements Disposable {
         return tidalField;
     }
 
-    /** Fixed ticks stepped so far. */
+    /** Current sim tick: the game clock's if one is set, otherwise the ticks stepped so far. */
     public long getTick() {
-        return tick;
+        return clock != null ? clock.getTick() : tick;
     }
 
-    /** Sets the sim tick, e.g. to match the game clock after loading. Re-evaluates the anchor. */
+    /** Sets the internal tick when there is no game clock. Re-evaluates the anchor. */
     public void setTick(long tick) {
         this.tick = tick;
+        syncToClock();
+    }
+
+    /**
+     * Uses the game's clock for sim time from now on (null to count ticks here again). Each fixed
+     * tick's {@link #step} then runs after the clock has advanced to that tick.
+     */
+    public void setClock(SimClock clock) {
+        this.clock = clock;
+        syncToClock();
+    }
+
+    public SimClock getClock() {
+        return clock;
+    }
+
+    /** Re-evaluates the anchor at the current sim time, e.g. after the clock jumped under rails warp or on load. */
+    public void syncToClock() {
         anchor.stateAt(getSimSeconds(), origin);
     }
 
     /** Sim time in seconds, derived from the tick so it never drifts. */
     public double getSimSeconds() {
-        return tick / (double) TICKS_PER_SECOND;
+        return getTick() / (double) TICKS_PER_SECOND;
     }
 
     // ------------------------------------------------------------------

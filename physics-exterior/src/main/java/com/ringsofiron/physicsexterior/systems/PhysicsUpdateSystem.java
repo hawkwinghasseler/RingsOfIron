@@ -74,6 +74,8 @@ public class PhysicsUpdateSystem extends FixedLogicSystem {
 
     @Override
     protected void updateFixed(float deltaTime) {
+        // Under a GameEngine its clock is the one sim time.
+        if (getClock() != null && physics.getClock() != getClock()) physics.setClock(getClock());
         double originXBefore = physics.getOriginX();
         double originYBefore = physics.getOriginY();
         physics.step(deltaTime);
@@ -90,6 +92,15 @@ public class PhysicsUpdateSystem extends FixedLogicSystem {
                 transform.y -= originDy;
             }
         }
+    }
+
+    /**
+     * Rails warp skipped {@code ticks} without stepping. Box2D does not move (the bubble is collapsed
+     * onto rails before rails warp); only the anchor catches up to the new time.
+     */
+    @Override
+    protected void catchUp(long ticks, double seconds) {
+        physics.syncToClock();
     }
 
     private void syncTransform(Entity entity) {
