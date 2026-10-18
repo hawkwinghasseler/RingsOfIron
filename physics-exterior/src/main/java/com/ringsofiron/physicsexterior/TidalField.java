@@ -1,11 +1,13 @@
 package com.ringsofiron.physicsexterior;
 
 import com.badlogic.gdx.math.Vector2;
+import com.ringsofiron.orbital.math.OrbitMath;
 
 /**
  * The gravity felt inside the bubble: the difference between the parent body's pull at a point
  * and its pull on the free-falling anchor, {@code g(R_a + r) - g(R_a)} with
- * {@code g(X) = -mu X / |X|^3}. Computed in doubles and cast to float at the end.
+ * {@code g(X) = -mu X / |X|^3}, from orbital-mechanics' {@code OrbitMath.tidalAcceleration}.
+ * Computed in doubles and cast to float at the end.
  *
  * This is the one shared field for everything in the bubble: {@code TidalGravitySystem} applies
  * it to Box2D bodies, and combat's projectile integrator and the HUD's trajectory preview should
@@ -13,6 +15,7 @@ import com.badlogic.gdx.math.Vector2;
  */
 public class TidalField {
     private final PhysicsManager physics;
+    private final double[] accel = new double[2];
 
     TidalField(PhysicsManager physics) {
         this.physics = physics;
@@ -23,14 +26,7 @@ public class TidalField {
         double mu = physics.getAnchorModel().getMu();
         if (mu == 0.0) return out.setZero();
 
-        double ax = physics.getOriginX();
-        double ay = physics.getOriginY();
-        double bx = ax + localX;
-        double by = ay + localY;
-        double ra2 = ax * ax + ay * ay;
-        double rb2 = bx * bx + by * by;
-        double ka = mu / (ra2 * Math.sqrt(ra2));
-        double kb = mu / (rb2 * Math.sqrt(rb2));
-        return out.set((float) (ka * ax - kb * bx), (float) (ka * ay - kb * by));
+        OrbitMath.tidalAcceleration(mu, physics.getOriginX(), physics.getOriginY(), localX, localY, accel);
+        return out.set((float) accel[0], (float) accel[1]);
     }
 }
