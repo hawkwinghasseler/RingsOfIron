@@ -57,6 +57,12 @@ public class MacroEventQueue {
         return true;
     }
 
+    /** Drops every pending event (before restoring a save). */
+    public void clear() {
+        queue.clear();
+        cancelled.clear();
+    }
+
     public int size() {
         return queue.size() - cancelled.size();
     }
