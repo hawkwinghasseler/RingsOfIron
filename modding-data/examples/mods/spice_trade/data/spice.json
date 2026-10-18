@@ -1,0 +1,8 @@
+{
+  "commodity": {
+    "spice": { "name": "Spice", "category": "luxury", "base_price": 450.0, "mass_per_unit": 50.0, "volume_per_unit": 0.2 }
+  },
+  "station_type": {
+    "spice_farm": { "name": "Spice Farm", "population": 3000, "produces": { "spice": 4.0 }, "consumes": { "water": 20.0, "food": 3.0 } }
+  }
+}
