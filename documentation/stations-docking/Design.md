@@ -14,11 +14,29 @@ This document collects the design decisions for stations, docking ports, the doc
 - **`ui-hud`**: arming ports, docking alignment readouts, the refit UI.
 
 ## What Exists Today
-- `macro-sim`: stations are economy nodes on rails with markets (`StationMarket`) and can be destroyed. `MacroSimulation.dockableStation(shipUuid)` treats any ship within 500 m and 10 m/s of a station as "docked"; this range check is replaced by physical docking.
-- Stations always stay on rails and show in the bubble as kinematic transients with no interior.
-- `StationTypeDef` holds population, production, consumption and storage only.
-- `interior-grid` has an `AIRLOCK` auxiliary subsystem but no docking port and no station grid.
-- Cargo sits physically in cargo-bay tiles on the ship's interior grid (Physical cargo holds work).
+Stage 1 (station grids and docking ports) is in. The new `stations-docking` module holds the docking logic; the other modules gained the pieces it needs.
+
+- **Station grids.** `ChassisDef.station` marks a station layout and `StationTypeDef.blueprint` names it (`station_outpost` and `station_hub` in `chassis.toml`). `DockingData.buildStation` gives a station entity its walkable grid, systems, cargo bays and docking ports. In the bubble, `StationBodies` gives each station a kinematic Box2D body shaped like its grid, which `KinematicTransientSystem` moves along the station's orbit, so ships collide and dock with it. Stations still stay on rails; they have no crew yet.
+- **Docking ports.** `D` in a chassis map is a port of any of the three sizes (`DockingPortLayout`), a `DOCKING_PORT` subsystem with a frame, an opening onto the deck and a sealed door. Ports are passive unless the chassis lists them as active. Ships get their chassis' ports when they spawn; macro-sim's freighters, which fly a default hull, get a passive Medium port on the nose.
+- **Docking physics** (`DockingSystem`). Each port has a density-0 collar fixture half a tile deep. An armed port's magnets pull its face towards a same-size free port within a few meters (two magnets across the face, so they also square it up, with eddy damping) and latch on contact within tolerance. An armed active port puts out a collar head on a prismatic guide and a soft spring; the head is drawn to the other port, captures it, then contracts until it locks. A latch seats the pair with a motor joint and then welds them. Undocking drops the weld and pushes the craft apart; pulling past a port size's break force or torque tears both collars off and damages the hull and door around each port. Tuning per size is in `DockingTuning`.
+- **Clearance.** `requestClearance` asks the nearest station. One that grants it arms its nearest free port of the same size for the asking craft (for 10 minutes), and that port's collar reaches out unless the craft brings its own active collar. One that refuses keeps its ports unarmed and its collar in. A craft can still latch with its own magnets or collar, but is then docked without leave (`DockingPort.permitted` is false).
+- **Rails warp.** A collar still drawing a ship in, or a latch still settling, holds rails warp back. A docked pair goes onto the rails as one body (the follower rides the leader's orbit; a station always leads) and comes back latched (`DockingBubbleHandoff`).
+- **Saves.** Port state and latches are saved with the entity; the joints are rebuilt on load, so a docked ship stays docked.
+- **The game.** Every station in the starting scenario has its interior and ports; Highport is turned so its Small ports face the player. A freighter that comes into the bubble while sitting at a station is latched to a free Medium port there (`StationTraffic`) instead of appearing inside the hull. G arms the selected port and asks for clearance, H picks the next port, U undocks, and a readout shows how the port lines up with the nearest free port of its size. Trading needs the ship docked at the station with its clearance; `MacroSimulation.dockableStation`'s range check is no longer used for the player.
+- **Demo.** `demos/Docking demo.bat` (`gradlew :lwjgl3:runDockingDemo`) has six scenes: passive latch, active collar, station clearance, clearance refused, tearing loose, and a hub with a hauler berthed. P flies the approach until the magnets or collar take over.
+- **Not yet:** the `DockLink` portal between docked grids (walking, air and line of sight across), station crew and loaders, carrying cargo across, forcing doors, refit, and NPC freighters docking under their own power in the bubble.
+
+## Decisions on the Open Questions
+- **Ports per station type:** every station carries all three sizes, so any ship can berth. The outpost layout has one of each, the hub two of each. All station ports are active, so a station that grants clearance reaches out with its collar.
+- **Hostile acts and faction standing:** deferred to stage 4, with forcing doors. Proposed default: each hostile act at a station costs standing with the station's faction, more for cutting a door than for prying or hacking it, and docking without clearance costs nothing by itself.
+
+## Stages
+1. Station grids, docking ports, docking physics, clearance, the docked pair in rails warp, the demo. **Done.**
+2. `DockLink` and doors: the joined collar compartment, port doors opening for permitted craft, walking across, station crew.
+3. Carrying cargo: loaders and crew move market goods tile by tile; trades complete as units arrive.
+4. Forcing doors and hostile acts (pry, cut, hack) and faction standing.
+5. Refit and repair while docked.
+6. NPC freighters docking physically in the bubble under their own power.
 
 ## Stations
 - A station is an interior grid like a ship's: rooms, corridors, hull, conduits, systems, docking ports, cargo bays and vendor areas.
@@ -102,5 +120,4 @@ Hacking takes longer than cutting. All three count as hostile acts.
 - Out on rails they keep the abstract, time-based load and unload in `FreighterController`.
 
 ## Open Questions
-- How many docking ports each station type carries.
-- Whether a hostile act at a station changes faction standing, and by how much.
+- Station attitude: stations hold a fixed attitude in the bubble (`StationComponent.angle`). Whether some should spin, and how docking works with a spinning station, is open.
