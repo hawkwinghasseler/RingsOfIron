@@ -446,9 +446,12 @@ public class GameScenario {
     /** Next contact after {@code current} (wrapping), or null when there are none. */
     /**
      * Saves the whole game to {@code file}. Refused (returns a reason) during rails warp, when the
-     * bubble is collapsed onto the rails; null when saved.
+     * bubble is collapsed onto the rails, and once the ship is lost or the career over, which a
+     * save would bring back as a live game; null when saved.
      */
     public String quickSave(FileHandle file) {
+        if (world.getCrash() != null) return "the ship is lost";
+        if (world.getCareerOver() != null) return "the career is over";
         if (world.timeWarp.isRailsWarp()) return "drop out of time warp first";
         world.engine.getSerializationService().saveToFile(file);
         return null;
@@ -478,6 +481,8 @@ public class GameScenario {
         // ...nobody hired from today's pools, and crew morale drifting from the loaded time on
         world.crewHiring.reset();
         world.crewCareer.restartClock();
+        // The old game's notices are not this one's (the log is not saved)
+        world.notices.clear();
         world.engine.getSerializationService().loadFromFile(file);
         // A seeded career's combat and crew dice come from its seed, as at its start
         if (newGame.seeded) world.reseed(newGame.combatSeed(), newGame.crewSeed());

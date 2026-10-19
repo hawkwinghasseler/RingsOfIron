@@ -42,8 +42,17 @@ public final class OpeningGuide {
 
     /** The walkthrough a loaded game was saved in, or null when it had finished or was off. */
     public static OpeningGuide resume(GameWorld world, BooleanSupplier boardOpen) {
+        return resume(world, boardOpen, true);
+    }
+
+    /**
+     * As {@link #resume(GameWorld, BooleanSupplier)}; with {@code wanted} false (turned off in the
+     * settings) the saved step is dropped, so later saves don't carry it on.
+     */
+    public static OpeningGuide resume(GameWorld world, BooleanSupplier boardOpen, boolean wanted) {
         String saved = world.guides.openingStep;
-        if (saved == null) return null;
+        if (!wanted) world.guides.openingStep = null;
+        if (saved == null || !wanted) return null;
         try {
             return new OpeningGuide(world, boardOpen, Step.valueOf(saved));
         } catch (IllegalArgumentException e) {
