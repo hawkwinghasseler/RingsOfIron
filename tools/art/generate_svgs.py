@@ -1759,6 +1759,8 @@ def effects():
         a.b += circle(xx, 32, 2, "#d9c27a", stroke=INK, sw=1)
     write("effects/bulkhead_seal.svg", T, T, a, "bulkhead_seal: emergency seal over a tile (Tile.bulkheadSealed)")
     hull_patch()
+    short_circuit()
+    propellant_spill()
 
 
 def hull_patch():
@@ -1773,6 +1775,30 @@ def hull_patch():
     a.b += path("M20,30 L28,27 L36,31 L44,28", stroke="#d9e2ee", sw=1.4, extra=' opacity="0.8"')
     a.b += poly([(18, 37), (50, 33), (51, 39), (19, 43)], HAZARD, stroke=INK, sw=1)
     write("effects/hull_patch.svg", T, T, a, "hull_patch: a field patch over a leaking tile (Tile.isPatched)")
+
+
+def short_circuit():
+    # A faulted part: a jagged spark between two scorched contacts, on a dark burn mark, so a
+    # shorted system or conduit reads as dead until the crew reset it
+    a = Art()
+    a.b = poly([(14, 22), (26, 12), (44, 14), (54, 28), (50, 46), (34, 54), (16, 48), (10, 34)],
+               "#1b1f26", extra=' opacity="0.7"')
+    a.b += circle(18, 40, 4, "#5a4632", stroke=INK, sw=1)
+    a.b += circle(46, 24, 4, "#5a4632", stroke=INK, sw=1)
+    a.b += poly([(20, 38), (30, 34), (27, 30), (38, 27), (35, 23), (45, 25), (36, 31), (39, 34), (28, 38),
+                 (31, 41)], HAZARD, stroke=INK, sw=1.2)
+    a.b += path("M21,38 L30,34 L27,30 L38,27 L35,23 L44,25", stroke="#fff3b0", sw=1.2)
+    write("effects/short_circuit.svg", T, T, a, "short_circuit: a shorted system or conduit (DamageStates)")
+
+
+def propellant_spill():
+    # Propellant pooled on the deck by a burst tank: a wet, dark sheen that a fire can burn
+    a = Art()
+    a.b = poly([(10, 30), (16, 16), (32, 12), (48, 18), (55, 32), (50, 48), (34, 54), (18, 50)],
+               "#2a3a2e", extra=' opacity="0.75"')
+    a.b += poly([(18, 30), (24, 22), (36, 20), (44, 28), (40, 40), (28, 44)], "#3e5a44", extra=' opacity="0.8"')
+    a.b += path("M24,28 Q32,24 38,28", stroke="#9fc4a6", sw=1.2, extra=' opacity="0.7"')
+    write("effects/propellant_spill.svg", T, T, a, "propellant_spill: fuel a burst tank left on the deck (DamageStates)")
 
 
 # ---------------------------------------------------------------------------

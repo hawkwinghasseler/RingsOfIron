@@ -39,6 +39,10 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
  * Stores recharge every {@link #CHARGE_TICK}. Routing runs once per second to reflect
  * structural changes, or on the next frame when {@link ShipGridComponent#gridDirty} is set.
  *
+ * A system or conduit tile a short circuit faulted ({@link SubsystemComponent#shorted},
+ * {@link Tile#shorted}) is left out the same way until the crew reset it, or its breaker recloses
+ * after {@link DamageStates#AUTO_RESET}; this system counts that wait (see {@link DamageStates}).
+ *
  * A system an ion hit stunned ({@link SubsystemComponent#stunned}) is not operational until the
  * stun runs out, and a stunned reactor feeds nothing; this system runs the stuns down and
  * reroutes as each one ends.
@@ -90,6 +94,7 @@ public class PowerRoutingSystem extends FixedLogicSystem {
             Entity e = entities.get(i);
             ShipGridComponent grid = gridMapper.get(e);
             if (runDownStuns(registryMapper.get(e), deltaTime)) grid.gridDirty = true;
+            if (DamageStates.runDownShorts(grid, registryMapper.get(e), deltaTime)) grid.gridDirty = true;
             if (reroute || grid.gridDirty) route(e);
             for (PowerCircuit c : grid.circuits) c.recharge(deltaTime);
         }
@@ -112,6 +117,7 @@ public class PowerRoutingSystem extends FixedLogicSystem {
         for (int i = 0; i < entities.size(); i++) {
             Entity e = entities.get(i);
             runDownStuns(registryMapper.get(e), (float) seconds);
+            DamageStates.runDownShorts(gridMapper.get(e), registryMapper.get(e), (float) seconds);
             route(e);
             for (PowerCircuit c : gridMapper.get(e).circuits) c.recharge(seconds);
         }
@@ -179,7 +185,7 @@ public class PowerRoutingSystem extends FixedLogicSystem {
             // Seed from the reactor's own state, never from last tick's isOperational, so a
             // reactor that was off can come back on
             if (sub == null || sub.type != SubsystemComponent.SubsystemType.REACTOR
-                    || !sub.switchedOn || sub.isDisabled() || sub.isStunned()) continue;
+                    || !sub.switchedOn || sub.isDisabled() || sub.isStunned() || sub.shorted) continue;
             reactors.add(sub);
             int first = -1;
             for (int[] t : footprintTiles(grid, sub.footprint)) {
@@ -252,7 +258,7 @@ public class PowerRoutingSystem extends FixedLogicSystem {
                 }
             }
             sub.powered = sub.circuit != null;
-            sub.isOperational = sub.switchedOn && sub.powered && !sub.isDisabled() && !sub.isStunned();
+            sub.isOperational = sub.switchedOn && sub.powered && !sub.isDisabled() && !sub.isStunned() && !sub.shorted;
         }
 
         // Pipes follow the same structural changes
@@ -358,8 +364,8 @@ public class PowerRoutingSystem extends FixedLogicSystem {
         return i;
     }
 
-    /** Floors and conduits carry power until they are destroyed; walls never do. */
+    /** Floors and conduits carry power until they are destroyed or shorted out; walls never do. */
     private static boolean conducts(Tile t) {
-        return t.isFloor() && !t.isWall() && t.getIntegrity() > 0f;
+        return t.isFloor() && !t.isWall() && t.getIntegrity() > 0f && !t.shorted;
     }
 }

@@ -59,6 +59,10 @@ public class CrewDef {
     public float sealTime = 3f;
     /** Seconds to patch a leaking wall or deck plate from the ship's stores. */
     public float patchTime = 6f;
+    /** Seconds to reset a short circuit on a system or conduit. */
+    public float resetTime = 5f;
+    /** Seconds to shut a leaking tank's valve. */
+    public float isolateTime = 4f;
 
     /** Tiles within which hostiles are noticed (also needs line of sight). */
     public float sightRange = 12f;

@@ -111,6 +111,24 @@ Hull, wall and floor tiles, hull pieces and edge walls all take damage to their 
 
 `Tile.isOpen()` is the single test for "crew and fire can be here" (floors and destroyed internal walls), and `Tile.holdsAir()` adds "and not sealed off by a bulkhead". `ShipGridComponent.canPass(x, y, nx, ny)` is the test for walking between two adjacent tiles (both open, no closed edge wall between them) and `canFlow(x, y, nx, ny)` the test for air, smoke and fire (both hold air, no closed edge wall). Hazards, power and crew pathfinding all use these.
 
+## Damage states (round 5)
+GDD section 3's short circuits, and tank bursts. `DamageStates` holds the rules; combat rolls them on each hit (see `documentation/combat-sys/Design.md` 5.8), and the crew answer them (see `documentation/ai-crew/Design.md`).
+
+**Short circuits.**
+- A damaging hit on a **powered** system can short it, with the component's `short_chance` (reactor 0.08, shield emitter 0.06, tanks, cargo and escape pods never, the rest 0.04), scaled down for a hit that takes less than 5% of its health. A hit on a powered conduit tile that leaves it standing shorts it with chance 0.05, scaled down for a hit that takes less than half its condition.
+- A short **trips the circuit** it was on (its store empties at once) and **faults the part**: a shorted system (`SubsystemComponent.shorted`) is not operational and a shorted reactor feeds nothing; a shorted conduit tile (`Tile.shorted`) carries no power. Power routing leaves them out, so consumers drop or reroute.
+- Its sparks light the tile, or a flammable tile beside it that air reaches, with chance 0.3.
+- It stays faulted until the crew **reset** it (`ResetShortTask`), a repair takes the system back to full health, or a yard mends it. Failing all of those, its breaker **recloses by itself** after 45 s (`DamageStates.AUTO_RESET`), so a ship with nobody aboard, or a short nobody can reach, does not stay dark for good. **Chosen while Joe was away.**
+- Like an ion stun, a short is not a ship knocked out: `ShipDisablement` doesn't call a ship with a shorted reactor `NO_POWER`, and First Play's `beaten` waits, while anything aboard is shorted. Guns a short has cut off still count toward a pirate's surrender. The flags are saved; the 45 s wait is counted again after a load.
+
+**Tank bursts.**
+- A hit that leaves a tank with anything in it below its `burst_threshold` (0.25) bursts it with its `burst_chance` (propellant 0.35, oxygen 0.3, nitrogen 0.2). Above the threshold a damaged tank only leaks.
+- A burst destroys the tank and lets everything go at once. Oxygen and nitrogen go into the room its footprint stands in (300 kg of a gas is a spike that can blow a light door); an oxygen burst's sparks light a flammable tile with chance 0.5. Propellant pools on the deck of a pressurised room (at least 30% of standard): 2 kg a m² on the footprint and the room's tiles round it, as `Tile.fuel`, and the rest boils off. The rupture lights one wet tile with chance 0.5; a fire then burns the spill like carpet. In thin air nothing pools.
+- A burst of 500 kg or more is a small blast as well, which combat sets off (combat-sys 5.8).
+- Every short and burst goes on `ShipGridComponent.incidents` (the game's `DamageControl` posts each as a notice for the player's ship) and is counted in `shortCount` and `burstCount` for surveys.
+- Art: `effects/short_circuit` over a shorted conduit and the middle of a shorted system, `effects/propellant_spill` on bare deck holding spilled fuel.
+- Tuning (round 5, the scripted career on seeds 2026, 3, 7, 11 and 42): 0 to 2 shorts a fight, nearly all on the pirate ship, no bursts and no fires from either. A burst needs a tank already wrecked to a quarter, which these fights don't reach.
+
 ## Chassis Blueprints
 `ChassisBlueprint` holds the character map plus everything a character cannot express, all in grid coordinates:
 - `tileSize` and `gridOriginLocal`
@@ -218,7 +236,7 @@ Consumables live in tanks in the ship grid and reach the systems that use them t
 - **Pipes** (`Pipe`) lie across a tile's middle (`ShipGridComponent.pipes`) or along a tile edge (`pipeH` / `pipeV`, indexed like the edge walls), inside any wall, as edge conduits do. Pipes are generic: one run carries every fluid. A pipe across a tile joins the pipes across the four tiles beside it (through a thin wall between them) and the edge pipes on its own tile's edges; an edge pipe joins the edge pipes that meet it at either end and the pipes across the tiles on both sides. A pipe across a tile is cut when the tile is destroyed, an edge pipe when the wall it runs in is.
 - `PipeRouting` floods the pipes into `PipeNetwork`s (on `ShipGridComponent.pipeNetworks`) whenever `PowerRoutingSystem` reroutes, so pipes follow damage as quickly as power. A system is on every network that crosses one of its footprint tiles or runs along their edges, and `SubsystemComponent.pipedTanks` lists every tank on those networks.
 - `TankSupply` reads and draws on them: `available(system, fluid)` is what a system's working piped tanks hold, and `draw` takes from several tanks in proportion to what each holds.
-- A tank damaged below 0.6 health leaks (`TankSupply.leak`, on the life support tick): a destroyed tank loses 2% of its contents a second, a less damaged one in proportion. Oxygen and nitrogen escape into the air of the room the tank stands in (an oxygen leak enriches the room, which feeds fires); propellant is lost overboard. Tanks do not burst.
+- A tank damaged below 0.6 health leaks (`TankSupply.leak`, on the life support tick): a destroyed tank loses 2% of its contents a second, a less damaged one in proportion. Oxygen and nitrogen escape into the air of the room the tank stands in (an oxygen leak enriches the room, which feeds fires); propellant is lost overboard. The crew isolate a leaking tank (shut its valve), which stops the leak unless the tank is wrecked; an isolated tank supplies nothing until a repair to full health opens it again. Below its burst threshold a hit can burst it instead (see Damage states).
 - What the tanks hold weighs on the ship: `TankSupply.addMassTo` adds each tank's contents as a point mass at the middle of its footprint, and the game reweighs the ship whenever its tanks have gained or lost 5 kg.
 - Layouts list pipes as `pipes = [{ x = 3, y = 2 }, { x = 3, y = 2, side = "TOP" }]` (no side: across the tile). They are saved with the grid, and each tank's contents with its `SubsystemComponent`. Station yards refill the tanks for credits (see `documentation/stations-docking/Design.md`).
 
@@ -273,4 +291,4 @@ Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartm
 - **Tanks and piping** (2026-10-19): life support consumables and ship propellant draw from tanks placed in the ship grid, through pipes laid in the tile map. Like conduits, pipes go in tile centers or along tile edges (the `EdgeConduit` model). Tanks run dry, and refilling them costs money at a station. Placement goes in the ship editor and the art in the art pack. Until then life support draws on an endless supply and propellant is `ThrusterComponent.fuel` in physics-exterior.
 
 ## Open Questions
-- **Tank damage.** A damaged tank leaks, but never bursts or explodes, and leaking propellant is simply lost rather than adding to a fire.
+- **Tank damage** (answered in round 5, see Damage states): a tank past a quarter health can burst, and burst propellant feeds a fire. A tank that only leaks still loses its propellant overboard rather than onto the deck.

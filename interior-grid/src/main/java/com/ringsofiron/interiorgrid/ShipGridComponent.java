@@ -92,6 +92,13 @@ public class ShipGridComponent implements Component {
      * wall, deck plate or thin wall in the field (see {@link LeakPatches}). A yard restocks them.
      */
     public int patchKits = LeakPatches.DEFAULT_KITS;
+    /**
+     * Short circuits and tank bursts aboard that nothing has reported yet, oldest first (see
+     * {@link DamageStates}). The game drains them into notices for the player's ship. Not saved.
+     */
+    public final transient Array<DamageStates.Incident> incidents = new Array<>();
+    /** Short circuits and tank bursts aboard since the grid was built or loaded, for surveys. Not saved. */
+    public transient int shortCount, burstCount;
 
     public ShipGridComponent(int width, int height, float tileSize) {
         this(width, height, tileSize, 0f, 0f);

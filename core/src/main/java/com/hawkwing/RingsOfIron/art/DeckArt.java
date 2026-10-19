@@ -9,6 +9,7 @@ import com.hawkwing.RingsOfIron.game.DeckView;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.EdgeConduit;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -415,9 +416,22 @@ public final class DeckArt {
                 // A leaking wall or deck plate the crew patched in the field, until a yard mends it
                 if (t.isPatched()) tile(batch, "effects/hull_patch", x0, y0, s);
                 if (t.bulkheadSealed) tile(batch, "effects/bulkhead_seal", x0, y0, s);
+                // Propellant a burst tank pooled on bare deck, until it burns off
+                if (t.isFloor() && t.covering == FloorCovering.NONE && t.fuel > 0f && !t.isBurning()) {
+                    tile(batch, "effects/propellant_spill", x0, y0, s);
+                }
+                // A shorted conduit, until the crew reset it
+                if (t.shorted) tile(batch, "effects/short_circuit", x0, y0, s);
                 String fire = ArtNames.fire(t.fireSize());
                 if (fire != null) tile(batch, fire, x0, y0, s);
             }
+        }
+        // A shorted system: the fault sits over the middle of its footprint
+        for (MountFootprint m : grid.mounts) {
+            SubsystemComponent sub = m.installed == null ? null : m.installed.getComponent(SubsystemComponent.class);
+            if (sub == null || !sub.shorted) continue;
+            tile(batch, "effects/short_circuit", grid.gridOriginLocal.x + (m.originX + (m.width() - 1) / 2f) * s,
+                    grid.gridOriginLocal.y + (m.originY + (m.height() - 1) / 2f) * s, s);
         }
     }
 

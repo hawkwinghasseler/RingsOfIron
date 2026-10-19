@@ -13,6 +13,7 @@ import com.ringsofiron.combatsys.defs.Fuse;
 import com.ringsofiron.combatsys.defs.SpallDef;
 import com.ringsofiron.combatsys.defs.WarheadDef;
 import com.ringsofiron.combatsys.events.DamageReport;
+import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.GridRayTraversal;
 import com.ringsofiron.interiorgrid.HullPiece;
@@ -34,6 +35,13 @@ import com.ringsofiron.interiorgrid.Tile;
  * divided by {@code max(cos(incidence), 0.2)}. A piece is destroyed exactly when the round still
  * has budget left after it. Open floor, machinery and crew take smaller bites. Energy is only
  * ever moved from the round into the ship or into secondary rays, never created.
+ *
+ * <h2>Shorts and bursts</h2>
+ * Every hit on a system or a powered conduit rolls for a short circuit, and every hit that leaves
+ * a tank below its burst threshold for a burst ({@link DamageStates}). Bursts go off once the
+ * round and its secondaries are done: the tank vents, and a large one sets off a small blast of
+ * its own, which can burst other tanks in turn. A burst's blast is the tank's energy, not the
+ * round's, so it is not counted in {@link Result#absorbed}.
  */
 public class PenetrationResolver {
 
@@ -408,6 +416,7 @@ public class PenetrationResolver {
     }
 
     private void end() {
+        if (grid != null) processBursts();
         grid = null;
         ship = null;
         rng = null;
@@ -742,6 +751,8 @@ public class PenetrationResolver {
             if (was > 0f && tile.getIntegrity() <= 0f) {
                 grid.gridDirty = true;
                 if (report != null) report.structureChanged = true;
+            } else if (DamageStates.maybeShortConduit(grid, x, y, was - tile.getIntegrity(), rng) && report != null) {
+                report.shorts.add(pack(x, y));
             }
         } else {
             damagePiece(tile, take / materials.get(tile.material, tile.weightClass).hitPoints);
@@ -756,6 +767,11 @@ public class PenetrationResolver {
         if (healthLoss <= 0f) return;
         sub.health = Math.max(0f, sub.health - healthLoss);
         if (sub.health < DISABLE_THRESHOLD) sub.isOperational = false;
+        if (DamageStates.rollBurst(sub, healthLoss, rng)) {
+            if (!pendingBursts.contains(sub, true)) pendingBursts.add(sub);
+        } else if (DamageStates.maybeShort(grid, sub, healthLoss, x, y, rng) && report != null) {
+            report.shorts.add(pack(x, y));
+        }
         if (report != null && !report.damagedSubsystems.contains(system, true)) {
             report.damagedSubsystems.add(system);
             report.subsystemTiles.add(pack(x, y));
@@ -801,9 +817,13 @@ public class PenetrationResolver {
      * Air carries the blast, so damage scales with pressure at the detonation tile.
      */
     private float blast(int cx, int cy, WarheadDef warhead) {
+        return blast(cx, cy, warhead.blastRadiusTiles, warhead.blastDamage);
+    }
+
+    /** {@link #blast(int, int, WarheadDef)} with {@code blastDamage} J at the middle, out to {@code radius} tiles. */
+    private float blast(int cx, int cy, int radius, float blastDamage) {
         float pressure = grid.pressureRatioAt(cx, cy);
-        int radius = warhead.blastRadiusTiles;
-        if (pressure <= 0f || radius <= 0 || warhead.blastDamage <= 0f || !grid.inBounds(cx, cy)) return 0f;
+        if (pressure <= 0f || radius <= 0 || blastDamage <= 0f || !grid.inBounds(cx, cy)) return 0f;
 
         boolean[] seen = new boolean[grid.width * grid.height];
         frontier.clear();
@@ -811,7 +831,7 @@ public class PenetrationResolver {
         seen[pack(cx, cy)] = true;
         float total = 0f;
         for (int d = 0; d <= radius && frontier.size > 0; d++) {
-            float energy = warhead.blastDamage * pressure * (1f - d / (radius + 1f));
+            float energy = blastDamage * pressure * (1f - d / (radius + 1f));
             nextFrontier.clear();
             for (int i = 0; i < frontier.size; i++) {
                 int idx = frontier.get(i);
@@ -870,6 +890,27 @@ public class PenetrationResolver {
         }
         tryIgnite(tile, x, y, DamageType.EXPLOSIVE, energy / FLOOR_RESISTANCE);
         return spent;
+    }
+
+    /** Tanks this call's hits burst, set off once the rays are done. */
+    private final Array<SubsystemComponent> pendingBursts = new Array<>();
+    /** Most bursts one hit can chain into. */
+    private static final int MAX_CHAINED_BURSTS = 8;
+
+    /** Bursts every tank the hits left bursting; a large burst's blast can burst others. */
+    private void processBursts() {
+        for (int n = 0; pendingBursts.size > 0 && n < MAX_CHAINED_BURSTS; n++) {
+            SubsystemComponent tank = pendingBursts.removeIndex(0);
+            if (tank.contents <= 0) continue;
+            DamageStates.Incident burst = DamageStates.burst(grid, tank, rng);
+            if (report != null) {
+                report.bursts.add(pack(burst.x, burst.y));
+                if (burst.fire) report.fires.add(pack(burst.x, burst.y));
+                report.structureChanged = true;
+            }
+            if (burst.blastEnergy > 0f) blast(burst.x, burst.y, DamageStates.BLAST_RADIUS, burst.blastEnergy);
+        }
+        pendingBursts.clear();
     }
 
     private void queueSecondary(float x, float y, float dirX, float dirY, float budget, HitCause cause) {

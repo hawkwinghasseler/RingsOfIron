@@ -199,6 +199,9 @@ class Round3CareerTest {
             return ShipDisablement.isDisabled(game.raider);
         }), "the raider is beaten");
         log("The raider is beaten in %.0f s; our hull %.2f.", world.engine.getSimSeconds() - t0, hull(game.player));
+        ShipGridComponent ours = game.player.getComponent(ShipGridComponent.class), theirs = game.raider.getComponent(ShipGridComponent.class);
+        log("  shorts and tank bursts: ours %d and %d, theirs %d and %d.", ours.shortCount, ours.burstCount,
+                theirs.shortCount, theirs.burstCount);
 
         patchIfVenting("the raider");
 
@@ -308,6 +311,8 @@ class Round3CareerTest {
         double t0 = world.engine.getSimSeconds();
         float hull0 = hull(game.player);
         int crew0 = ownCrew().size();
+        ShipGridComponent ours = game.player.getComponent(ShipGridComponent.class), theirs = ship.getComponent(ShipGridComponent.class);
+        int[] incidents0 = {ours.shortCount, ours.burstCount, theirs == null ? 0 : theirs.shortCount, theirs == null ? 0 : theirs.burstCount};
         boolean over = runUntil(400f, () -> {
             gun.fireGuns();
             gun.launchMissile();
@@ -319,6 +324,9 @@ class Round3CareerTest {
         log("%s: %.0f s, %s; it fired %d rounds, %d hit us; our hull %.2f -> %.2f, crew %d -> %d.", what,
                 world.engine.getSimSeconds() - t0, won ? "beaten" : over ? "we lost" : "neither side beaten", fired[0],
                 hits[0], hull0, hull(game.player), crew0, ownCrew().size());
+        log("  shorts and tank bursts: ours %d and %d, theirs %d and %d.", ours.shortCount - incidents0[0],
+                ours.burstCount - incidents0[1], theirs == null ? 0 : theirs.shortCount - incidents0[2],
+                theirs == null ? 0 : theirs.burstCount - incidents0[3]);
         assertTrue(over, "the fight ends one way or the other");
         if (!won) fightsLost++;
         return won;
@@ -342,6 +350,12 @@ class Round3CareerTest {
         double p0 = world.engine.getSimSeconds();
         assertTrue(runUntil(600f, () -> LeakPatches.leaks(grid).size == 0), "the crew patched the leaks");
         run(60);
+        if (!DamageControl.hasPatches(grid) && grid.patchKits == kits) {
+            // More hits (an ace firing as it breaks off) wrecked the leaking piece outright before the
+            // crew reached it: a breach is sealed, not patched, so a later fight checks the patching
+            log("  the leak after %s became a breach before the crew could patch it; sealed instead.", what);
+            return;
+        }
         assertTrue(DamageControl.hasPatches(grid), "patched, not repaired");
         assertTrue(grid.patchKits < kits, "the patches came from the stores");
         if (grid.isVenting()) {

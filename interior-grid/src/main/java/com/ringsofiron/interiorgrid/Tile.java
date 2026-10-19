@@ -72,6 +72,13 @@ public class Tile {
      * pieces share it. See {@link #isPatched(float, float)}.
      */
     public float patchedAt = 0f;
+    /**
+     * A power conduit tile a short circuit has faulted (see {@link DamageStates}): it carries no
+     * power until the crew reset it or a yard repairs it. Saved.
+     */
+    public boolean shorted = false;
+    /** Seconds it has been shorted (see {@link DamageStates#AUTO_RESET}). Not saved: a loaded short starts its wait again. */
+    public float shortedFor = 0f;
     /** Whether this tile is connected to a powered reactor via power conduits. */
     public boolean isPowered = false;
 

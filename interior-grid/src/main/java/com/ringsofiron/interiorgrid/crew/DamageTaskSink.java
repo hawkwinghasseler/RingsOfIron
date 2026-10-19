@@ -5,7 +5,8 @@ import com.badlogic.ashley.core.Entity;
 /**
  * Accepts jobs for a ship's crew. Implemented by {@code ai-crew}, which puts them on the
  * ship's task board. Combat posts {@link SealBreachTask}, {@link RepairTask},
- * {@link ExtinguishTask} and {@link RescueTask} as it damages a ship; the hazard
+ * {@link ExtinguishTask} and {@link RescueTask} as it damages a ship (and {@link ResetShortTask} and
+ * {@link IsolateTankTask} come from the crew's own scan); the hazard
  * simulation can post {@link ExtinguishTask} as fire spreads. The crew post {@link PatchLeakTask}s themselves
  * from the leaks they find.
  *

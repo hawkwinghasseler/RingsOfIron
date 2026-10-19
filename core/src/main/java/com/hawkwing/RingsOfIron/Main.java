@@ -649,6 +649,7 @@ public class Main extends ApplicationAdapter {
 
     private Color subsystemColor(SubsystemComponent sub) {
         if (sub.isDisabled()) return Color.DARK_GRAY;
+        if (sub.shorted) return Color.ORANGE;
         if (!sub.switchedOn) return Color.BLUE;
         if (sub.isOperational) return Color.YELLOW;
         return Color.RED;

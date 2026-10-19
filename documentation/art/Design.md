@@ -189,7 +189,7 @@ In the game every file is a region of one texture atlas, named by its folder and
 - **Conduits** autotile: draw `conduit` on the tile, then `conduit_arm` once for each neighboring conduit tile, turned toward it (0 up, 1 left, 2 down, 3 right).
 - **Components** cover their whole footprint and are drawn over the floor. Helm, weapons and cargo art include the deck; the others are machinery housings.
 - **Docking ports**: `docking_port_<size>` has the door sealed, `_open` open. The latch collar is not on the grid: `docking_collar_<size>` sits half a tile (32 units) outside the outer edge, centered on the port.
-- **Effects** are overlays: fire by `Tile.FireSize`, `scorch` once a fire burns out, `breach` on a hull tile at integrity 0, `damage_light` below half integrity (where leaks start) and `damage_heavy` below a quarter, `bulkhead_seal` on a sealed tile, `hull_patch` over a leaking tile the crew patched in the field (`Tile.isPatched`).
+- **Effects** are overlays: fire by `Tile.FireSize`, `scorch` once a fire burns out, `breach` on a hull tile at integrity 0, `damage_light` below half integrity (where leaks start) and `damage_heavy` below a quarter, `bulkhead_seal` on a sealed tile, `hull_patch` over a leaking tile the crew patched in the field (`Tile.isPatched`), `short_circuit` over a shorted conduit tile and the middle of a shorted system's footprint (`Tile.shorted`, `SubsystemComponent.shorted`), `propellant_spill` on bare deck holding fuel a burst tank pooled there.
 - **Cargo stacks**: `cargo_stack_1` to `_3` are one bay tile's stack at a third, two thirds and full of `CargoHoldComponent.STACK_HEIGHT`.
 
 ## Colliders and interaction points

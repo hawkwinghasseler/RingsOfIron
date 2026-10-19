@@ -172,6 +172,8 @@ public class StationYard extends EntitySystem {
                         if (piece != null) piece.patchedAt = 0f;
                         else tile.patchedAt = 0f;
                     }
+                    // A conduit mended whole carries power again, short or no short
+                    if (tile != null && after >= 1f - EPS) tile.shorted = false;
                     break;
                 case WALL:
                     wall.integrity = after;
@@ -179,6 +181,11 @@ public class StationYard extends EntitySystem {
                     break;
                 case SYSTEM:
                     system.health = after;
+                    // Mended whole: a short is cleared and an isolated tank opened again
+                    if (after >= 1f - EPS) {
+                        system.shorted = false;
+                        system.isolated = false;
+                    }
                     break;
                 default:
                     // A collar is whole or torn: it goes back on only when the work is done

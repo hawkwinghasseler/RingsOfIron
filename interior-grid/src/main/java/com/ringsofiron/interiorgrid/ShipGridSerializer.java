@@ -43,6 +43,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 json.writeValue("integrity", t.integrity);
                 json.writeValue("sealed", t.bulkheadSealed);
                 if (t.patchedAt > 0f) json.writeValue("patch", t.patchedAt);
+                if (t.shorted) json.writeValue("short", true);
                 json.writeObjectEnd();
             }
         }
@@ -179,6 +180,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             t.integrity = v.getFloat("integrity");
             t.bulkheadSealed = v.getBoolean("sealed");
             t.patchedAt = v.getFloat("patch", 0f);
+            t.shorted = v.getBoolean("short", false);
         }
 
         readEdges(data.get("edgeH"), grid.edgeH);
