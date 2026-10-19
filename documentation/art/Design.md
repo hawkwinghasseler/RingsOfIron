@@ -29,6 +29,8 @@ Every SVG has up to three top-level groups:
 
 A lamp or screen keeps its unlit glass in the base layer, so with the emissive layer off it reads as dark, not missing. The game can draw the emissive layer additively, use it for a glow or bloom pass, or skip it to show a system without power.
 
+Groups inside the emissive layer say how their glow lights the scene, read by `tools/art/extract_lights.py`: `data-light="glow"` only glows (status lamps, indicator dots, conduits), `point` lights the room around it (reactor cores, shield domes, helm and weapons screens, life support displays), and `cone` lights one side only: the wall light is a 90° half-angle cone, a broad diffuse wash over the half of the room in front of its wall. `data-reach` (tiles), `data-intensity` (0 to 1), `data-direction` and `data-cone` (degrees, 0 = +x, 90 = up the canvas) tune it. An inner group's setting wins over an outer one, so a status lamp inside a lit room stays a glow.
+
 ## Powered and unpowered
 Every powered object has an `_unpowered` variant: the same art with the emissive layer left out. That covers reactors, shield emitters, turret mounts, helm and weapons consoles, life support, airlocks, docking ports and collars, conduits, bulkhead doors, powered decor (terminal, wall light, bulkhead panel, breaker, med bed) and energy weapons. Cargo bays are passive and have no variant.
 

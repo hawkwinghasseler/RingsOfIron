@@ -155,10 +155,14 @@
     <rect x="166.8" y="44" width="8.2" height="52" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
   </g>
   <g id="emissive">
+    <g data-light="glow">
     <circle cx="180" cy="22" r="6" fill="#ff4d4d" opacity="0.18"/>
     <circle cx="180" cy="22" r="2" fill="#ff4d4d"/>
+    </g>
+    <g data-light="glow">
     <circle cx="12" cy="426" r="6" fill="#4dff88" opacity="0.18"/>
     <circle cx="12" cy="426" r="2" fill="#4dff88"/>
+    </g>
     <circle cx="19" cy="247" r="4" fill="#6aa8ff" opacity="0.35"/>
     <circle cx="173" cy="247" r="4" fill="#6aa8ff" opacity="0.35"/>
     <circle cx="19" cy="281" r="4" fill="#6aa8ff" opacity="0.35"/>

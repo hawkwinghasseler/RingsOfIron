@@ -917,15 +917,25 @@
     <circle cx="-756" cy="500" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
   </g>
   <g id="emissive">
+    <g data-light="glow">
     <circle cx="436" cy="-52" r="7.2" fill="#ff9a3c" opacity="0.18"/>
     <circle cx="436" cy="-52" r="2.4" fill="#ff9a3c"/>
+    </g>
+    <g data-light="glow">
     <circle cx="756" cy="-500" r="9.6" fill="#ff4d4d" opacity="0.18"/>
     <circle cx="756" cy="-500" r="3.2" fill="#ff4d4d"/>
+    </g>
+    <g data-light="glow">
     <circle cx="756" cy="500" r="9.6" fill="#4dff88" opacity="0.18"/>
     <circle cx="756" cy="500" r="3.2" fill="#4dff88"/>
+    </g>
+    <g data-light="glow">
     <circle cx="-756" cy="-500" r="9.6" fill="#ffffff" opacity="0.18"/>
     <circle cx="-756" cy="-500" r="3.2" fill="#ffffff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="-756" cy="500" r="9.6" fill="#ffffff" opacity="0.18"/>
     <circle cx="-756" cy="500" r="3.2" fill="#ffffff"/>
+    </g>
   </g>
 </svg>

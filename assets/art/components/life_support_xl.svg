@@ -114,30 +114,37 @@
     <rect x="260" y="720" width="26" height="22" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
   </g>
   <g id="emissive">
+    <g data-light="point" data-reach="3.5" data-intensity="0.5">
     <circle cx="40" cy="62" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="88" cy="62" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="136" cy="62" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="184" cy="62" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="232" cy="62" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="280" cy="62" r="14" fill="#5ee08a" opacity="0.28"/>
+    <g data-light="glow">
     <circle cx="294" cy="28" r="7.2" fill="#5ee08a" opacity="0.18"/>
     <circle cx="294" cy="28" r="2.4" fill="#5ee08a"/>
+    </g>
     <circle cx="40" cy="172" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="88" cy="172" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="136" cy="172" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="184" cy="172" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="232" cy="172" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="280" cy="172" r="14" fill="#5ee08a" opacity="0.28"/>
+    <g data-light="glow">
     <circle cx="294" cy="138" r="7.2" fill="#5ee08a" opacity="0.18"/>
     <circle cx="294" cy="138" r="2.4" fill="#5ee08a"/>
+    </g>
     <circle cx="40" cy="282" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="88" cy="282" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="136" cy="282" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="184" cy="282" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="232" cy="282" r="14" fill="#5ee08a" opacity="0.28"/>
     <circle cx="280" cy="282" r="14" fill="#5ee08a" opacity="0.28"/>
+    <g data-light="glow">
     <circle cx="294" cy="248" r="7.2" fill="#5ee08a" opacity="0.18"/>
     <circle cx="294" cy="248" r="2.4" fill="#5ee08a"/>
+    </g>
     <rect x="35.5" y="628.5" width="109" height="13.5" rx="1" fill="#5ee08a" opacity="0.25"/>
     <line x1="37" y1="630.5" x2="84.7" y2="630.5" stroke="#5ee08a" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
     <line x1="37" y1="634.5" x2="99.84" y2="634.5" stroke="#5ee08a" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
@@ -186,5 +193,6 @@
     <line x1="263" y1="727.5" x2="274.86" y2="727.5" stroke="#5ee08a" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
     <line x1="263" y1="731.5" x2="277.71" y2="731.5" stroke="#5ee08a" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
     <line x1="263" y1="735.5" x2="280.57" y2="735.5" stroke="#5ee08a" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    </g>
   </g>
 </svg>
