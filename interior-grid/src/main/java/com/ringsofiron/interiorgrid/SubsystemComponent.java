@@ -21,7 +21,7 @@ public class SubsystemComponent implements Component {
         CARGO(MountFootprint.MountKind.AUXILIARY),          // Passive storage - no power requirement.
         AIRLOCK(MountFootprint.MountKind.AUXILIARY),        // Can be opened to space. Requires power to cycle.
         TANK(MountFootprint.MountKind.AUXILIARY),           // Holds one fluid for the systems piped to it. Passive.
-        ENGINE(MountFootprint.MountKind.AUXILIARY),         // Feeds propellant from piped tanks to the drive and RCS. Requires power.
+        ENGINE(MountFootprint.MountKind.AUXILIARY),         // Main engine, burning propellant from piped tanks; its nozzle faces +y at rotation 0 (-x at 1). Requires power.
         DOCKING_PORT(MountFootprint.MountKind.PORT);        // Airlock in the hull edge with a latch collar. Arming needs power.
 
         /** The kind of mount this system installs into. */

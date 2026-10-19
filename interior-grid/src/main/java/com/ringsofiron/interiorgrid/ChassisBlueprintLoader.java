@@ -20,7 +20,7 @@ import com.badlogic.gdx.utils.Array;
  * cannot be told apart in the map; list those in {@link ChassisBlueprint#mounts}.
  *   Primary (square):        'R' reactor, 'S' shield emitter, 'T' turret mount
  *   Auxiliary (rectangular): 'L' life support, 'H' helm, 'W' weapons console,
- *                            'C' cargo, 'A' airlock
+ *                            'C' cargo, 'A' airlock, 'E' engine
  *   Docking port:            'D', drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium,
  *                            7 x 3 Large. It faces the side where nothing but space lies
  *                            beyond it; a port that could face either way goes in

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <title>edge_wall_composite_armor_medium joint, centered on a vertex, walls toward e, w</title>
+  <g id="base">
+    <rect x="3.5" y="3.5" width="9" height="9" fill="#53605c"/>
+    <rect x="0" y="3.5" width="3.5" height="9" fill="#53605c"/>
+    <rect x="12.5" y="3.5" width="3.5" height="9" fill="#53605c"/>
+    <line x1="3.5" y1="3.5" x2="12.5" y2="3.5" stroke="#10141a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="3.5" y1="12.5" x2="12.5" y2="12.5" stroke="#10141a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="0" y1="3.5" x2="3.5" y2="3.5" stroke="#10141a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="0" y1="12.5" x2="3.5" y2="12.5" stroke="#10141a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="12.5" y1="3.5" x2="16" y2="3.5" stroke="#10141a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="12.5" y1="12.5" x2="16" y2="12.5" stroke="#10141a" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -2,7 +2,8 @@
 #   '#' hull (medium)  '1'/'2'/'3' hull light/medium/heavy  'I' internal wall
 #   '.' floor  '+' power conduit  ' ' void
 #   R reactor, S shield, T turret (square mounts); L life support, H helm,
-#   W weapons console, C cargo, A airlock, E engine, P propellant tank,
+#   W weapons console, C cargo, A airlock, E engine (an engine's nozzle faces aft (-x)
+#   when it lies along x, and +y when it stands along y), P propellant tank,
 #   O oxygen tank, N nitrogen tank (rectangular slots)
 #   D docking port, drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium, 7 x 3 Large.
 #     The end tiles are frame, the rest the opening, with the port door on its
@@ -30,26 +31,28 @@ origin_y = -3.0
 # every hardpoint.
 # Cargo: a 3 x 2 bay aft of the crew spaces (x 1-3, y 3-4, listed under mounts), a
 # walkway at x 4, and two small bays up front. 10 tiles, 25 m3 at 2.5 m3 a tile.
-# Engineering below the hold: the engine against the aft hull, fed by two propellant
-# tanks (listed, since two side by side can't be told apart in the map), and the
-# oxygen and nitrogen tanks either side of life support, each run piped together.
+# Engineering below the hold: an S engine lying along the aft hull, nozzle aft, with a
+# propellant tank above it and one beside it (all listed under mounts, since the map
+# can't show which way they lie), and the oxygen and nitrogen tanks either side of
+# life support, each run piped together.
 # A Small passive docking port on the port (+y) side opens onto the walkway beside
 # the hold.
 rows = [
   "###DDD########",
   "#....HHTCCTRR#",
   "#....WW....RR#",
-  "#E..OLN++++.T#",
-  "#E..OLNT..TCC#",
+  "#...OLN++++.T#",
+  "#...OLNT..TCC#",
   "##############",
 ]
 mounts = [
   { type = "CARGO", size = "M", x = 1, y = 3, rotation = 1 },
-  { component = "tank", size = "S", x = 2, y = 1 },
+  { component = "engine", size = "S", x = 1, y = 1, rotation = 1 },
+  { component = "tank", size = "S", x = 1, y = 2, rotation = 1 },
   { component = "tank", size = "S", x = 3, y = 1 },
 ]
 pipes = [
-  { x = 1, y = 2 }, { x = 2, y = 2 }, { x = 3, y = 2 },
+  { x = 2, y = 1 }, { x = 3, y = 1 }, { x = 2, y = 2 },
   { x = 4, y = 1 }, { x = 5, y = 1 }, { x = 6, y = 1 },
 ]
 # Carpet through the crew spaces, so a fire here has something to burn
@@ -64,7 +67,7 @@ tile_size = 1.0
 origin_x = -10.0
 origin_y = -6.5
 # Two 12 x 5 cargo bays either side of a conduit spine: 120 tiles, 300 m3 of cargo.
-# Engineering aft (left): the engine fed by two propellant tanks along the bottom,
+# Engineering aft (left): an S engine along the aft hull, nozzle aft, fed by two propellant tanks,
 # the oxygen and nitrogen tanks piped to life support; the helm forward, and a Medium
 # passive docking port in the bow at the end of the spine.
 rows = [
@@ -78,16 +81,17 @@ rows = [
   "#L..CCCCCCCCCCCC..DD",
   "#ON.CCCCCCCCCCCC..DD",
   "#ON.CCCCCCCCCCCC...#",
-  "#E..CCCCCCCCCCCC...#",
-  "#E..CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
+  "#...CCCCCCCCCCCC...#",
   "####################",
 ]
 mounts = [
-  { component = "tank", size = "S", x = 2, y = 1 },
+  { component = "engine", size = "S", x = 1, y = 1, rotation = 1 },
+  { component = "tank", size = "S", x = 1, y = 2, rotation = 1 },
   { component = "tank", size = "S", x = 3, y = 1 },
 ]
 pipes = [
-  { x = 1, y = 1 }, { x = 2, y = 1 }, { x = 3, y = 1 },
+  { x = 2, y = 1 }, { x = 3, y = 1 }, { x = 2, y = 2 },
   { x = 1, y = 4 }, { x = 2, y = 4 }, { x = 1, y = 5 },
 ]
 lights = [

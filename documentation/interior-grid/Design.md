@@ -126,7 +126,7 @@ Character map:
 | `+` | Power conduit (steel floor) |
 | ` ` | Void |
 | `R` `S` `T` | Primary systems: reactor, shield emitter, turret mount |
-| `L` `H` `W` `C` `A` | Auxiliary systems: life support, helm, weapons console, cargo, airlock |
+| `L` `H` `W` `C` `A` `E` | Auxiliary systems: life support, helm, weapons console, cargo, airlock, engine |
 | `D` | Docking port, drawn over the hull edge (3×1 Small, 5×2 Medium, 7×3 Large) |
 
 These are the built-in characters. The characters a map can use are really **tile types** (`[tile.*]` in `assets/data/tiles.toml`) and **ship components** (`[component.*]` in `assets/data/components.toml`), held in a `ShipPartCatalog`: a tile type names a base (void, floor, conduit, hull or internal wall), weight class, material and covering; a component names a subsystem behavior, its sizes and settings (reactor output, life support throughput), which each installed `SubsystemComponent` keeps. The data files restate the built-ins, and new ones are made there or in the ship editor (see `documentation/ship-editor/Design.md`). A character that is neither is an error.

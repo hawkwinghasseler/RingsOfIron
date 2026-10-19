@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>composite_armor_medium, joined on n</title>
+  <g id="base">
+    <rect x="0" y="0" width="64" height="64" fill="#323d3b"/>
+    <clipPath id="cer_composite_armor_medium_n_0_0_64_64"><rect x="0" y="0" width="64" height="64"/></clipPath>
+    <g clip-path="url(#cer_composite_armor_medium_n_0_0_64_64)">
+    <polygon points="3.5,1 12.5,1 15,3.5 15,12.5 12.5,15 3.5,15 1,12.5 1,3.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.75"/>
+    <path d="M2,10.5 L2,4.5 L4.5,2 L11.5,2" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M14,4.5 L14,11.5 L11.5,14 L4.5,14" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="19.5,1 28.5,1 31,3.5 31,12.5 28.5,15 19.5,15 17,12.5 17,3.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.9"/>
+    <path d="M18,10.5 L18,4.5 L20.5,2 L27.5,2" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M30,4.5 L30,11.5 L27.5,14 L20.5,14" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="35.5,1 44.5,1 47,3.5 47,12.5 44.5,15 35.5,15 33,12.5 33,3.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.8"/>
+    <path d="M34,10.5 L34,4.5 L36.5,2 L43.5,2" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M46,4.5 L46,11.5 L43.5,14 L36.5,14" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="51.5,1 60.5,1 63,3.5 63,12.5 60.5,15 51.5,15 49,12.5 49,3.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.95"/>
+    <path d="M50,10.5 L50,4.5 L52.5,2 L59.5,2" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M62,4.5 L62,11.5 L59.5,14 L52.5,14" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="3.5,17 12.5,17 15,19.5 15,28.5 12.5,31 3.5,31 1,28.5 1,19.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.85"/>
+    <path d="M2,26.5 L2,20.5 L4.5,18 L11.5,18" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M14,20.5 L14,27.5 L11.5,30 L4.5,30" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="19.5,17 28.5,17 31,19.5 31,28.5 28.5,31 19.5,31 17,28.5 17,19.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.75"/>
+    <path d="M18,26.5 L18,20.5 L20.5,18 L27.5,18" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M30,20.5 L30,27.5 L27.5,30 L20.5,30" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="35.5,17 44.5,17 47,19.5 47,28.5 44.5,31 35.5,31 33,28.5 33,19.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.9"/>
+    <path d="M34,26.5 L34,20.5 L36.5,18 L43.5,18" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M46,20.5 L46,27.5 L43.5,30 L36.5,30" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="51.5,17 60.5,17 63,19.5 63,28.5 60.5,31 51.5,31 49,28.5 49,19.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.8"/>
+    <path d="M50,26.5 L50,20.5 L52.5,18 L59.5,18" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M62,20.5 L62,27.5 L59.5,30 L52.5,30" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="3.5,33 12.5,33 15,35.5 15,44.5 12.5,47 3.5,47 1,44.5 1,35.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.95"/>
+    <path d="M2,42.5 L2,36.5 L4.5,34 L11.5,34" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M14,36.5 L14,43.5 L11.5,46 L4.5,46" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="19.5,33 28.5,33 31,35.5 31,44.5 28.5,47 19.5,47 17,44.5 17,35.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.85"/>
+    <path d="M18,42.5 L18,36.5 L20.5,34 L27.5,34" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M30,36.5 L30,43.5 L27.5,46 L20.5,46" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="35.5,33 44.5,33 47,35.5 47,44.5 44.5,47 35.5,47 33,44.5 33,35.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.75"/>
+    <path d="M34,42.5 L34,36.5 L36.5,34 L43.5,34" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M46,36.5 L46,43.5 L43.5,46 L36.5,46" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="51.5,33 60.5,33 63,35.5 63,44.5 60.5,47 51.5,47 49,44.5 49,35.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.9"/>
+    <path d="M50,42.5 L50,36.5 L52.5,34 L59.5,34" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M62,36.5 L62,43.5 L59.5,46 L52.5,46" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="3.5,49 12.5,49 15,51.5 15,60.5 12.5,63 3.5,63 1,60.5 1,51.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.8"/>
+    <path d="M2,58.5 L2,52.5 L4.5,50 L11.5,50" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M14,52.5 L14,59.5 L11.5,62 L4.5,62" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="19.5,49 28.5,49 31,51.5 31,60.5 28.5,63 19.5,63 17,60.5 17,51.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.95"/>
+    <path d="M18,58.5 L18,52.5 L20.5,50 L27.5,50" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M30,52.5 L30,59.5 L27.5,62 L20.5,62" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="35.5,49 44.5,49 47,51.5 47,60.5 44.5,63 35.5,63 33,60.5 33,51.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.85"/>
+    <path d="M34,58.5 L34,52.5 L36.5,50 L43.5,50" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M46,52.5 L46,59.5 L43.5,62 L36.5,62" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    <polygon points="51.5,49 60.5,49 63,51.5 63,60.5 60.5,63 51.5,63 49,60.5 49,51.5" fill="#53605c" stroke="#10141a" stroke-width="0.8" stroke-linejoin="round" opacity="0.75"/>
+    <path d="M50,58.5 L50,52.5 L52.5,50 L59.5,50" fill="none" stroke="#7b8984" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+    <path d="M62,52.5 L62,59.5 L59.5,62 L52.5,62" fill="none" stroke="#10141a" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>
+    </g>
+    <rect x="58" y="0" width="6" height="64" fill="#323d3b"/>
+    <rect x="58" y="0" width="6" height="64" fill="#000000" opacity="0.22"/>
+    <rect x="0" y="58" width="64" height="6" fill="#323d3b"/>
+    <rect x="0" y="58" width="64" height="6" fill="#000000" opacity="0.22"/>
+    <rect x="0" y="0" width="6" height="64" fill="#323d3b"/>
+    <rect x="0" y="0" width="6" height="64" fill="#ffffff" opacity="0.12"/>
+    <line x1="58" y1="0" x2="58" y2="64" stroke="#10141a" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="63" y1="0" x2="63" y2="64" stroke="#10141a" stroke-width="2" stroke-linecap="round"/>
+    <line x1="0" y1="58" x2="64" y2="58" stroke="#10141a" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="0" y1="63" x2="64" y2="63" stroke="#10141a" stroke-width="2" stroke-linecap="round"/>
+    <line x1="6" y1="0" x2="6" y2="64" stroke="#10141a" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="1" y1="0" x2="1" y2="64" stroke="#10141a" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>

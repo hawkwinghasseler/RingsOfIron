@@ -60,17 +60,17 @@ symbol = "A"
 behavior = "AIRLOCK"
 color = "#50c0c0"
 
+[component.engine]
+name = "Engine"
+symbol = "E"
+behavior = "ENGINE"
+color = "#6aa8e8"
+
 [component.docking_port]
 name = "Docking port"
 symbol = "D"
 behavior = "DOCKING_PORT"
 color = "#e0e0e0"
-
-[component.engine]
-name = "Engine"
-symbol = "E"
-behavior = "ENGINE"
-color = "#e0a050"
 
 [component.tank]
 name = "Propellant tank"

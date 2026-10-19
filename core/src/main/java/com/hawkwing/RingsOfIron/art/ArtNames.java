@@ -2,12 +2,15 @@ package com.hawkwing.RingsOfIron.art;
 
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.HullPiece;
+import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.WeightClass;
 
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * The region names of the art for game state, following the naming in documentation/art/Design.md:
@@ -85,13 +88,22 @@ public final class ArtNames {
     }
 
     /**
-     * The tile type id a wall tile's art goes by: {@code internal_wall}, or {@code hull_<weight>}.
-     * Null for a tile that is not a wall. Walls join neighbors with the same id.
+     * The file prefix of a wall material's art: hull steel is the plain {@code hull} art, any
+     * other material its own id ({@code composite_armor}).
+     */
+    public static String materialPrefix(String material) {
+        return material == null || material.equals(MaterialTable.DEFAULT_MATERIAL) ? "hull" : material;
+    }
+
+    /**
+     * The art family a wall tile goes by: {@code internal_wall}, or {@code <material>_<weight>}
+     * ({@code hull_heavy}, {@code composite_armor_light}). Null for a tile that is not a wall.
+     * Walls join neighbors with the same id.
      */
     public static String wallId(Tile t) {
         if (t == null || !t.isWall()) return null;
         if (t.wallType == Tile.WallType.INTERNAL) return "internal_wall";
-        return "hull_" + weight(t.weightClass);
+        return materialPrefix(t.material) + "_" + weight(t.weightClass);
     }
 
     /** A full-tile wall joined to the neighbors in {@code mask}. */
@@ -99,35 +111,71 @@ public final class ArtNames {
         return "walls/" + wallId + "_" + sides(mask);
     }
 
-    /** A wedge hull piece's art. See {@link #wedge(WeightClass, int, int)}. */
-    public static String wedge(HullPiece p) {
-        return wedge(p.weightClass, p.baseWidth, p.baseHeight);
+    /** A wall tile's art, best first: its material's, then hull steel's of the same weight. */
+    public static String[] wall(Tile t, int mask) {
+        String id = wallId(t);
+        if (t.wallType == Tile.WallType.INTERNAL) return new String[]{wall(id, mask)};
+        return distinct(wall(id, mask), wall("hull_" + weight(t.weightClass), mask));
+    }
+
+    /** A wedge hull piece's art, best first. See {@link #wedge(String, WeightClass, int, int)}. */
+    public static String[] wedge(HullPiece p) {
+        return wedge(p.material, p.weightClass, p.baseWidth, p.baseHeight);
     }
 
     /**
-     * The art for a wedge of that unrotated size. The art is drawn tall, so a wedge wider than
-     * it is tall uses the tall art mirrored; see {@link #wedgeMirrored}.
+     * The art for a wedge of that unrotated size, best first: its material's wedge of exactly
+     * that size, then the tall one ({@code 1x2} for a {@code 2x1}), then hull steel's. Tall art
+     * stands in for a wide wedge mirrored; see {@link #wedgeMirrored}.
      */
-    public static String wedge(WeightClass w, int baseWidth, int baseHeight) {
-        return "walls/hull_" + weight(w) + "_wedge_" + Math.min(baseWidth, baseHeight) + "x" + Math.max(baseWidth, baseHeight);
+    public static String[] wedge(String material, WeightClass w, int baseWidth, int baseHeight) {
+        String exact = "_wedge_" + baseWidth + "x" + baseHeight;
+        String tall = "_wedge_" + Math.min(baseWidth, baseHeight) + "x" + Math.max(baseWidth, baseHeight);
+        String own = "walls/" + materialPrefix(material) + "_" + weight(w), steel = "walls/hull_" + weight(w);
+        return distinct(own + exact, own + tall, steel + exact, steel + tall);
     }
 
     /**
-     * True for a wedge wider than it is tall. Its triangle is the tall one reflected across its
-     * diagonal: the tall art mirrored left to right and turned a quarter turn clockwise.
+     * True when {@code region}, the wedge art found for a wedge of that size, is tall art standing
+     * in for a wide wedge. Its triangle is the tall one reflected across its diagonal: the tall art
+     * mirrored left to right and turned a quarter turn clockwise.
      */
-    public static boolean wedgeMirrored(int baseWidth, int baseHeight) {
-        return baseWidth > baseHeight;
+    public static boolean wedgeMirrored(String region, int baseWidth, int baseHeight) {
+        return baseWidth > baseHeight && !region.endsWith("_wedge_" + baseWidth + "x" + baseHeight);
     }
 
-    /** A thin wall along one tile edge. */
+    /** A thin hull steel wall along one tile edge. */
     public static String edgeWall(WeightClass w, boolean horizontal) {
         return "edges/edge_wall_" + weight(w) + (horizontal ? "_h" : "_v");
     }
 
-    /** The joint at a grid vertex where the edges in {@code mask} carry a wall; null for none. */
+    /** A thin wall along one tile edge, best first: its material's art, then hull steel's. */
+    public static String[] edgeWall(String material, WeightClass w, boolean horizontal) {
+        return distinct("edges/edge_wall_" + edgePrefix(material) + weight(w) + (horizontal ? "_h" : "_v"),
+                edgeWall(w, horizontal));
+    }
+
+    /** The joint at a grid vertex where the edges in {@code mask} carry a hull steel wall; null for none. */
     public static String edgeJoint(WeightClass w, int mask) {
         return mask == 0 ? null : "edges/edge_wall_" + weight(w) + "_joint_" + sides(mask);
+    }
+
+    /** {@link #edgeJoint(WeightClass, int)} for walls of {@code material}, falling back to hull steel. */
+    public static String[] edgeJoint(String material, WeightClass w, int mask) {
+        if (mask == 0) return new String[0];
+        return distinct("edges/edge_wall_" + edgePrefix(material) + weight(w) + "_joint_" + sides(mask),
+                edgeJoint(w, mask));
+    }
+
+    private static String edgePrefix(String material) {
+        String p = materialPrefix(material);
+        return p.equals("hull") ? "" : p + "_";
+    }
+
+    private static String[] distinct(String... names) {
+        Set<String> out = new LinkedHashSet<>();
+        for (String n : names) out.add(n);
+        return out.toArray(new String[0]);
     }
 
     public static String door(boolean sealed, boolean powered, boolean horizontal) {
@@ -155,6 +203,44 @@ public final class ArtNames {
         if (own == null) return powered ? new String[]{base} : new String[]{base + "_unpowered", base};
         return powered ? new String[]{own, base}
                 : new String[]{own + "_unpowered", own, base + "_unpowered", base};
+    }
+
+    /** How damaged a system's art shows it: intact, damaged (below half health) or destroyed. */
+    public enum Condition { INTACT, DAMAGED, DESTROYED }
+
+    /** Health below which a system shows its damaged art. */
+    public static final float DAMAGED_BELOW = 0.5f;
+
+    public static Condition condition(float health) {
+        if (health <= 0f) return Condition.DESTROYED;
+        return health < DAMAGED_BELOW ? Condition.DAMAGED : Condition.INTACT;
+    }
+
+    /**
+     * {@link #component(String, SubsystemComponent.SubsystemType, MountFootprint.MountSize, String, boolean)}
+     * in a {@link Condition}: {@code _damaged} art (dimmed, {@code _damaged_unpowered} dark) or
+     * {@code _destroyed} art (always dark) first, then the intact art as a fallback.
+     */
+    public static String[] component(String componentId, SubsystemComponent.SubsystemType type,
+                                     MountFootprint.MountSize size, String state, boolean powered, Condition condition) {
+        String[] intact = component(componentId, type, size, state, powered && condition != Condition.DESTROYED);
+        if (condition == null || condition == Condition.INTACT) return intact;
+        String builtIn = builtInComponent(type);
+        String suffix = "_" + size.name().toLowerCase(Locale.ROOT) + (state == null ? "" : "_" + state);
+        java.util.List<String> bases = new java.util.ArrayList<>(2);
+        if (componentId != null && !componentId.equals(builtIn)) bases.add("components/" + componentId + suffix);
+        bases.add("components/" + builtIn + suffix);
+        Set<String> out = new LinkedHashSet<>();
+        for (String b : bases) {
+            if (condition == Condition.DESTROYED) {
+                out.add(b + "_destroyed");
+            } else {
+                if (!powered) out.add(b + "_damaged_unpowered");
+                out.add(b + "_damaged");
+            }
+        }
+        for (String n : intact) out.add(n);
+        return out.toArray(new String[0]);
     }
 
     /** A docking port's latch collar, half a tile outside its outer edge. */
@@ -186,6 +272,25 @@ public final class ArtNames {
     /** The exterior of a chassis. */
     public static String hull(String chassisId) {
         return chassisId == null ? null : "hulls/" + chassisId;
+    }
+
+    /** The engine drawn in the engine mounts of a hull with no engine systems. */
+    public static final String ENGINE_SIZE = "s";
+
+    /** The exterior engine and exhaust size for an engine system's slot. */
+    public static String engineSize(MountFootprint.MountSize size) {
+        return size.name().toLowerCase(Locale.ROOT);
+    }
+
+    /** An engine bolted into a hull's engine mount, its throat hot while it burns. */
+    public static String[] engine(String size, boolean burning) {
+        String base = "engines/engine_" + size;
+        return burning ? new String[]{base} : new String[]{base + "_unpowered", base};
+    }
+
+    /** The plume behind an engine of that size, pivoting on the same mount socket. */
+    public static String exhaust(String size) {
+        return "engines/exhaust_" + size;
     }
 
     /** A weapon's turret, by its id in weapons.toml. */
