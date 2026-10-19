@@ -112,7 +112,7 @@ A ship or station hull is built on its chassis grid: every tile of the layout is
 | Airlock | Hatch |
 | Docking port | Port frame, and the collar half a tile outside |
 
-Parts of the hull polygon past the grid (the corvette's bow) are drawn under the grid. Ships carry engine mounts on the aft (-x) edge, one for every three rows; the engines themselves are separate art (below). Navigation lights mark the corners: red to port (+y), green to starboard.
+Parts of the hull polygon past the grid (the corvette's bow) are drawn under the grid. Each engine system shows as a ribbed heat-shield plate over its slot; a ship with no engine systems carries engine mounts on the aft (-x) edge instead, one for every three rows. The engines themselves are separate art (below). The corvette has two Small engines in its stern and the freighter two Medium ones. Navigation lights mark the corners: red to port (+y), green to starboard.
 
 ## Engines
 The engine is a component (`E`, behavior `ENGINE`) in the rectangular auxiliary slots, so it comes in the same four sizes: S 1x2, M 2x3, L 3x7 and XL 5x12. It has two kinds of art.

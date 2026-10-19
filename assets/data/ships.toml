@@ -7,8 +7,8 @@ texture = "tex_corvette"
 mass = 120000.0
 max_thrust = 2.4e6
 max_torque = 8.0e5
-# The aft 4 m is the cargo hold
-hull = [[-9.0, -3.0], [5.0, -3.0], [6.5, 0.0], [5.0, 3.0], [-9.0, 3.0]]
+# The aft 2 m are the engines, then 4 m of cargo hold
+hull = [[-11.0, -3.0], [5.0, -3.0], [6.5, 0.0], [5.0, 3.0], [-11.0, 3.0]]
 crew = 4
 # Railgun in the nose, a point-defense autocannon on each beam, a missile launcher on top
 # and a laser below. Each hardpoint sits on the center of its turret mount in the

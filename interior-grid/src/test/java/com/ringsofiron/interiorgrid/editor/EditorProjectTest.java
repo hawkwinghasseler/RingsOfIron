@@ -222,11 +222,11 @@ class EditorProjectTest {
         EditorProject.Snapshot s = project.snapshot();
         ChassisModel corvette = project.chassis.get("corvette").value;
         ShipPartCatalog catalog = project.catalog();
-        corvette.erase(11, 3, catalog);
+        corvette.erase(13, 3, catalog);
         project.chassis.get("corvette").dirty = true;
         project.restore(s);
         assertFalse(project.chassis.get("corvette").dirty);
-        assertNotNull(project.chassis.get("corvette").value.mountAt(11, 3, catalog), "the reactor is back");
+        assertNotNull(project.chassis.get("corvette").value.mountAt(13, 3, catalog), "the reactor is back");
     }
 
     @Test
@@ -239,10 +239,10 @@ class EditorProjectTest {
         corvette.resize(Side.LEFT, 1, catalog);
         assertEquals(w + 1, corvette.width());
         assertEquals(ox - 1f, corvette.originX, 1e-6f);
-        assertNotNull(corvette.mountAt(12, 3, catalog), "the reactor moved right with its tiles");
+        assertNotNull(corvette.mountAt(14, 3, catalog), "the reactor moved right with its tiles");
         assertNull(project.check(corvette).error);
         corvette.resize(Side.LEFT, -1, catalog);
-        assertNotNull(corvette.mountAt(11, 3, catalog));
+        assertNotNull(corvette.mountAt(13, 3, catalog));
         corvette.resize(Side.TOP, -1, catalog);
         assertEquals(5, corvette.height());
         assertNull(corvette.mountAt(4, 5, catalog), "the docking port on the top row is gone");
@@ -253,7 +253,7 @@ class EditorProjectTest {
         EditorProject project = EditorProject.load(ASSETS, null);
         ShipPartCatalog catalog = project.catalog();
         ChassisModel corvette = project.chassis.get("corvette").value;
-        ChassisModel.Mount reactor = corvette.mountAt(11, 3, catalog);
+        ChassisModel.Mount reactor = corvette.mountAt(13, 3, catalog);
         int x = reactor.x, y = reactor.y;
         assertNull(corvette.rotate(reactor, catalog));
         assertEquals(1, reactor.rotation);
@@ -267,7 +267,7 @@ class EditorProjectTest {
         assertNotNull(listed);
         assertEquals(1, listed.rotation);
         ChassisModel back = ChassisModel.fromDef(def, catalog);
-        assertEquals(1, back.mountAt(11, 3, catalog).rotation);
+        assertEquals(1, back.mountAt(13, 3, catalog).rotation);
 
         ChassisModel.Mount port = corvette.mounts.stream().filter(m -> ChassisModel.isPort(m, catalog)).findFirst().get();
         assertNotNull(corvette.rotate(port, catalog), "ports face out of the hull");

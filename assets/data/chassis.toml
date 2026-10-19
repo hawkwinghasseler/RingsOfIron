@@ -2,8 +2,8 @@
 #   '#' hull (medium)  '1'/'2'/'3' hull light/medium/heavy  'I' internal wall
 #   '.' floor  '+' power conduit  ' ' void
 #   R reactor, S shield, T turret (square mounts); L life support, H helm,
-#   W weapons console, C cargo, A airlock, E engine (an engine's nozzle faces aft (-x)
-#   when it lies along x, and +y when it stands along y), P propellant tank,
+#   W weapons console, C cargo, A airlock, E engine (an engine's nozzle faces aft
+#   (-x) when it lies along x, and +y when it stands along y), P propellant tank,
 #   O oxygen tank, N nitrogen tank (rectangular slots)
 #   D docking port, drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium, 7 x 3 Large.
 #     The end tiles are frame, the rest the opening, with the port door on its
@@ -23,42 +23,46 @@
 [chassis.corvette]
 name = "Corvette"
 tile_size = 1.0
-origin_x = -9.0
+origin_x = -11.0
 origin_y = -3.0
+# Two Small engines in the stern (x 1-2), their nozzles out through the aft hull,
+# with the oxygen and nitrogen tanks between them. One pipe run joins them all: up
+# the stern, then along the bottom hull to the propellant tank on the walkway (x 6)
+# and life support (x 7).
 # A turret mount under each hardpoint in ships.toml (combat wires each weapon to
-# the nearest one): nose (12,2), port and starboard beams (10,4) and (10,1), the
-# launcher (7,4) and the laser (7,1). The weapons console sits aft, away from
+# the nearest one): nose (14,2), port and starboard beams (12,4) and (12,1), the
+# launcher (9,4) and the laser (9,1). The weapons console sits aft, away from
 # every hardpoint.
-# Cargo: a 3 x 2 bay aft of the crew spaces (x 1-3, y 3-4, listed under mounts), a
-# walkway at x 4, and two small bays up front. 10 tiles, 25 m3 at 2.5 m3 a tile.
-# Engineering below the hold: an S engine lying along the aft hull, nozzle aft, with a
-# propellant tank above it and one beside it (all listed under mounts, since the map
-# can't show which way they lie), and the oxygen and nitrogen tanks either side of
-# life support, each run piped together.
+# Cargo: a hold aft of the crew spaces with two 3 x 2 bays (x 3-5; listed under
+# mounts, since two bays side by side can't be told apart in the map), a walkway
+# at x 6, and two small bays up front. 16 tiles, 40 m3 at 2.5 m3 a tile.
 # A Small passive docking port on the port (+y) side opens onto the walkway beside
 # the hold.
 rows = [
-  "###DDD########",
-  "#....HHTCCTRR#",
-  "#....WW....RR#",
-  "#...OLN++++.T#",
-  "#...OLNT..TCC#",
-  "##############",
+  "#####DDD########",
+  "#EE....HHTCCTRR#",
+  "#......WW....RR#",
+  "#.....PL.++++.T#",
+  "#EE...PL.T..TCC#",
+  "################",
 ]
 mounts = [
-  { type = "CARGO", size = "M", x = 1, y = 3, rotation = 1 },
-  { component = "engine", size = "S", x = 1, y = 1, rotation = 1 },
-  { component = "tank", size = "S", x = 1, y = 2, rotation = 1 },
-  { component = "tank", size = "S", x = 3, y = 1 },
+  { type = "CARGO", size = "M", x = 3, y = 1, rotation = 1 },
+  { type = "CARGO", size = "M", x = 3, y = 3, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 1, y = 2, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 1, y = 3, rotation = 1 },
 ]
 pipes = [
-  { x = 2, y = 1 }, { x = 3, y = 1 }, { x = 2, y = 2 },
-  { x = 4, y = 1 }, { x = 5, y = 1 }, { x = 6, y = 1 },
+  { x = 2, y = 1 }, { x = 2, y = 2 }, { x = 2, y = 3 }, { x = 2, y = 4 },
+  { x = 2, y = 1, side = "BOTTOM" }, { x = 3, y = 1, side = "BOTTOM" },
+  { x = 4, y = 1, side = "BOTTOM" }, { x = 5, y = 1, side = "BOTTOM" },
+  { x = 6, y = 1, side = "BOTTOM" }, { x = 7, y = 1, side = "BOTTOM" },
 ]
 # Carpet through the crew spaces, so a fire here has something to burn
-coverings = [ { covering = "CARPET", x = 5, y = 1, width = 6, height = 4 } ]
+coverings = [ { covering = "CARPET", x = 7, y = 1, width = 6, height = 4 } ]
 lights = [
   { x = 8, y = 1, side = "BOTTOM" },
+  { x = 11, y = 1, side = "BOTTOM" },
 ]
 
 [chassis.freighter]
@@ -67,39 +71,38 @@ tile_size = 1.0
 origin_x = -10.0
 origin_y = -6.5
 # Two 12 x 5 cargo bays either side of a conduit spine: 120 tiles, 300 m3 of cargo.
-# Engineering aft (left): an S engine along the aft hull, nozzle aft, fed by two propellant tanks,
-# the oxygen and nitrogen tanks piped to life support; the helm forward, and a Medium
-# passive docking port in the bow at the end of the spine.
+# Engineering aft (left) between two Medium engines in the stern corners, the helm
+# forward, and a Medium passive docking port in the bow at the end of the spine.
+# Above the lower engine, the oxygen, nitrogen and a propellant tank, and a second
+# propellant tank by the reactor; a pipe up x 3 joins both engines and the tanks,
+# and a branch takes the gases to life support.
 rows = [
   "####################",
-  "#...CCCCCCCCCCCC...#",
-  "#...CCCCCCCCCCCC...#",
+  "#EEECCCCCCCCCCCC...#",
+  "#EEECCCCCCCCCCCC...#",
   "#RR.CCCCCCCCCCCC.HH#",
   "#RR.CCCCCCCCCCCC..DD",
   "#...CCCCCCCCCCCC..DD",
   "#L++++++++++++++++DD",
   "#L..CCCCCCCCCCCC..DD",
-  "#ON.CCCCCCCCCCCC..DD",
-  "#ON.CCCCCCCCCCCC...#",
-  "#...CCCCCCCCCCCC...#",
-  "#...CCCCCCCCCCCC...#",
+  "#ONPCCCCCCCCCCCC..DD",
+  "#ONPCCCCCCCCCCCC...#",
+  "#EEECCCCCCCCCCCC...#",
+  "#EEECCCCCCCCCCCC...#",
   "####################",
 ]
 mounts = [
-  { component = "engine", size = "S", x = 1, y = 1, rotation = 1 },
-  { component = "tank", size = "S", x = 1, y = 2, rotation = 1 },
-  { component = "tank", size = "S", x = 3, y = 1 },
+  { component = "tank", size = "S", x = 1, y = 7, rotation = 1 },
 ]
 pipes = [
-  { x = 2, y = 1 }, { x = 3, y = 1 }, { x = 2, y = 2 },
-  { x = 1, y = 4 }, { x = 2, y = 4 }, { x = 1, y = 5 },
+  { x = 3, y = 2 }, { x = 3, y = 3 }, { x = 3, y = 4 }, { x = 3, y = 5 }, { x = 3, y = 6 },
+  { x = 3, y = 7 }, { x = 3, y = 8 }, { x = 3, y = 9 }, { x = 3, y = 10 }, { x = 2, y = 7 },
+  { x = 2, y = 4 }, { x = 1, y = 4 }, { x = 1, y = 5 },
 ]
 lights = [
   { x = 16, y = 1, side = "BOTTOM" },
   { x = 17, y = 4, side = "RIGHT" },
-  { x = 1, y = 7, side = "LEFT" },
   { x = 17, y = 8, side = "RIGHT" },
-  { x = 3, y = 11, side = "TOP" },
   { x = 16, y = 11, side = "TOP" },
 ]
 

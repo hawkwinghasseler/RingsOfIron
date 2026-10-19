@@ -1988,7 +1988,7 @@ def chassis_mounts(ch):
 def hull_svg(ch, overhang=None, engines=False):
     """Exterior art for a chassis: plating on every tile of the grid (tile edges as panel
     lines), the wall ring as armor, each system's exterior fitting over its footprint,
-    and engine mounts on the aft (-x) edge for ships."""
+    and, for ships with no engine systems, engine mounts on the aft (-x) edge."""
     rows = ch["rows"]
     H, W = len(rows), max(len(r) for r in rows)
     ox, oy = ch["origin_x"], ch["origin_y"]
@@ -2004,7 +2004,7 @@ def hull_svg(ch, overhang=None, engines=False):
     if overhang:
         a.b += poly(overhang, STEEL, stroke=INK, sw=3)
         a.b += poly(overhang, "#000000", extra=' opacity="0.12"')
-    if engines:
+    if engines and not any(m[0] == "engine" for m in chassis_mounts(ch)):
         # engine mounts: a bracket and socket on the aft edge for every third row, centered
         for k in range(H // 3):
             r = k * 3 + (H % 3) / 2 + 1.5
@@ -2080,6 +2080,18 @@ def hull_svg(ch, overhang=None, engines=False):
             a.b += rect(x + 8, y + 8, pw - 16, ph - 16, STEEL_DARK, rx=min(pw, ph) / 2 - 8, stroke=INK, sw=2)
             a.b += circle(cx, cy, min(pw, ph) * 0.22, HOUSING_HI, stroke=INK, sw=2)
             a.b += circle(cx, cy, min(pw, ph) * 0.12, FLUIDS[name][1], stroke=INK, sw=1)
+        elif name == "engine":
+            # the engine bay's heat shield: a dark plate with radiator ribs across its length
+            a.b += rect(x + 5, y + 5, pw - 10, ph - 10, "#2a3039", rx=5, stroke=INK, sw=2)
+            long_ = pw >= ph
+            k = 14
+            while k < (pw if long_ else ph) - 10:
+                if long_:
+                    a.b += line(x + k, y + 10, x + k, y + ph - 10, "#4a5260", sw=2.5)
+                else:
+                    a.b += line(x + 10, y + k, x + pw - 10, y + k, "#4a5260", sw=2.5)
+                k += 9
+            light(a, x + 12, y + 12, 3, ACCENT["engine"])
         elif name == "airlock":
             a.b += rect(x + 6, y + 6, pw - 12, ph - 12, STEEL_DARK, rx=6, stroke=INK, sw=2)
             a.b += hazard_band(x + 10, y + 10, pw - 20, 8, f"ext_al_{col}_{row}")

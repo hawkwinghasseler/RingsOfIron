@@ -72,14 +72,14 @@ class InteriorGridDataTest {
         assertEquals(1, reactors);
         assertEquals(5, turrets, "nose, both beams, the launcher and the laser");
         assertEquals(1, consoles);
-        assertEquals(3, bays, "one in the aft hold, two small ones forward");
+        assertEquals(4, bays, "two in the aft hold, two small ones forward");
         assertEquals(1, ports, "a Small docking port beside the hold");
-        assertEquals(18, result.subsystems.size,
-                "helm, reactor, life support, 3 cargo bays, weapons console, 5 turrets, docking port,"
-                        + " engine, 2 propellant tanks, oxygen and nitrogen tanks");
-        assertEquals(14, result.grid.width);
-        assertTrue(result.grid.getTile(8, 3).isFlammable(), "the crew spaces are carpeted");
-        assertFalse(result.grid.getTile(4, 3).isFlammable(), "the hold's walkway is bare deck");
+        assertEquals(19, result.subsystems.size,
+                "helm, reactor, life support, 4 cargo bays, weapons console, 5 turrets, docking port,"
+                        + " 2 engines, propellant, oxygen and nitrogen tanks");
+        assertEquals(16, result.grid.width);
+        assertTrue(result.grid.getTile(10, 3).isFlammable(), "the crew spaces are carpeted");
+        assertFalse(result.grid.getTile(6, 3).isFlammable(), "the hold's walkway is bare deck");
     }
 
     @Test
@@ -113,8 +113,8 @@ class InteriorGridDataTest {
 
     @Test
     void cargoCapacityIsTheVolumeOfTheBays() {
-        // 2.5 m3 a tile: the corvette's 10 bay tiles and the freighter's 120
-        assertEquals(25.0, InteriorGridData.cargoBayVolume(ctx.defs, "corvette_patrol"), 1e-9);
+        // 2.5 m3 a tile: the corvette's 16 bay tiles and the freighter's 120
+        assertEquals(40.0, InteriorGridData.cargoBayVolume(ctx.defs, "corvette_patrol"), 1e-9);
         assertEquals(300.0, InteriorGridData.cargoBayVolume(ctx.defs, "freighter_hauler"), 1e-9);
     }
 
