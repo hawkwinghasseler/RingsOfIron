@@ -52,6 +52,7 @@ public final class ArtPacker {
     /** SVG units in one tile (see documentation/art/Design.md). */
     public static final float UNITS_PER_TILE = 64f;
     public static final String ATLAS_NAME = "art";
+    private static final String INKSCAPE = "http://www.inkscape.org/namespaces/inkscape";
 
     private ArtPacker() {
     }
@@ -97,8 +98,10 @@ public final class ArtPacker {
             String collider = meta == null ? null : collider(meta);
             String interact = meta == null ? null : interact(meta);
 
-            // The art as the scene sees it: everything but the invisible meta shapes
+            // The art as the scene sees it: everything but the invisible meta and collision shapes
             if (meta != null) meta.getParentNode().removeChild(meta);
+            Element collision = group(root, "collision");
+            if (collision != null) collision.getParentNode().removeChild(collision);
             write(render(dom, box, scale), staging.resolve(name + ".png"));
             boolean glow = emissive != null && hasShapes(emissive);
             if (glow) {
@@ -165,14 +168,14 @@ public final class ArtPacker {
         return Float.parseFloat(s.replaceAll("[a-z%]+$", ""));
     }
 
-    /** The top-level {@code <g id="...">}, or null. */
+    /** The top-level {@code <g id="...">} (or Inkscape layer with that label), or null. */
     private static Element group(Element root, String id) {
         NodeList children = root.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
             Node n = children.item(i);
-            if (n instanceof Element && "g".equals(n.getLocalName()) && id.equals(((Element) n).getAttribute("id"))) {
-                return (Element) n;
-            }
+            if (!(n instanceof Element) || !"g".equals(n.getLocalName())) continue;
+            Element g = (Element) n;
+            if (id.equals(g.getAttribute("id")) || id.equals(g.getAttributeNS(INKSCAPE, "label"))) return g;
         }
         return null;
     }

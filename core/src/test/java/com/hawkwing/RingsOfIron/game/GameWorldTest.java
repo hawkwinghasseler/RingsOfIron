@@ -192,6 +192,33 @@ class GameWorldTest {
     }
 
     @Test
+    void shipsCollideOnTheirLayoutUnlessTheirHullArtDrawsACollisionLayer() {
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        GameWorld withContent = new GameWorld(new GameWorld.Modules());
+        try {
+            ModContext ctx = withContent.loadContent(assets, assets.resolve("no-mods-here"));
+            float u = com.ringsofiron.physicsexterior.PhysicsManager.UNITS_PER_METER;
+
+            // The freighter's art has no collision layer: its 20 x 13 tile layout, one box
+            com.badlogic.gdx.physics.box2d.Body freighter = ctx.factory.spawnShip("freighter_hauler", 0, 0, 0)
+                    .getComponent(PhysicsBodyComponent.class).body;
+            assertEquals(1, freighter.getFixtureList().size);
+            assertTrue(freighter.getFixtureList().first().testPoint(9.8f * u, 6.3f * u));
+            assertFalse(freighter.getFixtureList().first().testPoint(10.2f * u, 0f));
+
+            // The corvette's layer adds the bow past the end of its layout, at x = 5
+            com.badlogic.gdx.physics.box2d.Body corvette = ctx.factory.spawnShip("corvette_patrol", 100, 0, 0)
+                    .getComponent(PhysicsBodyComponent.class).body;
+            assertEquals(1, corvette.getFixtureList().size);
+            assertTrue(corvette.getFixtureList().first().testPoint(106.2f * u, 0f));
+            assertFalse(corvette.getFixtureList().first().testPoint(106.2f * u, 1f * u));
+            assertFalse(ctx.report.toString().contains("Collision layer"), ctx.report.toString());
+        } finally {
+            withContent.dispose();
+        }
+    }
+
+    @Test
     void modSoundEventsReachTheAudioCatalog() {
         Path root = Paths.get(System.getProperty("user.dir")).getParent();
         String modPath = "event:/mods/better_railguns/railgun";

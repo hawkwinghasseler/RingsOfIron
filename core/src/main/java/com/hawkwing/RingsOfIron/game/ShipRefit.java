@@ -29,7 +29,8 @@ import java.util.Map;
 
 /**
  * A station yard rebuilds a docked ship to a new interior layout, as drawn in the ship editor:
- * new grid, systems, cargo bays and docking ports on the same hull, body and weapons. The crew
+ * new grid, systems, cargo bays and docking ports on the same body and weapons, the body taking
+ * the new layout's shape. The crew
  * aboard are put on the nearest open deck of the new layout, the tanks keep what they held (as far
  * as the new tanks take it), the hardpoints are wired to the nearest weapon systems again, and
  * the ship latches back onto the port it was docked at. The layout is kept on the ship
@@ -143,6 +144,11 @@ public final class ShipRefit {
         ShipCargo.attach(ship);
         fill(ship, fluids);
         rewireWeapons(ship);
+        ShipLayoutComponent kept = ship.getComponent(ShipLayoutComponent.class);
+        if (kept == null) ship.add(kept = new ShipLayoutComponent());
+        kept.layout = built;
+        // The body takes the new layout's shape, then its mass
+        world.rebuildHull(ship);
         ShipGridComponent.MassProperties mass = world.shipMass(ship);
         if (body != null && body.body != null && mass != null && mass.mass > 0f) {
             PhysicsManager.setMassData(body.body, mass.mass, mass.center.x, mass.center.y, mass.inertia);
@@ -154,9 +160,6 @@ public final class ShipRefit {
             int[] at = nearest(floor, pos.tileX(), pos.tileY());
             if (at != null) pos.setTile(at[0], at[1]);
         }
-        ShipLayoutComponent kept = ship.getComponent(ShipLayoutComponent.class);
-        if (kept == null) ship.add(kept = new ShipLayoutComponent());
-        kept.layout = built;
 
         // Back onto the station, at the port that fits best
         world.docking.dockInPlace(ship, portToRelatch(ports, docked), station, stationPort);

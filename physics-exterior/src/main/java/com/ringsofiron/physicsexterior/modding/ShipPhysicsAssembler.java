@@ -16,6 +16,9 @@ import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Gives ships spawned from {@code [ship.*]} data a Box2D body and engines, so they fly:
  * <pre>
@@ -23,17 +26,19 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
  *         .beforeScripts(ctx -&gt; ShipPhysicsAssembler.register(ctx, physics))
  *         .load(gameEngine);
  * </pre>
- * The body uses the def's {@code hull} polygon (3 to 8 convex vertices, counter-clockwise, local
- * meters), with density chosen so the body weighs the def's {@code mass}. A ship with no usable
- * hull gets a circle of {@link #FALLBACK_RADIUS}. It is placed at the entity's transform
+ * The body's shape comes from a {@link HullSource} when one is given and has a shape for the ship
+ * (the game's makes it from the ship's layout, or from its hull art's collision layer), else from
+ * the def's {@code hull} polygon (3 to 8 convex vertices, counter-clockwise, local meters). Density
+ * is chosen so the body weighs the def's {@code mass}. A ship with neither gets a circle of
+ * {@link #FALLBACK_RADIUS}. It is placed at the entity's transform
  * (rotation in degrees). {@code max_thrust} drives the main engine and {@code max_torque} the RCS;
  * retro and lateral thrust are fixed fractions of the main engine until defs carry them.
  * {@code exhaust_velocity} goes on the thrusters for the game's propellant feed; thrust here is
  * free until something feeds it.
  *
  * A {@link MassSource} can replace the def's mass afterwards, e.g. with mass properties from the
- * ship's interior grid. The game wires that, so this module does not depend on interior-grid; the
- * grid's own assembler must then run first (register this one after it).
+ * ship's interior grid. The game wires that and the hull source, so this module does not depend on
+ * interior-grid; the grid's own assembler must then run first (register this one after it).
  *
  * The body is created in the world at build time; an entity built but never added to the engine
  * should have its body destroyed by the caller.
@@ -58,8 +63,19 @@ public class ShipPhysicsAssembler implements ComponentAssembler {
         boolean massFor(Entity entity, DefEntry def, float[] out);
     }
 
+    /** Supplies a ship's collision shape, in place of the def's {@code hull}. */
+    @FunctionalInterface
+    public interface HullSource {
+        /**
+         * The ship's shape as convex polygons, each {x0, y0, x1, y1, ...} with 3 to 8 vertices,
+         * counter-clockwise, in body-local meters; or null (or empty) to use the def's {@code hull}.
+         */
+        List<float[]> hullFor(Entity entity, DefEntry def);
+    }
+
     private final PhysicsManager physics;
     private final MassSource massSource;
+    private final HullSource hullSource;
     private final float[] massOut = new float[4];
 
     public ShipPhysicsAssembler(PhysicsManager physics) {
@@ -67,8 +83,13 @@ public class ShipPhysicsAssembler implements ComponentAssembler {
     }
 
     public ShipPhysicsAssembler(PhysicsManager physics, MassSource massSource) {
+        this(physics, massSource, null);
+    }
+
+    public ShipPhysicsAssembler(PhysicsManager physics, MassSource massSource, HullSource hullSource) {
         this.physics = physics;
         this.massSource = massSource;
+        this.hullSource = hullSource;
     }
 
     /** Registers the assembler for the "ship" def type. */
@@ -82,7 +103,13 @@ public class ShipPhysicsAssembler implements ComponentAssembler {
 
     /** Registers the assembler with a mass source, e.g. the interior grid's mass properties. */
     public static ShipPhysicsAssembler register(EntityFactory factory, PhysicsManager physics, MassSource massSource) {
-        ShipPhysicsAssembler assembler = new ShipPhysicsAssembler(physics, massSource);
+        return register(factory, physics, massSource, null);
+    }
+
+    /** Registers the assembler with a mass source and a hull source, e.g. the ship's layout. */
+    public static ShipPhysicsAssembler register(EntityFactory factory, PhysicsManager physics, MassSource massSource,
+                                                HullSource hullSource) {
+        ShipPhysicsAssembler assembler = new ShipPhysicsAssembler(physics, massSource, hullSource);
         factory.registerAssembler("ship", assembler);
         return assembler;
     }
@@ -95,10 +122,15 @@ public class ShipPhysicsAssembler implements ComponentAssembler {
         float y = t == null ? 0f : t.y;
         float angle = t == null ? 0f : t.rotation * MathUtils.degreesToRadians;
 
-        float[] hull = flatten(ship.hull);
+        List<float[]> hull = hullSource == null ? null : hullSource.hullFor(entity, def);
+        if (hull == null || hull.isEmpty()) {
+            float[] polygon = flatten(ship.hull);
+            hull = polygon == null ? null : Collections.singletonList(polygon);
+        }
         Body body;
         if (hull != null) {
-            float area = Math.abs(GeometryUtils.polygonArea(hull, 0, hull.length));
+            float area = 0f;
+            for (float[] piece : hull) area += Math.abs(GeometryUtils.polygonArea(piece, 0, piece.length));
             body = physics.createPolygonBody(entity, x, y, angle, hull, ship.mass / area,
                     CollisionCategories.CATEGORY_SHIP, CollisionCategories.MASK_ALL);
         } else {

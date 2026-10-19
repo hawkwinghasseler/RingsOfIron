@@ -149,6 +149,46 @@ class ShipRefitTest {
         assertSame(world.engine.getEntity(game.highport), world.docking.dockedTo(game.player));
     }
 
+    /** Whether any of the ship's solid fixtures covers the body-local point (x, y) in meters. */
+    private boolean collidesAt(float x, float y) {
+        com.badlogic.gdx.physics.box2d.Body body = game.player
+                .getComponent(com.ringsofiron.physicsexterior.components.PhysicsBodyComponent.class).body;
+        float u = com.ringsofiron.physicsexterior.PhysicsManager.UNITS_PER_METER;
+        com.badlogic.gdx.math.Vector2 p = body.getWorldPoint(new com.badlogic.gdx.math.Vector2(x * u, y * u));
+        for (com.badlogic.gdx.physics.box2d.Fixture f : body.getFixtureList()) {
+            if (!f.isSensor() && f.testPoint(p)) return true;
+        }
+        return false;
+    }
+
+    @Test
+    void aRebuiltShipCollidesOnItsNewLayout() {
+        dock();
+        ChassisDef layout = copy();
+        // Cut the aft port corner tile (map row 0, column 0) out of the hull
+        char[] top = layout.rows[0].toCharArray();
+        assertEquals('#', top[0]);
+        top[0] = ' ';
+        layout.rows[0] = new String(top);
+        float cornerX = layout.originX + 0.5f, cornerY = layout.originY + layout.rows.length - 0.5f;
+        assertTrue(collidesAt(cornerX, cornerY), "the corner collides as built");
+        float massBefore = com.ringsofiron.physicsexterior.PhysicsManager.getMass(game.player
+                .getComponent(com.ringsofiron.physicsexterior.components.PhysicsBodyComponent.class).body);
+
+        assertNull(ShipRefit.apply(world, game.player, layout));
+
+        assertFalse(collidesAt(cornerX, cornerY), "the cut corner no longer collides");
+        assertTrue(collidesAt(cornerX, cornerY - 1f), "the tile below it still does");
+        assertTrue(collidesAt(cornerX + 1f, cornerY), "and the one beside it");
+        float massAfter = com.ringsofiron.physicsexterior.PhysicsManager.getMass(game.player
+                .getComponent(com.ringsofiron.physicsexterior.components.PhysicsBodyComponent.class).body);
+        assertEquals(world.shipMass(game.player).mass, massAfter, massAfter * 1e-3f, "mass still from the grid");
+        assertTrue(massAfter < massBefore, "one hull tile lighter");
+
+        run(240);
+        assertSame(highport, world.docking.dockedTo(game.player), "latched back on");
+    }
+
     @Test
     void theYardRefusesAShipThatIsNotDockedOrHasCargo() {
         assertNotNull(ShipRefit.apply(world, game.player, withoutLaserTurret()), "not docked");
