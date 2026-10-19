@@ -1,6 +1,8 @@
 package com.ringsofiron.aicrew;
 
 import com.badlogic.ashley.core.ComponentMapper;
+import com.badlogic.ashley.core.Engine;
+import com.badlogic.ashley.core.EntityListener;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.MathUtils;
 import com.ringsofiron.coreengine.SimClock;
@@ -11,20 +13,40 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 
 /**
- * Moves crew along their paths every sim tick: interpolates the float position toward the
- * centre of the next tile at the crew member's speed (slower while carrying). Before
- * each step it checks the step is still open; if a door shut or a wall went up it stops
- * the crew member on their tile and sets {@link GridPositionComponent#pathBlocked} so the
- * behavior tree re-plans.
+ * Moves crew every sim tick. On their feet on an open deck tile, crew are bodies in the deck's
+ * Box2D world ({@link CrewPhysics}): walls and shut doors stop them, and they push each other
+ * apart softly around a solid core ({@link CrewBody}). AI crew walk their path from tile centre
+ * to tile centre at their speed (slower while carrying); the player avatar walks where its input
+ * points. Before each step it checks the step is still open; if a door shut or a wall went up it
+ * stops the crew member on their tile and sets {@link GridPositionComponent#pathBlocked} so the
+ * behavior tree re-plans, and the same happens to one held up for {@link #STALL_SECONDS}.
  *
- * Unconscious and dead crew do not move; carried crew ride on their carrier's tile. The
- * player avatar moves from its input instead of a path, and can walk through an open docked
- * port, across the collars between the two craft, onto the other one ({@link GridLink}).
+ * Unconscious and dead crew do not move, and lie where others can step over them; carried crew
+ * ride on their carrier's tile. Out on the walkway through a docked port ({@link GridLink}),
+ * across the collars between two craft, and on a tile that isn't open, crew move along without a
+ * body and take one up again once back on the deck.
  */
 public class CrewMovementSystem extends FixedIteratingSystem {
 
+    /** How long a walker can make no headway toward the next tile before giving the route up, seconds. */
+    public static final float STALL_SECONDS = 3f;
+    /** How close to the middle of a tile on the way counts as reaching it, tiles. */
+    static final float WAYPOINT_REACH = 0.35f;
+    /** How close to the middle of the last tile counts as there, tiles. */
+    static final float ARRIVE_REACH = 0.25f;
+
     private final CrewService service;
     private final ComponentMapper<PlayerAvatarComponent> avatarM = ComponentMapper.getFor(PlayerAvatarComponent.class);
+    private final EntityListener leaving = new EntityListener() {
+        @Override
+        public void entityAdded(Entity entity) {
+        }
+
+        @Override
+        public void entityRemoved(Entity entity) {
+            service.physics.release(entity);
+        }
+    };
 
     public CrewMovementSystem(CrewService service) {
         super(CrewService.CREW, 10, (float) SimClock.TICK_SECONDS);
@@ -32,8 +54,23 @@ public class CrewMovementSystem extends FixedIteratingSystem {
     }
 
     @Override
+    public void addedToEngine(Engine engine) {
+        super.addedToEngine(engine);
+        engine.addEntityListener(CrewService.CREW, leaving);
+    }
+
+    @Override
+    public void removedFromEngine(Engine engine) {
+        engine.removeEntityListener(leaving);
+        super.removedFromEngine(engine);
+    }
+
+    @Override
     protected void updateFixed(float dt) {
         super.updateFixed(dt);
+        if (getEntities() == null) return;
+        service.physics.step(dt);
+        for (int i = 0; i < getEntities().size(); i++) settle(getEntities().get(i), dt);
         // Carried crew follow their carriers after everyone has moved
         for (int i = 0; i < getEntities().size(); i++) {
             Entity e = getEntities().get(i);
@@ -47,16 +84,21 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         }
     }
 
+    /** Before the physics step: puts each crew member's body where it belongs and sets it walking. */
     @Override
     protected void processEntity(Entity e, float dt) {
         CrewMemberComponent c = service.crew(e);
         GridPositionComponent p = service.position(e);
         ShipGridComponent grid = service.grid(p.ship);
-        if (grid == null) return;
+        if (grid == null) {
+            service.physics.release(e);
+            return;
+        }
         // The ship may have been given its UUID after the crew boarded
         if (p.shipRef == null) p.setShip(p.ship);
         keepAboard(p, grid);
         if (!c.isConscious() || c.carriedBy != null) {
+            service.physics.release(e);
             p.stop();
             return;
         }
@@ -64,11 +106,98 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         float speed = c.def.moveSpeed * (c.carrying != null ? c.def.carrySpeedFactor : 1f)
                 * (c.load != null ? c.def.loadSpeedFactor : 1f);
         PlayerAvatarComponent avatar = avatarM.get(e);
-        if (avatar != null) {
-            moveAvatar(p, avatar, nav, speed * dt);
+        boolean crossingOut = avatar == null && p.crossing != null && !p.isMoving();
+        if (p.walkway != null || crossingOut || !nav.isWalkable(p.tileX(), p.tileY())) {
+            // Off the deck proper: moved along without a body
+            service.physics.release(e);
+            if (avatar != null) moveAvatar(p, avatar, nav, speed * dt);
+            else walkPath(p, nav, speed * dt);
             return;
         }
-        float budget = speed * dt;
+        CrewBody b = service.physics.attach(e, grid, p.x, p.y);
+        if (avatar != null) {
+            float mx = MathUtils.clamp(avatar.moveX, -1f, 1f), my = MathUtils.clamp(avatar.moveY, -1f, 1f);
+            float len = (float) Math.sqrt(mx * mx + my * my);
+            if (len > 1f) {
+                mx /= len;
+                my /= len;
+            }
+            b.steer(mx * speed, my * speed);
+            return;
+        }
+        if (!p.isMoving()) {
+            if (p.path.size > 0) p.path.clear();
+            b.hold(speed);
+            return;
+        }
+        GridNode next = p.path.get(p.pathIndex);
+        int cx = p.tileX(), cy = p.tileY();
+        if ((next.x != cx || next.y != cy) && !nav.canStep(cx, cy, next.x, next.y)) {
+            // Blocked: back to the centre of the current tile and ask for a new route
+            blocked(p, b, cx, cy);
+            b.hold(speed);
+            return;
+        }
+        b.seek(next.x + 0.5f, next.y + 0.5f, speed, p.pathIndex == p.path.size - 1);
+    }
+
+    /** After the physics step: reads each body back into its crew member's position. */
+    private void settle(Entity e, float dt) {
+        CrewBody b = service.physics.body(e);
+        if (b == null) return;
+        GridPositionComponent p = service.position(e);
+        ShipGridComponent grid = b.world.grid;
+        int cx = p.tileX(), cy = p.tileY();
+        float x = b.x(), y = b.y();
+        int tx = MathUtils.floor(x), ty = MathUtils.floor(y);
+        if (grid.getTile(tx, ty) == null) {
+            // Over the edge: out through a docked port onto the walkway, or put back
+            Side side = tx < cx ? Side.LEFT : tx > cx ? Side.RIGHT : ty < cy ? Side.BOTTOM : Side.TOP;
+            GridLink link = crossing(grid, cx, cy, side);
+            if (link == null) {
+                b.teleport(p.x, p.y);
+                return;
+            }
+            p.x = x;
+            p.y = y;
+            p.walkway = link;
+            service.physics.release(e);
+            return;
+        }
+        p.x = b.lastX = x;
+        p.y = b.lastY = y;
+        if (!p.isMoving()) return;
+        GridNode next = p.path.get(p.pathIndex);
+        boolean last = p.pathIndex == p.path.size - 1;
+        float dx = next.x + 0.5f - x, dy = next.y + 0.5f - y;
+        float d = (float) Math.sqrt(dx * dx + dy * dy);
+        if (last ? d < ARRIVE_REACH && tx == next.x && ty == next.y : d < WAYPOINT_REACH) {
+            p.pathIndex++;
+            if (!p.isMoving()) {
+                p.path.clear();
+                b.anchor(next.x + 0.5f, next.y + 0.5f);
+            }
+            return;
+        }
+        // Held up: by a crowd, or round a corner it can't get past
+        if (b.waypoint != p.pathIndex || d < b.bestDistance - 0.02f) {
+            b.waypoint = p.pathIndex;
+            b.bestDistance = d;
+            b.stalled = 0f;
+        } else if ((b.stalled += dt) >= STALL_SECONDS) {
+            blocked(p, b, tx, ty);
+        }
+    }
+
+    private static void blocked(GridPositionComponent p, CrewBody b, int x, int y) {
+        p.stop();
+        p.pathBlocked = true;
+        b.anchor(x + 0.5f, y + 0.5f);
+    }
+
+    /** Walks the path without a body (off the deck proper), then out through a docked link if crossing. */
+    private void walkPath(GridPositionComponent p, GridNavGraph nav, float step) {
+        float budget = step;
         while (budget > 0f && p.isMoving()) {
             GridNode next = p.path.get(p.pathIndex);
             int cx = p.tileX(), cy = p.tileY();
@@ -94,6 +223,8 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             }
             // Walking back in off the walkway it stopped on
             if (p.walkway != null && p.walkway.past(p.x, p.y) <= 0f) p.walkway = null;
+            // Back on the deck: the body takes over next tick
+            if (p.walkway == null && nav.isWalkable(p.tileX(), p.tileY())) return;
         }
         if (!p.isMoving() && p.path.size > 0) p.path.clear();
         if (!p.isMoving() && p.crossing != null && budget > 0f) crossOver(p, nav, budget);
@@ -123,7 +254,7 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         }
     }
 
-    /** Free movement from input, one axis at a time so walls are slid along rather than stuck on. */
+    /** Free movement from input off the deck proper (out on a walkway), one axis at a time so walls are slid along. */
     private void moveAvatar(GridPositionComponent p, PlayerAvatarComponent a, GridNavGraph nav, float step) {
         float mx = MathUtils.clamp(a.moveX, -1f, 1f), my = MathUtils.clamp(a.moveY, -1f, 1f);
         float len = (float) Math.sqrt(mx * mx + my * my);
@@ -135,8 +266,8 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         tryMove(p, nav, 0f, my * step);
     }
 
-    /** Body radius of the avatar, tiles; it keeps this far from walls. */
-    static final float AVATAR_RADIUS = 0.3f;
+    /** Body radius off the deck, tiles; it keeps this far from walls, as a {@link CrewBody} does. */
+    static final float AVATAR_RADIUS = CrewBody.RADIUS;
 
     private void tryMove(GridPositionComponent p, GridNavGraph nav, float dx, float dy) {
         if (dx == 0f && dy == 0f) return;
@@ -214,8 +345,8 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             p.setTile(w.x, w.y);
             p.stop();
         } else if (w == null && !grid.inBounds(MathUtils.floor(p.x), MathUtils.floor(p.y))) {
-            p.x = MathUtils.clamp(p.x, 0.5f, grid.width - 0.5f);
-            p.y = MathUtils.clamp(p.y, 0.5f, grid.height - 0.5f);
+            p.x = MathUtils.clamp(p.x, 0.01f, grid.width - 0.01f);
+            p.y = MathUtils.clamp(p.y, 0.01f, grid.height - 0.01f);
         }
     }
 

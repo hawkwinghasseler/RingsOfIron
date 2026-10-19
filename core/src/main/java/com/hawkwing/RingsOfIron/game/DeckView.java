@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.ringsofiron.aicrew.CrewBody;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
@@ -130,7 +131,7 @@ public final class DeckView {
     public static void crew(ShapeRenderer shapes, CrewMemberComponent crew, float x, float y, float tileSize,
                             Color color, Color tmp) {
         shapes.setColor(color);
-        shapes.circle(x, y, 0.3f * tileSize, 12);
+        shapes.circle(x, y, CrewBody.RADIUS * tileSize, 12);
         if (crew == null || crew.load == null) return;
         float half = 0.17f * tileSize;
         shapes.setColor(0.08f, 0.08f, 0.1f, 1f);

@@ -21,7 +21,7 @@ import com.ringsofiron.interiorgrid.crew.GridOccupantQuery;
  * {@link DamageTaskSink}. One instance per engine; pass it to combat and to the crew
  * systems.
  *
- * It also owns the per-ship pathfinders and the crew state machine (conscious,
+ * It also owns the per-ship pathfinders, the {@link CrewPhysics} inside each deck, and the crew state machine (conscious,
  * unconscious, dead; see {@link #updateState}).
  */
 public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTaskSink {
@@ -45,6 +45,8 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     private final Engine engine;
     private final ImmutableArray<Entity> crewEntities;
     private final ObjectMap<ShipGridComponent, GridPathfinder> pathfinders = new ObjectMap<>();
+    /** The Box2D world inside each deck crew are walking, and their bodies in it. */
+    public final CrewPhysics physics = new CrewPhysics();
     public final RandomXS128 random;
 
     public CrewService(Engine engine) {
@@ -98,9 +100,10 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
         return hostility.hostile(a.faction, b.faction);
     }
 
-    /** Drops the cached pathfinders, e.g. after a load replaced every grid. */
+    /** Drops the cached pathfinders and interior worlds, e.g. after a load replaced every grid. */
     public void clearPathfinders() {
         pathfinders.clear();
+        physics.clear();
     }
 
     /** The pathfinder for a grid, created on first use. */
