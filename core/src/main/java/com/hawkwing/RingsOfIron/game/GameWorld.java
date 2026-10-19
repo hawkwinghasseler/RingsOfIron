@@ -29,6 +29,7 @@ import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
 import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
 import com.ringsofiron.combatsys.systems.WeaponControlSystem;
+import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.TickProfiler;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
@@ -203,6 +204,10 @@ public class GameWorld implements Disposable {
     public final NoticeLog notices;
     /** Key hints by context, for the bottom line and the F1 controls panel. */
     public final HintRegistry hints = HintRegistry.withDefaults();
+    /** Low propellant and inbound missiles, as notices. */
+    public final FlightWarnings warnings;
+    /** First Play's and the opening walkthrough's progress, saved with the game. */
+    public final GuideProgress guides = new GuideProgress();
 
     private final ImmutableArray<Entity> players;
     private final OrbitalAnchorBridge anchorBridge;
@@ -226,6 +231,7 @@ public class GameWorld implements Disposable {
         engine = new GameEngine();
         players = engine.getEcsEngine().getEntitiesFor(PLAYER);
         notices = new NoticeLog(engine::getSimSeconds);
+        warnings = new FlightWarnings(this);
 
         physics = new PhysicsManager();
 
@@ -362,6 +368,7 @@ public class GameWorld implements Disposable {
         contracts = new ContractBoard(this);
         engine.addSystem(contracts);
         engine.getSerializationService().addParticipant(contracts);
+        engine.getSerializationService().addParticipant(guides);
         // NPC freighters fill their tanks wherever they dock
         engine.addSystem(new FreighterRefueling(docking::dockedTo));
         // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
@@ -490,6 +497,7 @@ public class GameWorld implements Disposable {
         hostiles.afterUpdate();
         checkBubbleCrash();
         if (crash != null && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
+        warnings.update();
     }
 
     /** How the player's ship was lost, or null while it still flies. */
@@ -536,6 +544,15 @@ public class GameWorld implements Disposable {
     }
 
     /** The player's primary actor (their ship), or null. */
+    /** The station the player's ship is docked at with clearance, or null. */
+    public Entity playerStation() {
+        Entity player = getPlayer();
+        if (player == null || !docking.dockedWithClearance(player)) return null;
+        Entity station = docking.dockedTo(player);
+        UuidComponent u = station == null ? null : station.getComponent(UuidComponent.class);
+        return u == null || macroSim.station(u.id) == null ? null : station;
+    }
+
     public Entity getPlayer() {
         return players.size() == 0 ? null : players.first();
     }

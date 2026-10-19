@@ -59,7 +59,23 @@ public final class FirstPlay {
     /** Starts the first play on a new game: the player's ship latched to a free port of its size at Highport. */
     public static FirstPlay start(GameWorld world, GameScenario game) {
         game.beginCareer();
-        return new FirstPlay(world, game);
+        FirstPlay f = new FirstPlay(world, game);
+        world.guides.firstPlayStep = f.step.name();
+        return f;
+    }
+
+    /** The first play a loaded game was saved in, at its objective then; null when it was not one. */
+    public static FirstPlay resume(GameWorld world, GameScenario game) {
+        String saved = world.guides.firstPlayStep;
+        if (saved == null) return null;
+        FirstPlay f = new FirstPlay(world, game);
+        try {
+            f.step = Step.valueOf(saved);
+        } catch (IllegalArgumentException e) {
+            f.step = Step.ACCEPT;
+        }
+        world.guides.firstPlayStep = f.step.name();
+        return f;
     }
 
     /** Latches the player's first port onto a free port of the same size at Highport, at once. */
@@ -82,6 +98,7 @@ public final class FirstPlay {
         Step next = next();
         if (next == step) return null;
         step = next;
+        world.guides.firstPlayStep = step.name();
         if (step == Step.FIGHT) game.provokeRaider();
         return objective();
     }

@@ -195,6 +195,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private int logScroll;
     /** The controls panel (F1). */
     private boolean helpOpen;
+    /** When to autosave: docking, and every ten minutes of flight outside warp. */
+    private final com.hawkwing.RingsOfIron.game.AutosaveClock autosaves = new com.hawkwing.RingsOfIron.game.AutosaveClock();
+    /** Whether there is an autosave to offer when the ship is lost. */
+    private boolean haveAutosave;
     private final com.badlogic.gdx.graphics.g2d.GlyphLayout layout = new com.badlogic.gdx.graphics.g2d.GlyphLayout();
     /** Hosted by the game shell: Esc is its pause menu, and the game stands still while paused. */
     private boolean hosted;
@@ -315,6 +319,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (firstPlayMode) firstPlay = FirstPlay.start(world, game);
         else game.beginCareer();
         matchViewToSeat();
+        haveAutosave = slots().latestAutosave() != null;
         show(game.content.report.hasErrors() ? "Content loaded with errors; see the log"
                 : "Welcome aboard, " + world.standing.describeRank() + ". " + key(Action.MISSIONS) + " opens Highport's mission board");
         if (game.content.report.hasErrors()) Gdx.app.error("RingsOfIron", game.content.report.toString());
@@ -333,6 +338,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
             handleInput(delta);
             if (world.getCrash() == null) gun.update(delta);
             world.update(delta);
+            if (world.getCrash() == null) {
+                String why = autosaves.update(world.playerStation() != null, world.timeWarp.getWarp() > 1,
+                        world.engine.getSimSeconds());
+                // Not a ship already lost: the older slots would be all that is left
+                boolean lost = ShipDisablement.reason(game.player) != null || AbandonShip.abandoning(game.player);
+                if (why != null && !lost) autosave(why);
+            }
         }
         world.notices.update(delta);
         abandonAsked -= delta;
@@ -390,7 +402,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
             logOpen = false;
         }
         if (just(Action.QUICK_LOAD)) quickLoad();
-        if (world.getCrash() != null) return;
+        if (world.getCrash() != null) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) || just(Action.USE)) loadLatestAutosave();
+            return;
+        }
         if (logOpen) {
             // The log has the arrow keys while it is open
             if (Gdx.input.isKeyJustPressed(Input.Keys.UP) || Gdx.input.isKeyJustPressed(Input.Keys.PAGE_UP)) logScroll++;
@@ -462,7 +477,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (!helm) return;
         if (just(Action.ARM_PORT)) show(docking.toggleArm());
         if (just(Action.NEXT_PORT)) show(docking.nextPort());
-        if (just(Action.UNDOCK)) show(docking.undock());
+        if (just(Action.UNDOCK)) {
+            // Saved just before letting go of a station
+            if (world.playerStation() != null) autosave("undocking");
+            show(docking.undock());
+        }
         // An open window has the arrow keys
         if (hud.openWindow() == null) planBurns();
     }
@@ -538,7 +557,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 0f, h / 2f - 10f, w, com.badlogic.gdx.utils.Align.center, false);
         font.getData().setScale(1f);
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, key(Action.QUICK_LOAD) + " loads the quick save   Esc " + (hosted ? "menu" : "quits"), 0f, h / 2f - 50f, w, com.badlogic.gdx.utils.Align.center, false);
+        font.draw(batch, key(Action.QUICK_LOAD) + " loads the quick save   " + (haveAutosave ? "Enter loads the latest autosave   " : "")
+                        + "Esc " + (hosted ? "menu" : "quits"), 0f, h / 2f - 50f, w, com.badlogic.gdx.utils.Align.center, false);
         batch.end();
     }
 
@@ -549,9 +569,28 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
     }
 
-    private FileHandle quickSaveFile() {
+    private SaveSlots slots() {
         if (slots == null) slots = new SaveSlots(Gdx.files.local("saves"));
-        return slots.quickSave();
+        return slots;
+    }
+
+    private FileHandle quickSaveFile() {
+        return slots().quickSave();
+    }
+
+    /** Saves to the next of the rotating autosave slots; says so only if it failed. */
+    private void autosave(String why) {
+        int n = slots().nextAutosave();
+        String failed = save(slots().autosave(n), SaveSlots.autosaveName(n));
+        if (failed != null) show("Autosave " + why + " skipped: " + failed);
+        else haveAutosave = true;
+        autosaves.restart(world.playerStation() != null, world.engine.getSimSeconds());
+    }
+
+    private void loadLatestAutosave() {
+        SaveSummary latest = slots().latestAutosave();
+        if (latest == null) show("No autosave yet");
+        else load(latest.file);
     }
 
     private void quickSave() {
@@ -594,6 +633,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (gun.getTarget() == null) gun.setTarget(game.nextContact(null));
             hud.setTargeting(new CombatTargetingProvider(gun));
             matchViewToSeat();
+            // A save made in First Play carries on there; any other leaves it
+            firstPlay = FirstPlay.resume(world, game);
+            autosaves.restart(world.playerStation() != null, world.engine.getSimSeconds());
             show("Game loaded");
             return true;
         } catch (RuntimeException e) {
@@ -1052,6 +1094,17 @@ public class RingsOfIronGame extends ApplicationAdapter {
         font.draw(batch, world.hints.line(hintContexts(), this::key), hintX, 24f);
         // Rank, sponsor and the weekly budget
         font.draw(batch, world.budget.describe(), left, top - 60f);
+        // On deck there is no threat overlay: the missile warning goes up here
+        if (hud.getViewMode().getMode() == ViewMode.INTERIOR && world.warnings.inbound() > 0) {
+            float impact = world.warnings.soonestImpact();
+            font.setColor(Color.RED);
+            font.getData().setScale(1.5f);
+            font.draw(batch, String.format(java.util.Locale.ROOT, "MISSILE WARNING   %d inbound%s", world.warnings.inbound(),
+                    Float.isNaN(impact) ? "" : String.format(java.util.Locale.ROOT, "   impact %.1f s", impact)),
+                    0f, top - 30f, viewports.getUiViewport().getWorldWidth(), com.badlogic.gdx.utils.Align.center, false);
+            font.getData().setScale(1f);
+            font.setColor(Color.LIGHT_GRAY);
+        }
         float y = top - 80f;
         // What stays up while it lasts, then the newest notices
         DisabledComponent.Reason disabled = ShipDisablement.reason(game.player);

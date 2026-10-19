@@ -11,6 +11,9 @@ import com.badlogic.gdx.utils.Array;
 public class SaveSlots {
     public static final String QUICK_SAVE = "quicksave";
     public static final String QUICK_SAVE_NAME = "Quick save";
+    /** Autosaves rotate through this many slots, the oldest overwritten. */
+    public static final int AUTOSAVES = 3;
+    public static final String AUTOSAVE = "autosave";
 
     private final FileHandle dir;
 
@@ -26,11 +29,49 @@ public class SaveSlots {
         return dir.child(QUICK_SAVE + ".json");
     }
 
+    /** Autosave slot {@code n}, 1 to {@link #AUTOSAVES}. */
+    public FileHandle autosave(int n) {
+        return dir.child(AUTOSAVE + "-" + n + ".json");
+    }
+
+    public static String autosaveName(int n) {
+        return "Autosave " + n;
+    }
+
+    /** The slot the next autosave goes to: an empty one, else the oldest. */
+    public int nextAutosave() {
+        int oldest = 1;
+        long oldestAt = Long.MAX_VALUE;
+        for (int n = 1; n <= AUTOSAVES; n++) {
+            FileHandle f = autosave(n);
+            if (!f.exists()) return n;
+            long at = SaveSummary.readFor(f, autosaveName(n)).savedAt;
+            if (at < oldestAt) {
+                oldestAt = at;
+                oldest = n;
+            }
+        }
+        return oldest;
+    }
+
+    /** The newest autosave, or null when there is none. */
+    public SaveSummary latestAutosave() {
+        SaveSummary best = null;
+        for (int n = 1; n <= AUTOSAVES; n++) {
+            FileHandle f = autosave(n);
+            if (!f.exists()) continue;
+            SaveSummary s = SaveSummary.readFor(f, autosaveName(n));
+            if (best == null || s.savedAt > best.savedAt) best = s;
+        }
+        return best;
+    }
+
     /** The file a save named {@code name} goes to: the name with anything but letters, digits, - and _ made _. */
     public FileHandle fileFor(String name) {
         String base = name == null ? "" : name.trim().replaceAll("[^A-Za-z0-9_-]+", "_");
         if (base.isEmpty() || base.equals("_")) base = "save";
         if (base.equals(QUICK_SAVE) && !QUICK_SAVE_NAME.equals(name)) base = "save_" + base;
+        if (base.startsWith(AUTOSAVE + "-")) base = "save_" + base;
         return dir.child(base + ".json");
     }
 
@@ -41,7 +82,9 @@ public class SaveSlots {
         for (FileHandle f : dir.list(".json")) {
             String n = f.name();
             if (n.endsWith(SaveSummary.META_SUFFIX) || n.equals(GameSettings.FILE_NAME)) continue;
-            String fallback = f.nameWithoutExtension().equals(QUICK_SAVE) ? QUICK_SAVE_NAME : f.nameWithoutExtension();
+            String base = f.nameWithoutExtension();
+            String fallback = base.equals(QUICK_SAVE) ? QUICK_SAVE_NAME
+                    : base.startsWith(AUTOSAVE + "-") ? "Autosave " + base.substring(AUTOSAVE.length() + 1) : base;
             out.add(SaveSummary.readFor(f, fallback));
         }
         out.sort((a, b) -> Long.compare(b.savedAt, a.savedAt));
