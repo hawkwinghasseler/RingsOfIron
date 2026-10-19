@@ -4,6 +4,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.components.TransformComponent;
@@ -28,6 +29,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Ships spawned from data get a body of the right mass and engines that fly them. */
 class ShipPhysicsAssemblerTest {
@@ -120,5 +122,34 @@ class ShipPhysicsAssemblerTest {
         assertEquals(250_000f, PhysicsManager.getMass(body), 1f);
         assertEquals(4.0e6f, PhysicsManager.getInertia(body), 10f);
         assertEquals(-1f, body.getLocalCenter().x * PhysicsManager.METERS_PER_UNIT, 1e-4f);
+    }
+
+    @Test
+    void hullSourceGivesTheBodyAFixtureForEachPiece() {
+        factory = new EntityFactory(game, defs);
+        // An L: a 4 x 1 box along the bottom and a 1 x 2 box up its left end
+        List<float[]> pieces = Arrays.asList(new float[]{0f, 0f, 4f, 0f, 4f, 1f, 0f, 1f},
+                new float[]{0f, 1f, 1f, 1f, 1f, 3f, 0f, 3f});
+        ShipPhysicsAssembler.register(factory, physics, null, (entity, def) -> pieces);
+        defineShip("ell", Arrays.asList(Arrays.asList(-5.0, -3.0), Arrays.asList(5.0, -3.0), Arrays.asList(5.0, 3.0)));
+        Body body = factory.spawnShip("ell", 0f, 0f, 0f).getComponent(PhysicsBodyComponent.class).body;
+        assertEquals(2, body.getFixtureList().size);
+        assertEquals(120000f, PhysicsManager.getMass(body), 1f);
+        // Weighed on both: the center of 4 m2 at (2, 0.5) and 2 m2 at (0.5, 2)
+        assertEquals(1.5f, body.getLocalCenter().x * PhysicsManager.METERS_PER_UNIT, 1e-3f);
+        assertEquals(1.0f, body.getLocalCenter().y * PhysicsManager.METERS_PER_UNIT, 1e-3f);
+        // It collides on the upright too, which a single polygon of the def's hull would not cover
+        assertTrue(body.getFixtureList().get(1).testPoint(0.05f, 0.25f));
+    }
+
+    @Test
+    void hullSourceWithNoShapeLeavesTheDefHull() {
+        factory = new EntityFactory(game, defs);
+        ShipPhysicsAssembler.register(factory, physics, null, (entity, def) -> null);
+        defineShip("plain", Arrays.asList(Arrays.asList(-5.0, -3.0), Arrays.asList(5.0, -3.0), Arrays.asList(5.0, 3.0)));
+        Body body = factory.spawnShip("plain", 0f, 0f, 0f).getComponent(PhysicsBodyComponent.class).body;
+        assertEquals(1, body.getFixtureList().size);
+        assertEquals(3, ((PolygonShape) body.getFixtureList().first().getShape()).getVertexCount());
+        assertEquals(120000f, PhysicsManager.getMass(body), 1f);
     }
 }
