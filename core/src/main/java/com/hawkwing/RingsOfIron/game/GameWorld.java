@@ -614,6 +614,7 @@ public class GameWorld implements Disposable {
         wrecks.clear();
         rescue.update();
         hostiles.afterUpdate();
+        pirateBase.afterUpdate();
         derelicts.update();
         events.update();
         checkBubbleCrash();

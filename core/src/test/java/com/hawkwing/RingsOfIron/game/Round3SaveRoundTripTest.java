@@ -87,7 +87,7 @@ class Round3SaveRoundTripTest {
 
         // An operation taken there
         Contract op = null;
-        for (Contract c : world.contracts.offers(game.highport)) if (c.type == Contract.Type.OPERATION) op = c;
+        for (Contract c : world.contracts.offers(game.highport)) if (c.type == Contract.Type.OPERATION && op == null) op = c;
         assertNotNull(op, "a lieutenant is offered an operation");
         assertNull(world.contracts.accept(op.id));
         String operation = world.contracts.operation().id;

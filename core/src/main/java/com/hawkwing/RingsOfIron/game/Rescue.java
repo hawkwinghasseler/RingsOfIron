@@ -336,13 +336,26 @@ public class Rescue {
      * passed: 0 if rails warp was refused, when the new ship still ends up at the station.
      */
     private double skipTo(Entity ship, Entity station) {
+        return skipTo(ship, station, ARRIVAL_OFFSET, TIME_SKIP);
+    }
+
+    /**
+     * Puts {@code ship} on {@code station}'s orbit {@code behind} meters back from it, at once, and
+     * rebuilds the bubble there: a jump for scripted careers and tests (round 5's raid on the
+     * pirates' base), with no time skipped. The ship should not be docked.
+     */
+    void jumpBeside(Entity ship, Entity station, double behind) {
+        skipTo(ship, station, behind, 0);
+    }
+
+    private double skipTo(Entity ship, Entity station, double offset, double timeSkip) {
         world.macroSim.setBubbleSuspended(true);
         bubble.collapseToRails();
         double t = world.engine.getSimSeconds();
         OrbitComponent so = station.getComponent(OrbitComponent.class);
         so.stateAt(t, state);
         double v = Math.hypot(state.vx, state.vy);
-        double back = v > 0 ? ARRIVAL_OFFSET / v : 0;
+        double back = v > 0 ? offset / v : 0;
         OrbitComponent orbit = new OrbitComponent(so.parentUuid, KeplerOrbit.fromState(
                 state.x - state.vx * back, state.y - state.vy * back, state.vx, state.vy, so.mu, t));
         orbit.attitude = Math.atan2(state.vy, state.vx);
@@ -352,8 +365,8 @@ public class Rescue {
             world.orbitalEvents.orbitChanged(ship);
         }
         double skipped = 0;
-        if (world.engine.advanceRails(SimClock.secondsToTicks(TIME_SKIP))) {
-            skipped = TIME_SKIP;
+        if (timeSkip > 0 && world.engine.advanceRails(SimClock.secondsToTicks(timeSkip))) {
+            skipped = timeSkip;
             world.orbitalEvents.processUntil(world.engine.getSimSeconds());
         }
         bubble.rebuildFromRails();

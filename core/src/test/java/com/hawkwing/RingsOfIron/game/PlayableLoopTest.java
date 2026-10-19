@@ -205,7 +205,9 @@ class PlayableLoopTest {
         world.standing.reward(world.standing.sponsor(), 40f, "test");
         assertEquals(2, world.standing.record().rank);
         assertEquals("gunship_heavy", world.loop.bestRequisition());
-        Contract held = world.contracts.offers(game.highport).get(0);
+        // A plain job: the operations heading the board may have nothing to do just now
+        Contract held = world.contracts.offers(game.highport).stream()
+                .filter(c -> c.type != Contract.Type.OPERATION && c.type != Contract.Type.RAID).findFirst().orElseThrow();
         assertNull(world.contracts.accept(held.id));
         game.player.getComponent(TraderComponent.class).credits = 9_000;
 

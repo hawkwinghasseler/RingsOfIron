@@ -35,3 +35,43 @@ rank = "commander"
 reward = 30000.0
 standing = 10.0
 steps = ["recon", "bounty", "intel", "raid"]
+
+# Round 5: operations with convoy and delivery steps, and more for the ranks past the gunship. Given
+# by the sponsor (giver empty), so a Selene career is offered them too. A convoy step falls back to
+# an escort when no two freighters haul together.
+
+[operation.supply_line]
+name = "Supply Line"
+text = "A station's stores are running thin. Carry what it needs, then see the next haul in safely."
+giver = ""
+rank = "lieutenant"
+reward = 6000.0
+standing = 5.0
+steps = ["delivery", "convoy"]
+
+[operation.safe_harbour]
+name = "Safe Harbour"
+text = "The haulers want to see a warship on their lanes. Bring a convoy in, sweep a lane, and carry the stores they could not."
+giver = ""
+rank = "lieutenant_commander"
+reward = 14000.0
+standing = 8.0
+steps = ["convoy", "patrol", "delivery"]
+
+[operation.iron_escort]
+name = "Iron Escort"
+text = "A run the raiders will try for. Bring the convoy in, find who is waiting on the lanes, take them, and bring the next one in."
+giver = ""
+rank = "commander"
+reward = 28000.0
+standing = 10.0
+steps = ["convoy", "recon", "bounty", "convoy"]
+
+[operation.long_watch]
+name = "The Long Watch"
+text = "Command wants the far lanes held. Sweep them, hunt down two crews working them, and keep the stores moving."
+giver = ""
+rank = "captain"
+reward = 45000.0
+standing = 12.0
+steps = ["patrol", "recon", "bounty", "recon", "bounty", "delivery"]

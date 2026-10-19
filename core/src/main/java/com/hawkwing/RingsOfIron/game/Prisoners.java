@@ -56,7 +56,8 @@ public class Prisoners {
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
             CrewMemberComponent c = world.crew.crew(e);
-            if (c.held && c.isAlive() && world.crew.position(e).ship == ship) out.add(e);
+            // Survivors of a rescue are carried, not held
+            if (c.held && c.isAlive() && world.crew.position(e).ship == ship && e.getComponent(SurvivorComponent.class) == null) out.add(e);
         }
         return out;
     }

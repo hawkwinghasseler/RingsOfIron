@@ -37,7 +37,9 @@ rank = "lieutenant_commander"
 [ship_sale.patrol_frigate]
 ship = "frigate_patrol"
 seller = "patrol"
-price = 720000.0
+# Round 5: a little over its 444,000 value (was 720,000), as the gunship is, so a Commander can buy it
+# on pay and contracts
+price = 455000.0
 rank = "commander"
 
 # The Combine sells the light raider's hull as a fast courier to captains it trusts

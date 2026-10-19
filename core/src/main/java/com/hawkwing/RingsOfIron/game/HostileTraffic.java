@@ -104,7 +104,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     /** The pirates' own gunship (round 5): the hull stripped down and rearmed by the Void Raiders. */
     public static final String PIRATE_GUNSHIP = "gunship_raider";
     /** Faction ids, as the factions work names them: the player's sponsor, Selene, and the pirates. */
-    public static final String SPONSOR = "patrol", SELENE = "selene", PIRATES = "pirates";
+    public static final String SPONSOR = "patrol", SELENE = "selene", PIRATES = "pirates", TRADERS = "traders";
     /** Crew factions (ai-crew numbers) of each; the sponsor's is the stations' own. */
     static final int SPONSOR_CREW = StationCrew.FACTION, PIRATE_CREW = 3, SELENE_CREW = 4;
 
@@ -134,6 +134,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     private final Map<String, String[]> routes = new HashMap<>();
     /** Patrols to spawn once the update is over. */
     private final List<String> reinforcements = new ArrayList<>();
+    /** Patrols sent on routes of their own ({@link #patrol}), each its faction then its stations, spawned after the update. */
+    private final List<String[]> sentPatrols = new ArrayList<>();
     private int spawned;
     private double nextTopUp = Double.POSITIVE_INFINITY;
     /** Sim second a pirate started an intercept on the player; NaN when there is no alert. */
@@ -206,6 +208,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         alertAt = Double.NaN;
         controller.playerGraceUntil = 0;
         provoked.clear();
+        sentPatrols.clear();
         busySince.clear();
         alongside.clear();
     }
@@ -246,6 +249,20 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         return true;
     }
 
+    /**
+     * Sends faction {@code faction} a patrol flying {@code route}'s stations, once the engine update is
+     * over: the Free Traders watching lanes where tension runs high ({@link FactionTension}), say.
+     * False for an empty route.
+     */
+    public boolean patrol(String faction, String... route) {
+        if (route == null || route.length == 0) return false;
+        String[] entry = new String[route.length + 1];
+        entry[0] = faction;
+        System.arraycopy(route, 0, entry, 1, route.length);
+        sentPatrols.add(entry);
+        return true;
+    }
+
     /** Patrols of each faction flying, reinforcements included. */
     public int patrols(String faction) {
         int n = 0;
@@ -277,6 +294,10 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         while (!reinforcements.isEmpty()) {
             String faction = reinforcements.remove(0);
             spawnPatrol(faction, routes.get(faction));
+        }
+        while (!sentPatrols.isEmpty()) {
+            String[] entry = sentPatrols.remove(0);
+            spawnPatrol(entry[0], java.util.Arrays.copyOfRange(entry, 1, entry.length));
         }
         if (!topUpDue) return;
         topUpDue = false;
@@ -846,9 +867,12 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     }
 
     private void spawnPatrol(String faction, String[] route) {
-        Entity ship = spawnShip(GUNSHIP, SPONSOR.equals(faction) ? SPONSOR_CREW : SELENE_CREW);
+        int crew = SPONSOR.equals(faction) ? SPONSOR_CREW : SELENE.equals(faction) ? SELENE_CREW
+                : world.standing.factions().index(faction);
+        Entity ship = spawnShip(GUNSHIP, crew);
         if (ship == null) return;
-        String name = (SPONSOR.equals(faction) ? "Patrol cutter " : "Selene guard ") + (++spawned);
+        String name = (SPONSOR.equals(faction) ? "Patrol cutter " : SELENE.equals(faction) ? "Selene guard "
+                : TRADERS.equals(faction) ? "Free Trader escort " : "Patrol ") + (++spawned);
         HostileComponent h = new HostileComponent(name, GUNSHIP, faction, HostileComponent.Role.PATROL,
                 firepower(ship));
         ship.add(h);

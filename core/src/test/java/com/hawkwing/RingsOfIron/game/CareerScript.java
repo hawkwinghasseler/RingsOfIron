@@ -1,0 +1,794 @@
+package com.hawkwing.RingsOfIron.game;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.aicrew.CrewMemberComponent;
+import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.macrosim.rails.StateVector;
+import com.ringsofiron.moddingdata.components.DefRefComponent;
+import com.ringsofiron.interiorgrid.InteriorHazardWarpGuard;
+import com.ringsofiron.interiorgrid.LeakPatches;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.function.BooleanSupplier;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+/**
+ * A career played by script on a fresh seeded game, headless: what {@link Round3CareerTest} and
+ * {@link Round5CareerTest} share. {@link #playToTheGunship} plays round 3's career (hire a veteran,
+ * fight two raiders and an ace, tow a prize home, fly to the Moon, wait for pay and buy the gunship);
+ * the helpers fly, fight, warp and log for the later careers.
+ *
+ * <p>As in round 2's loop test, getting the ship near a fight is done by hand (the ship is put beside
+ * the target). Only a fight the player loses is made up for by the script, and the test then says so
+ * instead of passing quietly. Everything else is the game's own systems. Each career writes what it
+ * saw (time, credits, standing, rank, difficulty, prices) to {@code build/<journal>.txt}.
+ */
+abstract class CareerScript {
+    static final float FRAME = 1f / 60f;
+    /** 2026 unless {@code -PcareerSeed=n} is given, to play the career on other seeds. */
+    static final long SEED = Long.getLong("career.seed", 2026);
+
+    GameWorld world;
+    GameScenario game;
+    final List<String> journal = new ArrayList<>();
+    double granted;
+    /** Credits the script put in, and credits that came from selling prizes. */
+    double grantedCredits, prizeCredits;
+    int fightsLost;
+    /** Range, m, past which a hostile breaking off has got away: since round 5 a wounded crew can still run. */
+    static final double GOT_AWAY = 40_000;
+    /** The fight whose leak the crew patched from the stores, once one has. */
+    String patchedAfter;
+    final java.util.Set<String> warpBlocks = new java.util.HashSet<>();
+    /** Times the yard work is ordered again after the ship came loose of the latch. */
+    int yardTries = 3;
+
+    /** The journal's file name in {@code build/}, without the extension. */
+    abstract String journalName();
+
+    @BeforeAll
+    static void loadNatives() {
+        GdxNativesLoader.load();
+    }
+
+    @AfterEach
+    void tearDown() throws IOException {
+        if (world != null) world.dispose();
+        if (!journal.isEmpty()) {
+            Path out = Paths.get(System.getProperty("user.dir")).resolve("build").resolve(journalName() + ".txt");
+            Files.createDirectories(out.getParent());
+            Files.write(out, journal);
+        }
+    }
+
+    static Path assets() {
+        return Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+    }
+
+    void start(long seed) {
+        world = new GameWorld();
+        game = GameScenario.start(world, assets(), assets().resolve("no-mods-here"), NewGame.seeded(seed, "patrol"));
+        world.carriedHome.add((sig, t) -> log("  (the player is down: the crew bring them to %s, %.1f d later)", t.stationName, t.skipped / 86_400));
+    }
+
+    // ------------------------------------------------------------------ round 3's career
+
+    /**
+     * Round 3's career from the start to the gunship, by the round 4 balance: three fights, a
+     * Moon trip and three weeks' pay. Returns the station the ship was docked at before the weeks passed.
+     */
+    String playToTheGunship() {
+        start(SEED);
+        game.beginCareer();
+        run(120);
+        Entity highport = world.engine.getEntity(game.highport);
+        assertSame(highport, world.docking.dockedTo(game.player), "a Patrol career starts docked at Highport");
+        log("Seed %d, Patrol career. %d stations, %d freighters, %d pirates, %d crew aboard.", SEED,
+                world.macroSim.stations().size(), world.macroSim.freighters().all().size(), pirates(), ownCrew().size());
+        snapshot("start");
+        logBoard(game.highport);
+
+        // 1. Hire the most skilled hand Highport offers
+        hireAVeteran();
+
+        // 2. The raider outside Highport: its bounty, then tow it home as a prize
+        fightTheRaiderAndTowItHome();
+
+        // 3. The second raider's bounty
+        fightASecondRaider();
+
+        // 4. Two fights make a lieutenant, who is offered an operation
+        requireRank(1, "a second fight's worth");
+        takeAnOperation();
+
+        // 5. An ace that got away from someone comes hunting outside Highport: its bounty is the
+        // Patrol's, so its standing counts toward the next rank
+        fightAnAce();
+
+        // 6. A transfer to the Moon, planned by navigation and flown by the burns it plans
+        flyToTheMoon();
+
+        // 7. Weeks pass: wages, budget, events
+        String home = world.universe.uuidOf(world.docking.dockedTo(game.player));
+        weeksPass(3);
+
+        // 8. A lieutenant commander buys the gunship at Anvil Yards
+        requireRank(2, "a lieutenant commander's standing");
+        buyTheGunship();
+        return home;
+    }
+
+    void hireAVeteran() {
+        List<CrewHiring.Candidate> pool = world.crewHiring.pool(game.highport);
+        assertFalse(pool.isEmpty(), "Highport has hands to hire");
+        CrewHiring.Candidate best = pool.get(0);
+        for (CrewHiring.Candidate c : pool) {
+            log("  for hire: %s, %s, %s, wage %.0f/week, signing %.0f", c.name, c.role, c.record.describeSkills(),
+                    c.record.wage, c.signing);
+            if (top(c) > top(best)) best = c;
+        }
+        double before = credits();
+        int crew = ownCrew().size();
+        assertNull(world.crewHiring.hire(best.key), "hired");
+        assertEquals(crew + 1, ownCrew().size(), "the hire walks aboard");
+        log("Hired %s (%s, %s) for %.0f up front.", best.name, best.role, best.record.describeSkills(), before - credits());
+        snapshot("hired");
+    }
+
+    static float top(CrewHiring.Candidate c) {
+        return Math.max(c.record.gunnery, Math.max(c.record.engineering, c.record.marine));
+    }
+
+    void fightTheRaiderAndTowItHome() {
+        Entity highport = world.engine.getEntity(game.highport);
+        Contract bounty = null;
+        for (Contract c : world.contracts.offers(game.highport)) {
+            if (c.type == Contract.Type.BOUNTY && world.universe.uuidOf(game.raider).equals(c.targetUuid)) bounty = c;
+        }
+        assertNotNull(bounty, "the raider's bounty is on Highport's board");
+        // First Play's raider flies with nobody aboard; two pirates crew it here, as in PrizeTowingTest,
+        // so the prize comes home with prisoners if they live through the fight
+        int pirates = world.standing.factions().index(GameScenario.PIRATES);
+        List<int[]> floor = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class));
+        for (int i = 0; i < 2; i++) {
+            int[] t = floor.get(floor.size() - 1 - i);
+            com.ringsofiron.aicrew.CrewFactory.spawn(world.crew, game.raider, "Pirate " + i,
+                    com.ringsofiron.aicrew.CrewRole.CREWMAN, pirates, t[0], t[1]);
+        }
+        assertNull(world.contracts.accept(bounty.id));
+        log("Took %s: %.0f cr, %+.0f standing.", bounty.heading(), bounty.reward, bounty.standing);
+
+        assertTrue(world.docking.undock(game.player));
+        run(60);
+        flyTo(game.raider, 1_500f);
+        run(2);
+        game.provokeRaider();
+        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        gun.setTarget(game.raider);
+        double t0 = world.engine.getSimSeconds();
+        assertTrue(runUntil(300f, () -> {
+            gun.fireGuns();
+            gun.launchMissile();
+            gun.update(FRAME);
+            return ShipDisablement.isDisabled(game.raider);
+        }), "the raider is beaten");
+        log("The raider is beaten in %.0f s; our hull %.2f.", world.engine.getSimSeconds() - t0, hull(game.player));
+        ShipGridComponent ours = game.player.getComponent(ShipGridComponent.class), theirs = game.raider.getComponent(ShipGridComponent.class);
+        log("  shorts and tank bursts: ours %d and %d, theirs %d and %d.", ours.shortCount, ours.burstCount,
+                theirs.shortCount, theirs.burstCount);
+
+        patchIfVenting("the raider");
+
+        run(60 * 20);
+        assertEquals(Contract.Status.DONE, bounty.status, bounty.outcome);
+        snapshot("bounty paid");
+
+        // Latch on, board, take it, and bring the party home
+        flyTo(game.raider, 40f);
+        world.docking.dockInPlace(game.player, 0, game.raider, 0);
+        assertTrue(runUntil(10f, () -> world.boarding.target(game.player) == game.raider && world.docking.isRigid(game.player)));
+        run(120);
+        String said = world.boarding.order(game.player);
+        assertTrue(said.startsWith("Boarding party ordered aboard"), said);
+        assertTrue(runUntil(300f, () -> world.boarding.takenBy(game.raider, game.player)), "taken");
+        world.boarding.recall(game.player);
+        assertTrue(runUntil(180f, () -> partyAboard(game.raider) == 0), "the party came home");
+        int prisoners = world.prisoners.aboard(game.raider).size();
+        assertSame(game.raider, world.shipyard.prize(), "a prize in tow");
+
+        // Tow it (as one body) to 800 m off Highport and sell it there
+        towTo(game.raider, highport, 800f);
+        double value = Difficulty.shipValue(game.raider), before = credits();
+        assertNull(world.shipyard.prizeRefusal(false));
+        said = world.shipyard.sellPrize();
+        log("Prize: %s (ship value %.0f, %d prisoners).", said, value, prisoners);
+        log("  for comparison: the bounty paid %.0f; the prize paid %.0f.", bounty.reward, credits() - before);
+        prizeCredits += credits() - before;
+        snapshot("prize sold");
+        assertTrue(game.dockAtHighport());
+        run(120);
+        assertSame(highport, world.docking.dockedTo(game.player));
+
+        // The patched bow still wants a yard: Highport's mends it, and restocks the patches
+        repairAt(highport);
+        snapshot("repaired");
+    }
+
+    /**
+     * The other raider bounty on Highport's board, fought outside Highport for its bounty alone: one
+     * prize a career is enough (round 4 keeps the gunship within reach without prize windfalls).
+     * Its crew are logged, since a light raider's crew rarely live through the player's guns.
+     */
+    void fightASecondRaider() {
+        Contract bounty = null;
+        for (Contract c : world.contracts.offers(game.highport)) {
+            if (c.type == Contract.Type.BOUNTY && world.contracts.locked(c) == null && c.targetUuid != null
+                    && world.macroSim.hostiles().get(c.targetUuid) != null) bounty = c;
+        }
+        assertNotNull(bounty, "a second raider's bounty on Highport's board");
+        assertNull(world.contracts.accept(bounty.id));
+        log("Took %s: %.0f cr, %+.0f standing.", bounty.heading(), bounty.reward, bounty.standing);
+        HostileComponent h = world.macroSim.hostiles().get(bounty.targetUuid);
+        log("  it flies a %s, loadout %s.", h.shipId, h.loadout);
+
+        assertTrue(world.docking.undock(game.player));
+        run(60);
+        Entity ship = bringIn(bounty.targetUuid, 3_000, 0);
+        boolean won = fight(ship, h, "The second raider");
+        patchIfVenting("the second raider");
+        if (won) {
+            log("  beaten: %s, %d of its crew alive.", ShipDisablement.reason(ship), alive(ship));
+            run(60 * 20);
+            assertEquals(Contract.Status.DONE, bounty.status, bounty.outcome);
+            snapshot("second bounty paid");
+            boardAndSell(ship);
+        }
+        assertTrue(game.dockAtHighport());
+        run(120);
+        repairAt(world.engine.getEntity(game.highport));
+        snapshot("second fight over");
+    }
+
+    /**
+     * Boards the beaten {@code ship}, holds whoever lives aboard, and tows it to Highport: the prize
+     * pays its share of the ship's value and the hand-over pay for its prisoners. A light raider's
+     * crew rarely live through the player's guns, so the prisoners are counted, not required.
+     */
+    void boardAndSell(Entity ship) {
+        flyTo(ship, 40f);
+        world.docking.dockInPlace(game.player, 0, ship, 0);
+        assertTrue(runUntil(10f, () -> world.boarding.target(game.player) == ship && world.docking.isRigid(game.player)),
+                "latched on");
+        run(120);
+        String said = world.boarding.order(game.player);
+        assertTrue(said.startsWith("Boarding party ordered aboard"), said);
+        assertTrue(runUntil(300f, () -> world.boarding.takenBy(ship, game.player)), "taken");
+        world.boarding.recall(game.player);
+        assertTrue(runUntil(180f, () -> partyAboard(ship) == 0), "the party came home");
+        int prisoners = world.prisoners.aboard(ship).size();
+        towTo(ship, world.engine.getEntity(game.highport), 800f);
+        double value = Shipyard.prizeValue(ship), before = credits();
+        said = world.shipyard.sellPrize();
+        double paid = credits() - before;
+        log("Prize: %s (prize value %.0f; %d prisoners, handed over for %.0f).", said, value, prisoners, paid - value);
+        assertEquals(value + prisoners * Prisoners.HANDOVER_PAY, paid, 1e-6, "prisoners are paid for with the prize");
+        prizeCredits += paid;
+    }
+
+    /** Fights {@code ship} with every gun and missile until one side is beaten; true if it was. */
+    boolean fight(Entity ship, HostileComponent h, String what) {
+        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        gun.setTarget(ship);
+        int[] fired = new int[1], hits = new int[1];
+        world.combatEvents.shots.add((sig, shot) -> { if (shot.shooter == ship) fired[0]++; });
+        world.combatEvents.impacts.add((sig, hit) -> { if (hit.owner == ship && hit.target == game.player) hits[0]++; });
+        double t0 = world.engine.getSimSeconds();
+        float hull0 = hull(game.player);
+        int crew0 = ownCrew().size();
+        ShipGridComponent ours = game.player.getComponent(ShipGridComponent.class), theirs = ship.getComponent(ShipGridComponent.class);
+        int[] incidents0 = {ours.shortCount, ours.burstCount, theirs == null ? 0 : theirs.shortCount, theirs == null ? 0 : theirs.burstCount};
+        // Shot down at the helm, the player is carried home by the crew: the fight is lost
+        boolean[] carried = new boolean[1];
+        com.badlogic.ashley.signals.Listener<Rescue.Tow> home = (sig, t) -> carried[0] = true;
+        world.carriedHome.add(home);
+        boolean over = runUntil(400f, () -> {
+            if (carried[0]) return true;
+            gun.fireGuns();
+            gun.launchMissile();
+            gun.update(FRAME);
+            return (h != null && h.partDropped) || ShipDisablement.isDisabled(ship) || ShipDisablement.isDisabled(game.player)
+                    || world.getCrash() != null || distance(game.player, ship) > GOT_AWAY;
+        });
+        world.carriedHome.remove(home);
+        boolean won = !carried[0] && ((h != null && h.partDropped) || ShipDisablement.isDisabled(ship));
+        boolean away = !won && !carried[0] && distance(game.player, ship) > GOT_AWAY;
+        log("%s: %.0f s, %s; it fired %d rounds, %d hit us; our hull %.2f -> %.2f, crew %d -> %d.", what,
+                world.engine.getSimSeconds() - t0, won ? "beaten" : carried[0] ? "we lost (carried home)" : away ? "it got away"
+                        : over ? "we lost" : "neither side beaten", fired[0],
+                hits[0], hull0, hull(game.player), crew0, ownCrew().size());
+        log("  shorts and tank bursts: ours %d and %d, theirs %d and %d.", ours.shortCount - incidents0[0],
+                ours.burstCount - incidents0[1], theirs == null ? 0 : theirs.shortCount - incidents0[2],
+                theirs == null ? 0 : theirs.burstCount - incidents0[3]);
+        assertTrue(over, "the fight ends one way or the other");
+        if (!won) fightsLost++;
+        return won;
+    }
+
+    /**
+     * If the fight with {@code what} left a leak the crew can patch, and no earlier fight did, checks
+     * damage control on it: out here, far from a yard, warp is refused while air vents, and the crew
+     * patch the leak from the ship's stores. Once nothing vents, warp is no longer refused for it
+     * (round 3 had to dock at a yard first). A breach the patches can't stop is logged and left to
+     * the yard. Which fight holes the ship depends on the seed and on the round 4 balance (a plain
+     * raider rarely fires), so the career checks the first fight that leaves a patchable leak.
+     */
+    void patchIfVenting(String what) {
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        logVenting("after " + what);
+        if (patchedAfter != null || LeakPatches.leaks(grid).size == 0) return;
+        assertTrue(world.engine.getRailsWarpBlockedReason().startsWith(InteriorHazardWarpGuard.VENTING),
+                world.engine.getRailsWarpBlockedReason());
+        int kits = grid.patchKits;
+        double p0 = world.engine.getSimSeconds();
+        if (!runUntil(600f, () -> LeakPatches.leaks(grid).size == 0)) {
+            // Seen on seed 2026: a wall leak beside an emptied room that the engineer set out for
+            // and gave up on as out of reach. Logged for the crew's part, and left to the yard; a
+            // later fight's leak is checked instead
+            for (LeakPatches.Leak l : LeakPatches.leaks(grid)) log("  the crew didn't reach the leak at (%d, %d) in 10 minutes", l.x, l.y);
+            return;
+        }
+        run(60);
+        if (!DamageControl.hasPatches(grid) && grid.patchKits == kits) {
+            // More hits (an ace firing as it breaks off) wrecked the leaking piece outright before the
+            // crew reached it: a breach is sealed, not patched, so a later fight checks the patching
+            log("  the leak after %s became a breach before the crew could patch it; sealed instead.", what);
+            return;
+        }
+        assertTrue(DamageControl.hasPatches(grid), "patched, not repaired");
+        assertTrue(grid.patchKits < kits, "the patches came from the stores");
+        if (grid.isVenting()) {
+            int breaches = 0;
+            for (int y = 0; y < grid.height; y++) for (int x = 0; x < grid.width; x++) if (grid.getTile(x, y).isHullBreach()) breaches++;
+            log("  still venting through %d hull breach(es) the patches can't stop; warp: %s", breaches,
+                    world.engine.getRailsWarpBlockedReason());
+        } else {
+            assertNull(new InteriorHazardWarpGuard(grid).railsWarpBlockedReason(), "the leak no longer holds warp back");
+            assertTrue(noticed("Leak patched"), () -> "the player was told: " + world.notices.history().stream().map(n -> n.text).toList());
+        }
+        log("Damage control: leaks patched in %.0f s with %d patch(es) from the stores (%d left); hull %.2f; "
+                        + "warp held back by: %s.", world.engine.getSimSeconds() - p0, kits - grid.patchKits,
+                grid.patchKits, hull(game.player), world.engine.getRailsWarpBlockedReason());
+        patchedAfter = what;
+    }
+
+    /** Has {@code station}'s yard mend the ship, which takes off the crew's patches and restocks the kits. */
+    void repairAt(Entity station) {
+        logVenting("at the yard");
+        double cost = world.yard.repairCost(game.player), paid = credits(), r0 = world.engine.getSimSeconds();
+        log("Yard: %s (quoted %.0f cr).", world.yard.orderRepairs(game.player, station), cost);
+        assertTrue(runUntil(2 * 3_600f, () -> !world.yard.repairing(game.player)), "the yard finished");
+        // Should the ship come loose of the latch for a moment, the work is called off: order it again
+        // (the yard surviving a blip is round 5's docking part)
+        int again = 0;
+        for (; again < yardTries && world.yard.repairCost(game.player) > 0.5; again++) {
+            for (String n : world.yard.notices) log("  yard: %s", n);
+            world.yard.notices.clear();
+            if (world.docking.dockedTo(game.player) != station) assertTrue(game.dockAt(world.universe.uuidOf(station)));
+            run(60);
+            log("  ordered again: %s", world.yard.orderRepairs(game.player, station));
+            assertTrue(runUntil(2 * 3_600f, () -> !world.yard.repairing(game.player)), "the yard finished");
+        }
+        log("  repaired in %.1f h for %.0f cr, ordered %d time(s); hull %.2f; docked at %s.", (world.engine.getSimSeconds() - r0) / 3_600,
+                paid - credits(), again + 1, hull(game.player), world.docking.dockedTo(game.player) == null ? "nothing"
+                        : PlayerDocking.name(world.docking.dockedTo(game.player)));
+        for (String n : world.yard.notices) log("  yard: %s", n);
+        world.yard.notices.clear();
+        assertTrue(world.yard.repairCost(game.player) <= 0.5,
+                String.format("left to repair: %.0f cr in %d items", world.yard.repairCost(game.player), world.yard.damage(game.player).size()));
+        logVenting("after repairs");
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        assertFalse(DamageControl.hasPatches(grid), "the yard's repairs take the patches off");
+        assertEquals(LeakPatches.DEFAULT_KITS, grid.patchKits, "and restock them");
+    }
+
+    void takeAnOperation() {
+        Contract op = null;
+        for (Contract c : world.contracts.offers(game.highport)) if (c.type == Contract.Type.OPERATION) op = c;
+        assertNotNull(op, "a lieutenant is offered an operation at Highport");
+        // Not taken: the script flies to the Moon instead, and a dropped operation costs standing
+        log("Offered operation %s (%s): reward %.0f cr, %+.0f standing.", op.operationName, op.reason, op.reward, op.standing);
+    }
+
+    void flyToTheMoon() {
+        logVenting("before the Moon trip");
+        String target = game.oreMine != null ? game.oreMine : game.lunarMine;
+        Entity station = world.engine.getEntity(target);
+        assertTrue(world.docking.undock(game.player));
+        run(120);
+        // Clear of Highport, at the helm
+        world.nav.target.select(target);
+        double fuel0 = propellantKg(), t0 = world.engine.getSimSeconds();
+        String said = world.nav.transfer.plan();
+        PlayerTransfer.Proposal p = world.nav.transfer.proposal();
+        log("Plan to %s: %s", world.nav.target.name(target), said);
+        assertNotNull(p, said);
+        log("  Δv needed %.0f m/s, Δv left %.0f m/s, return estimate %.0f m/s.", world.nav.deltaVNeeded(),
+                world.nav.deltaVLeft(), world.nav.returnDeltaV());
+        said = world.nav.transfer.accept(world.burns);
+        log("  %s", said);
+        // Warp out: burns fire when due, then the capture is proposed once in the Moon's sphere
+        boolean captured = false;
+        double give = 12 * 86_400;
+        while (world.engine.getSimSeconds() - t0 < give && !captured && world.getCrash() == null) {
+            warpFor(3_600);
+            if (world.nav.transfer.proposal() != null) {
+                log("  day %.1f: %s", days(t0), world.nav.transfer.describe(world.nav.transfer.proposal()));
+                log("  %s", world.nav.transfer.accept(world.burns));
+                captured = true;
+            }
+        }
+        for (String n : world.nav.transfer.notices) log("  navigation: %s", n);
+        world.nav.transfer.notices.clear();
+        assertTrue(captured, "the capture was proposed in the Moon's sphere");
+        // Fly the capture and the rest of the trip, then measure how close it got
+        double closest = Double.MAX_VALUE;
+        double until = world.engine.getSimSeconds() + 6 * 86_400;
+        while (world.engine.getSimSeconds() < until && world.getCrash() == null) {
+            warpFor(1_800);
+            closest = Math.min(closest, distance(game.player, station));
+            if (world.burns.nodes() == null || world.burns.nodes().nodes.size == 0) {
+                if (closest < 50_000) break;
+            }
+        }
+        log("Moon trip: %.1f days, %.0f kg of propellant (%.0f kg left), closest pass to %s %.1f km. Crash: %s.",
+                days(t0), fuel0 - propellantKg(), propellantKg(), world.nav.target.name(target), closest / 1000,
+                world.getCrash());
+        assertNull(world.getCrash(), "the trip doesn't end in a crash");
+        // Dock there by hand from close in
+        if (closest < 50_000 && game.dockAt(target)) {
+            run(120);
+            log("  docked at %s.", world.nav.target.name(target));
+        } else {
+            log("  not close enough to dock by hand; flown back to Highport's dock instead.");
+            game.dockAtHighport();
+            run(120);
+        }
+        snapshot("after the Moon");
+    }
+
+    void fightAnAce() {
+        String id = null;
+        HostileComponent h = null;
+        for (Map.Entry<String, HostileComponent> e : world.macroSim.hostiles().all().entrySet()) {
+            Entity candidate = world.engine.getEntity(e.getKey());
+            if (e.getValue().isPirate() && e.getValue().wingOf == null && !e.getValue().ace
+                    && HostileTraffic.RAIDER.equals(e.getValue().shipId) && candidate != null
+                    && !ShipDisablement.isDisabled(candidate) && alive(candidate) > 0) {
+                id = e.getKey();
+                h = e.getValue();
+            }
+        }
+        assertNotNull(id, "a raider to become an ace");
+        Entity ship = world.engine.getEntity(id);
+        assertTrue(PirateAces.promote(world, ship, h, world.macroSim.hostiles().all().values(), Difficulty.of(world), true));
+        log("Ace: %s in a %s, loadout %s, firepower %.0f.", h.displayName, h.shipId, h.loadout, h.firepower);
+        for (Entity c : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            if (c.getComponent(GridPositionComponent.class).ship == ship) {
+                assertTrue(c.getComponent(CrewMemberComponent.class).record().gunnery >= PirateAces.ACE_SKILL,
+                        "the ace's crew keep their skill in their records");
+            }
+        }
+        // Its bounty goes up on the next day's boards
+        warpFor(86_400);
+        Entity at = world.docking.dockedTo(game.player);
+        String stationUuid = world.universe.uuidOf(at);
+        Contract bounty = null;
+        for (Contract c : world.contracts.offers(stationUuid)) if (c.type == Contract.Type.BOUNTY && id.equals(c.targetUuid)) bounty = c;
+        if (bounty != null && world.contracts.locked(bounty) == null && world.contracts.accept(bounty.id) == null) {
+            log("  took its bounty: %s, %.0f cr, %+.0f standing.", bounty.heading(), bounty.reward, bounty.standing);
+        } else {
+            log("  no bounty on it that we may take at %s.", PlayerDocking.name(at));
+            bounty = null;
+        }
+        world.docking.undock(game.player);
+        run(60);
+        h.targetUuid = HostileComponent.PLAYER;
+        bringIn(id, 3_000, 0);
+        fight(ship, h, "Ace fight");
+        patchIfVenting("the ace");
+        run(60 * 10);
+        if (bounty != null) log("  its bounty: %s.", bounty.status);
+        snapshot("after the ace");
+        if (ShipDisablement.isDisabled(game.player)) {
+            // A stranded ship calls the tug (round 3's beacon) rather than sit in a soft lock
+            log("  disabled: tow refusal %s.", world.beacon.refusal());
+            log("  %s", world.beacon.call());
+            assertTrue(runUntil(30f, () -> world.docking.dockedTo(game.player) != null), "towed home");
+        } else {
+            assertTrue(game.dockAtHighport());
+            run(120);
+            // The ace's rounds holed the hull: Highport's yard mends it before the crew run out of air
+            repairAt(world.engine.getEntity(game.highport));
+        }
+        snapshot("home again");
+    }
+
+    void weeksPass(int weeks) {
+        double t0 = world.engine.getSimSeconds(), credits0 = credits();
+        world.budget.pay();
+        double budget = world.standing.rank().budget;
+        float morale0 = meanMorale();
+        warpFor(weeks * ServiceBudget.WEEK);
+        log("%d weeks docked: credits %+.0f (budget %.0f a week before wages), crew morale %.2f -> %.2f.", weeks,
+                credits() - credits0, budget, morale0, meanMorale());
+        log("  %.1f days passed.", days(t0));
+        snapshot("weeks later");
+    }
+
+    void buyTheGunship() {
+        assertTrue(world.docking.undock(game.player));
+        run(60);
+        assertTrue(game.dockAt(game.shipyard));
+        run(120);
+        Entity yard = world.engine.getEntity(game.shipyard);
+        assertSame(yard, world.docking.dockedTo(game.player), "at Anvil Yards");
+        Shipyard.Listing gunship = world.shipyard.listing("patrol_gunship");
+        double cost = world.shipyard.cost(gunship, game.player);
+        log("Gunship at Anvil Yards: price %.0f, trade-in %.0f, cost %.0f; we have %.0f. Refusal: %s.", gunship.price,
+                Shipyard.tradeIn(game.player), cost, credits(), world.shipyard.refusal(gunship));
+        log("  without the prizes (%.0f cr) we'd have %.0f.", prizeCredits, credits() - prizeCredits);
+        if (credits() < cost) {
+            log("  short by %.0f cr: the script makes up the difference.", cost - credits());
+            grantedCredits += cost + 1 - credits();
+            account().credits = cost + 1;
+        }
+        String said = world.shipyard.buy("patrol_gunship");
+        log("  %s", said);
+        assertEquals("gunship_heavy", game.player.getComponent(DefRefComponent.class).defId, said);
+        run(120);
+        snapshot("in the gunship");
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    void run(int frames) {
+        for (int i = 0; i < frames; i++) world.update(FRAME);
+    }
+
+    boolean runUntil(float seconds, BooleanSupplier done) {
+        for (int i = 0; i < seconds / FRAME; i++) {
+            world.update(FRAME);
+            if (done.getAsBoolean()) return true;
+        }
+        return done.getAsBoolean();
+    }
+
+    /** Lets {@code seconds} of game time pass in the fastest warp the game allows, raising it again after each drop. */
+    void warpFor(double seconds) {
+        double until = world.engine.getSimSeconds() + seconds;
+        int frames = 0;
+        double last = world.engine.getSimSeconds();
+        while (world.engine.getSimSeconds() < until && frames++ < 100_000) {
+            // Time stood still for ten seconds of frames: something holds the game, so fail rather than spin
+            if (frames % 600 == 0) {
+                assertNotEquals(last, world.engine.getSimSeconds(), "game time stopped; warp: "
+                        + world.engine.getRailsWarpBlockedReason());
+                last = world.engine.getSimSeconds();
+            }
+            if (world.timeWarp.getWarp() == 1 && world.getCrash() == null) {
+                double left = until - world.engine.getSimSeconds();
+                String blocked = world.engine.getRailsWarpBlockedReason();
+                if (blocked != null && warpBlocks.add(blocked)) log("  (rails warp refused: %s)", blocked);
+                for (int level : new int[]{100_000, 10_000, 1_000, 100, 10}) {
+                    if (level * FRAME <= left * 2 && world.timeWarp.setWarp(level)) break;
+                }
+            }
+            world.update(FRAME);
+            if (world.getCrash() != null) break;
+        }
+        if (world.engine.getSimSeconds() < until) {
+            log("  (warp gave up %.0f s short; crash: %s)", until - world.engine.getSimSeconds(), world.getCrash());
+        }
+        world.timeWarp.setWarp(1);
+        run(2);
+    }
+
+    static Body body(Entity e) {
+        return e.getComponent(PhysicsBodyComponent.class).body;
+    }
+
+    void flyTo(Entity target, float meters) {
+        Vector2 at = PhysicsManager.getPosition(body(target), new Vector2());
+        Vector2 v = PhysicsManager.getVelocity(body(target), new Vector2());
+        PhysicsManager.setPosition(body(game.player), at.x, at.y + meters, -90f * MathUtils.degRad);
+        PhysicsManager.setVelocity(body(game.player), v.x, v.y);
+    }
+
+    /** Moves the player and the prize latched to it, as one, to {@code meters} off {@code station}, at rest beside it. */
+    void towTo(Entity towed, Entity station, float meters) {
+        Body s = world.docking.bodyOf(station);
+        Vector2 at = PhysicsManager.getPosition(s, new Vector2());
+        Vector2 v = PhysicsManager.getVelocity(s, new Vector2());
+        Vector2 own = PhysicsManager.getPosition(body(game.player), new Vector2());
+        Vector2 prize = PhysicsManager.getPosition(body(towed), new Vector2());
+        PhysicsManager.setPosition(body(game.player), at.x + meters, at.y, body(game.player).getAngle());
+        PhysicsManager.setPosition(body(towed), at.x + meters + prize.x - own.x, at.y + prize.y - own.y,
+                body(towed).getAngle());
+        PhysicsManager.setVelocity(body(game.player), v.x, v.y);
+        PhysicsManager.setVelocity(body(towed), v.x, v.y);
+        run(2);
+    }
+
+    /** Puts a hostile on the rails {@code dx, dy} meters from the bubble origin and lets it come in. */
+    Entity bringIn(String uuid, float dx, float dy) {
+        double now = world.macroSim.now();
+        StateVector s = world.macroSim.gateway().anchorStateAt(now, new StateVector());
+        world.macroSim.rails().attach(uuid, world.macroSim.gateway().anchorParentUuid(),
+                s.set(s.x + dx, s.y + dy, s.vx, s.vy), now);
+        Entity ship = world.engine.getEntity(uuid);
+        for (int i = 0; i < 120 && ship.getComponent(PhysicsBodyComponent.class) == null; i++) world.update(FRAME);
+        assertNotNull(ship.getComponent(PhysicsBodyComponent.class), "came into the bubble");
+        return ship;
+    }
+
+    double distance(Entity a, Entity b) {
+        double now = world.universe.now();
+        Entity frame = world.universe.parentOf(b);
+        var sa = new com.ringsofiron.orbital.math.StateVector();
+        var sb = new com.ringsofiron.orbital.math.StateVector();
+        inFrame(a, frame, now, sa);
+        inFrame(b, frame, now, sb);
+        return Math.hypot(sa.x - sb.x, sa.y - sb.y);
+    }
+
+    /** A ship in the physics bubble has no orbit of its own: it rides the bubble's anchor (meters off it). */
+    void inFrame(Entity e, Entity frame, double now, com.ringsofiron.orbital.math.StateVector out) {
+        if (world.universe.orbit(e) != null) {
+            world.universe.stateInFrame(e, frame, now, out);
+            return;
+        }
+        var gateway = world.macroSim.gateway();
+        Entity parent = world.universe.entity(gateway.anchorParentUuid());
+        var p = new com.ringsofiron.orbital.math.StateVector();
+        world.universe.stateInFrame(parent, frame, now, p);
+        StateVector a = gateway.anchorStateAt(now, new StateVector());
+        out.set(a.x + p.x, a.y + p.y, a.vx + p.vx, a.vy + p.vy);
+    }
+
+    int alive(Entity ship) {
+        int n = 0;
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            if (e.getComponent(GridPositionComponent.class).ship == ship && e.getComponent(CrewMemberComponent.class).isAlive()) n++;
+        }
+        return n;
+    }
+
+    int partyAboard(Entity ship) {
+        int n = 0;
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+            if (e.getComponent(GridPositionComponent.class).ship == ship && c.home == game.player && c.isAlive()) n++;
+        }
+        return n;
+    }
+
+    List<Entity> ownCrew() {
+        return world.crewCareer.ownCrew(game.player);
+    }
+
+    float meanMorale() {
+        List<Entity> crew = ownCrew();
+        float sum = 0f;
+        for (Entity e : crew) sum += e.getComponent(CrewMemberComponent.class).record().morale;
+        return crew.isEmpty() ? Float.NaN : sum / crew.size();
+    }
+
+    int pirates() {
+        int n = 0;
+        for (HostileComponent h : world.macroSim.hostiles().all().values()) if (h.isPirate()) n++;
+        return n;
+    }
+
+    TraderComponent account() {
+        return game.player.getComponent(TraderComponent.class);
+    }
+
+    double credits() {
+        return account().credits;
+    }
+
+    float hull(Entity ship) {
+        return ShipDisablement.hullIntegrity(ship.getComponent(ShipGridComponent.class));
+    }
+
+    double propellantKg() {
+        ShipSubsystemRegistryComponent r = game.player.getComponent(ShipSubsystemRegistryComponent.class);
+        return r == null ? 0 : PropellantFeed.available(r);
+    }
+
+    double days(double since) {
+        return (world.engine.getSimSeconds() - since) / 86_400;
+    }
+
+    /**
+     * Checks the career earned {@code rank} in play; if a lost fight left it short, grants the standing
+     * still missing and logs how much that was.
+     */
+    void requireRank(int rank, String standsFor) {
+        float need = world.standing.ranks().get(rank).standing - world.standing.standing(world.standing.sponsor());
+        if (need > 0) {
+            world.standing.reward(world.standing.sponsor(), need + 0.5f, "script");
+            granted += need + 0.5f;
+            log("Granted %.0f standing (%s) for rank %s.", need + 0.5f, standsFor, world.standing.describeRank());
+        } else {
+            log("Rank %s earned in play.", world.standing.describeRank());
+        }
+        assertTrue(world.standing.record().rank >= rank);
+    }
+
+    /** True if the notice log holds a notice starting with {@code text}. */
+    boolean noticed(String text) {
+        for (NoticeLog.Notice n : world.notices.history()) if (n.text.startsWith(text)) return true;
+        return false;
+    }
+
+    /** Where air leaves the player's ship for space, if anywhere: rails warp waits on it. */
+    void logVenting(String when) {
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        for (int i = 0; i < grid.airflow.size; i++) {
+            var e = grid.airflow.get(i);
+            if (e.other == null && e.flow > ShipGridComponent.VENTING_HAZARD_FLOW) {
+                var t = grid.getTile(e.x, e.y);
+                log("  venting %s at (%d, %d) %s: %.3f mol/s, tile %s", when, e.x, e.y, e.side, e.flow, t);
+            }
+        }
+    }
+
+    void snapshot(String when) {
+        log("[%s] day %.2f, credits %.0f, standing %.1f, rank %s, difficulty %.2f, ship value %.0f, hull %.2f, crew %d",
+                when, world.engine.getSimSeconds() / 86_400, credits(), world.standing.standing(world.standing.sponsor()),
+                world.standing.describeRank(), Difficulty.of(world), Difficulty.shipValue(game.player), hull(game.player),
+                ownCrew().size());
+    }
+
+    void logBoard(String station) {
+        for (Contract c : world.contracts.offers(station)) {
+            log("  board: %s, %.0f cr, %+.0f standing%s", c.heading(), c.reward, c.standing,
+                    world.contracts.locked(c) == null ? "" : " (locked: " + world.contracts.locked(c) + ")");
+        }
+    }
+
+    void log(String format, Object... args) {
+        String line = String.format(Locale.ROOT, format, args);
+        journal.add(line);
+        System.out.println(line);
+        try {
+            Path out = Paths.get(System.getProperty("user.dir")).resolve("build").resolve(journalName() + ".log");
+            Files.createDirectories(out.getParent());
+            Files.writeString(out, line + "\n", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+        } catch (IOException ignored) {
+            // the journal is written whole at the end too
+        }
+    }
+}

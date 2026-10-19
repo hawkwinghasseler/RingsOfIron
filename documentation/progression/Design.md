@@ -199,7 +199,7 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
   |---|---|---|---|---|
   | `patrol_corvette` | Patrol Corvette | Patrol | 280,000 | |
   | `patrol_gunship` | Gunship | Patrol | 360,000 | Lieutenant Commander |
-  | `patrol_frigate` | Frigate | Patrol | 720,000 | Commander |
+  | `patrol_frigate` | Frigate | Patrol | 455,000 (720,000 before round 5: a Commander could not reach it) | Commander |
   | `selene_raider` | Light Raider | Selene | 110,000 | 10 standing with Selene |
 - **Buying:** docked with clearance at a yard, the yard window's **Ships for sale** button ([Y]) opens the shipyard window, which lists the ships with their price and what they cost after the trade-in, or why they are locked: the rank (the sale's own, or the first rank the ladder lets fly it), the standing, the credits, yard work under way, cargo that won't fit the new hold, or more people aboard than its pods seat.
   - **Trade-in:** the ship flown goes to the yard for 60% (`TRADE_IN_SHARE`) of its value (`Difficulty.shipValue`: hull tiles and weapons) times its condition (mean hull integrity times mean system health).
