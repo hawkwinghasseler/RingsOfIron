@@ -595,6 +595,200 @@
    }
   ]
  },
+ "components/engine_l": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff8a3c",
+    "h": 14.4,
+    "intensity": 0.4,
+    "light": "glow",
+    "reach": 2.5,
+    "w": 14.4,
+    "x": 78.4,
+    "y": -71.2
+   },
+   {
+    "alpha": 1.0,
+    "color": "#ff8a3c",
+    "h": 14.4,
+    "intensity": 0.4,
+    "light": "glow",
+    "reach": 2.5,
+    "w": 14.4,
+    "x": 155.2,
+    "y": -207.2
+   },
+   {
+    "alpha": 1.0,
+    "color": "#ff8a3c",
+    "h": 14.4,
+    "intensity": 0.4,
+    "light": "glow",
+    "reach": 2.5,
+    "w": 14.4,
+    "x": 78.4,
+    "y": -343.2
+   },
+   {
+    "alpha": 0.9,
+    "color": "#ff8a3c",
+    "h": 9.1,
+    "intensity": 0.4,
+    "light": "point",
+    "reach": 2.5,
+    "w": 157.0,
+    "x": 96.0,
+    "y": -421.05
+   }
+  ]
+ },
+ "components/engine_m": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff8a3c",
+    "h": 14.4,
+    "intensity": 0.4,
+    "light": "glow",
+    "reach": 2.0,
+    "w": 14.4,
+    "x": 54.4,
+    "y": -46.0
+   },
+   {
+    "alpha": 1.0,
+    "color": "#ff8a3c",
+    "h": 14.4,
+    "intensity": 0.4,
+    "light": "glow",
+    "reach": 2.0,
+    "w": 14.4,
+    "x": 105.6,
+    "y": -122.0
+   },
+   {
+    "alpha": 0.9,
+    "color": "#ff8a3c",
+    "h": 9.1,
+    "intensity": 0.4,
+    "light": "point",
+    "reach": 2.0,
+    "w": 93.0,
+    "x": 64.0,
+    "y": -165.05
+   }
+  ]
+ },
+ "components/engine_s": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff8a3c",
+    "h": 14.4,
+    "intensity": 0.4,
+    "light": "glow",
+    "reach": 1.5,
+    "w": 14.4,
+    "x": 46.4,
+    "y": -53.6
+   }
+  ]
+ },
+ "components/engine_xl": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff8a3c",
+    "h": 14.4,
+    "intensity": 0.4,
+    "light": "glow",
+    "reach": 3.0,
+    "w": 14.4,
+    "x": 120.0,
+    "y": -72.8
+   },
+   {
+    "alpha": 1.0,
+    "color": "#ff8a3c",
+    "h": 14.4,
+    "intensity": 0.4,
+    "light": "glow",
+    "reach": 3.0,
+    "w": 14.4,
+    "x": 248.0,
+    "y": -218.4
+   },
+   {
+    "alpha": 1.0,
+    "color": "#ff8a3c",
+    "h": 14.4,
+    "intensity": 0.4,
+    "light": "glow",
+    "reach": 3.0,
+    "w": 14.4,
+    "x": 120.0,
+    "y": -364.0
+   },
+   {
+    "alpha": 1.0,
+    "color": "#ff8a3c",
+    "h": 14.4,
+    "intensity": 0.4,
+    "light": "glow",
+    "reach": 3.0,
+    "w": 14.4,
+    "x": 248.0,
+    "y": -509.6
+   },
+   {
+    "alpha": 1.0,
+    "color": "#ff8a3c",
+    "h": 14.4,
+    "intensity": 0.4,
+    "light": "glow",
+    "reach": 3.0,
+    "w": 14.4,
+    "x": 120.0,
+    "y": -655.2
+   },
+   {
+    "alpha": 0.9,
+    "color": "#ff8a3c",
+    "h": 9.1,
+    "intensity": 0.4,
+    "light": "point",
+    "reach": 3.0,
+    "w": 285.0,
+    "x": 160.0,
+    "y": -741.05
+   }
+  ]
+ },
  "components/helm_l": {
   "canvas": [
    0.0,

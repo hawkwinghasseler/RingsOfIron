@@ -51,7 +51,13 @@ ACCENT = {
     "cargo": "#c8a26a",
     "airlock": HAZARD,
     "docking_port": HAZARD,
+    "engine": "#ff8a3c",
 }
+
+# What a tank holds, by component: its band color (see Fluid in interior-grid)
+FLUIDS = {"tank": ("propellant", "#e0a040"), "oxygen_tank": ("oxygen", "#6ab8ff"),
+          "nitrogen_tank": ("nitrogen", "#a8b4c8")}
+PIPE, PIPE_HI, PIPE_LO = "#4e7484", "#86aebd", "#2e4652"  # life support and propellant pipes
 
 SIZES = ["s", "m", "l", "xl"]
 PRIMARY = {"s": (1, 1), "m": (2, 2), "l": (3, 3), "xl": (5, 5)}
@@ -609,6 +615,83 @@ def edge_conduits():
     write("edges/edge_conduit_tap.svg", 16, 16, a,
           "edge_conduit tap: junction box centered on an edge's middle, where a tile's conduit arm meets the edge run",
           unpowered="edges/edge_conduit_tap_unpowered.svg")
+
+
+def pipes():
+    """Pipes from tanks to the systems that draw on them, drawn like conduits but passive
+    (no emissive, no unpowered variant): across a tile, a flanged fitting with arms toward
+    each pipe neighbor; along an edge, a segment per edge, a joint at each vertex and a
+    tee where a tile's arm meets an edge run. They run under the deck plating, so the
+    fitting is an inspection plate over the pipe."""
+    lo, hi_ = 5, 11  # the pipe across the edge line at 8
+
+    def run_h(a, x0, x1, y=8, r=3):
+        a.b += rect(x0, y - r, x1 - x0, 2 * r, PIPE)
+        a.b += line(x0, y - r, x1, y - r, INK, sw=1.2) + line(x0, y + r, x1, y + r, INK, sw=1.2)
+        a.b += line(x0, y - r + 1.5, x1, y - r + 1.5, PIPE_HI, sw=1, extra=' opacity="0.8"')
+
+    def flange_h(a, x, y=8, r=3):
+        a.b += rect(x - 1.8, y - r - 1.5, 3.6, 2 * r + 3, PIPE_LO, rx=0.8, stroke=INK, sw=1)
+
+    # across a tile: an inspection plate with a valve wheel, and an arm overlay
+    a = Art()
+    a.b += rect(18, 18, 28, 28, DECK_SEAM, rx=4, stroke=INK, sw=1.5)
+    a.b += rect(20, 20, 24, 24, PIPE_LO, rx=3)
+    a.b += circle(32, 32, 9, PIPE, stroke=INK, sw=1.5)
+    a.b += circle(32, 32, 6.5, "none", stroke=PIPE_HI, sw=1.5)
+    for k in range(4):
+        ang = math.pi / 4 + k * math.pi / 2
+        a.b += line(32, 32, 32 + math.cos(ang) * 6.5, 32 + math.sin(ang) * 6.5, PIPE_HI, sw=1.2)
+    a.b += circle(32, 32, 2.2, INK)
+    for (x, y) in ((22, 22), (42, 22), (22, 42), (42, 42)):
+        a.b += rivet(x, y, 1.1)
+    write("tiles/pipe_hub.svg", T, T, a, "pipe_hub overlay: valve plate over a pipe across the tile, under the arms")
+
+    a = Art()
+    a.b = rect(28, 0, 8, 20, PIPE) + line(28, 0, 28, 20, INK, sw=1.2) + line(36, 0, 36, 20, INK, sw=1.2)
+    a.b += line(29.5, 0, 29.5, 20, PIPE_HI, sw=1, extra=' opacity="0.8"')
+    a.b += rect(26.5, 6, 11, 3.6, PIPE_LO, rx=0.8, stroke=INK, sw=1)
+    write("tiles/pipe_arm.svg", T, T, a,
+          "pipe arm overlay: runs from the valve plate to the top edge; rotate toward each pipe neighbor")
+
+    # along an edge: flanges at the quarter points
+    a = Art()
+    run_h(a, 0, T)
+    for x in (16, 48):
+        flange_h(a, x)
+    write("edges/edge_pipe_h.svg", T, 16, a,
+          "edge_pipe, horizontal: pipe along a tile edge (edge at y=8), open ends meet joints")
+    write("edges/edge_pipe_v.svg", 16, T, a, "edge_pipe, vertical: pipe along a tile edge (edge at x=8)",
+          transform="translate(16,0) rotate(90)")
+
+    for mask in MASKS[1:]:
+        a = Art()
+        arms = {"n": (lo, 0, hi_ - lo, 8), "s": (lo, 8, hi_ - lo, 8), "w": (0, lo, 8, hi_ - lo), "e": (8, lo, 8, hi_ - lo)}
+        for side in mask:
+            x, y, w, h = arms[side]
+            a.b += rect(x, y, w, h, PIPE)
+        for side in mask:
+            x, y, w, h = arms[side]
+            if side in "ns":
+                a.b += line(x, y, x, y + h, INK, sw=1.2) + line(x + w, y, x + w, y + h, INK, sw=1.2)
+            else:
+                a.b += line(x, y, x + w, y, INK, sw=1.2) + line(x, y + h, x + w, y + h, INK, sw=1.2)
+        if len(mask) == 1 or mask in ("ns", "ew"):
+            # an end cap or a straight joint: a coupling
+            a.b += rect(lo - 1.5, lo - 1.5, hi_ - lo + 3, hi_ - lo + 3, PIPE_LO, rx=1.5, stroke=INK, sw=1.2)
+        else:
+            # an elbow, tee or cross: a round fitting
+            a.b += circle(8, 8, 5.5, PIPE_LO, stroke=INK, sw=1.3)
+            a.b += circle(8, 8, 3, PIPE, stroke=PIPE_HI, sw=1)
+        write(f"edges/edge_pipe_joint_{mask}.svg", 16, 16, a,
+              f"edge_pipe joint, centered on a vertex, pipes toward {', '.join(mask)}")
+
+    a = Art()
+    a.b += circle(8, 8, 6.5, PIPE_LO, stroke=INK, sw=1.3)
+    a.b += circle(8, 8, 4, PIPE, stroke=PIPE_HI, sw=1)
+    a.b += circle(8, 8, 1.5, INK)
+    write("edges/edge_pipe_tap.svg", 16, 16, a,
+          "edge_pipe tap: tee centered on an edge's middle, where a tile's pipe arm meets the edge run")
 
 
 # ---------------------------------------------------------------------------
@@ -1275,6 +1358,76 @@ def docking_collar(size):
     return w, h, a
 
 
+# --- Tanks (passive: no emissives) and the engine feed ---------------------------
+
+def storage_tank(component, size):
+    """A tank for one fluid: pressure vessels in a cradle, banded in the fluid's color, with a
+    gauge and a manifold to the pipe connection. Bigger tanks are more and larger vessels."""
+    tw, th = AUX[size]
+    w, h = tw * T, th * T
+    label, band = FLUIDS[component]
+    a = Art()
+    a.b = floor_area(w, h)
+    a.b += rect(3, 3, w - 6, h - 6, STEEL_DARK, rx=6, stroke=INK, sw=2)  # cradle
+
+    def vessel(x, y, vw, vh):
+        r = min(vw, vh) / 2
+        a.b += rect(x, y, vw, vh, STEEL_MID, rx=r, stroke=INK, sw=2)
+        a.b += rect(x + vw * 0.16, y + r * 0.45, vw * 0.16, vh - r * 0.9, STEEL_HI, rx=vw * 0.08, extra=' opacity="0.7"')
+        for by in (y + vh * 0.3, y + vh * 0.7):
+            a.b += rect(x, by - 3, vw, 6, band, stroke=INK, sw=1)
+        a.b += circle(x + vw / 2, y + 6 + r * 0.2, max(2.5, r * 0.18), HOUSING_HI, stroke=INK, sw=1)  # valve
+
+    cols = {"s": 1, "m": 2, "l": 2, "xl": 4}[size]
+    rows_ = {"s": 1, "m": 1, "l": 2, "xl": 2}[size]
+    pad, gap = 8, 6
+    vw = (w - 2 * pad - (cols - 1) * gap) / cols
+    vh = (h - 2 * pad - 22 - (rows_ - 1) * gap) / rows_
+    for i in range(cols):
+        for j in range(rows_):
+            vessel(pad + i * (vw + gap), pad + 22 + j * (vh + gap), vw, vh)
+    # manifold along the near end, to the pipe connection in the middle of the slot
+    pipe(a, pad + vw / 2, 16, w - pad - vw / 2, 16, 5, PIPE)
+    a.b += rect(w / 2 - 6, 8, 12, 14, PIPE_LO, rx=2, stroke=INK, sw=1.5)
+    # gauge: a dial with the fluid's color on its face
+    gx, gy = w - 14, 12
+    a.b += circle(gx, gy, 6, "#e6e2d4", stroke=INK, sw=1.2)
+    a.b += path(f"M{f(gx - 4)},{f(gy + 2)} A5,5 0 0 1 {f(gx + 4)},{f(gy + 2)}", stroke=band, sw=2)
+    a.b += line(gx, gy, gx + 3, gy - 3, INK, sw=1.2)
+    a.b += rect(0, 0, w, h, "none", stroke=INK, sw=2)
+    return w, h, a, label
+
+
+def engine_feed(size):
+    """The engine room: turbopumps that feed propellant from the tanks to the drive, valve
+    banks, a feed line toward the aft wall and an engineer's panel."""
+    tw, th = AUX[size]
+    w, h = tw * T, th * T
+    c = ACCENT["engine"]
+    a = Art()
+    housing(a, w, h)
+    pumps = {"s": 1, "m": 2, "l": 3, "xl": 5}[size]
+    r = {"s": 18, "m": 20, "l": 26, "xl": 30}[size]
+    # the main feed line along the slot, out through the far (top) end
+    pipe(a, w / 2, 8, w / 2, h - 8, {"s": 6, "m": 8, "l": 10, "xl": 14}[size], PIPE)
+    step = (h - 40) / pumps
+    for i in range(pumps):
+        cy = 24 + step * (i + 0.5)
+        cx = w / 2 if size == "s" else (w * 0.3 if i % 2 == 0 else w * 0.7)
+        if size != "s":
+            pipe(a, cx, cy, w / 2, cy, 5, PIPE)
+        pump(a, cx, cy, r)
+        light(a, cx + r * 0.8, cy - r * 0.8, 3, c)
+    if size != "s":
+        console(a, 12, h - 36, w - 24, 22, c)
+    # a valve bank at the feed's outlet
+    for k in range({"s": 1, "m": 2, "l": 3, "xl": 4}[size]):
+        vx = w / 2 + (k - ({"s": 1, "m": 2, "l": 3, "xl": 4}[size] - 1) / 2) * 16
+        a.b += rect(vx - 5, 10, 10, 10, HOUSING_HI, rx=2, stroke=INK, sw=1.2)
+    a.e = lit(a.e, "point", {"s": 1.5, "m": 2, "l": 2.5, "xl": 3}[size], 0.4)
+    return w, h, a
+
+
 def components():
     for size in SIZES:
         for name, fn in (("reactor", reactor), ("shield_emitter", shield_emitter), ("turret_mount", turret_mount)):
@@ -1291,6 +1444,13 @@ def components():
             write(p, w, h, a, f"{name} {size.upper()}: {w//T}x{h//T} auxiliary slot", unpowered=unp(p))
         w, h, a = cargo(size)
         write(f"components/cargo_{size}.svg", w, h, a, f"cargo {size.upper()}: {w//T}x{h//T} auxiliary slot, unpowered")
+        for comp in FLUIDS:
+            w, h, a, label = storage_tank(comp, size)
+            write(f"components/{comp}_{size}.svg", w, h, a,
+                  f"{comp} {size.upper()}: {w//T}x{h//T} auxiliary slot holding {label}, unpowered")
+        w, h, a = engine_feed(size)
+        p = f"components/engine_{size}.svg"
+        write(p, w, h, a, f"engine {size.upper()}: {w//T}x{h//T} auxiliary slot, propellant feed", unpowered=unp(p))
     for size in PORT:
         for state in ("sealed", "open"):
             w, h, a = docking_port(size, state)
@@ -1601,9 +1761,11 @@ def load_toml(name):
 
 
 LETTERS = {"R": "reactor", "S": "shield_emitter", "T": "turret_mount", "L": "life_support", "H": "helm",
-           "W": "weapons", "C": "cargo", "A": "airlock", "D": "docking_port"}
+           "W": "weapons", "C": "cargo", "A": "airlock", "D": "docking_port", "E": "engine", "P": "tank",
+           "O": "oxygen_tank", "N": "nitrogen_tank"}
 KIND = {"reactor": "P", "shield_emitter": "P", "turret_mount": "P", "life_support": "A", "helm": "A",
-        "weapons": "A", "cargo": "A", "airlock": "A", "docking_port": "D"}
+        "weapons": "A", "cargo": "A", "airlock": "A", "docking_port": "D", "engine": "A", "tank": "A",
+        "oxygen_tank": "A", "nitrogen_tank": "A"}
 WALL_CHARS = set("#123")
 
 
@@ -1638,7 +1800,7 @@ def chassis_mounts(ch):
     sizes = {"P": {"S": (1, 1), "M": (2, 2), "L": (3, 3), "XL": (5, 5)},
              "A": {"S": (1, 2), "M": (2, 3), "L": (3, 7), "XL": (5, 12)}}
     for m in ch.get("mounts", []):
-        name = m.get("type", "").lower()
+        name = m.get("component") or m.get("type", "").lower()
         if name not in KIND:
             continue
         bw, bh = sizes[KIND[name]][m["size"]]
@@ -1744,6 +1906,14 @@ def hull_svg(ch, overhang=None, engines=False):
                     a.b += line(x + 8, y + k * T, x + pw - 8, y + k * T, INK, sw=1.5)
             a.b += rect(x + 10, y + 10, pw - 20, ph - 20, "none", stroke=HAZARD, sw=2.5,
                         extra=' stroke-dasharray="10 8" opacity="0.7"')
+        elif name in FLUIDS:
+            # a filler cap and the fluid's band, where tankers connect
+            a.b += rect(x + 8, y + 8, pw - 16, ph - 16, STEEL_DARK, rx=min(pw, ph) / 2 - 8, stroke=INK, sw=2)
+            a.b += circle(cx, cy, min(pw, ph) * 0.22, HOUSING_HI, stroke=INK, sw=2)
+            a.b += circle(cx, cy, min(pw, ph) * 0.12, FLUIDS[name][1], stroke=INK, sw=1)
+        elif name == "engine":
+            a.b += rect(x + 6, y + 6, pw - 12, ph - 12, HOUSING, rx=4, stroke=INK, sw=2)
+            a.b += line(cx, y + 10, cx, y + ph - 10, PIPE, sw=6)
         elif name == "airlock":
             a.b += rect(x + 6, y + 6, pw - 12, ph - 12, STEEL_DARK, rx=6, stroke=INK, sw=2)
             a.b += hazard_band(x + 10, y + 10, pw - 20, 8, f"ext_al_{col}_{row}")
@@ -2074,6 +2244,7 @@ def main():
     walls()
     edges()
     edge_conduits()
+    pipes()
     components()
     effects()
     decor()

@@ -67,6 +67,7 @@ public final class DeckArt {
         walkways(batch, grid);
         edges(batch, grid, power);
         edgeConduits(batch, grid);
+        drawPipes(batch, art, layout(grid), grid.gridOriginLocal.x, grid.gridOriginLocal.y, grid.tileSize);
         wallLights(batch, grid, power);
         effects(batch, grid);
         cargo(batch, grid, hold);
@@ -179,6 +180,90 @@ public final class DeckArt {
                     float cx = ox + (x + 0.5f + side.dx * 0.5f) * s, cy = oy + (y + 0.5f + side.dy * 0.5f) * s;
                     draw(batch, art.first(ArtNames.edgeConduitTap(c.isPowered), ArtNames.edgeConduitTap(true)),
                             cx - half, cy - half, 2f * half, 2f * half);
+                }
+            }
+        }
+    }
+
+    /** Where a deck's pipes run, for {@link #drawPipes}: the grid's, or a layout's in the editor. */
+    public interface PipeLayout {
+        int width();
+
+        int height();
+
+        /** A pipe across tile (x, y). */
+        boolean across(int x, int y);
+
+        /** A pipe along the bottom edge of tile (x, y); y may be the height (the top row's top edge). */
+        boolean alongH(int x, int y);
+
+        /** A pipe along the left edge of tile (x, y); x may be the width (the right column's right edge). */
+        boolean alongV(int x, int y);
+    }
+
+    /** The grid's pipes as a {@link PipeLayout}. */
+    public static PipeLayout layout(ShipGridComponent grid) {
+        return new PipeLayout() {
+            public int width() { return grid.width; }
+            public int height() { return grid.height; }
+            public boolean across(int x, int y) { return grid.getPipe(x, y) != null; }
+            public boolean alongH(int x, int y) { return grid.pipeH[y][x] != null; }
+            public boolean alongV(int x, int y) { return grid.pipeV[y][x] != null; }
+        };
+    }
+
+    /**
+     * Pipes from the tanks, over the edge walls and conduits so they stay in sight: across a tile a
+     * valve plate with an arm toward each pipe beyond it (on the next tile or along the edge), and
+     * along edges a segment per edge, a joint at each vertex and a tee where a tile's arm meets one.
+     * Grid (0, 0) is drawn at ({@code ox}, {@code oy}) with tiles {@code s} across. Pipes have no
+     * glow. Nothing is drawn for art the pack lacks.
+     */
+    public static void drawPipes(Batch batch, ArtLibrary art, PipeLayout p, float ox, float oy, float s) {
+        float half = s / 8f;
+        TextureRegion hub = art.region(ArtNames.PIPE_HUB), arm = art.region(ArtNames.PIPE_ARM);
+        TextureRegion tap = art.region(ArtNames.EDGE_PIPE_TAP);
+        TextureRegion segH = art.region(ArtNames.edgePipe(true)), segV = art.region(ArtNames.edgePipe(false));
+        int w = p.width(), h = p.height();
+        for (int y = 0; y <= h; y++) {
+            for (int x = 0; x < w; x++) {
+                if (segH != null && p.alongH(x, y)) batch.draw(segH, ox + x * s, oy + y * s - half, s, 2f * half);
+            }
+        }
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x <= w; x++) {
+                if (segV != null && p.alongV(x, y)) batch.draw(segV, ox + x * s - half, oy + y * s, 2f * half, s);
+            }
+        }
+        for (int y = 0; y <= h; y++) {
+            for (int x = 0; x <= w; x++) {
+                int mask = (y < h && p.alongV(x, y) ? ArtNames.N : 0) | (x < w && p.alongH(x, y) ? ArtNames.E : 0)
+                        | (y > 0 && p.alongV(x, y - 1) ? ArtNames.S : 0) | (x > 0 && p.alongH(x - 1, y) ? ArtNames.W : 0);
+                TextureRegion joint = mask == 0 ? null : art.region(ArtNames.edgePipeJoint(mask));
+                if (joint != null) batch.draw(joint, ox + x * s - half, oy + y * s - half, 2f * half, 2f * half);
+            }
+        }
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                if (!p.across(x, y)) continue;
+                float x0 = ox + x * s, y0 = oy + y * s;
+                // 0 up, 1 left, 2 down, 3 right
+                boolean[] toward = {
+                        p.alongH(x, y + 1) || (y + 1 < h && p.across(x, y + 1)),
+                        p.alongV(x, y) || (x > 0 && p.across(x - 1, y)),
+                        p.alongH(x, y) || (y > 0 && p.across(x, y - 1)),
+                        p.alongV(x + 1, y) || (x + 1 < w && p.across(x + 1, y))};
+                if (arm != null) {
+                    for (int q = 0; q < 4; q++) {
+                        if (toward[q]) batch.draw(arm, x0, y0, s / 2f, s / 2f, s, s, 1f, 1f, q * 90f);
+                    }
+                }
+                if (hub != null) batch.draw(hub, x0, y0, s, s);
+                if (tap == null) continue;
+                boolean[] edge = {p.alongH(x, y + 1), p.alongV(x, y), p.alongH(x, y), p.alongV(x + 1, y)};
+                float[][] mid = {{0.5f, 1f}, {0f, 0.5f}, {0.5f, 0f}, {1f, 0.5f}};
+                for (int q = 0; q < 4; q++) {
+                    if (edge[q]) batch.draw(tap, x0 + mid[q][0] * s - half, y0 + mid[q][1] * s - half, 2f * half, 2f * half);
                 }
             }
         }

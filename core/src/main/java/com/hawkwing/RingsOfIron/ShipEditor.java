@@ -65,7 +65,7 @@ public class ShipEditor extends ApplicationAdapter {
 
     private enum Tool {
         PAINT("Paint"), COMPONENT("Component"), EDGE("Edge wall"), HULL("Hull piece"), COVERING("Covering"),
-        ERASE("Erase"), PORT("Port"), LIGHT("Light"), CONDUIT("Conduit");
+        ERASE("Erase"), PORT("Port"), LIGHT("Light"), CONDUIT("Conduit"), PIPE("Pipe");
 
         final String label;
 
@@ -490,6 +490,30 @@ public class ShipEditor extends ApplicationAdapter {
             if (side != null) edgeRect(hoverX, hoverY, side, Math.max(4f, wire * 2f));
             else shapes.rect(sx(hoverX + 0.3f), sy(hoverY + 0.3f), scale * 0.4f, scale * 0.4f);
         }
+        // Pipes: a thin teal line along edges, and across tiles from the middle toward each neighbor
+        if (!withArt) {
+            shapes.setColor(0.45f, 0.75f, 0.85f, 1f);
+            float pw = Math.max(2f, scale * 0.08f);
+            for (ChassisDef.Pipe p : m.pipes) {
+                if (p.side != null) {
+                    edgeRect(p.x, p.y, Side.valueOf(p.side), pw);
+                    continue;
+                }
+                shapes.rect(sx(p.x + 0.4f), sy(p.y + 0.4f), scale * 0.2f, scale * 0.2f);
+                for (Side side : Side.values()) {
+                    if (!pipeToward(m, p.x, p.y, side)) continue;
+                    float cx = sx(p.x + 0.5f), cy = sy(p.y + 0.5f);
+                    if (side.dx != 0) shapes.rect(side.dx > 0 ? cx : cx - scale / 2f, cy - pw / 2f, scale / 2f, pw);
+                    else shapes.rect(cx - pw / 2f, side.dy > 0 ? cy : cy - scale / 2f, pw, scale / 2f);
+                }
+            }
+        }
+        if (tab == Tab.LAYOUT && tool == Tool.PIPE && m.inBounds(hoverX, hoverY) && !panning) {
+            shapes.setColor(0.45f, 0.75f, 0.85f, 0.6f);
+            Side side = conduitSide();
+            if (side != null) edgeRect(hoverX, hoverY, side, Math.max(4f, scale * 0.16f));
+            else shapes.rect(sx(hoverX + 0.3f), sy(hoverY + 0.3f), scale * 0.4f, scale * 0.4f);
+        }
         drawGhostFill(m, cat);
         shapes.end();
 
@@ -623,6 +647,7 @@ public class ShipEditor extends ApplicationAdapter {
             }
         }
         drawEdgeConduitArt(m, cat, t);
+        DeckArt.drawPipes(batch, art, pipeLayout(m), sx(0), sy(0), scale);
         batch.end();
     }
 
@@ -675,6 +700,26 @@ public class ShipEditor extends ApplicationAdapter {
                 batch.draw(tap, cx - t / 2f, cy - t / 2f, t, t);
             }
         }
+    }
+
+    /** The layout's pipes, for {@link DeckArt#drawPipes}. */
+    private static DeckArt.PipeLayout pipeLayout(ChassisModel m) {
+        return new DeckArt.PipeLayout() {
+            public int width() { return m.width(); }
+            public int height() { return m.height(); }
+            public boolean across(int x, int y) { return m.pipeAt(x, y, null) != null; }
+            public boolean alongH(int x, int y) {
+                return y < m.height() ? m.pipeAt(x, y, Side.BOTTOM) != null : m.pipeAt(x, y - 1, Side.TOP) != null;
+            }
+            public boolean alongV(int x, int y) {
+                return x < m.width() ? m.pipeAt(x, y, Side.LEFT) != null : m.pipeAt(x - 1, y, Side.RIGHT) != null;
+            }
+        };
+    }
+
+    /** Whether a pipe across tile (x, y) reaches toward {@code side}: to the next tile's, or one along that edge. */
+    private static boolean pipeToward(ChassisModel m, int x, int y, Side side) {
+        return m.pipeAt(x, y, side) != null || m.pipeAt(x + side.dx, y + side.dy, null) != null;
     }
 
     /** A wall type's art: its own when the pack has it (hull, hull_heavy...), else its base's. */
@@ -894,7 +939,7 @@ public class ShipEditor extends ApplicationAdapter {
             updatePieceGhost(m, o);
             shapes.setColor(ghostValid ? Color.GREEN : Color.RED);
             shapes.rect(sx(o[0]), sy(o[1]), w * scale, h * scale);
-        } else if (tool != Tool.EDGE && tool != Tool.CONDUIT) {
+        } else if (tool != Tool.EDGE && tool != Tool.CONDUIT && tool != Tool.PIPE) {
             shapes.setColor(Color.YELLOW);
             shapes.rect(sx(hoverX), sy(hoverY), scale, scale);
         }
@@ -987,6 +1032,14 @@ public class ShipEditor extends ApplicationAdapter {
                     say("Took up the conduit at " + hoverX + "," + hoverY + " " + edge);
                     break;
                 }
+                // Then a pipe along that edge, or across the tile
+                if (m.pipeAt(hoverX, hoverY, edge) != null) {
+                    beginEdit();
+                    m.togglePipe(hoverX, hoverY, edge, cat);
+                    changed();
+                    say("Took up the pipe at " + hoverX + "," + hoverY + (edge == null ? "" : " " + edge));
+                    break;
+                }
                 beginEdit();
                 stroke = true;
                 strokeTo(m, cat);
@@ -1049,6 +1102,9 @@ public class ShipEditor extends ApplicationAdapter {
             case CONDUIT:
                 conduitDown(m, cat);
                 break;
+            case PIPE:
+                pipeDown(m, cat);
+                break;
             default:
                 break;
         }
@@ -1085,6 +1141,25 @@ public class ShipEditor extends ApplicationAdapter {
         m.paint(hoverX, hoverY, symbol, cat);
         changed();
         say(had ? "Took up the conduit across " + hoverX + "," + hoverY : "Laid a conduit across " + hoverX + "," + hoverY);
+    }
+
+    /**
+     * Near an edge, runs a pipe along it or takes up the one there; in the middle of a tile, lays a
+     * pipe across it (under the deck, components included) or takes it up.
+     */
+    private void pipeDown(ChassisModel m, ShipPartCatalog cat) {
+        Side side = conduitSide();
+        boolean had = m.pipeAt(hoverX, hoverY, side) != null;
+        beginEdit();
+        if (!m.togglePipe(hoverX, hoverY, side, cat)) {
+            undo.pop();
+            say("A pipe across a tile needs a floor; run it along an edge to go through a wall");
+            return;
+        }
+        changed();
+        String where = side == null ? "across " + hoverX + "," + hoverY
+                : "along the " + side.name().toLowerCase(Locale.ROOT) + " edge of " + hoverX + "," + hoverY;
+        say(had ? "Took up the pipe " + where : "Laid a pipe " + where);
     }
 
     /**
@@ -1357,7 +1432,7 @@ public class ShipEditor extends ApplicationAdapter {
         Tool[] tools = Tool.values();
         for (int i = 0; i < tools.length; i++) {
             final Tool t = tools[i];
-            String label = (i + 1) + " " + t.label;
+            String label = (i + 1) % 10 + " " + t.label;
             layout.setText(font, label);
             if (bx + layout.width + 16 > panelX() + PANEL_WIDTH - PAD) {
                 bx = x;
@@ -1479,7 +1554,7 @@ public class ShipEditor extends ApplicationAdapter {
                 break;
             }
             case ERASE:
-                text(x, y, "Removes a light, edge conduit, component, hull piece or", Color.GRAY);
+                text(x, y, "Removes a light, edge conduit, pipe, component, hull piece or", Color.GRAY);
                 y -= LINE;
                 text(x, y, "covering, else the tile", Color.GRAY);
                 y -= LINE;
@@ -1491,6 +1566,16 @@ public class ShipEditor extends ApplicationAdapter {
                 y -= LINE;
                 text(x, y, m.edgeConduits.size() + (m.edgeConduits.size() == 1 ? " conduit" : " conduits")
                         + " along edges", Color.WHITE);
+                y -= LINE;
+                break;
+            case PIPE:
+                text(x, y, "Pipes join tanks to life support and engines. Click", Color.GRAY);
+                y -= LINE;
+                text(x, y, "near an edge to run one along it, even in a wall, or", Color.GRAY);
+                y -= LINE;
+                text(x, y, "a tile's middle to lay one across it, under any component", Color.GRAY);
+                y -= LINE;
+                text(x, y, m.pipes.size() + (m.pipes.size() == 1 ? " pipe" : " pipes"), Color.WHITE);
                 y -= LINE;
                 break;
             case PORT:
@@ -2211,7 +2296,8 @@ public class ShipEditor extends ApplicationAdapter {
                 default:
                     break;
             }
-            int n = keycode - com.badlogic.gdx.Input.Keys.NUM_1;
+            // 1-9 pick the first nine tools, 0 the tenth
+            int n = keycode == com.badlogic.gdx.Input.Keys.NUM_0 ? 9 : keycode - com.badlogic.gdx.Input.Keys.NUM_1;
             if (n >= 0 && n < Tool.values().length) {
                 tool = Tool.values()[n];
                 tab = Tab.LAYOUT;
