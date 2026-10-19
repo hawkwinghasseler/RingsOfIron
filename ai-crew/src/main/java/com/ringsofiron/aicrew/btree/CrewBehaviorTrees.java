@@ -13,6 +13,7 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
  * <pre>
  * DynamicGuardSelector
  *   [HostileInSight]  EngageHostile
+ *   [SuitAirLow]      RefillSuit (at an oxygen tank or working life support)
  *   [HasWork]         TaskBranch( ClaimTask,
  *                                 Selector( Sequence( IsTaskKind(RESCUE), SuitUp, MoveToWorkSpot,
  *                                                     PickUpCasualty, CarryToSafety, PutDownCasualty ),
@@ -64,7 +65,10 @@ public final class CrewBehaviorTrees {
         Task<CrewAgent> work = new TaskBranch(new CrewTasks.ClaimTask(), doTask);
         work.setGuard(new CrewTasks.HasWork());
 
-        Task<CrewAgent> root = new DynamicGuardSelector<>(engage, work, new CrewTasks.Idle());
+        Task<CrewAgent> refill = new CrewTasks.RefillSuit();
+        refill.setGuard(new CrewTasks.SuitAirLow());
+
+        Task<CrewAgent> root = new DynamicGuardSelector<>(engage, refill, work, new CrewTasks.Idle());
         return new BehaviorTree<>(root, agent);
     }
 }

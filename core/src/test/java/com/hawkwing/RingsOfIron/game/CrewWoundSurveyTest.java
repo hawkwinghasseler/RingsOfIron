@@ -194,7 +194,29 @@ class CrewWoundSurveyTest {
                                 c.stabilised ? "+stab" : "", c.health, c.bleedOut, c.suited, c.suitAir,
                                 com.ringsofiron.aicrew.TaskRules.isBreathable(g, p.tileX(), p.tileY()), c.activity));
                     }
-                    line.append(" stores ").append(g.medicalStores).append(" disabled ").append(ShipDisablement.reason(game.player));
+                    line.append(" stores ").append(g.medicalStores).append(" kits ").append(g.patchKits)
+                            .append(" disabled ").append(ShipDisablement.reason(game.player));
+                    int floor = 0, breathable = 0, breaches = 0;
+                    for (int y = 0; y < g.height; y++) {
+                        for (int x = 0; x < g.width; x++) {
+                            com.ringsofiron.interiorgrid.Tile tile = g.getTile(x, y);
+                            if (tile == null) continue;
+                            if (tile.isHullBreach()) breaches++;
+                            if (tile.holdsAir()) {
+                                floor++;
+                                if (com.ringsofiron.aicrew.TaskRules.isBreathable(g, x, y)) breathable++;
+                            }
+                        }
+                    }
+                    line.append(" breathable ").append(breathable).append('/').append(floor).append(" breaches ").append(breaches);
+                    for (Entity sub : game.player.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent.class).subsystems) {
+                        com.ringsofiron.interiorgrid.SubsystemComponent ss = sub.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class);
+                        if (ss.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.REACTOR
+                                || ss.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.LIFE_SUPPORT) {
+                            line.append(String.format(Locale.ROOT, " %s %.2f%s%s", ss.type, ss.health, ss.isOperational ? "" : " down",
+                                    ss.switchedOn ? "" : " off"));
+                        }
+                    }
                     TRACE.append(line).append('\n');
                     run(world, 600);
                 }

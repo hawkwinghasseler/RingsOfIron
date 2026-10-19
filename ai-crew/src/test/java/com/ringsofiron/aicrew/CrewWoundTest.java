@@ -103,6 +103,42 @@ class CrewWoundTest {
     }
 
     @Test
+    void aSuitRunningLowInAVentedShipIsFilledAtLifeSupport() {
+        TestShips s = new TestShips(
+                "##########",
+                "#L.......#",
+                "#L.......#",
+                "#........#",
+                "##########");
+        for (com.ringsofiron.interiorgrid.Compartment room : s.grid.compartments) {
+            room.oxygen = 0;
+            room.nitrogen = 0;
+        }
+        Entity e = s.spawn(CrewRole.CREWMAN, 0, 7, 1);
+        CrewMemberComponent c = s.c(e);
+        c.setSuited(true);
+        c.suitAir = c.def.suitAir * c.def.suitRefillShare * 0.5f;
+        s.run(c.def.suitRefillTime + 15f);
+        assertEquals(CrewState.CONSCIOUS, c.state);
+        assertTrue(c.suitAir > c.def.suitAir * 0.9f, "filled their suit at the life support: " + c.suitAir);
+    }
+
+    @Test
+    void withNothingToFillItFromASuitRunsDry() {
+        TestShips s = room();
+        for (com.ringsofiron.interiorgrid.Compartment room : s.grid.compartments) {
+            room.oxygen = 0;
+            room.nitrogen = 0;
+        }
+        Entity e = s.spawn(CrewRole.CREWMAN, 0, 4, 2);
+        CrewMemberComponent c = s.c(e);
+        c.setSuited(true);
+        c.suitAir = 20f;
+        s.run(25f);
+        assertEquals(0f, c.suitAir, 1e-3f, "no oxygen aboard to fill it from");
+    }
+
+    @Test
     void aSeriousWoundStaysDownWaitingForHelpButDoesNotKill() {
         TestShips s = room();
         Entity e = s.spawn(CrewRole.CREWMAN, 0, 2, 2);

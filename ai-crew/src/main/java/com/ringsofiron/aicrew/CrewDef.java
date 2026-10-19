@@ -115,6 +115,16 @@ public class CrewDef {
     public float suitTime = 5f;
     /** Speed multiplier while suited. */
     public float suitSpeedFactor = 0.85f;
+    /**
+     * Share of {@link #suitAir} left, out of breathable air, at which a crew member goes to fill
+     * their suit from the ship's oxygen (round 6): a ship holed past its patch kits used to leave
+     * its crew to suffocate once their suits ran dry.
+     */
+    public float suitRefillShare = 0.3f;
+    /** Seconds to fill a suit from the ship's oxygen, at an oxygen tank or working life support. */
+    public float suitRefillTime = 20f;
+    /** Kilograms of oxygen a full suit takes. */
+    public static final double SUIT_OXYGEN_KG = 0.05;
 
     /** Fire intensity removed per second when fighting a fire. */
     public float extinguishRate = 0.3f;
