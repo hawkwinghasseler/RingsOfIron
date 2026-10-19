@@ -101,7 +101,7 @@ public class CrewHiring implements SaveParticipant {
 
     /** A station's pool for a day, drawn from {@code dice} ({@link GameWorld#stationDice}). */
     static List<Candidate> post(String stationUuid, long dice, long day) {
-        Random rnd = new Random(dice * 131L + day * 7_919L + 17L);
+        Random rnd = new Random(NewGame.mix(dice, day));
         int n = MIN_POOL + rnd.nextInt(MAX_POOL - MIN_POOL + 1);
         List<Candidate> out = new ArrayList<>();
         for (int i = 0; i < n; i++) {
