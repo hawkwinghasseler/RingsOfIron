@@ -203,17 +203,23 @@ public class MacroSimulation {
 
     /**
      * Makes the entity {@code uuid} (already in the engine, with its ship) a pirate lurking by
-     * {@code stationUuid}, on the rails there.
+     * {@code stationUuid}, on the rails there. An entity added during an engine update is only
+     * registered once the update ends; its caller gives it {@code h} itself then.
      */
     public void addPirate(String uuid, HostileComponent h, String stationUuid) {
-        engine.getEntity(uuid).add(h);
+        give(uuid, h);
         hostiles.addPirate(uuid, h, stationUuid, now);
     }
 
     /** Makes the entity {@code uuid} a patrol flying between {@code route}'s stations, starting at the first. */
     public void addPatrol(String uuid, HostileComponent h, String... route) {
-        engine.getEntity(uuid).add(h);
+        give(uuid, h);
         hostiles.addPatrol(uuid, h, route, now);
+    }
+
+    private void give(String uuid, HostileComponent h) {
+        Entity e = engine.getEntity(uuid);
+        if (e != null && e.getComponent(HostileComponent.class) != h) e.add(h);
     }
 
     /**

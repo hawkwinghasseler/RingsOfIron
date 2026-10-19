@@ -52,8 +52,11 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         HostileTrafficController.Listener {
     /** Seconds between looks at the bubble's hostiles. */
     static final float CHECK_SECONDS = 1f;
-    /** A hostile breaks off a fight below this share of its hull. */
-    public static final double BREAK_OFF_HULL = 0.5;
+    /**
+     * A hostile breaks off a fight below this share of its hull. Above {@link ShipDisablement#SURRENDER_HULL},
+     * so a ship that is losing tries to get away first, and surrenders only if it is caught and hit again.
+     */
+    public static final double BREAK_OFF_HULL = 0.65;
     /** How close a pirate holds alongside its prey to take its cargo, m. */
     public static final float PLUNDER_RANGE = 1_000f;
     /** How long it must hold there, sim seconds. */
@@ -84,6 +87,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
      * at the game's difficulty setting.
      */
     public DoubleSupplier difficulty = () -> 1.0;
+    private boolean topUpDue;
     /** What the hostiles did that the player should hear of; the screen drains it. */
     public final List<String> notices = new ArrayList<>();
 
@@ -148,11 +152,20 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     // ---------------------------------------------------------------------------------------------
 
+    /** Runs a top-up {@link #update} found due, once the engine update is over; {@link GameWorld#update} calls it. */
+    public void afterUpdate() {
+        if (!topUpDue) return;
+        topUpDue = false;
+        topUp(world.macroSim.now(), false);
+    }
+
     @Override
     public void update(float deltaTime) {
         double now = world.macroSim.now();
         if (now >= nextTopUp) {
-            topUp(now, false);
+            // Spawned here, mid-update, a ship would not be in the engine (or on the rails) until the
+            // update ends; the top-up waits for afterUpdate
+            topUpDue = true;
             nextTopUp = now + TOP_UP_INTERVAL;
         }
         since += deltaTime;
@@ -381,6 +394,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             String name = (GUNSHIP.equals(shipId) ? "Pirate gunship " : "Pirate raider ") + (++spawned);
             HostileComponent h = new HostileComponent(name, shipId, PIRATES, HostileComponent.Role.PIRATE,
                     firepower(ship));
+            // Spawned mid-update, the ship isn't registered by uuid until the update ends
+            ship.add(h);
             world.macroSim.addPirate(ship.getComponent(UuidComponent.class).id, h, lurk);
             return;
         }
@@ -392,6 +407,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         String name = (SPONSOR.equals(faction) ? "Patrol cutter " : "Selene guard ") + (++spawned);
         HostileComponent h = new HostileComponent(name, GUNSHIP, faction, HostileComponent.Role.PATROL,
                 firepower(ship));
+        ship.add(h);
         world.macroSim.addPatrol(ship.getComponent(UuidComponent.class).id, h, route);
     }
 

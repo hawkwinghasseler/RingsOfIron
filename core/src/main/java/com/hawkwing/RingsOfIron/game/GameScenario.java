@@ -32,7 +32,10 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.stationsdocking.DockingData;
+import com.ringsofiron.stationsdocking.DockingPort;
+import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
@@ -197,6 +200,7 @@ public class GameScenario {
         // Rescued after abandoning ship: the player flies the ship requisitioned at the station
         world.rescue.rescues.add((signal, rescue) -> {
             player = rescue.newShip;
+            seatAtHelm();
             contacts.clear();
             for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(HudMarkerComponent.class).get())) {
                 if (e == player || e.getComponent(StationComponent.class) != null) continue;
@@ -217,6 +221,44 @@ public class GameScenario {
         station.angle = angle;
         StationCrew.spawnCrew(world.crew, world.engine.getEntity(uuid), world.standing.factions().ofStation(name));
         return uuid;
+    }
+
+    /**
+     * Starts the career proper (the main game's New game, and First Play): the player is an
+     * ensign of the sponsor, docked at Highport, where the mission board's first offer is the
+     * bounty on the raider outside. Tests that want the ship free in orbit skip this.
+     */
+    public void beginCareer() {
+        dockAtHighport();
+    }
+
+    /** Latches the player's first port onto a free port of the same size at Highport, at once. */
+    public boolean dockAtHighport() {
+        Entity station = world.engine.getEntity(highport);
+        DockingPortsComponent ports = station.getComponent(DockingPortsComponent.class);
+        DockingPortsComponent own = player.getComponent(DockingPortsComponent.class);
+        if (ports == null || own == null || own.ports.length == 0) return false;
+        MountFootprint.MountSize size = own.ports[0].size;
+        for (int i = 0; i < ports.ports.length; i++) {
+            DockingPort p = ports.ports[i];
+            if (p.size == size && p.state != DockingPort.State.DOCKED) {
+                world.docking.dockInPlace(player, 0, station, i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Gives the player's (new) ship a helm and sits the avatar at it, as at the start of a game. */
+    private void seatAtHelm() {
+        Bridge.install(player);
+        if (avatar == null) return;
+        int[] seat = besideHelm(player, floorTiles(player.getComponent(ShipGridComponent.class)));
+        GridPositionComponent at = avatar.getComponent(GridPositionComponent.class);
+        if (seat == null || at == null || at.ship != player) return;
+        at.stop();
+        at.setTile(seat[0], seat[1]);
+        world.bridge.sit(SubsystemComponent.SubsystemType.HELM);
     }
 
     /** Loads base data and mods and sets up a new game in {@code world}. */

@@ -85,6 +85,18 @@ public final class TaskRules {
         return p != null ? p.tileY() : task.y;
     }
 
+    /**
+     * The craft the task's (x, y) is on, when the task names one: yard work and boarding on the
+     * craft worked on, a carry's pick-up on the craft it comes from. Null for a task on the crew
+     * member's own craft (or wherever they stand).
+     */
+    public static Entity siteOf(CrewTask task) {
+        if (task instanceof YardTask) return ((YardTask) task).ship;
+        if (task instanceof CarryTask) return ((CarryTask) task).from;
+        if (task instanceof BoardTask) return ((BoardTask) task).ship;
+        return null;
+    }
+
     private static Entity mobileTarget(CrewTask task) {
         if (task instanceof RescueTask) return ((RescueTask) task).casualty;
         if (task instanceof TreatTask) return ((TreatTask) task).patient;

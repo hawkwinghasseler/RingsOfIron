@@ -208,7 +208,10 @@ public final class CrewTasks {
             CrewTask t = a.crew.task;
             if (t == null) return Status.FAILED;
             if (a.crew.suited || a.crew.def.suitAir <= 0f) return Status.SUCCEEDED;
-            ShipGridComponent grid = a.grid();
+            // The spot may be on another craft: a ship latched alongside being stripped, say
+            Entity site = TaskRules.siteOf(t);
+            ShipGridComponent grid = site == null ? null : a.service.grid(site);
+            if (grid == null) grid = a.grid();
             if (!TaskRules.needsSuit(grid, TaskRules.targetX(t, a.service), TaskRules.targetY(t, a.service))) {
                 return Status.SUCCEEDED;
             }
@@ -652,6 +655,15 @@ public final class CrewTasks {
                 }
             }
             int x = a.pos.tileX(), y = a.pos.tileY();
+            // Nobody idles in a docked port's opening: it is the only way across, one tile wide
+            if (TaskRules.isSafe(grid, x, y) && onLink(grid, x, y)) {
+                if (!a.pos.isMoving() && a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty) && !onLink(grid, tx, ty),
+                        a.pathScratch)) {
+                    a.pos.setPath(a.pathScratch);
+                    a.crew.activity = "stepping clear of the port";
+                }
+                return Status.RUNNING;
+            }
             if (TaskRules.isSafe(grid, x, y)) {
                 if (!a.pos.isMoving()) a.crew.activity = "idle";
                 if (a.crew.suited && !a.pos.isMoving()) {
@@ -679,6 +691,14 @@ public final class CrewTasks {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /** True if (x, y) is the opening of a port docked to another craft. */
+    static boolean onLink(ShipGridComponent grid, int x, int y) {
+        for (int i = 0; i < grid.links.size; i++) {
+            if (grid.links.get(i).x == x && grid.links.get(i).y == y) return true;
+        }
+        return false;
+    }
 
     /**
      * The hostile to engage: the nearest conscious crew member of another faction the agent can

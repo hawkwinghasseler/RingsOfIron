@@ -455,6 +455,12 @@
     <rect x="-192" y="-256" width="192" height="64" rx="3" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <rect x="-182" y="-246" width="172" height="44" fill="none" stroke="#f2c230" stroke-width="4" stroke-dasharray="12 8"/>
     <rect x="-160" y="-288" width="128" height="32" rx="3" fill="#4b5563" stroke="#10141a" stroke-width="2"/>
+    <rect x="-312" y="-184" width="48" height="112" rx="24" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <circle cx="-288" cy="-128" r="14.08" fill="#465060" stroke="#10141a" stroke-width="2"/>
+    <circle cx="-288" cy="-128" r="7.68" fill="#e0a040" stroke="#10141a" stroke-width="1"/>
+    <rect x="-312" y="72" width="48" height="112" rx="24" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <circle cx="-288" cy="128" r="14.08" fill="#465060" stroke="#10141a" stroke-width="2"/>
+    <circle cx="-288" cy="128" r="7.68" fill="#e0a040" stroke="#10141a" stroke-width="1"/>
     <rect x="-571" y="-187" width="182" height="118" rx="5" fill="#2a3039" stroke="#10141a" stroke-width="2"/>
     <line x1="-562" y1="-182" x2="-562" y2="-74" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
     <line x1="-553" y1="-182" x2="-553" y2="-74" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
@@ -497,12 +503,6 @@
     <line x1="-409" y1="74" x2="-409" y2="182" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
     <line x1="-400" y1="74" x2="-400" y2="182" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
     <circle cx="-564" cy="76" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
-    <rect x="-312" y="-184" width="48" height="112" rx="24" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-288" cy="-128" r="14.08" fill="#465060" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-288" cy="-128" r="7.68" fill="#e0a040" stroke="#10141a" stroke-width="1"/>
-    <rect x="-312" y="72" width="48" height="112" rx="24" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-288" cy="128" r="14.08" fill="#465060" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-288" cy="128" r="7.68" fill="#e0a040" stroke="#10141a" stroke-width="1"/>
     <circle cx="628" cy="-244" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
     <circle cx="628" cy="244" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
     <circle cx="-628" cy="-244" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>

@@ -4,7 +4,7 @@
 #   R reactor, S shield, T turret (square mounts); L life support, H helm,
 #   W weapons console, C cargo, A airlock, E engine (an engine's nozzle faces aft
 #   (-x) when it lies along x, and +y when it stands along y), P propellant tank,
-#   O oxygen tank, N nitrogen tank, Q freight drive (an engine), B escape pod
+#   O oxygen tank, N nitrogen tank, Q freight drive and G gunship drive (engines), B escape pod
 #   (rectangular slots; a pod's hatch is the end that faces +y at rotation 0, so it
 #   lies against the hull it launches through)
 #   D docking port, drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium, 7 x 3 Large.
@@ -155,19 +155,19 @@ name = "Gunship"
 tile_size = 1.0
 origin_x = -10.0
 origin_y = -4.0
-# Heavier than the corvette: a Large reactor amidships, two Medium engines in the stern corners
+# Heavier than the corvette: a Large reactor amidships, two Medium gunship drives (G) in the stern corners
 # with a propellant tank beside each, and five turret mounts: a Medium one in the nose for the
 # railgun (8, 0), launchers at (1.5, 2.5) and (1.5, -2.5) and point defense at (5.5, 2.5) and
 # (5.5, -2.5). Oxygen and nitrogen between the engines; pipes up x 2 and x 5 and across y 3 join
 # both engines, every tank and life support. A Small passive docking port on top.
 rows = [
   "#######DDD##########",
-  "#EEE.P.....T...T...#",
-  "#EEE.P..RRR........#",
+  "#GGG.P.....T...T...#",
+  "#GGG.P..RRR........#",
   "#.....L.RRR.C.HH.TT#",
   "#.....L.RRR.C.WW.TT#",
-  "#EEE.P.............#",
-  "#EEE.P.....T...T...#",
+  "#GGG.P.............#",
+  "#GGG.P.....T...T...#",
   "####################",
 ]
 mounts = [

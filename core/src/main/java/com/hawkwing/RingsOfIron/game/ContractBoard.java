@@ -393,6 +393,8 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         kinds.add(bounties(node, giver));
         kinds.add(patrols(node, giver));
         for (List<Contract> k : kinds) Collections.shuffle(k, rnd);
+        // Wanted ships close by (in the bubble) come first, so a bounty can be flown at once
+        kinds.get(2).sort(java.util.Comparator.comparing(c -> !inBubble(c.targetUuid)));
         // Round robin over the kinds, so a board shows a spread
         for (int i = 0; out.size() < OFFERS_PER_STATION; i++) {
             boolean any = false;
@@ -472,6 +474,11 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             out.add(c);
         }
         return out;
+    }
+
+    private boolean inBubble(String uuid) {
+        Entity e = world.engine.getEntity(uuid);
+        return e != null && e.getComponent(PhysicsBodyComponent.class) != null;
     }
 
     /** Ships at war with the giver, priced by how they measure up to the player's and by {@link Difficulty}. */

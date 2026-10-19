@@ -34,6 +34,8 @@ public final class CrewFactory {
         Entity e = engine.createEntity();
         CrewMemberComponent c = new CrewMemberComponent(name, role, faction);
         GridPositionComponent p = new GridPositionComponent(ship, x, y);
+        // Crew belong to the craft they join: one who crosses to another for a job comes back after
+        c.setHome(ship);
         e.add(c);
         e.add(p);
         addBrain(service, e);

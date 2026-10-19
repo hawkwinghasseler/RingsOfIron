@@ -270,6 +270,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             gun = new PlayerGunnery(world, game.player);
             gun.setTarget(game.nextContact(null));
             hud.setTargeting(new CombatTargetingProvider(gun));
+            matchViewToSeat();
             show(rescueNotice(rescue));
         });
         world.disablement.changes.add((signal, change) -> {
@@ -288,9 +289,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 return true;
             }
         }));
+        // A new career: docked at Highport with the board's first job on offer (First Play scripts the same start)
         if (firstPlayMode) firstPlay = FirstPlay.start(world, game);
+        else game.beginCareer();
         matchViewToSeat();
-        show(game.content.report.hasErrors() ? "Content loaded with errors; see the log" : "Welcome aboard");
+        show(game.content.report.hasErrors() ? "Content loaded with errors; see the log"
+                : "Welcome aboard, " + world.standing.describeRank() + ". J opens Highport's mission board");
         if (game.content.report.hasErrors()) Gdx.app.error("RingsOfIron", game.content.report.toString());
     }
 

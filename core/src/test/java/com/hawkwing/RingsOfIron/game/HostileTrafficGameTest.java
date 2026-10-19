@@ -110,7 +110,7 @@ class HostileTrafficGameTest {
     }
 
     @Test
-    void aPirateBreaksOffBelowHalfItsHull() {
+    void aPirateBreaksOffBeforeItIsBeatenEnoughToSurrender() {
         String id = pirate(HostileTraffic.GUNSHIP);
         HostileComponent h = hostiles.get(id);
         h.targetUuid = HostileComponent.PLAYER;
@@ -120,7 +120,7 @@ class HostileTrafficGameTest {
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
-                if (t != null && t.isWall()) t.setIntegrity(0.4f);
+                if (t != null && t.isWall()) t.setIntegrity(0.6f);
             }
         }
         run(2);

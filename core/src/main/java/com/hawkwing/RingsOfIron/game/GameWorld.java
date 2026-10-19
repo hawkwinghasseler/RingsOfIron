@@ -153,6 +153,8 @@ public class GameWorld implements Disposable {
     public final AudioListenerSync audioListener;
     /** Pirates and faction patrols: their ships, and how they fly and fight in the bubble. */
     public final HostileTraffic hostiles;
+    /** Ties the career (factions and rank) to encounters, rescue, boarding and ships beaten. */
+    public final LoopWiring loop;
     /** The player's planned burns. */
     public final BurnPlanner burns;
     /** Docking ports, collars and latches of every ship and station in the bubble. */
@@ -408,6 +410,8 @@ public class GameWorld implements Disposable {
         PhysicsSaveParticipant.install(physics, engine);
         // Pirates and faction patrols, on the rails and in the bubble
         hostiles = HostileTraffic.install(this);
+        // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
+        loop = LoopWiring.install(this);
     }
 
     /**
@@ -474,6 +478,7 @@ public class GameWorld implements Disposable {
         for (Entity wreck : wrecks) engine.removeEntity(wreck);
         wrecks.clear();
         rescue.update();
+        hostiles.afterUpdate();
         checkBubbleCrash();
         if (crash != null && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
     }

@@ -18,7 +18,7 @@ Each part was built on its own round-2 branch:
 | Disabled ships, surrender, abandon ship, rescue | `claude/r2-disabled-rescue-u30h20` | #88 |
 | Contracts and the mission board | `claude/r2-contracts-qf9mvv` | #91 |
 | Boarding, taking ships and salvage | `claude/r2-boarding-salvage-mt3uei` | #92 |
-| Wiring them into one loop | the playable loop branch | |
+| Wiring them into one loop | `claude/r2-playable-loop-blznr1` | the loop's draft PR |
 
 All numbers below are the branches' placeholders, marked in the data and code for tuning in the playable loop.
 
@@ -78,7 +78,7 @@ Ranks are data: `[rank.<id>]` (`RankDef`) with `name`, `order`, `standing` (need
 
 ## Pirates and Patrols
 Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. It is documented with macro-sim, since it lives on the rails like freighters. The progression side:
-- **Pirates** fly for the Void Raiders. They lie in wait near trade lanes and rob loaded freighters. A pirate hunts the player only when it is bold enough: firepower at least 0.8 of the player's, and only after the first 6 hours of a game. A pirate breaks off below half its hull.
+- **Pirates** fly for the Void Raiders. They lie in wait near trade lanes and rob loaded freighters. A pirate hunts the player only when it is bold enough: firepower at least 0.8 of the player's, and only after the first 6 hours of a game. A pirate breaks off below 65% of its hull, before it is beaten badly enough to surrender (55%), so a losing pirate runs first and gives up only if it is caught and hit again.
 - **Patrols** fly for the sponsor and for Selene between their stations and engage pirates. A pirate won't strike at a station guarded by an equal or stronger patrol.
 - **Warp:** a hostile moving to intercept the player stops time warp.
 
@@ -158,6 +158,17 @@ Boarding is crew work across a ship-to-ship dock: the corvette's port is active 
 - **Selling salvage:** stations buy parts at a quarter of their price (`Salvage.SALE_SHARE`), listed as "Salvaged ..." in the trade window. Station markets never sell parts.
 - **Refitting with salvage:** a salvaged weapon can be fitted at a yard for free, like a used one, from the yard's "Salvaged" button.
 
+## The Loop in the Main Game
+`LoopWiring` (core) points the hooks each branch left at the career:
+- **Encounters** scale with `Difficulty.of(world)` (`HostileTraffic.difficulty`).
+- **Outlaws:** ships of a faction `hostile_to_all` cost nothing to board (`Boarding.outlaw`).
+- **Rescue** wakes the player at the nearest station the sponsor owns (`Rescue.sponsorStation`), in the best ship of `LoopWiring.REQUISITION` (the gunship, then the starter corvette) that `RankLadder.mayRequisition` allows, free. Freighters are never requisitioned. The new ship gets a helm and the player is seated at it.
+- **Ships beaten:** a ship disabled, surrendered or wrecked within 120 s of the player's last hit on it counts once as destroyed (`FactionStanding.onShipDestroyed`): 30 standing off its owners, 15 to each faction at war with them. Beating a pirate raises standing with both the sponsor and Selene.
+
+A new game (the main menu's New game, and First Play) starts docked at Highport as an ensign of the sponsor (`GameScenario.beginCareer`). The board's first bounty is on the raider outside: bounties on ships in the bubble are offered before those on pirates out on the rails. First Play's steps are: take the bounty, undock, fly clear, beat the raider, board it, dock, repair.
+
+`PlayableLoopTest` plays the loop headless: take the bounty, undock, fight the raider with the real guns and missiles until it gives up, board it, strip a gun, dock, sell it, and be promoted to Lieutenant (the bounty's 6 and the kill's 15 standing). A second test abandons ship as a Lieutenant Commander and wakes at a sponsor station seated at a gunship's helm.
+
 ## Saves
 - **Save modules:** the career (`"factions"`) and contracts (`"contracts"`).
 - **Saved as components:** disabled state, morale, abandon orders, boarding state, prisoners, salvage orders and stripped mounts, all on their entities.
@@ -179,7 +190,7 @@ Boarding is crew work across a ship-to-ship dock: the corvette's port is active 
 | 1 | Factions as data, per-station ownership, standing per faction, the standing API | factions | Built |
 | 2 | Rank ladder, promotions, budget, difficulty | factions | Built |
 | 3 | Disabled state and NPC surrender | disabled-rescue | Built |
-| 4 | Escape pods, abandon ship, rescue and requisition | disabled-rescue | Built; rank-limited requisition not wired |
+| 4 | Escape pods, abandon ship, rescue and requisition | disabled-rescue, playable loop | Built |
 | 5 | Contracts and the mission board | contracts | Built |
-| 6 | Boarding, taking ships and salvage | boarding-salvage | Built; outlaw exemption not wired |
-| 7 | The loop in the main game, scripted end to end | playable loop | In progress |
+| 6 | Boarding, taking ships and salvage | boarding-salvage, playable loop | Built |
+| 7 | The loop in the main game, scripted end to end | playable loop | Built |

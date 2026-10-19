@@ -71,6 +71,15 @@ color = "#6aa8e8"
 
 # A hauler's drive: big and frugal, but slow to push a loaded hull. The freighter's two
 # Medium ones give it the 3.0 MN it had before engines set thrust.
+# A gunship's drives: Medium, but rated down so the heavy hull is slower off the mark than the
+# corvette. The gunship's two give it the 3.4 MN its ships.toml entry restates.
+[component.gunship_drive]
+name = "Gunship drive"
+symbol = "G"
+behavior = "ENGINE"
+color = "#6a9ad8"
+thrust = { M = 1.7e6 }
+
 [component.freight_drive]
 name = "Freight drive"
 symbol = "Q"

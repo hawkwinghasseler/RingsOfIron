@@ -170,7 +170,9 @@ class ContractBoardTest {
         world.update(FRAME);
         assertEquals(Contract.Status.DONE, c.status);
         assertEquals(credits + c.reward, trader.credits, 1e-6);
-        assertNull(offer(game.highport, Contract.Type.BOUNTY), "no price on a ship that is gone");
+        // Pirates out on the rails may still have prices on them; the raider has none
+        assertTrue(board.offers(game.highport).stream().noneMatch(o -> c.targetUuid.equals(o.targetUuid)),
+                "no price on a ship that is gone");
     }
 
     @Test

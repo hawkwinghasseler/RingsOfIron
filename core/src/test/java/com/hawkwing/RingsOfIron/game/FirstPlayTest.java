@@ -74,8 +74,16 @@ class FirstPlayTest {
     void startsDockedAtHighportAndWalksThroughEveryObjective() {
         run(60);
         assertSame(highport, world.docking.dockedTo(game.player), "starts docked");
+        assertEquals(FirstPlay.Step.ACCEPT, play.step());
+        assertTrue(play.objective().startsWith("1/7"), play.objective());
+
+        // The board's first offer is the bounty on the raider outside
+        Contract bounty = world.contracts.offers(game.highport).stream()
+                .filter(c -> c.type == Contract.Type.BOUNTY).findFirst().orElseThrow();
+        assertEquals(world.universe.uuidOf(game.raider), bounty.targetUuid);
+        assertNull(world.contracts.accept(bounty.id));
+        run(2);
         assertEquals(FirstPlay.Step.UNDOCK, play.step());
-        assertTrue(play.objective().startsWith("1/5"), play.objective());
 
         assertTrue(world.docking.undock(game.player));
         run(10);
@@ -93,7 +101,17 @@ class FirstPlayTest {
             if (sub.type == SubsystemComponent.SubsystemType.REACTOR) sub.health = 0f;
         }
         run(30);
+        assertEquals(FirstPlay.Step.BOARD, play.step());
+        assertEquals(Contract.Status.DONE, bounty.status, "the bounty is paid once it is beaten");
+
+        // Latched on, the raider (nobody aboard) is taken as soon as the party is sent
+        world.docking.dockInPlace(game.player, 0, game.raider, 0);
+        run(120);
+        assertTrue(world.boarding.takeUndefended(game.player, game.raider));
+        run(2);
         assertEquals(FirstPlay.Step.DOCK, play.step());
+        world.docking.undock(game.player);
+        run(10);
 
         redock();
         assertSame(highport, world.docking.dockedTo(game.player));

@@ -42,6 +42,8 @@ class BoardingSalvageTest {
 
     GameWorld world;
     GameScenario game;
+    /** A faction of the data that is no outlaw, so boarding its ships costs standing. */
+    int owner;
     final List<Entity> raiderCrew = new ArrayList<>();
 
     @BeforeAll
@@ -92,6 +94,17 @@ class BoardingSalvageTest {
         assertTrue(ShipDisablement.isDisabled(game.raider));
     }
 
+    /**
+     * Hands the raider and its crew to the Selene Combine: boarding a faction's ship costs standing
+     * with it, where a ship of no one's (or a pirate's) costs nothing. They are at peace with the
+     * player, so only a surrendered crew can be taken this way.
+     */
+    private void ownedBySelene() {
+        owner = world.standing.factions().index("selene");
+        CrewFactory.ensureBoard(game.raider).faction = owner;
+        for (Entity e : raiderCrew) world.crew.crew(e).faction = owner;
+    }
+
     private Entity marine() {
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
             if (world.crew.crew(e).role == CrewRole.MARINE && world.crew.homeOf(e) == game.player) return e;
@@ -109,11 +122,12 @@ class BoardingSalvageTest {
 
     @Test
     void aSurrenderedCrewYieldsToTheFirstBoarderAndAreHeld() {
+        ownedBySelene();
         beatAndLatch();
         world.disablement.set(game.raider, DisabledComponent.Reason.SURRENDERED);
         String said = world.boarding.order(game.player);
         assertTrue(said.startsWith("Boarding party ordered aboard Raider"), said);
-        assertEquals(-Boarding.STANDING_COST, world.standing.standing(RAIDERS), 1e-3, "boarding their ship costs standing");
+        assertEquals(-Boarding.STANDING_COST, world.standing.standing(owner), 1e-3, "boarding their ship costs standing");
 
         assertTrue(runUntil(240, () -> world.boarding.takenBy(game.raider, game.player)),
                 "taken; the marine is " + world.crew.crew(marine()).activity);
@@ -142,6 +156,7 @@ class BoardingSalvageTest {
 
     @Test
     void latchedOnWithoutLeaveTheDoorIsForcedBeforeTheBoardersGoIn() {
+        ownedBySelene();
         for (Entity e : game.raider.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
             SubsystemComponent s = e.getComponent(SubsystemComponent.class);
             if (s.type == SubsystemComponent.SubsystemType.REACTOR) s.switchedOn = false;
@@ -159,7 +174,7 @@ class BoardingSalvageTest {
             assertTrue(said.contains("door is being forced"), said);
             assertTrue(runUntil(300, () -> world.boarding.takenBy(game.raider, game.player)),
                     "taken; the marine is " + world.crew.crew(marine()).activity);
-            assertEquals(-Boarding.STANDING_COST - FactionStanding.PRY_COST, world.standing.standing(RAIDERS), 1e-3,
+            assertEquals(-Boarding.STANDING_COST - FactionStanding.PRY_COST, world.standing.standing(owner), 1e-3,
                     "boarding and the door both cost standing");
         } finally {
             docking.dispose();
