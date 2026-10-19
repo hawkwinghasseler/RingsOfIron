@@ -310,6 +310,7 @@ public class GameShell implements ApplicationListener {
         game.setHosted(true);
         game.setSaveSlots(slots);
         game.setBindings(bindings);
+        game.setOpeningGuide(settings.openingGuide);
         game.create();
         game.resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         applyAudio();
@@ -394,6 +395,7 @@ public class GameShell implements ApplicationListener {
         settings = changed;
         settings.setBindings(bindings);
         pad.setEnabled(settings.gamepad);
+        if (game != null) game.setOpeningGuide(settings.openingGuide);
         try {
             settings.save(settingsFile);
         } catch (RuntimeException e) {

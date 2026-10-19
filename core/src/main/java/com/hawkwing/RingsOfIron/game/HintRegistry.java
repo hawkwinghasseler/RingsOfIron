@@ -160,6 +160,30 @@ public final class HintRegistry {
         return Collections.unmodifiableMap(out);
     }
 
+    /**
+     * {@code text} with each {@code {ACTION}} (an {@link Action}'s name in braces) replaced by the
+     * key the player has for it, as guide text that names keys is written.
+     */
+    public static String withKeys(String text, Function<Action, String> keyName) {
+        StringBuilder out = new StringBuilder(text.length());
+        int i = 0;
+        while (i < text.length()) {
+            int open = text.indexOf('{', i);
+            int close = open < 0 ? -1 : text.indexOf('}', open);
+            if (close < 0) {
+                out.append(text, i, text.length());
+                break;
+            }
+            out.append(text, i, open);
+            String name = text.substring(open + 1, close);
+            Action a = null;
+            for (Action x : Action.values()) if (x.name().equals(name)) a = x;
+            out.append(a == null ? text.substring(open, close + 1) : keyName.apply(a));
+            i = close + 1;
+        }
+        return out.toString();
+    }
+
     /** Key names from {@code bindings}. */
     public static Function<Action, String> keyNames(KeyBindings bindings) {
         return a -> KeyBindings.keyName(bindings.keyOf(a));

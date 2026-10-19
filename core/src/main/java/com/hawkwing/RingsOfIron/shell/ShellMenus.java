@@ -266,6 +266,15 @@ class ShellMenus {
             }
         });
         t.add(gamepad).left().colspan(3).row();
+        CheckBox guide = new CheckBox(" Walkthrough at the start of a new game", skin);
+        guide.setChecked(s.openingGuide);
+        guide.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                s.openingGuide = guide.isChecked();
+            }
+        });
+        t.add(guide).left().colspan(3).row();
         Table keys = new Table();
         keys.top().left();
         Array<TextButton> keyButtons = new Array<>();
@@ -406,6 +415,7 @@ class ShellMenus {
         c.windowWidth = s.windowWidth;
         c.windowHeight = s.windowHeight;
         c.gamepad = s.gamepad;
+        c.openingGuide = s.openingGuide;
         c.keys = new ObjectMap<>(s.keys);
         return c;
     }

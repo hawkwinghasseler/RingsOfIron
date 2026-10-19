@@ -35,7 +35,7 @@ public class GameLauncher {
         configuration.setForegroundFPS(Lwjgl3ApplicationConfiguration.getDisplayMode().refreshRate + 1);
         if (settings.fullscreen) configuration.setFullscreenMode(Lwjgl3ApplicationConfiguration.getDisplayMode());
         else configuration.setWindowedMode(settings.windowWidth, settings.windowHeight);
-        configuration.setWindowIcon("libgdx128.png", "libgdx64.png", "libgdx32.png", "libgdx16.png");
+        configuration.setWindowIcon("icon128.png", "icon64.png", "icon32.png", "icon16.png");
         return configuration;
     }
 }

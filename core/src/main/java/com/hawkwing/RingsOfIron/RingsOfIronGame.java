@@ -31,6 +31,7 @@ import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.art.ExteriorArt;
 import com.hawkwing.RingsOfIron.game.AbandonShip;
 import com.hawkwing.RingsOfIron.game.Bridge;
+import com.hawkwing.RingsOfIron.game.OpeningGuide;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.Rescue;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
@@ -157,6 +158,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
     /** Start with the scripted first play ({@link FirstPlay}) rather than free play. */
     private final boolean firstPlayMode;
     private FirstPlay firstPlay;
+    /** The light walkthrough for a new game, or null once it is done or off. */
+    private OpeningGuide opening;
+    /** Whether new games get the walkthrough; the settings turn it off. */
+    private boolean openingWanted = true;
 
     private GameWorld world;
     private GameScenario game;
@@ -327,10 +332,16 @@ public class RingsOfIronGame extends ApplicationAdapter {
         // A new career: docked at Highport with the board's first job on offer (First Play scripts the same start)
         if (firstPlayMode) firstPlay = FirstPlay.start(world, game);
         else game.beginCareer();
+        if (!firstPlayMode && openingWanted) {
+            opening = new OpeningGuide(world, () -> hud.getMissionWindow().isOpen(),
+                    OpeningGuide.Step.OPEN_BOARD);
+        }
         matchViewToSeat();
         haveAutosave = slots().latestAutosave() != null;
         show(game.content.report.hasErrors() ? "Content loaded with errors; see the log"
-                : "Welcome aboard, " + world.standing.describeRank() + ". " + key(Action.MISSIONS) + " opens Highport's mission board");
+                : "Welcome aboard, " + world.standing.describeRank() + "." + (opening != null || firstPlay != null ? ""
+                        : " " + key(Action.MISSIONS) + " opens Highport's mission board"), NoticeLog.Kind.IMPORTANT);
+        if (opening != null) show(opening.text(this::key));
         if (game.content.report.hasErrors()) Gdx.app.error("RingsOfIron", game.content.report.toString());
     }
 
@@ -358,10 +369,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.notices.update(delta);
         abandonAsked -= delta;
         towAsked -= delta;
-        if (firstPlay != null) {
-            String next = firstPlay.update();
-            if (next != null) show(next.substring(next.indexOf(':') + 1).trim());
+        if (firstPlay != null && firstPlay.update() != null) {
+            String next = firstPlay.objective(this::key);
+            show(next.substring(next.indexOf(':') + 1).trim(), NoticeLog.Kind.IMPORTANT);
         }
+        updateOpening();
 
         TransformComponent pt = TRANSFORMS.get(game.player);
         Vector2 walker = hud.getViewMode().getMode() == ViewMode.INTERIOR ? avatarWorld(followAt) : null;
@@ -653,6 +665,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
             matchViewToSeat();
             // A save made in First Play carries on there; any other leaves it
             firstPlay = FirstPlay.resume(world, game);
+            opening = firstPlay != null || !openingWanted ? null
+                    : OpeningGuide.resume(world, () -> hud.getMissionWindow().isOpen());
             autosaves.restart(world.playerStation() != null, world.engine.getSimSeconds());
             show("Game loaded");
             return true;
@@ -670,6 +684,29 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     public void setSaveSlots(SaveSlots slots) {
         this.slots = slots;
+    }
+
+    /** Whether a new game gets the opening walkthrough; off also stops one under way. */
+    public void setOpeningGuide(boolean wanted) {
+        openingWanted = wanted;
+        if (!wanted && opening != null) {
+            opening.stop();
+            opening = null;
+        }
+    }
+
+    /** Moves the walkthrough on, says each new step, and lets it go once its last word is said. */
+    private void updateOpening() {
+        if (opening == null || paused) return;
+        // Leaving the station before taking a job ends it quietly
+        if (world.playerStation() == null && opening.step() != OpeningGuide.Step.DONE) {
+            opening.stop();
+            opening = null;
+            return;
+        }
+        if (!opening.update()) return;
+        show(opening.text(this::key), NoticeLog.Kind.IMPORTANT);
+        if (opening.finished()) opening = null;
     }
 
     /** The player's key bindings, for the hints; the defaults until the shell sets them. */
@@ -1183,9 +1220,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
             below -= 20f;
         }
         if (firstPlay != null) {
-            font.draw(batch, firstPlay.objective(), left, below, STATUS_WIDTH - 10f,
+            font.draw(batch, firstPlay.objective(this::key), left, below, STATUS_WIDTH - 10f,
                     com.badlogic.gdx.utils.Align.left, true);
             below -= 60f;
+        }
+        if (opening != null) {
+            layout.setText(font, opening.text(this::key), Color.GOLD, STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+            font.draw(batch, layout, left, below);
+            below -= layout.height + 10f;
         }
         String bridge = bridgeLine();
         if (bridge != null) {
