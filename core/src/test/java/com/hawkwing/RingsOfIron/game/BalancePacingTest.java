@@ -47,6 +47,9 @@ class BalancePacingTest {
     void setUp() {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         world = new GameWorld();
+        // The designed game hands out random UUIDs, and since round 5 a hit's shorts and bursts are
+        // rolled from the ship's UUID: seeded ones make each fight replay the same
+        world.engine.getEntityIds().seed(2026);
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
     }
 
@@ -100,9 +103,10 @@ class BalancePacingTest {
 
     @Test
     void theFirstRaiderComesInFiringAndTheFightLastsUnderFire() {
-        // Whether a raider's bursts land is luck: from one start to the next, a few hundredths of a
-        // second apart, it lands none of a hundred rounds or dozens. The first fight that it lands any
-        // in, of a few such starts, is the one checked
+        // A raider that closes slowly may be beaten before its guns reach: a few starts, a few
+        // hundredths of a second apart, and the first where it lands any rounds on the hull is the one
+        // checked. (Round 5: hits used to be counted by damage reports, which a chaingun round that
+        // only scars the armour never sends, so most of its hits went uncounted)
         String said = null;
         for (int start = 0; start < 3; start++) {
             if (start > 0) {
@@ -134,8 +138,8 @@ class BalancePacingTest {
             }
         });
         int[] playerHits = {0};
-        world.combatEvents.damage.add((s, r) -> {
-            if (r.ship == game.player) playerHits[0]++;
+        world.combatEvents.hullHits.add((s, h) -> {
+            if (h.ship == game.player) playerHits[0]++;
         });
         game.provokeRaider();
         assertTrue(game.raiderHostile());
@@ -160,8 +164,7 @@ class BalancePacingTest {
         System.out.println("First fight (start " + start + "): " + said);
         assertTrue(ShipDisablement.isDisabled(game.raider), "beaten: " + said);
         assertTrue(raiderShots[0] > 0 && firstRaiderShot[0] < openedFire, "the raider shoots first: " + said);
-        // A start where the raider lands nothing is the unlucky one: on some it fires a burst and then
-        // holds its fire until beaten (round 6), so how long the fight lasts is checked under fire only
+        // A start where the raider lands nothing is an unlucky one: how long the fight lasts is checked under fire
         if (playerHits[0] == 0) return null;
         // Was 7 s from the player's first shot, with the raider asleep and three slugs through its
         // nose shutting its reactor down; now the player's guns take a good while, under fire

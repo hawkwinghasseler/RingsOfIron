@@ -287,8 +287,5 @@ Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartm
 - `LifeSupportSystem`: scrubs CO2 and smoke, refills sealed rooms with air and replenishes oxygen, out of the piped tanks.
 - `InteriorHazardWarpGuard` (not an ECS system): refuses rails warp during a fire or venting.
 
-## Decided, not built yet
-- **Tanks and piping** (2026-10-19): life support consumables and ship propellant draw from tanks placed in the ship grid, through pipes laid in the tile map. Like conduits, pipes go in tile centers or along tile edges (the `EdgeConduit` model). Tanks run dry, and refilling them costs money at a station. Placement goes in the ship editor and the art in the art pack. Until then life support draws on an endless supply and propellant is `ThrusterComponent.fuel` in physics-exterior.
-
 ## Open Questions
 - **Tank damage** (answered in round 5, see Damage states): a tank past a quarter health can burst, and burst propellant feeds a fire. A tank that only leaks still loses its propellant overboard rather than onto the deck.
