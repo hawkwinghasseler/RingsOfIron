@@ -30,6 +30,8 @@ public class YardWindow extends Window {
     private final Label repairs;
     private final TextButton repair;
     private final Label status;
+    private final Label tanks;
+    private final TextButton refill;
     private final Table rows = new Table();
     private final Array<Row> rowWidgets = new Array<>();
     private YardProvider provider;
@@ -87,11 +89,19 @@ public class YardWindow extends Window {
             if (provider != null) say(provider.orderRepairs());
         });
         status = new Label("", skin, "dim");
+        tanks = new Label("", skin);
+        refill = button("Refill tanks", () -> {
+            if (provider != null) say(provider.orderRefill());
+        });
         Table top = new Table();
         top.add(summary).left().padRight(14f);
         top.add(repair);
         add(top).left().row();
         add(repairs).left().padTop(4f).row();
+        Table fuel = new Table();
+        fuel.add(tanks).left().padRight(14f);
+        fuel.add(refill);
+        add(fuel).left().padTop(4f).row();
         add(rows).left().padTop(8f).row();
         add(status).left().padTop(8f).row();
         add(button("Close [Y]", () -> setOpen(false))).right().padTop(10f);
@@ -150,6 +160,9 @@ public class YardWindow extends Window {
         summary.setText(String.format(Locale.ROOT, "Credits %s     %s", formatCredits(board.credits), damageLine(board)));
         repair.setDisabled(board.damaged == 0 || !board.repairs.isEmpty());
         repairs.setText(board.repairs);
+        tanks.setText(board.tanks.isEmpty() ? "No tanks aboard" : board.tanks);
+        refill.setText(board.refillCost < 0.5 ? "Tanks full" : "Refill tanks " + formatCredits(board.refillCost));
+        refill.setDisabled(board.refillCost < 0.5 || board.credits < 1);
         if (rowWidgets.size != board.hardpoints.size) rebuildRows();
         for (int i = 0; i < rowWidgets.size; i++) rowWidgets.get(i).update(board.hardpoints.get(i));
     }
