@@ -21,24 +21,44 @@ public final class EmissiveLights {
     /** SVG units in a tile, and in a meter outside (see the art guide). */
     public static final float UNITS_PER_TILE = 64f;
 
+    /** What the art says a glowing part is, with its {@code data-light} attribute. */
+    public enum Kind {
+        /** Glows, but lights nothing around it. */
+        GLOW,
+        /** Lights all around it, whatever its size. */
+        POINT,
+        /** Lights a cone, whatever its size. */
+        CONE
+    }
+
     /** One glowing part of the art: its center and size in SVG units with y up. */
     public static final class Source {
         public final float x, y, w, h;
         public final Color color;
         /** The most opaque shape's opacity, 0-1. */
         public final float alpha;
+        /** What the art says it is, or null to judge by its size. */
+        public final Kind kind;
+        /** How far its light reaches, tiles, or 0 to judge by its size. */
+        public final float reach;
+        /** How strong its light is, 0-1, or -1 to judge by its opacity. */
+        public final float intensity;
         /** A cone shining toward {@link #direction} (degrees, 0 = +x, y up) over {@link #cone}° each side. */
         public final boolean isCone;
         public final float direction, cone;
 
-        Source(float x, float y, float w, float h, Color color, float alpha, boolean isCone, float direction, float cone) {
+        Source(float x, float y, float w, float h, Color color, float alpha, Kind kind, float reach, float intensity,
+               float direction, float cone) {
             this.x = x;
             this.y = y;
             this.w = w;
             this.h = h;
             this.color = color;
             this.alpha = alpha;
-            this.isCone = isCone;
+            this.kind = kind;
+            this.reach = reach;
+            this.intensity = intensity;
+            this.isCone = kind == Kind.CONE;
             this.direction = direction;
             this.cone = cone;
         }
@@ -92,10 +112,12 @@ public final class EmissiveLights {
             Source[] lights = new Source[list.size];
             int i = 0;
             for (JsonValue l = list.child; l != null; l = l.next) {
-                boolean cone = l.has("cone");
+                String kind = l.getString("light", null);
                 lights[i++] = new Source(l.getFloat("x"), l.getFloat("y"), l.getFloat("w"), l.getFloat("h"),
                         Color.valueOf(l.getString("color")), l.getFloat("alpha"),
-                        cone, l.getFloat("direction", 0f), l.getFloat("cone", 0f));
+                        kind == null ? null : Kind.valueOf(kind.toUpperCase(java.util.Locale.ROOT)),
+                        l.getFloat("reach", 0f), l.getFloat("intensity", -1f),
+                        l.getFloat("direction", 0f), l.getFloat("cone", 0f));
             }
             out.art.put(entry.name, new Art(canvas[0], canvas[1], canvas[2], canvas[3], lights));
         }

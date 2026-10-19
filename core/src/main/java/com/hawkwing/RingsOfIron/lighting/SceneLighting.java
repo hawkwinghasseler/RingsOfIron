@@ -42,8 +42,8 @@ import java.util.Map;
  * its walls as edges, moved to the craft's pose each frame and rebuilt when a door or wall changes.
  */
 public final class SceneLighting implements Disposable {
-    /** Rooms on a craft with power. */
-    public static final Color AMBIENT_POWERED = new Color(0.5f, 0.52f, 0.56f, 1f);
+    /** Rooms on a craft with power, before the wall lights and systems light them. */
+    public static final Color AMBIENT_POWERED = new Color(0.2f, 0.21f, 0.24f, 1f);
     /** Rooms on a craft without: the lights are out. */
     public static final Color AMBIENT_DARK = new Color(0.06f, 0.055f, 0.07f, 1f);
     /** At most this many lights cast rays in one frame, the first added first. */
@@ -143,7 +143,7 @@ public final class SceneLighting implements Disposable {
             l.setPosition(s.x, s.y);
             l.setDistance(s.reach);
             tmp.set(s.color);
-            tmp.a = MathUtils.clamp(0.35f + 0.65f * s.color.a, 0f, 1f) * flicker(s);
+            tmp.a = s.strength * flicker(s);
             l.setColor(tmp);
         }
         for (int i = p; i < points.size; i++) points.get(i).setActive(false);
@@ -200,6 +200,7 @@ public final class SceneLighting implements Disposable {
             b.reach = a.reach;
             b.glow = a.glow;
             b.color.set(a.color);
+            b.strength = a.strength;
             b.isCone = a.isCone;
             b.direction = a.direction + angle;
             b.cone = a.cone;

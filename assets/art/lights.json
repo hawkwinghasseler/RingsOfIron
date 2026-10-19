@@ -2607,6 +2607,9 @@
     "cone": 60.0,
     "direction": -90.0,
     "h": 11.0,
+    "intensity": 0.85,
+    "light": "cone",
+    "reach": 5.0,
     "w": 24.0,
     "x": 16.0,
     "y": -9.5

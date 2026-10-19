@@ -15,7 +15,18 @@ turrets that is the body origin or pivot, as in the art guide. Each entry's "can
 canvas's bottom-left corner and size in the same frame, so art drawn from its corner (tiles,
 components, decor) subtracts it to get the light's place on the footprint.
 
-Lights of wall-mounted decor shine away from the wall (down the canvas) as cones; see CONES.
+How bright a light is and how far it reaches is guessed from the art (the game scales reach
+with the glowing part's size and strength with its opacity), unless a shape in the light says
+otherwise with these attributes, in tiles and degrees with y up:
+
+    data-light="glow|point|cone"   glow: lights nothing around it; point/cone: always lights
+    data-reach="5"                 how far its light reaches, tiles
+    data-intensity="0.8"           how strong it is, 0-1
+    data-direction="-90"           a cone's direction, degrees (0 = +x, 90 = up the canvas)
+    data-cone="60"                 a cone's half-angle, degrees
+
+Put them on any shape of the light (or on a <g> around its shapes). DEFAULTS gives the same
+settings for art that does not carry them yet.
 """
 import colorsys
 import json
@@ -32,8 +43,13 @@ NS = "{http://www.w3.org/2000/svg}"
 
 # Gap in SVG units within which two shapes count as touching.
 MERGE_GAP = 2.0
-# Art whose light is a cone: name -> (direction in degrees, y up, 0 = +x; half-angle in degrees).
-CONES = {"wall_light": (-90.0, 60.0)}
+# Light settings for art whose SVG does not carry them (yet); the SVG's own attributes win.
+# The wall light is the deck's main light: a wide cone shining away from its wall.
+DEFAULTS = {
+    "wall_light": {"light": "cone", "direction": -90.0, "cone": 60.0, "reach": 5.0, "intensity": 0.85},
+}
+SETTINGS = ("light", "reach", "intensity", "direction", "cone")
+KINDS = ("glow", "point", "cone")
 
 NUM = re.compile(r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
 
@@ -159,17 +175,34 @@ def path_points(d):
     return pts
 
 
+def settings_of(el, inherited):
+    """The light settings an element's data-* attributes give, over those of its groups."""
+    out = dict(inherited)
+    for key in SETTINGS:
+        v = el.get("data-" + key)
+        if v is None:
+            continue
+        if key == "light":
+            if v not in KINDS:
+                raise ValueError("data-light must be one of %s, not %r" % ("/".join(KINDS), v))
+            out[key] = v
+        else:
+            out[key] = float(v)
+    return out
+
+
 def shapes_of(group, gradients):
-    """(x0, y0, x1, y1, rgb, alpha) for each drawn shape in the group, transforms applied."""
+    """(x0, y0, x1, y1, rgb, alpha, settings) for each drawn shape in the group, transforms applied."""
     out = []
 
-    def walk(el, m, alpha):
+    def walk(el, m, alpha, settings):
         m = compose(m, parse_transform(el.get("transform")))
         alpha *= float(el.get("opacity", 1))
+        settings = settings_of(el, settings)
         tag = el.tag[len(NS):]
         if tag == "g":
             for ch in el:
-                walk(ch, m, alpha)
+                walk(ch, m, alpha, settings)
             return
         rgb = color_of(el.get("fill", "#000000" if el.get("stroke") in (None, "none") else "none"), gradients)
         a = alpha * float(el.get("fill-opacity", 1))
@@ -181,10 +214,10 @@ def shapes_of(group, gradients):
             return
         half = float(el.get("stroke-width", 0)) / 2 if el.get("stroke") not in (None, "none") else 0.0
         xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-        out.append((min(xs) - half, min(ys) - half, max(xs) + half, max(ys) + half, rgb, a))
+        out.append((min(xs) - half, min(ys) - half, max(xs) + half, max(ys) + half, rgb, a, settings))
 
     for ch in group:
-        walk(ch, (1.0, 0.0, 0.0, 1.0, 0.0, 0.0), 1.0)
+        walk(ch, (1.0, 0.0, 0.0, 1.0, 0.0, 0.0), 1.0, settings_of(group, {}))
     return out
 
 
@@ -223,8 +256,16 @@ def light_of(group, name):
         "color": "#%02x%02x%02x" % tuple(round(c * 255) for c in rgb),
         "alpha": round(max(s[5] for s in group), 3),
     }
-    if name in CONES:
-        light["direction"], light["cone"] = CONES[name]
+    settings = dict(DEFAULTS.get(name, {}))
+    for s in group:
+        settings.update(s[6])
+    if settings.get("light") == "cone" and "direction" not in settings:
+        settings["direction"] = -90.0
+    if settings.get("light") == "cone" and "cone" not in settings:
+        settings["cone"] = 45.0
+    for key in SETTINGS:
+        if key in settings:
+            light[key] = settings[key]
     return light
 
 

@@ -105,12 +105,41 @@ class DeckLightRigTest {
         MountFootprint reactor = mount(g, SubsystemComponent.SubsystemType.REACTOR);
         reactor.installed.getComponent(SubsystemComponent.class).isOperational = false;
         LightSpots spots = new LightSpots();
-        new DeckLightRig(ART).collect(g, spots);
+        DeckLightRig rig = new DeckLightRig(ART);
+        rig.collect(g, spots);
+        MountFootprint helm = mount(g, SubsystemComponent.SubsystemType.HELM);
+        int walls = rig.wallLights(g).size;
+        assertTrue(walls > 0);
         for (int i = 0; i < spots.size(); i++) {
             LightSpot s = spots.get(i);
-            assertEquals(!inside(s, g, reactor), s.on);
+            if (i < walls) assertFalse(s.on, "no reactor running: the wall lights go out");
+            else if (inside(s, g, reactor)) assertFalse(s.on);
+            else if (inside(s, g, helm)) assertTrue(s.on, "the helm still has its own lights on");
         }
-        assertFalse(DeckLightRig.hasPower(g), "no reactor running: the rooms go dark");
+        assertFalse(DeckLightRig.hasPower(g));
+    }
+
+    @Test
+    void wallLightsShineIntoTheRoomFromItsWalls() {
+        ShipGridComponent g = room();
+        LightSpots spots = new LightSpots();
+        DeckLightRig rig = new DeckLightRig(ART);
+        rig.collect(g, spots);
+        int walls = rig.wallLights(g).size;
+        for (int i = 0; i < walls; i++) {
+            LightSpot s = spots.get(i);
+            WallLightLayout.Placement p = rig.wallLights(g).get(i);
+            assertTrue(s.on && s.isCone && s.casts());
+            assertEquals(5f * g.tileSize, s.reach, 1e-4f, "the art's reach, not a guess from its size");
+            // Just off the wall, on its tile, shining away from it
+            float tx = (s.x - g.gridOriginLocal.x) / g.tileSize, ty = (s.y - g.gridOriginLocal.y) / g.tileSize;
+            assertEquals(p.x, (int) Math.floor(tx));
+            assertEquals(p.y, (int) Math.floor(ty));
+            float wallDist = Math.abs((tx - p.edgeX()) * p.side.dx + (ty - p.edgeY()) * p.side.dy);
+            assertTrue(wallDist > 0f && wallDist < 0.3f, "hangs just off its wall: " + wallDist);
+            assertEquals(-p.side.dx, Math.round(Math.cos(s.direction)), "shines away from the wall");
+            assertEquals(-p.side.dy, Math.round(Math.sin(s.direction)));
+        }
     }
 
     @Test

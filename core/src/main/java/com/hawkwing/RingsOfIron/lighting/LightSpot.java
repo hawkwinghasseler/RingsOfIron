@@ -12,8 +12,10 @@ public final class LightSpot {
     public float reach;
     /** The size of the glowing part, meters: what the glow pass draws. */
     public float glow;
-    /** Its color, alpha the light's strength. */
+    /** Its color, alpha the glowing part's opacity. */
     public final Color color = new Color();
+    /** How strong its light is, 0-1. */
+    public float strength;
     /** A cone toward {@link #direction} (radians, body frame) over {@link #cone} radians each side. */
     public boolean isCone;
     public float direction, cone;
@@ -28,7 +30,7 @@ public final class LightSpot {
     }
 
     LightSpot reset() {
-        x = y = reach = glow = direction = cone = 0f;
+        x = y = reach = glow = direction = cone = strength = 0f;
         color.set(Color.WHITE);
         isCone = false;
         on = true;

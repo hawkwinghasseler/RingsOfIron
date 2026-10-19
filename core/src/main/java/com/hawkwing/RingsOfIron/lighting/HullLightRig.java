@@ -33,7 +33,8 @@ public final class HullLightRig {
             s.x = src.x / EmissiveLights.UNITS_PER_TILE;
             s.y = src.y / EmissiveLights.UNITS_PER_TILE;
             s.glow = src.size() / EmissiveLights.UNITS_PER_TILE;
-            s.reach = Math.max(REACH_MIN, REACH_PER_SIZE * s.glow);
+            s.reach = src.reach > 0f ? src.reach : Math.max(REACH_MIN, REACH_PER_SIZE * s.glow);
+            s.strength = src.intensity >= 0f ? src.intensity : src.alpha;
             s.color.set(src.color);
             s.color.a = src.alpha;
             s.on = power && systemRunning(grid, s.x, s.y);
