@@ -57,10 +57,14 @@
     <rect x="94" y="18" width="26" height="156" fill="none" stroke="#4b5563" stroke-width="2"/>
   </g>
   <g id="emissive">
+    <g data-light="glow">
     <circle cx="116" cy="22" r="6" fill="#ff4d4d" opacity="0.18"/>
     <circle cx="116" cy="22" r="2" fill="#ff4d4d"/>
+    </g>
+    <g data-light="glow">
     <circle cx="12" cy="170" r="6" fill="#4dff88" opacity="0.18"/>
     <circle cx="12" cy="170" r="2" fill="#4dff88"/>
+    </g>
     <circle cx="107" cy="31" r="4" fill="#6aa8ff" opacity="0.35"/>
     <circle cx="107" cy="71" r="4" fill="#6aa8ff" opacity="0.35"/>
     <circle cx="107" cy="111" r="4" fill="#6aa8ff" opacity="0.35"/>

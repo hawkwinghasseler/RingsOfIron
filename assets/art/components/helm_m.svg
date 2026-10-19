@@ -130,13 +130,17 @@
     <circle cx="12" cy="180" r="2.5" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
   </g>
   <g id="emissive">
+    <g data-light="point" data-reach="2.5" data-intensity="0.5">
     <line x1="25.94" y1="26.77" x2="45.07" y2="19.3" stroke="#6aa8ff" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
     <line x1="53.73" y1="17.67" x2="74.27" y2="17.67" stroke="#6aa8ff" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
     <line x1="82.93" y1="19.3" x2="102.06" y2="26.77" stroke="#6aa8ff" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
     <rect x="35.5" y="144.5" width="57" height="11.3" rx="1" fill="#6aa8ff" opacity="0.25"/>
     <line x1="37" y1="146.5" x2="76.73" y2="146.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
     <line x1="37" y1="150.5" x2="84.44" y2="150.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <g data-light="glow">
     <circle cx="12" cy="180" r="6" fill="#6aa8ff" opacity="0.18"/>
     <circle cx="12" cy="180" r="2" fill="#6aa8ff"/>
+    </g>
+    </g>
   </g>
 </svg>

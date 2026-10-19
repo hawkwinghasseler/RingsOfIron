@@ -9,7 +9,11 @@
     <circle cx="60" cy="8" r="2" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
   </g>
   <g id="emissive" transform="translate(16,0) rotate(90)">
+    <g data-light="glow">
     <circle cx="4" cy="8" r="1.6" fill="#4dff88"/>
+    </g>
+    <g data-light="glow">
     <circle cx="60" cy="8" r="1.6" fill="#4dff88"/>
+    </g>
   </g>
 </svg>

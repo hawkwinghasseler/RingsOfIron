@@ -1185,6 +1185,7 @@
     <rect x="230" y="754" width="60" height="6" rx="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
   </g>
   <g id="emissive">
+    <g data-light="point" data-reach="3.5" data-intensity="0.5">
     <line x1="46.28" y1="57.71" x2="103.18" y2="33.95" stroke="#6aa8ff" stroke-width="5.6" stroke-linecap="round" opacity="0.7"/>
     <line x1="129.17" y1="28.74" x2="190.83" y2="28.74" stroke="#6aa8ff" stroke-width="5.6" stroke-linecap="round" opacity="0.7"/>
     <line x1="216.82" y1="33.95" x2="273.72" y2="57.71" stroke="#6aa8ff" stroke-width="5.6" stroke-linecap="round" opacity="0.7"/>
@@ -1288,5 +1289,6 @@
     <line x1="115" y1="611.5" x2="174.79" y2="611.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
     <rect x="31" y="755" width="58" height="4" rx="3" fill="#fff7d6"/>
     <rect x="231" y="755" width="58" height="4" rx="3" fill="#fff7d6"/>
+    </g>
   </g>
 </svg>

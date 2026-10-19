@@ -305,18 +305,30 @@
     <circle cx="-564" cy="180" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
   </g>
   <g id="emissive">
+    <g data-light="glow">
     <circle cx="244" cy="-116" r="7.2" fill="#ff9a3c" opacity="0.18"/>
     <circle cx="244" cy="-116" r="2.4" fill="#ff9a3c"/>
+    </g>
     <rect x="-244" y="-116" width="36.4" height="40" rx="6" fill="#6aa8ff" opacity="0.45"/>
+    <g data-light="glow">
     <circle cx="-192" cy="-32" r="7.2" fill="#c58cff" opacity="0.18"/>
     <circle cx="-192" cy="-32" r="2.4" fill="#c58cff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="308" cy="-180" r="9.6" fill="#ff4d4d" opacity="0.18"/>
     <circle cx="308" cy="-180" r="3.2" fill="#ff4d4d"/>
+    </g>
+    <g data-light="glow">
     <circle cx="308" cy="180" r="9.6" fill="#4dff88" opacity="0.18"/>
     <circle cx="308" cy="180" r="3.2" fill="#4dff88"/>
+    </g>
+    <g data-light="glow">
     <circle cx="-564" cy="-180" r="9.6" fill="#ffffff" opacity="0.18"/>
     <circle cx="-564" cy="-180" r="3.2" fill="#ffffff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="-564" cy="180" r="9.6" fill="#ffffff" opacity="0.18"/>
     <circle cx="-564" cy="180" r="3.2" fill="#ffffff"/>
+    </g>
   </g>
 </svg>

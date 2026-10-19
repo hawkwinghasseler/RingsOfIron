@@ -184,12 +184,23 @@ def halo_def(gid, color):
             f'<stop offset="1" stop-color="{color}" stop-opacity="0"/></radialGradient>')
 
 
+def lit(s, kind, reach=None, intensity=None, direction=None, cone=None):
+    """Wraps emissive shapes in a group that tells the game how they light the scene
+    (tools/art/extract_lights.py): `glow` only glows, `point` and `cone` light the room.
+    Reach is in tiles, direction and cone in degrees with 0 = +x and 90 = up the canvas."""
+    attrs = f' data-light="{kind}"'
+    for key, v in (("reach", reach), ("intensity", intensity), ("direction", direction), ("cone", cone)):
+        if v is not None:
+            attrs += f' data-{key}="{f(v)}"'
+    return f"    <g{attrs}>\n{s}    </g>\n"
+
+
 def light(a, cx, cy, r, color, halo=True):
-    """A status lamp: a dark lens in the base layer, its light in the emissive layer."""
+    """A status lamp: a dark lens in the base layer, its light in the emissive layer. It glows
+    but does not light the room."""
     a.b += circle(cx, cy, r, LENS, stroke=INK, sw=1)
-    if halo:
-        a.e += circle(cx, cy, r * 2.4, color, extra=' opacity="0.18"')
-    a.e += circle(cx, cy, r * 0.8, color)
+    s = circle(cx, cy, r * 2.4, color, extra=' opacity="0.18"') if halo else ""
+    a.e += lit(s + circle(cx, cy, r * 0.8, color), "glow")
 
 
 def screen(a, x, y, w, h, color, seed=0):
@@ -291,9 +302,8 @@ def floors():
     a.b += rect(20, 20, 24, 24, HOUSING, rx=3, stroke=INK)
     a.b += bevel(21, 21, 22, 22, HOUSING_HI, INK)
     a.b += circle(32, 32, 6, "#6b5a2e", stroke=INK, sw=1.5)
-    a.e += circle(32, 32, 9, POWER, extra=' opacity="0.2"')
-    a.e += circle(32, 32, 5, POWER)
-    a.e += circle(32, 32, 2.5, "#fff3c4")
+    a.e += lit(circle(32, 32, 9, POWER, extra=' opacity="0.2"') + circle(32, 32, 5, POWER)
+               + circle(32, 32, 2.5, "#fff3c4"), "glow")
     write("tiles/conduit.svg", T, T, a, "conduit: deck plate with a power junction", unpowered=unp("tiles/conduit.svg"))
 
     a = Art()
@@ -301,8 +311,8 @@ def floors():
     a.b += rect(29.5, 0, 5, 22, "#6b5a2e")
     for yy in (5, 14):
         a.b += rect(26, yy, 12, 2.5, STEEL_DARK)
-    a.e += rect(29.5, 0, 5, 5, POWER) + rect(29.5, 7.5, 5, 6.5, POWER) + rect(29.5, 16.5, 5, 5.5, POWER)
-    a.e += line(32, 0, 32, 22, "#fff3c4", sw=1.2, extra=' opacity="0.6"')
+    a.e += lit(rect(29.5, 0, 5, 5, POWER) + rect(29.5, 7.5, 5, 6.5, POWER) + rect(29.5, 16.5, 5, 5.5, POWER)
+               + line(32, 0, 32, 22, "#fff3c4", sw=1.2, extra=' opacity="0.6"'), "glow")
     write("tiles/conduit_arm.svg", T, T, a,
           "conduit arm overlay: runs from the junction to the top edge; rotate toward each conduit neighbor",
           unpowered=unp("tiles/conduit_arm.svg"))
@@ -557,6 +567,7 @@ def reactor(size):
     c = ACCENT["reactor"]
     a = Art()
     gid = f"reactor_{size}_g"
+    core = {"s": (3, 0.7), "m": (4.5, 0.8), "l": (6, 0.85), "xl": (7, 0.9)}[size]  # reach, intensity
     a.defs = glow_def(gid, c) + halo_def(gid + "h", c)
     housing(a, w, h)
     cx = cy = w / 2
@@ -568,7 +579,7 @@ def reactor(size):
             a.b += line(cx, cy, cx + math.cos(ang) * 24, cy + math.sin(ang) * 24, STEEL, sw=6)
         a.b += circle(cx, cy, 13, STEEL_DARK, stroke=INK, sw=2)
         a.b += circle(cx, cy, 7, "#4a3320", stroke=INK, sw=1.5)
-        a.e += circle(cx, cy, 12, f"url(#{gid})")
+        a.e += lit(circle(cx, cy, 12, f"url(#{gid})"), "point", *core)
         light(a, 54, 54, 2.5, c)
     elif size == "m":
         # fission pile: core, ring of six control rods, coolant pipes to the corners
@@ -581,10 +592,10 @@ def reactor(size):
             ang = 2 * math.pi * i / 6
             px, py = cx + math.cos(ang) * 39, cy + math.sin(ang) * 39
             a.b += circle(px, py, 3.5, "#4a3320", stroke=INK, sw=1)
-            a.e += circle(px, py, 2.5, c)
+            a.e += lit(circle(px, py, 2.5, c), "glow")
         a.b += circle(cx, cy, 16, "#4a3320", stroke=INK, sw=1.5)
-        a.e += circle(cx, cy, 26, f"url(#{gid})")
-        a.e += circle(cx, cy, 20, "none", stroke=c, sw=1.5, extra=' opacity="0.8"')
+        a.e += lit(circle(cx, cy, 26, f"url(#{gid})")
+                   + circle(cx, cy, 20, "none", stroke=c, sw=1.5, extra=' opacity="0.8"'), "point", *core)
     elif size == "l":
         # tokamak: a segmented torus around the core, four coolant pumps, a control panel
         for (px, py) in ((30, 30), (w - 30, 30), (30, h - 30), (w - 30, h - 30)):
@@ -600,10 +611,10 @@ def reactor(size):
             ang = 2 * math.pi * (i + 0.5) / 12
             a.b += rect(cx + math.cos(ang) * 56 - 3, cy + math.sin(ang) * 56 - 3, 6, 6, STEEL, rx=1, stroke=INK,
                         sw=1)
-        a.e += circle(cx, cy, 56, "none", stroke=c, sw=7, extra=' opacity="0.45"')
-        a.e += circle(cx, cy, 56, "none", stroke="#ffe0b8", sw=1.5, extra=' opacity="0.9"')
         a.b += circle(cx, cy, 22, "#4a3320", stroke=INK, sw=2)
-        a.e += circle(cx, cy, 34, f"url(#{gid})")
+        a.e += lit(circle(cx, cy, 56, "none", stroke=c, sw=7, extra=' opacity="0.45"')
+                   + circle(cx, cy, 56, "none", stroke="#ffe0b8", sw=1.5, extra=' opacity="0.9"')
+                   + circle(cx, cy, 34, f"url(#{gid})"), "point", *core)
         console(a, cx - 30, h - 26, 60, 18, c)
     else:
         # fusion plant: outer magnet ring with twelve coils, inner plasma ring, four pump
@@ -620,11 +631,11 @@ def reactor(size):
             a.b += circle(px, py, 13, "#8a6a3a", stroke=INK, sw=2)
             a.b += circle(px, py, 8, "#b38a4a", stroke=INK, sw=1)
         a.b += circle(cx, cy, 72, HOUSING, stroke=INK, sw=2)
-        a.e += circle(cx, cy, 62, "none", stroke=c, sw=12, extra=' opacity="0.4"')
-        a.e += circle(cx, cy, 62, "none", stroke="#ffe0b8", sw=2.5)
         a.b += circle(cx, cy, 34, STEEL_DARK, stroke=INK, sw=2)
         a.b += circle(cx, cy, 22, "#4a3320", stroke=INK, sw=2)
-        a.e += circle(cx, cy, 40, f"url(#{gid})")
+        a.e += lit(circle(cx, cy, 62, "none", stroke=c, sw=12, extra=' opacity="0.4"')
+                   + circle(cx, cy, 62, "none", stroke="#ffe0b8", sw=2.5)
+                   + circle(cx, cy, 40, f"url(#{gid})"), "point", *core)
         console(a, 24, cy - 40, 22, 80, c, 1)
         console(a, w - 46, cy - 40, 22, 80, c, 3)
         for ang in (0.25, 0.75, 1.25, 1.75):
@@ -644,23 +655,24 @@ def shield_emitter(size):
     housing(a, w, h)
     cx = cy = w / 2
 
-    def emitter(x, y, r, prongs):
+    def emitter(x, y, r, prongs, main=True):
         pts = [(x + r * math.cos(math.pi / 2 + i * 2 * math.pi / prongs),
                 y - r * math.sin(math.pi / 2 + i * 2 * math.pi / prongs)) for i in range(prongs)]
         a.b += poly(pts, STEEL_DARK, stroke=INK, sw=2)
         for (px, py) in pts:
             a.b += circle(px, py, max(2.5, r * 0.11), "#1f4a5a", stroke=INK, sw=1.2)
-            a.e += circle(px, py, max(1.8, r * 0.08), c)
+            a.e += lit(circle(px, py, max(1.8, r * 0.08), c), "glow")
         a.b += circle(x, y, r * 0.6, HOUSING, stroke=INK, sw=1.5)
-        a.e += circle(x, y, r * 0.55, f"url(#{gid})")
-        a.e += circle(x, y, r * 0.35, "none", stroke=c, sw=1.2, extra=' opacity="0.85"')
+        dome = (circle(x, y, r * 0.55, f"url(#{gid})")
+                + circle(x, y, r * 0.35, "none", stroke=c, sw=1.2, extra=' opacity="0.85"'))
+        a.e += lit(dome, "point", {"s": 2, "m": 3, "l": 4}[size], 0.6) if main else lit(dome, "glow")
 
     def capacitors(x, y, count, vertical):
         for i in range(count):
             px, py = (x, y + i * 22) if vertical else (x + i * 22, y)
             a.b += rect(px, py, 18, 18, "#24414d", rx=3, stroke=INK, sw=1.5)
             a.b += rect(px + 4, py + 4, 10, 10, "#1b2f38", rx=2)
-            a.e += rect(px + 6, py + 7, 6, 4, c, extra=' opacity="0.8"')
+            a.e += lit(rect(px + 6, py + 7, 6, 4, c, extra=' opacity="0.8"'), "glow")
 
     if size == "s":
         emitter(cx, cy + 2, 22, 3)
@@ -678,11 +690,12 @@ def shield_emitter(size):
             ang = 2 * math.pi * i / 6
             nx_, ny_ = cx + math.cos(ang) * 92, cy + math.sin(ang) * 92
             pipe(a, cx, cy, nx_, ny_, 6, "#2f5664")
-            emitter(nx_, ny_, 18, 3)
+            emitter(nx_, ny_, 18, 3, main=False)
         a.b += circle(cx, cy, 50, HOUSING, stroke=INK, sw=2)
-        a.e += circle(cx, cy, 48, f"url(#{gid})")
+        dome = circle(cx, cy, 48, f"url(#{gid})")
         for k in (0.75, 0.5, 0.25):
-            a.e += circle(cx, cy, 48 * k, "none", stroke=c, sw=1.2, extra=' opacity="0.85"')
+            dome += circle(cx, cy, 48 * k, "none", stroke=c, sw=1.2, extra=' opacity="0.85"')
+        a.e += lit(dome, "point", 5, 0.65)
         capacitors(14, 30, 12, True)
         capacitors(w - 32, 30, 12, True)
     return w, h, a
@@ -920,6 +933,8 @@ def crew_room(kind, size):
             for i in range(10):
                 screen(a, 38 + i * 25, h - 62, 20, 36, c if i % 3 else "#ff5a5a", i)
             strip_light(a, 130, 452, 60, 6)
+    # screens, holo tables and ceiling strips light the room; status lamps keep their `glow`
+    a.e = lit(a.e, "point", {"s": 2, "m": 2.5, "l": 3, "xl": 3.5}[size], 0.5)
     return w, h, a
 
 
@@ -957,7 +972,7 @@ def life_support(size):
         a.b += rect(22, 220, 148, 64, "#2b3a33", rx=6, stroke=INK, sw=2)  # electrolysis cell
         for x in range(32, 166, 14):
             a.b += rect(x, 228, 8, 48, "#3d5a4a", rx=2, stroke=INK, sw=1)
-            a.e += rect(x + 2, 232, 4, 8, c, extra=' opacity="0.7"')
+            a.e += lit(rect(x + 2, 232, 4, 8, c, extra=' opacity="0.7"'), "glow")
         for i, x in enumerate((24, 64, 104, 144)):
             a.b += rect(x, 300, 24, 70, "#33403a", rx=12, stroke=INK, sw=2)  # scrubber columns
             a.b += line(x + 12, 306, x + 12, 364, "#556b5f", sw=3)
@@ -994,6 +1009,8 @@ def life_support(size):
         a.b += rect(30, 716, 260, 30, HOUSING, rx=3, stroke=INK, sw=1.5)
         for i in range(8):
             screen(a, 36 + i * 32, 720, 26, 22, c, i)
+    # displays and lit vats light the room; status lamps inside keep their own `glow`
+    a.e = lit(a.e, "point", {"s": 2, "m": 2.5, "l": 3, "xl": 3.5}[size], 0.5)
     return w, h, a
 
 
@@ -1328,8 +1345,10 @@ def decor():
     a = Art()
     a.b = rect(2, 2, 28, 7, HOUSING, rx=2, stroke=INK, sw=1.5)
     a.b += rect(5, 4, 22, 3, LENS)
-    a.e = rect(5, 4, 22, 3, "#fff7d6")
-    a.e += path("M4,9 L28,9 L24,15 L8,15 Z", fill="#fff7d6", extra=' opacity="0.25"')
+    # broad, diffuse light: a half-circle of light washing the room away from the wall
+    a.e = lit(rect(5, 4, 22, 3, "#fff7d6")
+              + path("M3,9 L29,9 L32,16 L0,16 Z", fill="#fff7d6", extra=' opacity="0.2"'),
+              "cone", reach=6, intensity=0.7, direction=-90, cone=90)
     out("wall_light", 32, 16, a, "wall_light: light strip on a wall", powered=True)
 
     a = Art()

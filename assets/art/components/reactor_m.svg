@@ -33,13 +33,27 @@
     <circle cx="64" cy="64" r="16" fill="#4a3320" stroke="#10141a" stroke-width="1.5"/>
   </g>
   <g id="emissive">
+    <g data-light="glow">
     <circle cx="103" cy="64" r="2.5" fill="#ff9a3c"/>
+    </g>
+    <g data-light="glow">
     <circle cx="83.5" cy="97.77" r="2.5" fill="#ff9a3c"/>
+    </g>
+    <g data-light="glow">
     <circle cx="44.5" cy="97.77" r="2.5" fill="#ff9a3c"/>
+    </g>
+    <g data-light="glow">
     <circle cx="25" cy="64" r="2.5" fill="#ff9a3c"/>
+    </g>
+    <g data-light="glow">
     <circle cx="44.5" cy="30.23" r="2.5" fill="#ff9a3c"/>
+    </g>
+    <g data-light="glow">
     <circle cx="83.5" cy="30.23" r="2.5" fill="#ff9a3c"/>
+    </g>
+    <g data-light="point" data-reach="4.5" data-intensity="0.8">
     <circle cx="64" cy="64" r="26" fill="url(#reactor_m_g)"/>
     <circle cx="64" cy="64" r="20" fill="none" stroke="#ff9a3c" stroke-width="1.5" opacity="0.8"/>
+    </g>
   </g>
 </svg>

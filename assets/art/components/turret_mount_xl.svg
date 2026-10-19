@@ -111,9 +111,13 @@
     <rect x="191.5" y="256.5" width="85" height="9.1" rx="1" fill="#ff5a5a" opacity="0.25"/>
     <line x1="193" y1="258.5" x2="265.04" y2="258.5" stroke="#ff5a5a" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
     <line x1="193" y1="262.5" x2="235.76" y2="262.5" stroke="#ff5a5a" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <g data-light="glow">
     <circle cx="24" cy="24" r="8.4" fill="#ff5a5a" opacity="0.18"/>
     <circle cx="24" cy="24" r="2.8" fill="#ff5a5a"/>
+    </g>
+    <g data-light="glow">
     <circle cx="296" cy="24" r="8.4" fill="#ff5a5a" opacity="0.18"/>
     <circle cx="296" cy="24" r="2.8" fill="#ff5a5a"/>
+    </g>
   </g>
 </svg>

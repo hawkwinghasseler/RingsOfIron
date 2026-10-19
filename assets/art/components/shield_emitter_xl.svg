@@ -106,63 +106,161 @@
     <rect x="292" y="276" width="10" height="10" rx="2" fill="#1b2f38"/>
   </g>
   <g id="emissive">
+    <g data-light="glow">
     <circle cx="252" cy="142" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="236.41" cy="169" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="267.59" cy="169" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="252" cy="160" r="9.9" fill="url(#shield_xl_g)"/>
     <circle cx="252" cy="160" r="6.3" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+    </g>
+    <g data-light="glow">
     <circle cx="206" cy="221.67" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="190.41" cy="248.67" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="221.59" cy="248.67" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="206" cy="239.67" r="9.9" fill="url(#shield_xl_g)"/>
     <circle cx="206" cy="239.67" r="6.3" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+    </g>
+    <g data-light="glow">
     <circle cx="114" cy="221.67" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="98.41" cy="248.67" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="129.59" cy="248.67" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="114" cy="239.67" r="9.9" fill="url(#shield_xl_g)"/>
     <circle cx="114" cy="239.67" r="6.3" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+    </g>
+    <g data-light="glow">
     <circle cx="68" cy="142" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="52.41" cy="169" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="83.59" cy="169" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="68" cy="160" r="9.9" fill="url(#shield_xl_g)"/>
     <circle cx="68" cy="160" r="6.3" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+    </g>
+    <g data-light="glow">
     <circle cx="114" cy="62.33" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="98.41" cy="89.33" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="129.59" cy="89.33" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="114" cy="80.33" r="9.9" fill="url(#shield_xl_g)"/>
     <circle cx="114" cy="80.33" r="6.3" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+    </g>
+    <g data-light="glow">
     <circle cx="206" cy="62.33" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="190.41" cy="89.33" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="221.59" cy="89.33" r="1.8" fill="#4fd1ff"/>
+    </g>
+    <g data-light="glow">
     <circle cx="206" cy="80.33" r="9.9" fill="url(#shield_xl_g)"/>
     <circle cx="206" cy="80.33" r="6.3" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+    </g>
+    <g data-light="point" data-reach="5" data-intensity="0.65">
     <circle cx="160" cy="160" r="48" fill="url(#shield_xl_g)"/>
     <circle cx="160" cy="160" r="36" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
     <circle cx="160" cy="160" r="24" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
     <circle cx="160" cy="160" r="12" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="37" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="59" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="81" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="103" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="125" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="147" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="169" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="191" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="213" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="235" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="257" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="20" y="279" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="37" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="59" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="81" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="103" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="125" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="147" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="169" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="191" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="213" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="235" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="257" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
+    <g data-light="glow">
     <rect x="294" y="279" width="6" height="4" fill="#4fd1ff" opacity="0.8"/>
+    </g>
   </g>
 </svg>

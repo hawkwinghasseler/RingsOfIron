@@ -41,11 +41,17 @@
     <circle cx="93" cy="46" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
   </g>
   <g id="emissive">
+    <g data-light="point" data-reach="2.5" data-intensity="0.5">
     <rect x="35.5" y="172.5" width="57" height="5.8" rx="1" fill="#5ee08a" opacity="0.25"/>
     <line x1="37" y1="174.5" x2="61.3" y2="174.5" stroke="#5ee08a" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <g data-light="glow">
     <circle cx="35" cy="46" r="9.6" fill="#5ee08a" opacity="0.18"/>
     <circle cx="35" cy="46" r="3.2" fill="#5ee08a"/>
+    </g>
+    <g data-light="glow">
     <circle cx="93" cy="46" r="9.6" fill="#5ee08a" opacity="0.18"/>
     <circle cx="93" cy="46" r="3.2" fill="#5ee08a"/>
+    </g>
+    </g>
   </g>
 </svg>
