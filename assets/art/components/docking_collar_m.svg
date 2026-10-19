@@ -18,9 +18,13 @@
     <circle cx="280" cy="18" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
   </g>
   <g id="emissive">
+    <g data-light="glow">
     <circle cx="40" cy="18" r="7.2" fill="#f2c230" opacity="0.18"/>
     <circle cx="40" cy="18" r="2.4" fill="#f2c230"/>
+    </g>
+    <g data-light="glow">
     <circle cx="280" cy="18" r="7.2" fill="#f2c230" opacity="0.18"/>
     <circle cx="280" cy="18" r="2.4" fill="#f2c230"/>
+    </g>
   </g>
 </svg>

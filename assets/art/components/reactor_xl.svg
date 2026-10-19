@@ -92,9 +92,11 @@
     <circle cx="242.02" cy="77.98" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
   </g>
   <g id="emissive">
+    <g data-light="point" data-reach="7" data-intensity="0.9">
     <circle cx="160" cy="160" r="62" fill="none" stroke="#ff9a3c" stroke-width="12" opacity="0.4"/>
     <circle cx="160" cy="160" r="62" fill="none" stroke="#ffe0b8" stroke-width="2.5"/>
     <circle cx="160" cy="160" r="40" fill="url(#reactor_xl_g)"/>
+    </g>
     <rect x="28.5" y="125.5" width="9.1" height="69" rx="1" fill="#ff9a3c" opacity="0.25"/>
     <line x1="30" y1="127.5" x2="33.62" y2="127.5" stroke="#ff9a3c" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
     <line x1="30" y1="131.5" x2="34.49" y2="131.5" stroke="#ff9a3c" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
@@ -131,13 +133,21 @@
     <line x1="280" y1="183.5" x2="285.36" y2="183.5" stroke="#ff9a3c" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
     <line x1="280" y1="187.5" x2="283.18" y2="187.5" stroke="#ff9a3c" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
     <line x1="280" y1="191.5" x2="284.05" y2="191.5" stroke="#ff9a3c" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <g data-light="glow">
     <circle cx="242.02" cy="242.02" r="7.2" fill="#ff9a3c" opacity="0.18"/>
     <circle cx="242.02" cy="242.02" r="2.4" fill="#ff9a3c"/>
+    </g>
+    <g data-light="glow">
     <circle cx="77.98" cy="242.02" r="7.2" fill="#ff9a3c" opacity="0.18"/>
     <circle cx="77.98" cy="242.02" r="2.4" fill="#ff9a3c"/>
+    </g>
+    <g data-light="glow">
     <circle cx="77.98" cy="77.98" r="7.2" fill="#ff9a3c" opacity="0.18"/>
     <circle cx="77.98" cy="77.98" r="2.4" fill="#ff9a3c"/>
+    </g>
+    <g data-light="glow">
     <circle cx="242.02" cy="77.98" r="7.2" fill="#ff9a3c" opacity="0.18"/>
     <circle cx="242.02" cy="77.98" r="2.4" fill="#ff9a3c"/>
+    </g>
   </g>
 </svg>

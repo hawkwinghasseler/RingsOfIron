@@ -134,6 +134,7 @@
     <circle cx="64" cy="140" r="24" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
   </g>
   <g id="emissive">
+    <g data-light="point" data-reach="2.5" data-intensity="0.5">
     <rect x="11.5" y="10.5" width="105" height="9" rx="1" fill="#c58cff" opacity="0.25"/>
     <line x1="13" y1="12.5" x2="58.9" y2="12.5" stroke="#c58cff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
     <line x1="13" y1="16.5" x2="73.47" y2="16.5" stroke="#c58cff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
@@ -149,5 +150,6 @@
     <polygon points="73,131 76,136 70,136" fill="#ff5a5a"/>
     <polygon points="56.5,147.5 59.5,152.5 53.5,152.5" fill="#ff5a5a"/>
     <polygon points="77.5,146 80.5,151 74.5,151" fill="#ff5a5a"/>
+    </g>
   </g>
 </svg>

@@ -5,7 +5,9 @@
     <rect x="5" y="4" width="22" height="3" fill="#1b2028"/>
   </g>
   <g id="emissive">
+    <g data-light="cone" data-reach="5" data-intensity="0.85" data-direction="-90" data-cone="60">
     <rect x="5" y="4" width="22" height="3" fill="#fff7d6"/>
     <path d="M4,9 L28,9 L24,15 L8,15 Z" fill="#fff7d6" opacity="0.25"/>
+    </g>
   </g>
 </svg>
