@@ -306,7 +306,7 @@ tasks.register('runPhysicsTest', JavaExec) {
 
 // Smoke test: boots the game and each demo for a few hundred frames and fails on any exception.
 // Needs a display; on a headless machine run it under Xvfb: xvfb-run -a ./gradlew :lwjgl3:smokeTest
-def smokeApps = ['game', 'firstplay', 'interior', 'flight', 'hud', 'audio', 'orbit', 'crew', 'docking', 'editor']
+def smokeApps = ['game', 'firstplay', 'shell', 'interior', 'flight', 'hud', 'audio', 'orbit', 'crew', 'docking', 'editor']
 def smokeTasks = smokeApps.collect { app ->
   tasks.register("smokeTest${app.capitalize()}", JavaExec) {
     group = 'verification'
@@ -318,6 +318,8 @@ def smokeTasks = smokeApps.collect { app ->
     jvmArgs += "--enable-native-access=ALL-UNNAMED"
     jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
     if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+    // -PsmokeShots=<dir>: the shell run saves screenshots of its menus and HUD there
+    if (project.hasProperty('smokeShots')) systemProperty 'smoke.shots', project.property('smokeShots').toString()
   }
 }
 tasks.register('smokeTest') {

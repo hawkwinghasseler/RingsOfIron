@@ -10,7 +10,8 @@ You need a JDK 17 or newer to start the Gradle wrapper, which is included. The b
 
 | Launcher | Gradle task | What it shows |
 |---|---|---|
-| `Play Rings of Iron.bat` | `./gradlew :lwjgl3:runGame` | The game: flight, combat, crew, docking, trading and time warp together |
+| `Play Rings of Iron.bat` | `./gradlew :lwjgl3:runGame` | The game, from its main menu: flight, combat, crew, docking, trading and time warp together |
+| | `./gradlew :lwjgl3:runFirstPlay` | The guided first play, straight in with no menu (also on the main menu) |
 | `demos/Flight demo.bat` | `./gradlew :lwjgl3:runFlightDemo` | Newtonian flight, the floating origin, orbit around a planet and fast passes |
 | `demos/Orbit demo.bat` | `./gradlew :lwjgl3:runOrbitDemo` | Rails orbits, sphere-of-influence changes and time warp |
 | `demos/Interior Grid Demo.bat` | `./gradlew :lwjgl3:run` | One ship's deck: air, fire, breaches, doors and power routing |
@@ -41,7 +42,9 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | , / . | Time warp down and up |
 | N, B, arrows, [ / ] | Plan a burn: add a node, select the next, change its Δv, move it in time |
 | F5 / F9 | Quick save and quick load |
-| Esc | Quit |
+| Esc | Pause menu: resume, save to a named slot, load, settings, quit to the main menu |
+
+Keys can be rebound in Settings, which also has the volumes, HRTF, the window and the gamepad. A gamepad flies and walks with the left stick and fires with A or the right trigger; the full mapping is in `documentation/ui-hud/Design.md`. Saves and `settings.json` are kept in `assets/saves/`.
 
 Each demo lists its own controls on screen.
 

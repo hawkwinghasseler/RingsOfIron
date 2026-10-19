@@ -51,6 +51,8 @@ import com.hawkwing.RingsOfIron.lighting.DeckLightRig;
 import com.hawkwing.RingsOfIron.lighting.EmissiveLights;
 import com.hawkwing.RingsOfIron.lighting.HullArt;
 import com.hawkwing.RingsOfIron.lighting.SceneLighting;
+import com.hawkwing.RingsOfIron.shell.SaveSlots;
+import com.hawkwing.RingsOfIron.shell.SaveSummary;
 import com.ringsofiron.aicrew.CrewBody;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
@@ -100,7 +102,8 @@ import java.nio.file.Paths;
  * back on. P twice abandons ship: the crew make for the escape pods (your character walks there
  * by itself unless you steer it), and P again launches them; you wake days later at a station in a
  * requisitioned ship. F5
- * quick-saves, F9 loads the quick save. Esc quits.
+ * quick-saves, F9 loads the quick save. Esc quits, or opens the pause menu when the game runs inside
+ * {@link com.hawkwing.RingsOfIron.shell.GameShell}.
  *
  * <p>Docking: G arms the selected docking port and asks the nearest station for clearance (a
  * station that gives it reaches out with its collar and draws the ship in), or disarms it; H
@@ -174,6 +177,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private InputProcessor gameInput;
     private String notice;
     private float noticeTime;
+    /** Hosted by the game shell: Esc is its pause menu, and the game stands still while paused. */
+    private boolean hosted;
+    private boolean paused;
+    /** Where F5 and F9 keep the quick save; the shell points it at its own saves folder. */
+    private SaveSlots slots;
 
     private final Array<Body> bodies = new Array<>();
     /** The craft whose decks the interior view draws. */
@@ -294,10 +302,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
             return;
         }
         if (refitEditor != null) closeRefit();
-        float delta = Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
-        handleInput(delta);
-        if (world.getCrash() == null) gun.update(delta);
-        world.update(delta);
+        float delta = paused ? 0f : Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
+        if (!paused) {
+            handleInput(delta);
+            if (world.getCrash() == null) gun.update(delta);
+            world.update(delta);
+        }
         noticeTime -= delta;
         abandonAsked -= delta;
         if (firstPlay != null) {
@@ -327,7 +337,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     private void handleInput(float delta) {
         boolean consoleOpen = hud.getConsoleWindow().isOpen();
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !consoleOpen) Gdx.app.exit();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !consoleOpen && !hosted) Gdx.app.exit();
         if (Gdx.input.isKeyJustPressed(Input.Keys.F9)) quickLoad();
         if (world.getCrash() != null) return;
         if (Gdx.input.isKeyJustPressed(Input.Keys.PERIOD)) warp(1);
@@ -460,7 +470,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 0f, h / 2f - 10f, w, com.badlogic.gdx.utils.Align.center, false);
         font.getData().setScale(1f);
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, "F9 loads the quick save   Esc quits", 0f, h / 2f - 50f, w, com.badlogic.gdx.utils.Align.center, false);
+        font.draw(batch, "F9 loads the quick save   Esc " + (hosted ? "menu" : "quits"), 0f, h / 2f - 50f, w, com.badlogic.gdx.utils.Align.center, false);
         batch.end();
     }
 
@@ -472,16 +482,28 @@ public class RingsOfIronGame extends ApplicationAdapter {
     }
 
     private FileHandle quickSaveFile() {
-        return Gdx.files.local("saves/quicksave.json");
+        if (slots == null) slots = new SaveSlots(Gdx.files.local("saves"));
+        return slots.quickSave();
     }
 
     private void quickSave() {
+        String failed = save(quickSaveFile(), SaveSlots.QUICK_SAVE_NAME);
+        show(failed == null ? "Game saved" : failed);
+    }
+
+    /**
+     * Saves the game to {@code file} with a {@link SaveSummary} named {@code name} beside it for the
+     * load list. Null when saved, otherwise what to tell the player.
+     */
+    public String save(FileHandle file, String name) {
         try {
-            String refused = game.quickSave(quickSaveFile());
-            show(refused == null ? "Game saved" : "Can't save: " + refused);
+            String refused = game.quickSave(file);
+            if (refused != null) return "Can't save: " + refused;
+            SaveSummary.of(game, name).writeFor(file);
+            return null;
         } catch (RuntimeException e) {
             Gdx.app.error("RingsOfIron", "Save failed", e);
-            show("Save failed; see the log");
+            return "Save failed; see the log";
         }
     }
 
@@ -491,6 +513,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
             show("No quick save yet (F5 saves)");
             return;
         }
+        load(file);
+    }
+
+    /** Replaces the game with the one saved in {@code file}. True when it loaded. */
+    public boolean load(FileHandle file) {
         try {
             game.quickLoad(file);
             world.clearCrash();
@@ -500,10 +527,47 @@ public class RingsOfIronGame extends ApplicationAdapter {
             hud.setTargeting(new CombatTargetingProvider(gun));
             matchViewToSeat();
             show("Game loaded");
+            return true;
         } catch (RuntimeException e) {
             Gdx.app.error("RingsOfIron", "Load failed", e);
             show("Load failed; see the log");
+            return false;
         }
+    }
+
+    /** Run by {@link com.hawkwing.RingsOfIron.shell.GameShell}: Esc no longer quits, and the shell pauses the game. */
+    public void setHosted(boolean hosted) {
+        this.hosted = hosted;
+    }
+
+    public void setSaveSlots(SaveSlots slots) {
+        this.slots = slots;
+    }
+
+    /** Paused, the game draws but neither reads input nor moves on. */
+    public void setPaused(boolean paused) {
+        this.paused = paused;
+    }
+
+    /** True while the ship editor is open for a yard rebuild; it has the keyboard then. */
+    public boolean isRefitOpen() {
+        return refitEditor != null;
+    }
+
+    public UiHud getHud() {
+        return hud;
+    }
+
+    public GameWorld getWorld() {
+        return world;
+    }
+
+    public GameScenario getScenario() {
+        return game;
+    }
+
+    public void showNotice(String message) {
+        show(message);
     }
 
     /** How door forcing went, what the factions made of it, career news, and the yard's news. */
@@ -935,11 +999,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
         font.draw(batch, hud.getViewMode().getMode() == ViewMode.INTERIOR
                 ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   L lights   "
-                        + (VIEW_ANYWHERE ? "V outside view" : "V sit at the helm or weapons console") + "   P P abandon ship   F5 save  F9 load   Esc quit"
+                        + (VIEW_ANYWHERE ? "V outside view" : "V sit at the helm or weapons console") + "   P P abandon ship   F5 save  F9 load   Esc " + (hosted ? "menu" : "quit")
                 : world.bridge.playerAtWeapons()
-                ? "Weapons console: Space guns  R missile  F decoy  Tab target  , . warp  V stand up  P P abandon ship  F5 save  F9 load  Esc quit"
+                ? "Weapons console: Space guns  R missile  F decoy  Tab target  , . warp  V stand up  P P abandon ship  F5 save  F9 load  Esc " + (hosted ? "menu" : "quit")
                 : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V "
-                        + (VIEW_ANYWHERE ? "deck view" : "stand up") + "  P P abandon ship  F5 save  F9 load  Esc quit",
+                        + (VIEW_ANYWHERE ? "deck view" : "stand up") + "  P P abandon ship  F5 save  F9 load  Esc " + (hosted ? "menu" : "quit"),
                 hintX, 24f);
         // Rank, sponsor and the weekly budget
         font.setColor(Color.LIGHT_GRAY);

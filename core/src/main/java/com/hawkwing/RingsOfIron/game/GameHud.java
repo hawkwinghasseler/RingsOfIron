@@ -37,6 +37,8 @@ public class GameHud implements Disposable {
         hud.setPhysics(world.physics);
         hud.setOrbitInfo(new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
         hud.setOrbitPath(new PlayerOrbitPath(world, world.burns));
+        // interior-grid's tanks, hull and power circuits on the ship gauges.
+        hud.setShipStatus(new PlayerShipStatus(world::getPlayer));
         hud.setInteractor(world.avatar);
         hud.getViewMode().addListener((previous, current) -> world.audioListener.setMode(toListenerMode(current)));
         world.audioListener.setMode(toListenerMode(hud.getViewMode().getMode()));

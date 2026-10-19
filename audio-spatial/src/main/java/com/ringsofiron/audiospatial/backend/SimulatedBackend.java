@@ -12,6 +12,8 @@ public abstract class SimulatedBackend implements AudioBackend {
     protected final Array<SimulatedInstance> instances = new Array<>();
     protected float listenerX, listenerY, listenerVx, listenerVy;
     private final ObjectFloatMap<String> globals = new ObjectFloatMap<>();
+    /** The player's master, effects and ambience volumes; backends that make sound apply them. */
+    public final MixLevels levels = new MixLevels();
 
     protected SimulatedBackend(AudioEventCatalog catalog) {
         this.catalog = catalog;

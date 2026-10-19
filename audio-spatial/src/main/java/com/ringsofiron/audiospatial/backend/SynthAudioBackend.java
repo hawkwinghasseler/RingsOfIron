@@ -22,7 +22,6 @@ public class SynthAudioBackend extends SimulatedBackend {
     private final CopyOnWriteArrayList<SynthVoice> voices = new CopyOnWriteArrayList<>();
     private final Thread mixer;
     private volatile boolean running = true;
-    private volatile float masterVolume = 0.8f;
 
     public SynthAudioBackend() {
         this(AudioEventCatalog.withDefaults());
@@ -38,7 +37,7 @@ public class SynthAudioBackend extends SimulatedBackend {
     }
 
     public void setMasterVolume(float volume) {
-        masterVolume = volume;
+        levels.master = volume;
     }
 
     private static class SynthInstance extends SimulatedInstance {
@@ -66,10 +65,9 @@ public class SynthAudioBackend extends SimulatedBackend {
     @Override
     public void update(float deltaTime) {
         super.update(deltaTime);
-        float master = masterVolume;
         for (SimulatedInstance inst : instances) {
             SynthVoice v = ((SynthInstance) inst).voice;
-            v.targetGain = inst.mix.gain * master;
+            v.targetGain = inst.mix.gain * levels.gain(inst.def);
             v.targetPan = inst.mix.pan;
             v.targetCutoff = inst.mix.cutoffHz;
             v.active = inst.isPlaying();

@@ -60,7 +60,6 @@ public class OpenAlAudioBackend extends SimulatedBackend {
     private final ShortBuffer pcm = MemoryUtil.memAllocShort(STREAM_FRAMES);
     private int voicesCreated;
     private boolean outOfSources;
-    private float masterVolume = 0.8f;
     private boolean disposed;
 
     /**
@@ -96,7 +95,7 @@ public class OpenAlAudioBackend extends SimulatedBackend {
     }
 
     public void setMasterVolume(float volume) {
-        masterVolume = volume;
+        levels.master = volume;
     }
 
     /** Whether occlusion can muffle sounds (OpenAL's EFX extension is present). */
@@ -117,6 +116,20 @@ public class OpenAlAudioBackend extends SimulatedBackend {
             case ALC_HRTF_UNSUPPORTED_FORMAT_SOFT: return "unsupported output format";
             default: return "unknown";
         }
+    }
+
+    /**
+     * Forces HRTF on ("on") or off ("off"), or ("auto") hands the choice back to OpenAL Soft, which
+     * turns it on for headphones. Takes effect at once by resetting the device; sources carry on.
+     */
+    public void setHrtf(String setting) {
+        long device = alcGetContextsDevice(alcGetCurrentContext());
+        if ("auto".equals(setting)) {
+            if (!alcIsExtensionPresent(device, "ALC_SOFT_HRTF")) return;
+            if (!alcResetDeviceSOFT(device, new int[]{ALC_HRTF_SOFT, ALC_DONT_CARE_SOFT, 0})) log("OpenAL could not reset HRTF to auto");
+            return;
+        }
+        applyHrtfSetting(device, setting);
     }
 
     /** Forces HRTF on or off for "on" or "off"; anything else leaves OpenAL Soft to decide. */
@@ -308,7 +321,7 @@ public class OpenAlAudioBackend extends SimulatedBackend {
                 appliedStarts = starts - 1; // begin playback below
             }
             int s = voice.source;
-            alSourcef(s, AL_GAIN, mix.gain * masterVolume);
+            alSourcef(s, AL_GAIN, mix.gain * levels.gain(def));
             alSource3f(s, AL_POSITION, x - listenerX, def.minDistance, -(y - listenerY));
             if (efx) {
                 float gainHf = AcousticModel.lowPassGainHf(mix.cutoffHz);
