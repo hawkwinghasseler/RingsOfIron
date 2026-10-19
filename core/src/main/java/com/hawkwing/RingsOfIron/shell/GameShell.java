@@ -263,6 +263,11 @@ public class GameShell implements ApplicationListener {
         menus.showMain(root);
     }
 
+    /** Opens the New game panel: the seed and the sponsor. */
+    public void openNewGame() {
+        menus.showNewGame(root);
+    }
+
     /** Back out of the open menu: the pause menu resumes, a sub-panel goes back to its menu. */
     void back() {
         capture = null;

@@ -126,6 +126,14 @@ class ShellMenus {
 
     // --- New game ----------------------------------------------------------------------
 
+    /** A dim line of explanation, wrapped to the panel's width. */
+    private Label note(String text) {
+        Label l = new Label(text, skin, "dim");
+        l.setWrap(true);
+        l.setAlignment(com.badlogic.gdx.utils.Align.center);
+        return l;
+    }
+
     /** The factions a new career may serve: id, then the button's label. */
     static final String[][] SPONSORS = {{"patrol", "Terran Patrol"}, {"selene", "Selene Combine"}};
 
@@ -135,10 +143,11 @@ class ShellMenus {
         TextField seed = new TextField("", skin);
         seed.setMaxLength(24);
         seed.setMessageText("random");
-        t.add(new Label("Seed", skin, "dim")).left();
-        t.add(seed).width(300f).colspan(2).row();
-        t.add(new Label("Leave it empty for a new world; the same seed gives the same start", skin, "dim"))
-                .colspan(3).padBottom(10f).row();
+        Table seedRow = new Table();
+        seedRow.add(new Label("Seed", skin, "dim")).padRight(12f);
+        seedRow.add(seed).width(300f);
+        t.add(seedRow).colspan(3).row();
+        t.add(note("Leave it empty for a new world; the same seed gives the same start")).width(440f).colspan(3).padBottom(10f).row();
         // Who to serve: the Patrol from Highport, or the Combine from its ice mine on the Moon
         String[] sponsor = {null};
         Table sponsors = new Table();
@@ -158,10 +167,12 @@ class ShellMenus {
         group.setMinCheckCount(1);
         group.setMaxCheckCount(1);
         group.getButtons().first().setChecked(true);
-        t.add(new Label("Serve", skin, "dim")).left();
-        t.add(sponsors).left().colspan(2).row();
-        t.add(new Label("The Patrol starts you at Highport in Earth orbit; the Combine at Shackleton Ice above the Moon",
-                skin, "dim")).colspan(3).padBottom(10f).row();
+        Table serveRow = new Table();
+        serveRow.add(new Label("Serve", skin, "dim")).padRight(12f);
+        serveRow.add(sponsors);
+        t.add(serveRow).colspan(3).row();
+        t.add(note("The Patrol starts you at Highport in Earth orbit; the Combine at Shackleton Ice above the Moon")).width(440f)
+                .colspan(3).padBottom(10f).row();
         Table buttons = new Table();
         buttons.add(button("Start", () -> shell.newGame(com.hawkwing.RingsOfIron.game.NewGame.fromText(seed.getText(), sponsor[0]))))
                 .padRight(10f);
