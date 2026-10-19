@@ -449,6 +449,30 @@ class DockingDemoSceneTest {
         assertSame(demo.target, demo.world.docking.dockedTo(demo.osprey), "Osprey stays");
     }
 
+    @Test
+    void aHaulerFliesRoundAShipInItsWay() {
+        // Where Osprey is a while into its run with nothing in the way
+        demo.load(DockingDemoScene.Scene.HUB);
+        for (int i = 0; i < 60 * 12; i++) demo.update(FRAME);
+        com.badlogic.gdx.math.Vector2 onPath = new com.badlogic.gdx.math.Vector2(
+                demo.world.docking.bodyOf(demo.osprey).getWorldCenter()).scl(10f);
+        // Park another hauler there and run it again
+        demo.load(DockingDemoScene.Scene.HUB);
+        Entity blocker = demo.world.getContent().factory.spawnShip(
+                GameScenario.FREIGHTER_SHIP, onPath.x, onPath.y, 0f);
+        com.badlogic.gdx.physics.box2d.Body ob = demo.world.docking.bodyOf(demo.osprey);
+        float nearest = Float.MAX_VALUE;
+        for (int i = 0; i < 60 * 300 && demo.world.docking.dockedTo(demo.osprey) == null; i++) {
+            demo.update(FRAME);
+            com.badlogic.gdx.physics.box2d.Body bb = demo.world.docking.bodyOf(blocker);
+            nearest = Math.min(nearest, ob.getWorldCenter().dst(bb.getWorldCenter()) * 10f);
+        }
+        assertSame(demo.target, demo.world.docking.dockedTo(demo.osprey), "Osprey still docked");
+        ShipGridComponent g = blocker.getComponent(ShipGridComponent.class);
+        float hulls = (float) Math.hypot(g.width, g.height) * g.tileSize;
+        assertTrue(nearest > hulls, "kept clear of the parked hauler: " + nearest + " m apart, hulls " + hulls + " m");
+    }
+
     private double credits() {
         return demo.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class).credits;
     }
