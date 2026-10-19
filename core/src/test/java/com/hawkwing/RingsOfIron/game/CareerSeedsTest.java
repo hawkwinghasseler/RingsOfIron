@@ -27,16 +27,13 @@ import org.junit.jupiter.params.provider.MethodSource;
 @EnabledIfSystemProperty(named = "career.seeds", matches = ".+")
 class CareerSeedsTest {
     /**
-     * Seeds whose career stops before the gunship today: the script's step it stops in, and the start of
+     * Seeds whose career stops before the gunship today (seed 7 came off with round 6 part 2): the script's step it stops in, and the start of
      * the failed check's message. Each comes off when the round 6 part that fixes it is merged here.
      */
     static final Map<Long, Stop> STOPS = Map.of(
             // The ship vents through a breach nobody seals and the captain goes down, so the prize can't
             // be boarded (round 6 part 1, sealing breaches and saving the captain)
-            12L, new Stop("fightTheRaiderAndTowItHome", "taken"),
-            // The transfer burn fires but the ship stays near Earth, so the capture is never proposed
-            // (round 6 part 2, seed 7's Moon trip)
-            7L, new Stop("flyToTheMoon", "the capture was proposed in the Moon's sphere"));
+            12L, new Stop("fightTheRaiderAndTowItHome", "taken"));
 
     static final class Stop {
         final String step, message;

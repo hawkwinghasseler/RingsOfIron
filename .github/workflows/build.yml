@@ -30,7 +30,7 @@ jobs:
           path: '**/build/reports/tests/'
 
   # Round 3's career on each seed, played twice: the journals must match and the career reach the
-  # gunship. Seeds 7 and 12 are expected to stop at known places until round 6 parts 2 and 1 land
+  # gunship. Seed 12 is expected to stop at a known place until round 6 part 1 lands
   # (CareerSeedsTest.STOPS); a seed that stops anywhere else, or gets through while listed, fails.
   career-seeds:
     name: Career seed ${{ matrix.seed }}
