@@ -18,7 +18,6 @@ import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.WallLight;
 import com.ringsofiron.interiorgrid.WallLightLayout;
-import com.ringsofiron.interiorgrid.WeightClass;
 
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -219,15 +218,16 @@ public final class DeckArt {
                 if (id.equals(ArtNames.wallId(grid.getTile(x + 1, y)))) mask |= ArtNames.E;
                 if (id.equals(ArtNames.wallId(grid.getTile(x, y - 1)))) mask |= ArtNames.S;
                 if (id.equals(ArtNames.wallId(grid.getTile(x - 1, y)))) mask |= ArtNames.W;
-                tile(batch, ArtNames.wall(id, mask), grid.gridOriginLocal.x + x * s, grid.gridOriginLocal.y + y * s, s);
+                draw(batch, art.first(ArtNames.wall(t, mask)), grid.gridOriginLocal.x + x * s, grid.gridOriginLocal.y + y * s, s, s);
             }
         }
         for (HullPiece p : grid.hullPieces) {
             if (p.shape != HullPiece.Shape.WEDGE) continue;
-            TextureRegion r = art.region(ArtNames.wedge(p));
+            AtlasRegion r = art.first(ArtNames.wedge(p));
             if (r == null) continue;
             wedge(batch, r, grid.gridOriginLocal.x + (p.originX + p.width() / 2f) * s,
-                    grid.gridOriginLocal.y + (p.originY + p.height() / 2f) * s, s, p.baseWidth, p.baseHeight, p.rotation);
+                    grid.gridOriginLocal.y + (p.originY + p.height() / 2f) * s, s, p.baseWidth, p.baseHeight, p.rotation,
+                    ArtNames.wedgeMirrored(r.name, p.baseWidth, p.baseHeight));
         }
     }
 
@@ -241,7 +241,9 @@ public final class DeckArt {
             // Dark art may fall back to the lit one, whose glow is not this system's
             if (glowing && !powered) continue;
             String state = port && portOpen(grid, m) ? "open" : null;
-            TextureRegion r = art.first(ArtNames.component(sub.component, sub.type, m.size, state, powered));
+            // Damaged and destroyed systems have their own art, so the damage is part of the machine
+            TextureRegion r = art.first(ArtNames.component(sub.component, sub.type, m.size, state, powered,
+                    ArtNames.condition(sub.health)));
             int bw = m.size.baseWidth(m.kind), bh = m.size.baseHeight(m.kind);
             if (r != null) footprint(batch, r, grid, m.originX, m.originY, m.width(), m.height(), bw, bh, m.rotation);
             if (port) {
@@ -264,16 +266,18 @@ public final class DeckArt {
             for (int x = 0; x < grid.width; x++) {
                 EdgeWall e = grid.edgeH[y][x];
                 if (!standing(e)) continue;
-                String name = e.hasBulkhead ? ArtNames.door(e.bulkheadSealed, power, true) : ArtNames.edgeWall(e.weightClass, true);
-                draw(batch, art.region(name), ox + x * s, oy + y * s - half, s, 2f * half);
+                AtlasRegion r = e.hasBulkhead ? art.region(ArtNames.door(e.bulkheadSealed, power, true))
+                        : art.first(ArtNames.edgeWall(e.material, e.weightClass, true));
+                draw(batch, r, ox + x * s, oy + y * s - half, s, 2f * half);
             }
         }
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x <= grid.width; x++) {
                 EdgeWall e = grid.edgeV[y][x];
                 if (!standing(e)) continue;
-                String name = e.hasBulkhead ? ArtNames.door(e.bulkheadSealed, power, false) : ArtNames.edgeWall(e.weightClass, false);
-                draw(batch, art.region(name), ox + x * s - half, oy + y * s, 2f * half, s);
+                AtlasRegion r = e.hasBulkhead ? art.region(ArtNames.door(e.bulkheadSealed, power, false))
+                        : art.first(ArtNames.edgeWall(e.material, e.weightClass, false));
+                draw(batch, r, ox + x * s - half, oy + y * s, 2f * half, s);
             }
         }
         // Joints over the segments, where they meet at a vertex
@@ -286,9 +290,10 @@ public final class DeckArt {
                 int mask = (standing(n) ? ArtNames.N : 0) | (standing(e) ? ArtNames.E : 0)
                         | (standing(so) ? ArtNames.S : 0) | (standing(w) ? ArtNames.W : 0);
                 if (mask == 0) continue;
-                WeightClass weight = heaviest(heaviest(heaviest(heaviest(null, n), e), so), w);
-                draw(batch, art.region(ArtNames.edgeJoint(weight, mask)), ox + x * s - half, oy + y * s - half,
-                        2f * half, 2f * half);
+                // The joint takes the heaviest wall's weight and material
+                EdgeWall heaviest = heaviest(heaviest(heaviest(heaviest(null, n), e), so), w);
+                draw(batch, art.first(ArtNames.edgeJoint(heaviest.material, heaviest.weightClass, mask)),
+                        ox + x * s - half, oy + y * s - half, 2f * half, 2f * half);
             }
         }
     }
@@ -321,11 +326,6 @@ public final class DeckArt {
                         String damage = ArtNames.damage(t.getIntegrity());
                         if (damage != null) tile(batch, damage, x0, y0, s);
                     }
-                }
-                if (t.mount != null && t.mount.installed != null) {
-                    SubsystemComponent sub = t.mount.installed.getComponent(SubsystemComponent.class);
-                    String damage = sub == null ? null : ArtNames.damage(sub.health);
-                    if (damage != null) tile(batch, damage, x0, y0, s);
                 }
                 if (t.bulkheadSealed) tile(batch, "effects/bulkhead_seal", x0, y0, s);
                 String fire = ArtNames.fire(t.fireSize());
@@ -444,9 +444,9 @@ public final class DeckArt {
         return e != null && !e.isDestroyed();
     }
 
-    private static WeightClass heaviest(WeightClass a, EdgeWall e) {
+    private static EdgeWall heaviest(EdgeWall a, EdgeWall e) {
         if (!standing(e)) return a;
-        return a == null || e.weightClass.ordinal() > a.ordinal() ? e.weightClass : a;
+        return a == null || e.weightClass.ordinal() > a.weightClass.ordinal() ? e : a;
     }
 
     /** (x, y) turned {@code quarters} counter-clockwise quarter turns. */
@@ -496,11 +496,12 @@ public final class DeckArt {
 
     /**
      * Draws a wedge's art centered on its footprint: {@code tile} is the size of a tile, the base
-     * size and rotation are the piece's. A wedge wider than tall draws the tall art mirrored.
+     * size and rotation are the piece's. {@code mirrored} is for tall art standing in for a wide
+     * wedge ({@link ArtNames#wedgeMirrored}), drawn reflected across its diagonal.
      */
     public static void wedge(Batch batch, TextureRegion r, float cx, float cy, float tile, int baseWidth, int baseHeight,
-                             int rotation) {
-        if (!ArtNames.wedgeMirrored(baseWidth, baseHeight)) {
+                             int rotation, boolean mirrored) {
+        if (!mirrored) {
             drawCentered(batch, r, cx, cy, baseWidth * tile, baseHeight * tile, rotation);
             return;
         }

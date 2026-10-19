@@ -5,7 +5,9 @@
 #   weight_class  walls: LIGHT, MEDIUM or HEAVY
 #   material      walls: a [material.*] id (materials.toml)
 #   covering      floors: NONE or CARPET, laid when the ship is built
-#   color         how the editor draws it
+#   art           the art it draws with: a region for floors (tiles/floor), or for walls a family
+#                 whose regions add the join sides (walls/hull_heavy -> walls/hull_heavy_nesw)
+#   color         how the editor draws it without the art pack
 # These restate the built-in characters; a type left out keeps its built-in meaning.
 
 [tile.void]
@@ -18,12 +20,14 @@ color = "#000000"
 name = "Steel floor"
 symbol = "."
 base = "FLOOR"
+art = "tiles/floor"
 color = "#4a5058"
 
 [tile.conduit]
 name = "Power conduit"
 symbol = "+"
 base = "CONDUIT"
+art = "tiles/conduit"
 color = "#5a6a3a"
 
 [tile.hull]
@@ -32,6 +36,7 @@ symbol = "#"
 base = "HULL"
 weight_class = "MEDIUM"
 material = "hull_steel"
+art = "walls/hull_medium"
 color = "#9aa4b0"
 
 [tile.hull_light]
@@ -40,6 +45,7 @@ symbol = "1"
 base = "HULL"
 weight_class = "LIGHT"
 material = "hull_steel"
+art = "walls/hull_light"
 color = "#b8c0ca"
 
 [tile.hull_medium]
@@ -48,6 +54,7 @@ symbol = "2"
 base = "HULL"
 weight_class = "MEDIUM"
 material = "hull_steel"
+art = "walls/hull_medium"
 color = "#9aa4b0"
 
 [tile.hull_heavy]
@@ -56,6 +63,7 @@ symbol = "3"
 base = "HULL"
 weight_class = "HEAVY"
 material = "hull_steel"
+art = "walls/hull_heavy"
 color = "#6c7684"
 
 [tile.internal_wall]
@@ -64,4 +72,35 @@ symbol = "I"
 base = "INTERNAL_WALL"
 weight_class = "MEDIUM"
 material = "hull_steel"
+art = "walls/internal_wall"
 color = "#80705a"
+
+# Composite armor: lighter and tougher than hull steel per tile (materials.toml), with its own
+# ceramic-tile art.
+
+[tile.armor_light]
+name = "Composite armor, light"
+symbol = "4"
+base = "HULL"
+weight_class = "LIGHT"
+material = "composite_armor"
+art = "walls/composite_armor_light"
+color = "#7d8c88"
+
+[tile.armor_medium]
+name = "Composite armor, medium"
+symbol = "5"
+base = "HULL"
+weight_class = "MEDIUM"
+material = "composite_armor"
+art = "walls/composite_armor_medium"
+color = "#66756f"
+
+[tile.armor_heavy]
+name = "Composite armor, heavy"
+symbol = "6"
+base = "HULL"
+weight_class = "HEAVY"
+material = "composite_armor"
+art = "walls/composite_armor_heavy"
+color = "#4d5a56"

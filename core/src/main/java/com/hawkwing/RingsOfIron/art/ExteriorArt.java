@@ -45,6 +45,7 @@ public final class ExteriorArt {
         float px = p.x, py = p.y, angle = body.getAngle();
         plumes(batch, craft, body, px, py, angle);
         pivoted(batch, hull, px, py, angle * MathUtils.radiansToDegrees, 1f, 1f);
+        engines(batch, craft, body, angle);
         turrets(batch, craft, body);
         return true;
     }
@@ -52,18 +53,38 @@ public final class ExteriorArt {
     private void plumes(Batch batch, Entity craft, Body body, float px, float py, float angle) {
         FlightControlComponent controls = craft.getComponent(FlightControlComponent.class);
         ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
-        if (controls == null || controls.forward <= 0f) return;
-        AtlasRegion plume = art.region("hulls/thruster_plume");
+        if (controls == null || grid == null || controls.forward <= 0f) return;
+        AtlasRegion plume = art.first(ArtNames.exhaust(ArtNames.ENGINE_SIZE), "hulls/thruster_plume");
         if (plume == null) return;
-        // An engine on the aft edge for every third row, as the hull art draws them
-        float s = grid.tileSize;
-        for (int k = 0; k < grid.height / 3; k++) {
-            float row = k * 3 + (grid.height % 3) / 2f + 1.5f;
-            float lx = grid.gridOriginLocal.x - 0.25f * s;
-            float ly = grid.gridOriginLocal.y + (grid.height - row) * s;
-            Vector2 w = world(body, lx, ly);
+        for (int k = 0; k < engineCount(grid); k++) {
+            Vector2 w = engineMount(body, grid, k);
             pivoted(batch, plume, w.x, w.y, angle * MathUtils.radiansToDegrees, Math.min(1f, controls.forward), 1f);
         }
+    }
+
+    /** The engines in the hull's engine mounts, their throats hot while the main engine burns. */
+    private void engines(Batch batch, Entity craft, Body body, float angle) {
+        FlightControlComponent controls = craft.getComponent(FlightControlComponent.class);
+        ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
+        if (controls == null || grid == null) return;
+        AtlasRegion engine = art.first(ArtNames.engine(ArtNames.ENGINE_SIZE, controls.forward > 0f));
+        if (engine == null) return;
+        for (int k = 0; k < engineCount(grid); k++) {
+            Vector2 w = engineMount(body, grid, k);
+            pivoted(batch, engine, w.x, w.y, angle * MathUtils.radiansToDegrees, 1f, 1f);
+        }
+    }
+
+    /** An engine mount on the aft edge for every third row, as the hull art draws them. */
+    private static int engineCount(ShipGridComponent grid) {
+        return grid.height / 3;
+    }
+
+    /** World position of engine mount {@code k}'s socket. */
+    private Vector2 engineMount(Body body, ShipGridComponent grid, int k) {
+        float s = grid.tileSize;
+        float row = k * 3 + (grid.height % 3) / 2f + 1.5f;
+        return world(body, grid.gridOriginLocal.x - 0.25f * s, grid.gridOriginLocal.y + (grid.height - row) * s);
     }
 
     private void turrets(Batch batch, Entity craft, Body body) {

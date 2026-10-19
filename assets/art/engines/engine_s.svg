@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="92.8" height="70.4" viewBox="-67.2 -35.2 92.8 70.4">
+  <title>engine_s: pivot on the hull's engine mount socket, nozzle toward -x, burning</title>
+  <defs><radialGradient id="engine_s_throat"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#9fd8ff" stop-opacity="0.9"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></radialGradient></defs>
+  <g id="base">
+    <polygon points="-5.12,-19.2 -58.88,-32 -58.88,32 -5.12,19.2" fill="#373f4b" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
+    <line x1="-21.25" y1="-21.54" x2="-21.25" y2="21.54" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-34.69" y1="-24.74" x2="-34.69" y2="24.74" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-48.13" y1="-27.94" x2="-48.13" y2="27.94" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-6.4" y1="-18.56" x2="-57.6" y2="-30.72" stroke="#7d8898" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+    <path d="M-58.88,-32 C-65.28,-19.2 -65.28,19.2 -58.88,32" fill="#14181e" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="20.48" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <circle cx="0" cy="0" r="12.8" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="11.77" cy="11.77" r="1.4" fill="#7d8898" opacity="0.9"/>
+    <circle cx="-11.77" cy="11.77" r="1.4" fill="#7d8898" opacity="0.9"/>
+    <circle cx="-11.77" cy="-11.77" r="1.4" fill="#7d8898" opacity="0.9"/>
+    <circle cx="11.77" cy="-11.77" r="1.4" fill="#7d8898" opacity="0.9"/>
+  </g>
+  <g id="emissive">
+    <g data-light="glow">
+    <path d="M-58.88,-28.16 C-64,-16 -64,16 -58.88,28.16 Z" fill="#9fd8ff" opacity="0.85"/>
+    <circle cx="-54.4" cy="0" r="19.2" fill="url(#engine_s_throat)"/>
+    </g>
+  </g>
+</svg>
