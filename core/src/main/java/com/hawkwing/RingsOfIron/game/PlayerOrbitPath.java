@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
@@ -110,10 +111,11 @@ public class PlayerOrbitPath implements OrbitPathProvider {
                 from = b[0];
             }
             sample(after, from, body, out.proposed);
-            out.caption.append("\nProposed: ").append(nav.transfer.describe(p)).append("\nEnter accepts  Backspace discards");
+            out.caption.append("\nProposed: ").append(nav.transfer.describe(p)).append("\n")
+                    .append(nav.key(Action.ACCEPT_PLAN)).append(" accepts  ").append(nav.key(Action.DISCARD_PLAN)).append(" discards");
         }
         if (targetUuid == null) {
-            out.caption.append("\nO picks a navigation target");
+            out.caption.append("\n").append(nav.key(Action.NAV_TARGET)).append(" picks a navigation target");
             return;
         }
         if (nav.target.stateAt(parent, now, s)) {
@@ -140,7 +142,8 @@ public class PlayerOrbitPath implements OrbitPathProvider {
             out.caption.append(": closest ").append(Navigation.formatDistance(a.distance))
                     .append(" in ").append(Navigation.formatTime(a.time - now));
         }
-        out.caption.append("\nO next target  I plan to it  / warp to burn");
+        out.caption.append("\n").append(nav.key(Action.NAV_TARGET)).append(" next target  ").append(nav.key(Action.PLAN_TO_TARGET))
+                .append(" plan to it  ").append(nav.key(Action.WARP_TO_BURN)).append(" warp to burn");
     }
 
     /** The parent's moons with their orbits, and the body the parent itself orbits. */

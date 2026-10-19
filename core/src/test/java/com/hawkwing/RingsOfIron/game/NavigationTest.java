@@ -248,7 +248,8 @@ class NavigationTest {
         world.combatEvents.shots.dispatch(shot);
         assertEquals(HelmOrderComponent.Mode.NONE, world.nav.helm.mode());
         world.update(FRAME);
-        assertTrue(world.nav.notices.contains("Helm order dropped: shots fired at us"), world.nav.notices.toString());
+        assertEquals("Helm order dropped: shots fired at us", world.notices.latest().text);
+        assertEquals(NoticeLog.Kind.WARNING, world.notices.latest().kind);
     }
 
     @Test

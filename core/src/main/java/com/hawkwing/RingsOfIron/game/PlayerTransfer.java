@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.ringsofiron.macrosim.fleet.RoutePlanner;
 import com.ringsofiron.macrosim.fleet.TransferPlanner;
 import com.ringsofiron.macrosim.rails.RailsModel;
@@ -62,10 +63,14 @@ public class PlayerTransfer {
     /** What the player should hear of: the rest of a leg proposed. */
     public final List<String> notices = new ArrayList<>();
 
-    public PlayerTransfer(GameWorld world, NavTarget target, PlayerOrbitInfo orbits) {
+    private final java.util.function.Function<Action, String> keys;
+
+    public PlayerTransfer(GameWorld world, NavTarget target, PlayerOrbitInfo orbits,
+                          java.util.function.Function<Action, String> keys) {
         this.world = world;
         this.target = target;
         this.orbits = orbits;
+        this.keys = keys;
     }
 
     /** The plan waiting to be accepted, or null. */
@@ -76,10 +81,11 @@ public class PlayerTransfer {
     /** Plans to the navigation target. Returns what to tell the player. */
     public String plan() {
         String uuid = target.uuid();
-        if (uuid == null) return "No navigation target (O picks one)";
+        if (uuid == null) return "No navigation target (" + keys.apply(Action.NAV_TARGET) + " picks one)";
         Entity e = target.entity();
         String name = target.name();
-        if (world.universe.orbit(e) == null) return name + " is in the bubble with you: fly there, or order the helm to approach (4)";
+        if (world.universe.orbit(e) == null) return name + " is in the bubble with you: fly there, or order the helm to approach ("
+                + keys.apply(Action.HELM_APPROACH) + ")";
         KeplerOrbit k = orbits.currentConic();
         Entity parent = orbits.parent();
         if (k == null || parent == null) return "No orbit to plan from";
@@ -90,7 +96,7 @@ public class PlayerTransfer {
         if (p == null) return "No transfer to " + name + " from this orbit";
         if (p.burns.isEmpty()) return "You are already with " + name;
         proposal = p;
-        return describe(p) + ". Enter accepts, Backspace discards";
+        return describe(p) + ". " + keys.apply(Action.ACCEPT_PLAN) + " accepts, " + keys.apply(Action.DISCARD_PLAN) + " discards";
     }
 
     /**
@@ -127,7 +133,7 @@ public class PlayerTransfer {
 
     /** Accepts the proposal: it replaces the planned burns. Returns what to tell the player. */
     public String accept(BurnPlanner planner) {
-        if (proposal == null) return "No transfer plan to accept (I plans one)";
+        if (proposal == null) return "No transfer plan to accept (" + keys.apply(Action.PLAN_TO_TARGET) + " plans one)";
         planner.replace(proposal.burns);
         continueIn = proposal.nextParent;
         continueTo = proposal.nextParent == null ? null : proposal.targetUuid;
@@ -173,14 +179,14 @@ public class PlayerTransfer {
         }
         String name = target.name(to);
         if (route == null || route.burns.isEmpty()) {
-            notices.add("No capture found for " + name + " here: plan to it again (I)");
+            notices.add("No capture found for " + name + " here: plan to it again (" + keys.apply(Action.PLAN_TO_TARGET) + ")");
             return;
         }
         List<double[]> burns = new ArrayList<>();
         for (com.ringsofiron.macrosim.rails.RailsModel.Burn b : route.burns) burns.add(new double[]{b.time, b.prograde, b.radial});
         proposal = new Proposal(to, name, burns, route.arrivalTime, route.totalDeltaV, route.nextParent);
         notices.add("Arrived at " + orbits.body().name + ": capture and transfer to " + name
-                + " proposed on the orbit map. Enter accepts");
+                + " proposed on the orbit map. " + keys.apply(Action.ACCEPT_PLAN) + " accepts");
     }
 
     /** "To Shackleton Ice: 2 burns, 3,140 m/s, arrives in 4.2 d" */

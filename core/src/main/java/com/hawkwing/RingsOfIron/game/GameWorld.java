@@ -201,6 +201,10 @@ public class GameWorld implements Disposable {
     }
     public final EngineAudio engineAudio;
     public final CrewAudio crewAudio;
+    /** What the game tells the player: post here rather than keeping a list of your own. */
+    public final NoticeLog notices;
+    /** Key hints by context, for the bottom line and the F1 controls panel. */
+    public final HintRegistry hints = HintRegistry.withDefaults();
 
     private final ImmutableArray<Entity> players;
     private final OrbitalAnchorBridge anchorBridge;
@@ -223,6 +227,7 @@ public class GameWorld implements Disposable {
         this.modules = modules;
         engine = new GameEngine();
         players = engine.getEcsEngine().getEntitiesFor(PLAYER);
+        notices = new NoticeLog(engine::getSimSeconds);
 
         physics = new PhysicsManager();
 
@@ -409,6 +414,7 @@ public class GameWorld implements Disposable {
         engine.addSystem(audioUpdate);
         new ImpactAudio(audio).attach(physics);
         CombatAudio.install(engine.getEcsEngine(), combatEvents, combatDefs, audio, this::getContent);
+        NoticeAudio.install(notices, audio);
         physics.worldShifts.add(audioUpdate.worldShiftListener());
 
         // Bubble bodies are saved as true states, never as live Box2D bodies.

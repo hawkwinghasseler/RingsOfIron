@@ -2,6 +2,8 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
+import com.hawkwing.RingsOfIron.shell.KeyBindings;
+import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.fleet.RoutePlanner;
@@ -13,6 +15,7 @@ import com.ringsofiron.orbital.warp.DropOutSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Function;
 
 /**
  * Navigation and flight aids, together: the navigation target ({@link NavTarget}), the closest
@@ -39,8 +42,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
     public final NavTarget target;
     public final PlayerTransfer transfer;
     public final HelmOrders helm;
-    /** What the player should hear of: transfers proposed, helm orders dropped, warp to burn. */
-    public final List<String> notices = new ArrayList<>();
+    /** What the player's keys are called, for messages naming them; the screen points it at its bindings. */
+    public Function<Action, String> keyNames = a -> KeyBindings.keyName(a.defaultKey);
 
     private final GameWorld world;
     private final PlayerOrbitInfo orbits;
@@ -54,8 +57,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
         orbits = new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer);
         sightings = new PirateSightings(world);
         target = new NavTarget(world, sightings);
-        transfer = new PlayerTransfer(world, target, orbits);
-        helm = new HelmOrders(world, target);
+        transfer = new PlayerTransfer(world, target, orbits, this::key);
+        helm = new HelmOrders(world, target, this::key);
     }
 
     /** Puts navigation into {@code world}. */
@@ -68,16 +71,31 @@ public class Navigation extends EntitySystem implements DropOutSource {
         world.timeWarp.changes.add((signal, change) -> {
             if (!change.rails) nav.warpToBurn = false;
         });
+        registerHints(world.hints, () -> nav.transfer.proposal() != null);
         return nav;
+    }
+
+    /** The navigation keys, by where the player sits; accepting a plan comes first while one waits. */
+    public static void registerHints(HintRegistry hints, java.util.function.BooleanSupplier proposed) {
+        for (HintRegistry.Context c : new HintRegistry.Context[]{HintRegistry.Context.HELM, HintRegistry.Context.WEAPONS}) {
+            hints.register(c, "accept the transfer plan", 1, Action.ACCEPT_PLAN).onlyWhen(proposed);
+            hints.register(c, "discard it", 2, Action.DISCARD_PLAN).onlyWhen(proposed);
+            hints.register(c, "navigation target", 60, Action.NAV_TARGET);
+            hints.register(c, "plan to the target", 61, Action.PLAN_TO_TARGET);
+            hints.register(c, "warp to the next burn", 62, Action.WARP_TO_BURN);
+            hints.register(c, "helm: fly burns / match / hold / approach / cancel", c == HintRegistry.Context.WEAPONS ? 30 : 63,
+                    Action.HELM_FLY_BURNS, Action.HELM_MATCH_VELOCITY, Action.HELM_HOLD, Action.HELM_APPROACH, Action.HELM_CANCEL);
+        }
     }
 
     @Override
     public void update(float deltaTime) {
         transfer.update(world.burns);
         helm.update();
-        notices.addAll(transfer.notices);
+        for (String news : transfer.notices) world.notices.post(news);
         transfer.notices.clear();
-        notices.addAll(helm.notices);
+        // A dropped order or a burn cut short wants the player's attention
+        for (String news : helm.notices) world.notices.post(news, news.startsWith("Helm:") ? NoticeLog.Kind.INFO : NoticeLog.Kind.WARNING);
         helm.notices.clear();
         sinceApproach += deltaTime;
     }
@@ -288,8 +306,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
         }
         ManeuverNodeComponent.Node n = nextBurn();
         if (n != null) {
-            out.add(String.format(Locale.ROOT, "Next burn in %s: %.0f m/s   / warps there", formatTime(n.time - now),
-                    Math.hypot(n.prograde, n.radial)));
+            out.add(String.format(Locale.ROOT, "Next burn in %s: %.0f m/s   %s warps there", formatTime(n.time - now),
+                    Math.hypot(n.prograde, n.radial), key(Action.WARP_TO_BURN)));
         }
         String h = helm.describe();
         if (h != null) out.add(h);
@@ -301,6 +319,11 @@ public class Navigation extends EntitySystem implements DropOutSource {
                     left < need ? "   NOT ENOUGH PROPELLANT" : ""));
         }
         return out;
+    }
+
+    /** The name of the key the player has on {@code action}. */
+    public String key(Action action) {
+        return keyNames.apply(action);
     }
 
     public static String formatDistance(double m) {

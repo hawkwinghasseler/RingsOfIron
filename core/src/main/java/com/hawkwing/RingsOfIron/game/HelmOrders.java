@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -71,9 +72,12 @@ public class HelmOrders {
     /** The ship's true velocity at the last tick of a burn, for measuring what the engine gave. */
     private double lastVx = Double.NaN, lastVy;
 
-    public HelmOrders(GameWorld world, NavTarget target) {
+    private final java.util.function.Function<Action, String> keys;
+
+    public HelmOrders(GameWorld world, NavTarget target, java.util.function.Function<Action, String> keys) {
         this.world = world;
         this.target = target;
+        this.keys = keys;
         world.combatEvents.shots.add((signal, shot) -> {
             if (shot.target != null && shot.target == world.getPlayer()) threat("shots fired at us");
         });
@@ -113,13 +117,14 @@ public class HelmOrders {
         if (!hasCrewForHelm(ship)) return "Nobody aboard to take the helm: the autopilot is a helmsman's job";
         if (mode == HelmOrderComponent.Mode.FLY_BURNS) {
             ManeuverNodeComponent m = ship.getComponent(ManeuverNodeComponent.class);
-            if (m == null || m.nodes.size == 0) return "No burns planned for the helm to fly (N plans one, I plans to the target)";
+            if (m == null || m.nodes.size == 0) return "No burns planned for the helm to fly (" + keys.apply(Action.PLAN_BURN) + " plans one, "
+                    + keys.apply(Action.PLAN_TO_TARGET) + " plans to the target)";
             clear(o);
             o.mode = mode;
             return "Helm: fly the planned burns" + handOver();
         }
         String uuid = target.uuid();
-        if (uuid == null) return "The helm needs a navigation target for that (O picks one)";
+        if (uuid == null) return "The helm needs a navigation target for that (" + keys.apply(Action.NAV_TARGET) + " picks one)";
         if (!trueState(ship)) return "The helm can only fly that in the bubble";
         if (!relative(ship, target.entity(), rel)) return "Can't place " + target.name() + " from here";
         double rx = rel[0], ry = rel[1];
@@ -128,7 +133,7 @@ public class HelmOrders {
             return String.format(java.util.Locale.ROOT, "Helm: approach %s to %,.0f m off its hull", target.name(), o.distance);
         }
         if (mode == HelmOrderComponent.Mode.APPROACH && Math.hypot(rx, ry) > APPROACH_RANGE) {
-            return target.name() + " is too far for the helm to approach: plan a transfer (I)";
+            return target.name() + " is too far for the helm to approach: plan a transfer (" + keys.apply(Action.PLAN_TO_TARGET) + ")";
         }
         clear(o);
         o.mode = mode;
@@ -156,7 +161,7 @@ public class HelmOrders {
             case APPROACH: what = String.format(java.util.Locale.ROOT, "approaching %s to %,.0f m", who, o.distance); break;
             default: return null;
         }
-        if (world.bridge.playerAtHelm()) return "Helm order (" + what + ") waits: you have the helm (V hands it over)";
+        if (world.bridge.playerAtHelm()) return "Helm order (" + what + ") waits: you have the helm (" + keys.apply(Action.VIEW) + " hands it over)";
         if (world.bridge.helmsman(world.getPlayer()) == null) return "Helm order (" + what + ") waits for a helmsman";
         return "Helm: " + what;
     }
@@ -336,7 +341,7 @@ public class HelmOrders {
     }
 
     private String handOver() {
-        return world.bridge.playerAtHelm() ? ". Hand over the helm (V) for the helmsman to fly it" : "";
+        return world.bridge.playerAtHelm() ? ". Hand over the helm (" + keys.apply(Action.VIEW) + ") for the helmsman to fly it" : "";
     }
 
     /** How far a craft's hull reaches from its center, m: half its deck plan's diagonal; 0 without one. */
