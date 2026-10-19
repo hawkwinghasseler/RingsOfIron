@@ -3,8 +3,11 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -97,6 +100,53 @@ public final class DeckView {
                 shapes.rect(ox + x * s - line / 2f, oy + y * s, line, s);
             }
         }
+    }
+
+    /**
+     * A crate on each loaded bay tile, one color per commodity, filled from the tile's aft edge as
+     * far as the stack fills the tile. In the grid's local meters, inside a filled batch.
+     */
+    public static void cargo(ShapeRenderer shapes, ShipGridComponent grid, CargoHoldComponent hold, Color tmp) {
+        if (hold == null) return;
+        float s = grid.tileSize;
+        float inset = s * 0.12f;
+        for (int i = 0; i < hold.bayTileCount(); i++) {
+            CargoHoldComponent.CargoStack stack = hold.stacks[i];
+            if (stack == null) continue;
+            float fill = hold.fillAt(hold.bayX[i], hold.bayY[i]);
+            Vector2 p = grid.tileToLocal(hold.bayX[i], hold.bayY[i]);
+            float x0 = p.x - s / 2f + inset, y0 = p.y - s / 2f + inset, side = s - 2f * inset;
+            shapes.setColor(0.08f, 0.08f, 0.1f, 0.9f);
+            shapes.rect(x0, y0, side, side);
+            shapes.setColor(commodityColor(stack.commodity, tmp));
+            shapes.rect(x0, y0, Math.max(0.05f * side, side * fill), side);
+        }
+    }
+
+    /**
+     * A crew member at ({@code x}, {@code y}): a dot in {@code color}, with a crate in the
+     * commodity's color on it while they carry a load.
+     */
+    public static void crew(ShapeRenderer shapes, CrewMemberComponent crew, float x, float y, float tileSize,
+                            Color color, Color tmp) {
+        shapes.setColor(color);
+        shapes.circle(x, y, 0.3f * tileSize, 12);
+        if (crew == null || crew.load == null) return;
+        float half = 0.17f * tileSize;
+        shapes.setColor(0.08f, 0.08f, 0.1f, 1f);
+        shapes.rect(x - half - 0.03f, y - half - 0.03f, 2f * half + 0.06f, 2f * half + 0.06f);
+        shapes.setColor(commodityColor(crew.load.task.job.commodity(), tmp));
+        shapes.rect(x - half, y - half, 2f * half, 2f * half);
+    }
+
+    /** The color a station's own crew are drawn in, apart from a ship's. */
+    public static final Color STATION_CREW = new Color(1f, 0.6f, 0.2f, 1f);
+
+    /** A steady, distinct color for each commodity id, into {@code out}. */
+    public static Color commodityColor(String commodity, Color out) {
+        float hue = ((commodity.hashCode() & 0x7fffffff) % 360);
+        out.fromHsv(hue, 0.55f, 0.85f).a = 1f;
+        return out;
     }
 
     private static boolean edge(EdgeWall wall, Color out) {

@@ -323,6 +323,16 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         return null;
     }
 
+    /** True if {@code a} is latched to {@code b} at any pair of ports. */
+    public boolean docked(Entity a, Entity b) {
+        DockingPortsComponent ports = portsMapper.get(a);
+        if (ports == null || b == null) return false;
+        for (DockingPort p : ports.ports) {
+            if (p.state == DockingPort.State.DOCKED && p.partnerUuid != null && uuids.getEntity(p.partnerUuid) == b) return true;
+        }
+        return false;
+    }
+
     /** True if {@code vessel} is latched somewhere the other side gave it docking clearance. */
     public boolean dockedWithClearance(Entity vessel) {
         DockingPortsComponent ports = portsMapper.get(vessel);

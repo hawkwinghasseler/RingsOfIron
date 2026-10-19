@@ -10,7 +10,9 @@ public enum CrewRole {
     ENGINEER,
     MARINE,
     MEDIC,
-    CREWMAN;
+    CREWMAN,
+    /** Station hand: carries cargo between the station's bays and docked craft. */
+    LOADER;
 
     /**
      * How much this role wants a task of the given kind: 0 means never, 1 is neutral and
@@ -37,9 +39,16 @@ public enum CrewRole {
                     case EXTINGUISH: return 0.6f;
                     default: return 0f;
                 }
+            case LOADER:
+                switch (kind) {
+                    case CARRY: return 1.5f;
+                    case EXTINGUISH: case RESCUE: return 0.8f;
+                    default: return 0f;
+                }
             default:
                 switch (kind) {
                     case EXTINGUISH: case RESCUE: case MAN_CONSOLE: return 1f;
+                    case CARRY: return 0.5f;
                     case REPAIR: case SEAL_BREACH: return 0.5f;
                     default: return 0f;
                 }

@@ -35,6 +35,11 @@ public class GridPositionComponent implements Component {
      * and {@link #tileX()}, {@link #tileY()} give the link's tile, the one they stepped out of.
      */
     public transient GridLink walkway;
+    /**
+     * A docked link to walk through once the path is done: AI crew going to another craft path
+     * to the link's tile, then walk out across the collars and in on the far side.
+     */
+    public transient GridLink crossing;
 
     /** Tiles to walk through, in order; empty when standing still. */
     public final transient Array<GridNode> path = new Array<>();

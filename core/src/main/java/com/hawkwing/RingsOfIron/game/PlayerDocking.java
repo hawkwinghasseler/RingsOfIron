@@ -86,6 +86,11 @@ public class PlayerDocking {
         if (from == null) return "Not docked";
         Entity aboard = world.avatar.getAvatarShip();
         if (aboard != null && aboard != player) return "You're aboard " + name(aboard) + ": walk back to your ship first";
+        if (world.cargo.visitorsAboard(player) > 0) {
+            // Not flying off with them: the loading stops and they head home
+            world.cargo.callOff(player);
+            return name(from) + "'s dock hands are still aboard: the loading is called off, undock once they're off";
+        }
         if (!world.docking.undock(player)) return "Not docked";
         return "Undocked from " + name(from);
     }

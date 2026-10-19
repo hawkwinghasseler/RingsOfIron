@@ -146,6 +146,8 @@ public class GameWorld implements Disposable {
     public final BurnPlanner burns;
     /** Docking ports, collars and latches of every ship and station in the bubble. */
     public final DockingSystem docking;
+    /** Station loaders carrying traded goods across the dock, a load at a time. */
+    public final CargoLoading cargo;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -257,6 +259,10 @@ public class GameWorld implements Disposable {
         // ai-crew
         crew = CrewFactory.install(engine.getEcsEngine());
         CrewSaveParticipant.install(crew, engine);
+        // Station crew are nobody's enemy; boarders and defenders fight
+        crew.hostility = StationCrew::hostile;
+        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, new MarketCargo(macroSim));
+        engine.addSystem(cargo);
         avatar = new AvatarInteractor(engine.getEcsEngine());
 
         // combat-sys

@@ -65,7 +65,7 @@ public class TradeWindow extends Window {
             stock.setText(formatUnits(line.available));
             buyPrice.setText(line.available > 0 ? formatPrice(line.buyPrice) : "-");
             sellPrice.setText(line.stationBuys ? formatPrice(line.sellPrice) : "-");
-            held.setText(formatUnits(line.held));
+            held.setText(formatHeld(line));
             buy1.setDisabled(!canBuy(board, line));
             buyBulk.setDisabled(!canBuy(board, line));
             sell1.setDisabled(!canSell(line));
@@ -78,14 +78,22 @@ public class TradeWindow extends Window {
             if (line == null) return;
             String name = line.name;
             double credits = board.credits;
+            boolean carried = board.carried;
             double done = buying ? provider.buy(commodityId, units) : provider.sell(commodityId, units);
             refresh();
             if (done <= 0) {
                 // Refresh reuses line objects, so look this commodity up again.
                 TradeLine now = find(commodityId);
                 status.setText(buying ? "Can't buy " + name + ": " + (now == null ? "it is no longer listed" : buyRefusal(board, now))
+                        : now != null && now.onOrder < -1e-6 ? "All the " + name + " is on its way off already"
                         : "The station won't take " + name);
                 status.setStyle(skin.get("warn", Label.LabelStyle.class));
+                return;
+            }
+            if (carried) {
+                status.setText(String.format(Locale.ROOT, "Ordered %s %s: the loaders are carrying it %s",
+                        formatUnits(done), name, buying ? "aboard" : "off"));
+                status.setStyle(skin.get("default", Label.LabelStyle.class));
                 return;
             }
             double credit = Math.abs(board.credits - credits);
@@ -227,11 +235,18 @@ public class TradeWindow extends Window {
         if (line.available <= 1e-6) return "the station has none to sell";
         if (board.credits <= 1e-6) return "no credits";
         if (board.freeCargo() <= 1e-6) return "the hold is full";
+        if (line.onOrder > 1e-6) return "all that fits is on order already";
         return "no free cargo bay for it (each bay holds one commodity)";
     }
 
     static boolean canSell(TradeLine line) {
         return line.stationBuys && line.held > 1e-6;
+    }
+
+    /** Units in the hold, and those still being carried aboard or off: "12 (+40)". */
+    static String formatHeld(TradeLine line) {
+        if (Math.abs(line.onOrder) < 0.05) return formatUnits(line.held);
+        return formatUnits(line.held) + " (" + (line.onOrder > 0 ? "+" : "-") + formatUnits(Math.abs(line.onOrder)) + ")";
     }
 
     static String formatCredits(double credits) {

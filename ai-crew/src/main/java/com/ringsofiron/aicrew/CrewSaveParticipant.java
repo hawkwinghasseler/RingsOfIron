@@ -12,7 +12,7 @@ import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 
 /**
  * Makes crew save and load cleanly. Saves keep each crew member's stats, health, state
- * and tile, and which ship they are aboard. The job in hand is not saved: after a load
+ * and tile, which ship they are aboard and which they work for. The job in hand is not saved: after a load
  * every claimed task, carry and treatment is dropped, and crew pick their jobs afresh
  * from what the hazard scan and health systems post. Behavior trees are not saved
  * either; each AI crew member gets a fresh one. NPC combat pilots get their targets back.
@@ -61,6 +61,8 @@ public class CrewSaveParticipant implements SaveParticipant {
             Entity e = crew.get(i);
             GridPositionComponent p = service.position(e);
             p.ship = p.shipRef == null ? null : p.shipRef.get(engine.getUuidRegistry());
+            CrewMemberComponent c = service.crew(e);
+            c.home = c.homeRef == null ? null : c.homeRef.get(engine.getUuidRegistry());
             if (e.getComponent(PlayerAvatarComponent.class) == null
                     && e.getComponent(BehaviorTreeComponent.class) == null) {
                 CrewFactory.addBrain(service, e);

@@ -151,6 +151,57 @@ class DockingDemoSceneTest {
     }
 
     @Test
+    void theOutpostsHandsCarryWaterAboardAndBackACrateAtATime() {
+        demo.load(DockingDemoScene.Scene.LOADING);
+        String water = DockingDemoScene.WATER;
+        double stocked = demo.held(demo.target, water);
+        assertEquals(0, demo.held(demo.player, water), 1e-6);
+        assertTrue(demo.orderWater(true).startsWith("Ordered"), demo.notice());
+        boolean sawCrate = false, sawHandAboard = false;
+        for (int i = 0; i < 60 * 240 && demo.held(demo.player, water) < DockingDemoScene.LOAD_UNITS - 1e-6; i++) {
+            demo.update(FRAME);
+            for (Entity e : demo.world.crew.crewEntities()) {
+                com.ringsofiron.aicrew.CrewMemberComponent c = demo.world.crew.crew(e);
+                if (c.faction != StationCrew.FACTION) continue;
+                if (c.load != null) sawCrate = true;
+                if (demo.world.crew.position(e).ship == demo.player) sawHandAboard = true;
+            }
+            double aboard = demo.held(demo.player, water);
+            assertEquals(stocked, aboard + demo.held(demo.target, water), 1e-6, "nothing lost or made on the way");
+        }
+        assertEquals(DockingDemoScene.LOAD_UNITS, demo.held(demo.player, water), 1e-6, "all aboard");
+        assertTrue(sawCrate, "carried by hand");
+        assertTrue(sawHandAboard, "the hands walked aboard the corvette with it");
+
+        demo.orderWater(false);
+        for (int i = 0; i < 60 * 240 && demo.held(demo.player, water) > 1e-6; i++) {
+            demo.update(FRAME);
+        }
+        assertEquals(0, demo.held(demo.player, water), 1e-6, "and back again");
+        // Then everyone goes home
+        for (int i = 0; i < 60 * 60; i++) demo.update(FRAME);
+        for (Entity e : demo.world.crew.crewEntities()) {
+            if (demo.world.crew.crew(e).faction != StationCrew.FACTION) continue;
+            assertSame(demo.target, demo.world.crew.position(e).ship, "the hands went home");
+        }
+    }
+
+    @Test
+    void theShipWontUndockWithDockHandsAboard() {
+        demo.load(DockingDemoScene.Scene.LOADING);
+        demo.orderWater(true);
+        for (int i = 0; i < 60 * 120 && demo.world.cargo.visitorsAboard(demo.player) == 0; i++) demo.update(FRAME);
+        assertTrue(demo.world.cargo.visitorsAboard(demo.player) > 0, "a hand came aboard");
+        assertTrue(demo.docking.undock().contains("dock hands are still aboard"));
+        assertSame(demo.target, demo.world.docking.dockedTo(demo.player), "still docked");
+        for (int i = 0; i < 60 * 120 && demo.world.cargo.visitorsAboard(demo.player) > 0; i++) demo.update(FRAME);
+        assertEquals(0, demo.world.cargo.visitorsAboard(demo.player), "they went home");
+        assertTrue(demo.docking.undock().startsWith("Undocked"));
+        double total = demo.held(demo.player, DockingDemoScene.WATER) + demo.held(demo.target, DockingDemoScene.WATER);
+        assertEquals(20, total, 1e-6, "a crate in hand went back, none lost");
+    }
+
+    @Test
     void everySceneLoadsAgainCleanly() {
         for (DockingDemoScene.Scene s : DockingDemoScene.Scene.values()) {
             demo.load(s);

@@ -47,6 +47,8 @@ public final class TaskRules {
                 CrewMemberComponent c = crew.crew(((TreatTask) task).patient);
                 return c != null && c.state == CrewState.UNCONSCIOUS && c.carriedBy == null;
             }
+            case CARRY:
+                return ((CarryTask) task).job.isOpen();
             default:
                 return true;
         }

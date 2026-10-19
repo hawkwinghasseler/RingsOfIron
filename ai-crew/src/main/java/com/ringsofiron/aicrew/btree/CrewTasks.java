@@ -2,6 +2,7 @@ package com.ringsofiron.aicrew.btree;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.ringsofiron.aicrew.CarryTask;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewState;
@@ -9,10 +10,13 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.TreatTask;
+import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.GridRayTraversal;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
@@ -141,7 +145,7 @@ public final class CrewTasks {
             a.crew.task = null;
             ShipTaskBoardComponent board = a.board();
             if (board == null || board.faction != a.crew.faction) return Status.FAILED;
-            CrewTask t = board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(), task -> !a.isIgnoring(task));
+            CrewTask t = board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(), a::mayTake);
             if (t == null || !board.claim(t, a.entity)) return Status.FAILED;
             a.crew.task = t;
             return Status.SUCCEEDED;
@@ -313,15 +317,175 @@ public final class CrewTasks {
     }
 
     // -----------------------------------------------------------------------
+    // Carrying goods
+    // -----------------------------------------------------------------------
+
+    /**
+     * Walks to a bay of the carry task's source craft (across a docked link if need be), lifts a
+     * load off it and takes it in hand. Fails, ending the trip, when nothing more is to go.
+     */
+    public static class PickUpLoad extends CrewLeaf {
+        private float working;
+        private boolean anyBay;
+
+        @Override
+        public void start() {
+            working = 0f;
+            anyBay = false;
+        }
+
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            CarryTask t = (CarryTask) a.crew.task;
+            if (a.crew.load != null) return Status.SUCCEEDED;
+            if (!t.job.isOpen()) return finish(a, t);
+            a.crew.activity = "going for " + t.job.commodity();
+            CrewAgent.Travel go = a.travel(t.from, beside(a, t.from, anyBay ? null : t.job.commodity(), true));
+            if (go == CrewAgent.Travel.UNREACHABLE && !anyBay) {
+                // No way to the bays it is in: work from whichever bay of the hold can be reached
+                anyBay = true;
+                go = a.travel(t.from, beside(a, t.from, null, true));
+            }
+            if (go == CrewAgent.Travel.UNREACHABLE) {
+                a.abandonUnreachable();
+                return Status.FAILED;
+            }
+            if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
+            a.crew.activity = "loading " + t.job.commodity();
+            working += a.dt;
+            if (working < a.crew.def.loadTime) return Status.RUNNING;
+            double units = t.job.take(a.crew.def.carryVolume);
+            if (units <= 0) return finish(a, t);
+            a.crew.load = new CrewMemberComponent.Load(t, units);
+            return Status.SUCCEEDED;
+        }
+
+        /** Nothing (more) to carry: the trip is over. */
+        private Status finish(CrewAgent a, CarryTask t) {
+            ShipTaskBoardComponent board = a.board();
+            if (board != null) board.cancel(t);
+            else t.status = CrewTask.Status.CANCELLED;
+            a.crew.task = null;
+            a.crew.activity = "idle";
+            return Status.FAILED;
+        }
+    }
+
+    /** Carries the load to a bay of the task's destination craft and sets it down there. */
+    public static class DeliverLoad extends CrewLeaf {
+        private float working;
+        private boolean anyBay;
+
+        @Override
+        public void start() {
+            working = 0f;
+            anyBay = false;
+        }
+
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            CarryTask t = (CarryTask) a.crew.task;
+            CrewMemberComponent.Load load = a.crew.load;
+            if (load == null) return Status.FAILED;
+            if (!t.job.isOpen()) {
+                a.service.dropLoad(a.crew);
+                return Status.FAILED;
+            }
+            a.crew.activity = "carrying " + t.job.commodity();
+            CrewAgent.Travel go = a.travel(t.to, beside(a, t.to, anyBay ? null : t.job.commodity(), false));
+            if (go == CrewAgent.Travel.UNREACHABLE && !anyBay) {
+                anyBay = true;
+                go = a.travel(t.to, beside(a, t.to, null, false));
+            }
+            if (go == CrewAgent.Travel.UNREACHABLE) {
+                a.abandonUnreachable();
+                return Status.FAILED;
+            }
+            if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
+            a.crew.activity = "unloading " + t.job.commodity();
+            working += a.dt;
+            if (working < a.crew.def.loadTime) return Status.RUNNING;
+            a.crew.load = null;
+            t.job.deliver(load.units);
+            return Status.SUCCEEDED;
+        }
+    }
+
+    /**
+     * Tiles beside a cargo bay of {@code ship}, open to it, that a carrier works from: beside a hold
+     * (bays touching each other) with a bay holding {@code commodity} to pick it up ({@code source}),
+     * or one with room for it to set it down; a carrier reaches in past the bays nearest the floor.
+     * Any bay if none fits or {@code commodity} is null, and anywhere aboard if the craft has no bays.
+     */
+    static GridPathfinder.TilePredicate beside(CrewAgent a, Entity ship, String commodity, boolean source) {
+        ShipGridComponent grid = a.service.grid(ship);
+        CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
+        GridNavGraph nav = a.service.pathfinder(grid).graph;
+        if (hold == null || hold.bayTileCount() == 0) return nav::isWalkable;
+        int n = hold.bayTileCount();
+        boolean[] open = new boolean[n];
+        boolean any = false;
+        for (int i = 0; i < n; i++) {
+            open[i] = bayFits(hold, i, commodity, source);
+            any |= open[i];
+        }
+        if (!any) java.util.Arrays.fill(open, true);
+        // Spread through touching bays: the whole hold is worked from its edge
+        for (boolean grew = any; grew; ) {
+            grew = false;
+            for (int i = 0; i < n; i++) {
+                if (open[i]) continue;
+                for (int j = 0; j < n && !open[i]; j++) {
+                    if (open[j] && Math.abs(hold.bayX[i] - hold.bayX[j]) + Math.abs(hold.bayY[i] - hold.bayY[j]) == 1) {
+                        open[i] = grew = true;
+                    }
+                }
+            }
+        }
+        return (x, y) -> {
+            if (!nav.isWalkable(x, y)) return false;
+            for (Side side : Side.values()) {
+                int nx = x + side.dx, ny = y + side.dy;
+                for (int i = 0; i < n; i++) {
+                    if (hold.bayX[i] != nx || hold.bayY[i] != ny) continue;
+                    if (open[i] && !grid.isEdgeBlocked(x, y, nx, ny)) return true;
+                }
+            }
+            return false;
+        };
+    }
+
+    private static boolean bayFits(CargoHoldComponent hold, int i, String commodity, boolean source) {
+        if (commodity == null) return true;
+        CargoHoldComponent.CargoStack s = hold.stacks[i];
+        if (source) return s != null && commodity.equals(s.commodity);
+        return s == null || (commodity.equals(s.commodity) && s.volume() < hold.tileVolume - 1e-6);
+    }
+
+    // -----------------------------------------------------------------------
     // Idle
     // -----------------------------------------------------------------------
 
-    /** Stands by. Moves off a tile that is not safe to breathe on. Never finishes. */
+    /**
+     * Stands by. Heads home if aboard another craft, and moves off a tile that is not safe to
+     * breathe on. Never finishes.
+     */
     public static class Idle extends CrewLeaf {
         @Override
         public Status execute() {
             CrewAgent a = agent();
             ShipGridComponent grid = a.grid();
+            Entity home = a.service.homeOf(a.entity);
+            if (home != a.pos.ship || a.pos.crossing != null) {
+                ShipGridComponent homeGrid = a.service.grid(home);
+                GridNavGraph nav = homeGrid == null ? null : a.service.pathfinder(homeGrid).graph;
+                if (nav != null && a.travel(home, nav::isWalkable) == CrewAgent.Travel.GOING) {
+                    a.crew.activity = "heading back";
+                    return Status.RUNNING;
+                }
+            }
             int x = a.pos.tileX(), y = a.pos.tileY();
             if (TaskRules.isSafe(grid, x, y)) {
                 if (!a.pos.isMoving()) a.crew.activity = "idle";
@@ -382,7 +546,7 @@ public final class CrewTasks {
             Entity e = all.get(i);
             if (e == observer) continue;
             CrewMemberComponent c = a.service.crew(e);
-            if (c.faction == a.crew.faction || !c.isConscious()) continue;
+            if (!a.service.hostile(a.crew, c) || !c.isConscious()) continue;
             GridPositionComponent p = a.service.position(e);
             if (p.ship != op.ship) continue;
             float d = Math.abs(p.x - op.x) + Math.abs(p.y - op.y);
@@ -403,6 +567,7 @@ public final class CrewTasks {
                 return "repairing " + (s == null ? "system" : s.type.name().toLowerCase());
             }
             case RESCUE: return "rescuing a casualty";
+            case CARRY: return "carrying " + ((CarryTask) t).job.commodity();
             case TREAT: return "treating a patient";
             default: return t.kind.name().toLowerCase();
         }

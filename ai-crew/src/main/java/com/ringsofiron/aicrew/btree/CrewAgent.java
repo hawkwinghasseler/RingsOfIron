@@ -9,6 +9,7 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
+import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
 
@@ -48,8 +49,59 @@ public class CrewAgent {
         return service.grid(pos.ship);
     }
 
+    /** The task board of the craft this crew member works for, wherever they stand. */
     public ShipTaskBoardComponent board() {
-        return service.board(pos.ship);
+        return service.board(service.homeOf(entity));
+    }
+
+    /** How a {@link #travel} step went. */
+    public enum Travel { ARRIVED, GOING, UNREACHABLE }
+
+    /**
+     * One step toward a tile of {@code ship} that {@code spots} accepts: a path there on this craft,
+     * or to a docked link onto {@code ship} and through it. ARRIVED once standing on such a tile.
+     */
+    public Travel travel(Entity ship, GridPathfinder.TilePredicate spots) {
+        if (pos.crossing != null) return Travel.GOING;
+        GridPathfinder pf = pathfinder();
+        if (pf == null) return Travel.UNREACHABLE;
+        int x = pos.tileX(), y = pos.tileY();
+        if (pos.ship == ship) {
+            if (!pos.isMoving() && pos.walkway == null && spots.test(x, y)) return Travel.ARRIVED;
+            GridNode dest = pos.destination();
+            if (dest != null && pos.isMoving() && !pos.pathBlocked && spots.test(dest.x, dest.y)) return Travel.GOING;
+            if (!pf.nearest(x, y, spots, pathScratch)) return Travel.UNREACHABLE;
+            pos.setPath(pathScratch);
+            return Travel.GOING;
+        }
+        GridLink link = linkTo(ship);
+        if (link == null) return Travel.UNREACHABLE;
+        if (!pos.isMoving() && x == link.x && y == link.y) {
+            pos.crossing = link;
+            return Travel.GOING;
+        }
+        GridNode dest = pos.destination();
+        if (dest != null && pos.isMoving() && !pos.pathBlocked && dest.x == link.x && dest.y == link.y) return Travel.GOING;
+        if (!pf.findPath(x, y, link.x, link.y, pathScratch)) return Travel.UNREACHABLE;
+        pos.setPath(pathScratch);
+        return Travel.GOING;
+    }
+
+    /** The open link from the craft this crew member is aboard straight onto {@code ship} nearest them, or null. */
+    private GridLink linkTo(Entity ship) {
+        ShipGridComponent grid = grid();
+        if (grid == null) return null;
+        GridLink best = null;
+        float bestDist = Float.MAX_VALUE;
+        for (GridLink l : grid.links) {
+            if (l.otherShip != ship || !l.canCross()) continue;
+            float d = Math.abs(l.x + 0.5f - pos.x) + Math.abs(l.y + 0.5f - pos.y);
+            if (d < bestDist) {
+                bestDist = d;
+                best = l;
+            }
+        }
+        return best;
     }
 
     public GridPathfinder pathfinder() {
@@ -75,6 +127,15 @@ public class CrewAgent {
     /** True if an open task on the board suits this crew member. */
     public boolean hasAvailableTask() {
         ShipTaskBoardComponent board = board();
-        return board != null && board.faction == crew.faction && board.best(crew.role, pos.tileX(), pos.tileY(), t -> !isIgnoring(t)) != null;
+        return board != null && board.faction == crew.faction && board.best(crew.role, pos.tileX(), pos.tileY(), this::mayTake) != null;
+    }
+
+    /**
+     * True if this crew member would take {@code task} now: not one they just found unreachable, and
+     * only carrying while away from the craft they work for (other work is done from home).
+     */
+    public boolean mayTake(CrewTask task) {
+        if (isIgnoring(task)) return false;
+        return pos.ship == service.homeOf(entity) || task.kind == CrewTask.Kind.CARRY;
     }
 }

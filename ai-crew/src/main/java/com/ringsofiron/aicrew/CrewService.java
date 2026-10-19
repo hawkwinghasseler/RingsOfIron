@@ -34,6 +34,14 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     private final ComponentMapper<ShipGridComponent> gridM = ComponentMapper.getFor(ShipGridComponent.class);
     private final ComponentMapper<ShipTaskBoardComponent> boardM = ComponentMapper.getFor(ShipTaskBoardComponent.class);
 
+    /** Whether crew of two factions fight. */
+    public interface Hostility {
+        boolean hostile(int a, int b);
+    }
+
+    /** Whether crew of two factions fight on sight; by default any two different factions do. */
+    public Hostility hostility = (a, b) -> a != b;
+
     private final Engine engine;
     private final ImmutableArray<Entity> crewEntities;
     private final ObjectMap<ShipGridComponent, GridPathfinder> pathfinders = new ObjectMap<>();
@@ -75,6 +83,19 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
 
     public ShipTaskBoardComponent board(Entity ship) {
         return ship == null ? null : boardM.get(ship);
+    }
+
+    /** The craft {@code crew} works for: their home, or else the one they are aboard. */
+    public Entity homeOf(Entity crew) {
+        CrewMemberComponent c = crew(crew);
+        if (c != null && c.home != null) return c.home;
+        GridPositionComponent p = position(crew);
+        return p == null ? null : p.ship;
+    }
+
+    /** True if crew members {@code a} and {@code b} are enemies. */
+    public boolean hostile(CrewMemberComponent a, CrewMemberComponent b) {
+        return hostility.hostile(a.faction, b.faction);
     }
 
     /** Drops the cached pathfinders, e.g. after a load replaced every grid. */
@@ -178,17 +199,20 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
         }
     }
 
-    /** Gives the crew member's claimed task back to the board and drops anyone they carry. */
+    /**
+     * Gives the crew member's claimed task back to the board, drops anyone they carry, and lets go
+     * of goods in hand (they go back where they came from).
+     */
     public void releaseTask(Entity e) {
         CrewMemberComponent c = crew(e);
         if (c == null) return;
         drop(e);
+        dropLoad(c);
         if (c.task != null) {
-            GridPositionComponent p = position(e);
-            ShipTaskBoardComponent board = p == null ? null : board(p.ship);
+            // The board may be on another craft (a loader aboard a docked ship): release it directly
             if (c.task.claimedBy == e) {
-                if (board != null) board.release(c.task);
-                else c.task.claimedBy = null;
+                if (c.task.status == CrewTask.Status.CLAIMED) c.task.status = CrewTask.Status.OPEN;
+                c.task.claimedBy = null;
             }
             if (c.task instanceof TreatTask) {
                 CrewMemberComponent patient = crew(((TreatTask) c.task).patient);
@@ -196,6 +220,13 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
             }
             c.task = null;
         }
+    }
+
+    /** The goods in {@code c}'s hands never arrive: their job takes them back. */
+    public void dropLoad(CrewMemberComponent c) {
+        if (c == null || c.load == null) return;
+        c.load.task.job.abandon(c.load.units);
+        c.load = null;
     }
 
     /** {@code carrier} picks up {@code casualty}. */

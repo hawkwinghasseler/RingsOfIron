@@ -8,11 +8,14 @@ import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.macrosim.economy.CommodityCatalog;
+import com.ringsofiron.macrosim.economy.CommodityType;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
@@ -47,7 +50,10 @@ public class DockingDemoScene {
         HUB("Hub with traffic", "A hub has two ports of each size; a hauler is berthed at a Medium one. Ask for"
                 + " clearance (G) and dock at a Small port beside it."),
         WALK("Walk aboard", "Docked at the outpost with clearance and both port doors open. Deck view (V) is on: walk"
-                + " (WASD) through the port onto the station and back; air moves between the two. U undocks once you're home.");
+                + " (WASD) through the port onto the station and back; air moves between the two. U undocks once you're home."),
+        LOADING("Loading cargo", "Docked at the outpost, whose hold is stocked with water and food. L orders "
+                + LOAD_UNITS + " water carried aboard, K sends " + LOAD_UNITS + " back: the outpost's dock hands (orange)"
+                + " carry it across the dock a crate at a time, and it moves from hold to hold as each crate lands.");
 
         public final String title;
         public final String help;
@@ -57,6 +63,11 @@ public class DockingDemoScene {
             this.help = help;
         }
     }
+
+    /** Units the loading scene's keys order carried across. */
+    public static final int LOAD_UNITS = 10;
+    /** The loading scene's goods. */
+    public static final String WATER = "water", FOOD = "food";
 
     /** The approach speed the autopilot holds far out, m/s; it slows as the ports close. */
     static final float AUTOPILOT_SPEED = 1.5f;
@@ -86,7 +97,7 @@ public class DockingDemoScene {
         dispose();
         scene = next;
         autopilot = false;
-        deckView = next == Scene.WALK;
+        deckView = next == Scene.WALK || next == Scene.LOADING;
         notice = next.help;
         world = new GameWorld();
         world.loadContent(assetsDir, assetsDir.resolve("no-mods-here"));
@@ -111,10 +122,12 @@ public class DockingDemoScene {
             case REFUSED:
             case TEAR:
             case WALK:
+            case LOADING:
                 target = station("Outpost Kepler", "station_outpost", next != Scene.REFUSED);
-                boolean docked = next == Scene.TEAR || next == Scene.WALK;
+                boolean docked = next == Scene.TEAR || next == Scene.WALK || next == Scene.LOADING;
                 park(player, 0, target, smallPort(target), docked ? 0f : 25f, docked ? 0f : 3f, docked ? 0f : 12f);
                 if (docked) world.docking.dockInPlace(player, 0, target, smallPort(target));
+                if (next == Scene.LOADING) stock(target);
                 break;
             case HUB:
                 target = station("Highport Hub", "station_hub", true);
@@ -134,6 +147,35 @@ public class DockingDemoScene {
     public void update(float delta) {
         if (autopilot) fly();
         world.update(delta);
+    }
+
+    /**
+     * Orders {@link #LOAD_UNITS} of water carried aboard from the station ({@code aboard}) or back
+     * to it; returns what the scene says about it.
+     */
+    public String orderWater(boolean aboard) {
+        String what = aboard ? "aboard" : "back to the outpost";
+        if (!world.cargo.canCarry(player, target)) notice = "Dock first: the outpost's hands carry cargo only across a dock";
+        else if (world.cargo.order(player, target, WATER, LOAD_UNITS, aboard) > 0)
+            notice = "Ordered " + LOAD_UNITS + " water carried " + what;
+        return notice;
+    }
+
+    /** Units of {@code commodity} in {@code craft}'s hold. */
+    public double held(Entity craft, String commodity) {
+        CargoHoldComponent hold = craft.getComponent(CargoHoldComponent.class);
+        return hold == null ? 0 : hold.amount(commodity);
+    }
+
+    /** The loading scene's outpost hold: water and food, moved between holds without a market. */
+    private void stock(Entity station) {
+        CommodityCatalog catalog = world.macroSim.economy().catalog();
+        world.cargo.setSettlement(new HoldTransfer(catalog));
+        CargoHoldComponent hold = station.getComponent(CargoHoldComponent.class);
+        for (String id : new String[]{WATER, FOOD}) {
+            CommodityType c = catalog.commodity(id);
+            hold.load(id, 20, c.unitVolume, c.unitMass);
+        }
     }
 
     /** The craft the avatar is aboard: the corvette, or whatever it walked onto. */
@@ -173,6 +215,7 @@ public class DockingDemoScene {
                 ChassisDef.class), blueprint, world.engine, name, null);
         station.grantsClearance = grantsClearance;
         e.add(new HudMarkerComponent(name, HudMarkerComponent.Kind.STATION).radius(20f));
+        StationCrew.spawnLoaders(world.crew, e);
         // Holding still in the demo's empty space; in the game this is the station's orbit.
         e.add(new KinematicTransientComponent((t, out) -> {
             out[0] = 0.0;

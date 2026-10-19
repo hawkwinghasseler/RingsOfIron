@@ -12,10 +12,16 @@ public interface TradeProvider {
     /** Fills {@code out} (already cleared). Leave {@link TradeBoard#stationName} empty when not docked. */
     void collect(TradeBoard out);
 
-    /** Buys up to {@code units}; returns the units actually bought (limited by stock, hold and credits). */
+    /**
+     * Buys up to {@code units}; returns the units actually bought (limited by stock, hold and credits),
+     * or, when the board is {@link TradeBoard#carried}, the units ordered carried aboard.
+     */
     double buy(String commodityId, double units);
 
-    /** Sells up to {@code units} from the hold; returns the units actually sold. */
+    /**
+     * Sells up to {@code units} from the hold; returns the units actually sold, or, when the board is
+     * {@link TradeBoard#carried}, the units ordered carried off.
+     */
     double sell(String commodityId, double units);
 
     final class TradeLine {
@@ -28,6 +34,8 @@ public interface TradeProvider {
         /** Credits per unit to buy, and to sell (0 when the station does not buy it). */
         public double buyPrice, sellPrice;
         public boolean stationBuys;
+        /** Units still being carried aboard (positive) or off (negative), already traded for. */
+        public double onOrder;
     }
 
     final class TradeBoard {
@@ -38,6 +46,11 @@ public interface TradeProvider {
         public double cargoUsed, cargoCapacity;
         /** False when the player's ship has no hold (nothing to trade with). */
         public boolean hasHold;
+        /**
+         * True when the station's loaders carry trades across the dock: a buy or sale is an order,
+         * and each load is paid for as it arrives.
+         */
+        public boolean carried;
         public final Array<TradeLine> lines = new Array<>();
         private final Array<TradeLine> pool = new Array<>();
 
@@ -52,7 +65,7 @@ public interface TradeProvider {
             lines.clear();
             stationName = "";
             credits = cargoUsed = cargoCapacity = 0;
-            hasHold = false;
+            hasHold = carried = false;
         }
 
         public boolean isDocked() {

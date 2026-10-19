@@ -188,6 +188,7 @@ public class GameScenario {
         StationComponent station = DockingData.buildStation(world.engine.getEntity(uuid), content.defs,
                 world.engine, name, typeId);
         station.angle = angle;
+        StationCrew.spawnLoaders(world.crew, world.engine.getEntity(uuid));
         return uuid;
     }
 
