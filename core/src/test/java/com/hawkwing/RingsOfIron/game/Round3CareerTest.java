@@ -80,7 +80,6 @@ class Round3CareerTest {
     // ------------------------------------------------------------------ the career
 
     @Test
-    @org.junit.jupiter.api.Disabled("still being finished on the integration branch")
     void aSeededCareerAcrossSeveralWeeks() {
         start(SEED);
         game.beginCareer();
@@ -197,6 +196,16 @@ class Round3CareerTest {
         assertTrue(game.dockAtHighport());
         run(120);
         assertSame(highport, world.docking.dockedTo(game.player));
+
+        // The fight left the bow leaking, and warp is refused while air vents: Highport's yard mends it
+        logVenting("after the fight");
+        double cost = world.yard.repairCost(game.player), paid = credits(), r0 = world.engine.getSimSeconds();
+        log("Yard: %s (quoted %.0f cr).", world.yard.orderRepairs(game.player, highport), cost);
+        assertTrue(runUntil(2 * 3_600f, () -> !world.yard.repairing(game.player)), "the yard finished");
+        log("  repaired in %.1f h for %.0f cr; hull %.2f.", (world.engine.getSimSeconds() - r0) / 3_600, paid - credits(),
+                hull(game.player));
+        logVenting("after repairs");
+        snapshot("repaired");
     }
 
     private void takeAnOperation() {
@@ -475,8 +484,7 @@ class Round3CareerTest {
     private Entity bringIn(String uuid, float dx, float dy) {
         double now = world.macroSim.now();
         StateVector s = world.macroSim.gateway().anchorStateAt(now, new StateVector());
-        String parent = world.universe.uuidOf(world.nav == null ? null : world.universe.parentOf(game.player));
-        world.macroSim.rails().attach(uuid, parent == null ? GameScenario.EARTH : parent,
+        world.macroSim.rails().attach(uuid, world.macroSim.gateway().anchorParentUuid(),
                 s.set(s.x + dx, s.y + dy, s.vx, s.vy), now);
         Entity ship = world.engine.getEntity(uuid);
         for (int i = 0; i < 120 && ship.getComponent(PhysicsBodyComponent.class) == null; i++) world.update(FRAME);
@@ -489,9 +497,23 @@ class Round3CareerTest {
         Entity frame = world.universe.parentOf(b);
         var sa = new com.ringsofiron.orbital.math.StateVector();
         var sb = new com.ringsofiron.orbital.math.StateVector();
-        world.universe.stateInFrame(a, frame, now, sa);
-        world.universe.stateInFrame(b, frame, now, sb);
+        inFrame(a, frame, now, sa);
+        inFrame(b, frame, now, sb);
         return Math.hypot(sa.x - sb.x, sa.y - sb.y);
+    }
+
+    /** A ship in the physics bubble has no orbit of its own: it rides the bubble's anchor (meters off it). */
+    private void inFrame(Entity e, Entity frame, double now, com.ringsofiron.orbital.math.StateVector out) {
+        if (world.universe.orbit(e) != null) {
+            world.universe.stateInFrame(e, frame, now, out);
+            return;
+        }
+        var gateway = world.macroSim.gateway();
+        Entity parent = world.universe.entity(gateway.anchorParentUuid());
+        var p = new com.ringsofiron.orbital.math.StateVector();
+        world.universe.stateInFrame(parent, frame, now, p);
+        StateVector a = gateway.anchorStateAt(now, new StateVector());
+        out.set(a.x + p.x, a.y + p.y, a.vx + p.vx, a.vy + p.vy);
     }
 
     private int partyAboard(Entity ship) {
