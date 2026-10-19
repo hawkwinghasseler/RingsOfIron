@@ -17,7 +17,7 @@ Round 3, category 2. The player can pick a navigation target, see the closest ap
 - The screen readout (`Navigation.readout`) shows the target's name, range and closing or opening speed, and the closest approach with its time and relative speed.
 
 ### Plan to target (`PlayerTransfer`)
-- I (`PLAN_TO_TARGET`) plans with `TransferPlanner` and `RoutePlanner` from the macro sim: Hohmann or phasing around the same body, or out to the Moon. A ship with eccentricity over 0.01 circularizes first and the transfer starts 60 s later. The first burn is at least 300 s away (`LEAD`).
+- ; (`PLAN_TO_TARGET`, I on the navigation branch, moved to ; during integration) plans with `TransferPlanner` and `RoutePlanner` from the macro sim: Hohmann or phasing around the same body, or out to the Moon. A ship with eccentricity over 0.01 circularizes first and the transfer starts 60 s later. The first burn is at least 300 s away (`LEAD`).
 - The plan is a `Proposal` drawn on the orbit map until Enter (`ACCEPT_PLAN`) accepts it, which replaces every planned burn through the new `BurnPlanner.replace`, or Backspace (`DISCARD_PLAN`) throws it away. After accepting, the player edits the burns with the usual burn planner.
 - A leg to another body's station plans only the burn out of the current sphere of influence. Once the ship is in the next one with no burns left, `PlayerTransfer.update` proposes the capture and the rest by itself through `RoutePlanner.afterCrossing` and posts a notice.
 - A target in the bubble is not planned to; the player is told to fly there or order an approach.

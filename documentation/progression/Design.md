@@ -187,7 +187,7 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
 ## Ships for Sale and Prizes (round 3)
 `Shipyard` (core) answers GDD §5's "ship procurement and outfitting": something to spend a career's credits on, and a way to bring a beaten ship home whole. Built on `claude/r3-shipyard-8gjsst`.
 
-- **Where ships are sold:** `[shipyard.<id>]` in `assets/data/shipyard.toml` (`ShipyardDef`) names a faction's yards: every station it owns of the listed `station_types`, and the listed `stations` by name. The Patrol's are any `shipyard` station and, until one is in the world, Highport; the Selene Combine's are Shackleton Ice.
+- **Where ships are sold:** `[shipyard.<id>]` in `assets/data/shipyard.toml` (`ShipyardDef`) names a faction's yards: every station it owns of the listed `station_types`, and the listed `stations` by name. The Patrol's are its `shipyard` stations (Anvil Yards in high Earth orbit; Highport's yard only repairs and refits); the Selene Combine's are Shackleton Ice.
 - **What is sold:** `[ship_sale.<id>]` (`ShipSaleDef`): `ship`, `seller`, `price`, an optional `rank` on the sponsor's ladder, and `standing` with the seller. `DefValidator` warns about unknown ships, factions, ranks and station types.
 
   | Sale | Ship | Seller | Price | Needs |
@@ -208,7 +208,7 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
   - The player tows; they never command two ships.
 - **Saves:** a purchase or a hand-over is done at once, so nothing new is saved: the new ship is saved as the player's ship always is.
 
-`ShipyardTest` buys the gunship as a Lieutenant Commander (credits, cargo and crew across, docked in the old ship's place, saved and loaded), checks the refusals, and flies the light raider, the gunship and the frigate as the player's ship (helm, weapons console, pods for everyone, the player's crew, thrust, abandon ship). `PrizeTowingTest` takes the raider, tows it under full thrust (the pair gains what the combined mass allows and the weld holds), through time warp, and sells or turns it in at Highport.
+`ShipyardTest` buys the gunship as a Lieutenant Commander (credits, cargo and crew across, docked in the old ship's place, saved and loaded), checks the refusals, and flies the light raider, the gunship and the frigate as the player's ship (helm, weapons console, pods for everyone, the player's crew, thrust, abandon ship). `PrizeTowingTest` takes the raider, tows it under full thrust (the pair gains what the combined mass allows and the weld holds), through time warp, and sells or turns it in at Highport (a prize is sold to any station that deals with the player; only ships for sale moved to Anvil Yards).
 
 ## Saves
 - **Save modules:** the career (`"factions"`), contracts (`"contracts"`) and hostile traffic's own state (`"hostile-traffic"`: the next top-up, the counter that names new pirates, an intercept alert holding warp off, the player's opening grace, and each hostile's idle and plunder timers in the bubble).
