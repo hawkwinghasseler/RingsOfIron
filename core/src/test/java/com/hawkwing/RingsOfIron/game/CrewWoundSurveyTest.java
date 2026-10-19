@@ -54,6 +54,8 @@ class CrewWoundSurveyTest {
         float hull;
         int crew, dead, aceCrew, aceAlive;
         final Map<Wound, Integer> wounds = new EnumMap<>(Wound.class);
+        /** What killed each of our dead. */
+        final List<String> causes = new ArrayList<>();
     }
 
     @Test
@@ -63,12 +65,12 @@ class CrewWoundSurveyTest {
         int n = Integer.parseInt(trials);
         List<Trial> all = new ArrayList<>();
         for (String refit : REFITS) for (int i = 0; i < n; i++) all.add(trial(refit, 2026 + i));
-        StringBuilder out = new StringBuilder("| Ace refit | Seed | Result | Our hull | Our crew wounded (light/serious/critical) | Our crew dead | Ace crew alive |\n|---|---|---|---|---|---|---|\n");
+        StringBuilder out = new StringBuilder("| Ace refit | Seed | Result | Our hull | Our crew wounded (light/serious/critical) | Our crew dead | Of | Ace crew alive |\n|---|---|---|---|---|---|---|---|\n");
         for (Trial t : all) {
-            out.append(String.format(Locale.ROOT, "| %s | %d | %s in %.0f s | %.2f | %d/%d/%d | %d of %d | %d of %d |%n",
+            out.append(String.format(Locale.ROOT, "| %s | %d | %s in %.0f s | %.2f | %d/%d/%d | %d of %d | %s | %d of %d |%n",
                     t.refit, t.seed, t.beaten ? "beaten" : t.lost ? "we lost" : "neither", t.seconds, t.hull,
                     t.wounds.getOrDefault(Wound.LIGHT, 0), t.wounds.getOrDefault(Wound.SERIOUS, 0),
-                    t.wounds.getOrDefault(Wound.CRITICAL, 0), t.dead, t.crew, t.aceAlive, t.aceCrew));
+                    t.wounds.getOrDefault(Wound.CRITICAL, 0), t.dead, t.crew, String.join(", ", t.causes), t.aceAlive, t.aceCrew));
         }
         for (String refit : REFITS) {
             int fights = 0, dead = 0, crew = 0, beaten = 0, wounded = 0, aceAlive = 0, aceCrew = 0;
@@ -114,7 +116,8 @@ class CrewWoundSurveyTest {
             assertTrue(PirateAces.promote(world, ship, h, world.macroSim.hostiles().all().values(), Difficulty.of(world), true));
             LoadoutDef def = world.combatDefs.loadouts.get(refit);
             assertNotNull(def, refit);
-            assertTrue(Loadouts.apply(ship, def, world.combatDefs) > 0, "refitted with " + refit);
+            // Promotion may already have fitted it, when the refit is the one its difficulty picks
+            if (!def.id.equals(h.loadout)) assertTrue(Loadouts.apply(ship, def, world.combatDefs) > 0, "refitted with " + refit);
             h.loadout = def.id;
             h.firepower = HostileTraffic.firepower(ship);
             world.docking.undock(game.player);
@@ -145,7 +148,12 @@ class CrewWoundSurveyTest {
             }
             // Ten minutes for the medics (and for critical wounds left untreated to run out)
             run(world, 60 * 60 * 10);
-            for (Entity e : ours) if (!e.getComponent(CrewMemberComponent.class).isAlive()) t.dead++;
+            for (Entity e : ours) {
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                if (c.isAlive()) continue;
+                t.dead++;
+                t.causes.add(String.valueOf(c.lastDamageCause).toLowerCase(Locale.ROOT));
+            }
             t.aceAlive = aboard(world, ship, true);
             return t;
         } finally {
