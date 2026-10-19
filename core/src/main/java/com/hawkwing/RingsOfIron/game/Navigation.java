@@ -157,20 +157,25 @@ public class Navigation extends EntitySystem implements DropOutSource {
     }
 
     /**
-     * The next burn as a direction in the parent body's frame (which the bubble shares), into
-     * {@code out} as {x, y, delta-v}; false with no burn or no orbit.
+     * Every planned burn still to come as the outside view marks it, in time order, into {@code out}
+     * as four floats each: direction x and y (a unit vector in the parent body's frame), delta-v (m/s)
+     * and seconds until it. Each burn after the first is aimed on the orbit the ones before it leave,
+     * as the orbit map draws it. Empty with no burn or no orbit.
      */
-    public boolean nextBurnDirection(double[] out) {
-        ManeuverNodeComponent.Node n = nextBurn();
-        KeplerOrbit k = n == null ? null : orbits.currentConic();
-        if (k == null) return false;
-        burnVector(k, n, out);
-        double dv = Math.hypot(out[0], out[1]);
-        if (dv <= 0) return false;
-        out[0] /= dv;
-        out[1] /= dv;
-        out[2] = dv;
-        return true;
+    public void plannedBurnMarkers(com.badlogic.gdx.utils.FloatArray out) {
+        out.clear();
+        ManeuverNodeComponent m = world.burns.nodes();
+        KeplerOrbit k = m == null || m.nodes.size == 0 ? null : orbits.currentConic();
+        if (k == null) return;
+        double now = world.universe.now();
+        double[] v = new double[2];
+        for (ManeuverNodeComponent.Node n : m.nodes) {
+            if (n.time < now) continue;
+            burnVector(k, n, v);
+            double dv = Math.hypot(v[0], v[1]);
+            if (dv > 0) out.addAll((float) (v[0] / dv), (float) (v[1] / dv), (float) dv, (float) (n.time - now));
+            k = k.withBurn(n.time, n.prograde, n.radial);
+        }
     }
 
     /**
@@ -256,8 +261,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
     }
 
     /**
-     * Propellant, kg, the {@link #returnDeltaV} home takes; infinite when no station can be reached, so
-     * the low-propellant warning sounds.
+     * Propellant, kg, the {@link #returnDeltaV} home takes; infinite when no station can be reached,
+     * when the low-propellant warning falls back on a fifth of the tanks.
      */
     public double returnPropellantKg() {
         Entity ship = world.getPlayer();

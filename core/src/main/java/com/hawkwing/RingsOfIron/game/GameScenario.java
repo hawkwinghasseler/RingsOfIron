@@ -361,13 +361,14 @@ public class GameScenario {
         return dockAt(highport);
     }
 
-    /** Latches the player's first port onto a free port of the same size at {@code stationUuid}, at once. */
+    /** Latches the player's first port onto a free port of the same size at {@code stationUuid}, at once; true as it is when already latched there. */
     public boolean dockAt(String stationUuid) {
         Entity station = world.engine.getEntity(stationUuid);
         if (station == null) return false;
         DockingPortsComponent ports = station.getComponent(DockingPortsComponent.class);
         DockingPortsComponent own = player.getComponent(DockingPortsComponent.class);
         if (ports == null || own == null || own.ports.length == 0) return false;
+        if (world.docking.docked(player, station)) return true;
         MountFootprint.MountSize size = own.ports[0].size;
         for (int i = 0; i < ports.ports.length; i++) {
             DockingPort p = ports.ports[i];

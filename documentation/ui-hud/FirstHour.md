@@ -34,7 +34,7 @@ Round 3, category 1. This branch covers what a new player meets first. The game 
 - The clock restarts after every autosave and every load, so a load never autosaves at once.
 
 ### Warnings (`FlightWarnings`)
-- Propellant below 20% (`LOW_PROPELLANT`) posts a warning once; it is armed again only when the tanks pass 25%. `returnPropellantKg` is the hook for navigation's fuel estimate: when set, low also means below what the trip home needs. Nothing sets it yet.
+- Propellant below 20% (`LOW_PROPELLANT`) posts a warning once; it is armed again only when the tanks pass 25%. `returnPropellantKg` is navigation's estimate of the trip home: since round 6, with a finite estimate low means below 1.25 times what home takes, whatever the share (re-armed at 1.5 times), and the 20% rule applies only without one (Navigation.md).
 - A missile warning is posted whenever the number inbound rises, with the time to impact. On deck a large red "MISSILE WARNING" line also goes up at the top of the screen.
 
 ### Distress beacon and tow (`DistressBeacon`, `Rescue.tow`)
@@ -87,5 +87,4 @@ After the yard, First Play (`FirstPlay`, now nine objectives) asks the player to
 - Deck lights moved to O so the log can have L. Backspace no longer deletes a burn.
 
 ## Not built
-- No system sets `FlightWarnings.returnPropellantKg`, so low propellant is 20% alone until category 2 lands.
 - The brief's "pod-less" case: a ship with no pods that is neither disabled nor below 20% propellant can't call a tow.

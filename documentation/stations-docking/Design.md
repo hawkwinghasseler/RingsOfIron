@@ -114,6 +114,7 @@ Docking permission is not required to dock. Without it:
 - During rails warp, the docked pair goes onto rails as **one body**, and splits back into two welded bodies when the bubble resumes.
 - Each port size has a **break force and break torque**. Going past either tears the collar and damages the hull around the port, and the two craft separate.
 - `DockingSystem.towLocked` lets the game exempt a link from tearing. Core's shipyard sets it for a taken prize latched to the player's ship, so the tow weld never breaks under thrust.
+- `DockingSystem.dockInPlace` latches two ports at once without flying them together (a rescue or tow bringing a ship in, a freighter arriving docked). Latching a port that already holds a latch lets go of the old one first, and latching the same pair again does nothing (round 6): before, the old link kept its weld after the port's records moved on, so undocking left the ship welded to where it had been, as on seed 7's Moon trip.
 - Tolerances, magnet strengths, spring constants and break limits are tuning values to set during the prototype.
 
 ## Representing the Half-Tile Collar

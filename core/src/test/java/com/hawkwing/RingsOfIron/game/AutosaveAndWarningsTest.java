@@ -80,6 +80,28 @@ class AutosaveAndWarningsTest {
     }
 
     @Test
+    void shortOfTheTripHomeIsLowWhateverTheShare() {
+        // Round 6: low means "you can't get home", not a flat fifth of the tanks
+        FlightWarnings w = world.warnings;
+        w.returnPropellantKg = () -> 800;
+        w.checkPropellant(0.9f, 1100);
+        assertNull(world.notices.latest(), "plenty for the trip home");
+        w.checkPropellant(0.6f, 700);
+        assertNotNull(world.notices.latest(), "60% of the tanks, but short of the 800 kg home takes");
+        assertTrue(world.notices.latest().text.contains("short of the 800 kg the trip home takes"), world.notices.latest().text);
+        w.checkPropellant(0.5f, 600);
+        assertEquals(1, world.notices.history().size(), "once");
+        w.checkPropellant(0.9f, 1250);
+        w.checkPropellant(0.65f, 950);
+        assertEquals(2, world.notices.history().size(), "again after a refill past half as much again");
+        assertTrue(world.notices.latest().text.contains("little more than"), world.notices.latest().text);
+        w.returnPropellantKg = () -> Double.POSITIVE_INFINITY;
+        w.checkPropellant(0.9f, 1300);
+        w.checkPropellant(0.5f, 700);
+        assertEquals(2, world.notices.history().size(), "no station in reach: the fifth-of-the-tanks rule");
+    }
+
+    @Test
     void navigationsReturnEstimateDecidesWhetherLowIsLow() {
         game.beginCareer();
         for (int i = 0; i < 120; i++) world.update(1f / 60f);
