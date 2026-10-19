@@ -33,7 +33,8 @@ import java.util.Random;
  *       its stations, and bounties on its ships if the two are at war.</li>
  * </ul>
  * Besides the daily roll, a freighter a pirate robs may leave some of its crew in a pod
- * ({@link #POD_CHANCE}), with a rescue posted for them. Events go in {@link #log()} and saves.
+ * ({@link #POD_CHANCE}), with a rescue posted for them. Events go in {@link #log()} and saves, and
+ * are told to the player through {@link GameWorld#notices}.
  */
 public class WorldEvents implements SaveParticipant, HostileTrafficController.Listener {
     public static final double DAY = 86_400;
@@ -82,8 +83,6 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
     private long rolled = -1;
     private final List<Event> log = new ArrayList<>();
     private final List<Replacement> replacements = new ArrayList<>();
-    /** Event news not yet shown; the screen drains it. */
-    public final List<String> notices = new ArrayList<>();
 
     WorldEvents(GameWorld world) {
         this.world = world;
@@ -112,7 +111,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
             replacements.remove(r);
             if (world.macroSim.station(r.station) == null) continue;
             world.macroSim.addFreighter(r.name, r.capacity, 20_000, r.station);
-            notices.add(r.name + " is back on the lanes, a new hull out of " + stationName(r.station));
+            post(r.name + " is back on the lanes, a new hull out of " + stationName(r.station));
         }
         long day = (long) Math.floor(now / DAY);
         if (rolled < 0) {
@@ -182,7 +181,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
             Contract c = urgentDelivery(from, node, commodity, e.text);
             if (c != null && world.contracts.postEvent(c)) posted++;
         }
-        notices.add(e.text + (posted > 0 ? ": urgent deliveries are posted" : ""));
+        post(e.text + (posted > 0 ? ": urgent deliveries are posted" : ""));
         return true;
     }
 
@@ -242,7 +241,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         c.deadline = world.engine.getSimSeconds() + DAY * RAID_DAYS;
         c.reason = e.text;
         world.contracts.postEvent(c);
-        notices.add(e.text + ": " + c.destinationName + " asks for help");
+        post(e.text + ": " + c.destinationName + " asks for help");
         return true;
     }
 
@@ -287,7 +286,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         if (rescue != null) world.contracts.postEvent(rescue);
         Contract recovery = wreck == null ? null : world.contracts.offerFor(wreck, post, e.text);
         if (recovery != null) world.contracts.postEvent(recovery);
-        notices.add(e.text + ". " + stationName(post) + " posts a rescue" + (recovery == null ? "" : " and a recovery"));
+        post(e.text + ". " + stationName(post) + " posts a rescue" + (recovery == null ? "" : " and a recovery"));
         return true;
     }
 
@@ -342,7 +341,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
                 if (world.contracts.postEvent(c)) posted++;
             }
         }
-        notices.add(e.text + (posted > 0 ? ": the " + s.factions().name(sponsor) + " posts patrols" : ""));
+        post(e.text + (posted > 0 ? ": the " + s.factions().name(sponsor) + " posts patrols" : ""));
         return true;
     }
 
@@ -367,10 +366,16 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
                         + "; some of its crew took to a pod");
         Contract c = world.contracts.offerFor(pod, post, e.text);
         if (c != null) world.contracts.postEvent(c);
-        notices.add(e.text);
+        post(e.text);
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /** Tells the player: a world event is worth noticing, a pod after a robbery is news. */
+    private void post(String text) {
+        world.notices.post(text, text.contains("robbed") || text.contains("back on the lanes") ? NoticeLog.Kind.INFO
+                : NoticeLog.Kind.IMPORTANT);
+    }
 
     private Event record(Kind kind, long day, String station, String commodity, String faction, String text) {
         Event e = new Event();

@@ -177,10 +177,12 @@ public class GameShell implements ApplicationListener {
         return game == null || paused;
     }
 
-    private boolean hudWindowOpen() {
+    /** A HUD window, the traffic map or the game's notice log or controls panel is open: Esc closes it first. */
+    boolean hudWindowOpen() {
         UiHud hud = game.getHud();
         return hud.getTrafficMap().isVisible() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
-                || hud.getConsoleWindow().isOpen();
+                || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen()
+                || hud.getConsoleWindow().isOpen() || game.isOverlayOpen();
     }
 
     @Override
@@ -301,6 +303,7 @@ public class GameShell implements ApplicationListener {
         game = new RingsOfIronGame(assetsDir, modsDir, firstPlay);
         game.setHosted(true);
         game.setSaveSlots(slots);
+        game.setBindings(bindings);
         game.create();
         game.resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         applyAudio();

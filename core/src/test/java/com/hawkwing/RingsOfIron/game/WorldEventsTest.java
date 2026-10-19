@@ -93,7 +93,8 @@ class WorldEventsTest {
             assertEquals(e.text, c.reason);
         }
         assertTrue(posted);
-        assertTrue(world.events.notices.get(0).startsWith(e.text));
+        assertTrue(world.notices.latest().text.startsWith(e.text));
+        assertEquals(NoticeLog.Kind.IMPORTANT, world.notices.latest().kind);
     }
 
     @Test
