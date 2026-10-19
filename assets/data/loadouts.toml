@@ -47,15 +47,16 @@ weapons = ["chaingun_mk2"]
 ace = true
 weight = 2
 
-# A railgun ace kills crews outright (its slugs go clean through), so it only turns up once the
-# game is harder, like the plain sniper
+# A railgun ace kills crews outright (its slugs go clean through: round 5 part 2's survey had it kill
+# 28 of 30 crew even with wounds), and it kites now, so it only turns up once the player flies a
+# gunship (difficulty about 2)
 [loadout.raider_ace_railgun]
 name = "Ace's railgun"
 ship = "raider_light"
 weapons = ["railgun_mk2"]
 ace = true
 weight = 1
-min_difficulty = 1.5
+min_difficulty = 2.0
 
 # Pirate gunship (round 5; round 3 armed the patrols' gunship hull): a Medium mount in the nose,
 # launchers on each beam aft, point defense on each beam forward. Its stock fit is a chaingun and two
@@ -102,12 +103,23 @@ weight = 2
 min_difficulty = 2.0
 
 # An ace's gunship (once the player flies a gunship, PirateAces.gunshipAce)
+# Mostly the 40 mm chaingun, which wears a hull down without killing whole crews; the railgun
+# refit is one in four once the player flies a gunship (an ace's railgun gunship beat a gunship in 3 of
+# 10 fights and killed 1.6 crew a fight; the chaingun one none)
 [loadout.gunship_ace]
 name = "Ace's gunship"
 ship = "gunship_raider"
+weapons = ["chaingun_mk2", "", "", "flak_mk1", "flak_mk1"]
+ace = true
+weight = 3
+
+[loadout.gunship_ace_railgun]
+name = "Ace's railgun gunship"
+ship = "gunship_raider"
 weapons = ["railgun_mk2", "", "", "flak_mk1", "flak_mk1"]
 ace = true
-weight = 2
+weight = 1
+min_difficulty = 2.0
 
 [loadout.gunship_ace_heavy]
 name = "Ace's heavy gunship"
@@ -115,3 +127,4 @@ ship = "gunship_raider"
 weapons = ["railgun_heavy", "", "", "flak_mk1", "flak_mk1"]
 ace = true
 weight = 1
+min_difficulty = 3.0
