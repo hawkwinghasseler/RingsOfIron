@@ -16,6 +16,7 @@ import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
+import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipPartCatalog;
 import com.ringsofiron.interiorgrid.Side;
@@ -1875,6 +1876,45 @@ public class ShipEditor extends ApplicationAdapter {
                 componentChanged(item);
             });
             y -= LINE;
+        }
+        if ("TANK".equals(d.behavior)) {
+            text(x, y, "Holds", Color.LIGHT_GRAY);
+            float fx = x + 120f;
+            String current = d.fluid == null ? Fluid.PROPELLANT.name() : d.fluid;
+            for (Fluid f : Fluid.values()) {
+                final String fn = f.name();
+                fx += button(fx, y, fn.toLowerCase(Locale.ROOT), fn.equals(current), ed ? () -> {
+                    if (fn.equals(d.fluid)) return;
+                    beginEdit();
+                    d.fluid = fn;
+                    componentChanged(item);
+                } : () -> { });
+            }
+            y -= LINE;
+            Fluid fluid = Fluid.valueOf(current);
+            text(x, y, "Capacity, kg (blank for " + TomlNum.of(fluid.capacityPerTile) + " a tile)", Color.LIGHT_GRAY);
+            y -= LINE;
+            for (MountFootprint.MountSize s : MountFootprint.MountSize.values()) {
+                if (!s.exists(kind)) continue;
+                final String sn = s.name();
+                Double kg = d.capacity.get(sn);
+                field(x + 10f, y, "comp-capacity-" + sn, sn, kg == null ? "" : TomlNum.of(kg.floatValue()), ed, v -> {
+                    beginEdit();
+                    if (v.trim().isEmpty()) {
+                        d.capacity.remove(sn);
+                    } else {
+                        Float c = parseFloat(v);
+                        if (c == null || c <= 0) {
+                            undo.pop();
+                            say("Capacity is a positive number of kilograms");
+                            return;
+                        }
+                        d.capacity.put(sn, (double) c);
+                    }
+                    componentChanged(item);
+                });
+                y -= LINE;
+            }
         }
         return y;
     }

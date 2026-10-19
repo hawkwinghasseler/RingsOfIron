@@ -34,4 +34,8 @@ public class ShipComponentDef {
     public Map<String, Double> powerOutput = new LinkedHashMap<>();
     /** LIFE_SUPPORT: multiplies scrubbing, air and oxygen supply. */
     public float throughput = 1f;
+    /** TANK: what it holds: OXYGEN, NITROGEN or PROPELLANT (the default). */
+    public String fluid;
+    /** TANK: kilograms it holds, by mount size. Sizes left out hold the fluid's standard amount a tile. */
+    public Map<String, Double> capacity = new LinkedHashMap<>();
 }

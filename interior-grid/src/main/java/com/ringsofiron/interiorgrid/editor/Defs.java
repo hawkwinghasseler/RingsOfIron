@@ -35,11 +35,11 @@ public final class Defs {
 
     /** Every key a chassis section can have, so a rewrite drops the ones no longer used. */
     public static final Set<String> CHASSIS_KEYS = new HashSet<>(Arrays.asList("name", "station", "tile_size",
-            "origin_x", "origin_y", "rows", "mounts", "edge_walls", "edge_conduits", "hull_pieces", "coverings", "ports", "lights"));
+            "origin_x", "origin_y", "rows", "mounts", "edge_walls", "edge_conduits", "pipes", "hull_pieces", "coverings", "ports", "lights"));
     public static final Set<String> TILE_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "base",
             "weight_class", "material", "covering", "color"));
     public static final Set<String> COMPONENT_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "behavior",
-            "sizes", "color", "power_output", "throughput"));
+            "sizes", "color", "power_output", "throughput", "fluid", "capacity"));
 
     public static List<Entry> chassis(ChassisDef d) {
         List<Entry> out = new ArrayList<>();
@@ -82,6 +82,14 @@ public final class Defs {
                 conduits.add(table("x", Integer.toString(c.x), "y", Integer.toString(c.y), "side", str(c.side)));
             }
             out.add(new Entry("edge_conduits", multiLineArray(conduits)));
+        }
+        if (!d.pipes.isEmpty()) {
+            List<String> pipes = new ArrayList<>();
+            for (ChassisDef.Pipe p : d.pipes) {
+                pipes.add(p.side == null ? table("x", Integer.toString(p.x), "y", Integer.toString(p.y))
+                        : table("x", Integer.toString(p.x), "y", Integer.toString(p.y), "side", str(p.side)));
+            }
+            out.add(new Entry("pipes", multiLineArray(pipes)));
         }
         if (!d.hullPieces.isEmpty()) {
             List<String> pieces = new ArrayList<>();
@@ -151,23 +159,32 @@ public final class Defs {
         }
         if (d.color != null) out.add(new Entry("color", str(d.color)));
         if ("REACTOR".equals(d.behavior) && !d.powerOutput.isEmpty()) {
-            List<String> kv = new ArrayList<>();
-            for (String size : new String[]{"S", "M", "L", "XL"}) {
-                Double w = d.powerOutput.get(size);
-                if (w != null) {
-                    kv.add(size);
-                    kv.add(num(w));
-                }
-            }
-            for (Map.Entry<String, Double> e : d.powerOutput.entrySet()) {
-                if (!kv.contains(e.getKey())) {
-                    kv.add(e.getKey());
-                    kv.add(num(e.getValue()));
-                }
-            }
-            out.add(new Entry("power_output", table(kv.toArray(new String[0]))));
+            out.add(new Entry("power_output", sizeTable(d.powerOutput)));
         }
         if ("LIFE_SUPPORT".equals(d.behavior) && d.throughput != 1f) out.add(new Entry("throughput", num(d.throughput)));
+        if ("TANK".equals(d.behavior)) {
+            out.add(new Entry("fluid", str(d.fluid == null ? "PROPELLANT" : d.fluid)));
+            if (!d.capacity.isEmpty()) out.add(new Entry("capacity", sizeTable(d.capacity)));
+        }
         return out;
+    }
+
+    /** A by-size table such as {@code { S = 1.0, M = 2.0 }}, sizes in order and any others after. */
+    private static String sizeTable(Map<String, Double> bySize) {
+        List<String> kv = new ArrayList<>();
+        for (String size : new String[]{"S", "M", "L", "XL"}) {
+            Double w = bySize.get(size);
+            if (w != null) {
+                kv.add(size);
+                kv.add(num(w));
+            }
+        }
+        for (Map.Entry<String, Double> e : bySize.entrySet()) {
+            if (!kv.contains(e.getKey())) {
+                kv.add(e.getKey());
+                kv.add(num(e.getValue()));
+            }
+        }
+        return table(kv.toArray(new String[0]));
     }
 }

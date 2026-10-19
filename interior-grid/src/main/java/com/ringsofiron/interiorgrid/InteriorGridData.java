@@ -112,6 +112,10 @@ public final class InteriorGridData {
                     WeightClass.valueOf(w.weightClass), w.material, w.bulkhead));
         }
         for (ChassisDef.EdgeConduit c : def.edgeConduits) bp.edgeConduit(c.x, c.y, Side.valueOf(c.side));
+        for (ChassisDef.Pipe p : def.pipes) {
+            if (p.side == null) bp.pipe(p.x, p.y);
+            else bp.pipe(p.x, p.y, Side.valueOf(p.side));
+        }
         for (ChassisDef.HullPiece p : def.hullPieces) {
             bp.hullPiece(new HullPiece(HullPiece.Shape.valueOf(p.shape), p.x, p.y, p.width, p.height, p.rotation,
                     WeightClass.valueOf(p.weightClass), p.material));
