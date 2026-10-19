@@ -1,18 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="148.48" height="112.64" viewBox="-107.52 -56.32 148.48 112.64">
+<svg xmlns="http://www.w3.org/2000/svg" width="167.04" height="126.72" viewBox="-120.96 -63.36 167.04 126.72">
   <title>engine_m: pivot on the hull's engine mount socket, nozzle toward -x, burning, unpowered</title>
   <defs><radialGradient id="engine_m_throat"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#9fd8ff" stop-opacity="0.9"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></radialGradient></defs>
   <g id="base">
-    <polygon points="-8.19,-30.72 -94.21,-51.2 -94.21,51.2 -8.19,30.72" fill="#373f4b" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
-    <line x1="-34" y1="-35.36" x2="-34" y2="35.36" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
-    <line x1="-55.5" y1="-40.48" x2="-55.5" y2="40.48" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
-    <line x1="-77" y1="-45.6" x2="-77" y2="45.6" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
-    <line x1="-10.24" y1="-29.7" x2="-92.16" y2="-49.15" stroke="#7d8898" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
-    <path d="M-94.21,-51.2 C-104.45,-30.72 -104.45,30.72 -94.21,51.2" fill="#14181e" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="0" cy="0" r="32.77" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <circle cx="0" cy="0" r="20.48" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
-    <circle cx="18.83" cy="18.83" r="1.4" fill="#7d8898" opacity="0.9"/>
-    <circle cx="-18.83" cy="18.83" r="1.4" fill="#7d8898" opacity="0.9"/>
-    <circle cx="-18.83" cy="-18.83" r="1.4" fill="#7d8898" opacity="0.9"/>
-    <circle cx="18.83" cy="-18.83" r="1.4" fill="#7d8898" opacity="0.9"/>
+    <polygon points="-9.22,-34.56 -105.98,-57.6 -105.98,57.6 -9.22,34.56" fill="#373f4b" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
+    <line x1="-38.25" y1="-39.97" x2="-38.25" y2="39.97" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-62.44" y1="-45.73" x2="-62.44" y2="45.73" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-86.63" y1="-51.49" x2="-86.63" y2="51.49" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-11.52" y1="-33.41" x2="-103.68" y2="-55.3" stroke="#7d8898" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+    <path d="M-105.98,-57.6 C-117.5,-34.56 -117.5,34.56 -105.98,57.6" fill="#14181e" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="36.86" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <circle cx="0" cy="0" r="23.04" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="21.18" cy="21.18" r="1.4" fill="#7d8898" opacity="0.9"/>
+    <circle cx="-21.18" cy="21.18" r="1.4" fill="#7d8898" opacity="0.9"/>
+    <circle cx="-21.18" cy="-21.18" r="1.4" fill="#7d8898" opacity="0.9"/>
+    <circle cx="21.18" cy="-21.18" r="1.4" fill="#7d8898" opacity="0.9"/>
   </g>
 </svg>

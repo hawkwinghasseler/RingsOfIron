@@ -19,6 +19,7 @@ public class SubsystemComponent implements Component {
         WEAPONS(MountFootprint.MountKind.AUXILIARY),        // Weapon targeting console. Requires power.
         CARGO(MountFootprint.MountKind.AUXILIARY),          // Passive storage - no power requirement.
         AIRLOCK(MountFootprint.MountKind.AUXILIARY),        // Can be opened to space. Requires power to cycle.
+        ENGINE(MountFootprint.MountKind.AUXILIARY),         // Main engine; its nozzle faces +y at rotation 0 (-x at 1). Requires power.
         DOCKING_PORT(MountFootprint.MountKind.PORT);        // Airlock in the hull edge with a latch collar. Arming needs power.
 
         /** The kind of mount this system installs into. */

@@ -257,8 +257,13 @@ public final class ArtNames {
         return chassisId == null ? null : "hulls/" + chassisId;
     }
 
-    /** Engine sizes the pack draws: {@code s} fits the engine mounts on today's hulls. */
+    /** The engine drawn in the engine mounts of a hull with no engine systems. */
     public static final String ENGINE_SIZE = "s";
+
+    /** The exterior engine and exhaust size for an engine system's slot. */
+    public static String engineSize(MountFootprint.MountSize size) {
+        return size.name().toLowerCase(Locale.ROOT);
+    }
 
     /** An engine bolted into a hull's engine mount, its throat hot while it burns. */
     public static String[] engine(String size, boolean burning) {

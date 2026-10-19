@@ -183,6 +183,7 @@ public class ShipPartCatalog {
         builtInComponent(c, "weapons", "Weapons console", 'W', SubsystemComponent.SubsystemType.WEAPONS, 0xc06ad0);
         builtInComponent(c, "cargo", "Cargo bay", 'C', SubsystemComponent.SubsystemType.CARGO, 0xa08050);
         builtInComponent(c, "airlock", "Airlock", 'A', SubsystemComponent.SubsystemType.AIRLOCK, 0x50c0c0);
+        builtInComponent(c, "engine", "Engine", 'E', SubsystemComponent.SubsystemType.ENGINE, 0x6aa8e8);
         builtInComponent(c, "docking_port", "Docking port", 'D', SubsystemComponent.SubsystemType.DOCKING_PORT, 0xe0e0e0);
         return c;
     }

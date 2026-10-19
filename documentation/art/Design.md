@@ -108,9 +108,12 @@ A ship or station hull is built on its chassis grid: every tile of the layout is
 Parts of the hull polygon past the grid (the corvette's bow) are drawn under the grid. Ships carry engine mounts on the aft (-x) edge, one for every three rows; the engines themselves are separate art (below). Navigation lights mark the corners: red to port (+y), green to starboard.
 
 ## Engines
-`engines/engine_<size>.svg`, size `s`, `m` or `l`, is a main engine seen from above: mounting plate, gimbal, combustion chamber and a bell nozzle pointing aft (-x). Its origin is the mount socket on the hull's aft edge, so it is drawn at an engine mount with no offset. `_unpowered` leaves out the glow in the throat.
+The engine is a component (`E`, behavior `ENGINE`) in the rectangular auxiliary slots, so it comes in the same four sizes: S 1x2, M 2x3, L 3x7 and XL 5x12. It has two kinds of art.
 
-`engines/exhaust_<size>.svg` is the plume behind it while it burns, with its origin at the nozzle exit and the flame running toward -x; it is all emissive and tagged `data-light="glow"`. The game draws `engine_s` at each mount after the hull, and `exhaust_s` in place of `hulls/thruster_plume` while the main engine burns.
+- **Inside**, `components/engine_<size>.svg` is the engine room filling the slot, with the nozzle toward +y at rotation 0: the bell running out through the hull, the combustion chamber on its gimbal struts, the injector head, turbopumps and the fuel (amber) and oxidizer (blue) feeds from the far end. L and XL add propellant tanks either side and M and up an engineer's console. It has the usual `_unpowered`, `_damaged` and `_destroyed` states. A slot laid along x in the chassis rows gets rotation 1, so its nozzle faces aft (-x).
+- **Outside**, `engines/engine_<size>.svg` is the engine seen from above: gimbal housing, cooling-banded bell and the hot throat, as wide as nine tenths of the slot's short side and pointing -x. Its origin is the socket, where it meets the hull. `_unpowered` leaves out the glow in the throat. `engines/exhaust_<size>.svg` is the plume behind it while it burns, all emissive and tagged `data-light="glow"`, scaled along x with the throttle.
+
+The game draws the outside engine of each engine system on the hull's outer edge past the end of its slot that the nozzle faces, looking out through the walls behind it, turned to face the same way. An engine whose nozzle faces into the ship has no outside art. A craft with no engine systems keeps a small engine (`engine_s`) in each engine mount its hull art draws, with `exhaust_s` in place of `hulls/thruster_plume`.
 
 ## Style
 Top-down, orthographic, flat-shaded vector art with dark outlines. Light comes from the top-left: a lighter line along the top and left inside edges of a raised part, a darker one along the bottom and right. No perspective, no drop shadows outside a footprint, so tiles butt together cleanly.
@@ -160,11 +163,11 @@ File names are lowercase `snake_case` and start with the id in data, so code can
 | `interactive/` | the object; levels as a number suffix | `fire_extinguisher`, `cargo_stack_2` |
 | `turrets/` | the weapon id in `weapons.toml` | `railgun_mk1`, `harpoon_launcher` |
 | `hulls/` | the chassis id in `chassis.toml` | `corvette`, `station_hub`, `thruster_plume` |
-| `engines/` | `engine_<size>`, `exhaust_<size>`, size `s`, `m` or `l` | `engine_m`, `engine_l_unpowered`, `exhaust_s` |
+| `engines/` | `engine_<size>`, `exhaust_<size>`, size `s`, `m`, `l` or `xl` (the engine component's slot size) | `engine_m`, `engine_xl_unpowered`, `exhaust_s` |
 | `crew/` | `crew_<who>`, holding a crate as `_carrying` | `crew_ship`, `crew_station_carrying`, `crew_player` |
 | `projectiles/` | the projectile | `railgun_slug`, `autocannon_round`, `missile`, `decoy_flare`, `harpoon` |
 
-Tile ids are the ones in `tiles.toml`: `floor` (`.`), `conduit` (`+`), `hull` (`#`, medium), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`), `armor_light`/`armor_medium`/`armor_heavy` (`4`/`5`/`6`, composite armor), `internal_wall` (`I`); `void` has no art. Each tile type names its art with an `art` key in `tiles.toml` (`art = "walls/composite_armor_heavy"`): a floor's full region, or a wall's family that the join suffix is added to. Without one, the art is found from the tile's id, then its material and weight. Component ids are the ones in `components.toml`: `reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `docking_port`. A new component made in data (say `fusion_core` with behavior `REACTOR`) gets its own `fusion_core_<size>.svg`; until it has one, code can fall back to the art of its behavior's built-in component.
+Tile ids are the ones in `tiles.toml`: `floor` (`.`), `conduit` (`+`), `hull` (`#`, medium), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`), `armor_light`/`armor_medium`/`armor_heavy` (`4`/`5`/`6`, composite armor), `internal_wall` (`I`); `void` has no art. Each tile type names its art with an `art` key in `tiles.toml` (`art = "walls/composite_armor_heavy"`): a floor's full region, or a wall's family that the join suffix is added to. Without one, the art is found from the tile's id, then its material and weight. Component ids are the ones in `components.toml`: `reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `engine`, `docking_port`. A new component made in data (say `fusion_core` with behavior `REACTOR`) gets its own `fusion_core_<size>.svg`; until it has one, code can fall back to the art of its behavior's built-in component.
 
 In the game every file is a region of one texture atlas, named by its folder and file name without the extension: `tiles/floor`, `components/reactor_xl`, `hulls/corvette`. `assets.toml` names the atlas once, as `atlas_art`, so a mod can swap the whole pack by overriding that key.
 
@@ -210,8 +213,8 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 - **Tiles (7):** floor, conduit and conduit arm (powered and unpowered), carpet covering, dock walkway.
 - **Walls (149):** `hull`, `hull_light`, `hull_medium`, `hull_heavy`, composite armor light, medium and heavy, and `internal_wall` in all 16 join patterns, and 1x1, 1x2 and 2x1 wedges for each weight of both materials.
 - **Edges (146):** edge wall segments (horizontal and vertical) and 15 joints for each weight of hull steel and composite armor; bulkhead doors sealed and open, powered and unpowered, both orientations; edge conduit segments, 15 joints and the tap, powered and unpowered.
-- **Components (188):** reactor, shield emitter and turret mount (S-XL); helm, weapons console, life support, cargo bay and airlock (S-XL); docking port S-L sealed and open, and the collar for each size; with an unpowered variant of each powered one, and damaged and destroyed states of each.
-- **Engines (9):** main engine S, M and L, powered and unpowered, and an exhaust plume for each.
+- **Components (208):** reactor, shield emitter and turret mount (S-XL); helm, weapons console, life support, cargo bay, airlock and engine (S-XL); docking port S-L sealed and open, and the collar for each size; with an unpowered variant of each powered one, and damaged and destroyed states of each.
+- **Engines (12):** main engine S, M, L and XL seen from outside, powered and unpowered, and an exhaust plume for each. The engine rooms inside are with the components.
 - **Effects (14):** fire small, medium and large, scorch, breach, light and heavy damage, bulkhead seal, explosion (one frame, and four frames `explosion_1` to `_4`), laser beam.
 - **Decor (18):** vent grate, floor hatch, pipe run, pipe valve, cable tray, wall light, hazard stripe, floor arrow, small and large crates, barrel, locker, bunk, table, mess table, chair, plant.
 - **Interactive (14):** fire extinguisher, bulkhead panel, breaker, terminal, emergency locker, repair kit, med bed, cargo stacks at three levels.
@@ -221,6 +224,6 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 - **Projectiles (5):** railgun slug, autocannon round with tracer, missile, decoy flare, harpoon.
 
 ## Open Questions
-- Engines come in three sizes, but the game draws `engine_s` on every craft; which size a hull carries is not in `chassis.toml` yet.
+- No chassis in `chassis.toml` has engine systems yet, so today's ships still show the small engines in their hull's engine mounts. Engines don't set thrust either: `max_thrust` in `ships.toml` still does.
 - Walls more than one tile thick show a small notch at inner corners; the 47-tile blob set would remove it if thick walls become common.
 - Hull steel and composite armor are the only materials with art. New materials need their own look decided before they get files.

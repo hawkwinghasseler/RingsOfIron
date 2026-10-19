@@ -117,10 +117,12 @@ class ArtNamesTest {
     }
 
     @Test
-    void enginesAndExhaustHaveArt() {
-        for (String size : new String[]{"s", "m", "l"}) {
+    void everyEngineSlotSizeHasEngineAndExhaustArt() {
+        for (MountFootprint.MountSize slot : MountFootprint.MountSize.values()) {
+            String size = ArtNames.engineSize(slot);
             for (boolean burning : new boolean[]{true, false}) assertArt(ArtNames.engine(size, burning)[0]);
             assertArt(ArtNames.exhaust(size));
+            assertArt(ArtNames.component(null, SubsystemComponent.SubsystemType.ENGINE, slot, null, false)[0]);
         }
         assertArt(ArtNames.exhaust(ArtNames.ENGINE_SIZE));
     }
