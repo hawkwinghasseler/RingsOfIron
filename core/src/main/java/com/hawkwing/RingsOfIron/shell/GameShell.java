@@ -187,6 +187,7 @@ public class GameShell implements ApplicationListener {
         UiHud hud = game.getHud();
         return hud.getTrafficMap().isVisible() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
                 || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getCrewWindow().isOpen()
+                || hud.getShipyardWindow().isOpen()
                 || hud.getConsoleWindow().isOpen() || game.isOverlayOpen();
     }
 

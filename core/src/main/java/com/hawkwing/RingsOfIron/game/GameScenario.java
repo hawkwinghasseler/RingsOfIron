@@ -294,6 +294,13 @@ public class GameScenario {
                 if (e.getComponent(PhysicsBodyComponent.class) != null) contacts.add(e);
             }
         });
+        // A ship bought at a yard is the player's, crewed and seated as a rescue leaves it; a prize handed over is gone
+        world.shipyard.deals.add((signal, deal) -> {
+            contacts.removeValue(deal.gone, true);
+            if (deal.newShip == null) return;
+            player = deal.newShip;
+            seatAtHelm();
+        });
         // Pirates lurk by every station; the sponsor patrols Earth's stations, Selene guards the Moon's
         world.hostiles.extraLurk = pirateBase;
         world.hostiles.start(lurks(), present(depot, highport, shipyard),

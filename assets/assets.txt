@@ -478,6 +478,7 @@ art/engines/exhaust_s.svg
 art/engines/exhaust_xl.svg
 art/hulls/corvette.svg
 art/hulls/freighter.svg
+art/hulls/frigate.svg
 art/hulls/gunship.svg
 art/hulls/raider.svg
 art/hulls/station_hub.svg
@@ -690,6 +691,7 @@ data/loadouts.toml
 data/materials.toml
 data/operations.toml
 data/ships.toml
+data/shipyard.toml
 data/tiles.toml
 data/weapons.toml
 libgdx.png

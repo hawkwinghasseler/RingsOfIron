@@ -196,6 +196,8 @@ public class GameWorld implements Disposable {
     public final Boarding boarding;
     /** Taken ships stripped for parts, and their cargo carried off. */
     public final Salvage salvage;
+    /** Ship markets at faction yards, and prizes towed home (round 3). */
+    public final Shipyard shipyard;
     /** How carried cargo is settled: the market's, plus salvage's between ships and parts sold. */
     public final SalvageSettlement cargoSettlement;
     /** The player's crew: experience, morale and wages. */
@@ -426,6 +428,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(boarding);
         salvage = new Salvage(docking, crew, boarding, cargo, engine.getUuidRegistry(), combatDefs);
         engine.addSystem(salvage);
+        // Ships bought at faction yards, and taken ships towed home as prizes
+        shipyard = new Shipyard(this);
+        engine.addSystem(shipyard);
 
         // audio-spatial
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
