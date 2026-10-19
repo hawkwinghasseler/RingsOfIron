@@ -7,6 +7,11 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.List;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
+import com.badlogic.gdx.scenes.scene2d.ui.SelectBox;
+import com.badlogic.gdx.scenes.scene2d.ui.Slider;
+import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Window;
@@ -18,7 +23,8 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
  * widgets only look styles up by the names defined here.
  *
  * Style names: Label "default", "title", "dim", "alert", "warn", "prompt"; Window "default";
- * TextButton "default"; CheckBox "default"; drawables "white", "panel", "panel-border", "prompt-bg".
+ * TextButton "default", "menu" (wide, for the game's menus); CheckBox "default"; Slider "default-horizontal";
+ * TextField, SelectBox, List and ScrollPane "default"; drawables "white", "panel", "panel-border", "prompt-bg".
  */
 public final class HudSkin {
     public static final Color HUD_CYAN = new Color(0.45f, 0.85f, 1f, 1f);
@@ -75,6 +81,46 @@ public final class HudSkin {
         boxOn.setMinWidth(14f);
         boxOn.setMinHeight(14f);
         skin.add("default", new CheckBox.CheckBoxStyle(boxOff, boxOn, font, Color.WHITE));
+
+        // The game's menus and settings
+        TextButton.TextButtonStyle menu = new TextButton.TextButtonStyle(button);
+        menu.disabledFontColor = HUD_DIM;
+        menu.disabled = skin.newDrawable("white", new Color(0.06f, 0.1f, 0.14f, 0.9f));
+        skin.add("menu", menu);
+
+        Drawable track = skin.newDrawable("white", new Color(0.1f, 0.2f, 0.3f, 1f));
+        track.setMinHeight(6f);
+        Drawable knob = skin.newDrawable("white", HUD_CYAN);
+        knob.setMinWidth(10f);
+        knob.setMinHeight(16f);
+        Slider.SliderStyle slider = new Slider.SliderStyle(track, knob);
+        Drawable filled = skin.newDrawable("white", new Color(HUD_CYAN.r, HUD_CYAN.g, HUD_CYAN.b, 0.5f));
+        filled.setMinHeight(6f);
+        slider.knobBefore = filled;
+        skin.add("default-horizontal", slider);
+
+        Drawable field = skin.newDrawable("white", new Color(0.05f, 0.1f, 0.16f, 1f));
+        field.setLeftWidth(6f);
+        field.setRightWidth(6f);
+        field.setMinHeight(24f);
+        Drawable cursor = skin.newDrawable("white", HUD_CYAN);
+        cursor.setMinWidth(2f);
+        Drawable selection = skin.newDrawable("white", new Color(HUD_CYAN.r, HUD_CYAN.g, HUD_CYAN.b, 0.4f));
+        skin.add("default", new TextField.TextFieldStyle(font, Color.WHITE, cursor, selection, field));
+
+        Drawable listBg = skin.newDrawable("white", new Color(0.03f, 0.07f, 0.12f, 0.97f));
+        List.ListStyle list = new List.ListStyle(font, Color.WHITE, HUD_DIM, selection);
+        list.background = listBg;
+        skin.add("default", list);
+        ScrollPane.ScrollPaneStyle scroll = new ScrollPane.ScrollPaneStyle();
+        scroll.vScrollKnob = skin.newDrawable("white", HUD_DIM);
+        scroll.vScrollKnob.setMinWidth(6f);
+        skin.add("default", scroll);
+        Drawable box = skin.newDrawable("white", new Color(0.1f, 0.2f, 0.3f, 0.9f));
+        box.setLeftWidth(6f);
+        box.setRightWidth(6f);
+        box.setMinHeight(24f);
+        skin.add("default", new SelectBox.SelectBoxStyle(font, Color.WHITE, box, scroll, list));
 
         return skin;
     }

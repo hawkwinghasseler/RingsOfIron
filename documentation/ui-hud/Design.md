@@ -74,6 +74,9 @@ Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. C
 | `ThreatOverlay` | Missiles over the exterior view: dashed predicted paths (red incoming, cyan yours, amber others), a cross where an incoming one meets you, edge arrows with seconds to impact, a blinking MISSILE WARNING banner under 5 s, and a ring ("PD KILL") where point defense hits a missile |
 | `TradeWindow` | Station market (T while in trading range, which a hint under the clock announces): credits, hold volume (m3), and per commodity the stock, buy and sell prices, what you carry, and Buy 1 / Buy 10 / Sell 1 / Sell all |
 | `TrafficMap` | Full-screen map (M) of stations and haulers on rails around the body you orbit, with range rings; the wheel zooms toward you |
+| `ShipGauges` | Under the flight readout: propellant (with kg), structure, power (store charge and reactor output) and oxygen bars, amber below 50% and red below 25%. With no oxygen tanks the oxygen bar shows the air in the worst room |
+| `RadarScope`, `RadarSystem` | Beside the flight readout: every marked contact around the ship, north up like the view, tinted like its marker, the locked target ringed, the ship's heading as a line. Contacts out of range sit hollow on the rim. A click cycles 2, 10, 50 and 250 km |
+| `NavMarkers`, `NavMarkerSystem` | Prograde (circle with ticks) and retrograde (circle with a cross) 70 px from the ship in the exterior view, along the ship's orbital velocity: its velocity in the bubble plus the bubble's own, the same velocity the speed readout shows |
 
 ### Interfaces other modules fill in
 
@@ -84,6 +87,30 @@ These live in `com.ringsofiron.uihud.providers`. The adapters that implement the
 - `InteractorProvider` (ai-crew): the avatar's ship and fractional tile position.
 - `TrafficMapProvider` (macro-sim): the frame body, its moons, stations, haulers with a one-line status, and the player. The game fills it from `RailsModel.snapshot()` in `RailsTrafficMap`.
 - `ThreatProvider` (combat-sys): each missile's position, path end, side and time to impact; `UiHud.flashIntercept` takes combat-sys's intercept events. The game fills it in `CombatThreats`.
+- `ShipStatusProvider` (interior-grid): the player ship's propellant and oxygen tank levels, hull integrity, power store charge and reactor output, and the worst room's pressure. The game fills it in `PlayerShipStatus`.
 - `TradeProvider` (macro-sim): the station in range, its board, the player's credits and hold, and buy/sell. The game fills it from `MacroSimulation.dockableStation` and `market()` in `MarketTrade`, using the player ship's `TraderComponent`.
 - `ViewModeController.Listener`: the wiring layer bridges view-mode changes to audio-spatial's listener mode.
 - `UiHud.flashHullHit(tileX, tileY)`: call from combat-sys's hull-hit event to flash the hit on the minimap.
+
+## Game shell
+
+![Main menu](main-menu.png)
+
+![Gauges, radar and the prograde markers in flight](gauges-radar.png)
+
+![Settings](settings.png)
+
+The game starts at a main menu (`com.hawkwing.RingsOfIron.shell.GameShell` in core, built with this module's skin): Continue (the newest save), New game, First play (guided), Load, Settings and Quit. In the game, Esc closes an open map, market, yard or console first; with none open it pauses the game under a menu of Resume, Save, Load, Settings, Quit to menu and Quit game. `RingsOfIronGame` runs inside the shell unchanged apart from not quitting on Esc and standing still while paused. `gradlew :lwjgl3:runFirstPlay` still starts the guided first play directly.
+
+| Class | Role |
+|---|---|
+| `GameShell` | Owns the menus and the running game; creates it on New game or Load, disposes it on Quit to menu |
+| `ShellMenus` | The main and pause menus, the load list, the save panel and the settings window |
+| `SaveSlots`, `SaveSummary` | Named saves in `saves/` (under `assets/` when run from Gradle). Each is core-engine's save as it was, `<name>.json`, with `<name>.meta.json` beside it holding the name, when it was saved, the game time, the ship and the credits, which is what the load list shows. F5 writes the slot `quicksave`, so it is listed too |
+| `GameSettings` | Master, effects and ambience volume, HRTF (auto, on, off), fullscreen and window size, the gamepad switch and the key bindings, in `saves/settings.json`. The launcher reads it to open the window; Apply writes it |
+| `KeyBindings`, `RemappedInput` | Rebinding. The game still asks for its default keys; `RemappedInput` stands in `Gdx.input` and answers with the key the player bound. Binding a key that is already used swaps the two actions. Esc can't be bound |
+| `GamepadKeys` | A gamepad through libGDX Controllers, read as the game's keys (below) |
+
+Gamepad (standard mapping): left stick thrust and turn, or walk on deck; right stick left/right or the bumpers strafe; right stick click rotation assist; A or the right trigger fire (A also uses a console); B missile; X decoy or force a door; Y deck or outside view; left trigger next target; d-pad up/down time warp, left arm port and ask clearance, right undock; Start pause menu; Back traffic map. Sticks count past 40%.
+
+The `shell` smoke test (`gradlew :lwjgl3:smokeTestShell`) drives a session through the menu: new game, pause, save to a slot, quit to the menu, continue that save, settings, resume. With `-PsmokeShots=<dir>` it saves the screenshots above.

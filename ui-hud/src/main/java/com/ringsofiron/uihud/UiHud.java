@@ -20,6 +20,7 @@ import com.ringsofiron.uihud.minimap.WireframeMinimap;
 import com.ringsofiron.uihud.providers.InteractorProvider;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
+import com.ringsofiron.uihud.providers.ShipStatusProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider;
 import com.ringsofiron.uihud.providers.TradeProvider;
@@ -28,10 +29,15 @@ import com.ringsofiron.uihud.providers.TrafficMapProvider;
 import com.ringsofiron.uihud.systems.FlightReadoutSystem;
 import com.ringsofiron.uihud.systems.HudRenderSystem;
 import com.ringsofiron.uihud.systems.InteractPromptSystem;
+import com.ringsofiron.uihud.systems.NavMarkerSystem;
+import com.ringsofiron.uihud.systems.RadarSystem;
 import com.ringsofiron.uihud.systems.WireframeSyncSystem;
 import com.ringsofiron.uihud.widgets.AlertList;
 import com.ringsofiron.uihud.widgets.ConsoleWindow;
+import com.ringsofiron.uihud.widgets.NavMarkers;
 import com.ringsofiron.uihud.widgets.OrbitMap;
+import com.ringsofiron.uihud.widgets.RadarScope;
+import com.ringsofiron.uihud.widgets.ShipGauges;
 import com.ringsofiron.uihud.widgets.ThreatOverlay;
 import com.ringsofiron.uihud.widgets.TradeWindow;
 import com.ringsofiron.uihud.widgets.YardWindow;
@@ -71,11 +77,17 @@ public class UiHud implements Disposable {
     private final TradeWindow tradeWindow;
     private final YardWindow yardWindow;
     private final ThreatOverlay threatOverlay;
+    private final ShipGauges gauges;
+    private final RadarScope radar;
+    private final Table radarPanel;
+    private final NavMarkers navMarkers;
 
     private final HudRenderSystem hudRenderSystem;
     private final WireframeSyncSystem wireframeSyncSystem;
     private final InteractPromptSystem interactPromptSystem;
     private final FlightReadoutSystem flightReadoutSystem;
+    private final RadarSystem radarSystem;
+    private final NavMarkerSystem navMarkerSystem;
 
     public UiHud() {
         this(new ViewportManager());
@@ -88,6 +100,9 @@ public class UiHud implements Disposable {
 
         markerLayer.setTouchable(Touchable.childrenOnly);
         stage.addActor(markerLayer);
+        // Prograde and retrograde around the ship, with the markers in the exterior view
+        navMarkers = new NavMarkers(skin);
+        markerLayer.addActor(navMarkers);
 
         Table root = new Table();
         root.setFillParent(true);
@@ -97,7 +112,21 @@ public class UiHud implements Disposable {
         Table flight = new Table();
         flight.setBackground(skin.getDrawable("panel"));
         flight.pad(8f);
-        root.add(flight).top().left().pad(10f).expand().colspan(2).row();
+        // Top left: the flight readout with the proximity scanner beside it and the ship's gauges under it.
+        gauges = new ShipGauges(skin);
+        gauges.setBackground(skin.getDrawable("panel"));
+        gauges.pad(8f);
+        radar = new RadarScope(skin);
+        radarPanel = new Table();
+        radarPanel.setBackground(skin.getDrawable("panel"));
+        radarPanel.pad(8f);
+        radarPanel.add(new Label("RADAR", skin, "title")).left().row();
+        radarPanel.add(radar);
+        Table topLeft = new Table();
+        topLeft.add(flight).left().top().fillX();
+        topLeft.add(radarPanel).left().top().padLeft(6f).row();
+        topLeft.add(gauges).left().top().fillX().padTop(6f);
+        root.add(topLeft).top().left().pad(10f).expand().colspan(2).row();
 
         minimap = new WireframeMinimap(skin.getRegion("white"));
         AlertList alerts = new AlertList(skin);
@@ -169,6 +198,8 @@ public class UiHud implements Disposable {
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
         interactPromptSystem = new InteractPromptSystem(prompt, this::openConsole);
         flightReadoutSystem = new FlightReadoutSystem(flight, skin, viewMode);
+        radarSystem = new RadarSystem(radar);
+        navMarkerSystem = new NavMarkerSystem(viewports, navMarkers);
 
         viewMode.addListener((previous, current) -> {
             boolean exterior = current == ViewMode.EXTERIOR;
@@ -177,6 +208,7 @@ public class UiHud implements Disposable {
             minimapPanel.setVisible(exterior);
             orbitPanel.setVisible(exterior);
             threatOverlay.setVisible(exterior);
+            radarPanel.setVisible(exterior);
         });
 
         stage.addListener(new InputListener() {
@@ -255,6 +287,8 @@ public class UiHud implements Disposable {
         engine.addSystem(wireframeSyncSystem);
         engine.addSystem(interactPromptSystem);
         engine.addSystem(flightReadoutSystem);
+        engine.addSystem(radarSystem);
+        engine.addSystem(navMarkerSystem);
     }
 
     public void removeFrom(Engine engine) {
@@ -262,15 +296,36 @@ public class UiHud implements Disposable {
         engine.removeSystem(wireframeSyncSystem);
         engine.removeSystem(interactPromptSystem);
         engine.removeSystem(flightReadoutSystem);
+        engine.removeSystem(radarSystem);
+        engine.removeSystem(navMarkerSystem);
     }
 
     public void setPhysics(PhysicsManager physics) {
         flightReadoutSystem.setPhysics(physics);
+        navMarkerSystem.setPhysics(physics);
     }
 
     public void setTargeting(TargetingProvider targeting) {
         hudRenderSystem.setTargeting(targeting);
         flightReadoutSystem.setTargeting(targeting);
+        radarSystem.setTargeting(targeting);
+    }
+
+    /** Feeds the propellant, structure, power and oxygen gauges; null leaves them reading "--". */
+    public void setShipStatus(ShipStatusProvider status) {
+        gauges.setProvider(status);
+    }
+
+    public ShipGauges getGauges() {
+        return gauges;
+    }
+
+    public RadarScope getRadar() {
+        return radar;
+    }
+
+    public NavMarkers getNavMarkers() {
+        return navMarkers;
     }
 
     public void setOrbitInfo(OrbitInfoProvider orbitInfo) {

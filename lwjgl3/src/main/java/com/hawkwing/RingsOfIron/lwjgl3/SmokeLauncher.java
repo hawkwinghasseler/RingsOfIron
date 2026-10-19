@@ -13,6 +13,7 @@ import com.hawkwing.RingsOfIron.Main;
 import com.hawkwing.RingsOfIron.OrbitDemo;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
 import com.hawkwing.RingsOfIron.ShipEditor;
+import com.hawkwing.RingsOfIron.shell.GameShell;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -37,6 +38,7 @@ public class SmokeLauncher {
         APPS.put("crew", CrewDemo::new);
         APPS.put("docking", DockingDemo::new);
         APPS.put("editor", ShipEditor::new);
+        APPS.put("shell", ShellScript::new);
     }
 
     public static void main(String[] args) {
@@ -82,6 +84,67 @@ public class SmokeLauncher {
         // Soft needs an output, such as its wave writer (see the audioSmokeTest tasks)
         configuration.disableAudio(!Boolean.getBoolean("smoke.audio"));
         return configuration;
+    }
+
+    /**
+     * The main menu driven through a session: new game, pause, save to a slot, quit to the menu,
+     * continue from that save, pause and resume. Saves go to a temporary folder. Any step that
+     * fails throws, which fails the run.
+     */
+    private static final class ShellScript implements ApplicationListener {
+        private final GameShell shell;
+        private int frame;
+
+        ShellScript() {
+            try {
+                java.io.File dir = java.nio.file.Files.createTempDirectory("ringsofiron-smoke-saves").toFile();
+                dir.deleteOnExit();
+                shell = new GameShell(java.nio.file.Paths.get("").toAbsolutePath(),
+                        java.nio.file.Paths.get("mods").toAbsolutePath(), new com.badlogic.gdx.files.FileHandle(dir));
+            } catch (java.io.IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+
+        @Override public void create() { shell.create(); }
+        @Override public void resize(int width, int height) { shell.resize(width, height); }
+        @Override public void render() {
+            switch (frame++) {
+                case 20: shell.newGame(false); break;
+                case 100: check(shell.isPlaying(), "new game started"); shell.openPauseMenu(); break;
+                case 110: {
+                    String failed = shell.saveGame("Smoke slot");
+                    check(failed == null, "saved: " + failed);
+                    break;
+                }
+                case 120: shell.quitToMenu(); break;
+                case 140: check(!shell.isPlaying(), "back at the menu"); check(shell.continueGame(), "a save to continue"); break;
+                case 220: check(shell.isPlaying() && !shell.isPaused(), "continued the save"); shell.openPauseMenu(); break;
+                case 230: shell.openSettings(); break;
+                case 240: shell.resumeGame(); break;
+                default: break;
+            }
+            shell.render();
+            // With -Dsmoke.shots=<dir>: the menu, the HUD in flight, the pause menu and the settings
+            String shots = System.getProperty("smoke.shots");
+            if (shots != null && (frame == 15 || frame == 99 || frame == 105 || frame == 235)) {
+                int w = Gdx.graphics.getBackBufferWidth(), h = Gdx.graphics.getBackBufferHeight();
+                // Flipped to top-down rows, and opaque: what is on screen, whatever alpha the frame buffer kept
+                byte[] pixels = com.badlogic.gdx.utils.ScreenUtils.getFrameBufferPixels(0, 0, w, h, true);
+                for (int i = 3; i < pixels.length; i += 4) pixels[i] = (byte) 255;
+                com.badlogic.gdx.graphics.Pixmap p = new com.badlogic.gdx.graphics.Pixmap(w, h, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+                com.badlogic.gdx.utils.BufferUtils.copy(pixels, 0, p.getPixels(), pixels.length);
+                com.badlogic.gdx.graphics.PixmapIO.writePNG(Gdx.files.absolute(shots + "/shell-" + frame + ".png"), p);
+                p.dispose();
+            }
+        }
+        @Override public void pause() { shell.pause(); }
+        @Override public void resume() { shell.resume(); }
+        @Override public void dispose() { shell.dispose(); }
+
+        private static void check(boolean ok, String what) {
+            if (!ok) throw new IllegalStateException("Shell smoke step failed: " + what);
+        }
     }
 
     /** Passes every call through to the app and exits once enough frames have rendered. */

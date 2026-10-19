@@ -6,6 +6,7 @@ import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
 import com.ringsofiron.audiospatial.backend.AudioEventInstance;
 import com.ringsofiron.audiospatial.backend.AudioParameters;
 import com.ringsofiron.audiospatial.backend.HeadlessAudioBackend;
+import com.ringsofiron.audiospatial.backend.MixLevels;
 import com.ringsofiron.audiospatial.backend.OpenAlAudioBackend;
 import com.ringsofiron.audiospatial.backend.SimulatedBackend;
 import com.ringsofiron.audiospatial.backend.SynthAudioBackend;
@@ -46,6 +47,16 @@ public class AudioManager {
 
     public AudioBackend getBackend() {
         return backend;
+    }
+
+    /** The backend's master, effects and ambience volumes, or null for a backend without them. */
+    public MixLevels getMixLevels() {
+        return backend instanceof SimulatedBackend ? ((SimulatedBackend) backend).levels : null;
+    }
+
+    /** Sets HRTF to "on", "off" or "auto" where the backend has it (OpenAL); elsewhere does nothing. */
+    public void setHrtf(String setting) {
+        if (backend instanceof OpenAlAudioBackend) ((OpenAlAudioBackend) backend).setHrtf(setting);
     }
 
     /** Playback rules for each event: the backend's own catalog, or the stock one. */
