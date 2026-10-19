@@ -61,7 +61,9 @@ A new game (not First Play) opens with gold guide text: open the board, take a j
 - `GuideProgress` is a new save participant (`game.guides`) holding First Play's step and the walkthrough's step, by name. `GameScenario.quickLoad` resets it first, so a save without it leaves both. `FirstPlay.resume` and `OpeningGuide.resume` pick up from it on load.
 - Autosaves are ordinary save files with a `SaveSummary`.
 - `GameSettings.openingGuide` and the new key bindings are in the settings file, not the save.
-- Not saved: the notice log, the autosave flight clock, the warnings' armed state and the tow confirmation.
+- Not saved: the notice log, the autosave flight clock, the warnings' armed state and the tow confirmation. A load clears the log and the on-screen stack (`NoticeLog.clear`), so the old game's notices don't carry over.
+- A lost game can't be saved: `GameScenario.quickSave` refuses after a crash ("the ship is lost") and once the career is over ("the career is over"), and autosave goes through it.
+- With the walkthrough turned off in settings, a load drops a saved walkthrough step (`OpeningGuide.resume(world, boardOpen, wanted)`), so later saves stop carrying it.
 
 ## Tests
 - `NoticeLogTest`: hold times, stack of 4 and log of 50, counted repeats, sim-time stamps, contract kinds and the feeds.

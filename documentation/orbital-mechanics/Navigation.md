@@ -53,7 +53,8 @@ Navigation posts to `world.notices`: dropped orders and cut burns as warnings, t
 
 ## Saves
 - `NavTargetComponent` and `HelmOrderComponent` are plain components on the player's ship, so the serialization service writes them field by field: the target, the order, its target, approach distance, hold point, and a burn in progress with its remaining delta-v.
-- Not saved: a waiting proposal, the pending continuation of a multi-body leg, the warp-to-burn flag, and `PirateSightings`. After a load pirates are known again when seen, and bounty targets at once.
+- The rest of an accepted multi-body leg (`continueIn`, `continueTo`) is in `TransferLegComponent` on the player's ship, so after a save past the trans-lunar burn the capture is still proposed on reaching the Moon.
+- Not saved: a waiting proposal, the warp-to-burn flag, and `PirateSightings`. After a load pirates are known again when seen, and bounty targets at once.
 
 ## Tests
 `NavigationTest` covers:

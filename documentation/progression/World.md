@@ -51,7 +51,7 @@ In the same weekly step, negative standing with every faction moves 1 back towar
 - The sponsor is also in `ServiceRecord`, as before; a load reads the home from it.
 - The stations, freighters and stock are saved as the world's entities. A load finds the new stations by name, and a save from before them loads without them.
 
-Not saved: the state of the combat and crew dice. A load does not reseed them from the saved seed, so a loaded seeded career rolls from whatever the running world had (round 2's seeds when loaded from the main menu).
+A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed`), as a new game does. Their positions in the stream are not saved, so a loaded career rolls from the start of its seed's streams, not where the save left off. A designed save keeps the loading world's dice.
 
 ## Tests
 - `WorldSeedTest`: same seed same start, another seed another; the designed start as laid out with 10 freighters; seeds give 10 to 14 freighters; every station within a freighter's reach for four seeds; a save keeps the seed and the lurk order; typed seeds.
