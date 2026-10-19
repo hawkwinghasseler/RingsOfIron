@@ -20,7 +20,8 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
  *                                                     CompleteTask ),
  *                                           Sequence( IsTaskKind(YARD), WorkOnTile, CompleteTask ),
  *                                           Sequence( IsTaskKind(FORCE_DOOR), ForceDoor, CompleteTask ),
- *                                           Sequence( IsTaskKind(not RESCUE, CARRY, YARD or FORCE_DOOR), SuitUp,
+ *                                           Sequence( IsTaskKind(BOARD), Board, CompleteTask ),
+ *                                           Sequence( IsTaskKind(not RESCUE, CARRY, YARD, FORCE_DOOR or BOARD), SuitUp,
  *                                                     MoveToWorkSpot, DoWork, CompleteTask ) ) )
  *                     Idle (heads home first when aboard another craft; takes a suit off once calm)
  *
@@ -49,10 +50,13 @@ public final class CrewBehaviorTrees {
                         new CrewTasks.CompleteTask()),
                 new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.FORCE_DOOR), new CrewTasks.ForceDoor(),
                         new CrewTasks.CompleteTask()),
+                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.BOARD), new CrewTasks.Board(),
+                        new CrewTasks.CompleteTask()),
                 new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.RESCUE, true),
                         new CrewTasks.IsTaskKind(CrewTask.Kind.CARRY, true),
                         new CrewTasks.IsTaskKind(CrewTask.Kind.YARD, true),
-                        new CrewTasks.IsTaskKind(CrewTask.Kind.FORCE_DOOR, true), new CrewTasks.SuitUp(),
+                        new CrewTasks.IsTaskKind(CrewTask.Kind.FORCE_DOOR, true),
+                        new CrewTasks.IsTaskKind(CrewTask.Kind.BOARD, true), new CrewTasks.SuitUp(),
                         new CrewTasks.MoveToWorkSpot(),
                         new CrewTasks.DoWork(), new CrewTasks.CompleteTask()));
         Task<CrewAgent> work = new TaskBranch(new CrewTasks.ClaimTask(), doTask);

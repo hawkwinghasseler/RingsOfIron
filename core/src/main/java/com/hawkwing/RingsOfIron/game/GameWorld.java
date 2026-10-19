@@ -165,6 +165,12 @@ public class GameWorld implements Disposable {
     public final StationYard yard;
     /** Which ships are disabled, surrendered or wrecked, and why. */
     public final ShipDisablement disablement;
+    /** Boarding parties sent onto beaten ships, and the ships they take. */
+    public final Boarding boarding;
+    /** Taken ships stripped for parts, and their cargo carried off. */
+    public final Salvage salvage;
+    /** How carried cargo is settled: the market's, plus salvage's between ships and parts sold. */
+    public final SalvageSettlement cargoSettlement;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -305,7 +311,9 @@ public class GameWorld implements Disposable {
         };
         forcing = new DoorForcing(docking, crew, engine::getSimSeconds);
         engine.addSystem(forcing);
-        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, new MarketCargo(macroSim));
+        cargoSettlement = new SalvageSettlement(new MarketCargo(macroSim), commodities,
+                this::partPrice);
+        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, cargoSettlement);
         engine.addSystem(cargo);
         avatar = new AvatarInteractor(engine.getEcsEngine());
         // Who sits at the player's consoles, and who flies the ship when the player isn't at the helm
@@ -347,6 +355,11 @@ public class GameWorld implements Disposable {
         // Ships out of power, crew or hull, or beaten, stop fighting
         disablement = new ShipDisablement(engine::getSimSeconds);
         engine.addSystem(disablement);
+        // Beaten ships are boarded, taken and stripped
+        boarding = new Boarding(docking, crew, forcing, standing, disablement, engine.getUuidRegistry(), engine::getSimSeconds);
+        engine.addSystem(boarding);
+        salvage = new Salvage(docking, crew, boarding, cargo, engine.getUuidRegistry(), combatDefs);
+        engine.addSystem(salvage);
 
         // audio-spatial
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
@@ -533,6 +546,11 @@ public class GameWorld implements Disposable {
             out[3] = m.inertia;
             return true;
         };
+    }
+
+    /** What a station pays for a salvaged part. */
+    private double partPrice(String part) {
+        return salvage == null ? 0 : salvage.salePrice(part);
     }
 
     private void mergeCombatDefs(CombatDefs loaded) {

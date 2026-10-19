@@ -150,10 +150,12 @@ public class CrewAgent {
 
     /**
      * True if this crew member would take {@code task} now: not one they just found unreachable, and
-     * only carrying and yard work while away from the craft they work for (other work is done from home).
+     * only carrying, yard work and boarding while away from the craft they work for (other work is
+     * done from home). A crew member held prisoner takes nothing.
      */
     public boolean mayTake(CrewTask task) {
-        if (isIgnoring(task)) return false;
-        return pos.ship == service.homeOf(entity) || task.kind == CrewTask.Kind.CARRY || task.kind == CrewTask.Kind.YARD;
+        if (isIgnoring(task) || crew.held) return false;
+        return pos.ship == service.homeOf(entity) || task.kind == CrewTask.Kind.CARRY || task.kind == CrewTask.Kind.YARD
+                || task.kind == CrewTask.Kind.BOARD;
     }
 }

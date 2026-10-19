@@ -106,6 +106,12 @@ import java.nio.file.Paths;
  * waits meanwhile; Ctrl+S rebuilds, Esc comes back). The readout under the
  * notices shows how the port lines up with the nearest free port of its size.
  *
+ * <p>Boarding: G with no station near latches the port onto a ship alongside. Latched to a disabled
+ * ship, K opens the boarding window: send the boarding party across (they force the door first if
+ * it is shut), and once the ship is taken, mark systems to strip and cargo to carry over. Parts
+ * come home as crates in the cargo bays; stations buy them in the market, and a yard fits a salvaged
+ * weapon for nothing.
+ *
  * <p>Burn planner, shown on the orbit map: N plans a burn, B selects the next one, Up/Down add
  * prograde/retrograde delta-v, Left/Right radial in/out, [ and ] move it along the orbit (Shift for
  * ten times as much), Delete removes it. Burns fire on their own when due.
@@ -503,6 +509,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
         // What the yard last said about its work on the ship
         if (!world.yard.notices.isEmpty()) show(world.yard.notices.get(world.yard.notices.size() - 1));
         world.yard.notices.clear();
+        if (!world.boarding.notices.isEmpty()) show(world.boarding.notices.get(world.boarding.notices.size() - 1));
+        world.boarding.notices.clear();
+        if (!world.salvage.notices.isEmpty()) show(world.salvage.notices.get(world.salvage.notices.size() - 1));
+        world.salvage.notices.clear();
     }
 
     /** Opens the ship editor on the player's layout, for the docked station's yard to rebuild the decks to. */

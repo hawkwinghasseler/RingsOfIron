@@ -8,7 +8,9 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
  * want each one (see {@link #affinity(CrewTask.Kind)}), and how well they fight.
  */
 public enum CrewRole {
+    /** Repairs aboard; strips salvage off another craft (yard work on it) and lends a hand carrying. */
     ENGINEER,
+    /** Fights, mans the guns, forces doors and boards other craft; lends a hand carrying. */
     MARINE,
     MEDIC,
     CREWMAN,
@@ -42,8 +44,9 @@ public enum CrewRole {
             case ENGINEER:
                 switch (kind) {
                     case SEAL_BREACH: case REPAIR: return 1.5f;
-                    case EXTINGUISH: case FORCE_DOOR: return 1.2f;
+                    case EXTINGUISH: case FORCE_DOOR: case YARD: return 1.2f;
                     case RESCUE: return 0.8f;
+                    case CARRY: return 0.5f;
                     default: return 0f;
                 }
             case MARINE:
@@ -51,6 +54,8 @@ public enum CrewRole {
                     case RESCUE: return 1.2f;
                     case EXTINGUISH: return 0.8f;
                     case MAN_CONSOLE: case FORCE_DOOR: return 1.5f;
+                    case BOARD: return 2f;
+                    case CARRY: return 0.5f;
                     default: return 0f;
                 }
             case MEDIC:
@@ -75,7 +80,7 @@ public enum CrewRole {
             default:
                 switch (kind) {
                     case EXTINGUISH: case RESCUE: case MAN_CONSOLE: case FORCE_DOOR: return 1f;
-                    case CARRY: return 0.5f;
+                    case CARRY: case BOARD: return 0.5f;
                     case REPAIR: case SEAL_BREACH: return 0.5f;
                     default: return 0f;
                 }

@@ -18,7 +18,7 @@ import com.ringsofiron.interiorgrid.Tile;
  * ({@link #OPEN_SECONDS}), walks through, and the door shuts again once no one is in the doorway or
  * about to step through. Only doors a crew member opened are shut again: one left open by hand
  * stays open. Who may open which door is {@link #mayOpen}: not the doors of a hostile craft (those
- * are forced), and not a door onto thin air from breathable air, except by a suited crew member
+ * are forced), unless {@link CrewService#doorRights} lets them through (a boarding party), and not a door onto thin air from breathable air, except by a suited crew member
  * into a room that is not open to space (the two rooms share their air, and life support makes
  * it up).
  *
@@ -69,7 +69,9 @@ public final class CrewDoors {
         ShipGridComponent grid = service.grid(ship);
         if (c == null || grid == null) return false;
         ShipTaskBoardComponent board = service.board(ship);
-        if (board != null && service.hostility.hostile(board.faction, c.faction)) return false;
+        if (board != null && service.hostility.hostile(board.faction, c.faction) && !service.doorRights.mayPass(crew, ship)) {
+            return false;
+        }
         boolean hereThick = grid.pressureRatioAt(x, y) >= TaskRules.SAFE_PRESSURE;
         boolean thereThick = grid.pressureRatioAt(nx, ny) >= TaskRules.SAFE_PRESSURE;
         if (!hereThick || thereThick) return true;
