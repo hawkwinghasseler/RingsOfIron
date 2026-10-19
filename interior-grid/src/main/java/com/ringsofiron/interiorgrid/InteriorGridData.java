@@ -88,6 +88,8 @@ public final class InteriorGridData {
             engine.addEntity(system);
             registry.registerSubsystem(system);
         }
+        // Power and pipes route on the first frame, so the ship can thrust and breathe at once
+        result.grid.gridDirty = true;
         return registry;
     }
 

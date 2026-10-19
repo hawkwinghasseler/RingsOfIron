@@ -2,11 +2,15 @@
 #   '#' hull (medium)  '1'/'2'/'3' hull light/medium/heavy  'I' internal wall
 #   '.' floor  '+' power conduit  ' ' void
 #   R reactor, S shield, T turret (square mounts); L life support, H helm,
-#   W weapons console, C cargo, A airlock (rectangular slots)
+#   W weapons console, C cargo, A airlock, E engine, P propellant tank,
+#   O oxygen tank, N nitrogen tank (rectangular slots)
 #   D docking port, drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium, 7 x 3 Large.
 #     The end tiles are frame, the rest the opening, with the port door on its
 #     outer edge. It faces the side with only space beyond it. Ports are passive
 #     unless listed under ports = [ { x, y, active = true } ] (any tile of the port).
+#   pipes = [ { x, y }, { x, y, side } ] lays a pipe across tile (x, y), or along that
+#     side of it (inside any wall). Pipes join tanks to the systems that draw on them:
+#     life support takes oxygen and nitrogen, the engines take propellant.
 #   lights = [ { x, y, side } ] hangs a wall light on that side of tile (x, y), shining
 #     into the tile; it takes no room there. The ship editor's Light tool places them
 #     (and auto-places them along every room's walls). With no lights key the game
@@ -24,28 +28,34 @@ origin_y = -3.0
 # the nearest one): nose (12,2), port and starboard beams (10,4) and (10,1), the
 # launcher (7,4) and the laser (7,1). The weapons console sits aft, away from
 # every hardpoint.
-# Cargo: a hold aft of the crew spaces with two 3 x 2 bays (x 1-3; listed under
-# mounts, since two bays side by side can't be told apart in the map), a walkway
-# at x 4, and two small bays up front. 16 tiles, 40 m3 at 2.5 m3 a tile.
+# Cargo: a 3 x 2 bay aft of the crew spaces (x 1-3, y 3-4, listed under mounts), a
+# walkway at x 4, and two small bays up front. 10 tiles, 25 m3 at 2.5 m3 a tile.
+# Engineering below the hold: the engine against the aft hull, fed by two propellant
+# tanks (listed, since two side by side can't be told apart in the map), and the
+# oxygen and nitrogen tanks either side of life support, each run piped together.
 # A Small passive docking port on the port (+y) side opens onto the walkway beside
 # the hold.
 rows = [
   "###DDD########",
   "#....HHTCCTRR#",
   "#....WW....RR#",
-  "#....L.++++.T#",
-  "#....L.T..TCC#",
+  "#E..OLN++++.T#",
+  "#E..OLNT..TCC#",
   "##############",
 ]
 mounts = [
-  { type = "CARGO", size = "M", x = 1, y = 1, rotation = 1 },
   { type = "CARGO", size = "M", x = 1, y = 3, rotation = 1 },
+  { component = "tank", size = "S", x = 2, y = 1 },
+  { component = "tank", size = "S", x = 3, y = 1 },
+]
+pipes = [
+  { x = 1, y = 2 }, { x = 2, y = 2 }, { x = 3, y = 2 },
+  { x = 4, y = 1 }, { x = 5, y = 1 }, { x = 6, y = 1 },
 ]
 # Carpet through the crew spaces, so a fire here has something to burn
 coverings = [ { covering = "CARPET", x = 5, y = 1, width = 6, height = 4 } ]
 lights = [
-  { x = 4, y = 1, side = "BOTTOM" },
-  { x = 9, y = 1, side = "BOTTOM" },
+  { x = 8, y = 1, side = "BOTTOM" },
 ]
 
 [chassis.freighter]
@@ -54,8 +64,9 @@ tile_size = 1.0
 origin_x = -10.0
 origin_y = -6.5
 # Two 12 x 5 cargo bays either side of a conduit spine: 120 tiles, 300 m3 of cargo.
-# Engineering aft (left), the helm forward, and a Medium passive docking port in
-# the bow at the end of the spine.
+# Engineering aft (left): the engine fed by two propellant tanks along the bottom,
+# the oxygen and nitrogen tanks piped to life support; the helm forward, and a Medium
+# passive docking port in the bow at the end of the spine.
 rows = [
   "####################",
   "#...CCCCCCCCCCCC...#",
@@ -65,16 +76,22 @@ rows = [
   "#...CCCCCCCCCCCC..DD",
   "#L++++++++++++++++DD",
   "#L..CCCCCCCCCCCC..DD",
-  "#...CCCCCCCCCCCC..DD",
-  "#...CCCCCCCCCCCC...#",
-  "#...CCCCCCCCCCCC...#",
-  "#...CCCCCCCCCCCC...#",
+  "#ON.CCCCCCCCCCCC..DD",
+  "#ON.CCCCCCCCCCCC...#",
+  "#E..CCCCCCCCCCCC...#",
+  "#E..CCCCCCCCCCCC...#",
   "####################",
 ]
+mounts = [
+  { component = "tank", size = "S", x = 2, y = 1 },
+  { component = "tank", size = "S", x = 3, y = 1 },
+]
+pipes = [
+  { x = 1, y = 1 }, { x = 2, y = 1 }, { x = 3, y = 1 },
+  { x = 1, y = 4 }, { x = 2, y = 4 }, { x = 1, y = 5 },
+]
 lights = [
-  { x = 3, y = 1, side = "BOTTOM" },
   { x = 16, y = 1, side = "BOTTOM" },
-  { x = 1, y = 4, side = "LEFT" },
   { x = 17, y = 4, side = "RIGHT" },
   { x = 1, y = 7, side = "LEFT" },
   { x = 17, y = 8, side = "RIGHT" },

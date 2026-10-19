@@ -456,7 +456,23 @@ class GameScenarioTest {
         assertNotNull(bays, "the corvette has cargo bays");
         assertEquals(GameScenario.STARTING_CREDITS, trader.credits);
         assertEquals(bays.capacity(), trader.freeCargo(), 1e-9, "the hold is the bays");
-        assertEquals(40, bays.capacity(), 1e-9);
+        assertEquals(25, bays.capacity(), 1e-9);
+    }
+
+    @Test
+    void theCorvettesTanksArePipedToItsEngineAndLifeSupport() {
+        world.update(FRAME);
+        com.ringsofiron.physicsexterior.components.ThrusterComponent thrusters =
+                game.player.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
+        assertTrue(thrusters.fuel > 0, "the engine draws on the propellant tanks");
+        assertEquals(thrusters.fuelCapacity, thrusters.fuel, 1e-3, "they start full");
+        for (Entity e : game.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s.type == SubsystemComponent.SubsystemType.LIFE_SUPPORT) {
+                assertTrue(com.ringsofiron.interiorgrid.TankSupply.available(s, com.ringsofiron.interiorgrid.Fluid.OXYGEN) > 0);
+                assertTrue(com.ringsofiron.interiorgrid.TankSupply.available(s, com.ringsofiron.interiorgrid.Fluid.NITROGEN) > 0);
+            }
+        }
     }
 
     @Test
