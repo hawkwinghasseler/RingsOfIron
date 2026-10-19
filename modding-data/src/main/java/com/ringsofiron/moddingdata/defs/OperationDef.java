@@ -15,6 +15,7 @@ import java.util.List;
  * reward = 12000.0                 # credits when the last step is done, on top of each step's own pay
  * standing = 10.0                  # standing with the giver then
  * steps = ["patrol", "recon", "bounty"]
+ * requires = "base_fallen"         # optional: offered only once the pirates' base has fallen
  * </pre>
  * A step is a contract type: {@code patrol}, {@code recon} (find a pirate where it lurks),
  * {@code bounty} (on the pirate a recon found, else any the giver is at war with), {@code escort},
@@ -30,4 +31,6 @@ public class OperationDef {
     public double reward;
     public float standing;
     public List<String> steps = new ArrayList<>();
+    /** A state of the world it waits for: empty for none, or {@code base_fallen}. */
+    public String requires = "";
 }

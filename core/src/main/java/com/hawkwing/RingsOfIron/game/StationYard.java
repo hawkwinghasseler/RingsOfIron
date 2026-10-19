@@ -215,6 +215,11 @@ public class StationYard extends EntitySystem {
     private final UuidRegistry uuids;
     private final DoubleSupplier simSeconds;
     private final CombatDefs weapons;
+    /**
+     * What a station charges against the base prices for repairs and refills (round 6: more where
+     * tension runs high, {@link FactionTension#priceFactor}); 1 everywhere unless the game sets it.
+     */
+    public java.util.function.ToDoubleFunction<Entity> priceFactor = station -> 1;
     private ImmutableArray<Entity> ships;
     private double lastTime = Double.NaN;
     /** Repair work in hand: the task for each piece of damage, while it is posted. */
@@ -312,6 +317,11 @@ public class StationYard extends EntitySystem {
         return total;
     }
 
+    /** Credits to put all of {@code ship}'s damage right at {@code station}'s yard, at its {@link #priceFactor}. */
+    public double repairCost(Entity ship, Entity station) {
+        return repairCost(ship) * priceFactor.applyAsDouble(station);
+    }
+
     /** Credits a kilogram of each fluid costs at a yard. */
     public static final double PROPELLANT_PRICE = 0.5, OXYGEN_PRICE = 2, NITROGEN_PRICE = 1;
 
@@ -334,15 +344,21 @@ public class StationYard extends EntitySystem {
         return total;
     }
 
+    /** Credits to fill every tank aboard {@code ship} at {@code station}'s yard, at its {@link #priceFactor}. */
+    public double refillCost(Entity ship, Entity station) {
+        return refillCost(ship) * priceFactor.applyAsDouble(station);
+    }
+
     /** Has {@code station}'s yard fill {@code ship}'s tanks, as far as its credits go. Returns what it says. */
     public String orderRefill(Entity ship, Entity station) {
         if (!canWork(ship, station)) return "No yard here to do the work";
-        double cost = refillCost(ship);
+        double factor = priceFactor.applyAsDouble(station);
+        double cost = refillCost(ship) * factor;
         if (cost < 0.5) return "The tanks are full";
         TraderComponent trader = ship.getComponent(TraderComponent.class);
         double budget = trader == null ? Double.POSITIVE_INFINITY : trader.credits;
         if (budget <= 0) return "You're out of credits";
-        double paid = fill(ship.getComponent(ShipSubsystemRegistryComponent.class), budget);
+        double paid = fill(ship.getComponent(ShipSubsystemRegistryComponent.class), budget / factor) * factor;
         if (trader != null) trader.credits = Math.max(0, trader.credits - paid);
         return paid >= cost - 1e-6 ? String.format(Locale.ROOT, "Tanks filled: %,.0f cr", cost)
                 : String.format(Locale.ROOT, "Tanks filled to what %,.0f cr buys", paid);
@@ -436,7 +452,7 @@ public class StationYard extends EntitySystem {
      */
     public String orderRepairs(Entity ship, Entity station) {
         if (!canWork(ship, station)) return "No yard here to do the work";
-        double cost = repairCost(ship);
+        double cost = repairCost(ship, station);
         if (cost <= 0.5) return restockPatches(ship) ? "Nothing aboard needs repairing: stores restocked" : "Nothing aboard needs repairing";
         YardOrdersComponent orders = orders(ship, station);
         if (orders == null) return "The yard is working for another station's ship";
@@ -640,23 +656,25 @@ public class StationYard extends EntitySystem {
     private float work(Entity ship, YardOrdersComponent orders, Damage d, float work) {
         TraderComponent trader = ship.getComponent(TraderComponent.class);
         float points = work / d.workPerPoint();
+        // The yard's own prices: dearer where tension runs high
+        double price = d.cost() * priceFactor.applyAsDouble(orders.station == null ? null : orders.station.get(uuids));
         if (d.kind == Damage.Kind.COLLAR) {
             // Whole or not at all: count the work until the collar can go back on
             float done = collarWork.getOrDefault(d.port, 0f) + points;
             float need = 1f - d.condition();
             if (done < need) {
                 collarWork.put(d.port, done);
-                charge(trader, orders, points * d.cost());
+                charge(trader, orders, points * price);
                 return work;
             }
             collarWork.remove(d.port);
-            charge(trader, orders, Math.max(0, need - (done - points)) * d.cost());
+            charge(trader, orders, Math.max(0, need - (done - points)) * price);
             d.restore(1f);
             return work;
         }
-        if (trader != null) points = (float) Math.min(points, trader.credits / d.cost());
+        if (trader != null) points = (float) Math.min(points, trader.credits / price);
         float rose = d.restore(points);
-        charge(trader, orders, rose * d.cost());
+        charge(trader, orders, rose * price);
         if (d.kind == Damage.Kind.HULL && d.condition() >= 1f - EPS && d.tile != null) d.tile.bulkheadSealed = false;
         return rose * d.workPerPoint();
     }

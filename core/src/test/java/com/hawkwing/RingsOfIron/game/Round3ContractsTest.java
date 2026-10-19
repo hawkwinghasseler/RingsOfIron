@@ -474,6 +474,6 @@ class Round3ContractsTest {
     void operationsInTheDataAreValid() {
         assertFalse(game.content.report.hasErrors(), game.content.report.toString());
         assertFalse(game.content.report.toString().contains("operation."), game.content.report.toString());
-        assertEquals(7, game.content.defs.ids("operation").size());
+        assertEquals(8, game.content.defs.ids("operation").size());
     }
 }

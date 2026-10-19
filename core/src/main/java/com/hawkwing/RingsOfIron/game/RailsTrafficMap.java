@@ -16,7 +16,8 @@ import com.ringsofiron.uihud.providers.TrafficMapProvider;
  * Haulers inside the bubble have no rails entry and show as world markers instead. Escape pods and
  * wrecks ({@link Derelicts}) around the same body are shown too. Pirates the player knows of
  * ({@link PirateSightings}) show where they are while in sensor range, else where they were last seen.
- * Each contact carries its uuid, so a click on the map makes it the navigation target.
+ * Each contact carries its uuid, so a click on the map makes it the navigation target. Round 6: a
+ * tension readout, a line per faction's stations ({@link FactionTension#regions}).
  */
 public class RailsTrafficMap implements TrafficMapProvider {
     private final GameWorld world;
@@ -97,6 +98,8 @@ public class RailsTrafficMap implements TrafficMapProvider {
             c.objective = world.contracts.isWaypoint(d.id);
         }
         hostiles(out, frame, t, targetUuid);
+        // How strained each faction's stations are, and what their yards charge for it
+        world.tension.regions(out::addRegion);
 
         if (player != null && playerPosition(player, frame)) {
             Contact c = out.addContact();

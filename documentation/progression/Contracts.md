@@ -12,7 +12,7 @@ Jobs posted outside the daily boards (by events, pods and wrecks) go through `Co
 
 | Type | Pay and standing | How it is done |
 |---|---|---|
-| Rescue | 1,500 cr + 400 per survivor, +5 | Pick the pod up with a close pass, then dock at the station that posted it before the air runs out. From round 5 the survivors come aboard as people in free berths (`SurvivorComponent`), as many as the ship has room for; each one alive when they go ashore at the giver is paid for, and if none lived the rescue fails. Survivors still aboard when a rescue ends some other way go ashore at the next station the ship docks at. |
+| Rescue | 1,500 cr + 400 per survivor, +5 | Pick the pod up with a close pass, then dock at the station that posted it before the air runs out. From round 5 the survivors come aboard as people in free berths (`SurvivorComponent`), as many as the ship has room for; each one alive when they go ashore at the giver is paid for, and if none lived the rescue fails. Survivors still aboard when a rescue ends some other way go ashore at the next station the ship docks at. From round 6 they come aboard as the pod left them (see below). |
 | Recovery | 30% of the cargo's price at the posting station, at least 1,000 cr, +4 | Hold alongside the wreck for 60 s while the crew carry the cargo into the hold, then hand it over docked. A hold that takes only part of it is paid for that part. Up to 5 days. |
 | Convoy | 1,200 cr a freighter (×3 to another body's orbit), +3 + 2 a freighter | Two or more freighters hauling out of the station to the same buyer. Each that docks with the player within 50 km counts; one docking without the player (after 30 minutes' grace) or lost does not. Pay and standing are shared by how many counted; none fails it. |
 | Defend | 4,000 cr a raider × difficulty, +4 + 3 a raider, 2 days | Posted by a raid event. Each raider beaten (or gone) counts; at the deadline those beaten are paid for, and none fails it. |
@@ -27,6 +27,9 @@ Round 5 bounty rules:
 - A ship worth less than a third of the player's (`WEAK_RATIO`) pays half the standing.
 - From Commander (`SENIOR_RANK`), every job but an operation or a raid pays half its standing (`SENIOR_STANDING`): a senior officer climbs on operations and raids. An operation's own reward is untouched.
 
+### Survivors who need care (round 6)
+A pod's survivors come aboard short of breath and sometimes hurt, the worse the longer the pod drifted (`ContractBoard.hurtInPod`). The stale air takes up to 40% of their health by the time the pod's 4 days of air run out. Each is wounded one time in four if picked up at once, rising to three in four at the end (`POD_HURT`, `POD_HURT_LATE`). A wound is serious 40% of the time and critical up to 30% of the time late (`POD_SERIOUS`, `POD_CRITICAL_LATE`); nobody is critical straight out of the pod. They are carried as held, so the crew treat them as they treat prisoners: a serious or critical wound gets a medic's care and uses medical stores, and a critical one bleeds out if nobody comes. The pickup notice says how many are hurt and how many critically. Pay is still by how many arrive alive.
+
 ### Operations (`assets/data/operations.toml`, `OperationDef`)
 `[operation.<id>]` has `name`, `text`, `giver` (empty means the sponsor), `rank`, `reward`, `standing` and `steps`, a list of `patrol`, `recon`, `bounty`, `escort`, `convoy`, `delivery`, `intel` or `raid`. `DefValidator` warns of an unknown giver, rank or step, or no steps.
 
@@ -39,6 +42,9 @@ Round 5 bounty rules:
 | Hunt the Hunters | Commander | recon, bounty, intel, raid | 30,000 cr, +10 |
 | Iron Escort | Commander | convoy, recon, bounty, convoy | 28,000 cr, +10 |
 | The Long Watch | Captain | patrol, recon, bounty, recon, bounty, delivery | 45,000 cr, +12 |
+| Scatter the Remnants (round 6) | Captain, once the pirates' base has fallen | recon, bounty, patrol | 50,000 cr, +12 |
+
+An operation may wait for the world with `requires` (only `base_fallen` so far); `DefValidator` warns of any other. Once ready it heads its rank's operations on the board.
 
 All are given by the sponsor (`patrol`, or empty for whoever is served). From round 5 a board shows at most 2 operations (`OPERATIONS_SHOWN`), the newest rank's first, and a promotion replaces those it showed with the new rank's; none shows while one runs. An operation the player has the rank for heads the giver's boards each day, until done. A board remembers the rank it was posted at, so a promotion adds the operations it opens to that day's boards at once. Only one runs at a time. Taking it posts its first step, already taken; each step is a contract paid as usual, chosen from the nearest jobs of its kind, and its steps do not count against the limit of 3 held contracts. A bounty step is on the pirate the recon before it found, if it is still out there. An intel step is a recon whose pirate leads the player to the base (`PirateBase.reveal`); it is skipped once the base is known. A convoy step falls back to an escort. Finishing the last step pays the reward and standing. Failing or abandoning a step fails the operation at half its standing; a step called off, or no job of a step's kind to be had, calls it off at no cost. A done operation is never offered again.
 
@@ -79,8 +85,10 @@ Saved: posted event jobs, the running operation (its step and the pirate its rec
 - **A rescue costs 5 sponsor standing** and fails all contracts, as the plan proposed.
 - Round 5: survivors take free berths and only as many board as there is room for; the rest stay in the pod.
 - Round 5: at most 2 operations on a board, the senior halving from Commander, the weak-target halving below a third of the player's ship value, and the operations' rewards above.
+- Round 6: survivors' wounds come from how long the pod drifted, rolled per survivor from the rescue's id, so a replay hurts the same ones. They need care through wounds rather than air and food, because the crew use neither.
+- Round 6: Scatter the Remnants pays 50,000 cr, +12, a little above The Long Watch.
 - All the numbers above are placeholders.
 
 ## Not built
 - Wreck cargo crosses on a 60 s timer, not by crew walking it over as salvage does.
-- Survivors aboard do no work and need no care; they are passengers.
+- Survivors aboard do no work. Like the crew, they draw no air or food: the ship's life support does not count heads, so neither does anything else yet.

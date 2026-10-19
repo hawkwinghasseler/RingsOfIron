@@ -498,6 +498,7 @@ public class GameWorld implements Disposable {
         tension = new FactionTension(this);
         engine.addSystem(tension);
         engine.getSerializationService().addParticipant(tension);
+        yard.priceFactor = tension::priceFactor;
         nav = Navigation.install(this);
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);

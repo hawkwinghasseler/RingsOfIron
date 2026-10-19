@@ -220,8 +220,20 @@ public class TrafficMap extends Widget {
             if (!c.detail.isEmpty()) text(batch, c.detail, x + 9f, ly - LINE, HudSkin.HUD_DIM, parentAlpha);
         }
 
+        regions(batch, parentAlpha);
         title(batch, parentAlpha);
         batch.setColor(old);
+    }
+
+    /** The tension readout in the bottom left corner, a line per region, high ones in the hostile colour. */
+    private void regions(Batch batch, float alpha) {
+        if (frame.regions.size == 0) return;
+        float x = getX() + 16f, y = getY() + 16f + LINE * frame.regions.size;
+        text(batch, "TENSION", x, y + LINE, HudSkin.HUD_DIM, alpha);
+        for (TrafficMapProvider.Region r : frame.regions) {
+            text(batch, r.line, x, y, r.high ? HOSTILE : HudSkin.HUD_DIM, alpha);
+            y -= LINE;
+        }
     }
 
     private static final String DOCKED_AT = "docked at ";
