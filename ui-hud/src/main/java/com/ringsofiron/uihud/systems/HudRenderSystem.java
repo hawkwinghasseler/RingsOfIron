@@ -124,7 +124,7 @@ public class HudRenderSystem extends EntitySystem {
             String range = player != null ? formatRange(Vector2.dst(player.x, player.y, t.x, t.y)) : "";
             float half = Math.max(MIN_BRACKET, m.radius * pixelsPerMeter * 1.2f);
             widget.set(m.label, range, m.color, half, !onScreen, angle, e == locked);
-            if (!onScreen) unstack(widget, screen.y < h / 2f ? 1f : -1f);
+            if (!onScreen) unstack(widget, screen.y < h / 2f ? 1f : -1f, w);
         }
 
         // Drop widgets whose entity lost its marker or left the engine.
@@ -141,10 +141,16 @@ public class HudRenderSystem extends EntitySystem {
 
     /**
      * Two contacts the same way off screen put their names on top of each other at the edge: moves
-     * this one's text inward ({@code dir} up or down) until it clears the ones already placed.
+     * this one's text inward ({@code dir} up or down) until it clears the ones already placed. A
+     * long name by the left or right edge is first slid back inside the screen ({@code width} wide).
      */
-    private void unstack(MarkerWidget widget, float dir) {
+    private void unstack(MarkerWidget widget, float dir, float width) {
         Rectangle box = widget.textBounds(new Rectangle());
+        float dx = box.x < 2f ? 2f - box.x : box.x + box.width > width - 2f ? width - 2f - box.x - box.width : 0f;
+        if (dx != 0f) {
+            widget.nudgeText(dx, 0f);
+            box.x += dx;
+        }
         for (int tries = 0; tries < 8; tries++) {
             Rectangle hit = null;
             for (Rectangle r : edgeText) if (r.overlaps(box)) hit = r;

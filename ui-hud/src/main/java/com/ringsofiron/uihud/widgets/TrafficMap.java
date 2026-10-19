@@ -53,6 +53,7 @@ public class TrafficMap extends Widget {
     /** Where each pickable contact was drawn last frame: x, y, index into the frame's contacts. */
     private final FloatArray picks = new FloatArray();
     private java.util.function.Consumer<String> pickListener;
+    private final com.badlogic.gdx.graphics.g2d.GlyphLayout measure = new com.badlogic.gdx.graphics.g2d.GlyphLayout();
 
     public TrafficMap(Skin skin) {
         white = skin.getRegion("white");
@@ -155,12 +156,18 @@ public class TrafficMap extends Widget {
 
         // Range rings at round distances.
         double ring = niceStep(half / scale / 3.0);
+        // Rings close together label only those whose distance fits clear of the last one's
+        float labelEnd = Float.NEGATIVE_INFINITY;
         for (int i = 1; i <= 6; i++) {
             float r = (float) (ring * i * scale);
             if (r > half * 1.5f) break;
             if (ring * i < frame.frameRadius) continue;   // inside the body
             circle(batch, cx, cy, r, 1f, GRID, parentAlpha);
-            text(batch, formatDistance(ring * i), cx + r + 3f, cy + 12f, GRID, parentAlpha);
+            String distance = formatDistance(ring * i);
+            measure.setText(font, distance);
+            if (cx + r + 3f < labelEnd + 8f) continue;
+            text(batch, distance, cx + r + 3f, cy + 12f, GRID, parentAlpha);
+            labelEnd = cx + r + 3f + measure.width;
         }
 
         // Frame body. Body names go in the label list first, so stations near them label clear of them.
