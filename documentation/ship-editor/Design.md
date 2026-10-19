@@ -26,7 +26,8 @@ base = "HULL"             # VOID, FLOOR, CONDUIT, HULL or INTERNAL_WALL
 weight_class = "HEAVY"    # walls: LIGHT, MEDIUM or HEAVY
 material = "composite_armor"  # a [material.*] id
 covering = "NONE"         # floors: NONE or CARPET, laid when the ship is built
-color = "#7a8a9a"         # how the editor draws it
+art = "walls/composite_armor_heavy"  # art pack region or wall family (see documentation/art/Design.md)
+color = "#7a8a9a"         # how the editor draws it without the art pack
 ```
 `assets/data/tiles.toml` restates the built-in characters as definitions (`#`, `1`-`3`, `I`, `.`, `+` and space) so they can be edited like any other; a tile type a data file leaves out keeps its built-in meaning, so blueprints made in code still load.
 
@@ -94,4 +95,4 @@ The ship's exterior (`hull` polygon, hardpoints, mass) in `ships.toml` is not ed
 - **Tanks and pipes** (2026-10-19): tanks for life support consumables and propellant are placed in the layout, and pipes are laid in tile centers or along tile edges like conduits. Placing both belongs in this editor (see Life Support in `documentation/interior-grid/Design.md`).
 
 ## Open Questions
-- Per-tile art: tile types carry a `color` for now; a texture key could follow once tile art exists.
+None right now.

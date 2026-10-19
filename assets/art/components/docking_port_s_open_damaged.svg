@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="64" viewBox="0 0 192 64">
+  <title>docking_port S: 3x1 port mount, door open, facing +y at rotation 0, damaged</title>
+  <g id="base">
+    <rect x="0" y="0" width="64" height="64" fill="#3d4552"/>
+    <rect x="5" y="5" width="54" height="54" rx="3" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
+    <path d="M6.75,57.25 L6.75,6.75 L57.25,6.75" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M57.25,6.75 L57.25,57.25 L6.75,57.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <clipPath id="hz_dp_s_open_0_10_10"><rect x="10" y="10" width="44" height="8"/></clipPath>
+    <rect x="10" y="10" width="44" height="8" fill="#f2c230"/>
+    <g clip-path="url(#hz_dp_s_open_0_10_10)">
+    <polygon points="-6,18 2,18 10,10 2,10" fill="#10141a"/>
+    <polygon points="10,18 18,18 26,10 18,10" fill="#10141a"/>
+    <polygon points="26,18 34,18 42,10 34,10" fill="#10141a"/>
+    <polygon points="42,18 50,18 58,10 50,10" fill="#10141a"/>
+    <polygon points="58,18 66,18 74,10 66,10" fill="#10141a"/>
+    </g>
+    <rect x="10" y="10" width="44" height="8" fill="none" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="128" y="0" width="64" height="64" fill="#3d4552"/>
+    <rect x="133" y="5" width="54" height="54" rx="3" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
+    <path d="M134.75,57.25 L134.75,6.75 L185.25,6.75" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M185.25,6.75 L185.25,57.25 L134.75,57.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <clipPath id="hz_dp_s_open_128_138_10"><rect x="138" y="10" width="44" height="8"/></clipPath>
+    <rect x="138" y="10" width="44" height="8" fill="#f2c230"/>
+    <g clip-path="url(#hz_dp_s_open_128_138_10)">
+    <polygon points="122,18 130,18 138,10 130,10" fill="#10141a"/>
+    <polygon points="138,18 146,18 154,10 146,10" fill="#10141a"/>
+    <polygon points="154,18 162,18 170,10 162,10" fill="#10141a"/>
+    <polygon points="170,18 178,18 186,10 178,10" fill="#10141a"/>
+    <polygon points="186,18 194,18 202,10 194,10" fill="#10141a"/>
+    </g>
+    <rect x="138" y="10" width="44" height="8" fill="none" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="64" y="0" width="64" height="64" fill="#2a3039"/>
+    <rect x="65" y="1" width="62" height="62" rx="2" fill="#3a434f"/>
+    <rect x="68" y="4" width="56" height="56" rx="2" fill="#444e5b"/>
+    <path d="M68.75,59.25 L68.75,4.75 L123.25,4.75" fill="none" stroke="#566170" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M123.25,4.75 L123.25,59.25 L68.75,59.25" fill="none" stroke="#2a3039" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="75" y1="17" x2="81" y2="11" stroke="#2a3039" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+    <line x1="75" y1="29" x2="81" y2="35" stroke="#2a3039" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+    <line x1="75" y1="53" x2="81" y2="47" stroke="#2a3039" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+    <line x1="93" y1="11" x2="99" y2="17" stroke="#2a3039" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+    <line x1="93" y1="35" x2="99" y2="29" stroke="#2a3039" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+    <line x1="93" y1="47" x2="99" y2="53" stroke="#2a3039" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+    <line x1="111" y1="17" x2="117" y2="11" stroke="#2a3039" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+    <line x1="111" y1="29" x2="117" y2="35" stroke="#2a3039" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+    <line x1="111" y1="53" x2="117" y2="47" stroke="#2a3039" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+    <circle cx="72" cy="8" r="1.8" fill="#566170" opacity="0.9"/>
+    <circle cx="120" cy="8" r="1.8" fill="#566170" opacity="0.9"/>
+    <circle cx="72" cy="56" r="1.8" fill="#566170" opacity="0.9"/>
+    <circle cx="120" cy="56" r="1.8" fill="#566170" opacity="0.9"/>
+    <path d="M82,40 L96,28 L110,40" fill="none" stroke="#f2c230" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+    <rect x="60" y="-1" width="10" height="12" fill="#7a8594" stroke="#10141a" stroke-width="2"/>
+    <rect x="122" y="-1" width="10" height="12" fill="#7a8594" stroke="#10141a" stroke-width="2"/>
+    <circle cx="32" cy="42" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+    <circle cx="160" cy="42" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+    <rect x="0" y="0" width="192" height="64" fill="none" stroke="#10141a" stroke-width="2"/>
+    <circle cx="18.47" cy="45.23" r="12.23" fill="#0b0d10" opacity="0.4"/>
+    <circle cx="184.56" cy="27.82" r="9.68" fill="#0b0d10" opacity="0.25"/>
+    <circle cx="109.45" cy="37.83" r="14.75" fill="#0b0d10" opacity="0.34"/>
+    <circle cx="52.54" cy="21.93" r="14.37" fill="#0b0d10" opacity="0.37"/>
+    <circle cx="81.8" cy="55.74" r="17.26" fill="#0b0d10" opacity="0.44"/>
+    <circle cx="77.43" cy="37" r="15.4" fill="#0b0d10" opacity="0.28"/>
+    <path d="M120.5,31.9 L127.11,19.75 L128.04,31.76 L124.87,39.55 L119.56,27.85" fill="none" stroke="#10141a" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+    <path d="M57.01,41.96 L43.68,42.65 L42.15,42.39 L45.01,48.81 L57.17,42.19" fill="none" stroke="#10141a" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+    <path d="M90.14,35.62 L76.52,41.11 L86.78,35.08 L84.23,47.62 L87.76,50.14" fill="none" stroke="#10141a" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+    <path d="M179.08,15.61 L174.9,9.83 L177.87,21.44 L167.78,12.64 L173.47,26.41" fill="none" stroke="#10141a" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+    <path d="M56.92,6.15 L68.07,2.72 L81.76,4.24 L90.91,2 L102.22,2" fill="none" stroke="#10141a" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+    <path d="M184.38,27.47 L184.46,27.78 L187.86,29.45 L176.41,37.43 L183.38,42.75" fill="none" stroke="#10141a" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+    <polygon points="132.57,50.79 145.48,46.49 146.91,57.25 137.59,60.83" fill="#373f4b" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round"/>
+    <line x1="132.57" y1="50.79" x2="145.48" y2="46.49" stroke="#7d8898" stroke-width="1" stroke-linecap="round"/>
+    <polygon points="87.28,34.36 102.79,29.19 104.51,42.11 93.31,46.42" fill="#373f4b" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round"/>
+    <line x1="87.28" y1="34.36" x2="102.79" y2="29.19" stroke="#7d8898" stroke-width="1" stroke-linecap="round"/>
+    <polygon points="144.96,40.58 156.85,36.62 158.17,46.52 149.58,49.82" fill="#373f4b" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round"/>
+    <line x1="144.96" y1="40.58" x2="156.85" y2="36.62" stroke="#7d8898" stroke-width="1" stroke-linecap="round"/>
+  </g>
+  <g id="emissive">
+    <g opacity="0.55">
+    <g data-light="glow">
+    <circle cx="32" cy="42" r="9.6" fill="#4dff88" opacity="0.18"/>
+    <circle cx="32" cy="42" r="3.2" fill="#4dff88"/>
+    </g>
+    <g data-light="glow">
+    <circle cx="160" cy="42" r="9.6" fill="#4dff88" opacity="0.18"/>
+    <circle cx="160" cy="42" r="3.2" fill="#4dff88"/>
+    </g>
+    </g>
+  </g>
+</svg>

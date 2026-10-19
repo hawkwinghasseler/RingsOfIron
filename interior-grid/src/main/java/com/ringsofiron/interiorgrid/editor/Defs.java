@@ -37,7 +37,7 @@ public final class Defs {
     public static final Set<String> CHASSIS_KEYS = new HashSet<>(Arrays.asList("name", "station", "tile_size",
             "origin_x", "origin_y", "rows", "mounts", "edge_walls", "edge_conduits", "hull_pieces", "coverings", "ports", "lights"));
     public static final Set<String> TILE_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "base",
-            "weight_class", "material", "covering", "color"));
+            "weight_class", "material", "covering", "art", "color"));
     public static final Set<String> COMPONENT_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "behavior",
             "sizes", "color", "power_output", "throughput"));
 
@@ -135,6 +135,7 @@ public final class Defs {
         }
         boolean floor = "FLOOR".equals(d.base) || "CONDUIT".equals(d.base);
         if (floor && d.covering != null && !"NONE".equals(d.covering)) out.add(new Entry("covering", str(d.covering)));
+        if (d.art != null) out.add(new Entry("art", str(d.art)));
         if (d.color != null) out.add(new Entry("color", str(d.color)));
         return out;
     }
