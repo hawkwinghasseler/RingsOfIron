@@ -177,6 +177,8 @@ public class GameWorld implements Disposable {
     private final Modules modules;
     private final SwitchableCommodityCatalog commodities = new SwitchableCommodityCatalog(new DefaultCommodityCatalog());
     private ModContext content;
+    /** What ships collide on, once content has loaded. */
+    private ShipHulls hulls;
     private Crash crash;
     private final List<Entity> wrecks = new ArrayList<>();
     private final double[] trueState = new double[4];
@@ -363,7 +365,7 @@ public class GameWorld implements Disposable {
         bootstrap.beforeScripts(DockingData::install);
         // Ships collide on their hull art's collision layer, else on their layout
         bootstrap.beforeScripts(ctx -> ShipPhysicsAssembler.register(ctx.factory, physics, gridMass(ctx),
-                new ShipHulls(assetsDir, ctx)));
+                hulls = new ShipHulls(assetsDir, ctx)));
         // Weapons after the interior: each hardpoint is wired to the nearest weapon system.
         bootstrap.beforeScripts(ctx -> ShipWeaponsAssembler.register(ctx.factory, combatDefs));
         for (Consumer<ModContext> step : modules.contentRegistrations) bootstrap.beforeScripts(step);
@@ -483,6 +485,17 @@ public class GameWorld implements Disposable {
         CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
         if (hold != null) hold.addMassTo(grid, m);
         return m;
+    }
+
+    /**
+     * Gives a ship's body the collision shape of its current layout (see {@link ShipHulls}), as after
+     * a yard rebuilds its decks. Its mass is left to the caller. Returns false if nothing changed:
+     * no body, no grid, or content not loaded.
+     */
+    public boolean rebuildHull(Entity ship) {
+        PhysicsBodyComponent pb = ship.getComponent(PhysicsBodyComponent.class);
+        if (hulls == null || pb == null || pb.body == null) return false;
+        return PhysicsManager.replacePolygonFixtures(pb.body, hulls.hullFor(ship, null));
     }
 
     /** A ship's mass for the physics assembler, from {@link #shipMass}. */

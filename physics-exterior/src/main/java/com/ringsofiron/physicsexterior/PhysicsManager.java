@@ -449,6 +449,38 @@ public class PhysicsManager implements Disposable {
         return body;
     }
 
+    /**
+     * Gives {@code body} a new shape: its solid polygon fixtures (not sensors or docking collars)
+     * are replaced by one for each of {@code pieces}, as {@link #createPolygonBody(Entity, float,
+     * float, float, List, float, short, short)} takes them, with the same density, friction and
+     * collision filter. Its mass is left to the fixtures' densities, so set the mass data after if
+     * it should be something else. Returns false, changing nothing, if the body has no such fixture
+     * or {@code pieces} is empty. Not while the world is stepping.
+     */
+    public static boolean replacePolygonFixtures(Body body, List<float[]> pieces) {
+        if (pieces == null || pieces.isEmpty()) return false;
+        Array<Fixture> old = new Array<>();
+        for (Fixture f : body.getFixtureList()) {
+            if (f.isSensor() || !(f.getShape() instanceof PolygonShape)) continue;
+            if ((f.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0) continue;
+            old.add(f);
+        }
+        if (old.size == 0) return false;
+        Fixture template = old.first();
+        float density = template.getDensity(), friction = template.getFriction(), restitution = template.getRestitution();
+        short category = template.getFilterData().categoryBits, mask = template.getFilterData().maskBits;
+        for (Fixture f : old) body.destroyFixture(f);
+        for (float[] vertices : pieces) {
+            float[] scaled = new float[vertices.length];
+            for (int i = 0; i < vertices.length; i++) scaled[i] = vertices[i] * UNITS_PER_METER;
+            PolygonShape shape = new PolygonShape();
+            shape.set(PolygonSkin.inset(scaled, PolygonSkin.SKIN_UNITS));
+            body.createFixture(fixture(shape, density, friction, restitution, category, mask));
+            shape.dispose();
+        }
+        return true;
+    }
+
     private static FixtureDef fixture(Shape shape, float density, float friction, float restitution,
                                       short category, short mask) {
         FixtureDef def = new FixtureDef();
