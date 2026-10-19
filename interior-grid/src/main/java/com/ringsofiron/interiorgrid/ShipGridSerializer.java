@@ -50,6 +50,9 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
         writeEdges(json, "edgeV", grid.edgeV);
         writeConduits(json, "conduitH", grid.conduitH);
         writeConduits(json, "conduitV", grid.conduitV);
+        writePipes(json, "pipes", grid.pipes);
+        writePipes(json, "pipeH", grid.pipeH);
+        writePipes(json, "pipeV", grid.pipeV);
 
         json.writeArrayStart("pieces");
         for (HullPiece p : grid.hullPieces) {
@@ -176,6 +179,10 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
         // Saves from before edge conduits have none
         readConduits(data.get("conduitH"), grid.conduitH);
         readConduits(data.get("conduitV"), grid.conduitV);
+        // Saves from before pipes have none
+        readPipes(data.get("pipes"), grid.pipes);
+        readPipes(data.get("pipeH"), grid.pipeH);
+        readPipes(data.get("pipeV"), grid.pipeV);
 
         // Mounts were valid when saved; damage since then must not refuse them now
         for (JsonValue m = data.get("mounts").child; m != null; m = m.next) {
@@ -212,6 +219,25 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
         }
         grid.gridDirty = true;
         return grid;
+    }
+
+    private static void writePipes(Json json, String name, Pipe[][] pipes) {
+        json.writeArrayStart(name);
+        for (int y = 0; y < pipes.length; y++) {
+            for (int x = 0; x < pipes[y].length; x++) {
+                if (pipes[y][x] == null) continue;
+                json.writeObjectStart();
+                json.writeValue("x", x);
+                json.writeValue("y", y);
+                json.writeObjectEnd();
+            }
+        }
+        json.writeArrayEnd();
+    }
+
+    private static void readPipes(JsonValue list, Pipe[][] pipes) {
+        if (list == null) return;
+        for (JsonValue p = list.child; p != null; p = p.next) pipes[p.getInt("y")][p.getInt("x")] = new Pipe();
     }
 
     private static void readConduits(JsonValue list, EdgeConduit[][] conduits) {

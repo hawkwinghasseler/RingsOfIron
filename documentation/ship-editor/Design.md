@@ -36,7 +36,7 @@ color = "#7a8a9a"         # how the editor draws it
 name = "Fusion core"
 symbol = "F"              # one letter, used in chassis rows
 behavior = "REACTOR"      # a SubsystemType: REACTOR, SHIELD_EMITTER, TURRET_MOUNT, LIFE_SUPPORT,
-                          # HELM, WEAPONS, CARGO, AIRLOCK or DOCKING_PORT
+                          # HELM, WEAPONS, CARGO, AIRLOCK, DOCKING_PORT, TANK or ENGINE
 sizes = ["M", "L"]        # mount sizes it comes in (default: every size its mount kind has)
 color = "#ff9a3c"
 power_output = { M = 4.0e6, L = 1.4e7 }   # REACTOR: watts at full health, by size
@@ -47,6 +47,8 @@ The behavior fixes the mount kind (square primary, rectangular auxiliary or hull
 |---|---|---|---|
 | `power_output` | `REACTOR` | Watts by mount size | 1, 3, 10, 30 MW for S-XL |
 | `throughput` | `LIFE_SUPPORT` | Multiplies scrubbing, air and oxygen supply | 1.0 |
+| `fluid` | `TANK` | What it holds: `OXYGEN`, `NITROGEN` or `PROPELLANT` | `PROPELLANT` |
+| `capacity` | `TANK` | Kilograms by mount size | 150 kg of a gas or 1,000 kg of propellant a tile |
 
 Each installed system keeps its component id and these values on its `SubsystemComponent` (so a save restores them, even if the data changes later). Other systems read the behavior through `SubsystemComponent.type`, exactly as before, so a new turret component works wherever a turret mount does. More settings (shield strength, cargo stack height, crew console speed) are added the same way when the systems that would read them want them.
 
@@ -68,17 +70,18 @@ The screen is the ship on a tile grid, with a panel on the right. Three tabs at 
   3. **Edge wall**: click near a tile edge to add or remove a thin wall there, with the weight class and bulkhead door chosen in the panel.
   4. **Hull piece**: places a wedge or block of the size chosen in the panel, centered on the cursor; R rotates and X (or the Flip button) mirrors it left to right. A mirrored wedge is stored as the same wedge with width and height swapped, turned one step the other way, so the data has no flip of its own. A new piece replaces any piece it overlaps; the ghost is green or red like a component's, and a piece that would leave the grid is not placed.
   5. **Covering**: drag a rectangle to lay carpet.
-  6. **Erase**: removes the wall light nearest the cursor's edge, else an edge conduit on the edge the cursor is close to, else the component, hull piece, edge wall or covering under the cursor, or paints void.
+  6. **Erase**: removes the wall light nearest the cursor's edge, else an edge conduit on the edge the cursor is close to, else a pipe there (along the edge, or across the tile under the cursor), else the component, hull piece, edge wall or covering under the cursor, or paints void.
   7. **Port**: click a docking port to toggle it active or passive.
   8. **Light**: click near a floor tile's edge to hang or take down a wall light there, shining into the tile. A light takes no room: the tile stays free for anything else. **Auto-place lights** in the panel replaces the layout's lights with the ones the game would work out (see `documentation/lighting/Design.md`), as one undoable edit; **Clear** leaves the layout with none. Lights are saved under `lights = [{ x = 3, y = 2, side = "TOP" }]`; a layout without the key gets the auto-placed ones when the game builds it.
   9. **Conduit**: click near a tile edge to run a power conduit along it, or take up the one there. An edge conduit may run inside a thin wall or along a full-tile wall, so power can cross walls (see Power in `documentation/interior-grid/Design.md`); runs join where their edges meet. Click the middle of a floor tile to lay a conduit across it (the conduit tile type) or take it up. Edge conduits are saved under `edge_conduits = [{ x = 3, y = 2, side = "TOP" }]`.
+  10. **Pipe** (key 0): click near a tile edge to run a pipe along it, or the middle of a tile to lay one across it (not on a wall or void tile); click again to take it up. Pipes join tanks to the systems that draw on them: life support takes oxygen and nitrogen, engines propellant (see Tanks and Pipes in `documentation/interior-grid/Design.md`). They are drawn over conduits and saved under `pipes = [{ x = 3, y = 2 }, { x = 3, y = 2, side = "TOP" }]`.
 - **Rotating placed components**: with any tool but Hull piece, R over a placed component turns it a quarter turn counter-clockwise about its middle (a rectangular slot swaps its width and height) and undoes like any edit; the next one placed faces the same way. It refuses, with the reason, when the turned slot would leave the grid or overlap another mount. Docking ports are not turned: they face out of the hull edge they sit in. A turned square mount is saved under `mounts` with its `rotation`, since the rows cannot show which way it faces.
 - **Grid**: buttons add or remove a row or column on any side (everything listed shifts to match, and the origin moves so the rest of the ship stays put on the body); fields set the tile size and the origin, and **Center origin** puts the body origin in the middle of the grid (drawn as a blue cross).
 - **Properties**: name, `station` flag.
 - **Check**: every edit is rebuilt through `ChassisBlueprintLoader`; the panel shows the result (tile count, mounts, cargo volume, rooms, power reach) or the loader's error, and the problem tile is outlined in red. A chassis with an error can still be saved, so work in progress is never lost, but the panel warns that the game will refuse it.
 
 ### Tiles and Components tabs
-Each lists every definition with its symbol and color. **New from selected** makes one as a copy of the selected one (so a new turret starts as a copy of the turret mount) under an id you type, with a free symbol; every field is an editable row: text fields take typing (Enter keeps, Esc cancels), choices are buttons. A component's sizes are toggles; its behavior can change freely while no chassis mounts it, and only within the same mount shape while one does. A definition that chassis use cannot be deleted until they stop using it; changing its symbol rewrites those chassis rows to match.
+Each lists every definition with its symbol and color. **New from selected** makes one as a copy of the selected one (so a new turret starts as a copy of the turret mount) under an id you type, with a free symbol; every field is an editable row: text fields take typing (Enter keeps, Esc cancels), choices are buttons. A component's sizes are toggles, and a tank's fluid is a choice with a capacity field per size; its behavior can change freely while no chassis mounts it, and only within the same mount shape while one does. A definition that chassis use cannot be deleted until they stop using it; changing its symbol rewrites those chassis rows to match.
 
 ### Saving
 The editor writes TOML by hand rather than through the parser, so the files stay readable and keep their comments:

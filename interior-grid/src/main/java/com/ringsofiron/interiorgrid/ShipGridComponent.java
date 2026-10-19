@@ -40,6 +40,12 @@ public class ShipGridComponent implements Component {
     public final EdgeConduit[][] conduitH;
     /** Power conduits along vertical edges, indexed like {@link #edgeV}. Null means none. */
     public final EdgeConduit[][] conduitV;
+    /** Pipes across the middle of tiles, [y][x] like {@link #tiles}. Null means none. See {@link Pipe}. */
+    public final Pipe[][] pipes;
+    /** Pipes along horizontal edges, indexed like {@link #edgeH}. Null means none. */
+    public final Pipe[][] pipeH;
+    /** Pipes along vertical edges, indexed like {@link #edgeV}. Null means none. */
+    public final Pipe[][] pipeV;
     public final Array<HullPiece> hullPieces = new Array<>();
     public final Array<MountFootprint> mounts = new Array<>();
     /**
@@ -61,6 +67,8 @@ public class ShipGridComponent implements Component {
     public final transient Array<GridLink> links = new Array<>();
     /** The ship's power circuits, rebuilt by {@link PowerRoutingSystem}. Not saved. */
     public final transient Array<PowerCircuit> circuits = new Array<>();
+    /** The ship's connected pipe runs, rebuilt by {@link PipeRouting}. Not saved. */
+    public final transient Array<PipeNetwork> pipeNetworks = new Array<>();
     /** The layout the compartments were last built from; null before the first build. */
     boolean[] compartmentLayout;
     /**
@@ -99,6 +107,9 @@ public class ShipGridComponent implements Component {
         this.edgeV = new EdgeWall[height][width + 1];
         this.conduitH = new EdgeConduit[height + 1][width];
         this.conduitV = new EdgeConduit[height][width + 1];
+        this.pipes = new Pipe[height][width];
+        this.pipeH = new Pipe[height + 1][width];
+        this.pipeV = new Pipe[height][width + 1];
     }
 
     /**
@@ -204,6 +215,54 @@ public class ShipGridComponent implements Component {
         if (getConduit(x, y, side) != null) return true;
         Tile t = getTile(x + side.dx, y + side.dy);
         return t != null && t.isPowerConduit();
+    }
+
+    /** The pipe across the middle of tile (x, y), or null if none / out of bounds. */
+    public Pipe getPipe(int x, int y) {
+        return inBounds(x, y) ? pipes[y][x] : null;
+    }
+
+    /** Lays (or with null, takes up) the pipe across the middle of tile (x, y). */
+    public void setPipe(int x, int y, Pipe pipe) {
+        if (!inBounds(x, y)) throw new IllegalArgumentException("Tile out of bounds: " + x + "," + y);
+        pipes[y][x] = pipe;
+    }
+
+    /** Returns the pipe on the given side of tile (x, y), or null if none / out of bounds. */
+    public Pipe getEdgePipe(int x, int y, Side side) {
+        if (!inBounds(x, y)) return null;
+        switch (side) {
+            case BOTTOM: return pipeH[y][x];
+            case TOP:    return pipeH[y + 1][x];
+            case LEFT:   return pipeV[y][x];
+            default:     return pipeV[y][x + 1];
+        }
+    }
+
+    /** Lays (or with null, takes up) the pipe on the given side of tile (x, y). */
+    public void setEdgePipe(int x, int y, Side side, Pipe pipe) {
+        if (!inBounds(x, y)) throw new IllegalArgumentException("Tile out of bounds: " + x + "," + y);
+        switch (side) {
+            case BOTTOM: pipeH[y][x] = pipe; break;
+            case TOP:    pipeH[y + 1][x] = pipe; break;
+            case LEFT:   pipeV[y][x] = pipe; break;
+            default:     pipeV[y][x + 1] = pipe; break;
+        }
+    }
+
+    /**
+     * True if tile (x, y) has a pipe on its {@code side} edge or across the neighbor beyond it:
+     * what a pipe across the tile's middle reaches toward.
+     */
+    public boolean hasPipeToward(int x, int y, Side side) {
+        return getEdgePipe(x, y, side) != null || getPipe(x + side.dx, y + side.dy) != null;
+    }
+
+    /** True if the grid has any pipe at all. */
+    public boolean hasPipes() {
+        for (Pipe[][] a : new Pipe[][][]{pipes, pipeH, pipeV})
+            for (Pipe[] row : a) for (Pipe p : row) if (p != null) return true;
+        return false;
     }
 
     /** The link across the {@code side} edge of tile (x, y) onto another grid, or null. */
