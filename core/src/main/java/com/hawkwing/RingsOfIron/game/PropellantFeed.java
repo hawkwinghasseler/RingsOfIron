@@ -166,6 +166,19 @@ public class PropellantFeed extends EntitySystem {
     }
 
     /**
+     * Propellant, kg, an impulsive burn of {@code deltaV} m/s by a ship of {@code mass} kg takes, by the
+     * rocket equation; 0 for a ship with no engine, infinite for a delta-v that isn't a number.
+     */
+    public static double propellantFor(Entity ship, double mass, double deltaV) {
+        ShipSubsystemRegistryComponent registry = REGISTRY.get(ship);
+        if (registry == null || !hasEngine(registry)) return 0;
+        if (Double.isNaN(deltaV)) return Double.POSITIVE_INFINITY;
+        ThrusterComponent thruster = THRUSTERS.get(ship);
+        double ve = thruster != null ? exhaustVelocity(thruster) : ShipPhysicsAssembler.STANDARD_EXHAUST_VELOCITY;
+        return mass * (1 - Math.exp(-deltaV / ve));
+    }
+
+    /**
      * Pays for an impulsive burn of {@code deltaV} m/s by a ship of {@code mass} kg out of the tanks
      * its engines draw on, by the rocket equation, and returns the delta-v it could pay for: all of
      * it, less when the tanks run short, 0 with none. A ship with no engine pays nothing.

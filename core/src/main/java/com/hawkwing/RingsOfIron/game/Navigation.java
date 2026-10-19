@@ -72,6 +72,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
             if (!change.rails) nav.warpToBurn = false;
         });
         registerHints(world.hints, () -> nav.transfer.proposal() != null);
+        // The low-propellant warning keeps quiet while there is enough to get home
+        world.warnings.returnPropellantKg = nav::returnPropellantKg;
         return nav;
     }
 
@@ -239,6 +241,16 @@ public class Navigation extends EntitySystem implements DropOutSource {
         Entity ship = world.getPlayer();
         ShipGridComponent.MassProperties m = ship == null ? null : world.shipMass(ship);
         return m == null ? Double.POSITIVE_INFINITY : PropellantFeed.deltaVLeft(ship, m.mass);
+    }
+
+    /**
+     * Propellant, kg, the {@link #returnDeltaV} home takes; infinite when no station can be reached, so
+     * the low-propellant warning sounds.
+     */
+    public double returnPropellantKg() {
+        Entity ship = world.getPlayer();
+        ShipGridComponent.MassProperties m = ship == null ? null : world.shipMass(ship);
+        return m == null ? Double.POSITIVE_INFINITY : PropellantFeed.propellantFor(ship, m.mass, returnDeltaV());
     }
 
     /**

@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.aicrew.CrewMemberComponent;
+import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
@@ -66,6 +67,10 @@ public final class PirateAces {
         if (refit != null && Loadouts.apply(ship, refit, world.combatDefs) > 0) h.loadout = refit.id;
         h.firepower = HostileTraffic.firepower(ship);
         for (CrewMemberComponent c : crewOf(world, ship)) {
+            // Into the crew's record too, which the crew career turns back into the def
+            CrewRecord r = c.record();
+            r.gunnery = Math.max(r.gunnery, ACE_SKILL);
+            r.tracking = Math.max(r.tracking, ACE_SKILL);
             c.def.gunnerySkill = Math.max(c.def.gunnerySkill, ACE_SKILL);
             c.def.trackingSkill = Math.max(c.def.trackingSkill, ACE_SKILL);
         }
