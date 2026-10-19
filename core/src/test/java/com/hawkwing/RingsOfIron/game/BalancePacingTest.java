@@ -99,7 +99,7 @@ class BalancePacingTest {
     }
 
     @Test
-    void theFirstRaiderComesInFiringAndTheFightTakesHalfAMinute() {
+    void theFirstRaiderComesInFiringAndTheFightLastsUnderFire() {
         undocked();
         // First Play wakes the raider once the player is clear of Highport, some way off from it
         flyTo(6_000f);
@@ -111,6 +111,10 @@ class BalancePacingTest {
                 raiderShots[0]++;
                 if (firstRaiderShot[0] < 0f) firstRaiderShot[0] = t[0];
             }
+        });
+        int[] playerHits = {0};
+        world.combatEvents.damage.add((s, r) -> {
+            if (r.ship == game.player) playerHits[0]++;
         });
         game.provokeRaider();
         assertTrue(game.raiderHostile());
@@ -130,12 +134,15 @@ class BalancePacingTest {
             assertFalse(ShipDisablement.isDisabled(game.player), "the player's ship held out");
         }
         String said = String.format(Locale.ROOT, "raider fired %d times, first at %.1f s; the player opened fire at %.1f s;"
-                + " the raider was beaten at %.1f s", raiderShots[0], firstRaiderShot[0], openedFire, t[0]);
+                + " the raider was beaten at %.1f s; the player's ship was hit %d times, hull at %.2f", raiderShots[0],
+                firstRaiderShot[0], openedFire, t[0], playerHits[0], HostileTraffic.hull(game.player));
         System.out.println("First fight: " + said);
         assertTrue(ShipDisablement.isDisabled(game.raider), "beaten: " + said);
         assertTrue(raiderShots[0] > 0 && firstRaiderShot[0] < openedFire, "the raider shoots first: " + said);
-        // Was 7 s from the first shot, with the raider asleep; now from the raider waking to its end
-        assertTrue(t[0] >= 20f, "the fight lasts: " + said);
+        // Was 7 s from the player's first shot, with the raider asleep and three slugs through its
+        // nose shutting its reactor down; now the player's guns take a good while, under fire
+        assertTrue(t[0] - openedFire >= 20f, "the fight lasts: " + said);
+        assertTrue(playerHits[0] > 0, "the raider lands hits: " + said);
         assertTrue(HostileTraffic.firepower(game.raider) < HostileTraffic.firepower(game.player), "and the raider is outgunned");
     }
 
