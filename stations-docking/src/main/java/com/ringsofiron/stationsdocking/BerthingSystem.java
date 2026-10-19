@@ -129,31 +129,39 @@ public class BerthingSystem extends EntitySystem {
     public void update(float dt) {
         for (int i = craft.size() - 1; i >= 0; i--) {
             Entity e = craft.get(i);
-            BerthingComponent b = berthing.get(e);
-            FlightControlComponent c = controls.get(e);
-            Entity station = b.station == null ? null : b.station.get(uuids);
-            Body body = docking.bodyOf(e);
-            Body sb = station == null ? null : docking.bodyOf(station);
-            DockingPort own = ports.has(e) ? ports.get(e).get(b.ownPort) : null;
-            b.time += dt;
-            if (body == null || sb == null || own == null) {
+            pilot(e, berthing.get(e), controls.get(e), dt);
+        }
+    }
+
+    /**
+     * Flies {@code e} one step of {@code b}, setting {@code c}, for a craft that does not carry
+     * {@code b} as its own component: the player's helm docking the ship ({@code HelmOrders}). It
+     * goes from {@link BerthingComponent.Phase#APPROACH} to the latch; the caller watches the port for
+     * the latch, since {@link #listener} and the docked phase are only for craft this system flies.
+     */
+    public void pilot(Entity e, BerthingComponent b, FlightControlComponent c, float dt) {
+        Entity station = b.station == null ? null : b.station.get(uuids);
+        Body body = docking.bodyOf(e);
+        Body sb = station == null ? null : docking.bodyOf(station);
+        DockingPort own = ports.has(e) ? ports.get(e).get(b.ownPort) : null;
+        b.time += dt;
+        if (body == null || sb == null || own == null || !thrusters.has(e)) {
+            c.clear();
+            return;
+        }
+        switch (b.phase) {
+            case APPROACH:
+            case FINAL:
+                approach(e, b, c, own, body, station, sb, dt);
+                break;
+            case BERTHED:
                 c.clear();
-                continue;
-            }
-            switch (b.phase) {
-                case APPROACH:
-                case FINAL:
-                    approach(e, b, c, own, body, station, sb, dt);
-                    break;
-                case BERTHED:
-                    c.clear();
-                    break;
-                case DEPART:
-                    leave(e, b, c, own, body, station, sb);
-                    break;
-                default:
-                    break;
-            }
+                break;
+            case DEPART:
+                leave(e, b, c, own, body, station, sb);
+                break;
+            default:
+                break;
         }
     }
 
@@ -168,7 +176,7 @@ public class BerthingSystem extends EntitySystem {
         DockingSystem.worldPoint(body, own.faceX(), own.faceY(), face);
         stationCentre(station, sb, centre);
         float radius = radius(station);
-        if (b.port >= 0 && !cleared(e, station, b.port)) b.port = -1;
+        if (b.port >= 0 && !cleared(e, b, station, b.port)) b.port = -1;
         b.retry -= dt;
         if (b.port < 0) {
             if (b.phase == BerthingComponent.Phase.FINAL) enter(b, BerthingComponent.Phase.APPROACH, "");
@@ -346,20 +354,30 @@ public class BerthingSystem extends EntitySystem {
         return MathUtils.atan2(-dir.y, -dir.x) - MathUtils.atan2(own.normalY, own.normalX);
     }
 
-    /** The port is still armed for this craft. */
-    private boolean cleared(Entity e, Entity station, int port) {
-        DockingPort q = ports.get(station).get(port);
+    /** The port is still armed for this craft; for one docking {@link BerthingComponent#uninvited uninvited}, still free. */
+    private boolean cleared(Entity e, BerthingComponent b, Entity station, int port) {
+        DockingPort q = ports.has(station) ? ports.get(station).get(port) : null;
+        if (b.uninvited) return q != null && q.isFree() && q.intact();
         UuidComponent id = e.getComponent(UuidComponent.class);
         return q != null && q.armed && q.isFree() && id != null && id.id.equals(q.armedFor);
     }
 
     private void ask(Entity e, BerthingComponent b, Entity station) {
         b.retry = RETRY_SECONDS;
-        String refused = docking.arm(e, b.ownPort);
+        DockingPort own = ports.get(e).get(b.ownPort);
+        String refused = own.armed ? null : docking.arm(e, b.ownPort);
         if (refused != null) {
             // Its own trouble, such as power still coming up: try again soon
             b.retry = 2f;
             b.status = "Can't arm its port: " + refused;
+            return;
+        }
+        if (b.uninvited) {
+            // No one to ask: the nearest free port of our size on the other craft
+            b.port = nearestFreePort(e, own, station);
+            b.retry = b.port < 0 ? RETRY_SECONDS : 0f;
+            b.status = b.port < 0 ? "No free " + own.size + " port on " + nameOf(station) + "; holding off"
+                    : "Making for port " + (b.port + 1) + " (without clearance)";
             return;
         }
         DockingSystem.Clearance got = docking.requestClearance(e, b.ownPort);
@@ -375,6 +393,26 @@ public class BerthingSystem extends EntitySystem {
         }
         b.status = got.outcome == DockingSystem.Clearance.Outcome.DENIED ? "Refused clearance; holding off"
                 : got.outcome == DockingSystem.Clearance.Outcome.NO_FREE_PORT ? "No free port; holding off" : "Holding off";
+    }
+
+    /** The free, intact port of {@code own}'s size on {@code other} nearest {@code e}'s port, or -1. */
+    private int nearestFreePort(Entity e, DockingPort own, Entity other) {
+        DockingPortsComponent list = ports.has(other) ? ports.get(other) : null;
+        Body body = docking.bodyOf(e), ob = docking.bodyOf(other);
+        if (list == null || body == null || ob == null) return -1;
+        DockingSystem.worldPoint(body, own.faceX(), own.faceY(), face);
+        int best = -1;
+        float bestD = Float.MAX_VALUE;
+        for (int i = 0; i < list.ports.length; i++) {
+            DockingPort q = list.ports[i];
+            if (q.size != own.size || !q.isFree() || !q.intact()) continue;
+            float d = DockingSystem.worldPoint(ob, q.faceX(), q.faceY(), qFace).dst(face);
+            if (d < bestD) {
+                bestD = d;
+                best = i;
+            }
+        }
+        return best;
     }
 
     private void onEvent(DockingEvent ev) {

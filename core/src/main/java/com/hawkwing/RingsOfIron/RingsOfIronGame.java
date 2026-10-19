@@ -598,6 +598,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (just(Action.HELM_MATCH_VELOCITY)) show(nav.helm.give(com.hawkwing.RingsOfIron.game.HelmOrderComponent.Mode.MATCH_VELOCITY));
         if (just(Action.HELM_HOLD)) show(nav.helm.give(com.hawkwing.RingsOfIron.game.HelmOrderComponent.Mode.HOLD_POSITION));
         if (just(Action.HELM_APPROACH)) show(nav.helm.give(com.hawkwing.RingsOfIron.game.HelmOrderComponent.Mode.APPROACH));
+        if (just(Action.HELM_DOCK)) show(nav.helm.give(com.hawkwing.RingsOfIron.game.HelmOrderComponent.Mode.DOCK));
+        if (just(Action.AUTOPILOT)) show(nav.autopilot.toggle());
         if (just(Action.HELM_CANCEL)) show(nav.helm.give(com.hawkwing.RingsOfIron.game.HelmOrderComponent.Mode.NONE));
     }
 

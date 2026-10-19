@@ -49,6 +49,12 @@ public class YardOrdersComponent implements Component {
     /** Credits the repairs have cost so far. */
     public double repairsPaid;
     public ArrayList<Refit> refits = new ArrayList<>();
+    /**
+     * Sim second the ship came loose of the station while the work stood, or -1 while it is
+     * latched. The work waits {@link StationYard#LOOSE_GRACE} for it to latch again before it is
+     * called off.
+     */
+    public double looseSince = -1;
 
     /** The refit ordered for {@code hardpoint}, or null. */
     public Refit refit(int hardpoint) {

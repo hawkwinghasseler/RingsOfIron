@@ -42,6 +42,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
     public final NavTarget target;
     public final PlayerTransfer transfer;
     public final HelmOrders helm;
+    /** Flies an accepted transfer under time warp and hands over to the helm to dock on arrival. */
+    public final Autopilot autopilot;
     /** What the player's keys are called, for messages naming them; the screen points it at its bindings. */
     public Function<Action, String> keyNames = a -> KeyBindings.keyName(a.defaultKey);
 
@@ -59,6 +61,11 @@ public class Navigation extends EntitySystem implements DropOutSource {
         target = new NavTarget(world, sightings);
         transfer = new PlayerTransfer(world, target, orbits, this::key);
         helm = new HelmOrders(world, target, this::key);
+        autopilot = new Autopilot(world, this, this::key);
+    }
+
+    PlayerOrbitInfo orbits() {
+        return orbits;
     }
 
     /** Puts navigation into {@code world}. */
@@ -67,6 +74,7 @@ public class Navigation extends EntitySystem implements DropOutSource {
         world.engine.addSystem(nav.sightings);
         world.engine.addSystem(nav);
         world.timeWarp.addDropOutSource(nav);
+        world.timeWarp.addDropOutSource(nav.autopilot);
         world.engine.addRailsWarpGuard(nav.helm::railsWarpBlockedReason);
         world.timeWarp.changes.add((signal, change) -> {
             if (!change.rails) nav.warpToBurn = false;
@@ -87,6 +95,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
             hints.register(c, "warp to the next burn", 62, Action.WARP_TO_BURN);
             hints.register(c, "helm: fly burns / match / hold / approach / cancel", c == HintRegistry.Context.WEAPONS ? 30 : 63,
                     Action.HELM_FLY_BURNS, Action.HELM_MATCH_VELOCITY, Action.HELM_HOLD, Action.HELM_APPROACH, Action.HELM_CANCEL);
+            hints.register(c, "helm: dock at the target", c == HintRegistry.Context.WEAPONS ? 31 : 64, Action.HELM_DOCK);
+            hints.register(c, "autopilot: fly the transfer", c == HintRegistry.Context.WEAPONS ? 32 : 65, Action.AUTOPILOT);
         }
     }
 
@@ -132,7 +142,7 @@ public class Navigation extends EntitySystem implements DropOutSource {
     }
 
     /** How long before a burn warp stops: longer when the helmsman is to turn the ship and fly it. */
-    private double leadFor(ManeuverNodeComponent.Node n) {
+    double leadFor(ManeuverNodeComponent.Node n) {
         if (helm.mode() != HelmOrderComponent.Mode.FLY_BURNS) return WARP_LEAD;
         double accel = mainEngineAccel();
         double half = accel > 0 ? Math.hypot(n.prograde, n.radial) / accel / 2 : 0;
@@ -323,6 +333,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
         }
         String h = helm.describe();
         if (h != null) out.add(h);
+        String auto = autopilot.describe();
+        if (auto != null) out.add(auto);
         double need = deltaVNeeded();
         if (need > 0) {
             double left = deltaVLeft();
