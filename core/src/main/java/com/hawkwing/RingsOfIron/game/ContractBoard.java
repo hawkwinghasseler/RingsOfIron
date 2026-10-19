@@ -16,6 +16,7 @@ import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.moddingdata.defs.FactionDef;
 import com.ringsofiron.orbital.math.StateVector;
+import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
@@ -496,6 +497,9 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             c.type = Contract.Type.BOUNTY;
             c.targetUuid = uuid;
             String label = m == null ? "" : m.label.replace(MARKER_SUFFIX, "");
+            // A pirate out on the rails has no marker yet, but it has a name
+            HostileComponent hostile = e.getComponent(HostileComponent.class);
+            if (label.isEmpty() && hostile != null && hostile.displayName != null) label = hostile.displayName;
             c.targetName = (label.isEmpty() ? "a ship" : label) + " of the " + world.standing.factions().name(faction);
             double ratio = own <= 0 ? 1 : Difficulty.shipValue(e) / own;
             c.tier = ratio <= 1.2 ? 0 : ratio <= 2 ? 1 : 2;
