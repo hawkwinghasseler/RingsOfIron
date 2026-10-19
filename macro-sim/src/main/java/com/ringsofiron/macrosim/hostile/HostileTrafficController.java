@@ -32,6 +32,12 @@ import java.util.function.DoubleSupplier;
  *       it from there.</li>
  *   <li><b>Patrols</b> fly between the stations of their route, holding {@link #HOLD_OFFSET} behind
  *       each for {@link #PATROL_HOLD}. One with a single station guards it.</li>
+ *   <li><b>Wingmen</b> ({@link HostileComponent#wingOf}) lurk {@link #WING_SPACING} behind their
+ *       leader and never hunt on their own: when the leader commits to prey, each one plans its own
+ *       way to the same prey, to arrive {@link #WING_SPACING} behind it. A pair's firepower counts
+ *       together for {@link #PLAYER_NERVE}. A wingman whose leader is gone flies on its own.</li>
+ *   <li>An ace with a grudge ({@link HostileComponent#grudge}) goes after the player whatever the
+ *       odds.</li>
  * </ul>
  * Hostiles only travel around one body: their stations, and their prey's destinations, share it.
  * In the bubble the game flies and fights them; leaving it, a pirate goes home to rest and a
@@ -60,6 +66,8 @@ public class HostileTrafficController {
     public static final double DEPART_DELAY = 60;
     /** A pirate goes after the player when its firepower is at least this share of the player's. */
     public static final double PLAYER_NERVE = 0.8;
+    /** How far behind its leader a wingman lurks and arrives, meters. */
+    public static final double WING_SPACING = 2_000;
     /** The player's orbit must be this close to circular for a pirate to plan a rendezvous with it. */
     static final double MAX_PLAYER_ECCENTRICITY = 0.02;
     /** Lowest altitude any planned orbit may reach, above the body's surface, meters. */
@@ -120,8 +128,22 @@ public class HostileTrafficController {
         h.role = Role.PIRATE;
         h.stationUuid = stationUuid;
         hostiles.put(uuid, h);
-        holdAt(uuid, h, stationUuid, LURK_OFFSET, now);
+        holdAt(uuid, h, stationUuid, lurkOffset(h), now);
         schedule(uuid, h, now + LOOK_INTERVAL);
+    }
+
+    /** How far behind its lurk station a pirate holds: a wingman sits {@link #WING_SPACING} behind its leader. */
+    static double lurkOffset(HostileComponent h) {
+        return h.wingOf == null ? LURK_OFFSET : LURK_OFFSET + WING_SPACING;
+    }
+
+    /** The pirates flying as {@code leader}'s wingmen, by UUID. */
+    public List<String> wingmenOf(String leader) {
+        List<String> out = new ArrayList<>();
+        for (Map.Entry<String, HostileComponent> e : hostiles.entrySet()) {
+            if (leader.equals(e.getValue().wingOf)) out.add(e.getKey());
+        }
+        return out;
     }
 
     /** Registers a patrol flying {@code route}, starting held at its first station. */
@@ -152,6 +174,8 @@ public class HostileTrafficController {
     public void lose(String uuid) {
         HostileComponent h = hostiles.remove(uuid);
         if (h != null) events.cancel(h.eventId);
+        // Its wingmen fly on their own now
+        for (HostileComponent w : hostiles.values()) if (uuid.equals(w.wingOf)) w.wingOf = null;
     }
 
     /**
@@ -213,7 +237,7 @@ public class HostileTrafficController {
             h.targetUuid = null;
             h.ambushStationUuid = null;
             h.restUntil = Math.max(h.restUntil, now + REST);
-            fly(uuid, h, circ, circular, tBurn, h.stationUuid, LURK_OFFSET, State.RETURNING);
+            fly(uuid, h, circ, circular, tBurn, h.stationUuid, lurkOffset(h), State.RETURNING);
         } else {
             fly(uuid, h, circ, circular, tBurn, h.stationUuid, HOLD_OFFSET, State.PATROLLING);
         }
@@ -283,7 +307,7 @@ public class HostileTrafficController {
                 ambush(uuid, h, now);
                 break;
             case RETURNING:
-                holdAt(uuid, h, h.stationUuid, LURK_OFFSET, now);
+                holdAt(uuid, h, h.stationUuid, lurkOffset(h), now);
                 h.state = State.HOLDING;
                 schedule(uuid, h, Math.max(now + LOOK_INTERVAL, h.restUntil));
                 break;
@@ -303,6 +327,12 @@ public class HostileTrafficController {
             schedule(uuid, h, h.restUntil);
             return;
         }
+        if (h.wingOf != null && hostiles.get(h.wingOf) == null) h.wingOf = null;
+        if (h.wingOf != null) {
+            // A wingman hunts only with its leader
+            schedule(uuid, h, now + LOOK_INTERVAL);
+            return;
+        }
         String parent = rails.parentOf(uuid);
         TransferPlanner.Plan plan = playerIntercept(uuid, h, parent, now);
         if (plan != null) {
@@ -310,6 +340,7 @@ public class HostileTrafficController {
             h.ambushStationUuid = null;
             follow(uuid, h, new ArrayList<>(), plan, State.INTERCEPTING);
             for (Listener l : listeners) l.intercepting(uuid, HostileComponent.PLAYER, now);
+            bringWingmen(uuid, h, parent, now);
             return;
         }
         String best = null;
@@ -337,12 +368,38 @@ public class HostileTrafficController {
         h.ambushStationUuid = freighters.get(best).destinationUuid;
         follow(uuid, h, new ArrayList<>(), bestPlan, State.INTERCEPTING);
         for (Listener l : listeners) l.intercepting(uuid, best, now);
+        bringWingmen(uuid, h, parent, now);
+    }
+
+    /**
+     * {@code leader} committed to its prey: each of its wingmen lurking ready plans its own way
+     * there, to arrive {@link #WING_SPACING} behind it, and goes after the same prey.
+     */
+    private void bringWingmen(String leader, HostileComponent h, String parent, double now) {
+        for (String w : wingmenOf(leader)) {
+            HostileComponent wing = hostiles.get(w);
+            if (wing.state != State.HOLDING || now < wing.restUntil || !rails.isOnRails(w)
+                    || !parent.equals(rails.parentOf(w))) continue;
+            TransferPlanner.Plan plan;
+            if (h.huntingPlayer()) {
+                double mu = rails.muOf(parent);
+                StateVector player = behind(gateway.anchorStateAt(now, new StateVector()), WING_SPACING);
+                plan = TransferPlanner.plan(mu, rails.stateAt(w, now, a), player, now, now + DEPART_DELAY, floor(parent));
+            } else {
+                plan = planTo(w, h.ambushStationUuid, AMBUSH_OFFSET + WING_SPACING, now, now + DEPART_DELAY);
+            }
+            if (plan == null) continue;
+            wing.targetUuid = h.targetUuid;
+            wing.ambushStationUuid = h.ambushStationUuid;
+            follow(w, wing, new ArrayList<>(), plan, State.INTERCEPTING);
+        }
     }
 
     /** A rendezvous with the player, if this pirate would go after them now; else null. */
     private TransferPlanner.Plan playerIntercept(String uuid, HostileComponent h, String parent, double now) {
         if (gateway == null || now < playerGraceUntil || !parent.equals(gateway.anchorParentUuid())) return null;
-        if (h.firepower < PLAYER_NERVE * playerFirepower.getAsDouble() || hunted(HostileComponent.PLAYER)) return null;
+        if (hunted(HostileComponent.PLAYER)) return null;
+        if (!h.grudge && pairFirepower(uuid, h) < PLAYER_NERVE * playerFirepower.getAsDouble()) return null;
         double mu = rails.muOf(parent);
         StateVector player = gateway.anchorStateAt(now, new StateVector());
         if (eccentricity(mu, player) > MAX_PLAYER_ECCENTRICITY || player.distance() < floor(parent)) return null;
@@ -351,10 +408,20 @@ public class HostileTrafficController {
         return p.arrivalTime - now > MAX_HUNT ? null : p;
     }
 
+    /** {@code h}'s firepower with that of its wingmen lurking ready to come along. */
+    double pairFirepower(String uuid, HostileComponent h) {
+        double sum = h.firepower;
+        for (String w : wingmenOf(uuid)) {
+            HostileComponent wing = hostiles.get(w);
+            if (wing.state == State.HOLDING) sum += wing.firepower;
+        }
+        return sum;
+    }
+
     /** Arrived by the prey's destination: waits there for it, if it is still coming. */
     private void lieInWait(String uuid, HostileComponent h, double now) {
         FreighterComponent f = freighters.get(h.targetUuid);
-        holdAt(uuid, h, h.ambushStationUuid, AMBUSH_OFFSET, now);
+        holdAt(uuid, h, h.ambushStationUuid, h.wingOf == null ? AMBUSH_OFFSET : AMBUSH_OFFSET + WING_SPACING, now);
         if (f == null || !h.ambushStationUuid.equals(f.destinationUuid) || Double.isNaN(f.arrivalTime)
                 || f.arrivalTime - AMBUSH_LEAD < now) {
             h.targetUuid = null;
@@ -419,7 +486,7 @@ public class HostileTrafficController {
     /** Flies a pirate back to its lurk (with no lurk left, it holds where it is). */
     private void goHome(String uuid, HostileComponent h, double now) {
         TransferPlanner.Plan plan = h.stationUuid == null ? null
-                : planTo(uuid, h.stationUuid, LURK_OFFSET, now, now + DEPART_DELAY);
+                : planTo(uuid, h.stationUuid, lurkOffset(h), now, now + DEPART_DELAY);
         if (plan == null) {
             h.state = State.HOLDING;
             schedule(uuid, h, Math.max(now + LOOK_INTERVAL, h.restUntil));

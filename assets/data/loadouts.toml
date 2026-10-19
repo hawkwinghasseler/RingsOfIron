@@ -1,0 +1,102 @@
+# Ways to arm each hull (combat-sys's LoadoutDef). A pirate draws one when it spawns, from the
+# loadouts for its ship whose difficulty range holds the game's difficulty, by weight; so two
+# raiders off the same lurk can fight quite differently. A pirate that becomes an ace is refitted
+# with one of its hull's ace = true loadouts instead (and those are never drawn at spawn).
+#   ship            the [ship.*] it arms
+#   weapons         a weapon id per hardpoint, in the order ships.toml lists them; "" (or a short
+#                   list) keeps the stock weapon there. A weapon too big for the hardpoint's turret
+#                   mount (min_mount_size) is skipped and the stock one kept.
+#   weight          how often it is drawn against the others that qualify
+#   min_difficulty  drawn from this difficulty up (default 0) ...
+#   max_difficulty  ... and below this one (default: no limit)
+#   ace             an ace's refit (default false)
+# Patrols and the First Play raider keep their stock weapons.
+
+# Light raider: one Small turret mount in the nose.
+[loadout.raider_chaingun]
+name = "Gun runner"
+ship = "raider_light"
+weapons = ["chaingun_mk1"]
+weight = 5
+
+[loadout.raider_darts]
+name = "Dart boat"
+ship = "raider_light"
+weapons = ["dart_rack"]
+weight = 3
+
+# Prize takers: they stun a freighter's systems and board it, so they turn up once the game is harder
+[loadout.raider_ion]
+name = "Prize taker"
+ship = "raider_light"
+weapons = ["ion_mk1"]
+weight = 1
+min_difficulty = 1.0
+
+[loadout.raider_railgun]
+name = "Sniper"
+ship = "raider_light"
+weapons = ["railgun_mk1"]
+weight = 1
+min_difficulty = 1.5
+
+[loadout.raider_ace_chaingun]
+name = "Ace's chaingun"
+ship = "raider_light"
+weapons = ["chaingun_mk2"]
+ace = true
+weight = 2
+
+[loadout.raider_ace_railgun]
+name = "Ace's railgun"
+ship = "raider_light"
+weapons = ["railgun_mk2"]
+ace = true
+weight = 1
+
+# Gunship: a Medium mount in the nose, launchers on each beam aft, point defense on each beam forward.
+[loadout.gunship_stock]
+name = "Line gunship"
+ship = "gunship_heavy"
+weapons = []
+weight = 4
+
+[loadout.gunship_flak]
+name = "Flak gunship"
+ship = "gunship_heavy"
+weapons = ["", "", "", "flak_mk1", "flak_mk1"]
+weight = 2
+
+[loadout.gunship_brawler]
+name = "Brawler"
+ship = "gunship_heavy"
+weapons = ["chaingun_mk1", "", "", "", ""]
+weight = 2
+
+[loadout.gunship_raider]
+name = "Prize hunter"
+ship = "gunship_heavy"
+weapons = ["ion_mk1", "dart_rack", "dart_rack", "", ""]
+weight = 1
+min_difficulty = 1.0
+
+[loadout.gunship_heavy_railgun]
+name = "Heavy gunship"
+ship = "gunship_heavy"
+weapons = ["railgun_heavy"]
+weight = 1
+min_difficulty = 1.5
+
+[loadout.gunship_ace]
+name = "Ace's gunship"
+ship = "gunship_heavy"
+weapons = ["railgun_mk2", "", "", "flak_mk1", "flak_mk1"]
+ace = true
+weight = 2
+
+[loadout.gunship_ace_heavy]
+name = "Ace's heavy gunship"
+ship = "gunship_heavy"
+weapons = ["railgun_heavy", "", "", "flak_mk1", "flak_mk1"]
+ace = true
+weight = 1
