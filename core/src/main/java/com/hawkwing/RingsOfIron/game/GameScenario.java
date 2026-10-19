@@ -130,8 +130,11 @@ public class GameScenario {
         this.world = world;
         this.newGame = newGame;
         // A seeded world's stations and ships get the same UUIDs every time, so whatever is keyed or
-        // rolled by UUID replays too
-        if (newGame.seeded) world.engine.getEntityIds().seed(newGame.stream(7));
+        // rolled by UUID replays too. So do the designed start's, so every test and First Play
+        // replays, unless whoever built the world seeded them already
+        var ids = world.engine.getEntityIds();
+        if (newGame.seeded) ids.seed(newGame.stream(7));
+        else if (!ids.isSeeded()) ids.seed(NewGame.DESIGNED_IDS);
         dice = new java.util.Random(newGame.stream(3));
         content = world.loadContent(assetsDir, modsDir);
         // The designed start keeps whatever dice the world was built with
