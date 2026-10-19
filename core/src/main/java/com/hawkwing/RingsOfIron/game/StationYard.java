@@ -79,6 +79,11 @@ public class StationYard extends EntitySystem {
     public static final double PART_TRIP_SECONDS = 30;
     /** Commodity id prefix a part is carried as. */
     public static final String PART = "part:";
+    /**
+     * How long the work waits for a ship that came loose of the station to latch again before it
+     * is called off, sim seconds. The player undocking calls it off at once ({@link #undocked}).
+     */
+    public static final double LOOSE_GRACE = 10;
     private static final float EPS = 1e-4f;
     /** A technician's pace, for work in the background. */
     private static final float REPAIR_RATE = new CrewDef().repairRate;
@@ -556,10 +561,19 @@ public class StationYard extends EntitySystem {
             Entity ship = ships.get(i);
             YardOrdersComponent orders = ORDERS_M.get(ship);
             Entity station = orders.station == null ? null : orders.station.get(uuids);
-            if (station == null || !docking.docked(ship, station)) {
+            if (station == null) {
                 callOff(ship, orders);
                 continue;
             }
+            if (!docking.docked(ship, station)) {
+                // Come loose: a ship latched again within a few seconds (a seat lost and found, a
+                // collar drawing it back in) carries on; one gone elsewhere or for longer does not
+                Entity other = docking.dockedTo(ship);
+                if (orders.looseSince < 0) orders.looseSince = now;
+                if (other != null || now - orders.looseSince > LOOSE_GRACE) callOff(ship, orders);
+                continue;
+            }
+            orders.looseSince = -1;
             boolean walkway = walkway(ship, station);
             boolean[][] reach = walkway ? reachable(ship.getComponent(ShipGridComponent.class), crew, station) : null;
             if (orders.repairs) repairs(ship, station, orders, reach, dt);
@@ -741,6 +755,12 @@ public class StationYard extends EntitySystem {
         if (trader != null) trader.credits += credit;
         notices.add(String.format(Locale.ROOT, "%s fitted %s with a %s%s", PlayerDocking.name(station), hardpointName(mount),
                 def.displayName(), credit > 0 ? String.format(Locale.ROOT, "; %,.0f cr for the old %s", credit, old.displayName()) : ""));
+    }
+
+    /** The player undocked {@code ship} on purpose: its yard work is called off now, not after {@link #LOOSE_GRACE}. */
+    public void undocked(Entity ship) {
+        YardOrdersComponent orders = ship == null ? null : ORDERS_M.get(ship);
+        if (orders != null) callOff(ship, orders);
     }
 
     /** The ship left: tasks come off the board, and a part paid for but not fitted is refunded. */

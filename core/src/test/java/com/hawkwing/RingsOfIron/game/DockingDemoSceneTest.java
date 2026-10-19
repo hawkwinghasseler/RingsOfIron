@@ -445,7 +445,10 @@ class DockingDemoSceneTest {
         assertTrue(credits() < DockingDemoScene.YARD_CREDITS, "paid when it came aboard");
         assertEquals(0, demo.world.yard.refit(demo.player, 0).tilesDone, "not fitted yet");
         demo.world.docking.undock(demo.player);
+        // Come loose, the yard waits a moment for the latch to take hold again, then gives up
         for (int i = 0; i < 10; i++) demo.update(FRAME);
+        assertNotNull(demo.world.yard.refit(demo.player, 0), "a blip doesn't call it off");
+        for (int i = 0; i < (StationYard.LOOSE_GRACE + 1) / FRAME; i++) demo.update(FRAME);
         assertNull(demo.world.yard.refit(demo.player, 0));
         assertEquals(DockingDemoScene.YARD_CREDITS, credits(), 1e-6, "refunded");
     }

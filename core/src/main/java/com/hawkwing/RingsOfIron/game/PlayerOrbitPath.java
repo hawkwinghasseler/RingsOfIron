@@ -75,6 +75,7 @@ public class PlayerOrbitPath implements OrbitPathProvider {
                 out.nodes.add((float) s.x, (float) s.y);
                 if (n == selected) out.selectedNode = shown;
                 shown++;
+                out.nodeLabels.add(shown + ": " + Navigation.formatTime(n.time - now));
                 after = after.withBurn(n.time, n.prograde, n.radial);
                 t = n.time;
             }
@@ -128,11 +129,20 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         }
         Entity e = nav.target.entity();
         OrbitComponent o = e == null ? null : universe.orbit(e);
-        if (o != null && universe.parentOf(e) == parent && o.getOrbit().isElliptic()) {
+        Entity around = o == null ? null : universe.parentOf(e);
+        if (around != null && o.getOrbit().isElliptic()) {
+            // Around another body (a moon's station from the planet, or the planet's from a moon): its
+            // orbit drawn about where that body is now
+            double ox = 0, oy = 0;
+            if (around != parent) {
+                universe.stateInFrame(around, parent, now, s);
+                ox = s.x;
+                oy = s.y;
+            }
             KeplerOrbit t = o.getOrbit();
             for (int i = 0; i <= SEGMENTS; i++) {
                 t.positionAtAnomaly(2 * Math.PI * i / SEGMENTS, s);
-                out.targetOrbit.add((float) s.x, (float) s.y);
+                out.targetOrbit.add((float) (s.x + ox), (float) (s.y + oy));
             }
         }
         ClosestApproach.Result a = nav.approach();

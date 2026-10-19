@@ -103,6 +103,7 @@ public class PlayerDocking {
             return "Your crew are still aboard " + name(from) + ": the loading is called off, undock once they're back";
         }
         if (!world.docking.undock(player)) return "Not docked";
+        world.yard.undocked(player);
         return "Undocked from " + name(from);
     }
 

@@ -17,7 +17,12 @@ public class HelmOrderComponent implements Component {
         /** Keep station where the ship is relative to the navigation target. */
         HOLD_POSITION,
         /** Close on the navigation target and hold at {@link #distance}. */
-        APPROACH
+        APPROACH,
+        /**
+         * Dock at the navigation target: approach it if far, then fly the ship's selected port in to a
+         * free port of its size there and latch, as freighters berth.
+         */
+        DOCK
     }
 
     public Mode mode = Mode.NONE;
@@ -30,6 +35,11 @@ public class HelmOrderComponent implements Component {
     /** A burn being flown: delta-v still to go, m/s, in the parent body's frame. */
     public double burnX, burnY;
     public boolean burning;
+    /** Dock: the ship's own port docking, the target's port it makes for (-1 until given one), and how far in. */
+    public int dockOwnPort, dockPort = -1;
+    public com.ringsofiron.stationsdocking.BerthingComponent.Phase dockPhase = com.ringsofiron.stationsdocking.BerthingComponent.Phase.APPROACH;
+    /** Dock: what the helm is doing, for the screen. */
+    public String dockStatus = "";
     /** Sim second the helm was last manned while the order stood; for dropping it when nobody comes. */
     public double mannedAt = -1;
 }

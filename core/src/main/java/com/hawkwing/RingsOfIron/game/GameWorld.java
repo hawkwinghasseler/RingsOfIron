@@ -231,6 +231,8 @@ public class GameWorld implements Disposable {
     public final DamageControl damageControl;
     /** Battle stations, and notices for the wounded (round 5). */
     public final CrewMedical medical;
+    /** A ship docked with a hole to space: the station warns, and warp waits. */
+    public final BerthVenting berthVenting;
     /** The distress beacon: a stranded ship towed home. */
     public final DistressBeacon beacon = new DistressBeacon(this);
     /** First Play's and the opening walkthrough's progress, saved with the game. */
@@ -511,6 +513,7 @@ public class GameWorld implements Disposable {
                 .onlyWhen(() -> prisoners.takenAlongside() != null);
         damageControl = new DamageControl(this);
         medical = new CrewMedical(this);
+        berthVenting = new BerthVenting(this);
     }
 
     /**
@@ -619,6 +622,9 @@ public class GameWorld implements Disposable {
         warnings.update();
         damageControl.update();
         medical.update();
+        berthVenting.update();
+        // Warp changes only between updates: the autopilot raises it again after a burn
+        nav.autopilot.afterUpdate();
     }
 
     /** Why rails warp waits after a load: until a frame has run and the player's ship is welded to its dock again. */

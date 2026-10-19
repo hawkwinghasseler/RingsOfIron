@@ -41,6 +41,8 @@ public interface OrbitPathProvider {
         public final FloatArray planned = new FloatArray();
         /** Where each planned burn happens, as x,y pairs. */
         public final FloatArray nodes = new FloatArray();
+        /** A label by each planned burn, in order ("1: 0:12:30"), or empty to draw none. */
+        public final Array<String> nodeLabels = new Array<>();
         /** Index into the burns of the one the planner is editing, or -1. */
         public int selectedNode = -1;
         /** Text under the map: the selected burn and where it leads. Empty for none. */
@@ -51,7 +53,10 @@ public interface OrbitPathProvider {
         /** Stations around the parent body, and the navigation target wherever it is. */
         public final Array<MapMarker> markers = new Array<>();
         private final Array<MapMarker> markerPool = new Array<>();
-        /** The navigation target's orbit, when it shares the ship's parent body; else empty. */
+        /**
+         * The navigation target's orbit, in the map's frame: around the ship's parent body, or around
+         * another body drawn where that body is now (a moon's station seen from the planet). Else empty.
+         */
         public final FloatArray targetOrbit = new FloatArray();
         /**
          * Closest approach to the target along the planned path: the ship's point then the
@@ -84,6 +89,7 @@ public interface OrbitPathProvider {
             current.clear();
             planned.clear();
             nodes.clear();
+            nodeLabels.clear();
             selectedNode = -1;
             caption.setLength(0);
             bodyPool.addAll(bodies);

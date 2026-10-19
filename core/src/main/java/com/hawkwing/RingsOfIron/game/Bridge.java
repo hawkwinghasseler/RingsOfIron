@@ -230,7 +230,11 @@ public class Bridge extends FixedLogicSystem {
         if (controls == null) return;
         boolean player = playerAtHelm();
         if (player) {
-            if (!helm.playerHad) controls.rotationAssist = helm.playerAssist;
+            if (!helm.playerHad) {
+                // Taking the helm from the helmsman: nothing the autopilot had set carries on
+                controls.clear();
+                controls.rotationAssist = helm.playerAssist;
+            }
             helm.playerHad = true;
             if (helmFault(ship) != null) controls.clear();
             if (body != null) helm.heldAngle = body.getAngle();

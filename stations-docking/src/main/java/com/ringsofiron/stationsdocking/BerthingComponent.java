@@ -31,6 +31,11 @@ public class BerthingComponent implements Component {
     public float retry;
     /** What it is doing, for the screen. */
     public String status = "";
+    /**
+     * Docking with a craft that gives no clearance (another ship): it picks the nearest free port of
+     * its own port's size there and flies in without leave, rather than asking a station.
+     */
+    public boolean uninvited;
 
     public BerthingComponent() {
     }

@@ -51,7 +51,8 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | Q | Cycle the navigation target (or click a contact on the traffic map) |
 | ; (semicolon), Enter / Backspace | Plan a transfer to the target; accept or discard the plan |
 | / | Warp to the next burn, stopping a minute before it |
-| 1 / 2 / 3 / 4 / 0 | Helm orders while you are away from the helm: fly the planned burns, match the target's velocity, hold position, approach the target (again to change the distance), cancel |
+| 1 / 2 / 3 / 4 / 5 / 0 | Helm orders while you are away from the helm: fly the planned burns, match the target's velocity, hold position, approach the target (again to change the distance), dock at the target, cancel |
+| 6 | Autopilot: fly the transfer to the navigation target under time warp and dock on arrival (again to go on after a hold, or to stop it) |
 | F5 / F9 | Quick save and quick load |
 | Esc | Pause menu: resume, save to a named slot, load, settings, quit to the main menu |
 

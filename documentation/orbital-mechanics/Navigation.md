@@ -25,7 +25,7 @@ Round 3, category 2. The player can pick a navigation target, see the closest ap
 ### Warp to burn and the burn marker
 - / (`WARP_TO_BURN`) sets rails warp by how far off the next burn is: 100,000x past 2 days, 10,000x past 3 hours, 1,000x past 10 minutes, otherwise 100x. `Navigation` is a `DropOutSource` and stops warp `WARP_LEAD` (60 s) before the burn. It refuses when the burn is 5 s or less away.
 - While the helm is ordered to fly burns, warp always drops out in time for that, with an extra `HelmOrders.TURN_LEAD` (120 s) plus half the burn time.
-- The readout shows "Next burn in T: N m/s". `NavOverlay` draws an amber arrow and ring from the ship along the next burn on the outside view.
+- The readout shows "Next burn in T: N m/s", then "Then burns in ..." for up to three burns after it (round 5). `NavOverlay` draws an amber arrow and ring from the ship along the next burn on the outside view.
 
 ### Helm autopilot (`HelmOrders`)
 - Keys: 1 fly the planned burns, 2 match the target's velocity, 3 hold position relative to the target, 4 approach the target, 0 cancel. Pressing 4 again steps the distance off the hull through 500, 1,000, 2,000 and 250 m. The order lives in a `HelmOrderComponent` on the ship.
@@ -33,6 +33,19 @@ Round 3, category 2. The player can pick a navigation target, see the closest ap
 - Match, hold and approach work only in the bubble and fly relative to the target's Box2D body when both are there. Approach is refused beyond 50 km and closes at most 50 m/s, slow enough to brake on half the weaker of main and retro engines. The hull distance counts from half the target's deck-plan diagonal. Hold closes at 0.1 m/s per meter off, at most 5 m/s.
 - Flying burns: the helmsman turns along the burn 120 s ahead, removes the node so it no longer fires as an impulse, and fires the main engine centered on the burn time until within 0.05 m/s, only with the nose within 5 degrees. Running out of propellant cuts the burn short with a warning. While a burn is being flown rails warp is blocked.
 - The autopilot never fires weapons. A shot at the ship, a hit on it, or the target vanishing drops the order with a warning notice.
+
+### Dock order (round 5)
+- 5 (`HELM_DOCK`) orders the helm to dock at the navigation target with the ship's selected port, from up to 50 km. The helmsman flies it the way freighters berth, through `BerthingSystem.pilot`. Far out, or while the target has no body in the bubble yet, the helm closes to 1,000 m off its hull as the approach order does. At a station it asks for clearance once in range and flies round the hull to the port it is given. At another ship it makes for the nearest free, intact port of the same size there without clearance (`BerthingComponent.uninvited`), so it docks without leave unless that ship armed its port. The order ends with "Helm: docked at X" when the ports latch.
+- It is refused while docked, with no port or a torn collar, at a craft with no free port of the selected port's size, or beyond 50 km. Like every helm order it needs a helmsman and is dropped by a threat. Taking the helm makes it wait, and the controls the helmsman had set are cleared (`Bridge`). 0 cancels it.
+- Its state (own port, the target's port, phase, status) is on `HelmOrderComponent`, so it is saved.
+
+### Transfer autopilot (round 5, `Autopilot`)
+- 6 (`AUTOPILOT`) flies a transfer to the navigation target under time warp. It accepts the waiting proposal, or plans one when nothing is planned. It refuses while docked or with nobody to take the helm.
+- While engaged it sets the warp after every world update (`GameWorld.update`, outside the engine's update). It picks the level from the time to the next stop (the next burn, the next orbital event such as a sphere of influence crossing, or else the closest approach less 120 s): 1,000,000x past 20 days, then the warp-to-burn levels, physics warp 10x inside a minute, and 1x in the last 2 s. Burns fire on time as every planned burn does, and rails warp drops there.
+- In the next sphere of influence it accepts the capture and the rest of the leg (`PlayerTransfer`) by itself. Once every burn is flown, with the target within 50 km in the bubble, it hands over to the helm's dock order (or approach, for a craft with no ports) and switches off. If the transfer misses, it says how far off the target is and switches off.
+- A drop it can't account for holds it at 1x with a warning, until the player raises warp or presses 6. Holds come from the player slowing time, a guard vetoing warp, another craft coming within the encounter radius, or pirates about on an external drop. The target itself coming close is the arrival, not a hold. With the helm flying the burns, it leaves warp to `Navigation`'s lead before each burn.
+- Its state is `AutopilotComponent` on the player's ship: the target, and whether it holds and why. It is saved.
+- `TransferAutopilotTest` flies the Moon trip on it. From open space off Highport, it docks at Shackleton Ice after 4.3 days with one hold, for the raider near the start.
 
 ### Docking approach guidance
 - `PlayerDocking.READOUT_RANGE` is now 5,000 m instead of 500 m.
@@ -78,8 +91,10 @@ Navigation posts to `world.notices`: dropped orders and cut burns as warnings, t
 - **Unmanned orders drop after 60 s**, and a burn the helmsman takes over no longer fires by itself.
 - All numbers are placeholders.
 
+### Round 5 display
+- The orbit map labels every planned burn with its number and countdown (`OrbitPath.nodeLabels`, drawn by `OrbitMap`).
+- A target on rails around another body has its orbit drawn about where that body is now: the lunar mine's from Earth orbit, or a planet station's from the Moon.
+
 ## Not built
-- Nothing reads `returnDeltaV` yet; category 1's low-propellant warning does not use it.
-- Only the next burn gets a countdown in the readout and a marker on the outside view; the orbit map caption still counts down only the selected burn.
-- Target orbits for craft around another body are not drawn, though their closest approach is found.
-- The autopilot does not fly rails legs, and no autopilot docks.
+- Only the next burn has a marker on the outside view.
+- The transfer autopilot flies burns as impulses. It does not fly them on the main engine unless the helm's fly-burns order is also given.

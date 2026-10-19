@@ -16,6 +16,12 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
+import com.ringsofiron.stationsdocking.BerthingComponent;
+import com.ringsofiron.stationsdocking.BerthingSystem;
+import com.ringsofiron.stationsdocking.DockingPort;
+import com.ringsofiron.stationsdocking.DockingPortsComponent;
+import com.ringsofiron.stationsdocking.StationComponent;
+import com.ringsofiron.coreengine.EntityRef;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +40,11 @@ import java.util.List;
  *   <li><b>Hold position</b> where the ship is, relative to the target.</li>
  *   <li><b>Approach</b> the target and hold at a set distance off its hull ({@link #APPROACH_DISTANCES},
  *       counted from half its deck plan's diagonal), closing no faster than the ship can brake from.</li>
+ *   <li><b>Dock</b> at the target: from up to {@link #APPROACH_RANGE} out, the helmsman flies the ship's
+ *       selected port in to a free port of its size there the way freighters berth
+ *       ({@link BerthingSystem#pilot}): a station is asked for clearance once in range, another ship's
+ *       nearest free port is made for without it. The order ends when the ports latch. The player
+ *       takes over by taking the helm (the order then waits) or cancelling it.</li>
  * </ul>
  * Only in the bubble: on the rails there is nothing to fly, and a burn being flown holds rails warp back.
  */
@@ -62,6 +73,11 @@ public class HelmOrders {
     static final double BURN_DONE = 0.05;
     /** The main engine fires on a burn only with the nose this close to its direction, radians. */
     static final double BURN_ALIGN = Math.toRadians(5);
+    /** Dock: a target with no body in the bubble yet is closed on to this far off its hull first, m. */
+    static final double DOCK_STANDOFF = 1_000;
+
+    /** The berthing pilot the dock order flies by; its state lives on {@link HelmOrderComponent}. */
+    private final BerthingComponent pilot = new BerthingComponent();
 
     private final GameWorld world;
     private final NavTarget target;
@@ -132,6 +148,20 @@ public class HelmOrders {
             o.distance = nextDistance(o.distance);
             return String.format(java.util.Locale.ROOT, "Helm: approach %s to %,.0f m off its hull", target.name(), o.distance);
         }
+        if (mode == HelmOrderComponent.Mode.DOCK) {
+            Entity other = target.entity();
+            String refused = dockRefusal(ship, other);
+            if (refused != null) return refused;
+            if (Math.hypot(rx, ry) > APPROACH_RANGE) {
+                return target.name() + " is too far for the helm to dock at: plan a transfer (" + keys.apply(Action.PLAN_TO_TARGET) + ")";
+            }
+            clear(o);
+            o.mode = mode;
+            o.targetUuid = uuid;
+            o.dockOwnPort = ship.getComponent(DockingPortsComponent.class).selected;
+            o.dockStatus = "";
+            return "Helm: dock at " + target.name() + handOver();
+        }
         if (mode == HelmOrderComponent.Mode.APPROACH && Math.hypot(rx, ry) > APPROACH_RANGE) {
             return target.name() + " is too far for the helm to approach: plan a transfer (" + keys.apply(Action.PLAN_TO_TARGET) + ")";
         }
@@ -159,6 +189,7 @@ public class HelmOrders {
             case MATCH_VELOCITY: what = "matching velocity with " + who; break;
             case HOLD_POSITION: what = "holding position on " + who; break;
             case APPROACH: what = String.format(java.util.Locale.ROOT, "approaching %s to %,.0f m", who, o.distance); break;
+            case DOCK: what = "docking at " + who + (o.dockStatus.isEmpty() ? "" : ": " + o.dockStatus); break;
             default: return null;
         }
         if (world.bridge.playerAtHelm()) return "Helm order (" + what + ") waits: you have the helm (" + keys.apply(Action.VIEW) + " hands it over)";
@@ -180,6 +211,12 @@ public class HelmOrders {
         if (o == null || o.mode == HelmOrderComponent.Mode.NONE) return;
         if (o.targetUuid != null && world.engine.getEntity(o.targetUuid) == null) {
             drop(o, "the target is gone");
+            return;
+        }
+        if (o.mode == HelmOrderComponent.Mode.DOCK && world.docking.docked(ship, world.engine.getEntity(o.targetUuid))) {
+            String at = target.name(o.targetUuid);
+            clear(o);
+            notices.add("Helm: docked at " + at);
             return;
         }
         if (world.universe.orbit(ship) != null || world.bridge.playerAtHelm()) return;
@@ -205,6 +242,7 @@ public class HelmOrders {
         if (o.mode == HelmOrderComponent.Mode.FLY_BURNS) return flyBurns(ship, o, helm, controls, body, thruster, fwd, lat, dt);
 
         Entity other = world.engine.getEntity(o.targetUuid);
+        if (o.mode == HelmOrderComponent.Mode.DOCK && world.docking.bodyOf(other) != null) return dock(ship, other, o, controls, dt);
         if (!relative(ship, other, rel)) return false;
         double rx = rel[0], ry = rel[1], wx = rel[2], wy = rel[3];
         // The relative velocity wanted
@@ -217,9 +255,12 @@ public class HelmOrders {
                 vx = -ex / e * v;
                 vy = -ey / e * v;
             }
-        } else if (o.mode == HelmOrderComponent.Mode.APPROACH) {
+        } else if (o.mode == HelmOrderComponent.Mode.APPROACH || o.mode == HelmOrderComponent.Mode.DOCK) {
+            // Docking at a craft not yet in the bubble: close on it first
+            double distance = o.mode == HelmOrderComponent.Mode.DOCK ? DOCK_STANDOFF : o.distance;
+            if (o.mode == HelmOrderComponent.Mode.DOCK) o.dockStatus = "closing on " + target.name(o.targetUuid);
             double d = Math.hypot(rx, ry);
-            double e = d - o.distance - radius(other);
+            double e = d - distance - radius(other);
             // Closing no faster than the ship can brake from in the distance left
             double brake = BRAKING_SHARE * Math.min(fwd, rev > 0 ? rev : fwd);
             double v = Math.min(MAX_APPROACH_SPEED, Math.sqrt(2 * brake * Math.abs(e)));
@@ -236,6 +277,34 @@ public class HelmOrders {
         controls.turn = Bridge.holdTurn(body, thruster, helm.heldAngle);
         thrust(controls, body.getAngle(), ax, ay, fwd, rev, lat);
         return true;
+    }
+
+    /** Flies the dock order's berthing pilot one step; its state goes back on the order to be saved. */
+    private boolean dock(Entity ship, Entity other, HelmOrderComponent o, FlightControlComponent controls, float dt) {
+        pilot.station = EntityRef.of(other);
+        pilot.ownPort = o.dockOwnPort;
+        pilot.port = o.dockPort;
+        pilot.phase = o.dockPhase;
+        pilot.status = o.dockStatus;
+        pilot.uninvited = other.getComponent(StationComponent.class) == null;
+        world.berthing.pilot(ship, pilot, controls, dt);
+        o.dockPort = pilot.port;
+        o.dockPhase = pilot.phase;
+        o.dockStatus = pilot.status;
+        return true;
+    }
+
+    /** Why the ship can't dock at {@code other} with its selected port, or null when it can. */
+    private String dockRefusal(Entity ship, Entity other) {
+        DockingPortsComponent own = ship.getComponent(DockingPortsComponent.class);
+        if (world.docking.dockedTo(ship) != null) return "Already docked: undock first (" + keys.apply(Action.UNDOCK) + ")";
+        if (own == null || own.ports.length == 0) return "This ship has no docking port";
+        DockingPort port = own.selectedPort();
+        if (!port.intact()) return "The selected docking port's collar is torn off (" + keys.apply(Action.NEXT_PORT) + " picks another)";
+        DockingPortsComponent theirs = other == null ? null : other.getComponent(DockingPortsComponent.class);
+        if (theirs == null || theirs.ports.length == 0) return target.name() + " has no docking port";
+        for (DockingPort q : theirs.ports) if (q.size == port.size && q.isFree() && q.intact()) return null;
+        return target.name() + " has no free " + port.size + " port for yours (" + keys.apply(Action.NEXT_PORT) + " picks another of yours)";
     }
 
     private boolean flyBurns(Entity ship, HelmOrderComponent o, HelmComponent helm, FlightControlComponent controls,
@@ -334,6 +403,9 @@ public class HelmOrders {
     private void clear(HelmOrderComponent o) {
         o.mode = HelmOrderComponent.Mode.NONE;
         o.targetUuid = null;
+        o.dockPort = -1;
+        o.dockPhase = BerthingComponent.Phase.APPROACH;
+        o.dockStatus = "";
         o.burning = false;
         o.burnX = o.burnY = 0;
         o.mannedAt = -1;
@@ -359,7 +431,7 @@ public class HelmOrders {
     }
 
     /** A conscious crew member other than the player aboard {@code ship}, who could take the helm. */
-    private boolean hasCrewForHelm(Entity ship) {
+    boolean hasCrewForHelm(Entity ship) {
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
             if (e.getComponent(PlayerAvatarComponent.class) != null) continue;
             GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
