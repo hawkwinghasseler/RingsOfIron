@@ -121,7 +121,7 @@ class EditorProjectTest {
         assertTrue(saved.contains("name = \"Patrol Corvette Mk2\""));
         assertTrue(saved.contains("# Carpet through the crew spaces, so a fire here has something to burn\ncoverings"),
                 "a comment stays above its key");
-        assertTrue(saved.contains("# A turret mount beside each hardpoint"));
+        assertTrue(saved.contains("# A turret mount under each hardpoint"));
         int start = original.indexOf("[chassis.freighter]");
         assertEquals(original.substring(start - 1), saved.substring(saved.indexOf("[chassis.freighter]") - 1),
                 "the sections after it are untouched");
@@ -246,5 +246,51 @@ class EditorProjectTest {
         corvette.resize(Side.TOP, -1, catalog);
         assertEquals(5, corvette.height());
         assertNull(corvette.mountAt(4, 5, catalog), "the docking port on the top row is gone");
+    }
+
+    @Test
+    void rotatingAComponentSavesItsFacing() {
+        EditorProject project = EditorProject.load(ASSETS, null);
+        ShipPartCatalog catalog = project.catalog();
+        ChassisModel corvette = project.chassis.get("corvette").value;
+        ChassisModel.Mount reactor = corvette.mountAt(11, 3, catalog);
+        int x = reactor.x, y = reactor.y;
+        assertNull(corvette.rotate(reactor, catalog));
+        assertEquals(1, reactor.rotation);
+        assertEquals(x, reactor.x, "a square mount turns in place");
+        assertEquals(y, reactor.y);
+        assertNull(project.check(corvette).error);
+
+        // The loader reads a drawn square mount as unturned, so the turned one is listed
+        ChassisDef def = corvette.toDef(catalog);
+        ChassisDef.Mount listed = def.mounts.stream().filter(m -> m.x == x && m.y == y).findFirst().orElse(null);
+        assertNotNull(listed);
+        assertEquals(1, listed.rotation);
+        ChassisModel back = ChassisModel.fromDef(def, catalog);
+        assertEquals(1, back.mountAt(11, 3, catalog).rotation);
+
+        ChassisModel.Mount port = corvette.mounts.stream().filter(m -> ChassisModel.isPort(m, catalog)).findFirst().get();
+        assertNotNull(corvette.rotate(port, catalog), "ports face out of the hull");
+    }
+
+    @Test
+    void aRectangularMountTurnsAboutItsMiddle() {
+        ShipPartCatalog catalog = ShipPartCatalog.builtIn();
+        ChassisModel m = ChassisModel.blank("test", 16, 12, catalog);
+        ChassisModel.Mount cargo = m.place("cargo", MountFootprint.MountSize.L, 4, 4, 0, catalog);
+        MountFootprint f = cargo.footprint(catalog);
+        assertNotEquals(f.width(), f.height(), "the test needs a rectangular slot");
+        for (int turn = 1; turn <= 4; turn++) {
+            assertNull(m.rotate(cargo, catalog));
+            MountFootprint t = cargo.footprint(catalog);
+            assertEquals(turn % 2 == 0 ? f.width() : f.height(), t.width());
+        }
+        assertEquals(4, cargo.x, "four turns end where they began");
+        assertEquals(4, cargo.y);
+        assertEquals(0, cargo.rotation);
+
+        ChassisModel.Mount edge = m.place("cargo", MountFootprint.MountSize.L, 0, 0, 0, catalog);
+        MountFootprint ef = edge.footprint(catalog);
+        if (ef.width() > ef.height()) assertNotNull(m.rotate(edge, catalog), "it would leave the grid");
     }
 }
