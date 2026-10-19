@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="374.4" height="103.68" viewBox="-478.08 -51.84 374.4 103.68">
+  <title>exhaust_m: plume behind engine_m, same pivot (the mount socket), exhaust toward -x; scale along x with throttle</title>
+  <defs><linearGradient id="exhaust_m_g" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="0.25" stop-color="#9fd8ff"/><stop offset="1" stop-color="#4f8fff" stop-opacity="0"/></linearGradient></defs>
+  <g id="base">
+  </g>
+  <g id="emissive">
+    <g data-light="glow">
+    <path d="M-109.44,-48.38 C-224.64,-41.47 -385.92,-13.82 -478.08,0 C-385.92,13.82 -224.64,41.47 -109.44,48.38 Z" fill="url(#exhaust_m_g)" opacity="0.9"/>
+    <path d="M-109.44,-20.74 C-178.56,-16.13 -259.2,-5.76 -316.8,0 C-259.2,5.76 -178.56,16.13 -109.44,20.74 Z" fill="#ffffff" opacity="0.8"/>
+    <polygon points="-180.86,0 -167.04,-8.06 -153.22,0 -167.04,8.06" fill="#ffffff" opacity="0.55"/>
+    <polygon points="-232.7,0 -218.88,-8.06 -205.06,0 -218.88,8.06" fill="#ffffff" opacity="0.55"/>
+    <polygon points="-278.78,0 -264.96,-8.06 -251.14,0 -264.96,8.06" fill="#ffffff" opacity="0.55"/>
+    </g>
+  </g>
+</svg>

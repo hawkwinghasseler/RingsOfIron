@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <title>hull_light wedge 1x1: sloped face toward +x/+y at rotation 0</title>
+  <title>hull_light wedge 1x1: legs on the left and bottom edges, sloped face toward +x/+y at rotation 0</title>
   <g id="base">
     <polygon points="0,0 0,64 64,64" fill="#6a7586" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
     <polygon points="0,0 64,64 58.34,64 0,5.66" fill="#4a5462" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round"/>
