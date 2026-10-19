@@ -165,9 +165,14 @@ public class KinematicTransientSystem extends EntitySystem implements PhysicsMan
         double next = physics.getOriginTime() + PhysicsManager.TIME_STEP;
         kt.trajectory.stateAt(next, trueState);
         physics.getAnchorModel().stateAt(next, anchorState);
-        float nx = (float) (trueState[0] - anchorState[0]);
-        float ny = (float) (trueState[1] - anchorState[1]);
-        PhysicsManager.setVelocity(body, (nx - kt.x) / PhysicsManager.TIME_STEP, (ny - kt.y) / PhysicsManager.TIME_STEP);
+        double nx = trueState[0] - anchorState[0];
+        double ny = trueState[1] - anchorState[1];
+        // The step is taken in doubles: from floats a kilometre out, a tick's step rounds to the
+        // nearest ulp, and the velocity jumps by 7 mm/s from tick to tick, a jolt that a heavy ship
+        // latched on takes through its weld (at a gunship's mass, enough to tear it)
+        kt.trajectory.stateAt(physics.getOriginTime(), trueState);
+        double cx = trueState[0] - physics.getOriginX(), cy = trueState[1] - physics.getOriginY();
+        PhysicsManager.setVelocity(body, (float) ((nx - cx) / PhysicsManager.TIME_STEP), (float) ((ny - cy) / PhysicsManager.TIME_STEP));
         body.setAngularVelocity(0f);
     }
 

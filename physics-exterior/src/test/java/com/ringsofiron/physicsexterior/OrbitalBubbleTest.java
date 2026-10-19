@@ -29,6 +29,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The free-falling anchor, tidal gravity, fast passes and the SI query helpers. */
@@ -325,6 +326,29 @@ class OrbitalBubbleTest {
         assertEquals(900_000f, PhysicsManager.getInertia(b), 1f);
         assertEquals(2f, b.getLocalCenter().x * PhysicsManager.METERS_PER_UNIT, 1e-4f);
         assertEquals(-1f, b.getLocalCenter().y * PhysicsManager.METERS_PER_UNIT, 1e-4f);
+    }
+
+    @Test
+    void aStationsBodyMovesSmoothlyFarFromTheAnchor() {
+        // A station 2 km out, as Highport sits from an anchor left behind by the player's ship. Its
+        // body's velocity was the float step from tick to tick, which there rounds to 7 mm/s: a
+        // jolt every few ticks that a heavy ship latched on took through its weld.
+        engine.getSystem(KinematicTransientSystem.class).setBodyFactory((e, kt) ->
+                physics.createPolygonBody(e, 0f, 0f, 0f, BOX, 10f, CollisionCategories.CATEGORY_SHIP, CollisionCategories.MASK_ALL));
+        Entity station = new Entity();
+        station.add(new TransformComponent());
+        station.add(new KinematicTransientComponent(new LinearTrajectory(1034.3, 1700.04, -0.0123, -0.0071, 0.0), 10f));
+        engine.addEntity(station);
+        Body body = station.getComponent(KinematicTransientComponent.class).body;
+        assertNotNull(body, "slow enough for a body");
+        float worst = 0f;
+        Vector2 v = new Vector2();
+        for (int i = 0; i < 120; i++) {
+            engine.update(DT);
+            PhysicsManager.getVelocity(body, v);
+            worst = Math.max(worst, Math.max(Math.abs(v.x + 0.0123f), Math.abs(v.y + 0.0071f)));
+        }
+        assertTrue(worst < 1e-4f, "steady at its own velocity: off by up to " + worst + " m/s");
     }
 
     @Test
