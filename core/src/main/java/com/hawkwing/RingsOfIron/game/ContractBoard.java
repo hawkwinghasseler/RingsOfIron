@@ -106,6 +106,9 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
     /** A bounty on a ship worth less than this share of the player's pays {@link #WEAK_STANDING} of its standing. */
     static final double WEAK_RATIO = 0.33;
     static final float WEAK_STANDING = 0.5f;
+    /** From this rank (Commander) a single job pays {@link #SENIOR_STANDING} of its standing. */
+    static final int SENIOR_RANK = 3;
+    static final float SENIOR_STANDING = 0.5f;
     /** How close the player must come to a pirate to find it, meters: about a sensor sweep. */
     public static final double RECON_RANGE = 100_000;
     /**
@@ -187,9 +190,17 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         }
         for (Contract c : board.offers) {
             // One operation at a time: the others leave the board while one runs
-            if (c.status == Contract.Status.OFFERED && (running == null || c.type != Contract.Type.OPERATION)) out.add(c);
+            if (c.status != Contract.Status.OFFERED || (running != null && c.type == Contract.Type.OPERATION)) continue;
+            // A bounty whose ship was beaten, is gone, or is already being hunted leaves the board
+            if (c.type == Contract.Type.BOUNTY && !stillWanted(c)) continue;
+            out.add(c);
         }
         return out;
+    }
+
+    private boolean stillWanted(Contract c) {
+        Entity target = world.engine.getEntity(c.targetUuid);
+        return target != null && !FirstPlay.beaten(world, target) && !targeted(c.targetUuid);
     }
 
     /**
@@ -337,6 +348,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         if (why != null) return why;
         if (held() >= MAX_ACTIVE) return "You already hold " + MAX_ACTIVE + " contracts";
         if (now() > c.deadline) return "Too late for that one";
+        if (c.type == Contract.Type.BOUNTY && !stillWanted(c)) return "That ship is no longer wanted";
         switch (c.type) {
             case DELIVERY: {
                 if (c.orderId < 0) break; // a world event's: no trade order behind it
@@ -964,6 +976,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         c.operationName = op.name;
         c.step = op.step;
         c.steps = op.steps.length;
+        senior(c);
         // Taken as it is posted
         switch (c.type) {
             case DELIVERY: {
@@ -1156,12 +1169,22 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             }
         }
         for (Contract c : out) {
+            if (c.type != Contract.Type.OPERATION) senior(c);
             c.id = nextId++;
             c.giver = def.id;
             c.stationUuid = stationUuid;
             c.stationName = node.displayName;
         }
         return out;
+    }
+
+    /**
+     * From {@link #SENIOR_RANK} on, a single job pays {@link #SENIOR_STANDING} of its standing: a senior
+     * officer climbs on operations and raids (whose own standing is untouched), not on one more bounty.
+     */
+    private void senior(Contract c) {
+        if (c.type == Contract.Type.RAID || world.standing.record().rank < SENIOR_RANK) return;
+        c.standing = Math.max(1, Math.round(c.standing * SENIOR_STANDING));
     }
 
     /** Hauls from this station's open trade orders, sized to the player's hold. */

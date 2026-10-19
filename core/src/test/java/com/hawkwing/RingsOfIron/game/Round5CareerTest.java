@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.moddingdata.components.DefRefComponent;
+import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +40,7 @@ class Round5CareerTest extends CareerScript {
     @Test
     void theCareerPastTheGunship() {
         playToTheGunship();
+        crewUp();
         row("Gunship");
         logBoard(game.highport);
 
@@ -240,8 +243,33 @@ class Round5CareerTest extends CareerScript {
         log("  %s", world.shipyard.buy("patrol_frigate"));
         assertEquals("frigate_patrol", game.player.getComponent(DefRefComponent.class).defId);
         run(120);
+        crewUp();
         row("Frigate");
         snapshot("in the frigate");
+    }
+
+    /** Hires the best hands the docked station offers until the ship carries the crew its design calls for. */
+    void crewUp() {
+        String defId = game.player.getComponent(DefRefComponent.class).defId;
+        ShipDef def = world.getContent().defs.get("ship", defId, ShipDef.class);
+        int want = crewWanted();
+        for (String uuid : new String[]{game.shipyard, game.highport}) {
+            if (ownCrew().size() >= want) break;
+            dockAtStation(uuid);
+            hireUpTo(uuid, want);
+        }
+        log("Crewed the %s: %d aboard of the %d it calls for.", defId, ownCrew().size(), def.crew);
+    }
+
+    private void hireUpTo(String uuid, int want) {
+        while (ownCrew().size() < want) {
+            CrewHiring.Candidate best = null;
+            for (CrewHiring.Candidate c : world.crewHiring.pool(uuid)) if (best == null || top(c) > top(best)) best = c;
+            if (best == null) break;
+            String why = world.crewHiring.hire(best.key);
+            if (why != null) { log("  could not hire %s: %s", best.name, why); break; }
+            log("  hired %s (%s, %s)", best.name, best.role, best.record.describeSkills());
+        }
     }
 
     /** Hunt the Hunters to its raid: recon, bounty, intel (the base found), then the raid. */
@@ -267,9 +295,16 @@ class Round5CareerTest extends CareerScript {
             log("  the hunt ended without a raid (%s); the base %s.", last().outcome,
                     world.pirateBase.found() ? "is known" : "is still hidden");
             if (!world.pirateBase.found()) world.pirateBase.reveal("Script: a captured log");
+            // The boards post the raid with the next day's jobs
             Contract raid = null;
-            dockAtStation(game.highport);
-            for (Contract c : world.contracts.offers(game.highport)) if (c.type == Contract.Type.RAID) raid = c;
+            for (int d = 0; d < 3 && raid == null; d++) {
+                if (d > 0) warpFor(86_400);
+                for (String station : new String[]{game.highport, game.shipyard}) {
+                    dockAtStation(station);
+                    for (Contract c : world.contracts.offers(station)) if (c.type == Contract.Type.RAID) raid = c;
+                    if (raid != null) break;
+                }
+            }
             assertNotNull(raid, "the sponsor offers a raid");
             assertNull(world.contracts.accept(raid.id));
             flyStep(raid);
@@ -331,8 +366,12 @@ class Round5CareerTest extends CareerScript {
         Entity at = world.docking.dockedTo(game.player);
         if (at != null && world.universe.uuidOf(at).equals(station)) return;
         jumpTo(station);
-        assertTrue(game.dockAt(station), "a port free at " + station);
-        run(120);
+        // A ship venting hard can shake loose of the latch for a moment (the yard surviving that is
+        // round 5's docking part): latch on again
+        for (int tries = 0; tries < 3 && world.docking.dockedTo(game.player) == null; tries++) {
+            assertTrue(game.dockAt(station), "a port free at " + station);
+            run(120);
+        }
         assertSame(world.engine.getEntity(station), world.docking.dockedTo(game.player));
     }
 
@@ -345,9 +384,20 @@ class Round5CareerTest extends CareerScript {
 
     /** Repairs at Highport if the last job left any damage. */
     private void repairIfNeeded() {
-        if (world.yard.repairCost(game.player) <= 0.5) return;
-        dockAtStation(game.highport);
-        repairAt(world.engine.getEntity(game.highport));
+        if (world.yard.repairCost(game.player) > 0.5) {
+            dockAtStation(game.highport);
+            repairAt(world.engine.getEntity(game.highport));
+        }
+        // Hands lost in the fight are replaced at Highport
+        if (ownCrew().size() < crewWanted()) {
+            dockAtStation(game.highport);
+            hireUpTo(game.highport, crewWanted());
+        }
+    }
+
+    private int crewWanted() {
+        String defId = game.player.getComponent(DefRefComponent.class).defId;
+        return Math.min(world.getContent().defs.get("ship", defId, ShipDef.class).crew, CrewHiring.berths(game.player));
     }
 
     private Entity hostile(String name) {

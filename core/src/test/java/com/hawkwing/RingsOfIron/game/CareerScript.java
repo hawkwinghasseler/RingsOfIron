@@ -298,16 +298,22 @@ abstract class CareerScript {
         double t0 = world.engine.getSimSeconds();
         float hull0 = hull(game.player);
         int crew0 = ownCrew().size();
+        // Shot down at the helm, the player is carried home by the crew: the fight is lost
+        boolean[] carried = new boolean[1];
+        com.badlogic.ashley.signals.Listener<Rescue.Tow> home = (sig, t) -> carried[0] = true;
+        world.carriedHome.add(home);
         boolean over = runUntil(400f, () -> {
+            if (carried[0]) return true;
             gun.fireGuns();
             gun.launchMissile();
             gun.update(FRAME);
             return (h != null && h.partDropped) || ShipDisablement.isDisabled(ship) || ShipDisablement.isDisabled(game.player)
                     || world.getCrash() != null;
         });
-        boolean won = (h != null && h.partDropped) || ShipDisablement.isDisabled(ship);
+        world.carriedHome.remove(home);
+        boolean won = !carried[0] && ((h != null && h.partDropped) || ShipDisablement.isDisabled(ship));
         log("%s: %.0f s, %s; it fired %d rounds, %d hit us; our hull %.2f -> %.2f, crew %d -> %d.", what,
-                world.engine.getSimSeconds() - t0, won ? "beaten" : over ? "we lost" : "neither side beaten", fired[0],
+                world.engine.getSimSeconds() - t0, won ? "beaten" : carried[0] ? "we lost (carried home)" : over ? "we lost" : "neither side beaten", fired[0],
                 hits[0], hull0, hull(game.player), crew0, ownCrew().size());
         assertTrue(over, "the fight ends one way or the other");
         if (!won) fightsLost++;
