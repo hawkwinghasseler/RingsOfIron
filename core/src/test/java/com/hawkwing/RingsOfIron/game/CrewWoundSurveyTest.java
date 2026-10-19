@@ -40,6 +40,8 @@ import org.junit.jupiter.api.Test;
 class CrewWoundSurveyTest {
     static final float FRAME = 1f / 60f;
     static final String[] REFITS = {"raider_ace_chaingun", "raider_ace_railgun"};
+    /** With -PwoundTrace, each trial's crew every 10 s after the fight, to {@code core/build/wound-trace.txt}. */
+    static final StringBuilder TRACE = new StringBuilder();
 
     @BeforeAll
     static void loadNatives() {
@@ -53,6 +55,8 @@ class CrewWoundSurveyTest {
         double seconds;
         float hull;
         int crew, dead, aceCrew, aceAlive;
+        /** Of our dead, those who died before the fight was over; hits we took after it. */
+        int deadInFight, hitsAfter;
         final Map<Wound, Integer> wounds = new EnumMap<>(Wound.class);
         /** What killed each of our dead. */
         final List<String> causes = new ArrayList<>();
@@ -64,15 +68,18 @@ class CrewWoundSurveyTest {
         Assumptions.assumeTrue(trials != null, "run with -PwoundSurvey=N");
         int n = Integer.parseInt(trials);
         List<Trial> all = new ArrayList<>();
-        for (String refit : REFITS) for (int i = 0; i < n; i++) all.add(trial(refit, 2026 + i));
-        StringBuilder out = new StringBuilder("| Ace refit | Seed | Result | Our hull | Our crew wounded (light/serious/critical) | Our crew dead | Of | Ace crew alive |\n|---|---|---|---|---|---|---|---|\n");
+        // -PwoundRefits=raider_ace_railgun surveys one refit only
+        String[] refits = System.getProperty("wound.survey.refits", String.join(",", REFITS)).split(",");
+        for (String refit : refits) for (int i = 0; i < n; i++) all.add(trial(refit, 2026 + i));
+        StringBuilder out = new StringBuilder("| Ace refit | Seed | Result | Our hull | Our crew wounded (light/serious/critical) | Our crew dead (in the fight) | Of | Hits after | Ace crew alive |\n|---|---|---|---|---|---|---|---|---|\n");
         for (Trial t : all) {
-            out.append(String.format(Locale.ROOT, "| %s | %d | %s in %.0f s | %.2f | %d/%d/%d | %d of %d | %s | %d of %d |%n",
+            out.append(String.format(Locale.ROOT, "| %s | %d | %s in %.0f s | %.2f | %d/%d/%d | %d of %d (%d) | %s | %d | %d of %d |%n",
                     t.refit, t.seed, t.beaten ? "beaten" : t.lost ? "we lost" : "neither", t.seconds, t.hull,
                     t.wounds.getOrDefault(Wound.LIGHT, 0), t.wounds.getOrDefault(Wound.SERIOUS, 0),
-                    t.wounds.getOrDefault(Wound.CRITICAL, 0), t.dead, t.crew, String.join(", ", t.causes), t.aceAlive, t.aceCrew));
+                    t.wounds.getOrDefault(Wound.CRITICAL, 0), t.dead, t.crew, t.deadInFight, String.join(", ", t.causes),
+                    t.hitsAfter, t.aceAlive, t.aceCrew));
         }
-        for (String refit : REFITS) {
+        for (String refit : refits) {
             int fights = 0, dead = 0, crew = 0, beaten = 0, wounded = 0, aceAlive = 0, aceCrew = 0;
             for (Trial t : all) {
                 if (!t.refit.equals(refit)) continue;
@@ -89,6 +96,7 @@ class CrewWoundSurveyTest {
         }
         System.out.println(out);
         Files.writeString(Paths.get(System.getProperty("user.dir")).resolve("build/wound-survey.txt"), out.toString());
+        if (TRACE.length() > 0) Files.writeString(Paths.get(System.getProperty("user.dir")).resolve("build/wound-trace.txt"), TRACE);
     }
 
     private Trial trial(String refit, long seed) {
@@ -131,7 +139,30 @@ class CrewWoundSurveyTest {
             gun.setTarget(ship);
             double t0 = world.engine.getSimSeconds();
             HostileComponent ace = h;
+            boolean trace = Boolean.getBoolean("wound.survey.trace");
+            Map<Entity, Float> injury = new java.util.IdentityHashMap<>();
             runUntil(world, 300f, () -> {
+                if (trace) {
+                    for (Entity e : ours) {
+                        CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                        float was = injury.getOrDefault(e, 0f);
+                        if (c.injury != was) {
+                            TRACE.append(String.format(Locale.ROOT, "HIT %s %d t=%.1f %s +%.0f -> %.0f %s at %d,%d (%s)%n", refit, seed,
+                                    world.engine.getSimSeconds() - t0, c.name, c.injury - was, c.injury, c.wound,
+                                    e.getComponent(GridPositionComponent.class).tileX(), e.getComponent(GridPositionComponent.class).tileY(), c.activity));
+                            injury.put(e, c.injury);
+                        }
+                    }
+                }
+                if (trace && Math.round((world.engine.getSimSeconds() - t0) * 60) % 120 == 0) {
+                    StringBuilder line = new StringBuilder(String.format(Locale.ROOT, "AT %s %d t=%.0f", refit, seed, world.engine.getSimSeconds() - t0));
+                    for (Entity e : ours) {
+                        CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                        GridPositionComponent p = e.getComponent(GridPositionComponent.class);
+                        line.append(String.format(Locale.ROOT, " [%s %d,%d %s %s]", c.name, p.tileX(), p.tileY(), c.wound, c.activity));
+                    }
+                    TRACE.append(line).append('\n');
+                }
                 gun.fireGuns();
                 gun.launchMissile();
                 gun.update(FRAME);
@@ -143,11 +174,33 @@ class CrewWoundSurveyTest {
             t.lost = !t.beaten && ShipDisablement.isDisabled(game.player);
             t.hull = ShipDisablement.hullIntegrity(game.player.getComponent(ShipGridComponent.class));
             for (Entity e : ours) {
-                Wound w = e.getComponent(CrewMemberComponent.class).wound;
-                if (w != Wound.NONE) t.wounds.merge(w, 1, Integer::sum);
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                if (c.wound != Wound.NONE) t.wounds.merge(c.wound, 1, Integer::sum);
+                if (!c.isAlive()) t.deadInFight++;
             }
+            Entity player = game.player;
+            world.combatEvents.impacts.add((signal, hit) -> {
+                if (hit.target == player) t.hitsAfter++;
+            });
             // Ten minutes for the medics (and for critical wounds left untreated to run out)
-            run(world, 60 * 60 * 10);
+            if (Boolean.getBoolean("wound.survey.trace")) {
+                for (int k = 0; k <= 60; k++) {
+                    StringBuilder line = new StringBuilder(String.format(Locale.ROOT, "TRACE %s %d t+%ds:", refit, seed, k * 10));
+                    ShipGridComponent g = game.player.getComponent(ShipGridComponent.class);
+                    for (Entity e : ours) {
+                        CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                        GridPositionComponent p = e.getComponent(GridPositionComponent.class);
+                        line.append(String.format(Locale.ROOT, " [%s %s %s%s h%.0f bo%.0f suit%s/%.0f air%s %s]", c.name, c.state, c.wound,
+                                c.stabilised ? "+stab" : "", c.health, c.bleedOut, c.suited, c.suitAir,
+                                com.ringsofiron.aicrew.TaskRules.isBreathable(g, p.tileX(), p.tileY()), c.activity));
+                    }
+                    line.append(" stores ").append(g.medicalStores).append(" disabled ").append(ShipDisablement.reason(game.player));
+                    TRACE.append(line).append('\n');
+                    run(world, 600);
+                }
+            } else {
+                run(world, 60 * 60 * 10);
+            }
             for (Entity e : ours) {
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                 if (c.isAlive()) continue;
