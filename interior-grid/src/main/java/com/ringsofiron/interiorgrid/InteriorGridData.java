@@ -72,6 +72,7 @@ public final class InteriorGridData {
     public static ShipSubsystemRegistryComponent installInterior(Entity entity, ChassisDef chassis, GameEngine engine) {
         ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(toBlueprint(chassis, catalog()));
         CompartmentBuilder.rebuildIfChanged(result.grid);
+        result.grid.chassis = chassis.id;
 
         ShipSubsystemRegistryComponent registry = new ShipSubsystemRegistryComponent(entity);
         entity.add(result.grid);

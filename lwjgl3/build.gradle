@@ -19,6 +19,9 @@ apply plugin: 'io.github.fourlastor.construo'
 import io.github.fourlastor.construo.Target
 
 sourceSets.main.resources.srcDirs += [ rootProject.file('assets').path ]
+// The texture atlas rasterized from assets/art (art/art.atlas); building resources runs packArt.
+evaluationDependsOn(':art-pipeline')
+sourceSets.main.resources.srcDir(project(':art-pipeline').tasks.named('packArt').map { it.outputs.files.singleFile })
 application.mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.Lwjgl3Launcher'
 application.applicationName = appName
 eclipse.project.name = appName + '-lwjgl3'

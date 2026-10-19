@@ -9,6 +9,7 @@ import com.ringsofiron.aicrew.CrewBody;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -65,6 +66,40 @@ public final class DeckView {
             float x = side.dx > 0 ? ex : side.dx < 0 ? ex - half : ex - s / 2f;
             float y = side.dy > 0 ? ey : side.dy < 0 ? ey - half : ey - s / 2f;
             shapes.rect(x, y, w, h);
+        }
+    }
+
+    /**
+     * What the deck art does not show, over it: open tiles darken toward vacuum as their
+     * compartment loses pressure and haze over with smoke, and a breach blinks red. In the grid's
+     * local meters, inside a filled batch.
+     */
+    public static void atmosphere(ShapeRenderer shapes, ShipGridComponent grid, boolean blinkOn) {
+        float s = grid.tileSize, ox = grid.gridOriginLocal.x, oy = grid.gridOriginLocal.y;
+        Color vacuum = TileShade.VACUUM, smoke = TileShade.SMOKE;
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile t = grid.getTile(x, y);
+                if (t == null) continue;
+                if (t.isHullBreach()) {
+                    if (!blinkOn) continue;
+                    shapes.setColor(TileShade.BREACH.r, TileShade.BREACH.g, TileShade.BREACH.b, 0.45f);
+                    shapes.rect(ox + x * s, oy + y * s, s, s);
+                    continue;
+                }
+                if (!t.isOpen()) continue;
+                Compartment c = t.compartment;
+                float lost = 1f - (c == null ? 0f : MathUtils.clamp(c.pressureRatio(), 0f, 1f));
+                if (lost > 0.02f) {
+                    shapes.setColor(vacuum.r, vacuum.g, vacuum.b, 0.65f * lost);
+                    shapes.rect(ox + x * s, oy + y * s, s, s);
+                }
+                float haze = c == null ? 0f : MathUtils.clamp(c.smokeDensity() / TileShade.THICK_SMOKE, 0f, 1f);
+                if (haze > 0f) {
+                    shapes.setColor(smoke.r, smoke.g, smoke.b, 0.55f * haze);
+                    shapes.rect(ox + x * s, oy + y * s, s, s);
+                }
+            }
         }
     }
 

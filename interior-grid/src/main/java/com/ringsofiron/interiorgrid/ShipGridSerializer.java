@@ -24,6 +24,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
         json.writeValue("tileSize", grid.tileSize);
         json.writeValue("originX", grid.gridOriginLocal.x);
         json.writeValue("originY", grid.gridOriginLocal.y);
+        if (grid.chassis != null) json.writeValue("chassis", grid.chassis);
 
         json.writeArrayStart("tiles");
         for (int y = 0; y < grid.height; y++) {
@@ -128,6 +129,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
         int w = data.getInt("width"), h = data.getInt("height");
         float tileSize = data.getFloat("tileSize");
         ShipGridComponent grid = new ShipGridComponent(w, h, tileSize, data.getFloat("originX"), data.getFloat("originY"));
+        grid.chassis = data.getString("chassis", null);
 
         // Pieces first: placing one resets its tiles, which the tile state below then restores
         for (JsonValue p = data.get("pieces").child; p != null; p = p.next) {

@@ -2,6 +2,11 @@
 #   assets.getTexture("tex_libgdx")
 # Mods add or override keys with their own assets.toml (paths relative to the mod folder).
 
+# The art pack: assets/art's SVGs rasterized into one atlas by gradlew :art-pipeline:packArt (the run
+# tasks build it). Regions are named <folder>/<file>, e.g. tiles/floor; see documentation/art/Design.md.
+[atlas]
+atlas_art = "art/art.atlas"
+
 [texture]
 tex_libgdx = "libgdx.png"
 tex_corvette = "libgdx.png"       # placeholder until ship art exists

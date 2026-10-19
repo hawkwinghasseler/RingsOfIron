@@ -70,6 +70,11 @@ public class ShipGridComponent implements Component {
      * instead of waiting for the routing tick. Cleared by {@link PowerRoutingSystem}.
      */
     public boolean gridDirty = false;
+    /**
+     * Id of the chassis this grid was built from (chassis.toml), which names its exterior art;
+     * null for a grid made in code.
+     */
+    public String chassis;
 
     public ShipGridComponent(int width, int height, float tileSize) {
         this(width, height, tileSize, 0f, 0f);
