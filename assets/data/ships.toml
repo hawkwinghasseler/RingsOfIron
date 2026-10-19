@@ -86,3 +86,23 @@ hardpoints = [
   { weapon = "autocannon_mk1", x = 5.5, y = 2.5, rotation = 90.0 },
   { weapon = "autocannon_mk1", x = 5.5, y = -2.5, rotation = -90.0 },
 ]
+
+# The Commander's and Captain's ship, sold at the sponsor's yards (round 3): two main turrets on
+# the bow, a missile launcher on each beam aft, point defense on each beam forward, and a marine
+# bay under its active dorsal port for boarding. Heavier and slower than the gunship.
+[ship.frigate_patrol]
+name = "Frigate"
+chassis = "frigate"
+texture = "tex_frigate"
+mass = 380000.0
+max_thrust = 3.4e6
+max_torque = 3.2e6
+crew = 8
+hardpoints = [
+  { weapon = "railgun_mk1", x = 10.0, y = 3.0, rotation = 0.0 },
+  { weapon = "railgun_mk1", x = 10.0, y = -3.0, rotation = 0.0 },
+  { weapon = "harpoon_launcher", x = -3.5, y = 3.5, rotation = 90.0 },
+  { weapon = "harpoon_launcher", x = -3.5, y = -3.5, rotation = -90.0 },
+  { weapon = "autocannon_mk1", x = 6.5, y = 3.5, rotation = 90.0 },
+  { weapon = "autocannon_mk1", x = 6.5, y = -3.5, rotation = -90.0 },
+]

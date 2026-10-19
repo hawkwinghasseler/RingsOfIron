@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/** The ships hostile traffic flies, spawned from the base data the way the game spawns them. */
+/** The ships hostile traffic flies, and the frigate, spawned from the base data the way the game spawns them. */
 class ShipRosterTest {
     GameWorld world;
     GameScenario game;
@@ -68,7 +68,7 @@ class ShipRosterTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"raider_light", "gunship_heavy"})
+    @ValueSource(strings = {"raider_light", "gunship_heavy", "frigate_patrol"})
     void spawnsAsAWorkingShip(String id) {
         assertFalse(game.content.report.hasErrors(), game.content.report.toString());
         Entity ship = spawn(id);

@@ -13,6 +13,7 @@ tex_corvette = "libgdx.png"       # placeholder until ship art exists
 tex_freighter = "libgdx.png"      # placeholder
 tex_raider = "libgdx.png"         # placeholder
 tex_gunship = "libgdx.png"        # placeholder
+tex_frigate = "libgdx.png"        # placeholder
 
 # Audio middleware event paths (audio-spatial); looked up with assets.getString(key).
 [audio_event]
