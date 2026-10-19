@@ -273,6 +273,38 @@ class DockingDemoSceneTest {
     }
 
     @Test
+    void crewOrderedToForceTheDoorWalkOverAndHackIt() {
+        demo.load(DockingDemoScene.Scene.FORCE);
+        ShipGridComponent deck = demo.player.getComponent(ShipGridComponent.class);
+        // A marine at the far end of the corvette's deck, and the avatar out of the way
+        int[] far = null;
+        for (int y = 0; y < deck.height && far == null; y++) {
+            for (int x = 0; x < deck.width; x++) {
+                if (deck.getTile(x, y).isOpen()) {
+                    far = new int[]{x, y};
+                    break;
+                }
+            }
+        }
+        Entity marine = com.ringsofiron.aicrew.CrewFactory.spawn(demo.world.crew, demo.player, "Cole",
+                com.ringsofiron.aicrew.CrewRole.MARINE, 0, far[0], far[1]);
+        demo.world.crew.position(demo.avatar).setTile(far[0], far[1]);
+        String said = demo.world.forcing.order(demo.player, false);
+        assertTrue(said.startsWith("Crew ordered to force"), said);
+        assertTrue(demo.world.forcing.order(demo.player, false).startsWith("No shut door"), "one order per door");
+        int port = -1;
+        for (int i = 0; i < 60 * 120; i++) {
+            demo.update(FRAME);
+            DoorForcing.Job j = demo.world.forcing.jobOf(marine);
+            if (j != null) port = j.port;
+            if (port >= 0 && demo.world.docking.doorState(demo.target, port) == ForceMethod.DoorState.OPEN) break;
+        }
+        assertTrue(port >= 0, "the marine got to the door and set to work: " + demo.world.crew.crew(marine).activity);
+        assertEquals(ForceMethod.DoorState.OPEN, demo.world.docking.doorState(demo.target, port), "hacked open");
+        assertEquals(-FactionStanding.HACK_COST, demo.world.standing.standing(StationCrew.FACTION), 1e-3, "a hostile act");
+    }
+
+    @Test
     void anUnpoweredDoorIsPried() {
         demo.load(DockingDemoScene.Scene.FORCE);
         demo.toggleStationPower();

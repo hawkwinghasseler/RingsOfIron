@@ -55,6 +55,8 @@ public final class TaskRules {
                 return ((CarryTask) task).job.isOpen();
             case YARD:
                 return ((YardTask) task).job.isOpen();
+            case FORCE_DOOR:
+                return ((ForceDoorTask) task).job.isOpen();
             default:
                 return true;
         }

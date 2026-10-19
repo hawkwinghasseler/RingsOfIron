@@ -284,7 +284,7 @@ public class DockingDemoScene {
                 }
             }
         }
-        // The crew left the doors open for the yard: technicians don't open doors themselves
+        // The crew left the doors open for the yard
         for (int y = 0; y <= grid.height; y++) {
             for (int x = 0; x <= grid.width; x++) {
                 openDoor(grid, x < grid.width ? grid.edgeH[y][x] : null, x, y, x, y - 1);

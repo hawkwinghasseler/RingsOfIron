@@ -8,6 +8,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.aicrew.ForceDoorTask;
 import com.ringsofiron.aicrew.ManConsoleTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
@@ -481,6 +482,33 @@ public final class CrewTasks {
         }
     }
 
+    /** Walks to the spot a door is forced from and works at it until it opens. */
+    public static class ForceDoor extends CrewLeaf {
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            ForceDoorTask t = (ForceDoorTask) a.crew.task;
+            if (!t.job.isOpen()) {
+                ShipTaskBoardComponent board = a.board();
+                if (board != null) board.cancel(t);
+                a.crew.task = null;
+                return Status.FAILED;
+            }
+            a.crew.activity = "going to " + t.job.what();
+            ShipGridComponent grid = a.service.grid(t.ship);
+            if (grid == null) return Status.FAILED;
+            GridNavGraph nav = a.service.pathfinder(grid).graph;
+            CrewAgent.Travel go = a.travel(t.ship, (x, y) -> x == t.x && y == t.y && nav.isWalkable(x, y));
+            if (go == CrewAgent.Travel.UNREACHABLE) {
+                a.abandonUnreachable();
+                return Status.FAILED;
+            }
+            if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
+            a.crew.activity = t.job.what();
+            return t.job.work(a.entity, a.dt) ? Status.SUCCEEDED : Status.RUNNING;
+        }
+    }
+
     /**
      * Walkable tiles of {@code ship} from which the {@code w} x {@code h} tiles from (x, y) are
      * worked: inside them, or next to one of them.
@@ -676,6 +704,7 @@ public final class CrewTasks {
             case RESCUE: return "rescuing a casualty";
             case CARRY: return "carrying " + ((CarryTask) t).job.commodity();
             case YARD: return ((YardTask) t).job.what();
+            case FORCE_DOOR: return ((ForceDoorTask) t).job.what();
             case TREAT: return "treating a patient";
             case MAN_CONSOLE: {
                 SubsystemComponent.SubsystemType type = ((ManConsoleTask) t).type();
