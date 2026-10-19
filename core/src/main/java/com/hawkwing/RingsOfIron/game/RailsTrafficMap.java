@@ -61,6 +61,8 @@ public class RailsTrafficMap implements TrafficMapProvider {
             EconomyNode station = world.macroSim.station(e.uuid);
             FreighterComponent hauler = station == null ? world.macroSim.freighters().get(e.uuid) : null;
             if (station == null && hauler == null) continue;
+            // The pirates' base stays off the map until it is found
+            if (station != null && world.pirateBase.hidden(e.uuid)) continue;
             if (!positionInFrame(e, frame, frameUuid, t)) continue;
             Contact c = out.addContact();
             c.x = entryState.x;

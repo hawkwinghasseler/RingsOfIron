@@ -154,6 +154,8 @@ public class GameWorld implements Disposable {
     public final AudioListenerSync audioListener;
     /** Pirates and faction patrols: their ships, and how they fly and fight in the bubble. */
     public final HostileTraffic hostiles;
+    /** The pirates' hidden base, once the scenario has one: found or not, standing or fallen. */
+    public final PirateBase pirateBase;
     /** Ties the career (factions and rank) to encounters, rescue, boarding and ships beaten. */
     public final LoopWiring loop;
     /** The player's planned burns. */
@@ -425,10 +427,26 @@ public class GameWorld implements Disposable {
         PhysicsSaveParticipant.install(physics, engine);
         // Pirates and faction patrols, on the rails and in the bubble
         hostiles = HostileTraffic.install(this);
+        pirateBase = new PirateBase(this);
+        engine.addSystem(pirateBase);
+        engine.getSerializationService().addParticipant(pirateBase);
+        hostiles.extraRaiders = pirateBase::extraRaiders;
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);
         // Things that happen on their own, a day at a time, with jobs on the boards
         events = new WorldEvents(this);
+    }
+
+    /**
+     * Starts the combat and crew dice over from a new game's seeds, as if the world had been built
+     * with them: sensors, fire control and damage from {@code combatSeed} (the same offsets as
+     * {@link Modules#combatSeed}), the crew's own draws from {@code crewSeed}.
+     */
+    public void reseed(long combatSeed, long crewSeed) {
+        sensors.reseed(combatSeed + 1);
+        weaponControl.reseed(combatSeed + 2);
+        impacts.reseed(combatSeed);
+        crew.random.setSeed(crewSeed);
     }
 
     /**

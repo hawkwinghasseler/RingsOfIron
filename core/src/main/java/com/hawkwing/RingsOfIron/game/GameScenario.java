@@ -101,6 +101,11 @@ public class GameScenario {
     public String freehold;
     public static final String SHIPYARD_NAME = "Anvil Yards", FOUNDRY_NAME = "Selene Forge",
             ORE_MINE_NAME = "Crisium Ore Works", FREEHOLD_NAME = "Freehold";
+    /** The pirates' hidden base; null in older saves. */
+    public String pirateBase;
+    public static final String PIRATE_BASE_NAME = "Rustwake";
+    /** The base's eccentric orbit round Earth: periapsis and apoapsis radii, m. */
+    public static final double PIRATE_BASE_PERIAPSIS = 60_000e3, PIRATE_BASE_APOAPSIS = 160_000e3;
     /** The shipyard's orbit radius: high Earth orbit, m. */
     public static final double SHIPYARD_ORBIT = 20_000e3;
     /**
@@ -111,9 +116,21 @@ public class GameScenario {
     /** Highport's attitude: half a turn, so its Small ports face back along the orbit, towards the player. */
     public static final float HIGHPORT_ANGLE = (float) Math.PI;
 
-    private GameScenario(GameWorld world, Path assetsDir, Path modsDir) {
+    /** The seed and sponsor this career started with; a load replaces it with the save's. */
+    private NewGame newGame;
+    /** The world's own dice, from the seed: station phases, traffic and stock. */
+    private final java.util.Random dice;
+
+    private GameScenario(GameWorld world, Path assetsDir, Path modsDir, NewGame newGame) {
         this.world = world;
+        this.newGame = newGame;
+        dice = new java.util.Random(newGame.stream(3));
         content = world.loadContent(assetsDir, modsDir);
+        // The designed start keeps whatever dice the world was built with
+        if (newGame.seeded) world.reseed(newGame.combatSeed(), newGame.crewSeed());
+        // ...and the world's events roll from it too
+        if (newGame.seeded) world.events.seed = newGame.stream(6);
+        world.engine.getSerializationService().addParticipant(new SeedRecord());
 
         Entity earth = world.engine.createEntity();
         earth.add(new UuidComponent(EARTH));
@@ -201,8 +218,10 @@ public class GameScenario {
                         if (station.getComponent(TransformComponent.class) == null) station.add(new TransformComponent());
                         ShipGridComponent g = station.getComponent(ShipGridComponent.class);
                         float radius = g == null ? 20f : Math.max(g.width, g.height) * g.tileSize * 0.5f;
-                        station.add(new HudMarkerComponent(station.getComponent(StationComponent.class).name,
-                                HudMarkerComponent.Kind.STATION).radius(radius));
+                        String name = station.getComponent(StationComponent.class).name;
+                        var owner = world.standing.factions().def(world.standing.factions().ofStation(name));
+                        station.add(new HudMarkerComponent(name, owner != null && owner.hostileToAll
+                                ? HudMarkerComponent.Kind.HOSTILE : HudMarkerComponent.Kind.STATION).radius(radius));
                     }
 
                     @Override
@@ -214,26 +233,41 @@ public class GameScenario {
         highport = addStation("Highport", stationType("agri_dome", 0), EARTH,
                 circular(ORBIT_RADIUS, 8e3 / ORBIT_RADIUS), HIGHPORT_ANGLE);
         depot = addStation("Deepwell Depot", stationType("fuel_depot", 1), EARTH,
-                circular(ORBIT_RADIUS + 2_000e3, 2.5), 0f);
+                circular(ORBIT_RADIUS + 2_000e3, phase(2.5)), 0f);
         lunarMine = addStation("Shackleton Ice", stationType("ice_mine", 2), MOON,
-                circular(MU_MOON, R_MOON + 100e3, 0), 0f);
+                circular(MU_MOON, R_MOON + 100e3, phase(0)), 0f);
         // The wider world: the sponsor's yard high above Earth, Selene's industry round the Moon, and
         // the Free Traders' outpost far out, half way to the Moon
         shipyard = addStation(SHIPYARD_NAME, stationType("shipyard", 4), EARTH,
-                circular(SHIPYARD_ORBIT, 4.0), 0f);
+                circular(SHIPYARD_ORBIT, phase(4.0)), 0f);
         foundry = addStation(FOUNDRY_NAME, stationType("foundry", 3), MOON,
-                circular(MU_MOON, R_MOON + 400e3, 2.1), 0f);
+                circular(MU_MOON, R_MOON + 400e3, phase(2.1)), 0f);
         oreMine = addStation(ORE_MINE_NAME, stationType("ore_mine", 2), MOON,
-                circular(MU_MOON, R_MOON + 800e3, 4.2), 0f);
+                circular(MU_MOON, R_MOON + 800e3, phase(4.2)), 0f);
         freehold = addStation(FREEHOLD_NAME, stationType("free_port", 5), EARTH,
-                circular(FREEHOLD_ORBIT, MOON_ANGLE + Math.PI), 0f);
+                circular(FREEHOLD_ORBIT, phase(MOON_ANGLE + Math.PI)), 0f);
+        // The pirates' hidden base, with no market worth the name and no one to clear the player in
+        if (world.standing.factions().index(PIRATES) >= 0) {
+            pirateBase = addStation(PIRATE_BASE_NAME, stationType("pirate_den", 0), EARTH,
+                    periapsisState(MU_EARTH, PIRATE_BASE_PERIAPSIS, PIRATE_BASE_APOAPSIS, phase(5.0)), 0f);
+            world.pirateBase.establish(pirateBase, world.macroSim.now());
+        }
         double hold = InteriorGridData.cargoBayVolume(content.defs, FREIGHTER_SHIP);
-        world.macroSim.addFreighter("Hauler Kestrel", hold, 20_000, highport);
-        for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), hold, 20_000, depot);
-        for (int i = 0; i < 2; i++) world.macroSim.addFreighter("Lunar Hauler " + (i + 1), hold, 20_000, lunarMine);
-        world.macroSim.addFreighter("Yard Tender", hold, 20_000, shipyard);
-        world.macroSim.addFreighter("Ore Barge", hold, 20_000, oreMine);
-        world.macroSim.addFreighter("Free Trader Halcyon", hold, 20_000, freehold);
+        addFreighter("Hauler Kestrel", hold, highport);
+        for (int i = 0; i < 4; i++) addFreighter("Hauler " + (i + 1), hold, depot);
+        for (int i = 0; i < 2; i++) addFreighter("Lunar Hauler " + (i + 1), hold, lunarMine);
+        addFreighter("Yard Tender", hold, shipyard);
+        addFreighter("Ore Barge", hold, oreMine);
+        addFreighter("Free Trader Halcyon", hold, freehold);
+        if (newGame.seeded) {
+            // A seeded world flies more or fewer extra haulers, based where the dice say
+            String[] homes = {highport, depot, lunarMine, shipyard, foundry, oreMine, freehold};
+            int extra = dice.nextInt(NewGame.EXTRA_FREIGHTERS + 1);
+            for (int i = 0; i < extra; i++) {
+                String home = homes[dice.nextInt(homes.length)];
+                addFreighter(EXTRA_HAULERS[i % EXTRA_HAULERS.length], hold, home);
+            }
+        }
         // Rescued after abandoning ship: the player flies the ship requisitioned at the station
         world.rescue.rescues.add((signal, rescue) -> {
             player = rescue.newShip;
@@ -245,14 +279,31 @@ public class GameScenario {
             }
         });
         // Pirates lurk by every station; the sponsor patrols Earth's stations, Selene guards the Moon's
+        world.hostiles.extraLurk = pirateBase;
         world.hostiles.start(lurks(), present(depot, highport, shipyard),
                 present(lunarMine, foundry, oreMine));
         content.hooks.fireWorldReady();
     }
 
+    /** Names of the haulers a seeded world adds. */
+    private static final String[] EXTRA_HAULERS = {"Hauler Osprey", "Hauler Tern", "Free Trader Mira", "Hauler Petrel"};
+    /** What a freighter starts with, credits; a seeded world's stray by up to a quarter. */
+    static final double FREIGHTER_CREDITS = 20_000;
+
+    private void addFreighter(String name, double hold, String home) {
+        double credits = FREIGHTER_CREDITS * (newGame.seeded ? 1 + NewGame.STOCK_SPREAD * (2 * dice.nextDouble() - 1) : 1);
+        world.macroSim.addFreighter(name, hold, credits, home);
+    }
+
+    /** A station's place along its orbit: {@code designed} as laid out, anywhere in a seeded world. */
+    private double phase(double designed) {
+        return newGame.seeded ? dice.nextDouble() * 2 * Math.PI : designed;
+    }
+
     /** A macro-sim station with its interior and docking ports from its type's blueprint. */
     private String addStation(String name, String typeId, String parentUuid, StateVector state, float angle) {
-        String uuid = world.macroSim.addStation(name, typeId, parentUuid, state, 1);
+        double stock = newGame.seeded ? 1 + NewGame.STOCK_SPREAD * (2 * dice.nextDouble() - 1) : 1;
+        String uuid = world.macroSim.addStation(name, typeId, parentUuid, state, stock);
         StationComponent station = DockingData.buildStation(world.engine.getEntity(uuid), content.defs,
                 world.engine, name, typeId);
         station.angle = angle;
@@ -298,9 +349,41 @@ public class GameScenario {
         world.bridge.sit(SubsystemComponent.SubsystemType.HELM);
     }
 
-    /** Loads base data and mods and sets up a new game in {@code world}. */
+    /** Loads base data and mods and sets up the designed start in {@code world}. */
     public static GameScenario start(GameWorld world, Path assetsDir, Path modsDir) {
-        return new GameScenario(world, assetsDir, modsDir);
+        return start(world, assetsDir, modsDir, NewGame.designed());
+    }
+
+    /** Loads base data and mods and sets up the new game {@code newGame} asks for in {@code world}. */
+    public static GameScenario start(GameWorld world, Path assetsDir, Path modsDir, NewGame newGame) {
+        return new GameScenario(world, assetsDir, modsDir, newGame);
+    }
+
+    /** The seed and sponsor this career started with. */
+    public NewGame newGame() {
+        return newGame;
+    }
+
+    /** Saves the career's seed, so a loaded game still knows which world it is. */
+    private final class SeedRecord implements com.ringsofiron.coreengine.SaveParticipant {
+        @Override
+        public String saveKey() {
+            return "newGame";
+        }
+
+        @Override
+        public void write(com.badlogic.gdx.utils.Json json) {
+            json.writeValue("seed", newGame.seed);
+            json.writeValue("seeded", newGame.seeded);
+            json.writeValue("sponsor", newGame.sponsor);
+        }
+
+        @Override
+        public void read(com.badlogic.gdx.utils.Json json, com.badlogic.gdx.utils.JsonValue data) {
+            String sponsor = data.getString("sponsor", null);
+            newGame = data.getBoolean("seeded", false)
+                    ? NewGame.seeded(data.getLong("seed", 0), sponsor) : NewGame.designed().withSponsor(sponsor);
+        }
     }
 
     /**
@@ -339,6 +422,8 @@ public class GameScenario {
     public void quickLoad(FileHandle file) {
         // A save from before the career was saved loads as a new one: rank 0 with the sponsor
         world.standing.reset();
+        // ...from the designed start, unless the save knows its seed
+        newGame = NewGame.designed();
         // ...and with no contracts, derelicts or events
         world.contracts.reset();
         world.derelicts.reset();
@@ -348,9 +433,23 @@ public class GameScenario {
         world.standing.migrateLegacy(player);
     }
 
-    /** Where pirates lurk, in turn: the first three stations first, as before there were more. */
+    /**
+     * Where pirates lurk, in turn: the first three stations first, as before there were more. A
+     * seeded world shuffles them by its seed, the same way every time, so a load keeps the order.
+     */
     private String[] lurks() {
-        return present(depot, lunarMine, highport, oreMine, freehold, foundry, shipyard);
+        String[] lurks = present(depot, lunarMine, highport, oreMine, freehold, foundry, shipyard);
+        if (newGame.seeded) {
+            java.util.List<String> order = new java.util.ArrayList<>(java.util.List.of(lurks));
+            java.util.Collections.shuffle(order, new java.util.Random(newGame.stream(4)));
+            lurks = order.toArray(new String[0]);
+        }
+        return lurks;
+    }
+
+    /** The lurks, in turn, for tests. */
+    String[] lurksForTest() {
+        return lurks();
     }
 
     /** {@code uuids} without the nulls: stations a game from an older save lacks. */
@@ -376,6 +475,9 @@ public class GameScenario {
         foundry = stationNamed(FOUNDRY_NAME, null);
         oreMine = stationNamed(ORE_MINE_NAME, null);
         freehold = stationNamed(FREEHOLD_NAME, null);
+        pirateBase = stationNamed(PIRATE_BASE_NAME, null);
+        world.pirateBase.relink(pirateBase);
+        world.hostiles.extraLurk = pirateBase;
         world.hostiles.relink(lurks());
         player = world.getPlayer();
         if (player != null) ShipCargo.attach(player);
@@ -412,6 +514,13 @@ public class GameScenario {
             if (i++ <= fallback) nth = t.id;
         }
         return nth;
+    }
+
+    /** At periapsis, {@code angle} radians round, on the orbit from {@code rp} to {@code ra}, circling the usual way. */
+    static StateVector periapsisState(double mu, double rp, double ra, double angle) {
+        double v = Math.sqrt(mu * (2 / rp - 2 / (rp + ra)));
+        double c = Math.cos(angle), s = Math.sin(angle);
+        return new StateVector().set(rp * c, rp * s, -v * s, v * c);
     }
 
     static StateVector circular(double radius, double angle) {

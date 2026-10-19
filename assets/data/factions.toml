@@ -37,6 +37,8 @@ enemies = ["pirates"]
 name = "Void Raiders"
 color = "#d94a4a"
 hostile_to_all = true
+# Their hidden base, on an eccentric high orbit
+stations = ["Rustwake"]
 
 [rank.ensign]
 name = "Ensign"

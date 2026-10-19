@@ -26,7 +26,7 @@ import java.util.Locale;
  * last; {@link GameShell} does what their buttons ask.
  */
 class ShellMenus {
-    enum Panel { MAIN, PAUSE, LOAD, SAVE, SETTINGS }
+    enum Panel { MAIN, PAUSE, LOAD, SAVE, SETTINGS, NEW_GAME }
 
     /** Window sizes the settings offer, filtered to what fits the screen. */
     static final int[][] RESOLUTIONS = {
@@ -98,7 +98,7 @@ class ShellMenus {
         cont.setDisabled(latest == null);
         t.add(cont).width(260f).colspan(3).row();
         if (latest != null) t.add(new Label(latest.name + "   " + latest.details(), skin, "dim")).colspan(3).row();
-        t.add(button("New game", () -> shell.newGame(false))).width(260f).colspan(3).row();
+        t.add(button("New game", () -> showNewGame(root))).width(260f).colspan(3).row();
         t.add(button("First play (guided)", () -> shell.newGame(true))).width(260f).colspan(3).row();
         TextButton load = button("Load", () -> showLoad(root));
         load.setDisabled(latest == null);
@@ -119,7 +119,30 @@ class ShellMenus {
         t.add(button("Quit to menu", shell::quitToMenu)).width(260f).colspan(3).row();
         t.add(button("Quit game", shell::quit)).width(260f).colspan(3).row();
         t.add(new Label("Esc resumes", skin, "dim")).colspan(3).padTop(8f).row();
+        String world = shell.worldDescription();
+        if (!world.isEmpty()) t.add(new Label(world, skin, "dim")).colspan(3).row();
         endFrame(t);
+    }
+
+    // --- New game ----------------------------------------------------------------------
+
+    /** A new career: a typed seed replays that world, an empty one rolls a new world. */
+    void showNewGame(Table root) {
+        Table t = frame(root, Panel.NEW_GAME, "NEW GAME");
+        TextField seed = new TextField("", skin);
+        seed.setMaxLength(24);
+        seed.setMessageText("random");
+        t.add(new Label("Seed", skin, "dim")).left();
+        t.add(seed).width(300f).colspan(2).row();
+        t.add(new Label("Leave it empty for a new world; the same seed gives the same start", skin, "dim"))
+                .colspan(3).padBottom(10f).row();
+        Table buttons = new Table();
+        buttons.add(button("Start", () -> shell.newGame(com.hawkwing.RingsOfIron.game.NewGame.fromText(seed.getText(), null))))
+                .padRight(10f);
+        buttons.add(button("Back", shell::back));
+        t.add(buttons).colspan(3).padTop(10f).row();
+        endFrame(t);
+        root.getStage().setKeyboardFocus(seed);
     }
 
     // --- Saves -------------------------------------------------------------------------

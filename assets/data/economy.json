@@ -14,6 +14,7 @@
     "foundry":    { "name": "Foundry",           "population": 5000,  "produces": { "steel": 30.0 },            "consumes": { "ore": 60.0, "fuel": 20.0, "food": 10.0 }, "storage": 6000.0, "blueprint": "station_hub" },
     "shipyard":   { "name": "Shipyard",          "population": 9000,  "produces": { "machinery": 5.0 },         "consumes": { "steel": 25.0, "food": 15.0 },    "storage": 4000.0, "blueprint": "station_hub" },
     "fuel_depot": { "name": "Fuel Depot",        "population": 600,   "produces": { "fuel": 100.0 },            "consumes": { "water": 40.0 },                  "storage": 20000.0, "blueprint": "station_outpost" },
-    "free_port":  { "name": "Free Port",         "population": 2500,  "produces": { "food": 12.0 },             "consumes": { "water": 10.0, "steel": 4.0, "machinery": 0.5 }, "storage": 6000.0, "blueprint": "station_outpost" }
+    "free_port":  { "name": "Free Port",         "population": 2500,  "produces": { "food": 12.0 },             "consumes": { "water": 10.0, "steel": 4.0, "machinery": 0.5 }, "storage": 6000.0, "blueprint": "station_outpost" },
+    "pirate_den": { "name": "Pirate Den",        "population": 300,   "produces": {},                           "consumes": {},                                 "storage": 2000.0, "blueprint": "station_outpost" }
   }
 }

@@ -117,7 +117,7 @@ class GameScenarioTest {
         }
         assertEquals(4, aboard, "the player and three crew, back aboard the loaded ship");
         assertEquals(3, thinking, "the AI crew think again");
-        assertEquals(30, hands, "every station's loaders (seven stations), still working for their stations");
+        assertEquals(33, hands, "every station's loaders (seven stations and the pirate base), still working for their stations");
         for (int i = 0; i < 180; i++) world.update(FRAME);
         assertTrue(world.macroSim.bubble().inBubble().contains(visitor), "and the game runs on with it");
     }
