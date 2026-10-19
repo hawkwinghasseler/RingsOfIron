@@ -296,6 +296,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
             matchViewToSeat();
             show(rescueNotice(rescue));
         });
+        world.rescue.tows.add((signal, tow) -> {
+            matchViewToSeat();
+            long days = Math.round(tow.skipped / 86_400);
+            show("A tug brought you in to " + tow.stationName + (days > 0 ? " " + days + " days later" : ""), NoticeLog.Kind.IMPORTANT);
+        });
+        world.carriedHome.add((signal, tow) ->
+                show("You were badly hurt; your crew got you home to " + tow.stationName, NoticeLog.Kind.IMPORTANT));
+        world.hints.register(HintRegistry.Context.DISABLED, "twice: call a tow", 1, Action.CUT)
+                .onlyWhen(() -> world.beacon.refusal() == null);
         world.disablement.changes.add((signal, change) -> {
             String news = disabledNotice(change);
             if (news != null) show(news, change.ship == game.player && change.now != null
@@ -338,7 +347,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             handleInput(delta);
             if (world.getCrash() == null) gun.update(delta);
             world.update(delta);
-            if (world.getCrash() == null) {
+            if (world.getCrash() == null && world.getCareerOver() == null) {
                 String why = autosaves.update(world.playerStation() != null, world.timeWarp.getWarp() > 1,
                         world.engine.getSimSeconds());
                 // Not a ship already lost: the older slots would be all that is left
@@ -348,6 +357,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         world.notices.update(delta);
         abandonAsked -= delta;
+        towAsked -= delta;
         if (firstPlay != null) {
             String next = firstPlay.update();
             if (next != null) show(next.substring(next.indexOf(':') + 1).trim());
@@ -370,7 +380,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         gameHud.draw(delta);
         drawStatus();
-        if (world.getCrash() != null) drawCrash();
+        if (world.getCrash() != null || world.getCareerOver() != null) drawCrash();
         else if (logOpen) drawLog();
         else if (helpOpen) drawHelp();
     }
@@ -402,7 +412,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             logOpen = false;
         }
         if (just(Action.QUICK_LOAD)) quickLoad();
-        if (world.getCrash() != null) {
+        if (world.getCrash() != null || world.getCareerOver() != null) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) || just(Action.USE)) loadLatestAutosave();
             return;
         }
@@ -439,7 +449,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (just(Action.DECOY) || just(Action.CUT)) {
                 boolean cut = just(Action.CUT);
                 DoorForcing.Target t = world.forcing.target(game.avatar, new DoorForcing.Target());
-                if (t.craft == null) show(world.forcing.order(game.player, cut));
+                // Stranded and at no door, B calls the tug, as at the helm
+                if (t.craft == null && cut && world.beacon.refusal() == null) callTow();
+                else if (t.craft == null) show(world.forcing.order(game.player, cut));
                 else show(world.forcing.start(game.avatar, cut ? ForceMethod.CUT
                         : t.state == ForceMethod.DoorState.UNPOWERED ? ForceMethod.PRY : ForceMethod.HACK));
             }
@@ -531,7 +543,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         double dv = shift ? 10 : 1;
         int steps = shift ? 10 : 1;
         if (just(Action.PLAN_BURN)) burns.addNode();
-        if (just(Action.CUT)) burns.selectNext();
+        if (just(Action.CUT)) {
+            // Stranded, B calls the tug instead
+            if (world.beacon.refusal() == null) callTow();
+            else burns.selectNext();
+        }
         if (just(Action.BURN_DELETE)) burns.deleteSelected();
         if (just(Action.BURN_PROGRADE)) burns.adjust(dv, 0);
         if (just(Action.BURN_RETROGRADE)) burns.adjust(-dv, 0);
@@ -543,6 +559,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     private void drawCrash() {
         GameWorld.Crash crash = world.getCrash();
+        String over = world.getCareerOver();
         viewports.applyUi();
         batch.setProjectionMatrix(viewports.getUiCamera().combined);
         batch.begin();
@@ -550,10 +567,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         float h = viewports.getUiViewport().getWorldHeight();
         font.getData().setScale(3f);
         font.setColor(Color.RED);
-        font.draw(batch, "SHIP LOST", 0f, h / 2f + 40f, w, com.badlogic.gdx.utils.Align.center, false);
+        font.draw(batch, crash != null ? "SHIP LOST" : "CAREER OVER", 0f, h / 2f + 40f, w, com.badlogic.gdx.utils.Align.center, false);
         font.getData().setScale(1.5f);
         font.setColor(Color.WHITE);
-        font.draw(batch, "You crashed into " + crash.bodyName + " on day " + (long) (crash.time / 86400) + ".",
+        font.draw(batch, crash != null ? "You crashed into " + crash.bodyName + " on day " + (long) (crash.time / 86400) + "."
+                        : "You were killed, and " + over + ".",
                 0f, h / 2f - 10f, w, com.badlogic.gdx.utils.Align.center, false);
         font.getData().setScale(1f);
         font.setColor(Color.LIGHT_GRAY);
@@ -737,6 +755,35 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     private void show(String message, NoticeLog.Kind kind) {
         world.notices.post(message, kind);
+    }
+
+    private float towAsked;
+
+    /** B while stranded, or the pause menu: the first press asks and names the fee, a second calls the tug. */
+    public void callTow() {
+        String refused = world.beacon.refusal();
+        if (refused != null) {
+            show("Can't call a tow: " + refused);
+            return;
+        }
+        if (towAsked <= 0f) {
+            towAsked = ABANDON_CONFIRM;
+            show(String.format(java.util.Locale.ROOT, "Call the sponsor's tug? %s again: %,.0f cr and %.0f standing, and days pass",
+                    key(Action.CUT), world.beacon.fee(), com.hawkwing.RingsOfIron.game.DistressBeacon.STANDING_COST), NoticeLog.Kind.WARNING);
+            return;
+        }
+        towAsked = 0f;
+        show(world.beacon.call(), NoticeLog.Kind.IMPORTANT);
+    }
+
+    /** True when the beacon can be called now, for the pause menu. */
+    public boolean canCallTow() {
+        return world.beacon.refusal() == null;
+    }
+
+    /** From the pause menu, where the menu itself is the confirmation. */
+    public String callTowNow() {
+        return world.beacon.call();
     }
 
     /**
@@ -1114,7 +1161,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
             y -= 20f;
         } else if (disabled != null) {
             font.setColor(Color.RED);
-            font.draw(batch, "SHIP DISABLED: " + disabled.label + "   " + key(Action.ABANDON) + " twice abandons ship", left, y);
+            font.draw(batch, "SHIP DISABLED: " + disabled.label + "   " + key(Action.ABANDON) + " twice abandons ship"
+                    + (world.beacon.refusal() == null ? ", " + key(Action.CUT) + " twice calls a tow" : ""), left, y);
             y -= 20f;
         }
         for (NoticeLog.Notice n : world.notices.showing()) {

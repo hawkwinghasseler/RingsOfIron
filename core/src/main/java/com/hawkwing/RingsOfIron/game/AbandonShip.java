@@ -152,7 +152,8 @@ public class AbandonShip extends EntitySystem {
     /** Launches every pod with anyone aboard at the next step, without waiting for the rest. */
     public void launchNow(Entity ship) {
         AbandonOrderComponent order = ship == null ? null : ORDER.get(ship);
-        if (order != null) order.orderedAt = simSeconds.getAsDouble() - LAUNCH_AFTER;
+        // A second past due, so rounding never leaves it a hair short
+        if (order != null) order.orderedAt = simSeconds.getAsDouble() - LAUNCH_AFTER - 1;
     }
 
     /** Calls the order off: the crew go back to work. */

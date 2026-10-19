@@ -206,6 +206,8 @@ public class GameWorld implements Disposable {
     public final HintRegistry hints = HintRegistry.withDefaults();
     /** Low propellant and inbound missiles, as notices. */
     public final FlightWarnings warnings;
+    /** The distress beacon: a stranded ship towed home. */
+    public final DistressBeacon beacon = new DistressBeacon(this);
     /** First Play's and the opening walkthrough's progress, saved with the game. */
     public final GuideProgress guides = new GuideProgress();
 
@@ -217,6 +219,7 @@ public class GameWorld implements Disposable {
     /** What ships collide on, once content has loaded. */
     private ShipHulls hulls;
     private Crash crash;
+    private String careerOver;
     private final List<Entity> wrecks = new ArrayList<>();
     private final double[] trueState = new double[4];
     /** Materials from the loaded data, for ships' mass. */
@@ -485,7 +488,7 @@ public class GameWorld implements Disposable {
 
     /** One rendered frame. Once the player has crashed the world stops. */
     public void update(float frameDelta) {
-        if (crash != null) return;
+        if (crash != null || careerOver != null) return;
         TickProfiler profiler = engine.getProfiler();
         long start = profiler == null ? 0 : System.nanoTime();
         timeWarp.update(frameDelta);
@@ -496,7 +499,8 @@ public class GameWorld implements Disposable {
         rescue.update();
         hostiles.afterUpdate();
         checkBubbleCrash();
-        if (crash != null && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
+        checkAvatar();
+        if ((crash != null || careerOver != null) && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
         warnings.update();
     }
 
@@ -508,6 +512,33 @@ public class GameWorld implements Disposable {
     /** Lets the world run again, after loading a save from before the crash. */
     public void clearCrash() {
         crash = null;
+        careerOver = null;
+    }
+
+    /** Why the career ended with the player's death, or null while it goes on. The world stops then. */
+    public String getCareerOver() {
+        return careerOver;
+    }
+
+    /** Fires when the player was killed and the crew brought them home. */
+    public final com.badlogic.ashley.signals.Signal<Rescue.Tow> carriedHome = new com.badlogic.ashley.signals.Signal<>();
+
+    /** The player's avatar killed: brought home by the crew if any are left, else the career ends. */
+    private void checkAvatar() {
+        Entity player = getPlayer();
+        if (player == null || crash != null || careerOver != null) return;
+        for (Entity e : crew.crewEntities()) {
+            if (e.getComponent(com.ringsofiron.aicrew.PlayerAvatarComponent.class) == null) continue;
+            if (e.getComponent(com.ringsofiron.aicrew.CrewMemberComponent.class).isAlive()) return;
+            Rescue.Tow[] tow = new Rescue.Tow[1];
+            com.badlogic.ashley.signals.Listener<Rescue.Tow> l = (signal, t) -> tow[0] = t;
+            rescue.tows.add(l);
+            String why = rescue.carryHome(player);
+            rescue.tows.remove(l);
+            if (why != null) careerOver = why;
+            else carriedHome.dispatch(tow[0]);
+            return;
+        }
     }
 
     /**
@@ -539,6 +570,17 @@ public class GameWorld implements Disposable {
     }
 
     private void crash(Entity body, double time) {
+        // Crew ordered to the pods before impact get away: whoever reached a pod launches, and if
+        // the player was among them it is a rescue, not a lost ship
+        Entity player = getPlayer();
+        if (player != null && AbandonShip.abandoning(player)) {
+            abandon.launchNow(player);
+            abandon.update(0f);
+            if (rescue.pending()) {
+                rescue.update();
+                return;
+            }
+        }
         CelestialBodyComponent c = body == null ? null : universe.celestial(body);
         crash = new Crash(c == null || c.name == null ? "the surface" : c.name, time);
     }
@@ -637,3 +679,4 @@ public class GameWorld implements Disposable {
         combatDefs.materials.putAll(loaded.materials);
     }
 }
+

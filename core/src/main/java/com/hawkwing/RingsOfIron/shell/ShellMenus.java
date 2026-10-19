@@ -112,6 +112,14 @@ class ShellMenus {
     void showPause(Table root) {
         Table t = frame(root, Panel.PAUSE, "PAUSED");
         t.add(button("Resume", shell::resumeGame)).width(260f).colspan(3).row();
+        if (shell.getGame() != null && shell.getGame().canCallTow()) {
+            // The distress beacon, for a ship that can't get home
+            t.add(button("Call a tow", () -> {
+                String said = shell.getGame().callTowNow();
+                shell.resumeGame();
+                shell.getGame().showNotice(said);
+            })).width(260f).colspan(3).row();
+        }
         t.add(button("Save", () -> showSave(root))).width(260f).colspan(3).row();
         TextButton load = button("Load", () -> showLoad(root));
         load.setDisabled(shell.slots().latest() == null);
