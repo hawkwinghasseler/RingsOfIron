@@ -10,6 +10,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.Compartment;
+import com.ringsofiron.interiorgrid.EdgeConduit;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -30,6 +31,9 @@ import java.util.Map;
 public final class DeckView {
     /** A mounted system: crew walk over it. */
     public static final Color SYSTEM = new Color(0.36f, 0.42f, 0.48f, 0.9f);
+    /** A conduit run along a tile edge, with power and without. */
+    public static final Color EDGE_CONDUIT = new Color(0.95f, 0.7f, 0.2f, 1f);
+    public static final Color EDGE_CONDUIT_UNPOWERED = new Color(0.42f, 0.35f, 0.18f, 1f);
 
     private DeckView() {
     }
@@ -134,6 +138,24 @@ public final class DeckView {
                 if (!edge(grid.edgeV[y][x], tmp)) continue;
                 shapes.setColor(tmp);
                 shapes.rect(ox + x * s - line / 2f, oy + y * s, line, s);
+            }
+        }
+        // Conduits along edges, over the walls they may run in
+        float wire = s * 0.06f;
+        for (int y = 0; y <= grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                EdgeConduit c = grid.conduitH[y][x];
+                if (c == null) continue;
+                shapes.setColor(c.isPowered ? EDGE_CONDUIT : EDGE_CONDUIT_UNPOWERED);
+                shapes.rect(ox + x * s, oy + y * s - wire / 2f, s, wire);
+            }
+        }
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x <= grid.width; x++) {
+                EdgeConduit c = grid.conduitV[y][x];
+                if (c == null) continue;
+                shapes.setColor(c.isPowered ? EDGE_CONDUIT : EDGE_CONDUIT_UNPOWERED);
+                shapes.rect(ox + x * s - wire / 2f, oy + y * s, wire, s);
             }
         }
     }

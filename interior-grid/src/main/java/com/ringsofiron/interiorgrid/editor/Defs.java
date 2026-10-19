@@ -35,7 +35,7 @@ public final class Defs {
 
     /** Every key a chassis section can have, so a rewrite drops the ones no longer used. */
     public static final Set<String> CHASSIS_KEYS = new HashSet<>(Arrays.asList("name", "station", "tile_size",
-            "origin_x", "origin_y", "rows", "mounts", "edge_walls", "hull_pieces", "coverings", "ports", "lights"));
+            "origin_x", "origin_y", "rows", "mounts", "edge_walls", "edge_conduits", "hull_pieces", "coverings", "ports", "lights"));
     public static final Set<String> TILE_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "base",
             "weight_class", "material", "covering", "color"));
     public static final Set<String> COMPONENT_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "behavior",
@@ -75,6 +75,13 @@ public final class Defs {
                 walls.add(table(kv.toArray(new String[0])));
             }
             out.add(new Entry("edge_walls", multiLineArray(walls)));
+        }
+        if (!d.edgeConduits.isEmpty()) {
+            List<String> conduits = new ArrayList<>();
+            for (ChassisDef.EdgeConduit c : d.edgeConduits) {
+                conduits.add(table("x", Integer.toString(c.x), "y", Integer.toString(c.y), "side", str(c.side)));
+            }
+            out.add(new Entry("edge_conduits", multiLineArray(conduits)));
         }
         if (!d.hullPieces.isEmpty()) {
             List<String> pieces = new ArrayList<>();

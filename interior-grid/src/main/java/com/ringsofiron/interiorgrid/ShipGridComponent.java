@@ -36,6 +36,10 @@ public class ShipGridComponent implements Component {
      * edgeV[y][width] is the right edge of the right column. Null means no wall.
      */
     public final EdgeWall[][] edgeV;
+    /** Power conduits along horizontal edges, indexed like {@link #edgeH}. Null means none. */
+    public final EdgeConduit[][] conduitH;
+    /** Power conduits along vertical edges, indexed like {@link #edgeV}. Null means none. */
+    public final EdgeConduit[][] conduitV;
     public final Array<HullPiece> hullPieces = new Array<>();
     public final Array<MountFootprint> mounts = new Array<>();
     /**
@@ -93,6 +97,8 @@ public class ShipGridComponent implements Component {
         }
         this.edgeH = new EdgeWall[height + 1][width];
         this.edgeV = new EdgeWall[height][width + 1];
+        this.conduitH = new EdgeConduit[height + 1][width];
+        this.conduitV = new EdgeConduit[height][width + 1];
     }
 
     /**
@@ -166,6 +172,38 @@ public class ShipGridComponent implements Component {
         if (side == null) return null;
         if (inBounds(x, y)) return getEdge(x, y, side);
         return getEdge(nx, ny, side.opposite());
+    }
+
+    /** Returns the edge conduit on the given side of tile (x, y), or null if none / out of bounds. */
+    public EdgeConduit getConduit(int x, int y, Side side) {
+        if (!inBounds(x, y)) return null;
+        switch (side) {
+            case BOTTOM: return conduitH[y][x];
+            case TOP:    return conduitH[y + 1][x];
+            case LEFT:   return conduitV[y][x];
+            default:     return conduitV[y][x + 1];
+        }
+    }
+
+    /** Lays (or with null, removes) the edge conduit on the given side of tile (x, y). */
+    public void setConduit(int x, int y, Side side, EdgeConduit conduit) {
+        if (!inBounds(x, y)) throw new IllegalArgumentException("Tile out of bounds: " + x + "," + y);
+        switch (side) {
+            case BOTTOM: conduitH[y][x] = conduit; break;
+            case TOP:    conduitH[y + 1][x] = conduit; break;
+            case LEFT:   conduitV[y][x] = conduit; break;
+            default:     conduitV[y][x + 1] = conduit; break;
+        }
+    }
+
+    /**
+     * True if tile (x, y) has a power conduit on it or on its {@code side} edge: what a conduit's
+     * art reaches toward.
+     */
+    public boolean hasConduitToward(int x, int y, Side side) {
+        if (getConduit(x, y, side) != null) return true;
+        Tile t = getTile(x + side.dx, y + side.dy);
+        return t != null && t.isPowerConduit();
     }
 
     /** The link across the {@code side} edge of tile (x, y) onto another grid, or null. */

@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.EdgeConduit;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.HullPiece;
@@ -23,7 +24,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 
 /**
- * Draws a deck with the art pack: floors, coverings and conduits, walls joined to their
+ * Draws a deck with the art pack: floors, coverings and conduits (on tiles and along edges), walls joined to their
  * neighbors, wedges, the systems in their mounts (dark when they have no power), docking ports
  * open or shut, thin walls and bulkhead doors, wall lights, damage, breaches, seals, fire and
  * cargo. {@link #glow} draws again just what is lit, for after the light map.
@@ -65,6 +66,7 @@ public final class DeckArt {
         systems(batch, grid, power);
         walkways(batch, grid);
         edges(batch, grid, power);
+        edgeConduits(batch, grid);
         wallLights(batch, grid, power);
         effects(batch, grid);
         cargo(batch, grid, hold);
@@ -82,6 +84,7 @@ public final class DeckArt {
             floors(batch, grid);
             systems(batch, grid, power);
             edges(batch, grid, power);
+            edgeConduits(batch, grid);
             wallLights(batch, grid, power);
             effects(batch, grid);
         } finally {
@@ -105,19 +108,52 @@ public final class DeckArt {
                 if (!t.isPowerConduit()) continue;
                 TextureRegion arm = art.region(ArtNames.conduitArm(t.isPowered));
                 if (arm == null) continue;
-                // 0 up, 1 left, 2 down, 3 right
-                if (conduit(grid, x, y + 1)) quarter(batch, arm, x0, y0, s, 0);
-                if (conduit(grid, x - 1, y)) quarter(batch, arm, x0, y0, s, 1);
-                if (conduit(grid, x, y - 1)) quarter(batch, arm, x0, y0, s, 2);
-                if (conduit(grid, x + 1, y)) quarter(batch, arm, x0, y0, s, 3);
+                // 0 up, 1 left, 2 down, 3 right; an arm meets a conduit on the next tile or along the edge
+                if (grid.hasConduitToward(x, y, Side.TOP)) quarter(batch, arm, x0, y0, s, 0);
+                if (grid.hasConduitToward(x, y, Side.LEFT)) quarter(batch, arm, x0, y0, s, 1);
+                if (grid.hasConduitToward(x, y, Side.BOTTOM)) quarter(batch, arm, x0, y0, s, 2);
+                if (grid.hasConduitToward(x, y, Side.RIGHT)) quarter(batch, arm, x0, y0, s, 3);
             }
         }
     }
 
-    private static boolean conduit(ShipGridComponent grid, int x, int y) {
-        Tile t = grid.getTile(x, y);
-        return t != null && t.isPowerConduit();
+    /** Conduits run along tile edges, over the walls they run in so they stay in sight. */
+    private void edgeConduits(Batch batch, ShipGridComponent grid) {
+        float s = grid.tileSize, ox = grid.gridOriginLocal.x, oy = grid.gridOriginLocal.y;
+        for (int y = 0; y <= grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                EdgeConduit c = grid.conduitH[y][x];
+                if (c == null) continue;
+                TextureRegion arm = shown(art.region(ArtNames.conduitArm(c.isPowered)));
+                if (arm != null) edgeConduit(batch, arm, ox + (x + 0.5f) * s, oy + y * s, s, true);
+            }
+        }
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x <= grid.width; x++) {
+                EdgeConduit c = grid.conduitV[y][x];
+                if (c == null) continue;
+                TextureRegion arm = shown(art.region(ArtNames.conduitArm(c.isPowered)));
+                if (arm != null) edgeConduit(batch, arm, ox + x * s, oy + (y + 0.5f) * s, s, false);
+            }
+        }
     }
+
+    /**
+     * A conduit along a tile edge {@code s} long, whose middle is ({@code cx}, {@code cy}): two
+     * {@link ArtNames#conduitArm} arms out from the middle to the edge's ends. An arm's run fills
+     * the top 22 of its 64 units, so it is stretched to reach half a tile.
+     */
+    public static void edgeConduit(Batch batch, TextureRegion arm, float cx, float cy, float s, boolean horizontal) {
+        float h = s * ArtLibrary.UNITS_PER_TILE / (2f * ARM_RUN);
+        // Turned about the edge's middle: the arm's inner end
+        float originX = s / 2f, originY = h - s / 2f;
+        for (int q = horizontal ? 1 : 0; q < 4; q += 2) {
+            batch.draw(arm, cx - originX, cy - originY, originX, originY, s, h, 1f, 1f, q * 90f);
+        }
+    }
+
+    /** SVG units from the top of the conduit arm art to the inner end of its run. */
+    private static final float ARM_RUN = 22f;
 
     private void walls(Batch batch, ShipGridComponent grid) {
         float s = grid.tileSize;

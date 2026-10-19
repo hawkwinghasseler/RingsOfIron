@@ -114,6 +114,11 @@ public class ChassisBlueprintLoader {
             grid.setEdge(def.x, def.y, def.side, new EdgeWall(def.weightClass, def.material, def.hasBulkhead));
         }
 
+        // Conduits along edges may run inside any wall, full-tile or thin
+        for (ChassisBlueprint.EdgeConduitDef def : blueprint.edgeConduits) {
+            grid.setConduit(def.x, def.y, def.side, new EdgeConduit());
+        }
+
         for (ChassisBlueprint.CoveringDef def : blueprint.coverings) {
             for (int y = def.y; y < def.y + def.height; y++) {
                 for (int x = def.x; x < def.x + def.width; x++) {

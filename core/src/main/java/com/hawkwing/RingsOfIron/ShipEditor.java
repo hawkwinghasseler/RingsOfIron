@@ -45,7 +45,7 @@ import java.util.function.Consumer;
  * {@code demos/Ship editor.bat} on Windows. See {@code documentation/ship-editor/Design.md}.
  *
  * <p>The panel on the right has three tabs: Layout, Tiles and Components. On the Layout tab, keys
- * 1-8 pick a tool (paint, component, edge wall, hull piece, covering, erase, port, light), R rotates
+ * 1-9 pick a tool (paint, component, edge wall, hull piece, covering, erase, port, light, conduit), R rotates
  * the component under the cursor (or what the tool places),
  * and the left mouse button uses the tool on the grid; Shift-drag with the paint tool fills a
  * rectangle. Right or middle drag pans, the wheel zooms (over the panel it scrolls), F fits the
@@ -64,7 +64,7 @@ public class ShipEditor extends ApplicationAdapter {
 
     private enum Tool {
         PAINT("Paint"), COMPONENT("Component"), EDGE("Edge wall"), HULL("Hull piece"), COVERING("Covering"),
-        ERASE("Erase"), PORT("Port"), LIGHT("Light");
+        ERASE("Erase"), PORT("Port"), LIGHT("Light"), CONDUIT("Conduit");
 
         final String label;
 
@@ -477,6 +477,18 @@ public class ShipEditor extends ApplicationAdapter {
             shapes.setColor(1f, 0.95f, 0.6f, 0.5f);
             lightRect(hoverX, hoverY, nearestSide());
         }
+        // Conduits along edges: a thin amber line, over any wall they run in
+        float wire = Math.max(2f, scale * 0.08f);
+        for (ChassisDef.EdgeConduit run : withArt ? java.util.Collections.<ChassisDef.EdgeConduit>emptyList() : m.edgeConduits) {
+            shapes.setColor(0.95f, 0.7f, 0.2f, 1f);
+            edgeRect(run.x, run.y, Side.valueOf(run.side), wire);
+        }
+        if (tab == Tab.LAYOUT && tool == Tool.CONDUIT && m.inBounds(hoverX, hoverY) && !panning) {
+            shapes.setColor(0.95f, 0.7f, 0.2f, 0.6f);
+            Side side = conduitSide();
+            if (side != null) edgeRect(hoverX, hoverY, side, Math.max(4f, wire * 2f));
+            else shapes.rect(sx(hoverX + 0.3f), sy(hoverY + 0.3f), scale * 0.4f, scale * 0.4f);
+        }
         drawGhostFill(m, cat);
         shapes.end();
 
@@ -540,10 +552,10 @@ public class ShipEditor extends ApplicationAdapter {
                     case CONDUIT:
                         artTile(art.region("tiles/conduit"), x0, y0, 0);
                         TextureRegion arm = art.region(ArtNames.conduitArm(true));
-                        if (conduitAt(m, cat, x, y + 1)) artTile(arm, x0, y0, 0);
-                        if (conduitAt(m, cat, x - 1, y)) artTile(arm, x0, y0, 1);
-                        if (conduitAt(m, cat, x, y - 1)) artTile(arm, x0, y0, 2);
-                        if (conduitAt(m, cat, x + 1, y)) artTile(arm, x0, y0, 3);
+                        if (conduitToward(m, cat, x, y, Side.TOP)) artTile(arm, x0, y0, 0);
+                        if (conduitToward(m, cat, x, y, Side.LEFT)) artTile(arm, x0, y0, 1);
+                        if (conduitToward(m, cat, x, y, Side.BOTTOM)) artTile(arm, x0, y0, 2);
+                        if (conduitToward(m, cat, x, y, Side.RIGHT)) artTile(arm, x0, y0, 3);
                         break;
                     default:
                         ChassisDef.HullPiece piece = m.hullPieceAt(x, y);
@@ -609,6 +621,13 @@ public class ShipEditor extends ApplicationAdapter {
                 if (r != null) batch.draw(r, sx(x) - t / 2f, sy(y) - t / 2f, t, t);
             }
         }
+        // Conduits along edges, over the walls they run in
+        TextureRegion run = art.region(ArtNames.conduitArm(true));
+        for (ChassisDef.EdgeConduit c : run == null ? java.util.Collections.<ChassisDef.EdgeConduit>emptyList() : m.edgeConduits) {
+            Side side = Side.valueOf(c.side);
+            DeckArt.edgeConduit(batch, run, sx(c.x + 0.5f + side.dx * 0.5f), sy(c.y + 0.5f + side.dy * 0.5f), scale,
+                    side.dy != 0);
+        }
         batch.end();
     }
 
@@ -621,6 +640,11 @@ public class ShipEditor extends ApplicationAdapter {
 
     private static boolean sameTile(ChassisModel m, int x, int y, char ch) {
         return m.inBounds(x, y) && m.tiles[y][x] == ch;
+    }
+
+    /** Whether a conduit on tile (x, y) reaches toward {@code side}: to the next tile's, or one along that edge. */
+    private static boolean conduitToward(ChassisModel m, ShipPartCatalog cat, int x, int y, Side side) {
+        return m.edgeConduitAt(x, y, side) != null || conduitAt(m, cat, x + side.dx, y + side.dy);
     }
 
     private static boolean conduitAt(ChassisModel m, ShipPartCatalog cat, int x, int y) {
@@ -824,7 +848,7 @@ public class ShipEditor extends ApplicationAdapter {
             updatePieceGhost(m, o);
             shapes.setColor(ghostValid ? Color.GREEN : Color.RED);
             shapes.rect(sx(o[0]), sy(o[1]), w * scale, h * scale);
-        } else if (tool != Tool.EDGE) {
+        } else if (tool != Tool.EDGE && tool != Tool.CONDUIT) {
             shapes.setColor(Color.YELLOW);
             shapes.rect(sx(hoverX), sy(hoverY), scale, scale);
         }
@@ -866,6 +890,16 @@ public class ShipEditor extends ApplicationAdapter {
         return Side.TOP;
     }
 
+    /**
+     * Where the conduit tool works under the cursor: the nearest edge, or null in the middle of
+     * the tile, where it lays a conduit across the tile instead.
+     */
+    private Side conduitSide() {
+        float fx = hoverFx - hoverX, fy = hoverFy - hoverY;
+        float edge = Math.min(Math.min(fx, 1 - fx), Math.min(fy, 1 - fy));
+        return edge < 0.3f ? nearestSide() : null;
+    }
+
     // ---- Grid tools ----
 
     private void toolDown(boolean shift) {
@@ -896,6 +930,15 @@ public class ShipEditor extends ApplicationAdapter {
                     m.toggleLight(hoverX, hoverY, side);
                     changed();
                     say("Took down the light at " + hoverX + "," + hoverY + " " + side);
+                    break;
+                }
+                // Then a conduit along the edge the cursor is close to
+                Side edge = conduitSide();
+                if (edge != null && m.edgeConduitAt(hoverX, hoverY, edge) != null) {
+                    beginEdit();
+                    m.toggleEdgeConduit(hoverX, hoverY, edge);
+                    changed();
+                    say("Took up the conduit at " + hoverX + "," + hoverY + " " + edge);
                     break;
                 }
                 beginEdit();
@@ -957,9 +1000,45 @@ public class ShipEditor extends ApplicationAdapter {
                 say(had ? "Took down the light" : "Hung a light on the " + side.name().toLowerCase() + " wall of " + hoverX + "," + hoverY);
                 break;
             }
+            case CONDUIT:
+                conduitDown(m, cat);
+                break;
             default:
                 break;
         }
+    }
+
+    /**
+     * Near an edge, runs a conduit along it or takes up the one there; in the middle of a floor
+     * tile, lays a conduit across the tile or takes it up.
+     */
+    private void conduitDown(ChassisModel m, ShipPartCatalog cat) {
+        Side side = conduitSide();
+        if (side != null) {
+            boolean had = m.edgeConduitAt(hoverX, hoverY, side) != null;
+            beginEdit();
+            m.toggleEdgeConduit(hoverX, hoverY, side);
+            changed();
+            say(had ? "Took up the conduit" : "Ran a conduit along the " + side.name().toLowerCase(Locale.ROOT)
+                    + " edge of " + hoverX + "," + hoverY);
+            return;
+        }
+        ShipPartCatalog.TileType t = cat.tileFor(m.tiles[hoverY][hoverX]);
+        if (t == null || (t.base != ShipPartCatalog.TileBase.FLOOR && t.base != ShipPartCatalog.TileBase.CONDUIT)) {
+            say("A conduit across a tile needs a floor; run it along an edge to go through a wall");
+            return;
+        }
+        if (m.mountAt(hoverX, hoverY, cat) != null) {
+            say("A component stands here; run the conduit along an edge of its tiles");
+            return;
+        }
+        boolean had = t.base == ShipPartCatalog.TileBase.CONDUIT;
+        char symbol = had ? ChassisModel.symbolFor(cat, ShipPartCatalog.TileBase.FLOOR, '.')
+                : ChassisModel.symbolFor(cat, ShipPartCatalog.TileBase.CONDUIT, '+');
+        beginEdit();
+        m.paint(hoverX, hoverY, symbol, cat);
+        changed();
+        say(had ? "Took up the conduit across " + hoverX + "," + hoverY : "Laid a conduit across " + hoverX + "," + hoverY);
     }
 
     /**
@@ -1354,7 +1433,18 @@ public class ShipEditor extends ApplicationAdapter {
                 break;
             }
             case ERASE:
-                text(x, y, "Removes a light, component, hull piece or covering, else the tile", Color.GRAY);
+                text(x, y, "Removes a light, edge conduit, component, hull piece or", Color.GRAY);
+                y -= LINE;
+                text(x, y, "covering, else the tile", Color.GRAY);
+                y -= LINE;
+                break;
+            case CONDUIT:
+                text(x, y, "Click near a tile edge to run a conduit along it,", Color.GRAY);
+                y -= LINE;
+                text(x, y, "even inside a wall; click a floor's middle to lay one across it", Color.GRAY);
+                y -= LINE;
+                text(x, y, m.edgeConduits.size() + (m.edgeConduits.size() == 1 ? " conduit" : " conduits")
+                        + " along edges", Color.WHITE);
                 y -= LINE;
                 break;
             case PORT:
