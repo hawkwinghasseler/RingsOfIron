@@ -60,6 +60,8 @@ public class GameScenario {
     public static final String PLAYER_SHIP = "corvette_patrol";
     /** The ship the traffic flies, which sizes the freighters' holds. */
     public static final String FREIGHTER_SHIP = "freighter_hauler";
+    /** The faction the raider flies for, when the data has it. */
+    public static final String PIRATES = "pirates";
     /** What the player starts with for trading at station markets. Placeholder value. */
     public static final double STARTING_CREDITS = 5_000;
 
@@ -118,6 +120,9 @@ public class GameScenario {
 
         raider = content.factory.spawnShip(PLAYER_SHIP, 1_200f, 400f, 200f);
         ShipConsoles.install(raider);
+        // Flies for the pirates, if the data has them, so beating it counts with the factions
+        int pirates = world.standing.factions().index(PIRATES);
+        if (pirates >= 0) CrewFactory.ensureBoard(raider).faction = pirates;
         raider.add(new HudMarkerComponent("Raider", HudMarkerComponent.Kind.HOSTILE).radius(10f));
         PhysicsBodyComponent rb = raider.getComponent(PhysicsBodyComponent.class);
         if (rb != null) PhysicsManager.setVelocity(rb.body, -12f, -3f);
@@ -188,7 +193,7 @@ public class GameScenario {
         StationComponent station = DockingData.buildStation(world.engine.getEntity(uuid), content.defs,
                 world.engine, name, typeId);
         station.angle = angle;
-        StationCrew.spawnCrew(world.crew, world.engine.getEntity(uuid));
+        StationCrew.spawnCrew(world.crew, world.engine.getEntity(uuid), world.standing.factions().ofStation(name));
         return uuid;
     }
 
@@ -229,8 +234,11 @@ public class GameScenario {
      * {@link #avatar}, {@link #raider} and {@link #contacts} at the loaded entities.
      */
     public void quickLoad(FileHandle file) {
+        // A save from before the career was saved loads as a new one: rank 0 with the sponsor
+        world.standing.reset();
         world.engine.getSerializationService().loadFromFile(file);
         relink();
+        world.standing.migrateLegacy(player);
     }
 
     private void relink() {

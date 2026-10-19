@@ -650,6 +650,7 @@ assets.toml
 data/chassis.toml
 data/components.toml
 data/economy.json
+data/factions.toml
 data/materials.toml
 data/ships.toml
 data/tiles.toml

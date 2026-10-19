@@ -2,6 +2,8 @@ package com.ringsofiron.moddingdata;
 
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
+import com.ringsofiron.moddingdata.defs.FactionDef;
+import com.ringsofiron.moddingdata.defs.RankDef;
 import com.ringsofiron.moddingdata.defs.ShipComponentDef;
 import com.ringsofiron.moddingdata.defs.TileTypeDef;
 import com.ringsofiron.moddingdata.defs.CommodityDef;
@@ -41,6 +43,8 @@ public class ModdingBootstrap {
         defs.registerType("commodity", CommodityDef.class);
         defs.registerType("station_type", StationTypeDef.class);
         defs.registerType("sound_event", SoundEventData.class);
+        defs.registerType("faction", FactionDef.class);
+        defs.registerType("rank", RankDef.class);
     }
 
     private final Path assetsDir;

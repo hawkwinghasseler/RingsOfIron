@@ -289,8 +289,9 @@ public class GameWorld implements Disposable {
         // ai-crew
         crew = CrewFactory.install(engine.getEcsEngine());
         CrewSaveParticipant.install(crew, engine);
-        // Ships' crews of two factions fight; station crew only once the player has crossed them
+        // Crews fight by their factions' wars and the player's standing; the career saves with the game
         standing = new FactionStanding(this::getPlayer);
+        engine.getSerializationService().addParticipant(standing);
         crew.hostility = standing::hostile;
         docking.events.add((signal, e) -> standing.onDockingEvent(e));
         docking.clearance = (station, vessel) -> {
@@ -385,6 +386,7 @@ public class GameWorld implements Disposable {
         DefRegistryCommodityCatalog economy = new DefRegistryCommodityCatalog(content.defs);
         if (!economy.commodities().isEmpty()) commodities.set(economy);
         registerSounds(content, audio.getCatalog());
+        standing.setData(Factions.from(content.defs), RankLadder.from(content.defs));
         return content;
     }
 

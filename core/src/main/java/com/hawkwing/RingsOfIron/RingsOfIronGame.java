@@ -37,7 +37,6 @@ import com.hawkwing.RingsOfIron.game.ShipRefit;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.hawkwing.RingsOfIron.game.DoorForcing;
 import com.hawkwing.RingsOfIron.game.FactionStanding;
-import com.hawkwing.RingsOfIron.game.StationCrew;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
@@ -714,7 +713,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
                 if (pos.ship != ship) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-                Color mark = e == game.avatar ? Color.WHITE : c.faction == StationCrew.FACTION ? DeckView.STATION_CREW : Color.GOLD;
+                Color mark = e == game.avatar ? Color.WHITE : world.standing.factions().known(c.faction) ? DeckView.STATION_CREW : Color.GOLD;
                 Vector2 local = pos.toShipLocal(g, tmp2);
                 DeckView.crew(shapes, c, local.x, local.y, s, mark, color);
             }
@@ -727,7 +726,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                     if (pos.ship != ship) continue;
                     CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                     ArtNames.Crew who = e == game.avatar ? ArtNames.Crew.PLAYER
-                            : c.faction == StationCrew.FACTION ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP;
+                            : world.standing.factions().known(c.faction) ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP;
                     Vector2 local = pos.toShipLocal(g, tmp2);
                     deckArt.crew(batch, e, who, c.load == null ? null : c.load.task.job.commodity(), local.x, local.y, s);
                 }
