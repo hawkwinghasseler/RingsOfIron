@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>hull_patch: a field patch over a leaking tile (Tile.isPatched)</title>
+  <g id="base">
+    <polygon points="12,15 52,10 55,50 14,54" fill="#4b5563" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
+    <polygon points="16,19 49,15 51,46 18,49" fill="none" stroke="#7d8898" stroke-width="1" stroke-linejoin="round"/>
+    <circle cx="16" cy="18" r="1.6" fill="#7d8898" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="49" cy="14" r="1.6" fill="#7d8898" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="51" cy="47" r="1.6" fill="#7d8898" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="17" cy="50" r="1.6" fill="#7d8898" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="33" cy="15" r="1.6" fill="#7d8898" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="34" cy="51" r="1.6" fill="#7d8898" stroke="#10141a" stroke-width="0.8"/>
+    <path d="M20,30 L28,27 L36,31 L44,28" fill="none" stroke="#d9e2ee" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.8"/>
+    <polygon points="18,37 50,33 51,39 19,43" fill="#f2c230" stroke="#10141a" stroke-width="1" stroke-linejoin="round"/>
+  </g>
+</svg>

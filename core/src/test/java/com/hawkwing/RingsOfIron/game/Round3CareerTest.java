@@ -16,6 +16,8 @@ import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.moddingdata.components.DefRefComponent;
+import com.ringsofiron.interiorgrid.InteriorHazardWarpGuard;
+import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -170,6 +172,26 @@ class Round3CareerTest {
             return ShipDisablement.isDisabled(game.raider);
         }), "the raider is beaten");
         log("The raider is beaten in %.0f s; our hull %.2f.", world.engine.getSimSeconds() - t0, hull(game.player));
+
+        // The fight left the bow leaking. Out here, far from a yard, the crew patch it from the ship's
+        // stores, and warp is no longer refused for it (round 3 had to dock at Highport's yard first)
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        logVenting("after the fight");
+        assertTrue(grid.isVenting(), "the fight left the ship venting");
+        assertTrue(world.engine.getRailsWarpBlockedReason().startsWith(InteriorHazardWarpGuard.VENTING),
+                world.engine.getRailsWarpBlockedReason());
+        int kits = grid.patchKits;
+        double p0 = world.engine.getSimSeconds();
+        assertTrue(runUntil(600f, () -> !grid.isVenting() && LeakPatches.leaks(grid).size == 0), "the crew patched the leak");
+        run(60);
+        assertFalse(grid.isVenting());
+        assertTrue(DamageControl.hasPatches(grid), "patched, not repaired");
+        assertNull(new InteriorHazardWarpGuard(grid).railsWarpBlockedReason(), "the leak no longer holds warp back");
+        assertTrue(noticed("Leak patched"), () -> "the player was told: " + world.notices.history().stream().map(n -> n.text).toList());
+        log("Damage control: venting stopped in %.0f s with %d patch(es) from the stores (%d left); hull %.2f; "
+                        + "warp is clear of hazards: %s.", world.engine.getSimSeconds() - p0, kits - grid.patchKits,
+                grid.patchKits, hull(game.player), world.engine.getRailsWarpBlockedReason());
+
         run(60 * 20);
         assertEquals(Contract.Status.DONE, bounty.status, bounty.outcome);
         snapshot("bounty paid");
@@ -199,14 +221,16 @@ class Round3CareerTest {
         run(120);
         assertSame(highport, world.docking.dockedTo(game.player));
 
-        // The fight left the bow leaking, and warp is refused while air vents: Highport's yard mends it
-        logVenting("after the fight");
+        // The patched bow still wants a yard: Highport's mends it, and restocks the patches
+        logVenting("back at Highport");
         double cost = world.yard.repairCost(game.player), paid = credits(), r0 = world.engine.getSimSeconds();
         log("Yard: %s (quoted %.0f cr).", world.yard.orderRepairs(game.player, highport), cost);
         assertTrue(runUntil(2 * 3_600f, () -> !world.yard.repairing(game.player)), "the yard finished");
         log("  repaired in %.1f h for %.0f cr; hull %.2f.", (world.engine.getSimSeconds() - r0) / 3_600, paid - credits(),
                 hull(game.player));
         logVenting("after repairs");
+        assertFalse(DamageControl.hasPatches(grid), "the yard's repairs take the patches off");
+        assertEquals(LeakPatches.DEFAULT_KITS, grid.patchKits, "and restock them");
         snapshot("repaired");
     }
 
@@ -680,6 +704,12 @@ class Round3CareerTest {
             log("Rank %s earned in play.", world.standing.describeRank());
         }
         assertTrue(world.standing.record().rank >= rank);
+    }
+
+    /** True if the notice log holds a notice starting with {@code text}. */
+    private boolean noticed(String text) {
+        for (NoticeLog.Notice n : world.notices.history()) if (n.text.startsWith(text)) return true;
+        return false;
     }
 
     /** Where air leaves the player's ship for space, if anywhere: rails warp waits on it. */

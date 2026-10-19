@@ -126,6 +126,7 @@ public class CrewRecord {
         d.repairRate = base.repairRate * work;
         d.extinguishRate = base.extinguishRate * work;
         d.sealTime = base.sealTime / work;
+        d.patchTime = base.patchTime / work;
         d.hitChance = Math.min(0.95f, base.hitChance * factor(marine));
     }
 

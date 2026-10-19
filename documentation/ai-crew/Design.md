@@ -49,6 +49,7 @@ To implement this module independently (mocking the `interior-grid` by feeding i
    - `GridOccupantQuery.at(x, y)`: crew entities on a tile, conscious or not.
    - `CrewDamageSink.applyDamage(crewEntity, amount, cause)`: subtracts health and moves the crew member between the states above.
    - `DamageTaskSink`: accepts `SealBreachTask`, `RepairTask`, `ExtinguishTask` and `RescueTask` onto the `ShipTaskBoardComponent`.
+   - `ShipHazardScanSystem` also posts a `PatchLeakTask` (priority 70, an engineer's specialty) for each leak to space `LeakPatches` finds while the ship has patch kits. The crew member works it from beside the leaking wall, or reaches up to 3 tiles across machinery that stands against it (`TaskRules.REACH_ACROSS`), takes `patchTime` (6 s, faster with engineering skill) and spends one kit.
 
 ## Implemented Components
 - `CrewMemberComponent`: name, role, faction, `CrewDef` stats, health and state (conscious / unconscious / dead), the claimed task, who they carry or are carried by, a load in hand, their home craft and the item in hand.
