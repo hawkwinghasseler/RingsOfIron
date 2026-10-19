@@ -55,5 +55,4 @@ Lighting uses diffuse mode: the light map multiplies the scene, so art under ful
 
 ## Open questions
 - Sunlight and shadows outside: wanted in principle, but still to be decided, and nothing is built for it until then. A directional light over the flight world would shadow each hull's own art, since box2dlights darkens everything past an occluder's edge, and flat 2D hull art has no height for the light to fall across.
-- Crew do not cast shadows.
-- Bulkhead door lamps glow with the craft's power but cast no light; doors carry no power state of their own.
+- Doors carry no power state of their own: their lamps follow the craft's power.

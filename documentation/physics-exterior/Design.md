@@ -37,13 +37,12 @@ To implement this module independently (mocking the core-engine if necessary):
 - `BodyShapeComponent`: a body's fixtures and exact mass data, kept while it is on rails or in a save.
 - `KinematicTransientComponent`: a fast-pass body's true trajectory and sweep radius.
 
+### Propellant feed
+A ship whose layout has an engine (`ENGINE`, see Tanks and Pipes in `documentation/interior-grid/Design.md`) pays for thrust in propellant. Core's `PropellantFeed` runs each frame after the interior systems: it sets `ThrusterComponent.fuel` to what the propellant tanks piped to the ship's working engines hold, and `fuelCapacity` to what all its propellant tanks hold full, and the next frame takes what flight control burned out of those tanks. Thrust costs force / exhaust velocity in kg/s, and torque costs torque / (3 m x exhaust velocity). The exhaust velocity is the ship's `exhaust_velocity` in `ships.toml`, 100 km/s when left out. Planned burns (the maneuver planner's and in-bubble burns) pay by the rocket equation through `PropellantFeed.payForBurn`, and a burn the tanks cannot cover is cut short. A ship with no engine in its layout keeps free thrust. The ship's mass counts the propellant aboard, so it gets lighter as it burns (see Tanks and Pipes).
+
 ## Implemented Systems
 - `PhysicsUpdateSystem`: Steps Box2D and syncs its state to the ECS.
 - `FlightControlSystem`: turns stick input into thrust before each step.
-- `ThrusterComponent`: Defines maximum thrust vectors and fuel consumption rates.
-
-### Propellant feed
-A ship whose layout has an engine (`ENGINE`, see Tanks and Pipes in `documentation/interior-grid/Design.md`) pays for thrust in propellant. Core's `PropellantFeed` runs each frame after the interior systems: it sets `ThrusterComponent.fuel` to what the propellant tanks piped to the ship's working engines hold, and `fuelCapacity` to what all its propellant tanks hold full, and the next frame takes what flight control burned out of those tanks. Thrust costs force / exhaust velocity in kg/s, and torque costs torque / (3 m x exhaust velocity). The exhaust velocity is the ship's `exhaust_velocity` in `ships.toml`, 100 km/s when left out. Planned burns (the maneuver planner's and in-bubble burns) pay by the rocket equation through `PropellantFeed.payForBurn`, and a burn the tanks cannot cover is cut short. A ship with no engine in its layout keeps free thrust. The ship's mass counts the propellant aboard, so it gets lighter as it burns (see Tanks and Pipes).
 - `FloatingOriginSystem`: Monitors player distance and relative speed and rebases the origin.
 - `TidalGravitySystem`: applies the differential gravity across the bubble each tick.
 - `KinematicTransientSystem`: moves bodies passing faster than the Box2D cap along their true trajectories and sweeps them for collisions.

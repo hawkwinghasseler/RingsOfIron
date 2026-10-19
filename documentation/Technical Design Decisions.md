@@ -24,7 +24,7 @@ The technical decisions that supplement the First Draft Game Design Document for
 
 ## 7. Ship Construction & Combat Damage
 - **Pre-designed Hulls:** Ship construction utilizes fixed chassis (e.g., Corvette, Freighter) determining the Box2D shape and max grid size. The player's freedom lies in customizing the internal tile layout and exterior hardpoints.
-- **Collision Shape from the Layout:** A ship's Box2D hull polygon is generated from the outer hull tiles of its chassis layout. A `collider` shape in the meta layer of the ship's hull SVG overrides it when present (decided 2026-10-19).
+- **Collision Shape from the Layout:** A ship collides on its chassis layout (every non-void tile, wedges as triangles, merged into convex pieces). A `collision` layer in the ship's hull SVG (`art/hulls/<chassis>.svg`) overrides it when present (decided 2026-10-19).
 - **Tanks and Piping:** Life support consumables and propellant are stored in tanks placed in the ship grid and reach the systems through pipes laid in the tile map, in tile centers or along tile edges like power conduits. Tanks run dry and are refilled at a cost at stations (decided 2026-10-19).
 - **Penetration Raycasting:** External weapons that pierce the hull will spawn a raycast onto the 2D interior grid based on impact angle. This ray physically damages rooms, conduits, and crew in its path until its energy is fully spent.
 
