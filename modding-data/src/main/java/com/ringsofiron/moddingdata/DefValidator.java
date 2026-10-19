@@ -3,6 +3,8 @@ package com.ringsofiron.moddingdata;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.moddingdata.defs.FactionDef;
 import com.ringsofiron.moddingdata.defs.RankDef;
+import com.ringsofiron.moddingdata.defs.ShipSaleDef;
+import com.ringsofiron.moddingdata.defs.ShipyardDef;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.moddingdata.defs.SoundEventData;
 import com.ringsofiron.moddingdata.defs.StationTypeDef;
@@ -106,6 +108,36 @@ public final class DefValidator {
             if (rank.maxChassis != null && !defs.has("chassis", rank.maxChassis)) {
                 report.warn(e.lastSource(), e + " allows unknown chassis '" + rank.maxChassis + "'");
             }
+        }
+
+        for (DefEntry e : defs.entries("shipyard")) {
+            ShipyardDef yard;
+            try {
+                yard = defs.convert(e, ShipyardDef.class);
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
+            if (yard.faction == null || !defs.has("faction", yard.faction)) {
+                report.warn(e.lastSource(), e + " belongs to unknown faction '" + yard.faction + "'");
+            }
+            for (String type : yard.stationTypes) {
+                if (!defs.has("station_type", type)) report.warn(e.lastSource(), e + " names unknown station type '" + type + "'");
+            }
+        }
+
+        for (DefEntry e : defs.entries("ship_sale")) {
+            ShipSaleDef sale;
+            try {
+                sale = defs.convert(e, ShipSaleDef.class);
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
+            if (sale.ship == null || !defs.has("ship", sale.ship)) report.warn(e.lastSource(), e + " sells unknown ship '" + sale.ship + "'");
+            if (sale.seller == null || !defs.has("faction", sale.seller)) {
+                report.warn(e.lastSource(), e + " is sold by unknown faction '" + sale.seller + "'");
+            }
+            if (sale.rank != null && !defs.has("rank", sale.rank)) report.warn(e.lastSource(), e + " needs unknown rank '" + sale.rank + "'");
+            if (sale.price < 0) report.warn(e.lastSource(), e + " has a negative price");
         }
     }
 

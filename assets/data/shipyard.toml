@@ -1,0 +1,48 @@
+# Ship markets (round 3): where factions sell ships, and what they sell (GDD section 5,
+# "ship procurement and outfitting"). Bought while docked at one of the faction's yards, from the
+# shipyard window (O). The ship the player flies is traded in at its value (Difficulty's hull and
+# weapons) times its condition times 60%; cargo and crew move across to the new ship.
+#
+# [shipyard.<id>]: a faction's yards. A station sells that faction's ships when the faction owns it
+# and it is of one of station_types (economy.json) or named in stations.
+#
+# [ship_sale.<id>]: a ship on sale. seller is the faction whose yards sell it. rank is the rank on
+# the sponsor's ladder needed (none if left out), standing the standing with the seller needed.
+# Every sale is also held to the rank ladder: a rank flies no chassis larger than its max_chassis
+# (factions.toml), the same limit the service's requisition after a rescue keeps to.
+# Placeholder prices, a little over each ship's value.
+
+[shipyard.patrol]
+faction = "patrol"
+# Until a shipyard station is in the world, Highport's yard sells the Patrol's ships
+station_types = ["shipyard"]
+stations = ["Highport"]
+
+[shipyard.selene]
+faction = "selene"
+station_types = ["shipyard"]
+stations = ["Shackleton Ice"]
+
+[ship_sale.patrol_corvette]
+ship = "corvette_patrol"
+seller = "patrol"
+price = 280000.0
+
+[ship_sale.patrol_gunship]
+ship = "gunship_heavy"
+seller = "patrol"
+price = 360000.0
+rank = "lieutenant_commander"
+
+[ship_sale.patrol_frigate]
+ship = "frigate_patrol"
+seller = "patrol"
+price = 720000.0
+rank = "commander"
+
+# The Combine sells the light raider's hull as a fast courier to captains it trusts
+[ship_sale.selene_raider]
+ship = "raider_light"
+seller = "selene"
+price = 110000.0
+standing = 10.0

@@ -128,7 +128,8 @@ class FactionStandingTest {
         RankLadder ranks = standing.ranks();
         assertTrue(ranks.mayRequisition(0, GameScenario.PLAYER_SHIP));
         assertFalse(ranks.mayRequisition(0, GameScenario.FREIGHTER_SHIP), "an ensign gets no freighter");
-        assertTrue(ranks.mayRequisition(2, GameScenario.FREIGHTER_SHIP));
+        assertTrue(ranks.mayRequisition(2, "gunship_heavy"), "a Lieutenant Commander gets the gunship");
+        assertFalse(ranks.mayRequisition(4, GameScenario.FREIGHTER_SHIP), "nor does a Captain: freighters are for haulers");
     }
 
     @Test

@@ -24,6 +24,12 @@ public class FlightControlComponent implements Component {
      * drawing it in): rotation assist stands down so it does not fight it. Runtime only.
      */
     public transient boolean assistHeld;
+    /**
+     * A body welded to this ship that it tows, or null: the engines' thrust is put through the pair's
+     * common centre of mass, as a towing rig is set up to, so the pair flies straight instead of
+     * spinning about the weld, and rotation assist works against the pair's spin. Runtime only.
+     */
+    public transient com.badlogic.gdx.physics.box2d.Body towing;
 
     public void clear() {
         forward = 0f;

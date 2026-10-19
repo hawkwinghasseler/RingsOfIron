@@ -599,6 +599,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.boarding.notices.clear();
         if (!world.salvage.notices.isEmpty()) show(world.salvage.notices.get(world.salvage.notices.size() - 1));
         world.salvage.notices.clear();
+        // Ships bought at a yard, prizes sold or turned in
+        for (String news : world.shipyard.notices) show(news);
+        world.shipyard.notices.clear();
         // Pirates moving to intercept, robbing freighters, breaking off
         for (String notice : world.hostiles.notices) show(notice);
         world.hostiles.notices.clear();

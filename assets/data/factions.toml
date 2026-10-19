@@ -11,7 +11,8 @@
 # [rank.<id>]: a step on the sponsor's ladder, lowest order first. Standing with the sponsor
 # at or above a rank's standing earns it; promotions never go back down. budget is paid
 # into the player's credits each in-game week; max_chassis is the largest chassis the rank
-# may requisition a ship of. Placeholder numbers.
+# may fly: the largest ship it may requisition after a rescue or buy at a yard (shipyard.toml).
+# Chassis are compared by their size in tiles. Placeholder numbers.
 
 [faction.patrol]
 name = "Terran Patrol Authority"
@@ -49,18 +50,18 @@ name = "Lieutenant Commander"
 order = 2
 standing = 35.0
 budget = 10000.0
-max_chassis = "freighter"
+max_chassis = "gunship"
 
 [rank.commander]
 name = "Commander"
 order = 3
 standing = 60.0
 budget = 20000.0
-max_chassis = "freighter"
+max_chassis = "frigate"
 
 [rank.captain]
 name = "Captain"
 order = 4
 standing = 85.0
 budget = 40000.0
-max_chassis = "freighter"
+max_chassis = "frigate"
