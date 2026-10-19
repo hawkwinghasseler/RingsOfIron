@@ -156,6 +156,8 @@ public class GameWorld implements Disposable {
     public final HostileTraffic hostiles;
     /** The pirates' hidden base, once the scenario has one: found or not, standing or fallen. */
     public final PirateBase pirateBase;
+    /** Strain between the factions, and the weekly drifts of tension and of grudges against the player. */
+    public final FactionTension tension;
     /** Ties the career (factions and rank) to encounters, rescue, boarding and ships beaten. */
     public final LoopWiring loop;
     /** The player's planned burns. */
@@ -337,7 +339,8 @@ public class GameWorld implements Disposable {
         docking.crossing = link -> CrewDoors.crossingPort(crew, link);
         docking.clearance = (station, vessel) -> {
             if (!station.getComponent(StationComponent.class).grantsClearance) return "";
-            return standing.refusal(station, vessel);
+            String refused = standing.refusal(station, vessel);
+            return refused != null ? refused : tensionRefusal(station, vessel);
         };
         forcing = new DoorForcing(docking, crew, engine::getSimSeconds);
         engine.addSystem(forcing);
@@ -425,6 +428,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(pirateBase);
         engine.getSerializationService().addParticipant(pirateBase);
         hostiles.extraRaiders = pirateBase::extraRaiders;
+        tension = new FactionTension(this);
+        engine.addSystem(tension);
+        engine.getSerializationService().addParticipant(tension);
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);
     }
@@ -487,6 +493,11 @@ public class GameWorld implements Disposable {
      */
     public void setAnchor(String parentUuid, KeplerOrbit orbit) {
         physics.setAnchorModel(new KeplerAnchor(orbit), parentUuid);
+    }
+
+    /** Clearance refused for tension between the factions (built after docking's clearance check is). */
+    private String tensionRefusal(Entity station, Entity vessel) {
+        return tension.refusal(station, vessel);
     }
 
     /** What {@link #loadContent} produced, or null before it ran. */

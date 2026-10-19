@@ -75,6 +75,8 @@ public class FactionStanding implements SaveParticipant {
     private final Map<Integer, String> grievances = new HashMap<>();
     /** Door forcings not yet shown; the screen drains them. */
     public final Array<Act> acts = new Array<>();
+    /** Told of every hostile act the player does: the victim's faction and what it cost; {@link FactionTension} listens. */
+    public java.util.function.BiConsumer<Integer, Float> hostileActs = (faction, cost) -> { };
     /** Career news not yet shown (promotions, budget paid); the screen drains them. */
     public final Array<String> notices = new Array<>();
 
@@ -209,6 +211,7 @@ public class FactionStanding implements SaveParticipant {
     private void hostileAct(int faction, float cost, float share, String why) {
         if (!factions.known(faction)) return;
         penalize(faction, cost, why);
+        hostileActs.accept(faction, cost);
         for (int enemy : factions.swornEnemiesOf(faction)) reward(enemy, cost * share, why);
     }
 

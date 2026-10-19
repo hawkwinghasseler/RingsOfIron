@@ -452,6 +452,8 @@ public class GameScenario {
     public void quickLoad(FileHandle file) {
         // A save from before the career was saved loads as a new one: rank 0 with the sponsor
         world.standing.reset();
+        // ...with no strain between the factions
+        world.tension.reset();
         // ...from the designed start, unless the save knows its seed
         newGame = NewGame.designed();
         // ...and with no contracts
@@ -509,6 +511,7 @@ public class GameScenario {
         world.pirateBase.relink(pirateBase);
         world.hostiles.extraLurk = pirateBase;
         world.hostiles.relink(lurks());
+        world.hostiles.relinkRoutes(present(depot, highport, shipyard), present(lunarMine, foundry, oreMine));
         player = world.getPlayer();
         if (player != null) ShipCargo.attach(player);
         // Saves from before the bridge: the player starts on deck, and the helm takes over from there

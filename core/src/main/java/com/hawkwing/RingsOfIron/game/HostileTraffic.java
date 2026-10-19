@@ -99,6 +99,10 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     public final List<String> notices = new ArrayList<>();
 
     private String[] lurks = new String[0];
+    /** Each patrolling faction's route. */
+    private final Map<String, String[]> routes = new HashMap<>();
+    /** Patrols to spawn once the update is over. */
+    private final List<String> reinforcements = new ArrayList<>();
     private int spawned;
     private double nextTopUp = Double.POSITIVE_INFINITY;
     /** Sim second a pirate started an intercept on the player; NaN when there is no alert. */
@@ -139,6 +143,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
      */
     public void start(String[] lurks, String[] sponsorRoute, String[] seleneRoute) {
         this.lurks = lurks.clone();
+        relinkRoutes(sponsorRoute, seleneRoute);
         double now = world.macroSim.now();
         controller.playerGraceUntil = now + PLAYER_GRACE;
         if (sponsorRoute.length > 0) spawnPatrol(SPONSOR, sponsorRoute);
@@ -150,6 +155,32 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     /** Points the lurks at a loaded game's stations, which have new uuids. */
     public void relink(String[] lurks) {
         this.lurks = lurks.clone();
+    }
+
+    /** The routes the sponsor's and Selene's patrols fly, for reinforcements; a load points them at its stations. */
+    public void relinkRoutes(String[] sponsorRoute, String[] seleneRoute) {
+        routes.put(SPONSOR, sponsorRoute.clone());
+        routes.put(SELENE, seleneRoute.clone());
+    }
+
+    /**
+     * Sends faction {@code faction} one more patrol on its route, once the engine update is over (a
+     * tension spike, say). False if the faction flies no patrols.
+     */
+    public boolean reinforce(String faction) {
+        String[] route = routes.get(faction);
+        if (route == null || route.length == 0) return false;
+        reinforcements.add(faction);
+        return true;
+    }
+
+    /** Patrols of each faction flying, reinforcements included. */
+    public int patrols(String faction) {
+        int n = 0;
+        for (HostileComponent h : controller.all().values()) {
+            if (h.role == HostileComponent.Role.PATROL && faction.equals(h.faction)) n++;
+        }
+        return n;
     }
 
     /** Raiders the population keeps at difficulty {@code d}. */
@@ -166,6 +197,10 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     /** Runs a top-up {@link #update} found due, once the engine update is over; {@link GameWorld#update} calls it. */
     public void afterUpdate() {
+        while (!reinforcements.isEmpty()) {
+            String faction = reinforcements.remove(0);
+            spawnPatrol(faction, routes.get(faction));
+        }
         if (!topUpDue) return;
         topUpDue = false;
         topUp(world.macroSim.now(), false);
