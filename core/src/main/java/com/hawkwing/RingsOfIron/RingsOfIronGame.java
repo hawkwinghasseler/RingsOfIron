@@ -136,7 +136,7 @@ import java.util.Map;
  * ten times as much), Delete removes it. Burns fire on their own when due.
  *
  * <p>Navigation ({@link com.hawkwing.RingsOfIron.game.Navigation}), from either console: Q picks the
- * next navigation target (Shift+Q the one before; a click on the traffic map picks one too), I plans
+ * next navigation target (Shift+Q the one before; a click on the traffic map picks one too), ; plans
  * a transfer to it for Enter to accept or Backspace to discard, and / warps to the next burn. Helm
  * orders, flown by the helmsman while you are away from the helm: 1 fly the planned burns, 2 match
  * the target's velocity, 3 hold position on it, 4 approach it (4 again changes the distance), 0 cancel.

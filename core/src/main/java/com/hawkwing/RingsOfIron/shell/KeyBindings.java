@@ -55,7 +55,7 @@ public final class KeyBindings {
         LOG("Notice log", Input.Keys.L),
         HELP("Controls", Input.Keys.F1),
         NAV_TARGET("Next navigation target", Input.Keys.Q),
-        PLAN_TO_TARGET("Plan transfer to target", Input.Keys.I),
+        PLAN_TO_TARGET("Plan transfer to target", Input.Keys.SEMICOLON),
         ACCEPT_PLAN("Accept transfer plan", Input.Keys.ENTER),
         DISCARD_PLAN("Discard transfer plan", Input.Keys.BACKSPACE),
         WARP_TO_BURN("Warp to next burn", Input.Keys.SLASH),
