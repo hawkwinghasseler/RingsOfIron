@@ -75,6 +75,7 @@ After the yard, First Play (`FirstPlay`, now nine objectives) asks the player to
 - `AutosaveAndWarningsTest`: the autosave clock, low propellant and the return-trip hook, and First Play saved and resumed. `SaveSlotsAutosaveTest`: slot rotation, the latest autosave and named saves.
 - `NoSoftLocksTest`: refusal when the ship can fly home, the tow (same ship, docked, 3 days, fee, standing, crew), a negative account, the captain carried home, career over, and a crash with and without the captain in a pod.
 - `OpeningGuideTest`: the steps, resume and stop, and key names in the text.
+- `AutosaveGapsTest`: no autosave while disabled, abandoning, crashed or career-over (`AutosaveClock.due`, which render calls), and Continue loading the newest autosave's state.
 - `FirstPlayTest`: all nine objectives in order, including waiting for the log to be opened and a transfer planned to Shackleton Ice from Highport's dock (picking the target alone doesn't count).
 
 ## Choices made without Joe
