@@ -6,8 +6,9 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
 
 /**
  * Man a ship's console (a helm or weapons system): stand beside it and keep at it until something
- * more pressing comes up. (x, y) is its footprint origin. A low priority, so any hazard or casualty
- * pulls the crew member off it, and the console goes back on the board.
+ * else comes up. (x, y) is its footprint origin. Crew only take it when no other task suits them
+ * ({@link ShipTaskBoardComponent#best}), and any other task pulls them off it, when the console goes
+ * back on the board. Its priority only ranks consoles against each other.
  */
 public class ManConsoleTask extends CrewTask {
 
