@@ -16,7 +16,6 @@ import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
-import com.ringsofiron.interiorgrid.GridRayTraversal;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -96,9 +95,8 @@ public final class CrewTasks {
             CrewMemberComponent t = a.service.crew(a.target);
             if (t == null || !t.isConscious()) return Status.SUCCEEDED;
             GridPositionComponent tp = a.service.position(a.target);
-            ShipGridComponent grid = a.grid();
-            float dist = Math.abs(tp.x - a.pos.x) + Math.abs(tp.y - a.pos.y);
-            boolean sight = GridRayTraversal.hasLineOfSight(grid, a.pos.tileX(), a.pos.tileY(), tp.tileX(), tp.tileY());
+            float dist = a.service.distance(a.pos, tp);
+            boolean sight = a.service.canSee(a.pos, tp);
             a.crew.fireCooldown -= a.dt;
             if (sight && dist <= a.crew.def.weaponRange) {
                 a.pos.stop();
@@ -112,6 +110,11 @@ public final class CrewTasks {
                 return Status.RUNNING;
             }
             a.crew.activity = "closing on " + t.name;
+            if (tp.ship != a.pos.ship) {
+                // Aboard a docked craft: over to it, to beside them
+                CrewAgent.Travel go = a.travel(tp.ship, near(a, tp.ship, tp.tileX(), tp.tileY(), 1, 1));
+                return go == CrewAgent.Travel.UNREACHABLE ? Status.FAILED : Status.RUNNING;
+            }
             repathTimer -= a.dt;
             if (!a.pos.isMoving() || a.pos.pathBlocked || repathTimer <= 0f) {
                 repathTimer = 1f;
@@ -607,9 +610,10 @@ public final class CrewTasks {
     // -----------------------------------------------------------------------
 
     /**
-     * The hostile to engage: the nearest conscious crew member of another faction aboard
-     * the same ship that the agent can see. Marines also hunt hostiles that any conscious
-     * crewmate of theirs can see (an intruder alert), and path to them.
+     * The hostile to engage: the nearest conscious crew member of another faction the agent can
+     * see, aboard the same ship or through the open ports of a craft docked to it. Marines also
+     * hunt hostiles that any conscious crewmate of theirs can see (an intruder alert), and path
+     * to them.
      */
     static Entity findHostile(CrewAgent a) {
         ShipGridComponent grid = a.grid();
@@ -636,7 +640,10 @@ public final class CrewTasks {
         return best;
     }
 
-    /** The nearest conscious hostile of {@code a}'s faction that {@code observer} can see, within sight range. */
+    /**
+     * The nearest conscious hostile of {@code a}'s faction that {@code observer} can see, within sight
+     * range: aboard the observer's craft, or one docked to it.
+     */
     private static Entity nearestVisibleHostile(CrewAgent a, Entity observer, ShipGridComponent grid) {
         GridPositionComponent op = a.service.position(observer);
         float range = a.service.crew(observer).def.sightRange;
@@ -649,10 +656,9 @@ public final class CrewTasks {
             CrewMemberComponent c = a.service.crew(e);
             if (!a.service.hostile(a.crew, c) || !c.isConscious()) continue;
             GridPositionComponent p = a.service.position(e);
-            if (p.ship != op.ship) continue;
-            float d = Math.abs(p.x - op.x) + Math.abs(p.y - op.y);
+            float d = a.service.distance(op, p);
             if (d > range || d >= bestDist) continue;
-            if (!GridRayTraversal.hasLineOfSight(grid, op.tileX(), op.tileY(), p.tileX(), p.tileY())) continue;
+            if (!a.service.canSee(op, p)) continue;
             best = e;
             bestDist = d;
         }
