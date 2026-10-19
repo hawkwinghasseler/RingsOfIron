@@ -236,6 +236,8 @@ public class GameScenario {
     public void quickLoad(FileHandle file) {
         // A save from before the career was saved loads as a new one: rank 0 with the sponsor
         world.standing.reset();
+        // ...and with no contracts
+        world.contracts.reset();
         world.engine.getSerializationService().loadFromFile(file);
         relink();
         world.standing.migrateLegacy(player);

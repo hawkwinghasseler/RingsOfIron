@@ -441,6 +441,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
                     act.standing < FactionStanding.REFUSE_BELOW ? "; its stations will refuse you clearance" : ""));
         }
         world.standing.acts.clear();
+        // Contracts taken, delivered, done or failed
+        for (String news : world.contracts.notices) show(news);
+        world.contracts.notices.clear();
         // Promotions and budget paydays
         for (String news : world.standing.notices) show(news);
         world.standing.notices.clear();
@@ -811,14 +814,20 @@ public class RingsOfIronGame extends ApplicationAdapter {
         font.setColor(Color.SKY);
         String[] dock = docking.readout();
         for (int i = 0; i < dock.length; i++) font.draw(batch, dock[i], left, top - 110f - 20f * i);
+        float below = top - 110f - 20f * dock.length - 10f;
+        // The contracts held: what, how long left and how far
+        font.setColor(Color.GOLD);
+        for (com.hawkwing.RingsOfIron.game.Contract c : world.contracts.active()) {
+            font.draw(batch, world.contracts.describe(c), left, below, STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+            below -= 20f;
+        }
         if (firstPlay != null) {
-            font.setColor(Color.GOLD);
-            font.draw(batch, firstPlay.objective(), left, top - 110f - 20f * dock.length - 10f, STATUS_WIDTH - 10f,
+            font.draw(batch, firstPlay.objective(), left, below, STATUS_WIDTH - 10f,
                     com.badlogic.gdx.utils.Align.left, true);
         }
         if (hud.getViewMode().getMode() != ViewMode.INTERIOR) {
             font.setColor(Color.LIGHT_GRAY);
-            font.draw(batch, "G arm port + ask clearance   H next port   U undock   T trade, Y yard when docked", hintX, 44f);
+            font.draw(batch, "G arm port + ask clearance   H next port   U undock   T trade, Y yard, J missions when docked", hintX, 44f);
         }
         batch.end();
     }

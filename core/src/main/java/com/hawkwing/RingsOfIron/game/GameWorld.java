@@ -163,6 +163,8 @@ public class GameWorld implements Disposable {
     public final DoorForcing forcing;
     /** Station yards repairing and refitting docked ships. */
     public final StationYard yard;
+    /** Station mission boards and the player's contracts. */
+    public final ContractBoard contracts;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -318,6 +320,10 @@ public class GameWorld implements Disposable {
         // stations-docking: the yards fit weapons from combat-sys's defs
         yard = new StationYard(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, combatDefs);
         engine.addSystem(yard);
+        // Mission boards, and the player's contracts checked against the world; saved with the game
+        contracts = new ContractBoard(this);
+        engine.addSystem(contracts);
+        engine.getSerializationService().addParticipant(contracts);
         // NPC freighters fill their tanks wherever they dock
         engine.addSystem(new FreighterRefueling(docking::dockedTo));
         // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
