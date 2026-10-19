@@ -701,8 +701,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
             matchViewToSeat();
             // A save made in First Play carries on there; any other leaves it
             firstPlay = FirstPlay.resume(world, game);
-            opening = firstPlay != null || !openingWanted ? null
-                    : OpeningGuide.resume(world, () -> hud.getMissionWindow().isOpen());
+            opening = firstPlay != null ? null
+                    : OpeningGuide.resume(world, () -> hud.getMissionWindow().isOpen(), openingWanted);
             autosaves.restart(world.playerStation() != null, world.engine.getSimSeconds());
             show("Game loaded");
             return true;

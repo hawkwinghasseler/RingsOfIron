@@ -133,6 +133,12 @@ public final class NoticeLog {
         return history.peekFirst();
     }
 
+    /** Forgets everything, on screen and in the log: another game was loaded. */
+    public void clear() {
+        showing.clear();
+        history.clear();
+    }
+
     /** Takes everything off the screen; the log keeps it. */
     public void clearScreen() {
         showing.clear();

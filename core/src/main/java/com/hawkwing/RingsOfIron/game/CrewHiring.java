@@ -75,6 +75,11 @@ public class CrewHiring implements SaveParticipant {
         this.world = world;
     }
 
+    /** Forgets who has been hired, for a load: a save without hires has none. */
+    public void reset() {
+        hired.clear();
+    }
+
     /** The station the player's ship is docked at with clearance, if it hires; else null. */
     public Entity hiringStation() {
         Entity player = world.getPlayer();

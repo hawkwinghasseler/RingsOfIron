@@ -58,8 +58,6 @@ public class PlayerTransfer {
     private final NavTarget target;
     private final PlayerOrbitInfo orbits;
     private Proposal proposal;
-    /** An accepted plan's next sphere of influence and target, for proposing the rest of the leg there. */
-    private String continueIn, continueTo;
     /** What the player should hear of: the rest of a leg proposed. */
     public final List<String> notices = new ArrayList<>();
 
@@ -92,7 +90,7 @@ public class PlayerTransfer {
         String parentUuid = world.universe.uuidOf(parent);
         double now = world.universe.now();
         Proposal p = plan(world.macroSim.rails(), parentUuid, k, uuid, name, now, now + LEAD);
-        continueIn = continueTo = null;
+        setLeg(null, null);
         if (p == null) return "No transfer to " + name + " from this orbit";
         if (p.burns.isEmpty()) return "You are already with " + name;
         proposal = p;
@@ -135,8 +133,7 @@ public class PlayerTransfer {
     public String accept(BurnPlanner planner) {
         if (proposal == null) return "No transfer plan to accept (" + keys.apply(Action.PLAN_TO_TARGET) + " plans one)";
         planner.replace(proposal.burns);
-        continueIn = proposal.nextParent;
-        continueTo = proposal.nextParent == null ? null : proposal.targetUuid;
+        setLeg(proposal.nextParent, proposal.nextParent == null ? null : proposal.targetUuid);
         String said = "Transfer to " + proposal.targetName + " planned: " + proposal.burns.size()
                 + (proposal.burns.size() == 1 ? " burn" : " burns");
         proposal = null;
@@ -156,17 +153,19 @@ public class PlayerTransfer {
      */
     public void update(BurnPlanner planner) {
         if (proposal != null && world.engine.getEntity(proposal.targetUuid) == null) proposal = null;
-        if (continueIn == null) return;
-        if (world.engine.getEntity(continueTo) == null) {
-            continueIn = continueTo = null;
+        Entity ship = world.getPlayer();
+        TransferLegComponent leg = ship == null ? null : ship.getComponent(TransferLegComponent.class);
+        if (leg == null || leg.continueIn == null) return;
+        if (leg.continueTo == null || world.engine.getEntity(leg.continueTo) == null) {
+            setLeg(null, null);
             return;
         }
         KeplerOrbit k = orbits.currentConic();
         Entity parent = orbits.parent();
-        if (k == null || parent == null || !continueIn.equals(world.universe.uuidOf(parent))) return;
+        if (k == null || parent == null || !leg.continueIn.equals(world.universe.uuidOf(parent))) return;
         if (planner.nodes() != null && planner.nodes().nodes.size > 0) return;
-        String to = continueTo;
-        continueIn = continueTo = null;
+        String to = leg.continueTo;
+        setLeg(null, null);
         double now = world.universe.now();
         RailsModel rails = world.macroSim.rails();
         StateVector s = k.stateAt(now);
@@ -187,6 +186,22 @@ public class PlayerTransfer {
         proposal = new Proposal(to, name, burns, route.arrivalTime, route.totalDeltaV, route.nextParent);
         notices.add("Arrived at " + orbits.body().name + ": capture and transfer to " + name
                 + " proposed on the orbit map. " + keys.apply(Action.ACCEPT_PLAN) + " accepts");
+    }
+
+    /**
+     * An accepted plan's next sphere of influence and target, for proposing the rest of the leg
+     * there; kept on the player's ship ({@link TransferLegComponent}) so it is saved.
+     */
+    private void setLeg(String continueIn, String continueTo) {
+        Entity ship = world.getPlayer();
+        if (ship == null) return;
+        TransferLegComponent leg = ship.getComponent(TransferLegComponent.class);
+        if (leg == null) {
+            if (continueIn == null) return;
+            ship.add(leg = new TransferLegComponent());
+        }
+        leg.continueIn = continueIn;
+        leg.continueTo = continueTo;
     }
 
     /** "To Shackleton Ice: 2 burns, 3,140 m/s, arrives in 4.2 d" */

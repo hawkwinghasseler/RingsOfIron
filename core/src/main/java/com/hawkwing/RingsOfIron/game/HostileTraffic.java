@@ -144,8 +144,6 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     private final Map<String, Double> alongside = new HashMap<>();
     /** Each hostile's attackers in the bubble, and the sim second each last fired at it. */
     private final Map<Entity, Map<Entity, Double>> attackers = new IdentityHashMap<>();
-    /** Hostiles in the bubble that have fought the player: one that leaves the bubble whole got away. */
-    private final Set<String> foughtPlayer = new HashSet<>();
     private final StateVector a = new StateVector();
     private final StateVector b = new StateVector();
 
@@ -311,7 +309,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         }
         Entity enemy = enemyOf(e, h);
         if (enemy != null) {
-            if (enemy == world.getPlayer()) foughtPlayer.add(id);
+            if (enemy == world.getPlayer()) h.foughtPlayer = true;
             Tactics.Plan plan = Tactics.choose(Tactics.arms(e), odds(id, e, h, enemy), h.hull, h.isPirate(), crossfire);
             if (plan == Tactics.Plan.RUN) {
                 breakOff(id, h, now);
@@ -517,8 +515,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         if (h == null) return;
         provoked.put(victim, attacker);
         attackers.computeIfAbsent(victim, k -> new IdentityHashMap<>()).put(attacker, world.macroSim.now());
-        UuidComponent uuid = victim.getComponent(UuidComponent.class);
-        if (attacker == world.getPlayer() && uuid != null) foughtPlayer.add(uuid.id);
+        if (attacker == world.getPlayer()) h.foughtPlayer = true;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -542,7 +539,9 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         Entity e = world.engine.getEntity(uuid);
         HostileComponent h = e == null ? null : e.getComponent(HostileComponent.class);
         if (h == null) return;
-        if (foughtPlayer.remove(uuid) && h.isPirate() && !FirstPlay.beaten(world, e)) escaped(e, h);
+        boolean fought = h.foughtPlayer;
+        h.foughtPlayer = false;
+        if (fought && h.isPirate() && !FirstPlay.beaten(world, e)) escaped(e, h);
         disengage(e);
         // Rebuilt from its layout next time, never from a stale shape
         e.remove(BodyShapeComponent.class);
