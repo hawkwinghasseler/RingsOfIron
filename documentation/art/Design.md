@@ -1,7 +1,7 @@
 # Art Asset Pack: Style and Naming Guide
 
 ## Overview
-The game's art is made as SVG in `assets/art`: floors, walls in every join pattern, edge walls and bulkhead doors, ship components in every mount size, state effects, sub-tile decor and interactive objects, weapon turrets, and the exterior hulls of ships and stations. SVG is the source format; the game will load raster versions of these files (see **Using the art in the game**).
+The game's art is made as SVG in `assets/art`: floors, walls in every join pattern, edge walls and bulkhead doors, ship components in every mount size, state effects, sub-tile decor and interactive objects, weapon turrets, the exterior hulls of ships and stations, crew, projectiles, explosions and the laser beam. SVG is the source format; the game will load raster versions of these files (see **Using the art in the game**).
 
 Open `assets/art/preview.html` in a browser to see every asset, every chassis in `assets/data/chassis.toml` drawn with the tile and component art, and each ship's exterior with its turrets on their hardpoints.
 
@@ -16,6 +16,7 @@ Open `assets/art/preview.html` in a browser to see every asset, every chassis in
   - Wall-mounted decor (lockers, panels, lights, pipes) has the wall at the top of its canvas.
 - **Walls are never rotated.** Every join pattern and orientation has its own file, so their light always comes from the top-left.
 - **Exterior art is in the body frame.** Ship and station hulls use body coordinates times 64 with y flipped, so the SVG origin is the body origin and the bow points to +x, matching `hull` and the hardpoints in `ships.toml`. Turrets have their pivot at the SVG origin and the barrel toward +x.
+- **Crew, projectiles and explosions are centered on the SVG origin.** Crew face +y (SVG up) and are 0.6 tile across, the size of `CrewBody` (radius 0.3 tile); the `_carrying` crate is neutral grey so code can tint it. Projectiles point their nose toward +x with any streak or exhaust trailing to -x. The laser `beam` is a 64x16 strip stretched along x to the beam's length, and `dock_walkway` is uniform along y, so it can be stretched or tiled across the gap between two collars.
 
 ## Layers
 Every SVG has up to three top-level groups:
@@ -124,11 +125,13 @@ File names are lowercase `snake_case` and start with the id in data, so code can
 | `walls/` | `<tile id>_<sides>`; wedges as `<tile id>_wedge_<w>x<h>` | `hull_heavy_nes`, `internal_wall_0`, `hull_medium_wedge_1x2` |
 | `edges/` | `edge_wall_<weight>_<h\|v>`, `edge_wall_<weight>_joint_<sides>`, `bulkhead_door_<state>_<h\|v>` | `edge_wall_light_joint_ne`, `bulkhead_door_open_unpowered_v` |
 | `components/` | `<component id>_<size>`, size `s`, `m`, `l` or `xl` | `reactor_xl`, `helm_m_unpowered`, `docking_port_l_open`, `docking_collar_s` |
-| `effects/` | the state it shows | `fire_medium`, `breach`, `damage_heavy`, `bulkhead_seal` |
+| `effects/` | the state it shows; animation frames as a number suffix | `fire_medium`, `breach`, `explosion_3`, `beam` |
 | `decor/` | the object | `crate_small`, `pipe_run`, `wall_light_unpowered` |
 | `interactive/` | the object; levels as a number suffix | `fire_extinguisher`, `cargo_stack_2` |
 | `turrets/` | the weapon id in `weapons.toml` | `railgun_mk1`, `harpoon_launcher` |
 | `hulls/` | the chassis id in `chassis.toml` | `corvette`, `station_hub`, `thruster_plume` |
+| `crew/` | `crew_<who>`, holding a crate as `_carrying` | `crew_ship`, `crew_station_carrying`, `crew_player` |
+| `projectiles/` | the projectile | `railgun_slug`, `autocannon_round`, `missile`, `decoy_flare`, `harpoon` |
 
 Tile ids are the ones in `tiles.toml`: `floor` (`.`), `conduit` (`+`), `hull` (`#`, medium), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`), `internal_wall` (`I`); `void` has no art. Component ids are the ones in `components.toml`: `reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `docking_port`. A new component made in data (say `fusion_core` with behavior `REACTOR`) gets its own `fusion_core_<size>.svg`; until it has one, code can fall back to the art of its behavior's built-in component.
 
@@ -156,18 +159,20 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 `tools/art/make_preview.py` rebuilds `assets/art/preview.html`; `--inline` embeds the SVGs so the page is one shareable file.
 
 ## Asset list
-- **Tiles (6):** floor, conduit and conduit arm (powered and unpowered), carpet covering.
+- **Tiles (7):** floor, conduit and conduit arm (powered and unpowered), carpet covering, dock walkway.
 - **Walls (88):** `hull`, `hull_light`, `hull_medium`, `hull_heavy` and `internal_wall` in all 16 join patterns, and 1x1 and 1x2 wedges for each hull weight.
 - **Edges (59):** edge wall segments (horizontal and vertical) and 15 joints for each weight; bulkhead doors sealed and open, powered and unpowered, both orientations.
 - **Components (78):** reactor, shield emitter and turret mount (S-XL); helm, weapons console, life support, cargo bay and airlock (S-XL); docking port S-L sealed and open, and the collar for each size; with an unpowered variant of each powered one.
-- **Effects (8):** fire small, medium and large, scorch, breach, light and heavy damage, bulkhead seal.
+- **Effects (14):** fire small, medium and large, scorch, breach, light and heavy damage, bulkhead seal, explosion (one frame, and four frames `explosion_1` to `_4`), laser beam.
 - **Decor (18):** vent grate, floor hatch, pipe run, pipe valve, cable tray, wall light, hazard stripe, floor arrow, small and large crates, barrel, locker, bunk, table, mess table, chair, plant.
 - **Interactive (14):** fire extinguisher, bulkhead panel, breaker, terminal, emergency locker, repair kit, med bed, cargo stacks at three levels.
 - **Turrets (6):** railgun, autocannon, laser and harpoon launcher, and unpowered railgun and laser.
 - **Hulls (5):** corvette, freighter, outpost and hub stations, thruster plume.
+- **Crew (6):** ship crew, station dock hand and the player, each standing and carrying a crate.
+- **Projectiles (5):** railgun slug, autocannon round with tracer, missile, decoy flare, harpoon.
 
 ## Open Questions
-- Crew sprites and engine sprites are not in this pack.
+- Engine sprites are not in this pack.
 - Walls more than one tile thick show a small notch at inner corners; the 47-tile blob set would remove it if thick walls become common.
 - Should material (hull steel vs composite armor) change a hull tile's art, or only its tint?
 - Damaged and destroyed variants of each component, beyond the shared damage overlays.

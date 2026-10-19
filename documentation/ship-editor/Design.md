@@ -64,12 +64,13 @@ The screen is the ship on a tile grid, with a panel on the right. Three tabs at 
 - **Chassis list**: pick a chassis to edit, or **New** (asks for an id; it starts as a 16 x 9 hull around steel floor). **Duplicate** copies the open one under a new id, **Delete** removes it (from its file on the next save).
 - **Tools** (number keys or click):
   1. **Paint**: left-click or drag paints the selected tile type; drag with Shift fills a rectangle.
-  2. **Component**: places the selected component at the cursor with the selected size; R rotates. The ghost is green where the game would accept it and red (with the reason) where it would not.
+  2. **Component**: places the selected component at the cursor with the selected size; R rotates. The ghost is green where the game would accept it and red (with the reason) where it would not. Every component shows an arrow for the way it faces (up, +y, at rotation 0).
   3. **Edge wall**: click near a tile edge to add or remove a thin wall there, with the weight class and bulkhead door chosen in the panel.
   4. **Hull piece**: places a wedge or block of the size chosen in the panel; R rotates.
   5. **Covering**: drag a rectangle to lay carpet.
   6. **Erase**: removes the component, hull piece, edge wall or covering under the cursor, or paints void.
   7. **Port**: click a docking port to toggle it active or passive.
+- **Rotating placed components**: with any tool but Hull piece, R over a placed component turns it a quarter turn counter-clockwise about its middle (a rectangular slot swaps its width and height) and undoes like any edit; the next one placed faces the same way. It refuses, with the reason, when the turned slot would leave the grid or overlap another mount. Docking ports are not turned: they face out of the hull edge they sit in. A turned square mount is saved under `mounts` with its `rotation`, since the rows cannot show which way it faces.
 - **Grid**: buttons add or remove a row or column on any side (everything listed shifts to match, and the origin moves so the rest of the ship stays put on the body); fields set the tile size and the origin, and **Center origin** puts the body origin in the middle of the grid (drawn as a blue cross).
 - **Properties**: name, `station` flag.
 - **Check**: every edit is rebuilt through `ChassisBlueprintLoader`; the panel shows the result (tile count, mounts, cargo volume, rooms, power reach) or the loader's error, and the problem tile is outlined in red. A chassis with an error can still be saved, so work in progress is never lost, but the panel warns that the game will refuse it.
