@@ -81,8 +81,8 @@ public class PilotController {
             steer(desired.sub(s.velocity), facing, s, dt, out);
             return;
         }
-        // Depart: away from the bubble origin until fast enough outward
-        Vector2 away = tmp.set(s.position);
+        // Depart: away from the bubble origin (or the way it was given) until fast enough outward
+        Vector2 away = tmp.set(pilot.departDirection != null ? pilot.departDirection : s.position);
         if (away.isZero(1e-3f)) away.set(MathUtils.cos(s.angle), MathUtils.sin(s.angle));
         away.nor();
         if (s.velocity.dot(away) < pilot.departSpeed) {

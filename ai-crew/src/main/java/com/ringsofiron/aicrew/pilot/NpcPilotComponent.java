@@ -10,8 +10,9 @@ import java.util.ArrayDeque;
  *
  * It flies its {@link #burns} in time order. With none left it either seeks
  * {@link #seekTarget} (arriving at rest) or, by default, departs: it accelerates
- * straight away from the bubble origin to {@link #departSpeed} and coasts until
- * macro-sim moves the ship back onto rails at the bubble's edge.
+ * straight away from the bubble origin (or along {@link #departDirection}) to
+ * {@link #departSpeed} and coasts until macro-sim moves the ship back onto rails at
+ * the bubble's edge.
  */
 public class NpcPilotComponent implements Component {
 
@@ -37,6 +38,11 @@ public class NpcPilotComponent implements Component {
     public float seekMaxSpeed = 200f;
     /** Outward speed to reach when departing, m/s. */
     public float departSpeed = 150f;
+    /**
+     * Way to depart, in bubble axes (any length); null for straight away from the bubble origin.
+     * A ship waiting beside a station leaves away from it, not across it toward whatever lies beyond.
+     */
+    public Vector2 departDirection;
     /** Seconds before a burn to start turning toward it. */
     public float alignLead = 60f;
 
