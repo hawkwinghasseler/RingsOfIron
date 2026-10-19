@@ -18,7 +18,8 @@ import java.util.Locale;
 /**
  * A station's yard while the ship is docked there: what is damaged and what putting it right costs,
  * with a button to order the repairs, then one row per weapon hardpoint with the weapon on it, a
- * weapon to fit instead (click to pick the next), and buttons to order it new or used. Refreshes
+ * weapon to fit instead (click to pick the next), and buttons to order it new or used. Rebuild
+ * decks opens the ship editor for the yard to rebuild the ship to a new layout. Refreshes
  * from the {@link YardProvider} a few times a second; closes itself when the ship leaves the yard.
  */
 public class YardWindow extends Window {
@@ -30,6 +31,8 @@ public class YardWindow extends Window {
     private final Label repairs;
     private final TextButton repair;
     private final Label status;
+    private final Label tanks;
+    private final TextButton refill;
     private final Table rows = new Table();
     private final Array<Row> rowWidgets = new Array<>();
     private YardProvider provider;
@@ -87,14 +90,30 @@ public class YardWindow extends Window {
             if (provider != null) say(provider.orderRepairs());
         });
         status = new Label("", skin, "dim");
+        tanks = new Label("", skin);
+        refill = button("Refill tanks", () -> {
+            if (provider != null) say(provider.orderRefill());
+        });
         Table top = new Table();
         top.add(summary).left().padRight(14f);
         top.add(repair);
         add(top).left().row();
         add(repairs).left().padTop(4f).row();
+        Table fuel = new Table();
+        fuel.add(tanks).left().padRight(14f);
+        fuel.add(refill);
+        add(fuel).left().padTop(4f).row();
         add(rows).left().padTop(8f).row();
         add(status).left().padTop(8f).row();
-        add(button("Close [Y]", () -> setOpen(false))).right().padTop(10f);
+        Table bottom = new Table();
+        bottom.add(button("Rebuild decks...", () -> {
+            if (provider == null) return;
+            String said = provider.openLayoutEditor();
+            if (said == null) setOpen(false);
+            else say(said);
+        })).padRight(10f);
+        bottom.add(button("Close [Y]", () -> setOpen(false)));
+        add(bottom).right().padTop(10f);
         setVisible(false);
     }
 
@@ -150,6 +169,9 @@ public class YardWindow extends Window {
         summary.setText(String.format(Locale.ROOT, "Credits %s     %s", formatCredits(board.credits), damageLine(board)));
         repair.setDisabled(board.damaged == 0 || !board.repairs.isEmpty());
         repairs.setText(board.repairs);
+        tanks.setText(board.tanks.isEmpty() ? "No tanks aboard" : board.tanks);
+        refill.setText(board.refillCost < 0.5 ? "Tanks full" : "Refill tanks " + formatCredits(board.refillCost));
+        refill.setDisabled(board.refillCost < 0.5 || board.credits < 1);
         if (rowWidgets.size != board.hardpoints.size) rebuildRows();
         for (int i = 0; i < rowWidgets.size; i++) rowWidgets.get(i).update(board.hardpoints.get(i));
     }

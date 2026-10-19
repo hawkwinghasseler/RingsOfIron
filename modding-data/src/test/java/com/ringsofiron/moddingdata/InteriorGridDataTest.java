@@ -61,23 +61,22 @@ class InteriorGridDataTest {
     void corvetteHasATurretPerWeaponAndAWeaponsConsole() {
         ChassisDef corvette = ctx.defs.require("chassis", "corvette", ChassisDef.class);
         ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(toBlueprint(corvette));
-        int reactors = 0, turrets = 0, consoles = 0, bays = 0, ports = 0, engines = 0;
+        int reactors = 0, turrets = 0, consoles = 0, bays = 0, ports = 0;
         for (ChassisBlueprintLoader.SubsystemPlacement p : result.subsystems) {
             if (p.type == SubsystemComponent.SubsystemType.REACTOR) reactors++;
             if (p.type == SubsystemComponent.SubsystemType.TURRET_MOUNT) turrets++;
             if (p.type == SubsystemComponent.SubsystemType.WEAPONS) consoles++;
             if (p.type == SubsystemComponent.SubsystemType.CARGO) bays++;
             if (p.type == SubsystemComponent.SubsystemType.DOCKING_PORT) ports++;
-            if (p.type == SubsystemComponent.SubsystemType.ENGINE) engines++;
         }
         assertEquals(1, reactors);
         assertEquals(5, turrets, "nose, both beams, the launcher and the laser");
         assertEquals(1, consoles);
         assertEquals(4, bays, "two in the aft hold, two small ones forward");
         assertEquals(1, ports, "a Small docking port beside the hold");
-        assertEquals(2, engines, "two Small engines in the stern");
-        assertEquals(16, result.subsystems.size,
-                "helm, reactor, life support, 4 cargo bays, weapons console, 5 turrets, docking port, 2 engines");
+        assertEquals(19, result.subsystems.size,
+                "helm, reactor, life support, 4 cargo bays, weapons console, 5 turrets, docking port,"
+                        + " 2 engines, propellant, oxygen and nitrogen tanks");
         assertEquals(16, result.grid.width);
         assertTrue(result.grid.getTile(10, 3).isFlammable(), "the crew spaces are carpeted");
         assertFalse(result.grid.getTile(6, 3).isFlammable(), "the hold's walkway is bare deck");

@@ -33,7 +33,7 @@ A lamp or screen keeps its unlit glass in the base layer, so with the emissive l
 Groups inside the emissive layer say how their glow lights the scene, read by `tools/art/extract_lights.py`: `data-light="glow"` only glows (status lamps, indicator dots, conduits), `point` lights the room around it (reactor cores, shield domes, helm and weapons screens, life support displays), and `cone` lights one side only: the wall light is a 90° half-angle cone, a broad diffuse wash over the half of the room in front of its wall. `data-reach` (tiles), `data-intensity` (0 to 1), `data-direction` and `data-cone` (degrees, 0 = +x, 90 = up the canvas) tune it. An inner group's setting wins over an outer one, so a status lamp inside a lit room stays a glow.
 
 ## Powered and unpowered
-Every powered object has an `_unpowered` variant: the same art with the emissive layer left out. That covers reactors, shield emitters, turret mounts, helm and weapons consoles, life support, airlocks, docking ports and collars, conduits, bulkhead doors, powered decor (terminal, wall light, bulkhead panel, breaker, med bed) and energy weapons. Cargo bays are passive and have no variant.
+Every powered object has an `_unpowered` variant: the same art with the emissive layer left out. That covers reactors, shield emitters, turret mounts, helm and weapons consoles, life support, airlocks, docking ports and collars, conduits, bulkhead doors, powered decor (terminal, wall light, bulkhead panel, breaker, med bed) and energy weapons. Cargo bays and tanks are passive and have no variant.
 
 The suffix goes after any state: `docking_port_m_open_unpowered`, `bulkhead_door_sealed_unpowered_h`.
 
@@ -83,6 +83,11 @@ Power conduits that run along tile edges (inside thin walls, or along full-tile 
 - `edges/edge_conduit_joint_<sides>.svg` (16x16) is centered on a vertex, `<sides>` as for edge walls: an end cap or straight joint is a clamp, and a corner, T or cross is a junction box with a lamp.
 - `edges/edge_conduit_tap.svg` (16x16) is a junction box centered on the middle of an edge, where a tile's `conduit_arm` reaches an edge run. It is square, so it fits horizontal and vertical edges alike.
 
+### Pipes
+Pipes carry oxygen, nitrogen and propellant from tanks to the systems that use them. They are steel grey (`#8c96a0`, lit `#b4bec8`, shaded `#5a6470`) with flange bands, are passive and have no unpowered variant, and are drawn over conduits.
+- `tiles/pipe_hub.svg` (64x64) is a valve body in the middle of a tile with a pipe across it; `tiles/pipe_arm.svg` (64x64) runs from the middle to the top edge, turned toward each neighbor the pipe joins, like `conduit_arm`.
+- `edges/edge_pipe_h.svg` (64x16) and `_v` (16x64) run along an edge, `edges/edge_pipe_joint_<sides>.svg` (16x16) join runs at a vertex, and `edges/edge_pipe_tap.svg` (16x16) is the tee where a tile's pipe arm meets an edge run.
+
 ### Doors
 Bulkhead doors take the place of an edge wall segment: `edges/bulkhead_door_<state>[_unpowered]_<h|v>.svg`, state `sealed` or `open`. A powered door's lamp is red when sealed and green when open; an unpowered door has dark lamps.
 
@@ -90,6 +95,8 @@ Bulkhead doors take the place of an edge wall segment: `edges/bulkhead_door_<sta
 Each size of a component is its own design, not the small one repeated: a bigger reactor is a different machine (canister, fission pile, tokamak, fusion plant), a bigger helm is a bigger room (a pilot's seat, a two-seat cockpit, a bridge, a command bridge). Parts, palette and accent stay the same across sizes.
 
 The **turret mount** is the turret's base and its operator's station: a bearing ring with a traverse drive and the ammunition or power feed, and the gunner's console and seat (bigger mounts add a loader's station). The ring is centered on the mount, and so is the turret drawn on the exterior: a hardpoint in `ships.toml` sits on the center of the turret mount its weapon is wired to.
+
+**Tanks** (`tank`, `oxygen_tank`, `nitrogen_tank`, S-XL) are cylinders in cradles with a band in their fluid's color: amber for propellant, blue for oxygen, grey-blue for nitrogen. They are passive.
 
 ## Exterior hulls
 A ship or station hull is built on its chassis grid: every tile of the layout is a hull panel (tile edges are the panel lines), and each system's exterior fitting sits over its footprint, so the outside matches the inside:
@@ -157,9 +164,9 @@ File names are lowercase `snake_case` and start with the id in data, so code can
 
 | Folder | Name | Example |
 |---|---|---|
-| `tiles/` | the floor tile type's id in `tiles.toml`; coverings as `covering_<covering>` | `floor`, `conduit`, `conduit_arm`, `covering_carpet` |
+| `tiles/` | the floor tile type's id in `tiles.toml`; coverings as `covering_<covering>`; `pipe_hub`, `pipe_arm` | `floor`, `conduit`, `conduit_arm`, `covering_carpet` |
 | `walls/` | `<tile id>_<sides>`; wedges as `<tile id>_wedge_<w>x<h>` | `hull_heavy_nes`, `composite_armor_light_ew`, `internal_wall_0`, `hull_medium_wedge_2x1` |
-| `edges/` | `edge_wall_<material_><weight>_<h\|v>`, `edge_wall_<material_><weight>_joint_<sides>`, `bulkhead_door_<state>_<h\|v>`, `edge_conduit_<h\|v>`, `edge_conduit_joint_<sides>`, `edge_conduit_tap` | `edge_wall_light_joint_ne`, `edge_wall_composite_armor_heavy_v`, `bulkhead_door_open_unpowered_v`, `edge_conduit_joint_unpowered_es` |
+| `edges/` | `edge_wall_<material_><weight>_<h\|v>`, `edge_wall_<material_><weight>_joint_<sides>`, `bulkhead_door_<state>_<h\|v>`, `edge_conduit_<h\|v>`, `edge_conduit_joint_<sides>`, `edge_conduit_tap`, `edge_pipe_<h\|v>`, `edge_pipe_joint_<sides>`, `edge_pipe_tap` | `edge_wall_light_joint_ne`, `edge_wall_composite_armor_heavy_v`, `bulkhead_door_open_unpowered_v`, `edge_conduit_joint_unpowered_es` |
 | `components/` | `<component id>_<size>`, size `s`, `m`, `l` or `xl` | `reactor_xl`, `helm_m_unpowered`, `docking_port_l_open`, `life_support_m_damaged_unpowered`, `reactor_s_destroyed`, `docking_collar_s` |
 | `effects/` | the state it shows; animation frames as a number suffix | `fire_medium`, `breach`, `explosion_3`, `beam` |
 | `decor/` | the object | `crate_small`, `pipe_run`, `wall_light_unpowered` |
@@ -170,7 +177,7 @@ File names are lowercase `snake_case` and start with the id in data, so code can
 | `crew/` | `crew_<who>`, holding a crate as `_carrying` | `crew_ship`, `crew_station_carrying`, `crew_player` |
 | `projectiles/` | the projectile | `railgun_slug`, `autocannon_round`, `missile`, `decoy_flare`, `harpoon` |
 
-Tile ids are the ones in `tiles.toml`: `floor` (`.`), `conduit` (`+`), `hull` (`#`, medium), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`), `armor_light`/`armor_medium`/`armor_heavy` (`4`/`5`/`6`, composite armor), `internal_wall` (`I`); `void` has no art. Each tile type names its art with an `art` key in `tiles.toml` (`art = "walls/composite_armor_heavy"`): a floor's full region, or a wall's family that the join suffix is added to. Without one, the art is found from the tile's id, then its material and weight. Component ids are the ones in `components.toml`: `reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `engine`, `docking_port`. A new component made in data (say `fusion_core` with behavior `REACTOR`) gets its own `fusion_core_<size>.svg`; until it has one, code can fall back to the art of its behavior's built-in component.
+Tile ids are the ones in `tiles.toml`: `floor` (`.`), `conduit` (`+`), `hull` (`#`, medium), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`), `armor_light`/`armor_medium`/`armor_heavy` (`4`/`5`/`6`, composite armor), `internal_wall` (`I`); `void` has no art. Each tile type names its art with an `art` key in `tiles.toml` (`art = "walls/composite_armor_heavy"`): a floor's full region, or a wall's family that the join suffix is added to. Without one, the art is found from the tile's id, then its material and weight. Component ids are the ones in `components.toml`: `reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `engine`, `docking_port`, `tank`, `oxygen_tank`, `nitrogen_tank`. A new component made in data (say `fusion_core` with behavior `REACTOR`) gets its own `fusion_core_<size>.svg`; until it has one, code can fall back to the art of its behavior's built-in component.
 
 In the game every file is a region of one texture atlas, named by its folder and file name without the extension: `tiles/floor`, `components/reactor_xl`, `hulls/corvette`. `assets.toml` names the atlas once, as `atlas_art`, so a mod can swap the whole pack by overriding that key.
 
@@ -213,10 +220,10 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 `tools/art/make_preview.py` rebuilds `assets/art/preview.html`; `--inline` embeds the SVGs so the page is one shareable file.
 
 ## Asset list
-- **Tiles (7):** floor, conduit and conduit arm (powered and unpowered), carpet covering, dock walkway.
+- **Tiles (9):** floor, conduit and conduit arm (powered and unpowered), pipe hub and arm, carpet covering, dock walkway.
 - **Walls (149):** `hull`, `hull_light`, `hull_medium`, `hull_heavy`, composite armor light, medium and heavy, and `internal_wall` in all 16 join patterns, and 1x1, 1x2 and 2x1 wedges for each weight of both materials.
-- **Edges (146):** edge wall segments (horizontal and vertical) and 15 joints for each weight of hull steel and composite armor; bulkhead doors sealed and open, powered and unpowered, both orientations; edge conduit segments, 15 joints and the tap, powered and unpowered.
-- **Components (208):** reactor, shield emitter and turret mount (S-XL); helm, weapons console, life support, cargo bay, airlock and engine (S-XL); docking port S-L sealed and open, and the collar for each size; with an unpowered variant of each powered one, and damaged and destroyed states of each.
+- **Edges (146):** edge wall segments (horizontal and vertical) and 15 joints for each weight of hull steel and composite armor; bulkhead doors sealed and open, powered and unpowered, both orientations; edge conduit segments, 15 joints and the tap, powered and unpowered; edge pipe segments, 15 joints and the tap.
+- **Components (208):** reactor, shield emitter and turret mount (S-XL); helm, weapons console, life support, cargo bay, airlock, engine and the propellant, oxygen and nitrogen tanks (S-XL); docking port S-L sealed and open, and the collar for each size; with an unpowered variant of each powered one, and damaged and destroyed states of each.
 - **Engines (12):** main engine S, M, L and XL seen from outside, powered and unpowered, and an exhaust plume for each. The engine rooms inside are with the components.
 - **Effects (14):** fire small, medium and large, scorch, breach, light and heavy damage, bulkhead seal, explosion (one frame, and four frames `explosion_1` to `_4`), laser beam.
 - **Decor (18):** vent grate, floor hatch, pipe run, pipe valve, cable tray, wall light, hazard stripe, floor arrow, small and large crates, barrel, locker, bunk, table, mess table, chair, plant.
@@ -227,6 +234,6 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 - **Projectiles (5):** railgun slug, autocannon round with tracer, missile, decoy flare, harpoon.
 
 ## Open Questions
-- Engines don't set thrust or burn propellant in this batch; the tanks and piping work owns that, and `max_thrust` in `ships.toml` still sets thrust here.
+- Engines don't set thrust: `max_thrust` in `ships.toml` still does. They only decide whether a ship's thrust burns propellant.
 - Walls more than one tile thick show a small notch at inner corners; the 47-tile blob set would remove it if thick walls become common.
 - Hull steel and composite armor are the only materials with art. New materials need their own look decided before they get files.

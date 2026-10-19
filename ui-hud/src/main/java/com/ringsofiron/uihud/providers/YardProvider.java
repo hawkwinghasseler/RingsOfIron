@@ -16,6 +16,19 @@ public interface YardProvider {
     /** Orders every repair; returns what the yard says. */
     String orderRepairs();
 
+    /** Fills the ship's tanks, as far as its credits go; returns what the yard says. */
+    default String orderRefill() {
+        return "This yard doesn't refill tanks";
+    }
+
+    /**
+     * Opens the ship editor on the ship's layout, for the yard to rebuild its decks to. Returns null
+     * when the editor opened, or what the yard says instead.
+     */
+    default String openLayoutEditor() {
+        return "This yard doesn't rebuild decks";
+    }
+
     /** Orders {@code weaponId}, new or used, fitted to hardpoint {@code hardpoint}; returns what the yard says. */
     String orderRefit(int hardpoint, String weaponId, boolean used);
 
@@ -42,6 +55,10 @@ public interface YardProvider {
         public double credits;
         public int damaged;
         public double repairCost;
+        /** Credits to fill every tank aboard; 0 when they are full. */
+        public double refillCost;
+        /** How full the ship's tanks are, e.g. "Propellant 40%, oxygen 100%"; empty with no tanks. */
+        public String tanks = "";
         /** Repairs ordered, and how they are going. */
         public String repairs = "";
         /** A used part's share of the new price. */
@@ -64,7 +81,8 @@ public interface YardProvider {
         public void clear() {
             stationName = "";
             repairs = "";
-            credits = repairCost = 0;
+            credits = repairCost = refillCost = 0;
+            tanks = "";
             damaged = 0;
             hardpoints.clear();
             offers.clear();

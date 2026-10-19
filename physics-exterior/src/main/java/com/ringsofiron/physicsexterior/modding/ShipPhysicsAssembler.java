@@ -33,6 +33,8 @@ import java.util.List;
  * {@link #FALLBACK_RADIUS}. It is placed at the entity's transform
  * (rotation in degrees). {@code max_thrust} drives the main engine and {@code max_torque} the RCS;
  * retro and lateral thrust are fixed fractions of the main engine until defs carry them.
+ * {@code exhaust_velocity} goes on the thrusters for the game's propellant feed; thrust here is
+ * free until something feeds it.
  *
  * A {@link MassSource} can replace the def's mass afterwards, e.g. with mass properties from the
  * ship's interior grid. The game wires that and the hull source, so this module does not depend on
@@ -48,6 +50,8 @@ public class ShipPhysicsAssembler implements ComponentAssembler {
     public static final float REVERSE_THRUST_FRACTION = 0.4f;
     public static final float LATERAL_THRUST_FRACTION = 0.25f;
     public static final float FALLBACK_RADIUS = 5f;
+    /** Exhaust velocity of a ship whose def gives none, m/s. */
+    public static final float STANDARD_EXHAUST_VELOCITY = 1.0e5f;
 
     /** Supplies a ship's real mass properties, overriding the def's {@code mass}. */
     @FunctionalInterface
@@ -140,8 +144,10 @@ public class ShipPhysicsAssembler implements ComponentAssembler {
         }
         entity.add(new PhysicsBodyComponent(body));
 
-        entity.add(new ThrusterComponent(ship.maxThrust, ship.maxThrust * REVERSE_THRUST_FRACTION,
-                ship.maxThrust * LATERAL_THRUST_FRACTION, ship.maxTorque));
+        ThrusterComponent thrusters = new ThrusterComponent(ship.maxThrust, ship.maxThrust * REVERSE_THRUST_FRACTION,
+                ship.maxThrust * LATERAL_THRUST_FRACTION, ship.maxTorque);
+        thrusters.exhaustVelocity = ship.exhaustVelocity > 0f ? ship.exhaustVelocity : STANDARD_EXHAUST_VELOCITY;
+        entity.add(thrusters);
         entity.add(new FlightControlComponent());
     }
 

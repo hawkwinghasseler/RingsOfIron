@@ -27,6 +27,8 @@ public class SmokeLauncher {
     public static final Map<String, Supplier<ApplicationListener>> APPS = new LinkedHashMap<>();
     static {
         APPS.put("game", RingsOfIronGame::new);
+        APPS.put("firstplay", () -> new RingsOfIronGame(java.nio.file.Paths.get("").toAbsolutePath(),
+                java.nio.file.Paths.get("mods").toAbsolutePath(), true));
         APPS.put("interior", Main::new);
         APPS.put("flight", FlightDemo::new);
         APPS.put("hud", HudDemo::new);

@@ -21,6 +21,7 @@ import java.util.List;
  * ]
  * edge_walls  = [ { x = 4, y = 2, side = "TOP", weight_class = "LIGHT", bulkhead = true } ]
  * edge_conduits = [ { x = 4, y = 2, side = "TOP" } ]
+ * pipes       = [ { x = 4, y = 2 }, { x = 4, y = 2, side = "TOP" } ]
  * hull_pieces = [ { shape = "WEDGE", x = 0, y = 0, width = 1, height = 2, rotation = 0, weight_class = "MEDIUM" } ]
  * mounts      = [ { type = "TURRET_MOUNT", size = "S", x = 3, y = 3, rotation = 0 },
  *                 { component = "fusion_core", size = "M", x = 5, y = 1 } ]
@@ -43,6 +44,8 @@ public class ChassisDef {
     public List<EdgeWall> edgeWalls = new ArrayList<>();
     /** Power conduits run along tile edges, which may lie inside walls. */
     public List<EdgeConduit> edgeConduits = new ArrayList<>();
+    /** Pipes from tanks to the systems that draw on them, across tiles or along their edges. */
+    public List<Pipe> pipes = new ArrayList<>();
     public List<HullPiece> hullPieces = new ArrayList<>();
     public List<Mount> mounts = new ArrayList<>();
     public List<Covering> coverings = new ArrayList<>();
@@ -69,6 +72,16 @@ public class ChassisDef {
     public static class EdgeConduit {
         public int x, y;
         /** BOTTOM, TOP, LEFT or RIGHT. */
+        public String side;
+    }
+
+    /**
+     * A pipe across the middle of tile (x, y), or with a {@code side}, along that edge of it
+     * (shared with the tile beyond).
+     */
+    public static class Pipe {
+        public int x, y;
+        /** Null for across the tile; else BOTTOM, TOP, LEFT or RIGHT. */
         public String side;
     }
 

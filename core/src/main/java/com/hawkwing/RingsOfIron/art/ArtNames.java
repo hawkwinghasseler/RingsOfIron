@@ -65,6 +65,23 @@ public final class ArtNames {
         return powered ? "edges/edge_conduit_tap" : "edges/edge_conduit_tap_unpowered";
     }
 
+    /** The valve plate over a pipe across a tile; arms ({@link #PIPE_ARM}) reach toward its pipe neighbors. */
+    public static final String PIPE_HUB = "tiles/pipe_hub";
+    /** One arm of a pipe across a tile, drawn toward the top edge and turned toward each neighbor. */
+    public static final String PIPE_ARM = "tiles/pipe_arm";
+    /** The tee where a tile's pipe arm meets a pipe along the edge, on the middle of the edge. */
+    public static final String EDGE_PIPE_TAP = "edges/edge_pipe_tap";
+
+    /** A pipe along one tile edge, laid out like an edge wall segment. */
+    public static String edgePipe(boolean horizontal) {
+        return "edges/edge_pipe_" + (horizontal ? "h" : "v");
+    }
+
+    /** Where edge pipes meet or end at a vertex, by the sides they leave toward; null for none. */
+    public static String edgePipeJoint(int mask) {
+        return mask == 0 ? null : "edges/edge_pipe_joint_" + sides(mask);
+    }
+
     /** A covering laid over the deck, or null for bare steel. */
     public static String covering(FloorCovering c) {
         return c == null || c == FloorCovering.NONE ? null : "tiles/covering_" + c.name().toLowerCase(Locale.ROOT);

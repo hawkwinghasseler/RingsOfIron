@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.lighting;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.MathUtils;
+import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -16,7 +17,8 @@ import java.util.Locale;
  * light its rooms while the craft has power (as the layout hangs them, or worked out by
  * {@link WallLightLayout} for a layout that does not say), each mounted system's
  * lamps, screens and glow (lit while the system runs, dark when it loses power or is switched
- * off or wrecked), live conduits, and fires. Placed in the grid's local meters, which are its
+ * off or wrecked), live conduits, fires, and the lamps of bulkhead doors (red shut, green open,
+ * while the craft has power), which light a little of the floor each side. Placed in the grid's local meters, which are its
  * craft's body frame.
  *
  * <p>A part the art marks with {@code data-light} lights (point, cone) or only glows (glow) as
@@ -35,6 +37,13 @@ public final class DeckLightRig {
     static final float REACH_PER_TILE = 2.2f;
     /** ...up to this. */
     static final float REACH_MAX = 7f;
+
+    /** How far a bulkhead door's lamps light the floor each side of it, tiles. */
+    static final float DOOR_LAMP_REACH = 1.6f;
+    /** How strong a door's lamp light is, 0-1. */
+    static final float DOOR_LAMP_STRENGTH = 0.35f;
+    /** How far off the door's line its light is placed on each side, tiles, so a shut door lights both. */
+    static final float DOOR_LAMP_OFFSET = 0.2f;
 
     /** Art of the light hung on deck walls. */
     public static final String WALL_LIGHT = "decor/wall_light";
@@ -79,6 +88,56 @@ public final class DeckLightRig {
                 }
             }
         }
+        // Last, so they are the first left out when a scene has more lights than it can cast
+        doors(grid, out);
+    }
+
+    /**
+     * Each standing bulkhead door's lamps, while the craft has power: a short light in their color
+     * on the floor each side of the door, from its middle. The lamps' color is the horizontal
+     * door art's (the vertical art is the same turned).
+     */
+    private void doors(ShipGridComponent grid, LightSpots out) {
+        if (!hasPower(grid)) return;
+        EmissiveLights.Art open = art.get("edges/bulkhead_door_open_h"), shut = art.get("edges/bulkhead_door_sealed_h");
+        for (int y = 0; y <= grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                EdgeWall e = grid.edgeH[y][x];
+                if (e != null && e.hasBulkhead && !e.isDestroyed()) {
+                    EmissiveLights.Art a = e.bulkheadSealed ? shut : open;
+                    doorLamp(grid, a, x, y - 1, x + 0.5f, y - DOOR_LAMP_OFFSET, out);
+                    doorLamp(grid, a, x, y, x + 0.5f, y + DOOR_LAMP_OFFSET, out);
+                }
+            }
+        }
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x <= grid.width; x++) {
+                EdgeWall e = grid.edgeV[y][x];
+                if (e != null && e.hasBulkhead && !e.isDestroyed()) {
+                    EmissiveLights.Art a = e.bulkheadSealed ? shut : open;
+                    doorLamp(grid, a, x - 1, y, x - DOOR_LAMP_OFFSET, y + 0.5f, out);
+                    doorLamp(grid, a, x, y, x + DOOR_LAMP_OFFSET, y + 0.5f, out);
+                }
+            }
+        }
+    }
+
+    /** A door lamp's light at ({@code tx}, {@code ty}) tiles, if the tile it shines on, (x, y), is floor. */
+    private void doorLamp(ShipGridComponent grid, EmissiveLights.Art a, int x, int y, float tx, float ty, LightSpots out) {
+        if (a == null || a.lights.length == 0) return;
+        Tile t = grid.getTile(x, y);
+        if (t == null || !t.isOpen()) return;
+        EmissiveLights.Source lamp = a.lights[0];
+        float ts = grid.tileSize;
+        LightSpot s = out.add();
+        s.x = grid.gridOriginLocal.x + tx * ts;
+        s.y = grid.gridOriginLocal.y + ty * ts;
+        s.reach = DOOR_LAMP_REACH * ts;
+        s.strength = DOOR_LAMP_STRENGTH;
+        // The lamps themselves are drawn by the door's own glow art
+        s.glow = 0f;
+        s.color.set(lamp.color);
+        s.color.a = 0f;
     }
 
     /** A wall light's lights: its art's top against the wall, centered along the edge. */

@@ -3,11 +3,13 @@
 # editor (gradlew :lwjgl3:runShipEditor) edits this file.
 #   symbol        one letter, unique across tile types and components
 #   behavior      REACTOR, SHIELD_EMITTER, TURRET_MOUNT (square mounts); LIFE_SUPPORT, HELM,
-#                 WEAPONS, CARGO, AIRLOCK, ENGINE (rectangular slots); DOCKING_PORT (hull edge)
+#                 WEAPONS, CARGO, AIRLOCK, TANK, ENGINE (rectangular slots); DOCKING_PORT (hull edge)
 #   sizes         mount sizes it comes in; leave out for every size of its mount kind
 #   color         how the editor draws it
 #   power_output  REACTOR: watts at full health by size (standard 1, 3, 10, 30 MW for S-XL)
 #   throughput    LIFE_SUPPORT: multiplies scrubbing, air and oxygen supply (1.0 standard)
+#   fluid         TANK: OXYGEN, NITROGEN or PROPELLANT (the default)
+#   capacity      TANK: kilograms by size (standard 150 kg of a gas, 1,000 kg of propellant a tile)
 # These restate the built-in letters; a component left out keeps its built-in meaning.
 
 [component.reactor]
@@ -69,3 +71,24 @@ name = "Docking port"
 symbol = "D"
 behavior = "DOCKING_PORT"
 color = "#e0e0e0"
+
+[component.tank]
+name = "Propellant tank"
+symbol = "P"
+behavior = "TANK"
+color = "#c08a3a"
+fluid = "PROPELLANT"
+
+[component.oxygen_tank]
+name = "Oxygen tank"
+symbol = "O"
+behavior = "TANK"
+color = "#6aa8e0"
+fluid = "OXYGEN"
+
+[component.nitrogen_tank]
+name = "Nitrogen tank"
+symbol = "N"
+behavior = "TANK"
+color = "#8a94a8"
+fluid = "NITROGEN"

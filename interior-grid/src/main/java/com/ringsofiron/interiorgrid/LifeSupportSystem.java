@@ -23,8 +23,12 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
  *       room comes back to full pressure once it is sealed.</li>
  *   <li>It releases up to {@link #OXYGEN_SUPPLY_RATE} mol of oxygen per second into served
  *       compartments whose air is short of the standard oxygen share.</li>
- *   <li>Nothing is released into a compartment that is venting to space. Tanks are not
- *       modelled: the supply never runs out.</li>
+ *   <li>Nothing is released into a compartment that is venting to space.</li>
+ *   <li>The air and oxygen come out of the oxygen and nitrogen tanks piped to the unit
+ *       ({@link TankSupply}): fresh air is mixed from both at the standard oxygen share, so it
+ *       stops when either runs dry, and the oxygen top-up stops when the oxygen does. Scrubbing
+ *       needs no tank. A ship with no tank of a gas at all (a layout from before tanks) is not
+ *       limited by that gas.</li>
  * </ul>
  * A unit that is switched off, unpowered or destroyed does nothing. Life support is far
  * too slow to keep up with a large fire, which uses oxygen much faster than this.
@@ -93,20 +97,39 @@ public class LifeSupportSystem extends FixedLogicSystem {
     private void runAll(Entity entity, float dt) {
         ShipGridComponent grid = gridMapper.get(entity);
         ShipSubsystemRegistryComponent registry = registryMapper.get(entity);
+        boolean oxygenTanks = TankSupply.hasTanks(registry, Fluid.OXYGEN);
+        boolean nitrogenTanks = TankSupply.hasTanks(registry, Fluid.NITROGEN);
         for (Entity e : registry.subsystems) {
             SubsystemComponent sub = subsystemMapper.get(e);
             if (sub == null || sub.type != SubsystemComponent.SubsystemType.LIFE_SUPPORT || !sub.isOperational) continue;
-            run(grid, sub.footprint, sub.throughput, dt);
+            run(grid, sub.footprint, sub.throughput, dt, oxygenTanks || nitrogenTanks ? sub : null, oxygenTanks, nitrogenTanks);
         }
     }
 
-    /** Runs one life support unit installed in {@code footprint} for dt seconds. */
+    /** Runs one life support unit installed in {@code footprint} for dt seconds, with no tanks to limit it. */
     public void run(ShipGridComponent grid, MountFootprint footprint, float dt) {
         run(grid, footprint, 1f, dt);
     }
 
-    /** Runs one life support unit whose rates are scaled by {@code throughput} (see {@link SubsystemComponent#throughput}). */
+    /**
+     * Runs one life support unit whose rates are scaled by {@code throughput} (see
+     * {@link SubsystemComponent#throughput}), with no tanks to limit it.
+     */
     public void run(ShipGridComponent grid, MountFootprint footprint, float throughput, float dt) {
+        run(grid, footprint, throughput, dt, null, false, false);
+    }
+
+    /**
+     * Runs one life support unit. With a {@code unit}, the gases it releases come out of the tanks
+     * piped to it: oxygen when {@code oxygenTanks}, nitrogen when {@code nitrogenTanks}; a gas the
+     * ship has no tanks for is not limited.
+     */
+    void run(ShipGridComponent grid, MountFootprint footprint, float throughput, float dt,
+             SubsystemComponent unit, boolean oxygenTanks, boolean nitrogenTanks) {
+        double oxygenMoles = unit != null && oxygenTanks
+                ? TankSupply.available(unit, Fluid.OXYGEN) / Fluid.OXYGEN.molarMass : Double.POSITIVE_INFINITY;
+        double nitrogenMoles = unit != null && nitrogenTanks
+                ? TankSupply.available(unit, Fluid.NITROGEN) / Fluid.NITROGEN.molarMass : Double.POSITIVE_INFINITY;
         Compartment home = homeCompartment(grid, footprint);
         if (home == null) return;
         collectServed(grid, home, served);
@@ -127,6 +150,13 @@ public class LifeSupportSystem extends FixedLogicSystem {
         for (Compartment c : served) if (!isVenting(grid, c)) deficitTotal += pressureDeficit(c);
         if (deficitTotal > 0) {
             double supply = Math.min(AIR_SUPPLY_RATE * throughput * dt, deficitTotal);
+            supply = Math.min(supply, Math.min(oxygenMoles / Compartment.STANDARD_O2_FRACTION,
+                    nitrogenMoles / (1.0 - Compartment.STANDARD_O2_FRACTION)));
+            double o2 = supply * Compartment.STANDARD_O2_FRACTION, n2 = supply - o2;
+            oxygenMoles -= o2;
+            nitrogenMoles -= n2;
+            if (unit != null && oxygenTanks) TankSupply.draw(unit, Fluid.OXYGEN, o2 * Fluid.OXYGEN.molarMass);
+            if (unit != null && nitrogenTanks) TankSupply.draw(unit, Fluid.NITROGEN, n2 * Fluid.NITROGEN.molarMass);
             for (Compartment c : served) {
                 double d = isVenting(grid, c) ? 0 : pressureDeficit(c);
                 if (d <= 0) continue;
@@ -139,7 +169,8 @@ public class LifeSupportSystem extends FixedLogicSystem {
         deficitTotal = 0;
         for (Compartment c : served) if (!isVenting(grid, c)) deficitTotal += oxygenDeficit(c);
         if (deficitTotal > 0) {
-            double supply = Math.min(OXYGEN_SUPPLY_RATE * throughput * dt, deficitTotal);
+            double supply = Math.min(Math.min(OXYGEN_SUPPLY_RATE * throughput * dt, deficitTotal), Math.max(0, oxygenMoles));
+            if (unit != null && oxygenTanks) TankSupply.draw(unit, Fluid.OXYGEN, supply * Fluid.OXYGEN.molarMass);
             for (Compartment c : served) {
                 double d = isVenting(grid, c) ? 0 : oxygenDeficit(c);
                 if (d > 0) c.oxygen += supply * d / deficitTotal;

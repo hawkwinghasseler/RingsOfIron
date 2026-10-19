@@ -10,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
@@ -31,6 +32,9 @@ import com.hawkwing.RingsOfIron.art.ExteriorArt;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.DeckView;
+import com.hawkwing.RingsOfIron.game.FirstPlay;
+import com.hawkwing.RingsOfIron.game.ShipRefit;
+import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.hawkwing.RingsOfIron.game.DoorForcing;
 import com.hawkwing.RingsOfIron.game.FactionStanding;
 import com.hawkwing.RingsOfIron.game.StationCrew;
@@ -43,6 +47,7 @@ import com.hawkwing.RingsOfIron.lighting.DeckLightRig;
 import com.hawkwing.RingsOfIron.lighting.EmissiveLights;
 import com.hawkwing.RingsOfIron.lighting.HullArt;
 import com.hawkwing.RingsOfIron.lighting.SceneLighting;
+import com.ringsofiron.aicrew.CrewBody;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -72,7 +77,8 @@ import java.nio.file.Paths;
 
 /**
  * The game: every module running together through {@link GameWorld}, starting from
- * {@link GameScenario}. Run with {@code gradlew :lwjgl3:runGame}.
+ * {@link GameScenario}. Run with {@code gradlew :lwjgl3:runGame}, or {@code gradlew :lwjgl3:runFirstPlay}
+ * for the scripted first play ({@link FirstPlay}): undock, fly, fight, dock for repair.
  *
  * <p>Controls, outside: W/S main engine, A/D turn, Z/C strafe, X rotation assist, Tab cycle
  * target, Space fire the guns and laser (the turrets lead the locked target themselves), R launch
@@ -85,7 +91,9 @@ import java.nio.file.Paths;
  *
  * <p>Docking: G arms the selected docking port and asks the nearest station for clearance (a
  * station that gives it reaches out with its collar and draws the ship in), or disarms it; H
- * selects the next port; U undocks. Docked at a station, T opens its market. The readout under the
+ * selects the next port; U undocks. Docked at a station, T opens its market and Y its yard, where
+ * Rebuild decks opens the ship editor on the ship's layout for the yard to rebuild it to (the game
+ * waits meanwhile; Ctrl+S rebuilds, Esc comes back). The readout under the
  * notices shows how the port lines up with the nearest free port of its size.
  *
  * <p>Burn planner, shown on the orbit map: N plans a burn, B selects the next one, Up/Down add
@@ -109,6 +117,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     private final Path assetsDir;
     private final Path modsDir;
+    /** Start with the scripted first play ({@link FirstPlay}) rather than free play. */
+    private final boolean firstPlayMode;
+    private FirstPlay firstPlay;
 
     private GameWorld world;
     private GameScenario game;
@@ -136,6 +147,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private HullArt hullArt;
     private boolean lightsOn = true;
     private float exteriorViewMeters = START_VIEW;
+    /** The ship editor, open for the yard to rebuild the ship's decks; the game waits while it is. */
+    private ShipEditor refitEditor;
+    private boolean refitDone;
+    private InputProcessor gameInput;
     private String notice;
     private float noticeTime;
 
@@ -154,8 +169,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
     }
 
     public RingsOfIronGame(Path assetsDir, Path modsDir) {
+        this(assetsDir, modsDir, false);
+    }
+
+    /** With {@code firstPlay}, the game starts docked at Highport with {@link FirstPlay}'s objectives. */
+    public RingsOfIronGame(Path assetsDir, Path modsDir, boolean firstPlay) {
         this.assetsDir = assetsDir;
         this.modsDir = modsDir;
+        this.firstPlayMode = firstPlay;
     }
 
     @Override
@@ -190,6 +211,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gun.setTarget(game.nextContact(null));
         hud.setTargeting(new CombatTargetingProvider(gun));
         docking = new PlayerDocking(world, () -> game.player, this::show);
+        gameHud.yard.setLayoutEditor(this::openRefit);
         world.combatEvents.intercepts.add((signal, hit) -> {
             if (hit.destroyed && hit.missile != null) explosions.add(new float[]{hit.point.x, hit.point.y, 0f});
         });
@@ -217,17 +239,28 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 return true;
             }
         }));
+        if (firstPlayMode) firstPlay = FirstPlay.start(world, game);
         show(game.content.report.hasErrors() ? "Content loaded with errors; see the log" : "Welcome aboard");
         if (game.content.report.hasErrors()) Gdx.app.error("RingsOfIron", game.content.report.toString());
     }
 
     @Override
     public void render() {
+        if (refitEditor != null && !refitDone) {
+            Gdx.gl.glViewport(0, 0, Gdx.graphics.getBackBufferWidth(), Gdx.graphics.getBackBufferHeight());
+            refitEditor.render();
+            return;
+        }
+        if (refitEditor != null) closeRefit();
         float delta = Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
         handleInput(delta);
         if (world.getCrash() == null) gun.update(delta);
         world.update(delta);
         noticeTime -= delta;
+        if (firstPlay != null) {
+            String next = firstPlay.update();
+            if (next != null) show(next.substring(next.indexOf(':') + 1).trim());
+        }
 
         TransformComponent pt = TRANSFORMS.get(game.player);
         Vector2 walker = hud.getViewMode().getMode() == ViewMode.INTERIOR ? avatarWorld(followAt) : null;
@@ -274,12 +307,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
         if (hud.getViewMode().getMode() == ViewMode.INTERIOR) {
             if (walker == null) return;
-            // Force the shut door across a dock: pry or hack it as its power allows (F), or cut it (B)
-            if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
+            // Force the shut door across a dock: pry or hack it as its power allows (F), or cut it (B).
+            // Standing anywhere else, the same keys order the crew to.
+            if (Gdx.input.isKeyJustPressed(Input.Keys.F) || Gdx.input.isKeyJustPressed(Input.Keys.B)) {
+                boolean cut = Gdx.input.isKeyJustPressed(Input.Keys.B);
                 DoorForcing.Target t = world.forcing.target(game.avatar, new DoorForcing.Target());
-                show(world.forcing.start(game.avatar, t.state == ForceMethod.DoorState.UNPOWERED ? ForceMethod.PRY : ForceMethod.HACK));
+                if (t.craft == null) show(world.forcing.order(game.player, cut));
+                else show(world.forcing.start(game.avatar, cut ? ForceMethod.CUT
+                        : t.state == ForceMethod.DoorState.UNPOWERED ? ForceMethod.PRY : ForceMethod.HACK));
             }
-            if (Gdx.input.isKeyJustPressed(Input.Keys.B)) show(world.forcing.start(game.avatar, ForceMethod.CUT));
             if (Gdx.input.isKeyJustPressed(Input.Keys.L)) {
                 lightsOn = !lightsOn;
                 show(lightsOn ? "Deck lighting on" : "Deck lighting off");
@@ -409,6 +445,44 @@ public class RingsOfIronGame extends ApplicationAdapter {
         // What the yard last said about its work on the ship
         if (!world.yard.notices.isEmpty()) show(world.yard.notices.get(world.yard.notices.size() - 1));
         world.yard.notices.clear();
+    }
+
+    /** Opens the ship editor on the player's layout, for the docked station's yard to rebuild the decks to. */
+    private void openRefit() {
+        ChassisDef layout = ShipRefit.layoutOf(world, game.player);
+        if (layout == null) {
+            show("The yard has no plans of this ship");
+            return;
+        }
+        gameInput = Gdx.input.getInputProcessor();
+        refitDone = false;
+        refitEditor = new ShipEditor(assetsDir, modsDir, new ShipEditor.Refit() {
+            @Override
+            public ChassisDef layout() {
+                return layout;
+            }
+
+            @Override
+            public String apply(ChassisDef rebuilt) {
+                String why = ShipRefit.apply(world, game.player, rebuilt);
+                if (why == null) show("The yard rebuilt the decks");
+                return why;
+            }
+
+            @Override
+            public void close() {
+                refitDone = true;
+            }
+        });
+        refitEditor.create();
+    }
+
+    /** Back from the ship editor to the game. */
+    private void closeRefit() {
+        refitEditor.dispose();
+        refitEditor = null;
+        Gdx.input.setInputProcessor(gameInput);
+        resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
     }
 
     private void show(String message) {
@@ -606,7 +680,17 @@ public class RingsOfIronGame extends ApplicationAdapter {
             shapes.identity();
             shapes.translate(at.x, at.y, 0f);
             shapes.rotate(0f, 0f, 1f, degrees);
-            if (lightsOn) lighting.addDeck(g, at.x, at.y, body.getAngle());
+            if (lightsOn) {
+                lighting.addDeck(g, at.x, at.y, body.getAngle());
+                float cos = MathUtils.cos(body.getAngle()), sin = MathUtils.sin(body.getAngle());
+                for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                    GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
+                    if (pos.ship != ship) continue;
+                    Vector2 local = pos.toShipLocal(g, tmp2);
+                    lighting.addCrew(at.x + cos * local.x - sin * local.y, at.y + sin * local.x + cos * local.y,
+                            CrewBody.RADIUS * g.tileSize);
+                }
+            }
             float s = g.tileSize;
             if (withArt) {
                 DeckView.atmosphere(shapes, g, blink);
@@ -722,6 +806,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         font.setColor(Color.SKY);
         String[] dock = docking.readout();
         for (int i = 0; i < dock.length; i++) font.draw(batch, dock[i], left, top - 90f - 20f * i);
+        if (firstPlay != null) {
+            font.setColor(Color.GOLD);
+            font.draw(batch, firstPlay.objective(), left, top - 90f - 20f * dock.length - 10f, STATUS_WIDTH - 10f,
+                    com.badlogic.gdx.utils.Align.left, true);
+        }
         if (hud.getViewMode().getMode() != ViewMode.INTERIOR) {
             font.setColor(Color.LIGHT_GRAY);
             font.draw(batch, "G arm port + ask clearance   H next port   U undock   T trade, Y yard when docked", hintX, 44f);
@@ -732,10 +821,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
     @Override
     public void resize(int width, int height) {
         gameHud.resize(width, height);
+        if (refitEditor != null) refitEditor.resize(width, height);
     }
 
     @Override
     public void dispose() {
+        if (refitEditor != null) refitEditor.dispose();
         gameHud.dispose();
         lighting.dispose();
         docking.dispose();

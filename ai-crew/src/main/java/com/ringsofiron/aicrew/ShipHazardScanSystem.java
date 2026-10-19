@@ -16,8 +16,9 @@ import com.ringsofiron.interiorgrid.crew.SealBreachTask;
 /**
  * Keeps each ship's task board in step with the grid: posts an {@link ExtinguishTask}
  * for every burning tile, a {@link SealBreachTask} for every hull breach that borders
- * the interior and a {@link RepairTask} for every damaged system, and cancels open
- * tasks that no longer need doing.
+ * the interior, a {@link RepairTask} for every damaged system and a {@link ManConsoleTask}
+ * for every helm and weapons console still standing, and cancels open tasks that no
+ * longer need doing.
  *
  * Combat and the hazard simulation post the same tasks as they happen; posting is
  * idempotent, so this scan only catches what they miss (and lets the crew prototype
@@ -61,9 +62,18 @@ public class ShipHazardScanSystem extends FixedIteratingSystem {
         if (reg != null) {
             for (Entity sys : reg.subsystems) {
                 SubsystemComponent s = sys.getComponent(SubsystemComponent.class);
-                if (s != null && s.health < 1f) board.post(new RepairTask(sys, s.footprint.originX, s.footprint.originY));
+                if (s == null) continue;
+                if (s.health < 1f) board.post(new RepairTask(sys, s.footprint.originX, s.footprint.originY));
+                if (isConsole(s.type) && !s.isDestroyed()) {
+                    board.post(new ManConsoleTask(sys, s.footprint.originX, s.footprint.originY));
+                }
             }
         }
+    }
+
+    /** True for the systems crew man: the helm and the weapons console. */
+    public static boolean isConsole(SubsystemComponent.SubsystemType type) {
+        return type == SubsystemComponent.SubsystemType.HELM || type == SubsystemComponent.SubsystemType.WEAPONS;
     }
 
     private static boolean bordersInterior(ShipGridComponent grid, int x, int y) {

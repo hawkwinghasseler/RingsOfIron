@@ -6,13 +6,20 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.utils.IntMap;
 import com.badlogic.gdx.utils.ObjectIntMap;
+import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.audiospatial.SoundField;
 import com.ringsofiron.audiospatial.SoundPropagation;
+import com.ringsofiron.audiospatial.backend.AcousticModel;
 import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
+import com.ringsofiron.audiospatial.backend.SoundEventDef;
 import com.ringsofiron.audiospatial.components.AudioEmitterComponent;
 import com.ringsofiron.audiospatial.components.AudioListenerComponent;
+import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Tile;
 
 /**
  * Works out how loud and how muffled each emitter is through the ship around it. Run it before
@@ -22,6 +29,12 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
  *   <li>Listener inside the emitter's ship: the direct line and the route around through the
  *       rooms are combined ({@link SoundPropagation}). Walls on the direct line cut it hard;
  *       the room route loses a little at each open door and more at each wall or sealed door.</li>
+ *   <li>Listener aboard a craft docked to the emitter's: the route through the rooms of both,
+ *       across the dock: from the emitter to a docked port's opening, through both port doors
+ *       (open or sealed, see {@link SoundField#edgeLossDb}) and the collars, and on through the
+ *       listener's craft. The best such route is the one heard, as a room path; there is no
+ *       direct line between two craft. With no route (hull or vacuum between), it is as from
+ *       outside.</li>
  *   <li>Listener outside, or aboard another ship: interior sounds are clamped to full occlusion
  *       and {@link #exteriorTransmission}.</li>
  *   <li>Exterior emitters are never occluded: hull impacts and weapon fire carry through the
@@ -46,6 +59,8 @@ public class AcousticOcclusionSystem extends EntitySystem {
     private final ObjectIntMap<ShipGridComponent> signatures = new ObjectIntMap<>();
     private final SoundPropagation.Result result = new SoundPropagation.Result();
     private final float[] beam = new float[2];
+    /** Fields from the tiles where sound comes aboard across a dock, per grid. */
+    private final ObjectMap<ShipGridComponent, IntMap<SoundField>> farFields = new ObjectMap<>();
 
     /** Volume of an interior sound heard from outside the ship, through the hull. */
     public float exteriorTransmission = 0.15f;
@@ -69,6 +84,7 @@ public class AcousticOcclusionSystem extends EntitySystem {
     @Override
     public void update(float deltaTime) {
         signatures.clear();
+        if (farFields.size > 16) farFields.clear(); // grids come and go with docking and loads
         AudioListenerComponent listener = listenerEntities.size() > 0 ? listeners.get(listenerEntities.first()) : null;
         for (Entity e : emitterEntities) {
             compute(emitters.get(e), listener);
@@ -96,6 +112,11 @@ public class AcousticOcclusionSystem extends EntitySystem {
         int[] et = grid.localToTile(emitter.localX, emitter.localY);
         float pressure = emitterPressure(grid, et[0], et[1]);
 
+        if (listener != null && listener.mode == AudioListenerComponent.Mode.INTERIOR
+                && listener.ship != emitter.ship && et[0] >= 0) {
+            ShipGridComponent there = listener.ship != null ? grids.get(listener.ship) : null;
+            if (there != null && across(emitter, grid, et, pressure, there, listener)) return;
+        }
         boolean listenerAboard = listener != null
                 && listener.mode == AudioListenerComponent.Mode.INTERIOR
                 && listener.ship == emitter.ship;
@@ -110,11 +131,7 @@ public class AcousticOcclusionSystem extends EntitySystem {
         }
         int walls = SoundPropagation.traceBeam(grid, emitter.localX, emitter.localY, listener.localX, listener.localY, beam);
 
-        int signature = signatures.get(grid, Integer.MIN_VALUE);
-        if (signature == Integer.MIN_VALUE) {
-            signature = SoundField.layoutSignature(grid);
-            signatures.put(grid, signature);
-        }
+        int signature = signature(grid);
         SoundField field = emitter.soundField;
         if (field == null || !field.matches(et[0], et[1], signature)) {
             field = SoundField.build(grid, et[0], et[1], signature);
@@ -129,6 +146,79 @@ public class AcousticOcclusionSystem extends EntitySystem {
         emitter.transmission = result.transmission;
         emitter.roomLossDb = field.reaches(lt[0], lt[1]) ? field.lossDb(lt[0], lt[1]) : Float.POSITIVE_INFINITY;
         emitter.pressure = Math.min(pressure, tilePressure(grid, lt[0], lt[1]));
+    }
+
+    /**
+     * Hears an emitter on {@code grid} from a listener aboard {@code there}, docked to it: the best
+     * route through the rooms out of the emitter's craft, across a link, and on to the listener.
+     *
+     * @return false if the craft are not joined or no route reaches the listener
+     */
+    private boolean across(AudioEmitterComponent emitter, ShipGridComponent grid, int[] et, float pressure,
+                           ShipGridComponent there, AudioListenerComponent listener) {
+        int[] lt = there.localToTile(listener.localX, listener.localY);
+        if (lt[0] < 0) return false;
+        SoundField field = emitter.soundField;
+        int signature = signature(grid);
+        if (field == null || !field.matches(et[0], et[1], signature)) {
+            field = SoundField.build(grid, et[0], et[1], signature);
+            emitter.soundField = field;
+        }
+        float bestKey = Float.POSITIVE_INFINITY, bestLoss = 0f, bestMuffle = 0f, bestLength = 0f;
+        float[] muffle = new float[1];
+        for (int i = 0; i < grid.links.size; i++) {
+            GridLink l = grid.links.get(i);
+            if (l.other != there || !field.reaches(l.x, l.y)) continue;
+            Tile a = grid.getTile(l.x, l.y), b = there.getTile(l.ox, l.oy);
+            if (a == null || b == null || !a.holdsAir() || !b.holdsAir()) continue;
+            float doorLoss = SoundField.edgeLossDb(l.edge(), muffle), doorMuffle = muffle[0];
+            doorLoss += SoundField.edgeLossDb(l.mate.edge(), muffle);
+            doorMuffle += muffle[0];
+            SoundField far = farField(there, l.ox, l.oy);
+            if (!far.reaches(lt[0], lt[1])) continue;
+            float loss = field.lossDb(l.x, l.y) + doorLoss + far.lossDb(lt[0], lt[1]);
+            float length = field.length(l.x, l.y) + l.gap * grid.tileSize + grid.tileSize + far.length(lt[0], lt[1]);
+            float key = loss + SoundField.DB_PER_METER * length;
+            if (key < bestKey) {
+                bestKey = key;
+                bestLoss = loss;
+                bestMuffle = field.muffleDb(l.x, l.y) + doorMuffle + far.muffleDb(lt[0], lt[1]);
+                bestLength = length;
+            }
+        }
+        if (bestKey == Float.POSITIVE_INFINITY) return false;
+        SoundEventDef def = catalog.get(emitter.eventPath);
+        float openGain = AcousticModel.distanceGain(bestLength, def.minDistance, def.maxDistance);
+        float room = SoundPropagation.ROOM_PATH_SCALE * openGain * SoundPropagation.dbToGain(bestLoss);
+        emitter.wallCount = SoundPropagation.FULL_MUFFLE_WALLS;
+        emitter.occlusion = MathUtils.clamp(bestMuffle / SoundPropagation.FULL_MUFFLE_DB, 0f, 1f);
+        emitter.transmission = openGain > 0f ? room / openGain : 0f;
+        emitter.roomLossDb = bestLoss;
+        emitter.pressure = Math.min(pressure, tilePressure(there, lt[0], lt[1]));
+        return true;
+    }
+
+    /** The field from tile (x, y) of a docked craft, where sound comes in across a link; cached per grid and tile. */
+    private SoundField farField(ShipGridComponent grid, int x, int y) {
+        int signature = signature(grid);
+        IntMap<SoundField> fields = farFields.get(grid);
+        if (fields == null) farFields.put(grid, fields = new IntMap<>());
+        int key = y * grid.width + x;
+        SoundField f = fields.get(key);
+        if (f == null || !f.matches(x, y, signature)) {
+            f = SoundField.build(grid, x, y, signature);
+            fields.put(key, f);
+        }
+        return f;
+    }
+
+    private int signature(ShipGridComponent grid) {
+        int signature = signatures.get(grid, Integer.MIN_VALUE);
+        if (signature == Integer.MIN_VALUE) {
+            signature = SoundField.layoutSignature(grid);
+            signatures.put(grid, signature);
+        }
+        return signature;
     }
 
     /** Pressure ratio at a tile, or 1 if compartments have not been built for this grid yet. */

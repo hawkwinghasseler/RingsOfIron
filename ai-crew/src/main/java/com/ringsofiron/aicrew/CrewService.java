@@ -9,6 +9,8 @@ import com.badlogic.gdx.math.RandomXS128;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
+import com.ringsofiron.interiorgrid.GridLink;
+import com.ringsofiron.interiorgrid.GridRayTraversal;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
@@ -47,6 +49,8 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     private final ObjectMap<ShipGridComponent, GridPathfinder> pathfinders = new ObjectMap<>();
     /** The Box2D world inside each deck crew are walking, and their bodies in it. */
     public final CrewPhysics physics = new CrewPhysics();
+    /** The bulkhead doors crew open on their way, and shut behind them. */
+    public final CrewDoors doors = new CrewDoors(this);
     public final RandomXS128 random;
 
     public CrewService(Engine engine) {
@@ -95,6 +99,35 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
         return p == null ? null : p.ship;
     }
 
+    /**
+     * How far {@code to} is from {@code from}, in tiles along each axis (Manhattan), on the same
+     * craft or on one docked to it (measured across the link, the craft being held port to port).
+     * Infinite between craft not joined.
+     */
+    public float distance(GridPositionComponent from, GridPositionComponent to) {
+        if (from.ship == to.ship) return Math.abs(to.x - from.x) + Math.abs(to.y - from.y);
+        GridLink l = linkBetween(grid(from.ship), grid(to.ship));
+        if (l == null) return Float.POSITIVE_INFINITY;
+        l.mate.carryAcross(to.x, to.y, across);
+        return Math.abs(across[0] - from.x) + Math.abs(across[1] - from.y);
+    }
+
+    /** True if nothing blocks the line from {@code from}'s tile to {@code to}'s, on one craft or through a dock. */
+    public boolean canSee(GridPositionComponent from, GridPositionComponent to) {
+        ShipGridComponent a = grid(from.ship), b = grid(to.ship);
+        if (a == null || b == null) return false;
+        return GridRayTraversal.hasLineOfSight(a, from.tileX(), from.tileY(), b, to.tileX(), to.tileY());
+    }
+
+    /** A link from grid {@code a} straight onto grid {@code b}, or null if they are not docked. */
+    private static GridLink linkBetween(ShipGridComponent a, ShipGridComponent b) {
+        if (a == null || b == null) return null;
+        for (int i = 0; i < a.links.size; i++) if (a.links.get(i).other == b) return a.links.get(i);
+        return null;
+    }
+
+    private final float[] across = new float[2];
+
     /** True if crew members {@code a} and {@code b} are enemies. */
     public boolean hostile(CrewMemberComponent a, CrewMemberComponent b) {
         return hostility.hostile(a.faction, b.faction);
@@ -104,6 +137,7 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     public void clearPathfinders() {
         pathfinders.clear();
         physics.clear();
+        doors.clear();
     }
 
     /** The pathfinder for a grid, created on first use. */
