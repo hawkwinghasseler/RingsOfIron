@@ -31,6 +31,8 @@ import java.util.function.Function;
 public class Navigation extends EntitySystem implements DropOutSource {
     /** Warp to burn stops this long before the burn, sim seconds. */
     public static final double WARP_LEAD = 60;
+    /** How many burns after the next the readout counts down to. */
+    static final int LATER_BURNS = 3;
     /** The closest approach is worked out again at most this often, real seconds. */
     static final float APPROACH_REFRESH = 0.25f;
     /** How far ahead an open orbit is searched for the closest approach, s. */
@@ -330,6 +332,21 @@ public class Navigation extends EntitySystem implements DropOutSource {
         if (n != null) {
             out.add(String.format(Locale.ROOT, "Next burn in %s: %.0f m/s   %s warps there", formatTime(n.time - now),
                     Math.hypot(n.prograde, n.radial), key(Action.WARP_TO_BURN)));
+            // A countdown for every burn after it too
+            ManeuverNodeComponent m = world.burns.nodes();
+            StringBuilder later = new StringBuilder();
+            int shown = 0;
+            for (int i = 0; i < m.nodes.size; i++) {
+                ManeuverNodeComponent.Node b = m.nodes.get(i);
+                if (b == n || b.time < now) continue;
+                if (shown++ == LATER_BURNS) {
+                    later.append(", ...");
+                    break;
+                }
+                later.append(later.length() == 0 ? "Then burns in " : ", ").append(formatTime(b.time - now))
+                        .append(String.format(Locale.ROOT, " (%.0f m/s)", Math.hypot(b.prograde, b.radial)));
+            }
+            if (later.length() > 0) out.add(later.toString());
         }
         String h = helm.describe();
         if (h != null) out.add(h);

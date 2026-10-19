@@ -127,8 +127,14 @@ public class OrbitMap extends Widget {
         for (OrbitPathProvider.MapMarker m : path.markers) marker(batch, m, cx, cy, half, scale, a);
         for (int i = 0; i + 1 < path.nodes.size; i += 2) {
             boolean selected = i / 2 == path.selectedNode;
-            dot(batch, cx + path.nodes.get(i) * scale, cy + path.nodes.get(i + 1) * scale,
-                    selected ? 7f : 5f, selected ? Color.WHITE : PLANNED, a);
+            float nx = cx + path.nodes.get(i) * scale, ny = cy + path.nodes.get(i + 1) * scale;
+            dot(batch, nx, ny, selected ? 7f : 5f, selected ? Color.WHITE : PLANNED, a);
+            // Every burn's countdown beside it, not only the next one's
+            if (font != null && i / 2 < path.nodeLabels.size) {
+                Color c = selected ? Color.WHITE : PLANNED;
+                font.setColor(c.r, c.g, c.b, a);
+                font.draw(batch, path.nodeLabels.get(i / 2), nx + 6f, ny - 4f - 14f * ((i / 2) % 2));
+            }
         }
         dot(batch, cx + (float) path.shipX * scale, cy + (float) path.shipY * scale, 5f, Color.WHITE, a);
         for (OrbitPathProvider.MapBody b : path.bodies) otherBody(batch, b, cx, cy, half, scale, a);

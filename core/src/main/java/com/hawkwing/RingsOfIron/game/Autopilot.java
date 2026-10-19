@@ -20,7 +20,8 @@ import java.util.function.Function;
  * closest approach, and once the target is within {@link HelmOrders#APPROACH_RANGE} hands the ship to
  * the helm to dock there ({@link HelmOrderComponent.Mode#DOCK}), or to approach it if it has no port.
  *
- * <p>It warps only after a drop it can account for (a burn, a crossing, the target coming close). A
+ * <p>While engaged it sets the warp: at 1x and physics warp it picks the level that suits the time
+ * to the next stop, and lets rails warp run. It warps only after a drop it can account for (a burn, a crossing, the target coming close). A
  * drop it can't (the player slowing time, a guard refusing warp, another craft coming close, pirates
  * about) holds it at 1x with a notice until the player raises warp or presses the autopilot key again.
  * Its state is saved on the ship ({@link AutopilotComponent}).
@@ -136,7 +137,7 @@ public class Autopilot implements DropOutSource {
         if (p != null && a.targetUuid.equals(p.targetUuid)) {
             notice("Autopilot: " + nav.transfer.accept(world.burns), NoticeLog.Kind.INFO);
         }
-        if (a.held || world.timeWarp.getWarp() != 1) return;
+        if (a.held || world.timeWarp.isRailsWarp()) return;
         double now = world.universe.now();
         if (!planned() && !legGoesOn(ship) && nav.transfer.proposal() == null) {
             if (world.universe.orbit(ship) == null && distance(ship, target) < HelmOrders.APPROACH_RANGE) {
@@ -159,11 +160,15 @@ public class Autopilot implements DropOutSource {
         ManeuverNodeComponent.Node n = nav.nextBurn();
         if (nav.helm.mode() == HelmOrderComponent.Mode.FLY_BURNS && n != null && n.time - now < nav.leadFor(n) + 5) return;
         int level = wait > 20 * 86400 ? 1_000_000 : wait > 2 * 86400 ? 100_000 : wait > 3 * 3600 ? 10_000
-                : wait > 600 ? 1_000 : wait > 60 ? 100 : wait > 2 ? 10 : 1;
-        if (level == 1) return;
+                : wait > 600 ? 1_000 : wait > 60 ? 100 : wait > 2 ? TimeWarpController.MAX_PHYSICS_WARP : 1;
+        // Rails warp refused for now (a burn being flown, a fire): as fast as the bubble goes meanwhile
+        if (level > TimeWarpController.MAX_PHYSICS_WARP && world.engine.getRailsWarpBlockedReason() != null) {
+            level = TimeWarpController.MAX_PHYSICS_WARP;
+        }
+        if (level == world.timeWarp.getWarp()) return;
         warping = true;
         try {
-            if (!world.timeWarp.setWarp(level) && level > TimeWarpController.MAX_PHYSICS_WARP) world.timeWarp.setWarp(10);
+            world.timeWarp.setWarp(level);
         } finally {
             warping = false;
         }
