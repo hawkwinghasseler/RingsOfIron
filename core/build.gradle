@@ -37,6 +37,11 @@ test {
   useJUnitPlatform()
   // ./gradlew :core:test --tests '*Round3CareerTest' -PcareerSeed=7 plays the scripted career on another seed
   if (project.hasProperty('careerSeed')) systemProperty 'career.seed', project.property('careerSeed')
+  // A failing test says why in the CI log, not only in the report
+  testLogging {
+    events 'failed'
+    exceptionFormat 'full'
+  }
 }
 
 jar {
