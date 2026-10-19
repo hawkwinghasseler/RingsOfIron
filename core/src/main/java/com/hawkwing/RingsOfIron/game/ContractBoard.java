@@ -798,7 +798,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         if (options.isEmpty()) return null;
         // Near jobs first: an operation's steps follow on from each other
         options.sort(java.util.Comparator.comparing(o -> o.tier));
-        Random rnd = new Random(op.id.hashCode() * 31L + op.step + (long) Math.floor(now() / DAY));
+        Random rnd = new Random(NewGame.mix(op.id.hashCode() * 31L + op.step, (long) Math.floor(now() / DAY)));
         int nearest = 0;
         while (nearest < options.size() && options.get(nearest).tier == options.get(0).tier) nearest++;
         Contract c = options.get(rnd.nextInt(nearest));
@@ -962,7 +962,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         int giver = world.standing.factionOf(station);
         FactionDef def = world.standing.factions().def(giver);
         if (station == null || node == null || def == null || def.hostileToAll) return out;
-        Random rnd = new Random(world.stationDice(stationUuid) * 31L + day);
+        Random rnd = new Random(NewGame.mix(world.stationDice(stationUuid), day));
         List<List<Contract>> kinds = new ArrayList<>();
         kinds.add(deliveries(node, giver));
         kinds.add(escorts(node, giver));

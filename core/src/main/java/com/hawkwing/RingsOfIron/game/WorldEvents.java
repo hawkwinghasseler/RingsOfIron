@@ -127,7 +127,9 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
 
     /** Rolls for day {@code day}: maybe an event, of a kind the world can give now. */
     void roll(long day) {
-        Random rnd = new Random(seed * 0x9E3779B97F4A7C15L + day);
+        // Mixed, not seed + day: java.util.Random's first draw barely differs for neighbouring seeds,
+        // so some careers rolled the same "no event" every day
+        Random rnd = new Random(NewGame.mix(seed, day));
         if (rnd.nextDouble() >= EVENT_CHANCE) return;
         List<Kind> kinds = new ArrayList<>(List.of(Kind.SHORTAGE, Kind.RAID, Kind.FREIGHTER_LOST, Kind.TENSION));
         Collections.shuffle(kinds, rnd);
