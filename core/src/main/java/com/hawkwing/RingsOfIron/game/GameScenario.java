@@ -475,6 +475,9 @@ public class GameScenario {
         world.events.seed = WorldEvents.DEFAULT_SEED;
         // ...and hostile traffic's own state starting again from the load
         world.hostiles.reset();
+        // ...nobody hired from today's pools, and crew morale drifting from the loaded time on
+        world.crewHiring.reset();
+        world.crewCareer.restartClock();
         world.engine.getSerializationService().loadFromFile(file);
         // A seeded career's combat and crew dice come from its seed, as at its start
         if (newGame.seeded) world.reseed(newGame.combatSeed(), newGame.crewSeed());

@@ -38,7 +38,8 @@ import java.util.Map;
  *       aboard (the starting crew, and those requisitioned with a ship) draw no wage from the
  *       player: their wage is 0.</li>
  * </ul>
- * Everything is kept on the crew's records, so nothing here is saved.
+ * Everything is kept on the crew's records, so nothing here is saved; a load starts the morale
+ * clock over ({@link #restartClock}).
  */
 public class CrewCareer extends FixedLogicSystem {
     /** Seconds between updates. */
@@ -89,6 +90,11 @@ public class CrewCareer extends FixedLogicSystem {
     @Override
     protected void updateFixed(float deltaTime) {
         update();
+    }
+
+    /** Starts morale's drift from the next update, for a load: the time before it is not drifted. */
+    public void restartClock() {
+        last = Double.NaN;
     }
 
     /** Drains the crew's experience, moves morale and notices deaths. */
