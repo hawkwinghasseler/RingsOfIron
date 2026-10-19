@@ -103,13 +103,18 @@ class GameScenarioTest {
 
         Entity ship = world.getPlayer();
         assertNotNull(ship);
-        int aboard = 0, thinking = 0;
+        int aboard = 0, thinking = 0, hands = 0;
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
-            if (e.getComponent(GridPositionComponent.class).ship == ship) aboard++;
-            if (e.getComponent(BehaviorTreeComponent.class) != null) thinking++;
+            boolean ours = e.getComponent(GridPositionComponent.class).ship == ship;
+            if (ours) aboard++;
+            if (ours && e.getComponent(BehaviorTreeComponent.class) != null) thinking++;
+            com.ringsofiron.aicrew.CrewMemberComponent c = e.getComponent(com.ringsofiron.aicrew.CrewMemberComponent.class);
+            if (c.faction == StationCrew.FACTION && c.home != null && c.home.getComponent(
+                    com.ringsofiron.stationsdocking.StationComponent.class) != null) hands++;
         }
         assertEquals(4, aboard, "the player and three crew, back aboard the loaded ship");
         assertEquals(3, thinking, "the AI crew think again");
+        assertEquals(12, hands, "every station's dock hands, still working for their stations");
         for (int i = 0; i < 180; i++) world.update(FRAME);
         assertTrue(world.macroSim.bubble().inBubble().contains(visitor), "and the game runs on with it");
     }

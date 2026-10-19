@@ -2,6 +2,8 @@ package com.ringsofiron.aicrew;
 
 import com.badlogic.ashley.core.Component;
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.coreengine.EntityRef;
+import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
 
@@ -32,6 +34,15 @@ public class CrewMemberComponent implements Component {
     public transient Entity carrying;
     /** The crew member carrying this one, or null. */
     public transient Entity carriedBy;
+    /** Goods in hand on a carry task, or null. */
+    public transient Load load;
+    /**
+     * The craft this crew member works for, when it is not always the one they are aboard: a
+     * station's loaders walk aboard docked ships and come home. Null means the craft they are on.
+     */
+    public transient Entity home;
+    /** {@link #home} as saved. */
+    public EntityRef homeRef;
     /** The medic treating this crew member, or null. */
     public transient Entity treatedBy;
     /** Item in hand, for display. */
@@ -52,6 +63,23 @@ public class CrewMemberComponent implements Component {
         this.faction = faction;
         this.def = CrewDef.forRole(role);
         this.health = def.maxHealth;
+    }
+
+    /** Goods carried by hand on a {@link CarryTask}. */
+    public static final class Load {
+        public final CarryTask task;
+        public final double units;
+
+        public Load(CarryTask task, double units) {
+            this.task = task;
+            this.units = units;
+        }
+    }
+
+    /** Makes {@code ship} this crew member's home, keeping {@link #homeRef} in step. */
+    public void setHome(Entity ship) {
+        home = ship;
+        homeRef = ship != null && ship.getComponent(UuidComponent.class) != null ? EntityRef.of(ship) : null;
     }
 
     public boolean isConscious() {

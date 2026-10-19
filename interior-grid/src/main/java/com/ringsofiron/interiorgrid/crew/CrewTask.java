@@ -17,7 +17,9 @@ public abstract class CrewTask {
         EXTINGUISH,
         RESCUE,
         TREAT,
-        MAN_CONSOLE
+        MAN_CONSOLE,
+        /** Carry goods from one craft's cargo bays to another's (or within one). */
+        CARRY
     }
 
     public enum Status {

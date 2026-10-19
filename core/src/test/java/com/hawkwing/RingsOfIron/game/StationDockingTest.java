@@ -118,6 +118,58 @@ class StationDockingTest {
     }
 
     @Test
+    void loadersCarryWhatThePlayerBuysAcrossTheDock() {
+        assertTrue(world.cargo.loaders(highport) >= 2, "Highport has dock hands");
+        TradeProvider.TradeBoard board = new TradeProvider.TradeBoard();
+        MarketTrade market = new MarketTrade(world);
+        int stationPort = nearestPort(MountFootprint.MountSize.S);
+        parkBeside(stationPort, 1.5f);
+        world.docking.arm(game.player, 0);
+        world.docking.requestClearance(game.player, 0);
+        waitForCollar();
+        for (int i = 0; i < 60 * 40 && !world.docking.isRigid(game.player); i++) world.update(FRAME);
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        market.collect(board);
+        assertTrue(board.carried, "the loaders carry trades here");
+        TradeProvider.TradeLine line = null;
+        for (TradeProvider.TradeLine l : board.lines) {
+            if (l.available > 20 && l.buyPrice > 0 && (line == null || l.buyPrice < line.buyPrice)) line = l;
+        }
+        assertNotNull(line, "something to buy");
+        String id = line.commodityId;
+        double credits = board.credits;
+        double ordered = market.buy(id, 4);
+        assertEquals(4, ordered, 1e-6);
+        board.clear();
+        market.collect(board);
+        TradeProvider.TradeLine now = find(board, id);
+        assertEquals(0, now.held, 1e-6, "nothing aboard yet");
+        assertEquals(4, now.onOrder, 1e-6, "four on their way");
+        assertEquals(credits, board.credits, 1e-6, "nothing paid until it lands");
+
+        for (int i = 0; i < 60 * 240 && find(board, id).held < 4 - 1e-6; i++) {
+            world.update(FRAME);
+            if (i % 60 == 0) {
+                board.clear();
+                market.collect(board);
+            }
+        }
+        board.clear();
+        market.collect(board);
+        now = find(board, id);
+        assertEquals(4, now.held, 1e-6, "the loaders brought it all aboard");
+        assertEquals(0, now.onOrder, 1e-6);
+        assertTrue(board.credits < credits, "and it was paid for as it landed");
+    }
+
+    private static TradeProvider.TradeLine find(TradeProvider.TradeBoard board, String id) {
+        for (TradeProvider.TradeLine l : board.lines) {
+            if (l.commodityId.equals(id)) return l;
+        }
+        return null;
+    }
+
+    @Test
     void railsWarpWaitsForTheCollarAndTakesTheDockedShipAlong() {
         int stationPort = nearestPort(MountFootprint.MountSize.S);
         parkBeside(stationPort, 1.5f);

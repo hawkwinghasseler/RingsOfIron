@@ -37,6 +37,13 @@ public class CrewDef {
     /** Speed multiplier while carrying a casualty. */
     public float carrySpeedFactor = 0.5f;
 
+    /** Most cargo carried by hand on one trip, m³. */
+    public float carryVolume = 2f;
+    /** Speed multiplier while carrying a load of goods. */
+    public float loadSpeedFactor = 0.8f;
+    /** Seconds to lift a load off a bay, and to set one down. */
+    public float loadTime = 2f;
+
     /** Fire intensity removed per second when fighting a fire. */
     public float extinguishRate = 0.3f;
     /** Subsystem health restored per second when repairing. */

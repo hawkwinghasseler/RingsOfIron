@@ -26,11 +26,13 @@ import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.DeckView;
+import com.hawkwing.RingsOfIron.game.StationCrew;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
 import com.hawkwing.RingsOfIron.game.PlayerGunnery;
+import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
@@ -114,6 +116,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private final Array<Entity> decks = new Array<>();
     private final Vector2 followAt = new Vector2();
     private final Vector2 tmp = new Vector2();
+    private final Vector2 tmp2 = new Vector2();
     private final Color color = new Color();
     private final float[] polygon = new float[16];
 
@@ -477,12 +480,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
             }
             DeckView.walkways(shapes, g, color, 1f);
             DeckView.walls(shapes, g, color);
-            drawCargo(g, ship.getComponent(CargoHoldComponent.class));
+            DeckView.cargo(shapes, g, ship.getComponent(CargoHoldComponent.class), color);
             for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
                 if (pos.ship != ship) continue;
-                shapes.setColor(e == game.avatar ? Color.WHITE : Color.GOLD);
-                shapes.circle(g.gridOriginLocal.x + pos.x * s, g.gridOriginLocal.y + pos.y * s, 0.3f * s, 12);
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                Color mark = e == game.avatar ? Color.WHITE : c.faction == StationCrew.FACTION ? DeckView.STATION_CREW : Color.GOLD;
+                Vector2 local = pos.toShipLocal(g, tmp2);
+                DeckView.crew(shapes, c, local.x, local.y, s, mark, color);
             }
         }
         shapes.end();
@@ -500,34 +505,6 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Vector2 local = pos.toShipLocal(g, out).scl(PhysicsManager.UNITS_PER_METER);
         Vector2 w = body.getWorldPoint(local);
         return out.set(w.x * PhysicsManager.METERS_PER_UNIT, w.y * PhysicsManager.METERS_PER_UNIT);
-    }
-
-    /**
-     * A crate on each loaded bay tile, one color per commodity, filled from the tile's aft edge as
-     * far as the stack fills the tile. Inside a filled ShapeRenderer batch.
-     */
-    private void drawCargo(ShipGridComponent grid, CargoHoldComponent hold) {
-        if (hold == null) return;
-        float s = grid.tileSize;
-        float inset = s * 0.12f;
-        for (int i = 0; i < hold.bayTileCount(); i++) {
-            CargoHoldComponent.CargoStack stack = hold.stacks[i];
-            if (stack == null) continue;
-            float fill = hold.fillAt(hold.bayX[i], hold.bayY[i]);
-            Vector2 p = grid.tileToLocal(hold.bayX[i], hold.bayY[i]);
-            float x0 = p.x - s / 2f + inset, y0 = p.y - s / 2f + inset, side = s - 2f * inset;
-            shapes.setColor(0.08f, 0.08f, 0.1f, 0.9f);
-            shapes.rect(x0, y0, side, side);
-            shapes.setColor(commodityColor(stack.commodity));
-            shapes.rect(x0, y0, Math.max(0.05f * side, side * fill), side);
-        }
-    }
-
-    /** A steady, distinct color for each commodity id. */
-    private Color commodityColor(String commodity) {
-        float hue = ((commodity.hashCode() & 0x7fffffff) % 360);
-        color.fromHsv(hue, 0.55f, 0.85f).a = 1f;
-        return color;
     }
 
     private void drawStatus() {

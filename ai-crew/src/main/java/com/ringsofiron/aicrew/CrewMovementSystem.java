@@ -61,7 +61,8 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             return;
         }
         GridNavGraph nav = service.pathfinder(grid).graph;
-        float speed = c.def.moveSpeed * (c.carrying != null ? c.def.carrySpeedFactor : 1f);
+        float speed = c.def.moveSpeed * (c.carrying != null ? c.def.carrySpeedFactor : 1f)
+                * (c.load != null ? c.def.loadSpeedFactor : 1f);
         PlayerAvatarComponent avatar = avatarM.get(e);
         if (avatar != null) {
             moveAvatar(p, avatar, nav, speed * dt);
@@ -91,8 +92,35 @@ public class CrewMovementSystem extends FixedIteratingSystem {
                 p.y += dy / dist * budget;
                 budget = 0f;
             }
+            // Walking back in off the walkway it stopped on
+            if (p.walkway != null && p.walkway.past(p.x, p.y) <= 0f) p.walkway = null;
         }
         if (!p.isMoving() && p.path.size > 0) p.path.clear();
+        if (!p.isMoving() && p.crossing != null && budget > 0f) crossOver(p, nav, budget);
+    }
+
+    /**
+     * Walks an AI crew member through the docked link they pathed to: straight out over the edge,
+     * across the collars, and in over the far craft's edge, where the crossing ends.
+     */
+    private void crossOver(GridPositionComponent p, GridNavGraph nav, float step) {
+        GridLink link = p.crossing;
+        Entity here = link.mate.otherShip;
+        if (p.ship == link.otherShip) {
+            if (p.walkway == null) {
+                p.crossing = null;
+                return;
+            }
+            // On the far side's walkway: in along its facing
+            Side in = p.walkway.side;
+            walkAcross(p, p.walkway, -in.dx * step, -in.dy * step);
+            if (p.walkway == null) p.crossing = null;
+        } else if (p.ship == here) {
+            Side out = link.side;
+            tryMove(p, nav, out.dx * step, out.dy * step);
+        } else {
+            p.crossing = null;
+        }
     }
 
     /** Free movement from input, one axis at a time so walls are slid along rather than stuck on. */
@@ -179,6 +207,8 @@ public class CrewMovementSystem extends FixedIteratingSystem {
      * door shut), or after a load, which keeps where they stood but not the walkway.
      */
     private static void keepAboard(GridPositionComponent p, ShipGridComponent grid) {
+        GridLink c = p.crossing;
+        if (c != null && (!c.grid().links.contains(c, true) || !c.canCross())) p.crossing = null;
         GridLink w = p.walkway;
         if (w != null && (w.grid() != grid || !grid.links.contains(w, true) || !w.canCross())) {
             p.setTile(w.x, w.y);
