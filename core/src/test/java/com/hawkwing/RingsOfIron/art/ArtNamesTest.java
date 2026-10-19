@@ -56,7 +56,7 @@ class ArtNamesTest {
             }
         }
         for (WeightClass w : WeightClass.values()) {
-            for (int[] size : new int[][]{{1, 1}, {1, 2}}) {
+            for (int[] size : new int[][]{{1, 1}, {1, 2}, {2, 1}}) {
                 assertArt(ArtNames.wedge(new HullPiece(HullPiece.Shape.WEDGE, 0, 0, size[0], size[1], 0, w, "hull_steel")));
             }
         }

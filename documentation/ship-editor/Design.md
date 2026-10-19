@@ -66,7 +66,7 @@ The screen is the ship on a tile grid, with a panel on the right. Three tabs at 
   1. **Paint**: left-click or drag paints the selected tile type; drag with Shift fills a rectangle.
   2. **Component**: places the selected component at the cursor with the selected size; R rotates. The ghost is green where the game would accept it and red (with the reason) where it would not. Every component shows an arrow for the way it faces (up, +y, at rotation 0).
   3. **Edge wall**: click near a tile edge to add or remove a thin wall there, with the weight class and bulkhead door chosen in the panel.
-  4. **Hull piece**: places a wedge or block of the size chosen in the panel; R rotates.
+  4. **Hull piece**: places a wedge or block of the size chosen in the panel, centered on the cursor; R rotates and X (or the Flip button) mirrors it left to right. A mirrored wedge is stored as the same wedge with width and height swapped, turned one step the other way, so the data has no flip of its own. A new piece replaces any piece it overlaps; the ghost is green or red like a component's, and a piece that would leave the grid is not placed.
   5. **Covering**: drag a rectangle to lay carpet.
   6. **Erase**: removes the wall light nearest the cursor's edge, else the component, hull piece, edge wall or covering under the cursor, or paints void.
   7. **Port**: click a docking port to toggle it active or passive.

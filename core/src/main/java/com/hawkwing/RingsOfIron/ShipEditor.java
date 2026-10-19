@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
+import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -398,7 +399,7 @@ public class ShipEditor extends ApplicationAdapter {
         }
         // Hull pieces (the art has wedges; blocks stay flat)
         for (ChassisDef.HullPiece p : m.hullPieces) {
-            if (withArt && "WEDGE".equals(p.shape)) continue;
+            if (withArt && wedgeArt(p) != null) continue;
             shapes.setColor(0.55f, 0.6f, 0.68f, 1f);
             drawPiece(p.shape, p.x, p.y, p.width, p.height, p.rotation);
         }
@@ -509,6 +510,12 @@ public class ShipEditor extends ApplicationAdapter {
 
     // ---- Art view ----
 
+    /** A wedge's art, or null for a block or a size the art pack has no wedge for (drawn flat). */
+    private TextureRegion wedgeArt(ChassisDef.HullPiece p) {
+        if (!"WEDGE".equals(p.shape)) return null;
+        return art.region(ArtNames.wedge(WeightClass.valueOf(p.weightClass), p.width, p.height));
+    }
+
     private boolean drawingArt() {
         return artView && art.region("tiles/floor") != null;
     }
@@ -553,9 +560,10 @@ public class ShipEditor extends ApplicationAdapter {
         }
         for (ChassisDef.HullPiece p : m.hullPieces) {
             if (!"WEDGE".equals(p.shape)) continue;
-            TextureRegion r = art.region("walls/hull_" + p.weightClass.toLowerCase(Locale.ROOT) + "_wedge_" + p.width + "x" + p.height);
+            TextureRegion r = wedgeArt(p);
+            if (r == null) continue;
             int pw = p.rotation % 2 == 0 ? p.width : p.height, ph = p.rotation % 2 == 0 ? p.height : p.width;
-            artCentered(r, sx(p.x + pw / 2f), sy(p.y + ph / 2f), p.width * scale, p.height * scale, p.rotation);
+            DeckArt.wedge(batch, r, sx(p.x + pw / 2f), sy(p.y + ph / 2f), scale, p.width, p.height, p.rotation);
         }
         for (ChassisModel.Mount mount : m.mounts) {
             MountFootprint f = mount.footprint(cat);
@@ -680,6 +688,23 @@ public class ShipEditor extends ApplicationAdapter {
         }
     }
 
+    private void rotateTool() {
+        rotation = (rotation + 1) % 4;
+        say("Rotation " + rotation * 90 + " deg");
+    }
+
+    /**
+     * Mirrors the hull piece tool left to right. A mirrored wedge is the same wedge with its width
+     * and height swapped, turned one step the other way, so the data needs no flip of its own.
+     */
+    private void flipPiece() {
+        int w = pieceWidth;
+        pieceWidth = pieceHeight;
+        pieceHeight = w;
+        rotation ^= 1;
+        say("Flipped");
+    }
+
     /** Turns the component under the cursor, if there is one; false leaves R to turn the tool. */
     private boolean rotateHovered() {
         ChassisModel m = model();
@@ -732,6 +757,26 @@ public class ShipEditor extends ApplicationAdapter {
         return new MountFootprint(type.mountKind(), size, o[0], o[1], rotation);
     }
 
+    /** The bottom-left tile of the hull piece tool's footprint, centered on the cursor. */
+    private int[] pieceOrigin() {
+        int w = rotation % 2 == 0 ? pieceWidth : pieceHeight, h = rotation % 2 == 0 ? pieceHeight : pieceWidth;
+        return new int[]{hoverX - (w - 1) / 2, hoverY - (h - 1) / 2};
+    }
+
+    /** Tries the hull piece tool at the cursor on a copy, and remembers whether the game would take it. */
+    private void updatePieceGhost(ChassisModel m, int[] o) {
+        String key = revision + ":piece:" + pieceShape + ":" + pieceWidth + "x" + pieceHeight + ":" + rotation + ":" + o[0] + "," + o[1];
+        if (key.equals(ghostKey)) return;
+        ghostKey = key;
+        ChassisModel copy = m.copy();
+        if (copy.addHullPiece(pieceShape, o[0], o[1], pieceWidth, pieceHeight, rotation, weight.name()) == null) {
+            ghostValid = false;
+            ghostReason = "it would not fit on the grid";
+            return;
+        }
+        judgeGhost(copy, null);
+    }
+
     /** Tries the component tool at the cursor on a copy, and remembers whether the game would take it. */
     private void updateGhost(ChassisModel m, MountFootprint f) {
         String key = revision + ":" + componentId + ":" + size + ":" + rotation + ":" + f.originX + "," + f.originY;
@@ -739,12 +784,17 @@ public class ShipEditor extends ApplicationAdapter {
         ghostKey = key;
         ChassisModel copy = m.copy();
         copy.place(componentId, size, f.originX, f.originY, rotation, catalog());
+        ShipPartCatalog.ComponentType type = catalog().component(componentId);
+        judgeGhost(copy, type != null && !type.sizes.contains(size) ? type.name + " does not come in size " + size : null);
+    }
+
+    /** Valid when the edited copy builds, or fails only the way the layout already did. */
+    private void judgeGhost(ChassisModel copy, String problem) {
         EditorProject.Check before = check();
         EditorProject.Check after = project.check(copy);
-        ShipPartCatalog.ComponentType type = catalog().component(componentId);
-        if (type != null && !type.sizes.contains(size)) {
+        if (problem != null) {
             ghostValid = false;
-            ghostReason = type.name + " does not come in size " + size;
+            ghostReason = problem;
         } else if (after.error == null || (before.error != null && before.error.equals(after.error))) {
             ghostValid = true;
             ghostReason = null;
@@ -770,8 +820,10 @@ public class ShipEditor extends ApplicationAdapter {
             shapes.rect(sx(f.originX), sy(f.originY), f.width() * scale, f.height() * scale);
         } else if (tool == Tool.HULL) {
             int w = rotation % 2 == 0 ? pieceWidth : pieceHeight, h = rotation % 2 == 0 ? pieceHeight : pieceWidth;
-            shapes.setColor(Color.YELLOW);
-            shapes.rect(sx(hoverX), sy(hoverY), w * scale, h * scale);
+            int[] o = pieceOrigin();
+            updatePieceGhost(m, o);
+            shapes.setColor(ghostValid ? Color.GREEN : Color.RED);
+            shapes.rect(sx(o[0]), sy(o[1]), w * scale, h * scale);
         } else if (tool != Tool.EDGE) {
             shapes.setColor(Color.YELLOW);
             shapes.rect(sx(hoverX), sy(hoverY), scale, scale);
@@ -793,7 +845,8 @@ public class ShipEditor extends ApplicationAdapter {
             }
         } else if (tool == Tool.HULL) {
             shapes.setColor(0.7f, 0.75f, 0.8f, 0.5f);
-            drawPiece(pieceShape, hoverX, hoverY, pieceWidth, pieceHeight, rotation);
+            int[] o = pieceOrigin();
+            drawPiece(pieceShape, o[0], o[1], pieceWidth, pieceHeight, rotation);
         } else if (tool == Tool.PAINT) {
             ShipPartCatalog.TileType t = cat.tile(tileId);
             if (t == null) return;
@@ -871,11 +924,18 @@ public class ShipEditor extends ApplicationAdapter {
                 changed();
                 break;
             }
-            case HULL:
+            case HULL: {
+                int[] o = pieceOrigin();
+                ChassisModel trial = m.copy();
+                if (trial.addHullPiece(pieceShape, o[0], o[1], pieceWidth, pieceHeight, rotation, weight.name()) == null) {
+                    say("The piece would not fit on the grid here");
+                    return;
+                }
                 beginEdit();
-                m.addHullPiece(pieceShape, hoverX, hoverY, pieceWidth, pieceHeight, rotation, weight.name());
+                m.addHullPiece(pieceShape, o[0], o[1], pieceWidth, pieceHeight, rotation, weight.name());
                 changed();
                 break;
+            }
             case PORT: {
                 ChassisModel.Mount mount = m.mountAt(hoverX, hoverY, cat);
                 if (mount == null || !ChassisModel.isPort(mount, cat)) {
@@ -1261,7 +1321,9 @@ public class ShipEditor extends ApplicationAdapter {
                 y -= LINE;
                 break;
             case HULL:
-                text(x, y, "Click to place over hull or void; R rotates", Color.GRAY);
+                text(x, y, "Click to place over hull or void; R rotates, X flips", Color.GRAY);
+                y -= LINE;
+                text(x, y, "A new piece replaces pieces it overlaps", Color.GRAY);
                 y -= LINE;
                 choice(x, y, "Shape", pieceShape, list("WEDGE", "BLOCK"), true, v -> pieceShape = v);
                 y -= LINE;
@@ -1271,6 +1333,16 @@ public class ShipEditor extends ApplicationAdapter {
                 y -= LINE;
                 choice(x, y, "Weight", weight, list(WeightClass.values()), true, v -> weight = v);
                 y -= LINE;
+                text(x, y, "Turn", Color.LIGHT_GRAY);
+                button(x + 120f, y, rotation * 90 + " deg", false, this::rotateTool);
+                button(x + 200f, y, "Flip", false, this::flipPiece);
+                y -= LINE;
+                if (ghostReason != null && !ghostValid) {
+                    for (String line : wrap("Here: " + ghostReason, PANEL_WIDTH - 2 * PAD)) {
+                        text(x, y, line, Color.SALMON);
+                        y -= LINE;
+                    }
+                }
                 break;
             case COVERING: {
                 text(x, y, "Drag a rectangle to lay a covering on its floors", Color.GRAY);
@@ -1953,10 +2025,10 @@ public class ShipEditor extends ApplicationAdapter {
                             : "Showing flat colors");
                     return true;
                 case com.badlogic.gdx.Input.Keys.R:
-                    if (!rotateHovered()) {
-                        rotation = (rotation + 1) % 4;
-                        say("Rotation " + rotation * 90 + " deg");
-                    }
+                    if (!rotateHovered()) rotateTool();
+                    return true;
+                case com.badlogic.gdx.Input.Keys.X:
+                    if (tab == Tab.LAYOUT && tool == Tool.HULL) flipPiece();
                     return true;
                 case com.badlogic.gdx.Input.Keys.TAB:
                     tab = Tab.values()[(tab.ordinal() + 1) % Tab.values().length];
