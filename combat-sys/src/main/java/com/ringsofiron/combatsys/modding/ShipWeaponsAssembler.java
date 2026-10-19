@@ -66,7 +66,7 @@ public class ShipWeaponsAssembler implements ComponentAssembler {
     }
 
     /** The turret mount or weapons console closest to a body-local point, or null if there is none. */
-    static Entity nearestWeaponSystem(Entity ship, float x, float y) {
+    public static Entity nearestWeaponSystem(Entity ship, float x, float y) {
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
         ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
         if (grid == null || registry == null) return null;
