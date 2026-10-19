@@ -125,7 +125,7 @@ class ShipyardTest {
         assertEquals(3, yard.ships.size);
         assertEquals("Gunship", yard.ships.get(1).name);
         assertEquals("Terran Patrol Authority", yard.ships.get(1).seller);
-        assertTrue(yard.ships.get(1).terms.startsWith("360,000 cr, "), yard.ships.get(1).terms);
+        assertTrue(yard.ships.get(1).terms.startsWith("310,000 cr, "), yard.ships.get(1).terms);
         assertEquals("Needs rank Lieutenant Commander", yard.ships.get(1).locked);
         assertEquals("", yard.prize, "no prize in tow");
         // Undocked, there is nothing to show
@@ -168,17 +168,17 @@ class ShipyardTest {
     }
 
     @Test
-    void theTradeInIsSixtyPercentOfTheShipsValueTimesItsCondition() {
+    void theTradeInIsItsShareOfTheShipsValueTimesItsCondition() {
         double value = Difficulty.shipValue(game.player);
         assertEquals(1f, Shipyard.condition(game.player), 1e-3, "a new corvette is sound");
-        assertEquals(0.6 * value, Shipyard.tradeIn(game.player), 1);
+        assertEquals(Shipyard.TRADE_IN_SHARE * value, Shipyard.tradeIn(game.player), 1);
         // A holed ship is worth less
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
         for (int x = 0; x < grid.width; x++) {
             var t = grid.getTile(x, 0);
             if (t != null && !t.isVoid()) t.integrity = 0.5f;
         }
-        assertTrue(Shipyard.tradeIn(game.player) < 0.6 * value);
+        assertTrue(Shipyard.tradeIn(game.player) < Shipyard.TRADE_IN_SHARE * value);
     }
 
     @Test
@@ -192,7 +192,7 @@ class ShipyardTest {
         Shipyard.Listing gunship = world.shipyard.listing("patrol_gunship");
         assertNull(world.shipyard.refusal(gunship));
         double cost = world.shipyard.cost(gunship, old);
-        assertEquals(gunship.price - 0.6 * Difficulty.shipValue(old), cost, 1);
+        assertEquals(gunship.price - Shipyard.TRADE_IN_SHARE * Difficulty.shipValue(old), cost, 1);
         List<Shipyard.Deal> deals = new ArrayList<>();
         world.shipyard.deals.add((s, d) -> deals.add(d));
         int people = crewOf(old).size();

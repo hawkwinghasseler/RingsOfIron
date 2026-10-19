@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntityListener;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.physics.box2d.Body;
@@ -9,6 +10,7 @@ import com.ringsofiron.aicrew.CrewDoors;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewSaveParticipant;
 import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.pilot.NpcCombatSystem;
 import com.ringsofiron.aicrew.pilot.NpcPilotSystem;
 import com.ringsofiron.aicrew.pilot.PilotReference;
@@ -352,6 +354,28 @@ public class GameWorld implements Disposable {
         // ai-crew
         crew = CrewFactory.install(engine.getEcsEngine());
         CrewSaveParticipant.install(crew, engine);
+        // A ship taken out of the world (crashed on the rails, lost, wrecked) takes whoever is aboard
+        // with it, so no crew go on working on a ship that is gone
+        engine.getEcsEngine().addEntityListener(Family.all(ShipGridComponent.class).get(), new EntityListener() {
+            @Override
+            public void entityAdded(Entity entity) {
+            }
+
+            @Override
+            public void entityRemoved(Entity ship) {
+                if (!ship.isRemoving() && !ship.isScheduledForRemoval()) return; // only its layout went (a refit)
+                ImmutableArray<Entity> all = crew.crewEntities();
+                List<Entity> aboard = new ArrayList<>();
+                for (int i = 0; i < all.size(); i++) {
+                    GridPositionComponent p = crew.position(all.get(i));
+                    if (p != null && p.ship == ship) aboard.add(all.get(i));
+                }
+                for (Entity e : aboard) {
+                    crew.releaseTask(e);
+                    engine.getEcsEngine().removeEntity(e);
+                }
+            }
+        });
         // Crews fight by their factions' wars and the player's standing; the career saves with the game
         standing = new FactionStanding(this::getPlayer);
         engine.getSerializationService().addParticipant(standing);

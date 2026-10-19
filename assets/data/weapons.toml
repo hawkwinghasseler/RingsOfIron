@@ -156,9 +156,10 @@ rare = true
 mount = "turret"
 slew_rate_deg = 120
 firing_arc_deg = 300
-cooldown = 0.09
+# An ace's gun: heavier rounds than the Mk1's, which chip a warship's hull where 30 mm grazes off
+cooldown = 0.12
 power_draw = 4.0e4
-projectile = "autocannon_30mm"
+projectile = "autocannon_40mm"
 spread_rad = 0.0015
 max_range = 3500.0
 sound = "evt_autocannon_fire"
@@ -180,6 +181,17 @@ mass = 0.4
 muzzle_speed = 1500.0
 damage_type = "kinetic"
 penetration_factor = 0.8
+ricochet_angle_deg = 65
+ricochet_restitution = 0.4
+spall = { count = 2, angle_deg = 20, fraction = 0.2 }
+max_lifetime = 15.0
+
+[projectile.autocannon_40mm]
+art = "autocannon_round"
+mass = 1.75
+muzzle_speed = 1800.0
+damage_type = "kinetic"
+penetration_factor = 0.85
 ricochet_angle_deg = 65
 ricochet_restitution = 0.4
 spall = { count = 2, angle_deg = 20, fraction = 0.2 }

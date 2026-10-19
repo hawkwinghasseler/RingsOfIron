@@ -29,7 +29,8 @@ import java.util.Set;
  * and a refit from its ship's {@code ace = true} loadouts, which carry a weapon no yard sells. One
  * that got away from the player keeps a grudge and hunts them whatever the odds. Beaten, it is worth
  * {@link #BOUNTY_SCALE} times a pirate's bounty, {@link #BOUNTY_STANDING} more standing, and a spare
- * rare weapon is left crated in its hold, for whoever boards it.
+ * rare weapon is left crated in its hold, for whoever boards it. An ace never runs on the odds and
+ * fights on to {@link #BREAK_OFF_HULL} (round 4: the one in round 3 ran at its first hit).
  */
 public final class PirateAces {
     public static final int MAX_ACES = 3;
@@ -38,6 +39,11 @@ public final class PirateAces {
     public static final float ACE_SKILL = 0.85f;
     public static final double BOUNTY_SCALE = 4;
     public static final int BOUNTY_STANDING = 6;
+    /**
+     * An ace breaks off below this share of its hull (a plain pirate at {@link HostileTraffic#BREAK_OFF_HULL}),
+     * and never runs on the odds: it fights on until it is nearly beaten.
+     */
+    public static final double BREAK_OFF_HULL = ShipDisablement.SURRENDER_HULL + 0.05;
 
     static final String[] CALLSIGNS = {"Red Kestrel", "Black Sal", "Iron Dagny", "Mad Ilse", "Cold Teodor",
             "Silent Oyelaran", "Lucky Mbeki", "Grey Vasquez", "Knife Haruto", "Old Brannigan"};
