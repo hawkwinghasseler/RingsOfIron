@@ -387,6 +387,9 @@ All in `combat-sys/src/main/java/com/ringsofiron/combatsys` (`components` packag
 - `MissileGuidanceSystem`: phases, ZEM guidance, burn and mass flow, seeker lock, fusing, and decoy flight.
 - `ImpactResolutionSystem`: ricochet, DDA penetration, explosive and beam damage, momentum transfer, and knock-on events.
 
+- **In the game** (round 2, core): `ShipDisablement` reads what combat leaves of a ship and marks it disabled (hull below 0.45, no reactor running, or no crew conscious) or wrecked (hull below 0.25). It also makes an NPC surrender when it is losing: hull below 0.55, fewer than half its crew conscious, or every gun silenced. A disabled ship stops fighting but stays in the world as a target for boarding and salvage. `HostileTraffic.firepower` rates a ship by its weapons' prices, with point defense at half; pirates compare it before picking a fight. A pirate or patrol shot at fights back. The details are in `documentation/progression/Design.md`.
+- **New weapon** (round 2): `chaingun_mk1`, the light raider's turret: 30 mm autocannon rounds every 0.15 s, 270° arc, 3 km range, 18,000 cr.
+
 ## Utilities
 - `FiringSolutionSolver`: pure intercept math, shared by AI, HUD and missiles.
 - `GridRayTraversal`: Amanatides & Woo DDA over `ShipGridComponent` (in interior-grid, so ai-crew's line of sight shares it).
