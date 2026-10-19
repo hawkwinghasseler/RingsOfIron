@@ -18,6 +18,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.bubble.BubbleTransitionListener;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.moddingdata.ModContext;
@@ -137,7 +138,7 @@ public class GameScenario {
                 Entity ship = world.engine.getEntity(uuid);
                 if (ship == null) return;
                 if (ship.getComponent(TransformComponent.class) == null) ship.add(new TransformComponent());
-                ship.add(new HudMarkerComponent("Freighter", HudMarkerComponent.Kind.FRIENDLY).radius(20f));
+                ship.add(HostileTraffic.markerFor(ship));
                 contacts.add(ship);
             }
 
@@ -179,6 +180,9 @@ public class GameScenario {
         world.macroSim.addFreighter("Hauler Kestrel", hold, 20_000, highport);
         for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), hold, 20_000, depot);
         for (int i = 0; i < 2; i++) world.macroSim.addFreighter("Lunar Hauler " + (i + 1), hold, 20_000, lunarMine);
+        // Pirates lurk by all three; the sponsor patrols Earth's stations, Selene guards its mine
+        world.hostiles.start(new String[]{depot, lunarMine, highport}, new String[]{depot, highport},
+                new String[]{lunarMine});
         content.hooks.fireWorldReady();
     }
 
@@ -245,7 +249,8 @@ public class GameScenario {
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(HudMarkerComponent.class).get())) {
             if (e == player || e.getComponent(StationComponent.class) != null) continue;
             contacts.add(e);
-            if (e.getComponent(HudMarkerComponent.class).kind == HudMarkerComponent.Kind.HOSTILE) raider = e;
+            if (e.getComponent(HudMarkerComponent.class).kind == HudMarkerComponent.Kind.HOSTILE
+                    && e.getComponent(HostileComponent.class) == null) raider = e;
         }
     }
 

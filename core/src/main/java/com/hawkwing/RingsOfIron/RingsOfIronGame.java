@@ -445,6 +445,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         // What the yard last said about its work on the ship
         if (!world.yard.notices.isEmpty()) show(world.yard.notices.get(world.yard.notices.size() - 1));
         world.yard.notices.clear();
+        // Pirates moving to intercept, robbing freighters, breaking off
+        for (String notice : world.hostiles.notices) show(notice);
+        world.hostiles.notices.clear();
     }
 
     /** Opens the ship editor on the player's layout, for the docked station's yard to rebuild the decks to. */

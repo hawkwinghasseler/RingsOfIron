@@ -239,6 +239,20 @@ public class HostileTrafficController {
         h.restUntil = Math.max(h.restUntil, now + REST);
     }
 
+    /**
+     * Sends a patrol on from the bubble (done there, or beaten): once back on the rails it flies to
+     * the next station of its route.
+     */
+    public void moveOn(String uuid) {
+        HostileComponent h = hostiles.get(uuid);
+        if (h == null) return;
+        h.brokeOff = true;
+        if (h.route.length > 1) {
+            h.routeIndex = (h.routeIndex + 1) % h.route.length;
+            h.stationUuid = h.route[h.routeIndex];
+        }
+    }
+
     // ---------------------------------------------------------------------------------------------
 
     private void schedule(String uuid, HostileComponent h, double t) {
