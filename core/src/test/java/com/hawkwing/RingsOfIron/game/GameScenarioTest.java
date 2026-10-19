@@ -181,7 +181,8 @@ class GameScenarioTest {
         assertTrue(weapons.mounts.size > 0);
         assertNotNull(sensor);
         float raiderGunnery = game.raider.getComponent(WeaponsComponent.class).mounts.first().gunnerySkill;
-        for (int i = 0; i < 60; i++) world.update(FRAME);
+        // Cole the marine walks to the weapons console and mans it
+        for (int i = 0; i < 60 * 20 && weapons.mounts.first().gunnerySkill < 0.75f; i++) world.update(FRAME);
         for (WeaponMountComponent m : weapons.mounts) assertEquals(0.75f, m.gunnerySkill, 1e-6f, "Cole the marine on the guns");
         assertEquals(0.5f, sensor.trackingSkill, 1e-6f);
         assertEquals(raiderGunnery, game.raider.getComponent(WeaponsComponent.class).mounts.first().gunnerySkill,
@@ -457,6 +458,35 @@ class GameScenarioTest {
         assertEquals(GameScenario.STARTING_CREDITS, trader.credits);
         assertEquals(bays.capacity(), trader.freeCargo(), 1e-9, "the hold is the bays");
         assertEquals(40, bays.capacity(), 1e-9);
+    }
+
+    @Test
+    void theShipGetsLighterAsItsTanksRunDown() {
+        world.update(FRAME);
+        Body body = game.player.getComponent(PhysicsBodyComponent.class).body;
+        float full = PhysicsManager.getMass(body);
+        for (SubsystemComponent t : com.ringsofiron.interiorgrid.TankSupply.tanks(
+                game.player.getComponent(ShipSubsystemRegistryComponent.class), com.ringsofiron.interiorgrid.Fluid.PROPELLANT)) {
+            t.contents -= 500;
+        }
+        world.update(FRAME);
+        assertEquals(full - 500, PhysicsManager.getMass(body), 5f, "the burned propellant no longer weighs on the hull");
+    }
+
+    @Test
+    void theCorvettesTanksArePipedToItsEngineAndLifeSupport() {
+        world.update(FRAME);
+        com.ringsofiron.physicsexterior.components.ThrusterComponent thrusters =
+                game.player.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
+        assertTrue(thrusters.fuel > 0, "the engine draws on the propellant tanks");
+        assertEquals(thrusters.fuelCapacity, thrusters.fuel, 1e-3, "they start full");
+        for (Entity e : game.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s.type == SubsystemComponent.SubsystemType.LIFE_SUPPORT) {
+                assertTrue(com.ringsofiron.interiorgrid.TankSupply.available(s, com.ringsofiron.interiorgrid.Fluid.OXYGEN) > 0);
+                assertTrue(com.ringsofiron.interiorgrid.TankSupply.available(s, com.ringsofiron.interiorgrid.Fluid.NITROGEN) > 0);
+            }
+        }
     }
 
     @Test

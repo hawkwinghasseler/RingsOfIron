@@ -17,6 +17,7 @@ import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
+import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipPartCatalog;
 import com.ringsofiron.interiorgrid.Side;
@@ -53,6 +54,10 @@ import java.util.function.Consumer;
  * ship to the view. Ctrl+Z / Ctrl+Y undo and redo, Ctrl+S saves, Esc quits (twice with unsaved
  * changes). Every edit is built through the game's own loader, so the panel shows what the game
  * will make of the layout, or why it refuses it. A toggles between the art pack and flat colors.
+ *
+ * <p>Opened from a station yard in the game ({@link Refit}), it edits the layout of the player's
+ * ship instead: only that layout, on the Layout tab, and Ctrl+S has the yard rebuild the ship to it
+ * rather than writing the data files. Esc goes back to the game.
  */
 public class ShipEditor extends ApplicationAdapter {
 
@@ -65,7 +70,7 @@ public class ShipEditor extends ApplicationAdapter {
 
     private enum Tool {
         PAINT("Paint"), COMPONENT("Component"), EDGE("Edge wall"), HULL("Hull piece"), COVERING("Covering"),
-        ERASE("Erase"), PORT("Port"), LIGHT("Light"), CONDUIT("Conduit");
+        ERASE("Erase"), PORT("Port"), LIGHT("Light"), CONDUIT("Conduit"), PIPE("Pipe");
 
         final String label;
 
@@ -116,8 +121,22 @@ public class ShipEditor extends ApplicationAdapter {
         }
     }
 
+    /** A station yard's refit of the player's ship, which the editor is open for. */
+    public interface Refit {
+        /** The layout the ship is built to now. */
+        ChassisDef layout();
+
+        /** Has the yard rebuild the ship to {@code layout}; returns null when done, or why not. */
+        String apply(ChassisDef layout);
+
+        /** Back to the game. */
+        void close();
+    }
+
     private final Path assetsDir;
     private final Path modsDir;
+    /** The yard refit this editor is open for, or null for the editor on its own. */
+    private final Refit refit;
     private EditorProject project;
 
     private ShapeRenderer shapes;
@@ -182,8 +201,14 @@ public class ShipEditor extends ApplicationAdapter {
     }
 
     public ShipEditor(Path assetsDir, Path modsDir) {
+        this(assetsDir, modsDir, null);
+    }
+
+    /** The editor open on the layout of a ship a station yard is to rebuild. */
+    public ShipEditor(Path assetsDir, Path modsDir, Refit refit) {
         this.assetsDir = assetsDir;
         this.modsDir = modsDir;
+        this.refit = refit;
     }
 
     @Override
@@ -195,12 +220,40 @@ public class ShipEditor extends ApplicationAdapter {
         ui = new OrthographicCamera();
         project = EditorProject.load(assetsDir, modsDir);
         if (!project.chassis.isEmpty()) chassisId = project.chassis.keySet().iterator().next();
+        if (refit != null) openRefit();
         resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         fit();
-        if (!project.problems.isEmpty()) say(project.problems.size() + " problem(s) loading data: " + project.problems.get(0));
+        if (refit != null) say("Refit: change the layout, then Ctrl+S to have the yard rebuild the ship, or Esc to leave it");
+        else if (!project.problems.isEmpty()) say(project.problems.size() + " problem(s) loading data: " + project.problems.get(0));
         else say("Loaded " + project.chassis.size() + " chassis, " + project.tiles.size() + " tile types and "
                 + project.components.size() + " components from " + project.dataDir);
         Gdx.input.setInputProcessor(new EditorInput());
+    }
+
+    /** Puts the ship's layout in the project, in place of its chassis as the data has it, and opens it. */
+    private void openRefit() {
+        ChassisDef def = refit.layout();
+        if (def == null) return;
+        ChassisModel model = ChassisModel.fromDef(def, catalog());
+        EditorProject.Item<ChassisModel> item = project.chassis.get(def.id);
+        if (item == null) item = project.addChassis(model);
+        item.value = model;
+        item.readOnly = false;
+        item.dirty = false;
+        chassisId = item.id;
+        revision++;
+    }
+
+    /** Has the yard rebuild the ship to the layout as drawn, and goes back to the game when it has. */
+    private void applyRefit() {
+        ChassisModel m = model();
+        if (m == null) return;
+        String why = refit.apply(m.toDef(catalog()));
+        if (why != null) {
+            say(why);
+            return;
+        }
+        refit.close();
     }
 
     @Override
@@ -330,6 +383,8 @@ public class ShipEditor extends ApplicationAdapter {
     }
 
     private void openChassis(String id) {
+        // A refit edits the one ship's layout
+        if (refit != null && !id.equals(chassisId)) return;
         chassisId = id;
         revision++;
         fit();
@@ -490,6 +545,30 @@ public class ShipEditor extends ApplicationAdapter {
             if (side != null) edgeRect(hoverX, hoverY, side, Math.max(4f, wire * 2f));
             else shapes.rect(sx(hoverX + 0.3f), sy(hoverY + 0.3f), scale * 0.4f, scale * 0.4f);
         }
+        // Pipes: a thin teal line along edges, and across tiles from the middle toward each neighbor
+        if (!withArt) {
+            shapes.setColor(0.45f, 0.75f, 0.85f, 1f);
+            float pw = Math.max(2f, scale * 0.08f);
+            for (ChassisDef.Pipe p : m.pipes) {
+                if (p.side != null) {
+                    edgeRect(p.x, p.y, Side.valueOf(p.side), pw);
+                    continue;
+                }
+                shapes.rect(sx(p.x + 0.4f), sy(p.y + 0.4f), scale * 0.2f, scale * 0.2f);
+                for (Side side : Side.values()) {
+                    if (!pipeToward(m, p.x, p.y, side)) continue;
+                    float cx = sx(p.x + 0.5f), cy = sy(p.y + 0.5f);
+                    if (side.dx != 0) shapes.rect(side.dx > 0 ? cx : cx - scale / 2f, cy - pw / 2f, scale / 2f, pw);
+                    else shapes.rect(cx - pw / 2f, side.dy > 0 ? cy : cy - scale / 2f, pw, scale / 2f);
+                }
+            }
+        }
+        if (tab == Tab.LAYOUT && tool == Tool.PIPE && m.inBounds(hoverX, hoverY) && !panning) {
+            shapes.setColor(0.45f, 0.75f, 0.85f, 0.6f);
+            Side side = conduitSide();
+            if (side != null) edgeRect(hoverX, hoverY, side, Math.max(4f, scale * 0.16f));
+            else shapes.rect(sx(hoverX + 0.3f), sy(hoverY + 0.3f), scale * 0.4f, scale * 0.4f);
+        }
         drawGhostFill(m, cat);
         shapes.end();
 
@@ -641,6 +720,7 @@ public class ShipEditor extends ApplicationAdapter {
             }
         }
         drawEdgeConduitArt(m, cat, t);
+        DeckArt.drawPipes(batch, art, pipeLayout(m), sx(0), sy(0), scale);
         batch.end();
     }
 
@@ -693,6 +773,26 @@ public class ShipEditor extends ApplicationAdapter {
                 batch.draw(tap, cx - t / 2f, cy - t / 2f, t, t);
             }
         }
+    }
+
+    /** The layout's pipes, for {@link DeckArt#drawPipes}. */
+    private static DeckArt.PipeLayout pipeLayout(ChassisModel m) {
+        return new DeckArt.PipeLayout() {
+            public int width() { return m.width(); }
+            public int height() { return m.height(); }
+            public boolean across(int x, int y) { return m.pipeAt(x, y, null) != null; }
+            public boolean alongH(int x, int y) {
+                return y < m.height() ? m.pipeAt(x, y, Side.BOTTOM) != null : m.pipeAt(x, y - 1, Side.TOP) != null;
+            }
+            public boolean alongV(int x, int y) {
+                return x < m.width() ? m.pipeAt(x, y, Side.LEFT) != null : m.pipeAt(x - 1, y, Side.RIGHT) != null;
+            }
+        };
+    }
+
+    /** Whether a pipe across tile (x, y) reaches toward {@code side}: to the next tile's, or one along that edge. */
+    private static boolean pipeToward(ChassisModel m, int x, int y, Side side) {
+        return m.pipeAt(x, y, side) != null || m.pipeAt(x + side.dx, y + side.dy, null) != null;
     }
 
     /**
@@ -926,7 +1026,7 @@ public class ShipEditor extends ApplicationAdapter {
             updatePieceGhost(m, o);
             shapes.setColor(ghostValid ? Color.GREEN : Color.RED);
             shapes.rect(sx(o[0]), sy(o[1]), w * scale, h * scale);
-        } else if (tool != Tool.EDGE && tool != Tool.CONDUIT) {
+        } else if (tool != Tool.EDGE && tool != Tool.CONDUIT && tool != Tool.PIPE) {
             shapes.setColor(Color.YELLOW);
             shapes.rect(sx(hoverX), sy(hoverY), scale, scale);
         }
@@ -1019,6 +1119,14 @@ public class ShipEditor extends ApplicationAdapter {
                     say("Took up the conduit at " + hoverX + "," + hoverY + " " + edge);
                     break;
                 }
+                // Then a pipe along that edge, or across the tile
+                if (m.pipeAt(hoverX, hoverY, edge) != null) {
+                    beginEdit();
+                    m.togglePipe(hoverX, hoverY, edge, cat);
+                    changed();
+                    say("Took up the pipe at " + hoverX + "," + hoverY + (edge == null ? "" : " " + edge));
+                    break;
+                }
                 beginEdit();
                 stroke = true;
                 strokeTo(m, cat);
@@ -1081,6 +1189,9 @@ public class ShipEditor extends ApplicationAdapter {
             case CONDUIT:
                 conduitDown(m, cat);
                 break;
+            case PIPE:
+                pipeDown(m, cat);
+                break;
             default:
                 break;
         }
@@ -1117,6 +1228,25 @@ public class ShipEditor extends ApplicationAdapter {
         m.paint(hoverX, hoverY, symbol, cat);
         changed();
         say(had ? "Took up the conduit across " + hoverX + "," + hoverY : "Laid a conduit across " + hoverX + "," + hoverY);
+    }
+
+    /**
+     * Near an edge, runs a pipe along it or takes up the one there; in the middle of a tile, lays a
+     * pipe across it (under the deck, components included) or takes it up.
+     */
+    private void pipeDown(ChassisModel m, ShipPartCatalog cat) {
+        Side side = conduitSide();
+        boolean had = m.pipeAt(hoverX, hoverY, side) != null;
+        beginEdit();
+        if (!m.togglePipe(hoverX, hoverY, side, cat)) {
+            undo.pop();
+            say("A pipe across a tile needs a floor; run it along an edge to go through a wall");
+            return;
+        }
+        changed();
+        String where = side == null ? "across " + hoverX + "," + hoverY
+                : "along the " + side.name().toLowerCase(Locale.ROOT) + " edge of " + hoverX + "," + hoverY;
+        say(had ? "Took up the pipe " + where : "Laid a pipe " + where);
     }
 
     /**
@@ -1237,10 +1367,17 @@ public class ShipEditor extends ApplicationAdapter {
         // Tabs
         float bx = x;
         bx += button(bx, y, "Layout", tab == Tab.LAYOUT, () -> tab = Tab.LAYOUT);
-        bx += button(bx, y, "Tiles", tab == Tab.TILES, () -> tab = Tab.TILES);
-        bx += button(bx, y, "Components", tab == Tab.COMPONENTS, () -> tab = Tab.COMPONENTS);
-        String unsaved = project.hasUnsavedChanges() ? "unsaved *" : "saved";
-        button(bx + 10, y, "Save (" + unsaved + ")", false, this::save);
+        if (refit != null) {
+            // The yard builds from the parts it has: tile types and components stay as they are
+            tab = Tab.LAYOUT;
+            bx += button(bx + 10, y, "Rebuild ship", false, this::applyRefit) + 20f;
+            button(bx, y, "Leave", false, refit::close);
+        } else {
+            bx += button(bx, y, "Tiles", tab == Tab.TILES, () -> tab = Tab.TILES);
+            bx += button(bx, y, "Components", tab == Tab.COMPONENTS, () -> tab = Tab.COMPONENTS);
+            String unsaved = project.hasUnsavedChanges() ? "unsaved *" : "saved";
+            button(bx + 10, y, "Save (" + unsaved + ")", false, this::save);
+        }
         y -= LINE * 1.6f;
         switch (tab) {
             case LAYOUT: y = layoutPanel(x, y); break;
@@ -1254,7 +1391,8 @@ public class ShipEditor extends ApplicationAdapter {
         List<String> status = wrap(this.status, PANEL_WIDTH - 2 * PAD);
         float sy = LINE * 3.2f;
         for (int i = 0; i < Math.min(2, status.size()); i++, sy -= LINE) text(x, sy, status.get(i), Color.YELLOW);
-        text(x, LINE * 1.0f, "Ctrl+S save  Ctrl+Z/Y undo/redo  F fit  Esc quit", Color.GRAY);
+        text(x, LINE * 1.0f, refit != null ? "Ctrl+S rebuild ship  Ctrl+Z/Y undo/redo  F fit  Esc leave"
+                : "Ctrl+S save  Ctrl+Z/Y undo/redo  F fit  Esc quit", Color.GRAY);
 
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (float[] r : rects) {
@@ -1273,6 +1411,7 @@ public class ShipEditor extends ApplicationAdapter {
 
     private float layoutPanel(float x, float y) {
         ShipPartCatalog cat = catalog();
+        if (refit != null) return layoutDetails(x, y + LINE * 1.4f, cat);
         text(x, y, "Chassis", Color.CYAN);
         y -= LINE;
         float bx = x;
@@ -1314,6 +1453,12 @@ public class ShipEditor extends ApplicationAdapter {
             y -= LINE;
             text(x, y, "Type an id (lowercase, digits, _) and press Enter", Color.GRAY);
         }
+        return layoutDetails(x, y, cat);
+    }
+
+    /** The open layout's size, check and tools, below the chassis list. */
+    private float layoutDetails(float x, float y, ShipPartCatalog cat) {
+        float bx;
         ChassisModel m = model();
         if (m == null) return y - LINE;
         boolean ed = editable();
@@ -1389,7 +1534,7 @@ public class ShipEditor extends ApplicationAdapter {
         Tool[] tools = Tool.values();
         for (int i = 0; i < tools.length; i++) {
             final Tool t = tools[i];
-            String label = (i + 1) + " " + t.label;
+            String label = (i + 1) % 10 + " " + t.label;
             layout.setText(font, label);
             if (bx + layout.width + 16 > panelX() + PANEL_WIDTH - PAD) {
                 bx = x;
@@ -1511,7 +1656,7 @@ public class ShipEditor extends ApplicationAdapter {
                 break;
             }
             case ERASE:
-                text(x, y, "Removes a light, edge conduit, component, hull piece or", Color.GRAY);
+                text(x, y, "Removes a light, edge conduit, pipe, component, hull piece or", Color.GRAY);
                 y -= LINE;
                 text(x, y, "covering, else the tile", Color.GRAY);
                 y -= LINE;
@@ -1523,6 +1668,16 @@ public class ShipEditor extends ApplicationAdapter {
                 y -= LINE;
                 text(x, y, m.edgeConduits.size() + (m.edgeConduits.size() == 1 ? " conduit" : " conduits")
                         + " along edges", Color.WHITE);
+                y -= LINE;
+                break;
+            case PIPE:
+                text(x, y, "Pipes join tanks to life support and engines. Click", Color.GRAY);
+                y -= LINE;
+                text(x, y, "near an edge to run one along it, even in a wall, or", Color.GRAY);
+                y -= LINE;
+                text(x, y, "a tile's middle to lay one across it, under any component", Color.GRAY);
+                y -= LINE;
+                text(x, y, m.pipes.size() + (m.pipes.size() == 1 ? " pipe" : " pipes"), Color.WHITE);
                 y -= LINE;
                 break;
             case PORT:
@@ -1909,6 +2064,45 @@ public class ShipEditor extends ApplicationAdapter {
             });
             y -= LINE;
         }
+        if ("TANK".equals(d.behavior)) {
+            text(x, y, "Holds", Color.LIGHT_GRAY);
+            float fx = x + 120f;
+            String current = d.fluid == null ? Fluid.PROPELLANT.name() : d.fluid;
+            for (Fluid f : Fluid.values()) {
+                final String fn = f.name();
+                fx += button(fx, y, fn.toLowerCase(Locale.ROOT), fn.equals(current), ed ? () -> {
+                    if (fn.equals(d.fluid)) return;
+                    beginEdit();
+                    d.fluid = fn;
+                    componentChanged(item);
+                } : () -> { });
+            }
+            y -= LINE;
+            Fluid fluid = Fluid.valueOf(current);
+            text(x, y, "Capacity, kg (blank for " + TomlNum.of(fluid.capacityPerTile) + " a tile)", Color.LIGHT_GRAY);
+            y -= LINE;
+            for (MountFootprint.MountSize s : MountFootprint.MountSize.values()) {
+                if (!s.exists(kind)) continue;
+                final String sn = s.name();
+                Double kg = d.capacity.get(sn);
+                field(x + 10f, y, "comp-capacity-" + sn, sn, kg == null ? "" : TomlNum.of(kg.floatValue()), ed, v -> {
+                    beginEdit();
+                    if (v.trim().isEmpty()) {
+                        d.capacity.remove(sn);
+                    } else {
+                        Float c = parseFloat(v);
+                        if (c == null || c <= 0) {
+                            undo.pop();
+                            say("Capacity is a positive number of kilograms");
+                            return;
+                        }
+                        d.capacity.put(sn, (double) c);
+                    }
+                    componentChanged(item);
+                });
+                y -= LINE;
+            }
+        }
         return y;
     }
 
@@ -2174,14 +2368,23 @@ public class ShipEditor extends ApplicationAdapter {
                 return true;
             }
             if (ctrl) {
-                if (keycode == com.badlogic.gdx.Input.Keys.S) save();
+                if (keycode == com.badlogic.gdx.Input.Keys.S) {
+                    if (refit != null) applyRefit();
+                    else save();
+                }
                 else if (keycode == com.badlogic.gdx.Input.Keys.Z) undoStep();
                 else if (keycode == com.badlogic.gdx.Input.Keys.Y) redoStep();
                 return true;
             }
             switch (keycode) {
                 case com.badlogic.gdx.Input.Keys.ESCAPE:
-                    if (!project.hasUnsavedChanges() || quitArmed) Gdx.app.exit();
+                    if (refit != null) {
+                        if (!project.hasUnsavedChanges() || quitArmed) refit.close();
+                        else {
+                            quitArmed = true;
+                            say("Layout changed: Esc again to leave it unbuilt, or Ctrl+S to have the yard rebuild the ship");
+                        }
+                    } else if (!project.hasUnsavedChanges() || quitArmed) Gdx.app.exit();
                     else requestClose();
                     return true;
                 case com.badlogic.gdx.Input.Keys.F:
@@ -2199,12 +2402,13 @@ public class ShipEditor extends ApplicationAdapter {
                     if (tab == Tab.LAYOUT && tool == Tool.HULL) flipPiece();
                     return true;
                 case com.badlogic.gdx.Input.Keys.TAB:
-                    tab = Tab.values()[(tab.ordinal() + 1) % Tab.values().length];
+                    if (refit == null) tab = Tab.values()[(tab.ordinal() + 1) % Tab.values().length];
                     return true;
                 default:
                     break;
             }
-            int n = keycode - com.badlogic.gdx.Input.Keys.NUM_1;
+            // 1-9 pick the first nine tools, 0 the tenth
+            int n = keycode == com.badlogic.gdx.Input.Keys.NUM_0 ? 9 : keycode - com.badlogic.gdx.Input.Keys.NUM_1;
             if (n >= 0 && n < Tool.values().length) {
                 tool = Tool.values()[n];
                 tab = Tab.LAYOUT;

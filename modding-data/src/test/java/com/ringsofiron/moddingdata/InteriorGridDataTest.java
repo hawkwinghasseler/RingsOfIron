@@ -48,6 +48,61 @@ class InteriorGridDataTest {
     }
 
     @Test
+    void solidSystemsCutNoDeckInTwo() {
+        for (ChassisDef def : ctx.defs.all(ChassisDef.class)) {
+            ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(toBlueprint(def));
+            for (ChassisBlueprintLoader.SubsystemPlacement p : r.subsystems) {
+                com.badlogic.ashley.core.Entity e = new com.badlogic.ashley.core.Entity();
+                e.add(new SubsystemComponent(p.footprint, p.type));
+                p.footprint.installed = e;
+            }
+            com.ringsofiron.interiorgrid.ShipGridComponent g = r.grid;
+            int[] all = regions(g, false), round = regions(g, true);
+            // Every two floor tiles joined with the systems ignored are still joined going round them
+            java.util.Map<Integer, Integer> seen = new java.util.HashMap<>();
+            for (int i = 0; i < all.length; i++) {
+                if (round[i] < 0) continue;
+                Integer before = seen.putIfAbsent(all[i], round[i]);
+                assertTrue(before == null || before == round[i], def.id + ": the tile at "
+                        + (i % g.width) + "," + (i / g.width) + " is cut off by a solid system");
+            }
+        }
+    }
+
+    /** Each open tile's region (doors counted open), going round obstacles if {@code obstacles}; -1 for none. */
+    private static int[] regions(com.ringsofiron.interiorgrid.ShipGridComponent g, boolean obstacles) {
+        int[] label = new int[g.width * g.height];
+        java.util.Arrays.fill(label, -1);
+        int next = 0;
+        java.util.ArrayDeque<int[]> queue = new java.util.ArrayDeque<>();
+        for (int y = 0; y < g.height; y++) {
+            for (int x = 0; x < g.width; x++) {
+                if (!floor(g, x, y, obstacles) || label[y * g.width + x] >= 0) continue;
+                label[y * g.width + x] = next;
+                queue.add(new int[]{x, y});
+                while (!queue.isEmpty()) {
+                    int[] t = queue.poll();
+                    for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                        int nx = t[0] + d[0], ny = t[1] + d[1];
+                        if (!floor(g, nx, ny, obstacles) || label[ny * g.width + nx] >= 0) continue;
+                        com.ringsofiron.interiorgrid.EdgeWall w = g.getEdgeBetween(t[0], t[1], nx, ny);
+                        if (w != null && !w.hasBulkhead && w.blocks()) continue;
+                        label[ny * g.width + nx] = next;
+                        queue.add(new int[]{nx, ny});
+                    }
+                }
+                next++;
+            }
+        }
+        return label;
+    }
+
+    private static boolean floor(com.ringsofiron.interiorgrid.ShipGridComponent g, int x, int y, boolean obstacles) {
+        com.ringsofiron.interiorgrid.Tile t = g.getTile(x, y);
+        return t != null && t.isOpen() && !(obstacles && com.ringsofiron.interiorgrid.CrewObstacles.blocks(g, null, x, y));
+    }
+
+    @Test
     void everyDataChassisBuildsAValidGrid() {
         assertFalse(ctx.defs.ids("chassis").isEmpty());
         for (ChassisDef def : ctx.defs.all(ChassisDef.class)) {
@@ -61,23 +116,22 @@ class InteriorGridDataTest {
     void corvetteHasATurretPerWeaponAndAWeaponsConsole() {
         ChassisDef corvette = ctx.defs.require("chassis", "corvette", ChassisDef.class);
         ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(toBlueprint(corvette));
-        int reactors = 0, turrets = 0, consoles = 0, bays = 0, ports = 0, engines = 0;
+        int reactors = 0, turrets = 0, consoles = 0, bays = 0, ports = 0;
         for (ChassisBlueprintLoader.SubsystemPlacement p : result.subsystems) {
             if (p.type == SubsystemComponent.SubsystemType.REACTOR) reactors++;
             if (p.type == SubsystemComponent.SubsystemType.TURRET_MOUNT) turrets++;
             if (p.type == SubsystemComponent.SubsystemType.WEAPONS) consoles++;
             if (p.type == SubsystemComponent.SubsystemType.CARGO) bays++;
             if (p.type == SubsystemComponent.SubsystemType.DOCKING_PORT) ports++;
-            if (p.type == SubsystemComponent.SubsystemType.ENGINE) engines++;
         }
         assertEquals(1, reactors);
         assertEquals(5, turrets, "nose, both beams, the launcher and the laser");
         assertEquals(1, consoles);
         assertEquals(4, bays, "two in the aft hold, two small ones forward");
         assertEquals(1, ports, "a Small docking port beside the hold");
-        assertEquals(2, engines, "two Small engines in the stern");
-        assertEquals(16, result.subsystems.size,
-                "helm, reactor, life support, 4 cargo bays, weapons console, 5 turrets, docking port, 2 engines");
+        assertEquals(19, result.subsystems.size,
+                "helm, reactor, life support, 4 cargo bays, weapons console, 5 turrets, docking port,"
+                        + " 2 engines, propellant, oxygen and nitrogen tanks");
         assertEquals(16, result.grid.width);
         assertTrue(result.grid.getTile(10, 3).isFlammable(), "the crew spaces are carpeted");
         assertFalse(result.grid.getTile(6, 3).isFlammable(), "the hold's walkway is bare deck");

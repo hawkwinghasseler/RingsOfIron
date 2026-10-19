@@ -11,6 +11,7 @@ import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.EdgeConduit;
+import com.ringsofiron.interiorgrid.Pipe;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -33,6 +34,9 @@ public final class DeckView {
     public static final Color SYSTEM = new Color(0.36f, 0.42f, 0.48f, 0.9f);
     /** A conduit run along a tile edge, with power and without. */
     public static final Color EDGE_CONDUIT = new Color(0.95f, 0.7f, 0.2f, 1f);
+    /** Pipes that reach a tank, and pipes that reach none (or are cut). */
+    public static final Color PIPE = new Color(0.45f, 0.75f, 0.85f, 1f);
+    public static final Color PIPE_DRY = new Color(0.3f, 0.4f, 0.45f, 1f);
     public static final Color EDGE_CONDUIT_UNPOWERED = new Color(0.42f, 0.35f, 0.18f, 1f);
 
     private DeckView() {
@@ -156,6 +160,46 @@ public final class DeckView {
                 if (c == null) continue;
                 shapes.setColor(c.isPowered ? EDGE_CONDUIT : EDGE_CONDUIT_UNPOWERED);
                 shapes.rect(ox + x * s - wire / 2f, oy + y * s, wire, s);
+            }
+        }
+        pipes(shapes, grid, ox, oy, s);
+    }
+
+    /**
+     * The grid's pipes as lines, in a filled batch with grid (0, 0) at ({@code ox}, {@code oy}) and
+     * tiles {@code s} across: along each edge that has one, and from the middle of each tile with
+     * one toward every pipe beyond it. Pale where they reach a tank, dark where they don't.
+     */
+    public static void pipes(ShapeRenderer shapes, ShipGridComponent grid, float ox, float oy, float s) {
+        float w = s * 0.08f;
+        for (int y = 0; y <= grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Pipe p = grid.pipeH[y][x];
+                if (p == null) continue;
+                shapes.setColor(p.isFed() ? PIPE : PIPE_DRY);
+                shapes.rect(ox + x * s, oy + y * s - w / 2f, s, w);
+            }
+        }
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x <= grid.width; x++) {
+                Pipe p = grid.pipeV[y][x];
+                if (p == null) continue;
+                shapes.setColor(p.isFed() ? PIPE : PIPE_DRY);
+                shapes.rect(ox + x * s - w / 2f, oy + y * s, w, s);
+            }
+        }
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Pipe p = grid.getPipe(x, y);
+                if (p == null) continue;
+                shapes.setColor(p.isFed() ? PIPE : PIPE_DRY);
+                float cx = ox + (x + 0.5f) * s, cy = oy + (y + 0.5f) * s;
+                for (Side side : Side.values()) {
+                    if (!grid.hasPipeToward(x, y, side)) continue;
+                    if (side.dx != 0) shapes.rect(side.dx > 0 ? cx : cx - s / 2f, cy - w / 2f, s / 2f, w);
+                    else shapes.rect(cx - w / 2f, side.dy > 0 ? cy : cy - s / 2f, w, s / 2f);
+                }
+                shapes.rect(cx - w * 1.5f, cy - w * 1.5f, w * 3f, w * 3f);
             }
         }
     }

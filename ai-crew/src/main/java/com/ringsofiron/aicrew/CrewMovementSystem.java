@@ -71,6 +71,7 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         if (getEntities() == null) return;
         service.physics.step(dt);
         for (int i = 0; i < getEntities().size(); i++) settle(getEntities().get(i), dt);
+        service.doors.update(dt);
         // Carried crew follow their carriers after everyone has moved
         for (int i = 0; i < getEntities().size(); i++) {
             Entity e = getEntities().get(i);
@@ -104,17 +105,17 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         }
         GridNavGraph nav = service.pathfinder(grid).graph;
         float speed = c.def.moveSpeed * (c.carrying != null ? c.def.carrySpeedFactor : 1f)
-                * (c.load != null ? c.def.loadSpeedFactor : 1f);
+                * (c.load != null ? c.def.loadSpeedFactor : 1f) * (c.suited ? c.def.suitSpeedFactor : 1f);
         PlayerAvatarComponent avatar = avatarM.get(e);
         boolean crossingOut = avatar == null && p.crossing != null && !p.isMoving();
         if (p.walkway != null || crossingOut || !nav.isWalkable(p.tileX(), p.tileY())) {
             // Off the deck proper: moved along without a body
             service.physics.release(e);
             if (avatar != null) moveAvatar(p, avatar, nav, speed * dt);
-            else walkPath(p, nav, speed * dt);
+            else walkPath(e, p, nav, speed * dt, dt);
             return;
         }
-        CrewBody b = service.physics.attach(e, grid, p.x, p.y);
+        CrewBody b = service.physics.attach(e, nav, p.x, p.y);
         if (avatar != null) {
             float mx = MathUtils.clamp(avatar.moveX, -1f, 1f), my = MathUtils.clamp(avatar.moveY, -1f, 1f);
             float len = (float) Math.sqrt(mx * mx + my * my);
@@ -133,8 +134,8 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         GridNode next = p.path.get(p.pathIndex);
         int cx = p.tileX(), cy = p.tileY();
         if ((next.x != cx || next.y != cy) && !nav.canStep(cx, cy, next.x, next.y)) {
-            // Blocked: back to the centre of the current tile and ask for a new route
-            blocked(p, b, cx, cy);
+            // A shut door: stand and open it. Else blocked: back to the centre of the current tile and ask for a new route
+            if (!service.doors.open(e, p, nav, cx, cy, next.x, next.y, dt)) blocked(p, b, cx, cy);
             b.hold(speed);
             return;
         }
@@ -196,12 +197,14 @@ public class CrewMovementSystem extends FixedIteratingSystem {
     }
 
     /** Walks the path without a body (off the deck proper), then out through a docked link if crossing. */
-    private void walkPath(GridPositionComponent p, GridNavGraph nav, float step) {
+    private void walkPath(Entity e, GridPositionComponent p, GridNavGraph nav, float step, float dt) {
         float budget = step;
         while (budget > 0f && p.isMoving()) {
             GridNode next = p.path.get(p.pathIndex);
             int cx = p.tileX(), cy = p.tileY();
             if ((next.x != cx || next.y != cy) && !nav.canStep(cx, cy, next.x, next.y)) {
+                // A shut door: stand and open it
+                if (service.doors.open(e, p, nav, cx, cy, next.x, next.y, dt)) return;
                 // Blocked: settle back on the centre of the current tile and ask for a new route
                 p.setTile(cx, cy);
                 p.stop();

@@ -7,6 +7,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.GridLink;
@@ -37,12 +38,29 @@ public class CrewAgent {
 
     private final ObjectFloatMap<CrewTask> ignoreUntil = new ObjectFloatMap<>();
     final Array<GridNode> pathScratch = new Array<>();
+    /** The shut doors this crew member may open on the craft they are aboard ({@link com.ringsofiron.aicrew.CrewDoors}). */
+    public final GridNavGraph.DoorKey doorKey;
+    /** Crew aboard this one's ship, gathered while looking for hostiles. */
+    final Array<Entity> aboardScratch = new Array<>();
 
     public CrewAgent(Entity entity, CrewMemberComponent crew, GridPositionComponent pos, CrewService service) {
         this.entity = entity;
         this.crew = crew;
         this.pos = pos;
         this.service = service;
+        doorKey = (x, y, nx, ny) -> service.doors.mayOpen(entity, pos.ship, x, y, nx, ny);
+    }
+
+    /** A path on the craft aboard from (sx, sy) to (tx, ty), through doors this crew member may open; see {@link GridPathfinder#findPath}. */
+    public boolean findPath(int sx, int sy, int tx, int ty, Array<GridNode> out) {
+        GridPathfinder pf = pathfinder();
+        return pf != null && pf.findPath(sx, sy, tx, ty, out, doorKey);
+    }
+
+    /** The nearest tile aboard that {@code goal} accepts, through doors this crew member may open; see {@link GridPathfinder#nearest}. */
+    public boolean nearest(int sx, int sy, GridPathfinder.TilePredicate goal, Array<GridNode> out) {
+        GridPathfinder pf = pathfinder();
+        return pf != null && pf.nearest(sx, sy, goal, out, doorKey);
     }
 
     public ShipGridComponent grid() {
@@ -70,7 +88,7 @@ public class CrewAgent {
             if (!pos.isMoving() && pos.walkway == null && spots.test(x, y)) return Travel.ARRIVED;
             GridNode dest = pos.destination();
             if (dest != null && pos.isMoving() && !pos.pathBlocked && spots.test(dest.x, dest.y)) return Travel.GOING;
-            if (!pf.nearest(x, y, spots, pathScratch)) return Travel.UNREACHABLE;
+            if (!pf.nearest(x, y, spots, pathScratch, doorKey)) return Travel.UNREACHABLE;
             pos.setPath(pathScratch);
             return Travel.GOING;
         }
@@ -82,7 +100,7 @@ public class CrewAgent {
         }
         GridNode dest = pos.destination();
         if (dest != null && pos.isMoving() && !pos.pathBlocked && dest.x == link.x && dest.y == link.y) return Travel.GOING;
-        if (!pf.findPath(x, y, link.x, link.y, pathScratch)) return Travel.UNREACHABLE;
+        if (!pf.findPath(x, y, link.x, link.y, pathScratch, doorKey)) return Travel.UNREACHABLE;
         pos.setPath(pathScratch);
         return Travel.GOING;
     }

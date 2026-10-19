@@ -28,6 +28,7 @@ import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
 import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
 import com.ringsofiron.combatsys.systems.WeaponControlSystem;
 import com.ringsofiron.coreengine.GameEngine;
+import com.ringsofiron.coreengine.TickProfiler;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
@@ -38,6 +39,8 @@ import com.ringsofiron.interiorgrid.LifeSupportSystem;
 import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.PowerRoutingSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
+import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.macrosim.MacroSaveParticipant;
 import com.ringsofiron.macrosim.MacroSimSystem;
 import com.ringsofiron.macrosim.MacroSimulation;
@@ -177,6 +180,8 @@ public class GameWorld implements Disposable {
     private final Modules modules;
     private final SwitchableCommodityCatalog commodities = new SwitchableCommodityCatalog(new DefaultCommodityCatalog());
     private ModContext content;
+    /** What ships collide on, once content has loaded. */
+    private ShipHulls hulls;
     private Crash crash;
     private final List<Entity> wrecks = new ArrayList<>();
     private final double[] trueState = new double[4];
@@ -262,9 +267,17 @@ public class GameWorld implements Disposable {
         engine.addSystem(new GridHazardSystem());
         engine.addSystem(new PowerRoutingSystem());
         engine.addSystem(new LifeSupportSystem());
+        // Thrust and planned burns burn propellant from the tanks piped to the engines
+        engine.addSystem(new PropellantFeed());
+        orbitalEvents.burnBudget = (ship, dv) -> {
+            ShipGridComponent.MassProperties m = shipMass(ship);
+            return m == null ? dv : PropellantFeed.payForBurn(ship, m.mass, dv);
+        };
         engine.getSerializationService().addParticipant(new InteriorGridSaveParticipant(engine));
         // Traded goods sit in the ships' cargo bays and weigh them down
         engine.addSystem(new ShipCargo(this::shipMass));
+        // ...and so do the tanks, lighter as they run down
+        engine.addSystem(new TankMass(this::shipMass));
         // Watches whichever ship the player is flying now.
         InteriorHazardWarpGuard hazards = new InteriorHazardWarpGuard(null);
         engine.addRailsWarpGuard(() -> {
@@ -300,6 +313,8 @@ public class GameWorld implements Disposable {
         // stations-docking: the yards fit weapons from combat-sys's defs
         yard = new StationYard(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, combatDefs);
         engine.addSystem(yard);
+        // NPC freighters fill their tanks wherever they dock
+        engine.addSystem(new FreighterRefueling(docking::dockedTo));
         // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
         // and hit, then hits resolve and beams burn. Their step listeners run in the order added here.
         sensors = new SensorTrackingSystem(physics, modules.combatSeed + 1);
@@ -355,7 +370,9 @@ public class GameWorld implements Disposable {
         bootstrap.beforeScripts(InteriorGridData::install);
         // Docking ports come from the chassis the interior was built from.
         bootstrap.beforeScripts(DockingData::install);
-        bootstrap.beforeScripts(ctx -> ShipPhysicsAssembler.register(ctx.factory, physics, gridMass(ctx)));
+        // Ships collide on their hull art's collision layer, else on their layout
+        bootstrap.beforeScripts(ctx -> ShipPhysicsAssembler.register(ctx.factory, physics, gridMass(ctx),
+                hulls = new ShipHulls(assetsDir, ctx)));
         // Weapons after the interior: each hardpoint is wired to the nearest weapon system.
         bootstrap.beforeScripts(ctx -> ShipWeaponsAssembler.register(ctx.factory, combatDefs));
         for (Consumer<ModContext> step : modules.contentRegistrations) bootstrap.beforeScripts(step);
@@ -395,7 +412,10 @@ public class GameWorld implements Disposable {
     /** One rendered frame. Once the player has crashed the world stops. */
     public void update(float frameDelta) {
         if (crash != null) return;
+        TickProfiler profiler = engine.getProfiler();
+        long start = profiler == null ? 0 : System.nanoTime();
         timeWarp.update(frameDelta);
+        if (profiler != null) profiler.record("frame/TimeWarpController", System.nanoTime() - start);
         engine.update(frameDelta);
         for (Entity wreck : wrecks) engine.removeEntity(wreck);
         wrecks.clear();
@@ -461,7 +481,7 @@ public class GameWorld implements Disposable {
 
     /**
      * Mass, center and inertia of a ship from its interior grid and the loaded materials, with the
-     * cargo in its bays. Null for a ship without a grid, or before content has loaded.
+     * cargo in its bays and what its tanks hold. Null for a ship without a grid, or before content has loaded.
      */
     public ShipGridComponent.MassProperties shipMass(Entity ship) {
         return content == null ? null : shipMass(ship, content.defs);
@@ -474,7 +494,20 @@ public class GameWorld implements Disposable {
         ShipGridComponent.MassProperties m = grid.computeMassProperties(materials);
         CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
         if (hold != null) hold.addMassTo(grid, m);
+        ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (registry != null) TankSupply.addMassTo(grid, registry, m);
         return m;
+    }
+
+    /**
+     * Gives a ship's body the collision shape of its current layout (see {@link ShipHulls}), as after
+     * a yard rebuilds its decks. Its mass is left to the caller. Returns false if nothing changed:
+     * no body, no grid, or content not loaded.
+     */
+    public boolean rebuildHull(Entity ship) {
+        PhysicsBodyComponent pb = ship.getComponent(PhysicsBodyComponent.class);
+        if (hulls == null || pb == null || pb.body == null) return false;
+        return PhysicsManager.replacePolygonFixtures(pb.body, hulls.hullFor(ship, null));
     }
 
     /** A ship's mass for the physics assembler, from {@link #shipMass}. */

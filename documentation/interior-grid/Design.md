@@ -67,11 +67,11 @@ Ship systems install into fixed-size mounts (`MountFootprint`):
 | L | 3×3 | 3×7 |
 | XL | 5×5 | 5×12 |
 
-- **Primary** systems (generators/reactors, shield emitters, turret mounts) use square mounts. **Auxiliary and utility** systems (life support, helm, weapons console, cargo, airlock, engine) use rectangular slots, which can be placed in either orientation. Each `SubsystemType` declares which kind it needs, and a system cannot be installed in the wrong kind.
+- **Primary** systems (generators/reactors, shield emitters, turret mounts) use square mounts. **Auxiliary and utility** systems (life support, helm, weapons console, cargo, airlock, tanks, engines) use rectangular slots, which can be placed in either orientation. Each `SubsystemType` declares which kind it needs, and a system cannot be installed in the wrong kind.
 - A mount's footprint is its origin (bottom-left tile), size, kind and rotation. A rotation of 1 or 3 turns a rectangular slot on its side; on a square mount it only sets the system's facing.
 - **Every tile in the footprint belongs to the installed system**, so a hit on any of them damages it. `Tile.mount` points at the footprint, and `MountFootprint.installed` at the system entity; `ShipGridComponent.subsystemAt(x, y)` is the tile→subsystem index combat uses.
 - A footprint must lie entirely on interior floor, may not overlap another mount, and may not have an edge wall running through it.
-- Crew walk over every mount footprint. Once systems get their own graphics and colliders for details and interactable parts, those parts will decide what blocks on each tile.
+- What crew cannot walk through is `CrewObstacles`: the footprints of the big systems (`SOLID`: reactor, shield emitter, turret mount, life support) and cargo bay tiles with goods stacked on them (`CARGO_FILL`). Consoles, airlocks, docking ports and empty bays stay walkable. Per-part colliders from the art could refine this later; until then a whole footprint blocks or none of it does.
 
 ### Cargo bays
 Cargo is physical: goods sit on the floor tiles of the ship's cargo bays (the footprints of its `CARGO` systems), not in an abstract number. `CargoHoldComponent` on the ship lists the bay tiles and the stack on each:
@@ -80,7 +80,7 @@ Cargo is physical: goods sit on the floor tiles of the ship's cargo bays (the fo
 - Loading tops up stacks of the same good, then starts new stacks on empty tiles in bay order; unloading takes from the newest stacks first. Each stack keeps its good's m³ and kg per unit.
 - `addMassTo` adds the cargo to the structural mass properties as point masses at the loaded tiles, so a full aft bay moves the center of mass aft and raises the inertia. The game recomputes the ship's Box2D mass whenever `revision` changes.
 - `InteriorGridData` gives every data-spawned ship with bays an empty hold, and `InteriorGridData.cargoBayVolume(defs, shipId)` sizes a ship's hold from its chassis without spawning it (used for rails freighters).
-- The corvette has a 4 m hold aft of the crew spaces with two 3×2 bays, plus two 2-tile bays forward (40 m³); the light freighter two 12×5 bays (300 m³). The deck view draws a crate on each loaded tile, colored by good and filled as far as the stack fills the tile.
+- The corvette has a 4 m hold aft of the crew spaces with two 3×2 bays, plus two 2-tile bays forward (40 m³), with the engines and gas tanks in the stern behind it; the light freighter two 12×5 bays (300 m³). The deck view draws a crate on each loaded tile, colored by good and filled as far as the stack fills the tile.
 
 ## Damage, Leaks and Zero-Integrity Rules
 Hull, wall and floor tiles, hull pieces and edge walls all take damage to their condition (`integrity`, 1 = intact).
@@ -201,10 +201,22 @@ audio-spatial's `InteriorHazardAudioSystem` reads every grid after the hazard ti
 `LifeSupportSystem` runs every operational `LIFE_SUPPORT` unit on the hazard tick (0.25 s):
 - A unit serves the compartment it stands in, plus every compartment reachable from there through fully open openings (open doors, gaps a tile wide). Air behind a closed door, a seal or a leaking wall is out of reach.
 - It draws 3 m³/s of air, spread over the whole served volume, and removes 90% of the CO2 and smoke in that air.
-- It releases up to 20 mol/s of standard air (21% oxygen) into served compartments below standard pressure, shared by how far each one is short. A vented 9 × 6 room, once sealed, is back to full pressure in a few minutes. Tanks are not modelled yet, so the supply never runs out (see below).
+- It releases up to 20 mol/s of standard air (21% oxygen) into served compartments below standard pressure, shared by how far each one is short. A vented 9 × 6 room, once sealed, is back to full pressure in a few minutes.
 - It then releases up to 1.5 mol/s of oxygen into served compartments whose air is short of the standard 21% share (and below standard oxygen partial pressure), such as after a fire.
 - Nothing is released into a compartment still venting to space.
 - That is far slower than a large fire uses oxygen, so life support cleans up after a fire rather than holding one back.
+- The air and oxygen come out of the oxygen and nitrogen tanks piped to the unit (see Tanks and Pipes): fresh air takes both gases at the 21/79 mix, so it stops when either runs dry, and the oxygen top-up takes only oxygen. A unit with no tank piped to it releases nothing. A ship with no tank of a gas at all (a layout from before tanks, or a station) is not limited by that gas.
+
+## Tanks and Pipes
+Consumables live in tanks in the ship grid and reach the systems that use them through pipes, laid like conduits.
+- **Tanks** are `TANK` systems in auxiliary slots. Each holds one `Fluid` (`OXYGEN`, `NITROGEN` or `PROPELLANT`); the built-in components are `oxygen_tank` (`O`), `nitrogen_tank` (`N`) and `tank` (`P`, propellant). `SubsystemComponent.capacity` and `contents` are kilograms: by default 150 kg of a gas or 1,000 kg of propellant a tile, so an S tank holds 300 or 2,000 kg. A component can set `capacity` by size. Tanks start full. A tank supplies only while switched on (its valve) and not disabled by damage; it needs no power.
+- **Engines** (`ENGINE`, built-in `engine`, `E`) are powered auxiliary systems that burn propellant for the ship's thrusters (see the propellant feed in `documentation/physics-exterior/Design.md`).
+- **Pipes** (`Pipe`) lie across a tile's middle (`ShipGridComponent.pipes`) or along a tile edge (`pipeH` / `pipeV`, indexed like the edge walls), inside any wall, as edge conduits do. Pipes are generic: one run carries every fluid. A pipe across a tile joins the pipes across the four tiles beside it (through a thin wall between them) and the edge pipes on its own tile's edges; an edge pipe joins the edge pipes that meet it at either end and the pipes across the tiles on both sides. A pipe across a tile is cut when the tile is destroyed, an edge pipe when the wall it runs in is.
+- `PipeRouting` floods the pipes into `PipeNetwork`s (on `ShipGridComponent.pipeNetworks`) whenever `PowerRoutingSystem` reroutes, so pipes follow damage as quickly as power. A system is on every network that crosses one of its footprint tiles or runs along their edges, and `SubsystemComponent.pipedTanks` lists every tank on those networks.
+- `TankSupply` reads and draws on them: `available(system, fluid)` is what a system's working piped tanks hold, and `draw` takes from several tanks in proportion to what each holds.
+- A tank damaged below 0.6 health leaks (`TankSupply.leak`, on the life support tick): a destroyed tank loses 2% of its contents a second, a less damaged one in proportion. Oxygen and nitrogen escape into the air of the room the tank stands in (an oxygen leak enriches the room, which feeds fires); propellant is lost overboard. Tanks do not burst.
+- What the tanks hold weighs on the ship: `TankSupply.addMassTo` adds each tank's contents as a point mass at the middle of its footprint, and the game reweighs the ship whenever its tanks have gained or lost 5 kg.
+- Layouts list pipes as `pipes = [{ x = 3, y = 2 }, { x = 3, y = 2, side = "TOP" }]` (no side: across the tile). They are saved with the grid, and each tank's contents with its `SubsystemComponent`. Station yards refill the tanks for credits (see `documentation/stations-docking/Design.md`).
 
 ## Power & Subsystem Routing
 `PowerRoutingSystem` runs a breadth-first flood from every footprint tile of each reactor that is switched on and not disabled by damage, across floor and conduit tiles:
@@ -239,7 +251,7 @@ A rails warp jump therefore only ever starts with no fire and no venting. Each s
 - `ShipSubsystemRegistryComponent`: the ship's list of subsystem entities.
 
 ### Saving
-Register `InteriorGridSaveParticipant` with the `SerializationService`. It installs `ShipGridSerializer`, which writes each grid as plain state: tiles, edge walls, hull pieces, mounts, and each compartment's air keyed by one of its tiles. On load it places the pieces and mounts again, rebuilds the compartments and pours the saved air back in.
+Register `InteriorGridSaveParticipant` with the `SerializationService`. It installs `ShipGridSerializer`, which writes each grid as plain state: tiles, edge walls, hull pieces, mounts, pipes, and each compartment's air keyed by one of its tiles. On load it places the pieces and mounts again, rebuilds the compartments and pours the saved air back in.
 - `ShipSubsystemRegistryComponent` saves `EntityRef`s (`ownerRef`, `subsystemRefs`). Its live `ownerEntity` and `subsystems` are transient.
 - `MountFootprint.installed` is transient too, so a save never drags in a system entity.
 - After every entity is loaded, the participant calls `registry.relink(uuids)` and `grid.relinkMounts(registry.subsystems)` to restore both.
@@ -249,12 +261,12 @@ Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartm
 ## Systems
 - `GridHazardSystem`: air flow between compartments and to space, heat, and fire.
 - `CompartmentBuilder` (helper, not an ECS system): divides the interior into compartments and carries the air over when the layout changes.
-- `PowerRoutingSystem`: calculates subsystem power connectivity.
-- `LifeSupportSystem`: scrubs CO2 and smoke, refills sealed rooms with air and replenishes oxygen.
+- `PowerRoutingSystem`: calculates subsystem power connectivity, then pipe networks (`PipeRouting`).
+- `LifeSupportSystem`: scrubs CO2 and smoke, refills sealed rooms with air and replenishes oxygen, out of the piped tanks.
 - `InteriorHazardWarpGuard` (not an ECS system): refuses rails warp during a fire or venting.
 
 ## Decided, not built yet
 - **Tanks and piping** (2026-10-19): life support consumables and ship propellant draw from tanks placed in the ship grid, through pipes laid in the tile map. Like conduits, pipes go in tile centers or along tile edges (the `EdgeConduit` model). Tanks run dry, and refilling them costs money at a station. Placement goes in the ship editor and the art in the art pack. Until then life support draws on an endless supply and propellant is `ThrusterComponent.fuel` in physics-exterior.
 
 ## Open Questions
-None right now.
+- **Tank damage.** A damaged tank leaks, but never bursts or explodes, and leaking propellant is simply lost rather than adding to a fire.

@@ -2,6 +2,7 @@ package com.ringsofiron.macrosim;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.coreengine.GameEngine;
+import com.ringsofiron.coreengine.TickProfiler;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.macrosim.bubble.BubbleGateway;
 import com.ringsofiron.macrosim.bubble.BubbleTransitionListener;
@@ -66,6 +67,7 @@ public class MacroSimulation {
     private double predictionHorizon = DEFAULT_PREDICTION_HORIZON;
     private double nextPrediction;
     private Future<EncounterForecast> pendingForecast;
+    private TickProfiler profiler;
 
     /**
      * @param gateway            the bubble, or null to run without one (pure background universe)
@@ -186,6 +188,7 @@ public class MacroSimulation {
      */
     public void advanceTo(double t) {
         if (t < now) return;
+        long start = profiler == null ? 0 : System.nanoTime();
         destroyCrashed();
         while (events.nextTime() <= t) {
             double te = events.nextTime();
@@ -197,10 +200,26 @@ public class MacroSimulation {
         rails.processEventsUntil(t);
         now = t;
         destroyCrashed();
+        start = record("macro/rails and events", start);
         // No anchor parent: the bubble is not in orbit around anything, so nothing can meet it.
         if (gateway == null || gateway.anchorParentUuid() == null) return;
         updatePrediction();
+        start = record("macro/prediction", start);
         if (!bubbleSuspended) bubble.update(t, PREDICTION_INTERVAL * 2);
+        record("macro/bubble", start);
+    }
+
+    /** Records the time since {@code start} under {@code section} if profiling; returns now. */
+    private long record(String section, long start) {
+        if (profiler == null) return 0;
+        long end = System.nanoTime();
+        profiler.record(section, end - start);
+        return end;
+    }
+
+    /** Times the parts of each {@link #advanceTo} from now on, or stops timing with null. */
+    public void setProfiler(TickProfiler profiler) {
+        this.profiler = profiler;
     }
 
     /**

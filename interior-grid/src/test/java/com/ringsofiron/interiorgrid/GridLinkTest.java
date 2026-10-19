@@ -97,4 +97,45 @@ class GridLinkTest {
         assertEquals(2.6f, out[0], 1e-4f);
         assertEquals(4.6f, out[1], 1e-4f);
     }
+
+    /** Runs {@code seconds}; true once tile (2, 3) of {@code b} catches. */
+    private boolean spreads(ShipGridComponent a, ShipGridComponent b, float seconds) {
+        Tile src = a.getTile(2, 3), dst = b.getTile(2, 3);
+        dst.setCovering(FloorCovering.CARPET, 1f);
+        src.setCovering(FloorCovering.CARPET, 1f);
+        src.ignite();
+        for (int i = 0; i < Math.round(seconds / DT) && !dst.isBurning(); i++) {
+            src.fireIntensity = 1f; // keep the source going
+            src.fuel = 100f;
+            run(a, b, DT);
+        }
+        return dst.isBurning();
+    }
+
+    @Test
+    void fireJumpsAcrossAnOpenDockButNotThroughAShutDoor() {
+        ShipGridComponent a = craft(), b = craft();
+        GridLink.join(new Entity(), a, 2, 3, Side.TOP, new Entity(), b, 2, 3, Side.TOP).setGap(1f);
+        door(a).bulkheadSealed = false;
+        assertFalse(spreads(a, b, 120f), "b's door is shut");
+
+        ShipGridComponent c = craft(), d = craft();
+        GridLink.join(new Entity(), c, 2, 3, Side.TOP, new Entity(), d, 2, 3, Side.TOP).setGap(1f);
+        door(c).bulkheadSealed = false;
+        door(d).bulkheadSealed = false;
+        assertTrue(spreads(c, d, 120f), "both doors open: it jumps");
+    }
+
+    @Test
+    void heatCrossesAnOpenDock() {
+        ShipGridComponent a = craft(), b = craft();
+        GridLink.join(new Entity(), a, 2, 3, Side.TOP, new Entity(), b, 2, 3, Side.TOP).setGap(1f);
+        door(a).bulkheadSealed = false;
+        door(b).bulkheadSealed = false;
+        a.getTile(2, 3).temperature = 800f;
+        float before = b.getTile(2, 3).temperature;
+        hz.exchangeAcrossLinks(a, DT);
+        assertTrue(b.getTile(2, 3).temperature > before + 1f);
+        assertTrue(b.getTile(2, 3).temperature < a.getTile(2, 3).temperature);
+    }
 }

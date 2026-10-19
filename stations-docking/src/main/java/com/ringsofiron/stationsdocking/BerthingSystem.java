@@ -16,6 +16,7 @@ import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
+import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
 
 /**
@@ -25,6 +26,11 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
  * face it, close along its centerline slower the nearer it gets, and let the station's collar or
  * the magnets take it. Once docked it stays put until {@link #depart}: it undocks, backs off the
  * port and flies straight out. {@link #listener} hears when a craft has berthed and when it leaves.
+ *
+ * <p>On its way in it steers round other craft ({@link #avoid}): any ship in the bubble it would
+ * pass closer to than {@link #CLEARANCE} beyond both hulls before it gets where it is going. Craft
+ * docked at the station are left to the station's own approach (they sit at its ports), and the
+ * final run down a port's centerline does not swerve.
  */
 public class BerthingSystem extends EntitySystem {
     /** How far in front of the port the final approach starts, meters. */
@@ -45,6 +51,10 @@ public class BerthingSystem extends EntitySystem {
     public static final float RETRY_SECONDS = 20f;
     /** Bearing off the port's centerline within which a craft heads straight for the standoff point. */
     static final float FRONT_ARC = 50f * MathUtils.degreesToRadians;
+    /** Room kept between its hull and another craft's as it flies past, meters. */
+    public static final float CLEARANCE = 25f;
+    /** Seconds ahead it looks for craft in its way. */
+    static final float LOOKAHEAD = 30f;
 
     private static final float M = PhysicsManager.METERS_PER_UNIT;
 
@@ -67,6 +77,7 @@ public class BerthingSystem extends EntitySystem {
 
     private static final Family FAMILY = Family.all(BerthingComponent.class, FlightControlComponent.class,
             ThrusterComponent.class).get();
+    private static final Family OTHERS = Family.all(PhysicsBodyComponent.class, ShipGridComponent.class).get();
     private final ComponentMapper<BerthingComponent> berthing = ComponentMapper.getFor(BerthingComponent.class);
     private final ComponentMapper<FlightControlComponent> controls = ComponentMapper.getFor(FlightControlComponent.class);
     private final ComponentMapper<ThrusterComponent> thrusters = ComponentMapper.getFor(ThrusterComponent.class);
@@ -74,10 +85,11 @@ public class BerthingSystem extends EntitySystem {
     private final DockingSystem docking;
     private final UuidRegistry uuids;
     private final Listener<DockingEvent> events = (signal, e) -> onEvent(e);
-    private ImmutableArray<Entity> craft;
+    private ImmutableArray<Entity> craft, others;
 
     private final Vector2 face = new Vector2(), qFace = new Vector2(), n = new Vector2(), centre = new Vector2();
     private final Vector2 v = new Vector2(), vs = new Vector2(), want = new Vector2(), tmp = new Vector2(), look = new Vector2();
+    private final Vector2 at = new Vector2(), rel = new Vector2(), miss = new Vector2(), ov = new Vector2();
 
     public BerthingSystem(DockingSystem docking, UuidRegistry uuids) {
         this.docking = docking;
@@ -87,13 +99,14 @@ public class BerthingSystem extends EntitySystem {
     @Override
     public void addedToEngine(Engine engine) {
         craft = engine.getEntitiesFor(FAMILY);
+        others = engine.getEntitiesFor(OTHERS);
         docking.events.add(events);
     }
 
     @Override
     public void removedFromEngine(Engine engine) {
         docking.events.remove(events);
-        craft = null;
+        craft = others = null;
     }
 
     /** Sends a berthed craft off: it undocks, backs off the port and flies away. */
@@ -251,6 +264,7 @@ public class BerthingSystem extends EntitySystem {
         float speed = Math.min(MAX_SPEED, (float) Math.sqrt(2f * Math.max(0.02f, brake) * d));
         speed = Math.min(speed, 0.4f * d + 0.05f);
         want.set(vs).mulAdd(tmp.nor(), speed);
+        avoid(e, body, want, d / Math.max(1f, speed));
         float heading;
         if (near) {
             this.look.set(look).sub(this.face).nor().scl(-1f);
@@ -260,6 +274,51 @@ public class BerthingSystem extends EntitySystem {
             heading = tmp.len() > 1f ? tmp.angleRad() : tmp.set(to).sub(this.face).angleRad();
         }
         steer(body, c, t, want, heading, near ? 0.8f : 0.5f);
+    }
+
+    /**
+     * Bends {@code want} (world, m/s) round the craft it would otherwise pass too close to in the
+     * next {@code arrive} seconds (capped at {@link #LOOKAHEAD}): for each, where the two would be
+     * nearest, flying at {@code want} against the other's own velocity, and if that is inside both
+     * hulls plus {@link #CLEARANCE}, the sideways speed that opens it out to there in the time left.
+     * A craft already too close is backed away from.
+     */
+    void avoid(Entity e, Body body, Vector2 want, float arrive) {
+        if (others == null) return;
+        float horizon = Math.min(LOOKAHEAD, arrive);
+        Vector2 w = body.getWorldCenter();
+        at.set(w.x * M, w.y * M);
+        float mine = radius(e, 20f);
+        Entity dockedTo = docking.dockedTo(e);
+        float wx = want.x, wy = want.y;
+        for (int i = 0; i < others.size(); i++) {
+            Entity o = others.get(i);
+            if (o == e || o == dockedTo || docking.dockedTo(o) != null) continue;
+            Body ob = docking.bodyOf(o);
+            if (ob == null) continue;
+            Vector2 c = ob.getWorldCenter();
+            rel.set(c.x * M, c.y * M).sub(at);
+            float clear = mine + radius(o, 20f) + CLEARANCE;
+            float dist = rel.len();
+            if (dist > clear + MAX_SPEED * horizon) continue;
+            if (dist < clear) {
+                // Too close already: back away from it
+                want.mulAdd(rel, -Math.min(MAX_SPEED, (clear - dist) * 0.5f) / Math.max(0.01f, dist));
+                continue;
+            }
+            // Our velocity relative to it, and the nearest the two get within the horizon
+            v.set(wx, wy).sub(PhysicsManager.getVelocity(ob, ov));
+            float closing = v.len2();
+            if (closing < 1e-4f) continue;
+            float t = rel.dot(v) / closing;
+            if (t <= 0f || t > horizon) continue;
+            miss.set(v).scl(t).sub(rel); // where we'd be from it then
+            float gap = miss.len();
+            if (gap >= clear) continue;
+            if (gap < 1e-3f) miss.set(-v.y, v.x); // dead ahead: either side will do
+            want.mulAdd(miss.nor(), (clear - gap) / Math.max(2f, t));
+        }
+        if (want.len() > MAX_SPEED + vs.len()) want.sub(vs).limit(MAX_SPEED).add(vs);
     }
 
     /**
@@ -351,8 +410,13 @@ public class BerthingSystem extends EntitySystem {
 
     /** Half the station's diagonal, meters: no part of it is farther from its middle. */
     private static float radius(Entity station) {
-        ShipGridComponent g = station.getComponent(ShipGridComponent.class);
-        return g == null ? 50f : (float) Math.hypot(g.width, g.height) * g.tileSize * 0.5f;
+        return radius(station, 50f);
+    }
+
+    /** Half a craft's grid's diagonal, meters, or {@code otherwise} if it has no grid. */
+    private static float radius(Entity e, float otherwise) {
+        ShipGridComponent g = e.getComponent(ShipGridComponent.class);
+        return g == null ? otherwise : (float) Math.hypot(g.width, g.height) * g.tileSize * 0.5f;
     }
 
     private static String nameOf(Entity station) {

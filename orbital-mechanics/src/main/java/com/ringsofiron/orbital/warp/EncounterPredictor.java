@@ -4,6 +4,7 @@ import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.utils.IdentityMap;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.components.OrbitComponent;
@@ -39,6 +40,23 @@ public class EncounterPredictor {
     private final int maxSamples;
     private final StateVector a = new StateVector();
     private final StateVector b = new StateVector();
+    private final IdentityMap<Entity, ParentInfo> byParent = new IdentityMap<>();
+    /** The reference's and the current other body's orbits while each is around the scan's frame, else null. */
+    private OrbitComponent refDirect, otherDirect;
+
+    /** What a scan needs about the bodies orbiting one parent: the same for each of them. */
+    private final class ParentInfo {
+        /** Common frame of the reference and these bodies, or null if they share none. */
+        final Entity frame;
+        /** Upper bounds on the reference's speed, and on the parent's, relative to {@link #frame}. */
+        final double referenceSpeed, parentSpeed;
+
+        ParentInfo(Entity parent, Entity refParent, Entity reference) {
+            frame = universe.commonAncestor(refParent, parent);
+            referenceSpeed = frame == null ? 0 : universe.maxSpeedRelativeTo(reference, frame);
+            parentSpeed = frame == null || parent == frame ? 0 : universe.maxSpeedRelativeTo(parent, frame);
+        }
+    }
 
     public EncounterPredictor(Engine engine, RailsUniverse universe) {
         this(engine, universe, DEFAULT_MAX_SAMPLES);
@@ -56,13 +74,27 @@ public class EncounterPredictor {
         out.other = null;
         out.scannedUntil = t1;
         if (universe.orbit(reference) == null) return out;
+        Entity refParent = universe.parentOf(reference);
+        byParent.clear();
         for (Entity other : bodies) {
             if (other == reference) continue;
-            Entity frame = universe.commonAncestor(universe.parentOf(reference), universe.parentOf(other));
+            OrbitComponent otherOrbit = universe.orbit(other);
+            Entity otherParent = universe.entity(otherOrbit.parentUuid);
+            if (otherParent == null) continue;
+            // Everything that depends only on the other body's parent is worked out once per parent
+            ParentInfo p = byParent.get(otherParent);
+            if (p == null) {
+                p = new ParentInfo(otherParent, refParent, reference);
+                byParent.put(otherParent, p);
+            }
+            Entity frame = p.frame;
             if (frame == null) continue;
             double end = Double.isNaN(out.time) ? out.scannedUntil : Math.min(out.time, out.scannedUntil);
             if (end <= t0) break;
-            double relSpeed = universe.maxSpeedRelativeTo(reference, frame) + universe.maxSpeedRelativeTo(other, frame);
+            // Bodies around the frame itself take their state straight from their own orbit
+            refDirect = refParent == frame ? universe.orbit(reference) : null;
+            otherDirect = otherParent == frame ? otherOrbit : null;
+            double relSpeed = p.referenceSpeed + (RailsUniverse.maxSpeed(otherOrbit.getOrbit()) + p.parentSpeed);
             double step = 0.5 * radius / Math.max(relSpeed, 1e-6);
             double scanEnd = end;
 
@@ -108,9 +140,12 @@ public class EncounterPredictor {
         return hi;
     }
 
+    /** Distance between the two at {@code t}, using {@link #refDirect} and {@link #otherDirect} where set. */
     private double distance(Entity ref, Entity other, Entity frame, double t) {
-        universe.stateInFrame(ref, frame, t, a);
-        universe.stateInFrame(other, frame, t, b);
+        if (refDirect != null) refDirect.stateAt(t, a);
+        else universe.stateInFrame(ref, frame, t, a);
+        if (otherDirect != null) otherDirect.stateAt(t, b);
+        else universe.stateInFrame(other, frame, t, b);
         double dx = a.x - b.x;
         double dy = a.y - b.y;
         return Math.sqrt(dx * dx + dy * dy);

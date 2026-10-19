@@ -119,6 +119,12 @@ public class ChassisBlueprintLoader {
             grid.setConduit(def.x, def.y, def.side, new EdgeConduit());
         }
 
+        // Pipes, like conduits, may run along any edge; across a tile they lie under the deck
+        for (ChassisBlueprint.PipeDef def : blueprint.pipes) {
+            if (def.side == null) grid.setPipe(def.x, def.y, new Pipe());
+            else grid.setEdgePipe(def.x, def.y, def.side, new Pipe());
+        }
+
         for (ChassisBlueprint.CoveringDef def : blueprint.coverings) {
             for (int y = def.y; y < def.y + def.height; y++) {
                 for (int x = def.x; x < def.x + def.width; x++) {

@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
@@ -28,7 +29,7 @@ import java.util.List;
  * freighter rides its station's orbit, so it would come into the bubble inside the station's hull.
  * Instead it is latched to a free Medium port there and stays put, its pilot stood down, until it
  * flies itself off ({@link FreighterTraffic}) or leaves the bubble. With no port free it is moved
- * clear of the station.
+ * clear of the station, to the nearest spot round it no other freighter is waiting in.
  *
  * <p>Freighters fly a default hull with no grid, so each one gets a passive Medium port on its
  * nose. Register after {@link NpcBubblePilots}: this takes the pilot back off a docked freighter.
@@ -38,6 +39,10 @@ public class StationTraffic implements BubbleTransitionListener {
     static final float NOSE_X = 20f;
     /** Space kept between a freighter moved clear and the station's hull, meters. */
     static final float CLEARANCE = 25f;
+    /** Room each freighter moved clear takes up, meters: its hull's length and a gap. */
+    static final float SPACING = 2 * NOSE_X + 10f;
+    /** Rings of spots tried round the station; the last ring is used even if taken. */
+    static final int MAX_RINGS = 8;
     private static final Family STATIONS = Family.all(StationComponent.class, ShipGridComponent.class, UuidComponent.class).get();
 
     private final ComponentMapper<DockingPortsComponent> portsMapper = ComponentMapper.getFor(DockingPortsComponent.class);
@@ -45,6 +50,7 @@ public class StationTraffic implements BubbleTransitionListener {
     private final GameWorld world;
     private final StateVector station = new StateVector();
     private final Vector2 ship = new Vector2();
+    private boolean occupied;
 
     public StationTraffic(GameWorld world) {
         this.world = world;
@@ -123,7 +129,34 @@ public class StationTraffic implements BubbleTransitionListener {
             dx /= len;
             dy /= len;
         }
+        // Freighters waiting at the same station ride the same orbit, so they all come in at one
+        // spot: each takes the nearest free spot round the station instead of piling onto the others.
         float out = reach(at) + CLEARANCE;
-        PhysicsManager.setPosition(body, (float) station.x + dx * out, (float) station.y + dy * out, body.getAngle());
+        for (int ring = 0; ring < MAX_RINGS; ring++) {
+            float r = out + ring * SPACING;
+            int spots = Math.max(1, (int) (MathUtils.PI2 * r / SPACING));
+            for (int k = 0; k < spots; k++) {
+                // 0, +1, -1, +2, -2, ... spots round from straight out
+                float a = ((k + 1) / 2) * (k % 2 == 1 ? 1f : -1f) * MathUtils.PI2 / spots;
+                float cos = MathUtils.cos(a), sin = MathUtils.sin(a);
+                float x = (float) station.x + (dx * cos - dy * sin) * r;
+                float y = (float) station.y + (dx * sin + dy * cos) * r;
+                if (ring < MAX_RINGS - 1 && !spotFree(body, x, y)) continue;
+                PhysicsManager.setPosition(body, x, y, body.getAngle());
+                return;
+            }
+        }
+    }
+
+    /** True if no other body's bounds come within half a {@link #SPACING} of (x, y). */
+    private boolean spotFree(Body self, float x, float y) {
+        float h = SPACING * 0.5f;
+        occupied = false;
+        world.physics.queryAABB(x - h, y - h, x + h, y + h, fixture -> {
+            if (fixture.getBody() == self) return true;
+            occupied = true;
+            return false;
+        });
+        return !occupied;
     }
 }

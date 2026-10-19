@@ -179,11 +179,40 @@ class GameWorldTest {
             ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
             assertNotNull(grid, "interior-grid built the ship's interior from its chassis");
             float gridMass = grid.computeMassProperties(
-                    com.ringsofiron.interiorgrid.InteriorGridData.toMaterialTable(ctx.defs)).mass;
+                    com.ringsofiron.interiorgrid.InteriorGridData.toMaterialTable(ctx.defs)).mass
+                    + (float) com.ringsofiron.interiorgrid.TankSupply.contents(
+                            ship.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent.class));
             assertEquals(gridMass, com.ringsofiron.physicsexterior.PhysicsManager.getMass(
-                    ship.getComponent(PhysicsBodyComponent.class).body), gridMass * 1e-3f, "Box2D mass comes from the grid");
+                    ship.getComponent(PhysicsBodyComponent.class).body), gridMass * 1e-3f, "Box2D mass comes from the grid and its full tanks");
             assertFalse(grid.mounts.isEmpty());
             assertNotNull(grid.mounts.get(0).installed);
+        } finally {
+            withContent.dispose();
+        }
+    }
+
+    @Test
+    void shipsCollideOnTheirLayoutUnlessTheirHullArtDrawsACollisionLayer() {
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        GameWorld withContent = new GameWorld(new GameWorld.Modules());
+        try {
+            ModContext ctx = withContent.loadContent(assets, assets.resolve("no-mods-here"));
+            float u = com.ringsofiron.physicsexterior.PhysicsManager.UNITS_PER_METER;
+
+            // The freighter's art has no collision layer: its 20 x 13 tile layout, one box
+            com.badlogic.gdx.physics.box2d.Body freighter = ctx.factory.spawnShip("freighter_hauler", 0, 0, 0)
+                    .getComponent(PhysicsBodyComponent.class).body;
+            assertEquals(1, freighter.getFixtureList().size);
+            assertTrue(freighter.getFixtureList().first().testPoint(9.8f * u, 6.3f * u));
+            assertFalse(freighter.getFixtureList().first().testPoint(10.2f * u, 0f));
+
+            // The corvette's layer adds the bow past the end of its layout, at x = 5
+            com.badlogic.gdx.physics.box2d.Body corvette = ctx.factory.spawnShip("corvette_patrol", 100, 0, 0)
+                    .getComponent(PhysicsBodyComponent.class).body;
+            assertEquals(1, corvette.getFixtureList().size);
+            assertTrue(corvette.getFixtureList().first().testPoint(106.2f * u, 0f));
+            assertFalse(corvette.getFixtureList().first().testPoint(106.2f * u, 1f * u));
+            assertFalse(ctx.report.toString().contains("Collision layer"), ctx.report.toString());
         } finally {
             withContent.dispose();
         }

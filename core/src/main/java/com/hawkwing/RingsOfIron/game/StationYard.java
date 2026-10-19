@@ -6,6 +6,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CarryTask;
 import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
@@ -21,12 +22,14 @@ import com.ringsofiron.coreengine.EntityRef;
 import com.ringsofiron.coreengine.UuidRegistry;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
@@ -49,6 +52,10 @@ import java.util.function.DoubleSupplier;
  * loaders carry the part from its bays to the hardpoint's mount ({@link CarryTask}), where it is
  * paid for, and the technicians then fit it one mount tile at a time; the weapon it replaces goes
  * back to the yard for part of its price.
+ *
+ * <p>The yard also refills the ship's tanks ({@link #orderRefill}): propellant, oxygen and nitrogen,
+ * at once, paid by the kilogram ({@link #pricePerKg}); short of credits, every tank gets the same
+ * share of what it lacks.
  *
  * <p>Undocking calls the work off: repairs stop, and a part not yet fitted goes back, refunded.
  * Docked but on the rails together (no walkway), the work goes on in the background at the pace
@@ -282,6 +289,57 @@ public class StationYard extends EntitySystem {
         double total = 0;
         for (Damage d : damage(ship)) total += (1 - d.condition()) * d.cost();
         return total;
+    }
+
+    /** Credits a kilogram of each fluid costs at a yard. */
+    public static final double PROPELLANT_PRICE = 0.5, OXYGEN_PRICE = 2, NITROGEN_PRICE = 1;
+
+    public static double pricePerKg(Fluid fluid) {
+        switch (fluid) {
+            case OXYGEN: return OXYGEN_PRICE;
+            case NITROGEN: return NITROGEN_PRICE;
+            default: return PROPELLANT_PRICE;
+        }
+    }
+
+    /** Credits to fill every tank aboard {@code ship}. */
+    public double refillCost(Entity ship) {
+        double total = 0;
+        ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (registry == null) return 0;
+        for (SubsystemComponent t : TankSupply.tanks(registry, null)) {
+            total += Math.max(0, t.capacity - t.contents) * pricePerKg(t.fluid);
+        }
+        return total;
+    }
+
+    /** Has {@code station}'s yard fill {@code ship}'s tanks, as far as its credits go. Returns what it says. */
+    public String orderRefill(Entity ship, Entity station) {
+        if (!canWork(ship, station)) return "No yard here to do the work";
+        double cost = refillCost(ship);
+        if (cost < 0.5) return "The tanks are full";
+        TraderComponent trader = ship.getComponent(TraderComponent.class);
+        double budget = trader == null ? Double.POSITIVE_INFINITY : trader.credits;
+        if (budget <= 0) return "You're out of credits";
+        double paid = fill(ship.getComponent(ShipSubsystemRegistryComponent.class), budget);
+        if (trader != null) trader.credits = Math.max(0, trader.credits - paid);
+        return paid >= cost - 1e-6 ? String.format(Locale.ROOT, "Tanks filled: %,.0f cr", cost)
+                : String.format(Locale.ROOT, "Tanks filled to what %,.0f cr buys", paid);
+    }
+
+    /**
+     * Fills every tank in {@code registry} at the yard's prices, as far as {@code budget} credits
+     * go: short of them, every tank gets the same share of what it lacks. Returns the credits spent.
+     */
+    public static double fill(ShipSubsystemRegistryComponent registry, double budget) {
+        if (registry == null || budget <= 0) return 0;
+        Array<SubsystemComponent> tanks = TankSupply.tanks(registry, null);
+        double cost = 0;
+        for (SubsystemComponent t : tanks) cost += Math.max(0, t.capacity - t.contents) * pricePerKg(t.fluid);
+        if (cost <= 0) return 0;
+        double share = Math.min(1, budget / cost);
+        for (SubsystemComponent t : tanks) t.contents += Math.max(0, t.capacity - t.contents) * share;
+        return cost * share;
     }
 
     /** Credits a {@code def} costs at the yard, new or used. */
