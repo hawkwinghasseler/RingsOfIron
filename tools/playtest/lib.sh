@@ -1,0 +1,35 @@
+# Shared by the playtest scripts: starts Xvfb and the game, and gives key, click, shot and cmd.
+# Source from the repository root with OUT set (the screenshot folder) and SAVES optionally set
+# (a folder of saves the load menu should list).
+ROOT=$(pwd)
+mkdir -p "$OUT"
+CMDS=$(mktemp)
+export DISPLAY=${DISPLAY:-:97}
+if ! xdpyinfo >/dev/null 2>&1; then
+  Xvfb "$DISPLAY" -screen 0 1920x1080x24 >/dev/null 2>&1 &
+  XVFB=$!
+  sleep 2
+fi
+./gradlew :lwjgl3:runPlaytest -Pcommands="$CMDS" -Psaves="${SAVES:-}" --console=plain -q > "$OUT/game.log" 2>&1 &
+GAME=$!
+
+pause() { timeout "$1" tail -0f /dev/null; }
+for _ in $(seq 1 120); do WIN=$(xdotool search --name "^Rings of Iron$" 2>/dev/null | head -1); [ -n "$WIN" ] && break; pause 2; done
+[ -z "${WIN:-}" ] && { echo "the game window never opened"; exit 1; }
+pause 6
+xdotool windowfocus "$WIN" 2>/dev/null
+
+key() { for k in "$@"; do xdotool keydown "$k"; pause 0.12; xdotool keyup "$k"; pause 0.3; done; }
+hold() { xdotool keydown "$1"; pause "$2"; xdotool keyup "$1"; pause 0.3; }
+shifted() { xdotool keydown Shift_L; pause 0.1; key "$1"; xdotool keyup Shift_L; }
+click() { xdotool mousemove --window "$WIN" "$1" "$2" click 1; pause 0.5; }
+shot() { xdotool getwindowname "$WIN" >/dev/null 2>&1 || { echo "the game window closed before $1"; exit 1; }
+  timeout 20 import -window "$WIN" "$OUT/$1.png"; echo "shot $1"; }
+cmd() { echo "$*" >> "$CMDS"; pause 0.5; }
+# Waits up to $1 seconds for the game log to print a line matching $2
+await() { for _ in $(seq 1 "$1"); do grep -q "$2" "$OUT/game.log" && return 0; pause 1; done; echo "never saw: $2"; return 1; }
+finish() {
+  kill $GAME 2>/dev/null; pkill -f "[P]laytestLauncher" 2>/dev/null
+  [ -n "${XVFB:-}" ] && kill "$XVFB"
+  rm -f "$CMDS"
+}
