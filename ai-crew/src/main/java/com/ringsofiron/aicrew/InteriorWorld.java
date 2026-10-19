@@ -10,6 +10,7 @@ import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
@@ -21,8 +22,10 @@ import java.util.Arrays;
  * The Box2D world inside one ship or station, in the grid's tile units with no gravity: the
  * deck's walls as static edges, and a body for each crew member walking it ({@link CrewBody}).
  *
- * The walls are the tile edges crew cannot cross: between an open tile and a closed one (or the
- * hull's outside), and wherever a wall or shut door stands between two open tiles. A docked port
+ * The walls are the tile edges crew cannot cross: between a walkable tile and one that is not
+ * (closed, the hull's outside, or holding an obstacle such as a reactor or stacked cargo, by
+ * {@link GridNavGraph#isWalkable}), and wherever a wall or shut door stands between two walkable
+ * tiles. So a system or a stack of goods is a solid block crew bump into and slide along. A docked port
  * that can be crossed leaves its edge open. They are rebuilt whenever that set changes, so a door
  * opening or a wall blown away takes effect on the next step.
  */
@@ -31,6 +34,7 @@ final class InteriorWorld implements Disposable {
     static final short WALL = 0x1, BODY = 0x2, CORE = 0x4;
 
     final ShipGridComponent grid;
+    private final GridNavGraph nav;
     final World world;
     /** The crew walking this deck, in the order they boarded (forces are summed in this order). */
     final Array<CrewBody> crew = new Array<>();
@@ -39,11 +43,12 @@ final class InteriorWorld implements Disposable {
     private boolean[] barriers = new boolean[0];
     private boolean[] scratch = new boolean[0];
 
-    InteriorWorld(ShipGridComponent grid) {
+    InteriorWorld(GridNavGraph nav) {
         // Both are no-ops once loaded; the game's backend has usually loaded them already
         GdxNativesLoader.load();
         Box2D.init();
-        this.grid = grid;
+        this.nav = nav;
+        this.grid = nav.grid;
         world = new World(new Vector2(0f, 0f), true);
         syncWalls();
     }
@@ -70,7 +75,7 @@ final class InteriorWorld implements Disposable {
     /** True if the edge from tile (ax, ay) across its {@code side} to tile (bx, by) is a wall. */
     private boolean blocks(int ax, int ay, int bx, int by, Side side) {
         Tile a = grid.getTile(ax, ay), b = grid.getTile(bx, by);
-        boolean aOpen = a != null && a.isOpen(), bOpen = b != null && b.isOpen();
+        boolean aOpen = a != null && nav.isWalkable(ax, ay), bOpen = b != null && nav.isWalkable(bx, by);
         if (aOpen && bOpen) return grid.isEdgeBlocked(ax, ay, bx, by);
         if (aOpen) return !crossable(ax, ay, side, b);
         if (bOpen) return !crossable(bx, by, side.opposite(), a);

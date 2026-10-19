@@ -32,6 +32,9 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
  * </ul>
  * A unit that is switched off, unpowered or destroyed does nothing. Life support is far
  * too slow to keep up with a large fire, which uses oxygen much faster than this.
+ *
+ * <p>Each tick also lets the ship's damaged tanks leak ({@link TankSupply#leak}), whether or not
+ * it has life support.
  */
 public class LifeSupportSystem extends FixedLogicSystem {
 
@@ -97,6 +100,7 @@ public class LifeSupportSystem extends FixedLogicSystem {
     private void runAll(Entity entity, float dt) {
         ShipGridComponent grid = gridMapper.get(entity);
         ShipSubsystemRegistryComponent registry = registryMapper.get(entity);
+        TankSupply.leak(grid, registry, dt);
         boolean oxygenTanks = TankSupply.hasTanks(registry, Fluid.OXYGEN);
         boolean nitrogenTanks = TankSupply.hasTanks(registry, Fluid.NITROGEN);
         for (Entity e : registry.subsystems) {

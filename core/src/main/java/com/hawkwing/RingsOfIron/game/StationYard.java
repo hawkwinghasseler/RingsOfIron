@@ -6,6 +6,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CarryTask;
 import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
@@ -318,14 +319,27 @@ public class StationYard extends EntitySystem {
         double cost = refillCost(ship);
         if (cost < 0.5) return "The tanks are full";
         TraderComponent trader = ship.getComponent(TraderComponent.class);
-        double share = trader == null ? 1 : Math.min(1, trader.credits / cost);
-        if (share <= 0) return "You're out of credits";
-        for (SubsystemComponent t : TankSupply.tanks(ship.getComponent(ShipSubsystemRegistryComponent.class), null)) {
-            t.contents += Math.max(0, t.capacity - t.contents) * share;
-        }
-        if (trader != null) trader.credits = Math.max(0, trader.credits - cost * share);
-        return share >= 1 ? String.format(Locale.ROOT, "Tanks filled: %,.0f cr", cost)
-                : String.format(Locale.ROOT, "Tanks filled to what %,.0f cr buys", cost * share);
+        double budget = trader == null ? Double.POSITIVE_INFINITY : trader.credits;
+        if (budget <= 0) return "You're out of credits";
+        double paid = fill(ship.getComponent(ShipSubsystemRegistryComponent.class), budget);
+        if (trader != null) trader.credits = Math.max(0, trader.credits - paid);
+        return paid >= cost - 1e-6 ? String.format(Locale.ROOT, "Tanks filled: %,.0f cr", cost)
+                : String.format(Locale.ROOT, "Tanks filled to what %,.0f cr buys", paid);
+    }
+
+    /**
+     * Fills every tank in {@code registry} at the yard's prices, as far as {@code budget} credits
+     * go: short of them, every tank gets the same share of what it lacks. Returns the credits spent.
+     */
+    public static double fill(ShipSubsystemRegistryComponent registry, double budget) {
+        if (registry == null || budget <= 0) return 0;
+        Array<SubsystemComponent> tanks = TankSupply.tanks(registry, null);
+        double cost = 0;
+        for (SubsystemComponent t : tanks) cost += Math.max(0, t.capacity - t.contents) * pricePerKg(t.fluid);
+        if (cost <= 0) return 0;
+        double share = Math.min(1, budget / cost);
+        for (SubsystemComponent t : tanks) t.contents += Math.max(0, t.capacity - t.contents) * share;
+        return cost * share;
     }
 
     /** Credits a {@code def} costs at the yard, new or used. */

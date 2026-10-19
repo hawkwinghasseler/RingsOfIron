@@ -334,7 +334,7 @@ class DockingDemoSceneTest {
     }
 
     @Test
-    void crewWalkOverMountedSystemsToEveryTurret() {
+    void crewCanWalkUpToEveryTurret() {
         demo.load(DockingDemoScene.Scene.YARD);
         com.ringsofiron.interiorgrid.ShipGridComponent grid = demo.player.getComponent(com.ringsofiron.interiorgrid.ShipGridComponent.class);
         boolean[][] reach = StationYard.reachable(grid, demo.world.crew, demo.target);
@@ -342,7 +342,15 @@ class DockingDemoSceneTest {
                 : demo.player.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class).mounts) {
             com.ringsofiron.interiorgrid.MountFootprint f =
                     m.subsystem.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class).footprint;
-            assertTrue(reach[f.originY][f.originX], "a technician can walk from the dock to the turret at " + f.originX + "," + f.originY);
+            // A turret is solid: it is worked from a tile beside it
+            boolean beside = false;
+            for (int y = f.originY - 1; y <= f.originY + f.height(); y++) {
+                for (int x = f.originX - 1; x <= f.originX + f.width(); x++) {
+                    boolean corner = (x < f.originX || x >= f.originX + f.width()) && (y < f.originY || y >= f.originY + f.height());
+                    if (!corner && y >= 0 && x >= 0 && y < reach.length && x < reach[0].length) beside |= reach[y][x];
+                }
+            }
+            assertTrue(beside, "a technician can walk from the dock up to the turret at " + f.originX + "," + f.originY);
         }
     }
 

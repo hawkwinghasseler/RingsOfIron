@@ -461,6 +461,19 @@ class GameScenarioTest {
     }
 
     @Test
+    void theShipGetsLighterAsItsTanksRunDown() {
+        world.update(FRAME);
+        Body body = game.player.getComponent(PhysicsBodyComponent.class).body;
+        float full = PhysicsManager.getMass(body);
+        for (SubsystemComponent t : com.ringsofiron.interiorgrid.TankSupply.tanks(
+                game.player.getComponent(ShipSubsystemRegistryComponent.class), com.ringsofiron.interiorgrid.Fluid.PROPELLANT)) {
+            t.contents -= 500;
+        }
+        world.update(FRAME);
+        assertEquals(full - 500, PhysicsManager.getMass(body), 5f, "the burned propellant no longer weighs on the hull");
+    }
+
+    @Test
     void theCorvettesTanksArePipedToItsEngineAndLifeSupport() {
         world.update(FRAME);
         com.ringsofiron.physicsexterior.components.ThrusterComponent thrusters =
