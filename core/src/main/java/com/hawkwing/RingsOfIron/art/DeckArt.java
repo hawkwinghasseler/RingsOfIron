@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.art;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.hawkwing.RingsOfIron.game.DeckView;
@@ -14,6 +15,8 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.Side;
+import com.ringsofiron.interiorgrid.WallLight;
+import com.ringsofiron.interiorgrid.WallLightLayout;
 import com.ringsofiron.interiorgrid.WeightClass;
 
 import java.util.IdentityHashMap;
@@ -22,7 +25,8 @@ import java.util.Map;
 /**
  * Draws a deck with the art pack: floors, coverings and conduits, walls joined to their
  * neighbors, wedges, the systems in their mounts (dark when they have no power), docking ports
- * open or shut, thin walls and bulkhead doors, damage, breaches, seals, fire and cargo.
+ * open or shut, thin walls and bulkhead doors, wall lights, damage, breaches, seals, fire and
+ * cargo. {@link #glow} draws again just what is lit, for after the light map.
  *
  * Everything is in the grid's local meters, so the batch's transform carries the craft's pose.
  * What has no art is left out, and the caller keeps its flat shapes for what this cannot draw
@@ -35,6 +39,10 @@ public final class DeckArt {
     private final Map<Object, float[]> facing = new IdentityHashMap<>();
     /** The crate of each carrying crew region, for tinting it alone. */
     private final Map<TextureRegion, TextureRegion> crates = new IdentityHashMap<>();
+    /** The emissive layer of each region drawn in the glow pass, or null where it has none. */
+    private final Map<TextureRegion, TextureRegion> glows = new IdentityHashMap<>();
+    /** Drawing {@link #glow}: each region is swapped for its emissive layer. */
+    private boolean glowing;
 
     public DeckArt(ArtLibrary art) {
         this.art = art;
@@ -57,8 +65,28 @@ public final class DeckArt {
         systems(batch, grid, power);
         walkways(batch, grid);
         edges(batch, grid, power);
+        wallLights(batch, grid, power);
         effects(batch, grid);
         cargo(batch, grid, hold);
+    }
+
+    /**
+     * The emissive layers of what {@link #draw} drew that gives off light (running systems, live
+     * conduits, powered doors and wall lights, fire), drawn again over the light map so a lamp
+     * shows lit however dark its room. In a batch already begun and moved to the craft's pose.
+     */
+    public void glow(Batch batch, ShipGridComponent grid) {
+        boolean power = shipPowered(grid);
+        glowing = true;
+        try {
+            floors(batch, grid);
+            systems(batch, grid, power);
+            edges(batch, grid, power);
+            wallLights(batch, grid, power);
+            effects(batch, grid);
+        } finally {
+            glowing = false;
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -122,6 +150,8 @@ public final class DeckArt {
             if (sub == null) continue;
             boolean port = m.kind == MountFootprint.MountKind.PORT;
             boolean powered = port ? power && !sub.isDisabled() : sub.isOperational;
+            // Dark art may fall back to the lit one, whose glow is not this system's
+            if (glowing && !powered) continue;
             String state = port && portOpen(grid, m) ? "open" : null;
             TextureRegion r = art.first(ArtNames.component(sub.component, sub.type, m.size, state, powered));
             int bw = m.size.baseWidth(m.kind), bh = m.size.baseHeight(m.kind);
@@ -172,6 +202,21 @@ public final class DeckArt {
                 draw(batch, art.region(ArtNames.edgeJoint(weight, mask)), ox + x * s - half, oy + y * s - half,
                         2f * half, 2f * half);
             }
+        }
+    }
+
+    /** Each light hung on a wall, its top (the wall) against the edge it hangs on, as the layout places them. */
+    private void wallLights(Batch batch, ShipGridComponent grid, boolean power) {
+        if (glowing && !power) return;
+        AtlasRegion base = art.first(ArtNames.wallLight(power), ArtNames.wallLight(true));
+        TextureRegion r = shown(base);
+        if (r == null) return;
+        ArtLibrary.Info info = art.info(base);
+        float s = grid.tileSize, u = s / ArtLibrary.UNITS_PER_TILE;
+        float w = (info == null ? base.getRegionWidth() : info.w) * u, h = (info == null ? base.getRegionHeight() : info.h) * u;
+        for (WallLight p : WallLightLayout.lightsOf(grid)) {
+            float ex = grid.gridOriginLocal.x + p.edgeX() * s, ey = grid.gridOriginLocal.y + p.edgeY() * s;
+            batch.draw(r, ex - w / 2f, ey - h, w / 2f, h, w, h, 1f, 1f, p.rotation() * 90f);
         }
     }
 
@@ -330,17 +375,30 @@ public final class DeckArt {
         draw(batch, art.region(name), x0, y0, s, s);
     }
 
-    private static void draw(Batch batch, TextureRegion r, float x, float y, float w, float h) {
+    /** {@code r}, or while drawing the glow its emissive layer (null where it has none). */
+    private TextureRegion shown(TextureRegion r) {
+        if (!glowing || r == null) return r;
+        TextureRegion g = glows.get(r);
+        if (g == null && !glows.containsKey(r)) {
+            g = r instanceof AtlasRegion ? art.region(ArtNames.glow(((AtlasRegion) r).name)) : null;
+            glows.put(r, g);
+        }
+        return g;
+    }
+
+    private void draw(Batch batch, TextureRegion r, float x, float y, float w, float h) {
+        r = shown(r);
         if (r != null) batch.draw(r, x, y, w, h);
     }
 
     /** A one-tile region turned {@code quarters} counter-clockwise about the tile's middle. */
-    private static void quarter(Batch batch, TextureRegion r, float x0, float y0, float s, int quarters) {
-        batch.draw(r, x0, y0, s / 2f, s / 2f, s, s, 1f, 1f, quarters * 90f);
+    private void quarter(Batch batch, TextureRegion r, float x0, float y0, float s, int quarters) {
+        r = shown(r);
+        if (r != null) batch.draw(r, x0, y0, s / 2f, s / 2f, s, s, 1f, 1f, quarters * 90f);
     }
 
     /** Art drawn at its unrotated size {@code bw} x {@code bh} tiles, turned onto a footprint. */
-    private static void footprint(Batch batch, TextureRegion r, ShipGridComponent grid, int originX, int originY,
+    private void footprint(Batch batch, TextureRegion r, ShipGridComponent grid, int originX, int originY,
                                   int width, int height, int bw, int bh, int rotation) {
         float s = grid.tileSize;
         float cx = grid.gridOriginLocal.x + (originX + width / 2f) * s;
@@ -348,7 +406,8 @@ public final class DeckArt {
         centered(batch, r, cx, cy, bw * s, bh * s, rotation);
     }
 
-    private static void centered(Batch batch, TextureRegion r, float cx, float cy, float w, float h, int rotation) {
-        batch.draw(r, cx - w / 2f, cy - h / 2f, w / 2f, h / 2f, w, h, 1f, 1f, rotation * 90f);
+    private void centered(Batch batch, TextureRegion r, float cx, float cy, float w, float h, int rotation) {
+        r = shown(r);
+        if (r != null) batch.draw(r, cx - w / 2f, cy - h / 2f, w / 2f, h / 2f, w, h, 1f, 1f, rotation * 90f);
     }
 }

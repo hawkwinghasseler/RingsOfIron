@@ -2,7 +2,6 @@ package com.hawkwing.RingsOfIron.lighting;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -11,8 +10,6 @@ import com.ringsofiron.interiorgrid.WallLight;
 import com.ringsofiron.interiorgrid.WallLightLayout;
 
 import java.util.Locale;
-import java.util.Map;
-import java.util.WeakHashMap;
 
 /**
  * The lights on a deck, from the emissive layers of the art drawn there: the wall lights that
@@ -43,18 +40,6 @@ public final class DeckLightRig {
 
     private final EmissiveLights art;
     private final float[] order = new float[64];
-    private final Map<ShipGridComponent, Layout> layouts = new WeakHashMap<>();
-
-    /** A grid's worked-out wall lights, for the layout revision they were worked out for. */
-    private static final class Layout {
-        final int revision;
-        final Array<WallLight> lights;
-
-        Layout(int revision, Array<WallLight> lights) {
-            this.revision = revision;
-            this.lights = lights;
-        }
-    }
 
     public DeckLightRig(EmissiveLights art) {
         this.art = art;
@@ -65,7 +50,7 @@ public final class DeckLightRig {
         EmissiveLights.Art wall = art.get(WALL_LIGHT);
         if (wall != null) {
             boolean power = hasPower(grid);
-            for (WallLight p : wallLights(grid)) wallLight(grid, p, wall, power, out);
+            for (WallLight p : WallLightLayout.lightsOf(grid)) wallLight(grid, p, wall, power, out);
         }
         for (MountFootprint m : grid.mounts) {
             Entity e = m.installed;
@@ -89,19 +74,6 @@ public final class DeckLightRig {
                 }
             }
         }
-    }
-
-    /**
-     * Where {@code grid}'s wall lights hang: where its layout put them, or, for a layout that does
-     * not say, worked out from it (again whenever it changes).
-     */
-    public Array<WallLight> wallLights(ShipGridComponent grid) {
-        if (grid.wallLights != null) return grid.wallLights;
-        Layout l = layouts.get(grid);
-        if (l == null || l.revision != grid.layoutRevision) {
-            layouts.put(grid, l = new Layout(grid.layoutRevision, WallLightLayout.of(grid)));
-        }
-        return l.lights;
     }
 
     /** A wall light's lights: its art's top against the wall, centered along the edge. */

@@ -153,7 +153,7 @@ Decor and interactive objects that block movement or can be used carry two invis
 ## Using the art in the game
 libGDX does not draw SVG, so the `art-pipeline` module rasterizes these files at build time. `gradlew :art-pipeline:packArt` renders every SVG at 64 px a tile (with [JSVG](https://github.com/weisJ/jsvg)), packs them into `art/art.atlas` with libGDX's TexturePacker, and writes `art/art.json` beside it. The game's run tasks (`runGame`, the demos, the editor) run it first, and only when an SVG changed; its output lands in `art-pipeline/build/generated/art` and is on the game's classpath, so nothing generated is committed and the SVGs stay the only source.
 
-- **Regions.** One per file, named `<folder>/<name>`. The `meta` layer is left out. A file with an `emissive` layer also gets that layer alone as `glow/<folder>/<name>`, for a glow or bloom pass (nothing draws these yet).
+- **Regions.** One per file, named `<folder>/<name>`. The `meta` layer is left out. A file with an `emissive` layer also gets that layer alone as `glow/<folder>/<name>`, for a glow or bloom pass: the deck view draws them again over the light map, so what is lit shows lit in a dark room (see `documentation/lighting/Design.md`).
 - **`art.json`.** For each region, its SVG `viewBox` (`x`, `y`, `w`, `h`), so exterior art keeps its body origin and turrets their pivot, and the `collider` and `interact` shapes from its `meta` layer, in SVG units.
 - **In code.** `ArtLibrary` loads the atlas (or nothing, if it was never built, and then everything is drawn in the old flat shapes), `ArtNames` turns game state into region names, `DeckArt` draws a deck and `ExteriorArt` a craft from outside.
 

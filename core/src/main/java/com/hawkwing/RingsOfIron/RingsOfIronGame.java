@@ -656,6 +656,21 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (!lightsOn) return;
         // The light map over the decks, dark when the craft aboard has no power; then the glow on top
         lighting.renderLights(viewports.getWorldCamera(), DeckLightRig.hasPower(grid));
+        if (withArt) {
+            // What gives off light shows lit whatever light falls on it
+            batch.setProjectionMatrix(viewports.getWorldCamera().combined);
+            for (Entity ship : decks) {
+                ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+                Body body = world.docking.bodyOf(ship);
+                if (g == null || body == null) continue;
+                Vector2 at = PhysicsManager.getPosition(body, tmp);
+                batch.setTransformMatrix(pose.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, body.getAngle() * MathUtils.radiansToDegrees));
+                batch.begin();
+                deckArt.glow(batch, g);
+                batch.end();
+            }
+            batch.setTransformMatrix(identity);
+        }
         lighting.renderGlow(batch, viewports.getWorldCamera(), 0f);
     }
 

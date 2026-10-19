@@ -4,6 +4,9 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.IntArray;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * Where wall lights could hang on a deck, worked out from its layout: what the ship editor's
@@ -20,7 +23,31 @@ public final class WallLightLayout {
     /** No two wall lights hang closer than this, tiles. */
     public static final float MIN_SPACING = 3f;
 
+    /** Worked-out lights of grids whose layout does not say, by the layout revision they fit. */
+    private static final Map<ShipGridComponent, Worked> WORKED = Collections.synchronizedMap(new WeakHashMap<>());
+
+    private static final class Worked {
+        final int revision;
+        final Array<WallLight> lights;
+
+        Worked(int revision, Array<WallLight> lights) {
+            this.revision = revision;
+            this.lights = lights;
+        }
+    }
+
     private WallLightLayout() {
+    }
+
+    /**
+     * The wall lights hung on {@code grid}: where its layout put them, or, for a layout that does
+     * not say, worked out with {@link #of} (again whenever the layout changes).
+     */
+    public static Array<WallLight> lightsOf(ShipGridComponent grid) {
+        if (grid.wallLights != null) return grid.wallLights;
+        Worked w = WORKED.get(grid);
+        if (w == null || w.revision != grid.layoutRevision) WORKED.put(grid, w = new Worked(grid.layoutRevision, of(grid)));
+        return w.lights;
     }
 
     /** The wall lights for {@code grid}'s current layout. */

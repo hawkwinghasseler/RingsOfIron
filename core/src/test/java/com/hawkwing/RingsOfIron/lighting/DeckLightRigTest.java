@@ -7,6 +7,8 @@ import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.WallLight;
+import com.ringsofiron.interiorgrid.WallLightLayout;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -108,7 +110,7 @@ class DeckLightRigTest {
         DeckLightRig rig = new DeckLightRig(ART);
         rig.collect(g, spots);
         MountFootprint helm = mount(g, SubsystemComponent.SubsystemType.HELM);
-        int walls = rig.wallLights(g).size;
+        int walls = WallLightLayout.lightsOf(g).size;
         assertTrue(walls > 0);
         for (int i = 0; i < spots.size(); i++) {
             LightSpot s = spots.get(i);
@@ -125,10 +127,10 @@ class DeckLightRigTest {
         LightSpots spots = new LightSpots();
         DeckLightRig rig = new DeckLightRig(ART);
         rig.collect(g, spots);
-        int walls = rig.wallLights(g).size;
+        int walls = WallLightLayout.lightsOf(g).size;
         for (int i = 0; i < walls; i++) {
             LightSpot s = spots.get(i);
-            com.ringsofiron.interiorgrid.WallLight p = rig.wallLights(g).get(i);
+            WallLight p = WallLightLayout.lightsOf(g).get(i);
             assertTrue(s.on && s.isCone && s.casts());
             assertEquals(5f * g.tileSize, s.reach, 1e-4f, "the art's reach, not a guess from its size");
             // Just off the wall, on its tile, shining away from it

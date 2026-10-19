@@ -27,13 +27,13 @@ So a designer tunes a light where it is drawn, and the extractor copies the sett
 ## Wall lights
 A wall light hangs on one edge of a floor tile, shining into that tile; it takes no room, so the tile stays free for a system, a door or anything else. Its art's top edge sits against the wall, and the art turns with the wall it hangs on.
 
-A layout lists them in `chassis.toml`:
+`DeckArt` draws `decor/wall_light` (or `wall_light_unpowered` when the craft has no power) at each one. A layout lists them in `chassis.toml`:
 ```toml
 lights = [
   { x = 3, y = 2, side = "TOP" },   # the tile, and which of its edges the light hangs on
 ]
 ```
-`lights = []` means none. A layout without the key gets lights worked out from its rooms (`WallLightLayout`, in `interior-grid`): each room gets lights on its walls until every floor tile is within 3.5 tiles in front of one, the wall lighting the most dark tiles first, never two within 3 tiles, and never behind a system. The ship editor's **Auto-place lights** writes exactly that into the layout, so it can be adjusted by hand from there, and its **Light** tool hangs or takes down one at a time (see `documentation/ship-editor/Design.md`). The base layouts carry their auto-placed lights. A saved game keeps a deck's lights with its grid.
+`lights = []` means none. A layout without the key gets lights worked out from its rooms (`WallLightLayout`, in `interior-grid`): each room gets lights on its walls until every floor tile is within 3.5 tiles in front of one, the wall lighting the most dark tiles first, never two within 3 tiles, and never behind a system. The ship editor's **Auto-place lights** writes exactly that into the layout, so it can be adjusted by hand from there, and its **Light** tool hangs or takes down one at a time (see `documentation/ship-editor/Design.md`). The base layouts carry their auto-placed lights. A saved game keeps a deck's lights with its grid. `WallLightLayout.lightsOf(grid)` gives the lights a deck has either way, for anything that draws or lights them.
 
 ## Code
 All in `core`, package `com.hawkwing.RingsOfIron.lighting`:
@@ -49,10 +49,9 @@ All in `core`, package `com.hawkwing.RingsOfIron.lighting`:
 
 Shadows use a Box2D world of their own in world meters, apart from the crew's interior worlds (tile units, one per deck) and the flight world (10 m units): one static body per deck in view, its barrier edges as fixtures, moved to the craft's pose each frame and rebuilt when a door or wall changes. Mounted systems cast no shadows, since their lights sit inside them.
 
-Lighting uses diffuse mode: the light map multiplies the scene, so art under full light shows as drawn. Anything drawn from an emissive layer belongs **after** the light map (between `renderLights` and `renderGlow`), or the light map darkens what should be a light.
+Lighting uses diffuse mode: the light map multiplies the scene, so art under full light shows as drawn. Anything drawn from an emissive layer belongs **after** the light map (between `renderLights` and `renderGlow`), or the light map darkens what should be a light. So after the light map, `DeckArt.glow` draws the `glow/` region (the emissive layer alone) of everything on the deck that is lit: running systems, live conduits, powered doors and wall lights, and fire. A system without power is skipped, so its dark art stays dark.
 
 ## Open questions
 - Sunlight and shadows outside: a directional light over the flight world would shadow each hull's own art, since box2dlights darkens everything past an occluder's edge.
 - Crew do not cast shadows.
-- Bulkhead door lamps are not lit yet; doors carry no power state of their own.
-- The wall light's art is not drawn on decks yet: its light shines, and drawing the fitting itself at each `grid.wallLights` spot belongs with the deck art.
+- Bulkhead door lamps glow with the craft's power but cast no light; doors carry no power state of their own.

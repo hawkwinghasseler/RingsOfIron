@@ -181,6 +181,11 @@ public final class ArtNames {
         return "crew/crew_" + who.name().toLowerCase(Locale.ROOT) + (carrying ? "_carrying" : "");
     }
 
+    /** A light on a wall, dark without power. */
+    public static String wallLight(boolean powered) {
+        return powered ? "decor/wall_light" : "decor/wall_light_unpowered";
+    }
+
     /** The emissive layer of a region, for a glow pass. */
     public static String glow(String region) {
         return "glow/" + region;
