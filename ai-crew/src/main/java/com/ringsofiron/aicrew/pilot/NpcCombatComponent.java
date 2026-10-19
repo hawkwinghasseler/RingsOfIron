@@ -34,7 +34,12 @@ public class NpcCombatComponent implements Component {
         /** Close fast to gun range. */
         RUSH,
         /** Swing round behind the target, where its engines are, and hold there. */
-        FLANK
+        FLANK,
+        /**
+         * Keep a long range with the nose on the target, and back straight off when it closes:
+         * long guns against short ones. No circling, so the guns keep bearing.
+         */
+        KITE
     }
 
     /** The ship being fought. Not saved; {@link #targetRef} is. */

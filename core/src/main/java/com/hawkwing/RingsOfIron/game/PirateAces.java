@@ -31,6 +31,10 @@ import java.util.Set;
  * {@link #BOUNTY_SCALE} times a pirate's bounty, {@link #BOUNTY_STANDING} more standing, and a spare
  * rare weapon is left crated in its hold, for whoever boards it. An ace never runs on the odds and
  * fights on to {@link #BREAK_OFF_HULL} (round 4: the one in round 3 ran at its first hit).
+ *
+ * <p>Round 5: once the player flies a gunship, an ace takes one of the pirates' gunships
+ * ({@link #gunshipAce}); and an ace's bounty is posted the day it appears ({@link #postBounty}),
+ * not on the next day's boards.
  */
 public final class PirateAces {
     public static final int MAX_ACES = 3;
@@ -67,7 +71,14 @@ public final class PirateAces {
         if (!h.isPirate() || h.ace || alive(all) >= MAX_ACES) return false;
         h.ace = true;
         h.grudge = grudge;
+        String was = h.displayName;
         h.displayName = callsign(all, h);
+        // In the bubble its marker goes by the new name too (a contract's suffix kept)
+        com.ringsofiron.uihud.components.HudMarkerComponent marker =
+                ship.getComponent(com.ringsofiron.uihud.components.HudMarkerComponent.class);
+        if (marker != null && was != null && marker.label.startsWith(was)) {
+            marker.label = h.displayName + marker.label.substring(was.length());
+        }
         Random rng = new Random(h.displayName.hashCode() * 31L + h.plunders + h.escapes);
         LoadoutDef refit = Loadouts.pick(world.combatDefs, h.shipId, difficulty, true, rng);
         if (refit != null && Loadouts.apply(ship, refit, world.combatDefs) > 0) h.loadout = refit.id;
@@ -83,6 +94,48 @@ public final class PirateAces {
         WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);
         if (weapons != null) for (WeaponMountComponent m : weapons.mounts) m.gunnerySkill = Math.max(m.gunnerySkill, ACE_SKILL);
         return true;
+    }
+
+    /**
+     * Makes the first plain pirate gunship, by uuid, an ace, when no ace at large flies a gunship and
+     * there is room for another ({@link #MAX_ACES}). It keeps no grudge: it goes after the player when
+     * it outguns them enough, as any pirate does. Returns its uuid, or null when none was promoted.
+     */
+    public static String gunshipAce(GameWorld world, java.util.Map<String, HostileComponent> all, double difficulty) {
+        String best = null;
+        for (java.util.Map.Entry<String, HostileComponent> e : all.entrySet()) {
+            HostileComponent h = e.getValue();
+            if (!h.isPirate() || !HostileTraffic.gunshipHull(h.shipId)) continue;
+            if (h.ace && !h.partDropped) return null;
+            if (!h.ace && (best == null || e.getKey().compareTo(best) < 0)) best = e.getKey();
+        }
+        Entity ship = best == null ? null : world.engine.getEntity(best);
+        if (ship == null || !promote(world, ship, all.get(best), all.values(), difficulty, false)) return null;
+        return best;
+    }
+
+    /**
+     * Posts the bounty on the ace {@code uuid} at once on every board that would list it, unless today's
+     * board already does; it stands until the day turns, when the day's boards take it up.
+     */
+    public static void postBounty(GameWorld world, String uuid) {
+        if (world.contracts == null || uuid == null) return;
+        double now = world.engine.getSimSeconds();
+        double dayEnds = (Math.floor(now / ContractBoard.DAY) + 1) * ContractBoard.DAY;
+        for (com.ringsofiron.macrosim.economy.EconomyNode node : world.macroSim.stations()) {
+            Entity station = world.engine.getEntity(node.stationUuid);
+            if (station == null) continue;
+            boolean listed = false;
+            for (Contract c : world.contracts.offers(node.stationUuid)) listed |= uuid.equals(c.targetUuid);
+            if (listed) continue;
+            int giver = world.standing.factionOf(station);
+            for (Contract c : world.contracts.bounties(node, giver)) {
+                if (!uuid.equals(c.targetUuid)) continue;
+                c.stationUuid = node.stationUuid;
+                c.deadline = dayEnds;
+                world.contracts.postEvent(c);
+            }
+        }
     }
 
     /** The first callsign no other ace has. */

@@ -37,6 +37,12 @@ test {
   useJUnitPlatform()
   // ./gradlew :core:test --tests '*Round3CareerTest' -PcareerSeed=7 plays the scripted career on another seed
   if (project.hasProperty('careerSeed')) systemProperty 'career.seed', project.property('careerSeed')
+  // ./gradlew :core:test --tests '*EnemySurveyTest' -PenemySurvey runs the round 5 enemy survey (core/build/enemy-survey.txt)
+  if (project.hasProperty('enemySurvey')) systemProperty 'enemy.survey', 'true'
+  if (project.hasProperty('surveyTrials')) systemProperty 'enemy.survey.trials', project.property('surveyTrials')
+  if (project.hasProperty('enemyDebug')) systemProperty 'enemy.debug', 'true'
+  if (project.hasProperty('enemyProbe')) systemProperty 'enemy.probe', project.property('enemyProbe')
+  testLogging { showStandardStreams = project.hasProperty('enemySurvey') || project.hasProperty('enemyDebug') }
 }
 
 jar {
