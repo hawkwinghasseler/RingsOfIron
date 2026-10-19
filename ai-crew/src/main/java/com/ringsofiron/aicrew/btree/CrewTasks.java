@@ -652,9 +652,12 @@ public final class CrewTasks {
         Array<Entity> aboard = a.aboardScratch;
         aboard.clear();
         ImmutableArray<Entity> all = a.service.crewEntities();
+        boolean docked = grid.links.size > 0;
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
-            if (a.service.joined(a.pos.ship, a.service.position(e).ship)) aboard.add(e);
+            Entity ship = a.service.position(e).ship;
+            // Same craft first: looking up a docked craft's grid only matters while docked
+            if (ship == a.pos.ship || docked && a.service.joined(a.pos.ship, ship)) aboard.add(e);
         }
         Entity seen = nearestVisibleHostile(a, a.entity, aboard, grid);
         if (seen != null || a.crew.role != CrewRole.MARINE) return seen;
