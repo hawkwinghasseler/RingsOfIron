@@ -2,6 +2,9 @@ package com.ringsofiron.combatsys.modding;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Fixture;
+import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.SignatureComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
@@ -16,6 +19,8 @@ import com.ringsofiron.moddingdata.ComponentAssembler;
 import com.ringsofiron.moddingdata.DefEntry;
 import com.ringsofiron.moddingdata.EntityFactory;
 import com.ringsofiron.moddingdata.defs.ShipDef;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
 /**
  * Gives every ship spawned from a {@code [ship.*]} def its combat parts: sensors, a signature
@@ -43,7 +48,7 @@ public class ShipWeaponsAssembler implements ComponentAssembler {
     public void assemble(Entity entity, DefEntry def, EntityFactory factory) {
         ShipDef ship = factory.defs().convert(def, ShipDef.class);
         entity.add(new SensorComponent());
-        entity.add(new SignatureComponent(1f, 1f, hullRadius(ship)));
+        entity.add(new SignatureComponent(1f, 1f, hullRadius(entity, ship)));
 
         WeaponsComponent weapons = new WeaponsComponent();
         for (ShipDef.Hardpoint hp : ship.hardpoints) {
@@ -57,8 +62,26 @@ public class ShipWeaponsAssembler implements ComponentAssembler {
         if (weapons.mounts.size > 0) entity.add(weapons);
     }
 
-    static float hullRadius(ShipDef ship) {
+    /**
+     * How far the hull reaches from the body origin: the farthest corner of the body's polygons
+     * when it has a body (its shape may come from the layout rather than the def), else of the
+     * def's {@code hull}, else 5 m.
+     */
+    static float hullRadius(Entity entity, ShipDef ship) {
         float r2 = 0f;
+        PhysicsBodyComponent pb = entity.getComponent(PhysicsBodyComponent.class);
+        if (pb != null && pb.body != null) {
+            Vector2 v = new Vector2();
+            for (Fixture f : pb.body.getFixtureList()) {
+                if (!(f.getShape() instanceof PolygonShape)) continue;
+                PolygonShape poly = (PolygonShape) f.getShape();
+                for (int i = 0; i < poly.getVertexCount(); i++) {
+                    poly.getVertex(i, v);
+                    r2 = Math.max(r2, v.len2() * PhysicsManager.METERS_PER_UNIT * PhysicsManager.METERS_PER_UNIT);
+                }
+            }
+            if (r2 > 0f) return (float) Math.sqrt(r2);
+        }
         for (float[] v : ship.hull) {
             if (v != null && v.length >= 2) r2 = Math.max(r2, v[0] * v[0] + v[1] * v[1]);
         }

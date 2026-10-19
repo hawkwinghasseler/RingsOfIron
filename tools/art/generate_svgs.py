@@ -75,11 +75,13 @@ def f(v):
 
 class Art:
     """One asset's drawing, in layers: base (everything that is lit by the scene),
-    emissive (everything that gives off its own light, drawn on top) and meta
-    (invisible collider and interaction shapes)."""
+    emissive (everything that gives off its own light, drawn on top), meta
+    (invisible collider and interaction shapes) and, for exterior hulls, collision
+    (what the craft collides on, when that is not its layout's tiles)."""
 
     def __init__(self):
         self.b = ""
+        self.c = ""
         self.e = ""
         self.m = ""
         self.defs = ""
@@ -98,6 +100,8 @@ def write(path, w, h, art, title, viewbox=None, unpowered=None, transform=None):
         if art.defs:
             svg += f"  <defs>{art.defs}</defs>\n"
         svg += f'  <g id="base"{tr}>\n{art.b}  </g>\n'
+        if art.c:
+            svg += f'  <g id="collision"{tr}>\n{art.c}  </g>\n'
         if with_emissive and art.e:
             svg += f'  <g id="emissive"{tr}>\n{art.e}  </g>\n'
         if art.m:
@@ -2117,6 +2121,15 @@ def hull_svg(ch, overhang=None, engines=False):
     return a, (x0, y0, gw, gh)
 
 
+# Each ship's hull outline in body meters, by chassis, drawn under the grid. One that reaches
+# past the grid also becomes the hull's collision layer, since a ship otherwise collides on
+# its tiles alone.
+OVERHANG = {
+    "corvette": [(-11.0, -3.0), (5.0, -3.0), (6.5, 0.0), (5.0, 3.0), (-11.0, 3.0)],  # the bow
+    "freighter": [(-10.0, -6.5), (10.0, -6.5), (10.0, 6.5), (-10.0, 6.5)],
+}
+
+
 def hulls():
     ships = load_toml("ships.toml")["ship"]
     chassis = load_toml("chassis.toml")["chassis"]
@@ -2126,8 +2139,10 @@ def hulls():
         if name in done:
             continue
         done.add(name)
-        pts = [(x * T, -y * T) for x, y in ship["hull"]]
+        pts = [(x * T, -y * T) for x, y in OVERHANG.get(name, [])]
         a, (x0, y0, gw, gh) = hull_svg(chassis[name], overhang=pts, engines=True)
+        if any(x < x0 or x > x0 + gw or y < y0 or y > y0 + gh for x, y in pts):
+            a.c += f'    <polygon points="{" ".join(f"{f(x)},{f(y)}" for x, y in pts)}"/>\n'
         xs, ys = [p[0] for p in pts] + [x0, x0 + gw], [p[1] for p in pts] + [y0, y0 + gh]
         vb = (min(xs) - T, min(ys) - T, max(xs) - min(xs) + 2 * T, max(ys) - min(ys) + 2 * T)
         write(f"hulls/{name}.svg", vb[2], vb[3], a,

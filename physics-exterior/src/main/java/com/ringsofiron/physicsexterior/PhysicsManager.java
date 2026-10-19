@@ -31,6 +31,10 @@ import com.ringsofiron.physicsexterior.events.CollisionEvent;
 import com.ringsofiron.physicsexterior.events.FastPassImpactEvent;
 import com.ringsofiron.physicsexterior.events.WorldShiftEvent;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Owns the Box2D world for the local "bubble" around the player.
  *
@@ -400,32 +404,93 @@ public class PhysicsManager implements Disposable {
      */
     public Body createPolygonBody(Entity owner, float x, float y, float angleRad, float[] vertices,
                                   float density, short category, short mask) {
-        float[] scaled = new float[vertices.length];
-        for (int i = 0; i < vertices.length; i++) scaled[i] = vertices[i] * UNITS_PER_METER;
+        return createPolygonBody(owner, x, y, angleRad, Collections.singletonList(vertices), density, category, mask);
+    }
+
+    /**
+     * Creates a free-flying dynamic body with a convex polygon fixture for each of {@code pieces}
+     * (each as {@link #createPolygonBody(Entity, float, float, float, float[], float, short, short)}
+     * takes one), for a shape no single convex polygon can be. It weighs what all of them together
+     * would, and collides on their outlines.
+     */
+    public Body createPolygonBody(Entity owner, float x, float y, float angleRad, List<float[]> pieces,
+                                  float density, short category, short mask) {
+        List<float[]> scaled = new ArrayList<>(pieces.size());
+        for (float[] vertices : pieces) {
+            float[] s = new float[vertices.length];
+            for (int i = 0; i < vertices.length; i++) s[i] = vertices[i] * UNITS_PER_METER;
+            scaled.add(s);
+        }
         PolygonShape shape = new PolygonShape();
-        shape.set(scaled);
+        shape.set(scaled.get(0));
         Body body = createDynamicBody(owner, x, y, angleRad, shape, density, category, mask);
-        // Weighed on the full outline, then given the slightly smaller shape that collides on it
-        Fixture full = body.getFixtureList().first();
+        // Weighed on the full outlines, then given the slightly smaller shapes that collide on them
+        Fixture first = body.getFixtureList().first();
+        float friction = first.getFriction(), restitution = first.getRestitution(), fixtureDensity = first.getDensity();
+        for (int i = 1; i < scaled.size(); i++) {
+            PolygonShape piece = new PolygonShape();
+            piece.set(scaled.get(i));
+            body.createFixture(fixture(piece, fixtureDensity, friction, restitution, category, mask));
+            piece.dispose();
+        }
         MassData mass = body.getMassData();
         MassData kept = new MassData();
         kept.mass = mass.mass;
         kept.center.set(mass.center);
         kept.I = mass.I;
-        FixtureDef inset = new FixtureDef();
-        PolygonShape smaller = new PolygonShape();
-        smaller.set(PolygonSkin.inset(scaled, PolygonSkin.SKIN_UNITS));
-        inset.shape = smaller;
-        inset.density = full.getDensity();
-        inset.friction = full.getFriction();
-        inset.restitution = full.getRestitution();
-        inset.filter.categoryBits = category;
-        inset.filter.maskBits = mask;
-        body.destroyFixture(full);
-        body.createFixture(inset);
-        smaller.dispose();
+        while (body.getFixtureList().size > 0) body.destroyFixture(body.getFixtureList().first());
+        for (float[] s : scaled) {
+            PolygonShape smaller = new PolygonShape();
+            smaller.set(PolygonSkin.inset(s, PolygonSkin.SKIN_UNITS));
+            body.createFixture(fixture(smaller, fixtureDensity, friction, restitution, category, mask));
+            smaller.dispose();
+        }
         body.setMassData(kept);
         return body;
+    }
+
+    /**
+     * Gives {@code body} a new shape: its solid polygon fixtures (not sensors or docking collars)
+     * are replaced by one for each of {@code pieces}, as {@link #createPolygonBody(Entity, float,
+     * float, float, List, float, short, short)} takes them, with the same density, friction and
+     * collision filter. Its mass is left to the fixtures' densities, so set the mass data after if
+     * it should be something else. Returns false, changing nothing, if the body has no such fixture
+     * or {@code pieces} is empty. Not while the world is stepping.
+     */
+    public static boolean replacePolygonFixtures(Body body, List<float[]> pieces) {
+        if (pieces == null || pieces.isEmpty()) return false;
+        Array<Fixture> old = new Array<>();
+        for (Fixture f : body.getFixtureList()) {
+            if (f.isSensor() || !(f.getShape() instanceof PolygonShape)) continue;
+            if ((f.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0) continue;
+            old.add(f);
+        }
+        if (old.size == 0) return false;
+        Fixture template = old.first();
+        float density = template.getDensity(), friction = template.getFriction(), restitution = template.getRestitution();
+        short category = template.getFilterData().categoryBits, mask = template.getFilterData().maskBits;
+        for (Fixture f : old) body.destroyFixture(f);
+        for (float[] vertices : pieces) {
+            float[] scaled = new float[vertices.length];
+            for (int i = 0; i < vertices.length; i++) scaled[i] = vertices[i] * UNITS_PER_METER;
+            PolygonShape shape = new PolygonShape();
+            shape.set(PolygonSkin.inset(scaled, PolygonSkin.SKIN_UNITS));
+            body.createFixture(fixture(shape, density, friction, restitution, category, mask));
+            shape.dispose();
+        }
+        return true;
+    }
+
+    private static FixtureDef fixture(Shape shape, float density, float friction, float restitution,
+                                      short category, short mask) {
+        FixtureDef def = new FixtureDef();
+        def.shape = shape;
+        def.density = density;
+        def.friction = friction;
+        def.restitution = restitution;
+        def.filter.categoryBits = category;
+        def.filter.maskBits = mask;
+        return def;
     }
 
     /** Creates a free-flying dynamic body with one circle fixture. See {@link #createPolygonBody}. */

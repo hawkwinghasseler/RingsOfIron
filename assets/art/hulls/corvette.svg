@@ -359,6 +359,9 @@
     <circle cx="-692" cy="-180" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
     <circle cx="-692" cy="180" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
   </g>
+  <g id="collision">
+    <polygon points="-704,192 320,192 416,0 320,-192 -704,-192"/>
+  </g>
   <g id="emissive">
     <g data-light="glow">
     <circle cx="244" cy="-116" r="7.2" fill="#ff9a3c" opacity="0.18"/>
