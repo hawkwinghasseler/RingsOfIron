@@ -621,14 +621,59 @@ public class ShipEditor extends ApplicationAdapter {
                 if (r != null) batch.draw(r, sx(x) - t / 2f, sy(y) - t / 2f, t, t);
             }
         }
-        // Conduits along edges, over the walls they run in
-        TextureRegion run = art.region(ArtNames.conduitArm(true));
-        for (ChassisDef.EdgeConduit c : run == null ? java.util.Collections.<ChassisDef.EdgeConduit>emptyList() : m.edgeConduits) {
-            Side side = Side.valueOf(c.side);
-            DeckArt.edgeConduit(batch, run, sx(c.x + 0.5f + side.dx * 0.5f), sy(c.y + 0.5f + side.dy * 0.5f), scale,
-                    side.dy != 0);
-        }
+        drawEdgeConduitArt(m, cat, t);
         batch.end();
+    }
+
+    /**
+     * Conduits along edges, over the walls they run in: segments, a joint at each vertex they reach
+     * and a tap where a conduit tile meets one; two stretched conduit arms each without that art.
+     */
+    private void drawEdgeConduitArt(ChassisModel m, ShipPartCatalog cat, float t) {
+        int w = m.width(), h = m.height();
+        TextureRegion segmentH = art.region(ArtNames.edgeConduit(true, true));
+        TextureRegion segmentV = art.region(ArtNames.edgeConduit(true, false));
+        if (segmentH == null || segmentV == null) {
+            TextureRegion arm = art.region(ArtNames.conduitArm(true));
+            if (arm == null) return;
+            for (ChassisDef.EdgeConduit c : m.edgeConduits) {
+                Side side = Side.valueOf(c.side);
+                DeckArt.edgeConduit(batch, arm, sx(c.x + 0.5f + side.dx * 0.5f), sy(c.y + 0.5f + side.dy * 0.5f), scale,
+                        side.dy != 0);
+            }
+            return;
+        }
+        boolean[][] hRuns = new boolean[h + 1][w], vRuns = new boolean[h][w + 1];
+        for (ChassisDef.EdgeConduit c : m.edgeConduits) {
+            Side side = Side.valueOf(c.side);
+            int ex = c.x + (side == Side.RIGHT ? 1 : 0), ey = c.y + (side == Side.TOP ? 1 : 0);
+            if (side.dy != 0 && ey >= 0 && ey <= h && ex >= 0 && ex < w) {
+                hRuns[ey][ex] = true;
+                batch.draw(segmentH, sx(ex), sy(ey) - t / 2f, scale, t);
+            } else if (side.dx != 0 && ey >= 0 && ey < h && ex >= 0 && ex <= w) {
+                vRuns[ey][ex] = true;
+                batch.draw(segmentV, sx(ex) - t / 2f, sy(ey), t, scale);
+            }
+        }
+        for (int y = 0; y <= h; y++) {
+            for (int x = 0; x <= w; x++) {
+                int mask = (y < h && vRuns[y][x] ? ArtNames.N : 0) | (x < w && hRuns[y][x] ? ArtNames.E : 0)
+                        | (y > 0 && vRuns[y - 1][x] ? ArtNames.S : 0) | (x > 0 && hRuns[y][x - 1] ? ArtNames.W : 0);
+                if (mask == 0) continue;
+                TextureRegion r = art.region(ArtNames.edgeConduitJoint(true, mask));
+                if (r != null) batch.draw(r, sx(x) - t / 2f, sy(y) - t / 2f, t, t);
+            }
+        }
+        TextureRegion tap = art.region(ArtNames.edgeConduitTap(true));
+        if (tap == null) return;
+        for (ChassisDef.EdgeConduit c : m.edgeConduits) {
+            Side side = Side.valueOf(c.side);
+            float cx = sx(c.x + 0.5f + side.dx * 0.5f), cy = sy(c.y + 0.5f + side.dy * 0.5f);
+            // On whichever tile beside the edge carries a conduit across it
+            if (conduitAt(m, cat, c.x, c.y) || conduitAt(m, cat, c.x + side.dx, c.y + side.dy)) {
+                batch.draw(tap, cx - t / 2f, cy - t / 2f, t, t);
+            }
+        }
     }
 
     /** A wall type's art: its own when the pack has it (hull, hull_heavy...), else its base's. */

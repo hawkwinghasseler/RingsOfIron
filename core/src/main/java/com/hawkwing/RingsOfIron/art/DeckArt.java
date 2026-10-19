@@ -117,13 +117,24 @@ public final class DeckArt {
         }
     }
 
-    /** Conduits run along tile edges, over the walls they run in so they stay in sight. */
+    /**
+     * Conduits run along tile edges, over the walls they run in so they stay in sight: a segment on
+     * each edge, a joint at each vertex they reach, and a tap where a tile conduit meets one. Without
+     * the edge conduit art, each is drawn as two stretched conduit arms.
+     */
     private void edgeConduits(Batch batch, ShipGridComponent grid) {
         float s = grid.tileSize, ox = grid.gridOriginLocal.x, oy = grid.gridOriginLocal.y;
+        boolean own = art.region(ArtNames.edgeConduit(true, true)) != null;
+        float half = s / 8f;
         for (int y = 0; y <= grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 EdgeConduit c = grid.conduitH[y][x];
                 if (c == null) continue;
+                if (own) {
+                    draw(batch, art.first(ArtNames.edgeConduit(c.isPowered, true), ArtNames.edgeConduit(true, true)),
+                            ox + x * s, oy + y * s - half, s, 2f * half);
+                    continue;
+                }
                 TextureRegion arm = shown(art.region(ArtNames.conduitArm(c.isPowered)));
                 if (arm != null) edgeConduit(batch, arm, ox + (x + 0.5f) * s, oy + y * s, s, true);
             }
@@ -132,15 +143,55 @@ public final class DeckArt {
             for (int x = 0; x <= grid.width; x++) {
                 EdgeConduit c = grid.conduitV[y][x];
                 if (c == null) continue;
+                if (own) {
+                    draw(batch, art.first(ArtNames.edgeConduit(c.isPowered, false), ArtNames.edgeConduit(true, false)),
+                            ox + x * s - half, oy + y * s, 2f * half, s);
+                    continue;
+                }
                 TextureRegion arm = shown(art.region(ArtNames.conduitArm(c.isPowered)));
                 if (arm != null) edgeConduit(batch, arm, ox + x * s, oy + (y + 0.5f) * s, s, false);
             }
         }
+        if (!own) return;
+        // Joints over the segments, at every vertex a run reaches
+        for (int y = 0; y <= grid.height; y++) {
+            for (int x = 0; x <= grid.width; x++) {
+                EdgeConduit n = y < grid.height ? grid.conduitV[y][x] : null;
+                EdgeConduit so = y > 0 ? grid.conduitV[y - 1][x] : null;
+                EdgeConduit e = x < grid.width ? grid.conduitH[y][x] : null;
+                EdgeConduit w = x > 0 ? grid.conduitH[y][x - 1] : null;
+                int mask = (n != null ? ArtNames.N : 0) | (e != null ? ArtNames.E : 0)
+                        | (so != null ? ArtNames.S : 0) | (w != null ? ArtNames.W : 0);
+                if (mask == 0) continue;
+                boolean powered = live(n) || live(e) || live(so) || live(w);
+                draw(batch, art.first(ArtNames.edgeConduitJoint(powered, mask), ArtNames.edgeConduitJoint(true, mask)),
+                        ox + x * s - half, oy + y * s - half, 2f * half, 2f * half);
+            }
+        }
+        // Taps where a tile conduit's arm meets a run
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile t = grid.getTile(x, y);
+                if (t == null || !t.isPowerConduit() || !t.isOpen()) continue;
+                for (Side side : Side.values()) {
+                    EdgeConduit c = grid.getConduit(x, y, side);
+                    if (c == null) continue;
+                    float cx = ox + (x + 0.5f + side.dx * 0.5f) * s, cy = oy + (y + 0.5f + side.dy * 0.5f) * s;
+                    draw(batch, art.first(ArtNames.edgeConduitTap(c.isPowered), ArtNames.edgeConduitTap(true)),
+                            cx - half, cy - half, 2f * half, 2f * half);
+                }
+            }
+        }
+    }
+
+    private static boolean live(EdgeConduit c) {
+        return c != null && c.isPowered;
     }
 
     /**
-     * A conduit along a tile edge {@code s} long, whose middle is ({@code cx}, {@code cy}): two
-     * {@link ArtNames#conduitArm} arms out from the middle to the edge's ends. An arm's run fills
+     * A conduit along a tile edge {@code s} long, whose middle is ({@code cx}, {@code cy}), for an
+     * art pack without edge conduit art: two {@link ArtNames#conduitArm} arms out from the middle to
+     * the edge's ends. An arm's run fills
      * the top 22 of its 64 units, so it is stretched to reach half a tile.
      */
     public static void edgeConduit(Batch batch, TextureRegion arm, float cx, float cy, float s, boolean horizontal) {

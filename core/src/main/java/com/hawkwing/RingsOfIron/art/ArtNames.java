@@ -47,6 +47,21 @@ public final class ArtNames {
         return powered ? "tiles/conduit_arm" : "tiles/conduit_arm_unpowered";
     }
 
+    /** A conduit run along one tile edge, laid out like an edge wall segment. */
+    public static String edgeConduit(boolean powered, boolean horizontal) {
+        return "edges/edge_conduit_" + (powered ? "" : "unpowered_") + (horizontal ? "h" : "v");
+    }
+
+    /** Where edge conduits meet or end at a vertex, by the sides they leave toward; null for none. */
+    public static String edgeConduitJoint(boolean powered, int mask) {
+        return mask == 0 ? null : "edges/edge_conduit_joint_" + (powered ? "" : "unpowered_") + sides(mask);
+    }
+
+    /** The junction box where a tile conduit's arm meets an edge run, on the middle of the edge. */
+    public static String edgeConduitTap(boolean powered) {
+        return powered ? "edges/edge_conduit_tap" : "edges/edge_conduit_tap_unpowered";
+    }
+
     /** A covering laid over the deck, or null for bare steel. */
     public static String covering(FloorCovering c) {
         return c == null || c == FloorCovering.NONE ? null : "tiles/covering_" + c.name().toLowerCase(Locale.ROOT);
