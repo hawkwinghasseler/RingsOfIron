@@ -20,6 +20,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
       - name: Smoke test the game and demos
         run: xvfb-run -a -s "-screen 0 1920x1080x24" ./gradlew :lwjgl3:smokeTest --continue --console=plain
+      - name: Smoke test with OpenAL audio on
+        run: xvfb-run -a -s "-screen 0 1920x1080x24" ./gradlew :lwjgl3:audioSmokeTest --continue --console=plain
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v4

@@ -10,15 +10,14 @@ The `audio-spatial` module manages all sound reproduction. Due to the hard sci-f
 - **External Libraries:** OpenAL Soft (LGPL), through LWJGL's `lwjgl-openal`, the same OpenAL libGDX's desktop backend plays through. Its EFX extension supplies the low-pass filters and its HRTF the headphone spatialization.
 
 ## Implementation Guide
-To implement this module independently (requires mocking world coordinates and a dummy grid for obstruction testing):
+The original plan, kept for the reasoning; **Implemented** below says what was built. Where they differ, the implementation wins: the listener is placed by `AudioUpdateSystem` (there is no separate listener system), and muffling uses two sound paths rather than a single line (see **Decisions made while building it**).
 
 1. **Audio Backend:**
    - Play through OpenAL Soft on libGDX's OpenAL context, one source per playing sound.
    - Create a global `AudioManager` wrapper to abstract backend calls (e.g., `playOneShot("event:/weapons/laser", x, y)`).
 
 2. **3D Listener Positioning:**
-   - Create an `AudioListenerSystem` that updates every frame.
-   - Sync the listener position to the current active Camera position.
+   - Sync the listener position to the current active Camera position every frame.
    - In *Exterior Mode*, the listener is at the ship's center. In *Interior Mode*, it tracks the player character's grid coordinate.
 
 3. **Emitter Tracking:**
@@ -34,12 +33,14 @@ To implement this module independently (requires mocking world coordinates and a
      - Internal sounds are aggressively clamped to maximum occlusion.
      - External sounds (like weapon impacts on the hull) use standard distance attenuation without occlusion, representing sound vibrating through the ship's frame (the "Spacer Ears" mechanic).
 
-## Proposed Components
-- `AudioEmitterComponent`: Attached to entities (e.g., engines, weapons, broken pipes) holding the event path and current playback state.
+## Implemented Components
+- `AudioEmitterComponent`: attached to entities (engines, weapons, fires, breaches) holding the event path, where it plays (exterior at the entity's transform, or interior at a ship-local position), extra parameters and playback state.
+- `AudioListenerComponent`: where the player hears from, interior or exterior, and aboard which ship.
 
-## Proposed Systems
-- `AudioUpdateSystem`: Syncs listener and emitter positions.
-- `AcousticOcclusionSystem`: Calculates the "muffling" value based on grid wall intersections.
+## Implemented Systems
+- `AcousticOcclusionSystem` (priority 900): works out each interior emitter's Occlusion, Transmission and Pressure from the ship's grid.
+- `AudioUpdateSystem` (priority 1000): places the listener and emitters, starts and stops instances and advances the backend.
+- `InteriorHazardAudioSystem`: gives fires, breaches, alarms and doors their sounds from each ship's grid. Its emitters are transient, so a loaded game rebuilds them.
 
 ## Prototype Status
 The module builds and is tested headlessly (`gradlew :audio-spatial:test`). The game talks to an `AudioBackend` interface. On desktop it plays through OpenAL Soft; until sounds are recorded, every event plays a procedural placeholder.
@@ -55,7 +56,7 @@ What exists (`com.ringsofiron.audiospatial`):
 - **`AcousticModel`** is the one place the mix curves live: inverse distance rolloff faded to silence at max distance, a low-pass cutoff falling exponentially from 20 kHz (clear) to 350 Hz (fully muffled), a Transmission volume factor from the occlusion pass, and volume ∝ √pressure. Both audible backends use it, so they sound alike.
 - **`AudioEventCatalog`** maps event paths (`event:/ship/reactor_hum`, `event:/weapons/laser`, ...) to loop/one-shot, duration and distances. modding-data's `[audio_event]` table can feed it later.
 - **Components:** `AudioEmitterComponent` (event path, `EXTERIOR` at the entity's transform or `INTERIOR` at a ship-local position aboard a ship, extra parameters, auto-start, self-removing one-shots) and `AudioListenerComponent` (`mode` EXTERIOR/INTERIOR, `ship`, ship-local position).
-- **Systems:** `AcousticOcclusionSystem` (priority 900) then `AudioUpdateSystem` (priority 1000).
+- **Systems:** `AcousticOcclusionSystem` (priority 900) then `AudioUpdateSystem` (priority 1000), plus `InteriorHazardAudioSystem` for hazard sounds.
 - **Bridges:** `ImpactAudio.attach(physics)` listens to `PhysicsManager.collisions` and `fastPassImpacts` and plays hull impacts scaled by approach speed. `AudioUpdateSystem.worldShiftListener()` listens to `PhysicsManager.worldShifts` so a floating-origin rebase is not heard as a burst of speed. `AudioEmitters.spawnInteriorOneShot` plays a muffled one-shot (a door, a crack) inside a ship.
 
 Decisions made while building it:
@@ -81,6 +82,7 @@ Integration owed by other modules (agreed through the scheduler):
 - **Placement:** sources are placed relative to the listener, which faces world +y with +x on its right, each its event's minimum distance above the plane so a sound on top of the listener comes from the middle. The listener and libGDX's own sounds are left alone. Velocity is not passed on, so there is no Doppler shift, as with the synth.
 - **HRTF:** OpenAL Soft turns HRTF on by itself when it detects headphones. `-Daudio.hrtf=on` or `off` forces it. The startup log names the OpenAL version, EFX and the HRTF state.
 - **Limits:** up to 128 sources at once, leaving the rest of OpenAL Soft's 256 to libGDX; past that, new sounds are dropped silently. Every OpenAL call is made on the game thread.
+- **Smoke test:** `xvfb-run -a ./gradlew :lwjgl3:audioSmokeTest` (CI runs it) boots the audio demo and the game with sound on, played through OpenAL Soft into its wave writer instead of a sound card (`lwjgl3/build/smoke-audio/<app>.wav`). It fails if either app throws, does not pick the OpenAL backend, or the audio demo records silence. `-PsmokeFrames=4000` gives about ten seconds of the demo to listen to.
 - **Tests** render through an OpenAL Soft loopback device, so they run in CI without a sound card and check what actually comes out: audibility, streaming past the queued buffers, muffling, panning, distance, vacuum and clips.
 
 FMOD Studio was the original choice and had a backend written for it, but it is proprietary and was never run against real banks. It was removed in favour of OpenAL Soft.
