@@ -5,6 +5,7 @@ import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Disposable;
+import com.ringsofiron.aicrew.CrewDoors;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewSaveParticipant;
 import com.ringsofiron.aicrew.CrewService;
@@ -325,6 +326,8 @@ public class GameWorld implements Disposable {
         engine.addSystem(budget);
         crew.hostility = standing::hostile;
         docking.events.add((signal, e) -> standing.onDockingEvent(e));
+        // A port door held shut for pressure opens for crew walking through it
+        docking.crossing = link -> CrewDoors.crossingPort(crew, link);
         docking.clearance = (station, vessel) -> {
             if (!station.getComponent(StationComponent.class).grantsClearance) return "";
             return standing.refusal(station, vessel);

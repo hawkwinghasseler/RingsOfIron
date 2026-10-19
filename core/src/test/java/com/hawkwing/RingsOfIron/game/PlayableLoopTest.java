@@ -27,8 +27,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The round-2 loop played by script on the real new game, headless: take a contract, undock, fight
- * the pirate raider until it gives up, board it, strip a gun, dock, get paid, gain standing and be
- * promoted. The second test loses the ship and goes through abandon ship, rescue and requisition.
+ * the pirate raider until it gives up, board it, strip a gun, dock, get paid and gain standing, with
+ * a promotion one more such fight away. The second test loses the ship and goes through abandon
+ * ship, rescue and requisition.
  *
  * <p>Flying is the one step done by hand: the ship is put near the raider rather than flown there
  * (flight and docking have their own tests). The fight is real: the player's guns and missiles
@@ -109,7 +110,7 @@ class PlayableLoopTest {
     }
 
     @Test
-    void aContractFlownFoughtBoardedAndStrippedPaysAndPromotes() {
+    void aContractFlownFoughtBoardedAndStrippedPaysAndGainsStanding() {
         // A new career: an ensign of the sponsor, docked at Highport
         game.beginCareer();
         run(120);
@@ -149,12 +150,12 @@ class PlayableLoopTest {
         // Missiles still in flight land, and what burns aboard it burns out
         run(60 * 30);
 
-        // The bounty pays; beating a pirate gains standing with everyone at war with them
+        // The bounty pays; beating a pirate gains standing with the factions sworn against them
         assertEquals(Contract.Status.DONE, bounty.status);
         assertEquals(credits + bounty.reward, account.credits, 1e-6);
         assertTrue(world.loop.credited(world.universe.uuidOf(game.raider)), "the kill counts as the player's");
         assertTrue(world.standing.standing(world.standing.sponsor()) >= standing + bounty.standing
-                + FactionStanding.KILL_COST * FactionStanding.ENEMY_SHARE - 1e-3);
+                + FactionStanding.KILL_COST * FactionStanding.KILL_SHARE - 1e-3);
 
         // Latch on and board it; a pirate costs no standing to board
         float before = world.standing.standing(world.standing.sponsor());
@@ -190,11 +191,10 @@ class PlayableLoopTest {
         assertEquals(1, world.cargoSettlement.sellParts(game.player, part, 1), 1e-9);
         assertTrue(account.credits > beforeSale, "the part sold");
 
-        // Promoted on the way
-        assertTrue(world.standing.record().rank >= 1, "promoted: standing "
-                + world.standing.standing(world.standing.sponsor()) + ", " + notices);
-        assertEquals("Lieutenant", world.standing.rank().name);
-        assertTrue(notices.stream().anyMatch(n -> n.contains("Lieutenant")), "with a message: " + notices);
+        // Not promoted by one fight (the bounty's 6 and the kill's 5), but within one more of it
+        float gained = world.standing.standing(world.standing.sponsor()) - standing;
+        assertEquals(0, world.standing.record().rank, "still an ensign: " + notices);
+        assertTrue(standing + 2 * gained >= world.standing.ranks().get(1).standing, "a second fight promotes: " + gained);
     }
 
     @Test

@@ -4,7 +4,9 @@
 # sponsor = true is the faction the player serves; its rank ladder below is the player's
 # career. stations lists the station names it owns; a station no faction lists belongs to
 # the sponsor. enemies are at war with it (either side listing the other is enough), and
-# hostile_to_all is at war with everyone, the player included.
+# hostile_to_all is at war with everyone, the player included. Only enemies listed here gain
+# standing when the player hurts a faction: being at war with a hostile_to_all faction is not
+# enough, so beating pirates pleases those that name them (the Patrol), not everyone.
 #
 # [rank.<id>]: a step on the sponsor's ladder, lowest order first. Standing with the sponsor
 # at or above a rank's standing earns it; promotions never go back down. budget is paid
@@ -16,6 +18,7 @@ name = "Terran Patrol Authority"
 color = "#4a90d9"
 sponsor = true
 stations = ["Highport", "Deepwell Depot"]
+enemies = ["pirates"]
 
 [faction.selene]
 name = "Selene Mining Combine"

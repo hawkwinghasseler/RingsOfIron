@@ -94,6 +94,12 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     }
 
     /** By default a station grants clearance if {@link StationComponent#grantsClearance} says so. */
+    /**
+     * Whether someone is walking through a pair of linked port openings, so a port door held shut
+     * for pressure opens for them ({@link PortSeals}). The game points this at its crew; by default no one is.
+     */
+    public java.util.function.Predicate<GridLink> crossing = link -> false;
+
     public ClearancePolicy clearance = (station, vessel) ->
             station.getComponent(StationComponent.class).grantsClearance ? null : "";
 
@@ -140,6 +146,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         boolean snap;
         /** The walkway between the two grids while welded; see {@link DockLinks}. */
         final Array<GridLink> gridLinks = new Array<>();
+        /** Seconds the pressure doors stay open for someone crossing; see {@link PortSeals}. */
+        float sealHold;
 
         Link(Entity a, int portA, DockingPort pa, Entity b, int portB, DockingPort pb) {
             this.a = a;
@@ -952,7 +960,12 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         float k = Math.min(1f, dt / DockingTuning.STRAIN_FILTER);
         link.strainForce += (force - link.strainForce) * k;
         link.strainTorque += (torque - link.strainTorque) * k;
-        if (link.strainForce > t.breakForce || link.strainTorque > t.breakTorque) tear(link);
+        if (link.strainForce > t.breakForce || link.strainTorque > t.breakTorque) {
+            tear(link);
+            return;
+        }
+        ShipGridComponent ga = gridMapper.get(link.a), gb = gridMapper.get(link.b);
+        if (ga != null && gb != null) PortSeals.update(link, ga, gb, crossing, dt);
     }
 
     private void weld(Link link, Body ba, Body bb) {

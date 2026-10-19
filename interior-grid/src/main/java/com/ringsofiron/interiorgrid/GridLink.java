@@ -81,12 +81,18 @@ public final class GridLink {
         return grid().getEdge(x, y, side);
     }
 
-    /** True if someone can walk across: both tiles open and neither edge wall closed. */
+    /**
+     * True if someone can walk across: both tiles open and neither edge wall closed, a door that
+     * opens for crew ({@link EdgeWall#opensForCrew}) counting as open.
+     */
     public boolean canCross() {
         Tile a = grid().getTile(x, y), b = other.getTile(ox, oy);
         if (a == null || b == null || !a.isOpen() || !b.isOpen()) return false;
-        EdgeWall e = edge(), f = mate.edge();
-        return (e == null || !e.blocks()) && (f == null || !f.blocks());
+        return passable(edge()) && passable(mate.edge());
+    }
+
+    private static boolean passable(EdgeWall e) {
+        return e == null || !e.blocks() || e.opensForCrew;
     }
 
     /**

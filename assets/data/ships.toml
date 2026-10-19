@@ -28,6 +28,25 @@ hardpoints = [
   { weapon = "laser_mk1", x = -1.5, y = -1.5, rotation = -90.0 },
 ]
 
+# The First Play raider: a patrol corvette the pirates took and refitted. The railgun in the
+# nose is gone for a chaingun; it keeps the laser, the launcher and point defense. It can hurt
+# the player's corvette but is outgunned by it.
+[ship.corvette_raider]
+name = "Pirate Corvette"
+chassis = "corvette"
+texture = "tex_corvette"
+mass = 120000.0
+max_thrust = 2.4e6
+max_torque = 8.0e5
+crew = 4
+hardpoints = [
+  { weapon = "chaingun_mk1", x = 3.5, y = -0.5, rotation = 0.0 },
+  { weapon = "autocannon_mk1", x = 1.5, y = 1.5, rotation = 90.0 },
+  { weapon = "autocannon_mk1", x = 1.5, y = -1.5, rotation = -90.0 },
+  { weapon = "harpoon_launcher", x = -1.5, y = 1.5, rotation = 90.0 },
+  { weapon = "laser_mk1", x = -1.5, y = -1.5, rotation = -90.0 },
+]
+
 [ship.freighter_hauler]
 name = "Hauler"
 chassis = "freighter"

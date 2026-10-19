@@ -111,6 +111,22 @@ public final class Factions {
         return fa.hostileToAll || fb.hostileToAll || fa.enemies.contains(fb.id) || fb.enemies.contains(fa.id);
     }
 
+    /**
+     * The factions sworn against {@code index}: those that list it in their {@code enemies}, or
+     * that it lists. A hostile-to-all faction's war with everyone does not count, so beating
+     * pirates pleases only the factions that call them an enemy.
+     */
+    public List<Integer> swornEnemiesOf(int index) {
+        List<Integer> out = new ArrayList<>();
+        FactionDef f = def(index);
+        if (f == null) return out;
+        for (int i = 0; i < factions.size(); i++) {
+            FactionDef o = def(FIRST + i);
+            if (FIRST + i != index && (o.enemies.contains(f.id) || f.enemies.contains(o.id))) out.add(FIRST + i);
+        }
+        return out;
+    }
+
     /** The factions at war with {@code index}. */
     public List<Integer> enemiesOf(int index) {
         List<Integer> out = new ArrayList<>();

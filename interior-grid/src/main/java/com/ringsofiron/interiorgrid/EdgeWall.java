@@ -18,6 +18,12 @@ public class EdgeWall {
     public boolean hasBulkhead;
     /** For walls with a bulkhead: whether the door is currently sealed. */
     public boolean bulkheadSealed;
+    /**
+     * For a docked port's door shut to hold a pressure difference: it opens for whoever walks
+     * through and shuts behind them, so while shut it stops air and fire but not the way across
+     * ({@link GridLink#canCross}). Not saved; the docking system sets it again each tick.
+     */
+    public boolean opensForCrew;
 
     public EdgeWall(WeightClass weightClass) {
         this(weightClass, MaterialTable.DEFAULT_MATERIAL, false);
