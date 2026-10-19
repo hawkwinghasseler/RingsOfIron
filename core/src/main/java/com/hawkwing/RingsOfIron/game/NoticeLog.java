@@ -110,9 +110,14 @@ public final class NoticeLog {
      * another line. The log keeps them all.
      */
     public Notice replace(String topic, String text) {
+        return replace(topic, text, Kind.INFO);
+    }
+
+    /** {@link #replace(String, String)} with how much it matters. */
+    public Notice replace(String topic, String text, Kind kind) {
         if (text == null || text.isEmpty()) return null;
         showing.removeIf(n -> n.text.startsWith(topic) && !n.text.equals(text));
-        return post(text);
+        return post(text, kind);
     }
 
     private Notice find(String text) {

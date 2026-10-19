@@ -49,9 +49,11 @@ key i; pause 1; shot 10-crew; key Escape; pause 1
 key t; pause 1; shot 11-market; key Escape; pause 1
 key u; pause 3; shot 12-undocked
 key e; pause 1; shot 13-helm-console; key Escape; pause 1
+key v; pause 1; shot 13b-on-deck; key v; pause 1
 key m; pause 1; shot 14-traffic-map; key m; pause 1
 for _ in 1 2 3; do key q; done; pause 1; shot 15-nav-targets
 key n; pause 1; shot 16-burn-planner; key Delete; pause 1
+for _ in 1 2 3; do key q; done; key semicolon; pause 1; shot 16b-transfer-plan; key Escape; pause 1; shot 16c-plan-discarded-by-esc
 # The fight: out to the raider, guns, then its reactor knocked out
 cmd away 3500; pause 4; shot 17-fight
 xdotool keydown space; pause 3; xdotool keyup space; shot 18-firing

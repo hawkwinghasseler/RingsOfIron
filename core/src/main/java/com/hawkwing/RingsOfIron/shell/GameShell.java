@@ -131,7 +131,7 @@ public class GameShell implements ApplicationListener {
                     return stage.keyDown(keycode) || true;
                 }
                 if (keycode == Input.Keys.ESCAPE && game != null && !game.isRefitOpen() && !hudWindowOpen()) {
-                    openPauseMenu();
+                    if (!game.backOut()) openPauseMenu();
                     return true;
                 }
                 return false;

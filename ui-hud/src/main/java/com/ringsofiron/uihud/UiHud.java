@@ -248,7 +248,7 @@ public class UiHud implements Disposable {
             orbitPanel.setVisible(exterior);
             threatOverlay.setVisible(exterior);
             radarPanel.setVisible(exterior);
-            // Seated and looking outside there is no deck to walk: "Press [E] to Access Helm" only confused
+            // Seated and looking outside there is no deck to walk: the console prompt only confused
             promptRow.setVisible(!exterior);
         });
 

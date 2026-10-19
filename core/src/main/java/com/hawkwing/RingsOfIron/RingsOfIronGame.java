@@ -297,6 +297,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.bridge.playerAlwaysAtHelm = VIEW_ANYWHERE;
         if (!VIEW_ANYWHERE) {
             hud.setViewKey(this::sitOrStand);
+            // E opens a console's power panel; the helm and weapons consoles are flown from their seat
+            hud.getInteractPromptSystem().setPromptExtra(c -> "helm".equals(c.consoleId) || "weapons".equals(c.consoleId)
+                    ? "   [" + key(Action.VIEW) + "] sit and " + ("helm".equals(c.consoleId) ? "fly" : "fight") : null);
             // Pushed off, knocked out or the console shot away: back on deck
             world.bridge.unseated.add((signal, why) -> {
                 show(why);
@@ -331,8 +334,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 .onlyWhen(() -> world.beacon.refusal() == null);
         world.disablement.changes.add((signal, change) -> {
             String news = disabledNotice(change);
-            if (news != null) show(news, change.ship == game.player && change.now != null
-                    ? NoticeLog.Kind.IMPORTANT : NoticeLog.Kind.INFO);
+            if (news == null) return;
+            // The player's own ship: the newest state replaces the last, so "back in action" doesn't
+            // sit above a "disabled" it has just undone
+            if (change.ship == game.player) {
+                world.notices.replace("Your ship is", news, change.now != null ? NoticeLog.Kind.IMPORTANT : NoticeLog.Kind.INFO);
+            } else {
+                show(news);
+            }
         });
         world.timeWarp.changes.add((signal, change) -> {
             if (change.blockedReason != null) show("Time warp refused: " + change.blockedReason);
@@ -425,7 +434,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && (logOpen || helpOpen)) {
             logOpen = false;
             helpOpen = false;
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !consoleOpen && !hosted && !hudWindowOpen()) {
+        } else if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !consoleOpen && !hosted && !hudWindowOpen()
+                && !backOut()) {
             Gdx.app.exit();
         }
         if (just(Action.LOG)) {
@@ -533,6 +543,16 @@ public class RingsOfIronGame extends ApplicationAdapter {
     }
 
     /** True while the notice log or the controls panel is open; Esc closes it rather than pausing. */
+    /**
+     * Esc in play, before it pauses: a transfer plan waiting on Enter or Delete is discarded, as a
+     * player backing out of the planner expects. True when Esc was used up here.
+     */
+    public boolean backOut() {
+        if (world.nav.transfer.proposal() == null) return false;
+        show(world.nav.transfer.discard());
+        return true;
+    }
+
     public boolean isOverlayOpen() {
         return logOpen || helpOpen;
     }
