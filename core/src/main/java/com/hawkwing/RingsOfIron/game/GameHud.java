@@ -46,6 +46,8 @@ public class GameHud implements Disposable {
         hud.setTrade(new MarketTrade(world));
         // The docked station's yard for the [Y] yard window: repairs and refits.
         hud.setYard(yard = new YardWork(world));
+        // The station's mission board and the contracts held, for the [J] mission window.
+        hud.setMissions(new ContractMissions(world));
         hullHits = (signal, hit) -> {
             if (hit.ship != null && hit.ship == world.getPlayer()) hud.flashHullHit(hit.tileX, hit.tileY);
         };

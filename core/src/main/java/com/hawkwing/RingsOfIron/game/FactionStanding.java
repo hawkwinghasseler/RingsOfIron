@@ -2,28 +2,48 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Json;
+import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.coreengine.SaveParticipant;
+import com.ringsofiron.moddingdata.defs.FactionDef;
+import com.ringsofiron.moddingdata.defs.RankDef;
 import com.ringsofiron.stationsdocking.DockingEvent;
 import com.ringsofiron.stationsdocking.ForceMethod;
 import com.ringsofiron.stationsdocking.StationComponent;
 
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
- * How the factions take what the player does to them. Forcing a door is a hostile act that costs
- * standing with the craft's faction, cutting more than prying or hacking; docking without clearance
- * costs nothing by itself. Below {@link #REFUSE_BELOW} stations of the faction refuse the player
- * docking clearance; at {@link #HOSTILE_AT} or below its crew fight the player's.
+ * The player's standing with each faction ({@link Factions}) and their career in the sponsor's
+ * ranks ({@link RankLadder}), kept in a {@link ServiceRecord} saved with the game.
+ *
+ * <p>Deeds move standing through {@link #reward} and {@link #penalize}; contracts, combat and
+ * boarding call them. A hostile act ({@link #hostileAct}), such as forcing a door or destroying a
+ * ship ({@link #onShipDestroyed}), costs standing with the victim's faction and gains half as much
+ * with the factions at war with it. Forcing a door costs more cut than pried or hacked; docking
+ * without clearance costs nothing by itself. Below {@link #REFUSE_BELOW} a faction's stations refuse
+ * the player docking clearance; at {@link #HOSTILE_AT} or below its crew fight the player's.
+ *
+ * <p>Standing with the sponsor climbs the rank ladder: crossing a rank's threshold promotes the
+ * player, with a notice. Promotions are never taken back.
  */
-public class FactionStanding {
+public class FactionStanding implements SaveParticipant {
     public static final float MIN = -100f, MAX = 100f;
     /** Standing lost for forcing a door each way. */
     public static final float PRY_COST = 10f, HACK_COST = 10f, CUT_COST = 25f;
+    /** Standing lost with a faction for destroying one of its ships. */
+    public static final float KILL_COST = 30f;
+    /** Share of a hostile act's cost its victim's enemies give the player. */
+    public static final float ENEMY_SHARE = 0.5f;
     /** Below this, the faction's stations refuse the player clearance. */
     public static final float REFUSE_BELOW = -15f;
     /** At or below this, the faction's crew fight the player's. */
     public static final float HOSTILE_AT = -50f;
-    /** The player's own faction. */
+    /** The player's own crew. */
     public static final int PLAYER = 0;
 
     /** A hostile act the player did, for the screen. */
@@ -42,45 +62,133 @@ public class FactionStanding {
     }
 
     private final Supplier<Entity> player;
-    /** Hostile acts not yet shown; the screen drains them. */
+    private Factions factions = Factions.none();
+    private RankLadder ranks = RankLadder.none();
+    private ServiceRecord record = fresh();
+    /** What the player last did to each faction to lose standing, for a refusal; not saved. */
+    private final Map<Integer, String> grievances = new HashMap<>();
+    /** Door forcings not yet shown; the screen drains them. */
     public final Array<Act> acts = new Array<>();
+    /** Career news not yet shown (promotions, budget paid); the screen drains them. */
+    public final Array<String> notices = new Array<>();
 
     public FactionStanding(Supplier<Entity> player) {
         this.player = player;
     }
 
-    /** The faction a craft belongs to: a station's, or its crew's; -1 for a craft of no one's. */
-    public static int factionOf(Entity craft) {
+    /** Takes the factions and ranks from loaded data. A record of a sponsor the data lacks moves to the data's sponsor. */
+    public void setData(Factions factions, RankLadder ranks) {
+        this.factions = factions;
+        this.ranks = ranks;
+        if (factions.index(record.sponsor) < 0) record.sponsor = factions.sponsor().id;
+    }
+
+    public Factions factions() {
+        return factions;
+    }
+
+    public RankLadder ranks() {
+        return ranks;
+    }
+
+    /** The player's career as it stands; live, so changes to it stick. */
+    public ServiceRecord record() {
+        return record;
+    }
+
+    /** Starts a new career: rank 0 with the sponsor, standing 0 with everyone. */
+    public void reset() {
+        record = fresh();
+        grievances.clear();
+    }
+
+    private ServiceRecord fresh() {
+        ServiceRecord r = new ServiceRecord();
+        r.sponsor = factions == null ? null : factions.sponsor().id;
+        return r;
+    }
+
+    /** The sponsor's crew faction number. */
+    public int sponsor() {
+        int i = factions.index(record.sponsor);
+        return i < 0 ? factions.sponsorIndex() : i;
+    }
+
+    /** The player's current rank. */
+    public RankDef rank() {
+        return ranks.get(record.rank);
+    }
+
+    /** The faction a craft belongs to: a station's owner, or its crew's; -1 for a craft of no one's. */
+    public int factionOf(Entity craft) {
         if (craft == null) return -1;
-        if (craft.getComponent(StationComponent.class) != null) return StationCrew.FACTION;
+        StationComponent station = craft.getComponent(StationComponent.class);
+        if (station != null) return factions.ofStation(station.name);
         ShipTaskBoardComponent board = craft.getComponent(ShipTaskBoardComponent.class);
         return board == null ? -1 : board.faction;
     }
 
-    /** The player's standing with {@code faction} (0 if they have never crossed it). */
+    /** The player's standing with {@code faction} (0 if they have never dealt with it, or it is none of the data's). */
     public float standing(int faction) {
-        Entity ship = player.get();
-        FactionStandingComponent c = ship == null ? null : ship.getComponent(FactionStandingComponent.class);
-        return c == null ? 0f : c.get(faction);
+        String id = factions.id(faction);
+        return id == null ? 0f : record.get(id);
     }
 
-    /** Changes the player's standing with {@code faction}. */
+    /** The player's standing with the faction {@code id}. */
+    public float standing(String id) {
+        return record.get(id);
+    }
+
+    /** Changes the player's standing with {@code faction}; standing with the sponsor may promote them. */
     public void change(int faction, float by) {
-        Entity ship = player.get();
-        if (ship == null || faction < 0 || faction == PLAYER) return;
-        FactionStandingComponent c = ship.getComponent(FactionStandingComponent.class);
-        if (c == null) {
-            c = new FactionStandingComponent();
-            ship.add(c);
-        }
-        c.add(faction, by);
+        String id = factions.id(faction);
+        if (id == null || by == 0f) return;
+        record.set(id, record.get(id) + by);
+        if (faction == sponsor()) checkPromotion();
+    }
+
+    /** Raises the player's standing with {@code faction} by {@code amount} for {@code why}. */
+    public void reward(int faction, float amount, String why) {
+        change(faction, Math.abs(amount));
+    }
+
+    /** Raises standing with the faction {@code id}; nothing if there is no such faction. */
+    public void reward(String id, float amount, String why) {
+        reward(factions.index(id), amount, why);
+    }
+
+    /** Lowers the player's standing with {@code faction} by {@code amount} for {@code why} (shown when its stations refuse them). */
+    public void penalize(int faction, float amount, String why) {
+        if (!factions.known(faction)) return;
+        change(faction, -Math.abs(amount));
+        if (why != null) grievances.put(faction, why);
+    }
+
+    /** Lowers standing with the faction {@code id}; nothing if there is no such faction. */
+    public void penalize(String id, float amount, String why) {
+        penalize(factions.index(id), amount, why);
+    }
+
+    /**
+     * A hostile act against {@code faction}: costs {@code cost} standing with it, and gains
+     * {@link #ENEMY_SHARE} of that with every faction at war with it.
+     */
+    public void hostileAct(int faction, float cost, String why) {
+        if (!factions.known(faction)) return;
+        penalize(faction, cost, why);
+        for (int enemy : factions.enemiesOf(faction)) reward(enemy, cost * ENEMY_SHARE, why);
+    }
+
+    /** The player destroyed (or disabled for good) {@code ship}: a hostile act against its faction. */
+    public void onShipDestroyed(Entity ship) {
+        hostileAct(factionOf(ship), KILL_COST, "destroyed their ships");
     }
 
     /** Takes note of a docking event: a door the player's crew forced costs standing with its owners. */
     public void onDockingEvent(DockingEvent e) {
         if (e.kind != DockingEvent.Kind.DOOR_FORCED || e.vessel == null || e.vessel != player.get()) return;
         int faction = factionOf(e.other);
-        change(faction, -cost(e.method));
+        hostileAct(faction, cost(e.method), "forced their doors");
         acts.add(new Act(e.other, faction, e.method, standing(faction)));
     }
 
@@ -97,15 +205,19 @@ public class FactionStanding {
     }
 
     /**
-     * Whether crew of factions {@code a} and {@code b} fight: two factions of ships always do;
-     * station crew fight only the player's, and only once the player's standing with them is down
-     * to {@link #HOSTILE_AT}.
+     * Whether crew of factions {@code a} and {@code b} fight. The player's crew fight a faction of
+     * the data that is hostile to all, or once their standing with it is down to {@link #HOSTILE_AT};
+     * two of the data's factions fight when at war; a data faction leaves crew of no one's alone
+     * unless it is hostile to all; and any two crews of no one's always fight.
      */
     public boolean hostile(int a, int b) {
         if (a == b) return false;
-        if (a == StationCrew.FACTION || b == StationCrew.FACTION) {
-            int other = a == StationCrew.FACTION ? b : a;
-            return other == PLAYER && standing(StationCrew.FACTION) <= HOSTILE_AT;
+        boolean knownA = factions.known(a), knownB = factions.known(b);
+        if (knownA && knownB) return factions.atWar(a, b);
+        if (knownA || knownB) {
+            int known = knownA ? a : b, other = knownA ? b : a;
+            if (factions.def(known).hostileToAll) return true;
+            return other == PLAYER && standing(known) <= HOSTILE_AT;
         }
         return true;
     }
@@ -113,6 +225,63 @@ public class FactionStanding {
     /** Why {@code station} refuses the player clearance on account of standing, or null if it does not. */
     public String refusal(Entity station, Entity vessel) {
         if (vessel != player.get()) return null;
-        return standing(factionOf(station)) < REFUSE_BELOW ? "you forced their doors" : null;
+        int faction = factionOf(station);
+        if (standing(faction) >= REFUSE_BELOW) return null;
+        String why = grievances.get(faction);
+        return why != null ? "you " + why : "your standing with " + factions.name(faction) + " is too low";
+    }
+
+    /** Promotes the player as far as their standing with the sponsor reaches, a notice each step. */
+    private void checkPromotion() {
+        int earned = ranks.earnedBy(standing(sponsor()));
+        while (record.rank < earned) {
+            record.rank++;
+            RankDef r = ranks.get(record.rank);
+            notices.add(String.format(Locale.ROOT, "Promoted to %s of the %s%s", r.name, factions.name(sponsor()),
+                    r.budget > 0 ? String.format(Locale.ROOT, ": budget %,.0f cr a week", r.budget) : ""));
+        }
+    }
+
+    /**
+     * Folds standing from a save made before factions had a record (kept on the player's ship by
+     * faction number) into the record, and drops it from the ship. Call after a load.
+     */
+    public void migrateLegacy(Entity ship) {
+        FactionStandingComponent old = ship == null ? null : ship.getComponent(FactionStandingComponent.class);
+        if (old == null) return;
+        for (int i = 0; i < old.standing.length; i++) {
+            String id = factions.id(i);
+            if (id != null && old.standing[i] != 0f) record.set(id, record.get(id) + old.standing[i]);
+        }
+        ship.remove(FactionStandingComponent.class);
+    }
+
+    @Override
+    public String saveKey() {
+        return "factions";
+    }
+
+    @Override
+    public void write(Json json) {
+        json.writeValue("record", record, ServiceRecord.class);
+    }
+
+    @Override
+    public void read(Json json, JsonValue data) {
+        JsonValue r = data.get("record");
+        record = r == null ? fresh() : json.readValue(ServiceRecord.class, r);
+        if (record.factions == null || record.standing == null || record.factions.length != record.standing.length) {
+            record.factions = new String[0];
+            record.standing = new float[0];
+        }
+        if (factions.index(record.sponsor) < 0) record.sponsor = factions.sponsor().id;
+        record.rank = Math.max(0, Math.min(ranks.size() - 1, record.rank));
+        grievances.clear();
+    }
+
+    /** The sponsor's name and the player's rank, for the screen. */
+    public String describeRank() {
+        FactionDef s = factions.def(sponsor());
+        return rank().name + ", " + (s == null ? "" : s.name);
     }
 }

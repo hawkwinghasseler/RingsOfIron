@@ -17,11 +17,11 @@ import java.util.List;
 /**
  * A station's own hands: loaders who carry traded goods across the dock ({@link CargoLoading}), and
  * technicians who repair and refit docked ships ({@link StationYard}).
- * They are of their own faction, {@link #FACTION}, which fights the player's only once the
- * player has crossed it ({@link FactionStanding}).
+ * They are of the faction that owns the station ({@link Factions#ofStation}), {@link #FACTION} unless
+ * told otherwise, which fights the player's only once the player has crossed it ({@link FactionStanding}).
  */
 public final class StationCrew {
-    /** The faction of every station's crew. */
+    /** The faction of a station's crew when no other is given: the sponsor's ({@link Factions#FIRST}). */
     public static final int FACTION = 2;
     /** Fewest loaders a station keeps, however few ports it has. */
     static final int MIN_LOADERS = 2;
@@ -36,23 +36,33 @@ public final class StationCrew {
 
     /** Gives {@code station} its crew: loaders, and the technicians of its yard ({@link StationYard}). */
     public static List<Entity> spawnCrew(CrewService crew, Entity station) {
-        List<Entity> out = spawnLoaders(crew, station);
-        out.addAll(spawnTechnicians(crew, station));
+        return spawnCrew(crew, station, FACTION);
+    }
+
+    /** Gives {@code station} its crew, of {@code faction}. */
+    public static List<Entity> spawnCrew(CrewService crew, Entity station, int faction) {
+        List<Entity> out = spawnLoaders(crew, station, faction);
+        out.addAll(spawnTechnicians(crew, station, faction));
         return out;
     }
 
     /** Gives {@code station} its yard's {@link #TECHNICIANS} technicians, standing by its cargo bays. */
     public static List<Entity> spawnTechnicians(CrewService crew, Entity station) {
+        return spawnTechnicians(crew, station, FACTION);
+    }
+
+    /** Gives {@code station} its yard's technicians, of {@code faction}. */
+    public static List<Entity> spawnTechnicians(CrewService crew, Entity station, int faction) {
         List<Entity> out = new ArrayList<>();
         ShipGridComponent grid = station.getComponent(ShipGridComponent.class);
         CargoHoldComponent hold = station.getComponent(CargoHoldComponent.class);
         if (grid == null || hold == null || hold.bayTileCount() == 0) return out;
         List<int[]> spots = besideBays(crew, grid, hold);
         if (spots.isEmpty()) return out;
-        CrewFactory.ensureBoard(station).faction = FACTION;
+        CrewFactory.ensureBoard(station).faction = faction;
         for (int i = 0; i < TECHNICIANS; i++) {
             int[] t = spots.get(spots.size() - 1 - i * spots.size() / (TECHNICIANS + 1));
-            Entity e = CrewFactory.spawn(crew, station, TECH_NAMES[i % TECH_NAMES.length], CrewRole.TECHNICIAN, FACTION, t[0], t[1]);
+            Entity e = CrewFactory.spawn(crew, station, TECH_NAMES[i % TECH_NAMES.length], CrewRole.TECHNICIAN, faction, t[0], t[1]);
             e.getComponent(CrewMemberComponent.class).setHome(station);
             out.add(e);
         }
@@ -64,6 +74,11 @@ public final class StationCrew {
      * standing by its cargo bays. Returns them; none if it has no bays.
      */
     public static List<Entity> spawnLoaders(CrewService crew, Entity station) {
+        return spawnLoaders(crew, station, FACTION);
+    }
+
+    /** Gives {@code station} its loaders, of {@code faction}. */
+    public static List<Entity> spawnLoaders(CrewService crew, Entity station, int faction) {
         List<Entity> out = new ArrayList<>();
         ShipGridComponent grid = station.getComponent(ShipGridComponent.class);
         CargoHoldComponent hold = station.getComponent(CargoHoldComponent.class);
@@ -72,10 +87,10 @@ public final class StationCrew {
         int count = Math.max(MIN_LOADERS, ports == null ? 0 : ports.ports.length);
         List<int[]> spots = besideBays(crew, grid, hold);
         if (spots.isEmpty()) return out;
-        CrewFactory.ensureBoard(station).faction = FACTION;
+        CrewFactory.ensureBoard(station).faction = faction;
         for (int i = 0; i < count; i++) {
             int[] t = spots.get(i * spots.size() / count);
-            Entity e = CrewFactory.spawn(crew, station, NAMES[i % NAMES.length], CrewRole.LOADER, FACTION, t[0], t[1]);
+            Entity e = CrewFactory.spawn(crew, station, NAMES[i % NAMES.length], CrewRole.LOADER, faction, t[0], t[1]);
             e.getComponent(CrewMemberComponent.class).setHome(station);
             out.add(e);
         }

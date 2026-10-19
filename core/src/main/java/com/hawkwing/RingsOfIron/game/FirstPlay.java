@@ -118,11 +118,15 @@ public final class FirstPlay {
 
     /** True once the raider can no longer fight: gone, its reactor down, or every gun silenced. */
     boolean raiderBeaten() {
-        Entity raider = game.raider;
-        if (raider == null || world.engine.getEcsEngine().getEntities().indexOf(raider, true) < 0) return true;
-        ShipSubsystemRegistryComponent registry = raider.getComponent(ShipSubsystemRegistryComponent.class);
+        return beaten(world, game.raider);
+    }
+
+    /** True once {@code ship} can no longer fight: gone, its reactor down, or every gun silenced. Contracts' bounties use it too. */
+    public static boolean beaten(GameWorld world, Entity ship) {
+        if (ship == null || world.engine.getEcsEngine().getEntities().indexOf(ship, true) < 0) return true;
+        ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
         if (registry != null && !powered(registry)) return true;
-        WeaponsComponent weapons = raider.getComponent(WeaponsComponent.class);
+        WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);
         if (weapons == null) return true;
         for (WeaponMountComponent m : weapons.mounts) {
             if (m.def == null) continue;

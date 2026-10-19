@@ -37,7 +37,6 @@ import com.hawkwing.RingsOfIron.game.ShipRefit;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.hawkwing.RingsOfIron.game.DoorForcing;
 import com.hawkwing.RingsOfIron.game.FactionStanding;
-import com.hawkwing.RingsOfIron.game.StationCrew;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
@@ -430,7 +429,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
     }
 
-    /** How door forcing went, what the factions made of it, and the yard's news. */
+    /** How door forcing went, what the factions made of it, career news, and the yard's news. */
     private void reportForcing() {
         if (!world.forcing.lastOutcome.isEmpty()) {
             show(world.forcing.lastOutcome);
@@ -442,6 +441,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
                     act.standing < FactionStanding.REFUSE_BELOW ? "; its stations will refuse you clearance" : ""));
         }
         world.standing.acts.clear();
+        // Contracts taken, delivered, done or failed
+        for (String news : world.contracts.notices) show(news);
+        world.contracts.notices.clear();
+        // Promotions and budget paydays
+        for (String news : world.standing.notices) show(news);
+        world.standing.notices.clear();
         // What the yard last said about its work on the ship
         if (!world.yard.notices.isEmpty()) show(world.yard.notices.get(world.yard.notices.size() - 1));
         world.yard.notices.clear();
@@ -714,7 +719,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
                 if (pos.ship != ship) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-                Color mark = e == game.avatar ? Color.WHITE : c.faction == StationCrew.FACTION ? DeckView.STATION_CREW : Color.GOLD;
+                Color mark = e == game.avatar ? Color.WHITE : world.standing.factions().known(c.faction) ? DeckView.STATION_CREW : Color.GOLD;
                 Vector2 local = pos.toShipLocal(g, tmp2);
                 DeckView.crew(shapes, c, local.x, local.y, s, mark, color);
             }
@@ -727,7 +732,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                     if (pos.ship != ship) continue;
                     CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                     ArtNames.Crew who = e == game.avatar ? ArtNames.Crew.PLAYER
-                            : c.faction == StationCrew.FACTION ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP;
+                            : world.standing.factions().known(c.faction) ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP;
                     Vector2 local = pos.toShipLocal(g, tmp2);
                     deckArt.crew(batch, e, who, c.load == null ? null : c.load.task.job.commodity(), local.x, local.y, s);
                 }
@@ -799,21 +804,30 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   L lights   V outside view   F5 save  F9 load   Esc quit"
                 : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  F5 save  F9 load  Esc quit",
                 hintX, 24f);
+        // Rank, sponsor and the weekly budget
+        font.setColor(Color.LIGHT_GRAY);
+        font.draw(batch, world.budget.describe(), left, top - 60f);
         if (notice != null && noticeTime > 0f) {
             font.setColor(Color.ORANGE);
-            font.draw(batch, notice, left, top - 60f);
+            font.draw(batch, notice, left, top - 80f);
         }
         font.setColor(Color.SKY);
         String[] dock = docking.readout();
-        for (int i = 0; i < dock.length; i++) font.draw(batch, dock[i], left, top - 90f - 20f * i);
+        for (int i = 0; i < dock.length; i++) font.draw(batch, dock[i], left, top - 110f - 20f * i);
+        float below = top - 110f - 20f * dock.length - 10f;
+        // The contracts held: what, how long left and how far
+        font.setColor(Color.GOLD);
+        for (com.hawkwing.RingsOfIron.game.Contract c : world.contracts.active()) {
+            font.draw(batch, world.contracts.describe(c), left, below, STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+            below -= 20f;
+        }
         if (firstPlay != null) {
-            font.setColor(Color.GOLD);
-            font.draw(batch, firstPlay.objective(), left, top - 90f - 20f * dock.length - 10f, STATUS_WIDTH - 10f,
+            font.draw(batch, firstPlay.objective(), left, below, STATUS_WIDTH - 10f,
                     com.badlogic.gdx.utils.Align.left, true);
         }
         if (hud.getViewMode().getMode() != ViewMode.INTERIOR) {
             font.setColor(Color.LIGHT_GRAY);
-            font.draw(batch, "G arm port + ask clearance   H next port   U undock   T trade, Y yard when docked", hintX, 44f);
+            font.draw(batch, "G arm port + ask clearance   H next port   U undock   T trade, Y yard, J missions when docked", hintX, 44f);
         }
         batch.end();
     }

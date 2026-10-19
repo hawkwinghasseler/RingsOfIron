@@ -1,6 +1,8 @@
 package com.ringsofiron.moddingdata;
 
 import com.ringsofiron.moddingdata.defs.ChassisDef;
+import com.ringsofiron.moddingdata.defs.FactionDef;
+import com.ringsofiron.moddingdata.defs.RankDef;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.moddingdata.defs.SoundEventData;
 import com.ringsofiron.moddingdata.defs.StationTypeDef;
@@ -79,6 +81,30 @@ public final class DefValidator {
             }
             if (sound.path == null || sound.path.isEmpty()) {
                 report.warn(e.lastSource(), e + " has no path, so it cannot be played");
+            }
+        }
+
+        for (DefEntry e : defs.entries("faction")) {
+            FactionDef faction;
+            try {
+                faction = defs.convert(e, FactionDef.class);
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
+            for (String enemy : faction.enemies) {
+                if (!defs.has("faction", enemy)) report.warn(e.lastSource(), e + " is at war with unknown faction '" + enemy + "'");
+            }
+        }
+
+        for (DefEntry e : defs.entries("rank")) {
+            RankDef rank;
+            try {
+                rank = defs.convert(e, RankDef.class);
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
+            if (rank.maxChassis != null && !defs.has("chassis", rank.maxChassis)) {
+                report.warn(e.lastSource(), e + " allows unknown chassis '" + rank.maxChassis + "'");
             }
         }
     }

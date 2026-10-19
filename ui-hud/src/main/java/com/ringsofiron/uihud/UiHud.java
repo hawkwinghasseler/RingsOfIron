@@ -22,6 +22,7 @@ import com.ringsofiron.uihud.providers.OrbitInfoProvider;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider;
+import com.ringsofiron.uihud.providers.MissionProvider;
 import com.ringsofiron.uihud.providers.TradeProvider;
 import com.ringsofiron.uihud.providers.YardProvider;
 import com.ringsofiron.uihud.providers.TrafficMapProvider;
@@ -33,6 +34,7 @@ import com.ringsofiron.uihud.widgets.AlertList;
 import com.ringsofiron.uihud.widgets.ConsoleWindow;
 import com.ringsofiron.uihud.widgets.OrbitMap;
 import com.ringsofiron.uihud.widgets.ThreatOverlay;
+import com.ringsofiron.uihud.widgets.MissionWindow;
 import com.ringsofiron.uihud.widgets.TradeWindow;
 import com.ringsofiron.uihud.widgets.YardWindow;
 import com.ringsofiron.uihud.widgets.TrafficMap;
@@ -52,7 +54,8 @@ import com.ringsofiron.uihud.widgets.TrafficMap;
  * </pre>
  *
  * Keys handled by the HUD: E use console, Esc close console, map or market, V toggle exterior/interior view,
- * M toggle the traffic map (mouse wheel zooms it while open), T open the station market while docked.
+ * M toggle the traffic map (mouse wheel zooms it while open), T open the station market while docked,
+ * J the mission board (while docked, or holding a contract).
  */
 public class UiHud implements Disposable {
     private final ViewportManager viewports;
@@ -70,6 +73,7 @@ public class UiHud implements Disposable {
     private final TrafficMap trafficMap;
     private final TradeWindow tradeWindow;
     private final YardWindow yardWindow;
+    private final MissionWindow missionWindow;
     private final ThreatOverlay threatOverlay;
 
     private final HudRenderSystem hudRenderSystem;
@@ -153,7 +157,9 @@ public class UiHud implements Disposable {
         stage.addActor(dockRow);
         tradeWindow = new TradeWindow(skin, dockHint);
         yardWindow = new YardWindow(skin);
-        tradeWindow.setHintSuffix(() -> yardWindow.isAvailable() && !yardWindow.isOpen() ? "   [Y] Yard" : "");
+        missionWindow = new MissionWindow(skin);
+        tradeWindow.setHintSuffix(() -> (yardWindow.isAvailable() && !yardWindow.isOpen() ? "   [Y] Yard" : "")
+                + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : ""));
 
         trafficMap = new TrafficMap(skin);
         trafficMap.setFillParent(true);
@@ -164,6 +170,7 @@ public class UiHud implements Disposable {
         stage.addActor(consoleWindow);
         stage.addActor(tradeWindow);
         stage.addActor(yardWindow);
+        stage.addActor(missionWindow);
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
@@ -217,6 +224,10 @@ public class UiHud implements Disposable {
                     yardWindow.setOpen(false);
                     return true;
                 }
+                if (missionWindow.isOpen()) {
+                    missionWindow.setOpen(false);
+                    return true;
+                }
                 if (!consoleWindow.isOpen()) return false;
                 consoleWindow.close();
                 return true;
@@ -227,6 +238,10 @@ public class UiHud implements Disposable {
             case Input.Keys.Y:
                 if (!yardWindow.isOpen() && !yardWindow.isAvailable()) return false;
                 yardWindow.setOpen(!yardWindow.isOpen());
+                return true;
+            case Input.Keys.J:
+                if (!missionWindow.isOpen() && !missionWindow.isAvailable()) return false;
+                missionWindow.setOpen(!missionWindow.isOpen());
                 return true;
             case Input.Keys.M:
                 setTrafficMapVisible(!trafficMap.isVisible());
@@ -317,6 +332,15 @@ public class UiHud implements Disposable {
 
     public YardWindow getYardWindow() {
         return yardWindow;
+    }
+
+    /** Feeds the mission board ([J] while docked at a station, or holding a contract); null hides it. */
+    public void setMissions(MissionProvider missions) {
+        missionWindow.setProvider(missions);
+    }
+
+    public MissionWindow getMissionWindow() {
+        return missionWindow;
     }
 
     /** Off-bubble traffic for the map view (M). Without one the map says there is no data. */
