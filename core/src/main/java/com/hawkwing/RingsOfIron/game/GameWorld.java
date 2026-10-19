@@ -229,6 +229,8 @@ public class GameWorld implements Disposable {
     public final FlightWarnings warnings;
     /** Hull leaks and the crew's patches, as notices and hints. */
     public final DamageControl damageControl;
+    /** Battle stations, and notices for the wounded (round 5). */
+    public final CrewMedical medical;
     /** The distress beacon: a stranded ship towed home. */
     public final DistressBeacon beacon = new DistressBeacon(this);
     /** First Play's and the opening walkthrough's progress, saved with the game. */
@@ -508,6 +510,7 @@ public class GameWorld implements Disposable {
         hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, KeyBindings.Action.CREW)
                 .onlyWhen(() -> prisoners.takenAlongside() != null);
         damageControl = new DamageControl(this);
+        medical = new CrewMedical(this);
     }
 
     /**
@@ -615,6 +618,7 @@ public class GameWorld implements Disposable {
         if ((crash != null || careerOver != null) && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
         warnings.update();
         damageControl.update();
+        medical.update();
     }
 
     /** Why rails warp waits after a load: until a frame has run and the player's ship is welded to its dock again. */

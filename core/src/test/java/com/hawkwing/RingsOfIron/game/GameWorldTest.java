@@ -378,7 +378,9 @@ class GameWorldTest {
     @Test
     void combatHurtsCrewThroughAiCrewWithMatchingCauses() {
         for (HitCause cause : HitCause.values()) {
-            assertEquals(cause.name(), CrewDamageAdapter.toDamageCause(cause).name());
+            // A weapon's burn wounds, where standing in a fire (FIRE) takes health
+            String expected = cause == HitCause.FIRE ? "BURN" : cause.name();
+            assertEquals(expected, CrewDamageAdapter.toDamageCause(cause).name());
         }
         assertEquals(CrewDamageSink.DamageCause.OTHER, CrewDamageAdapter.toDamageCause(null));
         assertFalse(world.combatDefs.weapons.isEmpty());

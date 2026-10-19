@@ -12,6 +12,7 @@ public enum CrewRole {
     ENGINEER,
     /** Fights, mans the guns, forces doors and boards other craft; lends a hand carrying. */
     MARINE,
+    /** Rescues and treats the wounded; others treat slower ({@link CrewMemberComponent#careRate}). */
     MEDIC,
     CREWMAN,
     /** Station hand: carries cargo between the station's bays and docked craft. */
@@ -48,7 +49,7 @@ public enum CrewRole {
                     case SEAL_BREACH: case PATCH_LEAK: case REPAIR: return 1.5f;
                     case EXTINGUISH: case FORCE_DOOR: case YARD: return 1.2f;
                     case RESCUE: return 0.8f;
-                    case CARRY: return 0.5f;
+                    case CARRY: case TREAT: return 0.5f;
                     default: return 0f;
                 }
             case MARINE:
@@ -57,7 +58,7 @@ public enum CrewRole {
                     case EXTINGUISH: return 0.8f;
                     case MAN_CONSOLE: case FORCE_DOOR: return 1.5f;
                     case BOARD: return 2f;
-                    case CARRY: return 0.5f;
+                    case CARRY: case TREAT: return 0.5f;
                     default: return 0f;
                 }
             case MEDIC:
@@ -82,7 +83,7 @@ public enum CrewRole {
             default:
                 switch (kind) {
                     case EXTINGUISH: case RESCUE: case MAN_CONSOLE: case FORCE_DOOR: return 1f;
-                    case CARRY: case BOARD: return 0.5f;
+                    case CARRY: case BOARD: case TREAT: return 0.5f;
                     case REPAIR: case SEAL_BREACH: case PATCH_LEAK: return 0.5f;
                     default: return 0f;
                 }

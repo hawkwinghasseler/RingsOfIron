@@ -37,6 +37,8 @@ test {
   useJUnitPlatform()
   // ./gradlew :core:test --tests '*Round3CareerTest' -PcareerSeed=7 plays the scripted career on another seed
   if (project.hasProperty('careerSeed')) systemProperty 'career.seed', project.property('careerSeed')
+  // ./gradlew :core:test --tests '*CrewWoundSurveyTest' -PwoundSurvey=10 fights round 4's ace survey again with wounds
+  if (project.hasProperty('woundSurvey')) systemProperty 'wound.survey', project.property('woundSurvey')
   // A failing test says why in the CI log, not only in the report (the build logs at quiet, see gradle.properties)
   testLogging {
     quiet {
