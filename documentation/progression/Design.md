@@ -173,7 +173,9 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
 - **Save modules:** the career (`"factions"`) and contracts (`"contracts"`).
 - **Saved as components:** disabled state, morale, abandon orders, boarding state, prisoners, salvage orders and stripped mounts, all on their entities.
 - **Not saved:** a rescue between the pod launch and the new ship latching, which is in memory only.
-- **The combined round trip:** the round-2 tests include one save and load round trip holding all of these at once, on the combined loop branch, in the style of `FullSaveRoundTripTest`: an active contract, a disabled ship, a boarded ship and a requisitioned ship.
+- **Not saved yet:** hostile traffic's own state (each hostile's timers, and the counter that names new ones), so after a load a pirate's hunt and rest start over and a new pirate can repeat a name.
+- **After a load,** `GameScenario.relink()` finds Highport, the depot and the lunar mine again by name (a new game gives them new uuids) and points hostile traffic's lurks at them.
+- **The combined round trip:** `Round2SaveRoundTripTest` saves one game holding all of these at once and loads it into a fresh one: a Lieutenant Commander's career, the raider surrendered and taken with two prisoners, the player's old ship abandoned as a derelict, the gunship requisitioned at rescue and docked at the sponsor station, and a contract taken there. Each feature's own save edges are in `CareerEdgesTest`, `ContractEdgesTest`, `BoardingSaveTest`, `RescueEdgesTest` and `HostileEdgesTest`.
 
 ## Open Questions
 - **Choosing a sponsor** at the start of a new game, and whether the player can ever change sides.
