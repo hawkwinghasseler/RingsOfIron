@@ -7,6 +7,7 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
@@ -119,6 +120,28 @@ class NoSoftLocksTest {
         assertTrue(avatar.getComponent(CrewMemberComponent.class).isConscious(), "hurt, but alive");
         run(3f);
         assertNotNull(world.playerStation());
+    }
+
+    @Test
+    void aCaptainKilledInAVentedRoomWakesWhereTheyCanBreathe() {
+        Entity avatar = avatar();
+        Tows tows = new Tows();
+        world.carriedHome.add((s, t) -> tows.n++);
+        GridPositionComponent p = avatar.getComponent(GridPositionComponent.class);
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        com.ringsofiron.interiorgrid.Compartment room = grid.compartmentAt(p.tileX(), p.tileY());
+        assertNotNull(room);
+        room.oxygen = room.nitrogen = room.carbonDioxide = 0;
+        world.crew.applyDamage(avatar, 1e6f, CrewDamageSink.DamageCause.ASPHYXIATION);
+        world.update(FRAME);
+        assertEquals(1, tows.n);
+        CrewMemberComponent c = avatar.getComponent(CrewMemberComponent.class);
+        assertTrue(com.ringsofiron.aicrew.TaskRules.isSafe(grid, p.tileX(), p.tileY()) || c.breathesFromSuit(),
+                "laid where they can breathe, or suited");
+        room.oxygen = room.nitrogen = room.carbonDioxide = 0;
+        run(10f);
+        assertTrue(c.isConscious(), "and they stay up");
+        assertEquals(1, tows.n, "carried home once");
     }
 
     @Test

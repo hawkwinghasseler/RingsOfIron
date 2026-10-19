@@ -9,6 +9,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
@@ -268,12 +269,28 @@ public class Rescue {
         c.treatedBy = null;
         if (c.carriedBy != null) world.crew.releaseTask(c.carriedBy);
         GridPositionComponent p = avatar.getComponent(GridPositionComponent.class);
-        if (p.ship != ship) {
-            List<int[]> floor = GameScenario.floorTiles(ship.getComponent(ShipGridComponent.class));
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        // Laid somewhere they can breathe, or suited with a fresh bottle when the whole ship is holed:
+        // waking where they fell, in a vented room, they'd go down again at once
+        boolean safeWhereTheyLie = p.ship == ship && TaskRules.isSafe(grid, p.tileX(), p.tileY());
+        if (!safeWhereTheyLie) {
+            List<int[]> floor = GameScenario.floorTiles(grid);
+            int[] to = null;
+            for (int[] t : floor) {
+                if (TaskRules.isSafe(grid, t[0], t[1])) {
+                    to = t;
+                    break;
+                }
+            }
+            if (to == null && !floor.isEmpty()) to = floor.get(0);
             p.stop();
             p.crossing = null;
             p.setShip(ship);
-            if (!floor.isEmpty()) p.setTile(floor.get(0)[0], floor.get(0)[1]);
+            if (to != null) p.setTile(to[0], to[1]);
+            if (to == null || !TaskRules.isSafe(grid, to[0], to[1])) {
+                c.setSuited(false);
+                c.setSuited(true);
+            }
         }
         // Already in at a station: the crew carry you to its doctor, and the ship stays latched (and the yard's work on it goes on)
         Entity docked = world.docking.dockedTo(ship);
