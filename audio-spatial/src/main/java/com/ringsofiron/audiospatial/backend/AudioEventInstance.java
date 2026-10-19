@@ -1,8 +1,7 @@
 package com.ringsofiron.audiospatial.backend;
 
 /**
- * One playing (or ready to play) copy of a sound event, the equivalent of an FMOD Studio
- * {@code EventInstance}. Positions are 2D world (bubble) meters; the backend maps them into
+ * One playing (or ready to play) copy of a sound event. Positions are 2D world (bubble) meters; the backend maps them into
  * its own 3D space.
  *
  * Instances are driven from the game thread only.

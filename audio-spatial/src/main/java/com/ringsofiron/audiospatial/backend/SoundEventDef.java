@@ -2,8 +2,7 @@ package com.ringsofiron.audiospatial.backend;
 
 /**
  * Playback rules for one event path: whether it loops, how long a one-shot lasts and how far
- * it carries. FMOD keeps this in its banks; the built-in backends read it from an
- * {@link AudioEventCatalog}, which is also where mod data can register new sounds.
+ * it carries. Backends read it from an {@link AudioEventCatalog}, which is also where mod data can register new sounds.
  */
 public class SoundEventDef {
     public final String path;

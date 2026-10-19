@@ -1,11 +1,12 @@
 package com.ringsofiron.audiospatial.backend;
 
 /**
- * The sound engine under {@code AudioManager}. The game talks to this interface only, so the
- * FMOD (JNI) backend can replace the built-in ones without touching game code.
+ * The sound engine under {@code AudioManager}. The game talks to this interface only, so
+ * backends can be swapped without touching game code.
  *
- * Built in:
  * <ul>
+ *   <li>{@link OpenAlAudioBackend}: OpenAL Soft through libGDX's desktop audio, with EFX
+ *       muffling and HRTF. The default on desktop.</li>
  *   <li>{@link HeadlessAudioBackend}: no output, records everything. For tests, servers and
  *       machines without a sound device.</li>
  *   <li>{@link SynthAudioBackend}: procedural placeholder sounds played through libGDX's
@@ -14,7 +15,7 @@ package com.ringsofiron.audiospatial.backend;
  */
 public interface AudioBackend {
 
-    /** Loads a sound bank (an FMOD {@code .bank} file). Backends without banks ignore it. */
+    /** Loads a sound bank. No current backend uses banks; they ignore it. */
     void loadBank(String path);
 
     AudioEventInstance createInstance(String eventPath);

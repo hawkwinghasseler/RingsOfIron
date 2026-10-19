@@ -5,14 +5,14 @@ import com.ringsofiron.audiospatial.backend.AudioBackend;
 import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
 import com.ringsofiron.audiospatial.backend.AudioEventInstance;
 import com.ringsofiron.audiospatial.backend.AudioParameters;
-import com.ringsofiron.audiospatial.backend.FmodAudioBackend;
 import com.ringsofiron.audiospatial.backend.HeadlessAudioBackend;
+import com.ringsofiron.audiospatial.backend.OpenAlAudioBackend;
 import com.ringsofiron.audiospatial.backend.SimulatedBackend;
 import com.ringsofiron.audiospatial.backend.SynthAudioBackend;
 
 /**
  * The game's entry point to sound. Wraps an {@link AudioBackend} so game code never touches
- * FMOD (or the placeholder backends) directly.
+ * OpenAL (or the placeholder backends) directly.
  *
  * Positioned looping sounds belong on entities as an
  * {@link com.ringsofiron.audiospatial.components.AudioEmitterComponent}, which the audio systems
@@ -28,38 +28,29 @@ public class AudioManager {
     }
 
     /**
-     * The best backend available: FMOD when its libraries and banks are installed, with the
-     * built-in backend playing events the banks lack; otherwise the synth backend when libGDX
-     * audio is running, otherwise headless.
+     * The best backend available: OpenAL when libGDX's desktop audio is running, otherwise the
+     * synth backend when some other libGDX audio is, otherwise headless.
      */
     public static AudioManager createDefault() {
-        AudioBackend builtIn = createBuiltIn();
-        if (Gdx.app != null) {
-            FmodAudioBackend fmod = FmodAudioBackend.tryCreate(builtIn);
-            if (fmod != null) return new AudioManager(fmod);
-        }
-        return new AudioManager(builtIn);
-    }
-
-    private static AudioBackend createBuiltIn() {
         if (Gdx.audio != null) {
+            OpenAlAudioBackend openAl = OpenAlAudioBackend.tryCreate(AudioEventCatalog.withDefaults());
+            if (openAl != null) return new AudioManager(openAl);
             try {
-                return new SynthAudioBackend();
+                return new AudioManager(new SynthAudioBackend());
             } catch (RuntimeException e) {
                 if (Gdx.app != null) Gdx.app.error("audio", "No audio device, running silent", e);
             }
         }
-        return new HeadlessAudioBackend();
+        return new AudioManager(new HeadlessAudioBackend());
     }
 
     public AudioBackend getBackend() {
         return backend;
     }
 
-    /** Playback rules for each event: the built-in backend's catalog, or the stock one for FMOD. */
+    /** Playback rules for each event: the backend's own catalog, or the stock one. */
     public AudioEventCatalog getCatalog() {
-        AudioBackend b = backend instanceof FmodAudioBackend ? ((FmodAudioBackend) backend).getFallback() : backend;
-        if (b instanceof SimulatedBackend) return ((SimulatedBackend) b).getCatalog();
+        if (backend instanceof SimulatedBackend) return ((SimulatedBackend) backend).getCatalog();
         return catalog;
     }
 

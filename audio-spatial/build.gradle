@@ -6,9 +6,7 @@ dependencies {
   api project(':core-engine')
   api project(':physics-exterior')
   api project(':interior-grid')
-  // FMOD Studio bindings. FMOD's own libraries are not on Maven; see FmodAudioBackend.
   implementation "org.lwjgl:lwjgl:$lwjgl3Version"
-  implementation "org.lwjgl:lwjgl-fmod:$lwjgl3Version"
   // OpenAL Soft, the same OpenAL libGDX's desktop backend plays through; see OpenAlAudioBackend.
   implementation "org.lwjgl:lwjgl-openal:$lwjgl3Version"
 
