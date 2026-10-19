@@ -17,13 +17,21 @@
 name = "Terran Patrol Authority"
 color = "#4a90d9"
 sponsor = true
-stations = ["Highport", "Deepwell Depot"]
+stations = ["Highport", "Deepwell Depot", "Anvil Yards"]
 enemies = ["pirates"]
 
 [faction.selene]
 name = "Selene Mining Combine"
 color = "#d9a441"
-stations = ["Shackleton Ice"]
+stations = ["Shackleton Ice", "Selene Forge", "Crisium Ore Works"]
+
+# Independent haulers and their outpost far out on the Moon's orbit. At war with nobody but the
+# pirates; the id sorts after the others so existing crew faction numbers keep their meaning.
+[faction.traders]
+name = "Free Traders"
+color = "#5fbf7a"
+stations = ["Freehold"]
+enemies = ["pirates"]
 
 [faction.pirates]
 name = "Void Raiders"

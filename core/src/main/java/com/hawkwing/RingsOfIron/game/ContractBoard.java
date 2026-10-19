@@ -936,6 +936,8 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         for (List<Contract> k : kinds) Collections.shuffle(k, rnd);
         // Wanted ships close by (in the bubble) come first, so a bounty can be flown at once
         kinds.get(2).sort(java.util.Comparator.comparing(c -> !inBubble(c.targetUuid)));
+        // ...and near lanes come first, so with many stations the patrol on show is one a newcomer may fly
+        kinds.get(3).sort(java.util.Comparator.comparingInt(c -> c.tier));
         // An operation the player has earned heads the board
         out.addAll(operations(giver));
         // Round robin over the kinds, so a board shows a spread

@@ -47,7 +47,9 @@ import java.util.List;
  * aboard, a raider close by, and a busy orbit. A station shares the player's orbit 8 km ahead with a
  * freighter docked at it, which macro-sim brings into the bubble; more traffic hauls between it and a
  * higher depot. The Moon orbits Earth with an ice mine around it that supplies Earth's stations with
- * water. Headless, so tests can start the same game.
+ * water. Further out are the sponsor's shipyard in high Earth orbit, Selene's foundry and ore mine
+ * round the Moon, and the Free Traders' outpost on the Moon's orbit. Headless, so tests can start
+ * the same game.
  *
  * <p>Every station has a walkable interior from its type's blueprint and docking ports of all three
  * sizes. Highport is turned so its Small ports face the player coming up from behind.
@@ -90,6 +92,17 @@ public class GameScenario {
     public String depot;
     /** The ice mine in low lunar orbit. */
     public String lunarMine;
+    /** The sponsor's shipyard in high Earth orbit; null in a save from before it was built. */
+    public String shipyard;
+    /** Selene's foundry and ore mine, in higher lunar orbits; null in older saves. */
+    public String foundry;
+    public String oreMine;
+    /** The Free Traders' outpost, trailing the Moon by a sixth of its orbit; null in older saves. */
+    public String freehold;
+    public static final String SHIPYARD_NAME = "Anvil Yards", FOUNDRY_NAME = "Selene Forge",
+            ORE_MINE_NAME = "Crisium Ore Works", FREEHOLD_NAME = "Freehold";
+    /** The shipyard's orbit radius: high Earth orbit, m. */
+    public static final double SHIPYARD_ORBIT = 20_000e3;
     /** Highport's attitude: half a turn, so its Small ports face back along the orbit, towards the player. */
     public static final float HIGHPORT_ANGLE = (float) Math.PI;
 
@@ -199,10 +212,23 @@ public class GameScenario {
                 circular(ORBIT_RADIUS + 2_000e3, 2.5), 0f);
         lunarMine = addStation("Shackleton Ice", stationType("ice_mine", 2), MOON,
                 circular(MU_MOON, R_MOON + 100e3, 0), 0f);
+        // The wider world: the sponsor's yard high above Earth, Selene's industry round the Moon, and
+        // the Free Traders' outpost on the Moon's own orbit, where the rails keep it a sixth of a turn behind
+        shipyard = addStation(SHIPYARD_NAME, stationType("shipyard", 4), EARTH,
+                circular(SHIPYARD_ORBIT, 4.0), 0f);
+        foundry = addStation(FOUNDRY_NAME, stationType("foundry", 3), MOON,
+                circular(MU_MOON, R_MOON + 400e3, 2.1), 0f);
+        oreMine = addStation(ORE_MINE_NAME, stationType("ore_mine", 2), MOON,
+                circular(MU_MOON, R_MOON + 800e3, 4.2), 0f);
+        freehold = addStation(FREEHOLD_NAME, stationType("free_port", 5), EARTH,
+                circular(MOON_DISTANCE, MOON_ANGLE - Math.PI / 3), 0f);
         double hold = InteriorGridData.cargoBayVolume(content.defs, FREIGHTER_SHIP);
         world.macroSim.addFreighter("Hauler Kestrel", hold, 20_000, highport);
         for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), hold, 20_000, depot);
         for (int i = 0; i < 2; i++) world.macroSim.addFreighter("Lunar Hauler " + (i + 1), hold, 20_000, lunarMine);
+        world.macroSim.addFreighter("Yard Tender", hold, 20_000, shipyard);
+        world.macroSim.addFreighter("Ore Barge", hold, 20_000, oreMine);
+        world.macroSim.addFreighter("Free Trader Halcyon", hold, 20_000, freehold);
         // Rescued after abandoning ship: the player flies the ship requisitioned at the station
         world.rescue.rescues.add((signal, rescue) -> {
             player = rescue.newShip;
@@ -213,9 +239,9 @@ public class GameScenario {
                 if (e.getComponent(PhysicsBodyComponent.class) != null) contacts.add(e);
             }
         });
-        // Pirates lurk by all three; the sponsor patrols Earth's stations, Selene guards its mine
-        world.hostiles.start(lurks(), new String[]{depot, highport},
-                new String[]{lunarMine});
+        // Pirates lurk by every station; the sponsor patrols Earth's stations, Selene guards the Moon's
+        world.hostiles.start(lurks(), present(depot, highport, shipyard),
+                present(lunarMine, foundry, oreMine));
         content.hooks.fireWorldReady();
     }
 
@@ -317,9 +343,14 @@ public class GameScenario {
         world.standing.migrateLegacy(player);
     }
 
-    /** Where pirates lurk, in turn. */
+    /** Where pirates lurk, in turn: the first three stations first, as before there were more. */
     private String[] lurks() {
-        return new String[]{depot, lunarMine, highport};
+        return present(depot, lunarMine, highport, oreMine, freehold, foundry, shipyard);
+    }
+
+    /** {@code uuids} without the nulls: stations a game from an older save lacks. */
+    private static String[] present(String... uuids) {
+        return java.util.Arrays.stream(uuids).filter(java.util.Objects::nonNull).toArray(String[]::new);
     }
 
     /** The uuid of the loaded station named {@code name}, or {@code fallback} if the save has none. */
@@ -336,6 +367,10 @@ public class GameScenario {
         highport = stationNamed("Highport", highport);
         depot = stationNamed("Deepwell Depot", depot);
         lunarMine = stationNamed("Shackleton Ice", lunarMine);
+        shipyard = stationNamed(SHIPYARD_NAME, null);
+        foundry = stationNamed(FOUNDRY_NAME, null);
+        oreMine = stationNamed(ORE_MINE_NAME, null);
+        freehold = stationNamed(FREEHOLD_NAME, null);
         world.hostiles.relink(lurks());
         player = world.getPlayer();
         if (player != null) ShipCargo.attach(player);
