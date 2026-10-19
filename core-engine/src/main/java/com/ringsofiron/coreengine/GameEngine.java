@@ -297,7 +297,27 @@ public class GameEngine implements SimClock {
 
     public void clear() {
         ecsEngine.removeAllEntities();
+        // Listeners told of those removals can remove more (the crew aboard a ship, say), which Ashley
+        // holds back until its next update. By then the pooled entities they name are freed and handed
+        // out again to whatever is loaded next, which that update would remove; so they go now.
+        flushPendingRemovals();
         uuidRegistry.clear();
+    }
+
+    /** Applies the entity adds and removes Ashley is holding back, running no system. */
+    private void flushPendingRemovals() {
+        for (EntitySystem system : ecsEngine.getSystems()) {
+            if (system.checkProcessing()) {
+                system.setProcessing(false);
+                pausedSystems.add(system);
+            }
+        }
+        try {
+            ecsEngine.update(0f);
+        } finally {
+            for (EntitySystem system : pausedSystems) system.setProcessing(true);
+            pausedSystems.clear();
+        }
     }
 
     /** Called by a bound {@link FixedLogicSystem} from its update; runs whatever the current phase needs. */
