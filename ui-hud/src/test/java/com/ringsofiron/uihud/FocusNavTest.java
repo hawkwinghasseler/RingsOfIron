@@ -76,4 +76,24 @@ class FocusNavTest {
         nav.key(root, Input.Keys.ENTER);
         assertEquals(4, pressed[0], "the second row still");
     }
+
+    @Test
+    void enterPicksAChoiceInAGroup() {
+        int[] pressed = {0};
+        Group root = new Group();
+        Button first = button(pressed, 1), second = button(pressed, 2);
+        com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup<Button> group = new com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup<>(first, second);
+        group.setMinCheckCount(1);
+        group.setMaxCheckCount(1);
+        first.setChecked(true);
+        root.addActor(first);
+        root.addActor(second);
+        FocusNav nav = new FocusNav();
+        nav.key(root, Input.Keys.DOWN);
+        nav.key(root, Input.Keys.DOWN);
+        nav.key(root, Input.Keys.ENTER);
+        assertTrue(second.isChecked(), "the focused choice is picked");
+        assertFalse(first.isChecked(), "and the other let go");
+        assertEquals(2, pressed[0]);
+    }
 }

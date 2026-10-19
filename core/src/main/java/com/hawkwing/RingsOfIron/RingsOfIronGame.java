@@ -286,7 +286,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world, docking);
         world.nav.keyNames = this::key;
         // A click on the traffic map makes that station or ship the navigation target
-        hud.getTrafficMap().setPickListener(uuid -> show(world.nav.target.select(uuid)));
+        hud.getTrafficMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
         gameHud.yard.setLayoutEditor(this::openRefit);
         world.combatEvents.intercepts.add((signal, hit) -> {
             if (hit.destroyed && hit.missile != null) explosions.add(new float[]{hit.point.x, hit.point.y, 0f});
@@ -589,7 +589,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private void navigationKeys() {
         com.hawkwing.RingsOfIron.game.Navigation nav = world.nav;
         boolean shift = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
-        if (just(Action.NAV_TARGET)) show(nav.target.cycle(shift ? -1 : 1));
+        if (just(Action.NAV_TARGET)) world.notices.replace("Navigation target", nav.target.cycle(shift ? -1 : 1));
         if (just(Action.PLAN_TO_TARGET)) show(nav.transfer.plan());
         if (just(Action.ACCEPT_PLAN) && nav.transfer.proposal() != null) show(nav.transfer.accept(world.burns));
         if (just(Action.DISCARD_PLAN) && nav.transfer.proposal() != null) show(nav.transfer.discard());
@@ -1264,12 +1264,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
             font.draw(batch, world.contracts.describe(c), left, below, STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
             below -= 20f;
         }
+        // The objective stays up under the notices, once its own notice has gone from above them
         if (firstPlay != null) {
-            font.draw(batch, firstPlay.objective(this::key), left, below, STATUS_WIDTH - 10f,
-                    com.badlogic.gdx.utils.Align.left, true);
-            below -= 60f;
+            String objective = firstPlay.objective(this::key);
+            if (!noticeShowing(objective.substring(objective.indexOf(':') + 1).trim())) {
+                font.draw(batch, objective, left, below, STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+                below -= 60f;
+            }
         }
-        if (opening != null) {
+        if (opening != null && !noticeShowing(opening.text(this::key))) {
             layout.setText(font, opening.text(this::key), Color.GOLD, STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
             font.draw(batch, layout, left, below);
             below -= layout.height + 10f;
@@ -1280,6 +1283,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
             font.draw(batch, bridge, left, below);
         }
         batch.end();
+    }
+
+    /** True while {@code text} is among the notices on screen. */
+    private boolean noticeShowing(String text) {
+        for (NoticeLog.Notice n : world.notices.showing()) if (n.text.equals(text)) return true;
+        return false;
     }
 
     /** Info orange, important green, warnings red; fading out over the last second. */
@@ -1316,7 +1325,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Gdx.gl.glEnable(GL20.GL_BLEND);
         shapes.setProjectionMatrix(viewports.getUiCamera().combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        shapes.setColor(0f, 0f, 0f, 0.8f);
+        // Dark enough that the HUD under it doesn't read through the text
+        shapes.setColor(0f, 0f, 0f, 0.92f);
         shapes.rect(x, y, width, height);
         shapes.end();
         shapes.begin(ShapeRenderer.ShapeType.Line);
@@ -1358,10 +1368,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
         batch.end();
     }
 
-    /** The controls panel (F1): every hint the game knows, by where it applies, with the player's keys. */
+    /**
+     * The controls panel (F1): every hint the game knows, by where it applies, with the player's keys.
+     * As many columns as fit the window, filled top to bottom; a section carries on in the next column
+     * when it runs out of room, and the key column is as wide as the longest key name.
+     */
     private void drawHelp() {
         viewports.applyUi();
-        float[] p = panel(900f, 640f);
+        float[] p = panel(1240f, 720f);
         batch.setProjectionMatrix(viewports.getUiCamera().combined);
         batch.begin();
         font.setColor(Color.WHITE);
@@ -1369,24 +1383,46 @@ public class RingsOfIronGame extends ApplicationAdapter {
         font.setColor(Color.LIGHT_GRAY);
         font.draw(batch, "Keys can be rebound in Settings   " + key(Action.HELP) + " or Esc closes", p[0], p[1],
                 p[2], com.badlogic.gdx.utils.Align.right, false);
-        // Two columns, filled top to bottom
-        float colWidth = p[2] / 2f - 10f;
-        float x = p[0], y = p[1] - 30f;
-        for (Map.Entry<HintRegistry.Context, List<HintRegistry.Hint>> e : world.hints.byContext().entrySet()) {
-            float need = 22f + 16f * e.getValue().size();
-            if (y - need < p[3] && x == p[0]) {
+        Map<HintRegistry.Context, List<HintRegistry.Hint>> all = world.hints.byContext();
+        // Columns enough for every line at the window's height, as many as the widest key leaves room for
+        float keyWidth = 0f;
+        int lines = 0;
+        for (Map.Entry<HintRegistry.Context, List<HintRegistry.Hint>> e : all.entrySet()) {
+            lines += e.getValue().size() + 2;
+            for (HintRegistry.Hint h : e.getValue()) {
+                layout.setText(font, h.key(this::key));
+                keyWidth = Math.max(keyWidth, layout.width);
+            }
+        }
+        keyWidth += 12f;
+        float top = p[1] - 30f, rows = Math.max(1f, (top - p[3]) / 16f);
+        int columns = Math.max(1, Math.min((int) Math.ceil(lines / rows), (int) (p[2] / (keyWidth + 120f))));
+        float colWidth = (p[2] - 20f * (columns - 1)) / columns;
+        float x = p[0], y = top;
+        int column = 0;
+        outer:
+        for (Map.Entry<HintRegistry.Context, List<HintRegistry.Hint>> e : all.entrySet()) {
+            // A heading with no room for a line under it starts the next column
+            if (y - 36f < p[3]) {
+                if (++column >= columns) break;
                 x += colWidth + 20f;
-                y = p[1] - 30f;
+                y = top;
             }
             font.setColor(Color.SKY);
             font.draw(batch, e.getKey().title, x, y);
             y -= 20f;
             for (HintRegistry.Hint h : e.getValue()) {
+                if (y - 16f < p[3]) {
+                    if (++column >= columns) break outer;
+                    x += colWidth + 20f;
+                    y = top;
+                }
                 font.setColor(Color.WHITE);
-                font.draw(batch, h.key(this::key), x, y, 110f, com.badlogic.gdx.utils.Align.left, false);
-                font.setColor(Color.LIGHT_GRAY);
-                font.draw(batch, h.label, x + 115f, y);
-                y -= 16f;
+                font.draw(batch, h.key(this::key), x, y, keyWidth, com.badlogic.gdx.utils.Align.left, false);
+                // A long description wraps under itself rather than running into the next column
+                layout.setText(font, h.label, Color.LIGHT_GRAY, colWidth - keyWidth, com.badlogic.gdx.utils.Align.left, true);
+                font.draw(batch, layout, x + keyWidth, y);
+                y -= Math.max(16f, layout.height + 4f);
             }
             y -= 6f;
         }

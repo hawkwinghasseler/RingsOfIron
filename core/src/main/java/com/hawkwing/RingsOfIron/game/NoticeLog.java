@@ -104,6 +104,17 @@ public final class NoticeLog {
         return n;
     }
 
+    /**
+     * Posts {@code text} in place of any notice on screen that starts with {@code topic}, for a
+     * setting the player steps through ("Navigation target: ..."), so each press doesn't stack
+     * another line. The log keeps them all.
+     */
+    public Notice replace(String topic, String text) {
+        if (text == null || text.isEmpty()) return null;
+        showing.removeIf(n -> n.text.startsWith(topic) && !n.text.equals(text));
+        return post(text);
+    }
+
     private Notice find(String text) {
         for (Notice n : showing) if (n.text.equals(text)) return n;
         return null;
