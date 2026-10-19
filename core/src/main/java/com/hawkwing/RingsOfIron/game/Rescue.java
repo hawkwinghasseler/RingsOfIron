@@ -275,6 +275,13 @@ public class Rescue {
             p.setShip(ship);
             if (!floor.isEmpty()) p.setTile(floor.get(0)[0], floor.get(0)[1]);
         }
+        // Already in at a station: the crew carry you to its doctor, and the ship stays latched (and the yard's work on it goes on)
+        Entity docked = world.docking.dockedTo(ship);
+        StationComponent at = docked == null ? null : docked.getComponent(StationComponent.class);
+        if (at != null) {
+            tows.dispatch(new Tow(ship, docked, at.name, 0));
+            return null;
+        }
         return tow(ship);
     }
 

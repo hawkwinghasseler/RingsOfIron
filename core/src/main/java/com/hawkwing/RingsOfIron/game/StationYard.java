@@ -406,7 +406,7 @@ public class StationYard extends EntitySystem {
 
     /**
      * Puts the ship's hull patches and medical stores back to a full set, as part of a repair order
-     * (no charge). Returns true if anything was short.
+     * (no charge), and when it is done. Returns true if anything was short.
      */
     static boolean restockPatches(Entity ship) {
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
@@ -570,6 +570,8 @@ public class StationYard extends EntitySystem {
         repairing.values().removeIf(t -> !t.isActive() && t.ship == ship);
         if (damage.isEmpty()) {
             orders.repairs = false;
+            // Again at the end: the crew may have patched a leak from the stores while the yard worked
+            restockPatches(ship);
             notices.add(String.format(Locale.ROOT, "%s's yard finished the repairs: %,.0f cr",
                     PlayerDocking.name(station), orders.repairsPaid));
             return;

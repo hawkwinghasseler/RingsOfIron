@@ -4,10 +4,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
-import com.ringsofiron.interiorgrid.ShipGridComponent;
-import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.aicrew.CrewMemberComponent;
+import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.combatsys.defs.LoadoutDef;
 import com.ringsofiron.combatsys.modding.Loadouts;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import java.nio.file.Path;
@@ -173,5 +176,24 @@ class Round4BalanceTest {
         }
         assertTrue(listed, "the yard lists the plate at (" + px + ", " + py + ")");
         assertTrue(world.yard.repairCost(game.player) > 0);
+    }
+
+    @Test
+    void aCaptainKilledAtTheStationWakesThereAndTheShipStaysLatched() {
+        // Round 4's career: the ace's rounds left the ship venting, the captain died docked at Highport,
+        // and the tow home undocked it, which called off the yard's repairs
+        Entity highport = world.engine.getEntity(game.highport);
+        assertSame(highport, world.docking.dockedTo(game.player));
+        assertTrue(world.yard.orderRepairs(game.player, highport) != null);
+        int[] carried = {0};
+        world.carriedHome.add((signal, t) -> carried[0]++);
+        Entity avatar = null;
+        for (Entity e : world.crew.crewEntities()) if (e.getComponent(PlayerAvatarComponent.class) != null) avatar = e;
+        world.crew.applyDamage(avatar, 1e6f, CrewDamageSink.DamageCause.BLAST);
+        run(2);
+        assertNull(world.getCareerOver());
+        assertEquals(1, carried[0]);
+        assertTrue(avatar.getComponent(CrewMemberComponent.class).isConscious(), "hurt, but alive");
+        assertSame(highport, world.docking.dockedTo(game.player), "still latched at Highport");
     }
 }
