@@ -238,6 +238,10 @@ public class GameWorld implements Disposable {
     /** What ships collide on, once content has loaded. */
     private ShipHulls hulls;
     private Crash crash;
+    /** Frames after a load that rails warp still waits for the player's latch to weld again. */
+    static final int LOAD_SETTLE_FRAMES = 120;
+    /** Frames left of that wait: from a load until a frame has run and the player's latch is welded again. */
+    private int loadSettling;
     private String careerOver;
     private final List<Entity> wrecks = new ArrayList<>();
     private final double[] trueState = new double[4];
@@ -283,6 +287,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(docking);
         // A collar still drawing a ship in, or a latch still settling, holds rails warp back.
         engine.addRailsWarpGuard(docking::railsWarpBlockedReason);
+        // A loaded game's ships get their bodies back in its first frame and a docked ship its weld in
+        // the next; warping before then pulled the pair apart and let the air out of both
+        engine.addRailsWarpGuard(this::loadingRefusal);
         // Craft that fly themselves in to dock and away again, on their own thrusters
         berthing = new BerthingSystem(docking, engine.getUuidRegistry());
         engine.addSystem(berthing);
@@ -565,6 +572,11 @@ public class GameWorld implements Disposable {
         timeWarp.update(frameDelta);
         if (profiler != null) profiler.record("frame/TimeWarpController", System.nanoTime() - start);
         engine.update(frameDelta);
+        if (loadSettling > 0) {
+            Entity player = getPlayer();
+            boolean welding = player != null && docking.dockedTo(player) != null && !docking.isRigid(player);
+            loadSettling = welding ? loadSettling - 1 : 0;
+        }
         for (Entity wreck : wrecks) engine.removeEntity(wreck);
         wrecks.clear();
         rescue.update();
@@ -575,6 +587,16 @@ public class GameWorld implements Disposable {
         checkAvatar();
         if ((crash != null || careerOver != null) && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
         warnings.update();
+    }
+
+    /** Why rails warp waits after a load: until a frame has run and the player's ship is welded to its dock again. */
+    private String loadingRefusal() {
+        return loadSettling > 0 ? "the game is still loading" : null;
+    }
+
+    /** A save was just loaded: rails warp waits until its bodies and the player's latch are back. */
+    void loaded() {
+        loadSettling = LOAD_SETTLE_FRAMES;
     }
 
     /** How the player's ship was lost, or null while it still flies. */

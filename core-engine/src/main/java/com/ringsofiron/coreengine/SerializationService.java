@@ -176,6 +176,8 @@ public class SerializationService {
         }
         refsRead.clear();
 
+        // A save that does not say how its UUIDs were made goes on with random ones
+        gameEngine.getEntityIds().unseed();
         JsonValue modules = root.get("modules");
         for (SaveParticipant participant : participants) {
             JsonValue data = modules == null ? null : modules.get(participant.saveKey());
