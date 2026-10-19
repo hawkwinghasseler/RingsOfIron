@@ -1174,6 +1174,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
     }
 
     private Contract findOffer(long id) {
+        for (Contract c : extra) if (c.id == id && c.status == Contract.Status.OFFERED) return c;
         for (StationOffers board : boards.values()) {
             for (Contract c : board.offers) if (c.id == id && c.status == Contract.Status.OFFERED) return c;
         }
