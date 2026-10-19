@@ -187,6 +187,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             boards.put(stationUuid, board);
         }
         promoted(board);
+        reshowIfStale();
         List<Contract> out = new ArrayList<>();
         for (Contract c : extra) {
             if (stationUuid.equals(c.stationUuid) && c.status == Contract.Status.OFFERED && now() <= c.deadline) out.add(c);
@@ -217,6 +218,30 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             return;
         }
         board.rank = rank;
+        reshowOperations(board);
+    }
+
+    /**
+     * The world opened an operation a posted board does not show yet (the pirates' base has fallen):
+     * every board shows the operations it would offer now, at once rather than the next day.
+     */
+    public void worldChanged() {
+        operationsStale = true;
+        reshowIfStale();
+    }
+
+    /** Boards whose operations {@link #worldChanged} made stale; not saved, since a load posts afresh by day. */
+    private boolean operationsStale;
+
+    /** Reshows every board's operations if the world changed, once none runs (while one runs the boards show none). */
+    private void reshowIfStale() {
+        if (!operationsStale || running != null) return;
+        operationsStale = false;
+        for (StationOffers board : boards.values()) reshowOperations(board);
+    }
+
+    /** Puts the operations {@code board}'s giver offers now in place of those it showed. */
+    private void reshowOperations(StationOffers board) {
         Entity station = world.engine.getEntity(board.station);
         EconomyNode node = world.macroSim.station(board.station);
         int giver = world.standing.factionOf(station);

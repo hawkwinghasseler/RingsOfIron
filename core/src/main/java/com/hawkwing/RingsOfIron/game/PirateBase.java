@@ -56,6 +56,8 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     public static final double STRIKE_RANGE = 20_000;
     /** How far from the base the defenders launch, m, each a little further round. */
     static final double LAUNCH_OFFSET = 4_000;
+    /** Difficulty for each defender past the first two (round 6: 1.5; it was 1). */
+    public static final double DIFFICULTY_PER_DEFENDER = 1.5;
     /** Most defenders the base scrambles. */
     public static final int MAX_DEFENDERS = 4;
     /** Tension eased between every pair of lawful factions when the base falls. */
@@ -140,6 +142,8 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         strainedSeconds = 0;
         world.notices.post(name() + " has fallen" + (why == null ? "" : ": " + why), NoticeLog.Kind.IMPORTANT);
         world.tension.easeAll(FALL_RELIEF);
+        // The boards offer what its fall opens (a Captain's operation) at once
+        world.contracts.worldChanged();
     }
 
     /**
@@ -175,9 +179,13 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         if (strainedSeconds >= world.tension.tuning().baseRisesAfterDays * 86_400) rise();
     }
 
-    /** Defenders the base scrambles at difficulty {@code d}: two, and one more for each full point above 1, up to {@link #MAX_DEFENDERS}. */
+    /**
+     * Defenders the base scrambles at difficulty {@code d}: two, and one more for each
+     * {@link #DIFFICULTY_PER_DEFENDER} above 1, up to {@link #MAX_DEFENDERS}. Round 6: one more each
+     * 1.5 rather than each point, so a Captain's frigate (difficulty about 2.3) meets two, and wins.
+     */
     public static int defendersFor(double d) {
-        return Math.min(MAX_DEFENDERS, 2 + (int) Math.floor(Math.max(0, d - 1)));
+        return Math.min(MAX_DEFENDERS, 2 + (int) Math.floor(Math.max(0, d - 1) / DIFFICULTY_PER_DEFENDER));
     }
 
     /** The names of the wing it scrambled, leader first; empty before a raid or once it has fallen. */

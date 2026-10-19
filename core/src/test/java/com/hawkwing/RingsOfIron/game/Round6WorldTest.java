@@ -248,9 +248,8 @@ class Round6WorldTest {
         world.standing.record().rank = 4;
         assertFalse(operations(game.highport).contains("scatter_the_remnants"), "not while the base stands");
         world.pirateBase.fall("a test");
-        world.contracts.reset();
         List<String> ops = operations(game.highport);
-        assertEquals("scatter_the_remnants", ops.get(0), "heads the board once it falls: " + ops);
+        assertEquals("scatter_the_remnants", ops.get(0), "heads the board as soon as it falls: " + ops);
         world.standing.record().rank = 3;
         world.contracts.reset();
         assertFalse(operations(game.highport).contains("scatter_the_remnants"), "a Captain's: " + operations(game.highport));
