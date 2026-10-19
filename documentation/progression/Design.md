@@ -165,7 +165,7 @@ A notice tells the player where they woke and how long they were out.
 Boarding is crew work across a ship-to-ship dock: the corvette's port is active and can latch onto another ship's port (`claude/r2-bridge-helm-1buzuu`). The details are in `ai-crew` and `stations-docking`. The progression side:
 
 - **Boarding:** only a disabled ship can be boarded (`Boarding.refusal`: "disable it first"). K opens the boarding window, and Send orders a party of marines (or crewmen if there are no marines) across. They sweep the ship room by room, forcing a shut door first if needed.
-- **Taking a ship:** the ship is taken once the party is aboard and no defenders are standing, or at once if it had surrendered. Its crew are held as prisoners (`CrewMemberComponent.held`): they neither fight nor work. An undefended disabled ship is taken the first time the player marks something on it.
+- **Taking a ship:** the ship is taken once the party is aboard and no defenders are standing, or at once if it had surrendered. Its crew are held as prisoners (`CrewMemberComponent.held`): they neither fight nor work. An undefended disabled ship is taken the first time the player marks something on it or orders its cargo across. Asking whether it may be stripped (`Salvage.refusal`) only checks (`Boarding.canTakeUndefended`); it takes nothing and costs no standing.
 - **Standing:** boarding a faction's ship costs 20 standing with it once (`Boarding.STANDING_COST`), on top of any forced door. Boarding a pirate is meant to cost nothing, through the `outlaw` test, which is for the loop to wire.
 - **Salvage:**
   - From the boarding window, each component can be marked to strip. Engineers strip it at one unit of work per mount tile, and loaders carry it home as a `part:<component>` crate (1 m³, 250 kg) to the player's hold. "Take all" carries cargo across too.
@@ -211,20 +211,23 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
 `ShipyardTest` buys the gunship as a Lieutenant Commander (credits, cargo and crew across, docked in the old ship's place, saved and loaded), checks the refusals, and flies the light raider, the gunship and the frigate as the player's ship (helm, weapons console, pods for everyone, the player's crew, thrust, abandon ship). `PrizeTowingTest` takes the raider, tows it under full thrust (the pair gains what the combined mass allows and the weld holds), through time warp, and sells or turns it in at Highport.
 
 ## Saves
-- **Save modules:** the career (`"factions"`) and contracts (`"contracts"`).
+- **Save modules:** the career (`"factions"`), contracts (`"contracts"`) and hostile traffic's own state (`"hostile-traffic"`: the next top-up, the counter that names new pirates, an intercept alert holding warp off, the player's opening grace, and each hostile's idle and plunder timers in the bubble).
 - **Saved as components:** disabled state, morale, abandon orders, boarding state, prisoners, salvage orders and stripped mounts, all on their entities.
 - **Not saved:** a rescue between the pod launch and the new ship latching, which is in memory only.
-- **Not saved yet:** hostile traffic's own state (each hostile's timers, and the counter that names new ones), so after a load a pirate's hunt and rest start over and a new pirate can repeat a name.
+- **Not saved:** who last shot at whom (`HostileTraffic.provoked`, which holds live entities). A provoked hostile keeps fighting from its locked target; one that had not locked on yet forgets.
+- **Saves from before round 3** have no `"hostile-traffic"` entry. Loading one, top-ups start again an hour after the load and new pirates are numbered on from the highest loaded name, so no name repeats.
 - **After a load,** `GameScenario.relink()` finds Highport, the depot and the lunar mine again by name (a new game gives them new uuids) and points hostile traffic's lurks at them.
 - **The combined round trip:** `Round2SaveRoundTripTest` saves one game holding all of these at once and loads it into a fresh one: a Lieutenant Commander's career, the raider surrendered and taken with two prisoners, the player's old ship abandoned as a derelict, the gunship requisitioned at rescue and docked at the sponsor station, and a contract taken there. Each feature's own save edges are in `CareerEdgesTest`, `ContractEdgesTest`, `BoardingSaveTest`, `RescueEdgesTest` and `HostileEdgesTest`.
 
 ## Open Questions
-- **Choosing a sponsor** at the start of a new game, and whether the player can ever change sides.
-- **Standing recovering** over time, or being bought back (also open in `stations-docking`).
-- **What a rescue costs** beyond the lost ship, cargo and crew: a standing penalty, a fee, or a lower-tier ship.
-- **Crashing** going through rescue when the crew had time to get away.
-- **Towing** a taken ship home instead of stripping it: answered in round 3 (Ships for Sale and Prizes), with placeholder shares chosen without Joe.
-- **Prisoners:** answered in round 3 (chosen without Joe): brought aboard, then handed over, ransomed, released or recruited. See `Crew.md`.
+Round 3 (`planning/round3-plan.md`) answers most of these with defaults, chosen without Joe while he was away and marked so here. Each stays open to his call; the branch named builds it.
+- **Choosing a sponsor** (default, chosen without Joe): a New game offers the Terran Patrol or the Selene Combine, each with its own ladder names and stations. The sponsor is fixed for the career; changing sides stays open. Category 5, `claude/r3-world`.
+- **Standing recovering** (default, chosen without Joe): negative standing drifts toward zero by 1 a week; positive standing doesn't decay. Buying it back stays open. Category 5.
+- **What a rescue costs** (default, chosen without Joe): 5 standing with the sponsor, and any active contracts fail, on top of the lost ship, cargo and crew. Category 6, `claude/r3-contracts-events`.
+- **Crashing** (default, chosen without Joe): if the crew were ordered to the pods before impact and reached them, a crash is a rescue, not "SHIP LOST". Category 1, `claude/r3-first-hour`.
+- **Towing** (default, chosen without Joe): a taken ship that stays latched can be towed home as one body and sold for 25% of its value (10% stripped), or turned in to the sponsor for its bounty's standing. The player tows, never commands two ships. Category 3, `claude/r3-shipyard`.
+- **Prisoners** (default, chosen without Joe): handed over at a sponsor station for credits and standing, ransomed back to their faction at its station, or released. A pirate prisoner may offer to join at 0.3 skill. Category 4, `claude/r3-crew`.
+- **Stranded or pod-less** (new, default chosen without Joe): a distress beacon calls a sponsor tug that tows the ship to the nearest sponsor station after 3 days, for 10% of the ship's value and 3 standing, keeping ship, cargo and crew. Category 1.
 - **All numbers** (pay, budgets, thresholds, prices) are placeholders until playtesting.
 
 ## Stages
@@ -237,4 +240,8 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
 | 5 | Contracts and the mission board | contracts | Built |
 | 6 | Boarding, taking ships and salvage | boarding-salvage, playable loop | Built |
 | 7 | The loop in the main game, scripted end to end | playable loop | Built |
-| 8 | Ships for sale, trade-ins, the frigate, prizes towed home | r3-shipyard | Built |
+| 8 | Ship market, prize ships, rank gates that agree | r3-shipyard | Built |
+| 9 | Hiring, veterancy, prisoners' fates | r3-crew | Built |
+| 10 | Seeded worlds, more stations, choosing a sponsor, standing recovery | r3-world | Built |
+| 11 | New contract types, operations, world events, rescue cost | r3-contracts-events | Built |
+| 12 | Distress beacon, crash through rescue, autosave | r3-first-hour | Built |

@@ -147,13 +147,22 @@ public class Boarding extends EntitySystem {
      * {@code ship}.
      */
     public boolean takeUndefended(Entity ship, Entity target) {
-        if (target == null || target(ship) != target) return false;
-        BoardedComponent b = BOARDED_M.get(target);
-        if (b != null && b.taken) return b.by.get(uuids) == ship;
-        if (!ShipDisablement.isDisabled(target) || defenders(target) > 0) return false;
+        if (!canTakeUndefended(ship, target)) return false;
+        if (takenBy(target, ship)) return true;
         begin(ship, target);
         take(target, BOARDED_M.get(target));
         return true;
+    }
+
+    /**
+     * True if {@code ship} has taken {@code target}, or {@link #takeUndefended} would take it; a
+     * check only, which changes nothing.
+     */
+    public boolean canTakeUndefended(Entity ship, Entity target) {
+        if (target == null || target(ship) != target) return false;
+        BoardedComponent b = BOARDED_M.get(target);
+        if (b != null && b.taken) return b.by.get(uuids) == ship;
+        return ShipDisablement.isDisabled(target) && defenders(target) == 0;
     }
 
     /** True if {@code target} has been taken by {@code ship}. */

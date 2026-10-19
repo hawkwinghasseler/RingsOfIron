@@ -471,6 +471,8 @@ public class GameScenario {
         world.guides.reset();
         world.derelicts.reset();
         world.events.reset();
+        // ...and hostile traffic's own state starting again from the load
+        world.hostiles.reset();
         world.engine.getSerializationService().loadFromFile(file);
         relink();
         world.standing.migrateLegacy(player);

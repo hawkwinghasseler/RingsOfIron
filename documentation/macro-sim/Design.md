@@ -61,7 +61,7 @@ The first prototype lives in `macro-sim/src/main/java/com/ringsofiron/macrosim`.
     - It hunts for at most 6 hours, then goes home and rests for 6 hours.
   - **Patrols:** a patrol flies its faction's stations in turn and holds 3 km off each for 2 hours.
   - **In the bubble:** a hostile is flown by the game (`HostileTraffic` in core). On leaving the bubble it circularizes and goes home or on to its next stop.
-  - **Saves and losses:** a load reschedules every hostile's plan (`restoreHostiles`, through `MacroSaveParticipant`), and `destroy` and surface impacts remove hostiles like freighters.
+  - **Saves and losses:** a load reschedules every hostile's plan (`restoreHostiles`, through `MacroSaveParticipant`), and `destroy` and surface impacts remove hostiles like freighters. The game's side of hostile traffic (top-ups, names, the intercept alert, the player's grace, bubble timers) is saved by `HostileTraffic` itself, under `"hostile-traffic"`; `playerGraceUntil` goes with it.
   - **Listener events:** `intercepting`, `plundered` and `drivenOff`, which the game turns into notices and warp drop-outs.
   - **Wingmen** (round 3): a pirate with `wingOf` set lurks `WING_SPACING` (2 km) behind its leader and never hunts on its own. When its leader commits to prey it goes too, 2 km further back. The pair's firepower together is what the player's is weighed against, so two raiders dare what one would not. A wingman whose leader is lost flies alone.
   - **Grudges** (round 3): an ace with `grudge` hunts the player whatever the odds (`PLAYER_NERVE` is not checked), still only after the grace period. `HostileComponent` also carries `loadout`, `ace`, `escapes` and `partDropped`, saved with its entity.
