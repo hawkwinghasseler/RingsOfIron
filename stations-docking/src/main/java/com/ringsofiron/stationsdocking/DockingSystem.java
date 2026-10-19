@@ -36,6 +36,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -528,10 +529,11 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         carriage.setAngularVelocity(body.getAngularVelocity());
         Body head = physics.getWorld().createBody(def);
         PolygonShape shape = new PolygonShape();
-        shape.setAsBox(p.width * 0.5f * U, d * 0.5f * U, new Vector2(), MathUtils.atan2(p.normalX, -p.normalY));
+        float area = PolygonSkin.insetBox(shape, p.width * 0.5f * U, d * 0.5f * U, new Vector2(),
+                MathUtils.atan2(p.normalX, -p.normalY));
         FixtureDef fd = new FixtureDef();
         fd.shape = shape;
-        fd.density = t.headMass / (p.width * d * U * U);
+        fd.density = t.headMass / area;
         fd.friction = DockingTuning.COLLAR_FRICTION;
         fd.restitution = 0f;
         fd.filter.categoryBits = (short) (ownerCategory(body) | CollisionCategories.CATEGORY_COLLAR);
@@ -1083,7 +1085,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     static Fixture addCollar(Body body, DockingPort p) {
         PolygonShape shape = new PolygonShape();
         float d = p.collarDepth;
-        shape.setAsBox(p.width * 0.5f * U, d * 0.5f * U,
+        PolygonSkin.insetBox(shape, p.width * 0.5f * U, d * 0.5f * U,
                 new Vector2((p.edgeX + p.normalX * d * 0.5f) * U, (p.edgeY + p.normalY * d * 0.5f) * U),
                 MathUtils.atan2(p.normalX, -p.normalY));
         FixtureDef fd = new FixtureDef();
@@ -1221,9 +1223,19 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         if (joint == null) return;
         refreshLiveJoints();
         if (liveJoints.contains(joint)) {
+            Body a = joint.getBodyA(), b = joint.getBodyB();
             physics.getWorld().destroyJoint(joint);
             liveJoints.remove(joint);
+            // Box2D only looks for new contacts between shapes that have moved, so two that were
+            // already touching under a joint that kept them from colliding would pass through each
+            // other until one strayed far enough: ask it to look again now
+            refilter(a);
+            refilter(b);
         }
+    }
+
+    private static void refilter(Body body) {
+        for (Fixture f : body.getFixtureList()) f.refilter();
     }
 
     private static Vector2 worldPoint(Body body, float x, float y, Vector2 out) {

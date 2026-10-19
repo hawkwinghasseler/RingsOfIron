@@ -31,6 +31,7 @@ import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.LinearTrajectory;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.TrueTrajectory;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
@@ -490,13 +491,7 @@ public class FlightDemo extends ApplicationAdapter {
             shapes.line(c.x, c.y, c.x + MathUtils.cos(a) * r, c.y + MathUtils.sin(a) * r);
         } else if (shape instanceof PolygonShape) {
             PolygonShape poly = (PolygonShape) shape;
-            int n = poly.getVertexCount();
-            for (int i = 0; i < n; i++) {
-                poly.getVertex(i, tmp);
-                Vector2 w = body.getWorldPoint(tmp);
-                polygon[i * 2] = w.x * PhysicsManager.METERS_PER_UNIT;
-                polygon[i * 2 + 1] = w.y * PhysicsManager.METERS_PER_UNIT;
-            }
+            int n = PolygonSkin.outline(body, poly, polygon);
             shapes.polygon(polygon, 0, n * 2);
         }
     }

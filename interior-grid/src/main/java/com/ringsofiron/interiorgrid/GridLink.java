@@ -25,6 +25,11 @@ public final class GridLink {
     public GridLink mate;
     /** One of each pair is primary, so cross-grid work runs once per pair. */
     public final boolean primary;
+    /**
+     * How far apart the two edges are, in tiles: the walkway crew cross between the craft (the
+     * two port collars, half a tile each, make one tile). The same for both of the pair.
+     */
+    public float gap;
 
     private GridLink(int x, int y, Side side, Entity otherShip, ShipGridComponent other, int ox, int oy,
                      Side otherSide, boolean primary) {
@@ -52,6 +57,12 @@ public final class GridLink {
         a.links.add(here);
         b.links.add(there);
         return here;
+    }
+
+    /** Sets {@link #gap} on this link and its mate. */
+    public void setGap(float tiles) {
+        gap = tiles;
+        mate.gap = tiles;
     }
 
     /** Removes this link and its mate from both grids. */
@@ -92,18 +103,28 @@ public final class GridLink {
         return e == null || !e.blocks() ? 1f : e.leakFactor();
     }
 
+    /** How far a point (this grid's tile coordinates) is out past this link's edge, tiles; below 0 it is inside the tile. */
+    public float past(float px, float py) {
+        return (px - (x + 0.5f)) * side.dx + (py - (y + 0.5f)) * side.dy - 0.5f;
+    }
+
+    /** How far a point (this grid's tile coordinates) is along this link's edge from its middle, tiles. */
+    public float along(float px, float py) {
+        return -(px - (x + 0.5f)) * side.dy + (py - (y + 0.5f)) * side.dx;
+    }
+
+    /** The point {@code past} out from this link's edge and {@code along} it, in this grid's tile coordinates. */
+    public void point(float past, float along, float[] out) {
+        out[0] = x + 0.5f + side.dx * (0.5f + past) - side.dy * along;
+        out[1] = y + 0.5f + side.dy * (0.5f + past) + side.dx * along;
+    }
+
     /**
-     * Maps a point in this grid's tile coordinates that has just stepped over the edge onto the
-     * far grid: the same distance along the edge (the far side runs the other way) and the same
-     * distance past the edge, now inside the far tile. Writes {x, y} in the far grid's tile units.
+     * Maps a point in this grid's tile coordinates out on the walkway onto the far grid: the same
+     * spot, so the same distance along the edge (the far side runs the other way) and the rest of
+     * the {@link #gap} short of the far edge. Writes {x, y} in the far grid's tile units.
      */
     public void carryAcross(float px, float py, float[] out) {
-        float rx = px - (x + 0.5f), ry = py - (y + 0.5f);
-        float along = -rx * side.dy + ry * side.dx;
-        float past = Math.max(0f, rx * side.dx + ry * side.dy - 0.5f);
-        float depth = 0.5f - Math.min(past, 0.45f) - 0.02f;
-        float nx = otherSide.dx, ny = otherSide.dy;
-        out[0] = ox + 0.5f + nx * depth + ny * along;
-        out[1] = oy + 0.5f + ny * depth - nx * along;
+        mate.point(gap - past(px, py), -along(px, py), out);
     }
 }

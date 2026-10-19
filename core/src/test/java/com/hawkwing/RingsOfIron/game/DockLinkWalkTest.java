@@ -130,6 +130,35 @@ class DockLinkWalkTest {
     }
 
     @Test
+    void crossingBetweenTheCraftIsAWalkOverTheCollarsNotAJump() {
+        demo.load(DockingDemoScene.Scene.WALK);
+        PlayerAvatarComponent walker = demo.avatar.getComponent(PlayerAvatarComponent.class);
+        GridPositionComponent pos = demo.avatar.getComponent(GridPositionComponent.class);
+        DockingPort port = DockingDemoScene.port(demo.player, 0);
+        com.badlogic.gdx.math.Vector2 dir = demo.world.docking.bodyOf(demo.player)
+                .getWorldVector(new com.badlogic.gdx.math.Vector2(port.normalX, port.normalY)).cpy().nor();
+        com.badlogic.gdx.math.Vector2 at = new com.badlogic.gdx.math.Vector2(), was = new com.badlogic.gdx.math.Vector2();
+        demo.avatarWorld(was);
+        float tile = grid(demo.player).tileSize, longest = 0f;
+        boolean outOnOurs = false, outOnTheirs = false;
+        for (int i = 0; i < 60 * 20 && (demo.aboard() == demo.player || pos.walkway != null); i++) {
+            DeckView.walk(walker, demo.world.docking.bodyOf(demo.aboard()), dir.x, dir.y, 1f);
+            demo.update(FRAME);
+            longest = Math.max(longest, demo.avatarWorld(at).dst(was));
+            was.set(at);
+            outOnOurs |= pos.walkway != null && demo.aboard() == demo.player;
+            outOnTheirs |= pos.walkway != null && demo.aboard() == demo.target;
+            if (pos.walkway != null) {
+                assertTrue(grid(demo.aboard()).getTile(pos.tileX(), pos.tileY()) != null, "on the walkway, still by its tile");
+            }
+        }
+        assertSame(demo.target, demo.aboard());
+        assertNull(pos.walkway, "in through the outpost's door");
+        assertTrue(outOnOurs && outOnTheirs, "walked out over the corvette's collar, then the outpost's");
+        assertTrue(longest < 0.1f * tile, "no step jumps the gap: " + longest + " m");
+    }
+
+    @Test
     void dockingWithClearanceOpensBothDoorsAndJoinsTheOpenings() {
         demo.load(DockingDemoScene.Scene.CLEARANCE);
         assertFalse(doorsOpen(demo.player), "the doors start shut");

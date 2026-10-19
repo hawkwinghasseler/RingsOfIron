@@ -231,6 +231,20 @@ class DockingSystemTest {
     }
 
     @Test
+    void portsPushedTogetherRestFaceOnFaceWithNoGap() {
+        Entity a = ship(0f, 0f, 0f, false);
+        Entity b = ship(13.5f, 0f, MathUtils.PI, false);
+        for (int i = 0; i < 60 * 8; i++) {
+            Body bb = body(b);
+            Vector2 push = bb.getWorldVector(new Vector2(1f, 0f)).cpy().scl(PhysicsManager.getMass(bb) * 0.5f);
+            PhysicsManager.applyForce(bb, push.x, push.y);
+            game.stepTicks(1);
+        }
+        float gap = face(body(b), port(b)).x - face(body(a), port(a)).x;
+        assertEquals(0f, gap, 0.02f, "the collars touch where they are drawn");
+    }
+
+    @Test
     void undockingPushesTheShipsApartAndDisarms() {
         Entity[] pair = approachPassive();
         stepUntil(port(pair[0]), DockingPort.State.DOCKED, 60f);

@@ -4,6 +4,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.CircleShape;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.Shape;
+import com.ringsofiron.physicsexterior.PolygonSkin;
 
 /**
  * Segment-versus-shape tests in a shape's own frame, used by the swept narrowphase
@@ -31,7 +32,10 @@ public final class SegmentShapeCast {
         return -1f;
     }
 
-    /** Cyrus-Beck clip against a convex counter-clockwise polygon. */
+    /**
+     * Cyrus-Beck clip against a convex counter-clockwise polygon in Box2D units, grown out by the
+     * skin it collides on ({@link PolygonSkin}).
+     */
     public static float castPolygon(PolygonShape poly, float ax, float ay, float bx, float by, Vector2 normalOut) {
         int n = poly.getVertexCount();
         float dx = bx - ax, dy = by - ay;
@@ -48,7 +52,7 @@ public final class SegmentShapeCast {
             if (len == 0f) continue;
             nx /= len;
             ny /= len;
-            float num = nx * (v0.x - ax) + ny * (v0.y - ay); // > 0 when a is inside this edge
+            float num = nx * (v0.x - ax) + ny * (v0.y - ay) + PolygonSkin.SKIN_UNITS; // > 0 when a is inside this edge
             float den = nx * dx + ny * dy;
             if (num < 0f) startsInside = false;
             if (den == 0f) {
