@@ -322,6 +322,58 @@ tasks.register('smokeTest') {
   dependsOn smokeTasks
 }
 
+// Audio smoke test: the audio demo and the game with sound on, played through OpenAL Soft into its
+// wave writer instead of a sound card (build/smoke-audio/<app>.wav). Fails on any exception, if
+// the game did not pick the OpenAL backend, or if the audio demo's recording is silent.
+// Needs a display like smokeTest: xvfb-run -a ./gradlew :lwjgl3:audioSmokeTest
+def smokeAudioApps = ['audio': true, 'game': false] // app: whether it must make sound in its first frames
+def smokeAudioTasks = smokeAudioApps.collect { app, mustSound ->
+  tasks.register("audioSmokeTest${app.capitalize()}", JavaExec) {
+    group = 'verification'
+    description = "Boots the ${app} app with OpenAL audio into a wave file and fails on any exception."
+    mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.SmokeLauncher'
+    classpath = sourceSets.main.runtimeClasspath
+    workingDir = rootProject.file('assets').path
+    args = [app, (project.findProperty('smokeFrames') ?: '300').toString()]
+    jvmArgs += "--enable-native-access=ALL-UNNAMED"
+    jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
+    if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+    systemProperty 'smoke.audio', 'true'
+    def outDir = layout.buildDirectory.dir('smoke-audio').get().asFile
+    def wav = new File(outDir, "${app}.wav")
+    def conf = new File(outDir, "${app}-alsoft.conf")
+    def log = new ByteArrayOutputStream()
+    standardOutput = new OutputStream() {
+      void write(int b) { System.out.write(b); log.write(b) }
+      void write(byte[] b, int off, int len) { System.out.write(b, off, len); log.write(b, off, len) }
+    }
+    environment 'ALSOFT_CONF', conf.absolutePath
+    doFirst {
+      outDir.mkdirs()
+      wav.delete()
+      conf.text = "[general]\ndrivers = wave\n[wave]\nfile = ${wav.absolutePath.replace('\\', '/')}\n"
+    }
+    doLast {
+      if (!log.toString().contains('Playing through OpenAL')) {
+        throw new GradleException("${app} did not play through OpenAL; see the [audio] lines above")
+      }
+      if (mustSound) {
+        byte[] data = wav.exists() ? wav.bytes : new byte[0]
+        int loud = 0
+        for (int i = 44; i < data.length; i++) if (data[i] != 0) loud++
+        if (data.length < 44 || loud < (data.length - 44) / 10) {
+          throw new GradleException("${app} recorded no sound into ${wav} (${loud} of ${data.length} bytes non-zero)")
+        }
+      }
+    }
+  }
+}
+tasks.register('audioSmokeTest') {
+  group = 'verification'
+  description = 'Boots the audio demo and the game with OpenAL audio into wave files and fails on any exception.'
+  dependsOn smokeAudioTasks
+}
+
 // Equivalent to the jar task; here for compatibility with gdx-setup.
 tasks.register('dist') {
   dependsOn 'jar'

@@ -20,6 +20,8 @@ import com.ringsofiron.audiospatial.AudioEmitters;
 import com.ringsofiron.audiospatial.AudioManager;
 import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
 import com.ringsofiron.audiospatial.backend.SimulatedInstance;
+import com.ringsofiron.audiospatial.backend.AudioBackend;
+import com.ringsofiron.audiospatial.backend.OpenAlAudioBackend;
 import com.ringsofiron.audiospatial.backend.SynthAudioBackend;
 import com.ringsofiron.audiospatial.components.AudioEmitterComponent;
 import com.ringsofiron.audiospatial.components.AudioListenerComponent;
@@ -362,8 +364,10 @@ public class AudioDemo extends ApplicationAdapter {
         font.draw(batch, inside ? "Listening: INTERIOR (on the deck)" : "Listening: EXTERIOR (piloting, interior sounds clamped)", x, y);
         y -= line;
         font.setColor(Color.LIGHT_GRAY);
-        boolean silent = !(audio.getBackend() instanceof SynthAudioBackend);
-        font.draw(batch, silent ? "Backend: headless (no sound device found)" : "Backend: procedural synth", x, y);
+        AudioBackend backend = audio.getBackend();
+        font.draw(batch, backend instanceof OpenAlAudioBackend ? "Backend: OpenAL Soft"
+                : backend instanceof SynthAudioBackend ? "Backend: procedural synth"
+                : "Backend: headless (no sound device found)", x, y);
         y -= line * 1.5f;
         font.draw(batch, "WASD walk   E open/seal door   TAB interior/exterior", x, y);
         y -= line;

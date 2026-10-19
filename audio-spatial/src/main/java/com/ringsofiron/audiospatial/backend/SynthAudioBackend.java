@@ -8,8 +8,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Plays procedural placeholder sounds ({@link SynthVoice}) through libGDX's raw
  * {@link AudioDevice}, with distance attenuation, stereo panning and a real low-pass filter for
- * occlusion. It lets the spatial and muffling behaviour be heard and tuned before FMOD banks
- * exist. Mixing runs on its own daemon thread.
+ * occlusion. It is the fallback where OpenAL is not running (libGDX backends other than the
+ * desktop one). Mixing runs on its own daemon thread.
  *
  * Requires a running libGDX application with audio ({@code Gdx.audio}).
  */
