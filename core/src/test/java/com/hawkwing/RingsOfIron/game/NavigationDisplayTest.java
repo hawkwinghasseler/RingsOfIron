@@ -74,4 +74,29 @@ class NavigationDisplayTest {
         assertTrue(lines.stream().anyMatch(l -> l.startsWith("Next burn in")), lines.toString());
         assertTrue(lines.stream().anyMatch(l -> l.startsWith("Then burns in")), "and the ones after it: " + lines);
     }
+
+    @Test
+    void everyPlannedBurnHasAMarkerOnTheOutsideView() {
+        world.nav.target.select(game.depot);
+        world.nav.transfer.plan();
+        world.nav.transfer.accept(world.burns);
+        int burns = world.burns.nodes().nodes.size;
+        assertTrue(burns >= 2, burns + " burns");
+        com.badlogic.gdx.utils.FloatArray marks = new com.badlogic.gdx.utils.FloatArray();
+        world.nav.plannedBurnMarkers(marks);
+        assertEquals(4 * burns, marks.size, "a marker for each burn");
+        double now = world.universe.now();
+        for (int i = 0; i < burns; i++) {
+            com.ringsofiron.orbital.components.ManeuverNodeComponent.Node n = world.burns.nodes().nodes.get(i);
+            assertEquals(1f, Math.hypot(marks.get(4 * i), marks.get(4 * i + 1)), 1e-4, "a direction");
+            assertEquals(Math.hypot(n.prograde, n.radial), marks.get(4 * i + 2), 0.5, "its delta-v");
+            assertEquals(n.time - now, marks.get(4 * i + 3), 0.5, "its countdown");
+        }
+        assertTrue(marks.get(7) > marks.get(3), "in time order");
+        assertEquals("2: 1,234 m/s in " + Navigation.formatTime(65), NavOverlay.label(2, 1234f, 65f));
+
+        world.burns.replace(java.util.List.of());
+        world.nav.plannedBurnMarkers(marks);
+        assertEquals(0, marks.size, "none with nothing planned");
+    }
 }
