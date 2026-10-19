@@ -56,4 +56,3 @@ Lighting uses diffuse mode: the light map multiplies the scene, so art under ful
 ## Open questions
 - Sunlight and shadows outside: a directional light over the flight world would shadow each hull's own art, since box2dlights darkens everything past an occluder's edge.
 - Doors carry no power state of their own: their lamps follow the craft's power.
-- `extract_lights.py` ignores a transform on the emissive group, so the vertical door art's lamps are listed where the horizontal art has them; the rig takes the lamps' color from the horizontal art for both.
