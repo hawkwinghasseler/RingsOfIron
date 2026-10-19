@@ -525,6 +525,92 @@ def edges():
               unpowered=f"edges/bulkhead_door_{state}_unpowered_v.svg", transform="translate(16,0) rotate(90)")
 
 
+def edge_conduits():
+    """Power conduits run along tile edges (inside thin walls or over full-tile walls), drawn
+    over the wall like edge walls: a segment per edge, a joint at each vertex, and a tap box
+    where a tile's conduit arm meets an edge run. The live core is a glow, not a light."""
+    TR, CORE, BAND = "#20262e", "#6b5a2e", STEEL_DARK
+    lo, hi_ = 4.5, 11.5  # trough across the edge line at 8
+
+    def run_h(a, x0, x1):
+        """Horizontal run from x0 to x1 along y = 8 (open ends)."""
+        a.b += rect(x0, lo, x1 - x0, hi_ - lo, TR)
+        a.b += line(x0, lo, x1, lo, INK, sw=1.2) + line(x0, hi_, x1, hi_, INK, sw=1.2)
+        a.b += rect(x0, 6.5, x1 - x0, 3, CORE)
+
+    def clamp_h(a, x):
+        a.b += rect(x - 2, lo - 1, 4, hi_ - lo + 2, BAND, rx=0.8, stroke=INK, sw=1)
+
+    def box(a, cx, cy, r, glow):
+        a.b += rect(cx - r, cy - r, 2 * r, 2 * r, HOUSING, rx=1.5, stroke=INK, sw=1.3)
+        a.b += bevel(cx - r + 1, cy - r + 1, 2 * r - 2, 2 * r - 2, HOUSING_HI, INK, sw=1)
+        a.b += circle(cx, cy, r * 0.45, "#6b5a2e", stroke=INK, sw=1)
+        glow.append(circle(cx, cy, r * 0.75, POWER, extra=' opacity="0.25"') + circle(cx, cy, r * 0.35, POWER)
+                    + circle(cx, cy, r * 0.18, "#fff3c4"))
+
+    # one-tile runs: clamps at the quarter points break the lit core into three
+    a = Art()
+    run_h(a, 0, T)
+    for x in (16, 48):
+        clamp_h(a, x)
+    e = ""
+    for (x0, x1) in ((0, 14), (18, 46), (50, T)):  # the lit core shows between the clamps
+        e += rect(x0, 6.5, x1 - x0, 3, POWER) + line(x0, 8, x1, 8, "#fff3c4", sw=0.8, extra=' opacity="0.6"')
+    a.e = lit(e, "glow")
+    p = "edges/edge_conduit_h.svg"
+    write(p, T, 16, a, "edge_conduit, horizontal: conduit along a tile edge (edge at y=8), open ends meet joints",
+          unpowered="edges/edge_conduit_unpowered_h.svg")
+    write("edges/edge_conduit_v.svg", 16, T, a, "edge_conduit, vertical: conduit along a tile edge (edge at x=8)",
+          unpowered="edges/edge_conduit_unpowered_v.svg", transform="translate(16,0) rotate(90)")
+
+    # joints at a vertex, by which of the four edges meeting there carry a conduit
+    for mask in MASKS[1:]:
+        a = Art()
+        glow = []
+        arms = {"n": (lo, 0, hi_ - lo, 8), "s": (lo, 8, hi_ - lo, 8), "w": (0, lo, 8, hi_ - lo), "e": (8, lo, 8, hi_ - lo)}
+        cores = {"n": (6.5, 0, 3, 8), "s": (6.5, 8, 3, 8), "w": (0, 6.5, 8, 3), "e": (8, 6.5, 8, 3)}
+        for side in mask:
+            x, y, w, h = arms[side]
+            a.b += rect(x, y, w, h, TR)
+        for side in mask:  # outlines along each arm
+            x, y, w, h = arms[side]
+            if side in "ns":
+                a.b += line(x, y, x, y + h, INK, sw=1.2) + line(x + w, y, x + w, y + h, INK, sw=1.2)
+            else:
+                a.b += line(x, y, x + w, y, INK, sw=1.2) + line(x, y + h, x + w, y + h, INK, sw=1.2)
+        plain = len(mask) == 1 or mask in ("ns", "ew")
+        gap = 4.5 if plain else 6  # half the clamp or box the core runs under
+        lit_cores = {"n": (6.5, 0, 3, 8 - gap), "s": (6.5, 8 + gap, 3, 8 - gap),
+                     "w": (0, 6.5, 8 - gap, 3), "e": (8 + gap, 6.5, 8 - gap, 3)}
+        e = ""
+        for side in mask:
+            x, y, w, h = cores[side]
+            a.b += rect(x, y, w, h, CORE)
+            e += rect(*lit_cores[side], POWER)
+        if plain:
+            # an end cap, or a straight joint: a plain clamp
+            a.b += rect(lo - 1, lo - 1, hi_ - lo + 2, hi_ - lo + 2, BAND, rx=1.2, stroke=INK, sw=1.2)
+            a.e = lit(e, "glow")
+        else:
+            # a corner, T or cross: a junction box with its own status lamp
+            box(a, 8, 8, 5.5, glow)
+            a.e = lit(e + glow[0], "glow")
+        name = f"edges/edge_conduit_joint_{mask}.svg"
+        write(name, 16, 16, a, f"edge_conduit joint, centered on a vertex, conduits toward {', '.join(mask)}",
+              unpowered=f"edges/edge_conduit_joint_unpowered_{mask}.svg")
+
+    # tap: where a tile-center conduit's arm meets an edge run, at the edge's middle
+    a = Art()
+    glow = []
+    box(a, 8, 8, 6.5, glow)
+    for (x, y) in ((3, 3), (13, 3), (3, 13), (13, 13)):
+        a.b += rivet(x, y, 0.9)
+    a.e = lit(glow[0], "glow")
+    write("edges/edge_conduit_tap.svg", 16, 16, a,
+          "edge_conduit tap: junction box centered on an edge's middle, where a tile's conduit arm meets the edge run",
+          unpowered="edges/edge_conduit_tap_unpowered.svg")
+
+
 # ---------------------------------------------------------------------------
 # Components. Each size is its own design; sizes share parts and palette, not layout.
 # ---------------------------------------------------------------------------
@@ -1987,6 +2073,7 @@ def main():
     floors()
     walls()
     edges()
+    edge_conduits()
     components()
     effects()
     decor()

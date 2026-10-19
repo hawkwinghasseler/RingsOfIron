@@ -3218,6 +3218,402 @@
    }
   ]
  },
+ "edges/edge_conduit_h": {
+  "canvas": [
+   0.0,
+   -16.0,
+   64.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.0,
+    "light": "glow",
+    "w": 14.8,
+    "x": 7.0,
+    "y": -8.0
+   },
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.0,
+    "light": "glow",
+    "w": 28.8,
+    "x": 32.0,
+    "y": -8.0
+   },
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.0,
+    "light": "glow",
+    "w": 14.8,
+    "x": 57.0,
+    "y": -8.0
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_e": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.0,
+    "light": "glow",
+    "w": 3.5,
+    "x": 14.25,
+    "y": -8.0
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_es": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 12.12,
+    "light": "glow",
+    "w": 12.12,
+    "x": 9.94,
+    "y": -9.94
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_esw": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 12.12,
+    "light": "glow",
+    "w": 16.0,
+    "x": 8.0,
+    "y": -9.94
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_ew": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.0,
+    "light": "glow",
+    "w": 3.5,
+    "x": 1.75,
+    "y": -8.0
+   },
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.0,
+    "light": "glow",
+    "w": 3.5,
+    "x": 14.25,
+    "y": -8.0
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_n": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.5,
+    "light": "glow",
+    "w": 3.0,
+    "x": 8.0,
+    "y": -1.75
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_ne": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 12.12,
+    "light": "glow",
+    "w": 12.12,
+    "x": 9.94,
+    "y": -6.06
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_nes": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 16.0,
+    "light": "glow",
+    "w": 12.12,
+    "x": 9.94,
+    "y": -8.0
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_nesw": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 16.0,
+    "light": "glow",
+    "w": 16.0,
+    "x": 8.0,
+    "y": -8.0
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_new": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 12.12,
+    "light": "glow",
+    "w": 16.0,
+    "x": 8.0,
+    "y": -6.06
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_ns": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.5,
+    "light": "glow",
+    "w": 3.0,
+    "x": 8.0,
+    "y": -1.75
+   },
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.5,
+    "light": "glow",
+    "w": 3.0,
+    "x": 8.0,
+    "y": -14.25
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_nsw": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 16.0,
+    "light": "glow",
+    "w": 12.12,
+    "x": 6.06,
+    "y": -8.0
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_nw": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 12.12,
+    "light": "glow",
+    "w": 12.12,
+    "x": 6.06,
+    "y": -6.06
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_s": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.5,
+    "light": "glow",
+    "w": 3.0,
+    "x": 8.0,
+    "y": -14.25
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_sw": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 12.12,
+    "light": "glow",
+    "w": 12.12,
+    "x": 6.06,
+    "y": -9.94
+   }
+  ]
+ },
+ "edges/edge_conduit_joint_w": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.0,
+    "light": "glow",
+    "w": 3.5,
+    "x": 1.75,
+    "y": -8.0
+   }
+  ]
+ },
+ "edges/edge_conduit_tap": {
+  "canvas": [
+   0.0,
+   -16.0,
+   16.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 9.76,
+    "light": "glow",
+    "w": 9.76,
+    "x": 8.0,
+    "y": -8.0
+   }
+  ]
+ },
+ "edges/edge_conduit_v": {
+  "canvas": [
+   0.0,
+   -64.0,
+   16.0,
+   64.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.0,
+    "light": "glow",
+    "w": 14.8,
+    "x": 7.0,
+    "y": -8.0
+   },
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.0,
+    "light": "glow",
+    "w": 28.8,
+    "x": 32.0,
+    "y": -8.0
+   },
+   {
+    "alpha": 1.0,
+    "color": "#f2b134",
+    "h": 3.0,
+    "light": "glow",
+    "w": 14.8,
+    "x": 57.0,
+    "y": -8.0
+   }
+  ]
+ },
  "effects/beam": {
   "canvas": [
    0.0,
