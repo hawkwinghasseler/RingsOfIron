@@ -45,7 +45,8 @@ Round 3, category 2. The player can pick a navigation target, see the closest ap
 
 ### Fuel estimate
 - `PropellantFeed.deltaVLeft` uses the rocket equation on the propellant the working engines draw on; a ship with no engine counts as unlimited.
-- The readout shows "Delta-v needed N / left M m/s", with "NOT ENOUGH PROPELLANT" when short. Needed is the proposal's total, or else the sum of the planned burns.
+- The readout shows "Delta-v needed N / left M m/s", with "NOT ENOUGH PROPELLANT" when short. Needed is the proposal's total, or else the sum of the planned burns. Plan to target refuses a plan the tanks can't cover ("Not enough propellant: N m/s left").
+- Warship drives (the corvette, pirate corvette, light raider, gunship and frigate) run at an exhaust velocity of 700 km/s, set in `ships.toml` during integration. At the 100 km/s default the corvette had about 1,030 m/s against a 3,877 m/s trans-lunar burn; it now has about 7.2 km/s. `MoonTransferTest` flies the Moon plan at 1,000x, 10,000x and 100,000x warp.
 - `Navigation.returnDeltaV` estimates the delta-v to the nearest station that would give clearance (0 when docked at one), with `RoutePlanner.estimate`.
 
 ### Messages and hints
