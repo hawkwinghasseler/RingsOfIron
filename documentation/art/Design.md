@@ -105,7 +105,7 @@ A ship or station hull is built on its chassis grid: every tile of the layout is
 | Airlock | Hatch |
 | Docking port | Port frame, and the collar half a tile outside |
 
-Parts of the hull polygon past the grid (the corvette's bow) are drawn under the grid. Ships carry engine mounts on the aft (-x) edge, one for every three rows; the engines themselves are separate art (below). Navigation lights mark the corners: red to port (+y), green to starboard.
+Parts of the hull polygon past the grid (the corvette's bow) are drawn under the grid. Each engine system shows as a ribbed heat-shield plate over its slot; a ship with no engine systems carries engine mounts on the aft (-x) edge instead, one for every three rows. The engines themselves are separate art (below). The corvette has two Small engines in its stern and the freighter two Medium ones. Navigation lights mark the corners: red to port (+y), green to starboard.
 
 ## Engines
 The engine is a component (`E`, behavior `ENGINE`) in the rectangular auxiliary slots, so it comes in the same four sizes: S 1x2, M 2x3, L 3x7 and XL 5x12. It has two kinds of art.
@@ -224,6 +224,6 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 - **Projectiles (5):** railgun slug, autocannon round with tracer, missile, decoy flare, harpoon.
 
 ## Open Questions
-- No chassis in `chassis.toml` has engine systems yet, so today's ships still show the small engines in their hull's engine mounts. Engines don't set thrust either: `max_thrust` in `ships.toml` still does.
+- Engines don't set thrust or burn propellant in this batch; the tanks and piping work owns that, and `max_thrust` in `ships.toml` still sets thrust here.
 - Walls more than one tile thick show a small notch at inner corners; the 47-tile blob set would remove it if thick walls become common.
 - Hull steel and composite armor are the only materials with art. New materials need their own look decided before they get files.
