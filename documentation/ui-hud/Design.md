@@ -38,13 +38,15 @@ To implement this module independently (mocking data providers):
    - Implement a system that checks the distance between the player's avatar and interactable consoles on the grid.
    - If distance < `INTERACT_RADIUS`, spawn a contextual "Press [E] to Access" tooltip via Scene2D.
 
-## Proposed Components
+## Implemented Components
 - `HudMarkerComponent`: Attached to entities that need a UI marker (e.g., enemies, mission waypoints).
-- `InteractableConsoleComponent`: Defines the UI menu layout to open when a player triggers this interior tile.
+- `InteractableConsoleComponent`: Names the console layout to open when the avatar uses this interior tile.
 
-## Proposed Systems
-- `HudRenderSystem`: Projects 3D/2D world coordinates to UI space and updates widget positions.
+## Implemented Systems
+- `HudRenderSystem`: Projects world coordinates to UI space and updates widget positions.
 - `WireframeSyncSystem`: Reads ship state and feeds it to the Scene2D wireframe minimap.
+- `InteractPromptSystem`: Shows the "Press [E]" prompt near consoles and opens them.
+- `FlightReadoutSystem`: Speed, heading, target and orbit readouts.
 
 ## Prototype Status
 

@@ -28,15 +28,17 @@ To implement this module independently:
    - **Execution:** Iterate through the `mods/` folder and call `groovyShell.evaluate(scriptFile)` on any `init.groovy` files found.
    - *Security Note:* Scripts run with unrestricted JVM access. Implement warning prompts in the UI alerting players to the risks of loading untrusted mods.
 
-## Proposed Components
-- *None specific to this module, as it primarily generates templates and components for other modules based on external data.*
+## Implemented Components
+- `DefRefComponent`: the definition type and id an entity was spawned from. Everything else the loaders make is other modules' components, filled from data.
 
-## Proposed Systems/Classes
-- `TomlDataLoader`: Deserializes `.toml` files into Java POJOs.
+## Implemented Systems/Classes
+- `TomlDataLoader` and `DataFileParser`: read `.toml` and `.json` files into one tree.
+- `DefRegistry`: holds the merged definitions and converts them to any module's POJO.
 - `GroovyModLoader`: Instantiates the Groovy environment and executes initialization scripts.
 - `EntityFactory`: Constructs fully populated ECS Entities based on parsed definitions.
+- `ModdingBootstrap`: the entry point that runs all of the above in order.
 
-## Prototype Status (implemented)
+## Prototype Status
 Package `com.ringsofiron.moddingdata`. Depends only on `core-engine`; other modules depend on it, never the reverse.
 
 - **Data format:** `assets/data/*.toml|*.json` and `mods/<id>/data/`, as `[type.id]` tables (the combat-sys section 6 shape). TOML and JSON produce the same tree. Keys are snake_case and fill camelCase fields.

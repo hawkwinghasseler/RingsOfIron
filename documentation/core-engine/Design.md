@@ -1,7 +1,7 @@
 # Core Engine & ECS Module Design
 
 ## Overview
-The `core-engine` module is the foundation of the Space Battle Sim. It defines the main game loop, manages the lifecycle of all entities through an Entity-Component-System (ECS), and handles the persistence (save/load) of game state.
+The `core-engine` module is the foundation of Rings of Iron. It defines the main game loop, manages the lifecycle of all entities through an Entity-Component-System (ECS), and handles the persistence (save/load) of game state.
 
 ## Implementation Dependencies
 - **Independent Module:** This module sits at the very bottom of the dependency graph. It does not depend on any other game modules.
@@ -31,14 +31,16 @@ To implement this module independently:
    - When saving: Iterate over all entities, skip entities marked `TransientComponent`, serialize their components to JSON, replacing direct object references with UUID strings.
    - When loading: Parse JSON, recreate entities, and run a secondary pass to resolve UUID strings back into live Entity references where necessary.
 
-## Proposed Components
+## Implemented Components
 - `TransformComponent`: Base position/rotation `x, y, rotation` in the **bubble frame** (metres, floats, relative to the floating origin). True universe positions are not stored here: they live in `OrbitComponent` for bodies on rails, or in the bubble anchor plus Box2D state for bodies in the bubble.
 - `UuidComponent`: `String id`.
 - `PlayerControllerComponent`: Empty tag component identifying the player's primary actor.
+- `TransientComponent`: Marks an entity that saves skip.
 
-## Proposed Systems
-- `FixedLogicSystem`: Abstract base class implementing the fixed accumulator logic.
-- `SerializationSystem`: Handles traversing the ECS and converting components to/from JSON maps.
+## Implemented Systems
+- `FixedLogicSystem`: Abstract base class for systems on the fixed tick.
+- `RenderSystem`: Abstract base class for systems drawn once per frame with interpolation alpha.
+- Serialization is a service, `SerializationService`, not a system: it walks the ECS when asked to save or load (see below).
 
 ## Implemented API (prototype)
 What other modules can code against today, all in `com.ringsofiron.coreengine`:

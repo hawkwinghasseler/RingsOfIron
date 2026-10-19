@@ -177,23 +177,27 @@ Two kinds of warp, because Box2D cannot be fast-forwarded the way rails can.
 - Save bubble bodies as **absolute double state vectors relative to their SOI parent**, not as Box2D coordinates. On load, re-create the anchor and run the entry handoff. A save therefore never depends on where the bubble happened to be.
 - Event queue entries reference entities by UUID, as the serialization design already requires.
 
-## Proposed Components
+## Implemented Components
+In `orbital-mechanics/src/main/java/com/ringsofiron/orbital` unless noted.
 - `OrbitComponent`: Keplerian elements, parent UUID, epoch (rails bodies only).
 - `CelestialBodyComponent`: `mu`, radius, `soiRadius`, for bodies with mass that others orbit.
 - `ManeuverNodeComponent`: scheduled impulsive burns (time, prograde/radial Δv).
-- `BubbleAnchor` (singleton resource, not an entity component): anchor elements and cached state for the current tick.
-- `UniverseStateComponent` (optional): cached double absolute state for bodies that need it every frame (e.g. HUD targets).
+- The bubble anchor is not an entity component: physics-exterior's `PhysicsManager` keeps it as an `AnchorModel` (`KeplerAnchor` in the game), and `OrbitalEventSystem.setAnchor` holds its conic on the rails side.
+- `UniverseStateComponent` was not built: `RailsUniverse.stateInFrame` and physics-exterior's `getTrueState` give a double state when one is needed.
 
-## Proposed Systems
-- `OrbitalEventSystem` (fixed tick, main thread): pops due events from the queue and applies them.
-- `TidalGravitySystem` (fixed tick, before the Box2D step): applies `a_tidal` to every dynamic body in the bubble.
-- `FloatingOriginSystem` (existing, extended): rebases the anchor on distance or speed thresholds and shifts both position and velocity.
-- `BubbleTransitionSystem` (existing in `macro-sim`, revised): entry/exit handoffs against the anchor with hysteresis.
-- `KinematicTransientSystem` (fixed tick, after the Box2D step): moves fast-pass bodies along their rails conics in the bubble frame and sweeps them against the Box2D world for collisions.
-- `EncounterPredictionTask` (background thread): culls and predicts bubble entries and warp drop-out points.
-- `TimeWarpController`: owns warp level, collapses and rebuilds the bubble for rails warp, enforces drop-out.
+## Implemented Systems
+- `OrbitalEventSystem` (fixed tick, main thread): pops due events from the queue and applies them, using `SoiPredictor` to schedule each body's next SOI change and impact.
+- `TidalGravitySystem` (physics-exterior, fixed tick, before the Box2D step): applies `a_tidal` to every dynamic body in the bubble.
+- `FloatingOriginSystem` (physics-exterior): rebases the anchor on distance or speed thresholds and shifts both position and velocity.
+- `BubbleTransitionSystem` (macro-sim): entry/exit handoffs against the anchor with hysteresis.
+- `KinematicTransientSystem` (physics-exterior, fixed tick, after the Box2D step): moves fast-pass bodies along their rails conics in the bubble frame and sweeps them against the Box2D world for collisions.
+- `EncounterPredictionTask` (macro-sim, background thread): culls and predicts bubble entries and warp drop-out points. `EncounterPredictor` here does the same search on the main thread for `TimeWarpController`'s own drop-out check.
+- `TimeWarpController`: owns warp level, collapses and rebuilds the bubble for rails warp (through `BubbleHandoff`, which physics-exterior's `RailsBubbleHandoff` implements), enforces drop-out.
 
-## Suggested Build Order
+`Orbit demo.bat` (`gradlew :lwjgl3:runOrbitDemo`) shows rails orbits, SOI changes and time warp; `gradlew :orbital-mechanics:test` runs the Kepler and rails tests.
+
+## Build Order (done)
+Every step below is built; the list is kept for the reasoning behind the order.
 1. `orbital` math package with unit tests: `stateAt`, `elementsFrom`, round-trip tests, Kepler solver at e = 0, 0.5, 0.99, 1.5.
 2. Rails-only prototype: a planet, a moon and a few ships drawn as orbit lines, with rails warp and SOI transitions.
 3. Anchor plus `TidalGravitySystem` with two Box2D ships; verify a ship released from the anchor follows its rails conic for an orbit or more.

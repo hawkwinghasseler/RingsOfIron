@@ -54,5 +54,5 @@ Shadows use a Box2D world of their own in world meters, apart from the crew's in
 Lighting uses diffuse mode: the light map multiplies the scene, so art under full light shows as drawn. Anything drawn from an emissive layer belongs **after** the light map (between `renderLights` and `renderGlow`), or the light map darkens what should be a light. So after the light map, `DeckArt.glow` draws the `glow/` region (the emissive layer alone) of everything on the deck that is lit: running systems, live conduits, powered doors and wall lights, and fire. A system without power is skipped, so its dark art stays dark.
 
 ## Open questions
-- Sunlight and shadows outside: a directional light over the flight world would shadow each hull's own art, since box2dlights darkens everything past an occluder's edge.
+- Sunlight and shadows outside: wanted in principle, but still to be decided, and nothing is built for it until then. A directional light over the flight world would shadow each hull's own art, since box2dlights darkens everything past an occluder's edge, and flat 2D hull art has no height for the light to fall across.
 - Doors carry no power state of their own: their lamps follow the craft's power.
