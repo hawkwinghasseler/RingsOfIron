@@ -65,6 +65,31 @@ class WorldSeedTest {
     }
 
     @Test
+    void everySeededWorldsStationsAreWithinAFreightersReach() {
+        for (long seed = 11; seed <= 14; seed++) {
+            GameWorld world = new GameWorld();
+            try {
+                GameScenario.start(world, WiderWorldTest.assets(), WiderWorldTest.assets().resolve("none"), NewGame.seeded(seed, null));
+                var rails = world.macroSim.rails();
+                double t = 1_000;
+                for (var from : world.macroSim.stations()) {
+                    for (var to : world.macroSim.stations()) {
+                        if (from == to) continue;
+                        StateVector s = rails.stateAt(from.stationUuid, t, new StateVector());
+                        var route = com.ringsofiron.macrosim.fleet.RoutePlanner.estimate(rails, rails.parentOf(from.stationUuid),
+                                s, to.stationUuid, t, t + 600);
+                        assertNotNull(route, "seed " + seed + ": " + from.displayName + " to " + to.displayName);
+                        assertTrue(route.arrivalTime - t < com.ringsofiron.macrosim.fleet.FreighterController.MAX_TRIP_SECONDS,
+                                "seed " + seed + ": " + from.displayName + " to " + to.displayName);
+                    }
+                }
+            } finally {
+                world.dispose();
+            }
+        }
+    }
+
+    @Test
     void aSaveKeepsItsSeedAndItsPiratesLurkWhereTheyDid(@TempDir Path dir) {
         FileHandle file = new FileHandle(dir.resolve("seeded.json").toFile());
         List<String> lurks;

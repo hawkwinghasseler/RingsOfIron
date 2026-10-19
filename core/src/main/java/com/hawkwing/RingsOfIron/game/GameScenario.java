@@ -101,6 +101,11 @@ public class GameScenario {
     public String freehold;
     public static final String SHIPYARD_NAME = "Anvil Yards", FOUNDRY_NAME = "Selene Forge",
             ORE_MINE_NAME = "Crisium Ore Works", FREEHOLD_NAME = "Freehold";
+    /** The pirates' hidden base; null in older saves. */
+    public String pirateBase;
+    public static final String PIRATE_BASE_NAME = "Rustwake";
+    /** The base's eccentric orbit round Earth: periapsis and apoapsis radii, m. */
+    public static final double PIRATE_BASE_PERIAPSIS = 60_000e3, PIRATE_BASE_APOAPSIS = 160_000e3;
     /** The shipyard's orbit radius: high Earth orbit, m. */
     public static final double SHIPYARD_ORBIT = 20_000e3;
     /**
@@ -211,8 +216,10 @@ public class GameScenario {
                         if (station.getComponent(TransformComponent.class) == null) station.add(new TransformComponent());
                         ShipGridComponent g = station.getComponent(ShipGridComponent.class);
                         float radius = g == null ? 20f : Math.max(g.width, g.height) * g.tileSize * 0.5f;
-                        station.add(new HudMarkerComponent(station.getComponent(StationComponent.class).name,
-                                HudMarkerComponent.Kind.STATION).radius(radius));
+                        String name = station.getComponent(StationComponent.class).name;
+                        var owner = world.standing.factions().def(world.standing.factions().ofStation(name));
+                        station.add(new HudMarkerComponent(name, owner != null && owner.hostileToAll
+                                ? HudMarkerComponent.Kind.HOSTILE : HudMarkerComponent.Kind.STATION).radius(radius));
                     }
 
                     @Override
@@ -237,6 +244,12 @@ public class GameScenario {
                 circular(MU_MOON, R_MOON + 800e3, phase(4.2)), 0f);
         freehold = addStation(FREEHOLD_NAME, stationType("free_port", 5), EARTH,
                 circular(FREEHOLD_ORBIT, phase(MOON_ANGLE + Math.PI)), 0f);
+        // The pirates' hidden base, with no market worth the name and no one to clear the player in
+        if (world.standing.factions().index(PIRATES) >= 0) {
+            pirateBase = addStation(PIRATE_BASE_NAME, stationType("pirate_den", 0), EARTH,
+                    periapsisState(MU_EARTH, PIRATE_BASE_PERIAPSIS, PIRATE_BASE_APOAPSIS, phase(5.0)), 0f);
+            world.pirateBase.establish(pirateBase, world.macroSim.now());
+        }
         double hold = InteriorGridData.cargoBayVolume(content.defs, FREIGHTER_SHIP);
         addFreighter("Hauler Kestrel", hold, highport);
         for (int i = 0; i < 4; i++) addFreighter("Hauler " + (i + 1), hold, depot);
@@ -264,6 +277,7 @@ public class GameScenario {
             }
         });
         // Pirates lurk by every station; the sponsor patrols Earth's stations, Selene guards the Moon's
+        world.hostiles.extraLurk = pirateBase;
         world.hostiles.start(lurks(), present(depot, highport, shipyard),
                 present(lunarMine, foundry, oreMine));
         content.hooks.fireWorldReady();
@@ -457,6 +471,9 @@ public class GameScenario {
         foundry = stationNamed(FOUNDRY_NAME, null);
         oreMine = stationNamed(ORE_MINE_NAME, null);
         freehold = stationNamed(FREEHOLD_NAME, null);
+        pirateBase = stationNamed(PIRATE_BASE_NAME, null);
+        world.pirateBase.relink(pirateBase);
+        world.hostiles.extraLurk = pirateBase;
         world.hostiles.relink(lurks());
         player = world.getPlayer();
         if (player != null) ShipCargo.attach(player);
@@ -493,6 +510,13 @@ public class GameScenario {
             if (i++ <= fallback) nth = t.id;
         }
         return nth;
+    }
+
+    /** At periapsis, {@code angle} radians round, on the orbit from {@code rp} to {@code ra}, circling the usual way. */
+    static StateVector periapsisState(double mu, double rp, double ra, double angle) {
+        double v = Math.sqrt(mu * (2 / rp - 2 / (rp + ra)));
+        double c = Math.cos(angle), s = Math.sin(angle);
+        return new StateVector().set(rp * c, rp * s, -v * s, v * c);
     }
 
     static StateVector circular(double radius, double angle) {

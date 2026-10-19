@@ -87,6 +87,13 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
      * at the game's difficulty setting.
      */
     public DoubleSupplier difficulty = () -> 1.0;
+    /**
+     * Raiders kept beyond what {@link #difficulty} asks for, and where they gather: the pirate
+     * base's growing band ({@link PirateBase}). None without a base.
+     */
+    public java.util.function.IntSupplier extraRaiders = () -> 0;
+    /** Where the extra raiders spawn; null spawns them at the lurks like the rest. */
+    public String extraLurk;
     private boolean topUpDue;
     /** What the hostiles did that the player should hear of; the screen drains it. */
     public final List<String> notices = new ArrayList<>();
@@ -375,13 +382,21 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     // ---------------------------------------------------------------------------------------------
 
+    /** Tops the population up now, out of the player's sight, as the hourly top-up does; for tests. */
+    void topUpNow() {
+        topUp(world.macroSim.now(), false);
+    }
+
     /** Spawns pirates until the population is what {@link #difficulty} asks for. */
     private void topUp(double now, boolean anywhere) {
         if (lurks.length == 0) return;
         double d = difficulty.getAsDouble();
-        int raiders = raidersFor(d) - count(RAIDER), gunships = gunshipsFor(d) - count(GUNSHIP);
-        for (int i = 0; i < gunships; i++) spawnPirate(GUNSHIP, now, anywhere);
-        for (int i = 0; i < raiders; i++) spawnPirate(RAIDER, now, anywhere);
+        int extra = extraRaiders.getAsInt();
+        int raiders = raidersFor(d) + extra - count(RAIDER), gunships = gunshipsFor(d) - count(GUNSHIP);
+        for (int i = 0; i < gunships; i++) spawnPirate(GUNSHIP, now, anywhere, null);
+        // The base's band gathers at the base; the rest at the lurks in turn
+        int atBase = extraLurk == null ? 0 : Math.max(0, extra - countAt(extraLurk));
+        for (int i = 0; i < raiders; i++) spawnPirate(RAIDER, now, anywhere, i < atBase ? extraLurk : null);
     }
 
     private int count(String shipId) {
@@ -390,9 +405,17 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         return n;
     }
 
-    private void spawnPirate(String shipId, double now, boolean anywhere) {
-        for (int k = 0; k < lurks.length; k++) {
-            String lurk = lurks[(spawned + k) % lurks.length];
+    private int countAt(String lurk) {
+        int n = 0;
+        for (HostileComponent h : controller.all().values()) if (h.isPirate() && lurk.equals(h.stationUuid)) n++;
+        return n;
+    }
+
+    /** Spawns a pirate at {@code at} if given (and out of the player's sight), else at the next lurk that is. */
+    private void spawnPirate(String shipId, double now, boolean anywhere, String at) {
+        String[] choices = at != null && (anywhere || !nearPlayer(at, now)) ? new String[]{at} : lurks;
+        for (int k = 0; k < choices.length; k++) {
+            String lurk = choices[(spawned + k) % choices.length];
             if (!anywhere && nearPlayer(lurk, now)) continue;
             Entity ship = spawnShip(shipId, PIRATE_CREW);
             if (ship == null) return;

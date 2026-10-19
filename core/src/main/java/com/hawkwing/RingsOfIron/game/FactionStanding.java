@@ -239,6 +239,8 @@ public class FactionStanding implements SaveParticipant {
     public String refusal(Entity station, Entity vessel) {
         if (vessel != player.get()) return null;
         int faction = factionOf(station);
+        FactionDef owner = factions.def(faction);
+        if (owner != null && owner.hostileToAll) return owner.name + " clear no one to dock";
         if (standing(faction) >= REFUSE_BELOW) return null;
         String why = grievances.get(faction);
         return why != null ? "you " + why : "your standing with " + factions.name(faction) + " is too low";
