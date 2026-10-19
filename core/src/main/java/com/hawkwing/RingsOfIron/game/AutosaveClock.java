@@ -1,5 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.badlogic.ashley.core.Entity;
+
 /**
  * When to autosave: on docking at a station, and every {@link #FLIGHT_INTERVAL} sim seconds of
  * flight outside time warp. (The game also saves just before undocking, on the key.) Feed it once
@@ -36,6 +38,18 @@ public final class AutosaveClock {
         wasDocked = docked;
         if (why != null) flown = 0;
         return why;
+    }
+
+    /**
+     * The game's check each frame: {@link #update} for {@code world} as it is, but nothing once the
+     * ship is lost or the career over (the clock stops then), and no save for {@code player} while it
+     * is disabled or being abandoned (the clock runs on): the older slots would be all that is left.
+     */
+    public String due(GameWorld world, Entity player) {
+        if (world.getCrash() != null || world.getCareerOver() != null) return null;
+        String why = update(world.playerStation() != null, world.timeWarp.getWarp() > 1, world.engine.getSimSeconds());
+        boolean lost = ShipDisablement.reason(player) != null || AbandonShip.abandoning(player);
+        return lost ? null : why;
     }
 
     /** After a save, a load or a rescue: count from now, with no save for the state the game starts in. */
