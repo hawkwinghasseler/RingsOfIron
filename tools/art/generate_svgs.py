@@ -1345,9 +1345,10 @@ def decor():
     a = Art()
     a.b = rect(2, 2, 28, 7, HOUSING, rx=2, stroke=INK, sw=1.5)
     a.b += rect(5, 4, 22, 3, LENS)
+    # broad, diffuse light: a half-circle of light washing the room away from the wall
     a.e = lit(rect(5, 4, 22, 3, "#fff7d6")
-              + path("M4,9 L28,9 L24,15 L8,15 Z", fill="#fff7d6", extra=' opacity="0.25"'),
-              "cone", reach=5, intensity=0.85, direction=-90, cone=60)
+              + path("M3,9 L29,9 L32,16 L0,16 Z", fill="#fff7d6", extra=' opacity="0.2"'),
+              "cone", reach=6, intensity=0.7, direction=-90, cone=90)
     out("wall_light", 32, 16, a, "wall_light: light strip on a wall", powered=True)
 
     a = Art()
