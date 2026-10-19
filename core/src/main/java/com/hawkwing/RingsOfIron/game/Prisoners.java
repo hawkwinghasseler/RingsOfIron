@@ -173,6 +173,26 @@ public class Prisoners {
         return null;
     }
 
+    /**
+     * Hands over to {@code station} the prisoners still held aboard {@code prize} as it is sold or
+     * turned in: those the sponsor wants pay {@link #HANDOVER_PAY} and {@link #HANDOVER_STANDING} each at a
+     * sponsor station, as if brought aboard and handed over; the rest go with the ship for nothing.
+     * Returns the credits paid, which the caller adds.
+     */
+    public double handOverWithPrize(Entity prize, Entity station) {
+        FactionStanding s = world.standing;
+        boolean sponsors = station != null && s.factionOf(station) == s.sponsor();
+        double pay = 0;
+        int wantedCount = 0;
+        for (Entity e : aboard(prize)) {
+            if (!sponsors || !wanted(world.crew.crew(e).faction)) continue;
+            pay += HANDOVER_PAY;
+            wantedCount++;
+        }
+        if (wantedCount > 0) s.reward(s.sponsor(), HANDOVER_STANDING * wantedCount, "handed over prisoners");
+        return pay;
+    }
+
     /** Whether prisoner {@code e} offers to join the player's crew: some outlaws do. */
     public boolean offersToJoin(Entity e) {
         CrewMemberComponent c = world.crew.crew(e);

@@ -495,9 +495,11 @@ public class Shipyard extends EntitySystem {
         if (no != null) return no;
         Entity prize = prize(), station = prizeStation();
         double paid = prizeValue(prize);
+        String name = name(prize);
+        double forPrisoners = world.prisoners.handOverWithPrize(prize, station);
+        paid += forPrisoners;
         TraderComponent trader = world.getPlayer().getComponent(TraderComponent.class);
         if (trader != null) trader.credits += paid;
-        String name = name(prize);
         int held = handOver(prize);
         String message = String.format(Locale.ROOT, "%s's tugs took the %s in: +%,.0f cr%s", PlayerDocking.name(station), name,
                 paid, held > 0 ? ", " + held + " prisoners handed over" : "");
@@ -513,11 +515,15 @@ public class Shipyard extends EntitySystem {
         Entity prize = prize(), station = prizeStation();
         float standing = prizeStanding(prize);
         String name = name(prize);
+        double forPrisoners = world.prisoners.handOverWithPrize(prize, station);
+        TraderComponent trader = world.getPlayer().getComponent(TraderComponent.class);
+        if (trader != null) trader.credits += forPrisoners;
         int held = handOver(prize);
         world.standing.reward(world.standing.sponsor(), standing, "turned in a prize");
         String message = String.format(Locale.ROOT, "Turned the %s in at %s: standing %+.0f with the %s%s", name,
                 PlayerDocking.name(station), standing, world.standing.factions().name(world.standing.sponsor()),
-                held > 0 ? ", " + held + " prisoners handed over" : "");
+                held > 0 ? ", " + held + " prisoners handed over"
+                        + (forPrisoners > 0 ? String.format(Locale.ROOT, " (+%,.0f cr)", forPrisoners) : "") : "");
         world.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.PRIZE_TURNED_IN, prize, null, station, 0, standing));
         return message;

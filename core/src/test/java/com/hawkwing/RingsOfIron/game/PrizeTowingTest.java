@@ -182,7 +182,8 @@ class PrizeTowingTest {
         String said = world.shipyard.sellPrize();
         assertTrue(said.startsWith("Highport's tugs took the"), said);
         assertTrue(said.endsWith("2 prisoners handed over"), said);
-        assertEquals(before + Math.round(0.25 * value), account.credits, 1e-6);
+        // Pirate prisoners handed over at a sponsor station pay as they would brought aboard
+        assertEquals(before + Math.round(0.25 * value) + 2 * Prisoners.HANDOVER_PAY, account.credits, 1e-6);
         assertNull(world.engine.getEntity(uuid), "the station took it");
         for (Entity e : raiderCrew) assertFalse(world.engine.getEcsEngine().getEntities().contains(e, true), "prisoners handed over");
         assertNull(world.docking.dockedTo(game.player));
@@ -215,11 +216,13 @@ class PrizeTowingTest {
         float expected = world.shipyard.prizeStanding(game.raider);
         assertEquals(bounty.standing, expected);
         double credits = game.player.getComponent(TraderComponent.class).credits;
+        int held = world.prisoners.aboard(game.raider).size();
 
         String said = world.shipyard.turnInPrize();
         assertTrue(said.startsWith("Turned the"), said);
-        assertEquals(before + expected, world.standing.standing(world.standing.sponsor()), 1e-3);
-        assertEquals(credits, game.player.getComponent(TraderComponent.class).credits, 1e-6, "standing, not credits");
+        assertEquals(before + expected + held * Prisoners.HANDOVER_STANDING, world.standing.standing(world.standing.sponsor()), 1e-3);
+        assertEquals(credits + held * Prisoners.HANDOVER_PAY, game.player.getComponent(TraderComponent.class).credits, 1e-6,
+                "standing for the ship; only its prisoners pay");
         assertNull(world.shipyard.prize());
     }
 
