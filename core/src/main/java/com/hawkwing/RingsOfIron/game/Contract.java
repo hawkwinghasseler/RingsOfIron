@@ -34,6 +34,8 @@ public class Contract {
         DEFEND,
         /** Come within sensor range of the pirate {@link #targetUuid}, wherever it lurks. */
         RECON,
+        /** Take or disable the pirates' base {@link #targetUuid}: done once it falls ({@link PirateBase#fall}). */
+        RAID,
         /** An operation from the data ({@link #operationId}): taking it starts its first step. */
         OPERATION
     }
@@ -98,6 +100,8 @@ public class Contract {
     public String record = "";
     /** Set by a world event: why the job is on the board ("Highport is short of Water"). */
     public String reason = "";
+    /** Recon as an operation's intel step: finding the pirate reveals the base it rests at. */
+    public boolean intel;
 
     /** Not settled yet. */
     public static final int MARK_OPEN = 0;
@@ -136,6 +140,8 @@ public class Contract {
                 return "Defend " + destinationName + " from " + targets.length + " raider" + (targets.length == 1 ? "" : "s");
             case RECON:
                 return "Find " + targetName;
+            case RAID:
+                return "Raid " + targetName;
             default:
                 return "Operation: " + operationName;
         }

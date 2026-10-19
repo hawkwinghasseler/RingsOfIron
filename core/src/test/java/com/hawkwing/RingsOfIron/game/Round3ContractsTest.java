@@ -311,6 +311,72 @@ class Round3ContractsTest {
                 world.standing.standing("patrol"), 1e-4);
     }
 
+    // ------------------------------------------------------------------ the pirate base
+
+    @Test
+    void aRaidOnThePirateBaseIsOfferedOnceItIsFoundAndDoneWhenItFalls() {
+        assertNotNull(world.pirateBase.uuid());
+        world.standing.record().rank = ContractBoard.RAID_RANK;
+        assertNull(offer(game.highport, Contract.Type.RAID), "not while the base is hidden");
+        world.pirateBase.reveal(null);
+        Contract raid = offer(game.shipyard, Contract.Type.RAID);
+        assertNotNull(raid, "the sponsor offers a raid once it is found");
+        assertEquals(world.pirateBase.uuid(), raid.targetUuid);
+        assertEquals("Raid " + GameScenario.PIRATE_BASE_NAME, raid.title());
+        assertNull(offer(game.lunarMine, Contract.Type.RAID), "only the sponsor posts it");
+        world.standing.record().rank = 0;
+        assertNotNull(board.locked(raid), "it needs rank");
+        world.standing.record().rank = ContractBoard.RAID_RANK;
+        assertNull(board.accept(raid.id));
+        world.update(FRAME);
+        assertEquals(Contract.Status.ACTIVE, raid.status);
+        double credits = trader.credits;
+        world.pirateBase.fall("test");
+        world.update(FRAME);
+        assertEquals(Contract.Status.DONE, raid.status, raid.outcome);
+        assertEquals(credits + raid.reward, trader.credits, 1e-6);
+    }
+
+    @Test
+    void anIntelStepFollowsAPirateHomeAndTheRaidComesNext() {
+        world.standing.record().rank = 3;
+        Contract op = null;
+        for (Contract c : board.offers(game.highport)) if ("hunt_the_hunters".equals(c.operationId)) op = c;
+        assertNotNull(op, "a commander is offered the hunt");
+        assertNull(board.accept(op.id));
+        ContractBoard.Operation running = board.operation();
+        String raider = world.universe.uuidOf(game.raider);
+        // Recon and bounty: on the raider outside Highport
+        Contract recon = board.active().get(0);
+        recon.targetUuid = raider;
+        world.update(FRAME);
+        Contract bounty = board.active().get(0);
+        assertEquals(Contract.Type.BOUNTY, bounty.type);
+        bounty.targetUuid = "gone";
+        world.update(FRAME);
+        assertEquals(Contract.Status.DONE, bounty.status);
+        Contract intel = board.active().get(0);
+        assertEquals(Contract.Type.RECON, intel.type);
+        assertTrue(intel.intel);
+        assertFalse(world.pirateBase.found());
+        // Another raider stands in for the pirate to follow; it is close
+        Entity other = world.engine.getEntity(raider);
+        intel.targetUuid = raider;
+        assertNotNull(other);
+        world.update(FRAME);
+        assertEquals(Contract.Status.DONE, intel.status, intel.outcome);
+        assertTrue(world.pirateBase.found(), "followed home");
+        Contract raid = board.active().get(0);
+        assertEquals(Contract.Type.RAID, raid.type);
+        assertEquals(4, raid.step);
+        double credits = trader.credits;
+        world.pirateBase.fall("test");
+        world.update(FRAME);
+        assertNull(board.operation());
+        assertTrue(board.operationDone("hunt_the_hunters"));
+        assertEquals(credits + raid.reward + running.reward, trader.credits, 1e-6);
+    }
+
     // ------------------------------------------------------------------ records and rescue
 
     @Test

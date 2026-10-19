@@ -64,6 +64,9 @@ import java.util.Set;
  *       rank milestones, one running at a time, each step a contract of its own; the last pays the
  *       operation's reward. A <b>recon</b> step finds a pirate where it lurks, for the bounty after it.</li>
  *   <li><b>Records</b>: a pirate that has robbed freighters carries that in its bounty, for more pay.</li>
+ *   <li><b>Raids</b> on the pirates' base ({@link PirateBase}), once it is found: the sponsor's
+ *       boards offer one from {@link #RAID_RANK}, done when the base falls. An operation's
+ *       <b>intel</b> step finds the base by following a pirate to it.</li>
  * </ul>
  */
 public class ContractBoard extends EntitySystem implements SaveParticipant {
@@ -100,6 +103,9 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
     static final int RECORD_CAP = 4;
     /** How close the player must come to a pirate to find it, meters: about a sensor sweep. */
     public static final double RECON_RANGE = 100_000;
+    /** Rank with the sponsor a raid on the pirate base needs (Lieutenant Commander). */
+    public static final int RAID_RANK = 2;
+    static final double RAID_PAY = 40_000, RAID_DAYS = 6;
 
     private static final Family SHIPS = Family.all(ShipTaskBoardComponent.class, UuidComponent.class)
             .exclude(StationComponent.class, PlayerControllerComponent.class).get();
@@ -301,6 +307,9 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             case RECOVERY:
                 if (world.derelicts.get(c.targetUuid) == null) return c.targetName + " is lost";
                 break;
+            case RAID:
+                if (!world.pirateBase.standing()) return c.targetName + " has already fallen";
+                break;
             case CONVOY:
                 for (int i = 0; i < c.targets.length; i++) {
                     FreighterComponent f = world.macroSim.freighters().get(c.targets[i]);
@@ -393,6 +402,9 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
                 break;
             case RECON:
                 checkRecon(c, player);
+                break;
+            case RAID:
+                if (!world.pirateBase.standing()) end(c, Contract.Status.DONE, c.targetName + " has fallen");
                 break;
             default:
                 break;
@@ -595,6 +607,8 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         if (distance(player, pirate) > RECON_RANGE) return;
         HostileComponent h = pirate.getComponent(HostileComponent.class);
         EconomyNode lurk = h == null || h.stationUuid == null ? null : world.macroSim.station(h.stationUuid);
+        // An intel step's pirate leads the way home to the base, before the raid after it is posted
+        if (c.intel) world.pirateBase.reveal("Followed " + c.targetName + " home");
         end(c, Contract.Status.DONE, "found " + c.targetName + (lurk == null ? "" : " by " + name(lurk)));
     }
 
@@ -739,6 +753,22 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             case "recon":
                 options = recons(giver, op.quarry);
                 break;
+            case "intel":
+                // Already known: nothing to find, on to the next step
+                if (world.pirateBase.found() || !world.pirateBase.standing()) {
+                    if (op.step >= op.steps.length) return null;
+                    op.step++;
+                    return stepContract(op);
+                }
+                options = recons(giver, op.quarry);
+                for (Contract o : options) {
+                    o.intel = true;
+                    o.reason = "Follow it home to the raiders' base";
+                }
+                break;
+            case "raid":
+                options = raids(giver, true);
+                break;
             case "bounty":
                 options = bounties(node, giver);
                 // The pirate the recon found, if it is still out there
@@ -812,6 +842,8 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             case BOUNTY:
             case RECON:
                 return world.engine.getEntity(c.targetUuid) != null;
+            case RAID:
+                return world.pirateBase.standing();
             default:
                 return true;
         }
@@ -933,6 +965,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         kinds.add(bounties(node, giver));
         kinds.add(patrols(node, giver));
         kinds.add(convoys(node, giver));
+        kinds.add(raids(giver, false));
         for (List<Contract> k : kinds) Collections.shuffle(k, rnd);
         // Wanted ships close by (in the bubble) come first, so a bounty can be flown at once
         kinds.get(2).sort(java.util.Comparator.comparing(c -> !inBubble(c.targetUuid)));
@@ -956,7 +989,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         for (Contract c : out) open |= c.tier == 0;
         if (!open && !out.isEmpty()) {
             for (Contract c : out) {
-                if (c.type == Contract.Type.OPERATION) continue;
+                if (c.type == Contract.Type.OPERATION || c.type == Contract.Type.RAID) continue;
                 c.tier = 0;
                 break;
             }
@@ -1116,6 +1149,29 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             c.deadline = eta + DAY * (far ? FAR_DAYS : NEAR_DAYS);
             out.add(c);
         }
+        return out;
+    }
+
+    /**
+     * A raid on the pirates' base, from the sponsor once it is found and while it stands; an
+     * operation's raid step ({@code step}) needs no rank of its own.
+     */
+    private List<Contract> raids(int giver, boolean step) {
+        List<Contract> out = new ArrayList<>();
+        PirateBase base = world.pirateBase;
+        String uuid = base.uuid();
+        if (uuid == null || !base.standing() || !base.found() || targeted(uuid)) return out;
+        if (!step && giver != world.standing.sponsor()) return out;
+        Contract c = new Contract();
+        c.type = Contract.Type.RAID;
+        c.targetUuid = uuid;
+        c.targetName = base.name();
+        c.tier = step ? 0 : RAID_RANK;
+        c.reward = Math.round(RAID_PAY * Difficulty.of(world));
+        c.standing = 15;
+        c.deadline = now() + DAY * RAID_DAYS;
+        c.reason = "Take it or leave no pirate alive aboard";
+        out.add(c);
         return out;
     }
 

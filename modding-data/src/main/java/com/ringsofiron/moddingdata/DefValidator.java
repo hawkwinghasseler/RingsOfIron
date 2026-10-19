@@ -131,7 +131,7 @@ public final class DefValidator {
 
     /** The contract types an operation's steps may be. */
     public static final java.util.Set<String> OPERATION_STEPS =
-            java.util.Set.of("patrol", "recon", "bounty", "escort", "convoy", "delivery");
+            java.util.Set.of("patrol", "recon", "bounty", "escort", "convoy", "delivery", "intel", "raid");
 
     private static boolean stationChassis(DefRegistry defs, String id) {
         try {

@@ -70,6 +70,20 @@ class WorldEventsTest {
     }
 
     @Test
+    void aSeededNewGameRollsItsEventsFromItsSeed() {
+        GameWorld a = new GameWorld(), b = new GameWorld();
+        try {
+            GameScenario.start(a, assets, assets.resolve("no-mods-here"), NewGame.seeded(42, null));
+            GameScenario.start(b, assets, assets.resolve("no-mods-here"), NewGame.seeded(43, null));
+            assertNotEquals(WorldEvents.DEFAULT_SEED, a.events.seed);
+            assertNotEquals(a.events.seed, b.events.seed);
+        } finally {
+            a.dispose();
+            b.dispose();
+        }
+    }
+
+    @Test
     void theFirstDayIsQuietAndTheNextTurnRollsOnce() {
         world.update(FRAME);
         assertTrue(world.events.log().isEmpty());

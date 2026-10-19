@@ -5,7 +5,9 @@
 # paid as usual, and the next is posted when it is done. Finishing the last pays `reward` credits
 # and `standing` with the giver; failing or abandoning any step fails the operation, at half its
 # standing. Steps: patrol, recon (find a pirate where it lurks), bounty (on the pirate the recon
-# found, else any the giver is at war with), escort, convoy, delivery. Placeholder numbers.
+# found, else any the giver is at war with), escort, convoy, delivery, intel (find a pirate and
+# follow it home to the pirates' base; skipped once the base is known) and raid (take or disable
+# the base). Placeholder numbers.
 
 [operation.clear_the_lanes]
 name = "Clear the Lanes"
@@ -27,9 +29,9 @@ steps = ["escort", "recon", "bounty"]
 
 [operation.hunt_the_hunters]
 name = "Hunt the Hunters"
-text = "Two raiders have been seen on the lanes. Find the first and take it, then the second."
+text = "The raiders rest somewhere out past the lanes. Find one and take it, follow another home, then burn their nest."
 giver = "patrol"
 rank = "commander"
 reward = 30000.0
 standing = 10.0
-steps = ["recon", "bounty", "recon", "bounty"]
+steps = ["recon", "bounty", "intel", "raid"]

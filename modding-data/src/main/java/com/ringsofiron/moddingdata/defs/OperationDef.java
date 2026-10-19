@@ -18,7 +18,8 @@ import java.util.List;
  * </pre>
  * A step is a contract type: {@code patrol}, {@code recon} (find a pirate where it lurks),
  * {@code bounty} (on the pirate a recon found, else any the giver is at war with), {@code escort},
- * {@code convoy} or {@code delivery}.
+ * {@code convoy}, {@code delivery}, {@code intel} (find a pirate and follow it home to the pirates'
+ * base; skipped once the base is known) or {@code raid} (on the base, once found).
  */
 public class OperationDef {
     public String id;
