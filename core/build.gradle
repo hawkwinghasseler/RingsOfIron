@@ -35,10 +35,12 @@ dependencies {
 
 test {
   useJUnitPlatform()
-  // A failing test says why in the CI log, not only in the report
+  // A failing test says why in the CI log, not only in the report (the build logs at quiet, see gradle.properties)
   testLogging {
-    events 'failed'
-    exceptionFormat 'full'
+    quiet {
+      events 'failed'
+      exceptionFormat 'full'
+    }
   }
 }
 
