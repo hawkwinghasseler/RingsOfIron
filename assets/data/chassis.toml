@@ -124,10 +124,20 @@ rows = [
 ]
 mounts = [
   { component = "nitrogen_tank", size = "S", x = 1, y = 2, rotation = 1 },
-  { component = "oxygen_tank", size = "S", x = 3, y = 2, rotation = 0 },
+  { component = "oxygen_tank", size = "S", x = 3, y = 2 },
 ]
 pipes = [
-  { x = 2, y = 1 }, { x = 2, y = 2 }, { x = 2, y = 3 }, { x = 3, y = 2 }, { x = 4, y = 2 }, { x = 5, y = 2 },
+  { x = 2, y = 1 },
+  { x = 2, y = 2 },
+  { x = 2, y = 3 },
+  { x = 3, y = 2 },
+  { x = 4, y = 2 },
+  { x = 5, y = 2 },
+]
+lights = [
+  { x = 5, y = 1, side = "BOTTOM" },
+  { x = 10, y = 1, side = "BOTTOM" },
+  { x = 13, y = 1, side = "BOTTOM" },
 ]
 
 [chassis.gunship]
@@ -155,9 +165,32 @@ mounts = [
   { component = "nitrogen_tank", size = "S", x = 1, y = 3, rotation = 1 },
 ]
 pipes = [
-  { x = 2, y = 1 }, { x = 2, y = 2 }, { x = 2, y = 3 }, { x = 2, y = 4 }, { x = 2, y = 5 }, { x = 2, y = 6 },
-  { x = 3, y = 3 }, { x = 4, y = 3 }, { x = 5, y = 3 }, { x = 6, y = 3 },
-  { x = 5, y = 1 }, { x = 5, y = 2 }, { x = 5, y = 4 }, { x = 5, y = 5 }, { x = 5, y = 6 },
+  { x = 2, y = 1 },
+  { x = 2, y = 2 },
+  { x = 2, y = 3 },
+  { x = 2, y = 4 },
+  { x = 2, y = 5 },
+  { x = 2, y = 6 },
+  { x = 3, y = 3 },
+  { x = 4, y = 3 },
+  { x = 5, y = 3 },
+  { x = 6, y = 3 },
+  { x = 5, y = 1 },
+  { x = 5, y = 2 },
+  { x = 5, y = 4 },
+  { x = 5, y = 5 },
+  { x = 5, y = 6 },
+]
+lights = [
+  { x = 4, y = 1, side = "BOTTOM" },
+  { x = 7, y = 1, side = "BOTTOM" },
+  { x = 12, y = 1, side = "BOTTOM" },
+  { x = 18, y = 2, side = "RIGHT" },
+  { x = 18, y = 5, side = "RIGHT" },
+  { x = 4, y = 6, side = "TOP" },
+  { x = 7, y = 6, side = "TOP" },
+  { x = 10, y = 6, side = "TOP" },
+  { x = 14, y = 6, side = "TOP" },
 ]
 
 # Stations. Every station type carries docking ports of all three sizes, so any ship
