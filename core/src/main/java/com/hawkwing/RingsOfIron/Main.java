@@ -13,12 +13,22 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.hawkwing.RingsOfIron.art.ArtLibrary;
+import com.hawkwing.RingsOfIron.art.DeckArt;
+import com.hawkwing.RingsOfIron.game.DeckView;
+import com.hawkwing.RingsOfIron.lighting.DeckLightRig;
+import com.hawkwing.RingsOfIron.lighting.EmissiveLights;
+import com.hawkwing.RingsOfIron.lighting.SceneLighting;
 import com.ringsofiron.interiorgrid.*;
 
+import java.nio.file.Paths;
+
 /**
- * Interactive demo for the interior-grid module.
+ * Interactive demo for the interior-grid module, drawn with the art pack and lit by the deck's own
+ * lights (box2dlights), as the game draws a deck. Without the art atlas it draws the flat plan.
  *
  * Controls:
  *   Left Click         - Start / put out a fire on a carpeted tile
@@ -28,6 +38,7 @@ import com.ringsofiron.interiorgrid.*;
  *   F                  - Extinguish all fires
  *   V                  - Refill every room with fresh air and cool the ship down
  *   P                  - Switch the reactor off / on
+ *   L                  - Deck lighting on / off
  *   R                  - Reset to initial state
  *   ESC                - Exit
  */
@@ -91,6 +102,16 @@ public class Main extends ApplicationAdapter {
     private ShapeRenderer shapeRenderer;
     private SpriteBatch batch;
     private BitmapFont font;
+    private ArtLibrary art;
+    private DeckArt deckArt;
+    private SceneLighting lighting;
+    private boolean lightsOn = true;
+    /** The deck in meters, for the light map: the grid's local frame at the world origin. */
+    private final OrthographicCamera lightCamera = new OrthographicCamera();
+    /** Grid local meters to screen pixels, for drawing the deck art. */
+    private final Matrix4 deckPose = new Matrix4();
+    private final Matrix4 identity = new Matrix4();
+    private float time;
 
     // --- State ---
     private final HazardParticles particles = new HazardParticles();
@@ -108,6 +129,10 @@ public class Main extends ApplicationAdapter {
         batch = new SpriteBatch();
         font = new BitmapFont();
         font.setColor(Color.WHITE);
+        art = ArtLibrary.load(ArtLibrary.DEFAULT_PATH);
+        deckArt = new DeckArt(art);
+        // The demo runs in assets/, where art/lights.json is
+        lighting = new SceneLighting(EmissiveLights.load(Paths.get("").toAbsolutePath()));
 
         // -- ECS Engine --
         engine = new GameEngine();
@@ -155,6 +180,8 @@ public class Main extends ApplicationAdapter {
         engine.update(delta);
         particles.update(grid, delta);
         warpMessageTime -= delta;
+        time += delta;
+        lighting.clear(delta);
 
         // --- Draw ---
         Gdx.gl.glClearColor(0.05f, 0.05f, 0.1f, 1f);
@@ -178,6 +205,7 @@ public class Main extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.F)) extinguishAllFires();
         if (Gdx.input.isKeyJustPressed(Input.Keys.V)) restoreAtmosphere();
         if (Gdx.input.isKeyJustPressed(Input.Keys.P)) toggleReactor();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.L)) lightsOn = !lightsOn;
         if (Gdx.input.isKeyJustPressed(Input.Keys.D)) toggleEdgeDoors();
         if (Gdx.input.isKeyJustPressed(Input.Keys.T)) railsWarp();
 
@@ -291,6 +319,111 @@ public class Main extends ApplicationAdapter {
     // -----------------------------------------------------------------------
 
     private void drawGrid() {
+        if (deckArt.available()) drawArtDeck();
+        else drawFlatDeck();
+    }
+
+    /**
+     * The deck in the art pack, then the light map over it and what glows on top, as the game
+     * draws a deck; the demo's readouts (heat, leaks, room lines, system status) go over the light.
+     */
+    private void drawArtDeck() {
+        float offX = 2 * TILE_PX;
+        float offY = 2 * TILE_PX;
+        // The grid's corner sits at (offX, offY), one meter to TILE_PX pixels
+        float ox = offX - grid.gridOriginLocal.x * TILE_PX, oy = offY - grid.gridOriginLocal.y * TILE_PX;
+        deckPose.idt().translate(ox, oy, 0f).scale(TILE_PX, TILE_PX, 1f);
+
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        batch.setTransformMatrix(deckPose);
+        batch.begin();
+        deckArt.draw(batch, grid, null);
+        batch.end();
+        batch.setTransformMatrix(identity);
+
+        // Vacuum and haze over the rooms, in the deck's meters
+        shapeRenderer.setTransformMatrix(deckPose);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        DeckView.atmosphere(shapeRenderer, grid, time % 1f < 0.5f);
+        shapeRenderer.end();
+        shapeRenderer.setTransformMatrix(identity);
+
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        drawHeat(offX, offY);
+        shapeRenderer.end();
+        particles.draw(grid, shapeRenderer, offX, offY, TILE_PX);
+
+        if (lightsOn) {
+            lightCamera.viewportWidth = viewport.getWorldWidth() / TILE_PX;
+            lightCamera.viewportHeight = viewport.getWorldHeight() / TILE_PX;
+            lightCamera.position.set((camera.position.x - ox) / TILE_PX, (camera.position.y - oy) / TILE_PX, 0f);
+            lightCamera.update();
+            lighting.addDeck(grid, 0f, 0f, 0f);
+            lighting.renderLights(lightCamera, DeckLightRig.hasPower(grid));
+            // What gives off light shows lit whatever light falls on it
+            batch.setTransformMatrix(deckPose);
+            batch.begin();
+            deckArt.glow(batch, grid);
+            batch.end();
+            batch.setTransformMatrix(identity);
+            lighting.renderGlow(batch, lightCamera, 0f);
+            batch.setProjectionMatrix(camera.combined);
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        }
+
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile tile = grid.getTile(x, y);
+                if (tile == null || tile.isVoid()) continue;
+                drawLeak(tile, offX + x * TILE_PX, offY + y * TILE_PX);
+            }
+        }
+        drawRoomBoundaries(offX, offY);
+        shapeRenderer.end();
+
+        // A status dot in each system's corner, the art showing the system itself
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        for (Entity e : subsysRegistry.subsystems) {
+            SubsystemComponent sub = SUBSYSTEMS.get(e);
+            if (sub == null) continue;
+            MountFootprint f = sub.footprint;
+            shapeRenderer.setColor(subsystemColor(sub));
+            shapeRenderer.circle(offX + (f.originX + f.width()) * TILE_PX - 7f,
+                    offY + (f.originY + f.height()) * TILE_PX - 7f, 4f, 12);
+        }
+        shapeRenderer.end();
+        drawSubsystemLabels(offX, offY);
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    /** Heat glow, from dull red at 350 K to bright at the ignition temperature. Call inside a Filled batch. */
+    private void drawHeat(float offX, float offY) {
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile tile = grid.getTile(x, y);
+                float heat = (tile.temperature - 350f) / (GridHazardSystem.IGNITION_TEMPERATURE - 350f);
+                if (heat > 0f && !tile.isVoid()) {
+                    shapeRenderer.setColor(1f, 0.25f, 0.05f, Math.min(0.6f, heat * 0.6f));
+                    shapeRenderer.rect(offX + x * TILE_PX + 1, offY + y * TILE_PX + 1, TILE_PX - 2, TILE_PX - 2);
+                }
+            }
+        }
+    }
+
+    /** Leaking walls and floors: a cyan cross, brighter as the leak grows. Call inside a Line batch. */
+    private void drawLeak(Tile tile, float px, float py) {
+        float leak = tile.isOpen() && !tile.isFloor() ? 0f : tile.leakFactor();
+        if (leak <= 0f || tile.getIntegrity() <= 0f) return;
+        shapeRenderer.setColor(0.3f, 0.9f, 1f, 0.4f + leak);
+        shapeRenderer.line(px + 8, py + TILE_PX / 2, px + TILE_PX - 8, py + TILE_PX / 2);
+        shapeRenderer.line(px + TILE_PX / 2, py + 8, px + TILE_PX / 2, py + TILE_PX - 8);
+    }
+
+    /** The deck plan in flat shapes, for when there is no art atlas. */
+    private void drawFlatDeck() {
         float offX = 2 * TILE_PX;
         float offY = 2 * TILE_PX;
 
@@ -309,16 +442,9 @@ public class Main extends ApplicationAdapter {
                         ? tileColor(null) : tileColor(tile);
                 shapeRenderer.setColor(c);
                 shapeRenderer.rect(px + 1, py + 1, TILE_PX - 2, TILE_PX - 2);
-
-                // Heat glow, from dull red at 400 K to bright at the ignition temperature
-                float heat = (tile.temperature - 350f) / (GridHazardSystem.IGNITION_TEMPERATURE - 350f);
-                if (heat > 0f && !tile.isVoid()) {
-                    shapeRenderer.setColor(1f, 0.25f, 0.05f, Math.min(0.6f, heat * 0.6f));
-                    shapeRenderer.rect(px + 1, py + 1, TILE_PX - 2, TILE_PX - 2);
-                }
-
             }
         }
+        drawHeat(offX, offY);
 
         drawHullPieces(offX, offY);
 
@@ -334,14 +460,7 @@ public class Main extends ApplicationAdapter {
                 float px = offX + x * TILE_PX;
                 float py = offY + y * TILE_PX;
                 shapeRenderer.rect(px, py, TILE_PX, TILE_PX);
-
-                // Leaking walls and floors: a cyan cross, brighter as the leak grows
-                float leak = tile.isOpen() && !tile.isFloor() ? 0f : tile.leakFactor();
-                if (leak > 0f && tile.getIntegrity() > 0f) {
-                    shapeRenderer.setColor(0.3f, 0.9f, 1f, 0.4f + leak);
-                    shapeRenderer.line(px + 8, py + TILE_PX / 2, px + TILE_PX - 8, py + TILE_PX / 2);
-                    shapeRenderer.line(px + TILE_PX / 2, py + 8, px + TILE_PX / 2, py + TILE_PX - 8);
-                }
+                drawLeak(tile, px, py);
 
                 // Draw sealed bulkhead indicator (bright yellow X)
                 if (tile.bulkheadSealed) {
@@ -507,8 +626,11 @@ public class Main extends ApplicationAdapter {
             shapeRenderer.circle(cx, cy, r, 16);
         }
         shapeRenderer.end();
+        drawSubsystemLabels(offX, offY);
+    }
 
-        // Draw subsystem labels
+    /** Each system's name, shortened, in the top-left corner of its mount. */
+    private void drawSubsystemLabels(float offX, float offY) {
         batch.begin();
         for (Entity e : subsysRegistry.subsystems) {
             SubsystemComponent sub = SUBSYSTEMS.get(e);
@@ -543,10 +665,14 @@ public class Main extends ApplicationAdapter {
 
         font.setColor(Color.LIGHT_GRAY);
         font.draw(batch, "[L-Click]  Start / put out fire (carpet only)", lx, ly); ly -= lineH;
-        font.draw(batch, "[R-Click]  Toggle bulkhead seal (yellow X)", lx, ly); ly -= lineH;
+        font.draw(batch, deckArt.available() ? "[R-Click]  Toggle bulkhead seal"
+                : "[R-Click]  Toggle bulkhead seal (yellow X)", lx, ly); ly -= lineH;
         font.draw(batch, "[M-Click]  Damage tile, or edge wall by cursor", lx, ly); ly -= lineH;
         font.draw(batch, "[D]        Open/seal edge-wall door", lx, ly); ly -= lineH;
         font.draw(batch, "[P]        Switch reactor off / on", lx, ly); ly -= lineH;
+        if (deckArt.available()) {
+            font.draw(batch, "[L]        Deck lighting " + (lightsOn ? "on" : "off"), lx, ly); ly -= lineH;
+        }
         font.draw(batch, "[F]        Extinguish all fires", lx, ly); ly -= lineH;
         font.draw(batch, "[V]        Fresh air in every room", lx, ly); ly -= lineH;
         font.draw(batch, "[T]        Rails warp 1 hour (refused during hazards)", lx, ly); ly -= lineH;
@@ -562,7 +688,8 @@ public class Main extends ApplicationAdapter {
         font.setColor(Color.GRAY);
         font.draw(batch, "grey = damaged", lx + 260, ly); ly -= lineH;
         font.setColor(new Color(0.3f, 0.9f, 1f, 1f));
-        font.draw(batch, "Cyan cross / wall = leaking (below 50%)", lx, ly); ly -= lineH;
+        font.draw(batch, deckArt.available() ? "Cyan cross = leaking (below 50%)"
+                : "Cyan cross / wall = leaking (below 50%)", lx, ly); ly -= lineH;
         font.setColor(Color.WHITE);
         font.draw(batch, "White lines divide rooms at 1-wide openings", lx, ly);
 
@@ -618,6 +745,9 @@ public class Main extends ApplicationAdapter {
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
+        // The light map covers the letterboxed scene, not the bars around it
+        lighting.setScreenArea(viewport.getScreenX(), viewport.getScreenY(),
+                viewport.getScreenWidth(), viewport.getScreenHeight());
     }
 
     @Override
@@ -625,5 +755,7 @@ public class Main extends ApplicationAdapter {
         shapeRenderer.dispose();
         batch.dispose();
         font.dispose();
+        lighting.dispose();
+        art.dispose();
     }
 }
