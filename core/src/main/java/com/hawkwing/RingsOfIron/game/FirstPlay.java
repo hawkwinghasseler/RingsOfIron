@@ -6,6 +6,8 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.damage.IonStun;
+import com.ringsofiron.interiorgrid.DamageStates;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
@@ -168,7 +170,7 @@ public final class FirstPlay {
     /**
      * True once {@code ship} can no longer fight: gone, disabled or surrendered, its reactor down, or every gun silenced.
      * Contracts' bounties use it too. A ship an ion hit has knocked out is not beaten while a stun lasts (it comes back
-     * by itself), unless it has surrendered, been abandoned or wrecked.
+     * by itself), unless it has surrendered, been abandoned or wrecked, nor while its crew are about to reset a short.
      */
     public static boolean beaten(GameWorld world, Entity ship) {
         if (ship == null || world.engine.getEcsEngine().getEntities().indexOf(ship, true) < 0) return true;
@@ -177,6 +179,7 @@ public final class FirstPlay {
         if (IonStun.anyStunned(ship)) return false;
         if (why != null) return true;
         ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (DamageStates.awaitingReset(ship.getComponent(ShipGridComponent.class), registry)) return false;
         if (registry != null && !powered(registry)) return true;
         WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);
         if (weapons == null) return true;

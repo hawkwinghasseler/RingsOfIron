@@ -19,6 +19,7 @@ import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
@@ -26,9 +27,11 @@ import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
+import com.ringsofiron.interiorgrid.crew.IsolateTankTask;
 import com.ringsofiron.interiorgrid.crew.PatchLeakTask;
 import com.ringsofiron.interiorgrid.crew.RepairTask;
 import com.ringsofiron.interiorgrid.crew.RescueTask;
+import com.ringsofiron.interiorgrid.crew.ResetShortTask;
 
 /** The leaf tasks of the crew behavior tree. See {@link CrewBehaviorTrees} for how they fit together. */
 public final class CrewTasks {
@@ -254,7 +257,8 @@ public final class CrewTasks {
             elapsed += dt;
             a.crew.activity = describe(t);
             if (t.kind == CrewTask.Kind.REPAIR || t.kind == CrewTask.Kind.EXTINGUISH || t.kind == CrewTask.Kind.SEAL_BREACH
-                    || t.kind == CrewTask.Kind.PATCH_LEAK) {
+                    || t.kind == CrewTask.Kind.PATCH_LEAK || t.kind == CrewTask.Kind.RESET_SHORT
+                    || t.kind == CrewTask.Kind.ISOLATE_TANK) {
                 a.crew.record().pendingWork += dt; // engineering experience
             }
             Tile tile = grid.getTile(t.x, t.y);
@@ -281,9 +285,22 @@ public final class CrewTasks {
                     s.health = Math.min(1f, s.health + a.crew.def.repairRate * dt);
                     if (s.health >= 1f) {
                         grid.gridDirty = true; // a repaired system may route power again
+                        DamageStates.repaired(grid, s);
                         return Status.SUCCEEDED;
                     }
                     return Status.RUNNING;
+                }
+                case RESET_SHORT: {
+                    if (elapsed < a.crew.def.resetTime) return Status.RUNNING;
+                    ResetShortTask r = (ResetShortTask) t;
+                    if (r.subsystem == null) DamageStates.reset(grid, t.x, t.y);
+                    else DamageStates.reset(grid, r.subsystem.getComponent(SubsystemComponent.class));
+                    return Status.SUCCEEDED;
+                }
+                case ISOLATE_TANK: {
+                    if (elapsed < a.crew.def.isolateTime) return Status.RUNNING;
+                    DamageStates.isolate(((IsolateTankTask) t).tank.getComponent(SubsystemComponent.class));
+                    return Status.SUCCEEDED;
                 }
                 case TREAT: {
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
@@ -815,6 +832,12 @@ public final class CrewTasks {
                 SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                 return "repairing " + (s == null ? "system" : s.type.name().toLowerCase());
             }
+            case RESET_SHORT: {
+                Entity e = ((ResetShortTask) t).subsystem;
+                SubsystemComponent s = e == null ? null : e.getComponent(SubsystemComponent.class);
+                return "resetting a short in the " + (s == null ? "conduit" : s.type.name().toLowerCase().replace('_', ' '));
+            }
+            case ISOLATE_TANK: return "isolating a leaking tank";
             case RESCUE: return "rescuing a casualty";
             case CARRY: return "carrying " + ((CarryTask) t).job.commodity();
             case YARD: return ((YardTask) t).job.what();

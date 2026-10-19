@@ -40,4 +40,10 @@ public class ShipComponentDef {
     public Map<String, Double> capacity = new LinkedHashMap<>();
     /** ENGINE: newtons of main-engine thrust at full health, by mount size. Sizes left out use the standard thrust. */
     public Map<String, Double> thrust = new LinkedHashMap<>();
+    /** Chance, 0 to 1, that a damaging hit shorts the system out; left out, the standard for its behavior. */
+    public Float shortChance;
+    /** TANK: health, 0 to 1, below which a hit can burst it; left out, the standard (0.25). */
+    public Float burstThreshold;
+    /** TANK: chance, 0 to 1, that each hit below the threshold bursts it; left out, the standard for its fluid. */
+    public Float burstChance;
 }

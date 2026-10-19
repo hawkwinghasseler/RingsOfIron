@@ -99,6 +99,13 @@ public class ShipGridComponent implements Component {
      * are treated slowly. A yard restocks them.
      */
     public int medicalStores = DEFAULT_MEDICAL_STORES;
+    /**
+     * Short circuits and tank bursts aboard that nothing has reported yet, oldest first (see
+     * {@link DamageStates}). The game drains them into notices for the player's ship. Not saved.
+     */
+    public final transient Array<DamageStates.Incident> incidents = new Array<>();
+    /** Short circuits and tank bursts aboard since the grid was built or loaded, for surveys. Not saved. */
+    public transient int shortCount, burstCount;
 
     public ShipGridComponent(int width, int height, float tileSize) {
         this(width, height, tileSize, 0f, 0f);

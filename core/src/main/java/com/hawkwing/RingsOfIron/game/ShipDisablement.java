@@ -20,6 +20,7 @@ import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.damage.IonStun;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
+import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -142,7 +143,10 @@ public class ShipDisablement extends EntitySystem {
         if (current != null && current.sticky()) return current;
         if (hull < DISABLED_HULL) return DisabledComponent.Reason.HULL;
         ShipSubsystemRegistryComponent registry = REGISTRY.get(ship);
-        if (hasReactor(registry) && !reactorRunning(registry)) return DisabledComponent.Reason.NO_POWER;
+        // A shorted reactor is a fault the crew reset in moments, like an ion stun
+        if (hasReactor(registry) && !reactorRunning(registry) && !DamageStates.awaitingReset(GRID.get(ship), registry)) {
+            return DisabledComponent.Reason.NO_POWER;
+        }
         int[] count = crewCount(ship);
         if (count[0] > 0 && count[1] == 0) return DisabledComponent.Reason.NO_CREW;
         if (losing(ship, hull, count)) return DisabledComponent.Reason.SURRENDERED;
@@ -309,7 +313,8 @@ public class ShipDisablement extends EntitySystem {
 
     /**
      * True if the ship has guns (point defense aside) and none of them can fire. Guns an ion hit
-     * has knocked out (or whose power it has) don't count: the crew wait for them to come back.
+     * has knocked out (or whose power it has) don't count: the crew wait for them to come back. Guns a
+     * short has cut off do count: a pirate crew left in the dark loses heart.
      */
     static boolean gunsSilenced(Entity ship) {
         WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);

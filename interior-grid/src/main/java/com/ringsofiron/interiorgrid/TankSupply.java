@@ -13,7 +13,7 @@ import com.badlogic.gdx.utils.Array;
  * <p>A ship with no tank of a fluid at all is a layout from before tanks: its systems are not
  * limited by that fluid (see {@link #hasTanks}). Once a layout has one, only piped tanks count.
  *
- * <p>A tank damaged below {@link #LEAK_THRESHOLD} leaks ({@link #leak}), and what the tanks hold
+ * <p>A tank damaged below {@link #LEAK_THRESHOLD} leaks ({@link #leak}) until the crew isolate it, and what the tanks hold
  * weighs on the ship ({@link #addMassTo}).
  */
 public final class TankSupply {
@@ -44,7 +44,8 @@ public final class TankSupply {
             SubsystemComponent t = SUBSYSTEMS.get(e);
             if (t == null || t.type != SubsystemComponent.SubsystemType.TANK || t.contents <= 0) continue;
             double rate = leakRate(t.health);
-            if (rate <= 0) continue;
+            // Isolated by the crew: its shut valve holds what is left, unless the tank itself is wrecked
+            if (rate <= 0 || (t.isolated && t.health > 0f)) continue;
             double kg = t.contents * (1 - Math.exp(-rate * dt));
             t.contents -= kg;
             lost += kg;

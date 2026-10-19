@@ -2,7 +2,9 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -16,6 +18,8 @@ import java.util.Locale;
  * left, and a yard must repair it); once the patches hold, that warp is clear and the hull still
  * wants a yard. The crew do the patching themselves ({@link LeakPatches}); hints name the crew
  * roster while they work, and the yard while docked with patches on the hull.
+ *
+ * It also reports each short circuit and tank burst aboard ({@link DamageStates}) as it happens.
  */
 public final class DamageControl {
     private final GameWorld world;
@@ -42,6 +46,7 @@ public final class DamageControl {
             leaking = episode = false;
             return;
         }
+        reportIncidents(grid);
         boolean venting = grid.isVenting();
         int leaks = venting || episode ? LeakPatches.leaks(grid).size : 0;
         leaking = venting && leaks > 0;
@@ -63,6 +68,39 @@ public final class DamageControl {
             episode = false;
         }
         if (grid.patchKits > 0) outWarned = false;
+    }
+
+    /** Posts a notice for each short and burst aboard that has not been reported yet. */
+    private void reportIncidents(ShipGridComponent grid) {
+        for (DamageStates.Incident i : grid.incidents) {
+            String text = describe(i);
+            world.notices.post(text, i.kind == DamageStates.Incident.Kind.BURST || i.fire
+                    ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
+        }
+        grid.incidents.clear();
+    }
+
+    /** What a notice says about a short or a burst. */
+    static String describe(DamageStates.Incident i) {
+        if (i.kind == DamageStates.Incident.Kind.SHORT) {
+            String what = i.system == null ? "a power conduit" : "the " + name(i.system.type.name());
+            return "Short circuit in " + what + (i.fire
+                    ? ": the circuit tripped and sparks started a fire. The crew will reset it"
+                    : ": the circuit tripped. The crew will reset it");
+        }
+        String tank = i.fluid == null ? "A tank" : "The " + name(i.fluid.name()) + " tank";
+        String what;
+        if (i.fluid == Fluid.PROPELLANT) {
+            what = i.fire ? String.format(Locale.ROOT, " burst: %,.0f kg of propellant spilled and caught fire", i.kg)
+                    : String.format(Locale.ROOT, " burst: %,.0f kg of propellant spilled on the deck", i.kg);
+        } else {
+            what = i.fire ? " burst, and the rush of oxygen started a fire" : " burst into the room around it";
+        }
+        return tank + what + (i.blastEnergy > 0f ? ", with a blast" : "");
+    }
+
+    private static String name(String constant) {
+        return constant.toLowerCase(Locale.ROOT).replace('_', ' ');
     }
 
     /** True while a patchable leak aboard the player's ship vents to space. */
