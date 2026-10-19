@@ -48,6 +48,16 @@ public class OrbitalEventSystem extends EntitySystem implements SaveParticipant 
     /** Every SOI transition of a rails body or of the bubble anchor, after it has been applied. */
     public final Signal<SoiChange> soiChanges = new Signal<>();
 
+    /** Pays for a planned burn on the rails, and says how much of it was paid for. */
+    @FunctionalInterface
+    public interface BurnBudget {
+        /** Returns the delta-v (m/s, at most {@code deltaV}) the entity can pay for, and pays it. */
+        double pay(Entity entity, double deltaV);
+    }
+
+    /** Charges planned burns on the rails, e.g. to a ship's propellant; null means burns are free. */
+    public BurnBudget burnBudget;
+
     private final ComponentMapper<OrbitComponent> orbitMapper = ComponentMapper.getFor(OrbitComponent.class);
     private final ComponentMapper<ManeuverNodeComponent> maneuverMapper = ComponentMapper.getFor(ManeuverNodeComponent.class);
     private final ComponentMapper<CelestialBodyComponent> celestialMapper = ComponentMapper.getFor(CelestialBodyComponent.class);
@@ -266,7 +276,9 @@ public class OrbitalEventSystem extends EntitySystem implements SaveParticipant 
                 ManeuverNodeComponent.Node node = maneuvers == null ? null : maneuvers.next();
                 if (node == null) return;
                 maneuvers.nodes.removeIndex(0);
-                orbit.setOrbit(orbit.getOrbit().withBurn(t, node.prograde, node.radial));
+                double dv = Math.hypot(node.prograde, node.radial);
+                double scale = burnBudget == null || dv <= 0 ? 1 : burnBudget.pay(entity, dv) / dv;
+                orbit.setOrbit(orbit.getOrbit().withBurn(t, node.prograde * scale, node.radial * scale));
                 break;
             }
             case SOI_EXIT:

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>reactor S: 1x1 primary mount, damaged</title>
+  <defs><radialGradient id="reactor_s_g"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#ff9a3c" stop-opacity="0.9"/><stop offset="1" stop-color="#ff9a3c" stop-opacity="0"/></radialGradient><radialGradient id="reactor_s_gh"><stop offset="0" stop-color="#ff9a3c" stop-opacity="0.55"/><stop offset="1" stop-color="#ff9a3c" stop-opacity="0"/></radialGradient></defs>
+  <g id="base">
+    <rect x="0" y="0" width="64" height="64" fill="#2a3039"/>
+    <rect x="4" y="4" width="56" height="56" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <path d="M5.75,58.25 L5.75,5.75 L58.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M58.25,5.75 L58.25,58.25 L5.75,58.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="32" y1="32" x2="32" y2="8" stroke="#10141a" stroke-width="9" stroke-linecap="round"/>
+    <line x1="32" y1="32" x2="32" y2="8" stroke="#5b6675" stroke-width="6" stroke-linecap="round"/>
+    <line x1="32" y1="32" x2="52.78" y2="44" stroke="#10141a" stroke-width="9" stroke-linecap="round"/>
+    <line x1="32" y1="32" x2="52.78" y2="44" stroke="#5b6675" stroke-width="6" stroke-linecap="round"/>
+    <line x1="32" y1="32" x2="11.22" y2="44" stroke="#10141a" stroke-width="9" stroke-linecap="round"/>
+    <line x1="32" y1="32" x2="11.22" y2="44" stroke="#5b6675" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="32" cy="32" r="13" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <circle cx="32" cy="32" r="7" fill="#4a3320" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="54" cy="54" r="2.5" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+    <circle cx="6.04" cy="45.83" r="15.2" fill="#0b0d10" opacity="0.41"/>
+    <circle cx="25.31" cy="16.35" r="16.8" fill="#0b0d10" opacity="0.27"/>
+    <path d="M32.86,8.9 L29.98,2 L32.19,8.12 L31.73,2 L37.37,13.25" fill="none" stroke="#10141a" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+    <path d="M37.42,38.3 L49.83,37.65 L46.62,37.29 L37.4,43.11 L47.66,33.18" fill="none" stroke="#10141a" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+    <polygon points="26.27,22.72 40.28,18.05 41.84,29.73 31.72,33.62" fill="#373f4b" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round"/>
+    <line x1="26.27" y1="22.72" x2="40.28" y2="18.05" stroke="#7d8898" stroke-width="1" stroke-linecap="round"/>
+  </g>
+  <g id="emissive">
+    <g opacity="0.55">
+    <g data-light="point" data-reach="3" data-intensity="0.7">
+    <circle cx="32" cy="32" r="12" fill="url(#reactor_s_g)"/>
+    </g>
+    <g data-light="glow">
+    <circle cx="54" cy="54" r="6" fill="#ff9a3c" opacity="0.18"/>
+    <circle cx="54" cy="54" r="2" fill="#ff9a3c"/>
+    </g>
+    </g>
+  </g>
+</svg>

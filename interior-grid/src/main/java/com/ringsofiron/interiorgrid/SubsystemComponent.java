@@ -1,12 +1,13 @@
 package com.ringsofiron.interiorgrid;
 
 import com.badlogic.ashley.core.Component;
+import com.badlogic.gdx.utils.Array;
 
 /**
  * Tags an entity as a ship system installed in a {@link MountFootprint} on its parent
  * ship's ShipGridComponent. The system occupies every tile of the footprint.
  *
- * Examples: reactor, life support, turret mount, cargo storage.
+ * Examples: reactor, life support, turret mount, cargo storage, tanks.
  */
 public class SubsystemComponent implements Component {
 
@@ -19,6 +20,8 @@ public class SubsystemComponent implements Component {
         WEAPONS(MountFootprint.MountKind.AUXILIARY),        // Weapon targeting console. Requires power.
         CARGO(MountFootprint.MountKind.AUXILIARY),          // Passive storage - no power requirement.
         AIRLOCK(MountFootprint.MountKind.AUXILIARY),        // Can be opened to space. Requires power to cycle.
+        TANK(MountFootprint.MountKind.AUXILIARY),           // Holds one fluid for the systems piped to it. Passive.
+        ENGINE(MountFootprint.MountKind.AUXILIARY),         // Main engine, burning propellant from piped tanks; its nozzle faces +y at rotation 0 (-x at 1). Requires power.
         DOCKING_PORT(MountFootprint.MountKind.PORT);        // Airlock in the hull edge with a latch collar. Arming needs power.
 
         /** The kind of mount this system installs into. */
@@ -53,6 +56,17 @@ public class SubsystemComponent implements Component {
     public double ratedOutput;
     /** LIFE_SUPPORT: multiplier on scrubbing, air and oxygen supply, set from its component. */
     public float throughput = 1f;
+    /** TANK: what it holds, set from its component. Null for every other system. */
+    public Fluid fluid;
+    /** TANK: kilograms it holds when full, set from its component. */
+    public double capacity;
+    /** TANK: kilograms in it now. Life support and the engines draw it down; a station refills it. */
+    public double contents;
+    /**
+     * The tanks this system's pipes reach (see {@link PipeRouting}), not counting itself. Set
+     * when the grid is routed; not saved.
+     */
+    public transient Array<SubsystemComponent> pipedTanks = new Array<>();
     /** The power circuit feeding this system, or null when unpowered. Set by PowerRoutingSystem; not saved. */
     public transient PowerCircuit circuit;
 
@@ -93,6 +107,14 @@ public class SubsystemComponent implements Component {
     /** True when damage has taken the system below {@link #DISABLE_THRESHOLD}, destroyed included. */
     public boolean isDisabled() {
         return health < DISABLE_THRESHOLD;
+    }
+
+    /**
+     * TANK: true when it can deliver what it holds: its valve is open (switched on) and damage
+     * has not disabled it. A tank needs no power.
+     */
+    public boolean canSupply() {
+        return type == SubsystemType.TANK && switchedOn && !isDisabled();
     }
 
     /** True if tile (x, y) is part of this system's footprint. */

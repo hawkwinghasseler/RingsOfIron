@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron;
 
 import com.badlogic.ashley.core.ComponentMapper;
+import com.hawkwing.RingsOfIron.game.DeckView;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.SimClock;
 import com.badlogic.ashley.core.Entity;
@@ -595,6 +596,7 @@ public class Main extends ApplicationAdapter {
                 shapeRenderer.rect(offX + x * TILE_PX - c / 2, offY + y * TILE_PX, c, TILE_PX);
             }
         }
+        DeckView.pipes(shapeRenderer, grid, offX, offY, TILE_PX);
         shapeRenderer.end();
     }
 

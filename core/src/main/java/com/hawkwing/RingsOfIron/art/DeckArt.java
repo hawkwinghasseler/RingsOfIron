@@ -18,7 +18,6 @@ import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.WallLight;
 import com.ringsofiron.interiorgrid.WallLightLayout;
-import com.ringsofiron.interiorgrid.WeightClass;
 
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -67,6 +66,7 @@ public final class DeckArt {
         walkways(batch, grid);
         edges(batch, grid, power);
         edgeConduits(batch, grid);
+        drawPipes(batch, art, layout(grid), grid.gridOriginLocal.x, grid.gridOriginLocal.y, grid.tileSize);
         wallLights(batch, grid, power);
         effects(batch, grid);
         cargo(batch, grid, hold);
@@ -184,6 +184,90 @@ public final class DeckArt {
         }
     }
 
+    /** Where a deck's pipes run, for {@link #drawPipes}: the grid's, or a layout's in the editor. */
+    public interface PipeLayout {
+        int width();
+
+        int height();
+
+        /** A pipe across tile (x, y). */
+        boolean across(int x, int y);
+
+        /** A pipe along the bottom edge of tile (x, y); y may be the height (the top row's top edge). */
+        boolean alongH(int x, int y);
+
+        /** A pipe along the left edge of tile (x, y); x may be the width (the right column's right edge). */
+        boolean alongV(int x, int y);
+    }
+
+    /** The grid's pipes as a {@link PipeLayout}. */
+    public static PipeLayout layout(ShipGridComponent grid) {
+        return new PipeLayout() {
+            public int width() { return grid.width; }
+            public int height() { return grid.height; }
+            public boolean across(int x, int y) { return grid.getPipe(x, y) != null; }
+            public boolean alongH(int x, int y) { return grid.pipeH[y][x] != null; }
+            public boolean alongV(int x, int y) { return grid.pipeV[y][x] != null; }
+        };
+    }
+
+    /**
+     * Pipes from the tanks, over the edge walls and conduits so they stay in sight: across a tile a
+     * valve plate with an arm toward each pipe beyond it (on the next tile or along the edge), and
+     * along edges a segment per edge, a joint at each vertex and a tee where a tile's arm meets one.
+     * Grid (0, 0) is drawn at ({@code ox}, {@code oy}) with tiles {@code s} across. Pipes have no
+     * glow. Nothing is drawn for art the pack lacks.
+     */
+    public static void drawPipes(Batch batch, ArtLibrary art, PipeLayout p, float ox, float oy, float s) {
+        float half = s / 8f;
+        TextureRegion hub = art.region(ArtNames.PIPE_HUB), arm = art.region(ArtNames.PIPE_ARM);
+        TextureRegion tap = art.region(ArtNames.EDGE_PIPE_TAP);
+        TextureRegion segH = art.region(ArtNames.edgePipe(true)), segV = art.region(ArtNames.edgePipe(false));
+        int w = p.width(), h = p.height();
+        for (int y = 0; y <= h; y++) {
+            for (int x = 0; x < w; x++) {
+                if (segH != null && p.alongH(x, y)) batch.draw(segH, ox + x * s, oy + y * s - half, s, 2f * half);
+            }
+        }
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x <= w; x++) {
+                if (segV != null && p.alongV(x, y)) batch.draw(segV, ox + x * s - half, oy + y * s, 2f * half, s);
+            }
+        }
+        for (int y = 0; y <= h; y++) {
+            for (int x = 0; x <= w; x++) {
+                int mask = (y < h && p.alongV(x, y) ? ArtNames.N : 0) | (x < w && p.alongH(x, y) ? ArtNames.E : 0)
+                        | (y > 0 && p.alongV(x, y - 1) ? ArtNames.S : 0) | (x > 0 && p.alongH(x - 1, y) ? ArtNames.W : 0);
+                TextureRegion joint = mask == 0 ? null : art.region(ArtNames.edgePipeJoint(mask));
+                if (joint != null) batch.draw(joint, ox + x * s - half, oy + y * s - half, 2f * half, 2f * half);
+            }
+        }
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                if (!p.across(x, y)) continue;
+                float x0 = ox + x * s, y0 = oy + y * s;
+                // 0 up, 1 left, 2 down, 3 right
+                boolean[] toward = {
+                        p.alongH(x, y + 1) || (y + 1 < h && p.across(x, y + 1)),
+                        p.alongV(x, y) || (x > 0 && p.across(x - 1, y)),
+                        p.alongH(x, y) || (y > 0 && p.across(x, y - 1)),
+                        p.alongV(x + 1, y) || (x + 1 < w && p.across(x + 1, y))};
+                if (arm != null) {
+                    for (int q = 0; q < 4; q++) {
+                        if (toward[q]) batch.draw(arm, x0, y0, s / 2f, s / 2f, s, s, 1f, 1f, q * 90f);
+                    }
+                }
+                if (hub != null) batch.draw(hub, x0, y0, s, s);
+                if (tap == null) continue;
+                boolean[] edge = {p.alongH(x, y + 1), p.alongV(x, y), p.alongH(x, y), p.alongV(x + 1, y)};
+                float[][] mid = {{0.5f, 1f}, {0f, 0.5f}, {0.5f, 0f}, {1f, 0.5f}};
+                for (int q = 0; q < 4; q++) {
+                    if (edge[q]) batch.draw(tap, x0 + mid[q][0] * s - half, y0 + mid[q][1] * s - half, 2f * half, 2f * half);
+                }
+            }
+        }
+    }
+
     private static boolean live(EdgeConduit c) {
         return c != null && c.isPowered;
     }
@@ -219,15 +303,16 @@ public final class DeckArt {
                 if (id.equals(ArtNames.wallId(grid.getTile(x + 1, y)))) mask |= ArtNames.E;
                 if (id.equals(ArtNames.wallId(grid.getTile(x, y - 1)))) mask |= ArtNames.S;
                 if (id.equals(ArtNames.wallId(grid.getTile(x - 1, y)))) mask |= ArtNames.W;
-                tile(batch, ArtNames.wall(id, mask), grid.gridOriginLocal.x + x * s, grid.gridOriginLocal.y + y * s, s);
+                draw(batch, art.first(ArtNames.wall(t, mask)), grid.gridOriginLocal.x + x * s, grid.gridOriginLocal.y + y * s, s, s);
             }
         }
         for (HullPiece p : grid.hullPieces) {
             if (p.shape != HullPiece.Shape.WEDGE) continue;
-            TextureRegion r = art.region(ArtNames.wedge(p));
+            AtlasRegion r = art.first(ArtNames.wedge(p));
             if (r == null) continue;
             wedge(batch, r, grid.gridOriginLocal.x + (p.originX + p.width() / 2f) * s,
-                    grid.gridOriginLocal.y + (p.originY + p.height() / 2f) * s, s, p.baseWidth, p.baseHeight, p.rotation);
+                    grid.gridOriginLocal.y + (p.originY + p.height() / 2f) * s, s, p.baseWidth, p.baseHeight, p.rotation,
+                    ArtNames.wedgeMirrored(r.name, p.baseWidth, p.baseHeight));
         }
     }
 
@@ -241,7 +326,9 @@ public final class DeckArt {
             // Dark art may fall back to the lit one, whose glow is not this system's
             if (glowing && !powered) continue;
             String state = port && portOpen(grid, m) ? "open" : null;
-            TextureRegion r = art.first(ArtNames.component(sub.component, sub.type, m.size, state, powered));
+            // Damaged and destroyed systems have their own art, so the damage is part of the machine
+            TextureRegion r = art.first(ArtNames.component(sub.component, sub.type, m.size, state, powered,
+                    ArtNames.condition(sub.health)));
             int bw = m.size.baseWidth(m.kind), bh = m.size.baseHeight(m.kind);
             if (r != null) footprint(batch, r, grid, m.originX, m.originY, m.width(), m.height(), bw, bh, m.rotation);
             if (port) {
@@ -264,16 +351,18 @@ public final class DeckArt {
             for (int x = 0; x < grid.width; x++) {
                 EdgeWall e = grid.edgeH[y][x];
                 if (!standing(e)) continue;
-                String name = e.hasBulkhead ? ArtNames.door(e.bulkheadSealed, power, true) : ArtNames.edgeWall(e.weightClass, true);
-                draw(batch, art.region(name), ox + x * s, oy + y * s - half, s, 2f * half);
+                AtlasRegion r = e.hasBulkhead ? art.region(ArtNames.door(e.bulkheadSealed, power, true))
+                        : art.first(ArtNames.edgeWall(e.material, e.weightClass, true));
+                draw(batch, r, ox + x * s, oy + y * s - half, s, 2f * half);
             }
         }
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x <= grid.width; x++) {
                 EdgeWall e = grid.edgeV[y][x];
                 if (!standing(e)) continue;
-                String name = e.hasBulkhead ? ArtNames.door(e.bulkheadSealed, power, false) : ArtNames.edgeWall(e.weightClass, false);
-                draw(batch, art.region(name), ox + x * s - half, oy + y * s, 2f * half, s);
+                AtlasRegion r = e.hasBulkhead ? art.region(ArtNames.door(e.bulkheadSealed, power, false))
+                        : art.first(ArtNames.edgeWall(e.material, e.weightClass, false));
+                draw(batch, r, ox + x * s - half, oy + y * s, 2f * half, s);
             }
         }
         // Joints over the segments, where they meet at a vertex
@@ -286,9 +375,10 @@ public final class DeckArt {
                 int mask = (standing(n) ? ArtNames.N : 0) | (standing(e) ? ArtNames.E : 0)
                         | (standing(so) ? ArtNames.S : 0) | (standing(w) ? ArtNames.W : 0);
                 if (mask == 0) continue;
-                WeightClass weight = heaviest(heaviest(heaviest(heaviest(null, n), e), so), w);
-                draw(batch, art.region(ArtNames.edgeJoint(weight, mask)), ox + x * s - half, oy + y * s - half,
-                        2f * half, 2f * half);
+                // The joint takes the heaviest wall's weight and material
+                EdgeWall heaviest = heaviest(heaviest(heaviest(heaviest(null, n), e), so), w);
+                draw(batch, art.first(ArtNames.edgeJoint(heaviest.material, heaviest.weightClass, mask)),
+                        ox + x * s - half, oy + y * s - half, 2f * half, 2f * half);
             }
         }
     }
@@ -321,11 +411,6 @@ public final class DeckArt {
                         String damage = ArtNames.damage(t.getIntegrity());
                         if (damage != null) tile(batch, damage, x0, y0, s);
                     }
-                }
-                if (t.mount != null && t.mount.installed != null) {
-                    SubsystemComponent sub = t.mount.installed.getComponent(SubsystemComponent.class);
-                    String damage = sub == null ? null : ArtNames.damage(sub.health);
-                    if (damage != null) tile(batch, damage, x0, y0, s);
                 }
                 if (t.bulkheadSealed) tile(batch, "effects/bulkhead_seal", x0, y0, s);
                 String fire = ArtNames.fire(t.fireSize());
@@ -444,9 +529,9 @@ public final class DeckArt {
         return e != null && !e.isDestroyed();
     }
 
-    private static WeightClass heaviest(WeightClass a, EdgeWall e) {
+    private static EdgeWall heaviest(EdgeWall a, EdgeWall e) {
         if (!standing(e)) return a;
-        return a == null || e.weightClass.ordinal() > a.ordinal() ? e.weightClass : a;
+        return a == null || e.weightClass.ordinal() > a.weightClass.ordinal() ? e : a;
     }
 
     /** (x, y) turned {@code quarters} counter-clockwise quarter turns. */
@@ -496,11 +581,12 @@ public final class DeckArt {
 
     /**
      * Draws a wedge's art centered on its footprint: {@code tile} is the size of a tile, the base
-     * size and rotation are the piece's. A wedge wider than tall draws the tall art mirrored.
+     * size and rotation are the piece's. {@code mirrored} is for tall art standing in for a wide
+     * wedge ({@link ArtNames#wedgeMirrored}), drawn reflected across its diagonal.
      */
     public static void wedge(Batch batch, TextureRegion r, float cx, float cy, float tile, int baseWidth, int baseHeight,
-                             int rotation) {
-        if (!ArtNames.wedgeMirrored(baseWidth, baseHeight)) {
+                             int rotation, boolean mirrored) {
+        if (!mirrored) {
             drawCentered(batch, r, cx, cy, baseWidth * tile, baseHeight * tile, rotation);
             return;
         }

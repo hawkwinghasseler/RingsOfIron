@@ -17,7 +17,9 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 /**
  * Fires planned burns for ships flying in the bubble, the way the orbital event system does on
  * rails: when a node is due, its delta-v is added to the ship's true state in one impulse, prograde
- * and radial taken from the ship's conic around the body the bubble falls around.
+ * and radial taken from the ship's conic around the body the bubble falls around. A ship that burns
+ * propellant pays for it from its tanks ({@link PropellantFeed#payForBurn}), and gets only the
+ * delta-v they can pay for.
  */
 public class BubbleBurnSystem extends EntitySystem {
     private static final Family FAMILY = Family.all(ManeuverNodeComponent.class, PhysicsBodyComponent.class).get();
@@ -56,7 +58,11 @@ public class BubbleBurnSystem extends EntitySystem {
                 ManeuverNodeComponent.Node n = m.nodes.removeIndex(0);
                 physics.getTrueState(pb.body, trueState);
                 state.set(trueState[0], trueState[1], trueState[2], trueState[3]);
-                KeplerOrbit after = KeplerOrbit.fromState(state, body.mu, now).withBurn(now, n.prograde, n.radial);
+                // The burn is paid for out of the ship's propellant tanks; a short one is cut short
+                double dv = Math.hypot(n.prograde, n.radial);
+                double scale = dv > 0 ? PropellantFeed.payForBurn(ship, PhysicsManager.getMass(pb.body), dv) / dv : 1;
+                KeplerOrbit after = KeplerOrbit.fromState(state, body.mu, now)
+                        .withBurn(now, n.prograde * scale, n.radial * scale);
                 after.stateAt(now, state);
                 physics.setTrueState(pb.body, state.x, state.y, state.vx, state.vy);
             }

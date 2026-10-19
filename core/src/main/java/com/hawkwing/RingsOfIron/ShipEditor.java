@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
@@ -16,6 +17,7 @@ import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
+import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipPartCatalog;
 import com.ringsofiron.interiorgrid.Side;
@@ -64,7 +66,7 @@ public class ShipEditor extends ApplicationAdapter {
 
     private enum Tool {
         PAINT("Paint"), COMPONENT("Component"), EDGE("Edge wall"), HULL("Hull piece"), COVERING("Covering"),
-        ERASE("Erase"), PORT("Port"), LIGHT("Light"), CONDUIT("Conduit");
+        ERASE("Erase"), PORT("Port"), LIGHT("Light"), CONDUIT("Conduit"), PIPE("Pipe");
 
         final String label;
 
@@ -489,6 +491,30 @@ public class ShipEditor extends ApplicationAdapter {
             if (side != null) edgeRect(hoverX, hoverY, side, Math.max(4f, wire * 2f));
             else shapes.rect(sx(hoverX + 0.3f), sy(hoverY + 0.3f), scale * 0.4f, scale * 0.4f);
         }
+        // Pipes: a thin teal line along edges, and across tiles from the middle toward each neighbor
+        if (!withArt) {
+            shapes.setColor(0.45f, 0.75f, 0.85f, 1f);
+            float pw = Math.max(2f, scale * 0.08f);
+            for (ChassisDef.Pipe p : m.pipes) {
+                if (p.side != null) {
+                    edgeRect(p.x, p.y, Side.valueOf(p.side), pw);
+                    continue;
+                }
+                shapes.rect(sx(p.x + 0.4f), sy(p.y + 0.4f), scale * 0.2f, scale * 0.2f);
+                for (Side side : Side.values()) {
+                    if (!pipeToward(m, p.x, p.y, side)) continue;
+                    float cx = sx(p.x + 0.5f), cy = sy(p.y + 0.5f);
+                    if (side.dx != 0) shapes.rect(side.dx > 0 ? cx : cx - scale / 2f, cy - pw / 2f, scale / 2f, pw);
+                    else shapes.rect(cx - pw / 2f, side.dy > 0 ? cy : cy - scale / 2f, pw, scale / 2f);
+                }
+            }
+        }
+        if (tab == Tab.LAYOUT && tool == Tool.PIPE && m.inBounds(hoverX, hoverY) && !panning) {
+            shapes.setColor(0.45f, 0.75f, 0.85f, 0.6f);
+            Side side = conduitSide();
+            if (side != null) edgeRect(hoverX, hoverY, side, Math.max(4f, scale * 0.16f));
+            else shapes.rect(sx(hoverX + 0.3f), sy(hoverY + 0.3f), scale * 0.4f, scale * 0.4f);
+        }
         drawGhostFill(m, cat);
         shapes.end();
 
@@ -523,9 +549,9 @@ public class ShipEditor extends ApplicationAdapter {
     // ---- Art view ----
 
     /** A wedge's art, or null for a block or a size the art pack has no wedge for (drawn flat). */
-    private TextureRegion wedgeArt(ChassisDef.HullPiece p) {
+    private AtlasRegion wedgeArt(ChassisDef.HullPiece p) {
         if (!"WEDGE".equals(p.shape)) return null;
-        return art.region(ArtNames.wedge(WeightClass.valueOf(p.weightClass), p.width, p.height));
+        return art.first(ArtNames.wedge(p.material, WeightClass.valueOf(p.weightClass), p.width, p.height));
     }
 
     private boolean drawingArt() {
@@ -544,13 +570,13 @@ public class ShipEditor extends ApplicationAdapter {
                 float x0 = sx(x), y0 = sy(y);
                 switch (t.base) {
                     case FLOOR:
-                        artTile(art.region("tiles/floor"), x0, y0, 0);
+                        artTile(tileArt(t, "tiles/floor"), x0, y0, 0);
                         ChassisDef.Covering cov = m.coveringAt(x, y);
                         String covering = cov == null ? null : ArtNames.covering(FloorCovering.valueOf(cov.covering));
                         if (covering != null) artTile(art.region(covering), x0, y0, 0);
                         break;
                     case CONDUIT:
-                        artTile(art.region("tiles/conduit"), x0, y0, 0);
+                        artTile(tileArt(t, "tiles/conduit"), x0, y0, 0);
                         TextureRegion arm = art.region(ArtNames.conduitArm(true));
                         if (conduitToward(m, cat, x, y, Side.TOP)) artTile(arm, x0, y0, 0);
                         if (conduitToward(m, cat, x, y, Side.LEFT)) artTile(arm, x0, y0, 1);
@@ -565,17 +591,18 @@ public class ShipEditor extends ApplicationAdapter {
                         if (sameTile(m, x + 1, y, ch)) mask |= ArtNames.E;
                         if (sameTile(m, x, y - 1, ch)) mask |= ArtNames.S;
                         if (sameTile(m, x - 1, y, ch)) mask |= ArtNames.W;
-                        artTile(art.region(ArtNames.wall(wallArtId(t), mask)), x0, y0, 0);
+                        artTile(wallArt(t, mask), x0, y0, 0);
                         break;
                 }
             }
         }
         for (ChassisDef.HullPiece p : m.hullPieces) {
             if (!"WEDGE".equals(p.shape)) continue;
-            TextureRegion r = wedgeArt(p);
+            AtlasRegion r = wedgeArt(p);
             if (r == null) continue;
             int pw = p.rotation % 2 == 0 ? p.width : p.height, ph = p.rotation % 2 == 0 ? p.height : p.width;
-            DeckArt.wedge(batch, r, sx(p.x + pw / 2f), sy(p.y + ph / 2f), scale, p.width, p.height, p.rotation);
+            DeckArt.wedge(batch, r, sx(p.x + pw / 2f), sy(p.y + ph / 2f), scale, p.width, p.height, p.rotation,
+                    ArtNames.wedgeMirrored(r.name, p.width, p.height));
         }
         for (ChassisModel.Mount mount : m.mounts) {
             MountFootprint f = mount.footprint(cat);
@@ -594,16 +621,23 @@ public class ShipEditor extends ApplicationAdapter {
         }
         // Thin walls: a segment on each edge, a door in place of one, and a joint where they meet
         WeightClass[][] hEdges = new WeightClass[h + 1][w], vEdges = new WeightClass[h][w + 1];
+        String[][] hMaterial = new String[h + 1][w], vMaterial = new String[h][w + 1];
         float t = scale / 4f;
         for (ChassisDef.EdgeWall e : m.edgeWalls) {
             Side side = Side.valueOf(e.side);
             WeightClass weight = WeightClass.valueOf(e.weightClass);
             boolean horizontal = side == Side.TOP || side == Side.BOTTOM;
             int ex = e.x + (side == Side.RIGHT ? 1 : 0), ey = e.y + (side == Side.TOP ? 1 : 0);
-            if (horizontal && ey >= 0 && ey <= h && ex >= 0 && ex < w) hEdges[ey][ex] = weight;
-            if (!horizontal && ey >= 0 && ey < h && ex >= 0 && ex <= w) vEdges[ey][ex] = weight;
-            String name = e.bulkhead ? ArtNames.door(true, true, horizontal) : ArtNames.edgeWall(weight, horizontal);
-            TextureRegion r = art.region(name);
+            if (horizontal && ey >= 0 && ey <= h && ex >= 0 && ex < w) {
+                hEdges[ey][ex] = weight;
+                hMaterial[ey][ex] = e.material;
+            }
+            if (!horizontal && ey >= 0 && ey < h && ex >= 0 && ex <= w) {
+                vEdges[ey][ex] = weight;
+                vMaterial[ey][ex] = e.material;
+            }
+            TextureRegion r = e.bulkhead ? art.region(ArtNames.door(true, true, horizontal))
+                    : art.first(ArtNames.edgeWall(e.material, weight, horizontal));
             if (r == null) continue;
             if (horizontal) batch.draw(r, sx(ex), sy(ey) - t / 2f, scale, t);
             else batch.draw(r, sx(ex) - t / 2f, sy(ey), t, scale);
@@ -615,13 +649,24 @@ public class ShipEditor extends ApplicationAdapter {
                 int mask = (n != null ? ArtNames.N : 0) | (e != null ? ArtNames.E : 0) | (so != null ? ArtNames.S : 0)
                         | (we != null ? ArtNames.W : 0);
                 if (mask == 0) continue;
-                WeightClass weight = WeightClass.LIGHT;
-                for (WeightClass c : new WeightClass[]{n, e, so, we}) if (c != null && c.ordinal() > weight.ordinal()) weight = c;
-                TextureRegion r = art.region(ArtNames.edgeJoint(weight, mask));
+                // The heaviest wall meeting here sets the joint's weight and material
+                WeightClass weight = null;
+                String material = null;
+                WeightClass[] around = {n, e, so, we};
+                String[] materials = {y < h ? vMaterial[y][x] : null, x < w ? hMaterial[y][x] : null,
+                        y > 0 ? vMaterial[y - 1][x] : null, x > 0 ? hMaterial[y][x - 1] : null};
+                for (int i = 0; i < 4; i++) {
+                    if (around[i] != null && (weight == null || around[i].ordinal() > weight.ordinal())) {
+                        weight = around[i];
+                        material = materials[i];
+                    }
+                }
+                TextureRegion r = art.first(ArtNames.edgeJoint(material, weight, mask));
                 if (r != null) batch.draw(r, sx(x) - t / 2f, sy(y) - t / 2f, t, t);
             }
         }
         drawEdgeConduitArt(m, cat, t);
+        DeckArt.drawPipes(batch, art, pipeLayout(m), sx(0), sy(0), scale);
         batch.end();
     }
 
@@ -676,11 +721,45 @@ public class ShipEditor extends ApplicationAdapter {
         }
     }
 
-    /** A wall type's art: its own when the pack has it (hull, hull_heavy...), else its base's. */
-    private String wallArtId(ShipPartCatalog.TileType t) {
-        if (art.region(ArtNames.wall(t.id, 0)) != null) return t.id;
-        if (t.base == ShipPartCatalog.TileBase.INTERNAL_WALL) return "internal_wall";
-        return "hull_" + ArtNames.weight(t.weightClass);
+    /** The layout's pipes, for {@link DeckArt#drawPipes}. */
+    private static DeckArt.PipeLayout pipeLayout(ChassisModel m) {
+        return new DeckArt.PipeLayout() {
+            public int width() { return m.width(); }
+            public int height() { return m.height(); }
+            public boolean across(int x, int y) { return m.pipeAt(x, y, null) != null; }
+            public boolean alongH(int x, int y) {
+                return y < m.height() ? m.pipeAt(x, y, Side.BOTTOM) != null : m.pipeAt(x, y - 1, Side.TOP) != null;
+            }
+            public boolean alongV(int x, int y) {
+                return x < m.width() ? m.pipeAt(x, y, Side.LEFT) != null : m.pipeAt(x - 1, y, Side.RIGHT) != null;
+            }
+        };
+    }
+
+    /** Whether a pipe across tile (x, y) reaches toward {@code side}: to the next tile's, or one along that edge. */
+    private static boolean pipeToward(ChassisModel m, int x, int y, Side side) {
+        return m.pipeAt(x, y, side) != null || m.pipeAt(x + side.dx, y + side.dy, null) != null;
+    }
+
+    /**
+     * A wall type's art joined on the sides in {@code mask}, best first: the family its {@code art}
+     * key names, art named after its id (hull, hull_heavy...), its material's, then hull steel's.
+     */
+    private AtlasRegion wallArt(ShipPartCatalog.TileType t, int mask) {
+        String sides = "_" + ArtNames.sides(mask);
+        String weight = ArtNames.weight(t.weightClass);
+        java.util.List<String> names = new java.util.ArrayList<>(5);
+        if (t.art != null) names.add(t.art + sides);
+        names.add(ArtNames.wall(t.id, mask));
+        if (t.base == ShipPartCatalog.TileBase.INTERNAL_WALL) names.add(ArtNames.wall("internal_wall", mask));
+        names.add(ArtNames.wall(ArtNames.materialPrefix(t.material) + "_" + weight, mask));
+        names.add(ArtNames.wall("hull_" + weight, mask));
+        return art.first(names.toArray(new String[0]));
+    }
+
+    /** A floor type's art: the region its {@code art} key names, else {@code fallback}. */
+    private AtlasRegion tileArt(ShipPartCatalog.TileType t, String fallback) {
+        return t.art == null ? art.region(fallback) : art.first(t.art, fallback);
     }
 
     private static boolean sameTile(ChassisModel m, int x, int y, char ch) {
@@ -893,7 +972,7 @@ public class ShipEditor extends ApplicationAdapter {
             updatePieceGhost(m, o);
             shapes.setColor(ghostValid ? Color.GREEN : Color.RED);
             shapes.rect(sx(o[0]), sy(o[1]), w * scale, h * scale);
-        } else if (tool != Tool.EDGE && tool != Tool.CONDUIT) {
+        } else if (tool != Tool.EDGE && tool != Tool.CONDUIT && tool != Tool.PIPE) {
             shapes.setColor(Color.YELLOW);
             shapes.rect(sx(hoverX), sy(hoverY), scale, scale);
         }
@@ -986,6 +1065,14 @@ public class ShipEditor extends ApplicationAdapter {
                     say("Took up the conduit at " + hoverX + "," + hoverY + " " + edge);
                     break;
                 }
+                // Then a pipe along that edge, or across the tile
+                if (m.pipeAt(hoverX, hoverY, edge) != null) {
+                    beginEdit();
+                    m.togglePipe(hoverX, hoverY, edge, cat);
+                    changed();
+                    say("Took up the pipe at " + hoverX + "," + hoverY + (edge == null ? "" : " " + edge));
+                    break;
+                }
                 beginEdit();
                 stroke = true;
                 strokeTo(m, cat);
@@ -1048,6 +1135,9 @@ public class ShipEditor extends ApplicationAdapter {
             case CONDUIT:
                 conduitDown(m, cat);
                 break;
+            case PIPE:
+                pipeDown(m, cat);
+                break;
             default:
                 break;
         }
@@ -1084,6 +1174,25 @@ public class ShipEditor extends ApplicationAdapter {
         m.paint(hoverX, hoverY, symbol, cat);
         changed();
         say(had ? "Took up the conduit across " + hoverX + "," + hoverY : "Laid a conduit across " + hoverX + "," + hoverY);
+    }
+
+    /**
+     * Near an edge, runs a pipe along it or takes up the one there; in the middle of a tile, lays a
+     * pipe across it (under the deck, components included) or takes it up.
+     */
+    private void pipeDown(ChassisModel m, ShipPartCatalog cat) {
+        Side side = conduitSide();
+        boolean had = m.pipeAt(hoverX, hoverY, side) != null;
+        beginEdit();
+        if (!m.togglePipe(hoverX, hoverY, side, cat)) {
+            undo.pop();
+            say("A pipe across a tile needs a floor; run it along an edge to go through a wall");
+            return;
+        }
+        changed();
+        String where = side == null ? "across " + hoverX + "," + hoverY
+                : "along the " + side.name().toLowerCase(Locale.ROOT) + " edge of " + hoverX + "," + hoverY;
+        say(had ? "Took up the pipe " + where : "Laid a pipe " + where);
     }
 
     /**
@@ -1356,7 +1465,7 @@ public class ShipEditor extends ApplicationAdapter {
         Tool[] tools = Tool.values();
         for (int i = 0; i < tools.length; i++) {
             final Tool t = tools[i];
-            String label = (i + 1) + " " + t.label;
+            String label = (i + 1) % 10 + " " + t.label;
             layout.setText(font, label);
             if (bx + layout.width + 16 > panelX() + PANEL_WIDTH - PAD) {
                 bx = x;
@@ -1478,7 +1587,7 @@ public class ShipEditor extends ApplicationAdapter {
                 break;
             }
             case ERASE:
-                text(x, y, "Removes a light, edge conduit, component, hull piece or", Color.GRAY);
+                text(x, y, "Removes a light, edge conduit, pipe, component, hull piece or", Color.GRAY);
                 y -= LINE;
                 text(x, y, "covering, else the tile", Color.GRAY);
                 y -= LINE;
@@ -1490,6 +1599,16 @@ public class ShipEditor extends ApplicationAdapter {
                 y -= LINE;
                 text(x, y, m.edgeConduits.size() + (m.edgeConduits.size() == 1 ? " conduit" : " conduits")
                         + " along edges", Color.WHITE);
+                y -= LINE;
+                break;
+            case PIPE:
+                text(x, y, "Pipes join tanks to life support and engines. Click", Color.GRAY);
+                y -= LINE;
+                text(x, y, "near an edge to run one along it, even in a wall, or", Color.GRAY);
+                y -= LINE;
+                text(x, y, "a tile's middle to lay one across it, under any component", Color.GRAY);
+                y -= LINE;
+                text(x, y, m.pipes.size() + (m.pipes.size() == 1 ? " pipe" : " pipes"), Color.WHITE);
                 y -= LINE;
                 break;
             case PORT:
@@ -1876,6 +1995,45 @@ public class ShipEditor extends ApplicationAdapter {
             });
             y -= LINE;
         }
+        if ("TANK".equals(d.behavior)) {
+            text(x, y, "Holds", Color.LIGHT_GRAY);
+            float fx = x + 120f;
+            String current = d.fluid == null ? Fluid.PROPELLANT.name() : d.fluid;
+            for (Fluid f : Fluid.values()) {
+                final String fn = f.name();
+                fx += button(fx, y, fn.toLowerCase(Locale.ROOT), fn.equals(current), ed ? () -> {
+                    if (fn.equals(d.fluid)) return;
+                    beginEdit();
+                    d.fluid = fn;
+                    componentChanged(item);
+                } : () -> { });
+            }
+            y -= LINE;
+            Fluid fluid = Fluid.valueOf(current);
+            text(x, y, "Capacity, kg (blank for " + TomlNum.of(fluid.capacityPerTile) + " a tile)", Color.LIGHT_GRAY);
+            y -= LINE;
+            for (MountFootprint.MountSize s : MountFootprint.MountSize.values()) {
+                if (!s.exists(kind)) continue;
+                final String sn = s.name();
+                Double kg = d.capacity.get(sn);
+                field(x + 10f, y, "comp-capacity-" + sn, sn, kg == null ? "" : TomlNum.of(kg.floatValue()), ed, v -> {
+                    beginEdit();
+                    if (v.trim().isEmpty()) {
+                        d.capacity.remove(sn);
+                    } else {
+                        Float c = parseFloat(v);
+                        if (c == null || c <= 0) {
+                            undo.pop();
+                            say("Capacity is a positive number of kilograms");
+                            return;
+                        }
+                        d.capacity.put(sn, (double) c);
+                    }
+                    componentChanged(item);
+                });
+                y -= LINE;
+            }
+        }
         return y;
     }
 
@@ -2171,7 +2329,8 @@ public class ShipEditor extends ApplicationAdapter {
                 default:
                     break;
             }
-            int n = keycode - com.badlogic.gdx.Input.Keys.NUM_1;
+            // 1-9 pick the first nine tools, 0 the tenth
+            int n = keycode == com.badlogic.gdx.Input.Keys.NUM_0 ? 9 : keycode - com.badlogic.gdx.Input.Keys.NUM_1;
             if (n >= 0 && n < Tool.values().length) {
                 tool = Tool.values()[n];
                 tab = Tab.LAYOUT;

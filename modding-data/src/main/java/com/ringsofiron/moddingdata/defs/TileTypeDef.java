@@ -11,6 +11,7 @@ package com.ringsofiron.moddingdata.defs;
  * base = "HULL"
  * weight_class = "HEAVY"
  * material = "composite_armor"
+ * art = "walls/composite_armor_heavy"
  * color = "#7a8a9a"
  * </pre>
  */
@@ -27,6 +28,12 @@ public class TileTypeDef {
     public String material = "hull_steel";
     /** For floors: a FloorCovering name laid when the ship is built, e.g. CARPET. */
     public String covering = "NONE";
-    /** How the editor draws it, "#rrggbb". */
+    /**
+     * The art it draws with: a region for floors ({@code tiles/floor}), or a wall family whose
+     * regions add the join sides ({@code walls/composite_armor_heavy} for
+     * {@code walls/composite_armor_heavy_nesw}). Null to go by base, weight and material.
+     */
+    public String art;
+    /** How the editor draws it without the art pack, "#rrggbb". */
     public String color;
 }

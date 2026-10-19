@@ -55,11 +55,90 @@ class ArtNamesTest {
                 for (int mask = 0; mask < 16; mask++) assertArt(ArtNames.wall(ArtNames.wallId(t), mask));
             }
         }
-        for (WeightClass w : WeightClass.values()) {
-            for (int[] size : new int[][]{{1, 1}, {1, 2}, {2, 1}}) {
-                assertArt(ArtNames.wedge(new HullPiece(HullPiece.Shape.WEDGE, 0, 0, size[0], size[1], 0, w, "hull_steel")));
+        for (String material : new String[]{"hull_steel", "composite_armor"}) {
+            for (WeightClass w : WeightClass.values()) {
+                for (int[] size : new int[][]{{1, 1}, {1, 2}, {2, 1}}) {
+                    // Every size has art of its own, so no wedge is drawn mirrored
+                    String[] names = ArtNames.wedge(new HullPiece(HullPiece.Shape.WEDGE, 0, 0, size[0], size[1], 0, w, material));
+                    assertArt(names[0]);
+                    assertTrue(!ArtNames.wedgeMirrored(names[0], size[0], size[1]));
+                }
             }
         }
+    }
+
+    @Test
+    void eachHullMaterialHasItsOwnWallArt() {
+        Tile t = new Tile();
+        t.wallType = Tile.WallType.HULL;
+        for (WeightClass w : WeightClass.values()) {
+            t.weightClass = w;
+            t.material = "composite_armor";
+            assertEquals("composite_armor_" + ArtNames.weight(w), ArtNames.wallId(t));
+            for (int mask = 0; mask < 16; mask++) assertArt(ArtNames.wall(t, mask)[0]);
+            for (boolean h : new boolean[]{true, false}) assertArt(ArtNames.edgeWall("composite_armor", w, h)[0]);
+            for (int mask = 1; mask < 16; mask++) assertArt(ArtNames.edgeJoint("composite_armor", w, mask)[0]);
+            t.material = "hull_steel";
+            assertEquals("hull_" + ArtNames.weight(w), ArtNames.wallId(t));
+            assertEquals(1, ArtNames.wall(t, 0).length);
+        }
+        // A material without art of its own falls back to hull steel's
+        t.material = "unobtainium";
+        t.weightClass = WeightClass.HEAVY;
+        assertArrayEquals(new String[]{"walls/unobtainium_heavy_ns", "walls/hull_heavy_ns"},
+                ArtNames.wall(t, ArtNames.N | ArtNames.S));
+        assertTrue(ArtNames.wedgeMirrored("walls/hull_heavy_wedge_1x2", 2, 1));
+    }
+
+    @Test
+    void everySystemHasDamagedAndDestroyedArt() {
+        assertEquals(ArtNames.Condition.INTACT, ArtNames.condition(0.6f));
+        assertEquals(ArtNames.Condition.DAMAGED, ArtNames.condition(0.3f));
+        assertEquals(ArtNames.Condition.DESTROYED, ArtNames.condition(0f));
+        for (SubsystemComponent.SubsystemType type : SubsystemComponent.SubsystemType.values()) {
+            for (MountFootprint.MountSize size : MountFootprint.MountSize.values()) {
+                if (!size.exists(type.mountKind)) continue;
+                for (ArtNames.Condition c : new ArtNames.Condition[]{ArtNames.Condition.DAMAGED, ArtNames.Condition.DESTROYED}) {
+                    for (boolean powered : new boolean[]{true, false}) {
+                        // Passive cargo has no unpowered look, so its candidates go on to the plain damaged art
+                        String state = "_" + c.name().toLowerCase(java.util.Locale.ROOT);
+                        boolean found = false;
+                        for (String n : ArtNames.component(null, type, size, null, powered, c)) {
+                            if (n.contains(state) && exists(n)) found = true;
+                        }
+                        assertTrue(found, "no " + state + " art for " + type + " " + size);
+                    }
+                }
+            }
+        }
+        assertArrayEquals(new String[]{"components/reactor_m_destroyed", "components/reactor_m_unpowered", "components/reactor_m"},
+                ArtNames.component(null, SubsystemComponent.SubsystemType.REACTOR, MountFootprint.MountSize.M, null, true,
+                        ArtNames.Condition.DESTROYED));
+    }
+
+    @Test
+    void everyEngineSlotSizeHasEngineAndExhaustArt() {
+        for (MountFootprint.MountSize slot : MountFootprint.MountSize.values()) {
+            String size = ArtNames.engineSize(slot);
+            for (boolean burning : new boolean[]{true, false}) assertArt(ArtNames.engine(size, burning)[0]);
+            assertArt(ArtNames.exhaust(size));
+            assertArt(ArtNames.component(null, SubsystemComponent.SubsystemType.ENGINE, slot, null, false)[0]);
+        }
+        assertArt(ArtNames.exhaust(ArtNames.ENGINE_SIZE));
+    }
+
+    @Test
+    void everyTileTypesArtKeyNamesArt() throws IOException {
+        String text = new String(Files.readAllBytes(ASSETS.resolve("data/tiles.toml")), java.nio.charset.StandardCharsets.UTF_8);
+        Matcher m = Pattern.compile("(?m)^art\\s*=\\s*\"([^\"]+)\"").matcher(text);
+        int n = 0;
+        while (m.find()) {
+            String art = m.group(1);
+            // a floor's region, or a wall family that adds join sides
+            assertTrue(exists(art) || exists(art + "_0"), "tiles.toml art " + art + " has no SVG");
+            n++;
+        }
+        assertTrue(n > 0);
     }
 
     @Test
