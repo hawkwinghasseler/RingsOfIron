@@ -5,7 +5,8 @@ import com.badlogic.gdx.utils.Array;
 /**
  * Loads and validates a {@link ChassisBlueprint} into a {@link ShipGridComponent}.
  *
- * Character map convention:
+ * Characters are looked up in the blueprint's {@link ShipPartCatalog}: tile types build a tile,
+ * component letters mark mounts, and any other character is an error. The built-in ones:
  *   '#' = Outer hull wall, medium (immovable, WallType.HULL)
  *   '1' / '2' / '3' = Outer hull wall, light / medium / heavy
  *   'I' = Full-tile internal wall, medium (WallType.INTERNAL)
@@ -42,10 +43,17 @@ public class ChassisBlueprintLoader {
     public static class SubsystemPlacement {
         public final MountFootprint footprint;
         public final SubsystemComponent.SubsystemType type;
+        /** The component installed here; {@link ShipPartCatalog.ComponentType#configure} sets the system up from it. */
+        public final ShipPartCatalog.ComponentType component;
 
         public SubsystemPlacement(MountFootprint footprint, SubsystemComponent.SubsystemType type) {
+            this(footprint, ShipPartCatalog.builtIn().standardComponent(type));
+        }
+
+        public SubsystemPlacement(MountFootprint footprint, ShipPartCatalog.ComponentType component) {
             this.footprint = footprint;
-            this.type = type;
+            this.type = component.behavior;
+            this.component = component;
         }
     }
 
@@ -74,6 +82,7 @@ public class ChassisBlueprintLoader {
      */
     public static LoadResult load(ChassisBlueprint blueprint) {
         String[] rows = blueprint.rows;
+        ShipPartCatalog catalog = blueprint.catalog;
         int height = rows.length;
         // Find the widest row
         int width = 0;
@@ -85,19 +94,19 @@ public class ChassisBlueprintLoader {
                 blueprint.originLocalX, blueprint.originLocalY);
         Array<SubsystemPlacement> subsystems = new Array<>();
 
-        // Grid row 0 is the BOTTOM (Box2D Y-up), but text row 0 is the top line,
-        // so text row r is stored at gridY = height - 1 - r.
-        char[][] chars = new char[height][width];
-        for (int r = 0; r < height; r++) {
-            int gridY = height - 1 - r;
-            for (int x = 0; x < width; x++) {
-                chars[gridY][x] = x < rows[r].length() ? rows[r].charAt(x) : ' ';
-            }
-        }
-
+        char[][] chars = toGrid(rows);
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                applyTileChar(grid.getTile(x, y), chars[y][x]);
+                char ch = chars[y][x];
+                ShipPartCatalog.TileType tileType = catalog.tileFor(ch);
+                if (tileType != null) {
+                    tileType.apply(grid.getTile(x, y), grid.tileSize);
+                } else if (catalog.componentFor(ch) != null) {
+                    grid.getTile(x, y).floorType = Tile.FloorType.FLOOR;
+                } else {
+                    throw new IllegalArgumentException("'" + ch + "' at " + x + "," + y
+                            + " is not a tile type or component symbol");
+                }
             }
         }
 
@@ -118,12 +127,68 @@ public class ChassisBlueprintLoader {
             grid.placeHullPiece(piece);
         }
 
-        // Mounts drawn as letter rectangles in the map
+        for (SubsystemPlacement drawn : drawnMounts(chars, catalog, true)) {
+            grid.placeMount(drawn.footprint);
+            subsystems.add(drawn);
+        }
+
+        for (ChassisBlueprint.MountDef def : blueprint.mounts) {
+            ShipPartCatalog.ComponentType component = def.component != null ? def.component
+                    : catalog.standardComponent(def.type);
+            if (def.footprint.kind != component.mountKind()) {
+                throw new IllegalArgumentException(component.name + " needs a " + component.mountKind() + " mount");
+            }
+            if (!component.sizes.contains(def.footprint.size)) {
+                throw new IllegalArgumentException(component.name + " does not come in size " + def.footprint.size);
+            }
+            grid.placeMount(def.footprint);
+            subsystems.add(new SubsystemPlacement(def.footprint, component));
+        }
+
+        return new LoadResult(grid, subsystems);
+    }
+
+    /**
+     * The character map as a grid: {@code [y][x]}, row 0 at the bottom. Text row 0 is the top
+     * line, so text row r is stored at gridY = height - 1 - r. Short rows are padded with void.
+     */
+    public static char[][] toGrid(String[] rows) {
+        int height = rows.length, width = 0;
+        for (String row : rows) width = Math.max(width, row.length());
+        char[][] chars = new char[height][width];
+        for (int r = 0; r < height; r++) {
+            int gridY = height - 1 - r;
+            for (int x = 0; x < width; x++) {
+                chars[gridY][x] = x < rows[r].length() ? rows[r].charAt(x) : ' ';
+            }
+        }
+        return chars;
+    }
+
+    /**
+     * Finds the mounts drawn as letter rectangles in a character grid (see {@link #toGrid}): each
+     * solid rectangle of one component's letter is one mount, and a docking port faces the side
+     * with only space beyond it. Nothing is placed on a grid.
+     *
+     * @param strict throw on a rectangle that is not a legal mount; otherwise skip it
+     */
+    public static Array<SubsystemPlacement> drawnMounts(char[][] chars, ShipPartCatalog catalog, boolean strict) {
+        int height = chars.length, width = height == 0 ? 0 : chars[0].length;
+        // Void tiles, for telling which way a docking port faces
+        boolean[][] space = new boolean[height][width];
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                ShipPartCatalog.TileType t = catalog.tileFor(chars[y][x]);
+                space[y][x] = t != null && t.base == ShipPartCatalog.TileBase.VOID;
+            }
+        }
+        Array<SubsystemPlacement> out = new Array<>();
         boolean[][] visited = new boolean[height][width];
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                SubsystemComponent.SubsystemType type = systemFor(chars[y][x]);
-                if (type == null || visited[y][x]) continue;
+                ShipPartCatalog.ComponentType component = catalog.componentFor(chars[y][x]);
+                if (component == null || visited[y][x]) continue;
+                SubsystemComponent.SubsystemType type = component.behavior;
                 char c = chars[y][x];
                 int w = 1;
                 while (x + w < width && chars[y][x + w] == c && !visited[y][x + w]) w++;
@@ -133,71 +198,34 @@ public class ChassisBlueprintLoader {
                     for (int xx = x; xx < x + w; xx++) visited[yy][xx] = true;
 
                 MountFootprint footprint = MountFootprint.fromSize(type.mountKind, x, y, w, h);
-                if (footprint == null) {
+                if (footprint == null || !component.sizes.contains(footprint.size)) {
+                    if (!strict) continue;
                     throw new IllegalArgumentException("'" + c + "' at " + x + "," + y + " is " + w + "x" + h
-                            + ", which is not a legal " + type.mountKind + " mount size");
+                            + ", which is not a size " + component.name + " comes in");
                 }
-                if (type.mountKind == MountFootprint.MountKind.PORT) footprint = facingSpace(chars, footprint);
-                grid.placeMount(footprint);
-                subsystems.add(new SubsystemPlacement(footprint, type));
+                if (type.mountKind == MountFootprint.MountKind.PORT) {
+                    try {
+                        footprint = facingSpace(space, footprint);
+                    } catch (IllegalArgumentException e) {
+                        if (strict) throw e;
+                        continue;
+                    }
+                }
+                out.add(new SubsystemPlacement(footprint, component));
             }
         }
-
-        for (ChassisBlueprint.MountDef def : blueprint.mounts) {
-            if (def.footprint.kind != def.type.mountKind) {
-                throw new IllegalArgumentException(def.type + " needs a " + def.type.mountKind + " mount");
-            }
-            grid.placeMount(def.footprint);
-            subsystems.add(new SubsystemPlacement(def.footprint, def.type));
-        }
-
-        return new LoadResult(grid, subsystems);
-    }
-
-    private static void applyTileChar(Tile tile, char ch) {
-        switch (ch) {
-            case '#':
-            case '2':
-                makeHull(tile, WeightClass.MEDIUM);
-                break;
-            case '1':
-                makeHull(tile, WeightClass.LIGHT);
-                break;
-            case '3':
-                makeHull(tile, WeightClass.HEAVY);
-                break;
-            case 'I':
-                tile.wallType = Tile.WallType.INTERNAL;
-                tile.floorType = Tile.FloorType.NONE;
-                break;
-            case '+':
-                tile.floorType = Tile.FloorType.POWER_CONDUIT;
-                break;
-            case ' ':
-                // Void - already default
-                break;
-            default:
-                // '.' and system letters are floor
-                if (ch == '.' || systemFor(ch) != null) tile.floorType = Tile.FloorType.FLOOR;
-                break;
-        }
-    }
-
-    private static void makeHull(Tile tile, WeightClass weightClass) {
-        tile.wallType = Tile.WallType.HULL;
-        tile.floorType = Tile.FloorType.NONE;
-        tile.weightClass = weightClass;
+        return out;
     }
 
     /**
      * Turns a port drawn in the map to face the side with only space beyond it: a horizontal port
      * faces up or down, a vertical one left or right.
      */
-    private static MountFootprint facingSpace(char[][] chars, MountFootprint port) {
+    private static MountFootprint facingSpace(boolean[][] space, MountFootprint port) {
         Side[] sides = port.rotation % 2 == 0 ? new Side[]{Side.TOP, Side.BOTTOM} : new Side[]{Side.LEFT, Side.RIGHT};
         Side found = null;
         for (Side side : sides) {
-            if (!spaceBeyond(chars, port, side)) continue;
+            if (!spaceBeyond(space, port, side)) continue;
             if (found != null) {
                 throw new IllegalArgumentException("Docking port at " + port.originX + "," + port.originY
                         + " could face " + found + " or " + side + "; list it under mounts with a rotation");
@@ -212,13 +240,13 @@ public class ChassisBlueprintLoader {
     }
 
     /** True if every tile just beyond one side of the footprint is void or off the map. */
-    private static boolean spaceBeyond(char[][] chars, MountFootprint m, Side side) {
-        int height = chars.length, width = height == 0 ? 0 : chars[0].length;
+    private static boolean spaceBeyond(boolean[][] space, MountFootprint m, Side side) {
+        int height = space.length, width = height == 0 ? 0 : space[0].length;
         for (int y = m.originY; y < m.originY + m.height(); y++) {
             for (int x = m.originX; x < m.originX + m.width(); x++) {
                 int bx = x + side.dx, by = y + side.dy;
                 if (m.covers(bx, by)) continue;
-                if (bx >= 0 && bx < width && by >= 0 && by < height && chars[by][bx] != ' ') return false;
+                if (bx >= 0 && bx < width && by >= 0 && by < height && !space[by][bx]) return false;
             }
         }
         return true;
@@ -229,21 +257,6 @@ public class ChassisBlueprintLoader {
             if (row[xx] != c || visitedRow[xx]) return false;
         }
         return true;
-    }
-
-    private static SubsystemComponent.SubsystemType systemFor(char ch) {
-        switch (ch) {
-            case 'R': return SubsystemComponent.SubsystemType.REACTOR;
-            case 'S': return SubsystemComponent.SubsystemType.SHIELD_EMITTER;
-            case 'T': return SubsystemComponent.SubsystemType.TURRET_MOUNT;
-            case 'L': return SubsystemComponent.SubsystemType.LIFE_SUPPORT;
-            case 'H': return SubsystemComponent.SubsystemType.HELM;
-            case 'W': return SubsystemComponent.SubsystemType.WEAPONS;
-            case 'C': return SubsystemComponent.SubsystemType.CARGO;
-            case 'A': return SubsystemComponent.SubsystemType.AIRLOCK;
-            case 'D': return SubsystemComponent.SubsystemType.DOCKING_PORT;
-            default:  return null;
-        }
     }
 
     /**

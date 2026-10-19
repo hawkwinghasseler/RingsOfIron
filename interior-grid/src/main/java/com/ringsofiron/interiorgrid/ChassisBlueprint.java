@@ -48,10 +48,19 @@ public class ChassisBlueprint {
     public static class MountDef {
         public final MountFootprint footprint;
         public final SubsystemComponent.SubsystemType type;
+        /** The component installed, or null for the type's standard one in the blueprint's catalog. */
+        public final ShipPartCatalog.ComponentType component;
 
         public MountDef(MountFootprint footprint, SubsystemComponent.SubsystemType type) {
             this.footprint = footprint;
             this.type = type;
+            this.component = null;
+        }
+
+        public MountDef(MountFootprint footprint, ShipPartCatalog.ComponentType component) {
+            this.footprint = footprint;
+            this.type = component.behavior;
+            this.component = component;
         }
     }
 
@@ -66,6 +75,8 @@ public class ChassisBlueprint {
     public final Array<HullPiece> hullPieces = new Array<>();
     public final Array<MountDef> mounts = new Array<>();
     public final Array<CoveringDef> coverings = new Array<>();
+    /** The tile types and components the map's characters stand for. */
+    public ShipPartCatalog catalog = ShipPartCatalog.builtIn();
 
     public ChassisBlueprint(String... rows) {
         this.rows = rows;
@@ -73,6 +84,11 @@ public class ChassisBlueprint {
 
     public ChassisBlueprint tileSize(float tileSize) {
         this.tileSize = tileSize;
+        return this;
+    }
+
+    public ChassisBlueprint catalog(ShipPartCatalog catalog) {
+        this.catalog = catalog;
         return this;
     }
 
@@ -100,6 +116,11 @@ public class ChassisBlueprint {
 
     public ChassisBlueprint mount(MountFootprint footprint, SubsystemComponent.SubsystemType type) {
         mounts.add(new MountDef(footprint, type));
+        return this;
+    }
+
+    public ChassisBlueprint mount(MountFootprint footprint, ShipPartCatalog.ComponentType component) {
+        mounts.add(new MountDef(footprint, component));
         return this;
     }
 }

@@ -96,12 +96,17 @@ public class LifeSupportSystem extends FixedLogicSystem {
         for (Entity e : registry.subsystems) {
             SubsystemComponent sub = subsystemMapper.get(e);
             if (sub == null || sub.type != SubsystemComponent.SubsystemType.LIFE_SUPPORT || !sub.isOperational) continue;
-            run(grid, sub.footprint, dt);
+            run(grid, sub.footprint, sub.throughput, dt);
         }
     }
 
     /** Runs one life support unit installed in {@code footprint} for dt seconds. */
     public void run(ShipGridComponent grid, MountFootprint footprint, float dt) {
+        run(grid, footprint, 1f, dt);
+    }
+
+    /** Runs one life support unit whose rates are scaled by {@code throughput} (see {@link SubsystemComponent#throughput}). */
+    public void run(ShipGridComponent grid, MountFootprint footprint, float throughput, float dt) {
         Compartment home = homeCompartment(grid, footprint);
         if (home == null) return;
         collectServed(grid, home, served);
@@ -111,7 +116,7 @@ public class LifeSupportSystem extends FixedLogicSystem {
         if (totalVolume <= 0f) return;
 
         // Scrub: every served room has the same share of its air drawn through
-        double drawn = 1.0 - Math.exp(-PROCESS_RATE * SCRUB_EFFICIENCY * dt / totalVolume);
+        double drawn = 1.0 - Math.exp(-PROCESS_RATE * throughput * SCRUB_EFFICIENCY * dt / totalVolume);
         for (Compartment c : served) {
             c.carbonDioxide -= c.carbonDioxide * drawn;
             c.smoke -= c.smoke * drawn;
@@ -121,7 +126,7 @@ public class LifeSupportSystem extends FixedLogicSystem {
         double deficitTotal = 0;
         for (Compartment c : served) if (!isVenting(grid, c)) deficitTotal += pressureDeficit(c);
         if (deficitTotal > 0) {
-            double supply = Math.min(AIR_SUPPLY_RATE * dt, deficitTotal);
+            double supply = Math.min(AIR_SUPPLY_RATE * throughput * dt, deficitTotal);
             for (Compartment c : served) {
                 double d = isVenting(grid, c) ? 0 : pressureDeficit(c);
                 if (d <= 0) continue;
@@ -134,7 +139,7 @@ public class LifeSupportSystem extends FixedLogicSystem {
         deficitTotal = 0;
         for (Compartment c : served) if (!isVenting(grid, c)) deficitTotal += oxygenDeficit(c);
         if (deficitTotal > 0) {
-            double supply = Math.min(OXYGEN_SUPPLY_RATE * dt, deficitTotal);
+            double supply = Math.min(OXYGEN_SUPPLY_RATE * throughput * dt, deficitTotal);
             for (Compartment c : served) {
                 double d = isVenting(grid, c) ? 0 : oxygenDeficit(c);
                 if (d > 0) c.oxygen += supply * d / deficitTotal;
