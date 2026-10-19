@@ -26,7 +26,7 @@ import java.util.Map;
  * way the craft the avatar is aboard is turned.
  */
 public final class DeckView {
-    /** A mounted system: crew walk around it, not over it. */
+    /** A mounted system: crew walk over it. */
     public static final Color SYSTEM = new Color(0.36f, 0.42f, 0.48f, 0.9f);
 
     private DeckView() {

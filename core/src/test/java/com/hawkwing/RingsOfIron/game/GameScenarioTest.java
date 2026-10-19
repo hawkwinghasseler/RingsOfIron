@@ -43,6 +43,9 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import com.ringsofiron.macrosim.fleet.FreighterComponent;
+import com.ringsofiron.stationsdocking.BerthingComponent;
+import com.badlogic.gdx.physics.box2d.Body;
 import org.junit.jupiter.api.Test;
 
 /** Plays the starting scenario headless: what the game screen runs, without the screen. */
@@ -218,6 +221,40 @@ class GameScenarioTest {
         assertTrue(world.docking.isRigid(freighter), "welded to the station");
         assertNotNull(highport.getComponent(KinematicTransientComponent.class).body, "the station has a body");
         assertTrue(world.docking.strain(freighter) < 0.1f, "riding along easily");
+    }
+
+    @Test
+    void aFreighterFliesItselfInToDockAtItsStation() {
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        Entity freighter = world.engine.getEntity(world.macroSim.bubble().inBubble().iterator().next());
+        Entity highport = world.engine.getEntity(game.highport);
+        FreighterComponent f = freighter.getComponent(FreighterComponent.class);
+        // As if it were coming back to Highport from elsewhere: off its port and 400 m out
+        world.docking.undock(freighter);
+        freighter.remove(BerthingComponent.class);
+        Body station = world.docking.bodyOf(highport), body = world.docking.bodyOf(freighter);
+        Vector2 at = PhysicsManager.getPosition(station, new Vector2());
+        Vector2 v = PhysicsManager.getVelocity(station, new Vector2());
+        PhysicsManager.setPosition(body, at.x + 300f, at.y - 250f, 0f);
+        PhysicsManager.setVelocity(body, v.x, v.y);
+        f.dockedAtUuid = null;
+        f.destinationUuid = game.highport;
+        f.resumeState = FreighterComponent.State.REPOSITIONING;
+        for (int i = 0; i < 60 * 20; i++) world.update(FRAME);
+        assertEquals(BerthingComponent.Phase.APPROACH, freighter.getComponent(BerthingComponent.class).phase, "on its way in");
+
+        // Saved and loaded on the way in, it carries on
+        String id = freighter.getComponent(UuidComponent.class).id;
+        world.engine.getSerializationService().loadGame(world.engine.getSerializationService().saveGame());
+        freighter = world.engine.getEntity(id);
+        highport = world.engine.getEntity(game.highport);
+        f = freighter.getComponent(FreighterComponent.class);
+        for (int i = 0; i < 60 * 300 && world.docking.dockedTo(freighter) == null; i++) world.update(FRAME);
+        assertSame(highport, world.docking.dockedTo(freighter), "flew itself in and docked");
+        assertEquals(BerthingComponent.Phase.BERTHED, freighter.getComponent(BerthingComponent.class).phase);
+        assertEquals(game.highport, f.dockedAtUuid, "macro-sim knows it is in");
+        assertNull(f.destinationUuid);
+        assertEquals(FreighterComponent.State.IDLE, f.resumeState);
     }
 
     @Test

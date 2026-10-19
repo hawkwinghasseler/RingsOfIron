@@ -25,6 +25,9 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.stationsdocking.DockingData;
+import com.ringsofiron.coreengine.EntityRef;
+import com.ringsofiron.stationsdocking.BerthingComponent;
+import com.ringsofiron.stationsdocking.BerthingSystem;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.DockingSystem;
@@ -52,8 +55,11 @@ public class DockingDemoScene {
                 + " Your own magnets can still latch on, but its port door stays shut and its market won't trade."),
         TEAR("Tearing loose", "Docked at the outpost. Hold W to pull away: past its break force the latch tears, the"
                 + " collars come off and the hull around both ports is damaged. U undocks cleanly instead."),
-        HUB("Hub with traffic", "A hub has two ports of each size; a hauler is berthed at a Medium one. Ask for"
-                + " clearance (G) and dock at a Small port beside it."),
+        HUB("Hub with traffic", "A hub has two ports of each size. The hauler Kestrel is berthed at a Medium one,"
+                + " and the hauler Osprey flies itself in to the other on its own thrusters: it asks for clearance, comes"
+                + " round the hub to the port, turns square and closes until the hub's collar takes it. Once Osprey is in,"
+                + " Kestrel undocks, backs off and flies away (zoom out with the wheel to watch). Ask for clearance (G)"
+                + " and dock at a Small port beside them."),
         WALK("Walk aboard", "Docked at the outpost with clearance and both port doors open. Deck view (V) is on: walk"
                 + " (WASD) through the port onto the station and back; air moves between the two. U undocks once you're home."),
         LOADING("Loading cargo", "Docked at the outpost, whose hold is stocked with water and food. L orders "
@@ -66,8 +72,7 @@ public class DockingDemoScene {
         YARD("Refit and repair", "Docked at the outpost, battered: hull, a wall and the nose turret are damaged. J has"
                 + " the outpost's yard repair it all: its technicians (orange) come aboard and work through the damage tile"
                 + " by tile, paid as they go. N refits the nose hardpoint with the next weapon, new (M: used, half price but"
-                + " worn): a loader carries the part aboard, as close to the mount as it can walk, and the technicians fit it"
-                + " one tile at a time. The turrets sit where no one can walk from the dock, so they work on those from outside.");
+                + " worn): a loader carries the part aboard to the mount, and the technicians fit it one tile at a time.");
 
         public final String title;
         public final String help;
@@ -77,6 +82,11 @@ public class DockingDemoScene {
             this.help = help;
         }
     }
+
+    /** Where the hub scene's second hauler starts, meters from the hub. */
+    static final float OSPREY_X = 260f, OSPREY_Y = 200f;
+    /** Seconds the hub scene's berthed hauler waits after the other docks before it leaves. */
+    static final float KESTREL_WAITS = 10f;
 
     /** Credits the player has in the yard scene. */
     public static final double YARD_CREDITS = 200_000;
@@ -96,6 +106,8 @@ public class DockingDemoScene {
     public Entity avatar;
     /** The station or ship the scene is about. */
     public Entity target;
+    /** The hub scene's haulers: one berthed that leaves, one that flies in. */
+    public Entity kestrel, osprey;
     public PlayerDocking docking;
     /** Flies the player's selected port in to the nearest free port of its size until the latch takes over. */
     public boolean autopilot;
@@ -113,6 +125,7 @@ public class DockingDemoScene {
         dispose();
         scene = next;
         autopilot = false;
+        kestrel = osprey = null;
         deckView = next == Scene.WALK || next == Scene.LOADING || next == Scene.FORCE || next == Scene.YARD;
         notice = next.help;
         world = new GameWorld();
@@ -159,9 +172,15 @@ public class DockingDemoScene {
                 break;
             case HUB:
                 target = station("Highport Hub", "station_hub", true);
-                Entity hauler = world.getContent().factory.spawnShip(GameScenario.FREIGHTER_SHIP, 0f, -60f, 0f);
-                hauler.add(new HudMarkerComponent("Hauler Kestrel", HudMarkerComponent.Kind.FRIENDLY).radius(20f));
-                world.docking.dockInPlace(hauler, 0, target, firstPort(target, MountFootprint.MountSize.M));
+                kestrel = world.getContent().factory.spawnShip(GameScenario.FREIGHTER_SHIP, 0f, -60f, 0f);
+                kestrel.add(new HudMarkerComponent("Hauler Kestrel", HudMarkerComponent.Kind.FRIENDLY).radius(20f));
+                int berth = firstPort(target, MountFootprint.MountSize.M);
+                world.docking.dockInPlace(kestrel, 0, target, berth);
+                kestrel.add(BerthingSystem.berthed(target, 0, berth));
+                // Out past the hub's far side from its Medium ports, so it has to fly round
+                osprey = world.getContent().factory.spawnShip(GameScenario.FREIGHTER_SHIP, OSPREY_X, OSPREY_Y, 0f);
+                osprey.add(new HudMarkerComponent("Hauler Osprey", HudMarkerComponent.Kind.FRIENDLY).radius(20f));
+                osprey.add(new BerthingComponent(EntityRef.of(target), 0, BerthingComponent.Phase.APPROACH));
                 park(player, 0, target, smallPort(target), 30f, -4f, -10f);
                 break;
             default:
@@ -175,6 +194,11 @@ public class DockingDemoScene {
     public void update(float delta) {
         if (autopilot) fly();
         world.update(delta);
+        if (scene == Scene.HUB) {
+            // Kestrel makes room once Osprey is in
+            BerthingComponent in = osprey.getComponent(BerthingComponent.class);
+            if (in != null && in.phase == BerthingComponent.Phase.BERTHED && in.time > KESTREL_WAITS) world.berthing.depart(kestrel);
+        }
         // The panel shows the standing itself
         world.standing.acts.clear();
         if (!world.yard.notices.isEmpty()) notice = world.yard.notices.get(world.yard.notices.size() - 1);

@@ -12,7 +12,7 @@ The `ai-crew` module is responsible for the autonomous behaviors of NPCs aboard 
 To implement this module independently (mocking the `interior-grid` by feeding it a dummy 2D boolean array):
 
 1. **A* Pathfinding Implementation:**
-   - Implement the `IndexedGraph` interface from `gdx-ai`. The graph nodes are the grid tiles. A connection exists between two adjacent tiles when `ShipGridComponent.canPass(x, y, nx, ny)` is true and neither tile lies inside a system mount footprint (`Tile.mount`). `canPass` already handles full-tile walls, thin edge walls between tiles, open and sealed doors, and walls destroyed down to integrity 0 (which no longer block). Crew work a mounted system from a tile next to its footprint.
+   - Implement the `IndexedGraph` interface from `gdx-ai`. The graph nodes are the grid tiles. A connection exists between two adjacent tiles when `ShipGridComponent.canPass(x, y, nx, ny)` is true and both tiles are open. Mount footprints (`Tile.mount`) don't block: crew walk over every mounted system until systems get colliders of their own. `canPass` already handles full-tile walls, thin edge walls between tiles, open and sealed doors, and walls destroyed down to integrity 0 (which no longer block). Crew work a mounted system from a tile next to its footprint.
    - The grid follows Box2D's orientation (tile [0][0] bottom-left, +y up), so grid positions map to the ship body's local frame with no flip.
    - Rebuild affected connections when doors open or close and when walls are destroyed.
    - Create a `CrewMovementSystem` that stores an active `GraphPath`. On every update, interpolate the crew member's local float coordinates towards the next tile in the path based on their movement speed.

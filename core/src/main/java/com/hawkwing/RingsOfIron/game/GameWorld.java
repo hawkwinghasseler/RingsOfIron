@@ -70,6 +70,7 @@ import com.ringsofiron.physicsexterior.systems.FloatingOriginSystem;
 import com.ringsofiron.physicsexterior.systems.KinematicTransientSystem;
 import com.ringsofiron.physicsexterior.systems.PhysicsUpdateSystem;
 import com.ringsofiron.physicsexterior.systems.TidalGravitySystem;
+import com.ringsofiron.stationsdocking.BerthingSystem;
 import com.ringsofiron.stationsdocking.DockingBubbleHandoff;
 import com.ringsofiron.stationsdocking.DockingData;
 import com.ringsofiron.stationsdocking.DockingSystem;
@@ -94,8 +95,8 @@ import java.util.function.Consumer;
  * {@link #loadContent}, ships get Box2D bodies from their defs), macro-sim (economy, freighter
  * traffic and bubble transitions on GameWorld's rails, NPCs entering the bubble flown by ai-crew's
  * pilot), stations-docking (stations as walkable grids with real bodies in the bubble, docking
- * ports on ships and stations, latching, undocking, and a docked pair riding through rails warp
- * together). ui-hud needs a GL context, so screens attach it with {@link GameHud}.
+ * ports on ships and stations, latching, undocking, a docked pair riding through rails warp
+ * together, and freighters flying themselves in to dock and away again). ui-hud needs a GL context, so screens attach it with {@link GameHud}.
  *
  * <p>Frame order: time warp first (a rails jump must land before the frame's systems see the new
  * tick), then the engine's fixed ticks and every-frame systems.
@@ -147,6 +148,8 @@ public class GameWorld implements Disposable {
     public final BurnPlanner burns;
     /** Docking ports, collars and latches of every ship and station in the bubble. */
     public final DockingSystem docking;
+    /** Craft flying themselves in to dock at stations, and away again. */
+    public final BerthingSystem berthing;
     /** Station loaders carrying traded goods across the dock, a load at a time. */
     public final CargoLoading cargo;
     /** The player's standing with each faction, and what hostile acts cost it. */
@@ -217,6 +220,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(docking);
         // A collar still drawing a ship in, or a latch still settling, holds rails warp back.
         engine.addRailsWarpGuard(docking::railsWarpBlockedReason);
+        // Craft that fly themselves in to dock and away again, on their own thrusters
+        berthing = new BerthingSystem(docking, engine.getUuidRegistry());
+        engine.addSystem(berthing);
 
         // orbital-mechanics
         universe = new RailsUniverse(engine);
@@ -242,6 +248,10 @@ public class GameWorld implements Disposable {
         macroSim = new MacroSimulation(engine, new OrbitalRailsModel(engine, universe, orbitalEvents),
                 new GameBubbleGateway(physics, engine.getUuidRegistry()), commodities, null, engine.getSimSeconds());
         macroSim.bubble().addListener(new NpcBubblePilots(engine.getUuidRegistry()));
+        // Freighters in the bubble dock at their stations under their own power, and leave the same way
+        FreighterTraffic traffic = new FreighterTraffic(this);
+        macroSim.bubble().addListener(traffic);
+        engine.addSystem(traffic);
         // Economy, fleet and bubble state; restores its own components on load.
         MacroSaveParticipant.register(macroSim, engine.getSerializationService());
         engine.addSystem(new MacroSimSystem(macroSim, engine));

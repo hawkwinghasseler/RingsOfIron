@@ -58,12 +58,13 @@ import java.nio.file.Paths;
  * view follows it (W is up the screen aboard either craft). In the loading scene L orders water
  * carried aboard and K sends it back. In deck view, standing in your port's opening, F pries or
  * hacks the shut door across the dock and B cuts it; in the forcing scene O switches the
- * outpost's reactor off and on. In the yard scene J orders repairs, N refits the nose hardpoint
+ * outpost's reactor off and on. In the hub scene a hauler flies itself in to dock and another
+ * flies off. In the yard scene J orders repairs, N refits the nose hardpoint
  * with a new weapon and M with a used one. Mouse wheel zooms, Esc quits.
  *
  * <p>Drawn: hulls and deck plans, docking collars (yellow), port faces (green while armed, cyan
  * latched, red torn off), the collar head of an active port while it is out (orange), port doors
- * (green open, red shut), mounted systems (grey blocks: crew walk around them), cargo (a crate
+ * (green open, red shut), mounted systems (grey blocks: crew walk over them), cargo (a crate
  * per bay tile, colored by commodity) and crew (white, station hands orange, you in yellow; a
  * crate on anyone carrying a load).
  */
@@ -382,6 +383,11 @@ public class DockingDemo extends ApplicationAdapter {
                     demo.held(demo.player, DockingDemoScene.WATER), demo.held(demo.target, DockingDemoScene.WATER)), x, y);
             y -= 22f;
         }
+        if (demo.scene == DockingDemoScene.Scene.HUB) {
+            font.setColor(Color.WHITE);
+            font.draw(batch, "Osprey: " + berthing(demo.osprey) + "   Kestrel: " + berthing(demo.kestrel), x, y);
+            y -= 22f;
+        }
         if (demo.scene == DockingDemoScene.Scene.YARD) {
             font.setColor(Color.WHITE);
             font.draw(batch, String.format(java.util.Locale.ROOT, "Credits %,.0f   %d damaged, %,.0f cr to repair   [J] repair  [N] refit nose  [M] used",
@@ -421,6 +427,13 @@ public class DockingDemo extends ApplicationAdapter {
         font.draw(batch, "Deck view: F pry/hack the door across  B cut it   Scene 8: L load water  K send back"
                 + "   9: O outpost power   0: J repair  N/M refit", x, 24f);
         batch.end();
+    }
+
+    /** What a hauler flying itself in or out is doing. */
+    private static String berthing(Entity hauler) {
+        com.ringsofiron.stationsdocking.BerthingComponent b = hauler == null ? null
+                : hauler.getComponent(com.ringsofiron.stationsdocking.BerthingComponent.class);
+        return b == null || b.status.isEmpty() ? "-" : b.status;
     }
 
     private static String doorLine(DoorForcing.Target door) {

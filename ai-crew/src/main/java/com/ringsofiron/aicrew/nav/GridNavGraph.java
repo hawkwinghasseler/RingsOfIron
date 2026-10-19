@@ -4,7 +4,6 @@ import com.badlogic.gdx.ai.pfa.Connection;
 import com.badlogic.gdx.ai.pfa.DefaultConnection;
 import com.badlogic.gdx.ai.pfa.indexed.IndexedGraph;
 import com.badlogic.gdx.utils.Array;
-import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.Tile;
@@ -12,9 +11,9 @@ import com.ringsofiron.interiorgrid.Tile;
 /**
  * The walkable tiles of a ship's interior grid as a gdx-ai {@link IndexedGraph}.
  *
- * Two orthogonally adjacent tiles are connected when {@link ShipGridComponent#canPass}
- * allows it (walls, edge walls, doors, destroyed walls) and neither lies inside a system
- * mount footprint. Connections are computed when asked for, straight from the grid, so
+ * Two orthogonally adjacent open tiles are connected when {@link ShipGridComponent#canPass}
+ * allows it (walls, edge walls, doors, destroyed walls). Mounted systems don't block: crew
+ * walk over every mount footprint until systems get colliders of their own. Connections are computed when asked for, straight from the grid, so
  * doors opening or closing and walls being destroyed take effect on the next search
  * with no rebuild step.
  */
@@ -39,16 +38,13 @@ public class GridNavGraph implements IndexedGraph<GridNode> {
         return grid.inBounds(x, y) ? nodes[y * grid.width + x] : null;
     }
 
-    /** True if crew can stand on tile (x, y): open, and not a mounted system other than a docking port's opening. */
+    /** True if crew can stand on tile (x, y): open, mounted system or not. */
     public boolean isWalkable(int x, int y) {
         Tile t = grid.getTile(x, y);
-        return t != null && t.isOpen() && (t.mount == null || t.mount.kind == MountFootprint.MountKind.PORT);
+        return t != null && t.isOpen();
     }
 
-    /**
-     * True if crew can step from (x, y) to the orthogonal neighbour (nx, ny). Crew can
-     * always step off a mount, so one placed on a mount footprint is never stuck there.
-     */
+    /** True if crew can step from (x, y) to the orthogonal neighbour (nx, ny). */
     public boolean canStep(int x, int y, int nx, int ny) {
         return isWalkable(nx, ny) && grid.canPass(x, y, nx, ny);
     }
