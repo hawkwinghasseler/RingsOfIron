@@ -310,6 +310,8 @@ public class GameScenario {
         world.standing.reset();
         // ...and with no contracts
         world.contracts.reset();
+        // ...and hostile traffic's own state starting again from the load
+        world.hostiles.reset();
         world.engine.getSerializationService().loadFromFile(file);
         relink();
         world.standing.migrateLegacy(player);

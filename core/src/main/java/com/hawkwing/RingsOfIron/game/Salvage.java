@@ -187,10 +187,13 @@ public class Salvage extends EntitySystem {
     // Orders
     // ------------------------------------------------------------------
 
-    /** Why {@code ship}'s crew can't strip {@code craft}, or null if they can. */
+    /**
+     * Why {@code ship}'s crew can't strip {@code craft}, or null if they can. A check only: an
+     * undefended wreck is taken when work is ordered ({@link #mark}, {@link #takeCargo}), not here.
+     */
     public String refusal(Entity ship, Entity craft) {
         if (craft == null) return "Latch onto another ship first";
-        if (!boarding.takeUndefended(ship, craft)) {
+        if (!boarding.canTakeUndefended(ship, craft)) {
             BoardedComponent b = Boarding.of(craft);
             if (!ShipDisablement.isDisabled(craft)) return Boarding.name(craft) + " can still fight";
             return b != null && !b.taken ? "Take " + Boarding.name(craft) + " first: its crew still fight"
@@ -207,6 +210,7 @@ public class Salvage extends EntitySystem {
         Entity craft = boarding.target(ship);
         String no = refusal(ship, craft);
         if (no != null) return no;
+        boarding.takeUndefended(ship, craft);
         Part part = null;
         for (Part p : parts(craft)) {
             if (p.system.footprint.originX == x && p.system.footprint.originY == y) part = p;
@@ -251,6 +255,7 @@ public class Salvage extends EntitySystem {
         Entity craft = boarding.target(ship);
         String no = refusal(ship, craft);
         if (no != null) return no;
+        boarding.takeUndefended(ship, craft);
         CargoHoldComponent hold = craft.getComponent(CargoHoldComponent.class);
         double units = hold == null ? 0 : hold.amount(commodity);
         if (units <= 1e-6) return "No " + commodity + " aboard " + Boarding.name(craft);

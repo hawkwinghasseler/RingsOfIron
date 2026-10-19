@@ -3,6 +3,8 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.utils.Json;
+import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
@@ -10,6 +12,7 @@ import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
@@ -47,9 +50,15 @@ import java.util.function.DoubleSupplier;
  * </ul>
  * A pirate planning an intercept on the player stops time warp ({@link DropOutSource}) and says so in
  * {@link #notices}.
+ *
+ * <p>Its own state is saved with the game under {@link #SAVE_KEY}: the next top-up, the pirates'
+ * name counter, the intercept alert, the player's grace and each hostile's bubble timers. Who shot
+ * at whom is not: a hostile that was provoked fights on from its locked target.
  */
 public class HostileTraffic extends EntitySystem implements BubbleTransitionListener, DropOutSource,
-        HostileTrafficController.Listener {
+        HostileTrafficController.Listener, SaveParticipant {
+    /** Key of this system's state in the save's modules section. */
+    public static final String SAVE_KEY = "hostile-traffic";
     /** Seconds between looks at the bubble's hostiles. */
     static final float CHECK_SECONDS = 1f;
     /**
@@ -116,6 +125,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         world.timeWarp.changes.add((signal, change) -> alertAt = Double.NaN);
         world.combatEvents.shots.add((signal, shot) -> onShotAt(shot.target, shot.shooter));
         world.combatEvents.impacts.add((signal, hit) -> onShotAt(hit.target, hit.owner));
+        world.engine.getSerializationService().addParticipant(this);
     }
 
     /** Puts hostile traffic into {@code world}. */
@@ -143,6 +153,43 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     /** Points the lurks at a loaded game's stations, which have new uuids. */
     public void relink(String[] lurks) {
         this.lurks = lurks.clone();
+        // A save from before this state was saved: top-ups start again from the load, and new
+        // pirates are numbered on from the highest loaded
+        if (nextTopUp == Double.POSITIVE_INFINITY && this.lurks.length > 0) {
+            nextTopUp = world.macroSim.now() + TOP_UP_INTERVAL;
+        }
+        for (HostileComponent h : controller.all().values()) spawned = Math.max(spawned, number(h.displayName));
+    }
+
+    /** Forgets this system's own state, before a save is loaded over it. */
+    public void reset() {
+        spawned = 0;
+        nextTopUp = Double.POSITIVE_INFINITY;
+        topUpDue = false;
+        alertAt = Double.NaN;
+        controller.playerGraceUntil = 0;
+        provoked.clear();
+        busySince.clear();
+        alongside.clear();
+    }
+
+    /** The number a hostile's name ends with ("Pirate raider 3"), or 0. */
+    static int number(String name) {
+        if (name == null) return 0;
+        int i = name.length();
+        while (i > 0 && Character.isDigit(name.charAt(i - 1))) i--;
+        if (i == name.length() || name.length() - i > 9) return 0;
+        return Integer.parseInt(name.substring(i));
+    }
+
+    /** Sim seconds of the next top-up of the pirate population; infinite before {@link #start}. */
+    public double nextTopUp() {
+        return nextTopUp;
+    }
+
+    /** True while a pirate's intercept on the player holds time warp off. */
+    public boolean alerted() {
+        return !Double.isNaN(alertAt);
     }
 
     /** Raiders the population keeps at difficulty {@code d}. */
@@ -371,6 +418,48 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     @Override
     public double nextDropOutTime() {
         return Double.isNaN(alertAt) ? Double.NaN : world.engine.getSimSeconds();
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
+    @Override
+    public String saveKey() {
+        return SAVE_KEY;
+    }
+
+    @Override
+    public void write(Json json) {
+        json.writeValue("spawned", spawned);
+        // JSON has no infinity or NaN: a missing value means none
+        if (nextTopUp != Double.POSITIVE_INFINITY) json.writeValue("nextTopUp", nextTopUp);
+        if (topUpDue) json.writeValue("topUpDue", true);
+        if (!Double.isNaN(alertAt)) json.writeValue("alertAt", alertAt);
+        json.writeValue("playerGraceUntil", controller.playerGraceUntil);
+        writeTimes(json, "busySince", busySince);
+        writeTimes(json, "alongside", alongside);
+    }
+
+    @Override
+    public void read(Json json, JsonValue data) {
+        reset();
+        spawned = data.getInt("spawned", 0);
+        nextTopUp = data.getDouble("nextTopUp", Double.POSITIVE_INFINITY);
+        topUpDue = data.getBoolean("topUpDue", false);
+        alertAt = data.getDouble("alertAt", Double.NaN);
+        controller.playerGraceUntil = data.getDouble("playerGraceUntil", 0);
+        readTimes(data.get("busySince"), busySince);
+        readTimes(data.get("alongside"), alongside);
+    }
+
+    private static void writeTimes(Json json, String name, Map<String, Double> times) {
+        json.writeObjectStart(name);
+        for (Map.Entry<String, Double> e : times.entrySet()) json.writeValue(e.getKey(), e.getValue());
+        json.writeObjectEnd();
+    }
+
+    private static void readTimes(JsonValue data, Map<String, Double> into) {
+        if (data == null) return;
+        for (JsonValue v = data.child; v != null; v = v.next) into.put(v.name, v.asDouble());
     }
 
     // ---------------------------------------------------------------------------------------------
