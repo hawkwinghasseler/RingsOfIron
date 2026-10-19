@@ -30,12 +30,16 @@ To implement this module independently (mocking the core-engine if necessary):
    - Fire a `WorldShiftEvent` carrying both deltas so other systems (rendering cameras, HUD, audio, macro-sim tracking) can adjust.
    - See `documentation/orbital-mechanics/Design.md` section 3 for why velocity is shifted too, and how the origin becomes a free-falling orbital anchor.
 
-## Proposed Components
+## Implemented Components
 - `PhysicsBodyComponent`: Holds the Box2D `Body`.
-- `ThrusterComponent`: Defines maximum thrust vectors and fuel consumption rates.
+- `ThrusterComponent`: force, torque and fuel limits.
+- `FlightControlComponent`: stick input in [-1, 1] and rotation assist.
+- `BodyShapeComponent`: a body's fixtures and exact mass data, kept while it is on rails or in a save.
+- `KinematicTransientComponent`: a fast-pass body's true trajectory and sweep radius.
 
-## Proposed Systems
-- `PhysicsUpdateSystem`: Syncs Box2D state to ECS state.
+## Implemented Systems
+- `PhysicsUpdateSystem`: Steps Box2D and syncs its state to the ECS.
+- `FlightControlSystem`: turns stick input into thrust before each step.
 - `FloatingOriginSystem`: Monitors player distance and relative speed and rebases the origin.
 - `TidalGravitySystem`: applies the differential gravity across the bubble each tick.
 - `KinematicTransientSystem`: moves bodies passing faster than the Box2D cap along their true trajectories and sweeps them for collisions.

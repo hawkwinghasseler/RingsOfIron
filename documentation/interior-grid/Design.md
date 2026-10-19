@@ -201,7 +201,7 @@ audio-spatial's `InteriorHazardAudioSystem` reads every grid after the hazard ti
 `LifeSupportSystem` runs every operational `LIFE_SUPPORT` unit on the hazard tick (0.25 s):
 - A unit serves the compartment it stands in, plus every compartment reachable from there through fully open openings (open doors, gaps a tile wide). Air behind a closed door, a seal or a leaking wall is out of reach.
 - It draws 3 m³/s of air, spread over the whole served volume, and removes 90% of the CO2 and smoke in that air.
-- It releases up to 20 mol/s of standard air (21% oxygen) into served compartments below standard pressure, shared by how far each one is short. A vented 9 × 6 room, once sealed, is back to full pressure in a few minutes. Tanks are not modelled, so the supply never runs out.
+- It releases up to 20 mol/s of standard air (21% oxygen) into served compartments below standard pressure, shared by how far each one is short. A vented 9 × 6 room, once sealed, is back to full pressure in a few minutes. Tanks are not modelled yet, so the supply never runs out (see below).
 - It then releases up to 1.5 mol/s of oxygen into served compartments whose air is short of the standard 21% share (and below standard oxygen partial pressure), such as after a fire.
 - Nothing is released into a compartment still venting to space.
 - That is far slower than a large fire uses oxygen, so life support cleans up after a fire rather than holding one back.
@@ -253,5 +253,8 @@ Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartm
 - `LifeSupportSystem`: scrubs CO2 and smoke, refills sealed rooms with air and replenishes oxygen.
 - `InteriorHazardWarpGuard` (not an ECS system): refuses rails warp during a fire or venting.
 
+## Decided, not built yet
+- **Tanks and piping** (2026-10-19): life support consumables and ship propellant draw from tanks placed in the ship grid, through pipes laid in the tile map. Like conduits, pipes go in tile centers or along tile edges (the `EdgeConduit` model). Tanks run dry, and refilling them costs money at a station. Placement goes in the ship editor and the art in the art pack. Until then life support draws on an endless supply and propellant is `ThrusterComponent.fuel` in physics-exterior.
+
 ## Open Questions
-- **Air reserves.** Life support refills rooms from an endless supply. Tanks that run dry, at a cost to refill, are still open.
+None right now.

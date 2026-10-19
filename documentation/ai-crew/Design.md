@@ -50,15 +50,20 @@ To implement this module independently (mocking the `interior-grid` by feeding i
    - `CrewDamageSink.applyDamage(crewEntity, amount, cause)`: subtracts health and moves the crew member between the states above.
    - `DamageTaskSink`: accepts `SealBreachTask`, `RepairTask`, `ExtinguishTask` and `RescueTask` onto the `ShipTaskBoardComponent`.
 
-## Proposed Components
-- `CrewMemberComponent`: Holds stats, health, consciousness state (conscious / unconscious / dead), role, and current equipped item.
-- `BehaviorTreeComponent`: Holds the active `gdx-ai` behavior tree instance.
-- `GridPositionComponent`: Tracks the localized float coordinates of the crew member relative to their parent grid.
+## Implemented Components
+- `CrewMemberComponent`: name, role, faction, `CrewDef` stats, health and state (conscious / unconscious / dead), the claimed task, who they carry or are carried by, a load in hand, their home craft and the item in hand.
+- `GridPositionComponent`: position in tile units on the ship they are aboard (`shipRef` saved), the path being walked, and the docked walkway they are out on.
+- `BehaviorTreeComponent`: the crew member's `gdx-ai` behavior tree.
+- `PlayerAvatarComponent`: marks the crew member moved by input instead of AI.
+- `ShipTaskBoardComponent`: on the ship, the posted and claimed tasks.
+- `NpcPilotComponent`, `NpcCombatComponent`: on a ship, its pilot's burns and its combat target.
 
-## Proposed Systems
+## Implemented Systems
 - `CrewMovementSystem`: Walks crew along the calculated A* path, and the avatar where its input points, as bodies in the deck's Box2D world.
 - `CrewDecisionSystem`: Ticks the behavior trees for all conscious crew. Unconscious and dead crew are skipped.
-- `CrewHealthSystem`: Applies asphyxiation on the hazard tick, handles recovery, and posts rescue tasks.
+- `CrewHealthSystem`: Applies asphyxiation and burns on the hazard tick, handles recovery, and posts rescue tasks.
+- `ShipHazardScanSystem`: Posts fire, breach and repair tasks from the grid and cancels stale ones.
+- `NpcPilotSystem`, `NpcCombatSystem`: Fly NPC ships through their burns, and fight a target.
 
 ## Prototype status
 The first prototype is in `ai-crew/src/main/java/com/ringsofiron/aicrew`. `Crew demo.bat` (`gradlew :lwjgl3:runCrewDemo`) shows it running with mouse controls to start fires, breach the hull, wound crew and spawn boarders. Run `gradlew :ai-crew:runCrewConsoleDemo` for a headless run of a three-room ship (fire, damaged reactor, hull breach, two boarders) printed as text, and `gradlew :ai-crew:test` for the tests.
