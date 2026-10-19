@@ -33,11 +33,13 @@ import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.FirstPlay;
+import com.hawkwing.RingsOfIron.game.ShipDisablement;
 import com.hawkwing.RingsOfIron.game.ShipRefit;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.hawkwing.RingsOfIron.game.DoorForcing;
 import com.hawkwing.RingsOfIron.game.FactionStanding;
 import com.hawkwing.RingsOfIron.game.StationCrew;
+import com.hawkwing.RingsOfIron.game.DisabledComponent;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
@@ -226,6 +228,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
             } else {
                 viewports.setViewMeters(exteriorViewMeters);
             }
+        });
+        world.disablement.changes.add((signal, change) -> {
+            String news = disabledNotice(change);
+            if (news != null) show(news);
         });
         world.timeWarp.changes.add((signal, change) -> {
             if (change.blockedReason != null) show("Time warp refused: " + change.blockedReason);
@@ -488,6 +494,23 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private void show(String message) {
         notice = message;
         noticeTime = 4f;
+    }
+
+    /** What to tell the player about a ship disabled, surrendering, breaking up or recovering; null for nothing. */
+    private String disabledNotice(ShipDisablement.Change change) {
+        boolean mine = change.ship == game.player;
+        DisabledComponent d = change.ship.getComponent(DisabledComponent.class);
+        HudMarkerComponent marker = MARKERS.get(change.ship);
+        String name = mine ? "Your ship" : d != null && d.markerLabel != null ? d.markerLabel
+                : marker != null ? marker.label : null;
+        if (name == null) return null;
+        if (change.now == null) return name + " is back in action";
+        switch (change.now) {
+            case SURRENDERED: return name + " cuts thrust and surrenders";
+            case WRECKED: return name + " breaks up: a wreck";
+            case ABANDONED: return name + " is abandoned";
+            default: return name + " is disabled: " + change.now.label;
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -799,9 +822,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   L lights   V outside view   F5 save  F9 load   Esc quit"
                 : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  F5 save  F9 load  Esc quit",
                 hintX, 24f);
+        DisabledComponent.Reason disabled = ShipDisablement.reason(game.player);
         if (notice != null && noticeTime > 0f) {
             font.setColor(Color.ORANGE);
             font.draw(batch, notice, left, top - 60f);
+        } else if (disabled != null) {
+            // Stays up while the ship is disabled; news takes the line for a moment
+            font.setColor(Color.RED);
+            font.draw(batch, "SHIP DISABLED: " + disabled.label, left, top - 60f);
         }
         font.setColor(Color.SKY);
         String[] dock = docking.readout();

@@ -199,9 +199,11 @@ public class GameScenario {
 
     /**
      * Turns the raider on the player: its turrets and launcher engage the player's ship, and
-     * ai-crew's combat pilot closes to fighting range, circles and dodges missiles.
+     * ai-crew's combat pilot closes to fighting range, circles and dodges missiles. A disabled
+     * raider stays out of it.
      */
     public void provokeRaider() {
+        if (ShipDisablement.isDisabled(raider)) return;
         SensorComponent sensor = raider.getComponent(SensorComponent.class);
         if (sensor != null && sensor.lockedTarget == null) sensor.lockedTarget = player;
         if (raider.getComponent(NpcCombatComponent.class) == null) raider.add(new NpcCombatComponent(player));

@@ -161,6 +161,8 @@ public class GameWorld implements Disposable {
     public final DoorForcing forcing;
     /** Station yards repairing and refitting docked ships. */
     public final StationYard yard;
+    /** Which ships are disabled, surrendered or wrecked, and why. */
+    public final ShipDisablement disablement;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -335,6 +337,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(impacts);
         beams = new BeamSystem(physics, impacts);
         engine.addSystem(beams);
+        // Ships out of power, crew or hull, or beaten, stop fighting
+        disablement = new ShipDisablement(engine::getSimSeconds);
+        engine.addSystem(disablement);
 
         // audio-spatial
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();

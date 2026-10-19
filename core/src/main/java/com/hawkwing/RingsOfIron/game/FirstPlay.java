@@ -116,10 +116,11 @@ public final class FirstPlay {
         }
     }
 
-    /** True once the raider can no longer fight: gone, its reactor down, or every gun silenced. */
+    /** True once the raider can no longer fight: gone, disabled or surrendered, its reactor down, or every gun silenced. */
     boolean raiderBeaten() {
         Entity raider = game.raider;
         if (raider == null || world.engine.getEcsEngine().getEntities().indexOf(raider, true) < 0) return true;
+        if (ShipDisablement.isDisabled(raider)) return true;
         ShipSubsystemRegistryComponent registry = raider.getComponent(ShipSubsystemRegistryComponent.class);
         if (registry != null && !powered(registry)) return true;
         WeaponsComponent weapons = raider.getComponent(WeaponsComponent.class);
