@@ -157,6 +157,8 @@ public class GameWorld implements Disposable {
     public final CargoLoading cargo;
     /** The player's standing with each faction, and what hostile acts cost it. */
     public final FactionStanding standing;
+    /** The player's rank budget, paid weekly into their credits. */
+    public final ServiceBudget budget;
     /** Crew prying, cutting or hacking at a shut port door across a dock. */
     public final DoorForcing forcing;
     /** Station yards repairing and refitting docked ships. */
@@ -292,6 +294,8 @@ public class GameWorld implements Disposable {
         // Crews fight by their factions' wars and the player's standing; the career saves with the game
         standing = new FactionStanding(this::getPlayer);
         engine.getSerializationService().addParticipant(standing);
+        budget = new ServiceBudget(standing, this::getPlayer, engine::getSimSeconds);
+        engine.addSystem(budget);
         crew.hostility = standing::hostile;
         docking.events.add((signal, e) -> standing.onDockingEvent(e));
         docking.clearance = (station, vessel) -> {
