@@ -66,7 +66,10 @@ Each demo lists its own controls on screen.
 ./gradlew build        # compile everything and run every test
 ./gradlew test         # tests only
 ./gradlew :combat-sys:test   # one module's tests
+./gradlew :core:test --tests '*CareerSeedsTest' -PcareerSeeds=2026,7,12   # the scripted career on each seed, twice
 ```
+
+CI plays the scripted career on seeds 2026, 7 and 12, each twice, in its "Career seed" jobs: both runs must write the same journal, and the career must reach the gunship unless `CareerSeedsTest.STOPS` lists the seed as stopping at a known place.
 
 The art in `assets/art` is SVG. The `art-pipeline` module rasterizes it into a texture atlas when a run task needs it, so nothing generated is committed. See `documentation/art/Design.md`.
 
