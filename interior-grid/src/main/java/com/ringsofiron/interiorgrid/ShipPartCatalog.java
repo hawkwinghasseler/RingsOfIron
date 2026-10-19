@@ -17,7 +17,7 @@ import java.util.Map;
  * The tile types and ship components a chassis map can draw, each under its one-character
  * symbol. Tile types and components share that namespace.
  *
- * {@link #builtIn()} holds the characters the game has always had ({@code #}, {@code 1}-{@code 3},
+ * {@link #builtIn()} holds the characters the game has always had ({@code #}, {@code 1}-{@code 6},
  * {@code I}, {@code .}, {@code +}, space, and the system letters {@code R S T L H W C A D}).
  * {@link #from(DefRegistry)} starts from those and applies the {@code [tile.*]} and
  * {@code [component.*]} definitions, which replace a built-in of the same id or add new ones.
@@ -44,9 +44,17 @@ public class ShipPartCatalog {
         public final FloorCovering covering;
         /** 0xRRGGBB, for the editor. */
         public final int color;
+        /** The art it draws with (a region, or a wall family), or null to go by base and material. */
+        public final String art;
 
         public TileType(String id, String name, char symbol, TileBase base, WeightClass weightClass,
                         String material, FloorCovering covering, int color) {
+            this(id, name, symbol, base, weightClass, material, covering, color, null);
+        }
+
+        public TileType(String id, String name, char symbol, TileBase base, WeightClass weightClass,
+                        String material, FloorCovering covering, int color, String art) {
+            this.art = art;
             this.id = id;
             this.name = name;
             this.symbol = symbol;
@@ -163,6 +171,10 @@ public class ShipPartCatalog {
         c.put(new TileType("hull_medium", "Hull, medium (2)", '2', TileBase.HULL, WeightClass.MEDIUM, steel, FloorCovering.NONE, 0x9aa4b0));
         c.put(new TileType("hull_heavy", "Hull, heavy", '3', TileBase.HULL, WeightClass.HEAVY, steel, FloorCovering.NONE, 0x6c7684));
         c.put(new TileType("internal_wall", "Internal wall", 'I', TileBase.INTERNAL_WALL, WeightClass.MEDIUM, steel, FloorCovering.NONE, 0x80705a));
+        String composite = "composite_armor";
+        c.put(new TileType("armor_light", "Composite armor, light", '4', TileBase.HULL, WeightClass.LIGHT, composite, FloorCovering.NONE, 0x7d8c88));
+        c.put(new TileType("armor_medium", "Composite armor, medium", '5', TileBase.HULL, WeightClass.MEDIUM, composite, FloorCovering.NONE, 0x66756f));
+        c.put(new TileType("armor_heavy", "Composite armor, heavy", '6', TileBase.HULL, WeightClass.HEAVY, composite, FloorCovering.NONE, 0x4d5a56));
         builtInComponent(c, "reactor", "Reactor", 'R', SubsystemComponent.SubsystemType.REACTOR, 0xe0703a);
         builtInComponent(c, "shield_emitter", "Shield emitter", 'S', SubsystemComponent.SubsystemType.SHIELD_EMITTER, 0x4aa0e0);
         builtInComponent(c, "turret_mount", "Turret mount", 'T', SubsystemComponent.SubsystemType.TURRET_MOUNT, 0xd04a4a);
@@ -171,6 +183,7 @@ public class ShipPartCatalog {
         builtInComponent(c, "weapons", "Weapons console", 'W', SubsystemComponent.SubsystemType.WEAPONS, 0xc06ad0);
         builtInComponent(c, "cargo", "Cargo bay", 'C', SubsystemComponent.SubsystemType.CARGO, 0xa08050);
         builtInComponent(c, "airlock", "Airlock", 'A', SubsystemComponent.SubsystemType.AIRLOCK, 0x50c0c0);
+        builtInComponent(c, "engine", "Engine", 'E', SubsystemComponent.SubsystemType.ENGINE, 0x6aa8e8);
         builtInComponent(c, "docking_port", "Docking port", 'D', SubsystemComponent.SubsystemType.DOCKING_PORT, 0xe0e0e0);
         return c;
     }
@@ -279,6 +292,7 @@ public class ShipPartCatalog {
         d.material = t.material;
         d.covering = t.covering.name();
         d.color = String.format("#%06x", t.color);
+        d.art = t.art;
         return d;
     }
 
@@ -308,7 +322,7 @@ public class ShipPartCatalog {
                 parseEnum(WeightClass.class, d.weightClass, "tile " + d.id + " weight_class"),
                 d.material != null ? d.material : MaterialTable.DEFAULT_MATERIAL,
                 parseEnum(FloorCovering.class, d.covering, "tile " + d.id + " covering"),
-                parseColor(d.color, 0x808080));
+                parseColor(d.color, 0x808080), d.art == null || d.art.isEmpty() ? null : d.art);
     }
 
     /** The component a definition describes. @throws IllegalArgumentException if a field is invalid */

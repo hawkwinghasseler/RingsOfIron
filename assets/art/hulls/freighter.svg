@@ -3,26 +3,6 @@
   <g id="base">
     <polygon points="-640,416 640,416 640,-416 -640,-416" fill="#5b6675" stroke="#10141a" stroke-width="3" stroke-linejoin="round"/>
     <polygon points="-640,416 640,416 640,-416 -640,-416" fill="#000000" opacity="0.12"/>
-    <rect x="-675.2" y="-339.2" width="44.8" height="102.4" rx="6" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-656" cy="-288" r="28.8" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-656" cy="-288" r="17.92" fill="#14181e" stroke="#10141a" stroke-width="1.5"/>
-    <circle cx="-656" cy="-327.68" r="3" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
-    <circle cx="-656" cy="-248.32" r="3" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
-    <rect x="-675.2" y="-147.2" width="44.8" height="102.4" rx="6" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-656" cy="-96" r="28.8" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-656" cy="-96" r="17.92" fill="#14181e" stroke="#10141a" stroke-width="1.5"/>
-    <circle cx="-656" cy="-135.68" r="3" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
-    <circle cx="-656" cy="-56.32" r="3" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
-    <rect x="-675.2" y="44.8" width="44.8" height="102.4" rx="6" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-656" cy="96" r="28.8" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-656" cy="96" r="17.92" fill="#14181e" stroke="#10141a" stroke-width="1.5"/>
-    <circle cx="-656" cy="56.32" r="3" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
-    <circle cx="-656" cy="135.68" r="3" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
-    <rect x="-675.2" y="236.8" width="44.8" height="102.4" rx="6" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-656" cy="288" r="28.8" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-656" cy="288" r="17.92" fill="#14181e" stroke="#10141a" stroke-width="1.5"/>
-    <circle cx="-656" cy="248.32" r="3" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
-    <circle cx="-656" cy="327.68" r="3" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
     <rect x="128" y="-160" width="64" height="64" fill="#5b6675"/>
     <rect x="128.5" y="-159.5" width="63" height="63" fill="none" stroke="#373f4b" stroke-width="1" opacity="0.7"/>
     <rect x="-384" y="-416" width="64" height="64" fill="#4b5563"/>
@@ -674,6 +654,48 @@
     <line x1="256" y1="40" x2="256" y2="344" stroke="#10141a" stroke-width="1.5" stroke-linecap="round"/>
     <line x1="320" y1="40" x2="320" y2="344" stroke="#10141a" stroke-width="1.5" stroke-linecap="round"/>
     <rect x="-374" y="42" width="748" height="300" fill="none" stroke="#f2c230" stroke-width="2.5" stroke-dasharray="10 8" opacity="0.7"/>
+    <rect x="-571" y="-347" width="182" height="118" rx="5" fill="#2a3039" stroke="#10141a" stroke-width="2"/>
+    <line x1="-562" y1="-342" x2="-562" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-553" y1="-342" x2="-553" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-544" y1="-342" x2="-544" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-535" y1="-342" x2="-535" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-526" y1="-342" x2="-526" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-517" y1="-342" x2="-517" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-508" y1="-342" x2="-508" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-499" y1="-342" x2="-499" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-490" y1="-342" x2="-490" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-481" y1="-342" x2="-481" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-472" y1="-342" x2="-472" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-463" y1="-342" x2="-463" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-454" y1="-342" x2="-454" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-445" y1="-342" x2="-445" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-436" y1="-342" x2="-436" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-427" y1="-342" x2="-427" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-418" y1="-342" x2="-418" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-409" y1="-342" x2="-409" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-400" y1="-342" x2="-400" y2="-234" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="-564" cy="-340" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+    <rect x="-571" y="229" width="182" height="118" rx="5" fill="#2a3039" stroke="#10141a" stroke-width="2"/>
+    <line x1="-562" y1="234" x2="-562" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-553" y1="234" x2="-553" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-544" y1="234" x2="-544" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-535" y1="234" x2="-535" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-526" y1="234" x2="-526" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-517" y1="234" x2="-517" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-508" y1="234" x2="-508" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-499" y1="234" x2="-499" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-490" y1="234" x2="-490" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-481" y1="234" x2="-481" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-472" y1="234" x2="-472" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-463" y1="234" x2="-463" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-454" y1="234" x2="-454" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-445" y1="234" x2="-445" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-436" y1="234" x2="-436" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-427" y1="234" x2="-427" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-418" y1="234" x2="-418" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-409" y1="234" x2="-409" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-400" y1="234" x2="-400" y2="342" stroke="#4a5260" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="-564" cy="236" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
     <rect x="512" y="-160" width="128" height="320" rx="3" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <rect x="522" y="-150" width="108" height="300" fill="none" stroke="#f2c230" stroke-width="4" stroke-dasharray="12 8"/>
     <rect x="640" y="-128" width="32" height="256" rx="3" fill="#4b5563" stroke="#10141a" stroke-width="2"/>
@@ -688,6 +710,14 @@
     <circle cx="-460" cy="-212" r="2.4" fill="#ff9a3c"/>
     </g>
     <rect x="460" y="-212" width="36.4" height="40" rx="6" fill="#6aa8ff" opacity="0.45"/>
+    <g data-light="glow">
+    <circle cx="-564" cy="-340" r="7.2" fill="#9fd8ff" opacity="0.18"/>
+    <circle cx="-564" cy="-340" r="2.4" fill="#9fd8ff"/>
+    </g>
+    <g data-light="glow">
+    <circle cx="-564" cy="236" r="7.2" fill="#9fd8ff" opacity="0.18"/>
+    <circle cx="-564" cy="236" r="2.4" fill="#9fd8ff"/>
+    </g>
     <g data-light="glow">
     <circle cx="628" cy="-404" r="9.6" fill="#ff4d4d" opacity="0.18"/>
     <circle cx="628" cy="-404" r="3.2" fill="#ff4d4d"/>

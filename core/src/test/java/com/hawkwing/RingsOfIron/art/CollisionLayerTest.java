@@ -113,7 +113,7 @@ class CollisionLayerTest {
         List<float[]> pieces = CollisionLayer.read(ASSETS.resolve("art/hulls/corvette.svg"));
         assertNotNull(pieces);
         assertEquals(1, pieces.size());
-        assertArrayEquals(new float[]{-9f, -3f, 5f, -3f, 6.5f, 0f, 5f, 3f, -9f, 3f}, pieces.get(0), EPS);
+        assertArrayEquals(new float[]{-11f, -3f, 5f, -3f, 6.5f, 0f, 5f, 3f, -11f, 3f}, pieces.get(0), EPS);
         assertNull(CollisionLayer.read(ASSETS.resolve("art/hulls/freighter.svg")), "the freighter collides on its tiles");
     }
 

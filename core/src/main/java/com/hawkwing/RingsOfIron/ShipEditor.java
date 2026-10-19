@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
@@ -523,9 +524,9 @@ public class ShipEditor extends ApplicationAdapter {
     // ---- Art view ----
 
     /** A wedge's art, or null for a block or a size the art pack has no wedge for (drawn flat). */
-    private TextureRegion wedgeArt(ChassisDef.HullPiece p) {
+    private AtlasRegion wedgeArt(ChassisDef.HullPiece p) {
         if (!"WEDGE".equals(p.shape)) return null;
-        return art.region(ArtNames.wedge(WeightClass.valueOf(p.weightClass), p.width, p.height));
+        return art.first(ArtNames.wedge(p.material, WeightClass.valueOf(p.weightClass), p.width, p.height));
     }
 
     private boolean drawingArt() {
@@ -544,13 +545,13 @@ public class ShipEditor extends ApplicationAdapter {
                 float x0 = sx(x), y0 = sy(y);
                 switch (t.base) {
                     case FLOOR:
-                        artTile(art.region("tiles/floor"), x0, y0, 0);
+                        artTile(tileArt(t, "tiles/floor"), x0, y0, 0);
                         ChassisDef.Covering cov = m.coveringAt(x, y);
                         String covering = cov == null ? null : ArtNames.covering(FloorCovering.valueOf(cov.covering));
                         if (covering != null) artTile(art.region(covering), x0, y0, 0);
                         break;
                     case CONDUIT:
-                        artTile(art.region("tiles/conduit"), x0, y0, 0);
+                        artTile(tileArt(t, "tiles/conduit"), x0, y0, 0);
                         TextureRegion arm = art.region(ArtNames.conduitArm(true));
                         if (conduitToward(m, cat, x, y, Side.TOP)) artTile(arm, x0, y0, 0);
                         if (conduitToward(m, cat, x, y, Side.LEFT)) artTile(arm, x0, y0, 1);
@@ -565,17 +566,18 @@ public class ShipEditor extends ApplicationAdapter {
                         if (sameTile(m, x + 1, y, ch)) mask |= ArtNames.E;
                         if (sameTile(m, x, y - 1, ch)) mask |= ArtNames.S;
                         if (sameTile(m, x - 1, y, ch)) mask |= ArtNames.W;
-                        artTile(art.region(ArtNames.wall(wallArtId(t), mask)), x0, y0, 0);
+                        artTile(wallArt(t, mask), x0, y0, 0);
                         break;
                 }
             }
         }
         for (ChassisDef.HullPiece p : m.hullPieces) {
             if (!"WEDGE".equals(p.shape)) continue;
-            TextureRegion r = wedgeArt(p);
+            AtlasRegion r = wedgeArt(p);
             if (r == null) continue;
             int pw = p.rotation % 2 == 0 ? p.width : p.height, ph = p.rotation % 2 == 0 ? p.height : p.width;
-            DeckArt.wedge(batch, r, sx(p.x + pw / 2f), sy(p.y + ph / 2f), scale, p.width, p.height, p.rotation);
+            DeckArt.wedge(batch, r, sx(p.x + pw / 2f), sy(p.y + ph / 2f), scale, p.width, p.height, p.rotation,
+                    ArtNames.wedgeMirrored(r.name, p.width, p.height));
         }
         for (ChassisModel.Mount mount : m.mounts) {
             MountFootprint f = mount.footprint(cat);
@@ -594,16 +596,23 @@ public class ShipEditor extends ApplicationAdapter {
         }
         // Thin walls: a segment on each edge, a door in place of one, and a joint where they meet
         WeightClass[][] hEdges = new WeightClass[h + 1][w], vEdges = new WeightClass[h][w + 1];
+        String[][] hMaterial = new String[h + 1][w], vMaterial = new String[h][w + 1];
         float t = scale / 4f;
         for (ChassisDef.EdgeWall e : m.edgeWalls) {
             Side side = Side.valueOf(e.side);
             WeightClass weight = WeightClass.valueOf(e.weightClass);
             boolean horizontal = side == Side.TOP || side == Side.BOTTOM;
             int ex = e.x + (side == Side.RIGHT ? 1 : 0), ey = e.y + (side == Side.TOP ? 1 : 0);
-            if (horizontal && ey >= 0 && ey <= h && ex >= 0 && ex < w) hEdges[ey][ex] = weight;
-            if (!horizontal && ey >= 0 && ey < h && ex >= 0 && ex <= w) vEdges[ey][ex] = weight;
-            String name = e.bulkhead ? ArtNames.door(true, true, horizontal) : ArtNames.edgeWall(weight, horizontal);
-            TextureRegion r = art.region(name);
+            if (horizontal && ey >= 0 && ey <= h && ex >= 0 && ex < w) {
+                hEdges[ey][ex] = weight;
+                hMaterial[ey][ex] = e.material;
+            }
+            if (!horizontal && ey >= 0 && ey < h && ex >= 0 && ex <= w) {
+                vEdges[ey][ex] = weight;
+                vMaterial[ey][ex] = e.material;
+            }
+            TextureRegion r = e.bulkhead ? art.region(ArtNames.door(true, true, horizontal))
+                    : art.first(ArtNames.edgeWall(e.material, weight, horizontal));
             if (r == null) continue;
             if (horizontal) batch.draw(r, sx(ex), sy(ey) - t / 2f, scale, t);
             else batch.draw(r, sx(ex) - t / 2f, sy(ey), t, scale);
@@ -615,9 +624,19 @@ public class ShipEditor extends ApplicationAdapter {
                 int mask = (n != null ? ArtNames.N : 0) | (e != null ? ArtNames.E : 0) | (so != null ? ArtNames.S : 0)
                         | (we != null ? ArtNames.W : 0);
                 if (mask == 0) continue;
-                WeightClass weight = WeightClass.LIGHT;
-                for (WeightClass c : new WeightClass[]{n, e, so, we}) if (c != null && c.ordinal() > weight.ordinal()) weight = c;
-                TextureRegion r = art.region(ArtNames.edgeJoint(weight, mask));
+                // The heaviest wall meeting here sets the joint's weight and material
+                WeightClass weight = null;
+                String material = null;
+                WeightClass[] around = {n, e, so, we};
+                String[] materials = {y < h ? vMaterial[y][x] : null, x < w ? hMaterial[y][x] : null,
+                        y > 0 ? vMaterial[y - 1][x] : null, x > 0 ? hMaterial[y][x - 1] : null};
+                for (int i = 0; i < 4; i++) {
+                    if (around[i] != null && (weight == null || around[i].ordinal() > weight.ordinal())) {
+                        weight = around[i];
+                        material = materials[i];
+                    }
+                }
+                TextureRegion r = art.first(ArtNames.edgeJoint(material, weight, mask));
                 if (r != null) batch.draw(r, sx(x) - t / 2f, sy(y) - t / 2f, t, t);
             }
         }
@@ -676,11 +695,25 @@ public class ShipEditor extends ApplicationAdapter {
         }
     }
 
-    /** A wall type's art: its own when the pack has it (hull, hull_heavy...), else its base's. */
-    private String wallArtId(ShipPartCatalog.TileType t) {
-        if (art.region(ArtNames.wall(t.id, 0)) != null) return t.id;
-        if (t.base == ShipPartCatalog.TileBase.INTERNAL_WALL) return "internal_wall";
-        return "hull_" + ArtNames.weight(t.weightClass);
+    /**
+     * A wall type's art joined on the sides in {@code mask}, best first: the family its {@code art}
+     * key names, art named after its id (hull, hull_heavy...), its material's, then hull steel's.
+     */
+    private AtlasRegion wallArt(ShipPartCatalog.TileType t, int mask) {
+        String sides = "_" + ArtNames.sides(mask);
+        String weight = ArtNames.weight(t.weightClass);
+        java.util.List<String> names = new java.util.ArrayList<>(5);
+        if (t.art != null) names.add(t.art + sides);
+        names.add(ArtNames.wall(t.id, mask));
+        if (t.base == ShipPartCatalog.TileBase.INTERNAL_WALL) names.add(ArtNames.wall("internal_wall", mask));
+        names.add(ArtNames.wall(ArtNames.materialPrefix(t.material) + "_" + weight, mask));
+        names.add(ArtNames.wall("hull_" + weight, mask));
+        return art.first(names.toArray(new String[0]));
+    }
+
+    /** A floor type's art: the region its {@code art} key names, else {@code fallback}. */
+    private AtlasRegion tileArt(ShipPartCatalog.TileType t, String fallback) {
+        return t.art == null ? art.region(fallback) : art.first(t.art, fallback);
     }
 
     private static boolean sameTile(ChassisModel m, int x, int y, char ch) {
