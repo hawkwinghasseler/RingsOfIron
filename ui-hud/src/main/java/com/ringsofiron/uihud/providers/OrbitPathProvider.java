@@ -19,6 +19,14 @@ public interface OrbitPathProvider {
         public final FloatArray orbit = new FloatArray();
     }
 
+    /** A craft drawn on the map: a station, or the navigation target. */
+    final class MapMarker {
+        public String name = "";
+        public double x, y;
+        /** The navigation target: drawn larger and labelled. */
+        public boolean target;
+    }
+
     /**
      * Plain data for one frame's map. Points are x,y pairs in meters from the parent body's center,
      * sampled evenly in anomaly so the curve stays smooth near periapsis.
@@ -40,12 +48,33 @@ public interface OrbitPathProvider {
         /** Other bodies, positioned relative to the parent body. */
         public final Array<MapBody> bodies = new Array<>();
         private final Array<MapBody> bodyPool = new Array<>();
+        /** Stations around the parent body, and the navigation target wherever it is. */
+        public final Array<MapMarker> markers = new Array<>();
+        private final Array<MapMarker> markerPool = new Array<>();
+        /** The navigation target's orbit, when it shares the ship's parent body; else empty. */
+        public final FloatArray targetOrbit = new FloatArray();
+        /**
+         * Closest approach to the target along the planned path: the ship's point then the
+         * target's point, x,y,x,y; empty with no target.
+         */
+        public final FloatArray approach = new FloatArray();
+        /** A transfer proposed to the target but not yet accepted: its path and its burns. */
+        public final FloatArray proposed = new FloatArray();
+        public final FloatArray proposedNodes = new FloatArray();
 
         public MapBody addBody() {
             MapBody b = bodyPool.size > 0 ? bodyPool.pop() : new MapBody();
             b.orbit.clear();
             bodies.add(b);
             return b;
+        }
+
+        public MapMarker addMarker() {
+            MapMarker m = markerPool.size > 0 ? markerPool.pop() : new MapMarker();
+            m.name = "";
+            m.target = false;
+            markers.add(m);
+            return m;
         }
 
         public void clear() {
@@ -59,6 +88,12 @@ public interface OrbitPathProvider {
             caption.setLength(0);
             bodyPool.addAll(bodies);
             bodies.clear();
+            markerPool.addAll(markers);
+            markers.clear();
+            targetOrbit.clear();
+            approach.clear();
+            proposed.clear();
+            proposedNodes.clear();
         }
     }
 }

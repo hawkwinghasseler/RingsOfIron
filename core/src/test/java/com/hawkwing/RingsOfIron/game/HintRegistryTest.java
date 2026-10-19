@@ -68,6 +68,7 @@ class HintRegistryTest {
     @Test
     void everyActionHasAHint() {
         HintRegistry r = HintRegistry.withDefaults();
+        Navigation.registerHints(r, () -> true);
         EnumSet<Action> named = EnumSet.noneOf(Action.class);
         for (List<HintRegistry.Hint> l : r.byContext().values()) {
             for (HintRegistry.Hint h : l) java.util.Collections.addAll(named, h.actions);

@@ -163,6 +163,8 @@ public class GameWorld implements Disposable {
     public final LoopWiring loop;
     /** The player's planned burns. */
     public final BurnPlanner burns;
+    /** The navigation target, plan to target, the helm's autopilot and the pirates known on the rails. */
+    public final Navigation nav;
     /** Docking ports, collars and latches of every ship and station in the bubble. */
     public final DockingSystem docking;
     /** Craft flying themselves in to dock at stations, and away again. */
@@ -447,6 +449,7 @@ public class GameWorld implements Disposable {
         tension = new FactionTension(this);
         engine.addSystem(tension);
         engine.getSerializationService().addParticipant(tension);
+        nav = Navigation.install(this);
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);
         // Things that happen on their own, a day at a time, with jobs on the boards

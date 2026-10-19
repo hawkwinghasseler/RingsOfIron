@@ -43,6 +43,10 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | G / H / U | Arm docking, pick the next port, undock |
 | , / . | Time warp down and up |
 | N, B, arrows, [ / ] | Plan a burn: add a node, select the next, change its Δv, move it in time |
+| Q | Cycle the navigation target (or click a contact on the traffic map) |
+| I, Enter / Backspace | Plan a transfer to the target; accept or discard the plan |
+| / | Warp to the next burn, stopping a minute before it |
+| 1 / 2 / 3 / 4 / 0 | Helm orders while you are away from the helm: fly the planned burns, match the target's velocity, hold position, approach the target (again to change the distance), cancel |
 | F5 / F9 | Quick save and quick load |
 | Esc | Pause menu: resume, save to a named slot, load, settings, quit to the main menu |
 

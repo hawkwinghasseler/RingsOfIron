@@ -14,19 +14,19 @@ class KeyBindingsTest {
         KeyBindings b = new KeyBindings();
         assertTrue(b.isDefault());
         assertEquals(Input.Keys.W, b.keyOf(Action.THRUST));
-        assertEquals(Input.Keys.Q, b.physical(Input.Keys.Q));
+        assertEquals(Input.Keys.F2, b.physical(Input.Keys.F2));
         assertEquals(Action.FIRE, b.actionOn(Input.Keys.SPACE));
-        assertNull(b.actionOn(Input.Keys.Q));
+        assertNull(b.actionOn(Input.Keys.F2));
     }
 
     @Test
     void bindingToAFreeKeyMovesTheGamesKeyThere() {
         KeyBindings b = new KeyBindings();
-        assertNull(b.bind(Action.THRUST, Input.Keys.Q));
-        assertEquals(Input.Keys.Q, b.keyOf(Action.THRUST));
-        // Pressing Q is the game's W; the old W key now plays the game's Q, which nothing reads
-        assertEquals(Input.Keys.W, b.logical(Input.Keys.Q));
-        assertEquals(Input.Keys.Q, b.logical(Input.Keys.W));
+        assertNull(b.bind(Action.THRUST, Input.Keys.F2));
+        assertEquals(Input.Keys.F2, b.keyOf(Action.THRUST));
+        // Pressing F2 is the game's W; the old W key now plays the game's F2, which nothing reads
+        assertEquals(Input.Keys.W, b.logical(Input.Keys.F2));
+        assertEquals(Input.Keys.F2, b.logical(Input.Keys.W));
         assertNull(b.actionOn(Input.Keys.W));
     }
 

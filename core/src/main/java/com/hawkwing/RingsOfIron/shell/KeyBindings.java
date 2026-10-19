@@ -53,6 +53,16 @@ public final class KeyBindings {
         ABANDON("Abandon ship (press twice)", Input.Keys.P),
         LOG("Notice log", Input.Keys.L),
         HELP("Controls", Input.Keys.F1),
+        NAV_TARGET("Next navigation target", Input.Keys.Q),
+        PLAN_TO_TARGET("Plan transfer to target", Input.Keys.I),
+        ACCEPT_PLAN("Accept transfer plan", Input.Keys.ENTER),
+        DISCARD_PLAN("Discard transfer plan", Input.Keys.BACKSPACE),
+        WARP_TO_BURN("Warp to next burn", Input.Keys.SLASH),
+        HELM_FLY_BURNS("Helm: fly planned burns", Input.Keys.NUM_1),
+        HELM_MATCH_VELOCITY("Helm: match target velocity", Input.Keys.NUM_2),
+        HELM_HOLD("Helm: hold position", Input.Keys.NUM_3),
+        HELM_APPROACH("Helm: approach target", Input.Keys.NUM_4),
+        HELM_CANCEL("Helm: cancel order", Input.Keys.NUM_0),
         QUICK_SAVE("Quick save", Input.Keys.F5),
         QUICK_LOAD("Quick load", Input.Keys.F9);
 
