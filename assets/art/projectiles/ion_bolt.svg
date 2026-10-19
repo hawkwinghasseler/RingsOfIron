@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="56" height="28" viewBox="-42 -14 56 28">
+  <title>ion_bolt: ball of ion light with a short tail, pivot at origin, moving toward +x</title>
+  <defs><radialGradient id="ion_glow"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#7aa8ff" stop-opacity="0.9"/><stop offset="1" stop-color="#7aa8ff" stop-opacity="0"/></radialGradient><radialGradient id="ion_halo"><stop offset="0" stop-color="#3a6aff" stop-opacity="0.55"/><stop offset="1" stop-color="#3a6aff" stop-opacity="0"/></radialGradient></defs>
+  <g id="base">
+  </g>
+  <g id="emissive">
+    <path d="M-40,0 L-4,-4 L-4,4 Z" fill="#7aa8ff" opacity="0.45"/>
+    <circle cx="0" cy="0" r="12" fill="url(#ion_halo)"/>
+    <circle cx="0" cy="0" r="6" fill="url(#ion_glow)"/>
+    <line x1="-3.36" y1="2.17" x2="-8.08" y2="5.23" stroke="#e0ecff" stroke-width="1" stroke-linecap="round"/>
+    <line x1="2.59" y1="-3.05" x2="5.52" y2="-6.5" stroke="#e0ecff" stroke-width="1" stroke-linecap="round"/>
+    <line x1="0.62" y1="3.95" x2="1.26" y2="7.99" stroke="#e0ecff" stroke-width="1" stroke-linecap="round"/>
+    <line x1="2.97" y1="2.68" x2="5.97" y2="5.37" stroke="#e0ecff" stroke-width="1" stroke-linecap="round"/>
+    <line x1="2.21" y1="3.33" x2="5.28" y2="7.95" stroke="#e0ecff" stroke-width="1" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="2.5" fill="#ffffff"/>
+  </g>
+</svg>

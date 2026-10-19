@@ -715,6 +715,7 @@ public class GameWorld implements Disposable {
         combatDefs.projectiles.putAll(loaded.projectiles);
         combatDefs.missiles.putAll(loaded.missiles);
         combatDefs.warheads.putAll(loaded.warheads);
+        combatDefs.loadouts.putAll(loaded.loadouts);
         combatDefs.materials.putAll(loaded.materials);
     }
 }

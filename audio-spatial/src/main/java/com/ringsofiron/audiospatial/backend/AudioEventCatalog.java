@@ -34,6 +34,14 @@ public class AudioEventCatalog {
     // evt_railgun_fire and evt_hull_breach)
     public static final String RAILGUN = "event:/weapons/railgun";
     public static final String HULL_BREACH = "event:/interior/hull_breach";
+    // Round 3's weapons (keys evt_flak_fire, evt_railgun_heavy_fire, evt_ion_fire, evt_ion_hit, evt_shield_hit)
+    public static final String FLAK = "event:/weapons/flak";
+    public static final String RAILGUN_HEAVY = "event:/weapons/railgun_heavy";
+    public static final String ION = "event:/weapons/ion";
+    /** An ion bolt landing on a hull: a crackle, no clang. */
+    public static final String ION_HIT = "event:/impacts/ion";
+    /** A shield taking part of a hit. */
+    public static final String SHIELD_HIT = "event:/impacts/shield";
 
     private final ObjectMap<String, SoundEventDef> defs = new ObjectMap<>();
     private SoundEventDef fallback = SoundEventDef.oneShot("", 0.5f, 5f, 200f, 1f);
@@ -56,6 +64,11 @@ public class AudioEventCatalog {
         c.register(SoundEventDef.oneShot(EXPLOSION, 2.5f, 40f, 3000f, 1f));
         c.register(SoundEventDef.oneShot(RAILGUN, 0.45f, 10f, 800f, 0.8f));
         c.register(SoundEventDef.loop(HULL_BREACH, 2f, 40f, 0.8f));
+        c.register(SoundEventDef.oneShot(FLAK, 0.3f, 10f, 700f, 0.7f));
+        c.register(SoundEventDef.oneShot(RAILGUN_HEAVY, 0.8f, 15f, 1200f, 1f));
+        c.register(SoundEventDef.oneShot(ION, 0.5f, 10f, 600f, 0.65f));
+        c.register(SoundEventDef.oneShot(ION_HIT, 0.6f, 10f, 800f, 0.7f));
+        c.register(SoundEventDef.oneShot(SHIELD_HIT, 0.5f, 10f, 800f, 0.6f));
         c.register(SoundEventDef.oneShot(FOOTSTEP, 0.12f, 1f, 15f, 0.35f));
         c.register(SoundEventDef.oneShot(VOICE, 0.6f, 1.5f, 25f, 0.6f));
         // Interface sounds play at the listener, so their distances never cut in

@@ -159,11 +159,13 @@ origin_y = -4.0
 # with a propellant tank beside each, and five turret mounts: a Medium one in the nose for the
 # railgun (8, 0), launchers at (1.5, 2.5) and (1.5, -2.5) and point defense at (5.5, 2.5) and
 # (5.5, -2.5). Oxygen and nitrogen between the engines; pipes up x 2 and x 5 and across y 3 join
-# both engines, every tank and life support. A Small passive docking port on top.
+# both engines, every tank and life support. A Small passive docking port on top. A Small shield
+# emitter (S) beside the reactor at (11, 5) takes half of every hit while powered, paid for from the
+# reactor's store (combat-sys's Shields).
 rows = [
   "#######DDD##########",
   "#GGG.P.....T...T...#",
-  "#GGG.P..RRR........#",
+  "#GGG.P..RRRS.......#",
   "#.....L.RRR.C.HH.TT#",
   "#.....L.RRR.C.WW.TT#",
   "#GGG.P.............#",

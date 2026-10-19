@@ -15,7 +15,9 @@ import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.combatsys.CombatPhysics;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.combatsys.damage.CrewDamageBridge;
+import com.ringsofiron.combatsys.damage.IonStun;
 import com.ringsofiron.combatsys.damage.PenetrationResolver;
+import com.ringsofiron.combatsys.damage.Shields;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.defs.DamageType;
 import com.ringsofiron.combatsys.defs.ProjectileDef;
@@ -36,7 +38,9 @@ import com.ringsofiron.physicsexterior.events.FastPassImpactEvent;
  * Drains each tick's impacts and detonations in a fixed order and resolves them
  * (combat-sys/Design.md section 5): hull hits into the interior grid through
  * {@link PenetrationResolver}, ricochets and over-penetrating rounds back into space,
- * warheads, and momentum transfer to the struck body.
+ * warheads, and momentum transfer to the struck body. A ship's shield emitters take their share
+ * of each hit first ({@link Shields}); an ion bolt breaks nothing and stuns the systems near where
+ * it lands instead ({@link IonStun}).
  *
  * Runs from {@link PhysicsManager.StepListener#beforeStep}. Add it to the engine after
  * {@link BallisticsSystem} so it resolves hits in the same tick they were found.
@@ -205,6 +209,8 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         if (body == null || grid == null) return null;
         CombatPhysics.toBodyLocal(body, worldX, worldY, localPoint);
         CombatPhysics.vectorToBodyLocal(body, dirX, dirY, localRel);
+        float shielded = Shields.absorb(ship, energy);
+        energy -= shielded;
         report.clear();
         report.ship = ship;
         resolver.burn(grid, ship, localPoint, localRel, energy, rngFor(ship), report, burnResult);
@@ -219,6 +225,8 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
             hullHit.severity = MathUtils.clamp(burnResult.absorbed / SEVERITY_SCALE, 0f, 1f);
             hullHit.ram = false;
             hullHit.beam = true;
+            hullHit.ion = false;
+            hullHit.shielded = shielded;
             hullHit.tick = physics.getTick();
             events.hullHits.dispatch(hullHit);
             hullHit.beam = false;
@@ -275,8 +283,14 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         CombatPhysics.vectorToBodyLocal(body, hit.relVelocity.x, hit.relVelocity.y, localRel);
         float budget = hit.penetration >= 0f ? hit.penetration
                 : 0.5f * hit.mass * speed * speed * def.penetrationFactor;
+        float shielded = hit.ram ? 0f : Shields.absorb(ship, budget);
 
         RandomXS128 rng = rngFor(ship);
+        if (def.damageType == DamageType.ION) {
+            ionHit(hit, grid, budget, shielded, rng);
+            return;
+        }
+        budget -= shielded;
         report.clear();
         report.ship = ship;
         resolver.resolveHit(grid, ship, localPoint, localNormal, localRel, budget, def.damageType, def.fuse,
@@ -336,9 +350,35 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         hullHit.energyAbsorbed = absorbed;
         hullHit.severity = MathUtils.clamp(absorbed / SEVERITY_SCALE, 0f, 1f);
         hullHit.ram = hit.ram;
+        hullHit.ion = false;
+        hullHit.shielded = shielded;
         hullHit.tick = hit.tick;
         if (result.outcome != PenetrationResolver.Result.Outcome.MISSED) events.hullHits.dispatch(hullHit);
         if (!report.isEmpty()) events.damage.dispatch(report);
+    }
+
+    /**
+     * An ion bolt on the hull: it breaks nothing and stops there. Unless the shields soaked it (a
+     * chance equal to the share of the bolt they took), the systems near where it landed are stunned.
+     */
+    private void ionHit(ImpactEvent hit, ShipGridComponent grid, float energy, float shielded, RandomXS128 rng) {
+        float tx = (localPoint.x - grid.gridOriginLocal.x) / grid.tileSize;
+        float ty = (localPoint.y - grid.gridOriginLocal.y) / grid.tileSize;
+        boolean soaked = energy > 0f && rng.nextFloat() < shielded / energy;
+        if (!soaked) IonStun.stun(hit.target, tx, ty, hit.def.stun, rng);
+        hullHit.ship = hit.target;
+        hullHit.tileX = Math.max(0, Math.min(grid.width - 1, (int) Math.floor(tx)));
+        hullHit.tileY = Math.max(0, Math.min(grid.height - 1, (int) Math.floor(ty)));
+        hullHit.worldPoint.set(hit.worldPoint);
+        hullHit.outcome = HullHitEvent.Outcome.STOPPED;
+        hullHit.energyAbsorbed = 0f;
+        hullHit.severity = 0f;
+        hullHit.ram = false;
+        hullHit.beam = false;
+        hullHit.ion = true;
+        hullHit.shielded = shielded;
+        hullHit.tick = hit.tick;
+        events.hullHits.dispatch(hullHit);
     }
 
     /** Puts a ricocheting or exiting round back in flight with velocity surface + vOut. */

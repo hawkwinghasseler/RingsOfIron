@@ -348,11 +348,11 @@ public class StationYard extends EntitySystem {
         return def.price * (used ? USED_PRICE : 1);
     }
 
-    /** Weapons the yard sells, cheapest first. */
+    /** Weapons the yard sells, cheapest first; never a rare one. */
     public List<WeaponDef> offers() {
         List<WeaponDef> out = new ArrayList<>();
         for (WeaponDef d : weapons.weapons.values()) {
-            if (d.price > 0) out.add(d);
+            if (d.price > 0 && !d.rare) out.add(d);
         }
         out.sort((a, b) -> Double.compare(a.price, b.price));
         return out;
@@ -378,6 +378,8 @@ public class StationYard extends EntitySystem {
         if (mount.subsystem == null || mount.subsystem.getComponent(SubsystemComponent.class) == null) {
             return "That hardpoint has no mount aboard to fit it to";
         }
+        String small = tooSmall(mount, def);
+        if (small != null) return small;
         YardOrdersComponent orders = orders(ship, station);
         if (orders == null) return "The yard is working for another station's ship";
         YardOrdersComponent.Refit old = orders.refit(hardpoint);
@@ -415,11 +417,13 @@ public class StationYard extends EntitySystem {
         WeaponsComponent mounts = ship.getComponent(WeaponsComponent.class);
         WeaponDef def = weapons.weapons.get(weaponId);
         if (mounts == null || hardpoint < 0 || hardpoint >= mounts.mounts.size) return "No such hardpoint";
-        if (def == null || def.price <= 0) return "The yard doesn't sell that";
+        if (def == null || def.price <= 0 || def.rare) return "The yard doesn't sell that";
         WeaponMountComponent mount = mounts.mounts.get(hardpoint);
         if (mount.subsystem == null || mount.subsystem.getComponent(SubsystemComponent.class) == null) {
             return "That hardpoint has no mount aboard to fit it to";
         }
+        String small = tooSmall(mount, def);
+        if (small != null) return small;
         if (mount.def == def && !used) return "That hardpoint already has one";
         double price = price(def, used);
         TraderComponent trader = ship.getComponent(TraderComponent.class);
@@ -435,6 +439,16 @@ public class StationYard extends EntitySystem {
         orders.refits.add(new YardOrdersComponent.Refit(hardpoint, weaponId, used));
         return String.format(Locale.ROOT, "Ordered a %s %s for %s: %,.0f cr when it comes aboard",
                 used ? "used" : "new", def.displayName(), hardpointName(mount), price);
+    }
+
+    /** Why {@code def} won't go on {@code mount}'s turret mount, too small for it; null when it fits. */
+    public static String tooSmall(WeaponMountComponent mount, WeaponDef def) {
+        if (def.minMountSize == null) return null;
+        SubsystemComponent system = mount.subsystem == null ? null : mount.subsystem.getComponent(SubsystemComponent.class);
+        String size = system == null ? null : system.footprint.size.name();
+        return def.fitsMount(size) ? null
+                : String.format(Locale.ROOT, "A %s needs a mount of size %s or bigger; %s is %s", def.displayName(),
+                        def.minMountSize, hardpointName(mount), size);
     }
 
     /** "the nose", "port", "starboard" or "aft", from where the hardpoint faces. */

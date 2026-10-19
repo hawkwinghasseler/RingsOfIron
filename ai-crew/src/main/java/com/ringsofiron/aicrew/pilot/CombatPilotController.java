@@ -14,6 +14,8 @@ import com.ringsofiron.aicrew.pilot.PilotController.ShipState;
  *       {@code maxClosingSpeed}, plus a sideways drift around it.</li>
  *   <li>Missile: if one homing on the ship is closing inside {@code evadeRange}, all thrust
  *       goes across its line of approach, the way that most stretches its turn.</li>
+ *   <li>Flank ({@link NpcCombatComponent.Stance#FLANK}): toward the point {@code preferredRange}
+ *       behind the target, off its stern where the engines are, and hold there, nose still on it.</li>
  * </ul>
  */
 public class CombatPilotController {
@@ -25,6 +27,16 @@ public class CombatPilotController {
      * @param missilePos the nearest inbound missile's position, or null if none
      */
     public void update(NpcCombatComponent combat, ShipState s, Vector2 targetPos, Vector2 targetVel,
+                       Vector2 missilePos, Vector2 missileVel, float dt, Controls out) {
+        update(combat, s, targetPos, targetVel, Float.NaN, missilePos, missileVel, dt, out);
+    }
+
+    /**
+     * @param targetAngle the target's heading, radians, for a flank; NaN when unknown (a flanking
+     *                    ship then holds its range like any other)
+     * @param missilePos  the nearest inbound missile's position, or null if none
+     */
+    public void update(NpcCombatComponent combat, ShipState s, Vector2 targetPos, Vector2 targetVel, float targetAngle,
                        Vector2 missilePos, Vector2 missileVel, float dt, Controls out) {
         out.forward = 0f;
         out.strafe = 0f;
@@ -42,6 +54,10 @@ public class CombatPilotController {
         float facing = los.angleRad();
 
         if (missilePos != null && evade(combat, s, missilePos, missileVel, facing, dt, out)) return;
+        if (combat.stance == NpcCombatComponent.Stance.FLANK && !Float.isNaN(targetAngle)) {
+            flank(combat, s, targetPos, targetVel, targetAngle, facing, dt, out);
+            return;
+        }
 
         // Hold the range band: closing speed in proportion to the range error, and a drift
         // around the target that grows as the range settles.
@@ -51,6 +67,22 @@ public class CombatPilotController {
         combat.mode = settled > 0.5f ? Mode.HOLDING : Mode.CLOSING;
         side.set(-los.y, los.x).scl(combat.side * combat.circleSpeed * settled);
         desired.set(targetVel).mulAdd(los, closing).add(side);
+        mixer.steer(desired.sub(s.velocity), facing, s, dt, out);
+    }
+
+    /**
+     * Flies for the point {@code preferredRange} astern of the target, closing on it in proportion
+     * to the distance as the range band does, with the nose on the target.
+     */
+    private void flank(NpcCombatComponent combat, ShipState s, Vector2 targetPos, Vector2 targetVel, float targetAngle,
+                       float facing, float dt, Controls out) {
+        Vector2 stern = tmp.set((float) Math.cos(targetAngle), (float) Math.sin(targetAngle))
+                .scl(-combat.preferredRange).add(targetPos).sub(s.position);
+        float off = stern.len();
+        float speed = Math.min(combat.maxClosingSpeed, off * combat.rangeGain);
+        combat.mode = off < combat.preferredRange * 0.25f ? Mode.HOLDING : Mode.CLOSING;
+        if (off > 1e-3f) stern.scl(speed / off);
+        desired.set(targetVel).add(stern);
         mixer.steer(desired.sub(s.velocity), facing, s, dt, out);
     }
 
