@@ -442,4 +442,29 @@ class DockingSystemTest {
         assertEquals(0f, PhysicsManager.getPosition(body(a), new Vector2()).len(), 50f, "the bubble is on the player");
         assertNull(a.getComponent(DockedRideComponent.class));
     }
+
+    @Test
+    void latchingAPortAgainLetsGoOfItsFirstLatch() {
+        // Round 6, seed 7: a ship carried home and latched in place, then latched again by its first
+        // port, kept the first weld after undocking and was dragged back by it from its Moon burn
+        Entity a = ship(0f, 0f, 0f, false);
+        Entity b = ship(13f, 0f, MathUtils.PI, false);
+        Entity c = ship(0f, 30f, 0f, false);
+        docking.dockInPlace(a, 0, b, 0);
+        game.stepTicks(60);
+        assertTrue(docking.isRigid(a));
+        docking.dockInPlace(a, 0, b, 0);
+        game.stepTicks(60);
+        assertEquals(1, body(a).getJointList().size, "the same latch again changes nothing");
+
+        docking.dockInPlace(a, 0, c, 0);
+        game.stepTicks(60);
+        assertSame(c, docking.dockedTo(a), "latched to the new partner");
+        assertNull(docking.dockedTo(b), "and the first let go");
+        assertEquals(0, body(b).getJointList().size, "no weld left on the first");
+        assertTrue(docking.undock(a));
+        game.stepTicks(2);
+        assertNull(docking.dockedTo(a));
+        assertEquals(0, body(a).getJointList().size, "undocked, nothing holds it");
+    }
 }

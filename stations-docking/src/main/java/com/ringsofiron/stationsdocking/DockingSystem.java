@@ -338,6 +338,12 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     public void dockInPlace(Entity a, int portA, Entity b, int portB) {
         DockingPort pa = portsMapper.get(a).get(portA);
         DockingPort pb = portsMapper.get(b).get(portB);
+        Link held = links.get(pa);
+        if (held != null && held == links.get(pb)) return;
+        // A port already latched elsewhere lets go first: a second latch on it would leave the first
+        // link's weld holding the craft, unseen by undock (seed 7's Moon trip, round 6)
+        if (held != null) dropLink(held, true);
+        if (links.get(pb) != null) dropLink(links.get(pb), true);
         latchRecords(a, portA, pa, b, portB, pb, DockingPort.State.DOCKED, true);
         pa.consented = true;
         pb.consented = true;
