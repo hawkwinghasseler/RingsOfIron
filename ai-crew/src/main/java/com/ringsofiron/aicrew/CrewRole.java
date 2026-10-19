@@ -38,6 +38,8 @@ public enum CrewRole {
      * above 1 is a specialty. Multiplies the task's priority when choosing.
      */
     public float affinity(CrewTask.Kind kind) {
+        // Everyone abandons ship
+        if (kind == CrewTask.Kind.EVACUATE) return 1f;
         switch (this) {
             case ENGINEER:
                 switch (kind) {

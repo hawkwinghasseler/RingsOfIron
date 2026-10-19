@@ -12,6 +12,6 @@ import com.badlogic.ashley.core.Component;
  * from its {@link GridPositionComponent}; see {@link CrewQueries#playerAvatar}.
  */
 public class PlayerAvatarComponent implements Component {
-    /** Desired movement in [-1, 1] along grid x and y. */
-    public float moveX, moveY;
+    /** Desired movement in [-1, 1] along grid x and y. Input of the moment, so not saved. */
+    public transient float moveX, moveY;
 }

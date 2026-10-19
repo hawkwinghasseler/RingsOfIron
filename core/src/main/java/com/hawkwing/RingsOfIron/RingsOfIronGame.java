@@ -29,14 +29,18 @@ import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.art.ExteriorArt;
+import com.hawkwing.RingsOfIron.game.AbandonShip;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
+import com.hawkwing.RingsOfIron.game.Rescue;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.FirstPlay;
+import com.hawkwing.RingsOfIron.game.ShipDisablement;
 import com.hawkwing.RingsOfIron.game.ShipRefit;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.hawkwing.RingsOfIron.game.DoorForcing;
 import com.hawkwing.RingsOfIron.game.FactionStanding;
+import com.hawkwing.RingsOfIron.game.DisabledComponent;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
@@ -85,7 +89,9 @@ import java.nio.file.Paths;
  * shoots down incoming missiles by itself. The raider fights back once you shoot at it. V switches
  * to the deck view, where WASD walks your character, E uses the console you stand at, and F or B
  * forces the shut door across a dock (pry or hack, or cut), and L turns the deck lighting off and
- * back on. F5
+ * back on. P twice abandons ship: the crew make for the escape pods (your character walks there
+ * by itself unless you steer it), and P again launches them; you wake days later at a station in a
+ * requisitioned ship. F5
  * quick-saves, F9 loads the quick save. Esc quits.
  *
  * <p>Docking: G arms the selected docking port and asks the nearest station for clearance (a
@@ -226,6 +232,17 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 viewports.setViewMeters(exteriorViewMeters);
             }
         });
+        world.rescue.rescues.add((signal, rescue) -> {
+            // The new ship's own weapons
+            gun = new PlayerGunnery(world, game.player);
+            gun.setTarget(game.nextContact(null));
+            hud.setTargeting(new CombatTargetingProvider(gun));
+            show(rescueNotice(rescue));
+        });
+        world.disablement.changes.add((signal, change) -> {
+            String news = disabledNotice(change);
+            if (news != null) show(news);
+        });
         world.timeWarp.changes.add((signal, change) -> {
             if (change.blockedReason != null) show("Time warp refused: " + change.blockedReason);
             else if (change.reason != null) show("Dropped out of warp: " + change.reason);
@@ -256,6 +273,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (world.getCrash() == null) gun.update(delta);
         world.update(delta);
         noticeTime -= delta;
+        abandonAsked -= delta;
         if (firstPlay != null) {
             String next = firstPlay.update();
             if (next != null) show(next.substring(next.indexOf(':') + 1).trim());
@@ -289,6 +307,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.PERIOD)) warp(1);
         if (Gdx.input.isKeyJustPressed(Input.Keys.COMMA)) warp(-1);
         if (Gdx.input.isKeyJustPressed(Input.Keys.F5)) quickSave();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.P)) abandonShip();
 
         FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
         PlayerAvatarComponent walker = game.avatar == null ? null : game.avatar.getComponent(PlayerAvatarComponent.class);
@@ -490,9 +509,58 @@ public class RingsOfIronGame extends ApplicationAdapter {
         resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
     }
 
+    /** Seconds to press P again to confirm abandoning ship. */
+    private static final float ABANDON_CONFIRM = 3f;
+    private float abandonAsked;
+
     private void show(String message) {
         notice = message;
         noticeTime = 4f;
+    }
+
+    /**
+     * P: the first press asks, a second within {@link #ABANDON_CONFIRM} seconds orders the crew to
+     * the escape pods, and once they are going it launches the pods with whoever is aboard.
+     */
+    private void abandonShip() {
+        if (AbandonShip.abandoning(game.player)) {
+            world.abandon.launchNow(game.player);
+            show("Launching the pods");
+            return;
+        }
+        if (abandonAsked <= 0f) {
+            abandonAsked = ABANDON_CONFIRM;
+            show("Abandon ship? P again to send the crew to the escape pods");
+            return;
+        }
+        abandonAsked = 0f;
+        String refused = world.abandon.order(game.player);
+        show(refused == null ? "Abandon ship! Crew to the escape pods" : "Can't abandon ship: " + refused);
+    }
+
+    /** "Rescued: you wake at Highport three days later ..." */
+    private static String rescueNotice(Rescue.Result r) {
+        long days = Math.round(r.skipped / 86_400);
+        String crew = r.survivors.isEmpty() ? "no crew came through" : r.survivors.size() + " crew came through";
+        return "Rescued: you wake at " + r.stationName + (days > 0 ? " " + days + " days later" : "")
+                + " in a requisitioned ship; " + crew + (r.lost > 0 ? ", " + r.lost + " lost" : "");
+    }
+
+    /** What to tell the player about a ship disabled, surrendering, breaking up or recovering; null for nothing. */
+    private String disabledNotice(ShipDisablement.Change change) {
+        boolean mine = change.ship == game.player;
+        DisabledComponent d = change.ship.getComponent(DisabledComponent.class);
+        HudMarkerComponent marker = MARKERS.get(change.ship);
+        String name = mine ? "Your ship" : d != null && d.markerLabel != null ? d.markerLabel
+                : marker != null ? marker.label : null;
+        if (name == null) return null;
+        if (change.now == null) return name + " is back in action";
+        switch (change.now) {
+            case SURRENDERED: return name + " cuts thrust and surrenders";
+            case WRECKED: return name + " breaks up: a wreck";
+            case ABANDONED: return name + " is abandoned";
+            default: return name + " is disabled: " + change.now.label;
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -801,15 +869,23 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Actor shipPanel = hud.getMinimapPanel();
         float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
         font.draw(batch, hud.getViewMode().getMode() == ViewMode.INTERIOR
-                ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   L lights   V outside view   F5 save  F9 load   Esc quit"
-                : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  F5 save  F9 load  Esc quit",
+                ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   L lights   V outside view   P P abandon ship   F5 save  F9 load   Esc quit"
+                : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  P P abandon ship  F5 save  F9 load  Esc quit",
                 hintX, 24f);
         // Rank, sponsor and the weekly budget
         font.setColor(Color.LIGHT_GRAY);
         font.draw(batch, world.budget.describe(), left, top - 60f);
+        DisabledComponent.Reason disabled = ShipDisablement.reason(game.player);
         if (notice != null && noticeTime > 0f) {
             font.setColor(Color.ORANGE);
             font.draw(batch, notice, left, top - 80f);
+        } else if (AbandonShip.abandoning(game.player)) {
+            font.setColor(Color.RED);
+            font.draw(batch, "ABANDON SHIP: crew to the pods (P launches now)", left, top - 80f);
+        } else if (disabled != null) {
+            // Stays up while the ship is disabled; news takes the line for a moment
+            font.setColor(Color.RED);
+            font.draw(batch, "SHIP DISABLED: " + disabled.label + "   P P abandons ship", left, top - 80f);
         }
         font.setColor(Color.SKY);
         String[] dock = docking.readout();

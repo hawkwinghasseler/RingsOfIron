@@ -1343,6 +1343,222 @@
    }
   ]
  },
+ "components/escape_pod_l": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#4dff88",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 17.0,
+    "y": -18.0
+   },
+   {
+    "alpha": 0.9,
+    "color": "#ff7a2a",
+    "h": 7.0,
+    "w": 11.0,
+    "x": 172.0,
+    "y": -430.0
+   }
+  ]
+ },
+ "components/escape_pod_l_damaged": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#4dff88",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 17.0,
+    "y": -18.0
+   },
+   {
+    "alpha": 0.495,
+    "color": "#ff7a2a",
+    "h": 7.0,
+    "w": 11.0,
+    "x": 172.0,
+    "y": -430.0
+   }
+  ]
+ },
+ "components/escape_pod_m": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#4dff88",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 17.0,
+    "y": -18.0
+   },
+   {
+    "alpha": 0.9,
+    "color": "#ff7a2a",
+    "h": 7.0,
+    "w": 11.0,
+    "x": 108.0,
+    "y": -174.0
+   }
+  ]
+ },
+ "components/escape_pod_m_damaged": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#4dff88",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 17.0,
+    "y": -18.0
+   },
+   {
+    "alpha": 0.495,
+    "color": "#ff7a2a",
+    "h": 7.0,
+    "w": 11.0,
+    "x": 108.0,
+    "y": -174.0
+   }
+  ]
+ },
+ "components/escape_pod_s": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#4dff88",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 17.0,
+    "y": -18.0
+   },
+   {
+    "alpha": 0.9,
+    "color": "#ff7a2a",
+    "h": 7.0,
+    "w": 11.0,
+    "x": 44.0,
+    "y": -110.0
+   }
+  ]
+ },
+ "components/escape_pod_s_damaged": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#4dff88",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 17.0,
+    "y": -18.0
+   },
+   {
+    "alpha": 0.495,
+    "color": "#ff7a2a",
+    "h": 7.0,
+    "w": 11.0,
+    "x": 44.0,
+    "y": -110.0
+   }
+  ]
+ },
+ "components/escape_pod_xl": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#4dff88",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 17.0,
+    "y": -18.0
+   },
+   {
+    "alpha": 0.9,
+    "color": "#ff7a2a",
+    "h": 7.0,
+    "w": 11.0,
+    "x": 300.0,
+    "y": -750.0
+   }
+  ]
+ },
+ "components/escape_pod_xl_damaged": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#4dff88",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 17.0,
+    "y": -18.0
+   },
+   {
+    "alpha": 0.495,
+    "color": "#ff7a2a",
+    "h": 7.0,
+    "w": 11.0,
+    "x": 300.0,
+    "y": -750.0
+   }
+  ]
+ },
  "components/helm_l": {
   "canvas": [
    0.0,

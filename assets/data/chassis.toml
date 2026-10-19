@@ -4,7 +4,8 @@
 #   R reactor, S shield, T turret (square mounts); L life support, H helm,
 #   W weapons console, C cargo, A airlock, E engine (an engine's nozzle faces aft
 #   (-x) when it lies along x, and +y when it stands along y), P propellant tank,
-#   O oxygen tank, N nitrogen tank (rectangular slots)
+#   O oxygen tank, N nitrogen tank, B escape pod (rectangular slots; a pod's hatch is
+#   the end that faces +y at rotation 0, so it lies against the hull it launches through)
 #   D docking port, drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium, 7 x 3 Large.
 #     The end tiles are frame, the rest the opening, with the port door on its
 #     outer edge. It faces the side with only space beyond it. Ports are passive
@@ -38,6 +39,8 @@ origin_y = -3.0
 # at x 6, and two small bays up front. 16 tiles, 40 m3 at 2.5 m3 a tile.
 # A Small passive docking port on the port (+y) side opens onto the walkway beside
 # the hold.
+# A Small escape pod (4 seats) stands at x 8 between the life support and the
+# turrets, its hatch out through the starboard (-y) hull; crew walk through its bay.
 rows = [
   "#####DDD########",
   "#EE....HHTCCTRR#",
@@ -51,6 +54,7 @@ mounts = [
   { type = "CARGO", size = "M", x = 3, y = 3, rotation = 1 },
   { component = "oxygen_tank", size = "S", x = 1, y = 2, rotation = 1 },
   { component = "nitrogen_tank", size = "S", x = 1, y = 3, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 8, y = 1, rotation = 2 },
 ]
 pipes = [
   { x = 2, y = 1 }, { x = 2, y = 2 }, { x = 2, y = 3 }, { x = 2, y = 4 },
@@ -61,8 +65,7 @@ pipes = [
 # Carpet through the crew spaces, so a fire here has something to burn
 coverings = [ { covering = "CARPET", x = 7, y = 1, width = 6, height = 4 } ]
 lights = [
-  { x = 8, y = 1, side = "BOTTOM" },
-  { x = 11, y = 1, side = "BOTTOM" },
+  { x = 10, y = 1, side = "BOTTOM" },
 ]
 
 [chassis.freighter]
@@ -76,6 +79,8 @@ origin_y = -6.5
 # Above the lower engine, the oxygen, nitrogen and a propellant tank, and a second
 # propellant tank by the reactor; a pipe up x 3 joins both engines and the tanks,
 # and a branch takes the gases to life support.
+# Two Small escape pods (4 seats each) in the bow corners at x 18, hatches out
+# through the top and bottom hull.
 rows = [
   "####################",
   "#EEECCCCCCCCCCCC...#",
@@ -93,6 +98,8 @@ rows = [
 ]
 mounts = [
   { component = "tank", size = "S", x = 1, y = 7, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 18, y = 10, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 18, y = 1, rotation = 2 },
 ]
 pipes = [
   { x = 3, y = 2 }, { x = 3, y = 3 }, { x = 3, y = 4 }, { x = 3, y = 5 }, { x = 3, y = 6 },

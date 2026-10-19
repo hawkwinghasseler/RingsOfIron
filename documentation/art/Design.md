@@ -96,6 +96,8 @@ Each size of a component is its own design, not the small one repeated: a bigger
 
 The **turret mount** is the turret's base and its operator's station: a bearing ring with a traverse drive and the ammunition or power feed, and the gunner's console and seat (bigger mounts add a loader's station). The ring is centered on the mount, and so is the turret drawn on the exterior: a hardpoint in `ships.toml` sits on the center of the turret mount its weapon is wired to.
 
+**Escape pods** (`escape_pod`, S-XL) are lifeboats in their bays: a capsule with an orange band, crash couches facing the hatch (4, 8, 20 and 48 of them) and a status panel on the pod's own battery. The hatch is at the +y end, so a pod lies with that end against the hull it launches through. The bay around the capsule is walkable deck.
+
 **Tanks** (`tank`, `oxygen_tank`, `nitrogen_tank`, S-XL) are cylinders in cradles with a band in their fluid's color: amber for propellant, blue for oxygen, grey-blue for nitrogen. They are passive.
 
 ## Exterior hulls
@@ -111,6 +113,7 @@ A ship or station hull is built on its chassis grid: every tile of the layout is
 | Weapons console | Sensor mast |
 | Cargo | Cargo hatches, one panel per tile |
 | Airlock | Hatch |
+| Escape pod | Round hull hatch ringed in orange, with its explosive bolts |
 | Docking port | Port frame, and the collar half a tile outside |
 
 Parts of the hull past the grid (the corvette's bow) are drawn under the grid. Each engine system shows as a ribbed heat-shield plate over its slot; a ship with no engine systems carries engine mounts on the aft (-x) edge instead, one for every three rows. The engines themselves are separate art (below). The corvette has two Small engines in its stern and the freighter two Medium ones. Navigation lights mark the corners: red to port (+y), green to starboard.
@@ -156,6 +159,7 @@ Each system has an accent, used for its glow, screens and status lamps, and nowh
 | Weapons console | `#c58cff` |
 | Cargo | `#c8a26a` |
 | Airlock, docking port | `#f2c230` (hazard) |
+| Escape pod | `#ff7a2a` |
 
 These match the `color` a tile type or component carries in data where one is set, so the editor's flat colors and the art agree.
 
@@ -177,7 +181,7 @@ File names are lowercase `snake_case` and start with the id in data, so code can
 | `crew/` | `crew_<who>`, holding a crate as `_carrying` | `crew_ship`, `crew_station_carrying`, `crew_player` |
 | `projectiles/` | the projectile | `railgun_slug`, `autocannon_round`, `missile`, `decoy_flare`, `harpoon` |
 
-Tile ids are the ones in `tiles.toml`: `floor` (`.`), `conduit` (`+`), `hull` (`#`, medium), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`), `armor_light`/`armor_medium`/`armor_heavy` (`4`/`5`/`6`, composite armor), `internal_wall` (`I`); `void` has no art. Each tile type names its art with an `art` key in `tiles.toml` (`art = "walls/composite_armor_heavy"`): a floor's full region, or a wall's family that the join suffix is added to. Without one, the art is found from the tile's id, then its material and weight. Component ids are the ones in `components.toml`: `reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `engine`, `docking_port`, `tank`, `oxygen_tank`, `nitrogen_tank`. A new component made in data (say `fusion_core` with behavior `REACTOR`) gets its own `fusion_core_<size>.svg`; until it has one, code can fall back to the art of its behavior's built-in component.
+Tile ids are the ones in `tiles.toml`: `floor` (`.`), `conduit` (`+`), `hull` (`#`, medium), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`), `armor_light`/`armor_medium`/`armor_heavy` (`4`/`5`/`6`, composite armor), `internal_wall` (`I`); `void` has no art. Each tile type names its art with an `art` key in `tiles.toml` (`art = "walls/composite_armor_heavy"`): a floor's full region, or a wall's family that the join suffix is added to. Without one, the art is found from the tile's id, then its material and weight. Component ids are the ones in `components.toml`: `reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `engine`, `docking_port`, `tank`, `oxygen_tank`, `nitrogen_tank`, `escape_pod`. A new component made in data (say `fusion_core` with behavior `REACTOR`) gets its own `fusion_core_<size>.svg`; until it has one, code can fall back to the art of its behavior's built-in component.
 
 In the game every file is a region of one texture atlas, named by its folder and file name without the extension: `tiles/floor`, `components/reactor_xl`, `hulls/corvette`. `assets.toml` names the atlas once, as `atlas_art`, so a mod can swap the whole pack by overriding that key.
 

@@ -19,7 +19,7 @@ import java.util.Map;
  *
  * {@link #builtIn()} holds the characters the game has always had ({@code #}, {@code 1}-{@code 6},
  * {@code I}, {@code .}, {@code +}, space, and the system letters {@code R S T L H W C A D}, plus
- * {@code E} for the engine and {@code P O N} for propellant, oxygen and nitrogen tanks).
+ * {@code E} for the engine, {@code P O N} for propellant, oxygen and nitrogen tanks, and {@code B} for an escape pod (lifeboat)).
  * {@link #from(DefRegistry)} starts from those and applies the {@code [tile.*]} and
  * {@code [component.*]} definitions, which replace a built-in of the same id or add new ones.
  */
@@ -213,6 +213,7 @@ public class ShipPartCatalog {
         builtInComponent(c, "airlock", "Airlock", 'A', SubsystemComponent.SubsystemType.AIRLOCK, 0x50c0c0);
         builtInComponent(c, "engine", "Engine", 'E', SubsystemComponent.SubsystemType.ENGINE, 0x6aa8e8);
         builtInComponent(c, "docking_port", "Docking port", 'D', SubsystemComponent.SubsystemType.DOCKING_PORT, 0xe0e0e0);
+        builtInComponent(c, "escape_pod", "Escape pod", 'B', SubsystemComponent.SubsystemType.ESCAPE_POD, 0xff7a2a);
         builtInTank(c, "tank", "Propellant tank", 'P', Fluid.PROPELLANT, 0xc08a3a);
         builtInTank(c, "oxygen_tank", "Oxygen tank", 'O', Fluid.OXYGEN, 0x6aa8e0);
         builtInTank(c, "nitrogen_tank", "Nitrogen tank", 'N', Fluid.NITROGEN, 0x8a94a8);
