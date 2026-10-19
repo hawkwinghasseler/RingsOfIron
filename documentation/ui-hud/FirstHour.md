@@ -65,7 +65,7 @@ After the yard, First Play (`FirstPlay`, now nine objectives) asks the player to
 - Autosaves are ordinary save files with a `SaveSummary`.
 - `GameSettings.openingGuide` and the new key bindings are in the settings file, not the save.
 - Not saved: the notice log, the autosave flight clock, the warnings' armed state and the tow confirmation. A load clears the log and the on-screen stack (`NoticeLog.clear`), so the old game's notices don't carry over.
-- A lost game can't be saved: `GameScenario.quickSave` refuses after a crash ("the ship is lost") and once the career is over ("the career is over"), and autosave goes through it.
+- A lost game can't be saved: `GameScenario.quickSave` refuses after a crash ("the ship is lost") and once the career is over ("the career is over"), and autosave goes through it. It also refuses while a tug is still bringing the ship in to dock ("the tug is still bringing you in"), since `Rescue` keeps that docking in memory only. Docking happens on the first frame both ships are in the bubble, so the window is short.
 - With the walkthrough turned off in settings, a load drops a saved walkthrough step (`OpeningGuide.resume(world, boardOpen, wanted)`), so later saves stop carrying it.
 
 ## Tests
