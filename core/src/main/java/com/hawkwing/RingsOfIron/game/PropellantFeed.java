@@ -152,6 +152,20 @@ public class PropellantFeed extends EntitySystem {
     }
 
     /**
+     * The delta-v a ship of {@code mass} kg can still make on the propellant its working engines
+     * draw on, m/s, by the rocket equation. Infinite for a ship with no engine (its thrust is free).
+     */
+    public static double deltaVLeft(Entity ship, double mass) {
+        ShipSubsystemRegistryComponent registry = REGISTRY.get(ship);
+        ThrusterComponent thruster = THRUSTERS.get(ship);
+        if (registry == null || !hasEngine(registry)) return Double.POSITIVE_INFINITY;
+        if (mass <= 0) return 0;
+        double ve = thruster != null ? exhaustVelocity(thruster) : ShipPhysicsAssembler.STANDARD_EXHAUST_VELOCITY;
+        double have = Math.min(available(registry), mass * 0.999);
+        return ve * Math.log(mass / (mass - have));
+    }
+
+    /**
      * Pays for an impulsive burn of {@code deltaV} m/s by a ship of {@code mass} kg out of the tanks
      * its engines draw on, by the rocket equation, and returns the delta-v it could pay for: all of
      * it, less when the tanks run short, 0 with none. A ship with no engine pays nothing.

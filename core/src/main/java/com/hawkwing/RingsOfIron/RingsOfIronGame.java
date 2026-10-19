@@ -121,6 +121,12 @@ import java.nio.file.Paths;
  * <p>Burn planner, shown on the orbit map: N plans a burn, B selects the next one, Up/Down add
  * prograde/retrograde delta-v, Left/Right radial in/out, [ and ] move it along the orbit (Shift for
  * ten times as much), Delete removes it. Burns fire on their own when due.
+ *
+ * <p>Navigation ({@link com.hawkwing.RingsOfIron.game.Navigation}), from either console: O picks the
+ * next navigation target (Shift+O the one before; a click on the traffic map picks one too), I plans
+ * a transfer to it for Enter to accept or Backspace to discard, and / warps to the next burn. Helm
+ * orders, flown by the helmsman while you are away from the helm: 1 fly the planned burns, 2 match
+ * the target's velocity, 3 hold position on it, 4 approach it (4 again changes the distance), 0 cancel.
  */
 public class RingsOfIronGame extends ApplicationAdapter {
     private static final ComponentMapper<TransformComponent> TRANSFORMS = ComponentMapper.getFor(TransformComponent.class);
@@ -152,6 +158,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private ViewportManager viewports;
     private PlayerGunnery gun;
     private PlayerDocking docking;
+    private com.hawkwing.RingsOfIron.game.NavOverlay navOverlay;
     /** Flashes for warheads and missiles shot down: {x, y, age}. */
     private final Array<float[]> explosions = new Array<>();
 
@@ -240,6 +247,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gun.setTarget(game.nextContact(null));
         hud.setTargeting(new CombatTargetingProvider(gun));
         docking = new PlayerDocking(world, () -> game.player, this::show);
+        navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world, docking);
+        // A click on the traffic map makes that station or ship the navigation target
+        hud.getTrafficMap().setPickListener(uuid -> show(world.nav.target.select(uuid)));
         gameHud.yard.setLayoutEditor(this::openRefit);
         world.combatEvents.intercepts.add((signal, hit) -> {
             if (hit.destroyed && hit.missile != null) explosions.add(new float[]{hit.point.x, hit.point.y, 0f});
@@ -405,6 +415,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.F) && gun.dropDecoy()) show("Decoy away");
         if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) gun.setTarget(game.nextContact(gun.getTarget()));
+        navigationKeys();
         if (!helm) return;
         if (Gdx.input.isKeyJustPressed(Input.Keys.G)) show(docking.toggleArm());
         if (Gdx.input.isKeyJustPressed(Input.Keys.H)) show(docking.nextPort());
@@ -456,6 +467,22 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) burns.adjust(0, -dv);
         if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT_BRACKET)) burns.shiftTime(steps);
         if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT_BRACKET)) burns.shiftTime(-steps);
+    }
+
+    /** Navigation target, plan to target, warp to burn and helm orders: from either console. */
+    private void navigationKeys() {
+        com.hawkwing.RingsOfIron.game.Navigation nav = world.nav;
+        boolean shift = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.O)) show(nav.target.cycle(shift ? -1 : 1));
+        if (Gdx.input.isKeyJustPressed(Input.Keys.I)) show(nav.transfer.plan());
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) && nav.transfer.proposal() != null) show(nav.transfer.accept(world.burns));
+        if (Gdx.input.isKeyJustPressed(Input.Keys.BACKSPACE) && nav.transfer.proposal() != null) show(nav.transfer.discard());
+        if (Gdx.input.isKeyJustPressed(Input.Keys.SLASH)) show(nav.warpToNextBurn());
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) show(nav.helm.give(com.hawkwing.RingsOfIron.game.HelmOrderComponent.Mode.FLY_BURNS));
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) show(nav.helm.give(com.hawkwing.RingsOfIron.game.HelmOrderComponent.Mode.MATCH_VELOCITY));
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) show(nav.helm.give(com.hawkwing.RingsOfIron.game.HelmOrderComponent.Mode.HOLD_POSITION));
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_4)) show(nav.helm.give(com.hawkwing.RingsOfIron.game.HelmOrderComponent.Mode.APPROACH));
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_0)) show(nav.helm.give(com.hawkwing.RingsOfIron.game.HelmOrderComponent.Mode.NONE));
     }
 
     private void drawCrash() {
@@ -602,6 +629,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         // Pirates moving to intercept, robbing freighters, breaking off
         for (String notice : world.hostiles.notices) show(notice);
         world.hostiles.notices.clear();
+        // Transfers proposed, helm orders flown or dropped
+        for (String notice : world.nav.notices) show(notice);
+        world.nav.notices.clear();
     }
 
     /** Opens the ship editor on the player's layout, for the docked station's yard to rebuild the decks to. */
@@ -728,6 +758,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         shapes.end();
         bodies.clear();
         drawCombat(Gdx.graphics.getDeltaTime());
+        // The next burn's direction, and the corridor into a docking port
+        navOverlay.draw(shapes, viewports.getViewMeters() / 400f);
         // Navigation lights and the glow of running systems, a few pixels across at least
         lighting.renderGlow(batch, viewports.getWorldCamera(), 2.5f * viewports.getViewMeters() / 400f);
     }
@@ -1028,6 +1060,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
         String[] dock = docking.readout();
         for (int i = 0; i < dock.length; i++) font.draw(batch, dock[i], left, top - 110f - 20f * i);
         float below = top - 110f - 20f * dock.length - 10f;
+        // Navigation: the target and closest approach, the next burn, the helm's order, the fuel
+        font.setColor(Color.VIOLET);
+        for (String line : world.nav.readout()) {
+            font.draw(batch, line, left, below);
+            below -= 20f;
+        }
         // The contracts held: what, how long left and how far
         font.setColor(Color.GOLD);
         for (com.hawkwing.RingsOfIron.game.Contract c : world.contracts.active()) {

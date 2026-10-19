@@ -185,6 +185,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         public float angle;
         /** Closing speed along the target port's normal, m/s; negative when drawing apart. */
         public float closing;
+        /** The target port's face in the world, meters, and its outward normal there. */
+        public float faceX, faceY, normalX, normalY;
     }
 
     public DockingSystem(PhysicsManager physics, UuidRegistry uuids) {
@@ -1280,6 +1282,10 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         Vector2 va = velocityAt(body, face, new Vector2());
         Vector2 vb = velocityAt(ob, qFace, new Vector2());
         out.closing = -va.sub(vb).dot(n);
+        out.faceX = qFace.x;
+        out.faceY = qFace.y;
+        out.normalX = n.x;
+        out.normalY = n.y;
         return out;
     }
 
