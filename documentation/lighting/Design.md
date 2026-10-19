@@ -1,7 +1,7 @@
 # Lighting: Box2D lights from the art's emissive layers
 
 ## What it does
-- **Inside a craft** (deck view), most of a room's light comes from **wall lights** (`decor/wall_light`), each shining a cone into the room from its wall while the craft has power. Every glowing part of the other art drawn on a deck is a light too: each mounted system's lamps, screens and glow, live power conduits, and fires. Wall lights and the bigger parts cast [box2dlights](https://github.com/libgdx/box2dlights) rays, so walls, hull and shut doors throw shadows; the small ones (status lamps, conduit studs) only glow.
+- **Inside a craft** (deck view), most of a room's light comes from **wall lights** (`decor/wall_light`), each washing the half of the room in front of its wall with broad light while the craft has power. Every glowing part of the other art drawn on a deck is a light too: each mounted system's lamps, screens and glow, live power conduits, and fires. Wall lights and the bigger parts cast [box2dlights](https://github.com/libgdx/box2dlights) rays, so walls, hull and shut doors throw shadows; the small ones (status lamps, conduit studs) only glow.
 - **Power** decides what is lit. A system's lights are on while it runs (`SubsystemComponent.isOperational`), so a wrecked, unpowered or switched-off system goes dark. With no reactor running, the ambient light drops from cabin light to near darkness.
 - **Outside**, a hull's emissive layer (navigation lights, bridge glazing, reactor and shield glow) is drawn as a glow on the craft. A light over a system's footprint follows that system; navigation lights follow the craft's power.
 - **L** in the deck view turns the lighting off and on.
@@ -22,7 +22,7 @@ The art says, with attributes on any shape of the light or on a `<g>` around its
 | `data-direction` | A cone's direction, degrees, 0 = +x, 90 = up the canvas | -90 (away from a wall at the top) |
 | `data-cone` | A cone's half-angle, degrees | 45 |
 
-A system lights the room from at most 3 of its parts, those marked `point` or `cone` first, then the biggest; the rest only glow. So a designer tunes a light where it is drawn, and the extractor copies the settings into `lights.json`. Until the art carries them, `DEFAULTS` in the script gives the same settings by art name (the wall light: a 60° cone reaching 5 tiles at 0.85); the SVG's own attributes win. The game turns the settings into a light the same way everywhere, and the room's ambient light (`SceneLighting`) sets how dark the unlit corners are.
+A system lights the room from at most 3 of its parts, those marked `point` or `cone` first, then the biggest; the rest only glow. So a designer tunes a light where it is drawn, and the extractor copies the settings into `lights.json`. Until the art carries them, `DEFAULTS` in the script gives the same settings by art name (the wall light: a cone 90° each side, so a half circle against its wall, reaching 6 tiles at 0.7); the SVG's own attributes win. The game turns the settings into a light the same way everywhere, and the room's ambient light (`SceneLighting`) sets how dark the unlit corners are.
 
 ## Wall lights
 A wall light hangs on one edge of a floor tile, shining into that tile; it takes no room, so the tile stays free for a system, a door or anything else. Its art's top edge sits against the wall, and the art turns with the wall it hangs on.

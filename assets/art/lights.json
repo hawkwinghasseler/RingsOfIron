@@ -2604,12 +2604,12 @@
    {
     "alpha": 1.0,
     "color": "#fff7d6",
-    "cone": 60.0,
+    "cone": 90.0,
     "direction": -90.0,
     "h": 11.0,
-    "intensity": 0.85,
+    "intensity": 0.7,
     "light": "cone",
-    "reach": 5.0,
+    "reach": 6.0,
     "w": 24.0,
     "x": 16.0,
     "y": -9.5

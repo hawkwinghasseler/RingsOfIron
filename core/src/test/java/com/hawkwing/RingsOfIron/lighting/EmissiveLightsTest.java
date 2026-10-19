@@ -61,10 +61,11 @@ class EmissiveLightsTest {
     }
 
     @Test
-    void wallLightsShineAwayFromTheWall() {
+    void wallLightsWashTheRoomInFrontOfTheirWall() {
         EmissiveLights.Source s = art().get("decor/wall_light").lights[0];
         assertTrue(s.isCone);
         assertEquals(-90f, s.direction, "the wall is at the top of the canvas");
+        assertEquals(90f, s.cone, "all the half of the room in front of the wall, not a beam");
     }
 
     @Test

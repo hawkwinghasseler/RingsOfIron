@@ -155,7 +155,7 @@ class DeckLightRigTest {
             LightSpot s = spots.get(i);
             WallLight p = WallLightLayout.lightsOf(g).get(i);
             assertTrue(s.on && s.isCone && s.casts());
-            assertEquals(5f * g.tileSize, s.reach, 1e-4f, "the art's reach, not a guess from its size");
+            assertEquals(6f * g.tileSize, s.reach, 1e-4f, "the art's reach, not a guess from its size");
             // Just off the wall, on its tile, shining away from it
             float tx = (s.x - g.gridOriginLocal.x) / g.tileSize, ty = (s.y - g.gridOriginLocal.y) / g.tileSize;
             assertEquals(p.x, (int) Math.floor(tx));

@@ -44,9 +44,9 @@ NS = "{http://www.w3.org/2000/svg}"
 # Gap in SVG units within which two shapes count as touching.
 MERGE_GAP = 2.0
 # Light settings for art whose SVG does not carry them (yet); the SVG's own attributes win.
-# The wall light is the deck's main light: a wide cone shining away from its wall.
+# The wall light is the deck's main light: a broad wash over the half of the room in front of its wall.
 DEFAULTS = {
-    "wall_light": {"light": "cone", "direction": -90.0, "cone": 60.0, "reach": 5.0, "intensity": 0.85},
+    "wall_light": {"light": "cone", "direction": -90.0, "cone": 90.0, "reach": 6.0, "intensity": 0.7},
 }
 SETTINGS = ("light", "reach", "intensity", "direction", "cone")
 KINDS = ("glow", "point", "cone")
