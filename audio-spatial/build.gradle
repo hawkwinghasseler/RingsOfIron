@@ -9,9 +9,16 @@ dependencies {
   // FMOD Studio bindings. FMOD's own libraries are not on Maven; see FmodAudioBackend.
   implementation "org.lwjgl:lwjgl:$lwjgl3Version"
   implementation "org.lwjgl:lwjgl-fmod:$lwjgl3Version"
+  // OpenAL Soft, the same OpenAL libGDX's desktop backend plays through; see OpenAlAudioBackend.
+  implementation "org.lwjgl:lwjgl-openal:$lwjgl3Version"
 
   testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+  // OpenAL Soft natives, so the OpenAL backend's tests render through a real (loopback) device
+  ["natives-linux", "natives-linux-arm64", "natives-windows", "natives-macos", "natives-macos-arm64"].each {
+    testRuntimeOnly "org.lwjgl:lwjgl:$lwjgl3Version:$it"
+    testRuntimeOnly "org.lwjgl:lwjgl-openal:$lwjgl3Version:$it"
+  }
 }
 
 test {

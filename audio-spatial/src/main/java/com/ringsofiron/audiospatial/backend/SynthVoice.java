@@ -4,7 +4,7 @@ import com.badlogic.gdx.math.MathUtils;
 
 /**
  * A procedural placeholder sound for {@link SynthAudioBackend}, picked by event path, so the
- * spatial mix can be heard before any recorded sounds or FMOD banks exist.
+ * spatial mix can be heard before any recorded sounds exist.
  *
  * The game thread writes the {@code target*} fields; the mixer thread reads them and smooths
  * toward them to avoid clicks. Every patch has plenty of high-frequency content so the
@@ -69,13 +69,7 @@ public class SynthVoice {
 
     /** Adds {@code frames} stereo frames of this voice into {@code out}. Mixer thread only. */
     void mixInto(float[] out, int frames, int sampleRate) {
-        int sc = startCount;
-        if (sc != seenStart) {
-            seenStart = sc;
-            sample = 0;
-            pop = 0f;
-            phaseA = 0;
-        }
+        rewindIfRestarted();
         boolean on = active;
         float tg = on ? targetGain : 0f;
         if (!on && gain < 1e-4f) return;
@@ -88,10 +82,7 @@ public class SynthVoice {
         float gainStep = (tg - gain) / frames;
         for (int f = 0; f < frames; f++) {
             gain += gainStep;
-            float t = (float) sample / sampleRate;
-            // One-shots fade over their last 30 ms instead of stopping with a click
-            float s = looping ? generate(t) : t < duration ? generate(t) * Math.min(1f, (duration - t) / 0.03f) : 0f;
-            sample++;
+            float s = nextSample(sampleRate);
             // Two cascaded one-pole low-passes: a 12 dB/octave muffle
             lp1 += a * (s - lp1);
             lp2 += a * (lp1 - lp2);
@@ -100,6 +91,32 @@ public class SynthVoice {
             out[2 * f] += v * MathUtils.cos(angle);
             out[2 * f + 1] += v * MathUtils.sin(angle);
         }
+    }
+
+    /**
+     * Writes {@code frames} mono samples of the bare patch into {@code out}: no gain, filter or
+     * pan, for a backend that applies those itself. Use either this or {@link #mixInto}, not both.
+     */
+    void renderDry(float[] out, int frames, int sampleRate) {
+        rewindIfRestarted();
+        for (int f = 0; f < frames; f++) out[f] = nextSample(sampleRate);
+    }
+
+    private void rewindIfRestarted() {
+        int sc = startCount;
+        if (sc != seenStart) {
+            seenStart = sc;
+            sample = 0;
+            pop = 0f;
+            phaseA = 0;
+        }
+    }
+
+    private float nextSample(int sampleRate) {
+        float t = (float) sample / sampleRate;
+        sample++;
+        // One-shots fade over their last 30 ms instead of stopping with a click
+        return looping ? generate(t) : t < duration ? generate(t) * Math.min(1f, (duration - t) / 0.03f) : 0f;
     }
 
     private float noise() {
