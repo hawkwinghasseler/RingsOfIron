@@ -12,7 +12,7 @@ import com.badlogic.gdx.math.MathUtils;
  */
 public class SynthVoice {
 
-    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, AUTOCANNON, LAUNCH, MISSILE, EXPLOSION, FOOTSTEP, VOICE, FLAK, ION, SHIELD, BEEP }
+    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, AUTOCANNON, LAUNCH, MISSILE, EXPLOSION, FOOTSTEP, VOICE, FLAK, ION, SHIELD, CHIME, WARNING, BEEP }
 
     final Patch patch;
     final boolean looping;
@@ -45,6 +45,7 @@ public class SynthVoice {
     public static Patch patchFor(String path) {
         // Match on the name only: the "event:" scheme itself contains "vent"
         if (path.startsWith("event:")) path = path.substring("event:".length());
+        if (path.startsWith("/ui/")) return path.contains("warning") ? Patch.WARNING : Patch.CHIME;
         // Weapon sounds first: their paths also contain "weapon"
         if (path.contains("autocannon")) return Patch.AUTOCANNON;
         if (path.contains("flak")) return Patch.FLAK;
@@ -265,6 +266,19 @@ public class SynthVoice {
                 // A glassy shimmer: two close high tones beating, fading fast
                 float env = Math.min(1f, t * 200f) * (float) Math.exp(-t * 8f);
                 return 0.4f * env * (sin(1320f, t) + sin(1347f, t) + 0.5f * sin(2650f, t));
+            }
+            case CHIME: {
+                // Two soft rising tones, E5 then B5
+                float hz = t < 0.15f ? 659f : 988f;
+                float local = t < 0.15f ? t : t - 0.15f;
+                float env = Math.min(1f, local * 300f) * (float) Math.exp(-local * 9f);
+                return 0.4f * env * (sin(hz, t) + 0.2f * sin(hz * 2f, t));
+            }
+            case WARNING: {
+                // Two falling square beeps
+                float hz = t < 0.3f ? 740f : 554f;
+                float gate = t % 0.3f < 0.22f ? 1f : 0f;
+                return 0.22f * gate * square(hz, t);
             }
             default:
                 return 0.3f * sin(440f, t) * (t < duration ? 1f : 0f);
