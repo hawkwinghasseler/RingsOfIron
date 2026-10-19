@@ -60,8 +60,8 @@ class ServiceBudgetTest {
         budget.pay();
         world.standing.reward("patrol", 15f, "test"); // Lieutenant
         now = 3 * ServiceBudget.WEEK + 10;
-        assertEquals(3 * 5_000, budget.pay(), 1e-6);
-        assertEquals(15_000, world.standing.record().budgetPaid, 1e-6);
+        assertEquals(3 * 7_500, budget.pay(), 1e-6);
+        assertEquals(22_500, world.standing.record().budgetPaid, 1e-6);
     }
 
     @Test

@@ -47,12 +47,15 @@ weapons = ["chaingun_mk2"]
 ace = true
 weight = 2
 
+# A railgun ace kills crews outright (its slugs go clean through), so it only turns up once the
+# game is harder, like the plain sniper
 [loadout.raider_ace_railgun]
 name = "Ace's railgun"
 ship = "raider_light"
 weapons = ["railgun_mk2"]
 ace = true
 weight = 1
+min_difficulty = 1.5
 
 # Gunship: a Medium mount in the nose, launchers on each beam aft, point defense on each beam forward.
 [loadout.gunship_stock]

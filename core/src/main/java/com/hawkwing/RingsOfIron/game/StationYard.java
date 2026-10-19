@@ -253,7 +253,8 @@ public class StationYard extends EntitySystem {
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
-                if (t.piece == null && t.isWall() && t.integrity < 1f - EPS) {
+                // A holed deck plate too: it vents straight to space (round 4: the ace's 40 mm rounds hole them)
+                if (t.piece == null && (t.isWall() || t.isFloor()) && t.integrity < 1f - EPS) {
                     out.add(new Damage(Damage.Kind.HULL, x, y, 1, 1, null, t, null, null, null));
                 }
             }

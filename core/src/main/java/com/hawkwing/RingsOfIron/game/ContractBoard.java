@@ -92,7 +92,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
 
     // Placeholder pay and standing; tuned with the loop in category 9.
     static final double DELIVERY_FEE_SHARE = 0.15, DELIVERY_MIN_FEE = 500;
-    static final double ESCORT_PAY = 1_500, BOUNTY_PAY = 5_000, PATROL_PAY = 1_000;
+    static final double ESCORT_PAY = 1_500, BOUNTY_PAY = 7_500, PATROL_PAY = 1_000;
     /** Pay and time for a job that crosses to another body's orbit. */
     static final double FAR_PAY = 3, NEAR_DAYS = 2, FAR_DAYS = 8;
     /** Pay for each freighter of a convoy, and for each survivor of a pod; recovery's share of the cargo's value. */

@@ -292,6 +292,12 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             if (h == null || h.state != HostileComponent.State.IN_BUBBLE) continue;
             if (e.getComponent(PhysicsBodyComponent.class) == null) continue;
             if (h.ace && !h.partDropped && FirstPlay.beaten(world, e)) aceBeaten(e, h);
+            if (ShipDisablement.isDisabled(e)) {
+                // Beaten or surrendered, it drifts where it is to be boarded: no flying off with a prize crew aboard
+                disengage(e);
+                e.remove(NpcPilotComponent.class);
+                continue;
+            }
             fly(id, e, h, now);
         }
     }
@@ -299,7 +305,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     private void fly(String id, Entity e, HostileComponent h, double now) {
         h.hull = hull(e);
         boolean crossfire = crossfire(e, now);
-        if (!h.brokeOff && h.hull < (crossfire ? CROSSFIRE_BREAK_OFF_HULL : BREAK_OFF_HULL)) {
+        if (!h.brokeOff && h.hull < breakOffHull(h, crossfire)) {
             breakOff(id, h, now);
             notices.add(h.displayName + " is breaking off");
         }
@@ -310,7 +316,9 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         Entity enemy = enemyOf(e, h);
         if (enemy != null) {
             if (enemy == world.getPlayer()) h.foughtPlayer = true;
-            Tactics.Plan plan = Tactics.choose(Tactics.arms(e), odds(id, e, h, enemy), h.hull, h.isPirate(), crossfire);
+            // An ace never runs on the odds: it fights to its break-off line
+            Tactics.Plan plan = Tactics.choose(Tactics.arms(e), odds(id, e, h, enemy), h.hull, h.isPirate() && !aceAtLarge(h),
+                    crossfire);
             if (plan == Tactics.Plan.RUN) {
                 breakOff(id, h, now);
                 world.notices.post(h.displayName + " is running", NoticeLog.Kind.INFO);
@@ -330,6 +338,19 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         Double busy = busySince.get(id);
         if (busy == null) busySince.put(id, now);
         else if (!h.brokeOff && now - busy > IDLE_LIMIT) breakOff(id, h, now);
+    }
+
+    /**
+     * The share of its hull below which {@code h} breaks off: {@link #BREAK_OFF_HULL}, or sooner under
+     * crossfire; an ace holds on to {@link PirateAces#BREAK_OFF_HULL}, and under crossfire to a plain pirate's line.
+     */
+    static double breakOffHull(HostileComponent h, boolean crossfire) {
+        if (aceAtLarge(h)) return crossfire ? BREAK_OFF_HULL : PirateAces.BREAK_OFF_HULL;
+        return crossfire ? CROSSFIRE_BREAK_OFF_HULL : BREAK_OFF_HULL;
+    }
+
+    private static boolean aceAtLarge(HostileComponent h) {
+        return h.ace && !h.partDropped;
     }
 
     /** Who the hostile fights in the bubble now, or null. */
