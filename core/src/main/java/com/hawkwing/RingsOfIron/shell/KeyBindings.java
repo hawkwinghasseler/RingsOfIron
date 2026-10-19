@@ -37,7 +37,6 @@ public final class KeyBindings {
         MAP("Traffic map", Input.Keys.M),
         TRADE("Station market", Input.Keys.T),
         YARD("Station yard", Input.Keys.Y),
-        SHIPYARD("Shipyard: ships and prizes", Input.Keys.I),
         ARM_PORT("Arm port / ask clearance", Input.Keys.G),
         NEXT_PORT("Next docking port", Input.Keys.H),
         UNDOCK("Undock", Input.Keys.U),

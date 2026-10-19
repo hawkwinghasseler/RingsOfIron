@@ -50,7 +50,7 @@ public class GameHud implements Disposable {
         hud.setYard(yard = new YardWork(world));
         // The station's mission board and the contracts held, for the [J] mission window.
         hud.setMissions(new ContractMissions(world));
-        // Ships for sale at the docked station and the prize in tow, for the [I] shipyard window.
+        // Ships for sale at the docked station and the prize in tow, for the shipyard window (the [Y] yard's Ships for sale).
         hud.setShipyard(new ShipyardWork(world));
         // The ship latched to, for the [K] boarding window: boarding it, then stripping it.
         hud.setBoarding(new BoardingWork(world));

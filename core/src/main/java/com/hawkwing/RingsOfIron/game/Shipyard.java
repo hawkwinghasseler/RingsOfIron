@@ -44,7 +44,7 @@ import java.util.Locale;
  * bringing taken ships home as prizes.
  *
  * <p><b>Buying.</b> Docked with clearance at a station that sells ships ({@code [shipyard.<id>]}),
- * the player can buy, from the shipyard window ({@link Action#SHIPYARD}), any of the owner's {@code [ship_sale.<id>]} ships their rank and standing
+ * the player can buy, from the shipyard window (the yard's Ships for sale, on {@link Action#YARD}), any of the owner's {@code [ship_sale.<id>]} ships their rank and standing
  * allow. The ship they fly is traded in at {@link #TRADE_IN_SHARE} of its value times its
  * condition; the new ship is latched to the station in its place, with the player's credits, the
  * cargo (which must fit) and every crew member who calls the old ship home, the player's avatar
@@ -136,10 +136,7 @@ public class Shipyard extends EntitySystem {
         this.world = world;
         // Once taken, a prize's collars are rigged for towing: the weld holds under the engines' full thrust
         world.docking.towLocked = (a, b) -> tows(a, b) || tows(b, a);
-        for (HintRegistry.Hint h : world.hints.byContext().getOrDefault(HintRegistry.Context.DOCKED, List.of())) {
-            if (h.actions.length == 1 && h.actions[0] == Action.SHIPYARD) h.onlyWhen(() -> sellsShips(dockedStation()));
-        }
-        world.hints.register(HintRegistry.Context.LATCHED, "hand over the prize", 3, Action.SHIPYARD)
+        world.hints.register(HintRegistry.Context.LATCHED, "hand over the prize", 3, Action.YARD)
                 .onlyWhen(() -> prize() != null && prizeStation() != null);
     }
 

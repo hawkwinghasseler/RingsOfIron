@@ -48,7 +48,7 @@ public class ShipyardWindow extends Window {
         add(ships).left().padTop(8f).row();
         add(prize).left().padTop(12f).row();
         add(status).left().padTop(8f).row();
-        add(button("Close [I]", () -> setOpen(false))).right().padTop(10f);
+        add(button("Close [Y]", () -> setOpen(false))).right().padTop(10f);
         setVisible(false);
     }
 

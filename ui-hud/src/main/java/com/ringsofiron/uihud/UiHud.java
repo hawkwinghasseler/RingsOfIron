@@ -199,7 +199,11 @@ public class UiHud implements Disposable {
         shipyardWindow = new ShipyardWindow(skin);
         tradeWindow.setHintSuffix(() -> (yardWindow.isAvailable() && !yardWindow.isOpen() ? "   [Y] Yard" : "")
                 + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : "")
-                + (!shipyardWindow.getYard().stationName.isEmpty() && !shipyardWindow.isOpen() ? "   [I] Ships" : ""));
+                + (!yardWindow.isAvailable() && shipyardWindow.isAvailable() && !shipyardWindow.isOpen() ? "   [Y] Shipyard" : ""));
+        // Ships for sale is a yard service: the yard window's button opens the shipyard window
+        yardWindow.setShipyard(() -> {
+            if (shipyardWindow.setOpen(true)) yardWindow.setOpen(false);
+        }, () -> !shipyardWindow.getYard().stationName.isEmpty());
         boardingWindow = new BoardingWindow(skin);
 
         trafficMap = new TrafficMap(skin);
@@ -290,16 +294,20 @@ public class UiHud implements Disposable {
                 tradeWindow.setOpen(!tradeWindow.isOpen());
                 return true;
             case Input.Keys.Y:
-                if (!yardWindow.isOpen() && !yardWindow.isAvailable()) return false;
-                yardWindow.setOpen(!yardWindow.isOpen());
-                return true;
+                // The station yard; the shipyard window is one of its services, and has the key to
+                // itself where there is no yard, as when handing over a prize off a station
+                if (shipyardWindow.isOpen()) {
+                    shipyardWindow.setOpen(false);
+                    return true;
+                }
+                if (yardWindow.isOpen() || yardWindow.isAvailable()) {
+                    yardWindow.setOpen(!yardWindow.isOpen());
+                    return true;
+                }
+                return shipyardWindow.isAvailable() && shipyardWindow.setOpen(true);
             case Input.Keys.J:
                 if (!missionWindow.isOpen() && !missionWindow.isAvailable()) return false;
                 missionWindow.setOpen(!missionWindow.isOpen());
-                return true;
-            case Input.Keys.I:
-                if (!shipyardWindow.isOpen() && !shipyardWindow.isAvailable()) return false;
-                shipyardWindow.setOpen(!shipyardWindow.isOpen());
                 return true;
             case Input.Keys.K:
                 if (!boardingWindow.isOpen() && !boardingWindow.isAvailable()) return false;
@@ -446,7 +454,7 @@ public class UiHud implements Disposable {
         return missionWindow;
     }
 
-    /** Feeds the shipyard window ([I] while docked where ships are sold, or with a prize to hand over); null hides it. */
+    /** Feeds the shipyard window (the yard window's Ships for sale, or [Y] with a prize to hand over and no yard); null hides it. */
     public void setShipyard(ShipyardProvider shipyard) {
         shipyardWindow.setProvider(shipyard);
     }
