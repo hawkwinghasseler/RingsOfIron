@@ -1,0 +1,112 @@
+package com.hawkwing.RingsOfIron.game;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.interiorgrid.MountFootprint;
+import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.moddingdata.defs.ShipDef;
+import com.ringsofiron.physicsexterior.components.ThrusterComponent;
+import com.ringsofiron.physicsexterior.modding.ShipPhysicsAssembler;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+/** The engines in a ship's layout set its thrust, and lose it to damage. */
+class EngineThrustTest {
+    static final float FRAME = 1f / 60f;
+
+    GameWorld world;
+    GameScenario game;
+
+    @BeforeAll
+    static void loadNatives() {
+        GdxNativesLoader.load();
+    }
+
+    @BeforeEach
+    void setUp() {
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        world = new GameWorld();
+        game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
+    }
+
+    @AfterEach
+    void tearDown() {
+        world.dispose();
+    }
+
+    @Test
+    void theCorvetteAndFreighterPushAsHardAsTheyDidBeforeEnginesSetThrust() {
+        world.update(FRAME);
+        assertThrust(game.player, GameScenario.PLAYER_SHIP);
+        Entity hauler = world.getContent().factory.spawnShip(GameScenario.FREIGHTER_SHIP, 0f, -300f, 0f);
+        world.update(FRAME);
+        assertThrust(hauler, GameScenario.FREIGHTER_SHIP);
+        Array<SubsystemComponent> engines = engines(hauler);
+        assertEquals(2, engines.size);
+        for (SubsystemComponent e : engines) {
+            assertEquals("freight_drive", e.component);
+            assertEquals(MountFootprint.MountSize.M, e.footprint.size);
+            assertEquals(1.5e6, EngineThrust.ratedThrust(e, world.getContent().defs), 1.0, "from components.toml");
+        }
+    }
+
+    @Test
+    void aDamagedEngineGivesLessAndADestroyedOneNone() {
+        world.update(FRAME);
+        ThrusterComponent t = game.player.getComponent(ThrusterComponent.class);
+        Array<SubsystemComponent> engines = engines(game.player);
+        assertEquals(2, engines.size);
+        for (SubsystemComponent e : engines) {
+            assertEquals(MountFootprint.MountSize.S, e.footprint.size);
+            assertEquals(EngineThrust.THRUST_S, EngineThrust.ratedThrust(e, world.getContent().defs), 1.0);
+        }
+        engines.get(0).health = 0.5f;
+        world.update(FRAME);
+        assertEquals(1.2e6 + 0.6e6, t.forwardThrust, 1.0);
+        engines.get(0).health = 0f;
+        world.update(FRAME);
+        assertEquals(1.2e6, t.forwardThrust, 1.0, "one engine left");
+        assertEquals(2.4e6 * ShipPhysicsAssembler.REVERSE_THRUST_FRACTION, t.reverseThrust, 1.0,
+                "the RCS is not the main engine");
+        engines.get(1).switchedOn = false;
+        world.update(FRAME);
+        assertEquals(0f, t.forwardThrust, 1e-3f, "both out");
+    }
+
+    @Test
+    void theStandardEnginesGrowWithTheirSize() {
+        double last = 0;
+        for (MountFootprint.MountSize size : MountFootprint.MountSize.values()) {
+            double n = EngineThrust.standardThrust(size);
+            assertTrue(n > last, size.name());
+            last = n;
+        }
+        assertEquals(1.2e6, EngineThrust.standardThrust(MountFootprint.MountSize.S), 1.0);
+    }
+
+    private void assertThrust(Entity ship, String shipId) {
+        ShipDef def = world.getContent().defs.get("ship", shipId, ShipDef.class);
+        ThrusterComponent t = ship.getComponent(ThrusterComponent.class);
+        // Within 10% of max_thrust, which it flew on before (in fact exactly)
+        assertEquals(def.maxThrust, t.forwardThrust, def.maxThrust * 0.001f, shipId);
+        assertEquals(def.maxThrust * ShipPhysicsAssembler.REVERSE_THRUST_FRACTION, t.reverseThrust, def.maxThrust * 0.001f);
+        assertEquals(def.maxThrust * ShipPhysicsAssembler.LATERAL_THRUST_FRACTION, t.lateralThrust, def.maxThrust * 0.001f);
+    }
+
+    private static Array<SubsystemComponent> engines(Entity ship) {
+        Array<SubsystemComponent> out = new Array<>();
+        for (Entity e : ship.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s.type == SubsystemComponent.SubsystemType.ENGINE) out.add(s);
+        }
+        return out;
+    }
+}

@@ -2,6 +2,9 @@
 # A ship collides on its chassis layout (every tile that is not void, wedges as triangles), or
 # on the collision layer of its hull art, art/hulls/<chassis>.svg, when that has one. A `hull`
 # polygon here is only used by a ship without a chassis.
+# max_thrust is the main engine of a ship with no engines in its layout. A ship with engines
+# gets its thrust from them instead (thrust in components.toml), so the values below for the
+# corvette and hauler only restate what their engines give.
 
 [ship.corvette_patrol]
 name = "Patrol Corvette"

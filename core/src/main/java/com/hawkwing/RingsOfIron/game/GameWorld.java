@@ -146,6 +146,8 @@ public class GameWorld implements Disposable {
     public final BeamSystem beams;
     public final AudioManager audio;
     public final AvatarInteractor avatar;
+    /** The player's seat at the helm or weapons console, and the helm flying the ship meanwhile. */
+    public final Bridge bridge;
     public final AudioListenerSync audioListener;
     /** The player's planned burns. */
     public final BurnPlanner burns;
@@ -271,6 +273,8 @@ public class GameWorld implements Disposable {
         engine.addSystem(new LifeSupportSystem());
         // Thrust and planned burns burn propellant from the tanks piped to the engines
         engine.addSystem(new PropellantFeed());
+        // ...and the engines themselves set how hard the ship can push, less as they take damage
+        engine.addSystem(new EngineThrust(this::getContent));
         orbitalEvents.burnBudget = (ship, dv) -> {
             ShipGridComponent.MassProperties m = shipMass(ship);
             return m == null ? dv : PropellantFeed.payForBurn(ship, m.mass, dv);
@@ -304,6 +308,9 @@ public class GameWorld implements Disposable {
         cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, new MarketCargo(macroSim));
         engine.addSystem(cargo);
         avatar = new AvatarInteractor(engine.getEcsEngine());
+        // Who sits at the player's consoles, and who flies the ship when the player isn't at the helm
+        bridge = new Bridge(this);
+        engine.addSystem(bridge);
 
         // combat-sys
         combatEvents = new CombatEvents();

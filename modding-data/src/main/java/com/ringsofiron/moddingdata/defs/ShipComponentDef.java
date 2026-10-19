@@ -38,4 +38,6 @@ public class ShipComponentDef {
     public String fluid;
     /** TANK: kilograms it holds, by mount size. Sizes left out hold the fluid's standard amount a tile. */
     public Map<String, Double> capacity = new LinkedHashMap<>();
+    /** ENGINE: newtons of main-engine thrust at full health, by mount size. Sizes left out use the standard thrust. */
+    public Map<String, Double> thrust = new LinkedHashMap<>();
 }

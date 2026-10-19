@@ -176,7 +176,7 @@ class StationDockingTest {
         }
         Entity hand = com.ringsofiron.aicrew.CrewFactory.spawn(world.crew, game.player, "Dee",
                 com.ringsofiron.aicrew.CrewRole.CREWMAN, 0, spot[0], spot[1]);
-        assertEquals(1, world.cargo.carriers(game.player));
+        assertEquals(2, world.cargo.carriers(game.player), "Dee, and Bea the helmsman");
         // Highport's dock hands are all out cold
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.ringsofiron.aicrew.CrewService.CREW)) {
             com.ringsofiron.aicrew.CrewMemberComponent c = world.crew.crew(e);
