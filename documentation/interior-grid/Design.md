@@ -67,7 +67,7 @@ Ship systems install into fixed-size mounts (`MountFootprint`):
 | L | 3×3 | 3×7 |
 | XL | 5×5 | 5×12 |
 
-- **Primary** systems (generators/reactors, shield emitters, turret mounts) use square mounts. **Auxiliary and utility** systems (life support, helm, weapons console, cargo, airlock) use rectangular slots, which can be placed in either orientation. Each `SubsystemType` declares which kind it needs, and a system cannot be installed in the wrong kind.
+- **Primary** systems (generators/reactors, shield emitters, turret mounts) use square mounts. **Auxiliary and utility** systems (life support, helm, weapons console, cargo, airlock, engine) use rectangular slots, which can be placed in either orientation. Each `SubsystemType` declares which kind it needs, and a system cannot be installed in the wrong kind.
 - A mount's footprint is its origin (bottom-left tile), size, kind and rotation. A rotation of 1 or 3 turns a rectangular slot on its side; on a square mount it only sets the system's facing.
 - **Every tile in the footprint belongs to the installed system**, so a hit on any of them damages it. `Tile.mount` points at the footprint, and `MountFootprint.installed` at the system entity; `ShipGridComponent.subsystemAt(x, y)` is the tile→subsystem index combat uses.
 - A footprint must lie entirely on interior floor, may not overlap another mount, and may not have an edge wall running through it.
@@ -126,7 +126,7 @@ Character map:
 | `+` | Power conduit (steel floor) |
 | ` ` | Void |
 | `R` `S` `T` | Primary systems: reactor, shield emitter, turret mount |
-| `L` `H` `W` `C` `A` | Auxiliary systems: life support, helm, weapons console, cargo, airlock |
+| `L` `H` `W` `C` `A` `E` | Auxiliary systems: life support, helm, weapons console, cargo, airlock, engine |
 | `D` | Docking port, drawn over the hull edge (3×1 Small, 5×2 Medium, 7×3 Large) |
 
 These are the built-in characters. The characters a map can use are really **tile types** (`[tile.*]` in `assets/data/tiles.toml`) and **ship components** (`[component.*]` in `assets/data/components.toml`), held in a `ShipPartCatalog`: a tile type names a base (void, floor, conduit, hull or internal wall), weight class, material and covering; a component names a subsystem behavior, its sizes and settings (reactor output, life support throughput), which each installed `SubsystemComponent` keeps. The data files restate the built-ins, and new ones are made there or in the ship editor (see `documentation/ship-editor/Design.md`). A character that is neither is an error.
