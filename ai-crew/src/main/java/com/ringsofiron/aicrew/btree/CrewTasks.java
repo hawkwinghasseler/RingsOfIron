@@ -114,8 +114,7 @@ public final class CrewTasks {
             repathTimer -= a.dt;
             if (!a.pos.isMoving() || a.pos.pathBlocked || repathTimer <= 0f) {
                 repathTimer = 1f;
-                GridPathfinder pf = a.pathfinder();
-                if (pf.findPath(a.pos.tileX(), a.pos.tileY(), tp.tileX(), tp.tileY(), a.pathScratch)) {
+                if (a.findPath(a.pos.tileX(), a.pos.tileY(), tp.tileX(), tp.tileY(), a.pathScratch)) {
                     // Stop one tile short: no need to share the target's tile
                     if (a.pathScratch.size > 1) a.pathScratch.pop();
                     a.pos.setPath(a.pathScratch);
@@ -174,7 +173,7 @@ public final class CrewTasks {
             boolean destValid = dest != null && a.pos.isMoving() && !a.pos.pathBlocked
                     && TaskRules.isWorkSpot(t, grid, pf.graph, a.service, dest.x, dest.y);
             if (!destValid) {
-                if (!pf.nearest(x, y, TaskRules.workSpots(t, grid, pf.graph, a.service), a.pathScratch)) {
+                if (!a.nearest(x, y, TaskRules.workSpots(t, grid, pf.graph, a.service), a.pathScratch)) {
                     a.abandonUnreachable();
                     return Status.FAILED;
                 }
@@ -288,7 +287,7 @@ public final class CrewTasks {
             GridNode dest = a.pos.destination();
             boolean destValid = dest != null && a.pos.isMoving() && !a.pos.pathBlocked && TaskRules.isSafe(grid, dest.x, dest.y);
             if (!destValid) {
-                if (!a.pathfinder().nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
+                if (!a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
                     a.abandonUnreachable();
                     return Status.FAILED;
                 }
@@ -532,7 +531,7 @@ public final class CrewTasks {
                 return Status.RUNNING;
             }
             if (!a.pos.isMoving() || a.pos.pathBlocked) {
-                if (a.pathfinder().nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
+                if (a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
                     a.pos.setPath(a.pathScratch);
                     a.crew.activity = "leaving hazard";
                 }

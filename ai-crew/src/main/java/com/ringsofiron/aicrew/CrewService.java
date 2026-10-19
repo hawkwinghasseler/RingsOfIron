@@ -47,6 +47,8 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     private final ObjectMap<ShipGridComponent, GridPathfinder> pathfinders = new ObjectMap<>();
     /** The Box2D world inside each deck crew are walking, and their bodies in it. */
     public final CrewPhysics physics = new CrewPhysics();
+    /** The bulkhead doors crew open on their way, and shut behind them. */
+    public final CrewDoors doors = new CrewDoors(this);
     public final RandomXS128 random;
 
     public CrewService(Engine engine) {
@@ -104,6 +106,7 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     public void clearPathfinders() {
         pathfinders.clear();
         physics.clear();
+        doors.clear();
     }
 
     /** The pathfinder for a grid, created on first use. */
