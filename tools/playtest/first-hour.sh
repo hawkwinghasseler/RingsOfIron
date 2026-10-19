@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # The first hour of a career, played in a real window under Xvfb with injected keys and clicks,
 # with a screenshot at each step. Needs Xvfb, xdotool and ImageMagick's import.
-#   tools/playtest/first-hour.sh [out-dir]     (default planning/round5-screens)
+#   tools/playtest/first-hour.sh [out-dir]     (default build/playtest-screens)
 # Run from the repository root. Flying out to the raider, knocking it out, latching on and
 # docking again are stood in for by commands to PlaytestLauncher; everything else is keys.
 set -u
 ROOT=$(pwd)
-OUT=${1:-$ROOT/planning/round5-screens}
+OUT=${1:-$ROOT/build/playtest-screens}
 mkdir -p "$OUT"
 CMDS=$(mktemp)
 export DISPLAY=${DISPLAY:-:97}
@@ -15,7 +15,7 @@ if ! xdpyinfo >/dev/null 2>&1; then
   XVFB=$!
   sleep 2
 fi
-./gradlew :lwjgl3:runPlaytest -Pcommands="$CMDS" --console=plain -q > "$OUT/../round5-playtest-run.log" 2>&1 &
+./gradlew :lwjgl3:runPlaytest -Pcommands="$CMDS" --console=plain -q > "$OUT/game.log" 2>&1 &
 GAME=$!
 
 pause() { timeout "$1" tail -0f /dev/null; }
