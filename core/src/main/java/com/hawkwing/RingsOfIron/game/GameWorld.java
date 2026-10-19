@@ -28,6 +28,7 @@ import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
 import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
 import com.ringsofiron.combatsys.systems.WeaponControlSystem;
 import com.ringsofiron.coreengine.GameEngine;
+import com.ringsofiron.coreengine.TickProfiler;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
@@ -395,7 +396,10 @@ public class GameWorld implements Disposable {
     /** One rendered frame. Once the player has crashed the world stops. */
     public void update(float frameDelta) {
         if (crash != null) return;
+        TickProfiler profiler = engine.getProfiler();
+        long start = profiler == null ? 0 : System.nanoTime();
         timeWarp.update(frameDelta);
+        if (profiler != null) profiler.record("frame/TimeWarpController", System.nanoTime() - start);
         engine.update(frameDelta);
         for (Entity wreck : wrecks) engine.removeEntity(wreck);
         wrecks.clear();

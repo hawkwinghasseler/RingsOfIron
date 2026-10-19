@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Runs the benchmark scenes headless and prints a Markdown report of tick time per system:
- * {@code orbit} (freighters on rails and a full bubble), {@code docked} (crew walking the decks
+ * {@code orbit} (freighters on rails and a full bubble), {@code warp} (rails warp through it), {@code docked} (crew walking the decks
  * of ships docked at a hub), or {@code all}. Arguments: scene, then measured frames per run.
  * The report also goes to {@code benchmarks/build/reports/benchmark.md}.
  */
@@ -25,6 +25,8 @@ public final class BenchmarkMain {
     static final int WARMUP_FRAMES = 600;
     /** Sections faster than this on average (and never ten times slower) are left out of the tables. */
     static final double MIN_MEAN_MS = 0.01;
+    /** Rails warp level for the warp scene. */
+    static final int WARP = 10_000;
 
     public static void main(String[] args) throws IOException {
         String scene = args.length > 0 ? args[0] : "all";
@@ -37,8 +39,11 @@ public final class BenchmarkMain {
             int[][] sizes = {{0, 0}, {100, 10}, {500, 30}, {2000, 30}};
             for (int[] s : sizes) report.append(orbit(s[0], s[1], frames));
         }
+        if (scene.equals("all") || scene.equals("warp")) {
+            for (int n : new int[]{0, 500, 2000}) report.append(warp(n, frames));
+        }
         if (scene.equals("all") || scene.equals("docked")) {
-            for (int ships : new int[]{0, 2, 4, 6}) report.append(docked(ships, frames));
+            for (int ships : new int[]{0, 1, 2, 3, 4}) report.append(docked(ships, frames));
         }
         System.out.println(report);
         Path out = Paths.get(System.getProperty("user.dir"), "build", "reports", "benchmark.md");
@@ -56,6 +61,34 @@ public final class BenchmarkMain {
             return String.format(Locale.ROOT, "## Busy orbit: %d extra freighters on rails, %d extra ships in the bubble%n%n"
                             + "%d freighters in all, %d crew walking at the end. Macro-sim ran on: %s.%n%n%s%n",
                     freighters, bubbleShips, scene.world.macroSim.freighters().all().size(), scene.walking(),
+                    threads.macroThreads(), stats.table(MIN_MEAN_MS));
+        }
+    }
+
+    /**
+     * Rails warp at 10,000x through the busy orbit: each frame is one rails jump of about three
+     * minutes, with the economy, the freighters and encounter prediction catching up in it.
+     */
+    static String warp(int freighters, int frames) {
+        try (BusyOrbitScene scene = new BusyOrbitScene(freighters, 0, false)) {
+            TickStats stats = new TickStats();
+            ThreadsSeen threads = new ThreadsSeen(stats);
+            for (int i = 0; i < WARMUP_FRAMES; i++) scene.frame();
+            install(scene.world, threads);
+            int dropOuts = 0, refused = 0;
+            double simStart = scene.world.engine.getSimSeconds();
+            for (int i = 0; i < frames; i++) {
+                if (!scene.world.timeWarp.isRailsWarp() && !scene.world.timeWarp.setWarp(WARP)) refused++;
+                long start = System.nanoTime();
+                scene.frame();
+                stats.record(TickStats.FRAME, System.nanoTime() - start);
+                stats.endFrame();
+                if (!scene.world.timeWarp.isRailsWarp()) dropOuts++;
+            }
+            install(scene.world, null);
+            return String.format(Locale.ROOT, "## Rails warp at %dx: %d extra freighters%n%n"
+                            + "%.1f sim days in %d frames, %d drop-outs, %d frames where warp was refused. Macro-sim ran on: %s.%n%n%s%n",
+                    WARP, freighters, (scene.world.engine.getSimSeconds() - simStart) / 86_400, frames, dropOuts, refused,
                     threads.macroThreads(), stats.table(MIN_MEAN_MS));
         }
     }

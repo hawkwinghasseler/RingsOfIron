@@ -17,7 +17,7 @@ test {
 }
 
 // ./gradlew :benchmarks:runBenchmark            every scene at its default sizes
-// ./gradlew :benchmarks:runBenchmark -Pscene=orbit -Pframes=3600
+// ./gradlew :benchmarks:runBenchmark -Pscene=orbit -Pframes=3600   (scenes: orbit, warp, docked, all)
 tasks.register('runBenchmark', JavaExec) {
   group = 'application'
   description = 'Runs the headless benchmark scenes and prints tick time per system.'
@@ -26,4 +26,6 @@ tasks.register('runBenchmark', JavaExec) {
   systemProperty 'ringsofiron.assets', "${rootDir}/assets"
   args = [project.findProperty('scene') ?: 'all', project.findProperty('frames') ?: '1200']
   jvmArgs = ['-Xmx2g']
+  // -Pjfr records a Java Flight Recording of the run to benchmarks/build/benchmark.jfr
+  if (project.hasProperty('jfr')) jvmArgs += "-XX:StartFlightRecording=filename=${buildDir}/benchmark.jfr,settings=profile"
 }

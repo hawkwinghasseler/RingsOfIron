@@ -119,7 +119,7 @@ public class GameEngine implements SimClock {
                 } finally {
                     system.setProcessing(false);
                 }
-                profiler.record("frame/" + system.getClass().getSimpleName(), System.nanoTime() - start);
+                profiler.record("frame/" + nameOf(system), System.nanoTime() - start);
             }
         } finally {
             for (EntitySystem system : profiledSystems) system.setProcessing(true);
@@ -138,6 +138,13 @@ public class GameEngine implements SimClock {
 
     public TickProfiler getProfiler() {
         return profiler;
+    }
+
+    /** A system's class name for the profiler; anonymous classes go by their full binary name's tail. */
+    private static String nameOf(EntitySystem system) {
+        Class<?> c = system.getClass();
+        String simple = c.getSimpleName();
+        return simple.isEmpty() ? c.getName().substring(c.getName().lastIndexOf('.') + 1) : simple;
     }
 
     /**
@@ -291,7 +298,7 @@ public class GameEngine implements SimClock {
                 } else {
                     long start = System.nanoTime();
                     system.invokeFixed();
-                    profiler.record("tick/" + system.getClass().getSimpleName(), System.nanoTime() - start);
+                    profiler.record("tick/" + nameOf(system), System.nanoTime() - start);
                 }
                 break;
             case FRAME: {
@@ -300,7 +307,13 @@ public class GameEngine implements SimClock {
                 break;
             }
             case CATCH_UP:
-                system.invokeCatchUp(catchUpTicks, catchUpTicks * TICK_SECONDS);
+                if (profiler == null) {
+                    system.invokeCatchUp(catchUpTicks, catchUpTicks * TICK_SECONDS);
+                } else {
+                    long start = System.nanoTime();
+                    system.invokeCatchUp(catchUpTicks, catchUpTicks * TICK_SECONDS);
+                    profiler.record("catch-up/" + nameOf(system), System.nanoTime() - start);
+                }
                 break;
             default:
                 // Someone updated the Ashley engine directly; time is only advanced through GameEngine.

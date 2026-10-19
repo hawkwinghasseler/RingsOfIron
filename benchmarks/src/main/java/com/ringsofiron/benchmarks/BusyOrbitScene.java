@@ -16,9 +16,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The new game's busy orbit, scaled up: {@code freighters} extra haulers on rails trading between
- * the three stations, and {@code bubbleShips} extra crewed ships in the bubble around the player,
- * every other pair of corvettes fighting each other. The raider fights the player from the start.
+ * The new game's busy orbit, scaled up: {@code freighters} extra haulers on rails, based at the
+ * depot and the lunar mine and trading between all three stations, and {@code bubbleShips} extra
+ * crewed ships in the bubble around the player, every other pair of corvettes fighting each other. The raider fights the player from the start.
  */
 public final class BusyOrbitScene implements AutoCloseable {
     /** Crew aboard each extra ship in the bubble. */
@@ -31,13 +31,19 @@ public final class BusyOrbitScene implements AutoCloseable {
     private int walking;
 
     public BusyOrbitScene(int freighters, int bubbleShips) {
+        this(freighters, bubbleShips, true);
+    }
+
+    /** @param fight false leaves the raider peaceful, e.g. so rails warp is allowed */
+    public BusyOrbitScene(int freighters, int bubbleShips, boolean fight) {
         Path assets = Scenes.assets();
         world = new GameWorld();
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
-        game.provokeRaider();
+        if (fight) game.provokeRaider();
 
         double hold = InteriorGridData.cargoBayVolume(game.content.defs, GameScenario.FREIGHTER_SHIP);
-        String[] stations = {game.highport, game.depot, game.lunarMine};
+        // Based out of the bubble, so they start on rails; they still trade with Highport and pass through.
+        String[] stations = {game.depot, game.lunarMine};
         for (int i = 0; i < freighters; i++) {
             world.macroSim.addFreighter("Bench hauler " + i, hold, 20_000, stations[i % stations.length]);
         }
