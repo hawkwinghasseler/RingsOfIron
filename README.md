@@ -36,6 +36,10 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | V | Stand up from your console into the deck view; on deck beside the helm or weapons console, sit there and look outside (`gradlew :lwjgl3:runGame -PviewAnywhere` switches anywhere) |
 | M | Traffic map |
 | T | Trade, when in range of a station |
+| Y | Yard: repairs and refits, while docked |
+| J | Mission board: the station's contracts while docked, and the ones you hold |
+| K | Boarding: board the ship you are latched to, strip its parts and take its cargo |
+| P | Abandon ship (P again within 3 s to confirm; P while abandoning launches the pods at once) |
 | G / H / U | Arm docking, pick the next port, undock |
 | , / . | Time warp down and up |
 | N, B, arrows, [ / ] | Plan a burn: add a node, select the next, change its Δv, move it in time |
