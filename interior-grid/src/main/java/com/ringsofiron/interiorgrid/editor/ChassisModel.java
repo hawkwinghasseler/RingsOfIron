@@ -318,6 +318,32 @@ public class ChassisModel {
         return mount;
     }
 
+    /**
+     * Turns an installed component a quarter turn counter-clockwise about its middle. Returns null
+     * when it turned, else why it cannot: a docking port faces out of the hull it sits in, and a
+     * turned slot must stay on the grid and clear of other mounts.
+     */
+    public String rotate(Mount mount, ShipPartCatalog catalog) {
+        MountFootprint f = mount.footprint(catalog);
+        if (f == null) return "Unknown component";
+        if (f.kind == MountFootprint.MountKind.PORT) return "A docking port faces out of the hull it sits in";
+        // Truncating division keeps the middle in place both ways, so four turns end where they began
+        int x = f.originX + (f.width() - f.height()) / 2, y = f.originY + (f.height() - f.width()) / 2;
+        MountFootprint turned = new MountFootprint(f.kind, f.size, x, y, f.rotation + 1);
+        if (!inBounds(x, y) || !inBounds(x + turned.width() - 1, y + turned.height() - 1)) {
+            return "Turned, it would not fit on the grid";
+        }
+        for (Mount o : mounts) {
+            MountFootprint of = o == mount ? null : o.footprint(catalog);
+            if (of != null && overlaps(turned, of)) return "Turned, it would overlap another mount";
+        }
+        mount.x = x;
+        mount.y = y;
+        mount.rotation = turned.rotation;
+        fillUnder(turned, catalog);
+        return null;
+    }
+
     private static boolean overlaps(MountFootprint a, MountFootprint b) {
         return a.originX < b.originX + b.width() && b.originX < a.originX + a.width()
                 && a.originY < b.originY + b.height() && b.originY < a.originY + a.height();

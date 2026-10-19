@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="176" height="16" viewBox="-162 -8 176 16">
+  <title>railgun_slug: tungsten slug, pivot at origin, nose toward +x, streak behind</title>
+  <defs><linearGradient id="slug_streak" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#9fe8ff" stop-opacity="0"/><stop offset="1" stop-color="#9fe8ff" stop-opacity="0.85"/></linearGradient></defs>
+  <g id="base">
+    <polygon points="-12,-3.5 6,-3.5 13,0 6,3.5 -12,3.5" fill="#8d96a3" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round"/>
+    <line x1="-10" y1="-1.5" x2="8" y2="-1.5" stroke="#c9d1db" stroke-width="1" stroke-linecap="round"/>
+  </g>
+  <g id="emissive">
+    <path d="M-160,0 L-8,-3 L-8,3 Z" fill="url(#slug_streak)"/>
+    <polygon points="-12,-3.5 6,-3.5 13,0 6,3.5 -12,3.5" fill="#bff2ff" opacity="0.35"/>
+  </g>
+</svg>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="-64 -64 128 128">
+  <title>explosion: single-frame explosion (same as explosion_2), centered on the origin</title>
+  <defs><radialGradient id="boom_core"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#ffb347" stop-opacity="0.9"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient><radialGradient id="boom_halo"><stop offset="0" stop-color="#ff5a1f" stop-opacity="0.55"/><stop offset="1" stop-color="#ff5a1f" stop-opacity="0"/></radialGradient></defs>
+  <g id="base">
+    <circle cx="-17.25" cy="-4.32" r="14.24" fill="#2b2d31" opacity="0.35"/>
+    <circle cx="-9.22" cy="-13.32" r="16.06" fill="#2b2d31" opacity="0.35"/>
+    <circle cx="-19.83" cy="14.95" r="21.91" fill="#2b2d31" opacity="0.35"/>
+    <circle cx="-30.94" cy="7.63" r="21.94" fill="#2b2d31" opacity="0.35"/>
+    <circle cx="0.62" cy="13.44" r="15.28" fill="#2b2d31" opacity="0.35"/>
+    <circle cx="13.1" cy="-20.1" r="21.34" fill="#2b2d31" opacity="0.35"/>
+    <circle cx="24.71" cy="-4.36" r="18.28" fill="#2b2d31" opacity="0.35"/>
+    <circle cx="11.36" cy="5.14" r="20.44" fill="#2b2d31" opacity="0.35"/>
+    <circle cx="-12.84" cy="-24.05" r="18.53" fill="#2b2d31" opacity="0.35"/>
+  </g>
+  <g id="emissive">
+    <circle cx="0" cy="0" r="44" fill="url(#boom_halo)"/>
+    <circle cx="-12.08" cy="-3.03" r="12.82" fill="#ff5a1f" opacity="0.72"/>
+    <circle cx="-12.08" cy="-3.03" r="7.83" fill="#ffa62b" opacity="0.9"/>
+    <circle cx="-6.45" cy="-9.32" r="14.45" fill="#ff5a1f" opacity="0.72"/>
+    <circle cx="-6.45" cy="-9.32" r="8.83" fill="#ffa62b" opacity="0.9"/>
+    <circle cx="-13.88" cy="10.46" r="19.72" fill="#ff5a1f" opacity="0.72"/>
+    <circle cx="-13.88" cy="10.46" r="12.05" fill="#ffa62b" opacity="0.9"/>
+    <circle cx="-21.66" cy="5.34" r="19.75" fill="#ff5a1f" opacity="0.72"/>
+    <circle cx="-21.66" cy="5.34" r="12.07" fill="#ffa62b" opacity="0.9"/>
+    <circle cx="0.43" cy="9.41" r="13.75" fill="#ff5a1f" opacity="0.72"/>
+    <circle cx="0.43" cy="9.41" r="8.4" fill="#ffa62b" opacity="0.9"/>
+    <circle cx="9.17" cy="-14.07" r="19.21" fill="#ff5a1f" opacity="0.72"/>
+    <circle cx="9.17" cy="-14.07" r="11.74" fill="#ffa62b" opacity="0.9"/>
+    <circle cx="17.29" cy="-3.06" r="16.45" fill="#ff5a1f" opacity="0.72"/>
+    <circle cx="17.29" cy="-3.06" r="10.05" fill="#ffa62b" opacity="0.9"/>
+    <circle cx="7.95" cy="3.6" r="18.4" fill="#ff5a1f" opacity="0.72"/>
+    <circle cx="7.95" cy="3.6" r="11.24" fill="#ffa62b" opacity="0.9"/>
+    <circle cx="-8.99" cy="-16.83" r="16.67" fill="#ff5a1f" opacity="0.72"/>
+    <circle cx="-8.99" cy="-16.83" r="10.19" fill="#ffa62b" opacity="0.9"/>
+    <circle cx="0" cy="0" r="16" fill="url(#boom_core)"/>
+    <line x1="23.94" y1="1.67" x2="46.28" y2="3.22" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="18.64" y1="15.12" x2="31.93" y2="25.91" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="12.05" y1="20.76" x2="21.63" y2="37.27" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="-3.15" y1="23.79" x2="-6.41" y2="48.35" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="-9.88" y1="21.87" x2="-16.8" y2="37.18" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="-19.44" y1="14.07" x2="-34.96" y2="25.29" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="-23.86" y1="-2.58" x2="-43.84" y2="-4.75" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="-19.48" y1="-14.01" x2="-34.92" y2="-25.11" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="-11.8" y1="-20.9" x2="-20.59" y2="-36.45" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="1.39" y1="-23.96" x2="2.62" y2="-45.05" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="14.88" y1="-18.83" x2="30.68" y2="-38.83" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="20.88" y1="-11.83" x2="35.39" y2="-20.06" stroke="#ffe58a" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>
