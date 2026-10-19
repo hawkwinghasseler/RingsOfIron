@@ -1,6 +1,6 @@
 # Ship markets (round 3): where factions sell ships, and what they sell (GDD section 5,
 # "ship procurement and outfitting"). Bought while docked at one of the faction's yards, from the
-# shipyard window (O). The ship the player flies is traded in at its value (Difficulty's hull and
+# yard window's Ships for sale (Y). The ship the player flies is traded in at its value (Difficulty's hull and
 # weapons) times its condition times 60%; cargo and crew move across to the new ship.
 #
 # [shipyard.<id>]: a faction's yards. A station sells that faction's ships when the faction owns it
@@ -14,9 +14,8 @@
 
 [shipyard.patrol]
 faction = "patrol"
-# Until a shipyard station is in the world, Highport's yard sells the Patrol's ships
+# Anvil Yards in high Earth orbit is the Patrol's shipyard; Highport's yard only repairs and refits
 station_types = ["shipyard"]
-stations = ["Highport"]
 
 [shipyard.selene]
 faction = "selene"
