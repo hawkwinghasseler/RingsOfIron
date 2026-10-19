@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="448" viewBox="0 0 192 448">
+  <title>airlock L: 3x7 auxiliary slot</title>
+  <g id="base">
+    <rect x="0" y="0" width="192" height="448" fill="#2a3039"/>
+    <rect x="2" y="2" width="188" height="444" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <path d="M3.75,444.25 L3.75,3.75 L188.25,3.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M188.25,3.75 L188.25,444.25 L3.75,444.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="8" y="16" width="176" height="190" fill="#20262e" stroke="#10141a" stroke-width="1.5"/>
+    <line x1="12" y1="18" x2="12" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="18" y1="18" x2="18" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="24" y1="18" x2="24" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="30" y1="18" x2="30" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="36" y1="18" x2="36" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="42" y1="18" x2="42" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="48" y1="18" x2="48" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="54" y1="18" x2="54" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="60" y1="18" x2="60" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="66" y1="18" x2="66" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="72" y1="18" x2="72" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="78" y1="18" x2="78" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="84" y1="18" x2="84" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="90" y1="18" x2="90" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="96" y1="18" x2="96" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="102" y1="18" x2="102" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="108" y1="18" x2="108" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="114" y1="18" x2="114" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="120" y1="18" x2="120" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="126" y1="18" x2="126" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="132" y1="18" x2="132" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="138" y1="18" x2="138" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="144" y1="18" x2="144" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="150" y1="18" x2="150" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="156" y1="18" x2="156" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="162" y1="18" x2="162" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="168" y1="18" x2="168" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="174" y1="18" x2="174" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="180" y1="18" x2="180" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <rect x="8" y="230" width="176" height="186" fill="#20262e" stroke="#10141a" stroke-width="1.5"/>
+    <line x1="12" y1="232" x2="12" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="18" y1="232" x2="18" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="24" y1="232" x2="24" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="30" y1="232" x2="30" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="36" y1="232" x2="36" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="42" y1="232" x2="42" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="48" y1="232" x2="48" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="54" y1="232" x2="54" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="60" y1="232" x2="60" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="66" y1="232" x2="66" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="72" y1="232" x2="72" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="78" y1="232" x2="78" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="84" y1="232" x2="84" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="90" y1="232" x2="90" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="96" y1="232" x2="96" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="102" y1="232" x2="102" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="108" y1="232" x2="108" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="114" y1="232" x2="114" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="120" y1="232" x2="120" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="126" y1="232" x2="126" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="132" y1="232" x2="132" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="138" y1="232" x2="138" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="144" y1="232" x2="144" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="150" y1="232" x2="150" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="156" y1="232" x2="156" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="162" y1="232" x2="162" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="168" y1="232" x2="168" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="174" y1="232" x2="174" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="180" y1="232" x2="180" y2="414" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+    <clipPath id="hz_al_l_a_6_4"><rect x="6" y="4" width="180" height="10"/></clipPath>
+    <rect x="6" y="4" width="180" height="10" fill="#f2c230"/>
+    <g clip-path="url(#hz_al_l_a_6_4)">
+    <polygon points="-12,14 -4,14 6,4 -2,4" fill="#10141a"/>
+    <polygon points="4,14 12,14 22,4 14,4" fill="#10141a"/>
+    <polygon points="20,14 28,14 38,4 30,4" fill="#10141a"/>
+    <polygon points="36,14 44,14 54,4 46,4" fill="#10141a"/>
+    <polygon points="52,14 60,14 70,4 62,4" fill="#10141a"/>
+    <polygon points="68,14 76,14 86,4 78,4" fill="#10141a"/>
+    <polygon points="84,14 92,14 102,4 94,4" fill="#10141a"/>
+    <polygon points="100,14 108,14 118,4 110,4" fill="#10141a"/>
+    <polygon points="116,14 124,14 134,4 126,4" fill="#10141a"/>
+    <polygon points="132,14 140,14 150,4 142,4" fill="#10141a"/>
+    <polygon points="148,14 156,14 166,4 158,4" fill="#10141a"/>
+    <polygon points="164,14 172,14 182,4 174,4" fill="#10141a"/>
+    <polygon points="180,14 188,14 198,4 190,4" fill="#10141a"/>
+    <polygon points="196,14 204,14 214,4 206,4" fill="#10141a"/>
+    </g>
+    <rect x="6" y="4" width="180" height="10" fill="none" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="180" cy="22" r="2.5" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+    <rect x="6" y="210" width="180" height="14" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <clipPath id="hz_al_l_mid_30_212"><rect x="30" y="212" width="132" height="10"/></clipPath>
+    <rect x="30" y="212" width="132" height="10" fill="#f2c230"/>
+    <g clip-path="url(#hz_al_l_mid_30_212)">
+    <polygon points="12,222 20,222 30,212 22,212" fill="#10141a"/>
+    <polygon points="28,222 36,222 46,212 38,212" fill="#10141a"/>
+    <polygon points="44,222 52,222 62,212 54,212" fill="#10141a"/>
+    <polygon points="60,222 68,222 78,212 70,212" fill="#10141a"/>
+    <polygon points="76,222 84,222 94,212 86,212" fill="#10141a"/>
+    <polygon points="92,222 100,222 110,212 102,212" fill="#10141a"/>
+    <polygon points="108,222 116,222 126,212 118,212" fill="#10141a"/>
+    <polygon points="124,222 132,222 142,212 134,212" fill="#10141a"/>
+    <polygon points="140,222 148,222 158,212 150,212" fill="#10141a"/>
+    <polygon points="156,222 164,222 174,212 166,212" fill="#10141a"/>
+    <polygon points="172,222 180,222 190,212 182,212" fill="#10141a"/>
+    </g>
+    <rect x="30" y="212" width="132" height="10" fill="none" stroke="#10141a" stroke-width="1.5"/>
+    <clipPath id="hz_al_l_b_6_434"><rect x="6" y="434" width="180" height="10"/></clipPath>
+    <rect x="6" y="434" width="180" height="10" fill="#f2c230"/>
+    <g clip-path="url(#hz_al_l_b_6_434)">
+    <polygon points="-12,444 -4,444 6,434 -2,434" fill="#10141a"/>
+    <polygon points="4,444 12,444 22,434 14,434" fill="#10141a"/>
+    <polygon points="20,444 28,444 38,434 30,434" fill="#10141a"/>
+    <polygon points="36,444 44,444 54,434 46,434" fill="#10141a"/>
+    <polygon points="52,444 60,444 70,434 62,434" fill="#10141a"/>
+    <polygon points="68,444 76,444 86,434 78,434" fill="#10141a"/>
+    <polygon points="84,444 92,444 102,434 94,434" fill="#10141a"/>
+    <polygon points="100,444 108,444 118,434 110,434" fill="#10141a"/>
+    <polygon points="116,444 124,444 134,434 126,434" fill="#10141a"/>
+    <polygon points="132,444 140,444 150,434 142,434" fill="#10141a"/>
+    <polygon points="148,444 156,444 166,434 158,434" fill="#10141a"/>
+    <polygon points="164,444 172,444 182,434 174,434" fill="#10141a"/>
+    <polygon points="180,444 188,444 198,434 190,434" fill="#10141a"/>
+    <polygon points="196,444 204,444 214,434 206,434" fill="#10141a"/>
+    </g>
+    <rect x="6" y="434" width="180" height="10" fill="none" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="12" cy="426" r="2.5" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+    <rect x="12" y="240" width="14" height="24" rx="6" fill="#d8dde4" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="19" cy="247" r="5" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
+    <rect x="166" y="240" width="14" height="24" rx="6" fill="#d8dde4" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="173" cy="247" r="5" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
+    <rect x="12" y="274" width="14" height="24" rx="6" fill="#d8dde4" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="19" cy="281" r="5" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
+    <rect x="166" y="274" width="14" height="24" rx="6" fill="#d8dde4" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="173" cy="281" r="5" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
+    <rect x="12" y="308" width="14" height="24" rx="6" fill="#d8dde4" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="19" cy="315" r="5" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
+    <rect x="166" y="308" width="14" height="24" rx="6" fill="#d8dde4" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="173" cy="315" r="5" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
+    <rect x="12" y="342" width="14" height="24" rx="6" fill="#d8dde4" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="19" cy="349" r="5" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
+    <rect x="166" y="342" width="14" height="24" rx="6" fill="#d8dde4" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="173" cy="349" r="5" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
+    <rect x="12" y="376" width="14" height="24" rx="6" fill="#d8dde4" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="19" cy="383" r="5" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
+    <rect x="166" y="376" width="14" height="24" rx="6" fill="#d8dde4" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="173" cy="383" r="5" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
+    <rect x="14" y="40" width="28" height="40" rx="2" fill="#566a7a" stroke="#10141a" stroke-width="1.5"/>
+    <line x1="28" y1="42" x2="28" y2="78" stroke="#10141a" stroke-width="1" stroke-linecap="round"/>
+    <rect x="14" y="100" width="28" height="40" rx="2" fill="#566a7a" stroke="#10141a" stroke-width="1.5"/>
+    <line x1="28" y1="102" x2="28" y2="138" stroke="#10141a" stroke-width="1" stroke-linecap="round"/>
+    <rect x="14" y="160" width="28" height="40" rx="2" fill="#566a7a" stroke="#10141a" stroke-width="1.5"/>
+    <line x1="28" y1="162" x2="28" y2="198" stroke="#10141a" stroke-width="1" stroke-linecap="round"/>
+    <rect x="142" y="40" width="36" height="60" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+    <path d="M143.5,98.5 L143.5,41.5 L176.5,41.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M176.5,41.5 L176.5,98.5 L143.5,98.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="145" y="44" width="19.8" height="52" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="166.8" y="44" width="8.2" height="52" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
+  </g>
+  <g id="emissive">
+    <circle cx="180" cy="22" r="6" fill="#ff4d4d" opacity="0.18"/>
+    <circle cx="180" cy="22" r="2" fill="#ff4d4d"/>
+    <circle cx="12" cy="426" r="6" fill="#4dff88" opacity="0.18"/>
+    <circle cx="12" cy="426" r="2" fill="#4dff88"/>
+    <circle cx="19" cy="247" r="4" fill="#6aa8ff" opacity="0.35"/>
+    <circle cx="173" cy="247" r="4" fill="#6aa8ff" opacity="0.35"/>
+    <circle cx="19" cy="281" r="4" fill="#6aa8ff" opacity="0.35"/>
+    <circle cx="173" cy="281" r="4" fill="#6aa8ff" opacity="0.35"/>
+    <circle cx="19" cy="315" r="4" fill="#6aa8ff" opacity="0.35"/>
+    <circle cx="173" cy="315" r="4" fill="#6aa8ff" opacity="0.35"/>
+    <circle cx="19" cy="349" r="4" fill="#6aa8ff" opacity="0.35"/>
+    <circle cx="173" cy="349" r="4" fill="#6aa8ff" opacity="0.35"/>
+    <circle cx="19" cy="383" r="4" fill="#6aa8ff" opacity="0.35"/>
+    <circle cx="173" cy="383" r="4" fill="#6aa8ff" opacity="0.35"/>
+    <rect x="146.5" y="45.5" width="16.8" height="49" rx="1" fill="#6aa8ff" opacity="0.25"/>
+    <line x1="148" y1="47.5" x2="154.21" y2="47.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="148" y1="51.5" x2="156.18" y2="51.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="148" y1="55.5" x2="158.15" y2="55.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="148" y1="59.5" x2="160.12" y2="59.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="148" y1="63.5" x2="155.2" y2="63.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="148" y1="67.5" x2="157.17" y2="67.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="148" y1="71.5" x2="159.14" y2="71.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="148" y1="75.5" x2="154.21" y2="75.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="148" y1="79.5" x2="156.18" y2="79.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="148" y1="83.5" x2="158.15" y2="83.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="148" y1="87.5" x2="160.12" y2="87.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="148" y1="91.5" x2="155.2" y2="91.5" stroke="#6aa8ff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+  </g>
+</svg>

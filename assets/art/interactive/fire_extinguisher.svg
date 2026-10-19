@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <title>fire_extinguisher: crew pick it up to fight fires</title>
+  <g id="base">
+    <rect x="4" y="0" width="8" height="3" fill="#373f4b" stroke="#10141a" stroke-width="1"/>
+    <circle cx="8" cy="9" r="5" fill="#d33a3a" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="8" cy="9" r="2" fill="#2b2f36"/>
+    <line x1="8" y1="4" x2="12" y2="2" stroke="#2b2f36" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+  <g id="meta">
+    <circle id="collider" cx="8" cy="9" r="5" fill="none" stroke="none"/>
+    <circle id="interact" cx="8" cy="14" r="2" fill="none" stroke="none"/>
+  </g>
+</svg>

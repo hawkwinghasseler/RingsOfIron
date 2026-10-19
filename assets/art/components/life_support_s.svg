@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="128" viewBox="0 0 64 128">
+  <title>life_support S: 1x2 auxiliary slot</title>
+  <g id="base">
+    <rect x="0" y="0" width="64" height="128" fill="#2a3039"/>
+    <rect x="4" y="4" width="56" height="120" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <path d="M5.75,122.25 L5.75,5.75 L58.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M58.25,5.75 L58.25,122.25 L5.75,122.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="14" y="10" width="36" height="48" rx="18" fill="#2a4a38" stroke="#10141a" stroke-width="2"/>
+    <rect x="19.4" y="17.2" width="7.2" height="33.6" rx="3.6" fill="#4e8a66"/>
+    <rect x="29" y="6" width="6" height="6" fill="#4b5563" stroke="#10141a" stroke-width="1"/>
+    <circle cx="32" cy="92" r="22" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <path d="M32,92 Q46.53,101.94 42.1,107.74" fill="none" stroke="#7d8898" stroke-width="2.64" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M32,92 Q27.04,108.89 20.16,106.47" fill="none" stroke="#7d8898" stroke-width="2.64" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M32,92 Q14.41,92.5 14.58,85.21" fill="none" stroke="#7d8898" stroke-width="2.64" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M32,92 Q26.09,75.42 33.08,73.33" fill="none" stroke="#7d8898" stroke-width="2.64" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M32,92 Q45.94,81.26 50.09,87.25" fill="none" stroke="#7d8898" stroke-width="2.64" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="32" cy="92" r="4.84" fill="#465060" stroke="#10141a" stroke-width="1"/>
+    <circle cx="32" cy="34" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+  </g>
+  <g id="emissive">
+    <circle cx="32" cy="34" r="9.6" fill="#5ee08a" opacity="0.18"/>
+    <circle cx="32" cy="34" r="3.2" fill="#5ee08a"/>
+  </g>
+</svg>

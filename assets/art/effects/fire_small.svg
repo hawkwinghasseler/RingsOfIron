@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>fire_small: fire overlay (Tile.FireSize.SMALL)</title>
+  <g id="base">
+  </g>
+  <g id="emissive">
+    <circle cx="32" cy="36" r="16" fill="#ff5a1f" opacity="0.18"/>
+    <path d="M23,44 C23,33 30.2,30.8 32,22 C34.7,31.9 41,34.1 41,44 Z" fill="#ff5a1f"/>
+    <path d="M25.52,44 C25.52,36.08 30.7,34.5 32,28.16 C33.94,35.29 38.48,36.87 38.48,44 Z" fill="#ffa62b"/>
+    <path d="M28.04,44 C28.04,39.16 31.21,38.19 32,34.32 C33.19,38.68 35.96,39.64 35.96,44 Z" fill="#ffe58a"/>
+  </g>
+</svg>

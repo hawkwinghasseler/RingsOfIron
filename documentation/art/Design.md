@@ -1,0 +1,173 @@
+# Art Asset Pack: Style and Naming Guide
+
+## Overview
+The game's art is made as SVG in `assets/art`: floors, walls in every join pattern, edge walls and bulkhead doors, ship components in every mount size, state effects, sub-tile decor and interactive objects, weapon turrets, and the exterior hulls of ships and stations. SVG is the source format; the game will load raster versions of these files (see **Using the art in the game**).
+
+Open `assets/art/preview.html` in a browser to see every asset, every chassis in `assets/data/chassis.toml` drawn with the tile and component art, and each ship's exterior with its turrets on their hardpoints.
+
+## Scale and orientation
+- **One tile is 64 SVG units.** A tile is one meter in game (`tile_size = 1.0`), so 64 units is one meter everywhere, exterior art included.
+- **Sub-tile objects sit on a quarter-tile grid of 16 units.** Their canvas is their footprint rounded up to that grid (16x16, 32x16, 32x32, 32x64...).
+- **Components are drawn at rotation 0.** SVG up is the grid's +y. A rotation in data is counter-clockwise quarter turns, so code rotates the art the same way.
+  - Auxiliary components are drawn in their unrotated size (helm M is 2x3 tiles, 128x192); a rotated mount turns the art 90°.
+  - Primary components face +y.
+  - Docking ports face +y: frame tiles at both ends, the opening between them, the port door along the top edge.
+  - Hull wedges at rotation 0 have their legs on the left and bottom edges and the sloped face toward +x/+y (`HullPiece.Shape.WEDGE`).
+  - Wall-mounted decor (lockers, panels, lights, pipes) has the wall at the top of its canvas.
+- **Walls are never rotated.** Every join pattern and orientation has its own file, so their light always comes from the top-left.
+- **Exterior art is in the body frame.** Ship and station hulls use body coordinates times 64 with y flipped, so the SVG origin is the body origin and the bow points to +x, matching `hull` and the hardpoints in `ships.toml`. Turrets have their pivot at the SVG origin and the barrel toward +x.
+
+## Layers
+Every SVG has up to three top-level groups:
+
+| Group | Holds |
+|---|---|
+| `<g id="base">` | Everything lit by the scene. |
+| `<g id="emissive">` | Everything that gives off its own light: screens, status lamps, reactor and shield glow, live conduits, fire. Drawn over the base. |
+| `<g id="meta">` | Invisible shapes for code: `id="collider"` and `id="interact"` (see below). |
+
+A lamp or screen keeps its unlit glass in the base layer, so with the emissive layer off it reads as dark, not missing. The game can draw the emissive layer additively, use it for a glow or bloom pass, or skip it to show a system without power.
+
+## Powered and unpowered
+Every powered object has an `_unpowered` variant: the same art with the emissive layer left out. That covers reactors, shield emitters, turret mounts, helm and weapons consoles, life support, airlocks, docking ports and collars, conduits, bulkhead doors, powered decor (terminal, wall light, bulkhead panel, breaker, med bed) and energy weapons. Cargo bays are passive and have no variant.
+
+The suffix goes after any state: `docking_port_m_open_unpowered`, `bulkhead_door_sealed_unpowered_h`.
+
+## Walls
+### Full-tile walls
+Each wall tile type (`hull`, `hull_light`, `hull_medium`, `hull_heavy`, `internal_wall`) has 16 files, one for each combination of neighbors it joins: `walls/<id>_<sides>.svg`, where `<sides>` lists the joined sides in the order `n`, `e`, `s`, `w` (up, right, down, left), or `0` for none. A wall joins the neighbors of the same tile type.
+
+| Shape | Files |
+|---|---|
+| Isolated | `_0` |
+| End | `_n`, `_e`, `_s`, `_w` |
+| Straight | `_ns`, `_ew` |
+| Corner | `_ne`, `_es`, `_sw`, `_nw` |
+| T-junction | `_nes`, `_esw`, `_nsw`, `_new` |
+| Intersection | `_nesw` |
+
+Joined sides run straight into the neighbor with only a faint seam, and a groove along the middle of the wall carries through, so a run of walls reads as one beam. Open sides show the wall's face, lit from the top-left. Where two joined sides meet, the tile also turns the inner corner of the faces; that assumes the diagonal neighbor is open, as it is for walls one tile thick.
+
+Wedges are `walls/hull_<weight>_wedge_<w>x<h>.svg` (and `hull_wedge_*` for `hull`), drawn at rotation 0 and rotated like components.
+
+### Edge walls
+Thin walls between tiles are drawn in pieces: a segment for each tile edge and a joint at each grid vertex where segments meet.
+
+- `edges/edge_wall_<weight>_h.svg` (64x16) lies along a horizontal edge, which runs along y = 8; `_v` (16x64) along a vertical edge, at x = 8. A segment's ends are open, so segments in a line join with no seam.
+- `edges/edge_wall_<weight>_joint_<sides>.svg` (16x16) is centered on a vertex; `<sides>` lists which of the four edges meeting there carry a wall, in the same `nesw` order. An end cap is a single side (`_joint_n`), a corner two at right angles (`_joint_ne`), a T three, a cross all four. Draw it over the segments.
+
+### Doors
+Bulkhead doors take the place of an edge wall segment: `edges/bulkhead_door_<state>[_unpowered]_<h|v>.svg`, state `sealed` or `open`. A powered door's lamp is red when sealed and green when open; an unpowered door has dark lamps.
+
+## Components
+Each size of a component is its own design, not the small one repeated: a bigger reactor is a different machine (canister, fission pile, tokamak, fusion plant), a bigger helm is a bigger room (a pilot's seat, a two-seat cockpit, a bridge, a command bridge). Parts, palette and accent stay the same across sizes.
+
+The **turret mount** is the turret's base and its operator's station: a bearing ring with a traverse drive and the ammunition or power feed, and the gunner's console and seat (bigger mounts add a loader's station). The ring is centered on the mount, and so is the turret drawn on the exterior: a hardpoint in `ships.toml` sits on the center of the turret mount its weapon is wired to.
+
+## Exterior hulls
+A ship or station hull is built on its chassis grid: every tile of the layout is a hull panel (tile edges are the panel lines), and each system's exterior fitting sits over its footprint, so the outside matches the inside:
+
+| System | Exterior |
+|---|---|
+| Turret mount | Turret ring at the mount's center |
+| Reactor | Radiator grille |
+| Shield emitter | Emitter dome |
+| Life support | Intake vents |
+| Helm | Bridge glazing |
+| Weapons console | Sensor mast |
+| Cargo | Cargo hatches, one panel per tile |
+| Airlock | Hatch |
+| Docking port | Port frame, and the collar half a tile outside |
+
+Parts of the hull polygon past the grid (the corvette's bow) are drawn under the grid. Ships carry engine mounts on the aft (-x) edge, one for every three rows; the engines themselves are separate art. Navigation lights mark the corners: red to port (+y), green to starboard.
+
+## Style
+Top-down, orthographic, flat-shaded vector art with dark outlines. Light comes from the top-left: a lighter line along the top and left inside edges of a raised part, a darker one along the bottom and right. No perspective, no drop shadows outside a footprint, so tiles butt together cleanly.
+
+- **Outlines:** `#10141a`, 2 units on tiles and components, 1-1.5 on small details, 3 on exterior hulls.
+- **Detail density:** read clearly at 32 px a tile (half size). Rivets, seams and screens are details; the silhouette and the accent color must carry the meaning.
+- **Glow:** emissive parts use the accent color with a white-hot center or a soft radial gradient. Gradients are the only place colors blend.
+
+### Palette
+| Role | Color |
+|---|---|
+| Outline | `#10141a` |
+| Deck base / plate / seam / highlight | `#3a434f` / `#444e5b` / `#2a3039` / `#566170` |
+| Steel light / mid / dark / highlight | `#5b6675` / `#4b5563` / `#373f4b` / `#7d8898` |
+| Machinery housing / highlight | `#2f3641` / `#465060` |
+| Screen glass / unlit lamp | `#0c1a26` / `#1b2028` |
+| Power (conduits, junctions) | `#f2b134` |
+| Hazard stripe (doors, airlocks, ports, seals) | `#f2c230` on outline black |
+| Status lamps | sealed or off `#ff4d4d`, open or on `#4dff88` |
+
+Each system has an accent, used for its glow, screens and status lamps, and nowhere else:
+
+| System | Accent |
+|---|---|
+| Reactor | `#ff9a3c` |
+| Shield emitter | `#4fd1ff` |
+| Turret mount | `#ff5a5a` |
+| Life support | `#5ee08a` |
+| Helm | `#6aa8ff` |
+| Weapons console | `#c58cff` |
+| Cargo | `#c8a26a` |
+| Airlock, docking port | `#f2c230` (hazard) |
+
+These match the `color` a tile type or component carries in data where one is set, so the editor's flat colors and the art agree.
+
+## Naming
+File names are lowercase `snake_case` and start with the id in data, so code can find the art from a definition without a lookup table. Suffixes come in this order: size, state, `unpowered`, orientation.
+
+| Folder | Name | Example |
+|---|---|---|
+| `tiles/` | the floor tile type's id in `tiles.toml`; coverings as `covering_<covering>` | `floor`, `conduit`, `conduit_arm`, `covering_carpet` |
+| `walls/` | `<tile id>_<sides>`; wedges as `<tile id>_wedge_<w>x<h>` | `hull_heavy_nes`, `internal_wall_0`, `hull_medium_wedge_1x2` |
+| `edges/` | `edge_wall_<weight>_<h\|v>`, `edge_wall_<weight>_joint_<sides>`, `bulkhead_door_<state>_<h\|v>` | `edge_wall_light_joint_ne`, `bulkhead_door_open_unpowered_v` |
+| `components/` | `<component id>_<size>`, size `s`, `m`, `l` or `xl` | `reactor_xl`, `helm_m_unpowered`, `docking_port_l_open`, `docking_collar_s` |
+| `effects/` | the state it shows | `fire_medium`, `breach`, `damage_heavy`, `bulkhead_seal` |
+| `decor/` | the object | `crate_small`, `pipe_run`, `wall_light_unpowered` |
+| `interactive/` | the object; levels as a number suffix | `fire_extinguisher`, `cargo_stack_2` |
+| `turrets/` | the weapon id in `weapons.toml` | `railgun_mk1`, `harpoon_launcher` |
+| `hulls/` | the chassis id in `chassis.toml` | `corvette`, `station_hub`, `thruster_plume` |
+
+Tile ids are the ones in `tiles.toml`: `floor` (`.`), `conduit` (`+`), `hull` (`#`, medium), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`), `internal_wall` (`I`); `void` has no art. Component ids are the ones in `components.toml`: `reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `docking_port`. A new component made in data (say `fusion_core` with behavior `REACTOR`) gets its own `fusion_core_<size>.svg`; until it has one, code can fall back to the art of its behavior's built-in component.
+
+Asset keys in `assets.toml` follow the existing `tex_` prefix with the folder and name: `tex_tile_floor`, `tex_component_reactor_xl`, `tex_hull_corvette`.
+
+## How the parts fit together
+- **Conduits** autotile: draw `conduit` on the tile, then `conduit_arm` once for each neighboring conduit tile, turned toward it (0 up, 1 left, 2 down, 3 right).
+- **Components** cover their whole footprint and are drawn over the floor. Helm, weapons and cargo art include the deck; the others are machinery housings.
+- **Docking ports**: `docking_port_<size>` has the door sealed, `_open` open. The latch collar is not on the grid: `docking_collar_<size>` sits half a tile (32 units) outside the outer edge, centered on the port.
+- **Effects** are overlays: fire by `Tile.FireSize`, `scorch` once a fire burns out, `breach` on a hull tile at integrity 0, `damage_light` below half integrity (where leaks start) and `damage_heavy` below a quarter, `bulkhead_seal` on a sealed tile.
+- **Cargo stacks**: `cargo_stack_1` to `_3` are one bay tile's stack at a third, two thirds and full of `CargoHoldComponent.STACK_HEIGHT`.
+
+## Colliders and interaction points
+Decor and interactive objects that block movement or can be used carry two invisible shapes in their `meta` group, so code can read them straight from the SVG:
+
+- `id="collider"`: a `<rect>` or `<circle>` giving the collision shape in the same units as the art.
+- `id="interact"`: a `<circle>` whose center is where crew stand or reach to use the object.
+
+## Using the art in the game
+libGDX does not draw SVG, so the game will load PNGs rasterized from these files: 64 px a tile at 1x, 128 at 2x, packed into a texture atlas, with the emissive layer as its own texture. That build step is not part of this pack yet; until it is, keys in `assets.toml` still point at placeholders.
+
+## Regenerating
+The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many variants consistent and builds the hulls from `chassis.toml` and `ships.toml`. The SVGs are the source: edit them in any vector editor (Inkscape, Illustrator, Figma). Re-running the script clears and rewrites `assets/art`, so once a file is edited by hand, take it out of the script.
+
+`tools/art/make_preview.py` rebuilds `assets/art/preview.html`; `--inline` embeds the SVGs so the page is one shareable file.
+
+## Asset list
+- **Tiles (6):** floor, conduit and conduit arm (powered and unpowered), carpet covering.
+- **Walls (88):** `hull`, `hull_light`, `hull_medium`, `hull_heavy` and `internal_wall` in all 16 join patterns, and 1x1 and 1x2 wedges for each hull weight.
+- **Edges (59):** edge wall segments (horizontal and vertical) and 15 joints for each weight; bulkhead doors sealed and open, powered and unpowered, both orientations.
+- **Components (78):** reactor, shield emitter and turret mount (S-XL); helm, weapons console, life support, cargo bay and airlock (S-XL); docking port S-L sealed and open, and the collar for each size; with an unpowered variant of each powered one.
+- **Effects (8):** fire small, medium and large, scorch, breach, light and heavy damage, bulkhead seal.
+- **Decor (18):** vent grate, floor hatch, pipe run, pipe valve, cable tray, wall light, hazard stripe, floor arrow, small and large crates, barrel, locker, bunk, table, mess table, chair, plant.
+- **Interactive (14):** fire extinguisher, bulkhead panel, breaker, terminal, emergency locker, repair kit, med bed, cargo stacks at three levels.
+- **Turrets (6):** railgun, autocannon, laser and harpoon launcher, and unpowered railgun and laser.
+- **Hulls (5):** corvette, freighter, outpost and hub stations, thruster plume.
+
+## Open Questions
+- Crew sprites and engine sprites are not in this pack.
+- Walls more than one tile thick show a small notch at inner corners; the 47-tile blob set would remove it if thick walls become common.
+- Should material (hull steel vs composite armor) change a hull tile's art, or only its tint?
+- Damaged and destroyed variants of each component, beyond the shared damage overlays.
