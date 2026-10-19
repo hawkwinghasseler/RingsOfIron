@@ -104,6 +104,7 @@ Hull, wall and floor tiles, hull pieces and edge walls all take damage to their 
 
 **At integrity 0** a piece is destroyed and stops doing its job:
 - A **`HULL`** tile (or hull piece) at 0 is a breach: `isHullBreach()` is true and it counts as open space, so `GridHazardSystem` vents the adjoining room on its next tick. Sealing a bulkhead on the breached tile patches it.
+- **Field patches** (`LeakPatches`, round 4). A wall, hull tile, deck plate or thin wall between 0 and `LEAK_START` leaks without being a breach. The crew can patch such a leak to space from the ship's stores (`ShipGridComponent.patchKits`, 8 from the yard): the patch stops the leak (`leakFactor()` 0) but leaves the condition where it was, so the hull still needs a yard. It records the condition it went on at (`patchedAt` on the tile, hull piece or edge wall) and holds while the condition stays at or above that and below `LEAK_START`, so a new hit breaks it and a yard repair past `LEAK_START` takes it off. Patches and the kits left are saved. A yard's repair order restocks the kits at no charge. **Chosen while Joe was away.**
 - An **`INTERNAL`** wall tile at 0 stops blocking fire, air and walking. It becomes an open tile with no fuel.
 - An **edge wall** at 0 blocks nothing, whatever the state of its door.
 - A **floor or conduit** at 0 is a hole to space and stops carrying power; `PowerRoutingSystem` routes around it.
@@ -240,7 +241,7 @@ Each connected part of the grid with a working reactor in it is a `PowerCircuit`
 ## Ticks and Time Warp
 All three interior systems are core-engine `FixedLogicSystem`s, run after exterior physics in this order: `PowerRoutingSystem` (priority 30, every 1 s), `GridHazardSystem` (31, every 0.25 s), then `LifeSupportSystem` (32, every 0.25 s).
 
-`InteriorHazardWarpGuard` is a core-engine `RailsWarpGuard` for one ship, normally the player's. It refuses rails warp with "Fire aboard" while any tile burns (`ShipGridComponent.hasFire()`), or "Atmosphere venting" while air leaves through an opening to space faster than 0.01 mol/s (`isVenting()`).
+`InteriorHazardWarpGuard` is a core-engine `RailsWarpGuard` for one ship, normally the player's. It refuses rails warp with "Fire aboard" while any tile burns (`ShipGridComponent.hasFire()`), or "Atmosphere venting" while the ship as a whole loses air to space faster than 0.01 mol/s (`isVenting()`, summed over every opening since round 4). A sealed or patched leak, or one from a room already empty, does not count. While a patchable leak vents, the reason says what will clear it: "Atmosphere venting: the crew are patching the leak", or "...: no hull patches left, a yard must repair the leak". The game's `DamageControl` posts the same as notices, and a notice when the patches hold.
 
 A rails warp jump therefore only ever starts with no fire and no venting. Each system gets one `catchUp` call for the whole jump:
 - `GridHazardSystem` cools every tile toward ambient by the exact exponential decay of its loss to the structure, and pools the air of every group of rooms joined by any opening. A group that still reaches space through a slow leak empties.

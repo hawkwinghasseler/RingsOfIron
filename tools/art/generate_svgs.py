@@ -1758,6 +1758,21 @@ def effects():
     for xx in (12, 24, 40, 52):
         a.b += circle(xx, 32, 2, "#d9c27a", stroke=INK, sw=1)
     write("effects/bulkhead_seal.svg", T, T, a, "bulkhead_seal: emergency seal over a tile (Tile.bulkheadSealed)")
+    hull_patch()
+
+
+def hull_patch():
+    # A plate bolted over a leak in the field: off-square, rivets, a weld bead and a strip of
+    # hazard tape to say it is temporary
+    a = Art()
+    plate = [(12, 15), (52, 10), (55, 50), (14, 54)]
+    a.b = poly(plate, STEEL_MID, stroke=INK, sw=2)
+    a.b += poly([(16, 19), (49, 15), (51, 46), (18, 49)], "none", stroke=STEEL_HI, sw=1)
+    for (rx, ry) in ((16, 18), (49, 14), (51, 47), (17, 50), (33, 15), (34, 51)):
+        a.b += circle(rx, ry, 1.6, STEEL_HI, stroke=INK, sw=0.8)
+    a.b += path("M20,30 L28,27 L36,31 L44,28", stroke="#d9e2ee", sw=1.4, extra=' opacity="0.8"')
+    a.b += poly([(18, 37), (50, 33), (51, 39), (19, 43)], HAZARD, stroke=INK, sw=1)
+    write("effects/hull_patch.svg", T, T, a, "hull_patch: a field patch over a leaking tile (Tile.isPatched)")
 
 
 # ---------------------------------------------------------------------------

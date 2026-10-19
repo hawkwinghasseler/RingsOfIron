@@ -87,6 +87,11 @@ public class ShipGridComponent implements Component {
      * null for a grid made in code.
      */
     public String chassis;
+    /**
+     * Hull patches the ship carries for damage control: each one lets the crew stop a leaking
+     * wall, deck plate or thin wall in the field (see {@link LeakPatches}). A yard restocks them.
+     */
+    public int patchKits = LeakPatches.DEFAULT_KITS;
 
     public ShipGridComponent(int width, int height, float tileSize) {
         this(width, height, tileSize, 0f, 0f);
@@ -338,16 +343,28 @@ public class ShipGridComponent implements Component {
         return false;
     }
 
-    /** True while air leaves through some opening to space faster than {@link #VENTING_HAZARD_FLOW}. */
+    /**
+     * True while the ship as a whole loses air to space faster than {@link #VENTING_HAZARD_FLOW}:
+     * a sealed or patched leak, a trickle, or a leak from a room already empty does not count.
+     */
     public boolean isVenting() {
-        for (int i = 0; i < airflow.size; i++) {
-            AirflowEdge e = airflow.get(i);
-            if (e.other == null && e.flow > VENTING_HAZARD_FLOW) return true;
-        }
-        return false;
+        return ventingRate() > VENTING_HAZARD_FLOW;
     }
 
-    /** Venting below this rate (mol/s through one opening) does not count as a hazard. */
+    /** Air leaving the ship for space through every opening, mol/s, from the last hazard tick. */
+    public float ventingRate() {
+        float total = 0f;
+        for (int i = 0; i < airflow.size; i++) {
+            AirflowEdge e = airflow.get(i);
+            if (e.other == null && e.flow > 0f) total += e.flow;
+        }
+        return total;
+    }
+
+    /**
+     * Venting below this rate (mol/s, the whole ship) does not count as a hazard. Life support
+     * makes it up without noticing: a standard room holds thousands of moles.
+     */
     public static final float VENTING_HAZARD_FLOW = 0.01f;
 
     // -----------------------------------------------------------------------

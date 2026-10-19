@@ -19,12 +19,14 @@ import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
+import com.ringsofiron.interiorgrid.crew.PatchLeakTask;
 import com.ringsofiron.interiorgrid.crew.RepairTask;
 import com.ringsofiron.interiorgrid.crew.RescueTask;
 
@@ -247,7 +249,8 @@ public final class CrewTasks {
             }
             elapsed += a.dt;
             a.crew.activity = describe(t);
-            if (t.kind == CrewTask.Kind.REPAIR || t.kind == CrewTask.Kind.EXTINGUISH || t.kind == CrewTask.Kind.SEAL_BREACH) {
+            if (t.kind == CrewTask.Kind.REPAIR || t.kind == CrewTask.Kind.EXTINGUISH || t.kind == CrewTask.Kind.SEAL_BREACH
+                    || t.kind == CrewTask.Kind.PATCH_LEAK) {
                 a.crew.record().pendingWork += a.dt; // engineering experience
             }
             Tile tile = grid.getTile(t.x, t.y);
@@ -264,6 +267,11 @@ public final class CrewTasks {
                     tile.bulkheadSealed = true;
                     grid.gridDirty = true;
                     return Status.SUCCEEDED;
+                case PATCH_LEAK: {
+                    if (elapsed < a.crew.def.patchTime) return Status.RUNNING;
+                    PatchLeakTask p = (PatchLeakTask) t;
+                    return LeakPatches.patch(grid, p.x, p.y, p.side) ? Status.SUCCEEDED : Status.FAILED;
+                }
                 case REPAIR: {
                     SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                     s.health = Math.min(1f, s.health + a.crew.def.repairRate * a.dt);
@@ -777,6 +785,7 @@ public final class CrewTasks {
         switch (t.kind) {
             case EXTINGUISH: return "fighting fire at " + t.x + "," + t.y;
             case SEAL_BREACH: return "sealing breach at " + t.x + "," + t.y;
+            case PATCH_LEAK: return "patching a leak at " + t.x + "," + t.y;
             case REPAIR: {
                 SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                 return "repairing " + (s == null ? "system" : s.type.name().toLowerCase());

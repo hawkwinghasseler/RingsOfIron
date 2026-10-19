@@ -57,6 +57,8 @@ public class CrewDef {
     public float repairRate = 0.1f;
     /** Seconds to patch a hull breach with an emergency seal. */
     public float sealTime = 3f;
+    /** Seconds to patch a leaking wall or deck plate from the ship's stores. */
+    public float patchTime = 6f;
 
     /** Tiles within which hostiles are noticed (also needs line of sight). */
     public float sightRange = 12f;

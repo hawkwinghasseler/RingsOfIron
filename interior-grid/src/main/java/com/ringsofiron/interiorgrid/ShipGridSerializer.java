@@ -25,6 +25,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
         json.writeValue("originX", grid.gridOriginLocal.x);
         json.writeValue("originY", grid.gridOriginLocal.y);
         if (grid.chassis != null) json.writeValue("chassis", grid.chassis);
+        json.writeValue("patchKits", grid.patchKits);
 
         json.writeArrayStart("tiles");
         for (int y = 0; y < grid.height; y++) {
@@ -41,6 +42,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 json.writeValue("temperature", t.temperature);
                 json.writeValue("integrity", t.integrity);
                 json.writeValue("sealed", t.bulkheadSealed);
+                if (t.patchedAt > 0f) json.writeValue("patch", t.patchedAt);
                 json.writeObjectEnd();
             }
         }
@@ -66,6 +68,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             json.writeValue("weight", p.weightClass.name());
             json.writeValue("material", p.material);
             json.writeValue("integrity", p.integrity);
+            if (p.patchedAt > 0f) json.writeValue("patch", p.patchedAt);
             json.writeObjectEnd();
         }
         json.writeArrayEnd();
@@ -123,6 +126,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 json.writeValue("integrity", e.integrity);
                 json.writeValue("bulkhead", e.hasBulkhead);
                 json.writeValue("sealed", e.bulkheadSealed);
+                if (e.patchedAt > 0f) json.writeValue("patch", e.patchedAt);
                 json.writeObjectEnd();
             }
         }
@@ -149,6 +153,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
         float tileSize = data.getFloat("tileSize");
         ShipGridComponent grid = new ShipGridComponent(w, h, tileSize, data.getFloat("originX"), data.getFloat("originY"));
         grid.chassis = data.getString("chassis", null);
+        grid.patchKits = data.getInt("patchKits", LeakPatches.DEFAULT_KITS);
 
         // Pieces first: placing one resets its tiles, which the tile state below then restores
         for (JsonValue p = data.get("pieces").child; p != null; p = p.next) {
@@ -157,6 +162,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                     WeightClass.valueOf(p.getString("weight")), p.getString("material"));
             grid.placeHullPiece(piece);
             piece.integrity = p.getFloat("integrity");
+            piece.patchedAt = p.getFloat("patch", 0f);
         }
 
         int i = 0;
@@ -172,6 +178,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             t.temperature = v.getFloat("temperature");
             t.integrity = v.getFloat("integrity");
             t.bulkheadSealed = v.getBoolean("sealed");
+            t.patchedAt = v.getFloat("patch", 0f);
         }
 
         readEdges(data.get("edgeH"), grid.edgeH);
@@ -250,6 +257,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             EdgeWall wall = new EdgeWall(WeightClass.valueOf(e.getString("weight")), e.getString("material"), e.getBoolean("bulkhead"));
             wall.integrity = e.getFloat("integrity");
             wall.bulkheadSealed = e.getBoolean("sealed");
+            wall.patchedAt = e.getFloat("patch", 0f);
             edges[e.getInt("y")][e.getInt("x")] = wall;
         }
     }

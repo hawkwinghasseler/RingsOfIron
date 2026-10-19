@@ -45,7 +45,7 @@ public enum CrewRole {
         switch (this) {
             case ENGINEER:
                 switch (kind) {
-                    case SEAL_BREACH: case REPAIR: return 1.5f;
+                    case SEAL_BREACH: case PATCH_LEAK: case REPAIR: return 1.5f;
                     case EXTINGUISH: case FORCE_DOOR: case YARD: return 1.2f;
                     case RESCUE: return 0.8f;
                     case CARRY: return 0.5f;
@@ -75,7 +75,7 @@ public enum CrewRole {
             case TECHNICIAN:
                 switch (kind) {
                     case YARD: return 1.5f;
-                    case REPAIR: case SEAL_BREACH: return 1.2f;
+                    case REPAIR: case SEAL_BREACH: case PATCH_LEAK: return 1.2f;
                     case EXTINGUISH: case RESCUE: return 0.8f;
                     default: return 0f;
                 }
@@ -83,7 +83,7 @@ public enum CrewRole {
                 switch (kind) {
                     case EXTINGUISH: case RESCUE: case MAN_CONSOLE: case FORCE_DOOR: return 1f;
                     case CARRY: case BOARD: return 0.5f;
-                    case REPAIR: case SEAL_BREACH: return 0.5f;
+                    case REPAIR: case SEAL_BREACH: case PATCH_LEAK: return 0.5f;
                     default: return 0f;
                 }
         }
