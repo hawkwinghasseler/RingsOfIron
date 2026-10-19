@@ -600,6 +600,12 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         if (victim == null || attacker == null || victim == attacker) return;
         HostileComponent h = victim.getComponent(HostileComponent.class);
         if (h == null) return;
+        // A patrol hit by the player's stray rounds in someone else's fight doesn't turn on them,
+        // unless the player stands hostile with its side (it used to follow them to the berth)
+        if (!h.isPirate() && attacker == world.getPlayer()) {
+            int side = world.standing.factions().index(h.faction);
+            if (side < 0 || !world.standing.hostile(FactionStanding.PLAYER, side)) return;
+        }
         provoked.put(victim, attacker);
         attackers.computeIfAbsent(victim, k -> new IdentityHashMap<>()).put(attacker, world.macroSim.now());
         if (attacker == world.getPlayer()) h.foughtPlayer = true;

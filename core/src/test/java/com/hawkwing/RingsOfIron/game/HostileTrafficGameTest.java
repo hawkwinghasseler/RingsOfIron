@@ -152,6 +152,24 @@ class HostileTrafficGameTest {
     }
 
     @Test
+    void aPatrolHitByThePlayersStrayFireKeepsToThePirate() {
+        // Round 5: a cutter hit once in the player's fight with an ace turned on the player, and
+        // followed them to Highport's berth with its railgun
+        String pirate = pirate(HostileTraffic.RAIDER);
+        String patrol = null;
+        for (Map.Entry<String, HostileComponent> e : hostiles.all().entrySet()) {
+            if (!e.getValue().isPirate()) patrol = e.getKey();
+        }
+        Entity raider = bringIn(pirate, 4_000, 1_500);
+        Entity cutter = bringIn(patrol, 4_000, -1_500);
+        run(2);
+        world.hostiles.onShotAt(cutter, game.player);
+        run(2);
+        assertSame(raider, cutter.getComponent(NpcCombatComponent.class).target);
+        assertSame(raider, cutter.getComponent(SensorComponent.class).lockedTarget);
+    }
+
+    @Test
     void aPirateTakesAFreightersCargoAlongsideAndLeaves() {
         for (int i = 0; i < 60; i++) world.update(FRAME);
         Entity freighter = null;

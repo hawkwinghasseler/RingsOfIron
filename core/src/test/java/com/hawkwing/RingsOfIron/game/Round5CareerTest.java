@@ -419,11 +419,16 @@ class Round5CareerTest extends CareerScript {
             }
             String said = world.yard.orderRepairs(game.player, station);
             orders++;
+            if (orders <= 3 || world.yard.repairCost(game.player) > 0.5 && orders == yardTries) {
+                log("  order %d: %s (docked at %s, hull %.2f)", orders, said, world.docking.dockedTo(game.player) == null ? "nothing"
+                        : PlayerDocking.name(world.docking.dockedTo(game.player)), hull(game.player));
+            }
             if (!runUntil(3_600f, () -> !world.yard.repairing(game.player))) {
                 log("  the yard is still at it after an hour: %s (career over: %s, crash: %s)", said, world.getCareerOver(), world.getCrash());
                 break;
             }
         }
+        for (String n : world.yard.notices) log("  yard: %s", n);
         world.yard.notices.clear();
         repairsLeft += world.yard.repairCost(game.player);
         log("Yard at %s: quoted %.0f cr, paid %.0f, ordered %d time(s) in %.1f h; %.0f cr left undone; hull %.2f.",
