@@ -111,7 +111,8 @@ public final class DeckArt {
             if (p.shape != HullPiece.Shape.WEDGE) continue;
             TextureRegion r = art.region(ArtNames.wedge(p));
             if (r == null) continue;
-            footprint(batch, r, grid, p.originX, p.originY, p.width(), p.height(), p.baseWidth, p.baseHeight, p.rotation);
+            wedge(batch, r, grid.gridOriginLocal.x + (p.originX + p.width() / 2f) * s,
+                    grid.gridOriginLocal.y + (p.originY + p.height() / 2f) * s, s, p.baseWidth, p.baseHeight, p.rotation);
         }
     }
 
@@ -346,6 +347,20 @@ public final class DeckArt {
         float cx = grid.gridOriginLocal.x + (originX + width / 2f) * s;
         float cy = grid.gridOriginLocal.y + (originY + height / 2f) * s;
         centered(batch, r, cx, cy, bw * s, bh * s, rotation);
+    }
+
+    /**
+     * Draws a wedge's art centered on its footprint: {@code tile} is the size of a tile, the base
+     * size and rotation are the piece's. A wedge wider than tall draws the tall art mirrored.
+     */
+    public static void wedge(Batch batch, TextureRegion r, float cx, float cy, float tile, int baseWidth, int baseHeight,
+                             int rotation) {
+        if (!ArtNames.wedgeMirrored(baseWidth, baseHeight)) {
+            centered(batch, r, cx, cy, baseWidth * tile, baseHeight * tile, rotation);
+            return;
+        }
+        float w = baseHeight * tile, h = baseWidth * tile;
+        batch.draw(r, cx - w / 2f, cy - h / 2f, w / 2f, h / 2f, w, h, -1f, 1f, (rotation - 1) * 90f);
     }
 
     private static void centered(Batch batch, TextureRegion r, float cx, float cy, float w, float h, int rotation) {

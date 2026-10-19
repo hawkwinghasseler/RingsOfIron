@@ -293,4 +293,21 @@ class EditorProjectTest {
         MountFootprint ef = edge.footprint(catalog);
         if (ef.width() > ef.height()) assertNotNull(m.rotate(edge, catalog), "it would leave the grid");
     }
+
+    @Test
+    void aHullPieceReplacesThePiecesItOverlaps() {
+        EditorProject project = EditorProject.load(ASSETS, null);
+        ShipPartCatalog catalog = project.catalog();
+        ChassisModel corvette = project.chassis.get("corvette").value;
+        corvette.resize(Side.RIGHT, 1, catalog);
+        int x = corvette.width() - 1;
+        assertNotNull(corvette.addHullPiece("WEDGE", x, 0, 1, 2, 0, "MEDIUM"));
+        assertNull(project.check(corvette).error);
+        // The same spot again, as the mirrored wedge: it takes the old one's place
+        assertNotNull(corvette.addHullPiece("WEDGE", x, 0, 2, 1, 1, "MEDIUM"));
+        assertEquals(1, corvette.hullPieces.size());
+        assertNull(project.check(corvette).error);
+        assertNull(corvette.addHullPiece("WEDGE", x, 0, 2, 1, 0, "MEDIUM"), "two wide off the right edge");
+        assertEquals(1, corvette.hullPieces.size());
+    }
 }
