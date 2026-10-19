@@ -72,8 +72,7 @@ public class DockingDemoScene {
         YARD("Refit and repair", "Docked at the outpost, battered: hull, a wall and the nose turret are damaged. J has"
                 + " the outpost's yard repair it all: its technicians (orange) come aboard and work through the damage tile"
                 + " by tile, paid as they go. N refits the nose hardpoint with the next weapon, new (M: used, half price but"
-                + " worn): a loader carries the part aboard, as close to the mount as it can walk, and the technicians fit it"
-                + " one tile at a time. The turrets sit where no one can walk from the dock, so they work on those from outside.");
+                + " worn): a loader carries the part aboard to the mount, and the technicians fit it one tile at a time.");
 
         public final String title;
         public final String help;

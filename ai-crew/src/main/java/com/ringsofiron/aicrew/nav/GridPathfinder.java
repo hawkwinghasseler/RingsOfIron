@@ -83,9 +83,7 @@ public class GridPathfinder {
                 if (!grid.inBounds(nx, ny)) continue;
                 int ni = ny * w + nx;
                 if (parent[ni] != -2) continue;
-                boolean step = i == start ? graph.isWalkable(nx, ny) && grid.canPass(x, y, nx, ny)
-                                          : graph.canStep(x, y, nx, ny);
-                if (!step) continue;
+                if (!graph.canStep(x, y, nx, ny)) continue;
                 parent[ni] = i;
                 queue.add(ni);
             }

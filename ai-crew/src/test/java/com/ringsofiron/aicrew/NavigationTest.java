@@ -69,7 +69,7 @@ class NavigationTest {
     }
 
     @Test
-    void mountsAreNotWalkable() {
+    void mountsAreWalkable() {
         ShipGridComponent g = ChassisBlueprintLoader.load(new String[]{
                 "#####",
                 "#...#",
@@ -78,10 +78,9 @@ class NavigationTest {
                 "#####"}, 1f).grid;
         GridPathfinder pf = new GridPathfinder(g);
         Array<GridNode> path = new Array<>();
-        assertFalse(pf.findPath(1, 2, 2, 2, path), "cannot walk onto the reactor");
+        assertTrue(pf.findPath(1, 2, 2, 2, path), "can walk onto the reactor");
         assertTrue(pf.findPath(1, 2, 3, 2, path));
-        for (GridNode n : path) assertFalse(n.x == 2 && n.y == 2);
-        assertEquals(5, path.size, "goes around the reactor");
+        assertEquals(3, path.size, "straight over the reactor");
     }
 
     @Test

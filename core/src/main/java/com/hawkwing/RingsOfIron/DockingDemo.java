@@ -64,7 +64,7 @@ import java.nio.file.Paths;
  *
  * <p>Drawn: hulls and deck plans, docking collars (yellow), port faces (green while armed, cyan
  * latched, red torn off), the collar head of an active port while it is out (orange), port doors
- * (green open, red shut), mounted systems (grey blocks: crew walk around them), cargo (a crate
+ * (green open, red shut), mounted systems (grey blocks: crew walk over them), cargo (a crate
  * per bay tile, colored by commodity) and crew (white, station hands orange, you in yellow; a
  * crate on anyone carrying a load).
  */

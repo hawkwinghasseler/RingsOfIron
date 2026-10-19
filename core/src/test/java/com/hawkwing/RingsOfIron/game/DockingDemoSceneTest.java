@@ -302,6 +302,19 @@ class DockingDemoSceneTest {
     }
 
     @Test
+    void crewWalkOverMountedSystemsToEveryTurret() {
+        demo.load(DockingDemoScene.Scene.YARD);
+        com.ringsofiron.interiorgrid.ShipGridComponent grid = demo.player.getComponent(com.ringsofiron.interiorgrid.ShipGridComponent.class);
+        boolean[][] reach = StationYard.reachable(grid, demo.world.crew, demo.target);
+        for (com.ringsofiron.combatsys.components.WeaponMountComponent m
+                : demo.player.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class).mounts) {
+            com.ringsofiron.interiorgrid.MountFootprint f =
+                    m.subsystem.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class).footprint;
+            assertTrue(reach[f.originY][f.originX], "a technician can walk from the dock to the turret at " + f.originX + "," + f.originY);
+        }
+    }
+
+    @Test
     void theYardRepairsTheShipTileByTileAndChargesForIt() {
         demo.load(DockingDemoScene.Scene.YARD);
         int damaged = demo.world.yard.damage(demo.player).size();
@@ -357,7 +370,7 @@ class DockingDemoSceneTest {
         for (int i = 0; i < 60 * 300 && !demo.world.yard.refit(demo.player, 0).aboard; i++) demo.update(FRAME);
         assertTrue(demo.world.yard.refit(demo.player, 0).aboard);
         assertTrue(credits() < DockingDemoScene.YARD_CREDITS, "paid when it came aboard");
-        for (int i = 0; i < 60 * 120 && demo.world.cargo.visitorsAboard(demo.player) > 0; i++) demo.update(FRAME);
+        assertEquals(0, demo.world.yard.refit(demo.player, 0).tilesDone, "not fitted yet");
         demo.world.docking.undock(demo.player);
         for (int i = 0; i < 10; i++) demo.update(FRAME);
         assertNull(demo.world.yard.refit(demo.player, 0));
