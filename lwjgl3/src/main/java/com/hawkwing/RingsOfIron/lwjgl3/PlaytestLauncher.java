@@ -39,6 +39,8 @@ import java.util.List;
  *   <li>{@code strand}: empties the propellant tanks, so the ship can't fly home and the tug can be called</li>
  *   <li>{@code load <name>}: loads the save named {@code <name>}, as its Load button would, where
  *       finding the button in a list that autosaves keep adding to isn't repeatable</li>
+ *   <li>{@code docked}: says whether the ship is docked, so a script can wait for the helmsman
+ *       to finish an approach without a guessed pause</li>
  *   <li>{@code target <name>}: makes the first station or craft whose name holds {@code <name>} the
  *       navigation target, where how many Q presses it takes changes from game to game</li>
  * </ul>
@@ -154,6 +156,8 @@ public class PlaytestLauncher {
                     for (SubsystemComponent t : TankSupply.tanks(r, Fluid.PROPELLANT)) t.contents = 0;
                     return "tanks empty";
                 }
+                case "docked":
+                    return world.docking.dockedTo(s.player) != null ? "yes" : "no";
                 case "target": {
                     String want = String.join(" ", java.util.Arrays.copyOfRange(cmd, 1, cmd.length)).toLowerCase(java.util.Locale.ROOT);
                     for (String uuid : world.nav.target.candidates()) {

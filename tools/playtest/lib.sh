@@ -28,6 +28,8 @@ shot() { xdotool getwindowname "$WIN" >/dev/null 2>&1 || { echo "the game window
 cmd() { echo "$*" >> "$CMDS"; pause 0.5; }
 # Waits up to $1 seconds for the game log to print a line matching $2
 await() { for _ in $(seq 1 "$1"); do grep -q "$2" "$OUT/game.log" && return 0; pause 1; done; echo "never saw: $2"; return 1; }
+# Waits up to $1 seconds for the ship to be docked
+until_docked() { for _ in $(seq 1 "$1"); do cmd docked; [ "$(grep 'PLAYTEST docked:' "$OUT/game.log" | tail -1)" = "PLAYTEST docked: yes" ] && return 0; pause 0.5; done; echo "never docked"; return 1; }
 finish() {
   kill $GAME 2>/dev/null; pkill -f "[P]laytestLauncher" 2>/dev/null
   [ -n "${XVFB:-}" ] && kill "$XVFB"
