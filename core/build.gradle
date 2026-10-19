@@ -35,6 +35,11 @@ dependencies {
 
 test {
   useJUnitPlatform()
+  // A failing test says why in the CI log, not only in the report
+  testLogging {
+    events 'failed'
+    exceptionFormat 'full'
+  }
 }
 
 jar {
