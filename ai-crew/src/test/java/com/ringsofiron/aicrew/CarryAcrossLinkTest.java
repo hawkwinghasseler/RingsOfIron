@@ -146,4 +146,36 @@ class CarryAcrossLinkTest {
         assertTrue(crew.crew(visitor).health < crew.crew(visitor).def.maxHealth, "at war, the marine opens fire");
         assertNotNull(mine);
     }
+
+    @Test
+    void crewSeeAndFightHostilesThroughAnOpenDock() {
+        Entity ship = craft(
+                "######",
+                "#.....",
+                "#....#",
+                "######");
+        Entity station = craft(
+                "#######",
+                "......#",
+                "#.....#",
+                "#######");
+        ShipGridComponent sg = ship.getComponent(ShipGridComponent.class), tg = station.getComponent(ShipGridComponent.class);
+        int[] a = edgeTile(sg, Side.RIGHT), b = edgeTile(tg, Side.LEFT);
+        GridLink link = GridLink.join(ship, sg, a[0], a[1], Side.RIGHT, station, tg, b[0], b[1], Side.LEFT);
+        link.setGap(1f);
+        Entity marine = CrewFactory.spawn(crew, ship, "Marine", CrewRole.MARINE, 0, 1, a[1]);
+        Entity guard = CrewFactory.spawn(crew, station, "Guard", CrewRole.MARINE, 2, 3, b[1]);
+        assertTrue(crew.canSee(crew.position(marine), crew.position(guard)), "in line through the opening");
+        assertEquals(9f, crew.distance(crew.position(marine), crew.position(guard)), 1e-4f, "4.5 to the edge, 1 across, 3.5 in");
+        com.ringsofiron.interiorgrid.EdgeWall door = new com.ringsofiron.interiorgrid.EdgeWall(
+                com.ringsofiron.interiorgrid.WeightClass.MEDIUM, com.ringsofiron.interiorgrid.MaterialTable.DEFAULT_MATERIAL, true);
+        door.bulkheadSealed = true;
+        sg.setEdge(a[0], a[1], Side.RIGHT, door);
+        assertFalse(crew.canSee(crew.position(marine), crew.position(guard)), "not through a shut port door");
+        door.bulkheadSealed = false;
+        for (int i = 0; i < 30 * 20; i++) engine.update(1f / 30f);
+        boolean hurt = crew.crew(marine).health < crew.crew(marine).def.maxHealth
+                || crew.crew(guard).health < crew.crew(guard).def.maxHealth;
+        assertTrue(hurt, "they traded fire across the dock");
+    }
 }
