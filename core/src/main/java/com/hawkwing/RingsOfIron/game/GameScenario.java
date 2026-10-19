@@ -85,10 +85,11 @@ public class GameScenario {
     public Entity raider;
     /** Ships the player can lock: hostiles and traffic in the bubble. */
     public final Array<Entity> contacts = new Array<>();
-    public final String highport;
-    public final String depot;
+    /** The stations' uuids; a load replaces them with the loaded stations'. */
+    public String highport;
+    public String depot;
     /** The ice mine in low lunar orbit. */
-    public final String lunarMine;
+    public String lunarMine;
     /** Highport's attitude: half a turn, so its Small ports face back along the orbit, towards the player. */
     public static final float HIGHPORT_ANGLE = (float) Math.PI;
 
@@ -213,7 +214,7 @@ public class GameScenario {
             }
         });
         // Pirates lurk by all three; the sponsor patrols Earth's stations, Selene guards its mine
-        world.hostiles.start(new String[]{depot, lunarMine, highport}, new String[]{depot, highport},
+        world.hostiles.start(lurks(), new String[]{depot, highport},
                 new String[]{lunarMine});
         content.hooks.fireWorldReady();
     }
@@ -314,7 +315,26 @@ public class GameScenario {
         world.standing.migrateLegacy(player);
     }
 
+    /** Where pirates lurk, in turn. */
+    private String[] lurks() {
+        return new String[]{depot, lunarMine, highport};
+    }
+
+    /** The uuid of the loaded station named {@code name}, or {@code fallback} if the save has none. */
+    private String stationNamed(String name, String fallback) {
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(StationComponent.class).get())) {
+            UuidComponent u = e.getComponent(UuidComponent.class);
+            if (u != null && name.equals(e.getComponent(StationComponent.class).name)) return u.id;
+        }
+        return fallback;
+    }
+
     private void relink() {
+        // A save's stations have their own uuids, not the ones this game started with
+        highport = stationNamed("Highport", highport);
+        depot = stationNamed("Deepwell Depot", depot);
+        lunarMine = stationNamed("Shackleton Ice", lunarMine);
+        world.hostiles.relink(lurks());
         player = world.getPlayer();
         if (player != null) ShipCargo.attach(player);
         // Saves from before the bridge: the player starts on deck, and the helm takes over from there

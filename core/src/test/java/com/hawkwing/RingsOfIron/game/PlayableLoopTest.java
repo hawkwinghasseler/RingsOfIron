@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The round-2 loop played by script on the real new game, headless: take a contract, undock, fight
@@ -229,5 +231,31 @@ class PlayableLoopTest {
         assertTrue(world.contracts.active().contains(held) || held.status != Contract.Status.ACTIVE);
         run(120);
         assertSame(r.station, world.docking.dockedTo(game.player), "docked at " + r.stationName);
+    }
+
+    @Test
+    void aLoadedCareerFindsItsStationsAgain(@TempDir Path dir) {
+        game.beginCareer();
+        run(120);
+        FileHandle file = new FileHandle(dir.resolve("save.json").toFile());
+        assertNull(game.quickSave(file));
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        GameWorld fresh = new GameWorld();
+        try {
+            GameScenario loaded = GameScenario.start(fresh, assets, assets.resolve("no-mods-here"));
+            loaded.quickLoad(file);
+            // The new game's stations had other uuids; the loaded ones are found by name
+            assertEquals(game.highport, loaded.highport);
+            assertEquals(game.depot, loaded.depot);
+            assertEquals(game.lunarMine, loaded.lunarMine);
+            Entity highport = fresh.engine.getEntity(loaded.highport);
+            assertNotNull(highport);
+            assertFalse(fresh.contracts.offers(loaded.highport).isEmpty(), "Highport's board is there");
+            fresh.docking.undock(loaded.player);
+            for (int i = 0; i < 60; i++) fresh.update(FRAME);
+            assertTrue(loaded.dockAtHighport(), "docks at the loaded Highport");
+        } finally {
+            fresh.dispose();
+        }
     }
 }
