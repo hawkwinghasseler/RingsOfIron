@@ -3,7 +3,9 @@ package com.ringsofiron.combatsys.systems;
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntityListener;
 import com.badlogic.ashley.core.EntitySystem;
+import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.signals.Listener;
 import com.badlogic.ashley.signals.Signal;
 import com.badlogic.gdx.math.MathUtils;
@@ -27,6 +29,7 @@ import com.ringsofiron.combatsys.events.DamageReport;
 import com.ringsofiron.combatsys.events.DetonationEvent;
 import com.ringsofiron.combatsys.events.HullHitEvent;
 import com.ringsofiron.combatsys.events.ImpactEvent;
+import com.ringsofiron.coreengine.EntityIds;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -64,6 +67,23 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
     private final PenetrationResolver resolver;
     private long seed;
     private final ObjectMap<Entity, RandomXS128> rngs = new ObjectMap<>();
+    /** Each ship's place in the order ships joined the engine: its damage dice when UUIDs are random. */
+    private final ObjectMap<Entity, Long> spawnIndex = new ObjectMap<>();
+    private long spawned;
+    /** Where the game's UUIDs come from ({@link #setEntityIds}); while they are seeded, ships roll by UUID. */
+    private EntityIds ids;
+    private final EntityListener shipListener = new EntityListener() {
+        @Override
+        public void entityAdded(Entity entity) {
+            spawnIndex.put(entity, spawned++);
+        }
+
+        @Override
+        public void entityRemoved(Entity entity) {
+            spawnIndex.remove(entity);
+            rngs.remove(entity);
+        }
+    };
     private final ObjectMap<String, ProjectileDef> fragmentDefs = new ObjectMap<>();
 
     private final Listener<FastPassImpactEvent> fastPassListener = this::onFastPass;
@@ -99,6 +119,15 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         ramDef.ricochetRestitution = 0f;
     }
 
+    /**
+     * Where the game's UUIDs come from. While they are seeded, a ship's damage dice follow its UUID,
+     * as a seeded career's replays were recorded with; otherwise (random UUIDs, or none given) they
+     * follow its spawn index, which replays whatever the UUIDs are.
+     */
+    public void setEntityIds(EntityIds ids) {
+        this.ids = ids;
+    }
+
     /** Where crew on a struck tile are found and hurt. Null (the default) means no crew are modelled. */
     public void setCrew(CrewDamageBridge crew) {
         resolver.setCrew(crew);
@@ -117,13 +146,19 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
     public void addedToEngine(Engine engine) {
         physics.addStepListener(this);
         physics.fastPassImpacts.add(fastPassListener);
+        Family ships = Family.all(ShipGridComponent.class).get();
+        for (Entity ship : engine.getEntitiesFor(ships)) shipListener.entityAdded(ship);
+        engine.addEntityListener(ships, shipListener);
     }
 
     @Override
     public void removedFromEngine(Engine engine) {
         physics.removeStepListener(this);
         physics.fastPassImpacts.remove(fastPassListener);
+        engine.removeEntityListener(shipListener);
         rngs.clear();
+        spawnIndex.clear();
+        spawned = 0;
     }
 
     /**
@@ -241,12 +276,21 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         rngs.clear();
     }
 
-    /** The per-ship RNG every random draw for damage to that ship comes from. */
+    /**
+     * The per-ship RNG every random draw for damage to that ship comes from: the game's seed and the
+     * ship's UUID when UUIDs are seeded (a seeded career), else the seed and the ship's spawn index,
+     * so a designed game, whose UUIDs are random, rolls the same shorts and bursts every run.
+     */
     public RandomXS128 rngFor(Entity ship) {
         RandomXS128 rng = rngs.get(ship);
         if (rng == null) {
             UuidComponent u = uuidMapper.get(ship);
-            long s = seed * 31 + (u != null ? u.id.hashCode() : rngs.size);
+            Long index = spawnIndex.get(ship);
+            long key;
+            if (u != null && ids != null && ids.isSeeded()) key = u.id.hashCode();
+            else if (index != null) key = index;
+            else key = -1 - rngs.size;
+            long s = seed * 31 + key;
             rng = new RandomXS128(s);
             rngs.put(ship, rng);
         }

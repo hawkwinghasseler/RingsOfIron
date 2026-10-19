@@ -47,9 +47,6 @@ class BalancePacingTest {
     void setUp() {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         world = new GameWorld();
-        // The designed game hands out random UUIDs, and since round 5 a hit's shorts and bursts are
-        // rolled from the ship's UUID: seeded ones make each fight replay the same
-        world.engine.getEntityIds().seed(2026);
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
     }
 

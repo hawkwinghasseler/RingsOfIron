@@ -320,7 +320,7 @@ Per 60 Hz tick:
 3. `BallisticsSystem` / `MissileGuidanceSystem`
 4. `ImpactResolutionSystem` drains that tick's events in `tick, then shipUuid` order
 
-Hazards then evolve on their own tick (0.25 s). All random draws (fire, spall, gunnery jitter) come from a per-ship seeded RNG, so replays, saves and unit tests are reproducible.
+Hazards then evolve on their own tick (0.25 s). All random draws (fire, spall, gunnery jitter) come from a per-ship seeded RNG, so replays, saves and unit tests are reproducible. The RNG (`ImpactResolutionSystem.rngFor`) is seeded from the game's combat seed and the ship's UUID while the engine's UUIDs are seeded (a seeded career), and from the combat seed and the ship's spawn index otherwise, so a designed game, whose UUIDs are random, also rolls the same shorts and bursts every run (round 6).
 
 ---
 

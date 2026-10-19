@@ -450,6 +450,7 @@ public class GameWorld implements Disposable {
         impacts = new ImpactResolutionSystem(physics, combatEvents, combatDefs, ballistics,
                 MaterialTable.createDefault(), modules.combatSeed);
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
+        impacts.setEntityIds(engine.getEntityIds());
         engine.addSystem(impacts);
         beams = new BeamSystem(physics, impacts);
         engine.addSystem(beams);
