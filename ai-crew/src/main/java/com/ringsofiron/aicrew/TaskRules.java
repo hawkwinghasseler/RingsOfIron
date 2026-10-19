@@ -57,6 +57,8 @@ public final class TaskRules {
                 return ((YardTask) task).job.isOpen();
             case FORCE_DOOR:
                 return ((ForceDoorTask) task).job.isOpen();
+            case EVACUATE:
+                return ((EvacuateTask) task).isOpen();
             default:
                 return true;
         }
@@ -113,6 +115,8 @@ public final class TaskRules {
             case TREAT:
                 if (isAdjacent(x, y, tx, ty) && grid.canPass(x, y, tx, ty)) return true;
                 return x == tx && y == ty;
+            case EVACUATE:
+                return ((EvacuateTask) task).inPod(x, y);
             default:
                 return x == tx && y == ty;
         }

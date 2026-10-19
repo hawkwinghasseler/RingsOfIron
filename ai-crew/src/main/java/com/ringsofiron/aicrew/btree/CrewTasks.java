@@ -279,6 +279,10 @@ public final class CrewTasks {
                     }
                     return Status.RUNNING;
                 }
+                case EVACUATE:
+                    // In the pod: wait there for launch
+                    a.crew.activity = "waiting in an escape pod";
+                    return Status.RUNNING;
                 default:
                     return Status.FAILED;
             }
@@ -717,6 +721,7 @@ public final class CrewTasks {
             case YARD: return ((YardTask) t).job.what();
             case FORCE_DOOR: return ((ForceDoorTask) t).job.what();
             case TREAT: return "treating a patient";
+            case EVACUATE: return "the escape pods";
             case MAN_CONSOLE: {
                 SubsystemComponent.SubsystemType type = ((ManConsoleTask) t).type();
                 return "manning the " + (type == null ? "console" : type.name().toLowerCase());

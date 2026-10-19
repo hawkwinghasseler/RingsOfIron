@@ -10,7 +10,7 @@ import java.util.EnumSet;
  * bodies agree, and changing what blocks is a change here.
  *
  * <p>A system in {@link #SOLID} fills its footprint, wrecked or not: crew go round it and work it
- * from a tile beside it. Consoles (helm, weapons), airlocks and docking ports stay walkable, since
+ * from a tile beside it. Consoles (helm, weapons), airlocks, escape pods and docking ports stay walkable, since
  * crew stand at or pass through them. A cargo bay tile blocks while goods are stacked on it past
  * {@link #CARGO_FILL}; an empty bay is floor.
  */

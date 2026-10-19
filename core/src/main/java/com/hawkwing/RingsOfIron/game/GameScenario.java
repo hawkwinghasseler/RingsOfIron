@@ -179,6 +179,15 @@ public class GameScenario {
         world.macroSim.addFreighter("Hauler Kestrel", hold, 20_000, highport);
         for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), hold, 20_000, depot);
         for (int i = 0; i < 2; i++) world.macroSim.addFreighter("Lunar Hauler " + (i + 1), hold, 20_000, lunarMine);
+        // Rescued after abandoning ship: the player flies the ship requisitioned at the station
+        world.rescue.rescues.add((signal, rescue) -> {
+            player = rescue.newShip;
+            contacts.clear();
+            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(HudMarkerComponent.class).get())) {
+                if (e == player || e.getComponent(StationComponent.class) != null) continue;
+                if (e.getComponent(PhysicsBodyComponent.class) != null) contacts.add(e);
+            }
+        });
         content.hooks.fireWorldReady();
     }
 

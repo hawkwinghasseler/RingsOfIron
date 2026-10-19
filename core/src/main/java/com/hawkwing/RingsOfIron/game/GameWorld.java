@@ -163,6 +163,10 @@ public class GameWorld implements Disposable {
     public final StationYard yard;
     /** Which ships are disabled, surrendered or wrecked, and why. */
     public final ShipDisablement disablement;
+    /** Crews ordered to the escape pods, and the pods launching. */
+    public final AbandonShip abandon;
+    /** Where the player wakes after their pod launches, and in what ship. */
+    public final Rescue rescue;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -340,6 +344,10 @@ public class GameWorld implements Disposable {
         // Ships out of power, crew or hull, or beaten, stop fighting
         disablement = new ShipDisablement(engine::getSimSeconds);
         engine.addSystem(disablement);
+        // ... and their crews take to the pods; the player's pod ends in a rescue
+        abandon = new AbandonShip(crew, disablement, engine::getSimSeconds, docking::dockedTo);
+        engine.addSystem(abandon);
+        rescue = new Rescue(this, bubble);
 
         // audio-spatial
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
@@ -424,6 +432,7 @@ public class GameWorld implements Disposable {
         engine.update(frameDelta);
         for (Entity wreck : wrecks) engine.removeEntity(wreck);
         wrecks.clear();
+        rescue.update();
         checkBubbleCrash();
         if (crash != null && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
     }
