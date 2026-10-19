@@ -315,6 +315,39 @@ class DockingDemoSceneTest {
     }
 
     @Test
+    void theYardRefillsTheTanksByTheKilogram() {
+        demo.load(DockingDemoScene.Scene.YARD);
+        com.badlogic.gdx.utils.Array<com.ringsofiron.interiorgrid.SubsystemComponent> tanks = com.ringsofiron.interiorgrid.TankSupply.tanks(
+                demo.player.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent.class), null);
+        assertTrue(tanks.size > 0, "the ship has tanks");
+        assertTrue(demo.world.yard.refillCost(demo.player) < 1, "they start all but full");
+        double expected = 0;
+        for (com.ringsofiron.interiorgrid.SubsystemComponent t : tanks) {
+            t.contents = t.capacity / 4;
+            expected += t.capacity * 0.75 * StationYard.pricePerKg(t.fluid);
+        }
+        assertEquals(expected, demo.world.yard.refillCost(demo.player), 1e-6);
+        String said = demo.world.yard.orderRefill(demo.player, demo.target);
+        assertTrue(said.startsWith("Tanks filled"), said);
+        for (com.ringsofiron.interiorgrid.SubsystemComponent t : tanks) assertEquals(t.capacity, t.contents, 1e-6);
+        assertEquals(DockingDemoScene.YARD_CREDITS - expected, credits(), 1e-6);
+        assertEquals("The tanks are full", demo.world.yard.orderRefill(demo.player, demo.target));
+    }
+
+    @Test
+    void shortOfCreditsEveryTankGetsTheSameShare() {
+        demo.load(DockingDemoScene.Scene.YARD);
+        com.badlogic.gdx.utils.Array<com.ringsofiron.interiorgrid.SubsystemComponent> tanks = com.ringsofiron.interiorgrid.TankSupply.tanks(
+                demo.player.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent.class), null);
+        for (com.ringsofiron.interiorgrid.SubsystemComponent t : tanks) t.contents = 0;
+        double cost = demo.world.yard.refillCost(demo.player);
+        demo.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class).credits = cost / 2;
+        demo.world.yard.orderRefill(demo.player, demo.target);
+        for (com.ringsofiron.interiorgrid.SubsystemComponent t : tanks) assertEquals(t.capacity / 2, t.contents, 1e-6);
+        assertEquals(0, credits(), 1e-6);
+    }
+
+    @Test
     void theYardRepairsTheShipTileByTileAndChargesForIt() {
         demo.load(DockingDemoScene.Scene.YARD);
         int damaged = demo.world.yard.damage(demo.player).size();

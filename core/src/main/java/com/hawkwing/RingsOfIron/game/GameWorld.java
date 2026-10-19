@@ -38,6 +38,8 @@ import com.ringsofiron.interiorgrid.LifeSupportSystem;
 import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.PowerRoutingSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
+import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.macrosim.MacroSaveParticipant;
 import com.ringsofiron.macrosim.MacroSimSystem;
 import com.ringsofiron.macrosim.MacroSimulation;
@@ -262,9 +264,17 @@ public class GameWorld implements Disposable {
         engine.addSystem(new GridHazardSystem());
         engine.addSystem(new PowerRoutingSystem());
         engine.addSystem(new LifeSupportSystem());
+        // Thrust and planned burns burn propellant from the tanks piped to the engines
+        engine.addSystem(new PropellantFeed());
+        orbitalEvents.burnBudget = (ship, dv) -> {
+            ShipGridComponent.MassProperties m = shipMass(ship);
+            return m == null ? dv : PropellantFeed.payForBurn(ship, m.mass, dv);
+        };
         engine.getSerializationService().addParticipant(new InteriorGridSaveParticipant(engine));
         // Traded goods sit in the ships' cargo bays and weigh them down
         engine.addSystem(new ShipCargo(this::shipMass));
+        // ...and so do the tanks, lighter as they run down
+        engine.addSystem(new TankMass(this::shipMass));
         // Watches whichever ship the player is flying now.
         InteriorHazardWarpGuard hazards = new InteriorHazardWarpGuard(null);
         engine.addRailsWarpGuard(() -> {
@@ -300,6 +310,8 @@ public class GameWorld implements Disposable {
         // stations-docking: the yards fit weapons from combat-sys's defs
         yard = new StationYard(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, combatDefs);
         engine.addSystem(yard);
+        // NPC freighters fill their tanks wherever they dock
+        engine.addSystem(new FreighterRefueling(docking::dockedTo));
         // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
         // and hit, then hits resolve and beams burn. Their step listeners run in the order added here.
         sensors = new SensorTrackingSystem(physics, modules.combatSeed + 1);
@@ -461,7 +473,7 @@ public class GameWorld implements Disposable {
 
     /**
      * Mass, center and inertia of a ship from its interior grid and the loaded materials, with the
-     * cargo in its bays. Null for a ship without a grid, or before content has loaded.
+     * cargo in its bays and what its tanks hold. Null for a ship without a grid, or before content has loaded.
      */
     public ShipGridComponent.MassProperties shipMass(Entity ship) {
         return content == null ? null : shipMass(ship, content.defs);
@@ -474,6 +486,8 @@ public class GameWorld implements Disposable {
         ShipGridComponent.MassProperties m = grid.computeMassProperties(materials);
         CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
         if (hold != null) hold.addMassTo(grid, m);
+        ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (registry != null) TankSupply.addMassTo(grid, registry, m);
         return m;
     }
 

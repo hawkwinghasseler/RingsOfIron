@@ -24,6 +24,18 @@ public class ChassisBlueprint {
         }
     }
 
+    /** A pipe across tile (x, y), or along its {@code side} edge when that is not null (see {@link Pipe}). */
+    public static class PipeDef {
+        public final int x, y;
+        public final Side side;
+
+        public PipeDef(int x, int y, Side side) {
+            this.x = x;
+            this.y = y;
+            this.side = side;
+        }
+    }
+
     /** An edge wall on one side of a tile. */
     public static class EdgeWallDef {
         public final int x, y;
@@ -85,6 +97,7 @@ public class ChassisBlueprint {
 
     public final Array<EdgeWallDef> edgeWalls = new Array<>();
     public final Array<EdgeConduitDef> edgeConduits = new Array<>();
+    public final Array<PipeDef> pipes = new Array<>();
     public final Array<HullPiece> hullPieces = new Array<>();
     public final Array<MountDef> mounts = new Array<>();
     public final Array<CoveringDef> coverings = new Array<>();
@@ -121,6 +134,18 @@ public class ChassisBlueprint {
     /** Runs a power conduit along the {@code side} edge of tile (x, y). */
     public ChassisBlueprint edgeConduit(int x, int y, Side side) {
         edgeConduits.add(new EdgeConduitDef(x, y, side));
+        return this;
+    }
+
+    /** Lays a pipe across the middle of tile (x, y). */
+    public ChassisBlueprint pipe(int x, int y) {
+        pipes.add(new PipeDef(x, y, null));
+        return this;
+    }
+
+    /** Lays a pipe along the {@code side} edge of tile (x, y). */
+    public ChassisBlueprint pipe(int x, int y, Side side) {
+        pipes.add(new PipeDef(x, y, side));
         return this;
     }
 

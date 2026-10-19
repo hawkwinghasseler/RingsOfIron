@@ -460,6 +460,35 @@ class GameScenarioTest {
     }
 
     @Test
+    void theShipGetsLighterAsItsTanksRunDown() {
+        world.update(FRAME);
+        Body body = game.player.getComponent(PhysicsBodyComponent.class).body;
+        float full = PhysicsManager.getMass(body);
+        for (SubsystemComponent t : com.ringsofiron.interiorgrid.TankSupply.tanks(
+                game.player.getComponent(ShipSubsystemRegistryComponent.class), com.ringsofiron.interiorgrid.Fluid.PROPELLANT)) {
+            t.contents -= 500;
+        }
+        world.update(FRAME);
+        assertEquals(full - 500, PhysicsManager.getMass(body), 5f, "the burned propellant no longer weighs on the hull");
+    }
+
+    @Test
+    void theCorvettesTanksArePipedToItsEngineAndLifeSupport() {
+        world.update(FRAME);
+        com.ringsofiron.physicsexterior.components.ThrusterComponent thrusters =
+                game.player.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
+        assertTrue(thrusters.fuel > 0, "the engine draws on the propellant tanks");
+        assertEquals(thrusters.fuelCapacity, thrusters.fuel, 1e-3, "they start full");
+        for (Entity e : game.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s.type == SubsystemComponent.SubsystemType.LIFE_SUPPORT) {
+                assertTrue(com.ringsofiron.interiorgrid.TankSupply.available(s, com.ringsofiron.interiorgrid.Fluid.OXYGEN) > 0);
+                assertTrue(com.ringsofiron.interiorgrid.TankSupply.available(s, com.ringsofiron.interiorgrid.Fluid.NITROGEN) > 0);
+            }
+        }
+    }
+
+    @Test
     void boughtGoodsSitInTheBaysAndWeighTheShipDown() {
         var trader = game.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class);
         var bays = game.player.getComponent(com.ringsofiron.interiorgrid.CargoHoldComponent.class);

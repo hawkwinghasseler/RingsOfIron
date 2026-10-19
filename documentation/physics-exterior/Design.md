@@ -34,6 +34,9 @@ To implement this module independently (mocking the core-engine if necessary):
 - `PhysicsBodyComponent`: Holds the Box2D `Body`.
 - `ThrusterComponent`: Defines maximum thrust vectors and fuel consumption rates.
 
+### Propellant feed
+A ship whose layout has an engine (`ENGINE`, see Tanks and Pipes in `documentation/interior-grid/Design.md`) pays for thrust in propellant. Core's `PropellantFeed` runs each frame after the interior systems: it sets `ThrusterComponent.fuel` to what the propellant tanks piped to the ship's working engines hold, and `fuelCapacity` to what all its propellant tanks hold full, and the next frame takes what flight control burned out of those tanks. Thrust costs force / exhaust velocity in kg/s, and torque costs torque / (3 m x exhaust velocity). The exhaust velocity is the ship's `exhaust_velocity` in `ships.toml`, 100 km/s when left out. Planned burns (the maneuver planner's and in-bubble burns) pay by the rocket equation through `PropellantFeed.payForBurn`, and a burn the tanks cannot cover is cut short. A ship with no engine in its layout keeps free thrust. The ship's mass counts the propellant aboard, so it gets lighter as it burns (see Tanks and Pipes).
+
 ## Proposed Systems
 - `PhysicsUpdateSystem`: Syncs Box2D state to ECS state.
 - `FloatingOriginSystem`: Monitors player distance and relative speed and rebases the origin.

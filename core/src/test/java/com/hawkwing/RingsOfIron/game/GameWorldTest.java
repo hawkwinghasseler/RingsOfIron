@@ -179,9 +179,11 @@ class GameWorldTest {
             ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
             assertNotNull(grid, "interior-grid built the ship's interior from its chassis");
             float gridMass = grid.computeMassProperties(
-                    com.ringsofiron.interiorgrid.InteriorGridData.toMaterialTable(ctx.defs)).mass;
+                    com.ringsofiron.interiorgrid.InteriorGridData.toMaterialTable(ctx.defs)).mass
+                    + (float) com.ringsofiron.interiorgrid.TankSupply.contents(
+                            ship.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent.class));
             assertEquals(gridMass, com.ringsofiron.physicsexterior.PhysicsManager.getMass(
-                    ship.getComponent(PhysicsBodyComponent.class).body), gridMass * 1e-3f, "Box2D mass comes from the grid");
+                    ship.getComponent(PhysicsBodyComponent.class).body), gridMass * 1e-3f, "Box2D mass comes from the grid and its full tanks");
             assertFalse(grid.mounts.isEmpty());
             assertNotNull(grid.mounts.get(0).installed);
         } finally {

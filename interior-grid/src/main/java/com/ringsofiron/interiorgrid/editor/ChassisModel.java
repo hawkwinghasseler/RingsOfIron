@@ -74,6 +74,8 @@ public class ChassisModel {
     public final List<ChassisDef.EdgeWall> edgeWalls = new ArrayList<>();
     /** Power conduits along tile edges, each listed once (on either tile it lies between). */
     public final List<ChassisDef.EdgeConduit> edgeConduits = new ArrayList<>();
+    /** Pipes across tiles and along their edges; an edge pipe is listed once (on either tile). */
+    public final List<ChassisDef.Pipe> pipes = new ArrayList<>();
     public final List<ChassisDef.HullPiece> hullPieces = new ArrayList<>();
     public final List<ChassisDef.Covering> coverings = new ArrayList<>();
     /** Lights hung on walls; null until the layout places any, and the game works them out. */
@@ -147,6 +149,7 @@ public class ChassisModel {
         }
         m.edgeWalls.addAll(def.edgeWalls);
         m.edgeConduits.addAll(def.edgeConduits);
+        m.pipes.addAll(def.pipes);
         m.hullPieces.addAll(def.hullPieces);
         m.coverings.addAll(def.coverings);
         m.lights = copyLights(def.lights);
@@ -214,6 +217,7 @@ public class ChassisModel {
         def.ports.addAll(unresolvedPorts);
         def.edgeWalls.addAll(edgeWalls);
         def.edgeConduits.addAll(edgeConduits);
+        def.pipes.addAll(pipes);
         def.hullPieces.addAll(hullPieces);
         def.coverings.addAll(coverings);
         def.lights = copyLights(lights);
@@ -312,6 +316,24 @@ public class ChassisModel {
             Side s = Side.valueOf(c.side);
             if (c.x == x && c.y == y && s == side) return c;
             if (c.x + s.dx == x && c.y + s.dy == y && s.opposite() == side) return c;
+        }
+        return null;
+    }
+
+    /**
+     * The pipe across tile (x, y) when {@code side} is null, else the one on that side of it
+     * however it was listed; null if there is none.
+     */
+    public ChassisDef.Pipe pipeAt(int x, int y, Side side) {
+        for (ChassisDef.Pipe p : pipes) {
+            if (side == null) {
+                if (p.side == null && p.x == x && p.y == y) return p;
+                continue;
+            }
+            if (p.side == null) continue;
+            Side s = Side.valueOf(p.side);
+            if (p.x == x && p.y == y && s == side) return p;
+            if (p.x + s.dx == x && p.y + s.dy == y && s.opposite() == side) return p;
         }
         return null;
     }
@@ -458,6 +480,31 @@ public class ChassisModel {
     }
 
     /**
+     * Lays a pipe across tile (x, y) when {@code side} is null, or along that side of it, or takes
+     * up the one already there. An edge pipe may run inside a thin wall or along a full-tile wall;
+     * one across a tile lies under the deck, so not in a wall. False, with nothing changed, if the
+     * tile is off the grid or a pipe across it would be in a wall or in space.
+     */
+    public boolean togglePipe(int x, int y, Side side, ShipPartCatalog catalog) {
+        if (!inBounds(x, y)) return false;
+        ChassisDef.Pipe existing = pipeAt(x, y, side);
+        if (existing != null) {
+            pipes.remove(existing);
+            return true;
+        }
+        if (side == null) {
+            ShipPartCatalog.TileType t = catalog.tileFor(tiles[y][x]);
+            if (t != null && (t.base.isWall() || t.base == ShipPartCatalog.TileBase.VOID)) return false;
+        }
+        ChassisDef.Pipe p = new ChassisDef.Pipe();
+        p.x = x;
+        p.y = y;
+        p.side = side == null ? null : side.name();
+        pipes.add(p);
+        return true;
+    }
+
+    /**
      * Hangs a light on that side of tile (x, y), or takes down the one already there. A light takes
      * no room on its tile. False if the tile is off the grid.
      */
@@ -597,6 +644,12 @@ public class ChassisModel {
             c.y += dy;
             if (!inBounds(c.x, c.y)) edgeConduits.remove(i);
         }
+        for (int i = pipes.size() - 1; i >= 0; i--) {
+            ChassisDef.Pipe p = pipes.get(i);
+            p.x += dx;
+            p.y += dy;
+            if (!inBounds(p.x, p.y)) pipes.remove(i);
+        }
         for (int i = hullPieces.size() - 1; i >= 0; i--) {
             ChassisDef.HullPiece p = hullPieces.get(i);
             p.x += dx;
@@ -653,6 +706,7 @@ public class ChassisModel {
         for (Mount mount : mounts) m.mounts.add(mount.copy());
         for (ChassisDef.EdgeWall e : edgeWalls) m.edgeWalls.add(Defs.copy(e, ChassisDef.EdgeWall.class));
         for (ChassisDef.EdgeConduit c : edgeConduits) m.edgeConduits.add(Defs.copy(c, ChassisDef.EdgeConduit.class));
+        for (ChassisDef.Pipe p : pipes) m.pipes.add(Defs.copy(p, ChassisDef.Pipe.class));
         for (ChassisDef.HullPiece p : hullPieces) m.hullPieces.add(Defs.copy(p, ChassisDef.HullPiece.class));
         for (ChassisDef.Covering c : coverings) m.coverings.add(Defs.copy(c, ChassisDef.Covering.class));
         for (ChassisDef.Mount u : unresolvedMounts) m.unresolvedMounts.add(Defs.copy(u, ChassisDef.Mount.class));

@@ -23,6 +23,11 @@ public class ThrusterComponent implements Component {
     public float fuelPerNewtonSecond;
     /** Fuel burned per newton-meter-second of torque. 0 means turning is free. */
     public float fuelPerTorqueSecond;
+    /**
+     * The drive's exhaust velocity, m/s, for code that feeds this thruster from tanks and prices
+     * thrust in propellant (force / exhaust velocity). 0 means unknown.
+     */
+    public float exhaustVelocity;
 
     public ThrusterComponent() {
     }
