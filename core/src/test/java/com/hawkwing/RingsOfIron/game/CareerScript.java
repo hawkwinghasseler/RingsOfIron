@@ -48,6 +48,8 @@ abstract class CareerScript {
     static final float FRAME = 1f / 60f;
     /** 2026 unless {@code -PcareerSeed=n} is given, to play the career on other seeds. */
     static final long SEED = Long.getLong("career.seed", 2026);
+    /** The seed this script plays: {@link #SEED}, unless a test plays other seeds side by side. */
+    long seed = SEED;
 
     GameWorld world;
     GameScenario game;
@@ -99,12 +101,12 @@ abstract class CareerScript {
      * Moon trip and three weeks' pay. Returns the station the ship was docked at before the weeks passed.
      */
     String playToTheGunship() {
-        start(SEED);
+        start(seed);
         game.beginCareer();
         run(120);
         Entity highport = world.engine.getEntity(game.highport);
         assertSame(highport, world.docking.dockedTo(game.player), "a Patrol career starts docked at Highport");
-        log("Seed %d, Patrol career. %d stations, %d freighters, %d pirates, %d crew aboard.", SEED,
+        log("Seed %d, Patrol career. %d stations, %d freighters, %d pirates, %d crew aboard.", seed,
                 world.macroSim.stations().size(), world.macroSim.freighters().all().size(), pirates(), ownCrew().size());
         snapshot("start");
         logBoard(game.highport);
