@@ -59,6 +59,7 @@ max_range = 3000.0
 sound = "evt_laser_fire"
 
 [projectile.slug_tungsten_20kg]
+art = "railgun_slug"
 mass = 20.0
 muzzle_speed = 6000.0
 damage_type = "kinetic"
@@ -69,6 +70,7 @@ spall = { count = 6, angle_deg = 25, fraction = 0.3 }
 max_lifetime = 30.0
 
 [projectile.autocannon_30mm]
+art = "autocannon_round"
 mass = 0.4
 muzzle_speed = 1500.0
 damage_type = "kinetic"
