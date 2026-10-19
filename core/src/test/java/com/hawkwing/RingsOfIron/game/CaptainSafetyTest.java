@@ -97,8 +97,8 @@ class CaptainSafetyTest {
         float until = you().def.suitTime + 1;
         for (float t = 0; t < until; t += FRAME) {
             // Hold the room at half its air, whatever life support puts back
-            room.oxygen = Math.min(room.oxygen, 0.5 * room.volume * Compartment.STANDARD_O2_PRESSURE / (Compartment.R * room.temperature));
-            room.nitrogen = Math.min(room.nitrogen, 0.5 * room.volume * (Compartment.STANDARD_PRESSURE - Compartment.STANDARD_O2_PRESSURE)
+            room.oxygen = Math.min(room.oxygen, 0.5 * room.volume * Compartment.STANDARD_O2_PRESSURE * 1000.0 / (Compartment.R * room.temperature));
+            room.nitrogen = Math.min(room.nitrogen, 0.5 * room.volume * (Compartment.STANDARD_PRESSURE - Compartment.STANDARD_O2_PRESSURE) * 1000.0
                     / (Compartment.R * room.temperature));
             world.update(FRAME);
         }

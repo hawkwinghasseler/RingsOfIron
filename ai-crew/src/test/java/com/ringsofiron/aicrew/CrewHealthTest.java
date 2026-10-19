@@ -103,7 +103,7 @@ class CrewHealthTest {
         float dt = 1f / 30f;
         for (float t = 0; t < seconds; t += dt) {
             Compartment room = s.grid.compartmentAt(x, y);
-            double full = room.volume * Compartment.STANDARD_PRESSURE / (Compartment.R * room.temperature);
+            double full = room.volume * Compartment.STANDARD_PRESSURE * 1000.0 / (Compartment.R * room.temperature);
             room.oxygen = Math.min(room.oxygen, share * full * Compartment.STANDARD_O2_FRACTION);
             room.nitrogen = Math.min(room.nitrogen, share * full * (1 - Compartment.STANDARD_O2_FRACTION));
             s.engine.update(dt);
