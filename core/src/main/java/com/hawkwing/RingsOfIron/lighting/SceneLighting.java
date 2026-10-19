@@ -14,6 +14,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
+import com.badlogic.gdx.physics.box2d.CircleShape;
 import com.badlogic.gdx.physics.box2d.EdgeShape;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.World;
@@ -40,6 +41,7 @@ import java.util.Map;
  *
  * <p>The shadows come from a Box2D world of its own, in world meters: one static body per deck,
  * its walls as edges, moved to the craft's pose each frame and rebuilt when a door or wall changes.
+ * Crew in view ({@link #addCrew}) are small circles in the same world, so they cast shadows too.
  */
 public final class SceneLighting implements Disposable {
     /** Rooms on a craft with power, before the wall lights and systems light them. */
@@ -51,6 +53,12 @@ public final class SceneLighting implements Disposable {
     static final int RAYS = 96;
     /** Shadow edges blur over this many meters. */
     static final float SOFTNESS = 0.25f;
+    /**
+     * A crew member's shadow is cast by a circle this many times their size. Smaller than the
+     * crew member, so the light's soft edge ({@link #SOFTNESS}) still reaches across them and they
+     * are not left in their own shadow.
+     */
+    static final float CREW_SHADOW_SCALE = 0.5f;
     /** The glow drawn around a glowing part, as many times its size. */
     static final float GLOW_SCALE = 2.4f;
 
@@ -65,6 +73,9 @@ public final class SceneLighting implements Disposable {
     private final Array<PointLight> points = new Array<>();
     private final Array<ConeLight> cones = new Array<>();
     private final Map<ShipGridComponent, Deck> decks = new IdentityHashMap<>();
+    /** This frame's crew: x, y and radius, world meters. */
+    private final FloatArray crew = new FloatArray();
+    private final Array<Body> crewBodies = new Array<>();
     private Texture glow;
     private float time;
     private final Color tmp = new Color();
@@ -89,6 +100,7 @@ public final class SceneLighting implements Disposable {
         time += delta;
         deckSpots.clear();
         glowSpots.clear();
+        crew.clear();
         for (Deck d : decks.values()) d.seen = false;
     }
 
@@ -104,6 +116,16 @@ public final class SceneLighting implements Disposable {
         if (shadows == null) return;
         if (d.barriers.update() || d.body == null) build(d);
         d.body.setTransform(x, y, angle);
+    }
+
+    /** A crew member at ({@code x}, {@code y}) meters, {@code radius} meters round, who casts a shadow. */
+    public void addCrew(float x, float y, float radius) {
+        crew.add(x, y, radius * CREW_SHADOW_SCALE);
+    }
+
+    /** How many crew were added this frame. For tests. */
+    public int crewInView() {
+        return crew.size / 3;
     }
 
     /** The outside lights of a craft whose hull art is {@code chassis}, its body at ({@code x}, {@code y}) meters. */
@@ -125,6 +147,7 @@ public final class SceneLighting implements Disposable {
             if (d.body != null) shadows.destroyBody(d.body);
             it.remove();
         }
+        placeCrew();
         handler.setAmbientLight(withPower ? AMBIENT_POWERED : AMBIENT_DARK);
         int p = 0, c = 0;
         for (int i = 0; i < deckSpots.size() && p + c < MAX_LIGHTS; i++) {
@@ -223,6 +246,33 @@ public final class SceneLighting implements Disposable {
         }
     }
 
+    /** Moves a circle onto each crew member added this frame, and puts the spare ones away. */
+    private void placeCrew() {
+        int n = crew.size / 3;
+        for (int i = 0; i < n; i++) {
+            float x = crew.get(i * 3), y = crew.get(i * 3 + 1), r = crew.get(i * 3 + 2);
+            Body b = i < crewBodies.size ? crewBodies.get(i) : null;
+            if (b != null && Math.abs(b.getFixtureList().first().getShape().getRadius() - r) > 1e-4f) {
+                shadows.destroyBody(b);
+                b = null;
+            }
+            if (b == null) {
+                BodyDef def = new BodyDef();
+                def.type = BodyDef.BodyType.StaticBody;
+                b = shadows.createBody(def);
+                CircleShape circle = new CircleShape();
+                circle.setRadius(r);
+                b.createFixture(circle, 0f);
+                circle.dispose();
+                if (i < crewBodies.size) crewBodies.set(i, b);
+                else crewBodies.add(b);
+            }
+            b.setActive(true);
+            b.setTransform(x, y, 0f);
+        }
+        for (int i = n; i < crewBodies.size; i++) crewBodies.get(i).setActive(false);
+    }
+
     private void build(Deck d) {
         Vector2 at = d.body == null ? new Vector2() : new Vector2(d.body.getPosition());
         float angle = d.body == null ? 0f : d.body.getAngle();
@@ -286,5 +336,6 @@ public final class SceneLighting implements Disposable {
         handler = null;
         shadows = null;
         glow = null;
+        crewBodies.clear();
     }
 }
