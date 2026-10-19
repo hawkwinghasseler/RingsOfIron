@@ -13,6 +13,7 @@ import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.economy.CommodityCatalog;
 import com.ringsofiron.macrosim.economy.CommodityType;
@@ -24,6 +25,7 @@ import com.ringsofiron.stationsdocking.DockingData;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.stationsdocking.ForceMethod;
 import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
@@ -53,7 +55,11 @@ public class DockingDemoScene {
                 + " (WASD) through the port onto the station and back; air moves between the two. U undocks once you're home."),
         LOADING("Loading cargo", "Docked at the outpost, whose hold is stocked with water and food. L orders "
                 + LOAD_UNITS + " water carried aboard, K sends " + LOAD_UNITS + " back: the outpost's dock hands (orange)"
-                + " carry it across the dock a crate at a time, and it moves from hold to hold as each crate lands.");
+                + " carry it across the dock a crate at a time, and it moves from hold to hold as each crate lands."),
+        FORCE("Forcing a door", "Latched onto the outpost without its clearance: its port door stays shut. You stand in"
+                + " your port's opening, facing it. It is powered and locked: F hacks it (45 s, no damage), B cuts through"
+                + " (20 s, damages it). O switches the outpost's reactor off, so F pries the unpowered door instead (8 s)."
+                + " Each is a hostile act: your standing with the stations drops, and after a cut they refuse you clearance.");
 
         public final String title;
         public final String help;
@@ -97,7 +103,7 @@ public class DockingDemoScene {
         dispose();
         scene = next;
         autopilot = false;
-        deckView = next == Scene.WALK || next == Scene.LOADING;
+        deckView = next == Scene.WALK || next == Scene.LOADING || next == Scene.FORCE;
         notice = next.help;
         world = new GameWorld();
         world.loadContent(assetsDir, assetsDir.resolve("no-mods-here"));
@@ -123,11 +129,20 @@ public class DockingDemoScene {
             case TEAR:
             case WALK:
             case LOADING:
-                target = station("Outpost Kepler", "station_outpost", next != Scene.REFUSED);
-                boolean docked = next == Scene.TEAR || next == Scene.WALK || next == Scene.LOADING;
+            case FORCE:
+                target = station("Outpost Kepler", "station_outpost", next != Scene.REFUSED && next != Scene.FORCE);
+                boolean docked = next == Scene.TEAR || next == Scene.WALK || next == Scene.LOADING || next == Scene.FORCE;
                 park(player, 0, target, smallPort(target), docked ? 0f : 25f, docked ? 0f : 3f, docked ? 0f : 12f);
                 if (docked) world.docking.dockInPlace(player, 0, target, smallPort(target));
                 if (next == Scene.LOADING) stock(target);
+                if (next == Scene.FORCE) {
+                    // Latched on with the ship's own magnets: the outpost never agreed, so its door stays shut
+                    port(target, smallPort(target)).consented = false;
+                    port(target, smallPort(target)).permitted = false;
+                    port(player, 0).permitted = false;
+                    int[] door = portTile(player, 0, 0);
+                    avatar.getComponent(GridPositionComponent.class).setTile(door[0], door[1]);
+                }
                 break;
             case HUB:
                 target = station("Highport Hub", "station_hub", true);
@@ -147,6 +162,8 @@ public class DockingDemoScene {
     public void update(float delta) {
         if (autopilot) fly();
         world.update(delta);
+        // The panel shows the standing itself
+        world.standing.acts.clear();
     }
 
     /**
@@ -158,6 +175,31 @@ public class DockingDemoScene {
         if (!world.cargo.canCarry(player, target)) notice = "Dock first: the outpost's hands carry cargo only across a dock";
         else if (world.cargo.order(player, target, WATER, LOAD_UNITS, aboard) > 0)
             notice = "Ordered " + LOAD_UNITS + " water carried " + what;
+        return notice;
+    }
+
+    /** Starts the avatar forcing the door across the dock {@code how}; returns what the scene says. */
+    public String force(ForceMethod how) {
+        notice = world.forcing.start(avatar, how);
+        return notice;
+    }
+
+    /** Switches the station's reactors off or back on; its port door loses power with them. */
+    public String toggleStationPower() {
+        ShipGridComponent grid = target.getComponent(ShipGridComponent.class);
+        Boolean on = null;
+        java.util.Set<Entity> seen = new java.util.HashSet<>();
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Entity e = grid.subsystemAt(x, y);
+                SubsystemComponent sub = e == null || !seen.add(e) ? null : e.getComponent(SubsystemComponent.class);
+                if (sub == null || sub.type != SubsystemComponent.SubsystemType.REACTOR) continue;
+                if (on == null) on = !sub.switchedOn;
+                sub.switchedOn = on;
+            }
+        }
+        grid.gridDirty = true;
+        notice = on == null ? "The station has no reactor" : on ? "The outpost's reactor is back on" : "The outpost's reactor is off";
         return notice;
     }
 
@@ -240,6 +282,14 @@ public class DockingDemoScene {
 
     /** A floor tile just inside port {@code i}: the opening's middle, one tile past its inner end. */
     static int[] insidePort(Entity ship, int i) {
+        return portTile(ship, i, -1);
+    }
+
+    /**
+     * The middle of port {@code i}'s opening, {@code steps} tiles in from its door ({@code -1}: one
+     * tile past the port's inner end).
+     */
+    static int[] portTile(Entity ship, int i, int steps) {
         DockingPort p = port(ship, i);
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
         MountFootprint m = grid.getTile(p.gridX, p.gridY).mount;
@@ -250,7 +300,7 @@ public class DockingDemoScene {
                 if (DockingPortLayout.isDoorTile(m, x, y) && (door == null || x + y < door[0] + door[1])) door = new int[]{x, y};
             }
         }
-        int along = DockingPortLayout.openingWidth(m) / 2, depth = DockingPortLayout.depth(m);
+        int along = DockingPortLayout.openingWidth(m) / 2, depth = steps < 0 ? DockingPortLayout.depth(m) : steps;
         // Along the door row runs at right angles to the facing; step in past the port's depth
         int x = door[0] + Math.abs(out.dy) * along - out.dx * depth;
         int y = door[1] + Math.abs(out.dx) * along - out.dy * depth;

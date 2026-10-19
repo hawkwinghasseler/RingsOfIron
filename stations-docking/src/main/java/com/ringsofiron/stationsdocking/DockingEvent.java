@@ -12,7 +12,9 @@ public class DockingEvent {
         /** The craft let go of each other on command. */
         UNDOCKED,
         /** The connection was strained past its limit: both collars tore off and the hull around them is damaged. */
-        TORN
+        TORN,
+        /** A crew member from {@link #vessel} forced the shut door of {@link #other}'s port {@link #otherPort} open: a hostile act. */
+        DOOR_FORCED
     }
 
     public Kind kind;
@@ -24,4 +26,6 @@ public class DockingEvent {
     public int otherPort;
     /** Docking clearance had been given (the other side's port was armed for this). */
     public boolean permitted;
+    /** For {@link Kind#DOOR_FORCED}: how. */
+    public ForceMethod method;
 }
