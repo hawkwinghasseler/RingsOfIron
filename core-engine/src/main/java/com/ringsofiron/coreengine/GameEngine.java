@@ -5,6 +5,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.core.PooledEngine;
+import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.coreengine.systems.FixedLogicSystem;
@@ -50,6 +51,8 @@ public class GameEngine implements SimClock {
     private Phase phase = Phase.IDLE;
     private long catchUpTicks;
     private long pendingRailsTicks;
+    private TickProfiler profiler;
+    private final Array<EntitySystem> profiledSystems = new Array<>();
 
     public GameEngine() {
         this.ecsEngine = new PooledEngine();
@@ -88,11 +91,53 @@ public class GameEngine implements SimClock {
 
         phase = Phase.FRAME;
         try {
-            ecsEngine.update(frameDelta);
+            if (profiler == null) ecsEngine.update(frameDelta);
+            else runProfiledFramePass(frameDelta);
         } finally {
             phase = Phase.IDLE;
         }
         applyPendingRails();
+    }
+
+    /**
+     * The frame pass one system at a time, each in its own Ashley update so the entity changes it
+     * makes are applied right after it, as in a normal pass, and its time can be told apart.
+     */
+    private void runProfiledFramePass(float frameDelta) {
+        ImmutableArray<EntitySystem> systems = ecsEngine.getSystems();
+        for (int i = 0; i < systems.size(); i++) {
+            EntitySystem system = systems.get(i);
+            if (system.checkProcessing()) profiledSystems.add(system);
+        }
+        for (EntitySystem system : profiledSystems) system.setProcessing(false);
+        try {
+            for (EntitySystem system : profiledSystems) {
+                system.setProcessing(true);
+                long start = System.nanoTime();
+                try {
+                    ecsEngine.update(frameDelta);
+                } finally {
+                    system.setProcessing(false);
+                }
+                profiler.record("frame/" + system.getClass().getSimpleName(), System.nanoTime() - start);
+            }
+        } finally {
+            for (EntitySystem system : profiledSystems) system.setProcessing(true);
+            profiledSystems.clear();
+        }
+    }
+
+    /**
+     * Times every fixed system's tick and every system's part of the frame pass from now on, or
+     * stops timing with null. For benchmarks: profiling runs the frame pass one system at a time.
+     */
+    public void setProfiler(TickProfiler profiler) {
+        requireIdle("setProfiler");
+        this.profiler = profiler;
+    }
+
+    public TickProfiler getProfiler() {
+        return profiler;
     }
 
     /**
@@ -240,7 +285,14 @@ public class GameEngine implements SimClock {
     public void runFixedSystem(FixedLogicSystem system) {
         switch (phase) {
             case FIXED:
-                if (tick % system.getTickInterval() == 0) system.invokeFixed();
+                if (tick % system.getTickInterval() != 0) break;
+                if (profiler == null) {
+                    system.invokeFixed();
+                } else {
+                    long start = System.nanoTime();
+                    system.invokeFixed();
+                    profiler.record("tick/" + system.getClass().getSimpleName(), System.nanoTime() - start);
+                }
                 break;
             case FRAME: {
                 int interval = system.getTickInterval();
