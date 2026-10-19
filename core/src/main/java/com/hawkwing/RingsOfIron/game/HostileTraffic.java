@@ -140,6 +140,11 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         nextTopUp = now + TOP_UP_INTERVAL;
     }
 
+    /** Points the lurks at a loaded game's stations, which have new uuids. */
+    public void relink(String[] lurks) {
+        this.lurks = lurks.clone();
+    }
+
     /** Raiders the population keeps at difficulty {@code d}. */
     public static int raidersFor(double d) {
         return 1 + (int) Math.round(Math.max(0, d));
