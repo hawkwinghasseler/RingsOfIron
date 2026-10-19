@@ -1,7 +1,7 @@
 # Art Asset Pack: Style and Naming Guide
 
 ## Overview
-The game's art is made as SVG in `assets/art`: floors, walls in every join pattern, edge walls and bulkhead doors, ship components in every mount size, state effects, sub-tile decor and interactive objects, weapon turrets, and the exterior hulls of ships and stations. SVG is the source format; the game will load raster versions of these files (see **Using the art in the game**).
+The game's art is made as SVG in `assets/art`: floors, walls in every join pattern, edge walls and bulkhead doors, ship components in every mount size, state effects, sub-tile decor and interactive objects, weapon turrets, and the exterior hulls of ships and stations. SVG is the source format; the game loads raster versions of these files, built by the art pipeline (see **Using the art in the game**).
 
 Open `assets/art/preview.html` in a browser to see every asset, every chassis in `assets/data/chassis.toml` drawn with the tile and component art, and each ship's exterior with its turrets on their hardpoints.
 
@@ -132,7 +132,7 @@ File names are lowercase `snake_case` and start with the id in data, so code can
 
 Tile ids are the ones in `tiles.toml`: `floor` (`.`), `conduit` (`+`), `hull` (`#`, medium), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`), `internal_wall` (`I`); `void` has no art. Component ids are the ones in `components.toml`: `reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `docking_port`. A new component made in data (say `fusion_core` with behavior `REACTOR`) gets its own `fusion_core_<size>.svg`; until it has one, code can fall back to the art of its behavior's built-in component.
 
-Asset keys in `assets.toml` follow the existing `tex_` prefix with the folder and name: `tex_tile_floor`, `tex_component_reactor_xl`, `tex_hull_corvette`.
+In the game every file is a region of one texture atlas, named by its folder and file name without the extension: `tiles/floor`, `components/reactor_xl`, `hulls/corvette`. `assets.toml` names the atlas once, as `atlas_art`, so a mod can swap the whole pack by overriding that key.
 
 ## How the parts fit together
 - **Conduits** autotile: draw `conduit` on the tile, then `conduit_arm` once for each neighboring conduit tile, turned toward it (0 up, 1 left, 2 down, 3 right).
@@ -148,7 +148,21 @@ Decor and interactive objects that block movement or can be used carry two invis
 - `id="interact"`: a `<circle>` whose center is where crew stand or reach to use the object.
 
 ## Using the art in the game
-libGDX does not draw SVG, so the game will load PNGs rasterized from these files: 64 px a tile at 1x, 128 at 2x, packed into a texture atlas, with the emissive layer as its own texture. That build step is not part of this pack yet; until it is, keys in `assets.toml` still point at placeholders.
+libGDX does not draw SVG, so the `art-pipeline` module rasterizes these files at build time. `gradlew :art-pipeline:packArt` renders every SVG at 64 px a tile (with [JSVG](https://github.com/weisJ/jsvg)), packs them into `art/art.atlas` with libGDX's TexturePacker, and writes `art/art.json` beside it. The game's run tasks (`runGame`, the demos, the editor) run it first, and only when an SVG changed; its output lands in `art-pipeline/build/generated/art` and is on the game's classpath, so nothing generated is committed and the SVGs stay the only source.
+
+- **Regions.** One per file, named `<folder>/<name>`. The `meta` layer is left out. A file with an `emissive` layer also gets that layer alone as `glow/<folder>/<name>`, for a glow or bloom pass (nothing draws these yet).
+- **`art.json`.** For each region, its SVG `viewBox` (`x`, `y`, `w`, `h`), so exterior art keeps its body origin and turrets their pivot, and the `collider` and `interact` shapes from its `meta` layer, in SVG units.
+- **In code.** `ArtLibrary` loads the atlas (or nothing, if it was never built, and then everything is drawn in the old flat shapes), `ArtNames` turns game state into region names, `DeckArt` draws a deck and `ExteriorArt` a craft from outside.
+
+What the game draws with the pack:
+
+| Where | What |
+|---|---|
+| Deck view (V in the game, the docking demo) | Floors, carpet, conduits joined to their neighbors (dark without power), walls joined to their neighbors of the same type, wedges, every system in its mount (its `_unpowered` art when it is not working), docking ports open while a dock through them can be crossed, collars, thin walls and their joints, bulkhead doors (dark when the craft has no working reactor), damage below half and a quarter integrity, breaches, seals, fire by size, and cargo stacks tinted toward their commodity. Pressure loss and smoke are still drawn as a tint over the art. |
+| Outside | Each craft's hull by the chassis it was built from (`ShipGridComponent.chassis`, saved with the grid), its turrets on their hardpoints turned to where they aim (unpowered when their system is down), and a plume from each engine while the main engine burns. Craft without hull art keep their outline. |
+| Ship editor | The layout as the deck will look; A toggles back to flat colors. |
+
+Still drawn as shapes: crew, projectiles, missiles, decoys and explosions, the demos other than the docking demo, and the minimap. Decor and interactive objects (other than cargo stacks) have no placement in the data yet, so nothing places them. A chassis a yard has refitted still shows the hull art of its chassis as built. `scorch` waits on the grid remembering where a fire burned.
 
 ## Regenerating
 The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many variants consistent and builds the hulls from `chassis.toml` and `ships.toml`. The SVGs are the source: edit them in any vector editor (Inkscape, Illustrator, Figma). Re-running the script clears and rewrites `assets/art`, so once a file is edited by hand, take it out of the script.

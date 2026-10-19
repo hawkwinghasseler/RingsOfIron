@@ -9,7 +9,10 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.hawkwing.RingsOfIron.art.ArtLibrary;
+import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -46,7 +49,7 @@ import java.util.function.Consumer;
  * rectangle. Right or middle drag pans, the wheel zooms (over the panel it scrolls), F fits the
  * ship to the view. Ctrl+Z / Ctrl+Y undo and redo, Ctrl+S saves, Esc quits (twice with unsaved
  * changes). Every edit is built through the game's own loader, so the panel shows what the game
- * will make of the layout, or why it refuses it.
+ * will make of the layout, or why it refuses it. A toggles between the art pack and flat colors.
  */
 public class ShipEditor extends ApplicationAdapter {
 
@@ -117,6 +120,9 @@ public class ShipEditor extends ApplicationAdapter {
     private ShapeRenderer shapes;
     private SpriteBatch batch;
     private BitmapFont font;
+    /** The art pack; with it (and {@link #artView}) the layout is drawn as the deck will look. */
+    private ArtLibrary art;
+    private boolean artView = true;
     private OrthographicCamera ui;
     private final GlyphLayout layout = new GlyphLayout();
     private final Color color = new Color();
@@ -182,6 +188,7 @@ public class ShipEditor extends ApplicationAdapter {
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
         font = new BitmapFont();
+        art = ArtLibrary.load(ArtLibrary.DEFAULT_PATH);
         ui = new OrthographicCamera();
         project = EditorProject.load(assetsDir, modsDir);
         if (!project.chassis.isEmpty()) chassisId = project.chassis.keySet().iterator().next();
@@ -204,6 +211,7 @@ public class ShipEditor extends ApplicationAdapter {
         shapes.dispose();
         batch.dispose();
         font.dispose();
+        art.dispose();
     }
 
     /**
@@ -367,9 +375,11 @@ public class ShipEditor extends ApplicationAdapter {
         EditorProject.Check c = check();
         int w = m.width(), h = m.height();
 
+        boolean withArt = drawingArt();
+        if (withArt) drawArt(m, cat);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         // Tiles
-        for (int y = 0; y < h; y++) {
+        for (int y = 0; y < h && !withArt; y++) {
             for (int x = 0; x < w; x++) {
                 char ch = m.tiles[y][x];
                 ShipPartCatalog.TileType t = cat.tileFor(ch);
@@ -381,12 +391,13 @@ public class ShipEditor extends ApplicationAdapter {
             }
         }
         // Coverings
-        for (ChassisDef.Covering cov : m.coverings) {
+        for (ChassisDef.Covering cov : withArt ? java.util.Collections.<ChassisDef.Covering>emptyList() : m.coverings) {
             shapes.setColor(0.75f, 0.25f, 0.2f, 0.35f);
             shapes.rect(sx(cov.x), sy(cov.y), cov.width * scale, cov.height * scale);
         }
-        // Hull pieces
+        // Hull pieces (the art has wedges; blocks stay flat)
         for (ChassisDef.HullPiece p : m.hullPieces) {
+            if (withArt && "WEDGE".equals(p.shape)) continue;
             shapes.setColor(0.55f, 0.6f, 0.68f, 1f);
             drawPiece(p.shape, p.x, p.y, p.width, p.height, p.rotation);
         }
@@ -394,7 +405,7 @@ public class ShipEditor extends ApplicationAdapter {
         for (ChassisModel.Mount mount : m.mounts) {
             MountFootprint f = mount.footprint(cat);
             ShipPartCatalog.ComponentType type = cat.component(mount.component);
-            if (f == null || type == null) continue;
+            if (f == null || type == null || withArt) continue;
             setColor(type.color, 0.85f);
             shapes.setColor(color);
             shapes.rect(sx(f.originX) + 2, sy(f.originY) + 2, f.width() * scale - 4, f.height() * scale - 4);
@@ -412,6 +423,7 @@ public class ShipEditor extends ApplicationAdapter {
         for (ChassisModel.Mount mount : m.mounts) {
             MountFootprint f = mount.footprint(cat);
             if (f == null) continue;
+            if (withArt && !mount.active) continue;
             shapes.setColor(mount.active ? Color.ORANGE : Color.BLACK);
             shapes.rect(sx(f.originX) + 2, sy(f.originY) + 2, f.width() * scale - 4, f.height() * scale - 4);
             if (f.kind == MountFootprint.MountKind.PORT) {
@@ -439,7 +451,7 @@ public class ShipEditor extends ApplicationAdapter {
 
         // Edge walls, thick
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        for (ChassisDef.EdgeWall e : m.edgeWalls) {
+        for (ChassisDef.EdgeWall e : withArt ? java.util.Collections.<ChassisDef.EdgeWall>emptyList() : m.edgeWalls) {
             Side s = Side.valueOf(e.side);
             if (e.bulkhead) shapes.setColor(0.3f, 0.85f, 0.95f, 1f);
             else shapes.setColor(0.85f, 0.85f, 0.85f, 1f);
@@ -456,7 +468,7 @@ public class ShipEditor extends ApplicationAdapter {
         // Letters
         batch.begin();
         if (scale >= 12f) {
-            for (ChassisModel.Mount mount : m.mounts) {
+            for (ChassisModel.Mount mount : withArt ? java.util.Collections.<ChassisModel.Mount>emptyList() : m.mounts) {
                 MountFootprint f = mount.footprint(cat);
                 ShipPartCatalog.ComponentType type = cat.component(mount.component);
                 if (f == null || type == null) continue;
@@ -479,6 +491,129 @@ public class ShipEditor extends ApplicationAdapter {
             font.draw(batch, hoverX + "," + hoverY + "  " + describeTile(m, cat, hoverX, hoverY), 10, 20);
         }
         batch.end();
+    }
+
+    // ---- Art view ----
+
+    private boolean drawingArt() {
+        return artView && art.region("tiles/floor") != null;
+    }
+
+    /** The layout as the deck will look: floors, joined walls, wedges, systems, ports and thin walls. */
+    private void drawArt(ChassisModel m, ShipPartCatalog cat) {
+        int w = m.width(), h = m.height();
+        batch.begin();
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                char ch = m.tiles[y][x];
+                ShipPartCatalog.TileType t = cat.tileFor(ch);
+                if (t == null || t.base == ShipPartCatalog.TileBase.VOID) continue;
+                float x0 = sx(x), y0 = sy(y);
+                switch (t.base) {
+                    case FLOOR:
+                        artTile(art.region("tiles/floor"), x0, y0, 0);
+                        ChassisDef.Covering cov = m.coveringAt(x, y);
+                        String covering = cov == null ? null : ArtNames.covering(FloorCovering.valueOf(cov.covering));
+                        if (covering != null) artTile(art.region(covering), x0, y0, 0);
+                        break;
+                    case CONDUIT:
+                        artTile(art.region("tiles/conduit"), x0, y0, 0);
+                        TextureRegion arm = art.region(ArtNames.conduitArm(true));
+                        if (conduitAt(m, cat, x, y + 1)) artTile(arm, x0, y0, 0);
+                        if (conduitAt(m, cat, x - 1, y)) artTile(arm, x0, y0, 1);
+                        if (conduitAt(m, cat, x, y - 1)) artTile(arm, x0, y0, 2);
+                        if (conduitAt(m, cat, x + 1, y)) artTile(arm, x0, y0, 3);
+                        break;
+                    default:
+                        ChassisDef.HullPiece piece = m.hullPieceAt(x, y);
+                        if (piece != null && "WEDGE".equals(piece.shape)) break;
+                        int mask = 0;
+                        if (sameTile(m, x, y + 1, ch)) mask |= ArtNames.N;
+                        if (sameTile(m, x + 1, y, ch)) mask |= ArtNames.E;
+                        if (sameTile(m, x, y - 1, ch)) mask |= ArtNames.S;
+                        if (sameTile(m, x - 1, y, ch)) mask |= ArtNames.W;
+                        artTile(art.region(ArtNames.wall(wallArtId(t), mask)), x0, y0, 0);
+                        break;
+                }
+            }
+        }
+        for (ChassisDef.HullPiece p : m.hullPieces) {
+            if (!"WEDGE".equals(p.shape)) continue;
+            TextureRegion r = art.region("walls/hull_" + p.weightClass.toLowerCase(Locale.ROOT) + "_wedge_" + p.width + "x" + p.height);
+            int pw = p.rotation % 2 == 0 ? p.width : p.height, ph = p.rotation % 2 == 0 ? p.height : p.width;
+            artCentered(r, sx(p.x + pw / 2f), sy(p.y + ph / 2f), p.width * scale, p.height * scale, p.rotation);
+        }
+        for (ChassisModel.Mount mount : m.mounts) {
+            MountFootprint f = mount.footprint(cat);
+            ShipPartCatalog.ComponentType type = cat.component(mount.component);
+            if (f == null || type == null) continue;
+            int bw = f.size.baseWidth(f.kind), bh = f.size.baseHeight(f.kind);
+            float cx = sx(f.originX + f.width() / 2f), cy = sy(f.originY + f.height() / 2f);
+            artCentered(art.first(ArtNames.component(type.id, type.behavior, f.size, null, true)), cx, cy,
+                    bw * scale, bh * scale, f.rotation);
+            if (f.kind != MountFootprint.MountKind.PORT) continue;
+            // The latch collar, half a tile out past the outer edge
+            Side out = DockingPortLayout.facing(f);
+            float off = (bh / 2f + 0.25f) * scale;
+            artCentered(art.region(ArtNames.collar(f.size, true)), cx + out.dx * off, cy + out.dy * off,
+                    bw * scale, 0.5f * scale, f.rotation);
+        }
+        // Thin walls: a segment on each edge, a door in place of one, and a joint where they meet
+        WeightClass[][] hEdges = new WeightClass[h + 1][w], vEdges = new WeightClass[h][w + 1];
+        float t = scale / 4f;
+        for (ChassisDef.EdgeWall e : m.edgeWalls) {
+            Side side = Side.valueOf(e.side);
+            WeightClass weight = WeightClass.valueOf(e.weightClass);
+            boolean horizontal = side == Side.TOP || side == Side.BOTTOM;
+            int ex = e.x + (side == Side.RIGHT ? 1 : 0), ey = e.y + (side == Side.TOP ? 1 : 0);
+            if (horizontal && ey >= 0 && ey <= h && ex >= 0 && ex < w) hEdges[ey][ex] = weight;
+            if (!horizontal && ey >= 0 && ey < h && ex >= 0 && ex <= w) vEdges[ey][ex] = weight;
+            String name = e.bulkhead ? ArtNames.door(true, true, horizontal) : ArtNames.edgeWall(weight, horizontal);
+            TextureRegion r = art.region(name);
+            if (r == null) continue;
+            if (horizontal) batch.draw(r, sx(ex), sy(ey) - t / 2f, scale, t);
+            else batch.draw(r, sx(ex) - t / 2f, sy(ey), t, scale);
+        }
+        for (int y = 0; y <= h; y++) {
+            for (int x = 0; x <= w; x++) {
+                WeightClass n = y < h ? vEdges[y][x] : null, so = y > 0 ? vEdges[y - 1][x] : null;
+                WeightClass e = x < w ? hEdges[y][x] : null, we = x > 0 ? hEdges[y][x - 1] : null;
+                int mask = (n != null ? ArtNames.N : 0) | (e != null ? ArtNames.E : 0) | (so != null ? ArtNames.S : 0)
+                        | (we != null ? ArtNames.W : 0);
+                if (mask == 0) continue;
+                WeightClass weight = WeightClass.LIGHT;
+                for (WeightClass c : new WeightClass[]{n, e, so, we}) if (c != null && c.ordinal() > weight.ordinal()) weight = c;
+                TextureRegion r = art.region(ArtNames.edgeJoint(weight, mask));
+                if (r != null) batch.draw(r, sx(x) - t / 2f, sy(y) - t / 2f, t, t);
+            }
+        }
+        batch.end();
+    }
+
+    /** A wall type's art: its own when the pack has it (hull, hull_heavy...), else its base's. */
+    private String wallArtId(ShipPartCatalog.TileType t) {
+        if (art.region(ArtNames.wall(t.id, 0)) != null) return t.id;
+        if (t.base == ShipPartCatalog.TileBase.INTERNAL_WALL) return "internal_wall";
+        return "hull_" + ArtNames.weight(t.weightClass);
+    }
+
+    private static boolean sameTile(ChassisModel m, int x, int y, char ch) {
+        return m.inBounds(x, y) && m.tiles[y][x] == ch;
+    }
+
+    private static boolean conduitAt(ChassisModel m, ShipPartCatalog cat, int x, int y) {
+        if (!m.inBounds(x, y)) return false;
+        ShipPartCatalog.TileType t = cat.tileFor(m.tiles[y][x]);
+        return t != null && t.base == ShipPartCatalog.TileBase.CONDUIT;
+    }
+
+    /** A one-tile region at a tile's bottom-left corner, turned {@code quarters} about its middle. */
+    private void artTile(TextureRegion r, float x0, float y0, int quarters) {
+        if (r != null) batch.draw(r, x0, y0, scale / 2f, scale / 2f, scale, scale, 1f, 1f, quarters * 90f);
+    }
+
+    private void artCentered(TextureRegion r, float cx, float cy, float w, float h, int quarters) {
+        if (r != null) batch.draw(r, cx - w / 2f, cy - h / 2f, w / 2f, h / 2f, w, h, 1f, 1f, quarters * 90f);
     }
 
     private String describeTile(ChassisModel m, ShipPartCatalog cat, int x, int y) {
@@ -1687,6 +1822,11 @@ public class ShipEditor extends ApplicationAdapter {
                     return true;
                 case com.badlogic.gdx.Input.Keys.F:
                     fit();
+                    return true;
+                case com.badlogic.gdx.Input.Keys.A:
+                    artView = !artView;
+                    say(drawingArt() ? "Showing the art pack" : art.isEmpty() ? "No art atlas built; showing flat colors"
+                            : "Showing flat colors");
                     return true;
                 case com.badlogic.gdx.Input.Keys.R:
                     rotation = (rotation + 1) % 4;

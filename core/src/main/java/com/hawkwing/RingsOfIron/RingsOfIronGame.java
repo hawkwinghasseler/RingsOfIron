@@ -16,6 +16,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.CircleShape;
@@ -23,6 +24,9 @@ import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.Array;
+import com.hawkwing.RingsOfIron.art.ArtLibrary;
+import com.hawkwing.RingsOfIron.art.DeckArt;
+import com.hawkwing.RingsOfIron.art.ExteriorArt;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.DeckView;
@@ -110,6 +114,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     private ShapeRenderer shapes;
     private SpriteBatch batch;
+    /** The art pack's atlas; empty when it was not built, and then everything is drawn in shapes. */
+    private ArtLibrary art;
+    private DeckArt deckArt;
+    private ExteriorArt exteriorArt;
+    private final Matrix4 pose = new Matrix4();
+    private final Matrix4 identity = new Matrix4();
     private BitmapFont font;
     private float exteriorViewMeters = START_VIEW;
     private String notice;
@@ -155,6 +165,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 });
         world = new GameWorld(modules);
         game = GameScenario.start(world, assetsDir, modsDir);
+        art = ArtLibrary.load(game.content.assets);
+        deckArt = new DeckArt(art);
+        exteriorArt = new ExteriorArt(art);
         gameHud = new GameHud(world, hud);
 
         gun = new PlayerGunnery(world, game.player);
@@ -385,6 +398,16 @@ public class RingsOfIronGame extends ApplicationAdapter {
     // -----------------------------------------------------------------------
     private void drawBodies() {
         world.physics.getWorld().getBodies(bodies);
+        // Craft with hull art are drawn with it; everything else as its outline
+        batch.setProjectionMatrix(viewports.getWorldCamera().combined);
+        batch.begin();
+        for (int i = bodies.size - 1; i >= 0; i--) {
+            Body body = bodies.get(i);
+            Object owner = body.getUserData();
+            Entity e = owner instanceof Entity ? (Entity) owner : null;
+            if (e != null && world.docking.bodyOf(e) == body && exteriorArt.draw(batch, e, body)) bodies.removeIndex(i);
+        }
+        batch.end();
         shapes.begin(ShapeRenderer.ShapeType.Line);
         for (Body body : bodies) {
             Object owner = body.getUserData();
@@ -486,29 +509,45 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (!decks.contains(link.otherShip, true)) decks.add(link.otherShip);
         }
         Gdx.gl.glEnable(GL20.GL_BLEND);
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
         boolean blink = hud.getMinimap().blinkOn();
+        boolean withArt = deckArt.available();
         for (Entity ship : decks) {
             ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
             Body body = world.docking.bodyOf(ship);
             if (g == null || body == null) continue;
             Vector2 at = PhysicsManager.getPosition(body, tmp);
+            float degrees = body.getAngle() * MathUtils.radiansToDegrees;
+            CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
+            if (withArt) {
+                batch.setProjectionMatrix(viewports.getWorldCamera().combined);
+                batch.setTransformMatrix(pose.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, degrees));
+                batch.begin();
+                deckArt.draw(batch, g, hold);
+                batch.end();
+                batch.setTransformMatrix(identity);
+            }
+            shapes.begin(ShapeRenderer.ShapeType.Filled);
             shapes.identity();
             shapes.translate(at.x, at.y, 0f);
-            shapes.rotate(0f, 0f, 1f, body.getAngle() * MathUtils.radiansToDegrees);
+            shapes.rotate(0f, 0f, 1f, degrees);
             float s = g.tileSize;
-            for (int y = 0; y < g.height; y++) {
-                for (int x = 0; x < g.width; x++) {
-                    TileShade.fill(g.getTile(x, y), blink, color);
-                    if (color.a <= 0f) continue;
-                    shapes.setColor(color);
-                    Vector2 p = g.tileToLocal(x, y);
-                    shapes.rect(p.x - s / 2f + 0.03f, p.y - s / 2f + 0.03f, s - 0.06f, s - 0.06f);
+            if (withArt) {
+                DeckView.atmosphere(shapes, g, blink);
+                DeckView.walkways(shapes, g, color, 0.6f);
+            } else {
+                for (int y = 0; y < g.height; y++) {
+                    for (int x = 0; x < g.width; x++) {
+                        TileShade.fill(g.getTile(x, y), blink, color);
+                        if (color.a <= 0f) continue;
+                        shapes.setColor(color);
+                        Vector2 p = g.tileToLocal(x, y);
+                        shapes.rect(p.x - s / 2f + 0.03f, p.y - s / 2f + 0.03f, s - 0.06f, s - 0.06f);
+                    }
                 }
+                DeckView.walkways(shapes, g, color, 1f);
+                DeckView.walls(shapes, g, color);
+                DeckView.cargo(shapes, g, hold, color);
             }
-            DeckView.walkways(shapes, g, color, 1f);
-            DeckView.walls(shapes, g, color);
-            DeckView.cargo(shapes, g, ship.getComponent(CargoHoldComponent.class), color);
             for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
                 if (pos.ship != ship) continue;
@@ -517,8 +556,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 Vector2 local = pos.toShipLocal(g, tmp2);
                 DeckView.crew(shapes, c, local.x, local.y, s, mark, color);
             }
+            shapes.end();
         }
-        shapes.end();
         shapes.identity();
         Gdx.gl.glDisable(GL20.GL_BLEND);
     }
@@ -590,6 +629,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.dispose();
         shapes.dispose();
         batch.dispose();
+        art.dispose();
         font.dispose();
     }
 }

@@ -10,6 +10,8 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.hawkwing.RingsOfIron.art.ArtLibrary;
+import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
@@ -82,6 +84,9 @@ public class DockingDemo extends ApplicationAdapter {
     private OrthographicCamera ui;
     private ShapeRenderer shapes;
     private SpriteBatch batch;
+    private ArtLibrary art;
+    private DeckArt deckArt;
+    private final com.badlogic.gdx.math.Matrix4 pose = new com.badlogic.gdx.math.Matrix4();
     private BitmapFont font;
     private float viewMeters = 90f;
 
@@ -104,6 +109,8 @@ public class DockingDemo extends ApplicationAdapter {
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
         font = new BitmapFont();
+        art = ArtLibrary.load(ArtLibrary.DEFAULT_PATH);
+        deckArt = new DeckArt(art);
         camera = new OrthographicCamera();
         ui = new OrthographicCamera();
         resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
@@ -210,11 +217,29 @@ public class DockingDemo extends ApplicationAdapter {
         }
     }
 
-    /** Each grid's deck plan under its hull, in the minimap's colors, faintly. */
+    /**
+     * Each grid's deck plan under its hull: the art pack's deck when it is built, else the
+     * minimap's colors, faintly.
+     */
     private void drawDecks() {
         Gdx.gl.glEnable(GL20.GL_BLEND);
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
         demo.world.physics.getWorld().getBodies(bodies);
+        if (deckArt.available()) {
+            batch.setProjectionMatrix(camera.combined);
+            for (Body body : bodies) {
+                Entity e = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
+                ShipGridComponent grid = e == null ? null : e.getComponent(ShipGridComponent.class);
+                if (grid == null || demo.world.docking.bodyOf(e) != body) continue;
+                Vector2 at = PhysicsManager.getPosition(body, new Vector2());
+                batch.setTransformMatrix(pose.idt().translate(at.x, at.y, 0f)
+                        .rotate(0f, 0f, 1f, body.getAngle() * com.badlogic.gdx.math.MathUtils.radiansToDegrees));
+                batch.begin();
+                deckArt.draw(batch, grid, e.getComponent(CargoHoldComponent.class));
+                batch.end();
+            }
+            batch.setTransformMatrix(pose.idt());
+        }
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (Body body : bodies) {
             Entity e = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
             ShipGridComponent grid = e == null ? null : e.getComponent(ShipGridComponent.class);
@@ -223,6 +248,11 @@ public class DockingDemo extends ApplicationAdapter {
             shapes.identity();
             shapes.translate(at.x, at.y, 0f);
             shapes.rotate(0f, 0f, 1f, body.getAngle() * com.badlogic.gdx.math.MathUtils.radiansToDegrees);
+            if (deckArt.available()) {
+                DeckView.atmosphere(shapes, grid, false);
+                DeckView.walkways(shapes, grid, color, 0.6f);
+                continue;
+            }
             float s = grid.tileSize;
             for (int y = 0; y < grid.height; y++) {
                 for (int x = 0; x < grid.width; x++) {
@@ -462,5 +492,6 @@ public class DockingDemo extends ApplicationAdapter {
         shapes.dispose();
         batch.dispose();
         font.dispose();
+        art.dispose();
     }
 }

@@ -121,7 +121,7 @@ class EditorProjectTest {
         assertTrue(saved.contains("name = \"Patrol Corvette Mk2\""));
         assertTrue(saved.contains("# Carpet through the crew spaces, so a fire here has something to burn\ncoverings"),
                 "a comment stays above its key");
-        assertTrue(saved.contains("# A turret mount beside each hardpoint"));
+        assertTrue(saved.contains("# A turret mount under each hardpoint"));
         int start = original.indexOf("[chassis.freighter]");
         assertEquals(original.substring(start - 1), saved.substring(saved.indexOf("[chassis.freighter]") - 1),
                 "the sections after it are untouched");

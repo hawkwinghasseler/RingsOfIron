@@ -1,0 +1,28 @@
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-art-pipeline'
+
+// A build tool, not part of the game: it turns assets/art's SVGs into the texture atlas the game
+// loads (see documentation/art/Design.md, "Using the art in the game").
+dependencies {
+  implementation "com.github.weisj:jsvg:2.2.0"
+  implementation("com.badlogicgames.gdx:gdx-tools:$gdxVersion") { exclude group: 'com.badlogicgames.gdx', module: 'gdx-backend-lwjgl' }
+}
+
+def artSource = rootProject.file('assets/art')
+def artOut = layout.buildDirectory.dir('generated/art')
+
+// Rasterizes every SVG at 64 px a tile and packs them into art/art.atlas under build/generated/art,
+// with art/art.json beside it. Up to date until an SVG changes; the lwjgl3 module puts that folder
+// on the game's classpath, so the game finds the atlas as the internal file art/art.atlas.
+tasks.register('packArt', JavaExec) {
+  group = 'build'
+  description = 'Rasterizes assets/art into the texture atlas the game draws with.'
+  mainClass = 'com.ringsofiron.artpipeline.ArtPacker'
+  classpath = sourceSets.main.runtimeClasspath
+  inputs.files(fileTree(artSource) { include '**/*.svg' }).withPropertyName('svgs').withPathSensitivity(PathSensitivity.RELATIVE)
+  outputs.dir(artOut)
+  jvmArgs += '-Djava.awt.headless=true'
+  doFirst {
+    args = [artSource.path, new File(artOut.get().asFile, 'art').path, '64']
+  }
+}
