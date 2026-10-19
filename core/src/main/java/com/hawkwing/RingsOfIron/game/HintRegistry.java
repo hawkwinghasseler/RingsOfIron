@@ -40,7 +40,9 @@ public final class HintRegistry {
         /** The orbit map and burn planner, at the helm. */
         MAP("Orbit map and burn planner"),
         /** Anywhere. */
-        ANY("Anywhere");
+        ANY("Anywhere"),
+        /** The gamepad's buttons, for the controls panel only. */
+        GAMEPAD("Gamepad");
 
         public final String title;
 
@@ -218,6 +220,19 @@ public final class HintRegistry {
         r.register(Context.ANY, "twice: abandon ship", 87, Action.ABANDON);
         r.register(Context.ANY, "quick save", 88, Action.QUICK_SAVE);
         r.register(Context.ANY, "quick load", 89, Action.QUICK_LOAD);
+        // The pad (see GamepadKeys); never on the bottom line, which shows no GAMEPAD context
+        r.registerKey(Context.GAMEPAD, "Left stick", "fly / walk", 1);
+        r.registerKey(Context.GAMEPAD, "A / RT", "fire; A uses a console", 2);
+        r.registerKey(Context.GAMEPAD, "B / X / Y", "missile / decoy, force door / view", 3);
+        r.registerKey(Context.GAMEPAD, "LT", "next target", 4);
+        r.registerKey(Context.GAMEPAD, "D-pad", "warp up/down, arm port, undock", 5);
+        r.registerKey(Context.GAMEPAD, "Back", "tap: map; hold for the second layer", 6);
+        r.registerKey(Context.GAMEPAD, "Back+A/B/X/Y", "missions / boarding / market / yard", 7);
+        r.registerKey(Context.GAMEPAD, "Back+D-pad", "steer the planned burn", 8);
+        r.registerKey(Context.GAMEPAD, "Back+LT/RT", "plan a burn / next burn", 9);
+        r.registerKey(Context.GAMEPAD, "Back+Start", "abandon ship (twice)", 10);
+        r.registerKey(Context.GAMEPAD, "Back+L3", "quick save", 11);
+        r.registerKey(Context.GAMEPAD, "In menus", "D-pad moves, A picks, B backs out", 12);
         return r;
     }
 }

@@ -56,6 +56,8 @@ public class GameShell implements ApplicationListener {
     private final float[] stars = new float[3 * 220];
 
     private RingsOfIronGame game;
+    /** Arrow-key and pad focus in the menus. */
+    final com.ringsofiron.uihud.FocusNav menuNav = new com.ringsofiron.uihud.FocusNav();
     private boolean paused;
     /** Work for the start of the next frame, such as starting a game from a button. */
     private Runnable pending;
@@ -123,6 +125,8 @@ public class GameShell implements ApplicationListener {
                         back();
                         return true;
                     }
+                    // Arrow keys and Enter (and the pad, which sends them) move between the buttons
+                    if (menuNav.key(root, keycode)) return true;
                     return stage.keyDown(keycode) || true;
                 }
                 if (keycode == Input.Keys.ESCAPE && game != null && !game.isRefitOpen() && !hudWindowOpen()) {
@@ -191,6 +195,8 @@ public class GameShell implements ApplicationListener {
         input.setReal(Gdx.input);
         Gdx.input = input;
         input.setRemapping(game != null && !paused && !game.isRefitOpen());
+        // A menu or window takes the pad for moving between its buttons; the map does not
+        pad.setMenuMode(menuShown() || (game != null && (game.getHud().openWindow() != null || game.isOverlayOpen())));
         input.update();
         if (pending != null) {
             Runnable r = pending;

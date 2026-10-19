@@ -463,7 +463,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (just(Action.ARM_PORT)) show(docking.toggleArm());
         if (just(Action.NEXT_PORT)) show(docking.nextPort());
         if (just(Action.UNDOCK)) show(docking.undock());
-        planBurns();
+        // An open window has the arrow keys
+        if (hud.openWindow() == null) planBurns();
     }
 
     /** True while one of the HUD's windows or the traffic map is open; Esc closes it first. */
