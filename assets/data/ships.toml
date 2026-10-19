@@ -94,6 +94,28 @@ hardpoints = [
   { weapon = "autocannon_mk1", x = 5.5, y = -2.5, rotation = -90.0 },
 ]
 
+# The Void Raiders' own gunship (round 5): the gunship hull bought or taken, stripped down and
+# rearmed. A chaingun in the nose for the railgun, a dart rack on each beam aft for the missiles,
+# point defense forward, and a smaller crew. Lighter than the patrols' gunship, and short-ranged, so it
+# fights the corvette at close quarters instead of out-shooting it (round 4: the stock gunship under
+# an ace's crew beat the corvette in 3 of 5 fights and killed its whole crew).
+[ship.gunship_raider]
+name = "Pirate Gunship"
+chassis = "gunship"
+texture = "tex_gunship"
+mass = 220000.0
+max_thrust = 3.4e6
+max_torque = 2.0e6
+exhaust_velocity = 700000.0
+crew = 4
+hardpoints = [
+  { weapon = "chaingun_mk1", x = 8.0, y = 0.0, rotation = 0.0 },
+  { weapon = "dart_rack", x = 1.5, y = 2.5, rotation = 90.0 },
+  { weapon = "dart_rack", x = 1.5, y = -2.5, rotation = -90.0 },
+  { weapon = "autocannon_mk1", x = 5.5, y = 2.5, rotation = 90.0 },
+  { weapon = "autocannon_mk1", x = 5.5, y = -2.5, rotation = -90.0 },
+]
+
 # The Commander's and Captain's ship, sold at the sponsor's yards (round 3): two main turrets on
 # the bow, a missile launcher on each beam aft, point defense on each beam forward, and a marine
 # bay under its active dorsal port for boarding. Heavier and slower than the gunship.

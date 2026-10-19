@@ -7,6 +7,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
+import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
@@ -64,9 +65,9 @@ class RunStanceTest {
         assertSame(game.player, combat.target);
         assertFalse(h.brokeOff);
 
-        wallsAt(ship, 0.85f);
+        wallsAt(ship, 0.75f);
         assertEquals(Tactics.Plan.RUN, Tactics.choose(Tactics.arms(ship),
-                HostileTraffic.firepower(ship) * 0.85 / HostileTraffic.firepower(game.player), 0.85, true, false),
+                HostileTraffic.firepower(ship) * 0.75 / HostileTraffic.firepower(game.player), 0.75, true, false),
                 "hit, and outgunned by the corvette");
         world.hostiles.onShotAt(ship, game.player);
         run(2);
@@ -74,6 +75,7 @@ class RunStanceTest {
         assertTrue(h.brokeOff);
         assertNull(ship.getComponent(NpcCombatComponent.class), "done fighting");
         assertNotNull(ship.getComponent(NpcPilotComponent.class), "flying off");
+        assertSame(game.player, ship.getComponent(SensorComponent.class).lockedTarget, "its guns still on the player as it goes");
         assertTrue(world.notices.history().stream().anyMatch(n -> n.text.equals(was + " is running")));
 
         world.timeWarp.setWarp(10);

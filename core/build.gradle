@@ -39,8 +39,14 @@ test {
   if (project.hasProperty('careerSeed')) systemProperty 'career.seed', project.property('careerSeed')
   // ./gradlew :core:test --tests '*CrewWoundSurveyTest' -PwoundSurvey=10 fights round 4's ace survey again with wounds
   if (project.hasProperty('woundSurvey')) systemProperty 'wound.survey', project.property('woundSurvey')
+  // ./gradlew :core:test --tests '*EnemySurveyTest' -PenemySurvey runs the round 5 enemy survey (core/build/enemy-survey.txt)
+  if (project.hasProperty('enemySurvey')) systemProperty 'enemy.survey', 'true'
+  if (project.hasProperty('surveyTrials')) systemProperty 'enemy.survey.trials', project.property('surveyTrials')
+  if (project.hasProperty('enemyDebug')) systemProperty 'enemy.debug', 'true'
+  if (project.hasProperty('enemyProbe')) systemProperty 'enemy.probe', project.property('enemyProbe')
   // A failing test says why in the CI log, not only in the report (the build logs at quiet, see gradle.properties)
   testLogging {
+    showStandardStreams = project.hasProperty('enemySurvey') || project.hasProperty('enemyDebug')
     quiet {
       events 'failed'
       exceptionFormat 'full'

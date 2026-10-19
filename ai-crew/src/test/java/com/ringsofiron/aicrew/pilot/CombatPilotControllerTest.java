@@ -90,6 +90,23 @@ class CombatPilotControllerTest {
     }
 
     @Test
+    void aKiterBacksOffATargetThatClosesAndKeepsItsNoseOnIt() {
+        Sim sim = new Sim();
+        sim.combat.stance = NpcCombatComponent.Stance.KITE;
+        sim.combat.preferredRange = 4500f;
+        sim.combat.maxClosingSpeed = 140f;
+        sim.s.position.set(4500f, 0f);
+        // The target comes straight at it
+        sim.targetVel.set(60f, 0f);
+        sim.run(240);
+        assertTrue(sim.range() > 4500f - 600f, "kept its range: " + sim.range());
+        float bearing = new Vector2(sim.targetPos).sub(sim.s.position).angleRad();
+        assertEquals(0f, PilotController.wrap(bearing - sim.s.angle), 0.15f, "nose on the target");
+        // No circling: it backs straight off along the line
+        assertEquals(0f, sim.s.position.y - sim.targetPos.y, 150f);
+    }
+
+    @Test
     void opensRangeOnATargetThatComesTooClose() {
         Sim sim = new Sim();
         sim.s.position.set(300f, 0f);

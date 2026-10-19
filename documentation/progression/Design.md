@@ -74,7 +74,8 @@ Ranks are data: `[rank.<id>]` (`RankDef`) with `name`, `order`, `standing` (need
 - **Budget:** `ServiceBudget` pays the budget into the player ship's credits every `WEEK` (604,800 sim seconds). It catches up on every payday passed during time warp, at the rank held when paying. The first payday is a week after the career starts. Paydays wait while the player has no ship with credits. The HUD shows "Ensign   Budget 2,000 cr/wk in 6d 23h".
 - **What a rank flies:** `RankLadder.mayFly` compares a ship's chassis size in tiles with the rank's `max_chassis`, for a requisition after a rescue (`mayRequisition`) and a purchase at a yard alike. Sizes: light raider 75, corvette 96, gunship 160, frigate 240, freighter 260, so no rank flies a freighter. (Round 2 named the freighter at Lieutenant Commander and above, which let the gunship in by size alone; round 3 names the gunship and the frigate.)
 - **Difficulty** (GDD §5): `Difficulty.of(rank, worth) = 1 + 0.25·rank + 0.5·log2(worth / 300,000)`, where the worth term counts only above 300,000. Net worth is credits plus the ship's value: 1,000 a hull tile plus its weapons' prices.
-- **Pirate numbers:** `HostileTraffic` sizes the pirate population from a difficulty value: `1 + round(d)` raiders and `floor(d)` gunships.
+- **Pirate numbers:** `HostileTraffic` sizes the pirate population from a difficulty value (`Difficulty.raiders`, `Difficulty.gunships`): `1 + round(d)` raiders and `floor(d)` gunships.
+- **What the pirates fly** (round 5): `Difficulty.wingSize` puts raiders in wings by the difficulty: alone below 1.25 (a new ensign), pairs from 1.25 (a Lieutenant, or a rich ensign), threes from 2. The loadouts bring the heavier guns with the difficulty (railgun raiders from 1.5, the pirate gunship's railgun fits from 1.75 and 2). Once the player flies a gunship or bigger (`Difficulty.fliesAtLeast`), an ace takes one of the pirates' gunships.
 
 ## Pirates and Patrols
 Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. It is documented with macro-sim, since it lives on the rails like freighters. The progression side:
@@ -82,18 +83,22 @@ Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. I
 - **Patrols** fly for the sponsor and for Selene between their stations and engage pirates. A pirate won't strike at a station guarded by an equal or stronger patrol.
 - **Warp:** a hostile moving to intercept the player stops time warp.
 - **Loadouts** (round 3): each pirate is armed from a weighted list for its hull and the difficulty (`loadouts.toml`). Raiders carry a chaingun or darts, and from difficulty 1 an ion gun, from 1.5 a railgun. Gunships range from the stock fit to flak, brawler, ion-and-darts and, from 1.5, the heavy railgun. Patrols and the First Play raider keep their stock weapons.
-- **Pairs** (round 3): raiders fly in pairs. A new raider becomes the wingman of a raider that flies alone, at its lurk, and in the bubble fights whatever its leader has its guns on.
+- **Wings** (round 3 pairs, round 5 sizes): a new raider joins the wing of a raider leading fewer than `Difficulty.wingSize` (the one with fewest wingmen first), at its lurk, and in the bubble fights whatever its leader has its guns on. A wing breaks off together: when its leader breaks off, runs or is beaten in the bubble, its wingmen break off too. `HostileTraffic.spawnWing` puts a wing of any hull and size by a station (for a base's defence, say).
 - **Tactics** (round 3, `Tactics`): each look at the bubble (1 s), a captain picks a plan from its weapons and the odds (its firepower times its hull, with its wing's, over the enemy's):
-  - **Run:** a pirate that has been hit (hull below 90%) runs when outgunned (odds below 0.5), or when it is in a crossfire and not winning.
-  - **Standoff:** a ship with launchers that isn't clearly winning (odds below 1.2) keeps 5 km off.
+  - **Run:** a pirate that has been hit (hull below 80%; round 4's 90% sent raiders off at the first hit, before they were in their own guns' range, so they never fired) runs when outgunned (odds below 0.5), or when it is in a crossfire and not winning. Aces and patrols never run.
+  - **Firing as it goes:** a ship that runs or breaks off keeps its guns on whatever it was fighting as it flies off.
+  - **Standoff:** a ship with launchers and long guns that isn't clearly winning (odds below 1.2), or with nothing but launchers, keeps 5 km off. One whose guns are all short closes to use them.
+  - **Flank as a wingman** (round 5): a wingman whose leader fights the same enemy swings round astern of it, circling the other way, so the wing has it in a crossfire.
+  - **Kite** (round 5): a ship whose guns all reach past 3.5 km keeps 4.5 km off (or 85% of its shortest gun's reach), nose on, and backs straight off as the enemy closes, unless it clearly outguns it; an ace with long guns always kites.
   - **Rush:** a ship with only short guns (3.5 km or less) closes to 600 m, fast.
   - **Flank:** a ship that clearly outguns its enemy (odds 1.5 or more) swings round to 1 km astern, to hit its engines.
   - **Hold:** otherwise it holds 1.5 km and circles, as before.
 - **Crossfire** (round 3): a hostile fired on lately (20 s) by attackers 60° or more apart in bearing breaks off below 80% of its hull, not 65%.
-- **Aces** (round 3, `PirateAces`): a pirate that gets away from a fight with the player (it fought them and left the bubble unbeaten), or that has robbed 3 freighters, becomes a named ace, if fewer than 3 are about.
+- **The pirate gunship** (round 5, `gunship_raider` in `ships.toml`): the gunship hull rearmed by the pirates, with a chaingun in the nose, a dart rack on each beam and point defence forward, crew 4. The patrols keep `gunship_heavy`. On its stock fit it robs freighters and leaves the starter corvette alone (it is under the 0.8 nerve); its railgun fits (`gunship_line` from 1.75, `gunship_heavy_railgun` from 2) dare the player.
+- **Aces** (round 3, `PirateAces`): a pirate that gets away from a fight with the player (it fought them and left the bubble unbeaten), or that has robbed 3 freighters, becomes a named ace, if fewer than 3 are about. Round 5: once the player flies a gunship, the hourly top-up makes the first plain pirate gunship an ace when no ace flies one (no grudge; it hunts by the odds), and says so.
   - It takes a callsign, its crew's gunnery and tracking rise to at least 0.85, and it is refitted from its ship's ace loadouts, which carry a rare weapon.
   - One that got away from the player keeps a grudge and hunts them whatever the odds; one that gets away again keeps it.
-  - Its bounty is 4 × a pirate's, with 6 more standing, and ace bounties come first on a board.
+  - Its bounty is 4 × a pirate's, with 6 more standing, and ace bounties come first on a board. Round 5: the bounty is posted the day the ace appears on every board that would list it (`PirateAces.postBounty`, through `ContractBoard.postEvent`) until the day turns, when the day's boards take it up; round 4 waited for the next day's boards.
   - Beaten, it leaves a crate of its rare weapon in its hold for whoever boards it, forgets its grudge and frees its place.
   - Every step is a notice in the log (L).
 

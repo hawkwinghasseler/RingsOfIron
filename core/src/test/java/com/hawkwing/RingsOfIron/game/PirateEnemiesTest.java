@@ -64,7 +64,7 @@ class PirateEnemiesTest {
     }
 
     @Test
-    void piratesAreArmedFromTheirLoadoutsAndRaidersFlyInPairs() {
+    void piratesAreArmedFromTheirLoadoutsAndRaidersFlyAloneAtFirst() {
         List<String> raiders = new ArrayList<>();
         for (Map.Entry<String, HostileComponent> e : hostiles.all().entrySet()) {
             HostileComponent h = e.getValue();
@@ -84,11 +84,8 @@ class PirateEnemiesTest {
             if (HostileTraffic.RAIDER.equals(h.shipId)) raiders.add(e.getKey());
         }
         assertEquals(2, raiders.size());
-        HostileComponent a = hostiles.get(raiders.get(0)), b = hostiles.get(raiders.get(1));
-        HostileComponent wing = a.wingOf != null ? a : b, lead = wing == a ? b : a;
-        assertNull(lead.wingOf);
-        assertEquals(raiders.get(wing == a ? 1 : 0), wing.wingOf, "the second raider flies on the first's wing");
-        assertEquals(lead.stationUuid, wing.stationUuid, "by the same lurk");
+        // Round 5: at a new ensign's difficulty raiders fly alone; wings come with the difficulty (EnemyWingsTest)
+        for (String r : raiders) assertNull(hostiles.get(r).wingOf, "a lone raider");
         assertNull(game.raider.getComponent(HostileComponent.class), "First Play's raider is left alone");
     }
 
@@ -123,21 +120,23 @@ class PirateEnemiesTest {
         Tactics.Arms chaingun = new Tactics.Arms();
         chaingun.guns = true;
         chaingun.shortGunsOnly = true;
+        // A railgun and autocannons, like the corvette: long and short guns
         Tactics.Arms railgun = new Tactics.Arms();
         railgun.guns = true;
         assertEquals(Tactics.Plan.STANDOFF, Tactics.choose(missiles, 1, 1, true, false));
         assertEquals(Tactics.Plan.RUSH, Tactics.choose(chaingun, 1, 1, true, false));
         assertEquals(Tactics.Plan.FLANK, Tactics.choose(railgun, 2, 1, true, false));
         assertEquals(Tactics.Plan.HOLD, Tactics.choose(railgun, 1, 1, true, false));
-        assertEquals(Tactics.Plan.RUN, Tactics.choose(railgun, 0.3, 0.8, true, false), "outgunned and hit");
+        assertEquals(Tactics.Plan.RUN, Tactics.choose(railgun, 0.3, 0.75, true, false), "outgunned and hit");
+        assertEquals(Tactics.Plan.HOLD, Tactics.choose(railgun, 0.3, 0.85, true, false), "hit only once");
         assertEquals(Tactics.Plan.HOLD, Tactics.choose(railgun, 0.3, 1, true, false), "not yet hit");
-        assertEquals(Tactics.Plan.RUN, Tactics.choose(railgun, 0.8, 0.8, true, true), "losing in a crossfire");
+        assertEquals(Tactics.Plan.RUN, Tactics.choose(railgun, 0.8, 0.75, true, true), "losing in a crossfire");
         assertNotEquals(Tactics.Plan.RUN, Tactics.choose(railgun, 0.3, 0.5, false, true), "patrols never run");
     }
 
     @Test
     void aWingmanFightsWhatItsLeaderFights() {
-        String[] pair = pair();
+        String[] pair = wing();
         hostiles.get(pair[0]).targetUuid = HostileComponent.PLAYER;
         Entity lead = bringIn(pair[0], 3_000, 0);
         Entity wing = bringIn(pair[1], 3_000, 500);
@@ -146,12 +145,15 @@ class PirateEnemiesTest {
         assertSame(game.player, wing.getComponent(SensorComponent.class).lockedTarget, "its wingman joins in");
         NpcCombatComponent combat = wing.getComponent(NpcCombatComponent.class);
         assertNotNull(combat);
-        assertEquals(stanceFor(wing), combat.stance);
+        // Round 5: beside its leader a wingman swings round behind the enemy, circling the other way
+        assertEquals(NpcCombatComponent.Stance.FLANK, combat.stance);
+        assertEquals(-1f, combat.side);
+        assertEquals(1f, lead.getComponent(NpcCombatComponent.class).side);
     }
 
     @Test
     void underFireFromTwoSidesAPirateBreaksOffSooner() {
-        String id = pirate(HostileTraffic.GUNSHIP);
+        String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
         HostileComponent h = hostiles.get(id);
         h.targetUuid = HostileComponent.PLAYER;
         Entity ship = bringIn(id, 3_000, 0);
@@ -201,7 +203,7 @@ class PirateEnemiesTest {
 
     @Test
     void aPirateThatRobsEnoughFreightersBecomesAnAceWithoutAGrudge() {
-        String id = pirate(HostileTraffic.GUNSHIP);
+        String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
         HostileComponent h = hostiles.get(id);
         h.plunders = PirateAces.PLUNDERS_TO_ACE - 1;
         world.hostiles.plundered(id, "x", "ore", 10, 0);
@@ -279,7 +281,7 @@ class PirateEnemiesTest {
 
     @Test
     void anAceAndItsWingComeBackFromASave(@TempDir Path dir) {
-        String[] pair = pair();
+        String[] pair = wing();
         HostileComponent lead = hostiles.get(pair[0]);
         assertTrue(PirateAces.promote(world, world.engine.getEntity(pair[0]), lead, hostiles.all().values(), 1, true));
         lead.escapes = 2;
@@ -298,26 +300,18 @@ class PirateEnemiesTest {
 
     // ---------------------------------------------------------------------------------------------
 
-    private static NpcCombatComponent.Stance stanceFor(Entity ship) {
-        Tactics.Arms arms = Tactics.arms(ship);
-        if (arms.launchers) return NpcCombatComponent.Stance.STANDOFF;
-        if (arms.shortGunsOnly) return NpcCombatComponent.Stance.RUSH;
-        return ship.getComponent(NpcCombatComponent.class).stance;
-    }
-
     private static List<String> ids(List<LoadoutDef> defs) {
         List<String> out = new ArrayList<>();
         for (LoadoutDef d : defs) out.add(d.id);
         return out;
     }
 
-    /** The raider pair: leader, then wingman. */
-    private String[] pair() {
-        for (Map.Entry<String, HostileComponent> e : hostiles.all().entrySet()) {
-            if (e.getValue().wingOf != null) return new String[]{e.getValue().wingOf, e.getKey()};
-        }
-        fail("no pair");
-        return null;
+    /** A new pair of raiders by Highport: leader, then wingman. */
+    private String[] wing() {
+        List<String> ids = world.hostiles.spawnWing(HostileTraffic.RAIDER, 2, game.highport, "raider_chaingun");
+        assertEquals(2, ids.size());
+        assertEquals(ids.get(0), hostiles.get(ids.get(1)).wingOf);
+        return new String[]{ids.get(0), ids.get(1)};
     }
 
     private static void wallsAt(Entity ship, float integrity) {

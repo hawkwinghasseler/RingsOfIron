@@ -60,13 +60,18 @@ class HostileEdgesTest {
     }
 
     @Test
-    void onlyAGunshipIsBoldEnoughToHuntTheStarterCorvette() {
+    void onlyAPirateGunshipOnTheLineFitIsBoldEnoughToHuntTheStarterCorvette() {
         double player = HostileTraffic.firepower(game.player);
         double raider = HostileTraffic.firepower(world.engine.getEntity(hostile(true, HostileTraffic.RAIDER)));
-        double gunship = HostileTraffic.firepower(world.engine.getEntity(hostile(true, HostileTraffic.GUNSHIP)));
+        Entity ship = world.engine.getEntity(hostile(true, HostileTraffic.PIRATE_GUNSHIP));
+        double gunship = HostileTraffic.firepower(ship);
         assertTrue(raider > 0 && gunship > raider && player > 0);
         assertTrue(raider < HostileTrafficController.PLAYER_NERVE * player, "a raider leaves the player alone");
-        assertTrue(gunship >= HostileTrafficController.PLAYER_NERVE * player, "a gunship dares");
+        // Round 5: the pirates' own gunship, on its stock chaingun and darts, robs freighters but leaves the corvette be
+        assertTrue(gunship < HostileTrafficController.PLAYER_NERVE * player, "a stock pirate gunship holds back");
+        // The patrols' railgun and harpoons, which it carries from difficulty 1.75, make it bold
+        com.ringsofiron.combatsys.modding.Loadouts.apply(ship, world.combatDefs.loadouts.get("gunship_line"), world.combatDefs);
+        assertTrue(HostileTraffic.firepower(ship) >= HostileTrafficController.PLAYER_NERVE * player, "a line gunship dares");
         assertEquals(0, HostileTraffic.firepower(null));
     }
 
@@ -124,7 +129,7 @@ class HostileEdgesTest {
         double now = world.macroSim.now();
         double topUp = world.hostiles.nextTopUp(), grace = hostiles.playerGraceUntil;
         assertTrue(topUp > now && grace > now);
-        world.hostiles.intercepting(hostile(true, HostileTraffic.GUNSHIP), HostileComponent.PLAYER, now);
+        world.hostiles.intercepting(hostile(true, HostileTraffic.PIRATE_GUNSHIP), HostileComponent.PLAYER, now);
         assertTrue(world.hostiles.alerted());
         int pirates = hostiles.all().size();
         FileHandle file = new FileHandle(dir.resolve("traffic.json").toFile());
