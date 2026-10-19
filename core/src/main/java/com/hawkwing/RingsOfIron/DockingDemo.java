@@ -32,6 +32,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
@@ -202,6 +203,7 @@ public class DockingDemo extends ApplicationAdapter {
                     shapes.rect(p.x - s / 2f + 0.05f, p.y - s / 2f + 0.05f, s - 0.1f, s - 0.1f);
                 }
             }
+            DeckView.walkways(shapes, grid, color, 0.45f);
             DeckView.walls(shapes, grid, color);
         }
         bodies.clear();
@@ -305,13 +307,7 @@ public class DockingDemo extends ApplicationAdapter {
             shapes.circle(c.x, c.y, Math.max(0.3f, fixture.getShape().getRadius() * PhysicsManager.METERS_PER_UNIT), 16);
         } else if (fixture.getShape() instanceof PolygonShape) {
             PolygonShape poly = (PolygonShape) fixture.getShape();
-            int n = poly.getVertexCount();
-            for (int i = 0; i < n; i++) {
-                poly.getVertex(i, tmp);
-                Vector2 w = body.getWorldPoint(tmp);
-                polygon[i * 2] = w.x * PhysicsManager.METERS_PER_UNIT;
-                polygon[i * 2 + 1] = w.y * PhysicsManager.METERS_PER_UNIT;
-            }
+            int n = PolygonSkin.outline(body, poly, polygon);
             shapes.polygon(polygon, 0, n * 2);
         }
     }

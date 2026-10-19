@@ -102,6 +102,38 @@ class DockingDemoSceneTest {
         assertEquals("Can't arm the port: the collar is torn off", demo.docking.toggleArm());
     }
 
+    /** Gap between the two docked collar faces along the player's port normal, m: below zero they overlap. */
+    private float faceGap(DockingPort mine, DockingPort theirs) {
+        com.badlogic.gdx.physics.box2d.Body a = demo.world.docking.bodyOf(demo.player);
+        com.badlogic.gdx.physics.box2d.Body b = demo.world.docking.bodyOf(demo.target);
+        float u = com.ringsofiron.physicsexterior.PhysicsManager.UNITS_PER_METER;
+        com.badlogic.gdx.math.Vector2 fa = a.getWorldPoint(new com.badlogic.gdx.math.Vector2(mine.faceX() * u, mine.faceY() * u)).cpy();
+        com.badlogic.gdx.math.Vector2 fb = b.getWorldPoint(new com.badlogic.gdx.math.Vector2(theirs.faceX() * u, theirs.faceY() * u)).cpy();
+        com.badlogic.gdx.math.Vector2 n = a.getWorldVector(new com.badlogic.gdx.math.Vector2(mine.normalX, mine.normalY)).cpy();
+        return fb.sub(fa).dot(n) / u;
+    }
+
+    @Test
+    void afterUndockingThePortsCollideAgainAtOnce() {
+        demo.load(DockingDemoScene.Scene.TEAR);
+        DockingPort mine = DockingDemoScene.port(demo.player, 0);
+        DockingPort theirs = DockingDemoScene.port(demo.target, DockingDemoScene.smallPort(demo.target));
+        assertEquals("Undocked from Outpost Kepler", demo.docking.undock());
+        for (int i = 0; i < 60; i++) demo.update(FRAME);
+        assertTrue(faceGap(mine, theirs) > 0.05f, "the springs pushed the craft apart: " + faceGap(mine, theirs));
+        // Back in, straight at the outpost's port
+        com.badlogic.gdx.physics.box2d.Body body = demo.world.docking.bodyOf(demo.player);
+        float least = Float.MAX_VALUE;
+        for (int i = 0; i < 60 * 4; i++) {
+            com.badlogic.gdx.math.Vector2 n = body.getWorldVector(new com.badlogic.gdx.math.Vector2(mine.normalX, mine.normalY)).cpy();
+            com.ringsofiron.physicsexterior.PhysicsManager.setVelocity(body, n.x * 1.5f, n.y * 1.5f);
+            body.setAngularVelocity(0f);
+            demo.update(FRAME);
+            least = Math.min(least, faceGap(mine, theirs));
+        }
+        assertTrue(least > -0.05f, "the collars stopped each other, not passed through: " + least);
+    }
+
     @Test
     void theHubHasAHaulerBerthedAndRoomForThePlayer() {
         demo.load(DockingDemoScene.Scene.HUB);

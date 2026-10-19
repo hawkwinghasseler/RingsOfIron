@@ -19,7 +19,7 @@ import com.ringsofiron.interiorgrid.Side;
  *
  * Unconscious and dead crew do not move; carried crew ride on their carrier's tile. The
  * player avatar moves from its input instead of a path, and can walk through an open docked
- * port onto the other craft ({@link GridLink}).
+ * port, across the collars between the two craft, onto the other one ({@link GridLink}).
  */
 public class CrewMovementSystem extends FixedIteratingSystem {
 
@@ -43,6 +43,7 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             if (p.ship != cp.ship) p.setShip(cp.ship);
             p.x = cp.x;
             p.y = cp.y;
+            p.walkway = cp.walkway;
         }
     }
 
@@ -54,6 +55,7 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         if (grid == null) return;
         // The ship may have been given its UUID after the crew boarded
         if (p.shipRef == null) p.setShip(p.ship);
+        keepAboard(p, grid);
         if (!c.isConscious() || c.carriedBy != null) {
             p.stop();
             return;
@@ -110,6 +112,10 @@ public class CrewMovementSystem extends FixedIteratingSystem {
 
     private void tryMove(GridPositionComponent p, GridNavGraph nav, float dx, float dy) {
         if (dx == 0f && dy == 0f) return;
+        if (p.walkway != null) {
+            walkAcross(p, p.walkway, dx, dy);
+            return;
+        }
         float nx = p.x + dx, ny = p.y + dy;
         int cx = p.tileX(), cy = p.tileY();
         // The tile the leading edge of the body would enter
@@ -126,12 +132,60 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         }
         p.x = nx;
         p.y = ny;
-        // Through a docked port: once the middle of the body is over the edge, it is aboard the other craft
-        if (link != null && (MathUtils.floor(nx) != cx || MathUtils.floor(ny) != cy)) {
-            link.carryAcross(nx, ny, across);
+        // Through a docked port: once the middle of the body is over the edge, it is out on the walkway
+        if (link != null && (MathUtils.floor(nx) != cx || MathUtils.floor(ny) != cy)) p.walkway = link;
+    }
+
+    /**
+     * A step out on the walkway between two docked craft: the two port collars, one {@link GridLink#gap}
+     * long, as wide as the opening. Past halfway across, the walker is aboard the far craft; back over
+     * the edge they came out of, aboard this one again.
+     */
+    private void walkAcross(GridPositionComponent p, GridLink link, float dx, float dy) {
+        Side side = link.side;
+        float past = link.past(p.x, p.y) + dx * side.dx + dy * side.dy;
+        float along = link.along(p.x, p.y) - dx * side.dy + dy * side.dx;
+        float edge = 0.5f - AVATAR_RADIUS;
+        if (Math.abs(along) > edge) {
+            // Sideways: on along the opening if the next tile over is joined too, else against the collar wall
+            int sign = along > 0f ? 1 : -1;
+            GridLink next = link.grid().linkAt(link.x - side.dy * sign, link.y + side.dx * sign, side);
+            if (next == null || !next.canCross()) {
+                along = sign * edge;
+            } else if (Math.abs(along) > 0.5f) {
+                link = next;
+                along -= sign;
+            }
+        }
+        link.point(past, along, across);
+        p.x = across[0];
+        p.y = across[1];
+        p.walkway = link;
+        if (past <= 0f) {
+            // Back over the edge, on the tile it stepped out of
+            p.walkway = null;
+        } else if (past > link.gap * 0.5f) {
+            // Over halfway: the rest of the way is the other craft's collar
+            link.carryAcross(p.x, p.y, across);
             p.setShip(link.otherShip);
             p.x = across[0];
             p.y = across[1];
+            p.walkway = link.mate.past(p.x, p.y) > 0f ? link.mate : null;
+        }
+    }
+
+    /**
+     * Steps a walker back onto their tile when the walkway they were out on is gone (undocked, or the
+     * door shut), or after a load, which keeps where they stood but not the walkway.
+     */
+    private static void keepAboard(GridPositionComponent p, ShipGridComponent grid) {
+        GridLink w = p.walkway;
+        if (w != null && (w.grid() != grid || !grid.links.contains(w, true) || !w.canCross())) {
+            p.setTile(w.x, w.y);
+            p.stop();
+        } else if (w == null && !grid.inBounds(MathUtils.floor(p.x), MathUtils.floor(p.y))) {
+            p.x = MathUtils.clamp(p.x, 0.5f, grid.width - 0.5f);
+            p.y = MathUtils.clamp(p.y, 0.5f, grid.height - 0.5f);
         }
     }
 

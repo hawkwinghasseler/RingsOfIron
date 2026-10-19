@@ -396,6 +396,7 @@ public class PhysicsManager implements Disposable {
      * Creates a free-flying dynamic body with one convex polygon fixture: 3 to 8 vertices,
      * counter-clockwise, in meters around the body origin. Density is in kg per square meter.
      * The body never sleeps and has no damping. {@code owner} becomes the body's user data.
+     * It collides on the outline given ({@link PolygonSkin}) and weighs what that outline would.
      */
     public Body createPolygonBody(Entity owner, float x, float y, float angleRad, float[] vertices,
                                   float density, short category, short mask) {
@@ -403,7 +404,28 @@ public class PhysicsManager implements Disposable {
         for (int i = 0; i < vertices.length; i++) scaled[i] = vertices[i] * UNITS_PER_METER;
         PolygonShape shape = new PolygonShape();
         shape.set(scaled);
-        return createDynamicBody(owner, x, y, angleRad, shape, density, category, mask);
+        Body body = createDynamicBody(owner, x, y, angleRad, shape, density, category, mask);
+        // Weighed on the full outline, then given the slightly smaller shape that collides on it
+        Fixture full = body.getFixtureList().first();
+        MassData mass = body.getMassData();
+        MassData kept = new MassData();
+        kept.mass = mass.mass;
+        kept.center.set(mass.center);
+        kept.I = mass.I;
+        FixtureDef inset = new FixtureDef();
+        PolygonShape smaller = new PolygonShape();
+        smaller.set(PolygonSkin.inset(scaled, PolygonSkin.SKIN_UNITS));
+        inset.shape = smaller;
+        inset.density = full.getDensity();
+        inset.friction = full.getFriction();
+        inset.restitution = full.getRestitution();
+        inset.filter.categoryBits = category;
+        inset.filter.maskBits = mask;
+        body.destroyFixture(full);
+        body.createFixture(inset);
+        smaller.dispose();
+        body.setMassData(kept);
+        return body;
     }
 
     /** Creates a free-flying dynamic body with one circle fixture. See {@link #createPolygonBody}. */
@@ -454,6 +476,7 @@ public class PhysicsManager implements Disposable {
     public void rayCast(float x1, float y1, float x2, float y2, RayHitCallback callback) {
         if (x1 == x2 && y1 == y2) return; // Box2D asserts on zero-length rays
         rayCastAdapter.target = callback;
+        rayCastAdapter.ray(x2 - x1, y2 - y1);
         world.rayCast(rayCastAdapter, x1 * UNITS_PER_METER, y1 * UNITS_PER_METER,
                 x2 * UNITS_PER_METER, y2 * UNITS_PER_METER);
         rayCastAdapter.target = null;
@@ -542,14 +565,32 @@ public class PhysicsManager implements Disposable {
 
     // ------------------------------------------------------------------
 
-    /** Converts Box2D's ray results to meters for a {@link RayHitCallback}. */
+    /**
+     * Converts Box2D's ray results to meters for a {@link RayHitCallback}. Box2D casts against a
+     * polygon's vertices, not the skin around them it collides on ({@link PolygonSkin}), so a
+     * polygon hit is moved back along the ray to the skin.
+     */
     private static class RayCastAdapter implements RayCastCallback {
         RayHitCallback target;
+        private float dirX, dirY, length;
+
+        void ray(float dx, float dy) {
+            length = (float) Math.sqrt(dx * dx + dy * dy);
+            dirX = dx / length;
+            dirY = dy / length;
+        }
 
         @Override
         public float reportRayFixture(Fixture fixture, Vector2 point, Vector2 normal, float fraction) {
-            return target.hit(fixture, point.x * METERS_PER_UNIT, point.y * METERS_PER_UNIT,
-                    normal.x, normal.y, fraction);
+            float x = point.x * METERS_PER_UNIT, y = point.y * METERS_PER_UNIT;
+            if (fixture.getShape() instanceof PolygonShape) {
+                float facing = -(dirX * normal.x + dirY * normal.y);
+                float back = Math.min(fraction * length, PolygonSkin.SKIN / Math.max(0.2f, facing));
+                x -= dirX * back;
+                y -= dirY * back;
+                fraction -= back / length;
+            }
+            return target.hit(fixture, x, y, normal.x, normal.y, fraction);
         }
     }
 

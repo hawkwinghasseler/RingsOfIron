@@ -41,6 +41,7 @@ import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.orbital.warp.TimeWarpController;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.uihud.UiHud;
 import com.ringsofiron.uihud.ViewMode;
@@ -434,13 +435,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             shapes.circle(c.x, c.y, Math.max(0.5f, shape.getRadius() * PhysicsManager.METERS_PER_UNIT), 16);
         } else if (shape instanceof PolygonShape) {
             PolygonShape poly = (PolygonShape) shape;
-            int n = poly.getVertexCount();
-            for (int i = 0; i < n; i++) {
-                poly.getVertex(i, tmp);
-                Vector2 w = body.getWorldPoint(tmp);
-                polygon[i * 2] = w.x * PhysicsManager.METERS_PER_UNIT;
-                polygon[i * 2 + 1] = w.y * PhysicsManager.METERS_PER_UNIT;
-            }
+            int n = PolygonSkin.outline(body, poly, polygon);
             shapes.polygon(polygon, 0, n * 2);
         }
     }
@@ -480,6 +475,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                     shapes.rect(p.x - s / 2f + 0.03f, p.y - s / 2f + 0.03f, s - 0.06f, s - 0.06f);
                 }
             }
+            DeckView.walkways(shapes, g, color, 1f);
             DeckView.walls(shapes, g, color);
             drawCargo(g, ship.getComponent(CargoHoldComponent.class));
             for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {

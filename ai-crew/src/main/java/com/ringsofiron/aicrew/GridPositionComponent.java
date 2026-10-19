@@ -8,6 +8,7 @@ import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.coreengine.EntityRef;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.aicrew.nav.GridNode;
+import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 
 /**
@@ -28,6 +29,12 @@ public class GridPositionComponent implements Component {
     /** {@link #ship} as saved. Null while the ship has no UUID. */
     public EntityRef shipRef;
     public float x, y;
+    /**
+     * The docked port passage this crew member is out on, past the edge of the link's tile
+     * toward the other craft, or null. Out there {@link #x}, {@link #y} lie beyond the grid,
+     * and {@link #tileX()}, {@link #tileY()} give the link's tile, the one they stepped out of.
+     */
+    public transient GridLink walkway;
 
     /** Tiles to walk through, in order; empty when standing still. */
     public final transient Array<GridNode> path = new Array<>();
@@ -50,14 +57,15 @@ public class GridPositionComponent implements Component {
     }
 
     public int tileX() {
-        return MathUtils.floor(x);
+        return walkway != null ? walkway.x : MathUtils.floor(x);
     }
 
     public int tileY() {
-        return MathUtils.floor(y);
+        return walkway != null ? walkway.y : MathUtils.floor(y);
     }
 
     public void setTile(int tileX, int tileY) {
+        walkway = null;
         x = tileX + 0.5f;
         y = tileY + 0.5f;
     }

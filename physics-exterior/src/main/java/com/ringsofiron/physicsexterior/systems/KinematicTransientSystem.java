@@ -18,6 +18,7 @@ import com.badlogic.gdx.utils.IdentityMap;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.BodyShapeComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.events.AnchorChangeEvent;
@@ -191,8 +192,10 @@ public class KinematicTransientSystem extends EntitySystem implements PhysicsMan
         sweep.transientEntity = entity;
         physics.rayCast(kt.previousX, kt.previousY, kt.x, kt.y, sweep);
         if (kt.radius > 0f) {
-            float ox = -dy / length * kt.radius;
-            float oy = dx / length * kt.radius;
+            // Out to the skin a hull collides on, past its vertices
+            float edge = kt.radius + PolygonSkin.SKIN;
+            float ox = -dy / length * edge;
+            float oy = dx / length * edge;
             physics.rayCast(kt.previousX + ox, kt.previousY + oy, kt.x + ox, kt.y + oy, sweep);
             physics.rayCast(kt.previousX - ox, kt.previousY - oy, kt.x - ox, kt.y - oy, sweep);
         }

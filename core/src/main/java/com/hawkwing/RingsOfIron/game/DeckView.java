@@ -6,8 +6,10 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.uihud.minimap.TileShade;
 
@@ -36,6 +38,30 @@ public final class DeckView {
         float c = MathUtils.cos(angle), s = MathUtils.sin(angle);
         walker.moveX = (c * screenX + s * screenY) * speed;
         walker.moveY = (-s * screenX + c * screenY) * speed;
+    }
+
+    /**
+     * The floor of each open walkway out of this grid's docked ports: its half of the way across the
+     * collars to the other craft, which draws the other half. Shaded like the tile it leads out of,
+     * at {@code alpha} of its opacity; in the grid's local meters, like {@link #walls}.
+     */
+    public static void walkways(ShapeRenderer shapes, ShipGridComponent grid, Color tmp, float alpha) {
+        float s = grid.tileSize, ox = grid.gridOriginLocal.x, oy = grid.gridOriginLocal.y;
+        for (GridLink link : grid.links) {
+            if (!link.canCross()) continue;
+            TileShade.fill(grid.getTile(link.x, link.y), false, tmp);
+            if (tmp.a <= 0f) continue;
+            tmp.a *= alpha;
+            shapes.setColor(tmp);
+            Side side = link.side;
+            float half = link.gap * 0.5f * s;
+            // From the tile's edge out, the tile's width across
+            float ex = ox + (link.x + 0.5f + side.dx * 0.5f) * s, ey = oy + (link.y + 0.5f + side.dy * 0.5f) * s;
+            float w = side.dx != 0 ? half : s, h = side.dy != 0 ? half : s;
+            float x = side.dx > 0 ? ex : side.dx < 0 ? ex - half : ex - s / 2f;
+            float y = side.dy > 0 ? ey : side.dy < 0 ? ey - half : ey - s / 2f;
+            shapes.rect(x, y, w, h);
+        }
     }
 
     /**

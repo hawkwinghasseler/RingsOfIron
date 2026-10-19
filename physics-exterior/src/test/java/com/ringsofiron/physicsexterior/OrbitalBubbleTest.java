@@ -246,8 +246,8 @@ class OrbitalBubbleTest {
     void wideFastPassClipsShipWithItsEdge() {
         Entity ship = spawnBox(0f, 0f);
         Entity hulk = new Entity();
-        // Center line passes 20 m north of the ship, but the hulk is 30 m wide.
-        hulk.add(new KinematicTransientComponent(new LinearTrajectory(-2000.0, 20.0, 3000.0, 0.0, 0.0), 15f));
+        // Center line passes 19.9 m north of the ship, but the hulk is 30 m wide: its edge clips 0.1 m.
+        hulk.add(new KinematicTransientComponent(new LinearTrajectory(-2000.0, 19.9, 3000.0, 0.0, 0.0), 15f));
         // A ship that was in Box2D before: its mass comes from the shape it kept.
         BodyShapeComponent shape = new BodyShapeComponent();
         shape.mass = 2.0e6f;

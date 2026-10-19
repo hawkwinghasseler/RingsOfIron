@@ -36,6 +36,7 @@ import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.moddingdata.ModManifest;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
@@ -449,13 +450,7 @@ public class HudDemo extends ApplicationAdapter {
             shapes.circle(c.x, c.y, shape.getRadius() * PhysicsManager.METERS_PER_UNIT, 24);
         } else if (shape instanceof PolygonShape) {
             PolygonShape poly = (PolygonShape) shape;
-            int n = poly.getVertexCount();
-            for (int i = 0; i < n; i++) {
-                poly.getVertex(i, tmp);
-                Vector2 w = body.getWorldPoint(tmp);
-                polygon[i * 2] = w.x * PhysicsManager.METERS_PER_UNIT;
-                polygon[i * 2 + 1] = w.y * PhysicsManager.METERS_PER_UNIT;
-            }
+            int n = PolygonSkin.outline(body, poly, polygon);
             shapes.polygon(polygon, 0, n * 2);
         }
     }

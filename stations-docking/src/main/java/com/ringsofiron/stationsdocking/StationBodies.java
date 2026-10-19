@@ -10,6 +10,7 @@ import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.systems.KinematicTransientSystem;
 
@@ -88,7 +89,7 @@ public final class StationBodies implements KinematicTransientSystem.BodyFactory
         float cx = grid.gridOriginLocal.x + x0 * s + hx, cy = grid.gridOriginLocal.y + y0 * s + hy;
         PolygonShape shape = new PolygonShape();
         float u = PhysicsManager.UNITS_PER_METER;
-        shape.setAsBox(hx * u, hy * u, new Vector2(cx * u, cy * u), 0f);
+        PolygonSkin.insetBox(shape, hx * u, hy * u, new Vector2(cx * u, cy * u), 0f);
         FixtureDef fd = new FixtureDef();
         fd.shape = shape;
         fd.density = 1f;

@@ -81,14 +81,20 @@ class GridLinkTest {
     }
 
     @Test
-    void steppingOverTheEdgeLandsJustInsideTheFacingTileAlongsideTheSameSpot() {
+    void aSpotOnTheWalkwayIsTheSameSpotSeenFromTheOtherCraft() {
         ShipGridComponent a = craft(), b = craft();
         GridLink link = GridLink.join(new Entity(), a, 2, 3, Side.TOP, new Entity(), b, 2, 3, Side.TOP);
+        link.setGap(1f);
+        assertEquals(1f, link.mate.gap);
         float[] out = new float[2];
-        // A little right of the middle and just over the top edge of a's tile (2, 3)
-        link.carryAcross(2.6f, 4.05f, out);
-        // b faces the other way: right on a is left on b, and just inside b's top edge
+        // A little right of the middle, 0.6 of the way across from the top edge of a's tile (2, 3)
+        link.carryAcross(2.6f, 4.6f, out);
+        // b faces the other way: right on a is left on b, and 0.4 out past b's top edge
         assertEquals(2.4f, out[0], 1e-4f);
-        assertTrue(out[1] > 3.5f && out[1] < 4f, "inside the tile: " + out[1]);
+        assertEquals(4.4f, out[1], 1e-4f);
+        assertEquals(0.4f, link.mate.past(out[0], out[1]), 1e-4f);
+        link.mate.carryAcross(out[0], out[1], out);
+        assertEquals(2.6f, out[0], 1e-4f);
+        assertEquals(4.6f, out[1], 1e-4f);
     }
 }

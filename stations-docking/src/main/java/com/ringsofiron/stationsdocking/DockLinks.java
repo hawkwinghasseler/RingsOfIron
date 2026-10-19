@@ -47,7 +47,11 @@ final class DockLinks {
                     best = tb;
                 }
             }
-            if (best != null) link.gridLinks.add(GridLink.join(a, ga, ta[0], ta[1], sa, b, gb, best[0], best[1], sb));
+            if (best == null) continue;
+            GridLink joined = GridLink.join(a, ga, ta[0], ta[1], sa, b, gb, best[0], best[1], sb);
+            // The walkway between the two edges: the collars, face to face
+            joined.setGap(bestDistance / ga.tileSize);
+            link.gridLinks.add(joined);
         }
         setDoors(ga, ma, link.pa.consented);
         setDoors(gb, mb, link.pb.consented);
