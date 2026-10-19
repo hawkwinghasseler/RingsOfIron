@@ -48,7 +48,7 @@ import java.util.List;
  * freighter docked at it, which macro-sim brings into the bubble; more traffic hauls between it and a
  * higher depot. The Moon orbits Earth with an ice mine around it that supplies Earth's stations with
  * water. Further out are the sponsor's shipyard in high Earth orbit, Selene's foundry and ore mine
- * round the Moon, and the Free Traders' outpost on the Moon's orbit. Headless, so tests can start
+ * round the Moon, and the Free Traders' outpost half way to the Moon. Headless, so tests can start
  * the same game.
  *
  * <p>Every station has a walkable interior from its type's blueprint and docking ports of all three
@@ -97,12 +97,17 @@ public class GameScenario {
     /** Selene's foundry and ore mine, in higher lunar orbits; null in older saves. */
     public String foundry;
     public String oreMine;
-    /** The Free Traders' outpost, trailing the Moon by a sixth of its orbit; null in older saves. */
+    /** The Free Traders' outpost, far out in Earth orbit; null in older saves. */
     public String freehold;
     public static final String SHIPYARD_NAME = "Anvil Yards", FOUNDRY_NAME = "Selene Forge",
             ORE_MINE_NAME = "Crisium Ore Works", FREEHOLD_NAME = "Freehold";
     /** The shipyard's orbit radius: high Earth orbit, m. */
     public static final double SHIPYARD_ORBIT = 20_000e3;
+    /**
+     * Freehold's orbit radius, m: half way to the Moon. Not on the Moon's own orbit, where a station
+     * would never drift into a transfer window with it (the freighters' planner waited forever).
+     */
+    public static final double FREEHOLD_ORBIT = 200_000e3;
     /** Highport's attitude: half a turn, so its Small ports face back along the orbit, towards the player. */
     public static final float HIGHPORT_ANGLE = (float) Math.PI;
 
@@ -213,7 +218,7 @@ public class GameScenario {
         lunarMine = addStation("Shackleton Ice", stationType("ice_mine", 2), MOON,
                 circular(MU_MOON, R_MOON + 100e3, 0), 0f);
         // The wider world: the sponsor's yard high above Earth, Selene's industry round the Moon, and
-        // the Free Traders' outpost on the Moon's own orbit, where the rails keep it a sixth of a turn behind
+        // the Free Traders' outpost far out, half way to the Moon
         shipyard = addStation(SHIPYARD_NAME, stationType("shipyard", 4), EARTH,
                 circular(SHIPYARD_ORBIT, 4.0), 0f);
         foundry = addStation(FOUNDRY_NAME, stationType("foundry", 3), MOON,
@@ -221,7 +226,7 @@ public class GameScenario {
         oreMine = addStation(ORE_MINE_NAME, stationType("ore_mine", 2), MOON,
                 circular(MU_MOON, R_MOON + 800e3, 4.2), 0f);
         freehold = addStation(FREEHOLD_NAME, stationType("free_port", 5), EARTH,
-                circular(MOON_DISTANCE, MOON_ANGLE - Math.PI / 3), 0f);
+                circular(FREEHOLD_ORBIT, MOON_ANGLE + Math.PI), 0f);
         double hold = InteriorGridData.cargoBayVolume(content.defs, FREIGHTER_SHIP);
         world.macroSim.addFreighter("Hauler Kestrel", hold, 20_000, highport);
         for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), hold, 20_000, depot);

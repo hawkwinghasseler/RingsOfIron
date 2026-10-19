@@ -6,7 +6,8 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.rails.StateVector;
-import com.ringsofiron.orbital.math.KeplerOrbit;
+import com.ringsofiron.macrosim.fleet.FreighterController;
+import com.ringsofiron.macrosim.fleet.RoutePlanner;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -60,14 +61,18 @@ class WiderWorldTest {
     }
 
     @Test
-    void freeholdTrailsTheMoonBySixtyDegreesForGood() {
-        StateVector s = new StateVector();
-        for (double t : new double[]{0, 3 * 86_400, 40 * 86_400}) {
-            world.macroSim.rails().stateAt(game.freehold, t, s);
-            var moon = KeplerOrbit.circular(GameScenario.MU_EARTH, GameScenario.MOON_DISTANCE,
-                    GameScenario.MOON_ANGLE, 0, 1).stateAt(t);
-            double apart = Math.acos((s.x * moon.x + s.y * moon.y) / (Math.hypot(s.x, s.y) * Math.hypot(moon.x, moon.y)));
-            assertEquals(Math.PI / 3, apart, 1e-3, "at " + t + " s");
+    void freightersCanReachEveryStationFromEveryOther() {
+        var rails = world.macroSim.rails();
+        double t = 1_000;
+        for (var from : world.macroSim.stations()) {
+            for (var to : world.macroSim.stations()) {
+                if (from == to) continue;
+                StateVector s = rails.stateAt(from.stationUuid, t, new StateVector());
+                var route = RoutePlanner.estimate(rails, rails.parentOf(from.stationUuid), s, to.stationUuid, t, t + 600);
+                assertNotNull(route, from.displayName + " to " + to.displayName);
+                assertTrue(route.arrivalTime - t < FreighterController.MAX_TRIP_SECONDS,
+                        from.displayName + " to " + to.displayName + " takes " + (route.arrivalTime - t) / 86_400 + " d");
+            }
         }
     }
 
