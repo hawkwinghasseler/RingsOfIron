@@ -16,6 +16,7 @@ import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.stationsdocking.BerthingSystem;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
@@ -26,7 +27,8 @@ import java.util.List;
  * Freighters macro-sim brings into the bubble while they sit at a station. On rails a docked
  * freighter rides its station's orbit, so it would come into the bubble inside the station's hull.
  * Instead it is latched to a free Medium port there and stays put, its pilot stood down, until it
- * leaves the bubble again. With no port free it is moved clear of the station.
+ * flies itself off ({@link FreighterTraffic}) or leaves the bubble. With no port free it is moved
+ * clear of the station.
  *
  * <p>Freighters fly a default hull with no grid, so each one gets a passive Medium port on its
  * nose. Register after {@link NpcBubblePilots}: this takes the pilot back off a docked freighter.
@@ -67,6 +69,8 @@ public class StationTraffic implements BubbleTransitionListener {
         }
         world.docking.dockInPlace(freighter, 0, at, port);
         freighter.remove(NpcPilotComponent.class);
+        // Berthed, so it flies itself off when it has somewhere to go (FreighterTraffic)
+        freighter.add(BerthingSystem.berthed(at, 0, port));
         FlightControlComponent controls = freighter.getComponent(FlightControlComponent.class);
         if (controls != null) {
             controls.forward = 0f;

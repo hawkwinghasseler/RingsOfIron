@@ -1326,18 +1326,18 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         for (Fixture f : body.getFixtureList()) f.refilter();
     }
 
-    private static Vector2 worldPoint(Body body, float x, float y, Vector2 out) {
+    static Vector2 worldPoint(Body body, float x, float y, Vector2 out) {
         Vector2 w = body.getWorldPoint(out.set(x * U, y * U));
         return out.set(w.x * M, w.y * M);
     }
 
-    private static Vector2 worldVector(Body body, float x, float y, Vector2 out) {
+    static Vector2 worldVector(Body body, float x, float y, Vector2 out) {
         Vector2 w = body.getWorldVector(out.set(x, y));
         return out.set(w.x, w.y);
     }
 
     /** Velocity of the body at world point {@code at} (meters), m/s. */
-    private static Vector2 velocityAt(Body body, Vector2 at, Vector2 out) {
+    static Vector2 velocityAt(Body body, Vector2 at, Vector2 out) {
         Vector2 v = body.getLinearVelocityFromWorldPoint(new Vector2(at.x * U, at.y * U));
         return out.set(v.x * M, v.y * M);
     }
