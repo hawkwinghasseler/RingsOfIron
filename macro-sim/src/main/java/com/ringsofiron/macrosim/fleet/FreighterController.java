@@ -92,6 +92,27 @@ public class FreighterController {
     }
 
     /**
+     * Pirates took a loaded freighter's cargo. Its order is cancelled and what it held at the buyer
+     * released, as if the cargo were lost with the ship; the freighter flies on, empty, to where it
+     * was going, and takes new work there. Returns the units taken, 0 if it carried nothing.
+     */
+    public double plunder(String uuid) {
+        FreighterComponent f = freighters.get(uuid);
+        if (f == null || f.cargoCommodity == null || f.cargoQuantity <= 0) return 0;
+        double taken = f.cargoQuantity;
+        TradeOrder o = activeOrders.remove(f.orderId);
+        if (o != null) release(o, f);
+        f.orderId = 0;
+        f.cargoCommodity = null;
+        f.cargoQuantity = 0;
+        if (f.state == FreighterComponent.State.TO_DELIVERY) f.state = FreighterComponent.State.REPOSITIONING;
+        if (f.state == FreighterComponent.State.IN_BUBBLE && f.resumeState == FreighterComponent.State.TO_DELIVERY) {
+            f.resumeState = FreighterComponent.State.REPOSITIONING;
+        }
+        return taken;
+    }
+
+    /**
      * A station is gone. Orders to or from it are cancelled, and every freighter that was going
      * there or docked there heads for the nearest of {@code remaining} instead. Cargo it was taking
      * there is sold where it lands, or dumped if that station does not trade it. Call after the

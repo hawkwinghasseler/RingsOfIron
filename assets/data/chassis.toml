@@ -116,6 +116,60 @@ lights = [
   { x = 16, y = 11, side = "TOP" },
 ]
 
+[chassis.raider]
+name = "Light Raider"
+tile_size = 1.0
+origin_x = -7.5
+origin_y = -2.5
+# A pirate's fast boat: a Medium reactor forward, one turret mount in the nose (6, 0), and two
+# Small engines in the stern either side of the nitrogen tank. One pipe run joins the engines,
+# the nitrogen and oxygen tanks, the propellant tank and life support. A two-tile hold for loot,
+# and a Small passive docking port on top, so it can be boarded once beaten.
+rows = [
+  "###DDD#########",
+  "#EE..L.HH.RR..#",
+  "#...PL.WW.RR.T#",
+  "#EE.P..CC.....#",
+  "###############",
+]
+mounts = [
+  { component = "nitrogen_tank", size = "S", x = 1, y = 2, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 3, y = 2, rotation = 0 },
+]
+pipes = [
+  { x = 2, y = 1 }, { x = 2, y = 2 }, { x = 2, y = 3 }, { x = 3, y = 2 }, { x = 4, y = 2 }, { x = 5, y = 2 },
+]
+
+[chassis.gunship]
+name = "Gunship"
+tile_size = 1.0
+origin_x = -10.0
+origin_y = -4.0
+# Heavier than the corvette: a Large reactor amidships, two Medium engines in the stern corners
+# with a propellant tank beside each, and five turret mounts: a Medium one in the nose for the
+# railgun (8, 0), launchers at (1.5, 2.5) and (1.5, -2.5) and point defense at (5.5, 2.5) and
+# (5.5, -2.5). Oxygen and nitrogen between the engines; pipes up x 2 and x 5 and across y 3 join
+# both engines, every tank and life support. A Small passive docking port on top.
+rows = [
+  "#######DDD##########",
+  "#EEE.P.....T...T...#",
+  "#EEE.P..RRR........#",
+  "#.....L.RRR.C.HH.TT#",
+  "#.....L.RRR.C.WW.TT#",
+  "#EEE.P.............#",
+  "#EEE.P.....T...T...#",
+  "####################",
+]
+mounts = [
+  { component = "oxygen_tank", size = "S", x = 1, y = 4, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 1, y = 3, rotation = 1 },
+]
+pipes = [
+  { x = 2, y = 1 }, { x = 2, y = 2 }, { x = 2, y = 3 }, { x = 2, y = 4 }, { x = 2, y = 5 }, { x = 2, y = 6 },
+  { x = 3, y = 3 }, { x = 4, y = 3 }, { x = 5, y = 3 }, { x = 6, y = 3 },
+  { x = 5, y = 1 }, { x = 5, y = 2 }, { x = 5, y = 4 }, { x = 5, y = 5 }, { x = 5, y = 6 },
+]
+
 # Stations. Every station type carries docking ports of all three sizes, so any ship
 # can berth: an outpost one of each, a hub two of each. Station ports are active, so
 # a station that grants docking clearance reaches out with its collar.

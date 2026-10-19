@@ -24,10 +24,21 @@ public final class PolygonSkin {
     private PolygonSkin() {
     }
 
-    /** A box set on {@code shape} that collides on the half-extents given (Box2D units); returns its true area. */
+    /**
+     * A box set on {@code shape} that collides on the half-extents given (Box2D units); returns its true area.
+     * Set through Box2D's hull, as a saved polygon is when it is rebuilt, so a save round trip gives
+     * back its vertices in the same order.
+     */
     public static float insetBox(PolygonShape shape, float hx, float hy, Vector2 center, float angle) {
         float ix = shrink(hx), iy = shrink(hy);
-        shape.setAsBox(ix, iy, center, angle);
+        float c = (float) Math.cos(angle), s = (float) Math.sin(angle);
+        float[] v = new float[8];
+        float[][] corners = {{-ix, -iy}, {ix, -iy}, {ix, iy}, {-ix, iy}};
+        for (int i = 0; i < 4; i++) {
+            v[i * 2] = center.x + c * corners[i][0] - s * corners[i][1];
+            v[i * 2 + 1] = center.y + s * corners[i][0] + c * corners[i][1];
+        }
+        shape.set(v);
         return 4f * ix * iy;
     }
 

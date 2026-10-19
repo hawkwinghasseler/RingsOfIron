@@ -2182,6 +2182,8 @@ def hull_svg(ch, overhang=None, engines=False):
 OVERHANG = {
     "corvette": [(-11.0, -3.0), (5.0, -3.0), (6.5, 0.0), (5.0, 3.0), (-11.0, 3.0)],  # the bow
     "freighter": [(-10.0, -6.5), (10.0, -6.5), (10.0, 6.5), (-10.0, 6.5)],
+    "raider": [(-7.5, -2.5), (7.5, -2.5), (9.5, 0.0), (7.5, 2.5), (-7.5, 2.5)],  # a sharp bow
+    "gunship": [(-10.0, -4.0), (10.0, -4.0), (12.0, -1.5), (12.0, 1.5), (10.0, 4.0), (-10.0, 4.0)],  # a blunt ram bow
 }
 
 
@@ -2313,6 +2315,17 @@ def turrets():
     a.b += rect(-12, -12, 22, 24, HOUSING, rx=4, stroke=INK, sw=2)
     v, w, h = vb(-24, 52, 24)
     write("turrets/autocannon_mk1.svg", w, h, a, "autocannon_mk1 turret: pivot at origin, barrels toward +x", viewbox=v)
+
+    a = Art()
+    base(a, 22)
+    for dy in (-6, 0, 6):
+        a.b += rect(8, dy - 2.5, 50, 5, STEEL_DARK, rx=1.5, stroke=INK, sw=1.5)
+    a.b += rect(44, -10, 6, 20, STEEL_MID, rx=2, stroke=INK, sw=1.5)
+    a.b += rect(-14, -14, 24, 28, HOUSING, rx=4, stroke=INK, sw=2)
+    a.b += hazard_band(-12, -12, 20, 5, "chaingun")
+    v, w, h = vb(-26, 62, 26)
+    write("turrets/chaingun_mk1.svg", w, h, a, "chaingun_mk1 turret: pivot at origin, three barrels toward +x",
+          viewbox=v)
 
     a = Art()
     base(a, 22)

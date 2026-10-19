@@ -117,7 +117,9 @@ class FullSaveRoundTripTest {
         assertNotNull(actual, path + " is missing after the load");
         if (expected.isNumber() && actual.isNumber()) {
             double a = expected.asDouble(), b = actual.asDouble();
-            assertEquals(a, b, 1e-3 + Math.abs(a) * 1e-9, path);
+            // A body's shape and mass are Box2D floats: rebuilding the body can move them by an ulp
+            double relative = path.contains(".shape.") ? 1e-6 : 1e-9;
+            assertEquals(a, b, 1e-3 + Math.abs(a) * relative, path);
             return;
         }
         assertEquals(expected.type(), actual.type(), path);

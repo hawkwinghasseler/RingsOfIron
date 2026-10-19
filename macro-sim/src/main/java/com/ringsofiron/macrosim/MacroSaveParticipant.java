@@ -168,6 +168,8 @@ public class MacroSaveParticipant implements SaveParticipant {
             f.lastArrivalMiss = v.getDouble("lastArrivalMiss", 0);
             sim.restoreFreighter(v.getString("uuid"), f, byId.get(f.orderId));
         }
+        // Pirates and patrols are saved with their entities; only their plans need rescheduling
+        sim.restoreHostiles();
     }
 
     private static JsonValue child(JsonValue data, String name) {

@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Disposable;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewSaveParticipant;
@@ -60,6 +61,7 @@ import com.ringsofiron.orbital.rails.RailsUniverse;
 import com.ringsofiron.orbital.warp.BubbleHandoff;
 import com.ringsofiron.orbital.warp.EncounterPredictor;
 import com.ringsofiron.orbital.warp.TimeWarpController;
+import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.physicsexterior.OrbitalAnchorBridge;
@@ -149,6 +151,8 @@ public class GameWorld implements Disposable {
     /** The player's seat at the helm or weapons console, and the helm flying the ship meanwhile. */
     public final Bridge bridge;
     public final AudioListenerSync audioListener;
+    /** Pirates and faction patrols: their ships, and how they fly and fight in the bubble. */
+    public final HostileTraffic hostiles;
     /** The player's planned burns. */
     public final BurnPlanner burns;
     /** Docking ports, collars and latches of every ship and station in the bubble. */
@@ -268,8 +272,11 @@ public class GameWorld implements Disposable {
 
         // macro-sim, on the same rails and event system. Prediction runs inline so warp drop-out
         // always sees a current forecast; the bubble pauses while rails warp has it collapsed.
+        GameBubbleGateway bubbleGateway = new GameBubbleGateway(physics, engine.getUuidRegistry());
+        // Pirates and patrols come into the bubble on their own layouts
+        bubbleGateway.setShipBodies(this::buildShipBody);
         macroSim = new MacroSimulation(engine, new OrbitalRailsModel(engine, universe, orbitalEvents),
-                new GameBubbleGateway(physics, engine.getUuidRegistry()), commodities, null, engine.getSimSeconds());
+                bubbleGateway, commodities, null, engine.getSimSeconds());
         macroSim.bubble().addListener(new NpcBubblePilots(engine.getUuidRegistry()));
         // Freighters in the bubble dock at their stations under their own power, and leave the same way
         FreighterTraffic traffic = new FreighterTraffic(this);
@@ -399,6 +406,8 @@ public class GameWorld implements Disposable {
 
         // Bubble bodies are saved as true states, never as live Box2D bodies.
         PhysicsSaveParticipant.install(physics, engine);
+        // Pirates and faction patrols, on the rails and in the bubble
+        hostiles = HostileTraffic.install(this);
     }
 
     /**
@@ -554,6 +563,21 @@ public class GameWorld implements Disposable {
         PhysicsBodyComponent pb = ship.getComponent(PhysicsBodyComponent.class);
         if (hulls == null || pb == null || pb.body == null) return false;
         return PhysicsManager.replacePolygonFixtures(pb.body, hulls.hullFor(ship, null));
+    }
+
+    /**
+     * A Box2D body for a ship with a layout, at the bubble origin: shaped as the physics assembler
+     * shapes it ({@link ShipHulls}) and weighing what {@link #shipMass} says. Null for a craft
+     * without a grid, or before content has loaded.
+     */
+    public Body buildShipBody(Entity ship) {
+        ShipGridComponent.MassProperties m = shipMass(ship);
+        java.util.List<float[]> hull = hulls == null || m == null ? null : hulls.hullFor(ship, null);
+        if (hull == null || hull.isEmpty()) return null;
+        Body body = physics.createPolygonBody(ship, 0f, 0f, 0f, hull, 1f,
+                CollisionCategories.CATEGORY_SHIP, CollisionCategories.MASK_ALL);
+        PhysicsManager.setMassData(body, m.mass, m.center.x, m.center.y, m.inertia);
+        return body;
     }
 
     /** A ship's mass for the physics assembler, from {@link #shipMass}. */
