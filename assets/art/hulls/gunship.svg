@@ -432,6 +432,7 @@
     <line x1="45" y1="-118" x2="45" y2="54" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
     <line x1="52" y1="-118" x2="52" y2="54" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
     <circle cx="52" cy="-116" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+    <circle cx="96" cy="-96" r="25.6" fill="#2f5664" stroke="#10141a" stroke-width="2"/>
     <circle cx="96" cy="-160" r="29.44" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="96" cy="-160" r="23.55" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-dasharray="4 4"/>
     <circle cx="96" cy="-160" r="8.83" fill="#10141a"/>
@@ -534,6 +535,7 @@
     <circle cx="52" cy="-116" r="7.2" fill="#ff9a3c" opacity="0.18"/>
     <circle cx="52" cy="-116" r="2.4" fill="#ff9a3c"/>
     </g>
+    <circle cx="96" cy="-96" r="16" fill="#4fd1ff" opacity="0.6"/>
     <rect x="268" y="-52" width="36.4" height="40" rx="6" fill="#6aa8ff" opacity="0.45"/>
     <g data-light="glow">
     <circle cx="320" cy="32" r="7.2" fill="#c58cff" opacity="0.18"/>
