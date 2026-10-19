@@ -18,7 +18,8 @@ import java.util.Locale;
 /**
  * A station's yard while the ship is docked there: what is damaged and what putting it right costs,
  * with a button to order the repairs, then one row per weapon hardpoint with the weapon on it, a
- * weapon to fit instead (click to pick the next), and buttons to order it new or used. Rebuild
+ * weapon to fit instead (click to pick the next), and buttons to order it new or used, or fitted
+ * from a salvaged one in the ship's hold. Rebuild
  * decks opens the ship editor for the yard to rebuild the ship to a new layout. Refreshes
  * from the {@link YardProvider} a few times a second; closes itself when the ship leaves the yard.
  */
@@ -41,7 +42,7 @@ public class YardWindow extends Window {
     private final class Row {
         final int index;
         final Label weapon, progress;
-        final TextButton choice, fitNew, fitUsed;
+        final TextButton choice, fitNew, fitUsed, fitSalvaged;
         int offer;
 
         Row(Hardpoint h) {
@@ -51,11 +52,17 @@ public class YardWindow extends Window {
             choice = button("", () -> offer = board.offers.size == 0 ? 0 : (offer + 1) % board.offers.size);
             fitNew = button("", () -> order(false));
             fitUsed = button("", () -> order(true));
+            fitSalvaged = button("", () -> {
+                if (provider == null || board.offers.size == 0) return;
+                Offer o = board.offers.get(Math.min(offer, board.offers.size - 1));
+                say(provider.orderSalvagedRefit(index, o.weaponId));
+            });
             rows.add(new Label(capitalized(h.name), skin)).left().padRight(14f);
             rows.add(weapon).left().padRight(14f);
             rows.add(choice).padRight(6f);
             rows.add(fitNew).padRight(3f);
-            rows.add(fitUsed).padRight(10f);
+            rows.add(fitUsed).padRight(3f);
+            rows.add(fitSalvaged).padRight(10f);
             rows.add(progress).left().row();
         }
 
@@ -68,6 +75,8 @@ public class YardWindow extends Window {
             fitUsed.setText(o == null ? "Used" : "Used " + formatCredits(o.price * board.usedPrice));
             fitNew.setDisabled(o == null || board.credits < o.price);
             fitUsed.setDisabled(o == null || board.credits < o.price * board.usedPrice);
+            fitSalvaged.setText(o == null || o.salvaged == 0 ? "Salvaged" : "Salvaged (" + o.salvaged + ")");
+            fitSalvaged.setDisabled(o == null || o.salvaged == 0);
         }
 
         private void order(boolean used) {
@@ -181,7 +190,7 @@ public class YardWindow extends Window {
         rowWidgets.clear();
         rows.add(new Label("Hardpoint", skin, "dim")).left().padRight(14f);
         rows.add(new Label("Fitted", skin, "dim")).left().padRight(14f);
-        rows.add(new Label("Fit instead", skin, "dim")).colspan(3).left().row();
+        rows.add(new Label("Fit instead", skin, "dim")).colspan(4).left().row();
         for (Hardpoint h : board.hardpoints) rowWidgets.add(new Row(h));
         if (isVisible()) pack();
     }

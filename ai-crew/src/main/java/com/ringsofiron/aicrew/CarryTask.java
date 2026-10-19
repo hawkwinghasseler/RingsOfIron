@@ -40,6 +40,11 @@ public class CarryTask extends CrewTask {
     public final Job job;
     /** A tile of {@link #to} to set the load down beside instead of a cargo bay (a refit part for its mount); -1 for a bay. */
     public final int toX, toY;
+    /**
+     * Picked up beside tile (x, y) of {@link #from} rather than at a bay: a part stripped from its
+     * mount, waiting where it came off.
+     */
+    public boolean fromTile;
 
     /** Posted with (x, y) a bay tile on {@code from}, where the pick-up is. */
     public CarryTask(Entity from, int x, int y, Entity to, Job job) {
@@ -54,6 +59,13 @@ public class CarryTask extends CrewTask {
         this.toX = toX;
         this.toY = toY;
         this.job = job;
+    }
+
+    /** A trip that starts beside tile ({@code x}, {@code y}) of {@code from} rather than at a bay. */
+    public static CarryTask fromTile(Entity from, int x, int y, Entity to, Job job) {
+        CarryTask t = new CarryTask(from, x, y, to, job);
+        t.fromTile = true;
+        return t;
     }
 
     /** Every trip is its own job, so several carriers can work one order at once. */

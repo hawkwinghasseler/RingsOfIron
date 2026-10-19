@@ -1979,7 +1979,9 @@ def load_toml(name):
 
 LETTERS = {"R": "reactor", "S": "shield_emitter", "T": "turret_mount", "L": "life_support", "H": "helm",
            "W": "weapons", "C": "cargo", "A": "airlock", "D": "docking_port", "E": "engine", "P": "tank",
-           "O": "oxygen_tank", "N": "nitrogen_tank", "B": "escape_pod"}
+           "O": "oxygen_tank", "N": "nitrogen_tank", "B": "escape_pod",
+           # The freighter's freight drives are engines on the outside
+           "Q": "engine"}
 KIND = {"reactor": "P", "shield_emitter": "P", "turret_mount": "P", "life_support": "A", "helm": "A",
         "weapons": "A", "cargo": "A", "airlock": "A", "docking_port": "D", "engine": "A", "tank": "A",
         "oxygen_tank": "A", "nitrogen_tank": "A", "escape_pod": "A"}

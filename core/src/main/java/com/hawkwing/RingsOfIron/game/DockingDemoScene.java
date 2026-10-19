@@ -134,6 +134,8 @@ public class DockingDemoScene {
         player.add(new PlayerControllerComponent());
         FlightControlComponent controls = player.getComponent(FlightControlComponent.class);
         if (controls != null) controls.rotationAssist = true;
+        // The corvette's port is active in the data; the scenes choose for themselves which collars reach out
+        port(player, 0).active = next == Scene.ACTIVE;
         int[] home = insidePort(player, 0);
         avatar = CrewFactory.spawnPlayer(world.crew, player, "You", home[0], home[1]);
         docking = new PlayerDocking(world, () -> player, message -> notice = message);
@@ -144,7 +146,7 @@ public class DockingDemoScene {
                 target = world.getContent().factory.spawnShip(GameScenario.PLAYER_SHIP, 0f, 0f, 0f);
                 target.add(new HudMarkerComponent("Tender", HudMarkerComponent.Kind.FRIENDLY).radius(10f));
                 port(target, 0).armed = true;
-                if (next == Scene.ACTIVE) port(player, 0).active = true;
+                port(target, 0).active = false;
                 park(player, 0, target, 0, next == Scene.ACTIVE ? 9f : 12f, 1.5f, 8f);
                 break;
             case CLEARANCE:

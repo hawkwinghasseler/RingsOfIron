@@ -28,13 +28,13 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 
 | Key | Action |
 |---|---|
-| W / S, A / D, Z / C | Thrust forward and back, turn, strafe |
+| W / S, A / D, Z / C | Thrust forward and back, turn, strafe (seated at the helm) |
 | X | Toggle rotation assist |
 | Space | Fire guns |
 | R | Launch a missile at the target |
 | F | Drop a decoy (on deck: force the door across a dock) |
 | Tab | Cycle the target |
-| V | Switch between the exterior and the deck view |
+| V | Stand up from your console into the deck view; on deck beside the helm or weapons console, sit there and look outside (`gradlew :lwjgl3:runGame -PviewAnywhere` switches anywhere) |
 | M | Traffic map |
 | T | Trade, when in range of a station |
 | G / H / U | Arm docking, pick the next port, undock |

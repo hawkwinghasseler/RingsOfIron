@@ -137,8 +137,17 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
 
     private final float[] across = new float[2];
 
-    /** True if crew members {@code a} and {@code b} are enemies. */
+    /** Who may go through the doors of a craft whose crew are hostile to them anyway. */
+    public interface DoorRights {
+        boolean mayPass(Entity crew, Entity ship);
+    }
+
+    /** Lets a boarding party through the doors of the craft it boards; by default no one. */
+    public DoorRights doorRights = (crew, ship) -> false;
+
+    /** True if crew members {@code a} and {@code b} are enemies. A prisoner is no one's enemy. */
     public boolean hostile(CrewMemberComponent a, CrewMemberComponent b) {
+        if (a.held || b.held) return false;
         return hostility.hostile(a.faction, b.faction);
     }
 

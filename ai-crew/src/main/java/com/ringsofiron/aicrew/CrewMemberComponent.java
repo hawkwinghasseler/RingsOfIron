@@ -47,6 +47,11 @@ public class CrewMemberComponent implements Component {
     public transient Entity treatedBy;
     /** Item in hand, for display. */
     public String equippedItem = "";
+    /**
+     * Held prisoner: crew of a ship that was taken. They neither fight nor are fought, and take no
+     * work; they stay where they are kept.
+     */
+    public boolean held;
     /** Whether this crew member has their space suit on. */
     public boolean suited;
     /** Seconds of air left in their suit; topped up when it is taken off. */

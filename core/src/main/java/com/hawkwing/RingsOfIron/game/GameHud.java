@@ -48,6 +48,8 @@ public class GameHud implements Disposable {
         hud.setYard(yard = new YardWork(world));
         // The station's mission board and the contracts held, for the [J] mission window.
         hud.setMissions(new ContractMissions(world));
+        // The ship latched to, for the [K] boarding window: boarding it, then stripping it.
+        hud.setBoarding(new BoardingWork(world));
         hullHits = (signal, hit) -> {
             if (hit.ship != null && hit.ship == world.getPlayer()) hud.flashHullHit(hit.tileX, hit.tileY);
         };

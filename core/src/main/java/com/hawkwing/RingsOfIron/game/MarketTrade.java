@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.coreengine.EntityRef;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.economy.MarketQuote;
 import com.ringsofiron.macrosim.economy.TraderComponent;
@@ -16,14 +17,17 @@ import com.ringsofiron.uihud.providers.TradeProvider;
  * <p>When the station has loaders and both craft have cargo bays ({@link CargoLoading#canCarry}),
  * a trade is an order: the loaders carry it across the dock a load at a time, and each load is
  * paid for as it lands. Otherwise the goods change hands at once.
+ *
+ * <p>Salvaged parts in the ship's bays are listed too: every station buys them, at
+ * {@link Salvage#SALE_SHARE} of their price, and never sells them.
  */
 public class MarketTrade implements TradeProvider {
     private final GameWorld world;
-    private final MarketCargo settlement;
+    private final CargoLoading.Settlement settlement;
 
     public MarketTrade(GameWorld world) {
         this.world = world;
-        this.settlement = new MarketCargo(world.macroSim);
+        this.settlement = world.cargoSettlement;
     }
 
     @Override
@@ -53,6 +57,22 @@ public class MarketTrade implements TradeProvider {
             l.stationBuys = q.stationBuys;
             l.onOrder = orders == null || ref == null ? 0 : orders.pending(ref, q.commodityId);
         }
+        // Salvaged parts in the hold: any station buys them, for a share of their price
+        CargoHoldComponent hold = player.getComponent(CargoHoldComponent.class);
+        if (hold == null) return;
+        java.util.Set<String> parts = new java.util.TreeSet<>();
+        for (CargoHoldComponent.CargoStack s : hold.stacks) {
+            if (s != null && SalvageSettlement.isPart(s.commodity) && world.salvage.salePrice(s.commodity) > 0) parts.add(s.commodity);
+        }
+        for (String part : parts) {
+            TradeLine l = out.addLine();
+            l.commodityId = part;
+            l.name = "Salvaged " + world.salvage.partName(part).toLowerCase(java.util.Locale.ROOT);
+            l.held = hold.amount(part);
+            l.sellPrice = world.salvage.salePrice(part);
+            l.stationBuys = true;
+            l.onOrder = orders == null || ref == null ? 0 : orders.pending(ref, part);
+        }
     }
 
     @Override
@@ -71,10 +91,12 @@ public class MarketTrade implements TradeProvider {
         TraderComponent trader = trader();
         if (station == null || trader == null) return 0;
         Entity player = world.getPlayer(), dock = stationEntity();
+        boolean part = SalvageSettlement.isPart(commodityId);
         if (world.cargo.canCarry(player, dock)) {
-            if (!world.macroSim.market().stationBuys(station, commodityId)) return 0;
+            if (!part && !world.macroSim.market().stationBuys(station, commodityId)) return 0;
             return order(player, dock, commodityId, units, false);
         }
+        if (part) return world.cargoSettlement.sellParts(player, commodityId, units);
         return world.macroSim.market().sell(station, trader, commodityId, units);
     }
 

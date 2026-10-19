@@ -146,6 +146,8 @@ public class GameWorld implements Disposable {
     public final BeamSystem beams;
     public final AudioManager audio;
     public final AvatarInteractor avatar;
+    /** The player's seat at the helm or weapons console, and the helm flying the ship meanwhile. */
+    public final Bridge bridge;
     public final AudioListenerSync audioListener;
     /** The player's planned burns. */
     public final BurnPlanner burns;
@@ -171,6 +173,12 @@ public class GameWorld implements Disposable {
     public final AbandonShip abandon;
     /** Where the player wakes after their pod launches, and in what ship. */
     public final Rescue rescue;
+    /** Boarding parties sent onto beaten ships, and the ships they take. */
+    public final Boarding boarding;
+    /** Taken ships stripped for parts, and their cargo carried off. */
+    public final Salvage salvage;
+    /** How carried cargo is settled: the market's, plus salvage's between ships and parts sold. */
+    public final SalvageSettlement cargoSettlement;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -279,6 +287,8 @@ public class GameWorld implements Disposable {
         engine.addSystem(new LifeSupportSystem());
         // Thrust and planned burns burn propellant from the tanks piped to the engines
         engine.addSystem(new PropellantFeed());
+        // ...and the engines themselves set how hard the ship can push, less as they take damage
+        engine.addSystem(new EngineThrust(this::getContent));
         orbitalEvents.burnBudget = (ship, dv) -> {
             ShipGridComponent.MassProperties m = shipMass(ship);
             return m == null ? dv : PropellantFeed.payForBurn(ship, m.mass, dv);
@@ -312,9 +322,14 @@ public class GameWorld implements Disposable {
         };
         forcing = new DoorForcing(docking, crew, engine::getSimSeconds);
         engine.addSystem(forcing);
-        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, new MarketCargo(macroSim));
+        cargoSettlement = new SalvageSettlement(new MarketCargo(macroSim), commodities,
+                this::partPrice);
+        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, cargoSettlement);
         engine.addSystem(cargo);
         avatar = new AvatarInteractor(engine.getEcsEngine());
+        // Who sits at the player's consoles, and who flies the ship when the player isn't at the helm
+        bridge = new Bridge(this);
+        engine.addSystem(bridge);
 
         // combat-sys
         combatEvents = new CombatEvents();
@@ -359,6 +374,11 @@ public class GameWorld implements Disposable {
         abandon = new AbandonShip(crew, disablement, engine::getSimSeconds, docking::dockedTo);
         engine.addSystem(abandon);
         rescue = new Rescue(this, bubble);
+        // Beaten ships are boarded, taken and stripped
+        boarding = new Boarding(docking, crew, forcing, standing, disablement, engine.getUuidRegistry(), engine::getSimSeconds);
+        engine.addSystem(boarding);
+        salvage = new Salvage(docking, crew, boarding, cargo, engine.getUuidRegistry(), combatDefs);
+        engine.addSystem(salvage);
 
         // audio-spatial
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
@@ -547,6 +567,11 @@ public class GameWorld implements Disposable {
             out[3] = m.inertia;
             return true;
         };
+    }
+
+    /** What a station pays for a salvaged part. */
+    private double partPrice(String part) {
+        return salvage == null ? 0 : salvage.salePrice(part);
     }
 
     private void mergeCombatDefs(CombatDefs loaded) {

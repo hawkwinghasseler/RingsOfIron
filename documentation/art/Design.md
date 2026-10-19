@@ -238,6 +238,5 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 - **Projectiles (5):** railgun slug, autocannon round with tracer, missile, decoy flare, harpoon.
 
 ## Open Questions
-- Engines don't set thrust: `max_thrust` in `ships.toml` still does. They only decide whether a ship's thrust burns propellant.
 - Walls more than one tile thick show a small notch at inner corners; the 47-tile blob set would remove it if thick walls become common.
 - Hull steel and composite armor are the only materials with art. New materials need their own look decided before they get files.

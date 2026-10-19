@@ -39,7 +39,7 @@ public final class Defs {
     public static final Set<String> TILE_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "base",
             "weight_class", "material", "covering", "art", "color"));
     public static final Set<String> COMPONENT_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "behavior",
-            "sizes", "color", "power_output", "throughput", "fluid", "capacity"));
+            "sizes", "color", "power_output", "throughput", "fluid", "capacity", "thrust"));
 
     public static List<Entry> chassis(ChassisDef d) {
         List<Entry> out = new ArrayList<>();
@@ -167,6 +167,7 @@ public final class Defs {
             out.add(new Entry("fluid", str(d.fluid == null ? "PROPELLANT" : d.fluid)));
             if (!d.capacity.isEmpty()) out.add(new Entry("capacity", sizeTable(d.capacity)));
         }
+        if ("ENGINE".equals(d.behavior) && !d.thrust.isEmpty()) out.add(new Entry("thrust", sizeTable(d.thrust)));
         return out;
     }
 

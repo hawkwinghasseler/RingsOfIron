@@ -24,6 +24,7 @@ import com.ringsofiron.uihud.providers.TargetingProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider;
 import com.ringsofiron.uihud.providers.MissionProvider;
 import com.ringsofiron.uihud.providers.TradeProvider;
+import com.ringsofiron.uihud.providers.BoardingProvider;
 import com.ringsofiron.uihud.providers.YardProvider;
 import com.ringsofiron.uihud.providers.TrafficMapProvider;
 import com.ringsofiron.uihud.systems.FlightReadoutSystem;
@@ -36,6 +37,7 @@ import com.ringsofiron.uihud.widgets.OrbitMap;
 import com.ringsofiron.uihud.widgets.ThreatOverlay;
 import com.ringsofiron.uihud.widgets.MissionWindow;
 import com.ringsofiron.uihud.widgets.TradeWindow;
+import com.ringsofiron.uihud.widgets.BoardingWindow;
 import com.ringsofiron.uihud.widgets.YardWindow;
 import com.ringsofiron.uihud.widgets.TrafficMap;
 
@@ -62,6 +64,8 @@ public class UiHud implements Disposable {
     private final Skin skin;
     private final Stage stage;
     private final ViewModeController viewMode = new ViewModeController();
+    /** What V does instead of switching the view, when a game decides when the view may switch. */
+    private Runnable viewKey;
 
     private final Group markerLayer = new Group();
     private final WireframeMinimap minimap;
@@ -74,6 +78,7 @@ public class UiHud implements Disposable {
     private final TradeWindow tradeWindow;
     private final YardWindow yardWindow;
     private final MissionWindow missionWindow;
+    private final BoardingWindow boardingWindow;
     private final ThreatOverlay threatOverlay;
 
     private final HudRenderSystem hudRenderSystem;
@@ -160,6 +165,7 @@ public class UiHud implements Disposable {
         missionWindow = new MissionWindow(skin);
         tradeWindow.setHintSuffix(() -> (yardWindow.isAvailable() && !yardWindow.isOpen() ? "   [Y] Yard" : "")
                 + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : ""));
+        boardingWindow = new BoardingWindow(skin);
 
         trafficMap = new TrafficMap(skin);
         trafficMap.setFillParent(true);
@@ -171,6 +177,7 @@ public class UiHud implements Disposable {
         stage.addActor(tradeWindow);
         stage.addActor(yardWindow);
         stage.addActor(missionWindow);
+        stage.addActor(boardingWindow);
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
@@ -228,6 +235,10 @@ public class UiHud implements Disposable {
                     missionWindow.setOpen(false);
                     return true;
                 }
+                if (boardingWindow.isOpen()) {
+                    boardingWindow.setOpen(false);
+                    return true;
+                }
                 if (!consoleWindow.isOpen()) return false;
                 consoleWindow.close();
                 return true;
@@ -243,11 +254,16 @@ public class UiHud implements Disposable {
                 if (!missionWindow.isOpen() && !missionWindow.isAvailable()) return false;
                 missionWindow.setOpen(!missionWindow.isOpen());
                 return true;
+            case Input.Keys.K:
+                if (!boardingWindow.isOpen() && !boardingWindow.isAvailable()) return false;
+                boardingWindow.setOpen(!boardingWindow.isOpen());
+                return true;
             case Input.Keys.M:
                 setTrafficMapVisible(!trafficMap.isVisible());
                 return true;
             case Input.Keys.V:
-                viewMode.toggle();
+                if (viewKey != null) viewKey.run();
+                else viewMode.toggle();
                 return true;
             default:
                 return false;
@@ -257,6 +273,14 @@ public class UiHud implements Disposable {
     private void openConsole(Entity console, InteractableConsoleComponent data) {
         interactPromptSystem.setPromptsEnabled(false);
         consoleWindow.open(console, data, consoleLayouts.get(data.consoleId));
+    }
+
+    /**
+     * Makes V run {@code action} instead of switching the view, for a game where the view only
+     * switches when the player sits down at a console or stands up from it; null switches it again.
+     */
+    public void setViewKey(Runnable action) {
+        viewKey = action;
     }
 
     /** Registers a custom window layout for consoles with this id (e.g. "helm"). */
@@ -328,6 +352,15 @@ public class UiHud implements Disposable {
     /** Feeds the station yard window ([Y] while docked where a yard can work on the ship); null hides it. */
     public void setYard(YardProvider yard) {
         yardWindow.setProvider(yard);
+    }
+
+    /** Feeds the boarding and salvage window ([K] while latched to another ship); null hides it. */
+    public void setBoarding(BoardingProvider boarding) {
+        boardingWindow.setProvider(boarding);
+    }
+
+    public BoardingWindow getBoardingWindow() {
+        return boardingWindow;
     }
 
     public YardWindow getYardWindow() {
