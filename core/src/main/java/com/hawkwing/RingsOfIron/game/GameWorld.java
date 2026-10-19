@@ -174,6 +174,10 @@ public class GameWorld implements Disposable {
     public final StationYard yard;
     /** Station mission boards and the player's contracts. */
     public final ContractBoard contracts;
+    /** Escape pods and wrecks drifting on the rails, for rescue and recovery contracts. */
+    public final Derelicts derelicts;
+    /** Shortages, raids, lost freighters and rival tension, rolled each day, with jobs on the boards. */
+    public final WorldEvents events;
     /** Which ships are disabled, surrendered or wrecked, and why. */
     public final ShipDisablement disablement;
     /** Crews ordered to the escape pods, and the pods launching. */
@@ -357,6 +361,8 @@ public class GameWorld implements Disposable {
         contracts = new ContractBoard(this);
         engine.addSystem(contracts);
         engine.getSerializationService().addParticipant(contracts);
+        // Pods and wrecks on the rails, for rescues and recoveries; saved with the game
+        derelicts = new Derelicts(this);
         // NPC freighters fill their tanks wherever they dock
         engine.addSystem(new FreighterRefueling(docking::dockedTo));
         // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
@@ -415,6 +421,8 @@ public class GameWorld implements Disposable {
         hostiles = HostileTraffic.install(this);
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);
+        // Things that happen on their own, a day at a time, with jobs on the boards
+        events = new WorldEvents(this);
     }
 
     /**
@@ -482,6 +490,8 @@ public class GameWorld implements Disposable {
         wrecks.clear();
         rescue.update();
         hostiles.afterUpdate();
+        derelicts.update();
+        events.update();
         checkBubbleCrash();
         if (crash != null && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
     }

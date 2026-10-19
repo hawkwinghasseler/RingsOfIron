@@ -136,6 +136,7 @@ public class MissionWindow extends Window {
                 } else {
                     offers.add(new Label(j.locked, skin, "warn")).left().row();
                 }
+                if (!j.note.isEmpty()) offers.add(new Label("  " + j.note, skin, "dim")).left().colspan(4).padBottom(4f).row();
             }
         }
         held.clearChildren();

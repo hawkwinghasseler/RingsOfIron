@@ -1,0 +1,35 @@
+# Operations: short chains of linked contracts a faction offers at rank milestones (GDD section 4).
+#
+# [operation.<id>]: offered on the giver's station boards once the player holds `rank` with the
+# sponsor, until it is done. Taking it starts the first step; each step is a contract of its own,
+# paid as usual, and the next is posted when it is done. Finishing the last pays `reward` credits
+# and `standing` with the giver; failing or abandoning any step fails the operation, at half its
+# standing. Steps: patrol, recon (find a pirate where it lurks), bounty (on the pirate the recon
+# found, else any the giver is at war with), escort, convoy, delivery. Placeholder numbers.
+
+[operation.clear_the_lanes]
+name = "Clear the Lanes"
+text = "Raiders are working the station lanes. Sweep a lane, find where one of them rests, and take it."
+giver = "patrol"
+rank = "lieutenant"
+reward = 8000.0
+standing = 6.0
+steps = ["patrol", "recon", "bounty"]
+
+[operation.lifeline]
+name = "Lifeline"
+text = "A haul the stations cannot do without. See it through, then deal with whoever is waiting for it."
+giver = "patrol"
+rank = "lieutenant_commander"
+reward = 15000.0
+standing = 8.0
+steps = ["escort", "recon", "bounty"]
+
+[operation.hunt_the_hunters]
+name = "Hunt the Hunters"
+text = "Two raiders have been seen on the lanes. Find the first and take it, then the second."
+giver = "patrol"
+rank = "commander"
+reward = 30000.0
+standing = 10.0
+steps = ["recon", "bounty", "recon", "bounty"]

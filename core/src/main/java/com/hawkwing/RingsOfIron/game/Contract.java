@@ -17,7 +17,25 @@ public class Contract {
         /** Disable or destroy the ship {@link #targetUuid}. */
         BOUNTY,
         /** Pass close by {@link #targetUuid}, then come back to {@link #destinationUuid}. */
-        PATROL
+        PATROL,
+        /**
+         * Pick up the escape pod {@link #targetUuid} (a {@link Derelicts} id) by a slow close pass,
+         * then dock at {@link #destinationUuid} with its {@link #quantity} survivors aboard.
+         */
+        RESCUE,
+        /**
+         * Hold alongside the wreck {@link #targetUuid} (a {@link Derelicts} id) while the crew carry
+         * its {@link #quantity} of {@link #commodity} across, then dock at {@link #destinationUuid} with it.
+         */
+        RECOVERY,
+        /** Stay with each freighter of {@link #targets} until it docks at {@link #destinationUuid}; pay by how many arrive. */
+        CONVOY,
+        /** Beat the raiders of {@link #targets} by {@link #destinationUuid}; pay by how many are beaten. */
+        DEFEND,
+        /** Come within sensor range of the pirate {@link #targetUuid}, wherever it lurks. */
+        RECON,
+        /** An operation from the data ({@link #operationId}): taking it starts its first step. */
+        OPERATION
     }
 
     public enum Status { OFFERED, ACTIVE, DONE, FAILED, ABANDONED, CANCELLED }
@@ -58,6 +76,35 @@ public class Contract {
     public double arrivedAt = -1;
     /** Why it ended, for the screen. */
     public String outcome = "";
+    /** Convoy and defend: the freighters or raiders the job is about, by uuid, and their names. */
+    public String[] targets = new String[0];
+    public String[] targetNames = new String[0];
+    /**
+     * Convoy and defend: what became of each of {@link #targets}, one of the {@code MARK_} values;
+     * a convoy's freighter also keeps its trips at the start in {@link #trips}.
+     */
+    public int[] marks = new int[0];
+    public int[] trips = new int[0];
+    /** Convoy: sim second each freighter was first seen docked, negative before. */
+    public double[] arrivals = new double[0];
+    /** Operation offer: the {@code [operation.<id>]} it starts. A step of a running one: its def id too. */
+    public String operationId;
+    /** The operation's name, on its offer and on each of its steps. */
+    public String operationName;
+    /** A step of a running operation: its number, from 1, and how many the operation has; 0 for a plain contract. */
+    public int step;
+    public int steps;
+    /** What the target has done that the job is about, for a bounty ("robbed 2 freighters"); empty if nothing. */
+    public String record = "";
+    /** Set by a world event: why the job is on the board ("Highport is short of Water"). */
+    public String reason = "";
+
+    /** Not settled yet. */
+    public static final int MARK_OPEN = 0;
+    /** Settled well: a convoy freighter that docked with the player close, a raider beaten. */
+    public static final int MARK_GOOD = 1;
+    /** Settled badly: a freighter lost or docked without the player, a raider gone unbeaten. */
+    public static final int MARK_BAD = 2;
 
     public boolean isActive() {
         return status == Status.ACTIVE;
@@ -72,19 +119,72 @@ public class Contract {
             case ESCORT:
                 return "Escort " + targetName + " to " + destinationName;
             case BOUNTY:
-                return "Bounty: " + targetName;
-            default:
+                return "Bounty: " + targetName + (record == null || record.isEmpty() ? "" : " (" + record + ")");
+            case PATROL:
                 return progress == 0 ? "Patrol out to " + targetName + " and back"
                         : "Patrol: back to " + destinationName;
+            case RESCUE:
+                return progress == 0 ? String.format(java.util.Locale.ROOT, "Rescue %.0f from %s", quantity, targetName)
+                        : String.format(java.util.Locale.ROOT, "Bring %.0f survivors to %s", quantity, destinationName);
+            case RECOVERY:
+                return progress == 0 ? String.format(java.util.Locale.ROOT, "Recover %.0f %s from %s", quantity,
+                        commodityName, targetName)
+                        : String.format(java.util.Locale.ROOT, "Bring %.0f %s to %s", quantity, commodityName, destinationName);
+            case CONVOY:
+                return "Convoy of " + targets.length + " to " + destinationName;
+            case DEFEND:
+                return "Defend " + destinationName + " from " + targets.length + " raider" + (targets.length == 1 ? "" : "s");
+            case RECON:
+                return "Find " + targetName;
+            default:
+                return "Operation: " + operationName;
         }
     }
 
-    /** Uuid of the craft to head for now: the target, or a patrol's way home once past the far end. */
+    /** The title with the operation step in front ("Clear the Lanes 2/3: Find ..."), as the HUD lists it. */
+    public String heading() {
+        return step > 0 ? String.format(java.util.Locale.ROOT, "%s %d/%d: %s", operationName, step, steps, title())
+                : title();
+    }
+
+    /**
+     * Uuid of the craft or derelict to head for now: the target, or once past it (a patrol's far end,
+     * a pod or wreck picked up) the way home; a convoy's or defence's first unsettled target.
+     */
     public String waypointUuid() {
-        return type == Type.PATROL && progress > 0 ? destinationUuid : targetUuid;
+        switch (type) {
+            case PATROL:
+            case RESCUE:
+            case RECOVERY:
+                return progress > 0 ? destinationUuid : targetUuid;
+            case CONVOY:
+            case DEFEND:
+                for (int i = 0; i < targets.length; i++) if (marks[i] == MARK_OPEN) return targets[i];
+                return destinationUuid;
+            default:
+                return targetUuid;
+        }
     }
 
     public String waypointName() {
-        return type == Type.PATROL && progress > 0 ? destinationName : targetName;
+        switch (type) {
+            case PATROL:
+            case RESCUE:
+            case RECOVERY:
+                return progress > 0 ? destinationName : targetName;
+            case CONVOY:
+            case DEFEND:
+                for (int i = 0; i < targets.length; i++) if (marks[i] == MARK_OPEN) return targetNames[i];
+                return destinationName;
+            default:
+                return targetName;
+        }
+    }
+
+    /** Convoy and defend: how many of {@link #targets} are marked {@code mark}. */
+    public int count(int mark) {
+        int n = 0;
+        for (int m : marks) if (m == mark) n++;
+        return n;
     }
 }

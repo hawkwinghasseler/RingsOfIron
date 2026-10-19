@@ -589,6 +589,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         // Contracts taken, delivered, done or failed
         for (String news : world.contracts.notices) show(news);
         world.contracts.notices.clear();
+        for (String news : world.events.notices) show(news);
+        world.events.notices.clear();
         // Promotions and budget paydays
         for (String news : world.standing.notices) show(news);
         world.standing.notices.clear();

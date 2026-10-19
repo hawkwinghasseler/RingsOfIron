@@ -675,6 +675,7 @@ data/components.toml
 data/economy.json
 data/factions.toml
 data/materials.toml
+data/operations.toml
 data/ships.toml
 data/tiles.toml
 data/weapons.toml

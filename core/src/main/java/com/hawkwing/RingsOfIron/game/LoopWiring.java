@@ -23,6 +23,8 @@ import java.util.Set;
  *       of the player's last hit on it) counts as destroyed with the factions, once
  *       ({@link FactionStanding#onShipDestroyed}): it costs standing with its owners and gains
  *       standing with the factions sworn against them, so beating pirates is how a career starts.</li>
+ *   <li>Being rescued costs {@link #RESCUE_COST} standing with the sponsor, and fails every contract
+ *       held (round 3).</li>
  * </ul>
  */
 public final class LoopWiring {
@@ -30,6 +32,8 @@ public final class LoopWiring {
     public static final String[] REQUISITION = {"gunship_heavy", GameScenario.PLAYER_SHIP};
     /** How long after the player's last hit a ship being beaten still counts as theirs, sim seconds. */
     public static final double CREDIT_SECONDS = 120;
+    /** Standing with the sponsor a rescue costs. Placeholder number. */
+    public static final float RESCUE_COST = 5f;
 
     private final GameWorld world;
     /** Sim time of the player's last hit on each ship, by uuid. */
@@ -63,6 +67,10 @@ public final class LoopWiring {
         };
         world.combatEvents.impacts.add((signal, hit) -> w.hit(hit.owner, hit.target));
         world.combatEvents.detonations.add((signal, d) -> w.hit(d.owner, d.target));
+        world.rescue.rescues.add((signal, rescue) -> {
+            world.standing.penalize(world.standing.sponsor(), RESCUE_COST, "had to be rescued");
+            world.contracts.failAll("you had to be rescued");
+        });
         world.disablement.changes.add((signal, change) -> {
             if (change.was == null && change.now != null) w.beaten(change.ship);
         });
