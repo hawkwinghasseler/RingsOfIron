@@ -31,7 +31,8 @@ await() { for _ in $(seq 1 "$1"); do grep -q "$2" "$OUT/game.log" && return 0; p
 # Waits up to $1 seconds for the ship to be docked
 until_docked() { for _ in $(seq 1 "$1"); do cmd docked; [ "$(grep 'PLAYTEST docked:' "$OUT/game.log" | tail -1)" = "PLAYTEST docked: yes" ] && return 0; pause 0.5; done; echo "never docked"; return 1; }
 finish() {
-  kill $GAME 2>/dev/null; pkill -f "[P]laytestLauncher" 2>/dev/null
+  # Only this run's game: its command line names this run's command file
+  kill $GAME 2>/dev/null; pkill -f "[P]laytestLauncher $CMDS" 2>/dev/null
   [ -n "${XVFB:-}" ] && kill "$XVFB"
   rm -f "$CMDS"
 }

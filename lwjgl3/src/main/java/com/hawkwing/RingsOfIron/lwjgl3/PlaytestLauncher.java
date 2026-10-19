@@ -10,6 +10,8 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
+import com.hawkwing.RingsOfIron.game.PlayerDocking;
+import com.ringsofiron.stationsdocking.DockingEvent;
 import com.hawkwing.RingsOfIron.shell.GameShell;
 import com.hawkwing.RingsOfIron.shell.SaveSummary;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -91,7 +93,33 @@ public class PlaytestLauncher {
         @Override
         public void render() {
             readCommands();
+            watchDocking();
             shell.render();
+        }
+
+        private GameWorld watched;
+
+        /** Logs every docking event, and at a tear whatever the two craft are touching. */
+        private void watchDocking() {
+            RingsOfIronGame game = shell.getGame();
+            GameWorld world = game == null ? null : game.getWorld();
+            if (world == null || world == watched) return;
+            watched = world;
+            world.docking.events.add((sig, e) -> {
+                System.out.println("PLAYTEST docking " + e.kind + " " + PlayerDocking.name(e.vessel) + " / " + PlayerDocking.name(e.other)
+                        + " at " + world.engine.getSimSeconds());
+                if (e.kind != DockingEvent.Kind.TORN) return;
+                for (com.badlogic.gdx.physics.box2d.Contact c : world.physics.getWorld().getContactList()) {
+                    if (!c.isTouching() || c.getFixtureA().isSensor() || c.getFixtureB().isSensor()) continue;
+                    Object a = c.getFixtureA().getBody().getUserData(), b = c.getFixtureB().getBody().getUserData();
+                    if (a != e.vessel && b != e.vessel && a != e.other && b != e.other) continue;
+                    System.out.println("PLAYTEST   touching " + label(a) + " / " + label(b));
+                }
+            });
+        }
+
+        private static String label(Object o) {
+            return o instanceof Entity ? PlayerDocking.name((Entity) o) : String.valueOf(o);
         }
 
         private void readCommands() {
