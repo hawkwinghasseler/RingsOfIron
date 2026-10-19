@@ -103,6 +103,43 @@ class DockingAutopilotTest {
                 world.nav.helm.give(HelmOrderComponent.Mode.DOCK));
     }
 
+    @Test
+    void theDockOrderAndTheAutopilotSurviveASaveAndLoad(@org.junit.jupiter.api.io.TempDir Path dir) {
+        world.nav.helm.give(HelmOrderComponent.Mode.DOCK);
+        world.timeWarp.setWarp(10);
+        run(60 * 3);
+        world.timeWarp.setWarp(1);
+        HelmOrderComponent o = game.player.getComponent(HelmOrderComponent.class);
+        assertTrue(o.dockPort >= 0, "Highport gave a port: " + o.dockStatus);
+        // And an autopilot state alongside, as one would be mid-trip
+        AutopilotComponent a = new AutopilotComponent();
+        a.targetUuid = game.lunarMine;
+        a.held = true;
+        a.holdReason = "Raider is coming close";
+        game.player.add(a);
+
+        com.badlogic.gdx.files.FileHandle file = new com.badlogic.gdx.files.FileHandle(dir.resolve("dock.json").toFile());
+        assertNull(game.quickSave(file));
+        GameWorld fresh = new GameWorld();
+        try {
+            GameScenario loaded = GameScenario.start(fresh, Paths.get(System.getProperty("user.dir")).getParent().resolve("assets"),
+                    dir.resolve("no-mods-here"));
+            loaded.quickLoad(file);
+            HelmOrderComponent back = loaded.player.getComponent(HelmOrderComponent.class);
+            assertEquals(HelmOrderComponent.Mode.DOCK, back.mode);
+            assertEquals(o.targetUuid, back.targetUuid);
+            assertEquals(o.dockPort, back.dockPort);
+            assertEquals(o.dockOwnPort, back.dockOwnPort);
+            assertEquals(o.dockPhase, back.dockPhase);
+            AutopilotComponent b = loaded.player.getComponent(AutopilotComponent.class);
+            assertEquals(game.lunarMine, b.targetUuid);
+            assertTrue(b.held);
+            assertEquals("Raider is coming close", b.holdReason);
+        } finally {
+            fresh.dispose();
+        }
+    }
+
     // ------------------------------------------------------------------
 
     private void run(int frames) {
