@@ -752,6 +752,10 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
                 break;
             case "recon":
                 options = recons(giver, op.quarry);
+                // A named ace is the pirate worth finding, so the bounty after it is on the ace
+                List<Contract> aces = new ArrayList<>();
+                for (Contract o : options) if (isAce(o.targetUuid)) aces.add(o);
+                if (!aces.isEmpty()) options = aces;
                 break;
             case "intel":
                 // Already known: nothing to find, on to the next step
@@ -1206,6 +1210,12 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             c.tier = far ? 1 : 0;
             c.reward = RECON_PAY * (far ? FAR_PAY : 1);
             c.standing = 3;
+            if (h.ace) {
+                // A named ace moves about and is worth knowing where it rests
+                c.targetName = "the ace " + c.targetName;
+                c.reward *= 2;
+                c.reason = "A named ace: find where it rests";
+            }
             c.deadline = now() + DAY * (far ? FAR_DAYS : NEAR_DAYS + 1);
             out.add(c);
         }
