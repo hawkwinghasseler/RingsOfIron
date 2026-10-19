@@ -1,0 +1,185 @@
+# Progression Design: Factions, Rank, Contracts and Rescue
+
+## Overview
+The simulation under Rings of Iron is deep (flight, orbits, traffic, the economy, decks, crew, combat damage, docking and yards), but on its own it is not a game. This document covers what turns it into one. The player serves a **sponsoring faction**, earns **standing** and **rank** by doing **contracts** and fighting that faction's enemies, and draws a **budget** from that rank. A beaten enemy can be **boarded and stripped**. When the player's own ship is lost, they are **rescued** and **requisition** another rather than starting over.
+
+The loop it describes:
+
+**take a contract → fly → fight or trade → win, board and salvage, or lose the ship and be rescued → get paid, gain standing and rank → refit → take a bigger contract.**
+
+Sources: the GDD §4 (mission boards driven by the economy), §3 (boarding and salvage) and §5 (sponsoring factions, rank and budget, net-worth scaling, survival over death), Technical Design Decisions §6 (rescue and requisition), and the round-2 plan (`planning/next-round-plan.md` in the project files).
+
+Each part was built on its own round-2 branch:
+
+| Part | Branch | PR |
+|---|---|---|
+| Factions, standing, rank, budget, difficulty | `claude/r2-factions-vuy5b6` | #87 |
+| Pirates and patrols (they read standing and difficulty) | `claude/r2-roster-traffic-z8x44s` | #93 |
+| Disabled ships, surrender, abandon ship, rescue | `claude/r2-disabled-rescue-u30h20` | #88 |
+| Contracts and the mission board | `claude/r2-contracts-qf9mvv` | #91 |
+| Boarding, taking ships and salvage | `claude/r2-boarding-salvage-mt3uei` | #92 |
+| Wiring them into one loop | the playable loop branch | |
+
+All numbers below are the branches' placeholders, marked in the data and code for tuning in the playable loop.
+
+## Implementation Dependencies
+- **`core`** (`com.hawkwing.RingsOfIron.game`): everything here lives in the game layer, because it reads several modules at once: `Factions`, `RankLadder`, `ServiceRecord`, `FactionStanding`, `ServiceBudget`, `Difficulty`, `ContractBoard`, `ShipDisablement`, `AbandonShip`, `Rescue`, `Boarding` and `Salvage`.
+- **`modding-data`**: `FactionDef` and `RankDef` (`assets/data/factions.toml`), and the `escape_pod` component.
+- **`macro-sim`**: station ownership by name, the `TradeOrder`s that deliveries are drawn from, freighters for escorts, pirate and patrol traffic (`HostileTrafficController`), and the sim clock that pays the budget.
+- **`stations-docking`**: clearance refused below a standing, ship-to-ship latching for boarding, and docking in place after a rescue.
+- **`ai-crew`**: crew hostility by faction, `EvacuateTask` and `BoardTask`, held prisoners.
+- **`combat-sys`**: the damage that disables a ship, and the firepower ratings pirates compare.
+- **`ui-hud`**: the rank and budget line, the mission window (J), the boarding window (K), contract waypoints and greyed-out disabled markers.
+- **`core-engine`**: saving the career and contracts as their own save modules, and everything else as components.
+
+## Factions
+Factions are data: `[faction.<id>]` in `assets/data/factions.toml` (`FactionDef`), with `name`, `color`, `sponsor`, `stations` (station names), `enemies` and `hostile_to_all`. `DefValidator` warns about an enemy id that doesn't exist.
+
+| Id | Name | Owns | Notes |
+|---|---|---|---|
+| `patrol` | Terran Patrol Authority | Highport, Deepwell Depot | The sponsor |
+| `selene` | Selene Mining Combine | Shackleton Ice | |
+| `pirates` | Void Raiders | nothing | Hostile to all |
+
+`Factions` turns ids into the crew-faction numbers that ai-crew's task boards use. The sponsor keeps 2 (`StationCrew.FACTION`), the others follow in id order, and 0 is the player's crew. A station that no faction lists belongs to the sponsor. Each station's crew get its owner's number (`StationCrew` overloads), and the scripted First Play raider flies for the pirates. Two factions are at war if either lists the other in `enemies`, or either is hostile to all. With no faction data, `Factions.none()` gives one sponsor, "Station authority", owning every station, as in round 1.
+
+## Standing
+The player's career is a `ServiceRecord`, saved as its own save module (`"factions"`) rather than on the ship, so it outlives a ship lost to rescue. It holds the sponsor's id, the rank, and standing per faction id, which is clamped to -100..100.
+
+- **Changing it:** `FactionStanding.reward` and `penalize` (by faction id or number) are the one way contracts, combat and boarding change standing. `hostileAct` costs standing with the victim and gives each faction at war with it half that (`ENEMY_SHARE`).
+- **Hostile acts:**
+
+  | Act | Standing cost |
+  |---|---|
+  | Prying or hacking a door | 10 |
+  | Cutting a door | 25 |
+  | Destroying a faction's ship (`onShipDestroyed`, `KILL_COST`) | 30 |
+  | Boarding a faction's ship (`Boarding.STANDING_COST`) | 20 |
+- **Thresholds:** below -15 the faction's stations refuse clearance, with the reason from the last grievance ("you forced their doors") or "your standing with X is too low". At -50 or below its crew fight the player's (`FactionStanding.hostile`).
+- **Crew hostility:** factions at war fight each other, and a hostile-to-all faction fights everyone. A known faction and an unaligned crew don't fight; two unaligned crews always do. Held prisoners fight no one.
+- **Old saves:** a save without the `"factions"` module loads as rank 0 with the sponsor. `migrateLegacy` folds round 1's `FactionStandingComponent` from the player's ship into the record and removes it.
+
+## Rank and Budget
+Ranks are data: `[rank.<id>]` (`RankDef`) with `name`, `order`, `standing` (needed with the sponsor), `budget` (credits per in-game week) and `max_chassis`.
+
+| Rank | Standing | Budget (cr/week) | Largest chassis |
+|---|---|---|---|
+| Ensign | 0 | 2,000 | corvette |
+| Lieutenant | 15 | 5,000 | corvette |
+| Lieutenant Commander | 35 | 10,000 | freighter |
+| Commander | 60 | 20,000 | freighter |
+| Captain | 85 | 40,000 | freighter |
+
+- **Promotion:** only standing with the sponsor promotes. `checkPromotion` climbs one rank at a time with a notice ("Promoted to Lieutenant of the Terran Patrol Authority: budget 5,000 cr a week"). Ranks are never taken back.
+- **Budget:** `ServiceBudget` pays the budget into the player ship's credits every `WEEK` (604,800 sim seconds). It catches up on every payday passed during time warp, at the rank held when paying. The first payday is a week after the career starts. Paydays wait while the player has no ship with credits. The HUD shows "Ensign   Budget 2,000 cr/wk in 6d 23h".
+- **Requisition limit:** `RankLadder.mayRequisition` compares a ship's chassis size with the rank's `max_chassis`.
+- **Difficulty** (GDD §5): `Difficulty.of(rank, worth) = 1 + 0.25·rank + 0.5·log2(worth / 300,000)`, where the worth term counts only above 300,000. Net worth is credits plus the ship's value: 1,000 a hull tile plus its weapons' prices.
+- **Pirate numbers:** `HostileTraffic` sizes the pirate population from a difficulty value: `1 + round(d)` raiders and `floor(d)` gunships.
+
+## Pirates and Patrols
+Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. It is documented with macro-sim, since it lives on the rails like freighters. The progression side:
+- **Pirates** fly for the Void Raiders. They lie in wait near trade lanes and rob loaded freighters. A pirate hunts the player only when it is bold enough: firepower at least 0.8 of the player's, and only after the first 6 hours of a game. A pirate breaks off below half its hull.
+- **Patrols** fly for the sponsor and for Selene between their stations and engage pirates. A pirate won't strike at a station guarded by an equal or stronger patrol.
+- **Warp:** a hostile moving to intercept the player stops time warp.
+
+## Contracts and the Mission Board
+`ContractBoard` keeps each station's offers, the player's active contracts and a history of the last 20. It is saved as its own module (`"contracts"`). J opens the mission window while docked at a station, or anywhere while holding a contract.
+
+- **Offers:**
+  - A station posts up to 5 offers a day, rebuilt on the first look after each day boundary and seeded by station and day, so a day's board is stable.
+  - The giver is the station's owner. A station of a hostile-to-all faction, or with no market, posts nothing.
+  - The four kinds are spread round-robin, and at least one offer is always tier 0.
+- **Locks:** tier 0 is open to anyone. For the sponsor, tier *n* needs rank *n*. For another faction it needs standing of 20 × tier with that faction.
+- **Holding:** the player may hold 3 contracts at once.
+
+| Type | Taken from | Reward | Standing | Deadline | Done when |
+|---|---|---|---|---|---|
+| Delivery | An unclaimed trade order out of the station, claimed in the player's name (`claimedBy = "player"`) | 15% of the cargo's value (at least 500) on top of the sale, with the sale paid at least the agreed price | 3 + 2·tier | 2 days, or 8 if the buyer orbits another body | The goods are sold at the buyer, docked with clearance; partial deliveries count up |
+| Escort | A trade order already claimed by a freighter | 1,500 | 4 + 2·tier | 2 or 8 days after the freighter's arrival | The freighter arrives with the player within 50 km of its destination; it fails if the player is not there within 30 minutes of its arrival, or if the freighter is lost |
+| Bounty | A ship of a faction at war with the giver | 5,000 × (1 + tier) × difficulty | 6 + 3·tier | 3 days | The target is gone, or beaten (`FirstPlay.beaten`: disabled, reactor out or guns silenced) |
+| Patrol | Another station whose owner is not at war with the giver | 1,000, ×1.5 for another faction's station | 3 + 2·tier | 2 days, or 10 if far | The player passes within 20 km of the station, then comes back within 20 km of the giver's |
+
+- **Far jobs:** a job to a station orbiting another body is tier 1 and pays 3×.
+- **Bounty tiers:** by the target's value against the player's ship (≤ 1.2×, ≤ 2×, more).
+- **Endings:**
+  - Success pays the credits and `reward`s the giver with the standing.
+  - Failure or abandoning a contract costs half that standing (`FAIL_SHARE`).
+  - A job the world takes away (the order or target station gone) is cancelled at no cost.
+  - A delivery that ends gives its trade order back to the economy.
+- **Tracking:** a held contract is drawn under the dock readout. Its waypoint gets a gold " [contract]" HUD marker and a gold ring on the traffic map. On a patrol's return leg the waypoint is the home station.
+- **Old saves:** a save without the `"contracts"` module loads with nothing on offer or held.
+
+## Disabled Ships
+`ShipDisablement` judges every ship (not stations) every half second and marks a disabled one with a `DisabledComponent` holding the reason and when it started. Checks run in this order:
+
+| Reason | When | Lasts |
+|---|---|---|
+| WRECKED | Mean hull integrity below 0.25 | For good; reactors switched off |
+| (any sticky reason) | Already SURRENDERED, ABANDONED or WRECKED | Stays |
+| HULL | Mean hull integrity below 0.45 | Until repaired |
+| NO_POWER | Has reactors and none is running | Until one runs |
+| NO_CREW | Own crew aboard, none conscious | Until one wakes |
+| SURRENDERED | An NPC losing its fight: hull below 0.55, fewer than half its crew conscious, or every gun silenced | For good |
+
+- **What happens to a disabled NPC:** its pilot and gunnery stop, its weapons go cold, and its HUD marker turns grey with the reason ("Raider (reactor down)"). Recovering puts all of that back.
+- **Who surrenders:** the player's ship never does. An NPC's `MoraleComponent` can turn surrender off or change its thresholds.
+- **What stays:** disabled ships and wrecks stay in the world as targets for boarding and salvage.
+- **First Play:** a disabled raider counts as beaten.
+
+## Abandon Ship
+- **Escape pods:** `ESCAPE_POD` is a walkable grid component, `B` in chassis maps. Its seats are 4, 8, 20 or 48 for sizes S to XL. The corvette carries one Small pod and the freighter two.
+- **Ordering it:** P asks for confirmation, and a second P within 3 seconds orders abandon ship (`AbandonShip.order`). It is refused while docked ("walk off instead"), with no usable pod, or with nobody aboard. P again while abandoning launches the pods now.
+- **Getting to the pods:** the order posts an `EvacuateTask` (priority 1000) per seat, and every crew member drops what they are doing for it. The avatar is walked to a pod unless the player steers.
+- **Launch:** a pod launches when it is full, when everyone is in a pod, or 30 seconds after the order. A ship with none of its own crew left aboard becomes ABANDONED.
+
+## Rescue and Requisition
+When the player's pod launches, `Rescue` takes over:
+
+1. Every other pod launches. The old ship becomes ABANDONED, loses the player's controls, and is marked "Your old ship (abandoned)". Crew left aboard are lost.
+2. **Time skip:** 3 days on the rails.
+3. **Where the player wakes:** the nearest sponsor station (`Rescue.sponsorStation`; for now any station counts).
+4. **The new ship** is requisitioned there and latched to a free port of its size (`Rescue.requisition`). The starter corvette is always free and is the fallback whenever the player can't pay. Rank limits through `mayRequisition` are for the loop to wire.
+5. **What carries over:** the escaped crew come aboard the new ship with the player's avatar, and the credits move to it. Cargo is lost.
+6. **Standing, rank and contracts** are save modules, not on the ship, so they carry over once the factions branch is combined. On the rescue branch alone, the old ship kept its round-1 standing component.
+
+A notice tells the player where they woke and how long they were out.
+
+**Crashing** still ends the game ("SHIP LOST", F9 to reload); the rescue path does not yet cover it.
+
+## Boarding and Salvage
+Boarding is crew work across a ship-to-ship dock: the corvette's port is active and can latch onto another ship's port (`claude/r2-bridge-helm-1buzuu`). The details are in `ai-crew` and `stations-docking`. The progression side:
+
+- **Boarding:** only a disabled ship can be boarded (`Boarding.refusal`: "disable it first"). K opens the boarding window, and Send orders a party of marines (or crewmen if there are no marines) across. They sweep the ship room by room, forcing a shut door first if needed.
+- **Taking a ship:** the ship is taken once the party is aboard and no defenders are standing, or at once if it had surrendered. Its crew are held as prisoners (`CrewMemberComponent.held`): they neither fight nor work. An undefended disabled ship is taken the first time the player marks something on it.
+- **Standing:** boarding a faction's ship costs 20 standing with it once (`Boarding.STANDING_COST`), on top of any forced door. Boarding a pirate is meant to cost nothing, through the `outlaw` test, which is for the loop to wire.
+- **Salvage:**
+  - From the boarding window, each component can be marked to strip. Engineers strip it at one unit of work per mount tile, and loaders carry it home as a `part:<component>` crate (1 m³, 250 kg) to the player's hold. "Take all" carries cargo across too.
+  - A stripped system is dead for good.
+- **Selling salvage:** stations buy parts at a quarter of their price (`Salvage.SALE_SHARE`), listed as "Salvaged ..." in the trade window. Station markets never sell parts.
+- **Refitting with salvage:** a salvaged weapon can be fitted at a yard for free, like a used one, from the yard's "Salvaged" button.
+
+## Saves
+- **Save modules:** the career (`"factions"`) and contracts (`"contracts"`).
+- **Saved as components:** disabled state, morale, abandon orders, boarding state, prisoners, salvage orders and stripped mounts, all on their entities.
+- **Not saved:** a rescue between the pod launch and the new ship latching, which is in memory only.
+- **The combined round trip:** the round-2 tests include one save and load round trip holding all of these at once, on the combined loop branch, in the style of `FullSaveRoundTripTest`: an active contract, a disabled ship, a boarded ship and a requisitioned ship.
+
+## Open Questions
+- **Choosing a sponsor** at the start of a new game, and whether the player can ever change sides.
+- **Standing recovering** over time, or being bought back (also open in `stations-docking`).
+- **What a rescue costs** beyond the lost ship, cargo and crew: a standing penalty, a fee, or a lower-tier ship.
+- **Crashing** going through rescue when the crew had time to get away.
+- **Towing** a taken ship home instead of stripping it.
+- **Prisoners:** what becomes of them (ransom, hand-over for standing, release).
+- **All numbers** (pay, budgets, thresholds, prices) are placeholders until playtesting.
+
+## Stages
+| Stage | What | Branch | State |
+|---|---|---|---|
+| 1 | Factions as data, per-station ownership, standing per faction, the standing API | factions | Built |
+| 2 | Rank ladder, promotions, budget, difficulty | factions | Built |
+| 3 | Disabled state and NPC surrender | disabled-rescue | Built |
+| 4 | Escape pods, abandon ship, rescue and requisition | disabled-rescue | Built; rank-limited requisition not wired |
+| 5 | Contracts and the mission board | contracts | Built |
+| 6 | Boarding, taking ships and salvage | boarding-salvage | Built; outlaw exemption not wired |
+| 7 | The loop in the main game, scripted end to end | playable loop | In progress |
