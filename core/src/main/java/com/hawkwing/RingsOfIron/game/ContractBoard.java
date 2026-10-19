@@ -115,6 +115,8 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         public String station;
         public long day = -1;
         public Contract[] offers = new Contract[0];
+        /** The player's rank when the board was posted or last looked at; -1 if not known (an older save). */
+        public int rank = -1;
     }
 
     private final GameWorld world;
@@ -167,14 +169,48 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             board.station = stationUuid;
             board.day = day;
             board.offers = post(stationUuid, day).toArray(new Contract[0]);
+            board.rank = world.standing.record().rank;
             boards.put(stationUuid, board);
         }
+        promoted(board);
         List<Contract> out = new ArrayList<>();
         for (Contract c : extra) {
             if (stationUuid.equals(c.stationUuid) && c.status == Contract.Status.OFFERED && now() <= c.deadline) out.add(c);
         }
         for (Contract c : board.offers) if (c.status == Contract.Status.OFFERED) out.add(c);
         return out;
+    }
+
+    /**
+     * A promotion since {@code board} was posted adds the operations the new rank opens to it at once,
+     * rather than the next day.
+     */
+    private void promoted(StationOffers board) {
+        int rank = world.standing.record().rank;
+        if (rank <= board.rank || board.rank < 0) {
+            board.rank = Math.max(board.rank, rank);
+            return;
+        }
+        board.rank = rank;
+        Entity station = world.engine.getEntity(board.station);
+        EconomyNode node = world.macroSim.station(board.station);
+        int giver = world.standing.factionOf(station);
+        FactionDef def = world.standing.factions().def(giver);
+        if (station == null || node == null || def == null || def.hostileToAll) return;
+        List<Contract> more = new ArrayList<>();
+        for (Contract op : operations(giver)) {
+            boolean shown = false;
+            for (Contract c : board.offers) shown |= op.operationId.equals(c.operationId);
+            if (shown) continue;
+            op.id = nextId++;
+            op.giver = def.id;
+            op.stationUuid = board.station;
+            op.stationName = node.displayName;
+            more.add(op);
+        }
+        if (more.isEmpty()) return;
+        more.addAll(List.of(board.offers));
+        board.offers = more.toArray(new Contract[0]);
     }
 
     /**

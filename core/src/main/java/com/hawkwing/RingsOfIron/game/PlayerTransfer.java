@@ -94,7 +94,16 @@ public class PlayerTransfer {
         if (p == null) return "No transfer to " + name + " from this orbit";
         if (p.burns.isEmpty()) return "You are already with " + name;
         proposal = p;
-        return describe(p) + ". " + keys.apply(Action.ACCEPT_PLAN) + " accepts, " + keys.apply(Action.DISCARD_PLAN) + " discards";
+        return describe(p) + ". " + shortfall(p) + keys.apply(Action.ACCEPT_PLAN) + " accepts, " + keys.apply(Action.DISCARD_PLAN) + " discards";
+    }
+
+    /** "Not enough propellant: 1,030 m/s left. ", or nothing when the tanks cover the plan's burns. */
+    String shortfall(Proposal p) {
+        Entity ship = world.getPlayer();
+        com.ringsofiron.interiorgrid.ShipGridComponent.MassProperties m = ship == null ? null : world.shipMass(ship);
+        double left = m == null ? Double.POSITIVE_INFINITY : PropellantFeed.deltaVLeft(ship, m.mass);
+        if (!(left < p.totalDeltaV)) return "";
+        return String.format(java.util.Locale.ROOT, "Not enough propellant: %,.0f m/s left. ", left);
     }
 
     /**
