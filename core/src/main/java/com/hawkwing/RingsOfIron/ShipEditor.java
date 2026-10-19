@@ -835,11 +835,21 @@ public class ShipEditor extends ApplicationAdapter {
                 stroke = true;
                 strokeTo(m, cat);
                 break;
-            case ERASE:
+            case ERASE: {
+                // A light comes down first, leaving whatever stands on its tile
+                Side side = nearestSide();
+                if (m.lightAt(hoverX, hoverY, side) != null) {
+                    beginEdit();
+                    m.toggleLight(hoverX, hoverY, side);
+                    changed();
+                    say("Took down the light at " + hoverX + "," + hoverY + " " + side);
+                    break;
+                }
                 beginEdit();
                 stroke = true;
                 strokeTo(m, cat);
                 break;
+            }
             case COVERING:
                 rectStartX = hoverX;
                 rectStartY = hoverY;
@@ -1272,7 +1282,7 @@ public class ShipEditor extends ApplicationAdapter {
                 break;
             }
             case ERASE:
-                text(x, y, "Removes a component, hull piece or covering, else the tile", Color.GRAY);
+                text(x, y, "Removes a light, component, hull piece or covering, else the tile", Color.GRAY);
                 y -= LINE;
                 break;
             case PORT:

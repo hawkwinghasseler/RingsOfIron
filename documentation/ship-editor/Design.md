@@ -68,7 +68,7 @@ The screen is the ship on a tile grid, with a panel on the right. Three tabs at 
   3. **Edge wall**: click near a tile edge to add or remove a thin wall there, with the weight class and bulkhead door chosen in the panel.
   4. **Hull piece**: places a wedge or block of the size chosen in the panel; R rotates.
   5. **Covering**: drag a rectangle to lay carpet.
-  6. **Erase**: removes the component, hull piece, edge wall or covering under the cursor, or paints void.
+  6. **Erase**: removes the wall light nearest the cursor's edge, else the component, hull piece, edge wall or covering under the cursor, or paints void.
   7. **Port**: click a docking port to toggle it active or passive.
   8. **Light**: click near a floor tile's edge to hang or take down a wall light there, shining into the tile. A light takes no room: the tile stays free for anything else. **Auto-place lights** in the panel replaces the layout's lights with the ones the game would work out (see `documentation/lighting/Design.md`), as one undoable edit; **Clear** leaves the layout with none. Lights are saved under `lights = [{ x = 3, y = 2, side = "TOP" }]`; a layout without the key gets the auto-placed ones when the game builds it.
 - **Rotating placed components**: with any tool but Hull piece, R over a placed component turns it a quarter turn counter-clockwise about its middle (a rectangular slot swaps its width and height) and undoes like any edit; the next one placed faces the same way. It refuses, with the reason, when the turned slot would leave the grid or overlap another mount. Docking ports are not turned: they face out of the hull edge they sit in. A turned square mount is saved under `mounts` with its `rotation`, since the rows cannot show which way it faces.
