@@ -369,24 +369,27 @@ Hardness values per tile (`HULL`, `INTERNAL`, `FLOOR`, conduit, each subsystem t
 
 ---
 
-## Proposed Components
-- `WeaponMountComponent`: hardpoint offset, mount type, firing arc, slew rate, cooldown, power draw, assigned track, def ID.
+## Implemented Components
+All in `combat-sys/src/main/java/com/ringsofiron/combatsys` (`components` package unless noted).
+- `WeaponMountComponent`: one weapon: hardpoint offset, mount type, firing arc, slew rate, cooldown, power draw, assigned track, def ID. A ship holds its mounts in a `WeaponsComponent`, since Ashley allows one component of each type per entity.
 - `ProjectileComponent`: ballistic state and damage properties (2.4).
 - `MissileComponent`: propulsion, attitude, seeker, fusing and phase state (4.1).
-- `TrackComponent`: filtered target estimate (`p, v, a`), covariance-ish confidence, last observation time, `GunnerySkill`.
+- `SensorComponent`: range, noise, fix interval and `trackingSkill`, the locked target, and its `Track`s (`fire` package: filtered `p, v, a`, confidence, last observation time). Tracks live on the sensor rather than as a component of their own.
 - `SignatureComponent`: radar and thermal signature for seekers and decoys.
+- `DecoyComponent`: a countermeasure flare in flight (4.4).
 
-## Proposed Systems
-- From the orbital plan, not owned here: `TidalGravitySystem`, `FloatingOriginSystem` (anchor rebase), and the shared `TidalField.accelAt` that combat calls.
+## Implemented Systems
+- From the orbital plan, not owned here: `TidalGravitySystem`, `FloatingOriginSystem` (anchor rebase), and the shared `TidalField.accelAt` that combat calls (all in physics-exterior).
 - `SensorTrackingSystem`: produces noisy observations and runs the alpha-beta-gamma trackers.
 - `WeaponControlSystem`: solves, slews, applies gunnery error, fires, and applies recoil.
 - `BallisticsSystem`: integrates projectiles and runs swept hit tests.
-- `MissileGuidanceSystem`: phases, ZEM guidance, burn and mass flow, seeker lock, fusing.
+- `BeamSystem`: traces energy weapons each step (2.5, 5.6).
+- `MissileGuidanceSystem`: phases, ZEM guidance, burn and mass flow, seeker lock, fusing, and decoy flight.
 - `ImpactResolutionSystem`: ricochet, DDA penetration, explosive and beam damage, momentum transfer, and knock-on events.
 
 ## Utilities
 - `FiringSolutionSolver`: pure intercept math, shared by AI, HUD and missiles.
-- `GridRayTraversal`: Amanatides & Woo DDA over `ShipGridComponent`.
+- `GridRayTraversal`: Amanatides & Woo DDA over `ShipGridComponent` (in interior-grid, so ai-crew's line of sight shares it).
 
 ## Building and Testing This Module in Isolation
 Mock `TidalField` (zero, or a constant gradient), use a dummy `ShipGridComponent` with hand-placed tiles, and stub `GridOccupantQuery` / `DamageTaskSink`. Unit tests worth having early:
@@ -396,5 +399,7 @@ Mock `TidalField` (zero, or a constant gradient), use a dummy `ShipGridComponent
 - **Breach integration:** a HULL tile at 0 integrity makes `GridHazardSystem` vent the adjoining room on its next tick.
 - **Vacuum blast:** the same warhead does less overpressure damage in a vented room than a pressurized one.
 
+Run `gradlew :combat-sys:test` for the solver, traversal, penetration, fire-control, data and integration tests.
+
 ## Open Questions
-None in this module right now. The construction decisions in section 5 still need matching changes in the `interior-grid` design: edge walls, weight classes, multi-tile pieces and mount footprints.
+None in this module right now. The construction decisions in section 5 (edge walls, weight classes, multi-tile pieces and mount footprints) are now in the `interior-grid` design too.

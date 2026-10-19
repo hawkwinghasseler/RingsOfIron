@@ -1,33 +1,77 @@
-# RingsOfIron
+# Rings of Iron
 
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
+A top-down 2D space combat sim with Newtonian flight and orbital mechanics. You fly a ship at real scale around a planet and its moons, fight with railguns, lasers and guided missiles, and walk its decks while the crew fight fires, seal breaches and repair what the hits broke. Stations trade with each other through freighters flying real transfer orbits, and you can dock, trade and refit there.
 
-This project was generated with a template including simple application launchers and an `ApplicationAdapter` extension that draws libGDX logo.
+Built in Java on [libGDX](https://libgdx.com/), with Box2D for physics inside a bubble around the player, analytic Kepler orbits ("rails") for everything outside it, and Ashley as the entity-component-system.
 
-## Platforms
+## Running it
 
-- `core`: Main module with the application logic shared by all platforms.
-- `lwjgl3`: Primary desktop platform using LWJGL3; was called 'desktop' in older docs.
+You need a JDK 17 or newer to start the Gradle wrapper, which is included. The build itself runs on Java 21 and downloads it if your machine lacks it. On Windows, double-click a launcher; elsewhere, run the Gradle task beside it.
 
-## Gradle
+| Launcher | Gradle task | What it shows |
+|---|---|---|
+| `Play Rings of Iron.bat` | `./gradlew :lwjgl3:runGame` | The game: flight, combat, crew, docking, trading and time warp together |
+| `demos/Flight demo.bat` | `./gradlew :lwjgl3:runFlightDemo` | Newtonian flight, the floating origin, orbit around a planet and fast passes |
+| `demos/Orbit demo.bat` | `./gradlew :lwjgl3:runOrbitDemo` | Rails orbits, sphere-of-influence changes and time warp |
+| `demos/Interior Grid Demo.bat` | `./gradlew :lwjgl3:run` | One ship's deck: air, fire, breaches, doors and power routing |
+| `demos/Crew demo.bat` | `./gradlew :lwjgl3:runCrewDemo` | AI crew fighting fires, repairing, rescuing and repelling boarders |
+| `demos/Docking demo.bat` | `./gradlew :lwjgl3:runDockingDemo` | Docking at a station, walking across the dock and carrying cargo |
+| `demos/HUD demo.bat` | `./gradlew :lwjgl3:runHudDemo` | Target brackets, lead reticle, minimap, consoles and the traffic map |
+| `demos/Audio demo.bat` | `./gradlew :lwjgl3:runAudioDemo` | Sound muffled by walls and doors, and interior versus exterior listening |
+| `demos/Ship editor.bat` | `./gradlew :lwjgl3:runShipEditor` | The ship editor, which edits the game's own layout, tile and component data |
 
-This project uses [Gradle](https://gradle.org/) to manage dependencies.
-The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
-Useful Gradle tasks and flags:
+`Internal demo.bat` in the root is an older copy of the Interior Grid launcher.
 
-- `--continue`: when using this flag, errors will not stop the tasks from running.
-- `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.
-- `--offline`: when using this flag, cached dependency archives will be used.
-- `--refresh-dependencies`: this flag forces validation of all dependencies. Useful for snapshot versions.
-- `build`: builds sources and archives of every project.
-- `cleanEclipse`: removes Eclipse project data.
-- `cleanIdea`: removes IntelliJ project data.
-- `clean`: removes `build` folders, which store compiled classes and built archives.
-- `eclipse`: generates Eclipse project data.
-- `idea`: generates IntelliJ project data.
-- `lwjgl3:jar`: builds application's runnable jar, which can be found at `lwjgl3/build/libs`.
-- `lwjgl3:run`: starts the application.
-- `test`: runs unit tests (if any).
+Some modules also have headless demos that print to the console: `./gradlew :ai-crew:runCrewConsoleDemo`, `./gradlew :macro-sim:runMacroDemo` (add `-Pdays=60` for a longer run) and `./gradlew :modding-data:runModdingDemo`.
 
-Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
-For example, `core:clean` removes `build` folder only from the `core` project.
+### Game controls
+
+| Key | Action |
+|---|---|
+| W / S, A / D, Z / C | Thrust forward and back, turn, strafe |
+| X | Toggle rotation assist |
+| Space | Fire guns |
+| R | Launch a missile at the target |
+| F | Drop a decoy (on deck: force the door across a dock) |
+| Tab | Cycle the target |
+| V | Switch between the exterior and the deck view |
+| M | Traffic map |
+| T | Trade, when in range of a station |
+| G / H / U | Arm docking, pick the next port, undock |
+| , / . | Time warp down and up |
+| N, B, arrows, [ / ] | Plan a burn: add a node, select the next, change its Δv, move it in time |
+| F5 / F9 | Quick save and quick load |
+| Esc | Quit |
+
+Each demo lists its own controls on screen.
+
+## Building and testing
+
+```
+./gradlew build        # compile everything and run every test
+./gradlew test         # tests only
+./gradlew :combat-sys:test   # one module's tests
+```
+
+The art in `assets/art` is SVG. The `art-pipeline` module rasterizes it into a texture atlas when a run task needs it, so nothing generated is committed. See `documentation/art/Design.md`.
+
+## Layout
+
+| Module | What it holds |
+|---|---|
+| `core-engine` | The ECS engine, the fixed 60 Hz sim clock, time warp, UUID references and save/load |
+| `physics-exterior` | Box2D flight in the bubble, the floating origin and its free-falling orbital anchor, tidal gravity, fast passes |
+| `orbital-mechanics` | Kepler orbits, sphere-of-influence changes, the orbital event queue and time warp control |
+| `interior-grid` | Ship decks: tiles, walls, doors, air, heat, fire, life support and power |
+| `ai-crew` | Crew pathfinding, behavior trees, health, interior physics, and NPC pilots |
+| `combat-sys` | Sensors, fire control, ballistics, missiles and hull penetration into the deck |
+| `macro-sim` | The economy, freighters on rails, and moving ships in and out of the bubble |
+| `stations-docking` | Stations, docking ports and the walkable link between docked craft |
+| `ui-hud` | The HUD, minimap, consoles, trade window and traffic map |
+| `audio-spatial` | Positional sound with wall and door muffling |
+| `modding-data` | TOML/JSON data loading, mods and Groovy mod scripts |
+| `art-pipeline` | Rasterizes the SVG art into the game's texture atlas |
+| `core` | The game itself, the demos and the ship editor, wiring the modules together |
+| `lwjgl3` | Desktop launchers |
+
+Game data lives in `assets/data` (ships, chassis layouts, tiles, components, weapons, economy). Each module's design is in `documentation/<module>/Design.md`, and `documentation/Technical Design Decisions.md` records the decisions that cut across modules.

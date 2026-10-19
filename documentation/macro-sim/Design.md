@@ -29,15 +29,17 @@ To implement this module independently (mocking the Box2D transition logic):
    - **Fast pass:** within 20 km but faster than about 1,000 m/s: the body becomes a kinematic transient (drawn and swept for collisions by `physics-exterior`) and stays on rails until it slows down or leaves.
    - **Exit:** beyond 25 km from the anchor: convert the Box2D state back to absolute doubles, compute new orbital elements, destroy the body, and enqueue the body's next rails events. The 5 km gap between entry and exit stops bodies flipping at the boundary.
 
-## Proposed Components
-- `OrbitComponent`: Keplerian elements, parent UUID and epoch for every body outside the bubble.
-- `ManeuverNodeComponent`: Scheduled impulsive burns (time, prograde/radial Δv).
-- `EconomyNodeComponent`: Attached to celestial bodies/stations, holding inventory maps.
+## Implemented Components
+- `EconomyNodeComponent`: marks a station entity as part of the economy.
+- `FreighterComponent`: an NPC hauler that takes trade orders, by UUID.
+- `TraderComponent`: credits and cargo of a ship that trades by hand (the player's).
+- The rails components, `OrbitComponent` (Keplerian elements, parent UUID, epoch) and `ManeuverNodeComponent` (scheduled burns), belong to orbital-mechanics.
 
-## Proposed Systems
-- `OrbitalEventSystem`: Fires due events from the sim-time queue (maneuver nodes, SOI transitions, impacts).
+## Implemented Systems
+- `MacroSimSystem`: the `FixedLogicSystem` that advances `MacroSimulation` (economy, freighters, rails events and bubble transitions) to the sim clock.
 - `EncounterPredictionTask`: Background predictions for bubble entry, warp drop-out and map rendering.
-- `BubbleTransitionSystem`: Moves ships between the background math simulation and the active Box2D simulation.
+- `BubbleTransitionSystem`: Moves ships between the background math simulation and the active Box2D simulation. Not an ECS system: `MacroSimulation` runs it at each sim second.
+- `OrbitalEventSystem`, which fires due rails events, belongs to orbital-mechanics.
 
 ## Prototype Status
 The first prototype lives in `macro-sim/src/main/java/com/ringsofiron/macrosim`. Run `gradlew :macro-sim:runMacroDemo` (optionally `-Pdays=60`) for a headless 30-day report, and `gradlew :macro-sim:test` for the checks.
