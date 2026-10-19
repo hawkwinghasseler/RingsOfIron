@@ -19,7 +19,9 @@ public abstract class CrewTask {
         TREAT,
         MAN_CONSOLE,
         /** Carry goods from one craft's cargo bays to another's (or within one). */
-        CARRY
+        CARRY,
+        /** Yard work on a docked craft: repairing a damaged tile or system, or installing a refit part. */
+        YARD
     }
 
     public enum Status {

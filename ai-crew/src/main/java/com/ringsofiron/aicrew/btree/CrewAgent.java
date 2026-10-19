@@ -132,10 +132,10 @@ public class CrewAgent {
 
     /**
      * True if this crew member would take {@code task} now: not one they just found unreachable, and
-     * only carrying while away from the craft they work for (other work is done from home).
+     * only carrying and yard work while away from the craft they work for (other work is done from home).
      */
     public boolean mayTake(CrewTask task) {
         if (isIgnoring(task)) return false;
-        return pos.ship == service.homeOf(entity) || task.kind == CrewTask.Kind.CARRY;
+        return pos.ship == service.homeOf(entity) || task.kind == CrewTask.Kind.CARRY || task.kind == CrewTask.Kind.YARD;
     }
 }

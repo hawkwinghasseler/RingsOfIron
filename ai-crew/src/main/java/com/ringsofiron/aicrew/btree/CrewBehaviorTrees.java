@@ -18,7 +18,8 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
  *                                                     PickUpCasualty, CarryToSafety, PutDownCasualty ),
  *                                           Sequence( IsTaskKind(CARRY), PickUpLoad, DeliverLoad,
  *                                                     CompleteTask ),
- *                                           Sequence( IsTaskKind(not RESCUE), IsTaskKind(not CARRY),
+ *                                           Sequence( IsTaskKind(YARD), WorkOnTile, CompleteTask ),
+ *                                           Sequence( IsTaskKind(not RESCUE, CARRY or YARD),
  *                                                     MoveToWorkSpot, DoWork, CompleteTask ) ) )
  *                     Idle (heads home first when aboard another craft)
  * </pre>
@@ -40,8 +41,11 @@ public final class CrewBehaviorTrees {
                         new CrewTasks.PickUpCasualty(), new CrewTasks.CarryToSafety(), new CrewTasks.PutDownCasualty()),
                 new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.CARRY), new CrewTasks.PickUpLoad(),
                         new CrewTasks.DeliverLoad(), new CrewTasks.CompleteTask()),
+                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.YARD), new CrewTasks.WorkOnTile(),
+                        new CrewTasks.CompleteTask()),
                 new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.RESCUE, true),
-                        new CrewTasks.IsTaskKind(CrewTask.Kind.CARRY, true), new CrewTasks.MoveToWorkSpot(),
+                        new CrewTasks.IsTaskKind(CrewTask.Kind.CARRY, true),
+                        new CrewTasks.IsTaskKind(CrewTask.Kind.YARD, true), new CrewTasks.MoveToWorkSpot(),
                         new CrewTasks.DoWork(), new CrewTasks.CompleteTask()));
         Task<CrewAgent> work = new TaskBranch(new CrewTasks.ClaimTask(), doTask);
         work.setGuard(new CrewTasks.HasWork());

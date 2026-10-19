@@ -360,7 +360,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
     }
 
-    /** How door forcing went, and what the factions made of it. */
+    /** How door forcing went, what the factions made of it, and the yard's news. */
     private void reportForcing() {
         if (!world.forcing.lastOutcome.isEmpty()) {
             show(world.forcing.lastOutcome);
@@ -372,6 +372,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
                     act.standing < FactionStanding.REFUSE_BELOW ? "; its stations will refuse you clearance" : ""));
         }
         world.standing.acts.clear();
+        // What the yard last said about its work on the ship
+        if (!world.yard.notices.isEmpty()) show(world.yard.notices.get(world.yard.notices.size() - 1));
+        world.yard.notices.clear();
     }
 
     private void show(String message) {
@@ -570,7 +573,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         for (int i = 0; i < dock.length; i++) font.draw(batch, dock[i], left, top - 90f - 20f * i);
         if (hud.getViewMode().getMode() != ViewMode.INTERIOR) {
             font.setColor(Color.LIGHT_GRAY);
-            font.draw(batch, "G arm port + ask clearance   H next port   U undock   T trade when docked", hintX, 44f);
+            font.draw(batch, "G arm port + ask clearance   H next port   U undock   T trade, Y yard when docked", hintX, 44f);
         }
         batch.end();
     }

@@ -3,6 +3,7 @@ package com.ringsofiron.aicrew.btree;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.aicrew.CarryTask;
+import com.ringsofiron.aicrew.YardTask;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewState;
@@ -394,8 +395,9 @@ public final class CrewTasks {
                 return Status.FAILED;
             }
             a.crew.activity = "carrying " + t.job.commodity();
-            CrewAgent.Travel go = a.travel(t.to, beside(a, t.to, anyBay ? null : t.job.commodity(), false));
-            if (go == CrewAgent.Travel.UNREACHABLE && !anyBay) {
+            CrewAgent.Travel go = t.toX >= 0 ? a.travel(t.to, near(a, t.to, t.toX, t.toY, 1, 1))
+                    : a.travel(t.to, beside(a, t.to, anyBay ? null : t.job.commodity(), false));
+            if (go == CrewAgent.Travel.UNREACHABLE && !anyBay && t.toX < 0) {
                 anyBay = true;
                 go = a.travel(t.to, beside(a, t.to, null, false));
             }
@@ -411,6 +413,44 @@ public final class CrewTasks {
             t.job.deliver(load.units);
             return Status.SUCCEEDED;
         }
+    }
+
+    /**
+     * Walks onto {@link YardTask#ship} to the task's tile (or beside it, for a tile no one can
+     * stand on) and works it until its job says it is done.
+     */
+    public static class WorkOnTile extends CrewLeaf {
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            YardTask t = (YardTask) a.crew.task;
+            if (!t.job.isOpen()) return Status.FAILED;
+            a.crew.activity = "going to " + t.job.what();
+            CrewAgent.Travel go = a.travel(t.ship, near(a, t.ship, t.x, t.y, t.w, t.h));
+            if (go == CrewAgent.Travel.UNREACHABLE) {
+                a.abandonUnreachable();
+                return Status.FAILED;
+            }
+            if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
+            a.crew.activity = t.job.what();
+            return t.job.work(a.crew.def.repairRate * a.dt) ? Status.SUCCEEDED : Status.RUNNING;
+        }
+    }
+
+    /**
+     * Walkable tiles of {@code ship} from which the {@code w} x {@code h} tiles from (x, y) are
+     * worked: inside them, or next to one of them.
+     */
+    static GridPathfinder.TilePredicate near(CrewAgent a, Entity ship, int x, int y, int w, int h) {
+        ShipGridComponent grid = a.service.grid(ship);
+        if (grid == null) return (px, py) -> false;
+        GridNavGraph nav = a.service.pathfinder(grid).graph;
+        return (px, py) -> {
+            if (!nav.isWalkable(px, py)) return false;
+            int dx = px < x ? x - px : px >= x + w ? px - (x + w - 1) : 0;
+            int dy = py < y ? y - py : py >= y + h ? py - (y + h - 1) : 0;
+            return dx + dy <= 1;
+        };
     }
 
     /**
@@ -568,6 +608,7 @@ public final class CrewTasks {
             }
             case RESCUE: return "rescuing a casualty";
             case CARRY: return "carrying " + ((CarryTask) t).job.commodity();
+            case YARD: return ((YardTask) t).job.what();
             case TREAT: return "treating a patient";
             default: return t.kind.name().toLowerCase();
         }

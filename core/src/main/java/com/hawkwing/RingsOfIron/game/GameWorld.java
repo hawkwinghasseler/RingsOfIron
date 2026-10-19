@@ -153,6 +153,8 @@ public class GameWorld implements Disposable {
     public final FactionStanding standing;
     /** Crew prying, cutting or hacking at a shut port door across a dock. */
     public final DoorForcing forcing;
+    /** Station yards repairing and refitting docked ships. */
+    public final StationYard yard;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -285,6 +287,9 @@ public class GameWorld implements Disposable {
         // Rounds and missiles fall through the same tidal field as the Box2D bodies.
         ballistics.setTidalField(physics.getTidalField()::accelAt);
         engine.getSerializationService().addParticipant(new CombatSaveParticipant(engine));
+        // stations-docking: the yards fit weapons from combat-sys's defs
+        yard = new StationYard(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, combatDefs);
+        engine.addSystem(yard);
         // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
         // and hit, then hits resolve and beams burn. Their step listeners run in the order added here.
         sensors = new SensorTrackingSystem(physics, modules.combatSeed + 1);

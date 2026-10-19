@@ -302,6 +302,96 @@ class DockingDemoSceneTest {
     }
 
     @Test
+    void theYardRepairsTheShipTileByTileAndChargesForIt() {
+        demo.load(DockingDemoScene.Scene.YARD);
+        int damaged = demo.world.yard.damage(demo.player).size();
+        assertTrue(damaged >= 4, "hull, a wall and the turret (" + damaged + ")");
+        double cost = demo.world.yard.repairCost(demo.player);
+        assertTrue(demo.orderRepairs().startsWith("Repairs ordered"), demo.notice());
+        boolean techAboard = false;
+        for (int i = 0; i < 60 * 600 && demo.world.yard.repairing(demo.player); i++) {
+            demo.update(FRAME);
+            for (Entity e : demo.world.crew.crewEntities()) {
+                if (demo.world.crew.crew(e).role == com.ringsofiron.aicrew.CrewRole.TECHNICIAN
+                        && demo.world.crew.position(e).ship == demo.player) techAboard = true;
+            }
+        }
+        assertFalse(demo.world.yard.repairing(demo.player), "the repairs finished");
+        assertEquals(0, demo.world.yard.damage(demo.player).size(), "nothing left damaged");
+        assertTrue(techAboard, "the technicians came aboard to do it");
+        double paid = DockingDemoScene.YARD_CREDITS - credits();
+        assertEquals(cost, paid, cost * 0.01 + 1, "paid what it was quoted");
+        assertTrue(demo.notice().contains("finished the repairs"), demo.notice());
+    }
+
+    @Test
+    void theYardRefitsTheNoseWithAPartCarriedAboard() {
+        demo.load(DockingDemoScene.Scene.YARD);
+        com.ringsofiron.combatsys.components.WeaponMountComponent nose =
+                demo.player.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class).mounts.get(0);
+        com.ringsofiron.combatsys.defs.WeaponDef old = nose.def;
+        assertTrue(demo.refitNose(false).startsWith("Ordered a new"), demo.notice());
+        com.ringsofiron.combatsys.defs.WeaponDef wanted = demo.world.combatDefs.weapons.get(demo.world.yard.refit(demo.player, 0).weapon);
+        boolean crate = false;
+        for (int i = 0; i < 60 * 300 && demo.world.yard.refit(demo.player, 0) != null; i++) {
+            demo.update(FRAME);
+            for (Entity e : demo.world.crew.crewEntities()) {
+                com.ringsofiron.aicrew.CrewMemberComponent c = demo.world.crew.crew(e);
+                if (c.load != null && c.load.task.job.commodity().startsWith(StationYard.PART)) crate = true;
+            }
+        }
+        assertNull(demo.world.yard.refit(demo.player, 0), "the refit is done");
+        assertSame(wanted, nose.def, "the nose has its new weapon");
+        assertNotSame(old, nose.def);
+        assertTrue(crate, "the part was carried aboard by hand");
+        double expected = DockingDemoScene.YARD_CREDITS - wanted.price + old.price * StationYard.TRADE_IN;
+        assertEquals(expected, credits(), 1, "paid for the new one, less the old one taken back");
+        assertEquals(1f, nose.subsystem.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class).health, 1e-6,
+                "a new part leaves the mount sound");
+    }
+
+    @Test
+    void undockingCallsOffTheRefitAndRefundsAPartAboard() {
+        demo.load(DockingDemoScene.Scene.YARD);
+        demo.refitNose(true);
+        for (int i = 0; i < 60 * 300 && !demo.world.yard.refit(demo.player, 0).aboard; i++) demo.update(FRAME);
+        assertTrue(demo.world.yard.refit(demo.player, 0).aboard);
+        assertTrue(credits() < DockingDemoScene.YARD_CREDITS, "paid when it came aboard");
+        for (int i = 0; i < 60 * 120 && demo.world.cargo.visitorsAboard(demo.player) > 0; i++) demo.update(FRAME);
+        demo.world.docking.undock(demo.player);
+        for (int i = 0; i < 10; i++) demo.update(FRAME);
+        assertNull(demo.world.yard.refit(demo.player, 0));
+        assertEquals(DockingDemoScene.YARD_CREDITS, credits(), 1e-6, "refunded");
+    }
+
+    @Test
+    void theYardWindowListsTheDamageAndTheHardpoints() {
+        demo.load(DockingDemoScene.Scene.YARD);
+        YardWork yard = new YardWork(demo.world);
+        com.ringsofiron.uihud.providers.YardProvider.YardBoard board = new com.ringsofiron.uihud.providers.YardProvider.YardBoard();
+        yard.collect(board);
+        assertTrue(board.isOpen(), "docked at a yard");
+        assertEquals(demo.world.yard.damage(demo.player).size(), board.damaged);
+        assertEquals(demo.player.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class).mounts.size, board.hardpoints.size);
+        assertEquals("the nose", board.hardpoints.get(0).name);
+        assertTrue(board.offers.size >= 4);
+        assertTrue(yard.orderRepairs().startsWith("Repairs ordered"));
+        board.clear();
+        yard.collect(board);
+        assertTrue(board.repairs.startsWith("Repairing"), board.repairs);
+
+        demo.world.docking.undock(demo.player);
+        demo.update(FRAME);
+        board.clear();
+        yard.collect(board);
+        assertFalse(board.isOpen(), "no yard once undocked");
+    }
+
+    private double credits() {
+        return demo.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class).credits;
+    }
+
+    @Test
     void everySceneLoadsAgainCleanly() {
         for (DockingDemoScene.Scene s : DockingDemoScene.Scene.values()) {
             demo.load(s);

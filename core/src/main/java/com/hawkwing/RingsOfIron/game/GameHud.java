@@ -41,6 +41,8 @@ public class GameHud implements Disposable {
         hud.setTrafficMap(new RailsTrafficMap(world));
         // macro-sim's station markets for the [T] trade window.
         hud.setTrade(new MarketTrade(world));
+        // The docked station's yard for the [Y] yard window: repairs and refits.
+        hud.setYard(new YardWork(world));
         hullHits = (signal, hit) -> {
             if (hit.ship != null && hit.ship == world.getPlayer()) hud.flashHullHit(hit.tileX, hit.tileY);
         };

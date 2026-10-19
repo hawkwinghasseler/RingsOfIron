@@ -9,6 +9,8 @@ import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -17,6 +19,7 @@ import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.economy.CommodityCatalog;
 import com.ringsofiron.macrosim.economy.CommodityType;
+import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
@@ -59,7 +62,12 @@ public class DockingDemoScene {
         FORCE("Forcing a door", "Latched onto the outpost without its clearance: its port door stays shut. You stand in"
                 + " your port's opening, facing it. It is powered and locked: F hacks it (45 s, no damage), B cuts through"
                 + " (20 s, damages it). O switches the outpost's reactor off, so F pries the unpowered door instead (8 s)."
-                + " Each is a hostile act: your standing with the stations drops, and after a cut they refuse you clearance.");
+                + " Each is a hostile act: your standing with the stations drops, and after a cut they refuse you clearance."),
+        YARD("Refit and repair", "Docked at the outpost, battered: hull, a wall and the nose turret are damaged. J has"
+                + " the outpost's yard repair it all: its technicians (orange) come aboard and work through the damage tile"
+                + " by tile, paid as they go. N refits the nose hardpoint with the next weapon, new (M: used, half price but"
+                + " worn): a loader carries the part aboard, as close to the mount as it can walk, and the technicians fit it"
+                + " one tile at a time. The turrets sit where no one can walk from the dock, so they work on those from outside.");
 
         public final String title;
         public final String help;
@@ -70,6 +78,8 @@ public class DockingDemoScene {
         }
     }
 
+    /** Credits the player has in the yard scene. */
+    public static final double YARD_CREDITS = 200_000;
     /** Units the loading scene's keys order carried across. */
     public static final int LOAD_UNITS = 10;
     /** The loading scene's goods. */
@@ -103,7 +113,7 @@ public class DockingDemoScene {
         dispose();
         scene = next;
         autopilot = false;
-        deckView = next == Scene.WALK || next == Scene.LOADING || next == Scene.FORCE;
+        deckView = next == Scene.WALK || next == Scene.LOADING || next == Scene.FORCE || next == Scene.YARD;
         notice = next.help;
         world = new GameWorld();
         world.loadContent(assetsDir, assetsDir.resolve("no-mods-here"));
@@ -130,11 +140,14 @@ public class DockingDemoScene {
             case WALK:
             case LOADING:
             case FORCE:
+            case YARD:
                 target = station("Outpost Kepler", "station_outpost", next != Scene.REFUSED && next != Scene.FORCE);
-                boolean docked = next == Scene.TEAR || next == Scene.WALK || next == Scene.LOADING || next == Scene.FORCE;
+                boolean docked = next == Scene.TEAR || next == Scene.WALK || next == Scene.LOADING || next == Scene.FORCE
+                        || next == Scene.YARD;
                 park(player, 0, target, smallPort(target), docked ? 0f : 25f, docked ? 0f : 3f, docked ? 0f : 12f);
                 if (docked) world.docking.dockInPlace(player, 0, target, smallPort(target));
                 if (next == Scene.LOADING) stock(target);
+                if (next == Scene.YARD) batter(player);
                 if (next == Scene.FORCE) {
                     // Latched on with the ship's own magnets: the outpost never agreed, so its door stays shut
                     port(target, smallPort(target)).consented = false;
@@ -164,6 +177,8 @@ public class DockingDemoScene {
         world.update(delta);
         // The panel shows the standing itself
         world.standing.acts.clear();
+        if (!world.yard.notices.isEmpty()) notice = world.yard.notices.get(world.yard.notices.size() - 1);
+        world.yard.notices.clear();
     }
 
     /**
@@ -201,6 +216,83 @@ public class DockingDemoScene {
         grid.gridDirty = true;
         notice = on == null ? "The station has no reactor" : on ? "The outpost's reactor is back on" : "The outpost's reactor is off";
         return notice;
+    }
+
+    /** Has the outpost's yard repair everything aboard; returns what the scene says. */
+    public String orderRepairs() {
+        notice = world.yard.orderRepairs(player, target);
+        return notice;
+    }
+
+    /** Has the outpost's yard fit the nose hardpoint with the next weapon it sells, new or used. */
+    public String refitNose(boolean used) {
+        WeaponsComponent weapons = player.getComponent(WeaponsComponent.class);
+        if (weapons == null || weapons.mounts.size == 0) return notice = "No hardpoints";
+        WeaponDef now = weapons.mounts.get(0).def;
+        java.util.List<WeaponDef> offers = world.yard.offers();
+        int at = offers.indexOf(now);
+        WeaponDef next = offers.get((at + 1) % offers.size());
+        notice = world.yard.orderRefit(player, target, 0, next.id, used);
+        return notice;
+    }
+
+    /** The yard scene's damage: hull beside the crew spaces, a wall, and the nose turret's mount. */
+    private void batter(Entity ship) {
+        player.add(new TraderComponent(YARD_CREDITS, 0));
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        int hits = 0;
+        for (int y = 0; y < grid.height && hits < 3; y++) {
+            for (int x = 0; x < grid.width && hits < 3; x++) {
+                Tile t = grid.getTile(x, y);
+                if (t.wallType != Tile.WallType.HULL || t.mount != null || !besideFloor(grid, x, y)) continue;
+                if (t.getIntegrity() < 1f) continue;
+                t.setIntegrity(0.35f);
+                hits++;
+            }
+        }
+        walls:
+        for (int y = 0; y <= grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                com.ringsofiron.interiorgrid.EdgeWall h = grid.edgeH[y][x];
+                if (h != null && !h.isDestroyed()) {
+                    h.integrity = 0.4f;
+                    break walls;
+                }
+            }
+        }
+        // The crew left the doors open for the yard: technicians don't open doors themselves
+        for (int y = 0; y <= grid.height; y++) {
+            for (int x = 0; x <= grid.width; x++) {
+                openDoor(grid, x < grid.width ? grid.edgeH[y][x] : null, x, y, x, y - 1);
+                openDoor(grid, y < grid.height ? grid.edgeV[y][x] : null, x, y, x - 1, y);
+            }
+        }
+        WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);
+        if (weapons != null && weapons.mounts.size > 0 && weapons.mounts.get(0).subsystem != null) {
+            weapons.mounts.get(0).subsystem.getComponent(SubsystemComponent.class).health = 0.5f;
+        }
+    }
+
+    /** Opens an inner bulkhead door between tiles (x, y) and (ox, oy); port doors stay as they are. */
+    private static void openDoor(ShipGridComponent grid, com.ringsofiron.interiorgrid.EdgeWall wall, int x, int y, int ox, int oy) {
+        if (wall == null || !wall.hasBulkhead || !wall.bulkheadSealed) return;
+        Tile a = grid.getTile(x, y), b = grid.getTile(ox, oy);
+        if (a == null || b == null || !a.isFloor() || !b.isFloor()) return;
+        if (isPort(a) || isPort(b)) return;
+        wall.bulkheadSealed = false;
+    }
+
+    private static boolean isPort(Tile t) {
+        return t.mount != null && t.mount.kind == MountFootprint.MountKind.PORT;
+    }
+
+    private static boolean besideFloor(ShipGridComponent grid, int x, int y) {
+        int[][] n = {{x + 1, y}, {x - 1, y}, {x, y + 1}, {x, y - 1}};
+        for (int[] p : n) {
+            Tile t = grid.getTile(p[0], p[1]);
+            if (t != null && t.isFloor() && t.mount == null) return true;
+        }
+        return false;
     }
 
     /** Units of {@code commodity} in {@code craft}'s hold. */
@@ -257,7 +349,7 @@ public class DockingDemoScene {
                 ChassisDef.class), blueprint, world.engine, name, null);
         station.grantsClearance = grantsClearance;
         e.add(new HudMarkerComponent(name, HudMarkerComponent.Kind.STATION).radius(20f));
-        StationCrew.spawnLoaders(world.crew, e);
+        StationCrew.spawnCrew(world.crew, e);
         // Holding still in the demo's empty space; in the game this is the station's orbit.
         e.add(new KinematicTransientComponent((t, out) -> {
             out[0] = 0.0;

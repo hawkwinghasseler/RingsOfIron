@@ -12,7 +12,9 @@ public enum CrewRole {
     MEDIC,
     CREWMAN,
     /** Station hand: carries cargo between the station's bays and docked craft. */
-    LOADER;
+    LOADER,
+    /** Station yard hand: repairs docked craft and installs refit parts, and keeps the station running. */
+    TECHNICIAN;
 
     /**
      * How much this role wants a task of the given kind: 0 means never, 1 is neutral and
@@ -42,6 +44,13 @@ public enum CrewRole {
             case LOADER:
                 switch (kind) {
                     case CARRY: return 1.5f;
+                    case EXTINGUISH: case RESCUE: return 0.8f;
+                    default: return 0f;
+                }
+            case TECHNICIAN:
+                switch (kind) {
+                    case YARD: return 1.5f;
+                    case REPAIR: case SEAL_BREACH: return 1.2f;
                     case EXTINGUISH: case RESCUE: return 0.8f;
                     default: return 0f;
                 }

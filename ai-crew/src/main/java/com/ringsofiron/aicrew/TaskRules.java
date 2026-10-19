@@ -49,6 +49,8 @@ public final class TaskRules {
             }
             case CARRY:
                 return ((CarryTask) task).job.isOpen();
+            case YARD:
+                return ((YardTask) task).job.isOpen();
             default:
                 return true;
         }
