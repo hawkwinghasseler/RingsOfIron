@@ -180,7 +180,7 @@ public class GameShell implements ApplicationListener {
     private boolean hudWindowOpen() {
         UiHud hud = game.getHud();
         return hud.getTrafficMap().isVisible() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
-                || hud.getConsoleWindow().isOpen();
+                || hud.getConsoleWindow().isOpen() || hud.getCrewWindow().isOpen();
     }
 
     @Override

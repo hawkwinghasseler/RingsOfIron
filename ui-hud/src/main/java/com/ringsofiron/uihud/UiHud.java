@@ -23,6 +23,7 @@ import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import com.ringsofiron.uihud.providers.ShipStatusProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider;
+import com.ringsofiron.uihud.providers.CrewProvider;
 import com.ringsofiron.uihud.providers.MissionProvider;
 import com.ringsofiron.uihud.providers.TradeProvider;
 import com.ringsofiron.uihud.providers.BoardingProvider;
@@ -41,6 +42,7 @@ import com.ringsofiron.uihud.widgets.OrbitMap;
 import com.ringsofiron.uihud.widgets.RadarScope;
 import com.ringsofiron.uihud.widgets.ShipGauges;
 import com.ringsofiron.uihud.widgets.ThreatOverlay;
+import com.ringsofiron.uihud.widgets.CrewWindow;
 import com.ringsofiron.uihud.widgets.MissionWindow;
 import com.ringsofiron.uihud.widgets.TradeWindow;
 import com.ringsofiron.uihud.widgets.BoardingWindow;
@@ -63,7 +65,7 @@ import com.ringsofiron.uihud.widgets.TrafficMap;
  *
  * Keys handled by the HUD: E use console, Esc close console, map or market, V toggle exterior/interior view,
  * M toggle the traffic map (mouse wheel zooms it while open), T open the station market while docked,
- * J the mission board (while docked, or holding a contract).
+ * J the mission board (while docked, or holding a contract), I the crew roster.
  */
 public class UiHud implements Disposable {
     private final ViewportManager viewports;
@@ -85,6 +87,7 @@ public class UiHud implements Disposable {
     private final YardWindow yardWindow;
     private final MissionWindow missionWindow;
     private final BoardingWindow boardingWindow;
+    private final CrewWindow crewWindow;
     private final ThreatOverlay threatOverlay;
     private final ShipGauges gauges;
     private final RadarScope radar;
@@ -192,8 +195,10 @@ public class UiHud implements Disposable {
         tradeWindow = new TradeWindow(skin, dockHint);
         yardWindow = new YardWindow(skin);
         missionWindow = new MissionWindow(skin);
+        crewWindow = new CrewWindow(skin);
         tradeWindow.setHintSuffix(() -> (yardWindow.isAvailable() && !yardWindow.isOpen() ? "   [Y] Yard" : "")
-                + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : ""));
+                + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : "")
+                + (!crewWindow.getSheet().stationName.isEmpty() && !crewWindow.isOpen() ? "   [I] Crew" : ""));
         boardingWindow = new BoardingWindow(skin);
 
         trafficMap = new TrafficMap(skin);
@@ -207,6 +212,7 @@ public class UiHud implements Disposable {
         stage.addActor(yardWindow);
         stage.addActor(missionWindow);
         stage.addActor(boardingWindow);
+        stage.addActor(crewWindow);
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
@@ -271,6 +277,10 @@ public class UiHud implements Disposable {
                     boardingWindow.setOpen(false);
                     return true;
                 }
+                if (crewWindow.isOpen()) {
+                    crewWindow.setOpen(false);
+                    return true;
+                }
                 if (!consoleWindow.isOpen()) return false;
                 consoleWindow.close();
                 return true;
@@ -289,6 +299,10 @@ public class UiHud implements Disposable {
             case Input.Keys.K:
                 if (!boardingWindow.isOpen() && !boardingWindow.isAvailable()) return false;
                 boardingWindow.setOpen(!boardingWindow.isOpen());
+                return true;
+            case Input.Keys.I:
+                if (!crewWindow.isOpen() && !crewWindow.isAvailable()) return false;
+                crewWindow.setOpen(!crewWindow.isOpen());
                 return true;
             case Input.Keys.M:
                 setTrafficMapVisible(!trafficMap.isVisible());
@@ -429,6 +443,15 @@ public class UiHud implements Disposable {
 
     public MissionWindow getMissionWindow() {
         return missionWindow;
+    }
+
+    /** Feeds the crew roster ([I] whenever the player has a ship); null hides it. */
+    public void setCrew(CrewProvider crew) {
+        crewWindow.setProvider(crew);
+    }
+
+    public CrewWindow getCrewWindow() {
+        return crewWindow;
     }
 
     /** Off-bubble traffic for the map view (M). Without one the map says there is no data. */

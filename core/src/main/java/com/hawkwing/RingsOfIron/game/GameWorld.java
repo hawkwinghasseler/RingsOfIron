@@ -186,6 +186,12 @@ public class GameWorld implements Disposable {
     public final Salvage salvage;
     /** How carried cargo is settled: the market's, plus salvage's between ships and parts sold. */
     public final SalvageSettlement cargoSettlement;
+    /** The player's crew: experience, morale and wages. */
+    public final CrewCareer crewCareer;
+    /** Station hiring pools, and hiring and dismissing crew. */
+    public final CrewHiring crewHiring;
+    /** Prisoners from taken ships: brought aboard, handed over, ransomed, released or recruited. */
+    public final Prisoners prisoners;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -415,6 +421,12 @@ public class GameWorld implements Disposable {
         hostiles = HostileTraffic.install(this);
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);
+        // The player's crew: hired at stations, paid weekly, learning from what they do
+        crewCareer = new CrewCareer(this);
+        engine.addSystem(crewCareer);
+        crewHiring = new CrewHiring(this);
+        engine.getSerializationService().addParticipant(crewHiring);
+        prisoners = new Prisoners(this);
     }
 
     /**

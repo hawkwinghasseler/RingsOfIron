@@ -602,6 +602,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
         // Pirates moving to intercept, robbing freighters, breaking off
         for (String notice : world.hostiles.notices) show(notice);
         world.hostiles.notices.clear();
+        // Crew hired, let go, paid or killed, and prisoners given up
+        for (java.util.List<String> crewNews : java.util.List.of(world.crewHiring.notices, world.crewCareer.notices,
+                world.prisoners.notices)) {
+            for (String news : crewNews) show(news);
+            crewNews.clear();
+        }
     }
 
     /** Opens the ship editor on the player's layout, for the docked station's yard to rebuild the decks to. */
