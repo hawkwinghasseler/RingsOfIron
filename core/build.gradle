@@ -42,7 +42,14 @@ test {
   if (project.hasProperty('surveyTrials')) systemProperty 'enemy.survey.trials', project.property('surveyTrials')
   if (project.hasProperty('enemyDebug')) systemProperty 'enemy.debug', 'true'
   if (project.hasProperty('enemyProbe')) systemProperty 'enemy.probe', project.property('enemyProbe')
-  testLogging { showStandardStreams = project.hasProperty('enemySurvey') || project.hasProperty('enemyDebug') }
+  // A failing test says why in the CI log, not only in the report (the build logs at quiet, see gradle.properties)
+  testLogging {
+    showStandardStreams = project.hasProperty('enemySurvey') || project.hasProperty('enemyDebug')
+    quiet {
+      events 'failed'
+      exceptionFormat 'full'
+    }
+  }
 }
 
 jar {
