@@ -235,6 +235,8 @@ public class FreighterController {
         if (!o.fromUuid.equals(f.dockedAtUuid)) {
             // In the bubble the ship is off the rails: it starts from the station it is docked at
             String from = idleInBubble(f) ? f.dockedAtUuid : uuid;
+            // Between the bubble and the rails (a jump collapsing the bubble, say): no plan from nowhere
+            if (!rails.isOnRails(from)) return 0;
             RoutePlanner.Route r1 = RoutePlanner.estimate(rails, rails.parentOf(from), rails.stateAt(from, now, a),
                     o.fromUuid, now, start);
             if (r1 == null) return 0;
