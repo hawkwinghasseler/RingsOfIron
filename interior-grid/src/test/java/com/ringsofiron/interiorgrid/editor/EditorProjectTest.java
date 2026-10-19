@@ -245,7 +245,7 @@ class EditorProjectTest {
         assertNotNull(corvette.mountAt(13, 3, catalog));
         corvette.resize(Side.TOP, -1, catalog);
         assertEquals(5, corvette.height());
-        assertNull(corvette.mountAt(4, 5, catalog), "the docking port on the top row is gone");
+        assertNull(corvette.mountAt(5, 5, catalog), "the docking port on the top row is gone");
     }
 
     @Test
