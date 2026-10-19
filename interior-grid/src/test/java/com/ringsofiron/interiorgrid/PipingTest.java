@@ -237,4 +237,41 @@ class PipingTest {
         assertNull(back.getPipe(4, 2));
         assertNotNull(back.getEdgePipe(9, 3, Side.BOTTOM), "an edge pipe is the same from either tile");
     }
+
+    @Test
+    void aBadlyDamagedTankLeaksItsGasIntoTheRoom() {
+        build(piped(room()));
+        SubsystemComponent o2 = tank(Fluid.OXYGEN);
+        o2.health = 0f;
+        double before = o2.contents, roomO2 = room(grid).oxygen;
+        run(10);
+        double lost = before * (1 - Math.exp(-TankSupply.LEAK_RATE * 10));
+        assertEquals(before - lost, o2.contents, before * 0.01);
+        assertEquals(lost / Fluid.OXYGEN.molarMass, room(grid).oxygen - roomO2, lost / Fluid.OXYGEN.molarMass * 0.05,
+                "the oxygen ends up in the room's air");
+    }
+
+    @Test
+    void aLightlyDamagedTankHolds() {
+        build(piped(room()));
+        tank(Fluid.NITROGEN).health = TankSupply.LEAK_THRESHOLD + 0.05f;
+        run(10);
+        assertEquals(tank(Fluid.NITROGEN).capacity, tank(Fluid.NITROGEN).contents, 1e-9);
+        assertEquals(TankSupply.LEAK_RATE / 2, TankSupply.leakRate(TankSupply.LEAK_THRESHOLD / 2), 1e-12);
+    }
+
+    @Test
+    void whatTheTanksHoldWeighsOnTheShip() {
+        build(piped(room()));
+        ShipGridComponent.MassProperties dry = grid.computeMassProperties(MaterialTable.createDefault());
+        ShipGridComponent.MassProperties wet = grid.computeMassProperties(MaterialTable.createDefault());
+        TankSupply.addMassTo(grid, registry, wet);
+        assertEquals(dry.mass + TankSupply.contents(registry), wet.mass, 1e-2);
+        assertTrue(wet.center.x > dry.center.x, "the tanks sit toward +x, so the center moves that way");
+        tank(Fluid.OXYGEN).contents = 0;
+        tank(Fluid.NITROGEN).contents = 0;
+        ShipGridComponent.MassProperties empty = grid.computeMassProperties(MaterialTable.createDefault());
+        TankSupply.addMassTo(grid, registry, empty);
+        assertEquals(dry.mass, empty.mass, 1e-2, "empty tanks weigh nothing extra");
+    }
 }

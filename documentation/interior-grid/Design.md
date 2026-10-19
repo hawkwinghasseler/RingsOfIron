@@ -214,7 +214,8 @@ Consumables live in tanks in the ship grid and reach the systems that use them t
 - **Pipes** (`Pipe`) lie across a tile's middle (`ShipGridComponent.pipes`) or along a tile edge (`pipeH` / `pipeV`, indexed like the edge walls), inside any wall, as edge conduits do. Pipes are generic: one run carries every fluid. A pipe across a tile joins the pipes across the four tiles beside it (through a thin wall between them) and the edge pipes on its own tile's edges; an edge pipe joins the edge pipes that meet it at either end and the pipes across the tiles on both sides. A pipe across a tile is cut when the tile is destroyed, an edge pipe when the wall it runs in is.
 - `PipeRouting` floods the pipes into `PipeNetwork`s (on `ShipGridComponent.pipeNetworks`) whenever `PowerRoutingSystem` reroutes, so pipes follow damage as quickly as power. A system is on every network that crosses one of its footprint tiles or runs along their edges, and `SubsystemComponent.pipedTanks` lists every tank on those networks.
 - `TankSupply` reads and draws on them: `available(system, fluid)` is what a system's working piped tanks hold, and `draw` takes from several tanks in proportion to what each holds.
-- Tanks do not leak when damaged, and their contents add no mass yet.
+- A tank damaged below 0.6 health leaks (`TankSupply.leak`, on the life support tick): a destroyed tank loses 2% of its contents a second, a less damaged one in proportion. Oxygen and nitrogen escape into the air of the room the tank stands in (an oxygen leak enriches the room, which feeds fires); propellant is lost overboard. Tanks do not burst.
+- What the tanks hold weighs on the ship: `TankSupply.addMassTo` adds each tank's contents as a point mass at the middle of its footprint, and the game reweighs the ship whenever its tanks have gained or lost 5 kg.
 - Layouts list pipes as `pipes = [{ x = 3, y = 2 }, { x = 3, y = 2, side = "TOP" }]` (no side: across the tile). They are saved with the grid, and each tank's contents with its `SubsystemComponent`. Station yards refill the tanks for credits (see `documentation/stations-docking/Design.md`).
 
 ## Power & Subsystem Routing
@@ -265,4 +266,4 @@ Plain data classes: `Tile`, `EdgeWall`, `HullPiece`, `MountFootprint`, `Compartm
 - `InteriorHazardWarpGuard` (not an ECS system): refuses rails warp during a fire or venting.
 
 ## Open Questions
-- **Tank damage.** Tanks do not leak or burst when hit, and full tanks weigh no more than empty ones.
+- **Tank damage.** A damaged tank leaks, but never bursts or explodes, and leaking propellant is simply lost rather than adding to a fire.
