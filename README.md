@@ -20,8 +20,6 @@ You need a JDK 17 or newer to start the Gradle wrapper, which is included. The b
 | `demos/Audio demo.bat` | `./gradlew :lwjgl3:runAudioDemo` | Sound muffled by walls and doors, and interior versus exterior listening |
 | `demos/Ship editor.bat` | `./gradlew :lwjgl3:runShipEditor` | The ship editor, which edits the game's own layout, tile and component data |
 
-`Internal demo.bat` in the root is an older copy of the Interior Grid launcher.
-
 Some modules also have headless demos that print to the console: `./gradlew :ai-crew:runCrewConsoleDemo`, `./gradlew :macro-sim:runMacroDemo` (add `-Pdays=60` for a longer run) and `./gradlew :modding-data:runModdingDemo`.
 
 ### Game controls
@@ -74,4 +72,4 @@ The art in `assets/art` is SVG. The `art-pipeline` module rasterizes it into a t
 | `core` | The game itself, the demos and the ship editor, wiring the modules together |
 | `lwjgl3` | Desktop launchers |
 
-Game data lives in `assets/data` (ships, chassis layouts, tiles, components, weapons, economy). Each module's design is in `documentation/<module>/Design.md`, and `documentation/Technical Design Decisions.md` records the decisions that cut across modules.
+Game data lives in `assets/data` (ships, chassis layouts, tiles, components, weapons, economy). Each module's design is in `documentation/<module>/Design.md`, and `documentation/Technical Design Decisions.md` records the decisions that cut across modules. `documentation/progression/Design.md` covers factions, rank, contracts and rescue, which span several modules.
