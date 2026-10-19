@@ -1,9 +1,8 @@
 package com.ringsofiron.audiospatial.backend;
 
 /**
- * Names of the event parameters the audio systems drive. In FMOD Studio these are the
- * parameters the sound designer wires to filters and volume; the built-in backends apply them
- * through {@link AcousticModel}.
+ * Names of the event parameters the audio systems drive. Backends apply them through
+ * {@link AcousticModel}.
  */
 public final class AudioParameters {
     private AudioParameters() {}

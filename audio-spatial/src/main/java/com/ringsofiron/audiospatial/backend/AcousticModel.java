@@ -4,8 +4,7 @@ import com.badlogic.gdx.math.MathUtils;
 
 /**
  * How distance, transmission, occlusion and air pressure turn into what the listener hears. This is the
- * mixing math for the built-in backends and the reference curve for the FMOD Studio project's
- * Occlusion, Transmission and Pressure automation.
+ * mixing math for every backend, so the synth and OpenAL backends sound alike.
  */
 public final class AcousticModel {
     private AcousticModel() {}
@@ -14,6 +13,8 @@ public final class AcousticModel {
     public static final float OPEN_CUTOFF_HZ = 20000f;
     /** Low-pass cutoff at full occlusion: a dull thud through the bulkheads. */
     public static final float MUFFLED_CUTOFF_HZ = 350f;
+    /** The frequency OpenAL's EFX low-pass filter sets its high-frequency gain at. */
+    public static final float EFX_LOWPASS_REFERENCE_HZ = 5000f;
     /** Share of a sound's maximum distance over which it fades to silence. */
     public static final float EDGE_FADE = 0.2f;
 
@@ -42,6 +43,16 @@ public final class AcousticModel {
     public static float cutoffHz(float occlusion) {
         float o = MathUtils.clamp(occlusion, 0f, 1f);
         return OPEN_CUTOFF_HZ * (float) Math.pow(MUFFLED_CUTOFF_HZ / OPEN_CUTOFF_HZ, o);
+    }
+
+    /**
+     * The high-frequency gain (0 to 1) for an OpenAL EFX low-pass that matches a 12 dB/octave
+     * low-pass at {@code cutoffHz}. EFX filters take a gain at {@link #EFX_LOWPASS_REFERENCE_HZ}
+     * rather than a cutoff, so this is that low-pass's response at the reference frequency.
+     */
+    public static float lowPassGainHf(float cutoffHz) {
+        float r = EFX_LOWPASS_REFERENCE_HZ / Math.max(cutoffHz, 1f);
+        return MathUtils.clamp((float) (1.0 / Math.sqrt(1.0 + r * r * r * r)), 0f, 1f);
     }
 
     /** Sound needs air: volume falls with the square root of pressure and is gone in vacuum. */

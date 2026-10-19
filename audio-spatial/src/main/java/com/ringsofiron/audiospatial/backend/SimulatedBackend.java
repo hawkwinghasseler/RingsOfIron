@@ -5,7 +5,7 @@ import com.badlogic.gdx.utils.ObjectFloatMap;
 
 /**
  * Bookkeeping shared by the built-in backends: instances, the listener and global
- * parameters. Released instances are dropped once they stop, as in FMOD.
+ * parameters. Released instances are dropped once they stop.
  */
 public abstract class SimulatedBackend implements AudioBackend {
     protected final AudioEventCatalog catalog;

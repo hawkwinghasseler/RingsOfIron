@@ -28,7 +28,7 @@ import java.util.Map;
  * tex_laser_red = "textures/laser_red.png"
  * [sound]
  * sfx_railgun = "audio/railgun.ogg"
- * [audio_event]                       # FMOD/Wwise event paths, not files
+ * [audio_event]                       # event paths, not files
  * evt_laser = "event:/weapons/laser"
  * </pre>
  * The base game's paths are relative to the assets folder (LibGDX internal files). A mod's

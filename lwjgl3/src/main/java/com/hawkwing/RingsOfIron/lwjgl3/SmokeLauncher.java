@@ -78,8 +78,9 @@ public class SmokeLauncher {
         configuration.useVsync(false);
         configuration.setForegroundFPS(0);
         configuration.setWindowedMode(1280, 800);
-        // CI machines have no sound device; demos that need audio fall back to their own backends
-        configuration.disableAudio(true);
+        // CI machines have no sound device, so audio is off unless smoke.audio is set; then OpenAL
+        // Soft needs an output, such as its wave writer (see the audioSmokeTest tasks)
+        configuration.disableAudio(!Boolean.getBoolean("smoke.audio"));
         return configuration;
     }
 
