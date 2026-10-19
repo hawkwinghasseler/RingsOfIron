@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.art;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.MathUtils;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.EdgeWall;
@@ -12,7 +13,11 @@ import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.WeightClass;
+
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 /**
  * Draws a deck with the art pack: floors, coverings and conduits, walls joined to their
@@ -26,6 +31,10 @@ import com.ringsofiron.interiorgrid.WeightClass;
 public final class DeckArt {
     private final ArtLibrary art;
     private final Color tint = new Color();
+    /** Where each crew member was last drawn and which way they faced: {x, y, degrees}. */
+    private final Map<Object, float[]> facing = new IdentityHashMap<>();
+    /** The crate of each carrying crew region, for tinting it alone. */
+    private final Map<TextureRegion, TextureRegion> crates = new IdentityHashMap<>();
 
     public DeckArt(ArtLibrary art) {
         this.art = art;
@@ -46,6 +55,7 @@ public final class DeckArt {
         floors(batch, grid);
         walls(batch, grid);
         systems(batch, grid, power);
+        walkways(batch, grid);
         edges(batch, grid, power);
         effects(batch, grid);
         cargo(batch, grid, hold);
@@ -205,6 +215,76 @@ public final class DeckArt {
             batch.setColor(tint.lerp(Color.WHITE, 0.55f));
             tile(batch, name, grid.gridOriginLocal.x + hold.bayX[i] * s, grid.gridOriginLocal.y + hold.bayY[i] * s, s);
         }
+        batch.setColor(was);
+    }
+
+    /** Whether there is gangway art; without it, draw the walkways as shapes. */
+    public boolean hasWalkways() {
+        return art.region(ArtNames.WALKWAY) != null;
+    }
+
+    /**
+     * The gangway out of each open docked port: its half of the way across the collars, as
+     * {@link DeckView#walkways} lays it out.
+     */
+    private void walkways(Batch batch, ShipGridComponent grid) {
+        TextureRegion r = art.region(ArtNames.WALKWAY);
+        if (r == null) return;
+        float s = grid.tileSize, ox = grid.gridOriginLocal.x, oy = grid.gridOriginLocal.y;
+        for (GridLink link : grid.links) {
+            if (!link.canCross()) continue;
+            Side side = link.side;
+            float half = link.gap * 0.5f * s;
+            if (half <= 0f) continue;
+            // Centered on the tile's edge pushed half the walkway out; the art runs along its y
+            float cx = ox + (link.x + 0.5f + side.dx * 0.5f) * s + side.dx * half / 2f;
+            float cy = oy + (link.y + 0.5f + side.dy * 0.5f) * s + side.dy * half / 2f;
+            centered(batch, r, cx, cy, s, half, side.dx != 0 ? 1 : 0);
+        }
+    }
+
+    /** Whether there is crew art; without it, draw crew as dots. */
+    public boolean hasCrew() {
+        return art.region(ArtNames.crew(ArtNames.Crew.SHIP, false)) != null;
+    }
+
+    /**
+     * A crew member at ({@code x}, {@code y}) in the grid's local meters, turned the way they last
+     * walked, with the crate they carry tinted to its commodity ({@code commodity}, or null).
+     * {@code key} is the crew member, to remember their facing.
+     */
+    public void crew(Batch batch, Object key, ArtNames.Crew who, String commodity, float x, float y, float tileSize) {
+        TextureRegion r = art.first(ArtNames.crew(who, commodity != null), ArtNames.crew(who, false));
+        if (r == null) return;
+        float[] f = facing.get(key);
+        if (f == null) facing.put(key, f = new float[]{x, y, 0f});
+        float dx = x - f[0], dy = y - f[1];
+        if (dx * dx + dy * dy > 0.0004f * tileSize * tileSize) {
+            // Art faces +y, so a walk along +y is no turn
+            f[2] = MathUtils.atan2(dy, dx) * MathUtils.radiansToDegrees - 90f;
+            f[0] = x;
+            f[1] = y;
+        }
+        ArtLibrary.Info info = art.info((com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion) r);
+        float u = tileSize / ArtLibrary.UNITS_PER_TILE;
+        // Centered on the SVG origin: the viewBox's top-left is (x, y) in SVG units, y down
+        float left = info == null ? -r.getRegionWidth() / 2f * u : info.x * u;
+        float w = (info == null ? r.getRegionWidth() : info.w) * u, h = (info == null ? r.getRegionHeight() : info.h) * u;
+        float bottom = info == null ? -h / 2f : -(info.y + info.h) * u;
+        batch.draw(r, x + left, y + bottom, -left, -bottom, w, h, 1f, 1f, f[2]);
+        if (commodity == null || info == null || info.h <= info.w) return;
+        // The crate is held out ahead (+y): the top of the canvas, down to its lower edge at SVG y = -15.5
+        TextureRegion crate = crates.get(r);
+        if (crate == null) {
+            int px = r.getRegionHeight();
+            int cratePx = Math.round(px * (-15.5f - info.y) / info.h);
+            crate = new TextureRegion(r, 0, 0, r.getRegionWidth(), cratePx);
+            crates.put(r, crate);
+        }
+        float crateH = h * crate.getRegionHeight() / r.getRegionHeight();
+        Color was = batch.getColor().cpy();
+        batch.setColor(DeckView.commodityColor(commodity, tint).lerp(Color.WHITE, 0.15f));
+        batch.draw(crate, x + left, y + bottom + h - crateH, -left, -bottom - (h - crateH), w, crateH, 1f, 1f, f[2]);
         batch.setColor(was);
     }
 

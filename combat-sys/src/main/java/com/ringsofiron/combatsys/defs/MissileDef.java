@@ -22,6 +22,8 @@ public class MissileDef {
     }
 
     public String id;
+    /** Its art in assets/art/projectiles, by file name; null to look for one named like the id. */
+    public String art;
     public float dryMass = 100f;
     public float propellantMass = 100f;
     public float exhaustVelocity = 3000f;

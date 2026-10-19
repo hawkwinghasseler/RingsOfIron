@@ -25,6 +25,7 @@ import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
+import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.art.ExteriorArt;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
@@ -94,6 +95,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private static final Family COMBAT_ROUNDS = Family.all(ProjectileComponent.class).get();
     private static final Family DECOYS = Family.all(DecoyComponent.class).get();
     private static final Family ARMED = Family.all(WeaponsComponent.class).get();
+    private static final com.badlogic.ashley.utils.ImmutableArray<Entity> NO_ENTITIES =
+            new com.badlogic.ashley.utils.ImmutableArray<>(new Array<Entity>());
     private static final float INTERIOR_VIEW = 40f;
     private static final float START_VIEW = 160f;
     private static final float STATUS_WIDTH = 420f;
@@ -120,6 +123,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private ExteriorArt exteriorArt;
     private final Matrix4 pose = new Matrix4();
     private final Matrix4 identity = new Matrix4();
+    /** Combat entities drawn with art this frame, which the shapes then skip. */
+    private final Array<Entity> drawnWithArt = new Array<>();
     private BitmapFont font;
     private float exteriorViewMeters = START_VIEW;
     private String notice;
@@ -433,8 +438,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private void drawCombat(float delta) {
         float px = viewports.getViewMeters() / 400f;
         Gdx.gl.glEnable(GL20.GL_BLEND);
+        boolean beamArt = drawCombatArt(px);
         shapes.begin(ShapeRenderer.ShapeType.Line);
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(COMBAT_ROUNDS)) {
+            if (drawnWithArt.contains(e, true)) continue;
             ProjectileComponent p = PROJECTILES.get(e);
             MissileComponent m = MISSILES.get(e);
             if (m == null) {
@@ -459,13 +466,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(ARMED)) {
             WeaponsComponent weapons = e.getComponent(WeaponsComponent.class);
             for (WeaponMountComponent m : weapons.mounts) {
-                if (!m.beamOn) continue;
+                if (!m.beamOn || beamArt) continue;
                 shapes.setColor(e == game.player ? Color.SKY : Color.MAGENTA);
                 shapes.line(m.muzzle.x, m.muzzle.y, m.beamEnd.x, m.beamEnd.y);
             }
         }
         shapes.setColor(Color.WHITE);
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(DECOYS)) {
+            if (drawnWithArt.contains(e, true)) continue;
             DecoyComponent d = e.getComponent(DecoyComponent.class);
             shapes.circle(d.pos.x, d.pos.y, Math.max(1f, 3f * px), 8);
         }
@@ -476,11 +484,56 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 explosions.removeIndex(i);
                 continue;
             }
+            if (art.region(ArtNames.explosion(0f)) != null) continue;
             shapes.setColor(1f, 0.6f, 0.2f, 1f - x[2]);
             shapes.circle(x[0], x[1], Math.max(5f, 20f * px) * (0.3f + x[2]), 20);
         }
         shapes.end();
         Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    /**
+     * Rounds, missiles, decoys, beams and explosions that have art, in one batch; the rest are
+     * left to the shapes. Each is drawn at least a few pixels long, as the shapes are. True when
+     * the beams were drawn.
+     */
+    private boolean drawCombatArt(float px) {
+        drawnWithArt.clear();
+        batch.setProjectionMatrix(viewports.getWorldCamera().combined);
+        batch.begin();
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(COMBAT_ROUNDS)) {
+            ProjectileComponent p = PROJECTILES.get(e);
+            MissileComponent m = MISSILES.get(e);
+            boolean drawn;
+            if (m != null) {
+                drawn = exteriorArt.projectile(batch, ArtNames.projectile(
+                        m.def.art, m.def.id, true), p.pos.x, p.pos.y, m.heading, Math.max(m.def.hitRadius * 6f, 12f * px));
+            } else {
+                drawn = p.def != null && exteriorArt.projectile(batch, ArtNames.projectile(
+                        p.def.art, p.def.id, false), p.pos.x, p.pos.y, MathUtils.atan2(p.vel.y, p.vel.x), 10f * px);
+            }
+            if (drawn) drawnWithArt.add(e);
+        }
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(DECOYS)) {
+            DecoyComponent d = e.getComponent(DecoyComponent.class);
+            if (exteriorArt.decoy(batch, d.pos.x, d.pos.y, d.vel.x, d.vel.y, 8f * px)) drawnWithArt.add(e);
+        }
+        boolean beams = art.region(ArtNames.BEAM) != null;
+        if (beams) {
+            // Beams glow: add their light to what is under them
+            batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
+            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(ARMED)) {
+                for (WeaponMountComponent m : e.getComponent(WeaponsComponent.class).mounts) {
+                    if (m.beamOn) exteriorArt.beam(batch, m.muzzle.x, m.muzzle.y, m.beamEnd.x, m.beamEnd.y, Math.max(0.25f, 3f * px));
+                }
+            }
+            batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        }
+        for (float[] x : explosions) {
+            exteriorArt.explosion(batch, x[0], x[1], 2f * Math.max(5f, 20f * px) * (0.3f + x[2]), x[2]);
+        }
+        batch.end();
+        return beams;
     }
 
     private void drawFixture(Body body, Shape shape) {
@@ -533,7 +586,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             float s = g.tileSize;
             if (withArt) {
                 DeckView.atmosphere(shapes, g, blink);
-                DeckView.walkways(shapes, g, color, 0.6f);
+                if (!deckArt.hasWalkways()) DeckView.walkways(shapes, g, color, 0.6f);
             } else {
                 for (int y = 0; y < g.height; y++) {
                     for (int x = 0; x < g.width; x++) {
@@ -548,7 +601,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 DeckView.walls(shapes, g, color);
                 DeckView.cargo(shapes, g, hold, color);
             }
-            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            boolean crewArt = withArt && deckArt.hasCrew();
+            for (Entity e : crewArt ? NO_ENTITIES : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
                 if (pos.ship != ship) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
@@ -557,6 +611,21 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 DeckView.crew(shapes, c, local.x, local.y, s, mark, color);
             }
             shapes.end();
+            if (crewArt) {
+                batch.setTransformMatrix(pose);
+                batch.begin();
+                for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                    GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
+                    if (pos.ship != ship) continue;
+                    CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                    ArtNames.Crew who = e == game.avatar ? ArtNames.Crew.PLAYER
+                            : c.faction == StationCrew.FACTION ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP;
+                    Vector2 local = pos.toShipLocal(g, tmp2);
+                    deckArt.crew(batch, e, who, c.load == null ? null : c.load.task.job.commodity(), local.x, local.y, s);
+                }
+                batch.end();
+                batch.setTransformMatrix(identity);
+            }
         }
         shapes.identity();
         Gdx.gl.glDisable(GL20.GL_BLEND);

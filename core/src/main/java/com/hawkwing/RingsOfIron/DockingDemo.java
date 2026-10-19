@@ -250,7 +250,7 @@ public class DockingDemo extends ApplicationAdapter {
             shapes.rotate(0f, 0f, 1f, body.getAngle() * com.badlogic.gdx.math.MathUtils.radiansToDegrees);
             if (deckArt.available()) {
                 DeckView.atmosphere(shapes, grid, false);
-                DeckView.walkways(shapes, grid, color, 0.6f);
+                if (!deckArt.hasWalkways()) DeckView.walkways(shapes, grid, color, 0.6f);
                 continue;
             }
             float s = grid.tileSize;

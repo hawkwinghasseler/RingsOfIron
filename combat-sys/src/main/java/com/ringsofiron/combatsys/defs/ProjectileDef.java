@@ -6,6 +6,8 @@ package com.ringsofiron.combatsys.defs;
  */
 public class ProjectileDef {
     public String id;
+    /** Its art in assets/art/projectiles, by file name; null to look for one named like the id. */
+    public String art;
     /** kg */
     public float mass = 1f;
     /** m/s, relative to the firing hardpoint */

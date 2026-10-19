@@ -143,6 +143,30 @@ class ArtNamesTest {
         assertArt("hulls/thruster_plume");
     }
 
+    @Test
+    void crewProjectilesAndCombatEffectsHaveArt() throws IOException {
+        for (ArtNames.Crew who : ArtNames.Crew.values()) {
+            assertArt(ArtNames.crew(who, false));
+            assertArt(ArtNames.crew(who, true));
+        }
+        // Each round and missile in data finds its art, through its art key or its id
+        String weapons = new String(Files.readAllBytes(ASSETS.resolve("data/weapons.toml")), java.nio.charset.StandardCharsets.UTF_8);
+        Matcher m = Pattern.compile("^\\[(projectile|missile)\\.([a-z0-9_]+)]\\s*\\n(?:art = \"([a-z0-9_]+)\")?", Pattern.MULTILINE)
+                .matcher(weapons);
+        int found = 0;
+        while (m.find()) {
+            assertAnyArt(ArtNames.projectile(m.group(3), m.group(2), m.group(1).equals("missile")));
+            found++;
+        }
+        assertTrue(found >= 3, "rounds and missiles in weapons.toml");
+        assertArt(ArtNames.DECOY);
+        assertArt(ArtNames.BEAM);
+        assertArt(ArtNames.WALKWAY);
+        assertEquals("effects/explosion_1", ArtNames.explosion(0f));
+        assertEquals("effects/explosion_4", ArtNames.explosion(1f));
+        for (float t = 0f; t <= 1f; t += 0.1f) assertArt(ArtNames.explosion(t));
+    }
+
     private static Iterable<String> ids(Path toml, String table) throws IOException {
         java.util.List<String> out = new java.util.ArrayList<>();
         Matcher m = Pattern.compile("^\\[" + table + "\\.([a-z0-9_]+)]", Pattern.MULTILINE)

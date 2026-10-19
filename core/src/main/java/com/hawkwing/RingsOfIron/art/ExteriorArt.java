@@ -44,7 +44,7 @@ public final class ExteriorArt {
         Vector2 p = PhysicsManager.getPosition(body, at);
         float px = p.x, py = p.y, angle = body.getAngle();
         plumes(batch, craft, body, px, py, angle);
-        pivoted(batch, hull, px, py, angle * MathUtils.radiansToDegrees, 1f);
+        pivoted(batch, hull, px, py, angle * MathUtils.radiansToDegrees, 1f, 1f);
         turrets(batch, craft, body);
         return true;
     }
@@ -62,7 +62,7 @@ public final class ExteriorArt {
             float lx = grid.gridOriginLocal.x - 0.25f * s;
             float ly = grid.gridOriginLocal.y + (grid.height - row) * s;
             Vector2 w = world(body, lx, ly);
-            pivoted(batch, plume, w.x, w.y, angle * MathUtils.radiansToDegrees, Math.min(1f, controls.forward));
+            pivoted(batch, plume, w.x, w.y, angle * MathUtils.radiansToDegrees, Math.min(1f, controls.forward), 1f);
         }
     }
 
@@ -76,7 +76,7 @@ public final class ExteriorArt {
             AtlasRegion r = art.first(ArtNames.turret(m.def.id, powered));
             if (r == null) continue;
             Vector2 w = world(body, m.hardpoint.x, m.hardpoint.y);
-            pivoted(batch, r, w.x, w.y, (body.getAngle() + m.aim) * MathUtils.radiansToDegrees, 1f);
+            pivoted(batch, r, w.x, w.y, (body.getAngle() + m.aim) * MathUtils.radiansToDegrees, 1f, 1f);
         }
     }
 
@@ -88,9 +88,9 @@ public final class ExteriorArt {
     /**
      * Art whose SVG origin is its pivot (a hull's body origin, a turret's bearing, a plume's
      * nozzle), drawn with that origin at ({@code x}, {@code y}) and turned {@code degrees};
-     * {@code length} scales it along its own x.
+     * {@code length} and {@code width} scale it along its own x and y.
      */
-    private void pivoted(Batch batch, AtlasRegion r, float x, float y, float degrees, float length) {
+    private void pivoted(Batch batch, AtlasRegion r, float x, float y, float degrees, float length, float width) {
         ArtLibrary.Info info = art.info(r);
         float u = 1f / ArtLibrary.UNITS_PER_TILE;
         float left = info == null ? -r.originalWidth / 2f * u : info.x * u;
@@ -99,6 +99,45 @@ public final class ExteriorArt {
         float h = (info == null ? r.originalHeight : info.h) * u;
         // SVG y runs down, so the region's bottom edge is at body y = -(viewBox y + height)
         float bottom = top - h;
-        batch.draw(r, x + left, y + bottom, -left, -bottom, w, h, length, 1f, degrees);
+        batch.draw(r, x + left, y + bottom, -left, -bottom, w, h, length, width, degrees);
+    }
+
+    // ---- Combat: rounds, missiles, decoys, beams and explosions, in world meters ----
+
+    /**
+     * A round or missile with its nose at ({@code x}, {@code y}) heading {@code radians}, grown
+     * so it is at least {@code minLength} meters long and stays visible zoomed out. False when
+     * there is no art for it.
+     */
+    public boolean projectile(Batch batch, String[] names, float x, float y, float radians, float minLength) {
+        AtlasRegion r = art.first(names);
+        if (r == null) return false;
+        ArtLibrary.Info info = art.info(r);
+        float length = (info == null ? r.originalWidth : info.w) / ArtLibrary.UNITS_PER_TILE;
+        float scale = Math.max(1f, minLength / length);
+        pivoted(batch, r, x, y, radians * MathUtils.radiansToDegrees, scale, scale);
+        return true;
+    }
+
+    /** A decoy flare at ({@code x}, {@code y}), moving along ({@code vx}, {@code vy}). */
+    public boolean decoy(Batch batch, float x, float y, float vx, float vy, float minSize) {
+        return projectile(batch, new String[]{ArtNames.DECOY}, x, y, MathUtils.atan2(vy, vx), minSize);
+    }
+
+    /** The laser strip stretched from ({@code x0}, {@code y0}) to ({@code x1}, {@code y1}), {@code width} meters wide. */
+    public boolean beam(Batch batch, float x0, float y0, float x1, float y1, float width) {
+        AtlasRegion r = art.region(ArtNames.BEAM);
+        if (r == null) return false;
+        float dx = x1 - x0, dy = y1 - y0, len = (float) Math.sqrt(dx * dx + dy * dy);
+        batch.draw(r, x0, y0 - width / 2f, 0f, width / 2f, len, width, 1f, 1f, MathUtils.atan2(dy, dx) * MathUtils.radiansToDegrees);
+        return true;
+    }
+
+    /** An explosion {@code size} meters across at ({@code x}, {@code y}), {@code progress} of the way through. */
+    public boolean explosion(Batch batch, float x, float y, float size, float progress) {
+        AtlasRegion r = art.region(ArtNames.explosion(progress));
+        if (r == null) return false;
+        batch.draw(r, x - size / 2f, y - size / 2f, size, size);
+        return true;
     }
 }

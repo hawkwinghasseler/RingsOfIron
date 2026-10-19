@@ -146,6 +146,41 @@ public final class ArtNames {
         return powered ? new String[]{base} : new String[]{base + "_unpowered", base};
     }
 
+    /**
+     * A round or missile's art, best first: the file its definition names ({@code art}), one named
+     * like its id, then for a missile the generic {@code missile}.
+     */
+    public static String[] projectile(String art, String id, boolean missile) {
+        java.util.List<String> out = new java.util.ArrayList<>(3);
+        if (art != null) out.add("projectiles/" + art);
+        if (id != null) out.add("projectiles/" + id);
+        if (missile) out.add("projectiles/missile");
+        return out.toArray(new String[0]);
+    }
+
+    public static final String DECOY = "projectiles/decoy_flare";
+    /** The laser strip, stretched along a beam. */
+    public static final String BEAM = "effects/beam";
+    /** The gangway across two latched collars, stretched along the crossing. */
+    public static final String WALKWAY = "tiles/dock_walkway";
+
+    /** Frames of {@link #explosion}. */
+    public static final int EXPLOSION_FRAMES = 4;
+
+    /** The explosion frame at {@code progress} (0 at the flash, 1 when it has faded). */
+    public static String explosion(float progress) {
+        int frame = 1 + (int) (Math.max(0f, Math.min(0.999f, progress)) * EXPLOSION_FRAMES);
+        return "effects/explosion_" + frame;
+    }
+
+    /** Whose look a crew member has. */
+    public enum Crew { SHIP, STATION, PLAYER }
+
+    /** A crew member, holding a crate while they carry a load. */
+    public static String crew(Crew who, boolean carrying) {
+        return "crew/crew_" + who.name().toLowerCase(Locale.ROOT) + (carrying ? "_carrying" : "");
+    }
+
     /** The emissive layer of a region, for a glow pass. */
     public static String glow(String region) {
         return "glow/" + region;
