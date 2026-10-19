@@ -67,6 +67,12 @@ public class PenetrationResolver {
      * deadly, though it still wrecks machinery and structure with its full budget.
      */
     public static final float CREW_FALLOFF_PER_TILE = 0.5f;
+    /**
+     * Chance that a round or fragment crossing a tile strikes a given person on it: a body fills
+     * well under half of a 1 m tile seen edge-on. Round 6: at 1 every slug through a tile hit
+     * everyone on it, so crew gathered round a casualty went down together.
+     */
+    public static final float CREW_HIT_CHANCE = 0.4f;
     /** Overpressure on a tile, J, that does an unprotected crew member 100 hp of injury: a critical wound. */
     public static final float CREW_BLAST_LETHAL = 2e6f;
     /**
@@ -141,6 +147,8 @@ public class PenetrationResolver {
     private MaterialTable materials;
     private CombatDefs defs;
     private CrewDamageBridge crew;
+    /** {@link #CREW_HIT_CHANCE}, or 1 for tests that need every round in a person's path to strike them. */
+    private float crewHitChance = CREW_HIT_CHANCE;
 
     // Per-call state (one call at a time).
     private ShipGridComponent grid;
@@ -157,6 +165,11 @@ public class PenetrationResolver {
 
     public void setCrew(CrewDamageBridge crew) {
         this.crew = crew;
+    }
+
+    /** Sets the chance a round crossing a tile strikes each person on it ({@link #CREW_HIT_CHANCE}). */
+    public void setCrewHitChance(float chance) {
+        this.crewHitChance = chance;
     }
 
     public MaterialTable getMaterials() {
@@ -739,12 +752,14 @@ public class PenetrationResolver {
             damageSubsystem(system, sub, take / hardness, x, y);
         }
 
-        // People. They barely slow a round down, and past the first room it hurts them far less.
+        // People. They barely slow a round down, it misses most who stand in its path, and past
+        // the first room it hurts them far less.
         float falloff = (float) Math.pow(CREW_FALLOFF_PER_TILE, ray.floorTiles++);
         if (crew != null && ray.budget > 0f) {
             occupants.clear();
             crew.occupantsAt(ship, x, y, occupants);
             for (int i = 0; i < occupants.size && ray.budget > 0f; i++) {
+                if (crewHitChance < 1f && rng.nextFloat() >= crewHitChance) continue;
                 float take = Math.min(ray.budget, CREW_RESISTANCE);
                 ray.budget -= take;
                 injure(occupants.get(i), falloff * take / CREW_JOULES_PER_HP, ray.cause, x, y);
