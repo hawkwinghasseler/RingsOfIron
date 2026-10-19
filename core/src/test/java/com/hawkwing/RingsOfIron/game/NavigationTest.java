@@ -87,6 +87,14 @@ class NavigationTest {
     // ------------------------------------------------------------------ targets and plans
 
     @Test
+    void theRaiderOutsideComesBeforeTheStations() {
+        java.util.List<String> all = world.nav.target.candidates();
+        int raider = all.indexOf(world.universe.uuidOf(game.raider));
+        assertTrue(raider >= 0, all.toString());
+        assertTrue(raider < all.indexOf(game.highport), "a craft in the bubble before the stations: " + all);
+    }
+
+    @Test
     void targetsCycleThroughTheStationsAndBackToNone() {
         Navigation nav = world.nav;
         assertNull(nav.target.uuid());

@@ -36,7 +36,7 @@ To implement this module independently (mocking data providers):
 
 5. **Context Menus:**
    - Implement a system that checks the distance between the player's avatar and interactable consoles on the grid.
-   - If distance < `INTERACT_RADIUS`, spawn a contextual "Press [E] to Access" tooltip via Scene2D.
+   - If distance < `INTERACT_RADIUS`, spawn a contextual "Press [E] for the ... panel" tooltip (the game adds "[V] sit and fly" at the helm and weapons consoles) via Scene2D.
 
 ## Implemented Components
 - `HudMarkerComponent`: Attached to entities that need a UI marker (e.g., enemies, mission waypoints).
@@ -67,7 +67,7 @@ Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. C
 | `ViewportManager` | World camera (ExtendViewport, meters) and UI camera (ScreenViewport, pixels); `worldToUi` / `uiToWorld` |
 | `HudRenderSystem` | Brackets, nameplates and ranges for `HudMarkerComponent` entities; edge arrows off screen; lead reticle |
 | `WireframeMinimap`, `WireframeSyncSystem` | Live blueprint of the player ship's `ShipGridComponent` with an alert list (fire, breaches, venting, smoke, hull %) |
-| `InteractPromptSystem`, `ConsoleWindow` | "Press [E] to Access ..." within `INTERACT_RADIUS` tiles of an `InteractableConsoleComponent`; per-console layouts via `registerConsoleLayout` |
+| `InteractPromptSystem`, `ConsoleWindow` | "Press [E] for the ... panel" within `INTERACT_RADIUS` tiles of an `InteractableConsoleComponent`; per-console layouts via `registerConsoleLayout` |
 | `FlightReadoutSystem` | Speed, heading, view mode, target range/closing/time-to-impact, orbit |
 | `ViewModeController` | EXTERIOR / INTERIOR view mode with change listeners |
 | `modding.ModTrustDialog` | modding-data's `ModTrustPolicy` as a dialog: asks before mod scripts run with full access; can remember the answer per mod set and version (O in the demo) |

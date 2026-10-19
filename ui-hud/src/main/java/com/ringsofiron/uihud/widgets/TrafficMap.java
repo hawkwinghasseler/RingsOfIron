@@ -39,6 +39,8 @@ public class TrafficMap extends Widget {
     private static final float LINE = 14f;
     private static final float LABEL_WIDTH = 150f;
     private final FloatArray labels = new FloatArray();
+    /** Haulers docked at each station, by station name, this frame. */
+    private final com.badlogic.gdx.utils.ObjectIntMap<String> docked = new com.badlogic.gdx.utils.ObjectIntMap<>();
     private static final Color GRID = new Color(0.2f, 0.3f, 0.4f, 0.5f);
 
     private final TextureRegion white;
@@ -161,19 +163,26 @@ public class TrafficMap extends Widget {
             text(batch, formatDistance(ring * i), cx + r + 3f, cy + 12f, GRID, parentAlpha);
         }
 
-        // Frame body.
+        // Frame body. Body names go in the label list first, so stations near them label clear of them.
+        labels.clear();
         float fr = Math.max(4f, (float) (frame.frameRadius * scale));
         circle(batch, cx, cy, fr, 2f, BODY, parentAlpha);
         text(batch, frame.frameName, cx - 20f, cy - fr - 6f, BODY, parentAlpha);
+        labels.add(cx - 20f, cy - fr - 6f, LINE);
 
         for (MapBody b : frame.bodies) {
             float x = cx + (float) (b.x * scale), y = cy + (float) (b.y * scale);
             float r = Math.max(3f, (float) (b.radius * scale));
             circle(batch, x, y, r, 1.5f, BODY, parentAlpha);
             text(batch, b.name, x + r + 4f, y + 6f, BODY, parentAlpha);
+            labels.add(x + r + 4f, y + 6f, LINE);
         }
 
-        labels.clear();
+        // Haulers sitting at a station are counted on the station's label rather than each listed
+        docked.clear();
+        for (Contact c : frame.contacts) {
+            if (dockedQuietly(c)) docked.getAndIncrement(c.detail.substring(DOCKED_AT.length()), 0, 1);
+        }
         picks.clear();
         for (int index = 0; index < frame.contacts.size; index++) {
             Contact c = frame.contacts.get(index);
@@ -201,15 +210,25 @@ public class TrafficMap extends Widget {
                 batch.setColor(TARGET.r, TARGET.g, TARGET.b, parentAlpha);
                 brackets(batch, x, y, 18f);
             }
+            if (dockedQuietly(c)) continue;
+            int atStation = c.kind == ContactKind.STATION ? docked.get(c.name, 0) : 0;
+            String name = atStation == 0 ? c.name : c.name + "  (" + atStation + " docked)";
             float lines = c.detail.isEmpty() ? 1 : 2;
             float ly = labelY(labels, x + 9f, y + 7f, lines * LINE);
             if (ly != y + 7f) line(batch, x, y, x + 9f, ly - LINE / 2f, col, parentAlpha);
-            text(batch, c.name, x + 9f, ly, col, parentAlpha);
+            text(batch, name, x + 9f, ly, col, parentAlpha);
             if (!c.detail.isEmpty()) text(batch, c.detail, x + 9f, ly - LINE, HudSkin.HUD_DIM, parentAlpha);
         }
 
         title(batch, parentAlpha);
         batch.setColor(old);
+    }
+
+    private static final String DOCKED_AT = "docked at ";
+
+    /** A hauler docked at a station that isn't the target or a contract's: no label of its own. */
+    static boolean dockedQuietly(Contact c) {
+        return c.kind == ContactKind.HAULER && c.detail.startsWith(DOCKED_AT) && !c.target && !c.objective;
     }
 
     /** A triangle pointing up, of half-size {@code r}, outlined only when {@code hollow}. */

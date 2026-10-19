@@ -7,6 +7,7 @@ import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -47,6 +48,8 @@ public class HudRenderSystem extends EntitySystem {
     private final LeadReticle reticle;
     private final ObjectMap<Entity, MarkerWidget> widgets = new ObjectMap<>();
     private final ObjectMap<Entity, MarkerWidget> seen = new ObjectMap<>();
+    /** Where the off-screen markers' text went this frame, so the next one can keep clear. */
+    private final com.badlogic.gdx.utils.Array<Rectangle> edgeText = new com.badlogic.gdx.utils.Array<>();
     private final Vector2 screen = new Vector2();
     private final Vector2 lead = new Vector2();
     private ImmutableArray<Entity> marked;
@@ -95,6 +98,7 @@ public class HudRenderSystem extends EntitySystem {
         Entity locked = targeting != null ? targeting.getLockedTarget() : null;
 
         seen.clear();
+        edgeText.clear();
         for (Entity e : marked) {
             HudMarkerComponent m = MARKERS.get(e);
             TransformComponent t = TRANSFORMS.get(e);
@@ -120,6 +124,7 @@ public class HudRenderSystem extends EntitySystem {
             String range = player != null ? formatRange(Vector2.dst(player.x, player.y, t.x, t.y)) : "";
             float half = Math.max(MIN_BRACKET, m.radius * pixelsPerMeter * 1.2f);
             widget.set(m.label, range, m.color, half, !onScreen, angle, e == locked);
+            if (!onScreen) unstack(widget, screen.y < h / 2f ? 1f : -1f);
         }
 
         // Drop widgets whose entity lost its marker or left the engine.
@@ -132,6 +137,23 @@ public class HudRenderSystem extends EntitySystem {
         }
 
         updateReticle(locked);
+    }
+
+    /**
+     * Two contacts the same way off screen put their names on top of each other at the edge: moves
+     * this one's text inward ({@code dir} up or down) until it clears the ones already placed.
+     */
+    private void unstack(MarkerWidget widget, float dir) {
+        Rectangle box = widget.textBounds(new Rectangle());
+        for (int tries = 0; tries < 8; tries++) {
+            Rectangle hit = null;
+            for (Rectangle r : edgeText) if (r.overlaps(box)) hit = r;
+            if (hit == null) break;
+            float dy = dir > 0 ? hit.y + hit.height + 2f - box.y : hit.y - 2f - (box.y + box.height);
+            widget.nudgeText(0f, dy);
+            box.y += dy;
+        }
+        edgeText.add(box);
     }
 
     private void updateReticle(Entity locked) {

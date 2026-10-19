@@ -13,7 +13,7 @@ import com.ringsofiron.uihud.providers.InteractorProvider;
 
 /**
  * Finds the nearest {@link InteractableConsoleComponent} within {@link #INTERACT_RADIUS} tiles
- * of the player's avatar and shows "Press [E] to Access ..." for it. {@link #interact()} (bound
+ * of the player's avatar and shows "Press [E] for the ... panel" for it. {@link #interact()} (bound
  * to E by the HUD) opens that console through the {@link ConsoleOpener}.
  */
 public class InteractPromptSystem extends EntitySystem {
@@ -36,6 +36,7 @@ public class InteractPromptSystem extends EntitySystem {
     private InteractorProvider interactor;
     private Entity nearest;
     private boolean enabled = true;
+    private java.util.function.Function<InteractableConsoleComponent, String> promptExtra;
 
     public InteractPromptSystem(Label prompt, ConsoleOpener opener) {
         super(DEFAULT_PRIORITY);
@@ -49,6 +50,14 @@ public class InteractPromptSystem extends EntitySystem {
     }
 
     /** Disables prompts, e.g. while a console window is already open. */
+    /**
+     * What the game adds after "Press [E] for the ... panel" for a console, such as the key that sits
+     * you at it; null adds nothing.
+     */
+    public void setPromptExtra(java.util.function.Function<InteractableConsoleComponent, String> extra) {
+        promptExtra = extra;
+    }
+
     public void setPromptsEnabled(boolean enabled) {
         this.enabled = enabled;
     }
@@ -71,7 +80,9 @@ public class InteractPromptSystem extends EntitySystem {
             prompt.setVisible(false);
             return;
         }
-        String text = "Press [E] to Access " + MAPPER.get(nearest).title;
+        InteractableConsoleComponent c = MAPPER.get(nearest);
+        String more = promptExtra == null ? null : promptExtra.apply(c);
+        String text = "Press [E] for the " + c.title + " panel" + (more == null ? "" : more);
         if (!prompt.textEquals(text)) prompt.setText(text);
         prompt.setVisible(true);
     }

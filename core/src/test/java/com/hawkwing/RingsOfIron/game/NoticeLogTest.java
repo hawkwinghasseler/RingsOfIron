@@ -30,6 +30,18 @@ class NoticeLogTest {
     }
 
     @Test
+    void steppingThroughTargetsShowsOnlyTheLatest() {
+        NoticeLog log = new NoticeLog(() -> now);
+        log.post("Undocked from Highport");
+        log.replace("Navigation target", "Navigation target: Highport");
+        log.replace("Navigation target", "Navigation target: Deepwell Depot");
+        log.replace("Navigation target", "Navigation target cleared");
+        assertEquals(2, log.showing().size(), "one target line, and the other notice stays");
+        assertEquals("Navigation target cleared", log.showing().get(0).text);
+        assertEquals(4, log.history().size(), "the log keeps every step");
+    }
+
+    @Test
     void eachNoticeIsHeldForItsOwnTime() {
         NoticeLog log = new NoticeLog(() -> now);
         log.post("info");

@@ -129,7 +129,8 @@ public class UiHud implements Disposable {
         Table flight = new Table();
         flight.setBackground(skin.getDrawable("panel"));
         flight.pad(8f);
-        // Top left: the flight readout with the proximity scanner beside it and the ship's gauges under it.
+        // Top left: the flight readout, the ship's gauges under it and the proximity scanner beside them,
+        // low enough that the top centre stays clear for the dock and threat banners at a 1280 window.
         gauges = new ShipGauges(skin);
         gauges.setBackground(skin.getDrawable("panel"));
         gauges.pad(8f);
@@ -140,9 +141,9 @@ public class UiHud implements Disposable {
         radarPanel.add(new Label("RADAR", skin, "title")).left().row();
         radarPanel.add(radar);
         Table topLeft = new Table();
-        topLeft.add(flight).left().top().fillX();
-        topLeft.add(radarPanel).left().top().padLeft(6f).row();
+        topLeft.add(flight).left().top().fillX().row();
         topLeft.add(gauges).left().top().fillX().padTop(6f);
+        topLeft.add(radarPanel).left().top().padTop(6f).padLeft(6f);
         root.add(topLeft).top().left().pad(10f).expand().colspan(2).row();
 
         minimap = new WireframeMinimap(skin.getRegion("white"));
@@ -167,8 +168,15 @@ public class UiHud implements Disposable {
         orbitPanel.add(orbitMap).row();
         orbitPanel.add(orbitCaption).left().width(orbitMap.getPrefWidth());
         orbitCaption.setWrap(true);
-        // Raised clear of the game's key hint line, which runs right of the ship panel.
-        root.add(orbitPanel).bottom().right().pad(10f).padBottom(36f);
+        // Raised clear of the game's key hint line, which runs right of the ship panel. In a layer of
+        // its own: with the burn planner's lines under it the panel grows tall, and in the root table
+        // that pushed the top-left panels off the top of a 1280x800 window.
+        Table orbitLayer = new Table();
+        orbitLayer.setFillParent(true);
+        orbitLayer.setTouchable(Touchable.childrenOnly);
+        orbitLayer.bottom().right();
+        orbitLayer.add(orbitPanel).pad(10f).padBottom(36f);
+        stage.addActor(orbitLayer);
 
         Label prompt = new Label("", skin, "prompt");
         Table promptRow = new Table();
@@ -240,6 +248,8 @@ public class UiHud implements Disposable {
             orbitPanel.setVisible(exterior);
             threatOverlay.setVisible(exterior);
             radarPanel.setVisible(exterior);
+            // Seated and looking outside there is no deck to walk: the console prompt only confused
+            promptRow.setVisible(!exterior);
         });
 
         stage.addListener(new InputListener() {
