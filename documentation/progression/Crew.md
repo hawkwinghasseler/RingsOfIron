@@ -78,6 +78,14 @@ How wounds work aboard is in `ai-crew/Design.md` section 5. On the game's side (
 - **A hostile breaking off under fire surrenders** once its own crew are mostly down, as one still fighting does (`ShipDisablement`): wounded crews are rarely all dead, so a raider whose crew are down no longer just runs.
 - The crew window lists each crew member's and prisoner's condition ("Light wound 100%", "Critical wound, 4:10 to live", "Serious wound, being treated") and the medical stores aboard.
 
+### The captain in a holed ship (round 6)
+The player's own figure has no behaviour tree, so `CaptainSafety` does for it what the crew's tree does for them:
+
+- **Battle stations:** while the ship is at battle stations with suits on (the crew window's toggle), the figure suits up too, in the crew's suit time, and keeps the suit on; calm again on air fit to breathe, it takes it off as the crew do.
+- **Losing air:** on a tile whose air is no longer fit to breathe the figure pulls its suit on, the player hears "The air here is going: you pull your suit on. Get to a pressurised room", and a hint ("walk to air") stays up while it lasts. Walking to air is the player's to do; the suit's air runs out.
+- **Down anyway:** the crew carry the figure to the nearest breathable tile like any casualty (`RescueTask`, priority 90, above fires and breaches), or put its suit on where it lies when nowhere aboard has air. Being carried home to a station stays the last resort, when the figure dies.
+- The suit and its air are saved with the figure; a suit half on when the game is saved starts again after a load, and a carry under way is set down and taken up again (as for any crew member).
+
 ## Not done here
 - No medbay or berth tiles exist in the ship data yet, so the wounded are treated where they lie once on a safe tile, rather than carried to a medbay.
 - Light wounds are not treated, only left to heal.
