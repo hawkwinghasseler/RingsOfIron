@@ -50,7 +50,8 @@ import org.junit.jupiter.api.Test;
  */
 class Round3CareerTest {
     static final float FRAME = 1f / 60f;
-    static final long SEED = 2026;
+    /** 2026 unless {@code -PcareerSeed=n} is given, to play the career on other seeds. */
+    static final long SEED = Long.getLong("career.seed", 2026);
 
     GameWorld world;
     GameScenario game;
@@ -59,6 +60,8 @@ class Round3CareerTest {
     /** Credits the script put in, and credits that came from selling prizes. */
     double grantedCredits, prizeCredits;
     int fightsLost;
+    /** The fight whose leak the crew patched from the stores, once one has. */
+    String patchedAfter;
     final java.util.Set<String> warpBlocks = new java.util.HashSet<>();
 
     @BeforeAll
@@ -130,6 +133,7 @@ class Round3CareerTest {
         snapshot("end");
         log("Standing granted by the script in all: %.0f. Credits granted: %.0f. Credits from prizes: %.0f. Fights lost: %d.",
                 granted, grantedCredits, prizeCredits, fightsLost);
+        log("Damage control: the crew patched a leak from the stores after %s.", patchedAfter == null ? "no fight" : patchedAfter);
         log("World events seen: %d.", world.events.log().size());
         for (WorldEvents.Event e : world.events.log()) log("  day %d %s: %s", e.day, e.kind, e.text);
         assertNotNull(home);
@@ -196,24 +200,7 @@ class Round3CareerTest {
         }), "the raider is beaten");
         log("The raider is beaten in %.0f s; our hull %.2f.", world.engine.getSimSeconds() - t0, hull(game.player));
 
-        // The fight left the bow leaking. Out here, far from a yard, the crew patch it from the ship's
-        // stores, and warp is no longer refused for it (round 3 had to dock at Highport's yard first)
-        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
-        logVenting("after the fight");
-        assertTrue(grid.isVenting(), "the fight left the ship venting");
-        assertTrue(world.engine.getRailsWarpBlockedReason().startsWith(InteriorHazardWarpGuard.VENTING),
-                world.engine.getRailsWarpBlockedReason());
-        int kits = grid.patchKits;
-        double p0 = world.engine.getSimSeconds();
-        assertTrue(runUntil(600f, () -> !grid.isVenting() && LeakPatches.leaks(grid).size == 0), "the crew patched the leak");
-        run(60);
-        assertFalse(grid.isVenting());
-        assertTrue(DamageControl.hasPatches(grid), "patched, not repaired");
-        assertNull(new InteriorHazardWarpGuard(grid).railsWarpBlockedReason(), "the leak no longer holds warp back");
-        assertTrue(noticed("Leak patched"), () -> "the player was told: " + world.notices.history().stream().map(n -> n.text).toList());
-        log("Damage control: venting stopped in %.0f s with %d patch(es) from the stores (%d left); hull %.2f; "
-                        + "warp is clear of hazards: %s.", world.engine.getSimSeconds() - p0, kits - grid.patchKits,
-                grid.patchKits, hull(game.player), world.engine.getRailsWarpBlockedReason());
+        patchIfVenting("the raider");
 
         run(60 * 20);
         assertEquals(Contract.Status.DONE, bounty.status, bounty.outcome);
@@ -270,7 +257,9 @@ class Round3CareerTest {
         assertTrue(world.docking.undock(game.player));
         run(60);
         Entity ship = bringIn(bounty.targetUuid, 3_000, 0);
-        if (fight(ship, h, "The second raider")) {
+        boolean won = fight(ship, h, "The second raider");
+        patchIfVenting("the second raider");
+        if (won) {
             log("  beaten: %s, %d of its crew alive.", ShipDisablement.reason(ship), alive(ship));
             run(60 * 20);
             assertEquals(Contract.Status.DONE, bounty.status, bounty.outcome);
@@ -335,14 +324,51 @@ class Round3CareerTest {
         return won;
     }
 
+    /**
+     * If the fight with {@code what} left a leak the crew can patch, and no earlier fight did, checks
+     * damage control on it: out here, far from a yard, warp is refused while air vents, and the crew
+     * patch the leak from the ship's stores. Once nothing vents, warp is no longer refused for it
+     * (round 3 had to dock at a yard first). A breach the patches can't stop is logged and left to
+     * the yard. Which fight holes the ship depends on the seed and on the round 4 balance (a plain
+     * raider rarely fires), so the career checks the first fight that leaves a patchable leak.
+     */
+    private void patchIfVenting(String what) {
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        logVenting("after " + what);
+        if (patchedAfter != null || LeakPatches.leaks(grid).size == 0) return;
+        assertTrue(world.engine.getRailsWarpBlockedReason().startsWith(InteriorHazardWarpGuard.VENTING),
+                world.engine.getRailsWarpBlockedReason());
+        int kits = grid.patchKits;
+        double p0 = world.engine.getSimSeconds();
+        assertTrue(runUntil(600f, () -> LeakPatches.leaks(grid).size == 0), "the crew patched the leaks");
+        run(60);
+        assertTrue(DamageControl.hasPatches(grid), "patched, not repaired");
+        assertTrue(grid.patchKits < kits, "the patches came from the stores");
+        if (grid.isVenting()) {
+            int breaches = 0;
+            for (int y = 0; y < grid.height; y++) for (int x = 0; x < grid.width; x++) if (grid.getTile(x, y).isHullBreach()) breaches++;
+            log("  still venting through %d hull breach(es) the patches can't stop; warp: %s", breaches,
+                    world.engine.getRailsWarpBlockedReason());
+        } else {
+            assertNull(new InteriorHazardWarpGuard(grid).railsWarpBlockedReason(), "the leak no longer holds warp back");
+            assertTrue(noticed("Leak patched"), () -> "the player was told: " + world.notices.history().stream().map(n -> n.text).toList());
+        }
+        log("Damage control: leaks patched in %.0f s with %d patch(es) from the stores (%d left); hull %.2f; "
+                        + "warp held back by: %s.", world.engine.getSimSeconds() - p0, kits - grid.patchKits,
+                grid.patchKits, hull(game.player), world.engine.getRailsWarpBlockedReason());
+        patchedAfter = what;
+    }
+
     /** Has {@code station}'s yard mend the ship, which takes off the crew's patches and restocks the kits. */
     private void repairAt(Entity station) {
         logVenting("at the yard");
         double cost = world.yard.repairCost(game.player), paid = credits(), r0 = world.engine.getSimSeconds();
         log("Yard: %s (quoted %.0f cr).", world.yard.orderRepairs(game.player, station), cost);
         assertTrue(runUntil(2 * 3_600f, () -> !world.yard.repairing(game.player)), "the yard finished");
-        // A ship venting hard can shake loose of the latch for a moment, which calls the work off: order it again
-        for (int again = 0; again < 3 && world.yard.repairCost(game.player) > 0.5; again++) {
+        // A ship venting hard through an unsealed breach can shake loose of the latch for a moment, which
+        // calls the work off: order it again (the yard surviving a blip is round 5's docking part)
+        int again = 0;
+        for (; again < 8 && world.yard.repairCost(game.player) > 0.5; again++) {
             for (String n : world.yard.notices) log("  yard: %s", n);
             world.yard.notices.clear();
             if (world.docking.dockedTo(game.player) != station) assertTrue(game.dockAt(world.universe.uuidOf(station)));
@@ -350,8 +376,8 @@ class Round3CareerTest {
             log("  ordered again: %s", world.yard.orderRepairs(game.player, station));
             assertTrue(runUntil(2 * 3_600f, () -> !world.yard.repairing(game.player)), "the yard finished");
         }
-        log("  repaired in %.1f h for %.0f cr; hull %.2f; docked at %s.", (world.engine.getSimSeconds() - r0) / 3_600,
-                paid - credits(), hull(game.player), world.docking.dockedTo(game.player) == null ? "nothing"
+        log("  repaired in %.1f h for %.0f cr, ordered %d time(s); hull %.2f; docked at %s.", (world.engine.getSimSeconds() - r0) / 3_600,
+                paid - credits(), again + 1, hull(game.player), world.docking.dockedTo(game.player) == null ? "nothing"
                         : PlayerDocking.name(world.docking.dockedTo(game.player)));
         for (String n : world.yard.notices) log("  yard: %s", n);
         world.yard.notices.clear();
@@ -467,6 +493,7 @@ class Round3CareerTest {
         h.targetUuid = HostileComponent.PLAYER;
         bringIn(id, 3_000, 0);
         fight(ship, h, "Ace fight");
+        patchIfVenting("the ace");
         run(60 * 10);
         if (bounty != null) log("  its bounty: %s.", bounty.status);
         snapshot("after the ace");
