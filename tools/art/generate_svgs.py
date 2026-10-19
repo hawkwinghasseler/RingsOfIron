@@ -1749,6 +1749,217 @@ def turrets():
     write("turrets/harpoon_launcher.svg", w, h, a, "harpoon_launcher: pivot at origin, tubes facing +x", viewbox=v)
 
 
+# ---------------------------------------------------------------------------
+# Crew (top-down, centered on the SVG origin, facing +y which is SVG up)
+# ---------------------------------------------------------------------------
+
+CREW = {
+    # id: (suit, suit shade, trim, head covering, title)
+    "crew_ship": ("#3f5a7a", "#2c4058", "#6aa8ff", "#2a2a30", "ship crew"),
+    "crew_station": ("#c8641e", "#954914", HAZARD, "#e8e2d0", "station dock hand"),
+    "crew_player": ("#2f7a6a", "#1f564a", "#5ee08a", "#5a3a22", "the player"),
+}
+
+
+def crew_body(a, suit, shade, trim, hair, carrying):
+    """A crew member about 0.6 tile across (CrewBody radius 0.3 tile = 19.2 units)."""
+    # arms: at the sides, or reaching forward to hold a crate
+    for sx in (-1, 1):
+        if carrying:
+            a.b += path(f"M{f(sx*14)},{f(2)} L{f(sx*13)},{f(-12)} L{f(sx*10)},{f(-16)}",
+                        stroke=INK, sw=8)
+            a.b += path(f"M{f(sx*14)},{f(2)} L{f(sx*13)},{f(-12)} L{f(sx*10)},{f(-16)}",
+                        stroke=shade, sw=5)
+            a.b += circle(sx * 10, -16, 3, "#c99a78", stroke=INK, sw=1)
+        else:
+            a.b += rect(sx * 15 - 3.5, -6, 7, 16, shade, rx=3.5, stroke=INK, sw=1.5)
+            a.b += circle(sx * 15, 9, 3, "#c99a78", stroke=INK, sw=1)
+    # shoulders and torso
+    a.b += path("M-17,4 C-17,-6 -10,-9 0,-9 C10,-9 17,-6 17,4 C17,10 10,12 0,12 C-10,12 -17,10 -17,4 Z",
+                fill=suit, stroke=INK, sw=2)
+    a.b += path("M-14,-3 C-10,-7 -4,-8 2,-8", stroke="#ffffff", sw=1.5, extra=' opacity="0.25"')
+    # trim: shoulder flashes and a back pack
+    a.b += rect(-17, -1, 6, 3, trim, rx=1) + rect(11, -1, 6, 3, trim, rx=1)
+    a.b += rect(-7, 5, 14, 6, shade, rx=2, stroke=INK, sw=1.2)
+    # head, toward +y (SVG up), with the face and nose at the front
+    a.b += circle(0, -1, 7.5, "#c99a78", stroke=INK, sw=1.8)
+    a.b += path("M-7.5,-1 C-7.5,4 -4,6.5 0,6.5 C4,6.5 7.5,4 7.5,-1 C7.5,-4 5,-6 0,-6 C-5,-6 -7.5,-4 -7.5,-1 Z",
+                fill=hair, stroke=INK, sw=1.2)
+    a.b += path("M-1.5,-8.5 L0,-10 L1.5,-8.5", stroke=INK, sw=1.2)
+
+
+def crew():
+    for name, (suit, shade, trim, hair, title) in CREW.items():
+        a = Art()
+        crew_body(a, suit, shade, trim, hair, False)
+        a.m = collider_circle(0, 0, 19.2)
+        write(f"crew/{name}.svg", 48, 48, a,
+              f"{name}: {title}, top-down, centered on the origin, facing +y", viewbox="-24 -24 48 48")
+
+        a = Art()
+        crew_body(a, suit, shade, trim, hair, True)
+        # crate held in front, light neutral grey so code can tint it
+        a.b += rect(-11, -34, 22, 18, "#c4c7cc", rx=2, stroke=INK, sw=2)
+        a.b += bevel(-10, -33, 20, 16, "#eef0f2", "#8a8e94")
+        a.b += line(-11, -25, 11, -25, "#8a8e94", sw=1.5)
+        a.b += line(-4, -34, -4, -16, "#a6aab0", sw=1.2) + line(4, -34, 4, -16, "#a6aab0", sw=1.2)
+        a.m = collider_circle(0, 0, 19.2)
+        write(f"crew/{name}_carrying.svg", 48, 60, a,
+              f"{name}_carrying: {title} holding a crate in front (crate is neutral grey, tint in code)",
+              viewbox="-24 -36 48 60")
+
+
+# ---------------------------------------------------------------------------
+# Projectiles (pivot at the origin, nose toward +x, 64 units per meter)
+# ---------------------------------------------------------------------------
+
+def streak(a, gid, x0, x1, half, color):
+    a.defs += (f'<linearGradient id="{gid}" x1="0" x2="1" y1="0" y2="0">'
+               f'<stop offset="0" stop-color="{color}" stop-opacity="0"/>'
+               f'<stop offset="1" stop-color="{color}" stop-opacity="0.85"/></linearGradient>')
+    a.e += path(f"M{f(x0)},0 L{f(x1)},{f(-half)} L{f(x1)},{f(half)} Z", fill=f"url(#{gid})")
+
+
+def projectiles():
+    # railgun slug: 20 kg tungsten dart (about 0.4 m), with a long hot streak behind it
+    a = Art()
+    streak(a, "slug_streak", -160, -8, 3, "#9fe8ff")
+    a.b += poly([(-12, -3.5), (6, -3.5), (13, 0), (6, 3.5), (-12, 3.5)], "#8d96a3", stroke=INK, sw=1.5)
+    a.b += line(-10, -1.5, 8, -1.5, "#c9d1db", sw=1)
+    a.e += poly([(-12, -3.5), (6, -3.5), (13, 0), (6, 3.5), (-12, 3.5)], "#bff2ff", extra=' opacity="0.35"')
+    write("projectiles/railgun_slug.svg", 176, 16, a,
+          "railgun_slug: tungsten slug, pivot at origin, nose toward +x, streak behind",
+          viewbox="-162 -8 176 16")
+
+    # autocannon round: 30 mm shell with a short tracer
+    a = Art()
+    streak(a, "tracer", -48, -3, 2.5, "#ffb347")
+    a.b += rect(-6, -2, 6, 4, "#b08a3a", stroke=INK, sw=1)
+    a.b += poly([(0, -2), (3, -2), (5, 0), (3, 2), (0, 2)], "#7d8898", stroke=INK, sw=1)
+    a.e += circle(-6, 0, 2.5, "#ffe0a0")
+    write("projectiles/autocannon_round.svg", 56, 10, a,
+          "autocannon_round: 30 mm round with tracer, pivot at origin, nose toward +x",
+          viewbox="-50 -5 56 10")
+
+    # missile: body in base, exhaust in emissive
+    a = Art()
+    a.defs += glow_def("missile_exhaust", "#ff9a3c")
+    a.e += path("M-30,-5 C-50,-6 -70,-3 -86,0 C-70,3 -50,6 -30,5 Z", fill="#ff9a3c", extra=' opacity="0.55"')
+    a.e += path("M-30,-3 C-42,-3 -52,-1.5 -60,0 C-52,1.5 -42,3 -30,3 Z", fill="#ffe58a")
+    a.e += circle(-32, 0, 9, "url(#missile_exhaust)")
+    for sy in (-1, 1):
+        a.b += poly([(-28, sy * 5), (-20, sy * 5), (-26, sy * 12), (-31, sy * 12)], STEEL_DARK, stroke=INK, sw=1.5)
+        a.b += poly([(6, sy * 5), (12, sy * 5), (9, sy * 9), (5, sy * 9)], STEEL_DARK, stroke=INK, sw=1.2)
+    a.b += path("M-30,-5 L18,-5 C26,-5 32,-2 34,0 C32,2 26,5 18,5 L-30,5 Z", fill="#c9ced6", stroke=INK, sw=2)
+    a.b += line(-28, -2.5, 20, -2.5, "#eef0f2", sw=1.2)
+    a.b += rect(18, -5, 3, 10, "#ff5a5a") + rect(-16, -5, 3, 10, HAZARD)
+    a.b += rect(-32, -4, 3, 8, HOUSING, stroke=INK, sw=1)
+    write("projectiles/missile.svg", 124, 28, a,
+          "missile: body in base, exhaust in emissive; pivot at origin, nose toward +x",
+          viewbox="-88 -14 124 28")
+
+    # decoy flare: a small casing with a hot ball of light and a sparking trail
+    a = Art()
+    a.defs += glow_def("flare_glow", "#ffd27a") + halo_def("flare_halo", "#ff8a3c")
+    a.e += circle(0, 0, 22, "url(#flare_halo)")
+    rnd = random.Random(21)
+    for i in range(7):
+        x = -8 - i * 6 + rnd.uniform(-2, 2)
+        a.e += circle(x, rnd.uniform(-3, 3), 2.2 - i * 0.22, "#ffd27a", extra=f' opacity="{f(0.9 - i * 0.11)}"')
+    a.b += rect(-4, -2.5, 8, 5, STEEL_DARK, rx=1.5, stroke=INK, sw=1)
+    a.e += circle(1, 0, 8, "url(#flare_glow)")
+    write("projectiles/decoy_flare.svg", 72, 48, a,
+          "decoy_flare: burning flare, pivot at origin, moving toward +x, sparks behind",
+          viewbox="-48 -24 72 48")
+
+    # harpoon: barbed head on a shaft, with the tow cable trailing behind
+    a = Art()
+    a.b += path("M-70,0 C-60,-3 -52,3 -42,0 C-36,-2 -32,1 -28,0", stroke="#2a2a30", sw=3)
+    a.b += path("M-70,0 C-60,-3 -52,3 -42,0 C-36,-2 -32,1 -28,0", stroke="#6b6f78", sw=1.2)
+    a.b += rect(-28, -3, 34, 6, STEEL_MID, rx=1.5, stroke=INK, sw=1.5)
+    a.b += rect(-28, -3, 6, 6, HOUSING, stroke=INK, sw=1)
+    for sy in (-1, 1):
+        a.b += poly([(12, sy * 2), (4, sy * 10), (8, sy * 2)], STEEL_HI, stroke=INK, sw=1.2)
+    a.b += poly([(4, -4), (18, -4), (28, 0), (18, 4), (4, 4)], "#9aa4b2", stroke=INK, sw=1.5)
+    a.b += line(6, -1.5, 20, -1.5, "#d6dce4", sw=1)
+    write("projectiles/harpoon.svg", 102, 24, a,
+          "harpoon: barbed harpoon with tow cable trailing, pivot at origin, nose toward +x",
+          viewbox="-72 -12 102 24")
+
+
+# ---------------------------------------------------------------------------
+# Explosion frames and laser beam
+# ---------------------------------------------------------------------------
+
+def explosion_frame(n):
+    """Frame n (1..4) of a burst about two tiles across, centered on the origin."""
+    a = Art()
+    rnd = random.Random(30)
+    a.defs += glow_def("boom_core", "#ffb347") + halo_def("boom_halo", "#ff5a1f")
+    blobs = [(rnd.uniform(0, 2 * math.pi), rnd.uniform(0.3, 0.8), rnd.uniform(0.35, 0.55)) for _ in range(9)]
+    scale = {1: 22, 2: 40, 3: 54, 4: 60}[n]
+    if n >= 2:  # smoke in the base layer, growing and thinning
+        op = {2: 0.35, 3: 0.55, 4: 0.45}[n]
+        for (ang, d, r) in blobs:
+            a.b += circle(math.cos(ang) * d * scale, math.sin(ang) * d * scale, r * scale, "#2b2d31",
+                          extra=f' opacity="{f(op)}"')
+    if n <= 3:
+        fire = {1: 1.0, 2: 0.9, 3: 0.55}[n]
+        a.e += circle(0, 0, scale * 1.1, "url(#boom_halo)")
+        for (ang, d, r) in blobs:
+            if n == 3 and d > 0.6:
+                continue
+            cx, cy = math.cos(ang) * d * scale * 0.7, math.sin(ang) * d * scale * 0.7
+            a.e += circle(cx, cy, r * scale * 0.9, "#ff5a1f", extra=f' opacity="{f(fire * 0.8)}"')
+            a.e += circle(cx, cy, r * scale * 0.55, "#ffa62b", extra=f' opacity="{f(fire)}"')
+        a.e += circle(0, 0, scale * (0.55 if n == 1 else 0.4), "url(#boom_core)")
+    if n <= 2:  # debris sparks
+        for i in range(12):
+            ang = 2 * math.pi * i / 12 + rnd.uniform(-0.2, 0.2)
+            r0, r1 = scale * 0.6, scale * (1.0 + rnd.uniform(0, 0.25))
+            a.e += line(math.cos(ang) * r0, math.sin(ang) * r0, math.cos(ang) * r1, math.sin(ang) * r1,
+                        "#ffe58a", sw=1.5)
+    if n == 4:
+        for (ang, d, r) in blobs[:3]:
+            a.e += circle(math.cos(ang) * d * 20, math.sin(ang) * d * 20, 3, "#ff9a3c", extra=' opacity="0.6"')
+    return a
+
+
+def blasts():
+    for n in range(1, 5):
+        write(f"effects/explosion_{n}.svg", 128, 128, explosion_frame(n),
+              f"explosion_{n}: frame {n} of 4 of an explosion, centered on the origin", viewbox="-64 -64 128 128")
+    write("effects/explosion.svg", 128, 128, explosion_frame(2),
+          "explosion: single-frame explosion (same as explosion_2), centered on the origin",
+          viewbox="-64 -64 128 128")
+
+    a = Art()
+    a.defs += ('<linearGradient id="beam_glow" x1="0" x2="0" y1="0" y2="1">'
+               '<stop offset="0" stop-color="#ff5a5a" stop-opacity="0"/>'
+               '<stop offset="0.5" stop-color="#ff5a5a" stop-opacity="0.75"/>'
+               '<stop offset="1" stop-color="#ff5a5a" stop-opacity="0"/></linearGradient>')
+    a.e += rect(0, 0, 64, 16, "url(#beam_glow)")
+    a.e += rect(0, 5.5, 64, 5, "#ff8a8a")
+    a.e += rect(0, 7, 64, 2, "#ffe6e6")
+    write("effects/beam.svg", 64, 16, a, "beam: laser beam strip, stretch along x to the beam's length")
+
+
+def dock_walkway():
+    """Gangway grating between two latched collars; uniform along y so it stretches or tiles."""
+    a = Art()
+    a.b = rect(0, 0, T, T, "#1b2027")
+    a.b += rect(8, 0, 48, T, STEEL_DARK)
+    for yy in range(0, T, 8):
+        a.b += rect(10, yy + 1, 44, 5, STEEL_MID, rx=1)
+        a.b += line(10, yy + 1.5, 54, yy + 1.5, STEEL_HI, sw=0.8, extra=' opacity="0.6"')
+    a.b += rect(2, 0, 6, T, HOUSING) + line(2, 0, 2, T, INK, sw=1.5) + line(8, 0, 8, T, INK, sw=1.5)
+    a.b += rect(56, 0, 6, T, HOUSING) + line(56, 0, 56, T, INK, sw=1.5) + line(62, 0, 62, T, INK, sw=1.5)
+    a.b += line(4, 0, 4, T, HOUSING_HI, sw=1) + line(58, 0, 58, T, HOUSING_HI, sw=1)
+    a.b += rect(4, 0, 2, T, HAZARD, extra=' opacity="0.8"') + rect(58, 0, 2, T, HAZARD, extra=' opacity="0.8"')
+    write("tiles/dock_walkway.svg", T, T, a,
+          "dock_walkway: gangway between two latched collars; uniform along y, stretch or tile it to the gap")
+
+
 def main():
     if os.path.isdir(OUT):
         for sub in os.listdir(OUT):
@@ -1763,6 +1974,10 @@ def main():
     interactive()
     hulls()
     turrets()
+    crew()
+    projectiles()
+    blasts()
+    dock_walkway()
     print(f"wrote {len(written)} SVGs to {os.path.relpath(OUT, ROOT)}")
 
 
