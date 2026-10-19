@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="242" height="22" viewBox="-222 -11 242 22">
+  <title>railgun_slug_heavy: 60 kg tungsten slug, pivot at origin, nose toward +x, streak behind</title>
+  <defs><linearGradient id="slug_heavy_streak" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#9fe8ff" stop-opacity="0"/><stop offset="1" stop-color="#9fe8ff" stop-opacity="0.85"/></linearGradient></defs>
+  <g id="base">
+    <polygon points="-18,-5 8,-5 18,0 8,5 -18,5" fill="#8d96a3" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round"/>
+    <line x1="-16" y1="-2" x2="10" y2="-2" stroke="#c9d1db" stroke-width="1.2" stroke-linecap="round"/>
+  </g>
+  <g id="emissive">
+    <path d="M-220,0 L-12,-5 L-12,5 Z" fill="url(#slug_heavy_streak)"/>
+    <polygon points="-18,-5 8,-5 18,0 8,5 -18,5" fill="#bff2ff" opacity="0.4"/>
+  </g>
+</svg>

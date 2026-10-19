@@ -13,6 +13,9 @@ import java.util.List;
  * stations = ["Highport"]          # station names it owns
  * enemies = ["pirates"]            # faction ids it is at war with (war goes both ways)
  * hostile_to_all = false           # at war with everyone, the player included
+ * sponsorable = true               # the player may choose to serve it in a new game
+ * rank_names = ["Cadet", ...]      # its names for the rank ladder's steps, lowest first
+ * home = "Highport"                # the station a career serving it starts docked at
  * </pre>
  */
 public class FactionDef {
@@ -23,4 +26,10 @@ public class FactionDef {
     public List<String> stations = new ArrayList<>();
     public List<String> enemies = new ArrayList<>();
     public boolean hostileToAll;
+    /** The player may choose to serve it in a new game; the data's sponsor always may. */
+    public boolean sponsorable;
+    /** Its own names for the rank ladder's steps, lowest first; missing ones keep the ladder's names. */
+    public List<String> rankNames = new ArrayList<>();
+    /** The station a career serving it starts docked at; null for its first station. */
+    public String home;
 }

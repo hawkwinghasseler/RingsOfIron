@@ -110,7 +110,9 @@ public class SmokeLauncher {
         @Override public void resize(int width, int height) { shell.resize(width, height); }
         @Override public void render() {
             switch (frame++) {
-                case 20: shell.newGame(false); break;
+                case 10: shell.openNewGame(); break;
+                // A seeded career in the Combine's service, starting above the Moon
+                case 20: shell.newGame(com.hawkwing.RingsOfIron.game.NewGame.seeded(7, "selene")); break;
                 case 100: check(shell.isPlaying(), "new game started"); shell.openPauseMenu(); break;
                 case 110: {
                     String failed = shell.saveGame("Smoke slot");
@@ -122,12 +124,14 @@ public class SmokeLauncher {
                 case 220: check(shell.isPlaying() && !shell.isPaused(), "continued the save"); shell.openPauseMenu(); break;
                 case 230: shell.openSettings(); break;
                 case 240: shell.resumeGame(); break;
+                case 260: check(shell.getGame().getHud().getCrewWindow().setOpen(true), "the crew window opens"); break;
+                case 280: shell.getGame().getHud().getCrewWindow().setOpen(false); break;
                 default: break;
             }
             shell.render();
-            // With -Dsmoke.shots=<dir>: the menu, the HUD in flight, the pause menu and the settings
+            // With -Dsmoke.shots=<dir>: the menu, the HUD in flight, the pause menu, the settings and the crew window
             String shots = System.getProperty("smoke.shots");
-            if (shots != null && (frame == 15 || frame == 99 || frame == 105 || frame == 235)) {
+            if (shots != null && (frame == 15 || frame == 99 || frame == 105 || frame == 235 || frame == 275)) {
                 int w = Gdx.graphics.getBackBufferWidth(), h = Gdx.graphics.getBackBufferHeight();
                 // Flipped to top-down rows, and opaque: what is on screen, whatever alpha the frame buffer kept
                 byte[] pixels = com.badlogic.gdx.utils.ScreenUtils.getFrameBufferPixels(0, 0, w, h, true);

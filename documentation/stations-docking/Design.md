@@ -109,6 +109,7 @@ Docking permission is not required to dock. Without it:
 - In the bubble, Box2D keeps simulating the ship, held to the station or other ship by a **weld joint**.
 - During rails warp, the docked pair goes onto rails as **one body**, and splits back into two welded bodies when the bubble resumes.
 - Each port size has a **break force and break torque**. Going past either tears the collar and damages the hull around the port, and the two craft separate.
+- `DockingSystem.towLocked` lets the game exempt a link from tearing. Core's shipyard sets it for a taken prize latched to the player's ship, so the tow weld never breaks under thrust.
 - Tolerances, magnet strengths, spring constants and break limits are tuning values to set during the prototype.
 
 ## Representing the Half-Tile Collar

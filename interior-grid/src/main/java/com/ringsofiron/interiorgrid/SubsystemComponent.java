@@ -44,6 +44,12 @@ public class SubsystemComponent implements Component {
     public boolean switchedOn = true;
     /** Whether this subsystem is currently operational: switched on, powered and not disabled by damage. Set by PowerRoutingSystem. */
     public boolean isOperational = true;
+    /**
+     * Seconds an ion hit has knocked this system out for, counting down; 0 when it is not
+     * stunned. A stunned system is not operational, and a stunned reactor makes no power, but
+     * nothing is broken: it comes back by itself. Set by combat, run down by PowerRoutingSystem.
+     */
+    public float stunned;
     /** Structural health 0.0 = destroyed, 1.0 = fully intact. Only damage changes it. */
     public float health = 1.0f;
     /** Whether this subsystem is currently receiving power. Set by PowerRoutingSystem. */
@@ -93,6 +99,11 @@ public class SubsystemComponent implements Component {
      */
     public boolean tryDrawPower(double joules) {
         return isOperational && circuit != null && circuit.tryDraw(joules);
+    }
+
+    /** True while an ion hit has it knocked out ({@link #stunned}). */
+    public boolean isStunned() {
+        return stunned > 0f;
     }
 
     public boolean isDestroyed() {

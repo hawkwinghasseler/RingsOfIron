@@ -7,6 +7,7 @@ import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.ashley.signals.Signal;
 import com.ringsofiron.aicrew.BoardTask;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
@@ -66,6 +67,8 @@ public class Boarding extends EntitySystem {
     private ImmutableArray<Entity> boarded;
     /** Factions whose ships are anyone's to board (outlaws); by default none. */
     public IntPredicate outlaw = faction -> false;
+    /** Each craft as it is taken. */
+    public final Signal<Entity> taken = new Signal<>();
     /** What the boardings came to, for the screen; drained by the caller. */
     public final List<String> notices = new ArrayList<>();
 
@@ -256,6 +259,8 @@ public class Boarding extends EntitySystem {
     /** The craft is taken: its crew are held, the party stands down, and it stays surrendered. */
     private void take(Entity target, BoardedComponent b) {
         b.taken = true;
+        // Before the party stands down, so listeners can tell who was in it
+        taken.dispatch(target);
         cancelOrders(b);
         b.prisoners = keepHeld(target);
         DisabledComponent.Reason r = ShipDisablement.reason(target);

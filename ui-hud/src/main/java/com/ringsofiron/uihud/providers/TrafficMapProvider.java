@@ -12,7 +12,7 @@ public interface TrafficMapProvider {
     /** Fills {@code out} (already cleared) with the current picture. */
     void collect(TrafficFrame out);
 
-    enum ContactKind { PLAYER, STATION, HAULER, OTHER }
+    enum ContactKind { PLAYER, STATION, HAULER, HOSTILE, OTHER }
 
     /** A body drawn as a circle. Positions are meters relative to the frame body (the map center). */
     final class MapBody {
@@ -28,6 +28,12 @@ public interface TrafficMapProvider {
         public String detail = "";
         /** Where one of the player's contracts points; ringed on the map. */
         public boolean objective;
+        /** The player's navigation target; bracketed on the map. */
+        public boolean target;
+        /** Only a last known position: out of sensor range now, drawn dim. */
+        public boolean stale;
+        /** What the provider knows it by, for picking it on the map; empty if it can't be picked. */
+        public String id = "";
     }
 
     /** Everything one map refresh shows; reused between refreshes. */
@@ -52,6 +58,9 @@ public interface TrafficMapProvider {
             Contact c = contactPool.size > 0 ? contactPool.pop() : new Contact();
             c.detail = "";
             c.objective = false;
+            c.target = false;
+            c.stale = false;
+            c.id = "";
             contacts.add(c);
             return c;
         }

@@ -36,7 +36,8 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
  * on and turns the ship back to the heading it had when the player left the helm. With nobody at
  * the helm, or a helm that is unpowered or disabled, nothing fires at all and the ship drifts and
  * spins as it was. A helm that is not working also gives the seated player no control. Only ships
- * with a {@link HelmComponent} are run this way; docked ones are left to the dock.
+ * with a {@link HelmComponent} are run this way; docked ones are left to the dock. A helmsman
+ * with an order from the player flies it instead of holding the heading ({@link HelmOrders}).
  *
  * <p>Runs every physics tick, before physics and after the screen has set the frame's input.
  */
@@ -253,6 +254,8 @@ public class Bridge extends FixedLogicSystem {
             helm.heldAngle = body.getAngle();
             helm.holding = true;
         }
+        // A standing order from the player: the autopilot
+        if (world.nav != null && world.nav.helm.steer(ship, helm, controls, body, deltaTime)) return;
         controls.turn = holdTurn(body, ship.getComponent(ThrusterComponent.class), helm.heldAngle);
     }
 

@@ -7,6 +7,8 @@
 # urgent incoming missile; launchers throw guided missiles at the locked target;
 # beams burn beam_power watts into whatever they touch for beam_duration seconds.
 # price is what a new one costs at a station yard's refit (a used one half that).
+# min_mount_size (S, M, L or XL) is the smallest turret mount it fits; leave it out for any.
+# rare = true: yards never sell it new; it only comes off a beaten ace (see loadouts.toml).
 
 [weapon.railgun_mk1]
 name = "Railgun Mk1"
@@ -73,6 +75,94 @@ spread_rad = 0.0005
 max_range = 3000.0
 sound = "evt_laser_fire"
 
+# Point defense that bursts near a missile rather than having to strike it: its shells are
+# proximity fused, so each one that passes within 25 m of a missile takes it. Slower and
+# shorter-ranged than the autocannon, and little use against a hull.
+[weapon.flak_mk1]
+name = "Flak Gun Mk1"
+price = 16000.0
+mount = "turret"
+slew_rate_deg = 140
+firing_arc_deg = 300
+cooldown = 0.35
+power_draw = 4.0e4
+projectile = "flak_shell"
+spread_rad = 0.006
+point_defense = true
+max_range = 3000.0
+sound = "evt_flak_fire"
+
+# Two tubes of light darts for a small ship's one mount: half the reach of a harpoon and a
+# lighter warhead, but quicker to reload.
+[weapon.dart_rack]
+name = "Dart Rack"
+price = 15000.0
+mount = "launcher"
+firing_arc_deg = 360
+cooldown = 4.0
+missile = "dart"
+max_range = 8000.0
+sound = "evt_missile_launch"
+
+# A gunship's or frigate's spinal-weight gun: a 60 kg slug, three times the railgun's, on a
+# mount of Medium or bigger. It drinks power: 9 MJ a shot.
+[weapon.railgun_heavy]
+name = "Heavy Railgun"
+price = 140000.0
+mount = "turret"
+min_mount_size = "M"
+slew_rate_deg = 20
+firing_arc_deg = 200
+cooldown = 3.0
+power_draw = 3.0e6
+projectile = "slug_tungsten_60kg"
+spread_rad = 0.0004
+sound = "evt_railgun_heavy_fire"
+
+# Ion bolts break nothing: each one that lands stuns the systems within two tiles of where it
+# struck for 10 to 30 s, so a ship can be stopped and boarded without wrecking it. A shield
+# soaks a bolt as often as it takes its share of one.
+[weapon.ion_mk1]
+name = "Ion Cannon Mk1"
+price = 40000.0
+mount = "turret"
+slew_rate_deg = 60
+firing_arc_deg = 270
+cooldown = 2.0
+power_draw = 1.5e6
+projectile = "ion_bolt"
+spread_rad = 0.001
+max_range = 3500.0
+sound = "evt_ion_fire"
+
+# Rare refits, found only on aces and stripped off them once beaten.
+[weapon.railgun_mk2]
+name = "Railgun Mk2"
+price = 95000.0
+rare = true
+mount = "turret"
+slew_rate_deg = 55
+firing_arc_deg = 270
+cooldown = 1.0
+power_draw = 2.0e6
+projectile = "slug_tungsten_20kg"
+spread_rad = 0.0003
+sound = "evt_railgun_fire"
+
+[weapon.chaingun_mk2]
+name = "Chaingun Mk2"
+price = 32000.0
+rare = true
+mount = "turret"
+slew_rate_deg = 120
+firing_arc_deg = 300
+cooldown = 0.09
+power_draw = 4.0e4
+projectile = "autocannon_30mm"
+spread_rad = 0.0015
+max_range = 3500.0
+sound = "evt_autocannon_fire"
+
 [projectile.slug_tungsten_20kg]
 art = "railgun_slug"
 mass = 20.0
@@ -95,6 +185,37 @@ ricochet_restitution = 0.4
 spall = { count = 2, angle_deg = 20, fraction = 0.2 }
 max_lifetime = 15.0
 
+[projectile.slug_tungsten_60kg]
+art = "railgun_slug_heavy"
+mass = 60.0
+muzzle_speed = 5500.0
+damage_type = "kinetic"
+penetration_factor = 1.0
+ricochet_angle_deg = 75
+ricochet_restitution = 0.6
+spall = { count = 10, angle_deg = 30, fraction = 0.35 }
+max_lifetime = 30.0
+
+[projectile.flak_shell]
+art = "flak_shell"
+mass = 1.5
+muzzle_speed = 1100.0
+damage_type = "kinetic"
+penetration_factor = 0.3
+ricochet_angle_deg = 55
+ricochet_restitution = 0.3
+fuse = { type = "proximity", radius = 25 }
+max_lifetime = 4.0
+
+[projectile.ion_bolt]
+art = "ion_bolt"
+mass = 0.1
+muzzle_speed = 3000.0
+damage_type = "ion"
+penetration_factor = 0.5
+stun = { radius_tiles = 2, min_seconds = 10, max_seconds = 30 }
+max_lifetime = 5.0
+
 [missile.harpoon]
 dry_mass = 150.0
 propellant_mass = 250.0
@@ -115,3 +236,26 @@ fragment_speed = 2500.0
 fragment_cone_deg = 60
 blast_radius_tiles = 3
 blast_damage = 400000.0
+
+[missile.dart]
+art = "missile"
+dry_mass = 40.0
+propellant_mass = 60.0
+exhaust_velocity = 2800.0
+max_thrust = 20000.0
+turn_rate_deg = 140
+seeker = { type = "radar", fov_deg = 40, range = 10000, discrimination = 0.5 }
+nav_gain = 4.0
+terminal_reserve = 0.3
+arming_delay = 0.4
+hit_points = 6.0e4
+fuse = { type = "proximity", radius = 10 }
+warhead = "frag_light"
+
+[warhead.frag_light]
+fragment_count = 16
+fragment_mass = 0.1
+fragment_speed = 2000.0
+fragment_cone_deg = 60
+blast_radius_tiles = 2
+blast_damage = 1.5e5

@@ -25,6 +25,8 @@ public class GameSettings {
     public int windowWidth = 1280;
     public int windowHeight = 800;
     public boolean gamepad = true;
+    /** New games open with a short walkthrough of the board, undocking and the map. */
+    public boolean openingGuide = true;
     /** Action name to key name, for the actions not on their default key. */
     public ObjectMap<String, String> keys = new ObjectMap<>();
 

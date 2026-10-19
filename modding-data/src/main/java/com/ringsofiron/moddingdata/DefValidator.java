@@ -2,7 +2,10 @@ package com.ringsofiron.moddingdata;
 
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.moddingdata.defs.FactionDef;
+import com.ringsofiron.moddingdata.defs.OperationDef;
 import com.ringsofiron.moddingdata.defs.RankDef;
+import com.ringsofiron.moddingdata.defs.ShipSaleDef;
+import com.ringsofiron.moddingdata.defs.ShipyardDef;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.moddingdata.defs.SoundEventData;
 import com.ringsofiron.moddingdata.defs.StationTypeDef;
@@ -107,7 +110,60 @@ public final class DefValidator {
                 report.warn(e.lastSource(), e + " allows unknown chassis '" + rank.maxChassis + "'");
             }
         }
+
+        for (DefEntry e : defs.entries("operation")) {
+            OperationDef op;
+            try {
+                op = defs.convert(e, OperationDef.class);
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
+            if (op.giver != null && !op.giver.isEmpty() && !defs.has("faction", op.giver)) {
+                report.warn(e.lastSource(), e + " is given by unknown faction '" + op.giver + "'");
+            }
+            if (op.rank != null && !defs.has("rank", op.rank)) {
+                report.warn(e.lastSource(), e + " needs unknown rank '" + op.rank + "'");
+            }
+            if (op.steps.isEmpty()) report.warn(e.lastSource(), e + " has no steps");
+            for (String step : op.steps) {
+                if (!OPERATION_STEPS.contains(step)) report.warn(e.lastSource(), e + " has unknown step '" + step + "'");
+            }
+        }
+
+        for (DefEntry e : defs.entries("shipyard")) {
+            ShipyardDef yard;
+            try {
+                yard = defs.convert(e, ShipyardDef.class);
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
+            if (yard.faction == null || !defs.has("faction", yard.faction)) {
+                report.warn(e.lastSource(), e + " belongs to unknown faction '" + yard.faction + "'");
+            }
+            for (String type : yard.stationTypes) {
+                if (!defs.has("station_type", type)) report.warn(e.lastSource(), e + " names unknown station type '" + type + "'");
+            }
+        }
+
+        for (DefEntry e : defs.entries("ship_sale")) {
+            ShipSaleDef sale;
+            try {
+                sale = defs.convert(e, ShipSaleDef.class);
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
+            if (sale.ship == null || !defs.has("ship", sale.ship)) report.warn(e.lastSource(), e + " sells unknown ship '" + sale.ship + "'");
+            if (sale.seller == null || !defs.has("faction", sale.seller)) {
+                report.warn(e.lastSource(), e + " is sold by unknown faction '" + sale.seller + "'");
+            }
+            if (sale.rank != null && !defs.has("rank", sale.rank)) report.warn(e.lastSource(), e + " needs unknown rank '" + sale.rank + "'");
+            if (sale.price < 0) report.warn(e.lastSource(), e + " has a negative price");
+        }
     }
+
+    /** The contract types an operation's steps may be. */
+    public static final java.util.Set<String> OPERATION_STEPS =
+            java.util.Set.of("patrol", "recon", "bounty", "escort", "convoy", "delivery", "intel", "raid");
 
     private static boolean stationChassis(DefRegistry defs, String id) {
         try {

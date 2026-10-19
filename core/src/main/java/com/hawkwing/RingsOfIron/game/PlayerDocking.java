@@ -22,8 +22,14 @@ import java.util.function.Supplier;
  * torn loose) go to {@code notices}.
  */
 public class PlayerDocking {
-    /** How far the readout looks for a port to line up with, meters. */
-    public static final float READOUT_RANGE = 500f;
+    /** How far the readout looks for a port to line up with, meters: guidance starts this far out. */
+    public static final float READOUT_RANGE = 5_000f;
+    /** The braking the safe closing speed allows for, m/s²: gentle, so the last meters are slow. */
+    public static final float SAFE_BRAKING = 0.1f;
+    /** Never asked to come in slower than this, m/s; under {@link com.ringsofiron.stationsdocking.DockingTuning#LATCH_SPEED}. */
+    public static final float MIN_SAFE_SPEED = 0.5f;
+    /** Fastest closing speed counted safe however far out, m/s. */
+    public static final float MAX_SAFE_SPEED = 50f;
 
     private final GameWorld world;
     private final Supplier<Entity> ship;
@@ -116,11 +122,34 @@ public class PlayerDocking {
         }
         if (port.state == DockingPort.State.CAPTURED) return new String[]{first, "Collar has hold: drawing in"};
         world.docking.approach(player, ports.selected, READOUT_RANGE, approach);
-        if (approach.target == null) return new String[]{first, "No free " + port.size + " port within " + (int) READOUT_RANGE + " m"};
+        if (approach.target == null) return new String[]{first, String.format(Locale.ROOT, "No free %s port within %,d m",
+                port.size, (int) READOUT_RANGE)};
+        float safe = safeSpeed(approach.distance);
         return new String[]{first, String.format(Locale.ROOT,
-                "To %s #%d: %.1f m  off %.1f m  turn %+.0f deg  in %.2f m/s",
+                "To %s #%d: %,.1f m  off %.1f m  turn %+.0f deg  in %.2f m/s",
                 name(approach.target), approach.port + 1, approach.distance, approach.lateral,
-                approach.angle * MathUtils.radiansToDegrees, Math.round(approach.closing * 100f) / 100f + 0f)};
+                approach.angle * MathUtils.radiansToDegrees, Math.round(approach.closing * 100f) / 100f + 0f),
+                String.format(Locale.ROOT, "Safe closing speed here: up to %.1f m/s%s", safe,
+                        approach.closing > safe ? "   SLOW DOWN" : "")};
+    }
+
+    /**
+     * The fastest safe closing speed {@code distance} m from the port: what braking at
+     * {@link #SAFE_BRAKING} stops from in that distance, between {@link #MIN_SAFE_SPEED} and {@link #MAX_SAFE_SPEED}.
+     */
+    public static float safeSpeed(float distance) {
+        return MathUtils.clamp((float) Math.sqrt(2f * SAFE_BRAKING * Math.max(0f, distance)), MIN_SAFE_SPEED, MAX_SAFE_SPEED);
+    }
+
+    /** How the selected port lines up with the nearest free one within {@link #READOUT_RANGE}; its target is null for none. */
+    public DockingSystem.Approach approach() {
+        Entity player = ship.get();
+        DockingPortsComponent ports = ports(player);
+        approach.target = null;
+        if (ports == null) return approach;
+        DockingPort port = ports.selectedPort();
+        if (port.state != DockingPort.State.IDLE) return approach;
+        return world.docking.approach(player, ports.selected, READOUT_RANGE, approach);
     }
 
     private void onEvent(DockingEvent e) {

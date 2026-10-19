@@ -107,6 +107,11 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         this.rng = new RandomXS128(seed);
     }
 
+    /** Starts the fire-control noise over from {@code seed}, as if built with it (a new game's seed). */
+    public void reseed(long seed) {
+        rng.setSeed(seed);
+    }
+
     /** Where weapons draw their energy; null (the default) gives them all they want. */
     public void setPower(WeaponPower power) {
         this.power = power;

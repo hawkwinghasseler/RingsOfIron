@@ -20,6 +20,7 @@ import com.ringsofiron.combatsys.TidalAccel;
 import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.combatsys.damage.SegmentShapeCast;
+import com.ringsofiron.combatsys.defs.Fuse;
 import com.ringsofiron.combatsys.defs.ProjectileDef;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.events.ImpactEvent;
@@ -233,15 +234,17 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
             }
         }
         // Point defense: a round (not a missile) against each missile's circle, in relative motion.
+        // A proximity-fused round (flak) bursts as it passes within its fuse radius of one.
         if (!missileMapper.has(self)) {
             Entity struck = null;
+            float burst = p.def.fuse != null && p.def.fuse.type == Fuse.Type.PROXIMITY ? p.def.fuse.radius : 0f;
             for (int i = 0; i < missiles.size(); i++) {
                 Entity me = missiles.get(i);
                 ProjectileComponent mp = projectileMapper.get(me);
                 MissileComponent m = missileMapper.get(me);
                 if (mp == p || mp.spent || me.isScheduledForRemoval() || m.launcher == p.owner) continue;
                 float t = segmentCircle(ax - mp.prevPos.x, ay - mp.prevPos.y,
-                        bx - mp.pos.x, by - mp.pos.y, m.def.hitRadius);
+                        bx - mp.pos.x, by - mp.pos.y, m.def.hitRadius + burst);
                 if (t >= 0f && t < bestT) {
                     bestT = t;
                     struck = me;

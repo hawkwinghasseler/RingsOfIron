@@ -150,7 +150,10 @@ class ContractEdgesTest {
 
     @Test
     void lateAndLockedJobsAreRefused() {
-        Contract c = offer(game.highport, Contract.Type.PATROL);
+        // Any open job will do; with seven stations a patrol is not always on Highport's board
+        Contract c = null;
+        for (Contract o : board.offers(game.highport)) if (c == null && board.locked(o) == null) c = o;
+        assertNotNull(c, "the board always has something a newcomer may take");
         c.deadline = world.engine.getSimSeconds() - 1;
         assertEquals("Too late for that one", board.accept(c.id));
         assertTrue(board.active().isEmpty());

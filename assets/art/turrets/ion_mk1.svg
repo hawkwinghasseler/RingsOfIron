@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="52" viewBox="-26 -26 80 52">
+  <title>ion_mk1 turret: pivot at origin, emitter toward +x</title>
+  <g id="base">
+    <circle cx="0" cy="0" r="22" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
+    <circle cx="0" cy="0" r="15.4" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="6" y="-6" width="30" height="12" rx="3" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <circle cx="40" cy="0" r="9" fill="#1c2a4a" stroke="#10141a" stroke-width="2"/>
+    <rect x="36" y="-10.5" width="14" height="3" rx="1" fill="#4b5563" stroke="#10141a" stroke-width="1"/>
+    <rect x="36" y="7.5" width="14" height="3" rx="1" fill="#4b5563" stroke="#10141a" stroke-width="1"/>
+    <rect x="-14" y="-11" width="20" height="22" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+  </g>
+  <g id="emissive">
+    <circle cx="40" cy="0" r="12" fill="#7aa8ff" opacity="0.25"/>
+    <circle cx="40" cy="0" r="6" fill="#7aa8ff"/>
+    <circle cx="40" cy="0" r="2.5" fill="#e0ecff"/>
+  </g>
+</svg>

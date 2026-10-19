@@ -95,6 +95,7 @@ These live in `com.ringsofiron.uihud.providers`. The adapters that implement the
 - `YardProvider` (stations-docking): the yard's repair and refit offers and orders. The game fills it in `YardWork`.
 - `MissionProvider` (core's contracts): the career line, the station's offers and the contracts held, and take or give up. The game fills it in `ContractMissions`.
 - `BoardingProvider` (core's boarding and salvage): the latched ship's state, its parts and cargo, and the orders. The game fills it in `BoardingWork`.
+- `ShipyardProvider` (core's shipyard): the ships for sale where the player is docked with their price after the trade-in and why one is locked, and the prize in tow with its sale and turn-in terms. The game fills it in `ShipyardWork`; `ShipyardWindow` shows it, opened from the yard window's Ships for sale button, or on [Y] off a station with a prize to hand over.
 - `ViewModeController.Listener`: the wiring layer bridges view-mode changes to audio-spatial's listener mode.
 - `UiHud.flashHullHit(tileX, tileY)`: call from combat-sys's hull-hit event to flash the hit on the minimap.
 
