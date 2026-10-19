@@ -293,7 +293,13 @@ public class Rescue {
         for (int i = 0; i < survivors.size() && i + 1 < floor.size(); i++) {
             int[] tile = floor.get((i + 1) * floor.size() / (survivors.size() + 1));
             AbandonShip.Survivor s = survivors.get(i);
-            CrewFactory.spawn(crew, ship, s.name, s.role, 0, tile[0], tile[1]);
+            Entity e = CrewFactory.spawn(crew, ship, s.name, s.role, 0, tile[0], tile[1]);
+            if (s.record != null) {
+                // A veteran stays a veteran
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                c.record = s.record;
+                s.record.applyTo(c);
+            }
         }
     }
 
@@ -396,7 +402,7 @@ public class Rescue {
         for (Entity e : world.crew.crewEntities()) {
             GridPositionComponent p = e.getComponent(GridPositionComponent.class);
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-            if (p.ship == ship && c.isAlive() && e.getComponent(PlayerAvatarComponent.class) == null
+            if (p.ship == ship && c.isAlive() && !c.held && e.getComponent(PlayerAvatarComponent.class) == null
                     && (c.home == null || c.home == ship)) n++;
         }
         return n;

@@ -124,12 +124,14 @@ public class SmokeLauncher {
                 case 220: check(shell.isPlaying() && !shell.isPaused(), "continued the save"); shell.openPauseMenu(); break;
                 case 230: shell.openSettings(); break;
                 case 240: shell.resumeGame(); break;
+                case 260: check(shell.getGame().getHud().getCrewWindow().setOpen(true), "the crew window opens"); break;
+                case 280: shell.getGame().getHud().getCrewWindow().setOpen(false); break;
                 default: break;
             }
             shell.render();
-            // With -Dsmoke.shots=<dir>: the menu, the HUD in flight, the pause menu and the settings
+            // With -Dsmoke.shots=<dir>: the menu, the HUD in flight, the pause menu, the settings and the crew window
             String shots = System.getProperty("smoke.shots");
-            if (shots != null && (frame == 15 || frame == 99 || frame == 105 || frame == 235)) {
+            if (shots != null && (frame == 15 || frame == 99 || frame == 105 || frame == 235 || frame == 275)) {
                 int w = Gdx.graphics.getBackBufferWidth(), h = Gdx.graphics.getBackBufferHeight();
                 // Flipped to top-down rows, and opaque: what is on screen, whatever alpha the frame buffer kept
                 byte[] pixels = com.badlogic.gdx.utils.ScreenUtils.getFrameBufferPixels(0, 0, w, h, true);

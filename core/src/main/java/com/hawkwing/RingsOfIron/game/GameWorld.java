@@ -83,6 +83,7 @@ import com.ringsofiron.stationsdocking.DockingData;
 import com.ringsofiron.stationsdocking.DockingSystem;
 import com.ringsofiron.stationsdocking.StationBodies;
 import com.ringsofiron.stationsdocking.StationComponent;
+import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -197,6 +198,12 @@ public class GameWorld implements Disposable {
     public final Salvage salvage;
     /** How carried cargo is settled: the market's, plus salvage's between ships and parts sold. */
     public final SalvageSettlement cargoSettlement;
+    /** The player's crew: experience, morale and wages. */
+    public final CrewCareer crewCareer;
+    /** Station hiring pools, and hiring and dismissing crew. */
+    public final CrewHiring crewHiring;
+    /** Prisoners from taken ships: brought aboard, handed over, ransomed, released or recruited. */
+    public final Prisoners prisoners;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -454,6 +461,14 @@ public class GameWorld implements Disposable {
         loop = LoopWiring.install(this);
         // Things that happen on their own, a day at a time, with jobs on the boards
         events = new WorldEvents(this);
+        // The player's crew: hired at stations, paid weekly, learning from what they do
+        crewCareer = new CrewCareer(this);
+        engine.addSystem(crewCareer);
+        crewHiring = new CrewHiring(this);
+        engine.getSerializationService().addParticipant(crewHiring);
+        prisoners = new Prisoners(this);
+        hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, KeyBindings.Action.CREW)
+                .onlyWhen(() -> prisoners.takenAlongside() != null);
     }
 
     /**

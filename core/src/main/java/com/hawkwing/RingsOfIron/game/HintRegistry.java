@@ -226,6 +226,7 @@ public final class HintRegistry {
         r.register(Context.DOCKED, "undock", 2, Action.UNDOCK);
         r.register(Context.DOCKED, "market", 3, Action.TRADE);
         r.register(Context.DOCKED, "yard", 4, Action.YARD);
+        r.register(Context.DOCKED, "crew, hire", 5, Action.CREW);
         // Latched to a ship
         r.register(Context.LATCHED, "boarding", 1, Action.BOARD);
         r.register(Context.LATCHED, "cast off", 2, Action.UNDOCK);
@@ -239,6 +240,7 @@ public final class HintRegistry {
         r.register(Context.MAP, "burn later / earlier (Shift x10)", 74, Action.BURN_LATER, Action.BURN_EARLIER);
         r.register(Context.MAP, "delete burn", 75, Action.BURN_DELETE);
         // Anywhere
+        r.register(Context.ANY, "crew", 84, Action.CREW);
         r.register(Context.ANY, "missions held", 85, Action.MISSIONS);
         r.register(Context.ANY, "notice log", 86, Action.LOG);
         r.register(Context.ANY, "twice: abandon ship", 87, Action.ABANDON);

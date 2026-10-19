@@ -52,6 +52,8 @@ public class GameHud implements Disposable {
         hud.setMissions(new ContractMissions(world));
         // The ship latched to, for the [K] boarding window: boarding it, then stripping it.
         hud.setBoarding(new BoardingWork(world));
+        // The player's crew, the station's hires and the prisoners, for the [I] crew window.
+        hud.setCrew(new CrewRoster(world));
         hullHits = (signal, hit) -> {
             if (hit.ship != null && hit.ship == world.getPlayer()) hud.flashHullHit(hit.tileX, hit.tileY);
         };

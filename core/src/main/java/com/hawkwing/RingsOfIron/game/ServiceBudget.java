@@ -4,6 +4,8 @@ import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
@@ -22,6 +24,8 @@ public class ServiceBudget extends FixedLogicSystem {
     private final FactionStanding standing;
     private final Supplier<Entity> player;
     private final DoubleSupplier now;
+    /** Run once each payday, after the budget is paid in (crew wages go out here). */
+    public final List<Runnable> paydays = new ArrayList<>();
 
     public ServiceBudget(FactionStanding standing, Supplier<Entity> player, DoubleSupplier now) {
         super(INTERVAL);
@@ -53,6 +57,7 @@ public class ServiceBudget extends FixedLogicSystem {
             record.budgetPaid += budget;
             paid += budget;
             record.nextPay += WEEK;
+            for (Runnable r : paydays) r.run();
         }
         if (paid > 0) {
             standing.notices.add(String.format(Locale.ROOT, "Budget from the %s: +%,.0f cr",

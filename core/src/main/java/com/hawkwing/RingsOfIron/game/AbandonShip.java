@@ -10,6 +10,7 @@ import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.BehaviorTreeComponent;
 import com.ringsofiron.aicrew.CrewMemberComponent;
+import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.EvacuateTask;
@@ -66,6 +67,8 @@ public class AbandonShip extends EntitySystem {
     public static final class Survivor {
         public final String name;
         public final CrewRole role;
+        /** Their skills, wage and history, carried to the next ship; null for none. */
+        public CrewRecord record;
 
         public Survivor(String name, CrewRole role) {
             this.name = name;
@@ -242,7 +245,9 @@ public class AbandonShip extends EntitySystem {
                 a.moveX = a.moveY = 0f;
                 continue;
             }
-            away.add(new Survivor(c.name, c.role));
+            Survivor survivor = new Survivor(c.name, c.role);
+            survivor.record = c.record();
+            away.add(survivor);
             engine.removeEntity(e);
         }
         List<EvacuateTask> tasks = posted.get(ship);

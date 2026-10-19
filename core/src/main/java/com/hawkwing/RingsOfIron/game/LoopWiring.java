@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.signals.Signal;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.moddingdata.defs.FactionDef;
@@ -36,6 +37,8 @@ public final class LoopWiring {
     public static final float RESCUE_COST = 5f;
 
     private final GameWorld world;
+    /** Each ship the player is credited with beating, once. */
+    public final Signal<Entity> beaten = new Signal<>();
     /** Sim time of the player's last hit on each ship, by uuid. */
     private final Map<String, Double> lastHit = new HashMap<>();
     /** Ships already counted, by uuid, so a ship that comes back and is beaten again counts once. */
@@ -103,6 +106,7 @@ public final class LoopWiring {
         if (at == null || world.engine.getSimSeconds() - at > CREDIT_SECONDS) return;
         credited.add(uuid);
         world.standing.onShipDestroyed(ship);
+        beaten.dispatch(ship);
     }
 
     /** Whether the player has been credited with beating the ship {@code uuid}. */

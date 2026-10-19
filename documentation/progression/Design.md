@@ -198,7 +198,7 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
 - **What a rescue costs** beyond the lost ship, cargo and crew: a standing penalty, a fee, or a lower-tier ship.
 - **Crashing** going through rescue when the crew had time to get away.
 - **Towing** a taken ship home instead of stripping it.
-- **Prisoners:** what becomes of them (ransom, hand-over for standing, release).
+- **Prisoners:** answered in round 3 (chosen without Joe): brought aboard, then handed over, ransomed, released or recruited. See `Crew.md`.
 - **All numbers** (pay, budgets, thresholds, prices) are placeholders until playtesting.
 
 ## Stages

@@ -21,6 +21,11 @@ public class CrewMemberComponent implements Component {
     public String name = "Crew";
     public CrewRole role = CrewRole.CREWMAN;
     public CrewDef def = new CrewDef();
+    /**
+     * Skills, morale, wage and history ({@link CrewRecord}); read it through {@link #record()}, which
+     * makes one from the def for a crew member saved before records existed.
+     */
+    public CrewRecord record;
     /** Crew of different factions on the same ship are hostile to each other. */
     public int faction = 0;
 
@@ -74,6 +79,13 @@ public class CrewMemberComponent implements Component {
         this.def = CrewDef.forRole(role);
         this.health = def.maxHealth;
         this.suitAir = def.suitAir;
+        this.record = CrewRecord.from(def);
+    }
+
+    /** This crew member's record, made from their def if they have none yet. */
+    public CrewRecord record() {
+        if (record == null) record = CrewRecord.from(def);
+        return record;
     }
 
     /** True while this crew member breathes from their suit: wearing it, with air left in it. */
