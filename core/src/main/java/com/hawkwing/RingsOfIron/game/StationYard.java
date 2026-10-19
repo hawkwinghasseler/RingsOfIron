@@ -409,7 +409,7 @@ public class StationYard extends EntitySystem {
         return String.format(Locale.ROOT, "The technicians are fitting the salvaged %s to %s", def.displayName(), hardpointName(mount));
     }
 
-    /** Puts the ship's hull patches back to a full set, as part of a repair order (no charge). */
+    /** Puts the ship's hull patches back to a full set, as part of a repair order (no charge), and when it is done. */
     static void restockPatches(Entity ship) {
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
         if (grid != null) grid.patchKits = Math.max(grid.patchKits, LeakPatches.DEFAULT_KITS);
@@ -576,6 +576,8 @@ public class StationYard extends EntitySystem {
         repairing.values().removeIf(t -> !t.isActive() && t.ship == ship);
         if (damage.isEmpty()) {
             orders.repairs = false;
+            // Again at the end: the crew may have patched a leak from the stores while the yard worked
+            restockPatches(ship);
             notices.add(String.format(Locale.ROOT, "%s's yard finished the repairs: %,.0f cr",
                     PlayerDocking.name(station), orders.repairsPaid));
             return;
