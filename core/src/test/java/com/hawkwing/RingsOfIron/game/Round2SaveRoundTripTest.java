@@ -112,9 +112,10 @@ class Round2SaveRoundTripTest {
         assertEquals("gunship_heavy", newShipDef);
         String stationId = world.universe.uuidOf(rescue.station);
 
-        // A contract taken at the station the player woke at
+        // A contract taken at the station the player woke at (not an operation, which round 3 puts first
+        // for a lieutenant commander and which is held as its first step)
         Contract held = world.contracts.offers(stationId).stream()
-                .filter(c -> world.contracts.locked(c) == null).findFirst().orElseThrow();
+                .filter(c -> world.contracts.locked(c) == null && c.type != Contract.Type.OPERATION).findFirst().orElseThrow();
         assertNull(world.contracts.accept(held.id));
         float standing = world.standing.standing(world.standing.sponsor());
         double now = world.macroSim.now();
