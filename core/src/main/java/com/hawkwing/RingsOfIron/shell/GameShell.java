@@ -17,6 +17,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
+import com.hawkwing.RingsOfIron.game.NewGame;
 import com.ringsofiron.audiospatial.AudioManager;
 import com.ringsofiron.audiospatial.backend.MixLevels;
 import com.ringsofiron.uihud.HudSkin;
@@ -273,7 +274,12 @@ public class GameShell implements ApplicationListener {
 
     /** Starts a new game: the current scenario, or the scripted first play. */
     public void newGame(boolean firstPlay) {
-        pending = () -> start(firstPlay, null);
+        pending = () -> start(firstPlay, null, NewGame.designed());
+    }
+
+    /** Starts a new career with the seed and sponsor {@code newGame} asks for. */
+    public void newGame(NewGame newGame) {
+        pending = () -> start(false, null, newGame);
     }
 
     /** Loads the newest save. False when there is none. */
@@ -286,7 +292,7 @@ public class GameShell implements ApplicationListener {
 
     public void load(SaveSummary save) {
         pending = () -> {
-            if (game == null) start(false, save.file);
+            if (game == null) start(false, save.file, NewGame.designed());
             else if (game.load(save.file)) {
                 resumeGame();
                 game.showNotice("Loaded " + save.name);
@@ -296,9 +302,9 @@ public class GameShell implements ApplicationListener {
         };
     }
 
-    private void start(boolean firstPlay, FileHandle save) {
+    private void start(boolean firstPlay, FileHandle save, NewGame newGame) {
         if (game != null) disposeGame();
-        game = new RingsOfIronGame(assetsDir, modsDir, firstPlay);
+        game = new RingsOfIronGame(assetsDir, modsDir, firstPlay, newGame);
         game.setHosted(true);
         game.setSaveSlots(slots);
         game.create();
@@ -307,6 +313,11 @@ public class GameShell implements ApplicationListener {
         if (save != null && !game.load(save)) game.showNotice("Couldn't load that save; started a new game");
         paused = false;
         root.clear();
+    }
+
+    /** Which world the running career is ("Seed 1234"), or empty with no game running. */
+    String worldDescription() {
+        return game == null ? "" : game.worldDescription();
     }
 
     public void openPauseMenu() {

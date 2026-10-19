@@ -58,7 +58,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
     private final CombatDefs defs;
     private final BallisticsSystem ballistics;
     private final PenetrationResolver resolver;
-    private final long seed;
+    private long seed;
     private final ObjectMap<Entity, RandomXS128> rngs = new ObjectMap<>();
     private final ObjectMap<String, ProjectileDef> fragmentDefs = new ObjectMap<>();
 
@@ -225,6 +225,12 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         }
         if (!report.isEmpty()) events.damage.dispatch(report);
         return burnResult;
+    }
+
+    /** Starts every ship's damage draws over from {@code seed}, as if built with it (a new game's seed). */
+    public void reseed(long seed) {
+        this.seed = seed;
+        rngs.clear();
     }
 
     /** The per-ship RNG every random draw for damage to that ship comes from. */

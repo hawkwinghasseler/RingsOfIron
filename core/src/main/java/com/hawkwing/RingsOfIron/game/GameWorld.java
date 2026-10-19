@@ -418,6 +418,18 @@ public class GameWorld implements Disposable {
     }
 
     /**
+     * Starts the combat and crew dice over from a new game's seeds, as if the world had been built
+     * with them: sensors, fire control and damage from {@code combatSeed} (the same offsets as
+     * {@link Modules#combatSeed}), the crew's own draws from {@code crewSeed}.
+     */
+    public void reseed(long combatSeed, long crewSeed) {
+        sensors.reseed(combatSeed + 1);
+        weaponControl.reseed(combatSeed + 2);
+        impacts.reseed(combatSeed);
+        crew.random.setSeed(crewSeed);
+    }
+
+    /**
      * Loads base data from {@code assetsDir/data} and every mod in {@code modsDir}, runs mod scripts
      * (subject to the trust policy) and returns the result: defs, assets, entity factory, report.
      * Call once, before spawning anything.
