@@ -15,17 +15,18 @@ Open `assets/art/preview.html` in a browser to see every asset, every chassis in
   - Hull wedges at rotation 0 have their legs on the left and bottom edges and the sloped face toward +x/+y (`HullPiece.Shape.WEDGE`).
   - Wall-mounted decor (lockers, panels, lights, pipes) has the wall at the top of its canvas.
 - **Walls are never rotated.** Every join pattern and orientation has its own file, so their light always comes from the top-left.
-- **Exterior art is in the body frame.** Ship and station hulls use body coordinates times 64 with y flipped, so the SVG origin is the body origin and the bow points to +x, matching `hull` and the hardpoints in `ships.toml`. Turrets have their pivot at the SVG origin and the barrel toward +x.
+- **Exterior art is in the body frame.** Ship and station hulls use body coordinates times 64 with y flipped, so the SVG origin is the body origin and the bow points to +x, matching the hardpoints in `ships.toml` and the craft's collision shape. Turrets have their pivot at the SVG origin and the barrel toward +x.
 - **Crew, projectiles and explosions are centered on the SVG origin.** Crew face +y (SVG up) and are 0.6 tile across, the size of `CrewBody` (radius 0.3 tile); the `_carrying` crate is neutral grey so code can tint it. Projectiles point their nose toward +x with any streak or exhaust trailing to -x. The laser `beam` is a 64x16 strip stretched along x to the beam's length, and `dock_walkway` is uniform along y, so it can be stretched or tiled across the gap between two collars.
 
 ## Layers
-Every SVG has up to three top-level groups:
+Every SVG has up to three top-level groups, and an exterior hull may have a fourth:
 
 | Group | Holds |
 |---|---|
 | `<g id="base">` | Everything lit by the scene. |
 | `<g id="emissive">` | Everything that gives off its own light: screens, status lamps, reactor and shield glow, live conduits, fire. Drawn over the base. |
 | `<g id="meta">` | Invisible shapes for code: `id="collider"` and `id="interact"` (see below). |
+| `<g id="collision">` | Exterior hulls only, and optional: what the craft collides on (see **Exterior hulls**). |
 
 A lamp or screen keeps its unlit glass in the base layer, so with the emissive layer off it reads as dark, not missing. The game can draw the emissive layer additively, use it for a glow or bloom pass, or skip it to show a system without power.
 
@@ -89,7 +90,9 @@ A ship or station hull is built on its chassis grid: every tile of the layout is
 | Airlock | Hatch |
 | Docking port | Port frame, and the collar half a tile outside |
 
-Parts of the hull polygon past the grid (the corvette's bow) are drawn under the grid. Ships carry engine mounts on the aft (-x) edge, one for every three rows; the engines themselves are separate art. Navigation lights mark the corners: red to port (+y), green to starboard.
+Parts of the hull past the grid (the corvette's bow) are drawn under the grid.
+
+A ship collides on its layout: every tile that is not void, with each wedge as its triangle. A hull SVG may instead say what the craft collides on with a `<g id="collision">` layer (in Inkscape, a layer labelled `collision`); when it has one, that layer wins over the tiles. It holds `<polygon>`, `<rect>` and straight-line `<path>` shapes in the body frame like the rest of the art, and may use `transform`s. Shapes can overlap; a concave one is cut into triangles, so a few convex shapes collide best. The layer is never drawn, and is read from the SVG itself, so a craft collides the same whether or not the art pack is built. The corvette's layer is its outline with the bow; the freighter has none and collides on its tiles. Ships carry engine mounts on the aft (-x) edge, one for every three rows; the engines themselves are separate art. Navigation lights mark the corners: red to port (+y), green to starboard.
 
 ## Style
 Top-down, orthographic, flat-shaded vector art with dark outlines. Light comes from the top-left: a lighter line along the top and left inside edges of a raised part, a darker one along the bottom and right. No perspective, no drop shadows outside a footprint, so tiles butt together cleanly.

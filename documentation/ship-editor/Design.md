@@ -87,8 +87,7 @@ The editor writes TOML by hand rather than through the parser, so the files stay
 - Rows are written as a column of quoted strings. A mount is drawn in the rows when the loader would read it back exactly (no touching neighbor with the same symbol, and the rotation the loader would infer); otherwise it goes in `mounts`. Mounts that came from `mounts` stay there.
 - Saving only touches base data in `assets/data`. Mods are read so their parts show up, but not written.
 
-The ship's exterior (`hull` polygon, hardpoints, mass) in `ships.toml` is not edited here; the panel shows the grid's extent in body coordinates so the hull polygon can be matched to it.
+The ship's exterior (hardpoints, mass) in `ships.toml` is not edited here; the panel shows the grid's extent in body coordinates so hardpoints can be matched to it. The layout is also what the ship collides on, unless its hull art has a collision layer (see Exterior hulls in `documentation/art/Design.md`), so changing the outer hull here changes its collision too.
 
 ## Open Questions
-- Should the hull polygon in `ships.toml` be generated from the layout's outer hull?
 - Per-tile art: tile types carry a `color` for now; a texture key could follow once tile art exists.

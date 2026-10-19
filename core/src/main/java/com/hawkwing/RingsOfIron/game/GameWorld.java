@@ -355,7 +355,9 @@ public class GameWorld implements Disposable {
         bootstrap.beforeScripts(InteriorGridData::install);
         // Docking ports come from the chassis the interior was built from.
         bootstrap.beforeScripts(DockingData::install);
-        bootstrap.beforeScripts(ctx -> ShipPhysicsAssembler.register(ctx.factory, physics, gridMass(ctx)));
+        // Ships collide on their hull art's collision layer, else on their layout
+        bootstrap.beforeScripts(ctx -> ShipPhysicsAssembler.register(ctx.factory, physics, gridMass(ctx),
+                new ShipHulls(assetsDir, ctx)));
         // Weapons after the interior: each hardpoint is wired to the nearest weapon system.
         bootstrap.beforeScripts(ctx -> ShipWeaponsAssembler.register(ctx.factory, combatDefs));
         for (Consumer<ModContext> step : modules.contentRegistrations) bootstrap.beforeScripts(step);
