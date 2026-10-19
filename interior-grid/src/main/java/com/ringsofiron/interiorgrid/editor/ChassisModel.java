@@ -400,8 +400,21 @@ public class ChassisModel {
         edgeWalls.add(w);
     }
 
+    /**
+     * Places a hull piece with its bottom-left tile at (x, y), replacing any piece it overlaps.
+     * Returns null, placing nothing, when it would not fit on the grid.
+     */
     public ChassisDef.HullPiece addHullPiece(String shape, int x, int y, int width, int height, int rotation,
                                              String weightClass) {
+        int r = Math.floorMod(rotation, 4);
+        int w = r % 2 == 0 ? width : height, h = r % 2 == 0 ? height : width;
+        if (!inBounds(x, y) || !inBounds(x + w - 1, y + h - 1)) return null;
+        // A new piece replaces the ones it overlaps, as a component replaces mounts
+        for (int i = hullPieces.size() - 1; i >= 0; i--) {
+            ChassisDef.HullPiece o = hullPieces.get(i);
+            int ow = o.rotation % 2 == 0 ? o.width : o.height, oh = o.rotation % 2 == 0 ? o.height : o.width;
+            if (x < o.x + ow && o.x < x + w && y < o.y + oh && o.y < y + h) hullPieces.remove(i);
+        }
         ChassisDef.HullPiece p = new ChassisDef.HullPiece();
         p.shape = shape;
         p.x = x;

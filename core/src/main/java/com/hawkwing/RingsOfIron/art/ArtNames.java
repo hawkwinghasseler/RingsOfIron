@@ -67,9 +67,25 @@ public final class ArtNames {
         return "walls/" + wallId + "_" + sides(mask);
     }
 
-    /** A wedge hull piece, at its unrotated size. */
+    /** A wedge hull piece's art. See {@link #wedge(WeightClass, int, int)}. */
     public static String wedge(HullPiece p) {
-        return "walls/hull_" + weight(p.weightClass) + "_wedge_" + p.baseWidth + "x" + p.baseHeight;
+        return wedge(p.weightClass, p.baseWidth, p.baseHeight);
+    }
+
+    /**
+     * The art for a wedge of that unrotated size. The art is drawn tall, so a wedge wider than
+     * it is tall uses the tall art mirrored; see {@link #wedgeMirrored}.
+     */
+    public static String wedge(WeightClass w, int baseWidth, int baseHeight) {
+        return "walls/hull_" + weight(w) + "_wedge_" + Math.min(baseWidth, baseHeight) + "x" + Math.max(baseWidth, baseHeight);
+    }
+
+    /**
+     * True for a wedge wider than it is tall. Its triangle is the tall one reflected across its
+     * diagonal: the tall art mirrored left to right and turned a quarter turn clockwise.
+     */
+    public static boolean wedgeMirrored(int baseWidth, int baseHeight) {
+        return baseWidth > baseHeight;
     }
 
     /** A thin wall along one tile edge. */
