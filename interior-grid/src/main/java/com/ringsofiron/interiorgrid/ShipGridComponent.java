@@ -39,6 +39,11 @@ public class ShipGridComponent implements Component {
     public final Array<HullPiece> hullPieces = new Array<>();
     public final Array<MountFootprint> mounts = new Array<>();
     /**
+     * The lights hung on its walls, as the layout places them; null when the layout does not
+     * say, and the game works them out ({@link WallLightLayout}).
+     */
+    public Array<WallLight> wallLights;
+    /**
      * The airtight volumes of the interior, rebuilt by {@link CompartmentBuilder} whenever
      * walls, doors or seals change. Each tile that holds air points at its compartment.
      */

@@ -25,6 +25,7 @@ import java.util.List;
  *                 { component = "fusion_core", size = "M", x = 5, y = 1 } ]
  * coverings   = [ { covering = "CARPET", x = 2, y = 1, width = 4, height = 1 } ]
  * ports       = [ { x = 4, y = 5, active = true } ]
+ * lights      = [ { x = 2, y = 1, side = "BOTTOM" } ]
  * </pre>
  * Grid coordinates have (0, 0) at the bottom-left tile and +y up; {@code rows} is written
  * top row first, as it reads.
@@ -46,6 +47,11 @@ public class ChassisDef {
     public boolean station;
     /** Options for docking ports, each naming any tile of the port it applies to. */
     public List<Port> ports = new ArrayList<>();
+    /**
+     * Lights hung on walls. Null (no {@code lights} key) leaves them to the game, which works
+     * them out from the layout; an empty list means none.
+     */
+    public List<Light> lights;
 
     public static class EdgeWall {
         public int x, y;
@@ -82,6 +88,13 @@ public class ChassisDef {
         public int x, y;
         /** An active port extends a telescoping latch collar when armed; a passive one only has magnets. */
         public boolean active;
+    }
+
+    /** A light on the {@code side} edge of tile (x, y), shining into the tile. It takes up no room on it. */
+    public static class Light {
+        public int x, y;
+        /** BOTTOM, TOP, LEFT or RIGHT: the wall it hangs on. */
+        public String side;
     }
 
     public static class Covering {

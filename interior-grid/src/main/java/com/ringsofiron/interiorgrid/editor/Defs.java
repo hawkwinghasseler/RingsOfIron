@@ -35,7 +35,7 @@ public final class Defs {
 
     /** Every key a chassis section can have, so a rewrite drops the ones no longer used. */
     public static final Set<String> CHASSIS_KEYS = new HashSet<>(Arrays.asList("name", "station", "tile_size",
-            "origin_x", "origin_y", "rows", "mounts", "edge_walls", "hull_pieces", "coverings", "ports"));
+            "origin_x", "origin_y", "rows", "mounts", "edge_walls", "hull_pieces", "coverings", "ports", "lights"));
     public static final Set<String> TILE_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "base",
             "weight_class", "material", "covering", "color"));
     public static final Set<String> COMPONENT_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "behavior",
@@ -105,6 +105,13 @@ public final class Defs {
                 ports.add(table("x", Integer.toString(p.x), "y", Integer.toString(p.y), "active", Boolean.toString(p.active)));
             }
             out.add(new Entry("ports", multiLineArray(ports)));
+        }
+        if (d.lights != null) {
+            List<String> lights = new ArrayList<>();
+            for (ChassisDef.Light l : d.lights) {
+                lights.add(table("x", Integer.toString(l.x), "y", Integer.toString(l.y), "side", str(l.side)));
+            }
+            out.add(new Entry("lights", lights.isEmpty() ? "[]" : multiLineArray(lights)));
         }
         return out;
     }

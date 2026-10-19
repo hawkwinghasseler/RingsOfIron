@@ -75,6 +75,8 @@ public class ChassisBlueprint {
     public final Array<HullPiece> hullPieces = new Array<>();
     public final Array<MountDef> mounts = new Array<>();
     public final Array<CoveringDef> coverings = new Array<>();
+    /** Lights hung on walls; null when the layout does not place any (see {@link ShipGridComponent#wallLights}). */
+    public Array<WallLight> wallLights;
     /** The tile types and components the map's characters stand for. */
     public ShipPartCatalog catalog = ShipPartCatalog.builtIn();
 

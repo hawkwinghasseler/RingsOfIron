@@ -2,10 +2,14 @@ package com.ringsofiron.interiorgrid.editor;
 
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
+import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.MountFootprint;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipPartCatalog;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.interiorgrid.WallLight;
+import com.ringsofiron.interiorgrid.WallLightLayout;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 
 import java.util.ArrayList;
@@ -70,6 +74,8 @@ public class ChassisModel {
     public final List<ChassisDef.EdgeWall> edgeWalls = new ArrayList<>();
     public final List<ChassisDef.HullPiece> hullPieces = new ArrayList<>();
     public final List<ChassisDef.Covering> coverings = new ArrayList<>();
+    /** Lights hung on walls; null until the layout places any, and the game works them out. */
+    public List<ChassisDef.Light> lights;
     /** Listed mounts and port settings that name nothing the editor knows; written back as they were. */
     public final List<ChassisDef.Mount> unresolvedMounts = new ArrayList<>();
     public final List<ChassisDef.Port> unresolvedPorts = new ArrayList<>();
@@ -140,6 +146,7 @@ public class ChassisModel {
         m.edgeWalls.addAll(def.edgeWalls);
         m.hullPieces.addAll(def.hullPieces);
         m.coverings.addAll(def.coverings);
+        m.lights = copyLights(def.lights);
         return m;
     }
 
@@ -205,7 +212,15 @@ public class ChassisModel {
         def.edgeWalls.addAll(edgeWalls);
         def.hullPieces.addAll(hullPieces);
         def.coverings.addAll(coverings);
+        def.lights = copyLights(lights);
         return def;
+    }
+
+    private static List<ChassisDef.Light> copyLights(List<ChassisDef.Light> from) {
+        if (from == null) return null;
+        List<ChassisDef.Light> out = new ArrayList<>();
+        for (ChassisDef.Light l : from) out.add(Defs.copy(l, ChassisDef.Light.class));
+        return out;
     }
 
     private static boolean readsBack(Mount m, Array<ChassisBlueprintLoader.SubsystemPlacement> read) {
@@ -230,6 +245,15 @@ public class ChassisModel {
     }
 
     // ---- Queries ----
+
+    /** The light hung on that side of tile (x, y), or null. */
+    public ChassisDef.Light lightAt(int x, int y, Side side) {
+        if (lights == null) return null;
+        for (ChassisDef.Light l : lights) {
+            if (l.x == x && l.y == y && side.name().equals(l.side)) return l;
+        }
+        return null;
+    }
 
     /** The mount covering tile (x, y), or null. */
     public Mount mountAt(int x, int y, ShipPartCatalog catalog) {
@@ -401,6 +425,50 @@ public class ChassisModel {
     }
 
     /**
+     * Hangs a light on that side of tile (x, y), or takes down the one already there. A light takes
+     * no room on its tile. False if the tile is off the grid.
+     */
+    public boolean toggleLight(int x, int y, Side side) {
+        if (!inBounds(x, y)) return false;
+        ChassisDef.Light existing = lightAt(x, y, side);
+        if (lights == null) lights = new ArrayList<>();
+        if (existing != null) {
+            lights.remove(existing);
+            return true;
+        }
+        ChassisDef.Light l = new ChassisDef.Light();
+        l.x = x;
+        l.y = y;
+        l.side = side.name();
+        lights.add(l);
+        return true;
+    }
+
+    /**
+     * Replaces the lights with ones placed along the walls of every room ({@link WallLightLayout}),
+     * worked out from the layout as the game would load it. Null, or why the layout can't be loaded.
+     */
+    public String autoPlaceLights(ShipPartCatalog catalog) {
+        ShipGridComponent grid;
+        try {
+            grid = ChassisBlueprintLoader.load(InteriorGridData.toBlueprint(toDef(catalog), catalog)).grid;
+        } catch (RuntimeException e) {
+            return e.getMessage();
+        }
+        lights = new ArrayList<>();
+        for (WallLight w : WallLightLayout.of(grid)) {
+            ChassisDef.Light l = new ChassisDef.Light();
+            l.x = w.x;
+            l.y = w.y;
+            l.side = w.side.name();
+            lights.add(l);
+        }
+        // Bottom row first, left to right, so the saved list reads in order
+        lights.sort((p, q) -> p.y != q.y ? Integer.compare(p.y, q.y) : p.x != q.x ? Integer.compare(p.x, q.x) : p.side.compareTo(q.side));
+        return null;
+    }
+
+    /**
      * Places a hull piece with its bottom-left tile at (x, y), replacing any piece it overlaps.
      * Returns null, placing nothing, when it would not fit on the grid.
      */
@@ -497,6 +565,14 @@ public class ChassisModel {
             int pw = p.rotation % 2 == 0 ? p.width : p.height, ph = p.rotation % 2 == 0 ? p.height : p.width;
             if (!inBounds(p.x, p.y) || !inBounds(p.x + pw - 1, p.y + ph - 1)) hullPieces.remove(i);
         }
+        if (lights != null) {
+            for (int i = lights.size() - 1; i >= 0; i--) {
+                ChassisDef.Light l = lights.get(i);
+                l.x += dx;
+                l.y += dy;
+                if (!inBounds(l.x, l.y)) lights.remove(i);
+            }
+        }
         for (int i = coverings.size() - 1; i >= 0; i--) {
             ChassisDef.Covering c = coverings.get(i);
             c.x += dx;
@@ -541,6 +617,7 @@ public class ChassisModel {
         for (ChassisDef.Covering c : coverings) m.coverings.add(Defs.copy(c, ChassisDef.Covering.class));
         for (ChassisDef.Mount u : unresolvedMounts) m.unresolvedMounts.add(Defs.copy(u, ChassisDef.Mount.class));
         for (ChassisDef.Port u : unresolvedPorts) m.unresolvedPorts.add(Defs.copy(u, ChassisDef.Port.class));
+        m.lights = copyLights(lights);
         return m;
     }
 

@@ -1,5 +1,6 @@
 package com.ringsofiron.interiorgrid;
 
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.moddingdata.DefRegistry;
@@ -127,6 +128,10 @@ public final class InteriorGridData {
         }
         for (ChassisDef.Covering c : def.coverings) {
             bp.covering(FloorCovering.valueOf(c.covering), c.x, c.y, c.width, c.height);
+        }
+        if (def.lights != null) {
+            bp.wallLights = new Array<>();
+            for (ChassisDef.Light l : def.lights) bp.wallLights.add(new WallLight(l.x, l.y, Side.valueOf(l.side)));
         }
         return bp;
     }

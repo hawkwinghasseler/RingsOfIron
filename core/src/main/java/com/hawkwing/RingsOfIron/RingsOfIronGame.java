@@ -39,6 +39,10 @@ import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
 import com.hawkwing.RingsOfIron.game.PlayerGunnery;
+import com.hawkwing.RingsOfIron.lighting.DeckLightRig;
+import com.hawkwing.RingsOfIron.lighting.EmissiveLights;
+import com.hawkwing.RingsOfIron.lighting.HullArt;
+import com.hawkwing.RingsOfIron.lighting.SceneLighting;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -75,7 +79,8 @@ import java.nio.file.Paths;
  * a missile at it, F drop a decoy, comma/period time warp down/up, mouse wheel zoom. Point defense
  * shoots down incoming missiles by itself. The raider fights back once you shoot at it. V switches
  * to the deck view, where WASD walks your character, E uses the console you stand at, and F or B
- * forces the shut door across a dock (pry or hack, or cut). F5
+ * forces the shut door across a dock (pry or hack, or cut), and L turns the deck lighting off and
+ * back on. F5
  * quick-saves, F9 loads the quick save. Esc quits.
  *
  * <p>Docking: G arms the selected docking port and asks the nearest station for clearance (a
@@ -126,6 +131,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
     /** Combat entities drawn with art this frame, which the shapes then skip. */
     private final Array<Entity> drawnWithArt = new Array<>();
     private BitmapFont font;
+    /** Deck lights and shadows, and the glow of every lamp and screen, from the art's emissive layers. */
+    private SceneLighting lighting;
+    private HullArt hullArt;
+    private boolean lightsOn = true;
     private float exteriorViewMeters = START_VIEW;
     private String notice;
     private float noticeTime;
@@ -174,6 +183,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         deckArt = new DeckArt(art);
         exteriorArt = new ExteriorArt(art);
         gameHud = new GameHud(world, hud);
+        lighting = new SceneLighting(EmissiveLights.load(assetsDir));
+        hullArt = new HullArt(game.content.defs);
 
         gun = new PlayerGunnery(world, game.player);
         gun.setTarget(game.nextContact(null));
@@ -227,6 +238,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         viewports.applyWorld();
         shapes.setProjectionMatrix(viewports.getWorldCamera().combined);
+        lighting.clear(delta);
         if (hud.getViewMode().getMode() == ViewMode.INTERIOR) {
             drawInterior();
         } else {
@@ -268,6 +280,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 show(world.forcing.start(game.avatar, t.state == ForceMethod.DoorState.UNPOWERED ? ForceMethod.PRY : ForceMethod.HACK));
             }
             if (Gdx.input.isKeyJustPressed(Input.Keys.B)) show(world.forcing.start(game.avatar, ForceMethod.CUT));
+            if (Gdx.input.isKeyJustPressed(Input.Keys.L)) {
+                lightsOn = !lightsOn;
+                show(lightsOn ? "Deck lighting on" : "Deck lighting off");
+            }
             // Up the screen is W whichever way the craft the avatar is aboard is turned
             float sx = 0f, sy = 0f;
             if (Gdx.input.isKeyPressed(Input.Keys.W)) sy += 1f;
@@ -418,6 +434,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
             Object owner = body.getUserData();
             Entity e = owner instanceof Entity ? (Entity) owner : null;
             HudMarkerComponent marker = e == null ? null : MARKERS.get(e);
+            ShipGridComponent hull = e == null ? null : e.getComponent(ShipGridComponent.class);
+            if (hull != null) {
+                Vector2 at = PhysicsManager.getPosition(body, tmp2);
+                lighting.addHull(hullArt.chassisOf(e), hull, at.x, at.y, body.getAngle());
+            }
             if (e == game.player) shapes.setColor(Color.CYAN);
             else if (e != null && PROJECTILES.has(e)) shapes.setColor(Color.ORANGE);
             else if (marker != null) shapes.setColor(marker.color);
@@ -427,6 +448,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         shapes.end();
         bodies.clear();
         drawCombat(Gdx.graphics.getDeltaTime());
+        // Navigation lights and the glow of running systems, a few pixels across at least
+        lighting.renderGlow(batch, viewports.getWorldCamera(), 2.5f * viewports.getViewMeters() / 400f);
     }
 
     /**
@@ -583,6 +606,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             shapes.identity();
             shapes.translate(at.x, at.y, 0f);
             shapes.rotate(0f, 0f, 1f, degrees);
+            if (lightsOn) lighting.addDeck(g, at.x, at.y, body.getAngle());
             float s = g.tileSize;
             if (withArt) {
                 DeckView.atmosphere(shapes, g, blink);
@@ -629,6 +653,25 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         shapes.identity();
         Gdx.gl.glDisable(GL20.GL_BLEND);
+        if (!lightsOn) return;
+        // The light map over the decks, dark when the craft aboard has no power; then the glow on top
+        lighting.renderLights(viewports.getWorldCamera(), DeckLightRig.hasPower(grid));
+        if (withArt) {
+            // What gives off light shows lit whatever light falls on it
+            batch.setProjectionMatrix(viewports.getWorldCamera().combined);
+            for (Entity ship : decks) {
+                ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+                Body body = world.docking.bodyOf(ship);
+                if (g == null || body == null) continue;
+                Vector2 at = PhysicsManager.getPosition(body, tmp);
+                batch.setTransformMatrix(pose.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, body.getAngle() * MathUtils.radiansToDegrees));
+                batch.begin();
+                deckArt.glow(batch, g);
+                batch.end();
+            }
+            batch.setTransformMatrix(identity);
+        }
+        lighting.renderGlow(batch, viewports.getWorldCamera(), 0f);
     }
 
     /** Where the avatar stands, world meters, or null when it is aboard nothing in the bubble. */
@@ -669,7 +712,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Actor shipPanel = hud.getMinimapPanel();
         float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
         font.draw(batch, hud.getViewMode().getMode() == ViewMode.INTERIOR
-                ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   V outside view   F5 save  F9 load   Esc quit"
+                ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   L lights   V outside view   F5 save  F9 load   Esc quit"
                 : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  F5 save  F9 load  Esc quit",
                 hintX, 24f);
         if (notice != null && noticeTime > 0f) {
@@ -694,6 +737,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     @Override
     public void dispose() {
         gameHud.dispose();
+        lighting.dispose();
         docking.dispose();
         world.dispose();
         shapes.dispose();

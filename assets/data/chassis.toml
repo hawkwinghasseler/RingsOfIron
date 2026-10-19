@@ -7,6 +7,10 @@
 #     The end tiles are frame, the rest the opening, with the port door on its
 #     outer edge. It faces the side with only space beyond it. Ports are passive
 #     unless listed under ports = [ { x, y, active = true } ] (any tile of the port).
+#   lights = [ { x, y, side } ] hangs a wall light on that side of tile (x, y), shining
+#     into the tile; it takes no room there. The ship editor's Light tool places them
+#     (and auto-places them along every room's walls). With no lights key the game
+#     works them out the same way.
 # Rows read top to bottom; listed coordinates have (0, 0) at the bottom-left tile.
 # A chassis marked station = true is a station layout, named by a station type's
 # blueprint in economy.json.
@@ -39,6 +43,10 @@ mounts = [
 ]
 # Carpet through the crew spaces, so a fire here has something to burn
 coverings = [ { covering = "CARPET", x = 5, y = 1, width = 6, height = 4 } ]
+lights = [
+  { x = 4, y = 1, side = "BOTTOM" },
+  { x = 9, y = 1, side = "BOTTOM" },
+]
 
 [chassis.freighter]
 name = "Light Freighter"
@@ -62,6 +70,16 @@ rows = [
   "#...CCCCCCCCCCCC...#",
   "#...CCCCCCCCCCCC...#",
   "####################",
+]
+lights = [
+  { x = 3, y = 1, side = "BOTTOM" },
+  { x = 16, y = 1, side = "BOTTOM" },
+  { x = 1, y = 4, side = "LEFT" },
+  { x = 17, y = 4, side = "RIGHT" },
+  { x = 1, y = 7, side = "LEFT" },
+  { x = 17, y = 8, side = "RIGHT" },
+  { x = 3, y = 11, side = "TOP" },
+  { x = 16, y = 11, side = "TOP" },
 ]
 
 # Stations. Every station type carries docking ports of all three sizes, so any ship
@@ -98,6 +116,25 @@ ports = [
   { x = 10, y = 15, active = true },
   { x = 9, y = 0, active = true },
   { x = 1, y = 7, active = true },
+]
+lights = [
+  { x = 4, y = 1, side = "BOTTOM" },
+  { x = 12, y = 1, side = "BOTTOM" },
+  { x = 17, y = 1, side = "BOTTOM" },
+  { x = 7, y = 2, side = "BOTTOM" },
+  { x = 1, y = 3, side = "LEFT" },
+  { x = 13, y = 4, side = "RIGHT" },
+  { x = 19, y = 4, side = "RIGHT" },
+  { x = 22, y = 4, side = "RIGHT" },
+  { x = 15, y = 7, side = "LEFT" },
+  { x = 19, y = 7, side = "RIGHT" },
+  { x = 3, y = 10, side = "LEFT" },
+  { x = 14, y = 11, side = "BOTTOM" },
+  { x = 22, y = 11, side = "RIGHT" },
+  { x = 1, y = 14, side = "LEFT" },
+  { x = 8, y = 14, side = "TOP" },
+  { x = 11, y = 14, side = "TOP" },
+  { x = 18, y = 14, side = "TOP" },
 ]
 
 [chassis.station_hub]
@@ -141,4 +178,40 @@ ports = [
   { x = 24, y = 0, active = true },
   { x = 1, y = 11, active = true },
   { x = 30, y = 11, active = true },
+]
+lights = [
+  { x = 1, y = 1, side = "BOTTOM" },
+  { x = 10, y = 1, side = "BOTTOM" },
+  { x = 13, y = 1, side = "BOTTOM" },
+  { x = 18, y = 1, side = "BOTTOM" },
+  { x = 27, y = 1, side = "BOTTOM" },
+  { x = 5, y = 2, side = "BOTTOM" },
+  { x = 22, y = 2, side = "BOTTOM" },
+  { x = 1, y = 4, side = "LEFT" },
+  { x = 30, y = 4, side = "RIGHT" },
+  { x = 9, y = 5, side = "TOP" },
+  { x = 17, y = 5, side = "TOP" },
+  { x = 20, y = 5, side = "TOP" },
+  { x = 13, y = 7, side = "BOTTOM" },
+  { x = 3, y = 8, side = "LEFT" },
+  { x = 23, y = 8, side = "LEFT" },
+  { x = 28, y = 8, side = "RIGHT" },
+  { x = 8, y = 11, side = "RIGHT" },
+  { x = 21, y = 11, side = "RIGHT" },
+  { x = 3, y = 14, side = "LEFT" },
+  { x = 28, y = 14, side = "RIGHT" },
+  { x = 13, y = 15, side = "TOP" },
+  { x = 23, y = 15, side = "LEFT" },
+  { x = 9, y = 17, side = "BOTTOM" },
+  { x = 17, y = 17, side = "BOTTOM" },
+  { x = 1, y = 18, side = "LEFT" },
+  { x = 30, y = 18, side = "RIGHT" },
+  { x = 1, y = 21, side = "LEFT" },
+  { x = 6, y = 22, side = "TOP" },
+  { x = 9, y = 22, side = "TOP" },
+  { x = 13, y = 22, side = "TOP" },
+  { x = 16, y = 22, side = "TOP" },
+  { x = 20, y = 22, side = "TOP" },
+  { x = 24, y = 22, side = "TOP" },
+  { x = 27, y = 22, side = "TOP" },
 ]

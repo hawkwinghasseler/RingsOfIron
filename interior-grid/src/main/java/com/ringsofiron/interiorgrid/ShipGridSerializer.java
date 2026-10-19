@@ -1,5 +1,6 @@
 package com.ringsofiron.interiorgrid;
 
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 
@@ -75,6 +76,18 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             json.writeObjectEnd();
         }
         json.writeArrayEnd();
+
+        if (grid.wallLights != null) {
+            json.writeArrayStart("wallLights");
+            for (WallLight l : grid.wallLights) {
+                json.writeObjectStart();
+                json.writeValue("x", l.x);
+                json.writeValue("y", l.y);
+                json.writeValue("side", l.side.name());
+                json.writeObjectEnd();
+            }
+            json.writeArrayEnd();
+        }
 
         json.writeArrayStart("compartments");
         for (Compartment c : grid.compartments) {
@@ -156,6 +169,15 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 }
             }
             grid.mounts.add(mount);
+        }
+
+        // Saves from before lights were placed have none, and the game works them out
+        JsonValue lights = data.get("wallLights");
+        if (lights != null) {
+            grid.wallLights = new Array<>();
+            for (JsonValue l = lights.child; l != null; l = l.next) {
+                grid.wallLights.add(new WallLight(l.getInt("x"), l.getInt("y"), Side.valueOf(l.getString("side"))));
+            }
         }
 
         CompartmentBuilder.rebuild(grid);
