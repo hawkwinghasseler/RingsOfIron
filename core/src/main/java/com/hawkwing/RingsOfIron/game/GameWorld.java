@@ -233,6 +233,8 @@ public class GameWorld implements Disposable {
     public final CrewMedical medical;
     /** A ship docked with a hole to space: the station warns, and warp waits. */
     public final BerthVenting berthVenting;
+    /** The player's figure suiting up at battle stations and in thin air. */
+    public final CaptainSafety captain;
     /** The distress beacon: a stranded ship towed home. */
     public final DistressBeacon beacon = new DistressBeacon(this);
     /** First Play's and the opening walkthrough's progress, saved with the game. */
@@ -515,6 +517,7 @@ public class GameWorld implements Disposable {
         damageControl = new DamageControl(this);
         medical = new CrewMedical(this);
         berthVenting = new BerthVenting(this);
+        captain = new CaptainSafety(this);
     }
 
     /**
@@ -625,6 +628,7 @@ public class GameWorld implements Disposable {
         damageControl.update();
         medical.update();
         berthVenting.update();
+        captain.update();
         // Warp changes only between updates: the autopilot raises it again after a burn
         nav.autopilot.afterUpdate();
     }

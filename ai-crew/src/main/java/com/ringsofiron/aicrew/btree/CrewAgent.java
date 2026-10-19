@@ -3,6 +3,7 @@ package com.ringsofiron.aicrew.btree;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectFloatMap;
+import com.ringsofiron.aicrew.BoardTask;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -151,10 +152,11 @@ public class CrewAgent {
     /**
      * True if this crew member would take {@code task} now: not one they just found unreachable, and
      * only carrying, yard work and boarding while away from the craft they work for (other work is
-     * done from home). A crew member held prisoner takes nothing.
+     * done from home), and only a boarding order that is theirs. A crew member held prisoner takes nothing.
      */
     public boolean mayTake(CrewTask task) {
         if (isIgnoring(task) || crew.held) return false;
+        if (task instanceof BoardTask && !((BoardTask) task).isFor(entity)) return false;
         return pos.ship == service.homeOf(entity) || task.kind == CrewTask.Kind.CARRY || task.kind == CrewTask.Kind.YARD
                 || task.kind == CrewTask.Kind.BOARD;
     }
