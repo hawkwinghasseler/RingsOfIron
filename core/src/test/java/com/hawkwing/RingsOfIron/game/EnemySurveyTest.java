@@ -48,11 +48,12 @@ class EnemySurveyTest {
         int crew0, crew1;
         int enemyCrew0, enemyCrew1;
         String loadouts = "";
+        double difficulty;
 
         @Override
         public String toString() {
-            return String.format("%s in %.0f s; they fired %d, %d hit; our hull %.2f -> %.2f; crew %d -> %d; theirs %d -> %d [%s]",
-                    outcome, seconds, fired, hits, hull0, hull1, crew0, crew1, enemyCrew0, enemyCrew1, loadouts);
+            return String.format("%s in %.0f s; they fired %d, %d hit; our hull %.2f -> %.2f; crew %d -> %d; theirs %d -> %d [%s, difficulty %.2f]",
+                    outcome, seconds, fired, hits, hull0, hull1, crew0, crew1, enemyCrew0, enemyCrew1, loadouts, difficulty);
         }
     }
 
@@ -77,16 +78,18 @@ class EnemySurveyTest {
         StringBuilder out = new StringBuilder("| Enemy | Our ship | Won | Ran | Lost | Rounds at us | Hits | Our hull after (min-mean) | Our crew killed | Their crew left | Time to beat (mean) |\n"
                 + "|---|---|---|---|---|---|---|---|---|---|---|\n");
         String[][] enemies = {{"Lone raider", HostileTraffic.RAIDER, "1"}, {"Wing of two raiders", HostileTraffic.RAIDER, "2"},
-                {"Pirate gunship", HostileTraffic.PIRATE_GUNSHIP, "1"}};
+                {"Pirate gunship", HostileTraffic.PIRATE_GUNSHIP, "1"}, {"Ace's gunship", HostileTraffic.PIRATE_GUNSHIP, "1", "ace"}};
         int trials = Integer.getInteger("enemy.survey.trials", 10);
         StringBuilder detail = new StringBuilder();
         for (String[] enemy : enemies) {
             for (boolean gunship : new boolean[]{false, true}) {
+                // An ace takes a gunship only once the player flies one
+                if (enemy.length > 3 && !gunship) continue;
                 int won = 0, ran = 0, lost = 0, fired = 0, hits = 0, killed = 0, theirs = 0;
                 float minHull = 1, sumHull = 0;
                 double beatTime = 0;
                 for (int i = 0; i < trials; i++) {
-                    Result r = fight(1 + i, gunship, enemy[1], Integer.parseInt(enemy[2]), null);
+                    Result r = fight(1 + i, gunship, enemy[1], Integer.parseInt(enemy[2]), enemy.length > 3 ? enemy[3] : null);
                     detail.append(enemy[0]).append(gunship ? " v gunship" : " v corvette").append(", seed ").append(1 + i)
                             .append(": ").append(r).append('\n');
                     switch (r.outcome) {
@@ -118,9 +121,10 @@ class EnemySurveyTest {
     // ---------------------------------------------------------------------------------------------
 
     /**
-     * A new seeded Patrol career in the corvette, or in the gunship bought at Anvil Yards; then a wing
-     * of {@code size} pirates of {@code shipId} (armed with {@code loadout}, or for the difficulty when
-     * null) comes for the player from 4 km and both sides fight with everything they have.
+     * A new seeded Patrol career in the corvette as a Lieutenant, or in the gunship bought at Anvil Yards
+     * as a Lieutenant Commander; then a wing of {@code size} pirates of {@code shipId} (armed with
+     * {@code loadout}, or for the difficulty when null; "ace" makes the first an ace on its refit)
+     * comes for the player from 4 km and both sides fight with everything they have.
      */
     static Result fight(long seed, boolean gunship, String shipId, int size, String loadout) {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
@@ -131,11 +135,11 @@ class EnemySurveyTest {
             run(world, 120);
             assertTrue(world.docking.undock(game.player));
             run(world, 60);
+            float need = world.standing.ranks().get(gunship ? 2 : 1).standing - world.standing.standing(world.standing.sponsor());
+            if (need > 0) world.standing.reward(world.standing.sponsor(), need + 0.5f, "survey");
             if (gunship) {
                 assertTrue(game.dockAt(game.shipyard));
                 run(world, 120);
-                float need = world.standing.ranks().get(2).standing - world.standing.standing(world.standing.sponsor());
-                if (need > 0) world.standing.reward(world.standing.sponsor(), need + 0.5f, "survey");
                 game.player.getComponent(TraderComponent.class).credits = 400_000;
                 String said = world.shipyard.buy("patrol_gunship");
                 assertTrue(said.startsWith("Bought"), said);
@@ -145,6 +149,8 @@ class EnemySurveyTest {
             }
             String lurk = game.highport;
             // Armed as the difficulty would arm it, drawn by the seed (the top-up's own draw is the same in every game)
+            boolean ace = "ace".equals(loadout);
+            if (ace) loadout = null;
             String fit = loadout != null ? loadout : Loadouts.pick(world.combatDefs, shipId, Difficulty.of(world), false,
                     new java.util.Random(seed * 7_919L + shipId.hashCode())).id;
             List<String> ids = world.hostiles.spawnWing(shipId, size, lurk, fit);
@@ -152,6 +158,12 @@ class EnemySurveyTest {
             List<Entity> ships = new ArrayList<>();
             List<HostileComponent> hs = new ArrayList<>();
             Result r = new Result();
+            r.difficulty = Difficulty.of(world);
+            if (ace) {
+                HostileComponent h = world.macroSim.hostiles().get(ids.get(0));
+                assertTrue(PirateAces.promote(world, world.engine.getEntity(ids.get(0)), h, world.macroSim.hostiles().all().values(),
+                        r.difficulty, false));
+            }
             for (int i = 0; i < ids.size(); i++) {
                 HostileComponent h = world.macroSim.hostiles().get(ids.get(i));
                 h.targetUuid = HostileComponent.PLAYER;
@@ -183,7 +195,7 @@ class EnemySurveyTest {
                 gun.launchMissile();
                 gun.update(FRAME);
                 if (DEBUG && frame[0]++ % 60 == 0) debug(world, player, ships, hs);
-                boolean done = !anyLeft || FirstPlay.beaten(world, player) || world.getCrash() != null;
+                boolean done = !anyLeft || FirstPlay.beaten(world, player) || alive(world, player) == 0 || world.getCrash() != null;
                 if (done) end[0] = world.engine.getSimSeconds();
                 return done;
             });
@@ -199,7 +211,7 @@ class EnemySurveyTest {
                 allBeaten &= beaten;
                 anyEscaped |= !beaten && s.getComponent(PhysicsBodyComponent.class) == null;
             }
-            r.outcome = FirstPlay.beaten(world, player) ? "lost" : allBeaten ? "won" : anyEscaped && over ? "ran" : "draw";
+            r.outcome = FirstPlay.beaten(world, player) || r.crew1 == 0 ? "lost" : allBeaten ? "won" : anyEscaped && over ? "ran" : "draw";
             return r;
         } finally {
             world.dispose();
