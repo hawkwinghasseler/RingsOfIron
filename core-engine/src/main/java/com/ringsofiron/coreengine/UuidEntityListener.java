@@ -27,7 +27,8 @@ public class UuidEntityListener implements EntityListener {
     @Override
     public void entityRemoved(Entity entity) {
         UuidComponent uuidComponent = uuidMapper.get(entity);
-        if (uuidComponent != null) {
+        // Only if the id is still this entity's: a replacement added under the same id stays registered
+        if (uuidComponent != null && registry.getEntity(uuidComponent.id) == entity) {
             registry.unregister(uuidComponent.id);
         }
     }

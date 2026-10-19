@@ -288,6 +288,28 @@ tasks.register('runPhysicsTest', JavaExec) {
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
+// Smoke test: boots the game and each demo for a few hundred frames and fails on any exception.
+// Needs a display; on a headless machine run it under Xvfb: xvfb-run -a ./gradlew :lwjgl3:smokeTest
+def smokeApps = ['game', 'interior', 'flight', 'hud', 'audio', 'orbit', 'crew', 'docking', 'editor']
+def smokeTasks = smokeApps.collect { app ->
+  tasks.register("smokeTest${app.capitalize()}", JavaExec) {
+    group = 'verification'
+    description = "Boots the ${app} app for 300 frames and fails on any exception."
+    mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.SmokeLauncher'
+    classpath = sourceSets.main.runtimeClasspath
+    workingDir = rootProject.file('assets').path
+    args = [app, (project.findProperty('smokeFrames') ?: '300').toString()]
+    jvmArgs += "--enable-native-access=ALL-UNNAMED"
+    jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
+    if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+  }
+}
+tasks.register('smokeTest') {
+  group = 'verification'
+  description = 'Boots the game and every demo headlessly and fails on any exception.'
+  dependsOn smokeTasks
+}
+
 // Equivalent to the jar task; here for compatibility with gdx-setup.
 tasks.register('dist') {
   dependsOn 'jar'
