@@ -91,6 +91,11 @@ public class PlayerDocking {
             world.cargo.callOff(player);
             return name(from) + "'s dock hands are still aboard: the loading is called off, undock once they're off";
         }
+        if (world.cargo.crewAway(player) > 0) {
+            // Nor leaving our own behind
+            world.cargo.callOff(player);
+            return "Your crew are still aboard " + name(from) + ": the loading is called off, undock once they're back";
+        }
         if (!world.docking.undock(player)) return "Not docked";
         return "Undocked from " + name(from);
     }

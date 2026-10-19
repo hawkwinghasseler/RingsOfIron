@@ -38,6 +38,10 @@ public final class TaskRules {
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && s.health < 1f;
             }
+            case MAN_CONSOLE: {
+                SubsystemComponent s = subsystemOf(task);
+                return s != null && !s.isDestroyed();
+            }
             case RESCUE: {
                 CrewMemberComponent c = crew.crew(((RescueTask) task).casualty);
                 // Still needed while being carried: the rescue is under way.
@@ -51,14 +55,16 @@ public final class TaskRules {
                 return ((CarryTask) task).job.isOpen();
             case YARD:
                 return ((YardTask) task).job.isOpen();
+            case FORCE_DOOR:
+                return ((ForceDoorTask) task).job.isOpen();
             default:
                 return true;
         }
     }
 
     static SubsystemComponent subsystemOf(CrewTask task) {
-        if (!(task instanceof RepairTask)) return null;
-        Entity e = ((RepairTask) task).subsystem;
+        Entity e = task instanceof RepairTask ? ((RepairTask) task).subsystem
+                : task instanceof ManConsoleTask ? ((ManConsoleTask) task).console : null;
         return e == null ? null : e.getComponent(SubsystemComponent.class);
     }
 
@@ -94,7 +100,8 @@ public final class TaskRules {
             }
             case SEAL_BREACH:
                 return isAdjacent(x, y, tx, ty) && !grid.isEdgeBlocked(x, y, tx, ty);
-            case REPAIR: {
+            case REPAIR:
+            case MAN_CONSOLE: {
                 SubsystemComponent s = subsystemOf(task);
                 if (s == null) return false;
                 for (Side side : Side.values()) {
@@ -114,6 +121,27 @@ public final class TaskRules {
     /** A predicate for {@link GridPathfinder#nearest} over the task's work spots. */
     public static GridPathfinder.TilePredicate workSpots(CrewTask task, ShipGridComponent grid, GridNavGraph nav, CrewService crew) {
         return (x, y) -> isWorkSpot(task, grid, nav, crew, x, y);
+    }
+
+    /** True if the air on (x, y) is fit to breathe: pressure and oxygen enough, whatever the heat. */
+    public static boolean isBreathable(ShipGridComponent grid, int x, int y) {
+        return grid.pressureRatioAt(x, y) >= SAFE_PRESSURE && grid.oxygenRatioAt(x, y) >= SAFE_OXYGEN;
+    }
+
+    /**
+     * True if working at (x, y) means being out of breathable air: a tile whose air is too thin or
+     * foul, or one with no air (a hull breach, a sealed tile) beside such a tile or open to space.
+     */
+    public static boolean needsSuit(ShipGridComponent grid, int x, int y) {
+        Tile t = grid.getTile(x, y);
+        if (t == null) return false;
+        if (t.holdsAir()) return !isBreathable(grid, x, y);
+        if (t.isSpaceExposed()) return true;
+        for (Side s : Side.values()) {
+            Tile n = grid.getTile(x + s.dx, y + s.dy);
+            if (n != null && n.holdsAir() && !isBreathable(grid, x + s.dx, y + s.dy)) return true;
+        }
+        return false;
     }
 
     /** True if a crew member can breathe safely on (x, y): pressurized, oxygenated, not burning or hot. */

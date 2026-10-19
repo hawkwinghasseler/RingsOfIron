@@ -43,14 +43,20 @@ public class ShipTaskBoardComponent implements Component {
     /**
      * The open task a crew member of {@code role} at tile (x, y) should take: the highest
      * {@code priority × role affinity − distance × }{@link #DISTANCE_WEIGHT}, ignoring
-     * tasks the role never does. Null if there is none.
+     * tasks the role never does. Manning a console is what crew do when there is nothing
+     * else: it is only chosen when no other task suits. Null if there is none.
      */
     public CrewTask best(CrewRole role, int x, int y, TaskFilter filter) {
+        CrewTask t = best(role, x, y, filter, false);
+        return t != null ? t : best(role, x, y, filter, true);
+    }
+
+    private CrewTask best(CrewRole role, int x, int y, TaskFilter filter, boolean consoles) {
         CrewTask best = null;
         float bestScore = Float.NEGATIVE_INFINITY;
         for (CrewTask t : tasks) {
-            if (t.status != CrewTask.Status.OPEN) continue;
-            float affinity = role.affinity(t.kind);
+            if (t.status != CrewTask.Status.OPEN || (t.kind == CrewTask.Kind.MAN_CONSOLE) != consoles) continue;
+            float affinity = role.affinity(t);
             if (affinity <= 0f) continue;
             if (filter != null && !filter.accept(t)) continue;
             float score = t.priority * affinity - DISTANCE_WEIGHT * (Math.abs(t.x - x) + Math.abs(t.y - y));

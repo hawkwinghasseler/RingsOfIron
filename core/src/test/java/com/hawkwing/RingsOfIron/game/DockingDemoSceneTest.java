@@ -273,6 +273,38 @@ class DockingDemoSceneTest {
     }
 
     @Test
+    void crewOrderedToForceTheDoorWalkOverAndHackIt() {
+        demo.load(DockingDemoScene.Scene.FORCE);
+        ShipGridComponent deck = demo.player.getComponent(ShipGridComponent.class);
+        // A marine at the far end of the corvette's deck, and the avatar out of the way
+        int[] far = null;
+        for (int y = 0; y < deck.height && far == null; y++) {
+            for (int x = 0; x < deck.width; x++) {
+                if (deck.getTile(x, y).isOpen()) {
+                    far = new int[]{x, y};
+                    break;
+                }
+            }
+        }
+        Entity marine = com.ringsofiron.aicrew.CrewFactory.spawn(demo.world.crew, demo.player, "Cole",
+                com.ringsofiron.aicrew.CrewRole.MARINE, 0, far[0], far[1]);
+        demo.world.crew.position(demo.avatar).setTile(far[0], far[1]);
+        String said = demo.world.forcing.order(demo.player, false);
+        assertTrue(said.startsWith("Crew ordered to force"), said);
+        assertTrue(demo.world.forcing.order(demo.player, false).startsWith("No shut door"), "one order per door");
+        int port = -1;
+        for (int i = 0; i < 60 * 120; i++) {
+            demo.update(FRAME);
+            DoorForcing.Job j = demo.world.forcing.jobOf(marine);
+            if (j != null) port = j.port;
+            if (port >= 0 && demo.world.docking.doorState(demo.target, port) == ForceMethod.DoorState.OPEN) break;
+        }
+        assertTrue(port >= 0, "the marine got to the door and set to work: " + demo.world.crew.crew(marine).activity);
+        assertEquals(ForceMethod.DoorState.OPEN, demo.world.docking.doorState(demo.target, port), "hacked open");
+        assertEquals(-FactionStanding.HACK_COST, demo.world.standing.standing(StationCrew.FACTION), 1e-3, "a hostile act");
+    }
+
+    @Test
     void anUnpoweredDoorIsPried() {
         demo.load(DockingDemoScene.Scene.FORCE);
         demo.toggleStationPower();
@@ -302,7 +334,7 @@ class DockingDemoSceneTest {
     }
 
     @Test
-    void crewWalkOverMountedSystemsToEveryTurret() {
+    void crewCanWalkUpToEveryTurret() {
         demo.load(DockingDemoScene.Scene.YARD);
         com.ringsofiron.interiorgrid.ShipGridComponent grid = demo.player.getComponent(com.ringsofiron.interiorgrid.ShipGridComponent.class);
         boolean[][] reach = StationYard.reachable(grid, demo.world.crew, demo.target);
@@ -310,7 +342,15 @@ class DockingDemoSceneTest {
                 : demo.player.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class).mounts) {
             com.ringsofiron.interiorgrid.MountFootprint f =
                     m.subsystem.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class).footprint;
-            assertTrue(reach[f.originY][f.originX], "a technician can walk from the dock to the turret at " + f.originX + "," + f.originY);
+            // A turret is solid: it is worked from a tile beside it
+            boolean beside = false;
+            for (int y = f.originY - 1; y <= f.originY + f.height(); y++) {
+                for (int x = f.originX - 1; x <= f.originX + f.width(); x++) {
+                    boolean corner = (x < f.originX || x >= f.originX + f.width()) && (y < f.originY || y >= f.originY + f.height());
+                    if (!corner && y >= 0 && x >= 0 && y < reach.length && x < reach[0].length) beside |= reach[y][x];
+                }
+            }
+            assertTrue(beside, "a technician can walk from the dock up to the turret at " + f.originX + "," + f.originY);
         }
     }
 
@@ -448,6 +488,30 @@ class DockingDemoSceneTest {
         assertEquals("Leaving", out.status);
         assertTrue(kb.getPosition().dst(hub.getPosition()) * 10f >= 400f, "and flew away");
         assertSame(demo.target, demo.world.docking.dockedTo(demo.osprey), "Osprey stays");
+    }
+
+    @Test
+    void aHaulerFliesRoundAShipInItsWay() {
+        // Where Osprey is a while into its run with nothing in the way
+        demo.load(DockingDemoScene.Scene.HUB);
+        for (int i = 0; i < 60 * 12; i++) demo.update(FRAME);
+        com.badlogic.gdx.math.Vector2 onPath = new com.badlogic.gdx.math.Vector2(
+                demo.world.docking.bodyOf(demo.osprey).getWorldCenter()).scl(10f);
+        // Park another hauler there and run it again
+        demo.load(DockingDemoScene.Scene.HUB);
+        Entity blocker = demo.world.getContent().factory.spawnShip(
+                GameScenario.FREIGHTER_SHIP, onPath.x, onPath.y, 0f);
+        com.badlogic.gdx.physics.box2d.Body ob = demo.world.docking.bodyOf(demo.osprey);
+        float nearest = Float.MAX_VALUE;
+        for (int i = 0; i < 60 * 300 && demo.world.docking.dockedTo(demo.osprey) == null; i++) {
+            demo.update(FRAME);
+            com.badlogic.gdx.physics.box2d.Body bb = demo.world.docking.bodyOf(blocker);
+            nearest = Math.min(nearest, ob.getWorldCenter().dst(bb.getWorldCenter()) * 10f);
+        }
+        assertSame(demo.target, demo.world.docking.dockedTo(demo.osprey), "Osprey still docked");
+        ShipGridComponent g = blocker.getComponent(ShipGridComponent.class);
+        float hulls = (float) Math.hypot(g.width, g.height) * g.tileSize;
+        assertTrue(nearest > hulls, "kept clear of the parked hauler: " + nearest + " m apart, hulls " + hulls + " m");
     }
 
     private double credits() {

@@ -4,6 +4,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.ObjectMap;
+import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 
 /**
@@ -24,17 +25,18 @@ public final class CrewPhysics implements Disposable {
     }
 
     /**
-     * The body of {@code crew} on {@code grid}'s deck at (x, y), tiles: made there if they had none
+     * The body of {@code crew} on {@code nav}'s deck at (x, y), tiles: made there if they had none
      * or had one on another deck, and moved there if something else moved them since the last tick.
      */
-    CrewBody attach(Entity crew, ShipGridComponent grid, float x, float y) {
+    CrewBody attach(Entity crew, GridNavGraph nav, float x, float y) {
+        ShipGridComponent grid = nav.grid;
         CrewBody b = bodies.get(crew);
         if (b != null && b.world.grid != grid) {
             release(crew);
             b = null;
         }
         if (b == null) {
-            InteriorWorld w = world(grid);
+            InteriorWorld w = world(nav);
             b = new CrewBody(crew, w, x, y);
             w.crew.add(b);
             bodies.put(crew, b);
@@ -60,10 +62,10 @@ public final class CrewPhysics implements Disposable {
         return null;
     }
 
-    private InteriorWorld world(ShipGridComponent grid) {
-        InteriorWorld w = worldOf(grid);
+    private InteriorWorld world(GridNavGraph nav) {
+        InteriorWorld w = worldOf(nav.grid);
         if (w == null) {
-            w = new InteriorWorld(grid);
+            w = new InteriorWorld(nav);
             worlds.add(w);
         }
         return w;
