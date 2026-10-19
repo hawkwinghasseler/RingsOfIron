@@ -962,7 +962,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         int giver = world.standing.factionOf(station);
         FactionDef def = world.standing.factions().def(giver);
         if (station == null || node == null || def == null || def.hostileToAll) return out;
-        Random rnd = new Random(stationUuid.hashCode() * 31L + day);
+        Random rnd = new Random(world.stationDice(stationUuid) * 31L + day);
         List<List<Contract>> kinds = new ArrayList<>();
         kinds.add(deliveries(node, giver));
         kinds.add(escorts(node, giver));

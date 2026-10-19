@@ -477,6 +477,17 @@ public class GameWorld implements Disposable {
     }
 
     /**
+     * The dice a station's daily board and hiring pool are drawn from: its name and the career's seed
+     * ({@link WorldEvents#seed}), so the same seed replays the same boards and two seeds differ. A
+     * station's uuid is new each game, so drawing from it alone made every career's boards differ.
+     */
+    public long stationDice(String stationUuid) {
+        var node = macroSim.station(stationUuid);
+        String key = node != null && node.displayName != null ? node.displayName : stationUuid;
+        return key.hashCode() * 0x9E3779B97F4A7C15L ^ events.seed;
+    }
+
+    /**
      * Starts the combat and crew dice over from a new game's seeds, as if the world had been built
      * with them: sensors, fire control and damage from {@code combatSeed} (the same offsets as
      * {@link Modules#combatSeed}), the crew's own draws from {@code crewSeed}.

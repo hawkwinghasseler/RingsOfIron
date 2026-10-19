@@ -90,13 +90,18 @@ public class CrewHiring implements SaveParticipant {
     public List<Candidate> pool(String stationUuid) {
         long day = (long) Math.floor(world.engine.getSimSeconds() / DAY);
         List<Candidate> out = new ArrayList<>();
-        for (Candidate c : post(stationUuid, day)) if (!hired.contains(c.key)) out.add(c);
+        for (Candidate c : post(stationUuid, world.stationDice(stationUuid), day)) if (!hired.contains(c.key)) out.add(c);
         return out;
     }
 
     /** A station's pool for a day; the same every time for the same station and day. */
     static List<Candidate> post(String stationUuid, long day) {
-        Random rnd = new Random(stationUuid.hashCode() * 131L + day * 7_919L + 17L);
+        return post(stationUuid, stationUuid.hashCode(), day);
+    }
+
+    /** A station's pool for a day, drawn from {@code dice} ({@link GameWorld#stationDice}). */
+    static List<Candidate> post(String stationUuid, long dice, long day) {
+        Random rnd = new Random(dice * 131L + day * 7_919L + 17L);
         int n = MIN_POOL + rnd.nextInt(MAX_POOL - MIN_POOL + 1);
         List<Candidate> out = new ArrayList<>();
         for (int i = 0; i < n; i++) {
