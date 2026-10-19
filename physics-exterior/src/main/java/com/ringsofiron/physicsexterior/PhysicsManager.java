@@ -24,6 +24,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.IdentityMap;
 import com.ringsofiron.coreengine.SimClock;
+import com.ringsofiron.coreengine.TickProfiler;
 import com.ringsofiron.physicsexterior.anchor.AnchorModel;
 import com.ringsofiron.physicsexterior.anchor.InertialAnchor;
 import com.ringsofiron.physicsexterior.events.AnchorChangeEvent;
@@ -122,6 +123,7 @@ public class PhysicsManager implements Disposable {
     private double originTime;
     private long tick;
     private SimClock clock;
+    private TickProfiler profiler;
 
     public PhysicsManager() {
         Box2D.init();
@@ -134,6 +136,10 @@ public class PhysicsManager implements Disposable {
      * dispatches new collisions. {@code deltaTime} should be {@link #TIME_STEP}.
      */
     public void step(float deltaTime) {
+        if (profiler != null) {
+            profiledStep(deltaTime);
+            return;
+        }
         for (int i = 0; i < stepListeners.size; i++) {
             stepListeners.get(i).beforeStep(deltaTime);
         }
@@ -150,6 +156,40 @@ public class PhysicsManager implements Disposable {
             collisions.dispatch(pendingCollisions.get(i));
         }
         pendingCollisions.clear();
+    }
+
+    /** {@link #step} with each listener, the Box2D step and the collision dispatch timed. */
+    private void profiledStep(float deltaTime) {
+        for (int i = 0; i < stepListeners.size; i++) {
+            StepListener listener = stepListeners.get(i);
+            long start = System.nanoTime();
+            listener.beforeStep(deltaTime);
+            profiler.record("step/" + listener.getClass().getSimpleName() + ".before", System.nanoTime() - start);
+        }
+        long start = System.nanoTime();
+        recordPreviousPoses();
+        world.step(deltaTime, VELOCITY_ITERATIONS, POSITION_ITERATIONS);
+        if (clock == null) tick++;
+        updateOrigin();
+        profiler.record("step/Box2D", System.nanoTime() - start);
+
+        for (int i = 0; i < stepListeners.size; i++) {
+            StepListener listener = stepListeners.get(i);
+            start = System.nanoTime();
+            listener.afterStep(deltaTime);
+            profiler.record("step/" + listener.getClass().getSimpleName() + ".after", System.nanoTime() - start);
+        }
+        start = System.nanoTime();
+        for (int i = 0; i < pendingCollisions.size; i++) {
+            collisions.dispatch(pendingCollisions.get(i));
+        }
+        pendingCollisions.clear();
+        profiler.record("step/collisions", System.nanoTime() - start);
+    }
+
+    /** Times the parts of each {@link #step} from now on, or stops timing with null. */
+    public void setProfiler(TickProfiler profiler) {
+        this.profiler = profiler;
     }
 
     private void recordPreviousPoses() {

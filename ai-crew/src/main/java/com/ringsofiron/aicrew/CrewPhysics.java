@@ -5,6 +5,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
+import com.ringsofiron.coreengine.TickProfiler;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 
 /**
@@ -18,6 +19,7 @@ public final class CrewPhysics implements Disposable {
     /** In the order they were made, so each tick runs the same way. */
     private final Array<InteriorWorld> worlds = new Array<>();
     private final ObjectMap<Entity, CrewBody> bodies = new ObjectMap<>();
+    private TickProfiler profiler;
 
     /** The body of {@code crew}, or null while they are not on their feet on a deck. */
     public CrewBody body(Entity crew) {
@@ -80,7 +82,25 @@ public final class CrewPhysics implements Disposable {
                 w.dispose();
             }
         }
-        for (int i = 0; i < worlds.size; i++) worlds.get(i).step(dt);
+        if (profiler == null) {
+            for (int i = 0; i < worlds.size; i++) worlds.get(i).step(dt);
+            return;
+        }
+        for (int i = 0; i < worlds.size; i++) {
+            long start = System.nanoTime();
+            worlds.get(i).step(dt);
+            profiler.record("crew/deck world", System.nanoTime() - start);
+        }
+    }
+
+    /** Times each deck world's step from now on, or stops timing with null. */
+    public void setProfiler(TickProfiler profiler) {
+        this.profiler = profiler;
+    }
+
+    /** How many decks have a Box2D world right now (someone is walking them). */
+    public int worldCount() {
+        return worlds.size;
     }
 
     /** Drops every world and body, e.g. after a load replaced every grid. */
