@@ -204,7 +204,7 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
 - **Prizes (towing):** a ship the player has taken (`Boarding.takenBy`) and stays latched to is the prize in tow.
   - The weld never tears while towing (`DockingSystem.towLocked`), and the player's thrust goes through the pair's centre of mass (`FlightControlComponent.towing`), so the pair flies as one body with the combined mass and does not spin about the weld. Rotation assist works against the pair's spin with the combined inertia. The pair goes onto the rails and back with time warp like any latch.
   - Within 2 km (`PRIZE_RANGE`) of a station that deals with the player (not hostile to all, not refusing clearance), [Y] opens the shipyard window, which offers it to the station's tugs: **sold** for 25% of its value (`PRIZE_SHARE`), 10% once anything has been stripped off it (`STRIPPED_PRIZE_SHARE`), or **turned in** at a sponsor station for standing: that of a bounty the player took on it, else what a bounty on it would give (6 + 3 x tier).
-  - Refused while any of the player's crew are still aboard it. Prisoners held aboard are handed over with it.
+  - Refused while any of the player's crew are still aboard it. Prisoners held aboard go with it: the notice counts them as handed over, but they are only removed with the ship (`Shipyard.retire`), for no pay or standing of their own.
   - The player tows; they never command two ships.
 - **Saves:** a purchase or a hand-over is done at once, so nothing new is saved: the new ship is saved as the player's ship always is.
 
