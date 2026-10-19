@@ -179,7 +179,7 @@ class PenetrationResolverTest {
         resolver.setCrew(new CrewDamageBridge() {
             @Override
             public void occupantsAt(Entity s, int x, int y, Array<Entity> out) {
-                if (x == 3 && y == 2) out.add(sailor);
+                if (x == 1 && y == 2) out.add(sailor);
             }
 
             @Override
@@ -189,9 +189,34 @@ class PenetrationResolverTest {
             }
         });
         shootFromLeft(grid, 2, 1e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
-        assertEquals(100f, hp[0], 1e-3f, "a crew member takes the full CREW_RESISTANCE bite");
+        assertEquals(100f, hp[0], 1e-3f, "a crew member in the first room takes the full CREW_RESISTANCE bite");
         assertEquals(HitCause.PENETRATOR, cause[0]);
         assertTrue(report.injuredCrew.contains(sailor, true));
+    }
+
+    @Test
+    void aRoundHurtsCrewLessPastTheFirstTile() {
+        ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.LIGHT);
+        final Entity[] sailors = {new Entity(), new Entity(), new Entity()};
+        final float[] hp = new float[3];
+        resolver.setCrew(new CrewDamageBridge() {
+            @Override
+            public void occupantsAt(Entity s, int x, int y, Array<Entity> out) {
+                if (y == 2 && x >= 1 && x <= 3) out.add(sailors[x - 1]);
+            }
+
+            @Override
+            public void applyDamage(Entity crew, float amount, HitCause c) {
+                for (int i = 0; i < sailors.length; i++) if (sailors[i] == crew) hp[i] += amount;
+            }
+        });
+        // A railgun slug: through all three and out the far side
+        Result r = shootFromLeft(grid, 2, 1e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
+        assertEquals(Result.Outcome.OVER_PENETRATED, r.outcome);
+        assertEquals(100f, hp[0], 1e-3f, "the first takes the full bite");
+        assertEquals(100f * PenetrationResolver.CREW_FALLOFF_PER_TILE, hp[1], 1e-3f, "the second half");
+        assertEquals(100f * PenetrationResolver.CREW_FALLOFF_PER_TILE * PenetrationResolver.CREW_FALLOFF_PER_TILE, hp[2], 1e-3f,
+                "the third a quarter");
     }
 
     @Test

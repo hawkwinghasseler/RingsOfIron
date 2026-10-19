@@ -56,11 +56,13 @@ public class CrewRoster implements CrewProvider {
             String option = world.prisoners.option(e);
             p.option = option == null ? "" : Character.toUpperCase(option.charAt(0)) + option.substring(1);
             p.offersToJoin = world.prisoners.offersToJoin(e);
+            p.condition = CrewMedical.condition(c);
         }
         Entity taken = world.prisoners.takenAlongside();
         out.prisonersAlongside = taken != null && !world.prisoners.aboard(taken).isEmpty();
-        out.summary = String.format(Locale.ROOT, "%d / %d berths, %,.0f cr/wk in wages",
-                world.crewHiring.aboard(ship), CrewHiring.berths(ship), world.crewCareer.weeklyWages(ship));
+        out.suits = world.medical.suitsLine();
+        out.summary = String.format(Locale.ROOT, "%d / %d berths, %,.0f cr/wk in wages, %d medical stores",
+                world.crewHiring.aboard(ship), CrewHiring.berths(ship), world.crewCareer.weeklyWages(ship), world.medical.stores());
         if (station != null) {
             String uuid = station.getComponent(UuidComponent.class).id;
             var node = world.macroSim.station(uuid);
@@ -89,6 +91,11 @@ public class CrewRoster implements CrewProvider {
         String name = world.crew.crew(e).name;
         String why = world.crewHiring.dismiss(e);
         return why == null ? name + " leaves the ship" : why;
+    }
+
+    @Override
+    public String toggleSuits() {
+        return world.medical.toggleSuits();
     }
 
     @Override

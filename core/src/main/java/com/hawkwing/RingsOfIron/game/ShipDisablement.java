@@ -12,6 +12,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
@@ -42,7 +43,8 @@ import java.util.function.DoubleSupplier;
  *   <li>it has reactors and none is running;</li>
  *   <li>it has crew of its own aboard and none of them is conscious;</li>
  *   <li>an NPC ship in a fight that is losing it surrenders (see {@link MoraleComponent}):
- *       hull below its surrender line, its own crew mostly down, or every gun silenced.</li>
+ *       hull below its surrender line, its own crew mostly down, or every gun silenced; a hostile
+ *       breaking off under fire surrenders once its own crew are mostly down.</li>
  * </ol>
  *
  * A disabled NPC ship stops: its combat and route pilots are taken off, thrust cut, guns held and
@@ -149,14 +151,26 @@ public class ShipDisablement extends EntitySystem {
 
     /** True for an NPC ship in a fight, willing to give up, that is losing it. */
     private boolean losing(Entity ship, float hull, int[] count) {
-        if (isPlayer(ship) || ship.getComponent(NpcCombatComponent.class) == null) return false;
+        if (isPlayer(ship)) return false;
+        boolean fighting = ship.getComponent(NpcCombatComponent.class) != null;
+        // A hostile breaking off under fire still gives up once its crew are mostly down: since
+        // round 5 hits wound rather than kill, so a crew is rarely all dead (NO_CREW) any more
+        boolean fleeing = !fighting && ship.getComponent(HostileComponent.class) != null && underFire(ship);
+        if (!fighting && !fleeing) return false;
         MoraleComponent morale = MORALE.get(ship);
         if (morale != null && !morale.surrenders) return false;
         float hullLine = morale == null ? SURRENDER_HULL : morale.surrenderHull;
         float crewLine = morale == null ? SURRENDER_CREW : morale.surrenderCrew;
+        if (fleeing) return count[0] > 0 && count[1] < crewLine * count[0];
         if (hull < hullLine) return true;
         if (count[0] > 0 && count[1] < crewLine * count[0]) return true;
         return gunsSilenced(ship);
+    }
+
+    /** True while {@code ship} is at battle stations: in a fight or lately shot at ({@link CrewMedical}). */
+    private static boolean underFire(Entity ship) {
+        ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
+        return board != null && board.battleStations;
     }
 
     /**

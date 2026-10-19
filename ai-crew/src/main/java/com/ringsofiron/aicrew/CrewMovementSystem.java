@@ -105,7 +105,7 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         }
         GridNavGraph nav = service.pathfinder(grid).graph;
         float speed = c.def.moveSpeed * (c.carrying != null ? c.def.carrySpeedFactor : 1f)
-                * (c.load != null ? c.def.loadSpeedFactor : 1f) * (c.suited ? c.def.suitSpeedFactor : 1f);
+                * (c.load != null ? c.def.loadSpeedFactor : 1f) * (c.suited ? c.def.suitSpeedFactor : 1f) * c.woundPace();
         PlayerAvatarComponent avatar = avatarM.get(e);
         boolean crossingOut = avatar == null && p.crossing != null && !p.isMoving();
         if (p.walkway != null || crossingOut || !nav.isWalkable(p.tileX(), p.tileY())) {

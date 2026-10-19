@@ -92,6 +92,13 @@ public class ShipGridComponent implements Component {
      * wall, deck plate or thin wall in the field (see {@link LeakPatches}). A yard restocks them.
      */
     public int patchKits = LeakPatches.DEFAULT_KITS;
+    /** Medical stores a ship carries, and a yard restocks them to. */
+    public static final int DEFAULT_MEDICAL_STORES = 6;
+    /**
+     * Medical stores aboard: each wound treated a level down uses one. With none left the wounded
+     * are treated slowly. A yard restocks them.
+     */
+    public int medicalStores = DEFAULT_MEDICAL_STORES;
 
     public ShipGridComponent(int width, int height, float tileSize) {
         this(width, height, tileSize, 0f, 0f);

@@ -261,6 +261,9 @@ public class Rescue {
         CrewMemberComponent c = avatar.getComponent(CrewMemberComponent.class);
         c.state = com.ringsofiron.aicrew.CrewState.CONSCIOUS;
         c.health = c.def.maxHealth * 0.5f;
+        // Patched up on the way: hurt, but no wound left to bleed from or slow them
+        c.wound = com.ringsofiron.aicrew.Wound.NONE;
+        c.care = c.bleedOut = c.healing = 0f;
         c.activity = "idle";
         c.treatedBy = null;
         if (c.carriedBy != null) world.crew.releaseTask(c.carriedBy);

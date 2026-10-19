@@ -119,10 +119,12 @@ public class CrewHiring implements SaveParticipant {
             r.gunnery = r.tracking = other;
             r.engineering = other;
             r.marine = other;
+            r.medicine = other;
             switch (role) {
                 case ENGINEER: r.engineering = main; break;
                 case MARINE: r.marine = main; r.gunnery = r.tracking = Math.max(other, main * 0.9f); break;
                 case CREWMAN: r.gunnery = r.tracking = main; break;
+                case MEDIC: r.medicine = main; break;
                 default: break;
             }
             r.wage = CrewCareer.wageFor(role, r);

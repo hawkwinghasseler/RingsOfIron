@@ -28,7 +28,7 @@ import java.util.Map;
  *   <li><b>Veterancy.</b> Gunners manning the weapons console learn from each hit the ship's guns
  *       land; engineers from every second of repairs, fire fighting, sealing breaches, forcing
  *       doors and yard work; marines from each small-arms hit, each enemy downed and each ship they
- *       board and take. Skills rise toward {@link CrewRecord#CAP} ever more slowly.</li>
+ *       board and take; medics (and anyone) from every second treating the wounded. Skills rise toward {@link CrewRecord#CAP} ever more slowly.</li>
  *   <li><b>Morale.</b> Drifts back toward {@link CrewRecord#STEADY_MORALE} by {@link #MORALE_DRIFT}
  *       a day. Unpaid wages cost {@link #UNPAID_MORALE}, a shipmate killed {@link #DEATH_MORALE}
  *       and crew lost in a rescue {@link #LOST_MORALE} each; a ship beaten or taken lifts it. Below
@@ -50,6 +50,8 @@ public class CrewCareer extends FixedLogicSystem {
     public static final float ENGINEERING_XP_PER_SECOND = 0.0008f;
     /** Marine experience per small-arms hit and per enemy downed. */
     public static final float MARINE_XP_PER_HIT = 0.01f, MARINE_XP_PER_DOWN = 0.03f;
+    /** Medicine experience per second spent treating the wounded. */
+    public static final float MEDICINE_XP_PER_SECOND = 0.0008f;
     /** Marine experience for boarding a ship that is taken. */
     public static final float MARINE_XP_PER_BOARDING = 0.05f;
     /** Morale regained (or lost, above steady) toward {@link CrewRecord#STEADY_MORALE} per in-game day. */
@@ -124,6 +126,11 @@ public class CrewCareer extends FixedLogicSystem {
             r.pendingWork = 0f;
             any = true;
         }
+        if (r.pendingCare > 0f) {
+            r.gain(CrewRecord.Skill.MEDICINE, r.pendingCare * MEDICINE_XP_PER_SECOND);
+            r.pendingCare = 0f;
+            any = true;
+        }
         if (r.pendingHits > 0 || r.pendingDowns > 0) {
             r.downed += r.pendingDowns;
             r.gain(CrewRecord.Skill.MARINE, r.pendingHits * MARINE_XP_PER_HIT + r.pendingDowns * MARINE_XP_PER_DOWN);
@@ -154,7 +161,9 @@ public class CrewCareer extends FixedLogicSystem {
             if (Boolean.TRUE.equals(was.get(e)) && !now) died.add(e);
         }
         for (Entity e : died) {
-            world.notices.post(crew.crew(e).name + " is dead", NoticeLog.Kind.IMPORTANT);
+            CrewMemberComponent c = crew.crew(e);
+            boolean ofWounds = c.lastDamageCause != null && CrewService.wounds(c.lastDamageCause);
+            world.notices.post(c.name + (ofWounds ? " has died of wounds" : " is dead"), NoticeLog.Kind.IMPORTANT);
             Entity home = crew.homeOf(e);
             for (Entity other : ownCrew(home)) record(other).changeMorale(DEATH_MORALE);
         }
@@ -261,7 +270,7 @@ public class CrewCareer extends FixedLogicSystem {
         switch (role) {
             case ENGINEER: return r.engineering;
             case MARINE: return r.marine;
-            case MEDIC: return (r.gunnery + r.engineering + r.marine) / 3f;
+            case MEDIC: return r.medicine;
             default: return r.gunnery;
         }
     }
@@ -271,11 +280,9 @@ public class CrewCareer extends FixedLogicSystem {
         return Math.round(baseWage(role) * (0.5f + mainSkill(role, r)) / 10f) * 10f;
     }
 
-    /** A crew member's state for the roster: "OK 100%", "Unconscious 20%", "Dead". */
+    /** A crew member's state for the roster: "OK 100%", "Unconscious 20%", "Light wound 90%", "Dead" ({@link CrewMedical#condition}). */
     public static String condition(CrewMemberComponent c) {
-        if (c.state == CrewState.DEAD) return "Dead";
-        String s = c.state == CrewState.CONSCIOUS ? "OK" : "Unconscious";
-        return String.format(Locale.ROOT, "%s %.0f%%", s, c.healthFraction() * 100f);
+        return CrewMedical.condition(c);
     }
 
     /** "3 ships beaten, 1 boarded, 2 downed, 0.4 h work", leaving out what is 0; "New" for nothing. */

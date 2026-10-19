@@ -138,6 +138,7 @@ public class Boarding extends EntitySystem {
         BoardedComponent b = target == null ? null : BOARDED_M.get(target);
         if (b == null || b.by.get(uuids) != ship || b.taken) return "No boarding under way";
         end(target, b);
+        bringDownedHome(target, ship);
         return "Boarding party recalled";
     }
 
@@ -263,6 +264,8 @@ public class Boarding extends EntitySystem {
         taken.dispatch(target);
         cancelOrders(b);
         b.prisoners = keepHeld(target);
+        Entity by = b.by == null ? null : b.by.get(uuids);
+        if (by != null) bringDownedHome(target, by);
         DisabledComponent.Reason r = ShipDisablement.reason(target);
         if (r != DisabledComponent.Reason.WRECKED && r != DisabledComponent.Reason.ABANDONED) {
             disablement.set(target, DisabledComponent.Reason.SURRENDERED);
@@ -285,6 +288,33 @@ public class Boarding extends EntitySystem {
             n++;
         }
         return n;
+    }
+
+    /**
+     * As the party stands down, its members lying wounded or knocked out aboard {@code target} are
+     * carried back aboard {@code home} by their shipmates (moved, as prisoners are), so nobody is
+     * left behind on the craft: their own ship's crew treat them there.
+     */
+    private void bringDownedHome(Entity target, Entity home) {
+        ShipGridComponent grid = home.getComponent(ShipGridComponent.class);
+        List<int[]> floor = grid == null ? null : GameScenario.floorTiles(grid);
+        if (floor == null || floor.isEmpty()) return;
+        ImmutableArray<Entity> all = crew.crewEntities();
+        int n = 0;
+        for (int i = 0; i < all.size(); i++) {
+            Entity e = all.get(i);
+            CrewMemberComponent c = crew.crew(e);
+            GridPositionComponent p = crew.position(e);
+            if (p.ship != target || crew.homeOf(e) != home || !c.isAlive() || c.isConscious() || c.held) continue;
+            crew.releaseTask(e);
+            if (c.carriedBy != null) crew.drop(c.carriedBy);
+            p.stop();
+            p.crossing = null;
+            p.setShip(home);
+            int[] t = floor.get(n++ % floor.size());
+            p.setTile(t[0], t[1]);
+            notices.add(c.name + " is carried back aboard");
+        }
     }
 
     private void cancelOrders(BoardedComponent b) {

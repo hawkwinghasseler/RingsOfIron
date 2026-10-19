@@ -32,6 +32,40 @@ public class CrewDef {
     /** Health regained per second by conscious crew on a safe tile. */
     public float regenRate = 0.1f;
 
+    /** Injury from one hit, in health points, below which it is only a graze: no wound. */
+    public float grazeWound = 5f;
+    /** Injury from one hit at or above which the wound is serious. */
+    public float seriousWound = 30f;
+    /** Injury from one hit at or above which the wound is critical. */
+    public float criticalWound = 70f;
+    /**
+     * Injury from one hit that kills outright: twice a crew member's health, more than a round
+     * can do (at most 100 in the first room it crosses) but not a warhead going off beside them.
+     */
+    public float lethalWound = 200f;
+    /** Seconds a critical wound can go untreated before it kills. */
+    public float bleedOutTime = 300f;
+    /** Seconds a light wound takes to heal by itself on a safe tile. */
+    public float lightHealTime = 1800f;
+    /** Work and walking speed multiplier with a light wound. */
+    public float woundedWorkFactor = 0.7f;
+    /** Work speed multiplier while suited. */
+    public float suitWorkFactor = 0.8f;
+    /** Care rate of a crew member who isn't a medic, before skill. */
+    public static final float UNTRAINED_CARE = 0.4f;
+    /** Care rate when the ship has no medical stores left. */
+    public static final float NO_STORES_CARE = 0.25f;
+
+    /** Seconds of a baseline medic's care that bring {@code wound} down one level. */
+    public static float careTime(Wound wound) {
+        switch (wound) {
+            case CRITICAL: return 60f;
+            case SERIOUS: return 120f;
+            case LIGHT: return 90f;
+            default: return 0f;
+        }
+    }
+
     /** Walking speed, tiles per second. */
     public float moveSpeed = 2.5f;
     /** Speed multiplier while carrying a casualty. */

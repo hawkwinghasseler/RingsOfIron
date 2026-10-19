@@ -404,20 +404,28 @@ public class StationYard extends EntitySystem {
         return String.format(Locale.ROOT, "The technicians are fitting the salvaged %s to %s", def.displayName(), hardpointName(mount));
     }
 
-    /** Puts the ship's hull patches back to a full set, as part of a repair order (no charge). */
-    static void restockPatches(Entity ship) {
+    /**
+     * Puts the ship's hull patches and medical stores back to a full set, as part of a repair order
+     * (no charge). Returns true if anything was short.
+     */
+    static boolean restockPatches(Entity ship) {
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
-        if (grid != null) grid.patchKits = Math.max(grid.patchKits, LeakPatches.DEFAULT_KITS);
+        if (grid == null) return false;
+        boolean short_ = grid.patchKits < LeakPatches.DEFAULT_KITS || grid.medicalStores < ShipGridComponent.DEFAULT_MEDICAL_STORES;
+        grid.patchKits = Math.max(grid.patchKits, LeakPatches.DEFAULT_KITS);
+        grid.medicalStores = Math.max(grid.medicalStores, ShipGridComponent.DEFAULT_MEDICAL_STORES);
+        return short_;
     }
 
     /**
      * Has {@code station}'s yard repair everything damaged aboard {@code ship}, patched leaks
-     * included, and restock its hull patches. Returns what it says.
+     * included, and restock its hull patches and medical stores. With nothing to repair it still
+     * restocks them. Returns what it says.
      */
     public String orderRepairs(Entity ship, Entity station) {
         if (!canWork(ship, station)) return "No yard here to do the work";
         double cost = repairCost(ship);
-        if (cost <= 0.5) return "Nothing aboard needs repairing";
+        if (cost <= 0.5) return restockPatches(ship) ? "Nothing aboard needs repairing: stores restocked" : "Nothing aboard needs repairing";
         YardOrdersComponent orders = orders(ship, station);
         if (orders == null) return "The yard is working for another station's ship";
         orders.repairs = true;

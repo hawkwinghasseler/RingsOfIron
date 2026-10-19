@@ -60,6 +60,8 @@ class Round3CareerTest {
     /** Credits the script put in, and credits that came from selling prizes. */
     double grantedCredits, prizeCredits;
     int fightsLost;
+    /** Range, m, past which a hostile breaking off has got away: since round 5 a wounded crew can still run. */
+    static final double GOT_AWAY = 40_000;
     /** The fight whose leak the crew patched from the stores, once one has. */
     String patchedAfter;
     final java.util.Set<String> warpBlocks = new java.util.HashSet<>();
@@ -313,11 +315,12 @@ class Round3CareerTest {
             gun.launchMissile();
             gun.update(FRAME);
             return (h != null && h.partDropped) || ShipDisablement.isDisabled(ship) || ShipDisablement.isDisabled(game.player)
-                    || world.getCrash() != null;
+                    || world.getCrash() != null || distance(game.player, ship) > GOT_AWAY;
         });
         boolean won = (h != null && h.partDropped) || ShipDisablement.isDisabled(ship);
+        boolean away = !won && distance(game.player, ship) > GOT_AWAY;
         log("%s: %.0f s, %s; it fired %d rounds, %d hit us; our hull %.2f -> %.2f, crew %d -> %d.", what,
-                world.engine.getSimSeconds() - t0, won ? "beaten" : over ? "we lost" : "neither side beaten", fired[0],
+                world.engine.getSimSeconds() - t0, won ? "beaten" : away ? "it got away" : over ? "we lost" : "neither side beaten", fired[0],
                 hits[0], hull0, hull(game.player), crew0, ownCrew().size());
         assertTrue(over, "the fight ends one way or the other");
         if (!won) fightsLost++;

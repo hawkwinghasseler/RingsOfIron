@@ -32,6 +32,16 @@ public class CrewMemberComponent implements Component {
     public float health;
     public CrewState state = CrewState.CONSCIOUS;
     public CrewDamageSink.DamageCause lastDamageCause;
+    /** Worst wound from hits ({@link Wound}); health is the environment's (air, heat, fire). */
+    public Wound wound = Wound.NONE;
+    /** What gave the wound, for the notice if it kills. */
+    public CrewDamageSink.DamageCause woundCause;
+    /** Seconds a critical wound can still go untreated before it kills. */
+    public float bleedOut;
+    /** Seconds of a baseline medic's care given toward bringing the wound down a level. */
+    public float care;
+    /** Seconds a light wound has been healing by itself. */
+    public float healing;
 
     /** The board task this crew member has claimed, or null. */
     public transient CrewTask task;
@@ -123,6 +133,27 @@ public class CrewMemberComponent implements Component {
 
     public boolean isAlive() {
         return state != CrewState.DEAD;
+    }
+
+    /** Share of the usual work and walking speed the wound leaves. */
+    public float woundPace() {
+        return wound == Wound.LIGHT ? def.woundedWorkFactor : 1f;
+    }
+
+    /** Share of the usual work rate: slowed by a light wound and by a suit. */
+    public float workPace() {
+        return woundPace() * (suited ? def.suitWorkFactor : 1f);
+    }
+
+    /**
+     * How fast this crew member treats the wounded: 1 for a medic of {@link CrewRecord#BASELINE}
+     * medicine, who brings a wound down a level in {@link CrewDef#careTime}; anyone else at
+     * {@link CrewDef#UNTRAINED_CARE}. Skill, morale and their own wound scale it.
+     */
+    public float careRate() {
+        CrewRecord r = record();
+        float base = role == CrewRole.MEDIC ? 1f : CrewDef.UNTRAINED_CARE;
+        return base * CrewRecord.factor(r.medicine) * r.workFactor() * workPace();
     }
 
     public float healthFraction() {

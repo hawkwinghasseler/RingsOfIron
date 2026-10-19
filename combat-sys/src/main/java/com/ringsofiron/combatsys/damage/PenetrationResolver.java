@@ -53,7 +53,13 @@ public class PenetrationResolver {
     public static final float CREW_RESISTANCE = 2e3f;
     /** Joules of absorbed energy per health point of crew injury. */
     public static final float CREW_JOULES_PER_HP = 20f;
-    /** Overpressure on a tile, J, that kills an unprotected crew member outright (100 hp). */
+    /**
+     * Share of a round's crew injury left for each open tile it crosses after the first: a round
+     * that has gone through one room has tumbled, shed fragments and lost most of what made it
+     * deadly, though it still wrecks machinery and structure with its full budget.
+     */
+    public static final float CREW_FALLOFF_PER_TILE = 0.5f;
+    /** Overpressure on a tile, J, that does an unprotected crew member 100 hp of injury: a critical wound. */
     public static final float CREW_BLAST_LETHAL = 2e6f;
     /**
      * Machinery share of a system's hardness that one tile of it can absorb from a single ray: what
@@ -442,6 +448,8 @@ public class PenetrationResolver {
         boolean entered;
         boolean pastHull;
         int depth;
+        /** Open floor tiles crossed so far, for {@link #CREW_FALLOFF_PER_TILE}. */
+        int floorTiles;
         float originX, originY;
         int skipX = Integer.MIN_VALUE, skipY = Integer.MIN_VALUE;
         /** The hull tile the ray was last in, to tell a ray running along the hull's skin; MIN_VALUE if none. */
@@ -722,14 +730,15 @@ public class PenetrationResolver {
             damageSubsystem(system, sub, take / hardness, x, y);
         }
 
-        // People. They barely slow a round down.
+        // People. They barely slow a round down, and past the first room it hurts them far less.
+        float falloff = (float) Math.pow(CREW_FALLOFF_PER_TILE, ray.floorTiles++);
         if (crew != null && ray.budget > 0f) {
             occupants.clear();
             crew.occupantsAt(ship, x, y, occupants);
             for (int i = 0; i < occupants.size && ray.budget > 0f; i++) {
                 float take = Math.min(ray.budget, CREW_RESISTANCE);
                 ray.budget -= take;
-                injure(occupants.get(i), take / CREW_JOULES_PER_HP, ray.cause, x, y);
+                injure(occupants.get(i), falloff * take / CREW_JOULES_PER_HP, ray.cause, x, y);
             }
         }
 

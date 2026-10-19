@@ -27,15 +27,16 @@ class CrewHealthTest {
         TestShips s = room();
         Entity e = s.spawn(CrewRole.CREWMAN, 0, 2, 2);
         CrewMemberComponent c = s.c(e);
-        s.crew.applyDamage(e, 70f, DamageCause.PENETRATOR);
+        // Health is what the environment and small arms take; hits wound instead (CrewWoundTest)
+        s.crew.applyDamage(e, 70f, DamageCause.OTHER);
         assertEquals(CrewState.CONSCIOUS, c.state);
-        s.crew.applyDamage(e, 5f, DamageCause.SPALL);
+        s.crew.applyDamage(e, 5f, DamageCause.SMALL_ARMS);
         assertEquals(CrewState.UNCONSCIOUS, c.state, "at the 25% threshold");
         Array<Entity> on = new Array<>();
         s.crew.occupantsAt(s.ship, 2, 2, on);
         assertTrue(on.contains(e, true), "unconscious crew still occupy their tile");
-        s.crew.applyDamage(e, 50f, DamageCause.BLAST);
-        assertEquals(CrewState.DEAD, c.state, "further hits kill the unconscious");
+        s.crew.applyDamage(e, 50f, DamageCause.OTHER);
+        assertEquals(CrewState.DEAD, c.state, "further harm kills the unconscious");
         assertEquals(0f, c.health);
         s.crew.heal(e, 100f);
         assertEquals(CrewState.DEAD, c.state, "the dead do not recover");
