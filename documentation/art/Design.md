@@ -237,6 +237,11 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 - **Crew (6):** ship crew, station dock hand and the player, each standing and carrying a crate.
 - **Projectiles (5):** railgun slug, autocannon round with tracer, missile, decoy flare, harpoon.
 
+## Decided
+- **Armor types change tile art** (2026-10-19): each hull material gets its own tile art, not just a tint, in this pack and in the deck renderer. Built for hull steel and composite armor (see **Hull materials**).
+- **Hull colliders** (2026-10-19): a ship's hull SVG may carry a `collider` shape in its `meta` layer; when it does, that is the ship's collision polygon, and otherwise the polygon is generated from the layout's outer hull tiles.
+- **Pipes and tanks** (2026-10-19): pipes are laid in tile centers or along tile edges like conduits, and tanks are placed in the grid, so both need art in this pack (see Life Support in `documentation/interior-grid/Design.md`).
+
 ## Open Questions
 - Walls more than one tile thick show a small notch at inner corners; the 47-tile blob set would remove it if thick walls become common.
 - Hull steel and composite armor are the only materials with art. New materials need their own look decided before they get files.
