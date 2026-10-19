@@ -43,8 +43,6 @@ public class Prisoners {
     public static final float JOIN_MORALE = 0.5f;
 
     private final GameWorld world;
-    /** Prisoner news not yet shown; the screen drains it. */
-    public final List<String> notices = new ArrayList<>();
 
     Prisoners(GameWorld world) {
         this.world = world;
@@ -96,7 +94,7 @@ public class Prisoners {
         }
         BoardedComponent b = taken.getComponent(BoardedComponent.class);
         b.prisoners = Math.max(0, b.prisoners - moved);
-        notices.add(moved + (moved == 1 ? " prisoner" : " prisoners") + " brought aboard"
+        world.notices.post(moved + (moved == 1 ? " prisoner" : " prisoners") + " brought aboard"
                 + (moved < held.size() ? ": no berths for the rest" : ""));
         return null;
     }
@@ -170,7 +168,7 @@ public class Prisoners {
         world.crew.releaseTask(e);
         world.engine.getEcsEngine().removeEntity(e);
         String verb = how.equals("hand over") ? "handed over" : how.equals("ransom") ? "ransomed" : "released";
-        notices.add(String.format(Locale.ROOT, "%s (%s) %s%s", c.name, who == null ? "unknown" : who, verb,
+        world.notices.post(String.format(Locale.ROOT, "%s (%s) %s%s", c.name, who == null ? "unknown" : who, verb,
                 pay > 0 ? String.format(Locale.ROOT, ": +%,.0f cr", pay) : ""));
         return null;
     }
@@ -197,7 +195,7 @@ public class Prisoners {
         r.morale = JOIN_MORALE;
         r.wage = CrewCareer.wageFor(c.role, r);
         r.applyTo(c);
-        notices.add(String.format(Locale.ROOT, "%s joins your crew for %,.0f cr a week", c.name, r.wage));
+        world.notices.post(String.format(Locale.ROOT, "%s joins your crew for %,.0f cr a week", c.name, r.wage));
         return null;
     }
 }

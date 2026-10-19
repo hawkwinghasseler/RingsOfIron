@@ -67,6 +67,16 @@ class CrewCareerTest {
         return done.getAsBoolean();
     }
 
+    private String noticesText() {
+        StringBuilder out = new StringBuilder();
+        for (NoticeLog.Notice n : world.notices.history()) out.append(n.text).append(" | ");
+        return out.toString();
+    }
+
+    private boolean noticed(String text) {
+        return noticesText().contains(text);
+    }
+
     private TraderComponent account() {
         return game.player.getComponent(TraderComponent.class);
     }
@@ -120,7 +130,7 @@ class CrewCareerTest {
         assertEquals(c.role, m.role);
         assertEquals(CrewDef.forRole(c.role).repairRate * CrewRecord.factor(c.record.engineering), m.def.repairRate, 1e-6,
                 "their skill sets how they work");
-        assertTrue(world.crewHiring.notices.get(0).contains("signs on"), world.crewHiring.notices.toString());
+        assertTrue(noticed("signs on"), noticesText());
         // ... and they go to work like any other crew
         run(60);
         assertTrue(m.isConscious());
@@ -172,7 +182,7 @@ class CrewCareerTest {
         assertEquals(100, account().credits, 1e-6);
         assertEquals(moraleA + CrewCareer.PAID_MORALE, a.morale, 1e-6);
         assertEquals(moraleB + CrewCareer.UNPAID_MORALE, b.morale, 1e-6);
-        assertTrue(world.crewCareer.notices.toString().contains("unpaid"), world.crewCareer.notices.toString());
+        assertTrue(noticed("went unpaid"), noticesText());
     }
 
     @Test
@@ -193,7 +203,7 @@ class CrewCareerTest {
         float before = world.crew.crew(bea).record().morale;
         world.crew.applyDamage(ada, 10_000f, null);
         world.crewCareer.update();
-        assertTrue(world.crewCareer.notices.contains("Ada is dead"), world.crewCareer.notices.toString());
+        assertTrue(noticed("Ada is dead"), noticesText());
         assertEquals(before + CrewCareer.DEATH_MORALE, world.crew.crew(bea).record().morale, 1e-6);
 
         CrewMemberComponent c = world.crew.crew(bea);

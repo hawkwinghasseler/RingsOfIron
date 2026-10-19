@@ -63,8 +63,6 @@ public class CrewCareer extends FixedLogicSystem {
     /** Who was alive at the last update, so a death is noticed once. */
     private final Map<Entity, Boolean> alive = new IdentityHashMap<>();
     private double last = Double.NaN;
-    /** Crew news not yet shown; the screen drains it. */
-    public final List<String> notices = new ArrayList<>();
 
     CrewCareer(GameWorld world) {
         super(INTERVAL);
@@ -150,7 +148,7 @@ public class CrewCareer extends FixedLogicSystem {
             if (Boolean.TRUE.equals(was.get(e)) && !now) died.add(e);
         }
         for (Entity e : died) {
-            notices.add(crew.crew(e).name + " is dead");
+            world.notices.post(crew.crew(e).name + " is dead", NoticeLog.Kind.IMPORTANT);
             Entity home = crew.homeOf(e);
             for (Entity other : ownCrew(home)) record(other).changeMorale(DEATH_MORALE);
         }
@@ -203,8 +201,11 @@ public class CrewCareer extends FixedLogicSystem {
                 r.applyTo(crew.crew(e));
             }
         }
-        if (paid > 0) notices.add(String.format(Locale.ROOT, "Crew wages: -%,.0f cr", paid));
-        if (unpaid > 0) notices.add(unpaid + (unpaid == 1 ? " crew member" : " crew") + " went unpaid: morale falls");
+        if (paid > 0) world.notices.post(String.format(Locale.ROOT, "Crew wages: -%,.0f cr", paid));
+        if (unpaid > 0) {
+            world.notices.post(unpaid + (unpaid == 1 ? " crew member" : " crew") + " went unpaid: morale falls",
+                    NoticeLog.Kind.WARNING);
+        }
         return paid;
     }
 

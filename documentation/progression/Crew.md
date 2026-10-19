@@ -53,7 +53,7 @@ Each payday, right after the budget is paid in (`ServiceBudget.paydays`), every 
 Crew who reach a pod keep their record: skills, wage and history come aboard the new ship with them (`AbandonShip.Survivor.record`). Those lost can be replaced by hiring.
 
 ### The crew window (I)
-`CrewWindow` in ui-hud, fed by `CrewRoster`: berths and the week's wages; each crew member's role, skills, condition, morale, wage and history, with "Let go" while docked; the prisoners aboard with what can be done with them here and "Recruit" for those who offer; "Bring prisoners aboard" while latched to a taken ship; and, docked at a station that hires, who is looking for a berth with "Hire". The docked hint line shows [I] Crew.
+`CrewWindow` in ui-hud, fed by `CrewRoster`: berths and the week's wages; each crew member's role, skills, condition, morale, wage and history, with "Let go" while docked; the prisoners aboard with what can be done with them here and "Recruit" for those who offer; "Bring prisoners aboard" while latched to a taken ship; and, docked at a station that hires, who is looking for a berth with "Hire". Its key hints go through the hint registry: "crew, hire" while docked, "prisoners" while latched to a ship the player has taken, and "crew" anywhere.
 
 ## Choices made without Joe
 - **Who pays the starting crew:** the service. Ada, Bea and Cole (and crew requisitioned with a ship) draw no wage from the player; only hired crew do. This keeps the round-2 budget balance.
@@ -66,5 +66,5 @@ Crew who reach a pod keep their record: skills, wage and history come aboard the
 - All the numbers above are placeholders.
 
 ## Not done here
-- Notices still go through each system's own `notices` list, drained by the screen, until category 1's notice log lands; the [I] hint is added in the docked hint line rather than through the hint registry.
+- Crew news goes to the notice log (`world.notices`): a death is important, unpaid wages a warning, the rest news.
 - Medics have no skill of their own; their wage follows the average of their skills.

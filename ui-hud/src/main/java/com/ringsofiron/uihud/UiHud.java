@@ -197,8 +197,7 @@ public class UiHud implements Disposable {
         missionWindow = new MissionWindow(skin);
         crewWindow = new CrewWindow(skin);
         tradeWindow.setHintSuffix(() -> (yardWindow.isAvailable() && !yardWindow.isOpen() ? "   [Y] Yard" : "")
-                + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : "")
-                + (!crewWindow.getSheet().stationName.isEmpty() && !crewWindow.isOpen() ? "   [I] Crew" : ""));
+                + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : ""));
         boardingWindow = new BoardingWindow(skin);
 
         trafficMap = new TrafficMap(skin);

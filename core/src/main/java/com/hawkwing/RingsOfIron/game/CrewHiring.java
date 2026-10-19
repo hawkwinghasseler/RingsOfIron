@@ -70,8 +70,6 @@ public class CrewHiring implements SaveParticipant {
     private final GameWorld world;
     /** Candidates already hired, by key. */
     private final TreeSet<String> hired = new TreeSet<>();
-    /** Hiring news not yet shown; the screen drains it. */
-    public final List<String> notices = new ArrayList<>();
 
     CrewHiring(GameWorld world) {
         this.world = world;
@@ -149,7 +147,7 @@ public class CrewHiring implements SaveParticipant {
         c.record.applyTo(m);
         account.credits -= c.signing;
         hired.add(c.key);
-        notices.add(String.format(Locale.ROOT, "%s (%s) signs on for %,.0f cr a week", c.name, roleName(c.role), c.record.wage));
+        world.notices.post(String.format(Locale.ROOT, "%s (%s) signs on for %,.0f cr a week", c.name, roleName(c.role), c.record.wage));
         return null;
     }
 
@@ -161,7 +159,7 @@ public class CrewHiring implements SaveParticipant {
         CrewMemberComponent c = world.crew.crew(e);
         world.crew.releaseTask(e);
         world.engine.getEcsEngine().removeEntity(e);
-        notices.add(c.name + " leaves the ship");
+        world.notices.post(c.name + " leaves the ship");
         return null;
     }
 
