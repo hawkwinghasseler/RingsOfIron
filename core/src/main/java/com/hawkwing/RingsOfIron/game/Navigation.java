@@ -261,8 +261,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
     }
 
     /**
-     * Propellant, kg, the {@link #returnDeltaV} home takes; infinite when no station can be reached, so
-     * the low-propellant warning sounds.
+     * Propellant, kg, the {@link #returnDeltaV} home takes; infinite when no station can be reached,
+     * when the low-propellant warning falls back on a fifth of the tanks.
      */
     public double returnPropellantKg() {
         Entity ship = world.getPlayer();
