@@ -22,6 +22,32 @@ public final class InteriorGridData {
 
     private InteriorGridData() {}
 
+    /** The definitions {@link #install} last ran on; their tiles and components build every chassis. */
+    private static volatile DefRegistry activeDefs;
+    private static DefRegistry cachedDefs;
+    private static int cachedRevision = -1;
+    private static ShipPartCatalog cachedCatalog;
+
+    /**
+     * The tile types and components of the installed definitions, or the built-ins when nothing
+     * is installed. Rebuilt whenever the definitions change.
+     */
+    public static synchronized ShipPartCatalog catalog() {
+        DefRegistry defs = activeDefs;
+        if (defs == null) return ShipPartCatalog.builtIn();
+        return catalog(defs);
+    }
+
+    /** The tile types and components of {@code defs}. */
+    public static synchronized ShipPartCatalog catalog(DefRegistry defs) {
+        if (defs != cachedDefs || defs.revision() != cachedRevision || cachedCatalog == null) {
+            cachedCatalog = ShipPartCatalog.from(defs);
+            cachedDefs = defs;
+            cachedRevision = defs.revision();
+        }
+        return cachedCatalog;
+    }
+
     /**
      * Registers the "ship" assembler: each ship gets a {@link ShipGridComponent} built from
      * its chassis, a {@link ShipSubsystemRegistryComponent}, one entity per installed
@@ -29,6 +55,7 @@ public final class InteriorGridData {
      * cargo bays when the chassis has any.
      */
     public static void install(ModContext ctx) {
+        activeDefs = ctx.defs;
         ctx.factory.registerAssembler("ship", (entity, def, factory) -> {
             ShipDef ship = factory.defs().convert(def, ShipDef.class);
             ChassisDef chassis = factory.defs().require("chassis", ship.chassis, ChassisDef.class);
@@ -42,7 +69,7 @@ public final class InteriorGridData {
      * and an empty cargo hold over its bays when it has any. Stations get theirs this way too.
      */
     public static ShipSubsystemRegistryComponent installInterior(Entity entity, ChassisDef chassis, GameEngine engine) {
-        ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(toBlueprint(chassis));
+        ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(toBlueprint(chassis, catalog()));
         CompartmentBuilder.rebuildIfChanged(result.grid);
 
         ShipSubsystemRegistryComponent registry = new ShipSubsystemRegistryComponent(entity);
@@ -52,7 +79,9 @@ public final class InteriorGridData {
         if (hold != null) entity.add(hold);
         for (ChassisBlueprintLoader.SubsystemPlacement p : result.subsystems) {
             Entity system = engine.createEntityWithUuid();
-            system.add(new SubsystemComponent(p.footprint, p.type));
+            SubsystemComponent sub = new SubsystemComponent(p.footprint, p.type);
+            p.component.configure(sub);
+            system.add(sub);
             p.footprint.installed = system;
             engine.addEntity(system);
             registry.registerSubsystem(system);
@@ -64,12 +93,18 @@ public final class InteriorGridData {
     public static double cargoBayVolume(DefRegistry defs, String shipId) {
         ShipDef ship = defs.require("ship", shipId, ShipDef.class);
         ChassisDef chassis = defs.require("chassis", ship.chassis, ChassisDef.class);
-        return CargoHoldComponent.bayVolume(ChassisBlueprintLoader.load(toBlueprint(chassis)));
+        return CargoHoldComponent.bayVolume(ChassisBlueprintLoader.load(toBlueprint(chassis, catalog(defs))));
     }
 
-    /** The blueprint for a chassis definition. */
+    /** The blueprint for a chassis definition, with the built-in tile types and components. */
     public static ChassisBlueprint toBlueprint(ChassisDef def) {
-        ChassisBlueprint bp = new ChassisBlueprint(def.rows).tileSize(def.tileSize).origin(def.originX, def.originY);
+        return toBlueprint(def, ShipPartCatalog.builtIn());
+    }
+
+    /** The blueprint for a chassis definition, drawn with {@code catalog}'s tile types and components. */
+    public static ChassisBlueprint toBlueprint(ChassisDef def, ShipPartCatalog catalog) {
+        ChassisBlueprint bp = new ChassisBlueprint(def.rows).tileSize(def.tileSize).origin(def.originX, def.originY)
+                .catalog(catalog);
         for (ChassisDef.EdgeWall w : def.edgeWalls) {
             bp.edgeWalls.add(new ChassisBlueprint.EdgeWallDef(w.x, w.y, Side.valueOf(w.side),
                     WeightClass.valueOf(w.weightClass), w.material, w.bulkhead));
@@ -79,8 +114,15 @@ public final class InteriorGridData {
                     WeightClass.valueOf(p.weightClass), p.material));
         }
         for (ChassisDef.Mount m : def.mounts) {
-            SubsystemComponent.SubsystemType type = SubsystemComponent.SubsystemType.valueOf(m.type);
-            bp.mount(new MountFootprint(type.mountKind, MountFootprint.MountSize.valueOf(m.size), m.x, m.y, m.rotation), type);
+            ShipPartCatalog.ComponentType component;
+            if (m.component != null) {
+                component = catalog.component(m.component);
+                if (component == null) throw new IllegalArgumentException("Unknown component '" + m.component + "'");
+            } else {
+                component = catalog.standardComponent(SubsystemComponent.SubsystemType.valueOf(m.type));
+            }
+            bp.mount(new MountFootprint(component.mountKind(), MountFootprint.MountSize.valueOf(m.size), m.x, m.y,
+                    m.rotation), component);
         }
         for (ChassisDef.Covering c : def.coverings) {
             bp.covering(FloorCovering.valueOf(c.covering), c.x, c.y, c.width, c.height);

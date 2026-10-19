@@ -1,0 +1,67 @@
+# Tile types: the characters chassis rows are painted with (see chassis.toml), and the
+# tile each one builds. The ship editor (gradlew :lwjgl3:runShipEditor) edits this file.
+#   symbol        one character, unique across tile types and components
+#   base          VOID, FLOOR, CONDUIT, HULL or INTERNAL_WALL
+#   weight_class  walls: LIGHT, MEDIUM or HEAVY
+#   material      walls: a [material.*] id (materials.toml)
+#   covering      floors: NONE or CARPET, laid when the ship is built
+#   color         how the editor draws it
+# These restate the built-in characters; a type left out keeps its built-in meaning.
+
+[tile.void]
+name = "Void"
+symbol = " "
+base = "VOID"
+color = "#000000"
+
+[tile.floor]
+name = "Steel floor"
+symbol = "."
+base = "FLOOR"
+color = "#4a5058"
+
+[tile.conduit]
+name = "Power conduit"
+symbol = "+"
+base = "CONDUIT"
+color = "#5a6a3a"
+
+[tile.hull]
+name = "Hull, medium"
+symbol = "#"
+base = "HULL"
+weight_class = "MEDIUM"
+material = "hull_steel"
+color = "#9aa4b0"
+
+[tile.hull_light]
+name = "Hull, light"
+symbol = "1"
+base = "HULL"
+weight_class = "LIGHT"
+material = "hull_steel"
+color = "#b8c0ca"
+
+[tile.hull_medium]
+name = "Hull, medium (2)"
+symbol = "2"
+base = "HULL"
+weight_class = "MEDIUM"
+material = "hull_steel"
+color = "#9aa4b0"
+
+[tile.hull_heavy]
+name = "Hull, heavy"
+symbol = "3"
+base = "HULL"
+weight_class = "HEAVY"
+material = "hull_steel"
+color = "#6c7684"
+
+[tile.internal_wall]
+name = "Internal wall"
+symbol = "I"
+base = "INTERNAL_WALL"
+weight_class = "MEDIUM"
+material = "hull_steel"
+color = "#80705a"

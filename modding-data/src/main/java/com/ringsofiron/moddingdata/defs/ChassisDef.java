@@ -21,7 +21,8 @@ import java.util.List;
  * ]
  * edge_walls  = [ { x = 4, y = 2, side = "TOP", weight_class = "LIGHT", bulkhead = true } ]
  * hull_pieces = [ { shape = "WEDGE", x = 0, y = 0, width = 1, height = 2, rotation = 0, weight_class = "MEDIUM" } ]
- * mounts      = [ { type = "TURRET_MOUNT", size = "S", x = 3, y = 3, rotation = 0 } ]
+ * mounts      = [ { type = "TURRET_MOUNT", size = "S", x = 3, y = 3, rotation = 0 },
+ *                 { component = "fusion_core", size = "M", x = 5, y = 1 } ]
  * coverings   = [ { covering = "CARPET", x = 2, y = 1, width = 4, height = 1 } ]
  * ports       = [ { x = 4, y = 5, active = true } ]
  * </pre>
@@ -66,8 +67,10 @@ public class ChassisDef {
     }
 
     public static class Mount {
-        /** A SubsystemType name, e.g. REACTOR. Its mount kind follows from the type. */
+        /** A SubsystemType name, e.g. REACTOR, for that behavior's built-in component. Its mount kind follows from the type. */
         public String type;
+        /** A component id, e.g. fusion_core, instead of {@link #type}. */
+        public String component;
         /** S, M, L or XL. */
         public String size = "S";
         public int x, y;

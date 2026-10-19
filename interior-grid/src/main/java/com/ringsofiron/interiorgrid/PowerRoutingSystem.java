@@ -104,16 +104,20 @@ public class PowerRoutingSystem extends FixedLogicSystem {
         }
     }
 
-    /** Watts an undamaged reactor of this mount size produces, scaled down by its damage. */
+    /** Watts a reactor produces: its rated output (by component, else by mount size), scaled down by its damage. */
     public static double reactorOutput(SubsystemComponent reactor) {
-        double rated;
-        switch (reactor.footprint.size) {
-            case S: rated = REACTOR_OUTPUT_S; break;
-            case M: rated = REACTOR_OUTPUT_M; break;
-            case L: rated = REACTOR_OUTPUT_L; break;
-            default: rated = REACTOR_OUTPUT_XL; break;
-        }
+        double rated = reactor.ratedOutput > 0 ? reactor.ratedOutput : standardOutput(reactor.footprint.size);
         return rated * Math.max(0f, Math.min(1f, reactor.health));
+    }
+
+    /** Watts an undamaged standard reactor in a mount of this size produces. */
+    public static double standardOutput(MountFootprint.MountSize size) {
+        switch (size) {
+            case S: return REACTOR_OUTPUT_S;
+            case M: return REACTOR_OUTPUT_M;
+            case L: return REACTOR_OUTPUT_L;
+            default: return REACTOR_OUTPUT_XL;
+        }
     }
 
     /** Recalculates which tiles and systems of one ship are powered, and its circuits. */

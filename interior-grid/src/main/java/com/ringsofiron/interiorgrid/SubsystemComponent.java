@@ -44,6 +44,15 @@ public class SubsystemComponent implements Component {
     public float health = 1.0f;
     /** Whether this subsystem is currently receiving power. Set by PowerRoutingSystem. */
     public boolean powered = false;
+    /** Id of the ship component this system was built from (see {@link ShipPartCatalog}); null for one made in code. */
+    public String component;
+    /**
+     * REACTOR: watts at full health, set from its component. 0 means the standard output for
+     * its mount size (see {@link PowerRoutingSystem#standardOutput}).
+     */
+    public double ratedOutput;
+    /** LIFE_SUPPORT: multiplier on scrubbing, air and oxygen supply, set from its component. */
+    public float throughput = 1f;
     /** The power circuit feeding this system, or null when unpowered. Set by PowerRoutingSystem; not saved. */
     public transient PowerCircuit circuit;
 
