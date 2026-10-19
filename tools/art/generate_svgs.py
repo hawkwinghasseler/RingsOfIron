@@ -233,6 +233,9 @@ def tiles():
                          (inset + 6, T - inset - 6), (T - inset - 6, T - inset - 6)):
             s += circle(bx, by, bolt, STEEL_HI, stroke=INK, sw=1)
         write(f"tiles/hull_{weight}.svg", T, T, s, f"hull_{weight}: outer hull wall, {weight} weight class")
+        if weight == "medium":
+            # tile.hull ('#') is a medium hull wall with its own id
+            write("tiles/hull.svg", T, T, s, "hull: outer hull wall, medium weight class")
 
         # Wedge hull pieces: right triangle with legs on the left and bottom edges,
         # sloped face toward +x/+y (up and right on screen).

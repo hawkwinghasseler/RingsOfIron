@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>hull: outer hull wall, medium weight class</title>
+  <rect x="0" y="0" width="64" height="64" fill="#3d4552"/>
+  <rect x="5" y="5" width="54" height="54" rx="3" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
+  <path d="M6.75,57.25 L6.75,6.75 L57.25,6.75" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M57.25,6.75 L57.25,57.25 L6.75,57.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <line x1="9" y1="24" x2="55" y2="24" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+  <line x1="9" y1="25.5" x2="55" y2="25.5" stroke="#7d8898" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+  <line x1="9" y1="40" x2="55" y2="40" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
+  <line x1="9" y1="41.5" x2="55" y2="41.5" stroke="#7d8898" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+  <circle cx="11" cy="11" r="2.2" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
+  <circle cx="53" cy="11" r="2.2" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
+  <circle cx="11" cy="53" r="2.2" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
+  <circle cx="53" cy="53" r="2.2" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
+</svg>

@@ -19,7 +19,7 @@ SCALE = 0.5  # preview pixels per SVG unit on the chassis plans
 INLINE = "--inline" in sys.argv
 OUT = sys.argv[sys.argv.index("--out") + 1] if "--out" in sys.argv else os.path.join(ART, "preview.html")
 
-TILE_ART = {"#": "hull_medium", "1": "hull_light", "2": "hull_medium", "3": "hull_heavy",
+TILE_ART = {"#": "hull", "1": "hull_light", "2": "hull_medium", "3": "hull_heavy",
             "I": "internal_wall", ".": "floor", "+": "conduit"}
 COMPONENTS = {"R": ("reactor", "PRIMARY"), "S": ("shield_emitter", "PRIMARY"), "T": ("turret_mount", "PRIMARY"),
               "L": ("life_support", "AUX"), "H": ("helm", "AUX"), "W": ("weapons", "AUX"),

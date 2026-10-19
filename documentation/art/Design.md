@@ -56,7 +56,7 @@ File names are lowercase `snake_case` and match the ids in data, so code can fin
 
 | Folder | Name | Example |
 |---|---|---|
-| `tiles/` | the tile type's id; hull weight classes as `hull_<weight>`; wedges as `hull_<weight>_wedge_<w>x<h>`; floor coverings as `covering_<covering>` | `floor`, `conduit`, `hull_heavy`, `hull_medium_wedge_1x2`, `covering_carpet` |
+| `tiles/` | the tile type's id in `tiles.toml`; wedges as `hull_<weight>_wedge_<w>x<h>`; floor coverings as `covering_<covering>` | `floor`, `conduit`, `hull_heavy`, `hull_medium_wedge_1x2`, `covering_carpet` |
 | `edges/` | `edge_wall_<weight>`, `bulkhead_door_<state>` | `edge_wall_light`, `bulkhead_door_sealed` |
 | `components/` | `<component id>_<size>`, size `s`, `m`, `l` or `xl`; a state is a suffix | `reactor_xl`, `helm_m`, `docking_port_l_open`, `docking_collar_s` |
 | `effects/` | the state it shows | `fire_medium`, `breach`, `damage_heavy`, `bulkhead_seal`, `unpowered` |
@@ -65,7 +65,7 @@ File names are lowercase `snake_case` and match the ids in data, so code can fin
 | `turrets/` | the weapon id in `weapons.toml` | `railgun_mk1`, `harpoon_launcher` |
 | `hulls/` | the chassis id in `chassis.toml` | `corvette`, `station_hub`, `thruster_plume` |
 
-Component ids are the built-in components the ship editor design names (`reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `docking_port`), which are `SubsystemType` in lowercase. Tile ids follow the built-in map characters: `floor` (`.`), `conduit` (`+`), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`, and `#` is medium), `internal_wall` (`I`). If `tiles.toml` settles on different ids, rename the files to match.
+Component ids are the built-in components the ship editor design names (`reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `docking_port`), which are `SubsystemType` in lowercase. Tile ids are the ones in `tiles.toml`: `floor` (`.`), `conduit` (`+`), `hull` (`#`, medium), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`), `internal_wall` (`I`); `void` has no art.
 
 A new component made in data (say `fusion_core` with behavior `REACTOR`) gets its own `fusion_core_<size>.svg`; until it has one, code can fall back to the art of its behavior's built-in component.
 
@@ -95,7 +95,7 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many s
 `tools/art/make_preview.py` rebuilds `assets/art/preview.html`; `--inline` embeds the SVGs so the page is one shareable file.
 
 ## Asset list
-- **Tiles (14):** floor, conduit and conduit arm, carpet covering, internal wall, hull in three weight classes, and 1x1 and 1x2 wedges in each.
+- **Tiles (15):** floor, conduit and conduit arm, carpet covering, internal wall, `hull` and hull in three weight classes, and 1x1 and 1x2 wedges in each.
 - **Edges (5):** edge walls in three weight classes, bulkhead door sealed and open.
 - **Components (41):** reactor, shield emitter and turret mount (primary, S-XL); helm, weapons console, life support, cargo bay and airlock (auxiliary, S-XL); docking port S-L sealed and open, and the collar for each size.
 - **Effects (9):** fire small, medium and large, scorch, breach, light and heavy damage, bulkhead seal, unpowered.
