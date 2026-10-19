@@ -27,5 +27,5 @@ tasks.register('runBenchmark', JavaExec) {
   args = [project.findProperty('scene') ?: 'all', project.findProperty('frames') ?: '1200']
   jvmArgs = ['-Xmx2g']
   // -Pjfr records a Java Flight Recording of the run to benchmarks/build/benchmark.jfr
-  if (project.hasProperty('jfr')) jvmArgs += "-XX:StartFlightRecording=filename=${buildDir}/benchmark.jfr,settings=profile"
+  if (project.hasProperty('jfr')) jvmArgs += ["-XX:StartFlightRecording=filename=${buildDir}/benchmark.jfr,settings=profile", "-XX:FlightRecorderOptions=stackdepth=256"]
 }

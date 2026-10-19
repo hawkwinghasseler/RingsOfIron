@@ -36,7 +36,7 @@ public final class BenchmarkMain {
         report.append(String.format(Locale.ROOT, "%d warm-up frames, then %d measured frames at 60 Hz. JVM %s, %d cores.%n%n",
                 WARMUP_FRAMES, frames, System.getProperty("java.version"), Runtime.getRuntime().availableProcessors()));
         if (scene.equals("all") || scene.equals("orbit")) {
-            int[][] sizes = {{0, 0}, {100, 10}, {500, 30}, {2000, 30}};
+            int[][] sizes = {{0, 0}, {100, 10}, {500, 30}, {2000, 30}, {500, 60}};
             for (int[] s : sizes) report.append(orbit(s[0], s[1], frames));
         }
         if (scene.equals("all") || scene.equals("warp")) {

@@ -2,6 +2,7 @@ package com.ringsofiron.aicrew.btree;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CarryTask;
 import com.ringsofiron.aicrew.YardTask;
 import com.ringsofiron.aicrew.CrewMemberComponent;
@@ -553,17 +554,25 @@ public final class CrewTasks {
     static Entity findHostile(CrewAgent a) {
         ShipGridComponent grid = a.grid();
         if (grid == null) return null;
-        Entity seen = nearestVisibleHostile(a, a.entity, grid);
+        // Only crew aboard the same ship can be seen: gather them once, in crew order, instead of
+        // scanning every crew member in the game for each observer.
+        Array<Entity> aboard = a.aboardScratch;
+        aboard.clear();
+        ImmutableArray<Entity> all = a.service.crewEntities();
+        for (int i = 0; i < all.size(); i++) {
+            Entity e = all.get(i);
+            if (a.service.position(e).ship == a.pos.ship) aboard.add(e);
+        }
+        Entity seen = nearestVisibleHostile(a, a.entity, aboard, grid);
         if (seen != null || a.crew.role != CrewRole.MARINE) return seen;
         Entity best = null;
         float bestDist = Float.MAX_VALUE;
-        ImmutableArray<Entity> all = a.service.crewEntities();
-        for (int i = 0; i < all.size(); i++) {
-            Entity ally = all.get(i);
+        for (int i = 0; i < aboard.size; i++) {
+            Entity ally = aboard.get(i);
             if (ally == a.entity) continue;
             CrewMemberComponent c = a.service.crew(ally);
-            if (c.faction != a.crew.faction || !c.isConscious() || a.service.position(ally).ship != a.pos.ship) continue;
-            Entity h = nearestVisibleHostile(a, ally, grid);
+            if (c.faction != a.crew.faction || !c.isConscious()) continue;
+            Entity h = nearestVisibleHostile(a, ally, aboard, grid);
             if (h == null) continue;
             GridPositionComponent p = a.service.position(h);
             float d = Math.abs(p.x - a.pos.x) + Math.abs(p.y - a.pos.y);
@@ -575,20 +584,21 @@ public final class CrewTasks {
         return best;
     }
 
-    /** The nearest conscious hostile of {@code a}'s faction that {@code observer} can see, within sight range. */
-    private static Entity nearestVisibleHostile(CrewAgent a, Entity observer, ShipGridComponent grid) {
+    /**
+     * The nearest conscious hostile of {@code a}'s faction that {@code observer} can see, within sight
+     * range, out of {@code aboard} (the crew on the observer's ship).
+     */
+    private static Entity nearestVisibleHostile(CrewAgent a, Entity observer, Array<Entity> aboard, ShipGridComponent grid) {
         GridPositionComponent op = a.service.position(observer);
         float range = a.service.crew(observer).def.sightRange;
         Entity best = null;
         float bestDist = Float.MAX_VALUE;
-        ImmutableArray<Entity> all = a.service.crewEntities();
-        for (int i = 0; i < all.size(); i++) {
-            Entity e = all.get(i);
+        for (int i = 0; i < aboard.size; i++) {
+            Entity e = aboard.get(i);
             if (e == observer) continue;
             CrewMemberComponent c = a.service.crew(e);
             if (!a.service.hostile(a.crew, c) || !c.isConscious()) continue;
             GridPositionComponent p = a.service.position(e);
-            if (p.ship != op.ship) continue;
             float d = Math.abs(p.x - op.x) + Math.abs(p.y - op.y);
             if (d > range || d >= bestDist) continue;
             if (!GridRayTraversal.hasLineOfSight(grid, op.tileX(), op.tileY(), p.tileX(), p.tileY())) continue;

@@ -37,6 +37,8 @@ public class CrewAgent {
 
     private final ObjectFloatMap<CrewTask> ignoreUntil = new ObjectFloatMap<>();
     final Array<GridNode> pathScratch = new Array<>();
+    /** Crew aboard this one's ship, gathered while looking for hostiles. */
+    final Array<Entity> aboardScratch = new Array<>();
 
     public CrewAgent(Entity entity, CrewMemberComponent crew, GridPositionComponent pos, CrewService service) {
         this.entity = entity;
