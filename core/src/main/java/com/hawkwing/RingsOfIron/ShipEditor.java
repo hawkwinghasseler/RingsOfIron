@@ -41,7 +41,8 @@ import java.util.function.Consumer;
  * {@code demos/Ship editor.bat} on Windows. See {@code documentation/ship-editor/Design.md}.
  *
  * <p>The panel on the right has three tabs: Layout, Tiles and Components. On the Layout tab, keys
- * 1-7 pick a tool (paint, component, edge wall, hull piece, covering, erase, port), R rotates,
+ * 1-7 pick a tool (paint, component, edge wall, hull piece, covering, erase, port), R rotates
+ * the component under the cursor (or what the tool places),
  * and the left mouse button uses the tool on the grid; Shift-drag with the paint tool fills a
  * rectangle. Right or middle drag pans, the wheel zooms (over the panel it scrolls), F fits the
  * ship to the view. Ctrl+Z / Ctrl+Y undo and redo, Ctrl+S saves, Esc quits (twice with unsaved
@@ -398,6 +399,10 @@ public class ShipEditor extends ApplicationAdapter {
             setColor(type.color, 0.85f);
             shapes.setColor(color);
             shapes.rect(sx(f.originX) + 2, sy(f.originY) + 2, f.width() * scale - 4, f.height() * scale - 4);
+            if (f.kind != MountFootprint.MountKind.PORT && scale >= 8f) {
+                shapes.setColor(0f, 0f, 0f, 0.45f);
+                drawFacing(f);
+            }
         }
         shapes.end();
 
@@ -523,6 +528,44 @@ public class ShipEditor extends ApplicationAdapter {
         }
     }
 
+    /** Turns the component under the cursor, if there is one; false leaves R to turn the tool. */
+    private boolean rotateHovered() {
+        ChassisModel m = model();
+        if (tab != Tab.LAYOUT || tool == Tool.HULL || m == null || !m.inBounds(hoverX, hoverY)) return false;
+        ShipPartCatalog cat = catalog();
+        ChassisModel.Mount mount = m.mountAt(hoverX, hoverY, cat);
+        if (mount == null) return false;
+        if (!editable()) {
+            say("This chassis comes from a mod and cannot be edited here");
+            return true;
+        }
+        ChassisModel trial = m.copy();
+        String why = trial.rotate(trial.mountAt(hoverX, hoverY, cat), cat);
+        if (why != null) {
+            say(why);
+            return true;
+        }
+        beginEdit();
+        m.rotate(mount, cat);
+        changed();
+        // The next one placed faces the same way
+        rotation = mount.rotation;
+        ShipPartCatalog.ComponentType type = cat.component(mount.component);
+        say((type != null ? type.name : mount.component) + " turned to " + mount.rotation * 90 + " deg");
+        return true;
+    }
+
+    /** A small arrow inside a mount, pointing the way the system faces (+y at rotation 0). */
+    private void drawFacing(MountFootprint f) {
+        Side out = DockingPortLayout.facing(f);
+        float cx = sx(f.originX + f.width() / 2f), cy = sy(f.originY + f.height() / 2f);
+        float reach = Math.min(f.width(), f.height()) * scale * 0.5f - 4f;
+        float tipX = cx + out.dx * reach, tipY = cy + out.dy * reach;
+        float back = Math.min(scale * 0.35f, reach), half = back * 0.6f;
+        float bx = tipX - out.dx * back, by = tipY - out.dy * back;
+        shapes.triangle(tipX, tipY, bx - out.dy * half, by + out.dx * half, bx + out.dy * half, by - out.dx * half);
+    }
+
     // ---- Ghosts: what the tool would do at the cursor ----
 
     private int[] ghostOrigin(MountFootprint probe) {
@@ -592,6 +635,10 @@ public class ShipEditor extends ApplicationAdapter {
             setColor(type.color, 0.4f);
             shapes.setColor(color);
             shapes.rect(sx(f.originX), sy(f.originY), f.width() * scale, f.height() * scale);
+            if (f.kind != MountFootprint.MountKind.PORT) {
+                shapes.setColor(1f, 1f, 1f, 0.6f);
+                drawFacing(f);
+            }
         } else if (tool == Tool.HULL) {
             shapes.setColor(0.7f, 0.75f, 0.8f, 0.5f);
             drawPiece(pieceShape, hoverX, hoverY, pieceWidth, pieceHeight, rotation);
@@ -1009,7 +1056,9 @@ public class ShipEditor extends ApplicationAdapter {
                 break;
             }
             case COMPONENT: {
-                text(x, y, "Click to install; R rotates (" + rotation * 90 + " deg)", Color.GRAY);
+                text(x, y, "Click to install; R turns it (" + rotation * 90 + " deg)", Color.GRAY);
+                y -= LINE;
+                text(x, y, "R over a placed one turns that one", Color.GRAY);
                 y -= LINE;
                 for (ShipPartCatalog.ComponentType t : cat.components()) {
                     final String id = t.id;
@@ -1689,8 +1738,10 @@ public class ShipEditor extends ApplicationAdapter {
                     fit();
                     return true;
                 case com.badlogic.gdx.Input.Keys.R:
-                    rotation = (rotation + 1) % 4;
-                    say("Rotation " + rotation * 90 + " deg");
+                    if (!rotateHovered()) {
+                        rotation = (rotation + 1) % 4;
+                        say("Rotation " + rotation * 90 + " deg");
+                    }
                     return true;
                 case com.badlogic.gdx.Input.Keys.TAB:
                     tab = Tab.values()[(tab.ordinal() + 1) % Tab.values().length];
