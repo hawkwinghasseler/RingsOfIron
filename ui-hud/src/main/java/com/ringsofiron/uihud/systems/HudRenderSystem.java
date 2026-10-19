@@ -10,6 +10,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Group;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
@@ -22,6 +23,7 @@ import com.ringsofiron.uihud.widgets.LeadReticle;
 import com.ringsofiron.uihud.widgets.MarkerWidget;
 
 import java.util.Locale;
+import java.util.function.BooleanSupplier;
 
 /**
  * Projects every {@link HudMarkerComponent} entity from world meters to the UI stage each frame
@@ -50,6 +52,8 @@ public class HudRenderSystem extends EntitySystem {
     private final ObjectMap<Entity, MarkerWidget> seen = new ObjectMap<>();
     /** Where the off-screen markers' text went this frame, so the next one can keep clear. */
     private final com.badlogic.gdx.utils.Array<Rectangle> edgeText = new com.badlogic.gdx.utils.Array<>();
+    /** Banners the edge text keeps clear of while they are up. */
+    private final ObjectMap<Label, BooleanSupplier> keepClear = new ObjectMap<>();
     private final Vector2 screen = new Vector2();
     private final Vector2 lead = new Vector2();
     private ImmutableArray<Entity> marked;
@@ -69,6 +73,11 @@ public class HudRenderSystem extends EntitySystem {
 
     public void setTargeting(TargetingProvider targeting) {
         this.targeting = targeting;
+    }
+
+    /** Off-screen markers' text moves out from under this banner while {@code up} says it is showing. */
+    public void keepClear(Label banner, BooleanSupplier up) {
+        keepClear.put(banner, up);
     }
 
     public TargetingProvider getTargeting() {
@@ -99,6 +108,13 @@ public class HudRenderSystem extends EntitySystem {
 
         seen.clear();
         edgeText.clear();
+        for (ObjectMap.Entry<Label, BooleanSupplier> b : keepClear) {
+            if (!b.value.getAsBoolean()) continue;
+            // Centred in its row; the text may have changed since the row's last layout
+            Vector2 at = b.key.localToStageCoordinates(new Vector2(b.key.getWidth() / 2f, 0f));
+            float width = b.key.getPrefWidth();
+            edgeText.add(new Rectangle(at.x - width / 2f, at.y, width, b.key.getPrefHeight()));
+        }
         for (Entity e : marked) {
             HudMarkerComponent m = MARKERS.get(e);
             TransformComponent t = TRANSFORMS.get(e);
