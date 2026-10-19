@@ -1,0 +1,29 @@
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-benchmarks'
+
+// Headless benchmark scenes of the whole game: tick time per system as the universe fills up.
+dependencies {
+  implementation project(':core')
+  runtimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  runtimeOnly "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
+
+  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+  useJUnitPlatform()
+  systemProperty 'ringsofiron.assets', "${rootDir}/assets"
+}
+
+// ./gradlew :benchmarks:runBenchmark            every scene at its default sizes
+// ./gradlew :benchmarks:runBenchmark -Pscene=orbit -Pframes=3600
+tasks.register('runBenchmark', JavaExec) {
+  group = 'application'
+  description = 'Runs the headless benchmark scenes and prints tick time per system.'
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = 'com.ringsofiron.benchmarks.BenchmarkMain'
+  systemProperty 'ringsofiron.assets', "${rootDir}/assets"
+  args = [project.findProperty('scene') ?: 'all', project.findProperty('frames') ?: '1200']
+  jvmArgs = ['-Xmx2g']
+}
