@@ -139,24 +139,32 @@ public class SoundField {
      * entering or continuing through a wall tile. The muffling part goes in {@code muffle[0]}.
      */
     private static float crossing(ShipGridComponent grid, int x, int y, int nx, int ny, float[] muffle) {
-        float loss = 0f, muff = 0f;
-        EdgeWall e = grid.getEdgeBetween(x, y, nx, ny);
-        if (e != null && !e.isDestroyed()) {
-            if (!e.hasBulkhead) {
-                loss += WALL_DB;
-                muff += WALL_DB;
-            } else if (e.bulkheadSealed) {
-                loss += SEALED_DOOR_DB;
-                muff += SEALED_DOOR_DB;
-            } else {
-                loss += OPEN_DOOR_DB;
-            }
-        }
+        float[] edge = new float[1];
+        float loss = edgeLossDb(grid.getEdgeBetween(x, y, nx, ny), edge), muff = edge[0];
         boolean fromSolid = isSolid(grid.getTile(x, y)), toSolid = isSolid(grid.getTile(nx, ny));
         if (toSolid) {
             float l = fromSolid ? WALL_THICKNESS_DB : WALL_DB;
             loss += l;
             muff += l;
+        }
+        if (muffle != null) muffle[0] = muff;
+        return loss;
+    }
+
+    /**
+     * Loss in dB through one edge wall: none for no wall (or a destroyed one), a little for an open
+     * door, more for a sealed one, most for a plain wall. The muffling part goes in {@code muffle[0]}.
+     */
+    public static float edgeLossDb(EdgeWall e, float[] muffle) {
+        float loss = 0f, muff = 0f;
+        if (e != null && !e.isDestroyed()) {
+            if (!e.hasBulkhead) {
+                loss = muff = WALL_DB;
+            } else if (e.bulkheadSealed) {
+                loss = muff = SEALED_DOOR_DB;
+            } else {
+                loss = OPEN_DOOR_DB;
+            }
         }
         if (muffle != null) muffle[0] = muff;
         return loss;

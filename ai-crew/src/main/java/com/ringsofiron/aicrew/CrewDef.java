@@ -44,6 +44,13 @@ public class CrewDef {
     /** Seconds to lift a load off a bay, and to set one down. */
     public float loadTime = 2f;
 
+    /** Seconds of air a space suit holds; 0 for a crew member with no suit. */
+    public float suitAir = 600f;
+    /** Seconds to put a suit on; taking it off takes half as long. */
+    public float suitTime = 5f;
+    /** Speed multiplier while suited. */
+    public float suitSpeedFactor = 0.85f;
+
     /** Fire intensity removed per second when fighting a fire. */
     public float extinguishRate = 0.3f;
     /** Subsystem health restored per second when repairing. */

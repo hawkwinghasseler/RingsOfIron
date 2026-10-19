@@ -47,6 +47,8 @@ public class GridPositionComponent implements Component {
     public int pathIndex;
     /** Set by the movement system when the next step became impassable (door shut, wall rebuilt). */
     public boolean pathBlocked;
+    /** Seconds spent so far opening the shut door the next step goes through ({@link CrewDoors}). */
+    public transient float doorWork;
 
     public GridPositionComponent() {}
 
@@ -85,11 +87,13 @@ public class GridPositionComponent implements Component {
         // Skip the start tile if we are already standing on it
         pathIndex = (path.size > 0 && path.first().x == tileX() && path.first().y == tileY()) ? 1 : 0;
         pathBlocked = false;
+        doorWork = 0f;
     }
 
     public void stop() {
         path.clear();
         pathIndex = 0;
+        doorWork = 0f;
     }
 
     /** The final tile of the current path, or null. */

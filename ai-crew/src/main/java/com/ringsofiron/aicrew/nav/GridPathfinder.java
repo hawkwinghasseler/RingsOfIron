@@ -38,6 +38,20 @@ public class GridPathfinder {
      * @return false if either end is not walkable or there is no route.
      */
     public boolean findPath(int sx, int sy, int tx, int ty, Array<GridNode> out) {
+        return findPath(sx, sy, tx, ty, out, null);
+    }
+
+    /** {@link #findPath(int, int, int, int, Array)}, going through the shut doors {@code key} opens. */
+    public boolean findPath(int sx, int sy, int tx, int ty, Array<GridNode> out, GridNavGraph.DoorKey key) {
+        graph.key = key;
+        try {
+            return search(sx, sy, tx, ty, out);
+        } finally {
+            graph.key = null;
+        }
+    }
+
+    private boolean search(int sx, int sy, int tx, int ty, Array<GridNode> out) {
         out.clear();
         GridNode start = graph.node(sx, sy), goal = graph.node(tx, ty);
         if (start == null || goal == null || !graph.isWalkable(tx, ty)) return false;
@@ -60,6 +74,20 @@ public class GridPathfinder {
      * @return false if no reachable tile passes.
      */
     public boolean nearest(int sx, int sy, TilePredicate goal, Array<GridNode> out) {
+        return nearest(sx, sy, goal, out, null);
+    }
+
+    /** {@link #nearest(int, int, TilePredicate, Array)}, going through the shut doors {@code key} opens. */
+    public boolean nearest(int sx, int sy, TilePredicate goal, Array<GridNode> out, GridNavGraph.DoorKey key) {
+        graph.key = key;
+        try {
+            return breadthFirst(sx, sy, goal, out);
+        } finally {
+            graph.key = null;
+        }
+    }
+
+    private boolean breadthFirst(int sx, int sy, TilePredicate goal, Array<GridNode> out) {
         out.clear();
         ShipGridComponent grid = graph.grid;
         if (!grid.inBounds(sx, sy)) return false;
@@ -83,7 +111,7 @@ public class GridPathfinder {
                 if (!grid.inBounds(nx, ny)) continue;
                 int ni = ny * w + nx;
                 if (parent[ni] != -2) continue;
-                if (!graph.canStep(x, y, nx, ny)) continue;
+                if (!graph.canTraverse(x, y, nx, ny)) continue;
                 parent[ni] = i;
                 queue.add(ni);
             }

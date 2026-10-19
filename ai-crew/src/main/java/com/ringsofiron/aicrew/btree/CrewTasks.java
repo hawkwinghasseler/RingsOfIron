@@ -9,6 +9,8 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.aicrew.ForceDoorTask;
+import com.ringsofiron.aicrew.ManConsoleTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.TreatTask;
@@ -16,7 +18,6 @@ import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
-import com.ringsofiron.interiorgrid.GridRayTraversal;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -96,9 +97,8 @@ public final class CrewTasks {
             CrewMemberComponent t = a.service.crew(a.target);
             if (t == null || !t.isConscious()) return Status.SUCCEEDED;
             GridPositionComponent tp = a.service.position(a.target);
-            ShipGridComponent grid = a.grid();
-            float dist = Math.abs(tp.x - a.pos.x) + Math.abs(tp.y - a.pos.y);
-            boolean sight = GridRayTraversal.hasLineOfSight(grid, a.pos.tileX(), a.pos.tileY(), tp.tileX(), tp.tileY());
+            float dist = a.service.distance(a.pos, tp);
+            boolean sight = a.service.canSee(a.pos, tp);
             a.crew.fireCooldown -= a.dt;
             if (sight && dist <= a.crew.def.weaponRange) {
                 a.pos.stop();
@@ -112,11 +112,15 @@ public final class CrewTasks {
                 return Status.RUNNING;
             }
             a.crew.activity = "closing on " + t.name;
+            if (tp.ship != a.pos.ship) {
+                // Aboard a docked craft: over to it, to beside them
+                CrewAgent.Travel go = a.travel(tp.ship, near(a, tp.ship, tp.tileX(), tp.tileY(), 1, 1));
+                return go == CrewAgent.Travel.UNREACHABLE ? Status.FAILED : Status.RUNNING;
+            }
             repathTimer -= a.dt;
             if (!a.pos.isMoving() || a.pos.pathBlocked || repathTimer <= 0f) {
                 repathTimer = 1f;
-                GridPathfinder pf = a.pathfinder();
-                if (pf.findPath(a.pos.tileX(), a.pos.tileY(), tp.tileX(), tp.tileY(), a.pathScratch)) {
+                if (a.findPath(a.pos.tileX(), a.pos.tileY(), tp.tileX(), tp.tileY(), a.pathScratch)) {
                     // Stop one tile short: no need to share the target's tile
                     if (a.pathScratch.size > 1) a.pathScratch.pop();
                     a.pos.setPath(a.pathScratch);
@@ -175,13 +179,44 @@ public final class CrewTasks {
             boolean destValid = dest != null && a.pos.isMoving() && !a.pos.pathBlocked
                     && TaskRules.isWorkSpot(t, grid, pf.graph, a.service, dest.x, dest.y);
             if (!destValid) {
-                if (!pf.nearest(x, y, TaskRules.workSpots(t, grid, pf.graph, a.service), a.pathScratch)) {
+                if (!a.nearest(x, y, TaskRules.workSpots(t, grid, pf.graph, a.service), a.pathScratch)) {
                     a.abandonUnreachable();
                     return Status.FAILED;
                 }
                 a.pos.setPath(a.pathScratch);
             }
             return Status.RUNNING;
+        }
+    }
+
+    /**
+     * Puts the agent's space suit on before they go to a task whose spot is out of breathable air
+     * (a breach, a room losing its air). Succeeds at once if they need none, have it on, or have none.
+     */
+    public static class SuitUp extends CrewLeaf {
+        private float elapsed;
+
+        @Override
+        public void start() {
+            elapsed = 0f;
+        }
+
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            CrewTask t = a.crew.task;
+            if (t == null) return Status.FAILED;
+            if (a.crew.suited || a.crew.def.suitAir <= 0f) return Status.SUCCEEDED;
+            ShipGridComponent grid = a.grid();
+            if (!TaskRules.needsSuit(grid, TaskRules.targetX(t, a.service), TaskRules.targetY(t, a.service))) {
+                return Status.SUCCEEDED;
+            }
+            a.pos.stop();
+            a.crew.activity = "putting on a suit";
+            elapsed += a.dt;
+            if (elapsed < a.crew.def.suitTime) return Status.RUNNING;
+            a.crew.setSuited(true);
+            return Status.SUCCEEDED;
         }
     }
 
@@ -233,6 +268,16 @@ public final class CrewTasks {
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
                     p.treatedBy = a.entity;
                     return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes
+                }
+                case MAN_CONSOLE: {
+                    // At it until anything else on the board wants them: then the console goes back up
+                    ShipTaskBoardComponent board = a.board();
+                    if (board != null && board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(),
+                            o -> o.kind != CrewTask.Kind.MAN_CONSOLE && a.mayTake(o)) != null) {
+                        a.releaseTask();
+                        return Status.FAILED;
+                    }
+                    return Status.RUNNING;
                 }
                 default:
                     return Status.FAILED;
@@ -289,7 +334,7 @@ public final class CrewTasks {
             GridNode dest = a.pos.destination();
             boolean destValid = dest != null && a.pos.isMoving() && !a.pos.pathBlocked && TaskRules.isSafe(grid, dest.x, dest.y);
             if (!destValid) {
-                if (!a.pathfinder().nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
+                if (!a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
                     a.abandonUnreachable();
                     return Status.FAILED;
                 }
@@ -438,6 +483,33 @@ public final class CrewTasks {
         }
     }
 
+    /** Walks to the spot a door is forced from and works at it until it opens. */
+    public static class ForceDoor extends CrewLeaf {
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            ForceDoorTask t = (ForceDoorTask) a.crew.task;
+            if (!t.job.isOpen()) {
+                ShipTaskBoardComponent board = a.board();
+                if (board != null) board.cancel(t);
+                a.crew.task = null;
+                return Status.FAILED;
+            }
+            a.crew.activity = "going to " + t.job.what();
+            ShipGridComponent grid = a.service.grid(t.ship);
+            if (grid == null) return Status.FAILED;
+            GridNavGraph nav = a.service.pathfinder(grid).graph;
+            CrewAgent.Travel go = a.travel(t.ship, (x, y) -> x == t.x && y == t.y && nav.isWalkable(x, y));
+            if (go == CrewAgent.Travel.UNREACHABLE) {
+                a.abandonUnreachable();
+                return Status.FAILED;
+            }
+            if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
+            a.crew.activity = t.job.what();
+            return t.job.work(a.entity, a.dt) ? Status.SUCCEEDED : Status.RUNNING;
+        }
+    }
+
     /**
      * Walkable tiles of {@code ship} from which the {@code w} x {@code h} tiles from (x, y) are
      * worked: inside them, or next to one of them.
@@ -511,9 +583,19 @@ public final class CrewTasks {
 
     /**
      * Stands by. Heads home if aboard another craft, and moves off a tile that is not safe to
-     * breathe on. Never finishes.
+     * breathe on. A suited crew member takes the suit off after {@link #SUIT_OFF_DELAY} seconds
+     * standing by on a safe tile. Never finishes.
      */
     public static class Idle extends CrewLeaf {
+        /** Seconds on a safe tile with nothing to do before a suit comes off. */
+        public static final float SUIT_OFF_DELAY = 5f;
+        private float calm;
+
+        @Override
+        public void start() {
+            calm = 0f;
+        }
+
         @Override
         public Status execute() {
             CrewAgent a = agent();
@@ -530,10 +612,20 @@ public final class CrewTasks {
             int x = a.pos.tileX(), y = a.pos.tileY();
             if (TaskRules.isSafe(grid, x, y)) {
                 if (!a.pos.isMoving()) a.crew.activity = "idle";
+                if (a.crew.suited && !a.pos.isMoving()) {
+                    calm += a.dt;
+                    if (calm >= SUIT_OFF_DELAY) a.crew.activity = "taking off a suit";
+                    if (calm >= SUIT_OFF_DELAY + a.crew.def.suitTime * 0.5f) {
+                        a.crew.setSuited(false);
+                        a.crew.activity = "idle";
+                        calm = 0f;
+                    }
+                }
                 return Status.RUNNING;
             }
+            calm = 0f;
             if (!a.pos.isMoving() || a.pos.pathBlocked) {
-                if (a.pathfinder().nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
+                if (a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
                     a.pos.setPath(a.pathScratch);
                     a.crew.activity = "leaving hazard";
                 }
@@ -547,21 +639,22 @@ public final class CrewTasks {
     // -----------------------------------------------------------------------
 
     /**
-     * The hostile to engage: the nearest conscious crew member of another faction aboard
-     * the same ship that the agent can see. Marines also hunt hostiles that any conscious
-     * crewmate of theirs can see (an intruder alert), and path to them.
+     * The hostile to engage: the nearest conscious crew member of another faction the agent can
+     * see, aboard the same ship or through the open ports of a craft docked to it. Marines also
+     * hunt hostiles that any conscious crewmate of theirs can see (an intruder alert), and path
+     * to them.
      */
     static Entity findHostile(CrewAgent a) {
         ShipGridComponent grid = a.grid();
         if (grid == null) return null;
-        // Only crew aboard the same ship can be seen: gather them once, in crew order, instead of
-        // scanning every crew member in the game for each observer.
+        // Only crew aboard the same ship or a craft docked to it can be seen: gather them once, in
+        // crew order, instead of scanning every crew member in the game for each observer.
         Array<Entity> aboard = a.aboardScratch;
         aboard.clear();
         ImmutableArray<Entity> all = a.service.crewEntities();
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
-            if (a.service.position(e).ship == a.pos.ship) aboard.add(e);
+            if (a.service.joined(a.pos.ship, a.service.position(e).ship)) aboard.add(e);
         }
         Entity seen = nearestVisibleHostile(a, a.entity, aboard, grid);
         if (seen != null || a.crew.role != CrewRole.MARINE) return seen;
@@ -571,7 +664,7 @@ public final class CrewTasks {
             Entity ally = aboard.get(i);
             if (ally == a.entity) continue;
             CrewMemberComponent c = a.service.crew(ally);
-            if (c.faction != a.crew.faction || !c.isConscious()) continue;
+            if (c.faction != a.crew.faction || !c.isConscious() || a.service.position(ally).ship != a.pos.ship) continue;
             Entity h = nearestVisibleHostile(a, ally, aboard, grid);
             if (h == null) continue;
             GridPositionComponent p = a.service.position(h);
@@ -586,7 +679,7 @@ public final class CrewTasks {
 
     /**
      * The nearest conscious hostile of {@code a}'s faction that {@code observer} can see, within sight
-     * range, out of {@code aboard} (the crew on the observer's ship).
+     * range, out of {@code aboard} (the crew on the observer's craft and the craft docked to it).
      */
     private static Entity nearestVisibleHostile(CrewAgent a, Entity observer, Array<Entity> aboard, ShipGridComponent grid) {
         GridPositionComponent op = a.service.position(observer);
@@ -599,9 +692,9 @@ public final class CrewTasks {
             CrewMemberComponent c = a.service.crew(e);
             if (!a.service.hostile(a.crew, c) || !c.isConscious()) continue;
             GridPositionComponent p = a.service.position(e);
-            float d = Math.abs(p.x - op.x) + Math.abs(p.y - op.y);
+            float d = a.service.distance(op, p);
             if (d > range || d >= bestDist) continue;
-            if (!GridRayTraversal.hasLineOfSight(grid, op.tileX(), op.tileY(), p.tileX(), p.tileY())) continue;
+            if (!a.service.canSee(op, p)) continue;
             best = e;
             bestDist = d;
         }
@@ -619,7 +712,12 @@ public final class CrewTasks {
             case RESCUE: return "rescuing a casualty";
             case CARRY: return "carrying " + ((CarryTask) t).job.commodity();
             case YARD: return ((YardTask) t).job.what();
+            case FORCE_DOOR: return ((ForceDoorTask) t).job.what();
             case TREAT: return "treating a patient";
+            case MAN_CONSOLE: {
+                SubsystemComponent.SubsystemType type = ((ManConsoleTask) t).type();
+                return "manning the " + (type == null ? "console" : type.name().toLowerCase());
+            }
             default: return t.kind.name().toLowerCase();
         }
     }

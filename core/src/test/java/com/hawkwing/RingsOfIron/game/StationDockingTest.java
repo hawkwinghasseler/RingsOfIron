@@ -162,6 +162,62 @@ class StationDockingTest {
         assertTrue(board.credits < credits, "and it was paid for as it landed");
     }
 
+    @Test
+    void theShipsOwnCrewCarryWhenTheStationHasNoHands() {
+        ShipGridComponent deck = game.player.getComponent(ShipGridComponent.class);
+        int[] spot = null;
+        for (int y = 0; y < deck.height && spot == null; y++) {
+            for (int x = 0; x < deck.width; x++) {
+                if (deck.getTile(x, y).isOpen() && deck.getTile(x, y).mount == null) {
+                    spot = new int[]{x, y};
+                    break;
+                }
+            }
+        }
+        Entity hand = com.ringsofiron.aicrew.CrewFactory.spawn(world.crew, game.player, "Dee",
+                com.ringsofiron.aicrew.CrewRole.CREWMAN, 0, spot[0], spot[1]);
+        assertEquals(1, world.cargo.carriers(game.player));
+        // Highport's dock hands are all out cold
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.ringsofiron.aicrew.CrewService.CREW)) {
+            com.ringsofiron.aicrew.CrewMemberComponent c = world.crew.crew(e);
+            if (c.role == com.ringsofiron.aicrew.CrewRole.LOADER && c.home == highport) {
+                world.crew.applyDamage(e, c.health * 0.9f, com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.BLAST);
+            }
+        }
+        assertEquals(0, world.cargo.loaders(highport));
+
+        TradeProvider.TradeBoard board = new TradeProvider.TradeBoard();
+        MarketTrade market = new MarketTrade(world);
+        parkBeside(nearestPort(MountFootprint.MountSize.S), 1.5f);
+        world.docking.arm(game.player, 0);
+        world.docking.requestClearance(game.player, 0);
+        waitForCollar();
+        for (int i = 0; i < 60 * 40 && !world.docking.isRigid(game.player); i++) world.update(FRAME);
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        market.collect(board);
+        assertTrue(board.carried, "the ship's crew carry it");
+        TradeProvider.TradeLine line = null;
+        for (TradeProvider.TradeLine l : board.lines) {
+            if (l.available > 20 && l.buyPrice > 0 && (line == null || l.buyPrice < line.buyPrice)) line = l;
+        }
+        String id = line.commodityId;
+        assertEquals(2, market.buy(id, 2), 1e-6);
+        boolean wentOver = false;
+        for (int i = 0; i < 60 * 240; i++) {
+            world.update(FRAME);
+            wentOver |= world.crew.position(hand).ship == highport;
+            if (i % 60 != 0) continue;
+            board.clear();
+            market.collect(board);
+            if (find(board, id).held >= 2 - 1e-6 && world.crew.position(hand).ship == game.player) break;
+        }
+        board.clear();
+        market.collect(board);
+        assertEquals(2, find(board, id).held, 1e-6, "Dee brought it aboard");
+        assertTrue(wentOver, "fetched from the station's bays");
+        assertSame(game.player, world.crew.position(hand).ship, "and came home");
+    }
+
     private static TradeProvider.TradeLine find(TradeProvider.TradeBoard board, String id) {
         for (TradeProvider.TradeLine l : board.lines) {
             if (l.commodityId.equals(id)) return l;

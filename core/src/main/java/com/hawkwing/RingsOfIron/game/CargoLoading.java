@@ -11,12 +11,15 @@ import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.coreengine.EntityRef;
 import com.ringsofiron.coreengine.UuidRegistry;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.crew.CrewTask;
 import com.ringsofiron.stationsdocking.DockingSystem;
 
 import java.util.Iterator;
@@ -26,7 +29,9 @@ import java.util.function.DoubleSupplier;
  * Goods traded at a station cross the dock by hand. Each order on a ship's
  * {@link CargoOrdersComponent} becomes carry trips ({@link CarryTask}) on the station's task board,
  * which its loaders work a load at a time: lift it off a bay on one craft, walk it across the
- * collars and set it down by a bay on the other. Each load is settled (paid for, and moved from
+ * collars and set it down by a bay on the other. The ship's own crew who carry (crewmen) help:
+ * once every loader has a trip, further trips go on the ship's board, and a station with no
+ * loaders is traded with by the ship's crew alone. Each load is settled (paid for, and moved from
  * hold to hold) only as it arrives, by the {@link Settlement}.
  *
  * <p>No more trips go out once the ship undocks or the goods run out; loads already in hand go
@@ -85,12 +90,12 @@ public class CargoLoading extends EntitySystem {
     }
 
     /**
-     * True if {@code station} can carry goods to and from {@code ship}: the two are docked, both have
-     * cargo bays, and the station has loaders.
+     * True if goods can be carried between {@code ship} and {@code station}: the two are docked, both
+     * have cargo bays, and the station has loaders or the ship has crew who carry.
      */
     public boolean canCarry(Entity ship, Entity station) {
         return ship != null && station != null && docking.docked(ship, station)
-                && HOLDS.get(ship) != null && HOLDS.get(station) != null && loaders(station) > 0;
+                && HOLDS.get(ship) != null && HOLDS.get(station) != null && loaders(station) + carriers(ship) > 0;
     }
 
     /**
@@ -156,7 +161,7 @@ public class CargoLoading extends EntitySystem {
         for (CarryTask t : o.trips) {
             if (t.status == CarryTask.Status.OPEN) open++;
         }
-        if (open == 0 && o.waiting() > EPS && o.trips.size < loaders(station)) post(ship, station, o);
+        if (open == 0 && o.waiting() > EPS) post(ship, station, o);
         return true;
     }
 
@@ -164,7 +169,7 @@ public class CargoLoading extends EntitySystem {
     private void background(Entity ship, Entity station, CargoOrdersComponent.CargoOrder o, double dt) {
         if (dt <= 0) return;
         double perTrip = unitsPerTrip(o.commodity, crewDefVolume());
-        double units = Math.min(o.waiting(), perTrip * loaders(station) * dt / TRIP_SECONDS);
+        double units = Math.min(o.waiting(), perTrip * (loaders(station) + carriers(ship)) * dt / TRIP_SECONDS);
         units = Math.min(units, settlement.available(ship, station, o) - o.inHand);
         if (units <= EPS) return;
         double done = settlement.settle(ship, station, o, units);
@@ -172,14 +177,27 @@ public class CargoLoading extends EntitySystem {
         if (done < units - EPS) o.closed = true;
     }
 
+    /**
+     * Puts the next trip up: on the station's board while it has a loader without one, else on the
+     * ship's while it has a carrier without one. Nothing once everyone has a trip.
+     */
     private void post(Entity ship, Entity station, CargoOrdersComponent.CargoOrder o) {
+        ShipTaskBoardComponent stationBoard = crew.board(station), shipBoard = crew.board(ship);
+        int onStation = 0, onShip = 0;
+        for (CarryTask t : o.trips) {
+            if (stationBoard != null && stationBoard.tasks.contains(t, true)) onStation++;
+            else onShip++;
+        }
+        ShipTaskBoardComponent board = onStation < loaders(station) ? stationBoard
+                : onShip < carriers(ship) ? shipBoard : null;
+        if (board == null) return;
+        if (board == shipBoard) keepHome(ship);
         Entity from = o.toShip ? station : ship, to = o.toShip ? ship : station;
         CargoHoldComponent hold = HOLDS.get(from);
         int x = hold != null && hold.bayTileCount() > 0 ? hold.bayX[0] : 0;
         int y = hold != null && hold.bayTileCount() > 0 ? hold.bayY[0] : 0;
         CarryTask trip = new CarryTask(from, x, y, to, o.job);
-        ShipTaskBoardComponent board = crew.board(station);
-        if (board == null || !board.post(trip)) return;
+        if (!board.post(trip)) return;
         o.trips.add(trip);
     }
 
@@ -191,6 +209,47 @@ public class CargoLoading extends EntitySystem {
             if (l.otherShip == station && l.canCross()) return true;
         }
         return false;
+    }
+
+    /**
+     * {@code ship}'s own AI crew who carry cargo and are up to it: conscious, of the ship's faction,
+     * in a role that takes carry trips (crewmen).
+     */
+    public int carriers(Entity ship) {
+        ShipTaskBoardComponent board = crew.board(ship);
+        if (board == null) return 0;
+        int n = 0;
+        ImmutableArray<Entity> all = crew.crewEntities();
+        for (int i = 0; i < all.size(); i++) {
+            Entity e = all.get(i);
+            CrewMemberComponent c = crew.crew(e);
+            if (crew.homeOf(e) != ship || c.faction != board.faction || !c.isConscious()) continue;
+            if (e.getComponent(PlayerAvatarComponent.class) != null || c.role.affinity(CrewTask.Kind.CARRY) <= 0f) continue;
+            n++;
+        }
+        return n;
+    }
+
+    /** Makes {@code ship} the home of its crew aboard, so those who carry over to the station come back. */
+    private void keepHome(Entity ship) {
+        ImmutableArray<Entity> all = crew.crewEntities();
+        for (int i = 0; i < all.size(); i++) {
+            Entity e = all.get(i);
+            CrewMemberComponent c = crew.crew(e);
+            if (c.home == null && crew.position(e).ship == ship) c.setHome(ship);
+        }
+    }
+
+    /** {@code ship}'s own crew aboard another craft now (carrying cargo on the station, say). */
+    public int crewAway(Entity ship) {
+        int n = 0;
+        ImmutableArray<Entity> all = crew.crewEntities();
+        for (int i = 0; i < all.size(); i++) {
+            Entity e = all.get(i);
+            GridPositionComponent p = crew.position(e);
+            if (crew.homeOf(e) == ship && p.ship != ship && e.getComponent(PlayerAvatarComponent.class) == null) n++;
+        }
+        return n;
     }
 
     /** Crew of other craft aboard {@code ship} now (dock hands carrying cargo, say). */
