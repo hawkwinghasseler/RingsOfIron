@@ -200,6 +200,8 @@ public final class HintRegistry {
         r.register(Context.DOCKED, "undock", 2, Action.UNDOCK);
         r.register(Context.DOCKED, "market", 3, Action.TRADE);
         r.register(Context.DOCKED, "yard", 4, Action.YARD);
+        // At a station that sells ships; the shipyard says where that is
+        r.register(Context.DOCKED, "ships for sale", 5, Action.SHIPYARD);
         // Latched to a ship
         r.register(Context.LATCHED, "boarding", 1, Action.BOARD);
         r.register(Context.LATCHED, "cast off", 2, Action.UNDOCK);

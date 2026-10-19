@@ -24,6 +24,7 @@ import com.ringsofiron.uihud.providers.ShipStatusProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider;
 import com.ringsofiron.uihud.providers.MissionProvider;
+import com.ringsofiron.uihud.providers.ShipyardProvider;
 import com.ringsofiron.uihud.providers.TradeProvider;
 import com.ringsofiron.uihud.providers.BoardingProvider;
 import com.ringsofiron.uihud.providers.YardProvider;
@@ -42,6 +43,7 @@ import com.ringsofiron.uihud.widgets.RadarScope;
 import com.ringsofiron.uihud.widgets.ShipGauges;
 import com.ringsofiron.uihud.widgets.ThreatOverlay;
 import com.ringsofiron.uihud.widgets.MissionWindow;
+import com.ringsofiron.uihud.widgets.ShipyardWindow;
 import com.ringsofiron.uihud.widgets.TradeWindow;
 import com.ringsofiron.uihud.widgets.BoardingWindow;
 import com.ringsofiron.uihud.widgets.YardWindow;
@@ -63,7 +65,8 @@ import com.ringsofiron.uihud.widgets.TrafficMap;
  *
  * Keys handled by the HUD: E use console, Esc close console, map or market, V toggle exterior/interior view,
  * M toggle the traffic map (mouse wheel zooms it while open), T open the station market while docked,
- * J the mission board (while docked, or holding a contract).
+ * J the mission board (while docked, or holding a contract), I the shipyard (while docked where ships
+ * are sold, or with a prize in tow near a station).
  */
 public class UiHud implements Disposable {
     private final ViewportManager viewports;
@@ -84,6 +87,7 @@ public class UiHud implements Disposable {
     private final TradeWindow tradeWindow;
     private final YardWindow yardWindow;
     private final MissionWindow missionWindow;
+    private final ShipyardWindow shipyardWindow;
     private final BoardingWindow boardingWindow;
     private final ThreatOverlay threatOverlay;
     private final ShipGauges gauges;
@@ -192,8 +196,10 @@ public class UiHud implements Disposable {
         tradeWindow = new TradeWindow(skin, dockHint);
         yardWindow = new YardWindow(skin);
         missionWindow = new MissionWindow(skin);
+        shipyardWindow = new ShipyardWindow(skin);
         tradeWindow.setHintSuffix(() -> (yardWindow.isAvailable() && !yardWindow.isOpen() ? "   [Y] Yard" : "")
-                + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : ""));
+                + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : "")
+                + (!shipyardWindow.getYard().stationName.isEmpty() && !shipyardWindow.isOpen() ? "   [I] Ships" : ""));
         boardingWindow = new BoardingWindow(skin);
 
         trafficMap = new TrafficMap(skin);
@@ -206,6 +212,7 @@ public class UiHud implements Disposable {
         stage.addActor(tradeWindow);
         stage.addActor(yardWindow);
         stage.addActor(missionWindow);
+        stage.addActor(shipyardWindow);
         stage.addActor(boardingWindow);
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
@@ -267,6 +274,10 @@ public class UiHud implements Disposable {
                     missionWindow.setOpen(false);
                     return true;
                 }
+                if (shipyardWindow.isOpen()) {
+                    shipyardWindow.setOpen(false);
+                    return true;
+                }
                 if (boardingWindow.isOpen()) {
                     boardingWindow.setOpen(false);
                     return true;
@@ -285,6 +296,10 @@ public class UiHud implements Disposable {
             case Input.Keys.J:
                 if (!missionWindow.isOpen() && !missionWindow.isAvailable()) return false;
                 missionWindow.setOpen(!missionWindow.isOpen());
+                return true;
+            case Input.Keys.I:
+                if (!shipyardWindow.isOpen() && !shipyardWindow.isAvailable()) return false;
+                shipyardWindow.setOpen(!shipyardWindow.isOpen());
                 return true;
             case Input.Keys.K:
                 if (!boardingWindow.isOpen() && !boardingWindow.isAvailable()) return false;
@@ -429,6 +444,15 @@ public class UiHud implements Disposable {
 
     public MissionWindow getMissionWindow() {
         return missionWindow;
+    }
+
+    /** Feeds the shipyard window ([I] while docked where ships are sold, or with a prize to hand over); null hides it. */
+    public void setShipyard(ShipyardProvider shipyard) {
+        shipyardWindow.setProvider(shipyard);
+    }
+
+    public ShipyardWindow getShipyardWindow() {
+        return shipyardWindow;
     }
 
     /** Off-bubble traffic for the map view (M). Without one the map says there is no data. */

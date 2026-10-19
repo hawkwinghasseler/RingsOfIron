@@ -7,6 +7,7 @@ import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.signals.Signal;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Array;
+import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -43,7 +44,7 @@ import java.util.Locale;
  * bringing taken ships home as prizes.
  *
  * <p><b>Buying.</b> Docked with clearance at a station that sells ships ({@code [shipyard.<id>]}),
- * the player can buy any of the owner's {@code [ship_sale.<id>]} ships their rank and standing
+ * the player can buy, from the shipyard window ({@link Action#SHIPYARD}), any of the owner's {@code [ship_sale.<id>]} ships their rank and standing
  * allow. The ship they fly is traded in at {@link #TRADE_IN_SHARE} of its value times its
  * condition; the new ship is latched to the station in its place, with the player's credits, the
  * cargo (which must fit) and every crew member who calls the old ship home, the player's avatar
@@ -125,7 +126,6 @@ public class Shipyard extends EntitySystem {
 
     /** Every deal, once it is done. The new ship is the player's when it fires. */
     public final Signal<Deal> deals = new Signal<>();
-    public final List<String> notices = new ArrayList<>();
 
     private final GameWorld world;
     private final double[] stateA = new double[4], stateB = new double[4];
@@ -136,6 +136,11 @@ public class Shipyard extends EntitySystem {
         this.world = world;
         // Once taken, a prize's collars are rigged for towing: the weld holds under the engines' full thrust
         world.docking.towLocked = (a, b) -> tows(a, b) || tows(b, a);
+        for (HintRegistry.Hint h : world.hints.byContext().getOrDefault(HintRegistry.Context.DOCKED, List.of())) {
+            if (h.actions.length == 1 && h.actions[0] == Action.SHIPYARD) h.onlyWhen(() -> sellsShips(dockedStation()));
+        }
+        world.hints.register(HintRegistry.Context.LATCHED, "hand over the prize", 3, Action.SHIPYARD)
+                .onlyWhen(() -> prize() != null && prizeStation() != null);
     }
 
     /** Points the player's engines through the centre of mass of the pair while a prize is in tow. */
@@ -318,7 +323,7 @@ public class Shipyard extends EntitySystem {
                 : String.format(Locale.ROOT, "%,.0f cr to you", -cost);
         String message = String.format(Locale.ROOT, "Bought the %s at %s: %s, with %,.0f cr for the %s", listing.name,
                 PlayerDocking.name(station), deal, tradeIn, oldName);
-        notices.add(message);
+        world.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.BOUGHT, old, ship, station, cost, 0f));
         return message;
     }
@@ -499,7 +504,7 @@ public class Shipyard extends EntitySystem {
         int held = handOver(prize);
         String message = String.format(Locale.ROOT, "%s's tugs took the %s in: +%,.0f cr%s", PlayerDocking.name(station), name,
                 paid, held > 0 ? ", " + held + " prisoners handed over" : "");
-        notices.add(message);
+        world.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.PRIZE_SOLD, prize, null, station, paid, 0f));
         return message;
     }
@@ -516,7 +521,7 @@ public class Shipyard extends EntitySystem {
         String message = String.format(Locale.ROOT, "Turned the %s in at %s: standing %+.0f with the %s%s", name,
                 PlayerDocking.name(station), standing, world.standing.factions().name(world.standing.sponsor()),
                 held > 0 ? ", " + held + " prisoners handed over" : "");
-        notices.add(message);
+        world.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.PRIZE_TURNED_IN, prize, null, station, 0, standing));
         return message;
     }

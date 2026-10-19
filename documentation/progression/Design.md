@@ -66,13 +66,13 @@ Ranks are data: `[rank.<id>]` (`RankDef`) with `name`, `order`, `standing` (need
 |---|---|---|---|
 | Ensign | 0 | 2,000 | corvette |
 | Lieutenant | 15 | 5,000 | corvette |
-| Lieutenant Commander | 35 | 10,000 | freighter |
-| Commander | 60 | 20,000 | freighter |
-| Captain | 85 | 40,000 | freighter |
+| Lieutenant Commander | 35 | 10,000 | gunship |
+| Commander | 60 | 20,000 | frigate |
+| Captain | 85 | 40,000 | frigate |
 
 - **Promotion:** only standing with the sponsor promotes. `checkPromotion` climbs one rank at a time with a notice ("Promoted to Lieutenant of the Terran Patrol Authority: budget 5,000 cr a week"). Ranks are never taken back.
 - **Budget:** `ServiceBudget` pays the budget into the player ship's credits every `WEEK` (604,800 sim seconds). It catches up on every payday passed during time warp, at the rank held when paying. The first payday is a week after the career starts. Paydays wait while the player has no ship with credits. The HUD shows "Ensign   Budget 2,000 cr/wk in 6d 23h".
-- **Requisition limit:** `RankLadder.mayRequisition` compares a ship's chassis size with the rank's `max_chassis`.
+- **What a rank flies:** `RankLadder.mayFly` compares a ship's chassis size in tiles with the rank's `max_chassis`, for a requisition after a rescue (`mayRequisition`) and a purchase at a yard alike. Sizes: light raider 75, corvette 96, gunship 160, frigate 240, freighter 260, so no rank flies a freighter. (Round 2 named the freighter at Lieutenant Commander and above, which let the gunship in by size alone; round 3 names the gunship and the frigate.)
 - **Difficulty** (GDD §5): `Difficulty.of(rank, worth) = 1 + 0.25·rank + 0.5·log2(worth / 300,000)`, where the worth term counts only above 300,000. Net worth is credits plus the ship's value: 1,000 a hull tile plus its weapons' prices.
 - **Pirate numbers:** `HostileTraffic` sizes the pirate population from a difficulty value: `1 + round(d)` raiders and `floor(d)` gunships.
 
@@ -169,6 +169,32 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
 
 `PlayableLoopTest` plays the loop headless: take the bounty, undock, fight the raider with the real guns and missiles until it gives up, board it, strip a gun, dock and sell it, and come away 11 standing up (the bounty's 6 and the kill's 5), one more such fight from Lieutenant's 15. `BalancePacingTest` plays the round 2 playtest's fixes with their numbers: the raider woken as First Play wakes it comes in firing, lands hits, and takes the player's guns over 20 s to beat (combat-sys's grazing rounds and smaller machinery bites; it was 7 s), a stripped laser pays under half the bounty, one fight is not a promotion and two are, beating a pirate pleases only the Patrol, and a ship latched to a holed one keeps its air while its boarding party still crosses. A second test abandons ship as a Lieutenant Commander and wakes at a sponsor station seated at a gunship's helm.
 
+## Ships for Sale and Prizes (round 3)
+`Shipyard` (core) answers GDD §5's "ship procurement and outfitting": something to spend a career's credits on, and a way to bring a beaten ship home whole. Built on `claude/r3-shipyard-8gjsst`.
+
+- **Where ships are sold:** `[shipyard.<id>]` in `assets/data/shipyard.toml` (`ShipyardDef`) names a faction's yards: every station it owns of the listed `station_types`, and the listed `stations` by name. The Patrol's are any `shipyard` station and, until one is in the world, Highport; the Selene Combine's are Shackleton Ice.
+- **What is sold:** `[ship_sale.<id>]` (`ShipSaleDef`): `ship`, `seller`, `price`, an optional `rank` on the sponsor's ladder, and `standing` with the seller. `DefValidator` warns about unknown ships, factions, ranks and station types.
+
+  | Sale | Ship | Seller | Price | Needs |
+  |---|---|---|---|---|
+  | `patrol_corvette` | Patrol Corvette | Patrol | 280,000 | |
+  | `patrol_gunship` | Gunship | Patrol | 360,000 | Lieutenant Commander |
+  | `patrol_frigate` | Frigate | Patrol | 720,000 | Commander |
+  | `selene_raider` | Light Raider | Selene | 110,000 | 10 standing with Selene |
+- **Buying:** docked with clearance at a yard, the shipyard window (I) lists the ships with their price and what they cost after the trade-in, or why they are locked: the rank (the sale's own, or the first rank the ladder lets fly it), the standing, the credits, yard work under way, cargo that won't fit the new hold, or more people aboard than its pods seat.
+  - **Trade-in:** the ship flown goes to the yard for 60% (`TRADE_IN_SHARE`) of its value (`Difficulty.shipValue`: hull tiles and weapons) times its condition (mean hull integrity times mean system health).
+  - **The swap:** the new ship takes the old one's place at the station, latched to a free port of its size. Credits, cargo and every crew member who calls the old ship home (prisoners aboard too) move across; the avatar is seated at the new helm, as after a rescue. The old ship, its systems and anyone left aboard are removed.
+  - **Net worth:** the ship's value counts in `Difficulty`'s net worth, so at equal credits a bigger ship means harder encounters. A purchase itself spends more credits than the ship's value adds, so difficulty dips at the moment of buying and climbs again as credits come back.
+- **Ships the player can fly:** the light raider (one Small pod, 4 seats), the corvette, the gunship (two Small pods) and the new frigate. The frigate (`[chassis.frigate]`, 24 x 10) has two Medium bow turrets for its railguns, a missile launcher and point defense on each beam, a Large reactor, two gunship drives, a marine bay under its active dorsal Small port, and two Small pods. Its hull art comes from `tools/art/generate_svgs.py`; it collides on its layout. `LoopWiring.REQUISITION` still issues the gunship at most: a frigate is bought, never requisitioned.
+- **Prizes (towing):** a ship the player has taken (`Boarding.takenBy`) and stays latched to is the prize in tow.
+  - The weld never tears while towing (`DockingSystem.towLocked`), and the player's thrust goes through the pair's centre of mass (`FlightControlComponent.towing`), so the pair flies as one body with the combined mass and does not spin about the weld. Rotation assist works against the pair's spin with the combined inertia. The pair goes onto the rails and back with time warp like any latch.
+  - Within 2 km (`PRIZE_RANGE`) of a station that deals with the player (not hostile to all, not refusing clearance), the shipyard window (I) offers it to the station's tugs: **sold** for 25% of its value (`PRIZE_SHARE`), 10% once anything has been stripped off it (`STRIPPED_PRIZE_SHARE`), or **turned in** at a sponsor station for standing: that of a bounty the player took on it, else what a bounty on it would give (6 + 3 x tier).
+  - Refused while any of the player's crew are still aboard it. Prisoners held aboard are handed over with it.
+  - The player tows; they never command two ships.
+- **Saves:** a purchase or a hand-over is done at once, so nothing new is saved: the new ship is saved as the player's ship always is.
+
+`ShipyardTest` buys the gunship as a Lieutenant Commander (credits, cargo and crew across, docked in the old ship's place, saved and loaded), checks the refusals, and flies the light raider, the gunship and the frigate as the player's ship (helm, weapons console, pods for everyone, the player's crew, thrust, abandon ship). `PrizeTowingTest` takes the raider, tows it under full thrust (the pair gains what the combined mass allows and the weld holds), through time warp, and sells or turns it in at Highport.
+
 ## Saves
 - **Save modules:** the career (`"factions"`) and contracts (`"contracts"`).
 - **Saved as components:** disabled state, morale, abandon orders, boarding state, prisoners, salvage orders and stripped mounts, all on their entities.
@@ -182,7 +208,7 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
 - **Standing recovering** over time, or being bought back (also open in `stations-docking`).
 - **What a rescue costs** beyond the lost ship, cargo and crew: a standing penalty, a fee, or a lower-tier ship.
 - **Crashing** going through rescue when the crew had time to get away.
-- **Towing** a taken ship home instead of stripping it.
+- **Towing** a taken ship home instead of stripping it: answered in round 3 (Ships for Sale and Prizes), with placeholder shares chosen without Joe.
 - **Prisoners:** what becomes of them (ransom, hand-over for standing, release).
 - **All numbers** (pay, budgets, thresholds, prices) are placeholders until playtesting.
 
@@ -196,3 +222,4 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
 | 5 | Contracts and the mission board | contracts | Built |
 | 6 | Boarding, taking ships and salvage | boarding-salvage, playable loop | Built |
 | 7 | The loop in the main game, scripted end to end | playable loop | Built |
+| 8 | Ships for sale, trade-ins, the frigate, prizes towed home | r3-shipyard | Built |

@@ -252,6 +252,19 @@ pipes = [
   { x = 5, y = 5 }, { x = 5, y = 6 }, { x = 5, y = 7 }, { x = 5, y = 8 },
   { x = 6, y = 4 },
 ]
+lights = [
+  { x = 4, y = 1, side = "BOTTOM" },
+  { x = 11, y = 1, side = "BOTTOM" },
+  { x = 14, y = 1, side = "BOTTOM" },
+  { x = 19, y = 1, side = "BOTTOM" },
+  { x = 1, y = 3, side = "LEFT" },
+  { x = 22, y = 3, side = "RIGHT" },
+  { x = 4, y = 8, side = "TOP" },
+  { x = 9, y = 8, side = "TOP" },
+  { x = 12, y = 8, side = "TOP" },
+  { x = 15, y = 8, side = "TOP" },
+  { x = 19, y = 8, side = "TOP" },
+]
 
 # Stations. Every station type carries docking ports of all three sizes, so any ship
 # can berth: an outpost one of each, a hub two of each. Station ports are active, so

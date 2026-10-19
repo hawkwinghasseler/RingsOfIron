@@ -109,6 +109,26 @@ class ShipyardTest {
     }
 
     @Test
+    void theShipyardWindowListsThemWithTheTradeInAndWhatsLocked() {
+        com.ringsofiron.uihud.providers.ShipyardProvider.Yard yard = new com.ringsofiron.uihud.providers.ShipyardProvider.Yard();
+        new ShipyardWork(world).collect(yard);
+        assertEquals("Highport", yard.stationName);
+        assertTrue(yard.current.startsWith("Your Patrol Corvette: trade-in "), yard.current);
+        assertEquals(3, yard.ships.size);
+        assertEquals("Gunship", yard.ships.get(1).name);
+        assertEquals("Terran Patrol Authority", yard.ships.get(1).seller);
+        assertTrue(yard.ships.get(1).terms.startsWith("360,000 cr, "), yard.ships.get(1).terms);
+        assertEquals("Needs rank Lieutenant Commander", yard.ships.get(1).locked);
+        assertEquals("", yard.prize, "no prize in tow");
+        // Undocked, there is nothing to show
+        world.docking.undock(game.player);
+        run(60);
+        yard.clear();
+        new ShipyardWork(world).collect(yard);
+        assertFalse(yard.isOpen());
+    }
+
+    @Test
     void theLadderTheSalesAndTheRequisitionAgree() {
         RankLadder ranks = world.standing.ranks();
         // The gunship comes with Lieutenant Commander, the frigate with Commander; freighters never
