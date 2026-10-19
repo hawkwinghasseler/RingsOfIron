@@ -28,6 +28,8 @@ public interface MissionProvider {
         public String terms = "";
         /** Why it can't be taken yet ("Needs rank Lieutenant"), or empty. */
         public String locked = "";
+        /** A line under an offer: why it is posted, or what its target has done; empty for none. */
+        public String note = "";
     }
 
     final class MissionBoard {

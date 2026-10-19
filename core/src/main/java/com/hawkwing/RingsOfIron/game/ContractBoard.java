@@ -15,6 +15,8 @@ import com.ringsofiron.macrosim.economy.TradeOrder;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.moddingdata.defs.FactionDef;
+import com.ringsofiron.moddingdata.defs.OperationDef;
+import com.ringsofiron.moddingdata.defs.RankDef;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -47,6 +49,25 @@ import java.util.Set;
  *
  * <p>Taking a delivery takes its trade order off the freighters: the order is claimed in the
  * player's name until the job ends. Offers, contracts and history are saved with the game.
+ *
+ * <p>Round 3 adds:
+ * <ul>
+ *   <li><b>Convoys</b>: two or more freighters hauling out of a station to the same buyer, paid by
+ *       how many dock with the player close.</li>
+ *   <li><b>Rescue and recovery</b>: escape pods and wrecks ({@link Derelicts}) a robbed or lost
+ *       freighter leaves on the rails, posted with {@link #offerFor}. A pod is picked up with a
+ *       slow close pass, a wreck by holding alongside while the crew carry its cargo over; either is
+ *       done on docking at the station that posted it.</li>
+ *   <li><b>Defence</b> of a station from raiders, and urgent deliveries, posted by
+ *       {@link WorldEvents} through {@link #postEvent}.</li>
+ *   <li><b>Operations</b> ({@code [operation.*]} in the data): chains of steps a faction offers at
+ *       rank milestones, one running at a time, each step a contract of its own; the last pays the
+ *       operation's reward. A <b>recon</b> step finds a pirate where it lurks, for the bounty after it.</li>
+ *   <li><b>Records</b>: a pirate that has robbed freighters carries that in its bounty, for more pay.</li>
+ *   <li><b>Raids</b> on the pirates' base ({@link PirateBase}), once it is found: the sponsor's
+ *       boards offer one from {@link #RAID_RANK}, done when the base falls. An operation's
+ *       <b>intel</b> step finds the base by following a pirate to it.</li>
+ * </ul>
  */
 public class ContractBoard extends EntitySystem implements SaveParticipant {
     public static final int OFFERS_PER_STATION = 5;
@@ -74,6 +95,17 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
     static final double ESCORT_PAY = 1_500, BOUNTY_PAY = 5_000, PATROL_PAY = 1_000;
     /** Pay and time for a job that crosses to another body's orbit. */
     static final double FAR_PAY = 3, NEAR_DAYS = 2, FAR_DAYS = 8;
+    /** Pay for each freighter of a convoy, and for each survivor of a pod; recovery's share of the cargo's value. */
+    static final double CONVOY_PAY = 1_200, RESCUE_PAY = 1_500, RESCUE_PER_SURVIVOR = 400, RECOVERY_SHARE = 0.3,
+            RECOVERY_MIN = 1_000, DEFEND_PAY = 4_000, RECON_PAY = 1_500;
+    /** A bounty's pay rises by this share for each freighter its pirate has robbed, up to {@link #RECORD_CAP}. */
+    static final double RECORD_PREMIUM = 0.5;
+    static final int RECORD_CAP = 4;
+    /** How close the player must come to a pirate to find it, meters: about a sensor sweep. */
+    public static final double RECON_RANGE = 100_000;
+    /** Rank with the sponsor a raid on the pirate base needs (Lieutenant Commander). */
+    public static final int RAID_RANK = 2;
+    static final double RAID_PAY = 40_000, RAID_DAYS = 6;
 
     private static final Family SHIPS = Family.all(ShipTaskBoardComponent.class, UuidComponent.class)
             .exclude(StationComponent.class, PlayerControllerComponent.class).get();
@@ -92,12 +124,33 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
     private final List<Contract> history = new ArrayList<>();
     static final int HISTORY = 20;
     private long nextId = 1;
+    /** Offers posted outside the daily boards (world events, pods and wrecks), each on its station's board until taken or late. */
+    private final List<Contract> extra = new ArrayList<>();
+    /** The operation under way, or null. */
+    private Operation running;
+    /** Ids of the operations done, never offered again. */
+    private final Set<String> operationsDone = new HashSet<>();
     /** Entities whose markers point at a contract waypoint; not saved, the markers are rebuilt. */
     private Set<Entity> marked = new HashSet<>();
     /** Contract news not yet shown; the screen drains it. */
     public final List<String> notices = new ArrayList<>();
     private final StateVector a = new StateVector(), b = new StateVector();
     private final double[] trueState = new double[4];
+
+    /** An operation under way: which, where it was taken, and how far it has got. Saved as it is. */
+    public static class Operation {
+        public String id;
+        public String name;
+        public String giver;
+        public String stationUuid;
+        public String[] steps = new String[0];
+        /** The step under way, from 1. */
+        public int step;
+        /** The pirate the last recon found, for the bounty after it. */
+        public String quarry;
+        public double reward;
+        public float standing;
+    }
 
     public ContractBoard(GameWorld world) {
         this.world = world;
@@ -117,8 +170,85 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             boards.put(stationUuid, board);
         }
         List<Contract> out = new ArrayList<>();
+        for (Contract c : extra) {
+            if (stationUuid.equals(c.stationUuid) && c.status == Contract.Status.OFFERED && now() <= c.deadline) out.add(c);
+        }
         for (Contract c : board.offers) if (c.status == Contract.Status.OFFERED) out.add(c);
         return out;
+    }
+
+    /**
+     * Puts {@code c} on the board of station {@link Contract#stationUuid} until it is taken or its
+     * deadline passes, beside the day's offers: a world event's job, or a pod or wreck to bring home.
+     * Its giver is the station's owner unless set. Returns false (and posts nothing) for a station of
+     * no faction, or one hostile to all.
+     */
+    public boolean postEvent(Contract c) {
+        Entity station = world.engine.getEntity(c.stationUuid);
+        EconomyNode node = world.macroSim.station(c.stationUuid);
+        int owner = world.standing.factionOf(station);
+        FactionDef def = world.standing.factions().def(owner);
+        if (node == null || def == null || def.hostileToAll) return false;
+        c.id = nextId++;
+        if (c.giver == null) c.giver = def.id;
+        c.stationName = name(node);
+        c.status = Contract.Status.OFFERED;
+        extra.add(c);
+        // Late ones are dropped as new ones come
+        extra.removeIf(o -> o.status != Contract.Status.OFFERED || now() > o.deadline);
+        if (!extra.contains(c)) extra.add(c);
+        return true;
+    }
+
+    /** Offers posted outside the daily boards and still open, for tests and the event log. */
+    List<Contract> extraOffers() {
+        List<Contract> out = new ArrayList<>();
+        for (Contract c : extra) if (c.status == Contract.Status.OFFERED && now() <= c.deadline) out.add(c);
+        return out;
+    }
+
+    /**
+     * A rescue of pod {@code d}'s survivors, or a recovery of wreck {@code d}'s cargo, to be brought to
+     * {@code stationUuid}, ready for {@link #postEvent}. Null for a wreck with no cargo, or a station
+     * that is not in the economy.
+     */
+    public Contract offerFor(Derelicts.Derelict d, String stationUuid, String reason) {
+        EconomyNode node = world.macroSim.station(stationUuid);
+        if (node == null) return null;
+        Contract c = new Contract();
+        c.stationUuid = stationUuid;
+        c.targetUuid = d.id;
+        c.targetName = d.name;
+        c.destinationUuid = stationUuid;
+        c.destinationName = name(node);
+        c.reason = reason == null ? "" : reason;
+        c.deadline = d.isPod() ? d.expires : Math.min(d.expires, now() + 5 * DAY);
+        if (d.isPod()) {
+            c.type = Contract.Type.RESCUE;
+            c.quantity = d.survivors;
+            c.reward = RESCUE_PAY + RESCUE_PER_SURVIVOR * d.survivors;
+            c.standing = 5;
+        } else {
+            if (d.commodity == null || d.quantity <= 0) return null;
+            CommodityType type = world.macroSim.economy().catalog().commodity(d.commodity);
+            c.type = Contract.Type.RECOVERY;
+            c.commodity = d.commodity;
+            c.commodityName = type == null || type.displayName == null ? d.commodity : type.displayName;
+            c.quantity = d.quantity;
+            c.reward = Math.round(Math.max(RECOVERY_MIN, RECOVERY_SHARE * d.quantity * node.price(d.commodity)));
+            c.standing = 4;
+        }
+        return c;
+    }
+
+    /** The operation under way, or null. */
+    public Operation operation() {
+        return running;
+    }
+
+    /** Whether the operation {@code id} has been done. */
+    public boolean operationDone(String id) {
+        return operationsDone.contains(id);
     }
 
     /** The contracts the player holds, in the order taken. */
@@ -150,10 +280,11 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         if (c == null) return "That job is no longer on the board";
         String why = locked(c);
         if (why != null) return why;
-        if (active.size() >= MAX_ACTIVE) return "You already hold " + MAX_ACTIVE + " contracts";
+        if (held() >= MAX_ACTIVE) return "You already hold " + MAX_ACTIVE + " contracts";
         if (now() > c.deadline) return "Too late for that one";
         switch (c.type) {
             case DELIVERY: {
+                if (c.orderId < 0) break; // a world event's: no trade order behind it
                 TradeOrder order = order(c.orderId);
                 EconomyNode to = world.macroSim.station(c.targetUuid);
                 if (order == null || order.claimedBy != null || to == null) return "A freighter has taken that cargo";
@@ -169,8 +300,25 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
                 break;
             }
             case BOUNTY:
+            case RECON:
                 if (world.engine.getEntity(c.targetUuid) == null) return c.targetName + " is gone";
                 break;
+            case RESCUE:
+            case RECOVERY:
+                if (world.derelicts.get(c.targetUuid) == null) return c.targetName + " is lost";
+                break;
+            case RAID:
+                if (!world.pirateBase.standing()) return c.targetName + " has already fallen";
+                break;
+            case CONVOY:
+                for (int i = 0; i < c.targets.length; i++) {
+                    FreighterComponent f = world.macroSim.freighters().get(c.targets[i]);
+                    if (f == null) return c.targetNames[i] + " is gone";
+                    c.trips[i] = f.tripsCompleted;
+                }
+                break;
+            case OPERATION:
+                return startOperation(c);
             default:
                 break;
         }
@@ -178,6 +326,21 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         active.add(c);
         notices.add("Contract taken: " + c.title());
         return null;
+    }
+
+    /** Contracts held that count against {@link #MAX_ACTIVE}: an operation's step does not. */
+    private int held() {
+        int n = 0;
+        for (Contract c : active) if (c.step == 0) n++;
+        return n;
+    }
+
+    /**
+     * Fails every contract the player holds, an operation's step with it, at the usual cost: what
+     * happens when the player has to be rescued.
+     */
+    public void failAll(String why) {
+        for (Contract c : new ArrayList<>(active)) end(c, Contract.Status.FAILED, why);
     }
 
     /** Gives up contract {@code id}, at {@link #FAIL_SHARE} of its standing; returns null, or why not. */
@@ -195,6 +358,9 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         boards.clear();
         active.clear();
         history.clear();
+        extra.clear();
+        running = null;
+        operationsDone.clear();
         nextId = 1;
     }
 
@@ -219,18 +385,46 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             case BOUNTY:
                 checkBounty(c);
                 break;
-            default:
+            case PATROL:
                 checkPatrol(c, player);
                 break;
+            case RESCUE:
+                checkRescue(c, player);
+                break;
+            case RECOVERY:
+                checkRecovery(c, player);
+                break;
+            case CONVOY:
+                checkConvoy(c, player);
+                break;
+            case DEFEND:
+                checkDefend(c);
+                break;
+            case RECON:
+                checkRecon(c, player);
+                break;
+            case RAID:
+                if (!world.pirateBase.standing()) end(c, Contract.Status.DONE, c.targetName + " has fallen");
+                break;
+            default:
+                break;
         }
-        if (c.isActive() && now() > c.deadline) end(c, Contract.Status.FAILED, "out of time");
+        if (c.isActive() && now() > c.deadline) {
+            if (c.type == Contract.Type.CONVOY || c.type == Contract.Type.DEFEND) {
+                // What is still open by then went badly; what went well is paid for
+                for (int i = 0; i < c.marks.length; i++) if (c.marks[i] == Contract.MARK_OPEN) c.marks[i] = Contract.MARK_BAD;
+                settleGroup(c, "out of time");
+            } else {
+                end(c, Contract.Status.FAILED, "out of time");
+            }
+        }
     }
 
     /** Hands the goods over while docked at the buyer with clearance, paying the agreed price for each unit. */
     private void checkDelivery(Contract c, Entity player) {
-        TradeOrder order = order(c.orderId);
+        TradeOrder order = c.orderId < 0 ? null : order(c.orderId);
         EconomyNode to = world.macroSim.station(c.targetUuid);
-        if (order == null || to == null) {
+        if ((order == null && c.orderId >= 0) || to == null) {
             end(c, Contract.Status.CANCELLED, to == null ? c.targetName + " is gone" : "the order was withdrawn");
             return;
         }
@@ -245,7 +439,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         // The giver pays the agreed price, whatever the market gave
         trader.credits = Math.max(trader.credits, before + sold * c.unitPrice);
         c.delivered += sold;
-        to.expectIncoming(c.commodity, -sold);
+        if (order != null) to.expectIncoming(c.commodity, -sold);
         if (c.quantity - c.delivered < 0.5) {
             end(c, Contract.Status.DONE, "delivered");
         } else {
@@ -291,6 +485,153 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         }
     }
 
+    /** Picks the pod's survivors up with a slow close pass, then brings them in on docking at the station. */
+    private void checkRescue(Contract c, Entity player) {
+        if (c.progress == 0) {
+            Derelicts.Derelict pod = world.derelicts.get(c.targetUuid);
+            if (pod == null) {
+                end(c, Contract.Status.FAILED, c.targetName + "'s air ran out");
+                return;
+            }
+            if (!world.derelicts.closeTo(player, pod)) return;
+            world.derelicts.remove(pod.id);
+            c.progress = 1;
+            notices.add(String.format(Locale.ROOT, "Picked up %.0f survivors from %s; now to %s", c.quantity,
+                    c.targetName, c.destinationName));
+            return;
+        }
+        if (dockedAt(player, c.destinationUuid)) end(c, Contract.Status.DONE, "survivors brought home");
+    }
+
+    /**
+     * Holds alongside the wreck for {@link Derelicts#SALVAGE_SECONDS} while the crew carry its cargo into
+     * the hold, then hands it over on docking at the station; a hold too full for all of it takes what fits.
+     */
+    private void checkRecovery(Contract c, Entity player) {
+        TraderComponent trader = player.getComponent(TraderComponent.class);
+        CommodityType type = world.macroSim.economy().catalog().commodity(c.commodity);
+        if (c.progress == 0) {
+            Derelicts.Derelict wreck = world.derelicts.get(c.targetUuid);
+            if (wreck == null) {
+                end(c, Contract.Status.FAILED, c.targetName + " drifted out of reach");
+                return;
+            }
+            if (!world.derelicts.closeTo(player, wreck)) {
+                c.arrivedAt = -1;
+                return;
+            }
+            if (c.arrivedAt < 0) {
+                c.arrivedAt = now();
+                notices.add("Holding alongside " + c.targetName + ": the crew are carrying the " + c.commodityName + " across");
+                return;
+            }
+            if (now() - c.arrivedAt < Derelicts.SALVAGE_SECONDS || trader == null || type == null) return;
+            double stowed = trader.stow(type, c.quantity);
+            if (stowed < 0.5) {
+                c.arrivedAt = now();
+                notices.add("No room in the hold for the " + c.commodityName);
+                return;
+            }
+            if (stowed < c.quantity - 0.5) {
+                // What did not fit is left; the pay is for what comes home
+                c.reward = Math.round(c.reward * stowed / c.quantity);
+                c.quantity = Math.floor(stowed);
+            }
+            world.derelicts.remove(wreck.id);
+            c.progress = 1;
+            notices.add(String.format(Locale.ROOT, "Recovered %.0f %s from %s; now to %s", c.quantity, c.commodityName,
+                    c.targetName, c.destinationName));
+            return;
+        }
+        if (!dockedAt(player, c.destinationUuid) || trader == null || type == null) return;
+        double units = trader.handOver(type, c.quantity - c.delivered);
+        if (units <= 0) return;
+        c.delivered += units;
+        if (c.delivered < c.quantity - 0.5) c.reward = Math.round(c.reward * c.delivered / c.quantity);
+        end(c, Contract.Status.DONE, c.commodityName + " recovered");
+    }
+
+    /** Each freighter docking at the buyer is marked: with the player close by, or without them, or lost. */
+    private void checkConvoy(Contract c, Entity player) {
+        Entity station = world.engine.getEntity(c.destinationUuid);
+        for (int i = 0; i < c.targets.length; i++) {
+            if (c.marks[i] != Contract.MARK_OPEN) continue;
+            FreighterComponent f = world.macroSim.freighters().get(c.targets[i]);
+            if (f == null) {
+                c.marks[i] = Contract.MARK_BAD;
+                notices.add("Convoy: " + c.targetNames[i] + " was lost");
+                continue;
+            }
+            if (f.tripsCompleted <= c.trips[i]) continue;
+            if (distance(player, station) <= ESCORT_RANGE) {
+                c.marks[i] = Contract.MARK_GOOD;
+                notices.add("Convoy: " + c.targetNames[i] + " docked safely");
+            } else if (now() - arrival(c, i) > ESCORT_GRACE) {
+                c.marks[i] = Contract.MARK_BAD;
+                notices.add("Convoy: " + c.targetNames[i] + " docked without you");
+            }
+        }
+        if (c.count(Contract.MARK_OPEN) == 0) settleGroup(c, "convoy in");
+    }
+
+    /** Sim second the convoy's freighter {@code i} was first seen docked. */
+    private double arrival(Contract c, int i) {
+        if (c.arrivals.length != c.targets.length) {
+            c.arrivals = new double[c.targets.length];
+            java.util.Arrays.fill(c.arrivals, -1);
+        }
+        if (c.arrivals[i] < 0) c.arrivals[i] = now();
+        return c.arrivals[i];
+    }
+
+    /** Each raider beaten, or gone, is marked; once all are, the station is safe. */
+    private void checkDefend(Contract c) {
+        for (int i = 0; i < c.targets.length; i++) {
+            if (c.marks[i] != Contract.MARK_OPEN) continue;
+            Entity raider = world.engine.getEntity(c.targets[i]);
+            if (raider == null || FirstPlay.beaten(world, raider)) {
+                c.marks[i] = Contract.MARK_GOOD;
+                if (c.count(Contract.MARK_OPEN) > 0) notices.add("Defence: " + c.targetNames[i] + " is beaten");
+            }
+        }
+        if (c.count(Contract.MARK_OPEN) == 0) settleGroup(c, c.destinationName + " is safe");
+    }
+
+    /** Found once the player comes within {@link #RECON_RANGE} of the pirate, on the rails or in the bubble. */
+    private void checkRecon(Contract c, Entity player) {
+        Entity pirate = world.engine.getEntity(c.targetUuid);
+        if (pirate == null) {
+            end(c, Contract.Status.CANCELLED, c.targetName + " is gone");
+            return;
+        }
+        if (distance(player, pirate) > RECON_RANGE) return;
+        HostileComponent h = pirate.getComponent(HostileComponent.class);
+        EconomyNode lurk = h == null || h.stationUuid == null ? null : world.macroSim.station(h.stationUuid);
+        // An intel step's pirate leads the way home to the base, before the raid after it is posted
+        if (c.intel) world.pirateBase.reveal("Followed " + c.targetName + " home");
+        end(c, Contract.Status.DONE, "found " + c.targetName + (lurk == null ? "" : " by " + name(lurk)));
+    }
+
+    /** Ends a convoy or defence whose targets are all marked: done if any went well, paid for those. */
+    private void settleGroup(Contract c, String why) {
+        int good = c.count(Contract.MARK_GOOD), n = c.targets.length;
+        if (good == 0) {
+            end(c, Contract.Status.FAILED, c.type == Contract.Type.CONVOY ? "none of the convoy came in with you"
+                    : "the raiders got away");
+            return;
+        }
+        if (good < n) {
+            c.reward = Math.round(c.reward * good / n);
+            c.standing = c.standing * good / n;
+        }
+        end(c, Contract.Status.DONE, String.format(Locale.ROOT, "%s, %d of %d", why, good, n));
+    }
+
+    /** True if the player is docked with clearance at the station {@code uuid}. */
+    private boolean dockedAt(Entity player, String uuid) {
+        return world.docking.dockedWithClearance(player) && world.docking.dockedTo(player) == world.engine.getEntity(uuid);
+    }
+
     /** Ends {@code c}: pays a success, charges a failure, releases a delivery's trade order. */
     private void end(Contract c, Contract.Status status, String why) {
         active.remove(c);
@@ -318,15 +659,238 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         if (c.type == Contract.Type.DELIVERY) release(c);
         history.add(c);
         while (history.size() > HISTORY) history.remove(0);
+        if (c.step > 0) advanceOperation(c);
     }
 
     /** Hands a delivery's trade order back: what was not delivered is no longer on its way. */
     private void release(Contract c) {
+        if (c.orderId < 0) return;
         TradeOrder order = order(c.orderId);
         if (order != null && PLAYER_CLAIM.equals(order.claimedBy)) world.macroSim.economy().close(order);
         EconomyNode to = world.macroSim.station(c.targetUuid);
         double undelivered = c.quantity - c.delivered;
         if (to != null && undelivered > 0) to.expectIncoming(c.commodity, -undelivered);
+    }
+
+    // ------------------------------------------------------------------ operations
+
+    /** Takes an operation's offer: starts it with its first step, if the world has one to give. */
+    private String startOperation(Contract offer) {
+        if (running != null) return "You are already on " + running.name;
+        OperationDef def = operationDef(offer.operationId);
+        if (def == null || def.steps.isEmpty()) return "That operation is no longer on";
+        Operation op = new Operation();
+        op.id = def.id;
+        op.name = offer.operationName;
+        op.giver = offer.giver;
+        op.stationUuid = offer.stationUuid;
+        op.steps = def.steps.toArray(new String[0]);
+        op.reward = def.reward;
+        op.standing = def.standing;
+        op.step = 1;
+        Contract first = stepContract(op);
+        if (first == null) return "There is nothing for " + op.name + " to do just now";
+        offer.status = Contract.Status.DONE;
+        offer.outcome = "taken";
+        running = op;
+        active.add(first);
+        notices.add("Operation " + op.name + " under way: " + first.heading());
+        return null;
+    }
+
+    /** Moves the operation on after its step {@code c} ended: the next step, the reward, or its end. */
+    private void advanceOperation(Contract c) {
+        Operation op = running;
+        if (op == null || !op.id.equals(c.operationId) || op.step != c.step) return;
+        FactionStanding s = world.standing;
+        switch (c.status) {
+            case DONE:
+                if (c.type == Contract.Type.RECON) op.quarry = c.targetUuid;
+                if (op.step < op.steps.length) {
+                    op.step++;
+                    Contract next = stepContract(op);
+                    if (next == null) {
+                        running = null;
+                        notices.add("Operation " + op.name + " called off: nothing left to do");
+                    } else {
+                        active.add(next);
+                        notices.add("Operation " + op.name + ": " + next.heading());
+                    }
+                    return;
+                }
+                running = null;
+                operationsDone.add(op.id);
+                TraderComponent trader = world.getPlayer() == null ? null : world.getPlayer().getComponent(TraderComponent.class);
+                if (trader != null) trader.credits += op.reward;
+                s.reward(op.giver, op.standing, "saw their operations through");
+                notices.add(String.format(Locale.ROOT, "Operation %s done. Paid %,.0f cr, standing %+.0f with %s", op.name,
+                        op.reward, op.standing, s.factions().name(s.factions().index(op.giver))));
+                return;
+            case CANCELLED:
+                running = null;
+                notices.add("Operation " + op.name + " called off");
+                return;
+            default:
+                running = null;
+                s.penalize(op.giver, op.standing * FAIL_SHARE, "failed their operations");
+                notices.add(String.format(Locale.ROOT, "Operation %s failed. Standing %+.0f with %s", op.name,
+                        -op.standing * FAIL_SHARE, s.factions().name(s.factions().index(op.giver))));
+                return;
+        }
+    }
+
+    /** The contract for {@code op}'s step under way, taken at once; null if the world has nothing of that kind now. */
+    private Contract stepContract(Operation op) {
+        EconomyNode node = world.macroSim.station(op.stationUuid);
+        int giver = world.standing.factions().index(op.giver);
+        if (node == null || giver < 0) return null;
+        String kind = op.steps[op.step - 1];
+        List<Contract> options;
+        switch (kind) {
+            case "patrol":
+                options = patrols(node, giver);
+                break;
+            case "recon":
+                options = recons(giver, op.quarry);
+                break;
+            case "intel":
+                // Already known: nothing to find, on to the next step
+                if (world.pirateBase.found() || !world.pirateBase.standing()) {
+                    if (op.step >= op.steps.length) return null;
+                    op.step++;
+                    return stepContract(op);
+                }
+                options = recons(giver, op.quarry);
+                for (Contract o : options) {
+                    o.intel = true;
+                    o.reason = "Follow it home to the raiders' base";
+                }
+                break;
+            case "raid":
+                options = raids(giver, true);
+                break;
+            case "bounty":
+                options = bounties(node, giver);
+                // The pirate the recon found, if it is still out there
+                Contract quarry = null;
+                for (Contract b : options) if (b.targetUuid.equals(op.quarry)) quarry = b;
+                if (quarry != null) options = new ArrayList<>(List.of(quarry));
+                break;
+            case "escort":
+                options = escorts(node, giver);
+                break;
+            case "convoy":
+                options = convoys(node, giver);
+                if (options.isEmpty()) options = escorts(node, giver);
+                break;
+            case "delivery":
+                options = deliveries(node, giver);
+                break;
+            default:
+                options = new ArrayList<>();
+                break;
+        }
+        options.removeIf(o -> !acceptable(o));
+        if (options.isEmpty()) return null;
+        // Near jobs first: an operation's steps follow on from each other
+        options.sort(java.util.Comparator.comparing(o -> o.tier));
+        Random rnd = new Random(op.id.hashCode() * 31L + op.step + (long) Math.floor(now() / DAY));
+        int nearest = 0;
+        while (nearest < options.size() && options.get(nearest).tier == options.get(0).tier) nearest++;
+        Contract c = options.get(rnd.nextInt(nearest));
+        c.id = nextId++;
+        c.giver = op.giver;
+        c.stationUuid = op.stationUuid;
+        c.stationName = name(node);
+        c.tier = 0;
+        c.operationId = op.id;
+        c.operationName = op.name;
+        c.step = op.step;
+        c.steps = op.steps.length;
+        // Taken as it is posted
+        switch (c.type) {
+            case DELIVERY: {
+                TradeOrder order = order(c.orderId);
+                EconomyNode to = world.macroSim.station(c.targetUuid);
+                if (order == null || order.claimedBy != null || to == null) return null;
+                order.claimedBy = PLAYER_CLAIM;
+                order.quantity = c.quantity;
+                to.expectIncoming(c.commodity, c.quantity);
+                break;
+            }
+            case ESCORT:
+                c.progress = world.macroSim.freighters().get(c.targetUuid).tripsCompleted;
+                break;
+            case CONVOY:
+                for (int i = 0; i < c.targets.length; i++) c.trips[i] = world.macroSim.freighters().get(c.targets[i]).tripsCompleted;
+                break;
+            default:
+                break;
+        }
+        c.status = Contract.Status.ACTIVE;
+        return c;
+    }
+
+    /** Whether the world still has what {@code c} is about, so it can be taken now. */
+    private boolean acceptable(Contract c) {
+        switch (c.type) {
+            case ESCORT:
+                return world.macroSim.freighters().get(c.targetUuid) != null;
+            case CONVOY:
+                for (String f : c.targets) if (world.macroSim.freighters().get(f) == null) return false;
+                return true;
+            case BOUNTY:
+            case RECON:
+                return world.engine.getEntity(c.targetUuid) != null;
+            case RAID:
+                return world.pirateBase.standing();
+            default:
+                return true;
+        }
+    }
+
+    private OperationDef operationDef(String id) {
+        var content = world.getContent();
+        return content == null || id == null || !content.defs.has("operation", id) ? null
+                : content.defs.get("operation", id, OperationDef.class);
+    }
+
+    /** The operations the giver of this board offers today: unlocked by rank, not done, none under way. */
+    private List<Contract> operations(int giver) {
+        List<Contract> out = new ArrayList<>();
+        var content = world.getContent();
+        FactionStanding s = world.standing;
+        if (content == null || running != null) return out;
+        for (OperationDef def : content.defs.all("operation", OperationDef.class)) {
+            if (operationsDone.contains(def.id) || def.steps.isEmpty()) continue;
+            String giverId = def.giver == null || def.giver.isEmpty() ? s.factions().id(s.sponsor()) : def.giver;
+            if (s.factions().index(giverId) != giver) continue;
+            int rank = rankIndex(def.rank);
+            if (rank < 0 || s.record().rank < rank) continue;
+            Contract c = new Contract();
+            c.type = Contract.Type.OPERATION;
+            c.operationId = def.id;
+            c.operationName = def.name == null ? def.id : def.name;
+            c.targetName = c.operationName;
+            c.reason = def.text == null ? "" : def.text;
+            c.steps = def.steps.size();
+            c.tier = giver == s.sponsor() ? rank : 0;
+            c.reward = def.reward;
+            c.standing = def.standing;
+            c.deadline = now() + DAY;
+            out.add(c);
+        }
+        return out;
+    }
+
+    private int rankIndex(String id) {
+        RankLadder ranks = world.standing.ranks();
+        if (id == null) return 0;
+        for (int i = 0; i < ranks.size(); i++) {
+            RankDef r = ranks.get(i);
+            if (id.equals(r.id)) return i;
+        }
+        return -1;
     }
 
     // ------------------------------------------------------------------ waypoints
@@ -340,15 +904,22 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
 
     /** "Deliver 120 Water to Highport: 1.4 d left, 340 km", for the HUD. */
     public String describe(Contract c) {
-        return c.title() + ": " + progress(c);
+        return c.heading() + ": " + progress(c);
     }
 
     /** "1.4 d left, 340 km": the time left and how far off the waypoint is. */
     public String progress(Contract c) {
         StringBuilder out = new StringBuilder();
         out.append(RailsTrafficMap.formatEta(c.deadline - now())).append(" left");
-        Entity point = world.engine.getEntity(c.waypointUuid());
-        double d = point == null ? Double.NaN : distance(world.getPlayer(), point);
+        if (c.type == Contract.Type.CONVOY) {
+            out.append(String.format(Locale.ROOT, ", %d of %d in", c.count(Contract.MARK_GOOD), c.targets.length));
+        } else if (c.type == Contract.Type.DEFEND) {
+            out.append(String.format(Locale.ROOT, ", %d of %d beaten", c.count(Contract.MARK_GOOD), c.targets.length));
+        } else if (c.type == Contract.Type.RECOVERY && c.progress == 0 && c.arrivedAt >= 0) {
+            out.append(String.format(Locale.ROOT, ", carrying across %.0f s", Math.max(0,
+                    Derelicts.SALVAGE_SECONDS - (now() - c.arrivedAt))));
+        }
+        double d = distanceTo(world.getPlayer(), c.waypointUuid());
         if (!Double.isNaN(d) && !Double.isInfinite(d)) {
             out.append(", ").append(d < 10_000 ? String.format(Locale.ROOT, "%.1f km", d / 1000)
                     : String.format(Locale.ROOT, "%,.0f km", d / 1000));
@@ -393,11 +964,15 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         kinds.add(escorts(node, giver));
         kinds.add(bounties(node, giver));
         kinds.add(patrols(node, giver));
+        kinds.add(convoys(node, giver));
+        kinds.add(raids(giver, false));
         for (List<Contract> k : kinds) Collections.shuffle(k, rnd);
         // Wanted ships close by (in the bubble) come first, so a bounty can be flown at once
         kinds.get(2).sort(java.util.Comparator.comparing(c -> !inBubble(c.targetUuid)));
         // ...and near lanes come first, so with many stations the patrol on show is one a newcomer may fly
         kinds.get(3).sort(java.util.Comparator.comparingInt(c -> c.tier));
+        // An operation the player has earned heads the board
+        out.addAll(operations(giver));
         // Round robin over the kinds, so a board shows a spread
         for (int i = 0; out.size() < OFFERS_PER_STATION; i++) {
             boolean any = false;
@@ -412,7 +987,13 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         // The board always has something a newcomer may take
         boolean open = false;
         for (Contract c : out) open |= c.tier == 0;
-        if (!open && !out.isEmpty()) out.get(0).tier = 0;
+        if (!open && !out.isEmpty()) {
+            for (Contract c : out) {
+                if (c.type == Contract.Type.OPERATION || c.type == Contract.Type.RAID) continue;
+                c.tier = 0;
+                break;
+            }
+        }
         for (Contract c : out) {
             c.id = nextId++;
             c.giver = def.id;
@@ -485,7 +1066,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
     }
 
     /** Ships at war with the giver, priced by how they measure up to the player's and by {@link Difficulty}. */
-    private List<Contract> bounties(EconomyNode node, int giver) {
+    List<Contract> bounties(EconomyNode node, int giver) {
         List<Contract> out = new ArrayList<>();
         Entity player = world.getPlayer();
         double own = player == null ? 0 : Difficulty.shipValue(player);
@@ -507,7 +1088,112 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             c.tier = ratio <= 1.2 ? 0 : ratio <= 2 ? 1 : 2;
             c.reward = Math.round(BOUNTY_PAY * (1 + c.tier) * Difficulty.of(world));
             c.standing = 6 + 3 * c.tier;
+            // A pirate known for robbing freighters is worth more
+            int robbed = hostile == null ? 0 : hostile.plunders;
+            if (robbed > 0) {
+                c.record = record(hostile);
+                c.reward = Math.round(c.reward * (1 + RECORD_PREMIUM * Math.min(robbed, RECORD_CAP)));
+                c.standing += Math.min(robbed, RECORD_CAP);
+            }
             c.deadline = now() + 3 * DAY;
+            out.add(c);
+        }
+        return out;
+    }
+
+    /** "robbed 2 freighters, last of Water": what a pirate's bounty says it has done. */
+    String record(HostileComponent h) {
+        String what = h.plunders == 1 ? "robbed a freighter" : "robbed " + h.plunders + " freighters";
+        if (h.lootCommodity == null) return what;
+        CommodityType type = world.macroSim.economy().catalog().commodity(h.lootCommodity);
+        return what + ", last of " + (type == null || type.displayName == null ? h.lootCommodity : type.displayName);
+    }
+
+    /** Freighters hauling out of this station to the same buyer, two or more, to be seen in together. */
+    private List<Contract> convoys(EconomyNode node, int giver) {
+        Map<String, List<TradeOrder>> byBuyer = new LinkedHashMap<>();
+        for (TradeOrder o : world.macroSim.economy().orders()) {
+            if (o.claimedBy == null || !o.fromUuid.equals(node.stationUuid) || targeted(o.claimedBy)) continue;
+            if (world.macroSim.freighters().get(o.claimedBy) == null || world.macroSim.station(o.toUuid) == null) continue;
+            List<TradeOrder> run = byBuyer.computeIfAbsent(o.toUuid, k -> new ArrayList<>());
+            boolean again = false;
+            for (TradeOrder r : run) again |= r.claimedBy.equals(o.claimedBy);
+            if (!again) run.add(o);
+        }
+        List<Contract> out = new ArrayList<>();
+        for (Map.Entry<String, List<TradeOrder>> e : byBuyer.entrySet()) {
+            List<TradeOrder> run = e.getValue();
+            if (run.size() < 2) continue;
+            boolean far = far(node.stationUuid, e.getKey());
+            Contract c = new Contract();
+            c.type = Contract.Type.CONVOY;
+            int n = run.size();
+            c.targets = new String[n];
+            c.targetNames = new String[n];
+            c.marks = new int[n];
+            c.trips = new int[n];
+            double eta = now();
+            for (int i = 0; i < n; i++) {
+                FreighterComponent f = world.macroSim.freighters().get(run.get(i).claimedBy);
+                c.targets[i] = run.get(i).claimedBy;
+                c.targetNames[i] = f.displayName == null ? "a freighter" : f.displayName;
+                if (!Double.isNaN(f.arrivalTime)) eta = Math.max(eta, f.arrivalTime);
+            }
+            c.targetUuid = c.targets[0];
+            c.targetName = c.targetNames[0];
+            c.destinationUuid = e.getKey();
+            c.destinationName = name(world.macroSim.station(e.getKey()));
+            c.tier = far || n >= 3 ? 1 : 0;
+            c.reward = CONVOY_PAY * n * (far ? FAR_PAY : 1);
+            c.standing = 3 + 2 * n;
+            c.deadline = eta + DAY * (far ? FAR_DAYS : NEAR_DAYS);
+            out.add(c);
+        }
+        return out;
+    }
+
+    /**
+     * A raid on the pirates' base, from the sponsor once it is found and while it stands; an
+     * operation's raid step ({@code step}) needs no rank of its own.
+     */
+    private List<Contract> raids(int giver, boolean step) {
+        List<Contract> out = new ArrayList<>();
+        PirateBase base = world.pirateBase;
+        String uuid = base.uuid();
+        if (uuid == null || !base.standing() || !base.found() || targeted(uuid)) return out;
+        if (!step && giver != world.standing.sponsor()) return out;
+        Contract c = new Contract();
+        c.type = Contract.Type.RAID;
+        c.targetUuid = uuid;
+        c.targetName = base.name();
+        c.tier = step ? 0 : RAID_RANK;
+        c.reward = Math.round(RAID_PAY * Difficulty.of(world));
+        c.standing = 15;
+        c.deadline = now() + DAY * RAID_DAYS;
+        c.reason = "Take it or leave no pirate alive aboard";
+        out.add(c);
+        return out;
+    }
+
+    /** Pirates at war with the giver, to be found where they lurk; {@code skip} (a pirate already found) last. */
+    private List<Contract> recons(int giver, String skip) {
+        List<Contract> out = new ArrayList<>();
+        for (Map.Entry<String, HostileComponent> e : world.macroSim.hostiles().all().entrySet()) {
+            HostileComponent h = e.getValue();
+            Entity ship = world.engine.getEntity(e.getKey());
+            int faction = ship == null ? -1 : world.standing.factionOf(ship);
+            if (!h.isPirate() || ship == null || e.getKey().equals(skip) || targeted(e.getKey())) continue;
+            if (faction >= 0 && !world.standing.factions().atWar(giver, faction)) continue;
+            Contract c = new Contract();
+            c.type = Contract.Type.RECON;
+            c.targetUuid = e.getKey();
+            c.targetName = h.displayName == null ? "a pirate" : h.displayName;
+            EconomyNode lurk = h.stationUuid == null ? null : world.macroSim.station(h.stationUuid);
+            boolean far = lurk != null && world.getPlayer() != null && far(lurk.stationUuid, world.universe.uuidOf(world.getPlayer()));
+            c.tier = far ? 1 : 0;
+            c.reward = RECON_PAY * (far ? FAR_PAY : 1);
+            c.standing = 3;
+            c.deadline = now() + DAY * (far ? FAR_DAYS : NEAR_DAYS + 1);
             out.add(c);
         }
         return out;
@@ -544,6 +1230,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
     }
 
     private Contract findOffer(long id) {
+        for (Contract c : extra) if (c.id == id && c.status == Contract.Status.OFFERED) return c;
         for (StationOffers board : boards.values()) {
             for (Contract c : board.offers) if (c.id == id && c.status == Contract.Status.OFFERED) return c;
         }
@@ -568,6 +1255,15 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
 
     private double now() {
         return world.engine.getSimSeconds();
+    }
+
+    /** Meters from {@code from} to the craft or derelict {@code uuid}; NaN if it cannot be placed. */
+    double distanceTo(Entity from, String uuid) {
+        Entity point = uuid == null ? null : world.engine.getEntity(uuid);
+        if (point != null) return distance(from, point);
+        Derelicts.Derelict d = world.derelicts.get(uuid);
+        if (from == null || d == null || !position(from, a) || !world.derelicts.position(d, now(), b)) return Double.NaN;
+        return Math.hypot(a.x - b.x, a.y - b.y);
     }
 
     /** Meters between two craft, on the rails or in the bubble; infinite if either cannot be placed. */
@@ -606,6 +1302,9 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         json.writeValue("boards", boards.values().toArray(new StationOffers[0]), StationOffers[].class);
         json.writeValue("active", active.toArray(new Contract[0]), Contract[].class);
         json.writeValue("history", history.toArray(new Contract[0]), Contract[].class);
+        json.writeValue("extra", extra.toArray(new Contract[0]), Contract[].class);
+        if (running != null) json.writeValue("operation", running, Operation.class);
+        json.writeValue("operationsDone", operationsDone.toArray(new String[0]), String[].class);
     }
 
     @Override
@@ -618,6 +1317,11 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         if (taken != null) for (Contract c : taken) if (c != null && c.type != null) active.add(c);
         Contract[] old = data.has("history") ? json.readValue(Contract[].class, data.get("history")) : null;
         if (old != null) for (Contract c : old) if (c != null && c.type != null) history.add(c);
+        Contract[] posted = data.has("extra") ? json.readValue(Contract[].class, data.get("extra")) : null;
+        if (posted != null) for (Contract c : posted) if (c != null && c.type != null) extra.add(c);
+        running = data.has("operation") ? json.readValue(Operation.class, data.get("operation")) : null;
+        String[] done = data.has("operationsDone") ? json.readValue(String[].class, data.get("operationsDone")) : null;
+        if (done != null) operationsDone.addAll(java.util.Arrays.asList(done));
         marked = new HashSet<>();
     }
 }

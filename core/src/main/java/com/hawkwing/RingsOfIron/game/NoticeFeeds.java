@@ -48,6 +48,10 @@ public final class NoticeFeeds {
 
     /** Contracts done, called off or failed matter; taking one or a delivery on the way is news. */
     static NoticeLog.Kind contractKind(String news) {
+        // An operation ending (done, failed, called off) matters as a contract's end does
+        if (news.startsWith("Operation") && (news.contains(" done.") || news.contains(" failed.") || news.contains("called off"))) {
+            return NoticeLog.Kind.IMPORTANT;
+        }
         if (news.startsWith("Contract taken") || !news.startsWith("Contract")) return NoticeLog.Kind.INFO;
         return NoticeLog.Kind.IMPORTANT;
     }

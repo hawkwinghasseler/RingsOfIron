@@ -13,13 +13,15 @@ import com.ringsofiron.uihud.providers.TrafficMapProvider;
 /**
  * ui-hud's traffic map from macro-sim's rails snapshot: stations and haulers around the body the
  * player orbits (or the body the bubble falls around), plus that body's moons and the player.
- * Haulers inside the bubble have no rails entry and show as world markers instead.
+ * Haulers inside the bubble have no rails entry and show as world markers instead. Escape pods and
+ * wrecks ({@link Derelicts}) around the same body are shown too.
  */
 public class RailsTrafficMap implements TrafficMapProvider {
     private final GameWorld world;
     private final StateVector parentState = new StateVector();
     private final StateVector bodyState = new StateVector();
     private final com.ringsofiron.macrosim.rails.StateVector entryState = new com.ringsofiron.macrosim.rails.StateVector();
+    private final StateVector derelictState = new StateVector();
     private final double[] trueState = new double[4];
     private final Array<Entity> moons = new Array<>();
 
@@ -74,6 +76,20 @@ public class RailsTrafficMap implements TrafficMapProvider {
                 c.name = hauler.displayName == null ? "Hauler" : hauler.displayName;
                 c.detail = haulerDetail(hauler, t);
             }
+        }
+
+        world.universe.absoluteState(frame, t, parentState);
+        for (Derelicts.Derelict d : world.derelicts.all()) {
+            if (!world.derelicts.position(d, t, derelictState)) continue;
+            Entity parent = world.universe.entity(d.parentUuid);
+            if (parent != frame && (parent == null || world.universe.parentOf(parent) != frame)) continue;
+            Contact c = out.addContact();
+            c.kind = ContactKind.OTHER;
+            c.name = d.name == null ? "Derelict" : d.name;
+            c.detail = world.derelicts.describe(d);
+            c.x = derelictState.x - parentState.x;
+            c.y = derelictState.y - parentState.y;
+            c.objective = world.contracts.isWaypoint(d.id);
         }
 
         if (player != null && playerPosition(player, frame)) {

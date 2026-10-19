@@ -452,16 +452,37 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         for (int k = 0; k < choices.length; k++) {
             String lurk = choices[(spawned + k) % choices.length];
             if (!anywhere && nearPlayer(lurk, now)) continue;
-            Entity ship = spawnShip(shipId, PIRATE_CREW);
-            if (ship == null) return;
-            String name = (GUNSHIP.equals(shipId) ? "Pirate gunship " : "Pirate raider ") + (++spawned);
-            HostileComponent h = new HostileComponent(name, shipId, PIRATES, HostileComponent.Role.PIRATE,
-                    firepower(ship));
-            // Spawned mid-update, the ship isn't registered by uuid until the update ends
-            ship.add(h);
-            world.macroSim.addPirate(ship.getComponent(UuidComponent.class).id, h, lurk);
+            spawnPirateAt(shipId, lurk);
             return;
         }
+    }
+
+    /** A pirate of {@code shipId} lurking by {@code lurk}; its uuid, or null if the data has no such ship. */
+    private String spawnPirateAt(String shipId, String lurk) {
+        Entity ship = spawnShip(shipId, PIRATE_CREW);
+        if (ship == null) return null;
+        String name = (GUNSHIP.equals(shipId) ? "Pirate gunship " : "Pirate raider ") + (++spawned);
+        HostileComponent h = new HostileComponent(name, shipId, PIRATES, HostileComponent.Role.PIRATE,
+                firepower(ship));
+        // Spawned mid-update, the ship isn't registered by uuid until the update ends
+        ship.add(h);
+        String uuid = ship.getComponent(UuidComponent.class).id;
+        world.macroSim.addPirate(uuid, h, lurk);
+        return uuid;
+    }
+
+    /**
+     * Raiders come to work {@code station}'s lanes: {@code count} more pirates of {@link #RAIDER}
+     * lurking by it, on top of the usual population ({@link WorldEvents}' raid). Call outside the
+     * engine's update. Returns their uuids.
+     */
+    public List<String> raid(String station, int count) {
+        List<String> out = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            String uuid = spawnPirateAt(RAIDER, station);
+            if (uuid != null) out.add(uuid);
+        }
+        return out;
     }
 
     private void spawnPatrol(String faction, String[] route) {

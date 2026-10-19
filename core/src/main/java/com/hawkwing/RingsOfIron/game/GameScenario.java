@@ -133,6 +133,8 @@ public class GameScenario {
         content = world.loadContent(assetsDir, modsDir);
         // The designed start keeps whatever dice the world was built with
         if (newGame.seeded) world.reseed(newGame.combatSeed(), newGame.crewSeed());
+        // ...and the world's events roll from it too
+        if (newGame.seeded) world.events.seed = newGame.stream(6);
         world.engine.getSerializationService().addParticipant(new SeedRecord());
 
         Entity earth = world.engine.createEntity();
@@ -456,10 +458,12 @@ public class GameScenario {
         world.tension.reset();
         // ...from the designed start, unless the save knows its seed
         newGame = NewGame.designed();
-        // ...and with no contracts
+        // ...and with no contracts, derelicts or events
         world.contracts.reset();
         // ...and outside First Play and the opening walkthrough
         world.guides.reset();
+        world.derelicts.reset();
+        world.events.reset();
         world.engine.getSerializationService().loadFromFile(file);
         relink();
         world.standing.migrateLegacy(player);

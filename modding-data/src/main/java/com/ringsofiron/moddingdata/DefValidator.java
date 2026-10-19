@@ -2,6 +2,7 @@ package com.ringsofiron.moddingdata;
 
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.moddingdata.defs.FactionDef;
+import com.ringsofiron.moddingdata.defs.OperationDef;
 import com.ringsofiron.moddingdata.defs.RankDef;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.moddingdata.defs.SoundEventData;
@@ -107,7 +108,30 @@ public final class DefValidator {
                 report.warn(e.lastSource(), e + " allows unknown chassis '" + rank.maxChassis + "'");
             }
         }
+
+        for (DefEntry e : defs.entries("operation")) {
+            OperationDef op;
+            try {
+                op = defs.convert(e, OperationDef.class);
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
+            if (op.giver != null && !op.giver.isEmpty() && !defs.has("faction", op.giver)) {
+                report.warn(e.lastSource(), e + " is given by unknown faction '" + op.giver + "'");
+            }
+            if (op.rank != null && !defs.has("rank", op.rank)) {
+                report.warn(e.lastSource(), e + " needs unknown rank '" + op.rank + "'");
+            }
+            if (op.steps.isEmpty()) report.warn(e.lastSource(), e + " has no steps");
+            for (String step : op.steps) {
+                if (!OPERATION_STEPS.contains(step)) report.warn(e.lastSource(), e + " has unknown step '" + step + "'");
+            }
+        }
     }
+
+    /** The contract types an operation's steps may be. */
+    public static final java.util.Set<String> OPERATION_STEPS =
+            java.util.Set.of("patrol", "recon", "bounty", "escort", "convoy", "delivery", "intel", "raid");
 
     private static boolean stationChassis(DefRegistry defs, String id) {
         try {
