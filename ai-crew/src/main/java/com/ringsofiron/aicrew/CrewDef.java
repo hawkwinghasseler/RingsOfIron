@@ -49,6 +49,13 @@ public class CrewDef {
     /** Seconds a critical wound can go untreated before it kills. */
     public float bleedOutTime = 300f;
     /**
+     * Seconds a crew member of baseline medicine who isn't a medic takes to stabilise a critical
+     * wound ({@link StabiliseTask}); a medic takes {@link #MEDIC_STABILISE} of it.
+     */
+    public float stabiliseTime = 15f;
+    /** A medic's share of {@link #stabiliseTime}. */
+    public static final float MEDIC_STABILISE = 0.5f;
+    /**
      * Seconds a serious wound takes to ease to a light one by itself on a safe tile, for a crew
      * with nobody left on their feet to treat them.
      */

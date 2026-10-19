@@ -5,7 +5,9 @@ import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CarryTask;
 import com.ringsofiron.aicrew.YardTask;
+import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
+import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -14,6 +16,7 @@ import com.ringsofiron.aicrew.BoardTask;
 import com.ringsofiron.aicrew.ManConsoleTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
+import com.ringsofiron.aicrew.StabiliseTask;
 import com.ringsofiron.aicrew.TreatTask;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
@@ -306,6 +309,15 @@ public final class CrewTasks {
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
                     p.treatedBy = a.entity;
                     return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes
+                }
+                case STABILISE: {
+                    // Quicker for a medic and for skill; slow with no medical stores left
+                    float time = a.crew.def.stabiliseTime * (a.crew.role == CrewRole.MEDIC ? CrewDef.MEDIC_STABILISE : 1f)
+                            / CrewRecord.factor(a.crew.record().medicine) / (grid.medicalStores > 0 ? 1f : CrewDef.NO_STORES_CARE);
+                    if (elapsed < time) return Status.RUNNING;
+                    if (grid.medicalStores > 0) grid.medicalStores--;
+                    a.service.crew(((StabiliseTask) t).patient).stabilised = true;
+                    return Status.SUCCEEDED;
                 }
                 case MAN_CONSOLE: {
                     // At it until anything else on the board wants them: then the console goes back up
@@ -844,6 +856,7 @@ public final class CrewTasks {
             case FORCE_DOOR: return ((ForceDoorTask) t).job.what();
             case BOARD: return ((BoardTask) t).job.what();
             case TREAT: return "treating a patient";
+            case STABILISE: return "stopping a patient's bleeding";
             case EVACUATE: return "the escape pods";
             case MAN_CONSOLE: {
                 SubsystemComponent.SubsystemType type = ((ManConsoleTask) t).type();

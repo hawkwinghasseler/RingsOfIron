@@ -40,6 +40,11 @@ public class CrewMemberComponent implements Component {
     public CrewDamageSink.DamageCause woundCause;
     /** Seconds a critical wound can still go untreated before it kills. */
     public float bleedOut;
+    /**
+     * A critical wound whose bleeding someone has stopped ({@link StabiliseTask}): its
+     * {@link #bleedOut} clock is held until treatment brings it down a level or a new hit opens it.
+     */
+    public boolean stabilised;
     /** Seconds of a baseline medic's care given toward bringing the wound down a level. */
     public float care;
     /** Seconds a light or serious wound has been easing by itself. */
