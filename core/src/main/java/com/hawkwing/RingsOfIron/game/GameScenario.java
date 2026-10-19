@@ -471,9 +471,13 @@ public class GameScenario {
         world.guides.reset();
         world.derelicts.reset();
         world.events.reset();
+        // ...whose seed is the default one, if the save has no events
+        world.events.seed = WorldEvents.DEFAULT_SEED;
         // ...and hostile traffic's own state starting again from the load
         world.hostiles.reset();
         world.engine.getSerializationService().loadFromFile(file);
+        // A seeded career's combat and crew dice come from its seed, as at its start
+        if (newGame.seeded) world.reseed(newGame.combatSeed(), newGame.crewSeed());
         relink();
         world.standing.migrateLegacy(player);
     }
