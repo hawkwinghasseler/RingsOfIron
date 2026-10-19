@@ -81,6 +81,21 @@ Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. I
 - **Pirates** fly for the Void Raiders. They lie in wait near trade lanes and rob loaded freighters. A pirate hunts the player only when it is bold enough: firepower at least 0.8 of the player's, and only after the first 6 hours of a game. A pirate breaks off below 65% of its hull, before it is beaten badly enough to surrender (55%), so a losing pirate runs first and gives up only if it is caught and hit again.
 - **Patrols** fly for the sponsor and for Selene between their stations and engage pirates. A pirate won't strike at a station guarded by an equal or stronger patrol.
 - **Warp:** a hostile moving to intercept the player stops time warp.
+- **Loadouts** (round 3): each pirate is armed from a weighted list for its hull and the difficulty (`loadouts.toml`). Raiders carry a chaingun or darts, and from difficulty 1 an ion gun, from 1.5 a railgun. Gunships range from the stock fit to flak, brawler, ion-and-darts and, from 1.5, the heavy railgun. Patrols and the First Play raider keep their stock weapons.
+- **Pairs** (round 3): raiders fly in pairs. A new raider becomes the wingman of a raider that flies alone, at its lurk, and in the bubble fights whatever its leader has its guns on.
+- **Tactics** (round 3, `Tactics`): each look at the bubble (1 s), a captain picks a plan from its weapons and the odds (its firepower times its hull, with its wing's, over the enemy's):
+  - **Run:** a pirate that has been hit (hull below 90%) runs when outgunned (odds below 0.5), or when it is in a crossfire and not winning.
+  - **Standoff:** a ship with launchers that isn't clearly winning (odds below 1.2) keeps 5 km off.
+  - **Rush:** a ship with only short guns (3.5 km or less) closes to 600 m, fast.
+  - **Flank:** a ship that clearly outguns its enemy (odds 1.5 or more) swings round to 1 km astern, to hit its engines.
+  - **Hold:** otherwise it holds 1.5 km and circles, as before.
+- **Crossfire** (round 3): a hostile fired on lately (20 s) by attackers 60° or more apart in bearing breaks off below 80% of its hull, not 65%.
+- **Aces** (round 3, `PirateAces`): a pirate that gets away from a fight with the player (it fought them and left the bubble unbeaten), or that has robbed 3 freighters, becomes a named ace, if fewer than 3 are about.
+  - It takes a callsign, its crew's gunnery and tracking rise to at least 0.85, and it is refitted from its ship's ace loadouts, which carry a rare weapon.
+  - One that got away from the player keeps a grudge and hunts them whatever the odds; one that gets away again keeps it.
+  - Its bounty is 4 × a pirate's, with 6 more standing, and ace bounties come first on a board.
+  - Beaten, it leaves a crate of its rare weapon in its hold for whoever boards it, forgets its grudge and frees its place.
+  - Every step is a notice in the log (L).
 
 ## Contracts and the Mission Board
 `ContractBoard` keeps each station's offers, the player's active contracts and a history of the last 20. It is saved as its own module (`"contracts"`). J opens the mission window while docked at a station, or anywhere while holding a contract.
@@ -96,7 +111,7 @@ Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. I
 |---|---|---|---|---|---|
 | Delivery | An unclaimed trade order out of the station, claimed in the player's name (`claimedBy = "player"`) | 15% of the cargo's value (at least 500) on top of the sale, with the sale paid at least the agreed price | 3 + 2·tier | 2 days, or 8 if the buyer orbits another body | The goods are sold at the buyer, docked with clearance; partial deliveries count up |
 | Escort | A trade order already claimed by a freighter | 1,500 | 4 + 2·tier | 2 or 8 days after the freighter's arrival | The freighter arrives with the player within 50 km of its destination; it fails if the player is not there within 30 minutes of its arrival, or if the freighter is lost |
-| Bounty | A ship of a faction at war with the giver | 5,000 × (1 + tier) × difficulty | 6 + 3·tier | 3 days | The target is gone, or beaten (`FirstPlay.beaten`: disabled, reactor out or guns silenced) |
+| Bounty | A ship of a faction at war with the giver | 5,000 × (1 + tier) × difficulty; ×4 for an ace | 6 + 3·tier; +6 for an ace | 3 days | The target is gone, or beaten (`FirstPlay.beaten`: disabled, reactor out or guns silenced; never while ion-stunned) |
 | Patrol | Another station whose owner is not at war with the giver | 1,000, ×1.5 for another faction's station | 3 + 2·tier | 2 days, or 10 if far | The player passes within 20 km of the station, then comes back within 20 km of the giver's |
 
 - **Far jobs:** a job to a station orbiting another body is tier 1 and pays 3×.

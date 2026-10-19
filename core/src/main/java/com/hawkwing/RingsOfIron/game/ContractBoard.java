@@ -394,8 +394,9 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         kinds.add(bounties(node, giver));
         kinds.add(patrols(node, giver));
         for (List<Contract> k : kinds) Collections.shuffle(k, rnd);
-        // Wanted ships close by (in the bubble) come first, so a bounty can be flown at once
-        kinds.get(2).sort(java.util.Comparator.comparing(c -> !inBubble(c.targetUuid)));
+        // Named aces come first, then wanted ships close by (in the bubble), so a bounty can be flown at once
+        kinds.get(2).sort(java.util.Comparator.<Contract, Boolean>comparing(c -> !isAce(c.targetUuid))
+                .thenComparing(c -> !inBubble(c.targetUuid)));
         // Round robin over the kinds, so a board shows a spread
         for (int i = 0; out.size() < OFFERS_PER_STATION; i++) {
             boolean any = false;
@@ -477,6 +478,12 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         return out;
     }
 
+    private boolean isAce(String uuid) {
+        Entity e = world.engine.getEntity(uuid);
+        HostileComponent h = e == null ? null : e.getComponent(HostileComponent.class);
+        return h != null && h.ace;
+    }
+
     private boolean inBubble(String uuid) {
         Entity e = world.engine.getEntity(uuid);
         return e != null && e.getComponent(PhysicsBodyComponent.class) != null;
@@ -505,6 +512,12 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             c.tier = ratio <= 1.2 ? 0 : ratio <= 2 ? 1 : 2;
             c.reward = Math.round(BOUNTY_PAY * (1 + c.tier) * Difficulty.of(world));
             c.standing = 6 + 3 * c.tier;
+            if (hostile != null && hostile.ace) {
+                // A named ace pays far more, and the giver remembers who brought it in
+                c.targetName = "the ace " + c.targetName;
+                c.reward = Math.round(c.reward * PirateAces.BOUNTY_SCALE);
+                c.standing += PirateAces.BOUNTY_STANDING;
+            }
             c.deadline = now() + 3 * DAY;
             out.add(c);
         }
