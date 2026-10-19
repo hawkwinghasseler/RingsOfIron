@@ -13,7 +13,7 @@ import java.util.function.Function;
  */
 public final class OpeningGuide {
     public enum Step {
-        OPEN_BOARD("You are docked at Highport. {MISSIONS} opens its mission board"),
+        OPEN_BOARD("You are docked at your home station. {MISSIONS} opens its mission board"),
         TAKE_JOB("Pick a job on the board and take it: the terms say where it goes and what it pays"),
         DONE("Job taken. {UNDOCK} undocks; at the helm {THRUST}/{REVERSE} thrust and {TURN_LEFT}/{TURN_RIGHT} turn. "
                 + "{MAP} opens the map, which marks where the job goes. {HELP} lists every key");

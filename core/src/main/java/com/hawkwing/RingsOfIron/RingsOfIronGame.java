@@ -30,6 +30,7 @@ import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.art.ExteriorArt;
 import com.hawkwing.RingsOfIron.game.AbandonShip;
+import com.hawkwing.RingsOfIron.game.NewGame;
 import com.hawkwing.RingsOfIron.game.Bridge;
 import com.hawkwing.RingsOfIron.game.OpeningGuide;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
@@ -157,6 +158,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private final Path modsDir;
     /** Start with the scripted first play ({@link FirstPlay}) rather than free play. */
     private final boolean firstPlayMode;
+    private final NewGame newGame;
     private FirstPlay firstPlay;
     /** The light walkthrough for a new game, or null once it is done or off. */
     private OpeningGuide opening;
@@ -231,9 +233,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     /** With {@code firstPlay}, the game starts docked at Highport with {@link FirstPlay}'s objectives. */
     public RingsOfIronGame(Path assetsDir, Path modsDir, boolean firstPlay) {
+        this(assetsDir, modsDir, firstPlay, NewGame.designed());
+    }
+
+    /** A new career with the seed and sponsor {@code newGame} asks for; First Play always takes the designed start. */
+    public RingsOfIronGame(Path assetsDir, Path modsDir, boolean firstPlay, NewGame newGame) {
         this.assetsDir = assetsDir;
         this.modsDir = modsDir;
         this.firstPlayMode = firstPlay;
+        this.newGame = firstPlay ? NewGame.designed() : newGame;
     }
 
     @Override
@@ -256,7 +264,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                     if (allowed && world != null && world.getContent() != null) world.getContent().runDeferredScripts();
                 });
         world = new GameWorld(modules);
-        game = GameScenario.start(world, assetsDir, modsDir);
+        game = GameScenario.start(world, assetsDir, modsDir, newGame);
         art = ArtLibrary.load(game.content.assets);
         deckArt = new DeckArt(art);
         exteriorArt = new ExteriorArt(art);
@@ -340,7 +348,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         haveAutosave = slots().latestAutosave() != null;
         show(game.content.report.hasErrors() ? "Content loaded with errors; see the log"
                 : "Welcome aboard, " + world.standing.describeRank() + "." + (opening != null || firstPlay != null ? ""
-                        : " " + key(Action.MISSIONS) + " opens Highport's mission board"), NoticeLog.Kind.IMPORTANT);
+                        : " " + key(Action.MISSIONS) + " opens " + game.homeName() + "'s mission board"), NoticeLog.Kind.IMPORTANT);
         if (opening != null) show(opening.text(this::key));
         if (game.content.report.hasErrors()) Gdx.app.error("RingsOfIron", game.content.report.toString());
     }
@@ -738,6 +746,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     public GameScenario getScenario() {
         return game;
+    }
+
+    /** "Seed 1234" or "Designed start": which world this career is, for the pause menu. */
+    public String worldDescription() {
+        return game == null ? "" : game.newGame().describe();
     }
 
     public void showNotice(String message) {

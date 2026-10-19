@@ -8,6 +8,10 @@
 # standing when the player hurts a faction: being at war with a hostile_to_all faction is not
 # enough, so beating pirates pleases those that name them (the Patrol), not everyone.
 #
+# sponsorable = true lets a new game choose to serve that faction instead (the sponsor = true one
+# is the default); rank_names are its own names for the ladder's steps, lowest first, and home is
+# the station its careers start docked at.
+#
 # [rank.<id>]: a step on the sponsor's ladder, lowest order first. Standing with the sponsor
 # at or above a rank's standing earns it; promotions never go back down. budget is paid
 # into the player's credits each in-game week; max_chassis is the largest chassis the rank
@@ -17,18 +21,32 @@
 name = "Terran Patrol Authority"
 color = "#4a90d9"
 sponsor = true
-stations = ["Highport", "Deepwell Depot"]
+stations = ["Highport", "Deepwell Depot", "Anvil Yards"]
 enemies = ["pirates"]
+home = "Highport"
 
 [faction.selene]
 name = "Selene Mining Combine"
 color = "#d9a441"
-stations = ["Shackleton Ice"]
+stations = ["Shackleton Ice", "Selene Forge", "Crisium Ore Works"]
+sponsorable = true
+home = "Shackleton Ice"
+rank_names = ["Prospector", "Surveyor", "Foreman", "Superintendent", "Director"]
+
+# Independent haulers and their outpost far out on the Moon's orbit. At war with nobody but the
+# pirates; the id sorts after the others so existing crew faction numbers keep their meaning.
+[faction.traders]
+name = "Free Traders"
+color = "#5fbf7a"
+stations = ["Freehold"]
+enemies = ["pirates"]
 
 [faction.pirates]
 name = "Void Raiders"
 color = "#d94a4a"
 hostile_to_all = true
+# Their hidden base, on an eccentric high orbit
+stations = ["Rustwake"]
 
 [rank.ensign]
 name = "Ensign"

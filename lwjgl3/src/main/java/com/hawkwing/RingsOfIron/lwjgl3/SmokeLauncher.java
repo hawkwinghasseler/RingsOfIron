@@ -110,7 +110,9 @@ public class SmokeLauncher {
         @Override public void resize(int width, int height) { shell.resize(width, height); }
         @Override public void render() {
             switch (frame++) {
-                case 20: shell.newGame(false); break;
+                case 10: shell.openNewGame(); break;
+                // A seeded career in the Combine's service, starting above the Moon
+                case 20: shell.newGame(com.hawkwing.RingsOfIron.game.NewGame.seeded(7, "selene")); break;
                 case 100: check(shell.isPlaying(), "new game started"); shell.openPauseMenu(); break;
                 case 110: {
                     String failed = shell.saveGame("Smoke slot");

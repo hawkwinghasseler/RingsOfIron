@@ -30,7 +30,7 @@ class BenchmarkScenesTest {
             assertTrue(stats.meanMs("step/Box2D") > 0, stats.table(0));
             assertTrue(stats.meanMs("tick/MacroSimSystem") > 0, stats.table(0));
             assertTrue(stats.meanMs("frame/AudioUpdateSystem") > 0, stats.table(0));
-            assertEquals(13, scene.world.macroSim.freighters().all().size());
+            assertEquals(16, scene.world.macroSim.freighters().all().size());
             assertEquals(Thread.currentThread().getName(), threads.macroThreads());
             assertTrue(scene.walking() > 0, "crew are kept walking");
         }

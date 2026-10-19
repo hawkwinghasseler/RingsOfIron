@@ -26,7 +26,7 @@ import java.util.Locale;
  * last; {@link GameShell} does what their buttons ask.
  */
 class ShellMenus {
-    enum Panel { MAIN, PAUSE, LOAD, SAVE, SETTINGS }
+    enum Panel { MAIN, PAUSE, LOAD, SAVE, SETTINGS, NEW_GAME }
 
     /** Window sizes the settings offer, filtered to what fits the screen. */
     static final int[][] RESOLUTIONS = {
@@ -99,7 +99,7 @@ class ShellMenus {
         cont.setDisabled(latest == null);
         t.add(cont).width(260f).colspan(3).row();
         if (latest != null) t.add(new Label(latest.name + "   " + latest.details(), skin, "dim")).colspan(3).row();
-        t.add(button("New game", () -> shell.newGame(false))).width(260f).colspan(3).row();
+        t.add(button("New game", () -> showNewGame(root))).width(260f).colspan(3).row();
         t.add(button("First play (guided)", () -> shell.newGame(true))).width(260f).colspan(3).row();
         TextButton load = button("Load", () -> showLoad(root));
         load.setDisabled(latest == null);
@@ -128,7 +128,67 @@ class ShellMenus {
         t.add(button("Quit to menu", shell::quitToMenu)).width(260f).colspan(3).row();
         t.add(button("Quit game", shell::quit)).width(260f).colspan(3).row();
         t.add(new Label("Esc resumes   Arrow keys or the pad choose", skin, "dim")).colspan(3).padTop(8f).row();
+        String world = shell.worldDescription();
+        if (!world.isEmpty()) t.add(new Label(world, skin, "dim")).colspan(3).row();
         endFrame(t);
+    }
+
+    // --- New game ----------------------------------------------------------------------
+
+    /** A dim line of explanation, wrapped to the panel's width. */
+    private Label note(String text) {
+        Label l = new Label(text, skin, "dim");
+        l.setWrap(true);
+        l.setAlignment(com.badlogic.gdx.utils.Align.center);
+        return l;
+    }
+
+    /** The factions a new career may serve: id, then the button's label. */
+    static final String[][] SPONSORS = {{"patrol", "Terran Patrol"}, {"selene", "Selene Combine"}};
+
+    /** A new career: a typed seed replays that world, an empty one rolls a new world. */
+    void showNewGame(Table root) {
+        Table t = frame(root, Panel.NEW_GAME, "NEW GAME");
+        TextField seed = new TextField("", skin);
+        seed.setMaxLength(24);
+        seed.setMessageText("random");
+        Table seedRow = new Table();
+        seedRow.add(new Label("Seed", skin, "dim")).padRight(12f);
+        seedRow.add(seed).width(300f);
+        t.add(seedRow).colspan(3).row();
+        t.add(note("Leave it empty for a new world; the same seed gives the same start")).width(440f).colspan(3).padBottom(10f).row();
+        // Who to serve: the Patrol from Highport, or the Combine from its ice mine on the Moon
+        String[] sponsor = {null};
+        Table sponsors = new Table();
+        com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup<TextButton> group = new com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup<>();
+        for (String[] s : SPONSORS) {
+            TextButton b = new TextButton(s[1], skin, "toggle");
+            b.pad(6f, 16f, 6f, 16f);
+            b.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    if (b.isChecked()) sponsor[0] = s[0];
+                }
+            });
+            group.add(b);
+            sponsors.add(b).padRight(8f);
+        }
+        group.setMinCheckCount(1);
+        group.setMaxCheckCount(1);
+        group.getButtons().first().setChecked(true);
+        Table serveRow = new Table();
+        serveRow.add(new Label("Serve", skin, "dim")).padRight(12f);
+        serveRow.add(sponsors);
+        t.add(serveRow).colspan(3).row();
+        t.add(note("The Patrol starts you at Highport in Earth orbit; the Combine at Shackleton Ice above the Moon")).width(440f)
+                .colspan(3).padBottom(10f).row();
+        Table buttons = new Table();
+        buttons.add(button("Start", () -> shell.newGame(com.hawkwing.RingsOfIron.game.NewGame.fromText(seed.getText(), sponsor[0]))))
+                .padRight(10f);
+        buttons.add(button("Back", shell::back));
+        t.add(buttons).colspan(3).padTop(10f).row();
+        endFrame(t);
+        root.getStage().setKeyboardFocus(seed);
     }
 
     // --- Saves -------------------------------------------------------------------------

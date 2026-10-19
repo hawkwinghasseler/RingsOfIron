@@ -87,11 +87,22 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
      * at the game's difficulty setting.
      */
     public DoubleSupplier difficulty = () -> 1.0;
+    /**
+     * Raiders kept beyond what {@link #difficulty} asks for, and where they gather: the pirate
+     * base's growing band ({@link PirateBase}). None without a base.
+     */
+    public java.util.function.IntSupplier extraRaiders = () -> 0;
+    /** Where the extra raiders spawn; null spawns them at the lurks like the rest. */
+    public String extraLurk;
     private boolean topUpDue;
     /** What the hostiles did that the player should hear of; the screen drains it. */
     public final List<String> notices = new ArrayList<>();
 
     private String[] lurks = new String[0];
+    /** Each patrolling faction's route. */
+    private final Map<String, String[]> routes = new HashMap<>();
+    /** Patrols to spawn once the update is over. */
+    private final List<String> reinforcements = new ArrayList<>();
     private int spawned;
     private double nextTopUp = Double.POSITIVE_INFINITY;
     /** Sim second a pirate started an intercept on the player; NaN when there is no alert. */
@@ -132,6 +143,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
      */
     public void start(String[] lurks, String[] sponsorRoute, String[] seleneRoute) {
         this.lurks = lurks.clone();
+        relinkRoutes(sponsorRoute, seleneRoute);
         double now = world.macroSim.now();
         controller.playerGraceUntil = now + PLAYER_GRACE;
         if (sponsorRoute.length > 0) spawnPatrol(SPONSOR, sponsorRoute);
@@ -143,6 +155,32 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     /** Points the lurks at a loaded game's stations, which have new uuids. */
     public void relink(String[] lurks) {
         this.lurks = lurks.clone();
+    }
+
+    /** The routes the sponsor's and Selene's patrols fly, for reinforcements; a load points them at its stations. */
+    public void relinkRoutes(String[] sponsorRoute, String[] seleneRoute) {
+        routes.put(SPONSOR, sponsorRoute.clone());
+        routes.put(SELENE, seleneRoute.clone());
+    }
+
+    /**
+     * Sends faction {@code faction} one more patrol on its route, once the engine update is over (a
+     * tension spike, say). False if the faction flies no patrols.
+     */
+    public boolean reinforce(String faction) {
+        String[] route = routes.get(faction);
+        if (route == null || route.length == 0) return false;
+        reinforcements.add(faction);
+        return true;
+    }
+
+    /** Patrols of each faction flying, reinforcements included. */
+    public int patrols(String faction) {
+        int n = 0;
+        for (HostileComponent h : controller.all().values()) {
+            if (h.role == HostileComponent.Role.PATROL && faction.equals(h.faction)) n++;
+        }
+        return n;
     }
 
     /** Raiders the population keeps at difficulty {@code d}. */
@@ -159,6 +197,10 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     /** Runs a top-up {@link #update} found due, once the engine update is over; {@link GameWorld#update} calls it. */
     public void afterUpdate() {
+        while (!reinforcements.isEmpty()) {
+            String faction = reinforcements.remove(0);
+            spawnPatrol(faction, routes.get(faction));
+        }
         if (!topUpDue) return;
         topUpDue = false;
         topUp(world.macroSim.now(), false);
@@ -375,13 +417,21 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     // ---------------------------------------------------------------------------------------------
 
+    /** Tops the population up now, out of the player's sight, as the hourly top-up does; for tests. */
+    void topUpNow() {
+        topUp(world.macroSim.now(), false);
+    }
+
     /** Spawns pirates until the population is what {@link #difficulty} asks for. */
     private void topUp(double now, boolean anywhere) {
         if (lurks.length == 0) return;
         double d = difficulty.getAsDouble();
-        int raiders = raidersFor(d) - count(RAIDER), gunships = gunshipsFor(d) - count(GUNSHIP);
-        for (int i = 0; i < gunships; i++) spawnPirate(GUNSHIP, now, anywhere);
-        for (int i = 0; i < raiders; i++) spawnPirate(RAIDER, now, anywhere);
+        int extra = extraRaiders.getAsInt();
+        int raiders = raidersFor(d) + extra - count(RAIDER), gunships = gunshipsFor(d) - count(GUNSHIP);
+        for (int i = 0; i < gunships; i++) spawnPirate(GUNSHIP, now, anywhere, null);
+        // The base's band gathers at the base; the rest at the lurks in turn
+        int atBase = extraLurk == null ? 0 : Math.max(0, extra - countAt(extraLurk));
+        for (int i = 0; i < raiders; i++) spawnPirate(RAIDER, now, anywhere, i < atBase ? extraLurk : null);
     }
 
     private int count(String shipId) {
@@ -390,9 +440,17 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         return n;
     }
 
-    private void spawnPirate(String shipId, double now, boolean anywhere) {
-        for (int k = 0; k < lurks.length; k++) {
-            String lurk = lurks[(spawned + k) % lurks.length];
+    private int countAt(String lurk) {
+        int n = 0;
+        for (HostileComponent h : controller.all().values()) if (h.isPirate() && lurk.equals(h.stationUuid)) n++;
+        return n;
+    }
+
+    /** Spawns a pirate at {@code at} if given (and out of the player's sight), else at the next lurk that is. */
+    private void spawnPirate(String shipId, double now, boolean anywhere, String at) {
+        String[] choices = at != null && (anywhere || !nearPlayer(at, now)) ? new String[]{at} : lurks;
+        for (int k = 0; k < choices.length; k++) {
+            String lurk = choices[(spawned + k) % choices.length];
             if (!anywhere && nearPlayer(lurk, now)) continue;
             Entity ship = spawnShip(shipId, PIRATE_CREW);
             if (ship == null) return;
@@ -483,10 +541,15 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     /** The marker a ship in the bubble gets: a hostile's name and side, else a freighter's. */
     public static HudMarkerComponent markerFor(Entity ship) {
+        return markerFor(ship, SPONSOR);
+    }
+
+    /** As {@link #markerFor(Entity)}, for a player serving the faction {@code sponsorId}: its patrols are friendly. */
+    public static HudMarkerComponent markerFor(Entity ship, String sponsorId) {
         HostileComponent h = ship.getComponent(HostileComponent.class);
         if (h == null) return new HudMarkerComponent("Freighter", HudMarkerComponent.Kind.FRIENDLY).radius(20f);
         HudMarkerComponent.Kind kind = h.isPirate() ? HudMarkerComponent.Kind.HOSTILE
-                : SPONSOR.equals(h.faction) ? HudMarkerComponent.Kind.FRIENDLY : HudMarkerComponent.Kind.NEUTRAL;
+                : h.faction != null && h.faction.equals(sponsorId) ? HudMarkerComponent.Kind.FRIENDLY : HudMarkerComponent.Kind.NEUTRAL;
         ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
         float radius = g == null ? 20f : Math.max(g.width, g.height) * g.tileSize * 0.5f;
         return new HudMarkerComponent(h.displayName, kind).radius(radius);

@@ -54,6 +54,11 @@ public class SensorTrackingSystem extends EntitySystem implements PhysicsManager
         this.rng = new RandomXS128(seed);
     }
 
+    /** Starts the tracking noise over from {@code seed}, as if built with it (a new game's seed). */
+    public void reseed(long seed) {
+        rng.setSeed(seed);
+    }
+
     /** Seconds of fixed-tick time run; tracks' {@code lastFixTime} is on this clock. */
     public float getClock() {
         return clock;
