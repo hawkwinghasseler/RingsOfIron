@@ -194,6 +194,8 @@ public class CombatDefs {
         railgun.powerDraw = 2.0e6f;
         railgun.projectile = slug.id;
         railgun.spreadRad = 0.0005f;
+        railgun.name = "Railgun Mk1";
+        railgun.price = 60000;
         railgun.sound = "evt_railgun_fire";
         defs.add(railgun);
 
@@ -208,6 +210,8 @@ public class CombatDefs {
         autocannon.spreadRad = 0.003f;
         autocannon.pointDefense = true;
         autocannon.maxRange = 4000f;
+        autocannon.name = "Autocannon Mk1";
+        autocannon.price = 12000;
         autocannon.sound = "evt_autocannon_fire";
         defs.add(autocannon);
 
@@ -218,6 +222,8 @@ public class CombatDefs {
         launcher.cooldown = 8f;
         launcher.missile = harpoon.id;
         launcher.maxRange = 15000f;
+        launcher.name = "Harpoon Launcher";
+        launcher.price = 30000;
         launcher.sound = "evt_missile_launch";
         defs.add(launcher);
 
@@ -232,6 +238,8 @@ public class CombatDefs {
         laser.beamDuration = 2.5f;
         laser.spreadRad = 0.0005f;
         laser.maxRange = 3000f;
+        laser.name = "Laser Mk1";
+        laser.price = 45000;
         laser.sound = "evt_laser_fire";
         defs.add(laser);
 

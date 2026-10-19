@@ -38,12 +38,21 @@ public class CarryTask extends CrewTask {
     /** The craft whose bays the goods come from, and the craft they go to. */
     public final Entity from, to;
     public final Job job;
+    /** A tile of {@link #to} to set the load down beside instead of a cargo bay (a refit part for its mount); -1 for a bay. */
+    public final int toX, toY;
 
     /** Posted with (x, y) a bay tile on {@code from}, where the pick-up is. */
     public CarryTask(Entity from, int x, int y, Entity to, Job job) {
+        this(from, x, y, to, -1, -1, job);
+    }
+
+    /** A trip that ends beside tile ({@code toX}, {@code toY}) of {@code to} rather than at a bay. */
+    public CarryTask(Entity from, int x, int y, Entity to, int toX, int toY, Job job) {
         super(Kind.CARRY, x, y, PRIORITY);
         this.from = from;
         this.to = to;
+        this.toX = toX;
+        this.toY = toY;
         this.job = job;
     }
 

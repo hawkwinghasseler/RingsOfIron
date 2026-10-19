@@ -23,6 +23,7 @@ import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider;
 import com.ringsofiron.uihud.providers.TradeProvider;
+import com.ringsofiron.uihud.providers.YardProvider;
 import com.ringsofiron.uihud.providers.TrafficMapProvider;
 import com.ringsofiron.uihud.systems.FlightReadoutSystem;
 import com.ringsofiron.uihud.systems.HudRenderSystem;
@@ -33,6 +34,7 @@ import com.ringsofiron.uihud.widgets.ConsoleWindow;
 import com.ringsofiron.uihud.widgets.OrbitMap;
 import com.ringsofiron.uihud.widgets.ThreatOverlay;
 import com.ringsofiron.uihud.widgets.TradeWindow;
+import com.ringsofiron.uihud.widgets.YardWindow;
 import com.ringsofiron.uihud.widgets.TrafficMap;
 
 /**
@@ -67,6 +69,7 @@ public class UiHud implements Disposable {
     private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleLayouts = new ObjectMap<>();
     private final TrafficMap trafficMap;
     private final TradeWindow tradeWindow;
+    private final YardWindow yardWindow;
     private final ThreatOverlay threatOverlay;
 
     private final HudRenderSystem hudRenderSystem;
@@ -149,6 +152,8 @@ public class UiHud implements Disposable {
         dockRow.add(dockHint);
         stage.addActor(dockRow);
         tradeWindow = new TradeWindow(skin, dockHint);
+        yardWindow = new YardWindow(skin);
+        tradeWindow.setHintSuffix(() -> yardWindow.isAvailable() && !yardWindow.isOpen() ? "   [Y] Yard" : "");
 
         trafficMap = new TrafficMap(skin);
         trafficMap.setFillParent(true);
@@ -158,6 +163,7 @@ public class UiHud implements Disposable {
         consoleWindow = new ConsoleWindow(skin, () -> interactPromptSystem().setPromptsEnabled(true));
         stage.addActor(consoleWindow);
         stage.addActor(tradeWindow);
+        stage.addActor(yardWindow);
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
@@ -207,12 +213,20 @@ public class UiHud implements Disposable {
                     tradeWindow.setOpen(false);
                     return true;
                 }
+                if (yardWindow.isOpen()) {
+                    yardWindow.setOpen(false);
+                    return true;
+                }
                 if (!consoleWindow.isOpen()) return false;
                 consoleWindow.close();
                 return true;
             case Input.Keys.T:
                 if (!tradeWindow.isOpen() && !tradeWindow.isDocked()) return false;
                 tradeWindow.setOpen(!tradeWindow.isOpen());
+                return true;
+            case Input.Keys.Y:
+                if (!yardWindow.isOpen() && !yardWindow.isAvailable()) return false;
+                yardWindow.setOpen(!yardWindow.isOpen());
                 return true;
             case Input.Keys.M:
                 setTrafficMapVisible(!trafficMap.isVisible());
@@ -294,6 +308,15 @@ public class UiHud implements Disposable {
 
     public TradeWindow getTradeWindow() {
         return tradeWindow;
+    }
+
+    /** Feeds the station yard window ([Y] while docked where a yard can work on the ship); null hides it. */
+    public void setYard(YardProvider yard) {
+        yardWindow.setProvider(yard);
+    }
+
+    public YardWindow getYardWindow() {
+        return yardWindow;
     }
 
     /** Off-bubble traffic for the map view (M). Without one the map says there is no data. */

@@ -33,6 +33,7 @@ public class TradeWindow extends Window {
     private final Table rows = new Table();
     private final Array<Row> rowWidgets = new Array<>();
     private TradeProvider provider;
+    private java.util.function.Supplier<String> hintSuffix = () -> "";
     private float sinceRefresh = REFRESH_INTERVAL;
 
     private final class Row {
@@ -131,6 +132,11 @@ public class TradeWindow extends Window {
         return isVisible();
     }
 
+    /** Text added to the dock hint, such as another window's key. */
+    public void setHintSuffix(java.util.function.Supplier<String> suffix) {
+        hintSuffix = suffix;
+    }
+
     /** True while the ship is in trading range of a station. */
     public boolean isDocked() {
         return board.isDocked();
@@ -170,8 +176,8 @@ public class TradeWindow extends Window {
         if (!board.isDocked() && isVisible()) setVisible(false);
         dockHint.setVisible(board.isDocked() && !isVisible());
         if (!board.isDocked()) return;
-        dockHint.setText(board.hasHold ? "Docked at " + board.stationName + "   [T] Trade"
-                : "Docked at " + board.stationName + " (no cargo hold)");
+        dockHint.setText((board.hasHold ? "Docked at " + board.stationName + "   [T] Trade"
+                : "Docked at " + board.stationName + " (no cargo hold)") + hintSuffix.get());
         getTitleLabel().setText(board.stationName.toUpperCase(Locale.ROOT) + " MARKET");
         summary.setText(String.format(Locale.ROOT, "Credits %s     Hold %s / %s m3", formatCredits(board.credits),
                 formatUnits(board.cargoUsed), formatUnits(board.cargoCapacity)));

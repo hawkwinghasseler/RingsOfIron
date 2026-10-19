@@ -6,8 +6,11 @@
 # ship's locked target; point_defense mounts pick their own targets, the most
 # urgent incoming missile; launchers throw guided missiles at the locked target;
 # beams burn beam_power watts into whatever they touch for beam_duration seconds.
+# price is what a new one costs at a station yard's refit (a used one half that).
 
 [weapon.railgun_mk1]
+name = "Railgun Mk1"
+price = 60000.0
 mount = "turret"
 slew_rate_deg = 40
 firing_arc_deg = 270
@@ -18,6 +21,8 @@ spread_rad = 0.0005
 sound = "evt_railgun_fire"
 
 [weapon.autocannon_mk1]
+name = "Autocannon Mk1"
+price = 12000.0
 mount = "turret"
 slew_rate_deg = 120
 firing_arc_deg = 300
@@ -30,6 +35,8 @@ max_range = 4000.0
 sound = "evt_autocannon_fire"
 
 [weapon.harpoon_launcher]
+name = "Harpoon Launcher"
+price = 30000.0
 mount = "launcher"
 firing_arc_deg = 360
 cooldown = 8.0
@@ -38,6 +45,8 @@ max_range = 15000.0
 sound = "evt_missile_launch"
 
 [weapon.laser_mk1]
+name = "Laser Mk1"
+price = 45000.0
 mount = "beam"
 slew_rate_deg = 60
 firing_arc_deg = 300

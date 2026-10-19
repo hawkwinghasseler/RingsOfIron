@@ -51,14 +51,15 @@ import java.nio.file.Paths;
  * game's own corvette, stations and keys. Run with {@code gradlew :lwjgl3:runDockingDemo}, or
  * {@code demos/Docking demo.bat} on Windows.
  *
- * <p>1-9 pick a scene, R restarts it. W/S thrust, A/D turn, Z/C strafe. G arms your docking port
+ * <p>1-9 and 0 pick a scene, R restarts it. W/S thrust, A/D turn, Z/C strafe. G arms your docking port
  * and asks a station for clearance (again to disarm), H picks the next port, U undocks, P flies
  * the approach for you until the magnets or the collar take over. V switches to deck view, where
  * WASD walks your crew avatar (through an open port onto whatever you are docked with) and the
  * view follows it (W is up the screen aboard either craft). In the loading scene L orders water
  * carried aboard and K sends it back. In deck view, standing in your port's opening, F pries or
  * hacks the shut door across the dock and B cuts it; in the forcing scene O switches the
- * outpost's reactor off and on. Mouse wheel zooms, Esc quits.
+ * outpost's reactor off and on. In the yard scene J orders repairs, N refits the nose hardpoint
+ * with a new weapon and M with a used one. Mouse wheel zooms, Esc quits.
  *
  * <p>Drawn: hulls and deck plans, docking collars (yellow), port faces (green while armed, cyan
  * latched, red torn off), the collar head of an active port while it is out (orange), port doors
@@ -148,7 +149,9 @@ public class DockingDemo extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) Gdx.app.exit();
         DockingDemoScene.Scene[] scenes = DockingDemoScene.Scene.values();
         for (int i = 0; i < scenes.length; i++) {
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i)) demo.load(scenes[i]);
+            // 1-9, then 0 for the tenth
+            int key = i < 9 ? Input.Keys.NUM_1 + i : i == 9 ? Input.Keys.NUM_0 : -1;
+            if (key >= 0 && Gdx.input.isKeyJustPressed(key)) demo.load(scenes[i]);
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) demo.load(demo.scene);
         if (Gdx.input.isKeyJustPressed(Input.Keys.V)) demo.deckView = !demo.deckView;
@@ -198,6 +201,11 @@ public class DockingDemo extends ApplicationAdapter {
         if (demo.scene == DockingDemoScene.Scene.LOADING) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.L)) demo.orderWater(true);
             if (Gdx.input.isKeyJustPressed(Input.Keys.K)) demo.orderWater(false);
+        }
+        if (demo.scene == DockingDemoScene.Scene.YARD) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.J)) demo.orderRepairs();
+            if (Gdx.input.isKeyJustPressed(Input.Keys.N)) demo.refitNose(false);
+            if (Gdx.input.isKeyJustPressed(Input.Keys.M)) demo.refitNose(true);
         }
     }
 
@@ -374,6 +382,18 @@ public class DockingDemo extends ApplicationAdapter {
                     demo.held(demo.player, DockingDemoScene.WATER), demo.held(demo.target, DockingDemoScene.WATER)), x, y);
             y -= 22f;
         }
+        if (demo.scene == DockingDemoScene.Scene.YARD) {
+            font.setColor(Color.WHITE);
+            font.draw(batch, String.format(java.util.Locale.ROOT, "Credits %,.0f   %d damaged, %,.0f cr to repair   [J] repair  [N] refit nose  [M] used",
+                    demo.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class).credits,
+                    demo.world.yard.damage(demo.player).size(), demo.world.yard.repairCost(demo.player)), x, y);
+            y -= 18f;
+            for (String line : demo.world.yard.progress(demo.player)) {
+                font.draw(batch, line, x, y);
+                y -= 18f;
+            }
+            y -= 4f;
+        }
         font.setColor(Color.SKY);
         for (String line : demo.docking.readout()) {
             font.draw(batch, line, x, y);
@@ -386,7 +406,7 @@ public class DockingDemo extends ApplicationAdapter {
         font.setColor(Color.GRAY);
         StringBuilder scenes = new StringBuilder();
         for (DockingDemoScene.Scene s : DockingDemoScene.Scene.values()) {
-            scenes.append(s.ordinal() + 1).append(' ').append(s.title).append("   ");
+            scenes.append((s.ordinal() + 1) % 10).append(' ').append(s.title).append("   ");
         }
         font.draw(batch, scenes.toString(), x, 64f);
         if (demo.deckView) {
@@ -399,7 +419,7 @@ public class DockingDemo extends ApplicationAdapter {
         font.draw(batch, "W/S thrust  A/D turn  Z/C strafe  G arm port + clearance  H next port  U undock"
                 + "  P autopilot  V deck view  R restart  wheel zoom  Esc quit", x, 44f);
         font.draw(batch, "Deck view: F pry/hack the door across  B cut it   Scene 8: L load water  K send back"
-                + "   Scene 9: O outpost power", x, 24f);
+                + "   9: O outpost power   0: J repair  N/M refit", x, 24f);
         batch.end();
     }
 

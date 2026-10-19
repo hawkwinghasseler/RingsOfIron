@@ -12,6 +12,10 @@ public class WeaponDef {
     }
 
     public String id;
+    /** Name for the player, e.g. "Railgun Mk1"; the id when null. */
+    public String name;
+    /** Credits a new one costs at a station yard; 0 if yards don't sell it. */
+    public double price;
     public MountType mount = MountType.TURRET;
     public float slewRateDeg = 60f;
     /** Full traverse arc centred on the mount's facing, degrees. 360 is unrestricted. */
@@ -50,4 +54,9 @@ public class WeaponDef {
     public float maxRange;
     /** audio-spatial event played on firing, or null. */
     public String sound;
+
+    /** {@link #name}, or the id when it has none. */
+    public String displayName() {
+        return name != null ? name : id;
+    }
 }
