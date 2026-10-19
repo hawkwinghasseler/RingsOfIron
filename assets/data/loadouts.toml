@@ -85,19 +85,20 @@ weapons = ["ion_mk1", "", "", "", ""]
 weight = 1
 min_difficulty = 1.0
 
-# The patrols' fit, railgun and harpoons, once the game is harder
+# The patrols' fit, railgun and harpoons, once the game is harder: by the time the player flies a
+# gunship (difficulty about 2) most pirate gunships carry a railgun
 [loadout.gunship_line]
 name = "Line gunship"
 ship = "gunship_raider"
 weapons = ["railgun_mk1", "harpoon_launcher", "harpoon_launcher", "", ""]
-weight = 1
+weight = 3
 min_difficulty = 1.75
 
 [loadout.gunship_heavy_railgun]
 name = "Heavy gunship"
 ship = "gunship_raider"
 weapons = ["railgun_heavy"]
-weight = 1
+weight = 2
 min_difficulty = 2.0
 
 # An ace's gunship (once the player flies a gunship, PirateAces.gunshipAce)
