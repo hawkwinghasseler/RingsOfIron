@@ -9,6 +9,7 @@ import com.badlogic.gdx.math.RandomXS128;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.GridRayTraversal;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -33,6 +34,8 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     private final ComponentMapper<CrewMemberComponent> crewM = ComponentMapper.getFor(CrewMemberComponent.class);
     private final ComponentMapper<GridPositionComponent> posM = ComponentMapper.getFor(GridPositionComponent.class);
     private final ComponentMapper<BehaviorTreeComponent> btM = ComponentMapper.getFor(BehaviorTreeComponent.class);
+    private static final Family HOLDS = Family.all(ShipGridComponent.class, CargoHoldComponent.class).get();
+    private final ImmutableArray<Entity> holds;
     private final ComponentMapper<ShipGridComponent> gridM = ComponentMapper.getFor(ShipGridComponent.class);
     private final ComponentMapper<ShipTaskBoardComponent> boardM = ComponentMapper.getFor(ShipTaskBoardComponent.class);
 
@@ -60,6 +63,7 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     public CrewService(Engine engine, long seed) {
         this.engine = engine;
         this.crewEntities = engine.getEntitiesFor(CREW);
+        this.holds = engine.getEntitiesFor(HOLDS);
         this.random = new RandomXS128(seed);
     }
 
@@ -140,14 +144,25 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
         doors.clear();
     }
 
-    /** The pathfinder for a grid, created on first use. */
+    /** The pathfinder for a grid, created on first use, knowing the craft's cargo hold if it has one. */
     public GridPathfinder pathfinder(ShipGridComponent grid) {
         GridPathfinder pf = pathfinders.get(grid);
         if (pf == null) {
             pf = new GridPathfinder(grid);
             pathfinders.put(grid, pf);
         }
+        // A hold can be fitted after the crew first walk the deck, so it is looked up each time
+        pf.graph.hold = holdOf(grid);
         return pf;
+    }
+
+    /** The cargo hold of the craft whose grid is {@code grid}, or null. */
+    private CargoHoldComponent holdOf(ShipGridComponent grid) {
+        for (int i = 0; i < holds.size(); i++) {
+            Entity e = holds.get(i);
+            if (gridM.get(e) == grid) return e.getComponent(CargoHoldComponent.class);
+        }
+        return null;
     }
 
     // -----------------------------------------------------------------------

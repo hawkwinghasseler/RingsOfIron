@@ -71,7 +71,7 @@ Ship systems install into fixed-size mounts (`MountFootprint`):
 - A mount's footprint is its origin (bottom-left tile), size, kind and rotation. A rotation of 1 or 3 turns a rectangular slot on its side; on a square mount it only sets the system's facing.
 - **Every tile in the footprint belongs to the installed system**, so a hit on any of them damages it. `Tile.mount` points at the footprint, and `MountFootprint.installed` at the system entity; `ShipGridComponent.subsystemAt(x, y)` is the tile→subsystem index combat uses.
 - A footprint must lie entirely on interior floor, may not overlap another mount, and may not have an edge wall running through it.
-- Crew walk over every mount footprint. Once systems get their own graphics and colliders for details and interactable parts, those parts will decide what blocks on each tile.
+- What crew cannot walk through is `CrewObstacles`: the footprints of the big systems (`SOLID`: reactor, shield emitter, turret mount, life support) and cargo bay tiles with goods stacked on them (`CARGO_FILL`). Consoles, airlocks, docking ports and empty bays stay walkable. Per-part colliders from the art could refine this later; until then a whole footprint blocks or none of it does.
 
 ### Cargo bays
 Cargo is physical: goods sit on the floor tiles of the ship's cargo bays (the footprints of its `CARGO` systems), not in an abstract number. `CargoHoldComponent` on the ship lists the bay tiles and the stack on each:

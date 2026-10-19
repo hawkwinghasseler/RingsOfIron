@@ -115,7 +115,7 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             else walkPath(e, p, nav, speed * dt, dt);
             return;
         }
-        CrewBody b = service.physics.attach(e, grid, p.x, p.y);
+        CrewBody b = service.physics.attach(e, nav, p.x, p.y);
         if (avatar != null) {
             float mx = MathUtils.clamp(avatar.moveX, -1f, 1f), my = MathUtils.clamp(avatar.moveY, -1f, 1f);
             float len = (float) Math.sqrt(mx * mx + my * my);

@@ -4,6 +4,8 @@ import com.badlogic.gdx.ai.pfa.Connection;
 import com.badlogic.gdx.ai.pfa.DefaultConnection;
 import com.badlogic.gdx.ai.pfa.indexed.IndexedGraph;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.CrewObstacles;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
@@ -13,8 +15,9 @@ import com.ringsofiron.interiorgrid.Tile;
  * The walkable tiles of a ship's interior grid as a gdx-ai {@link IndexedGraph}.
  *
  * Two orthogonally adjacent open tiles are connected when {@link ShipGridComponent#canPass}
- * allows it (walls, edge walls, doors, destroyed walls). Mounted systems don't block: crew
- * walk over every mount footprint until systems get colliders of their own. Connections are computed when asked for, straight from the grid, so
+ * allows it (walls, edge walls, doors, destroyed walls), and neither holds an obstacle
+ * ({@link CrewObstacles}: big machinery, or goods stacked in {@link #hold}'s bays). Crew walk
+ * over consoles, airlocks and ports. Connections are computed when asked for, straight from the grid, so
  * doors opening or closing and walls being destroyed take effect on the next search
  * with no rebuild step.
  *
@@ -34,6 +37,8 @@ public class GridNavGraph implements IndexedGraph<GridNode> {
     }
 
     public final ShipGridComponent grid;
+    /** The craft's cargo, whose stacked bays crew go round; null when it has none or it is not known. */
+    public CargoHoldComponent hold;
     private final GridNode[] nodes;
     /** The key of the search under way, or null; set by {@link GridPathfinder} around each search. */
     DoorKey key;
@@ -54,10 +59,10 @@ public class GridNavGraph implements IndexedGraph<GridNode> {
         return grid.inBounds(x, y) ? nodes[y * grid.width + x] : null;
     }
 
-    /** True if crew can stand on tile (x, y): open, mounted system or not. */
+    /** True if crew can stand on tile (x, y): open, and nothing stands there that they cannot walk through. */
     public boolean isWalkable(int x, int y) {
         Tile t = grid.getTile(x, y);
-        return t != null && t.isOpen();
+        return t != null && t.isOpen() && !CrewObstacles.blocks(grid, hold, x, y);
     }
 
     /** True if crew can step from (x, y) to the orthogonal neighbour (nx, ny). */
