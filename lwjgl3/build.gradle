@@ -253,6 +253,18 @@ tasks.register('runCrewDemo', JavaExec) {
 }
 
 // Runs the docking demo instead of the main game.
+tasks.register('runFirstPlay', JavaExec) {
+  group = 'application'
+  description = 'Runs Rings of Iron with the scripted first play: undock, fly, fight, dock for repair.'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.GameLauncher'
+  classpath = sourceSets.main.runtimeClasspath
+  workingDir = rootProject.file('assets').path
+  args = ['--first-play']
+  jvmArgs += "--enable-native-access=ALL-UNNAMED"
+  jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
+  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+}
+
 tasks.register('runDockingDemo', JavaExec) {
   group = 'application'
   description = 'Runs the stations-docking demo.'
@@ -290,7 +302,7 @@ tasks.register('runPhysicsTest', JavaExec) {
 
 // Smoke test: boots the game and each demo for a few hundred frames and fails on any exception.
 // Needs a display; on a headless machine run it under Xvfb: xvfb-run -a ./gradlew :lwjgl3:smokeTest
-def smokeApps = ['game', 'interior', 'flight', 'hud', 'audio', 'orbit', 'crew', 'docking', 'editor']
+def smokeApps = ['game', 'firstplay', 'interior', 'flight', 'hud', 'audio', 'orbit', 'crew', 'docking', 'editor']
 def smokeTasks = smokeApps.collect { app ->
   tasks.register("smokeTest${app.capitalize()}", JavaExec) {
     group = 'verification'

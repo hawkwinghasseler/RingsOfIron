@@ -77,6 +77,8 @@ public final class SceneLighting implements Disposable {
     private final FloatArray crew = new FloatArray();
     private final Array<Body> crewBodies = new Array<>();
     private Texture glow;
+    /** The screen area the scene is drawn in, {x, y, width, height} pixels, or null for the whole window. */
+    private int[] screen;
     private float time;
     private final Color tmp = new Color();
 
@@ -93,6 +95,15 @@ public final class SceneLighting implements Disposable {
     public SceneLighting(EmissiveLights art) {
         deckRig = new DeckLightRig(art);
         hullRig = new HullLightRig(art);
+    }
+
+    /**
+     * Draws the light map into this part of the window only, for a scene letterboxed by its
+     * viewport ({@code viewport.getScreenX()} and so on). Without it the map covers the window.
+     */
+    public void setScreenArea(int x, int y, int width, int height) {
+        screen = new int[]{x, y, width, height};
+        if (handler != null) handler.useCustomViewport(x, y, width, height);
     }
 
     /** Starts a frame. */
@@ -239,6 +250,7 @@ public final class SceneLighting implements Disposable {
         handler = new RayHandler(shadows);
         handler.setBlurNum(1);
         handler.setShadows(true);
+        if (screen != null) handler.useCustomViewport(screen[0], screen[1], screen[2], screen[3]);
         // Decks added before the handler existed get their walls now; their pose comes next frame
         for (Deck d : decks.values()) {
             d.barriers.update();
