@@ -387,6 +387,23 @@ class DockingDemoSceneTest {
         assertFalse(board.isOpen(), "no yard once undocked");
     }
 
+    @Test
+    void aHaulerFliesItselfInToDockAndTheOtherLeaves() {
+        demo.load(DockingDemoScene.Scene.HUB);
+        com.ringsofiron.stationsdocking.BerthingComponent in = demo.osprey.getComponent(com.ringsofiron.stationsdocking.BerthingComponent.class);
+        for (int i = 0; i < 60 * 300 && demo.world.docking.dockedTo(demo.osprey) == null; i++) demo.update(FRAME);
+        assertSame(demo.target, demo.world.docking.dockedTo(demo.osprey), "Osprey docked at the hub");
+        assertEquals(com.ringsofiron.stationsdocking.BerthingComponent.Phase.BERTHED, in.phase);
+        com.ringsofiron.stationsdocking.BerthingComponent out = demo.kestrel.getComponent(com.ringsofiron.stationsdocking.BerthingComponent.class);
+        com.badlogic.gdx.physics.box2d.Body hub = demo.world.docking.bodyOf(demo.target);
+        com.badlogic.gdx.physics.box2d.Body kb = demo.world.docking.bodyOf(demo.kestrel);
+        for (int i = 0; i < 60 * 120 && kb.getPosition().dst(hub.getPosition()) * 10f < 400f; i++) demo.update(FRAME);
+        assertNull(demo.world.docking.dockedTo(demo.kestrel), "Kestrel undocked");
+        assertEquals("Leaving", out.status);
+        assertTrue(kb.getPosition().dst(hub.getPosition()) * 10f >= 400f, "and flew away");
+        assertSame(demo.target, demo.world.docking.dockedTo(demo.osprey), "Osprey stays");
+    }
+
     private double credits() {
         return demo.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class).credits;
     }

@@ -40,6 +40,38 @@ class MacroSimulationTest {
     }
 
     @Test
+    void freightersDockedInTheBubbleTakeOrdersAndTradeWhereTheyBerth() {
+        MacroSimulation sim = MacroSimDemo.build(new GameEngine());
+        // Every freighter sits at its station inside the bubble
+        for (String id : sim.freighters().all().keySet()) sim.freighters().onEnterBubble(id);
+        String ship = null;
+        for (double t = 0; t <= 86400 && ship == null; t += 600) {
+            sim.advanceTo(t);
+            for (var e : sim.freighters().all().entrySet()) {
+                if (e.getValue().destinationUuid != null) ship = e.getKey();
+            }
+        }
+        assertNotNull(ship, "one took an order");
+        FreighterComponent f = sim.freighters().get(ship);
+        assertEquals(FreighterComponent.State.IN_BUBBLE, f.state, "the bubble flies it, not the rails");
+        assertTrue(f.resumeState == FreighterComponent.State.TO_PICKUP || f.resumeState == FreighterComponent.State.TO_DELIVERY);
+        sim.freighters().undockedInBubble(ship);
+        assertEquals(null, f.dockedAtUuid);
+        if (f.resumeState == FreighterComponent.State.TO_PICKUP) {
+            sim.freighters().berthedInBubble(ship, f.destinationUuid);
+            assertEquals(FreighterComponent.State.TO_DELIVERY, f.resumeState, "loaded where it berthed");
+            assertTrue(f.cargoQuantity > 0);
+            sim.freighters().undockedInBubble(ship);
+        }
+        String to = f.destinationUuid;
+        sim.freighters().berthedInBubble(ship, to);
+        assertEquals(FreighterComponent.State.IDLE, f.resumeState);
+        assertEquals(to, f.dockedAtUuid);
+        assertEquals(1, f.tripsCompleted, "delivered");
+        assertEquals(0, f.cargoQuantity, 1e-9);
+    }
+
+    @Test
     void oneBigWarpJumpMatchesManySmallSteps() {
         MacroSimulation coarse = MacroSimDemo.build(new GameEngine());
         MacroSimulation fine = MacroSimDemo.build(new GameEngine());

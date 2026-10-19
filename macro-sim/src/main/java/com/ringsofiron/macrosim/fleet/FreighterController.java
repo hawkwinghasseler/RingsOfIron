@@ -177,11 +177,14 @@ public class FreighterController {
         return freighters;
     }
 
-    /** Gives every idle freighter the best order it can reach, if any. */
+    /**
+     * Gives every idle freighter the best order it can reach, if any: those on the rails, and those
+     * docked in the bubble, which fly off under their own power ({@link #berthedInBubble}).
+     */
     public void assignIdle(double now) {
         for (Map.Entry<String, FreighterComponent> e : freighters.entrySet()) {
             FreighterComponent f = e.getValue();
-            if (f.state != FreighterComponent.State.IDLE) continue;
+            if (f.state != FreighterComponent.State.IDLE && !idleInBubble(f)) continue;
             TradeOrder best = null;
             double bestScore = 0;
             for (TradeOrder o : economy.orders()) {
@@ -196,6 +199,12 @@ public class FreighterController {
         }
     }
 
+    /** Docked in the bubble with nothing to do. */
+    private static boolean idleInBubble(FreighterComponent f) {
+        return f.state == FreighterComponent.State.IN_BUBBLE && f.resumeState == FreighterComponent.State.IDLE
+                && f.dockedAtUuid != null && f.destinationUuid == null;
+    }
+
     /** Profit per hour of an order for this freighter, or 0 if not worth it (or out of reach). */
     private double score(String uuid, FreighterComponent f, TradeOrder o, double now) {
         double qty = Math.min(o.quantity, f.capacityUnits(economy.catalog().commodity(o.commodity)));
@@ -203,7 +212,9 @@ public class FreighterController {
         double leg1Arrival = start;
         double dv = 0;
         if (!o.fromUuid.equals(f.dockedAtUuid)) {
-            RoutePlanner.Route r1 = RoutePlanner.estimate(rails, rails.parentOf(uuid), rails.stateAt(uuid, now, a),
+            // In the bubble the ship is off the rails: it starts from the station it is docked at
+            String from = idleInBubble(f) ? f.dockedAtUuid : uuid;
+            RoutePlanner.Route r1 = RoutePlanner.estimate(rails, rails.parentOf(from), rails.stateAt(from, now, a),
                     o.fromUuid, now, start);
             if (r1 == null) return 0;
             leg1Arrival = r1.arrivalTime;
@@ -225,6 +236,18 @@ public class FreighterController {
         economy.claim(o, uuid, stations.apply(o.fromUuid), stations.apply(o.toUuid));
         activeOrders.put(o.id, o);
         f.orderId = o.id;
+        if (idleInBubble(f)) {
+            // The bubble flies it off; the leg is planned once it is back on the rails
+            if (o.fromUuid.equals(f.dockedAtUuid)) {
+                takeOn(f, o);
+                f.resumeState = FreighterComponent.State.TO_DELIVERY;
+                f.destinationUuid = o.toUuid;
+            } else {
+                f.resumeState = FreighterComponent.State.TO_PICKUP;
+                f.destinationUuid = o.fromUuid;
+            }
+            return;
+        }
         if (o.fromUuid.equals(f.dockedAtUuid)) {
             load(uuid, f, o, now);
         } else {
@@ -234,6 +257,13 @@ public class FreighterController {
     }
 
     private void load(String uuid, FreighterComponent f, TradeOrder o, double now) {
+        takeOn(f, o);
+        f.state = FreighterComponent.State.TO_DELIVERY;
+        fly(uuid, f, o.toUuid, now, now + UNDOCK_DELAY);
+    }
+
+    /** Takes the order's cargo aboard at its pickup station. */
+    private void takeOn(FreighterComponent f, TradeOrder o) {
         EconomyNode from = stations.apply(o.fromUuid);
         from.reserveOut(o.commodity, -o.quantity);
         double got = from.remove(o.commodity, o.quantity);
@@ -241,8 +271,6 @@ public class FreighterController {
         f.cargoQuantity = got;
         f.credits -= got * o.buyPrice;
         if (got < o.quantity) stations.apply(o.toUuid).expectIncoming(o.commodity, got - o.quantity);
-        f.state = FreighterComponent.State.TO_DELIVERY;
-        fly(uuid, f, o.toUuid, now, now + UNDOCK_DELAY);
     }
 
     private void fly(String uuid, FreighterComponent f, String targetUuid, double now, double earliest) {
@@ -336,21 +364,60 @@ public class FreighterController {
         if (f.state == FreighterComponent.State.TO_PICKUP && o != null) {
             load(uuid, f, o, now);
         } else if (f.state == FreighterComponent.State.TO_DELIVERY && o != null) {
-            EconomyNode to = stations.apply(stationUuid);
-            to.expectIncoming(o.commodity, -f.cargoQuantity);
-            to.add(f.cargoCommodity, f.cargoQuantity);
-            f.credits += f.cargoQuantity * o.sellPrice;
-            f.cargoQuantity = 0;
-            f.cargoCommodity = null;
-            f.tripsCompleted++;
-            economy.close(o);
-            activeOrders.remove(o.id);
-            f.orderId = 0;
+            deliver(f, o, stationUuid);
             f.state = FreighterComponent.State.IDLE;
         } else {
             if (f.cargoQuantity > 0) sellLeftover(f, stations.apply(stationUuid));
             f.state = FreighterComponent.State.IDLE;
         }
+    }
+
+    /** Hands the order's cargo over at its delivery station and closes the order. */
+    private void deliver(FreighterComponent f, TradeOrder o, String stationUuid) {
+        EconomyNode to = stations.apply(stationUuid);
+        to.expectIncoming(o.commodity, -f.cargoQuantity);
+        to.add(f.cargoCommodity, f.cargoQuantity);
+        f.credits += f.cargoQuantity * o.sellPrice;
+        f.cargoQuantity = 0;
+        f.cargoCommodity = null;
+        f.tripsCompleted++;
+        economy.close(o);
+        activeOrders.remove(o.id);
+        f.orderId = 0;
+    }
+
+    /**
+     * A freighter in the bubble has docked at {@code stationUuid} under its own power: if it was
+     * flying there, it loads or unloads as it would on arriving on the rails, and what it does next
+     * goes in {@link FreighterComponent#resumeState} (and its next stop in
+     * {@link FreighterComponent#destinationUuid}) for the bubble to fly, or the rails once it leaves.
+     */
+    public void berthedInBubble(String uuid, String stationUuid) {
+        FreighterComponent f = freighters.get(uuid);
+        if (f == null || f.state != FreighterComponent.State.IN_BUBBLE) return;
+        f.dockedAtUuid = stationUuid;
+        if (!stationUuid.equals(f.destinationUuid)) return;
+        f.destinationUuid = null;
+        f.arrivalTime = Double.NaN;
+        f.lastArrivalMiss = 0;
+        TradeOrder o = activeOrders.get(f.orderId);
+        if (f.resumeState == FreighterComponent.State.TO_PICKUP && o != null) {
+            takeOn(f, o);
+            f.resumeState = FreighterComponent.State.TO_DELIVERY;
+            f.destinationUuid = o.toUuid;
+        } else if (f.resumeState == FreighterComponent.State.TO_DELIVERY && o != null) {
+            deliver(f, o, stationUuid);
+            f.resumeState = FreighterComponent.State.IDLE;
+        } else {
+            if (f.cargoQuantity > 0) sellLeftover(f, stations.apply(stationUuid));
+            f.resumeState = FreighterComponent.State.IDLE;
+        }
+    }
+
+    /** A freighter in the bubble has undocked from its station to fly on. */
+    public void undockedInBubble(String uuid) {
+        FreighterComponent f = freighters.get(uuid);
+        if (f != null && f.state == FreighterComponent.State.IN_BUBBLE) f.dockedAtUuid = null;
     }
 
     /** Cargo with no order left (its buyer was lost) goes at the local price, or is dumped. */
