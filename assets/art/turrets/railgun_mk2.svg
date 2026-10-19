@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="130" height="64" viewBox="-32 -32 130 64">
+  <title>railgun_mk2 turret: pivot at origin, barrel toward +x</title>
+  <g id="base">
+    <circle cx="0" cy="0" r="28" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
+    <circle cx="0" cy="0" r="19.6" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="10" y="-5" width="80" height="10" rx="2" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <rect x="10" y="-2" width="80" height="4" fill="#1f4a5a"/>
+    <rect x="86" y="-7" width="8" height="14" rx="2" fill="#4b5563" stroke="#10141a" stroke-width="2"/>
+    <rect x="-20" y="-16" width="30" height="32" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <rect x="-18" y="-14" width="26" height="3" fill="#d4a83a"/>
+    <rect x="-18" y="11" width="26" height="3" fill="#d4a83a"/>
+  </g>
+  <g id="emissive">
+    <rect x="10" y="-2" width="80" height="4" fill="#7ff0ff" opacity="0.8"/>
+  </g>
+</svg>

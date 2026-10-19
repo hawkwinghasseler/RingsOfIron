@@ -250,7 +250,7 @@ public class DockingDemoScene {
         return notice;
     }
 
-    /** Has the outpost's yard fit the nose hardpoint with the next weapon it sells, new or used. */
+    /** Has the outpost's yard fit the nose hardpoint with the next weapon it sells that fits there, new or used. */
     public String refitNose(boolean used) {
         WeaponsComponent weapons = player.getComponent(WeaponsComponent.class);
         if (weapons == null || weapons.mounts.size == 0) return notice = "No hardpoints";
@@ -258,6 +258,9 @@ public class DockingDemoScene {
         java.util.List<WeaponDef> offers = world.yard.offers();
         int at = offers.indexOf(now);
         WeaponDef next = offers.get((at + 1) % offers.size());
+        for (int k = 1; k < offers.size() && StationYard.tooSmall(weapons.mounts.get(0), next) != null; k++) {
+            next = offers.get((at + 1 + k) % offers.size());
+        }
         notice = world.yard.orderRefit(player, target, 0, next.id, used);
         return notice;
     }

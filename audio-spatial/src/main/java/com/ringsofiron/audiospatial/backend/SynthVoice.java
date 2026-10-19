@@ -12,7 +12,7 @@ import com.badlogic.gdx.math.MathUtils;
  */
 public class SynthVoice {
 
-    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, AUTOCANNON, LAUNCH, MISSILE, EXPLOSION, FOOTSTEP, VOICE, BEEP }
+    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, AUTOCANNON, LAUNCH, MISSILE, EXPLOSION, FOOTSTEP, VOICE, FLAK, ION, SHIELD, BEEP }
 
     final Patch patch;
     final boolean looping;
@@ -47,6 +47,10 @@ public class SynthVoice {
         if (path.startsWith("event:")) path = path.substring("event:".length());
         // Weapon sounds first: their paths also contain "weapon"
         if (path.contains("autocannon")) return Patch.AUTOCANNON;
+        if (path.contains("flak")) return Patch.FLAK;
+        // By folder: "ion" is in "explosion" too
+        if (path.endsWith("weapons/ion") || path.endsWith("impacts/ion")) return Patch.ION;
+        if (path.contains("shield")) return Patch.SHIELD;
         if (path.contains("missile_launch")) return Patch.LAUNCH;
         if (path.contains("missile")) return Patch.MISSILE;
         if (path.contains("explosion")) return Patch.EXPLOSION;
@@ -240,6 +244,27 @@ public class SynthVoice {
                 float syllables = 0.55f - 0.45f * (float) Math.cos(MathUtils.PI2 * 5f * t);
                 float env = Math.min(1f, t * 40f);
                 return 0.45f * env * syllables * buzz(phaseA, 12);
+            }
+            case FLAK: {
+                // A dull "pok": a low pop under a burst of filtered noise, softer than the autocannon
+                float hz = 70f + 60f * (float) Math.exp(-t * 30f);
+                phaseA = step(phaseA, hz);
+                float pop = (float) Math.sin(MathUtils.PI2 * phaseA) * (float) Math.exp(-t * 14f);
+                brown = brown * 0.9f + noise() * 0.2f;
+                return 0.8f * pop + 0.9f * brown * (float) Math.exp(-t * 20f);
+            }
+            case ION: {
+                // A crackling zap: a buzz rising 200 -> 900 Hz, chopped by sparks of noise
+                float hz = 900f - 700f * (float) Math.exp(-t * 18f);
+                phaseA = step(phaseA, hz);
+                float env = Math.min(1f, t * 300f) * (float) Math.exp(-t * 7f);
+                float spark = noise() > 0.6f ? noise() : 0f;
+                return env * (0.5f * buzz(phaseA, 6) + 0.45f * spark);
+            }
+            case SHIELD: {
+                // A glassy shimmer: two close high tones beating, fading fast
+                float env = Math.min(1f, t * 200f) * (float) Math.exp(-t * 8f);
+                return 0.4f * env * (sin(1320f, t) + sin(1347f, t) + 0.5f * sin(2650f, t));
             }
             default:
                 return 0.3f * sin(440f, t) * (t < duration ? 1f : 0f);
