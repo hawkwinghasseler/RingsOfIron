@@ -14,7 +14,9 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 /**
  * Sets each crewed ship's gunnery and tracking skill from its crew: the best conscious gunner
  * aims every mount and the best conscious sensor operator runs the tracks, so a knocked-out
- * crew shoots and tracks like a green one. Ships with no crew aboard keep their own values.
+ * crew shoots and tracks like a green one. On a ship with a weapons console that means whoever
+ * mans it (and the player); see {@link CrewQueries#bestSkill}. Ships with no crew aboard keep
+ * their own values.
  */
 public class CrewStationSync extends FixedLogicSystem {
     /** Seconds between updates; crew skill only changes when someone goes down or wakes. */

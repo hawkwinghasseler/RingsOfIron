@@ -181,7 +181,8 @@ class GameScenarioTest {
         assertTrue(weapons.mounts.size > 0);
         assertNotNull(sensor);
         float raiderGunnery = game.raider.getComponent(WeaponsComponent.class).mounts.first().gunnerySkill;
-        for (int i = 0; i < 60; i++) world.update(FRAME);
+        // Cole the marine walks to the weapons console and mans it
+        for (int i = 0; i < 60 * 20 && weapons.mounts.first().gunnerySkill < 0.75f; i++) world.update(FRAME);
         for (WeaponMountComponent m : weapons.mounts) assertEquals(0.75f, m.gunnerySkill, 1e-6f, "Cole the marine on the guns");
         assertEquals(0.5f, sensor.trackingSkill, 1e-6f);
         assertEquals(raiderGunnery, game.raider.getComponent(WeaponsComponent.class).mounts.first().gunnerySkill,

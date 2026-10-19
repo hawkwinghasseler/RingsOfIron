@@ -38,6 +38,10 @@ public final class TaskRules {
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && s.health < 1f;
             }
+            case MAN_CONSOLE: {
+                SubsystemComponent s = subsystemOf(task);
+                return s != null && !s.isDestroyed();
+            }
             case RESCUE: {
                 CrewMemberComponent c = crew.crew(((RescueTask) task).casualty);
                 // Still needed while being carried: the rescue is under way.
@@ -57,8 +61,8 @@ public final class TaskRules {
     }
 
     static SubsystemComponent subsystemOf(CrewTask task) {
-        if (!(task instanceof RepairTask)) return null;
-        Entity e = ((RepairTask) task).subsystem;
+        Entity e = task instanceof RepairTask ? ((RepairTask) task).subsystem
+                : task instanceof ManConsoleTask ? ((ManConsoleTask) task).console : null;
         return e == null ? null : e.getComponent(SubsystemComponent.class);
     }
 
@@ -94,7 +98,8 @@ public final class TaskRules {
             }
             case SEAL_BREACH:
                 return isAdjacent(x, y, tx, ty) && !grid.isEdgeBlocked(x, y, tx, ty);
-            case REPAIR: {
+            case REPAIR:
+            case MAN_CONSOLE: {
                 SubsystemComponent s = subsystemOf(task);
                 if (s == null) return false;
                 for (Side side : Side.values()) {

@@ -8,6 +8,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.aicrew.ManConsoleTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.TreatTask;
@@ -262,6 +263,16 @@ public final class CrewTasks {
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
                     p.treatedBy = a.entity;
                     return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes
+                }
+                case MAN_CONSOLE: {
+                    // At it until anything else on the board wants them: then the console goes back up
+                    ShipTaskBoardComponent board = a.board();
+                    if (board != null && board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(),
+                            o -> o.kind != CrewTask.Kind.MAN_CONSOLE && a.mayTake(o)) != null) {
+                        a.releaseTask();
+                        return Status.FAILED;
+                    }
+                    return Status.RUNNING;
                 }
                 default:
                     return Status.FAILED;
@@ -660,6 +671,10 @@ public final class CrewTasks {
             case CARRY: return "carrying " + ((CarryTask) t).job.commodity();
             case YARD: return ((YardTask) t).job.what();
             case TREAT: return "treating a patient";
+            case MAN_CONSOLE: {
+                SubsystemComponent.SubsystemType type = ((ManConsoleTask) t).type();
+                return "manning the " + (type == null ? "console" : type.name().toLowerCase());
+            }
             default: return t.kind.name().toLowerCase();
         }
     }

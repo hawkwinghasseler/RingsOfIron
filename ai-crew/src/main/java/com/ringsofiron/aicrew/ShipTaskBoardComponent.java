@@ -50,7 +50,7 @@ public class ShipTaskBoardComponent implements Component {
         float bestScore = Float.NEGATIVE_INFINITY;
         for (CrewTask t : tasks) {
             if (t.status != CrewTask.Status.OPEN) continue;
-            float affinity = role.affinity(t.kind);
+            float affinity = role.affinity(t);
             if (affinity <= 0f) continue;
             if (filter != null && !filter.accept(t)) continue;
             float score = t.priority * affinity - DISTANCE_WEIGHT * (Math.abs(t.x - x) + Math.abs(t.y - y));
