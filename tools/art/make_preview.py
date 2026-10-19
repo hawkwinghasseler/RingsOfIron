@@ -181,7 +181,7 @@ def main():
     sections = []
     with open(os.path.join(ROOT, "assets", "data", "ships.toml"), "rb") as fh:
         ships = tomllib.load(fh)["ship"]
-    for folder in ("tiles", "walls", "edges", "components", "effects", "decor", "interactive", "turrets", "hulls"):
+    for folder in ("tiles", "walls", "edges", "components", "effects", "decor", "interactive", "turrets", "hulls", "crew", "projectiles"):
         order = {"s": 0, "m": 1, "l": 2, "xl": 3}
         def key(name):
             m = re.match(r"(.*?)_(s|m|l|xl)(_.*)?\.svg$", name)

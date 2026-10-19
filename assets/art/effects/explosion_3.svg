@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="-64 -64 128 128">
+  <title>explosion_3: frame 3 of 4 of an explosion, centered on the origin</title>
+  <defs><radialGradient id="boom_core"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#ffb347" stop-opacity="0.9"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient><radialGradient id="boom_halo"><stop offset="0" stop-color="#ff5a1f" stop-opacity="0.55"/><stop offset="1" stop-color="#ff5a1f" stop-opacity="0"/></radialGradient></defs>
+  <g id="base">
+    <circle cx="-23.29" cy="-5.84" r="19.22" fill="#2b2d31" opacity="0.55"/>
+    <circle cx="-12.45" cy="-17.98" r="21.68" fill="#2b2d31" opacity="0.55"/>
+    <circle cx="-26.77" cy="20.18" r="29.58" fill="#2b2d31" opacity="0.55"/>
+    <circle cx="-41.77" cy="10.3" r="29.62" fill="#2b2d31" opacity="0.55"/>
+    <circle cx="0.84" cy="18.14" r="20.63" fill="#2b2d31" opacity="0.55"/>
+    <circle cx="17.68" cy="-27.14" r="28.81" fill="#2b2d31" opacity="0.55"/>
+    <circle cx="33.35" cy="-5.89" r="24.68" fill="#2b2d31" opacity="0.55"/>
+    <circle cx="15.34" cy="6.94" r="27.6" fill="#2b2d31" opacity="0.55"/>
+    <circle cx="-17.33" cy="-32.47" r="25.01" fill="#2b2d31" opacity="0.55"/>
+  </g>
+  <g id="emissive">
+    <circle cx="0" cy="0" r="59.4" fill="url(#boom_halo)"/>
+    <circle cx="-16.3" cy="-4.09" r="17.3" fill="#ff5a1f" opacity="0.44"/>
+    <circle cx="-16.3" cy="-4.09" r="10.57" fill="#ffa62b" opacity="0.55"/>
+    <circle cx="-8.71" cy="-12.59" r="19.51" fill="#ff5a1f" opacity="0.44"/>
+    <circle cx="-8.71" cy="-12.59" r="11.92" fill="#ffa62b" opacity="0.55"/>
+    <circle cx="0.58" cy="12.7" r="18.56" fill="#ff5a1f" opacity="0.44"/>
+    <circle cx="0.58" cy="12.7" r="11.34" fill="#ffa62b" opacity="0.55"/>
+    <circle cx="12.38" cy="-19" r="25.93" fill="#ff5a1f" opacity="0.44"/>
+    <circle cx="12.38" cy="-19" r="15.84" fill="#ffa62b" opacity="0.55"/>
+    <circle cx="10.74" cy="4.86" r="24.84" fill="#ff5a1f" opacity="0.44"/>
+    <circle cx="10.74" cy="4.86" r="15.18" fill="#ffa62b" opacity="0.55"/>
+    <circle cx="0" cy="0" r="21.6" fill="url(#boom_core)"/>
+  </g>
+</svg>

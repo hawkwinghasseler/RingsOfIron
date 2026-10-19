@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="16" viewBox="0 0 64 16">
+  <title>beam: laser beam strip, stretch along x to the beam's length</title>
+  <defs><linearGradient id="beam_glow" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ff5a5a" stop-opacity="0"/><stop offset="0.5" stop-color="#ff5a5a" stop-opacity="0.75"/><stop offset="1" stop-color="#ff5a5a" stop-opacity="0"/></linearGradient></defs>
+  <g id="base">
+  </g>
+  <g id="emissive">
+    <rect x="0" y="0" width="64" height="16" fill="url(#beam_glow)"/>
+    <rect x="0" y="5.5" width="64" height="5" fill="#ff8a8a"/>
+    <rect x="0" y="7" width="64" height="2" fill="#ffe6e6"/>
+  </g>
+</svg>

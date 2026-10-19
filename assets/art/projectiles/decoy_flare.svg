@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="48" viewBox="-48 -24 72 48">
+  <title>decoy_flare: burning flare, pivot at origin, moving toward +x, sparks behind</title>
+  <defs><radialGradient id="flare_glow"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#ffd27a" stop-opacity="0.9"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient><radialGradient id="flare_halo"><stop offset="0" stop-color="#ff8a3c" stop-opacity="0.55"/><stop offset="1" stop-color="#ff8a3c" stop-opacity="0"/></radialGradient></defs>
+  <g id="base">
+    <rect x="-4" y="-2.5" width="8" height="5" rx="1.5" fill="#373f4b" stroke="#10141a" stroke-width="1"/>
+  </g>
+  <g id="emissive">
+    <circle cx="0" cy="0" r="22" fill="url(#flare_halo)"/>
+    <circle cx="-9.34" cy="1.14" r="2.2" fill="#ffd27a" opacity="0.9"/>
+    <circle cx="-13.46" cy="-0.13" r="1.98" fill="#ffd27a" opacity="0.79"/>
+    <circle cx="-21.14" cy="1.76" r="1.76" fill="#ffd27a" opacity="0.68"/>
+    <circle cx="-24.77" cy="0.07" r="1.54" fill="#ffd27a" opacity="0.57"/>
+    <circle cx="-31.98" cy="-1.58" r="1.32" fill="#ffd27a" opacity="0.46"/>
+    <circle cx="-39.99" cy="-0.77" r="1.1" fill="#ffd27a" opacity="0.35"/>
+    <circle cx="-43.66" cy="-2.58" r="0.88" fill="#ffd27a" opacity="0.24"/>
+    <circle cx="1" cy="0" r="8" fill="url(#flare_glow)"/>
+  </g>
+</svg>
