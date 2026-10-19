@@ -81,7 +81,7 @@ public class ThreatOverlay extends Actor {
         if (provider != null && isVisible()) provider.collect(frame);
         String text = bannerText(frame);
         banner.setVisible(text != null && isVisible() && (!urgent(frame) || clock % 0.5f < 0.3f));
-        if (text != null) banner.setText(text);
+        banner.setText(text == null ? "" : text);
     }
 
     @Override
