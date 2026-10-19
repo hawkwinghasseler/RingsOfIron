@@ -41,7 +41,7 @@ import java.util.function.Consumer;
  * {@code demos/Ship editor.bat} on Windows. See {@code documentation/ship-editor/Design.md}.
  *
  * <p>The panel on the right has three tabs: Layout, Tiles and Components. On the Layout tab, keys
- * 1-7 pick a tool (paint, component, edge wall, hull piece, covering, erase, port), R rotates
+ * 1-8 pick a tool (paint, component, edge wall, hull piece, covering, erase, port, light), R rotates
  * the component under the cursor (or what the tool places),
  * and the left mouse button uses the tool on the grid; Shift-drag with the paint tool fills a
  * rectangle. Right or middle drag pans, the wheel zooms (over the panel it scrolls), F fits the
@@ -60,7 +60,7 @@ public class ShipEditor extends ApplicationAdapter {
 
     private enum Tool {
         PAINT("Paint"), COMPONENT("Component"), EDGE("Edge wall"), HULL("Hull piece"), COVERING("Covering"),
-        ERASE("Erase"), PORT("Port");
+        ERASE("Erase"), PORT("Port"), LIGHT("Light");
 
         final String label;
 
@@ -455,6 +455,15 @@ public class ShipEditor extends ApplicationAdapter {
             shapes.setColor(0.4f, 1f, 0.4f, 0.6f);
             edgeRect(hoverX, hoverY, nearestSide(), 4f);
         }
+        // Wall lights: a bright strip on the wall, inside the tile it lights
+        if (m.lights != null) {
+            shapes.setColor(1f, 0.95f, 0.6f, 1f);
+            for (ChassisDef.Light l : m.lights) lightRect(l.x, l.y, Side.valueOf(l.side));
+        }
+        if (tab == Tab.LAYOUT && tool == Tool.LIGHT && m.inBounds(hoverX, hoverY)) {
+            shapes.setColor(1f, 0.95f, 0.6f, 0.5f);
+            lightRect(hoverX, hoverY, nearestSide());
+        }
         drawGhostFill(m, cat);
         shapes.end();
 
@@ -510,6 +519,14 @@ public class ShipEditor extends ApplicationAdapter {
             case LEFT: shapes.rect(sx(x) - t / 2, sy(y), t, scale); break;
             default: shapes.rect(sx(x + 1) - t / 2, sy(y), t, scale); break;
         }
+    }
+
+    /** A wall light on the {@code s} edge of tile (x, y): half the edge long, a little way into the tile. */
+    private void lightRect(int x, int y, Side s) {
+        float len = scale * 0.5f, depth = Math.max(3f, scale * 0.15f);
+        float cx = sx(x + 0.5f + s.dx * 0.5f), cy = sy(y + 0.5f + s.dy * 0.5f);
+        if (s.dy != 0) shapes.rect(cx - len / 2f, s.dy > 0 ? cy - depth : cy, len, depth);
+        else shapes.rect(s.dx > 0 ? cx - depth : cx, cy - len / 2f, depth, len);
     }
 
     private void drawPiece(String shape, int x, int y, int baseW, int baseH, int rot) {
@@ -724,6 +741,15 @@ public class ShipEditor extends ApplicationAdapter {
                 mount.active = !mount.active;
                 changed();
                 say("Port " + (mount.active ? "active: it extends a latch collar" : "passive: magnets only"));
+                break;
+            }
+            case LIGHT: {
+                Side side = nearestSide();
+                boolean had = m.lightAt(hoverX, hoverY, side) != null;
+                beginEdit();
+                m.toggleLight(hoverX, hoverY, side);
+                changed();
+                say(had ? "Took down the light" : "Hung a light on the " + side.name().toLowerCase() + " wall of " + hoverX + "," + hoverY);
                 break;
             }
             default:
@@ -1118,10 +1144,49 @@ public class ShipEditor extends ApplicationAdapter {
                 text(x, y, "Click a docking port: active ports extend a collar", Color.GRAY);
                 y -= LINE;
                 break;
+            case LIGHT: {
+                text(x, y, "Click near a wall to hang or take down a light", Color.GRAY);
+                y -= LINE;
+                text(x, y, "A light takes no room: anything can still go on its tile", Color.GRAY);
+                y -= LINE;
+                text(x, y, m.lights == null ? "No lights placed: the game works them out"
+                        : m.lights.size() + (m.lights.size() == 1 ? " light" : " lights"), Color.WHITE);
+                y -= LINE;
+                float bx = x;
+                bx += button(bx, y, "Auto-place lights", false, () -> autoPlaceLights());
+                button(bx, y, "Clear", false, () -> {
+                    if (m.lights == null || m.lights.isEmpty() || !editable()) return;
+                    beginEdit();
+                    m.lights.clear();
+                    changed();
+                    say("Took down every light");
+                });
+                y -= LINE;
+                break;
+            }
             default:
                 break;
         }
         return y;
+    }
+
+    /** Replaces the chassis's lights with ones along the walls of every room. */
+    private void autoPlaceLights() {
+        ChassisModel m = model();
+        if (m == null) return;
+        if (!editable()) {
+            say("This chassis comes from a mod and cannot be edited here");
+            return;
+        }
+        beginEdit();
+        String error = m.autoPlaceLights(catalog());
+        if (error != null) {
+            undo.pop();
+            say("Can't place lights: " + error);
+            return;
+        }
+        changed();
+        say("Placed " + m.lights.size() + " lights along the walls");
     }
 
     private float swatchRow(float x, float y, int rgb, char symbol, String label, boolean selected, Runnable action) {

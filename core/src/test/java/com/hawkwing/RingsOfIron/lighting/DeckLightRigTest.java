@@ -128,7 +128,7 @@ class DeckLightRigTest {
         int walls = rig.wallLights(g).size;
         for (int i = 0; i < walls; i++) {
             LightSpot s = spots.get(i);
-            WallLightLayout.Placement p = rig.wallLights(g).get(i);
+            com.ringsofiron.interiorgrid.WallLight p = rig.wallLights(g).get(i);
             assertTrue(s.on && s.isCone && s.casts());
             assertEquals(5f * g.tileSize, s.reach, 1e-4f, "the art's reach, not a guess from its size");
             // Just off the wall, on its tile, shining away from it

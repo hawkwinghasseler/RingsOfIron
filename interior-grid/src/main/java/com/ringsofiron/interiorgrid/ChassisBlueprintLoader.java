@@ -127,6 +127,8 @@ public class ChassisBlueprintLoader {
             grid.placeHullPiece(piece);
         }
 
+        if (blueprint.wallLights != null) grid.wallLights = new Array<>(blueprint.wallLights);
+
         for (SubsystemPlacement drawn : drawnMounts(chars, catalog, true)) {
             grid.placeMount(drawn.footprint);
             subsystems.add(drawn);
