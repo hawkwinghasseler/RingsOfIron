@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
   <title>chair: seat facing -y (back toward +y)</title>
-  <rect x="3" y="4" width="10" height="10" rx="3" fill="#2b2f36" stroke="#10141a" stroke-width="1.5"/>
-  <rect x="3" y="1" width="10" height="4" rx="1.5" fill="#1e2227" stroke="#10141a" stroke-width="1"/>
-  <rect id="collider" x="3" y="1" width="10" height="13" fill="none" stroke="none"/>
+  <g id="base">
+    <rect x="3" y="4" width="10" height="10" rx="3" fill="#2b2f36" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="3" y="1" width="10" height="4" rx="1.5" fill="#1e2227" stroke="#10141a" stroke-width="1"/>
+  </g>
+  <g id="meta">
+    <rect id="collider" x="3" y="1" width="10" height="13" fill="none" stroke="none"/>
+  </g>
 </svg>

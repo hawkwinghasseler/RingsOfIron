@@ -1,10 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <title>damage_heavy: cracks for a tile or system below a quarter integrity</title>
-  <path d="M30.37,26.43 L23.14,33.76 L13.27,33.81 L21.24,25.43 L22.32,27.76" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
-  <path d="M11.8,26.68 L15.87,25.72 L20.37,18.86 L15.13,11.08 L15.26,19.56" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
-  <path d="M35.98,44.07 L33.65,48.99 L25.69,44.81 L29.17,49.32 L27.61,41.08" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
-  <path d="M21.74,19.24 L17.36,25.43 L11.35,33.15 L18.94,24.25 L16.51,24.08" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
-  <path d="M11.03,28.69 L19.16,20.93 L21.1,13.35 L22.67,21.26 L16.73,11.42" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
-  <path d="M13.67,33.75 L4.02,25.45 L3.96,33.87 L2.36,31.83 L5.13,23.7" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
-  <path d="M35.51,17.59 L37.69,26.76 L28.77,27.86 L30.9,20.85 L26.27,30.74" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+  <g id="base">
+    <path d="M30.37,26.43 L23.14,33.76 L13.27,33.81 L21.24,25.43 L22.32,27.76" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+    <path d="M11.8,26.68 L15.87,25.72 L20.37,18.86 L15.13,11.08 L15.26,19.56" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+    <path d="M35.98,44.07 L33.65,48.99 L25.69,44.81 L29.17,49.32 L27.61,41.08" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+    <path d="M21.74,19.24 L17.36,25.43 L11.35,33.15 L18.94,24.25 L16.51,24.08" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+    <path d="M11.03,28.69 L19.16,20.93 L21.1,13.35 L22.67,21.26 L16.73,11.42" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+    <path d="M13.67,33.75 L4.02,25.45 L3.96,33.87 L2.36,31.83 L5.13,23.7" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+    <path d="M35.51,17.59 L37.69,26.76 L28.77,27.86 L30.9,20.85 L26.27,30.74" fill="none" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+  </g>
 </svg>

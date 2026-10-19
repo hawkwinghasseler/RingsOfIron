@@ -16,7 +16,7 @@ name = "Corvette"
 tile_size = 1.0
 origin_x = -9.0
 origin_y = -3.0
-# A turret mount beside each hardpoint in ships.toml (combat wires each weapon to
+# A turret mount under each hardpoint in ships.toml (combat wires each weapon to
 # the nearest one): nose (12,2), port and starboard beams (10,4) and (10,1), the
 # launcher (7,4) and the laser (7,1). The weapons console sits aft, away from
 # every hardpoint.

@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="16" viewBox="0 0 64 16">
   <title>pipe_valve: pipe run with a hand valve</title>
-  <rect x="0" y="2" width="64" height="5" fill="#4f7a8c" stroke="#10141a" stroke-width="1.5"/>
-  <rect x="0" y="9" width="64" height="5" fill="#8c6a4f" stroke="#10141a" stroke-width="1.5"/>
-  <circle cx="32" cy="4.5" r="6" fill="#b33b3b" stroke="#10141a" stroke-width="1.5"/>
-  <line x1="26" y1="4.5" x2="38" y2="4.5" stroke="#e0e0e0" stroke-width="1.5" stroke-linecap="round"/>
+  <g id="base">
+    <rect x="0" y="2" width="64" height="5" fill="#4f7a8c" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="0" y="9" width="64" height="5" fill="#8c6a4f" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="32" cy="4.5" r="6" fill="#b33b3b" stroke="#10141a" stroke-width="1.5"/>
+    <line x1="26" y1="4.5" x2="38" y2="4.5" stroke="#e0e0e0" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
 </svg>

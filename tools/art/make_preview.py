@@ -19,6 +19,7 @@ SCALE = 0.5  # preview pixels per SVG unit on the chassis plans
 INLINE = "--inline" in sys.argv
 OUT = sys.argv[sys.argv.index("--out") + 1] if "--out" in sys.argv else os.path.join(ART, "preview.html")
 
+WALL_IDS = {"hull", "hull_light", "hull_medium", "hull_heavy", "internal_wall"}
 TILE_ART = {"#": "hull", "1": "hull_light", "2": "hull_medium", "3": "hull_heavy",
             "I": "internal_wall", ".": "floor", "+": "conduit"}
 COMPONENTS = {"R": ("reactor", "PRIMARY"), "S": ("shield_emitter", "PRIMARY"), "T": ("turret_mount", "PRIMARY"),
@@ -128,7 +129,12 @@ def chassis_plan(cid, ch):
     for r, row in enumerate(rows):
         for c, chh in enumerate(row):
             art = TILE_ART.get(chh, "floor" if chh in COMPONENTS else None)
-            if art:
+            if art in WALL_IDS:
+                # join toward neighbors of the same tile type
+                mask = "".join(d for d, (dc, dr) in zip("nesw", ((0, -1), (1, 0), (0, 1), (-1, 0)))
+                               if 0 <= r + dr < H and 0 <= c + dc < len(rows[r + dr]) and rows[r + dr][c + dc] == chh)
+                parts.append(img(f"walls/{art}_{mask or '0'}.svg", c * px, r * px, px, px))
+            elif art:
                 parts.append(img(f"tiles/{art}.svg", c * px, r * px, px, px))
             if chh == "+":
                 # one arm toward each conduit neighbor: up, left, down, right = 0-3 quarter turns
@@ -143,11 +149,39 @@ def chassis_plan(cid, ch):
             f'<figcaption>{ch.get("name", cid)} <code>{cid}</code></figcaption></figure>')
 
 
+def viewbox(rel):
+    with open(os.path.join(ART, rel)) as fh:
+        head = fh.read(400)
+    return [float(v) for v in re.search(r'viewBox="([^"]+)"', head).group(1).split()]
+
+
+def exterior_plan(ship_id, ship):
+    """A ship's hull with each hardpoint's turret placed on it, pivot on the hardpoint."""
+    hull = f"hulls/{ship['chassis']}.svg"
+    vx, vy, vw, vh = viewbox(hull)
+    k = SCALE
+    parts = [f'<img src="{src(hull)}" style="position:absolute;left:0;top:0;width:{vw * k:.0f}px;height:{vh * k:.0f}px">']
+    for hp in ship.get("hardpoints", []):
+        rel = f"turrets/{hp['weapon']}.svg"
+        if not os.path.exists(os.path.join(ART, rel)):
+            continue
+        tx, ty, tw, th = viewbox(rel)
+        left = (hp["x"] * T - vx + tx) * k
+        top = (-hp["y"] * T - vy + ty) * k
+        parts.append(f'<img src="{src(rel)}" style="position:absolute;left:{left:.1f}px;top:{top:.1f}px;'
+                     f'width:{tw * k:.1f}px;height:{th * k:.1f}px;transform-origin:{-tx * k:.1f}px {-ty * k:.1f}px;'
+                     f'transform:rotate({-hp.get("rotation", 0)}deg)">')
+    return (f'<figure><div class="plan" style="width:{vw * k:.0f}px;height:{vh * k:.0f}px">{"".join(parts)}</div>'
+            f'<figcaption>{ship.get("name", ship_id)} exterior, turrets on their hardpoints</figcaption></figure>')
+
+
 def main():
     with open(os.path.join(ROOT, "assets", "data", "chassis.toml"), "rb") as fh:
         chassis = tomllib.load(fh)["chassis"]
     sections = []
-    for folder in ("tiles", "edges", "components", "effects", "decor", "interactive", "turrets", "hulls"):
+    with open(os.path.join(ROOT, "assets", "data", "ships.toml"), "rb") as fh:
+        ships = tomllib.load(fh)["ship"]
+    for folder in ("tiles", "walls", "edges", "components", "effects", "decor", "interactive", "turrets", "hulls"):
         order = {"s": 0, "m": 1, "l": 2, "xl": 3}
         def key(name):
             m = re.match(r"(.*?)_(s|m|l|xl)(_.*)?\.svg$", name)
@@ -157,7 +191,7 @@ def main():
         for f in files:
             rel = f"{folder}/{f}"
             w, h = svg_size(rel)
-            scale = 1.0 if folder in ("hulls",) else (2.0 if max(w, h) <= 128 else 1.0)
+            scale = 1.0 if folder in ("hulls", "walls") else (2.0 if max(w, h) <= 128 else 1.0)
             if folder == "hulls":
                 scale = min(1.0, 520 / w)
             cards.append(f'<figure class="card"><div class="chk"><img src="{src(rel)}" '
@@ -165,6 +199,7 @@ def main():
                          f'<figcaption>{f[:-4]}<br><span>{int(w)}x{int(h)}</span></figcaption></figure>')
         sections.append(f'<h2>{folder}</h2><div class="grid">{"".join(cards)}</div>')
     plans = "".join(chassis_plan(cid, ch) for cid, ch in chassis.items())
+    plans += "".join(exterior_plan(sid, ship) for sid, ship in ships.items())
     style = """
 :root { --bg:#0e1116; --panel:#171b22; --text:#d7dde5; --muted:#8b95a3; --line:#262c36;
         --stage:#1d222a; --space:#05070b; color-scheme:dark; }
@@ -197,7 +232,7 @@ code { color:var(--muted); }
     content = f"""<main>
 <h1>Rings of Iron art pack</h1>
 <p class="lede">Every SVG in <code>assets/art</code>, and the chassis in <code>assets/data/chassis.toml</code>
-drawn with the tile and component art. One tile is 64 SVG units; tiles and components are drawn at rotation 0.</p>
+drawn with the tile and component art. One tile is 64 SVG units; tiles and components are drawn at rotation 0. Files ending in <code>_unpowered</code> leave out the emissive layer.</p>
 <h2>chassis</h2><div class="plans">{plans}</div>
 {"".join(sections)}
 </main>

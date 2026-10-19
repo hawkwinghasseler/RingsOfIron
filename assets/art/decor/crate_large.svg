@@ -1,10 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
   <title>crate_large: loose crate, 3x3 sub-tiles</title>
-  <rect x="2" y="2" width="44" height="44" rx="2" fill="#7a5a33" stroke="#10141a" stroke-width="2"/>
-  <rect x="6" y="6" width="36" height="36" fill="#8f6b3e" stroke="#10141a" stroke-width="1.2"/>
-  <line x1="6" y1="6" x2="42" y2="42" stroke="#6a4d2b" stroke-width="2" stroke-linecap="round"/>
-  <line x1="42" y1="6" x2="6" y2="42" stroke="#6a4d2b" stroke-width="2" stroke-linecap="round"/>
-  <path d="M3.5,44.5 L3.5,3.5 L44.5,3.5" fill="none" stroke="#b48a55" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M44.5,3.5 L44.5,44.5 L3.5,44.5" fill="none" stroke="#4d371e" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-  <rect id="collider" x="2" y="2" width="44" height="44" fill="none" stroke="none"/>
+  <g id="base">
+    <rect x="2" y="2" width="44" height="44" rx="2" fill="#7a5a33" stroke="#10141a" stroke-width="2"/>
+    <rect x="6" y="6" width="36" height="36" fill="#8f6b3e" stroke="#10141a" stroke-width="1.2"/>
+    <line x1="6" y1="6" x2="42" y2="42" stroke="#6a4d2b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="42" y1="6" x2="6" y2="42" stroke="#6a4d2b" stroke-width="2" stroke-linecap="round"/>
+    <path d="M3.5,44.5 L3.5,3.5 L44.5,3.5" fill="none" stroke="#b48a55" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M44.5,3.5 L44.5,44.5 L3.5,44.5" fill="none" stroke="#4d371e" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+  <g id="meta">
+    <rect id="collider" x="2" y="2" width="44" height="44" fill="none" stroke="none"/>
+  </g>
 </svg>

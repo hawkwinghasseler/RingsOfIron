@@ -1,7 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
   <title>breaker: switches a system on or off</title>
-  <rect x="2" y="1" width="12" height="10" rx="1.5" fill="#3a414c" stroke="#10141a" stroke-width="1.2"/>
-  <rect x="6" y="3" width="4" height="6" fill="#1e2227" stroke="#10141a" stroke-width="0.8"/>
-  <rect x="6.5" y="3.5" width="3" height="2.5" fill="#f2b134"/>
-  <circle id="interact" cx="8" cy="14" r="2" fill="none" stroke="none"/>
+  <g id="base">
+    <rect x="2" y="1" width="12" height="10" rx="1.5" fill="#3a414c" stroke="#10141a" stroke-width="1.2"/>
+    <rect x="6" y="3" width="4" height="6" fill="#1e2227" stroke="#10141a" stroke-width="0.8"/>
+    <rect x="6.5" y="3.5" width="3" height="2.5" fill="#1b2028"/>
+  </g>
+  <g id="emissive">
+    <rect x="6.5" y="3.5" width="3" height="2.5" fill="#f2b134"/>
+  </g>
+  <g id="meta">
+    <circle id="interact" cx="8" cy="14" r="2" fill="none" stroke="none"/>
+  </g>
 </svg>

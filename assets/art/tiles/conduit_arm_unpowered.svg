@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>conduit arm overlay: runs from the junction to the top edge; rotate toward each conduit neighbor, unpowered</title>
+  <g id="base">
+    <rect x="26" y="0" width="12" height="22" fill="#20262e" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="29.5" y="0" width="5" height="22" fill="#6b5a2e"/>
+    <rect x="26" y="5" width="12" height="2.5" fill="#373f4b"/>
+    <rect x="26" y="14" width="12" height="2.5" fill="#373f4b"/>
+  </g>
+</svg>

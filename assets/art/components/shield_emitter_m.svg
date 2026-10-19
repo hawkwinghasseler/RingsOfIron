@@ -1,20 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <title>shield_emitter M: 2x2 primary mount</title>
-  <defs><radialGradient id="shield_emitter_m_g"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#4fd1ff" stop-opacity="0.9"/><stop offset="1" stop-color="#4fd1ff" stop-opacity="0"/></radialGradient></defs>
-  <rect x="0" y="0" width="128" height="128" fill="#2a3039"/>
-  <rect x="4" y="4" width="120" height="120" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-  <path d="M5.75,122.25 L5.75,5.75 L122.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M122.25,5.75 L122.25,122.25 L5.75,122.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-  <polygon points="106.12,88.32 64,112.64 21.88,88.32 21.88,39.68 64,15.36 106.12,39.68" fill="#373f4b" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
-  <circle cx="106.12" cy="88.32" r="4.86" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
-  <circle cx="64" cy="112.64" r="4.86" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
-  <circle cx="21.88" cy="88.32" r="4.86" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
-  <circle cx="21.88" cy="39.68" r="4.86" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
-  <circle cx="64" cy="15.36" r="4.86" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
-  <circle cx="106.12" cy="39.68" r="4.86" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
-  <circle cx="64" cy="64" r="30.16" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-  <circle cx="64" cy="64" r="26.75" fill="url(#shield_emitter_m_g)"/>
-  <circle cx="64" cy="64" r="20.43" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
-  <circle cx="64" cy="64" r="13.62" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
-  <circle cx="64" cy="64" r="4.86" fill="#e9fbff"/>
+  <defs><radialGradient id="shield_m_g"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#4fd1ff" stop-opacity="0.9"/><stop offset="1" stop-color="#4fd1ff" stop-opacity="0"/></radialGradient></defs>
+  <g id="base">
+    <rect x="0" y="0" width="128" height="128" fill="#2a3039"/>
+    <rect x="4" y="4" width="120" height="120" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <path d="M5.75,122.25 L5.75,5.75 L122.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M122.25,5.75 L122.25,122.25 L5.75,122.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="64,18 24.16,41 24.16,87 64,110 103.84,87 103.84,41" fill="#373f4b" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="64" cy="18" r="5.06" fill="#1f4a5a" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="24.16" cy="41" r="5.06" fill="#1f4a5a" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="24.16" cy="87" r="5.06" fill="#1f4a5a" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="64" cy="110" r="5.06" fill="#1f4a5a" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="103.84" cy="87" r="5.06" fill="#1f4a5a" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="103.84" cy="41" r="5.06" fill="#1f4a5a" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="64" cy="64" r="27.6" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+  </g>
+  <g id="emissive">
+    <circle cx="64" cy="18" r="3.68" fill="#4fd1ff"/>
+    <circle cx="24.16" cy="41" r="3.68" fill="#4fd1ff"/>
+    <circle cx="24.16" cy="87" r="3.68" fill="#4fd1ff"/>
+    <circle cx="64" cy="110" r="3.68" fill="#4fd1ff"/>
+    <circle cx="103.84" cy="87" r="3.68" fill="#4fd1ff"/>
+    <circle cx="103.84" cy="41" r="3.68" fill="#4fd1ff"/>
+    <circle cx="64" cy="64" r="25.3" fill="url(#shield_m_g)"/>
+    <circle cx="64" cy="64" r="16.1" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+  </g>
 </svg>

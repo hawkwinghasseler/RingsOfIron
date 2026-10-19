@@ -2,15 +2,16 @@
 """Generates the first pass of the SVG asset pack in assets/art.
 
 The SVG files are the source art: open and edit them in any vector editor. This script
-only exists to draw the many sizes of each component consistently. Re-running it
-overwrites every file it writes, so once a file has been edited by hand, remove it from
-this script (or stop running the script). See documentation/art/Design.md for the style.
+only exists to draw the many variants (sizes, wall joins, powered states) consistently.
+Re-running it overwrites every file it writes, so once a file has been edited by hand,
+remove it from this script (or stop running the script). See documentation/art/Design.md.
 
     python3 tools/art/generate_svgs.py
 """
 import math
 import os
 import random
+import shutil
 import tomllib
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -32,8 +33,13 @@ STEEL_HI = "#7d8898"
 HOUSING = "#2f3641"
 HOUSING_HI = "#465060"
 GLASS = "#0c1a26"
+LENS = "#1b2028"         # an unlit light
 POWER = "#f2b134"
 HAZARD = "#f2c230"
+RED = "#ff4d4d"
+GREEN = "#4dff88"
+SEAT = "#2b2f36"
+SEAT_DARK = "#1e2227"
 
 ACCENT = {
     "reactor": "#ff9a3c",
@@ -61,53 +67,82 @@ def f(v):
     return str(int(v)) if v == int(v) else str(v)
 
 
-def write(path, w, h, body, title, defs="", viewbox=None):
-    full = os.path.join(OUT, path)
-    os.makedirs(os.path.dirname(full), exist_ok=True)
-    vb = viewbox or f"0 0 {f(w)} {f(h)}"
-    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{f(w)}" height="{f(h)}" viewBox="{vb}">\n'
-           f'  <title>{title}</title>\n')
-    if defs:
-        svg += f"  <defs>{defs}</defs>\n"
-    svg += body + "</svg>\n"
-    with open(full, "w", newline="\n") as fh:
-        fh.write(svg)
-    written.append(path)
+class Art:
+    """One asset's drawing, in layers: base (everything that is lit by the scene),
+    emissive (everything that gives off its own light, drawn on top) and meta
+    (invisible collider and interaction shapes)."""
+
+    def __init__(self):
+        self.b = ""
+        self.e = ""
+        self.m = ""
+        self.defs = ""
 
 
-def uid(path):
-    return path.replace("/", "_").replace(".svg", "")
+def write(path, w, h, art, title, viewbox=None, unpowered=None, transform=None):
+    """Writes the asset; with `unpowered`, also writes that path with the emissive layer
+    left out (a powered object switched off or without power)."""
+    def emit(p, with_emissive, t):
+        full = os.path.join(OUT, p)
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        vb = viewbox or f"0 0 {f(w)} {f(h)}"
+        tr = f' transform="{transform}"' if transform else ""
+        svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{f(w)}" height="{f(h)}" viewBox="{vb}">\n'
+               f'  <title>{t}</title>\n')
+        if art.defs:
+            svg += f"  <defs>{art.defs}</defs>\n"
+        svg += f'  <g id="base"{tr}>\n{art.b}  </g>\n'
+        if with_emissive and art.e:
+            svg += f'  <g id="emissive"{tr}>\n{art.e}  </g>\n'
+        if art.m:
+            svg += f'  <g id="meta"{tr}>\n{art.m}  </g>\n'
+        svg += "</svg>\n"
+        with open(full, "w", newline="\n") as fh:
+            fh.write(svg)
+        written.append(p)
+    emit(path, True, title)
+    if unpowered:
+        emit(unpowered, False, title + ", unpowered")
+
+
+def unp(path):
+    return path.replace(".svg", "_unpowered.svg")
+
+
+def uid(name):
+    return name.replace("/", "_").replace(".svg", "")
 
 
 # ---------------------------------------------------------------------------
-# Primitives
+# Primitives (return SVG strings)
 # ---------------------------------------------------------------------------
 
 def rect(x, y, w, h, fill, rx=0, stroke=None, sw=2, extra=""):
     s = f' stroke="{stroke}" stroke-width="{f(sw)}"' if stroke else ""
     r = f' rx="{f(rx)}"' if rx else ""
-    return f'  <rect x="{f(x)}" y="{f(y)}" width="{f(w)}" height="{f(h)}"{r} fill="{fill}"{s}{extra}/>\n'
+    return f'    <rect x="{f(x)}" y="{f(y)}" width="{f(w)}" height="{f(h)}"{r} fill="{fill}"{s}{extra}/>\n'
 
 
 def circle(cx, cy, r, fill, stroke=None, sw=2, extra=""):
     s = f' stroke="{stroke}" stroke-width="{f(sw)}"' if stroke else ""
-    return f'  <circle cx="{f(cx)}" cy="{f(cy)}" r="{f(r)}" fill="{fill}"{s}{extra}/>\n'
+    return f'    <circle cx="{f(cx)}" cy="{f(cy)}" r="{f(r)}" fill="{fill}"{s}{extra}/>\n'
 
 
 def line(x1, y1, x2, y2, stroke, sw=2, extra=""):
-    return (f'  <line x1="{f(x1)}" y1="{f(y1)}" x2="{f(x2)}" y2="{f(y2)}" stroke="{stroke}" '
+    return (f'    <line x1="{f(x1)}" y1="{f(y1)}" x2="{f(x2)}" y2="{f(y2)}" stroke="{stroke}" '
             f'stroke-width="{f(sw)}" stroke-linecap="round"{extra}/>\n')
 
 
 def poly(points, fill, stroke=None, sw=2, extra=""):
     pts = " ".join(f"{f(x)},{f(y)}" for x, y in points)
     s = f' stroke="{stroke}" stroke-width="{f(sw)}" stroke-linejoin="round"' if stroke else ""
-    return f'  <polygon points="{pts}" fill="{fill}"{s}{extra}/>\n'
+    return f'    <polygon points="{pts}" fill="{fill}"{s}{extra}/>\n'
 
 
 def path(d, fill="none", stroke=None, sw=2, extra=""):
-    s = f' stroke="{stroke}" stroke-width="{f(sw)}" stroke-linejoin="round" stroke-linecap="round"' if stroke else ""
-    return f'  <path d="{d}" fill="{fill}"{s}{extra}/>\n'
+    s = (f' stroke="{stroke}" stroke-width="{f(sw)}" stroke-linejoin="round" stroke-linecap="round"'
+         if stroke else "")
+    return f'    <path d="{d}" fill="{fill}"{s}{extra}/>\n'
 
 
 def bevel(x, y, w, h, hi, lo, sw=1.5):
@@ -117,70 +152,113 @@ def bevel(x, y, w, h, hi, lo, sw=1.5):
             + path(f"M{f(x+w-o)},{f(y+o)} L{f(x+w-o)},{f(y+h-o)} L{f(x+o)},{f(y+h-o)}", stroke=lo, sw=sw))
 
 
-def plate(x, y, w, h, fill, hi, lo, rx=2):
-    return rect(x, y, w, h, fill, rx=rx, stroke=INK, sw=2) + bevel(x + 1, y + 1, w - 2, h - 2, hi, lo)
+def plate(x, y, w, h, fill, hi=STEEL_HI, lo=INK, rx=2, sw=2):
+    return rect(x, y, w, h, fill, rx=rx, stroke=INK, sw=sw) + bevel(x + 1, y + 1, w - 2, h - 2, hi, lo)
 
 
 def rivet(x, y, r=1.6, fill=STEEL_HI):
     return circle(x, y, r, fill, extra=' opacity="0.9"')
 
 
-def hazard_band(x, y, w, h, uid_, horizontal=True):
+def hazard_band(x, y, w, h, key):
     """Yellow and black diagonal stripes clipped to a rectangle."""
-    cid = f"{uid_}_hz{int(x)}_{int(y)}"
+    cid = f"hz_{key}_{int(x)}_{int(y)}"
     stripes = ""
     step = 8
-    span = int(w + h) + step
-    for i in range(-int(h) - step, span, step * 2):
+    for i in range(-int(h) - step, int(w + h) + step, step * 2):
         stripes += poly([(x + i, y + h), (x + i + step, y + h), (x + i + step + h, y), (x + i + h, y)], INK)
-    return (f'  <clipPath id="{cid}"><rect x="{f(x)}" y="{f(y)}" width="{f(w)}" height="{f(h)}"/></clipPath>\n'
+    return (f'    <clipPath id="{cid}"><rect x="{f(x)}" y="{f(y)}" width="{f(w)}" height="{f(h)}"/></clipPath>\n'
             + rect(x, y, w, h, HAZARD)
-            + f'  <g clip-path="url(#{cid})">\n{stripes}  </g>\n'
+            + f'    <g clip-path="url(#{cid})">\n{stripes}    </g>\n'
             + rect(x, y, w, h, "none", stroke=INK, sw=1.5))
 
 
-def glow(gid, color):
+def glow_def(gid, color):
     return (f'<radialGradient id="{gid}"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>'
             f'<stop offset="0.35" stop-color="{color}" stop-opacity="0.9"/>'
             f'<stop offset="1" stop-color="{color}" stop-opacity="0"/></radialGradient>')
 
 
-def screen(x, y, w, h, color):
-    """A glowing console screen with a few lines of readout."""
-    s = rect(x, y, w, h, GLASS, rx=1.5, stroke=INK, sw=1.5)
-    s += rect(x + 1.5, y + 1.5, w - 3, h - 3, color, rx=1, extra=' opacity="0.22"')
+def halo_def(gid, color):
+    return (f'<radialGradient id="{gid}"><stop offset="0" stop-color="{color}" stop-opacity="0.55"/>'
+            f'<stop offset="1" stop-color="{color}" stop-opacity="0"/></radialGradient>')
+
+
+def light(a, cx, cy, r, color, halo=True):
+    """A status lamp: a dark lens in the base layer, its light in the emissive layer."""
+    a.b += circle(cx, cy, r, LENS, stroke=INK, sw=1)
+    if halo:
+        a.e += circle(cx, cy, r * 2.4, color, extra=' opacity="0.18"')
+    a.e += circle(cx, cy, r * 0.8, color)
+
+
+def screen(a, x, y, w, h, color, seed=0):
+    """A console screen: glass in the base layer, the picture in the emissive layer."""
+    a.b += rect(x, y, w, h, GLASS, rx=1.5, stroke=INK, sw=1.5)
+    a.e += rect(x + 1.5, y + 1.5, w - 3, h - 3, color, rx=1, extra=' opacity="0.25"')
     rows = max(1, int((h - 4) // 4))
     for i in range(rows):
         ly = y + 3.5 + i * 4
-        lw = (w - 6) * (0.45 + 0.5 * ((i * 37) % 7) / 7)
-        s += line(x + 3, ly, x + 3 + lw, ly, color, sw=1.2, extra=' opacity="0.9"')
-    return s
+        lw = (w - 6) * (0.45 + 0.5 * (((i + seed) * 37) % 7) / 7)
+        a.e += line(x + 3, ly, x + 3 + lw, ly, color, sw=1.2, extra=' opacity="0.9"')
+
+
+def strip_light(a, x, y, w, h, color="#fff7d6"):
+    a.b += rect(x, y, w, h, LENS, rx=min(w, h) / 2, stroke=INK, sw=1)
+    a.e += rect(x + 1, y + 1, w - 2, h - 2, color, rx=min(w, h) / 2)
+
+
+def seat(a, cx, cy, facing="up", s=1.0):
+    """A crew seat; `facing` is the way the occupant looks."""
+    w, d = 18 * s, 16 * s
+    if facing in ("up", "down"):
+        a.b += rect(cx - w / 2, cy - d / 2, w, d, SEAT, rx=5 * s, stroke=INK, sw=1.5)
+        by = cy + d / 2 - 5 * s if facing == "up" else cy - d / 2 - 1 * s
+        a.b += rect(cx - w / 2, by, w, 6 * s, SEAT_DARK, rx=2, stroke=INK, sw=1.2)
+        a.b += rect(cx - w / 2 - 3 * s, cy - d / 2 + 2 * s, 3 * s, 10 * s, SEAT, rx=1.5, stroke=INK, sw=1)
+        a.b += rect(cx + w / 2, cy - d / 2 + 2 * s, 3 * s, 10 * s, SEAT, rx=1.5, stroke=INK, sw=1)
+    else:
+        a.b += rect(cx - d / 2, cy - w / 2, d, w, SEAT, rx=5 * s, stroke=INK, sw=1.5)
+        bx = cx + d / 2 - 5 * s if facing == "left" else cx - d / 2 - 1 * s
+        a.b += rect(bx, cy - w / 2, 6 * s, w, SEAT_DARK, rx=2, stroke=INK, sw=1.2)
+        a.b += rect(cx - d / 2 + 2 * s, cy - w / 2 - 3 * s, 10 * s, 3 * s, SEAT, rx=1.5, stroke=INK, sw=1)
+        a.b += rect(cx - d / 2 + 2 * s, cy + w / 2, 10 * s, 3 * s, SEAT, rx=1.5, stroke=INK, sw=1)
+
+
+def console(a, x, y, w, h, color, seed=0):
+    """A desk console seen from above: housing, a screen and a key strip."""
+    a.b += rect(x, y, w, h, HOUSING, rx=3, stroke=INK, sw=1.5)
+    a.b += bevel(x + 1, y + 1, w - 2, h - 2, HOUSING_HI, INK, sw=1)
+    if w >= h:
+        screen(a, x + 4, y + 3, w - 8, h * 0.55, color, seed)
+        a.b += rect(x + 4, y + h * 0.55 + 5, w - 8, h * 0.45 - 8, HOUSING_HI, rx=1, stroke=INK, sw=1)
+    else:
+        screen(a, x + 3, y + 4, w * 0.55, h - 8, color, seed)
+        a.b += rect(x + w * 0.55 + 5, y + 4, w * 0.45 - 8, h - 8, HOUSING_HI, rx=1, stroke=INK, sw=1)
 
 
 def collider_rect(x, y, w, h):
-    return f'  <rect id="collider" x="{f(x)}" y="{f(y)}" width="{f(w)}" height="{f(h)}" fill="none" stroke="none"/>\n'
+    return f'    <rect id="collider" x="{f(x)}" y="{f(y)}" width="{f(w)}" height="{f(h)}" fill="none" stroke="none"/>\n'
 
 
 def collider_circle(cx, cy, r):
-    return f'  <circle id="collider" cx="{f(cx)}" cy="{f(cy)}" r="{f(r)}" fill="none" stroke="none"/>\n'
+    return f'    <circle id="collider" cx="{f(cx)}" cy="{f(cy)}" r="{f(r)}" fill="none" stroke="none"/>\n'
 
 
 def interact_point(x, y):
-    return f'  <circle id="interact" cx="{f(x)}" cy="{f(y)}" r="2" fill="none" stroke="none"/>\n'
+    return f'    <circle id="interact" cx="{f(x)}" cy="{f(y)}" r="2" fill="none" stroke="none"/>\n'
 
 
 # ---------------------------------------------------------------------------
-# Tiles
+# Floors
 # ---------------------------------------------------------------------------
 
-def deck(x=0, y=0, seed=0):
+def deck(x=0, y=0):
     """One steel deck plate tile at (x, y)."""
     s = rect(x, y, T, T, DECK_SEAM)
     s += rect(x + 1, y + 1, T - 2, T - 2, DECK, rx=2)
     s += rect(x + 4, y + 4, T - 8, T - 8, DECK_PLATE, rx=2)
     s += bevel(x + 4, y + 4, T - 8, T - 8, DECK_HI, DECK_SEAM)
-    # tread: short diagonal ridges
-    rnd = random.Random(seed)
     for gx in range(3):
         for gy in range(3):
             cx, cy = x + 14 + gx * 18, y + 14 + gy * 18
@@ -193,409 +271,934 @@ def deck(x=0, y=0, seed=0):
     return s
 
 
-def tiles():
-    write("tiles/floor.svg", T, T, deck(), "floor: steel deck plate")
-
-    # Power conduit: a deck plate with a junction box; arms are overlays drawn toward
-    # each conduit neighbor (see conduit_arm).
-    s = deck()
-    s += rect(20, 20, 24, 24, HOUSING, rx=3, stroke=INK)
-    s += bevel(21, 21, 22, 22, HOUSING_HI, INK)
-    s += circle(32, 32, 6, POWER, stroke=INK, sw=1.5)
-    s += circle(32, 32, 2.5, "#fff3c4")
-    write("tiles/conduit.svg", T, T, s, "conduit: deck plate with a power junction")
-
-    s = rect(26, 0, 12, 22, "#20262e", stroke=INK, sw=1.5)
-    s += rect(29.5, 0, 5, 22, POWER)
-    s += line(32, 0, 32, 22, "#fff3c4", sw=1.2, extra=' opacity="0.7"')
-    for yy in (5, 14):
-        s += rect(26, yy, 12, 2.5, STEEL_DARK)
-    write("tiles/conduit_arm.svg", T, T, s,
-          "conduit arm overlay: runs from the junction to the top edge; rotate toward each conduit neighbor")
-
-    # Hull walls by weight class: thicker plating and heavier bolts as they get heavier.
-    for weight, base, plate_fill, inset, bolt in (
-            ("light", "#4a5462", "#6a7586", 3, 1.6),
-            ("medium", "#3d4552", "#5b6675", 5, 2.2),
-            ("heavy", "#2f3641", "#4b5563", 7, 2.8)):
-        s = rect(0, 0, T, T, base)
-        s += plate(inset, inset, T - 2 * inset, T - 2 * inset, plate_fill, STEEL_HI, INK, rx=3)
-        if weight == "light":
-            s += line(inset + 6, 32, T - inset - 6, 32, STEEL_DARK, sw=1.5)
-        if weight == "medium":
-            for yy in (24, 40):
-                s += line(inset + 4, yy, T - inset - 4, yy, STEEL_DARK, sw=2)
-                s += line(inset + 4, yy + 1.5, T - inset - 4, yy + 1.5, STEEL_HI, sw=1, extra=' opacity="0.6"')
-        if weight == "heavy":
-            s += rect(22, 22, 20, 20, plate_fill, rx=2, stroke=INK, sw=2)
-            s += bevel(23, 23, 18, 18, STEEL_HI, INK)
-        for (bx, by) in ((inset + 6, inset + 6), (T - inset - 6, inset + 6),
-                         (inset + 6, T - inset - 6), (T - inset - 6, T - inset - 6)):
-            s += circle(bx, by, bolt, STEEL_HI, stroke=INK, sw=1)
-        write(f"tiles/hull_{weight}.svg", T, T, s, f"hull_{weight}: outer hull wall, {weight} weight class")
-        if weight == "medium":
-            # tile.hull ('#') is a medium hull wall with its own id
-            write("tiles/hull.svg", T, T, s, "hull: outer hull wall, medium weight class")
-
-        # Wedge hull pieces: right triangle with legs on the left and bottom edges,
-        # sloped face toward +x/+y (up and right on screen).
-        for (bw, bh) in ((1, 1), (1, 2)):
-            w, h = bw * T, bh * T
-            tri = [(0, 0), (0, h), (w, h)]
-            ins = inset * 0.8
-            # inner triangle: shrink toward the incenter
-            a, b, c = w, h, math.hypot(w, h)
-            ix, iy = (a * 0 + b * w + c * 0) / (a + b + c), (a * 0 + b * h + c * h) / (a + b + c)
-            k = 1 - ins / ((a + b - c) / 2)
-            inner = [(ix + (px - ix) * k, iy + (py - iy) * k) for px, py in tri]
-            s = poly(tri, base, stroke=INK, sw=2)
-            s += poly(inner, plate_fill, stroke=INK, sw=2)
-            # highlight along the sloped face (it catches the light)
-            s += line(inner[0][0] + 2, inner[0][1] + 5, inner[2][0] - 5, inner[2][1] - 2, STEEL_HI, sw=2)
-            s += circle(inner[1][0] + 6, inner[1][1] - 6, bolt, STEEL_HI, stroke=INK, sw=1)
-            write(f"tiles/hull_{weight}_wedge_{bw}x{bh}.svg", w, h, s,
-                  f"hull_{weight} wedge {bw}x{bh}: sloped face toward +x/+y at rotation 0")
-
-    # Internal wall: a lighter bulkhead block with a structural beam.
-    s = rect(0, 0, T, T, "#545e6c")
-    s += plate(4, 4, T - 8, T - 8, "#68737f", "#8b96a4", INK, rx=2)
-    s += rect(4, 26, T - 8, 12, "#4a5361", stroke=INK, sw=1.5)
-    for xx in range(9, 52, 10):
-        s += line(xx, 28, xx + 6, 36, "#3a414c", sw=1.5)
-    for (bx, by) in ((10, 10), (54, 10), (10, 54), (54, 54)):
-        s += rivet(bx, by, 1.8, "#9aa5b3")
-    write("tiles/internal_wall.svg", T, T, s, "internal_wall: interior bulkhead tile")
-
-    # Carpet covering: tileable, laid over the deck.
-    s = rect(0, 0, T, T, "#5a2a33")
-    for yy in range(2, T, 4):
-        s += line(0, yy, T, yy, "#6b333d", sw=1.2)
-    for xx in range(0, T, 16):
-        s += line(xx, 0, xx, T, "#4a2229", sw=0.8, extra=' opacity="0.6"')
-    s += rect(0, 0, T, T, "none", stroke="#3d1b21", sw=1)
-    write("tiles/covering_carpet.svg", T, T, s, "covering_carpet: carpet laid over the deck (fire fuel)")
-
-
-# ---------------------------------------------------------------------------
-# Edge walls and doors (drawn centered on a tile edge)
-# ---------------------------------------------------------------------------
-
-def edges():
-    H = 16  # canvas height; the tile edge runs along y = 8
-    for weight, thick, fill in (("light", 6, "#6a7586"), ("medium", 9, "#5b6675"), ("heavy", 12, "#4b5563")):
-        y0 = 8 - thick / 2
-        s = rect(0, y0, T, thick, fill, rx=1.5, stroke=INK, sw=1.5)
-        s += line(2, y0 + 1.5, T - 2, y0 + 1.5, STEEL_HI, sw=1)
-        for xx in (8, 32, 56):
-            s += rivet(xx, 8, 1.3)
-        write(f"edges/edge_wall_{weight}.svg", T, H, s,
-              f"edge_wall_{weight}: thin wall on a tile edge (edge along y=8, rotate 90 for vertical edges)")
-
-    def door(state):
-        s = ""
-        # frame posts at each end
-        s += rect(0, 2, 8, 12, STEEL_MID, rx=1, stroke=INK, sw=1.5)
-        s += rect(T - 8, 2, 8, 12, STEEL_MID, rx=1, stroke=INK, sw=1.5)
-        if state == "sealed":
-            s += rect(8, 4, 24, 8, "#7a8594", stroke=INK, sw=1.5)
-            s += rect(32, 4, 24, 8, "#7a8594", stroke=INK, sw=1.5)
-            s += hazard_band(10, 6.5, 20, 3, f"door_{state}_a")
-            s += hazard_band(34, 6.5, 20, 3, f"door_{state}_b")
-            light = "#ff4d4d"
-        else:
-            s += rect(8, 4, 5, 8, "#7a8594", stroke=INK, sw=1.5)
-            s += rect(T - 13, 4, 5, 8, "#7a8594", stroke=INK, sw=1.5)
-            light = "#4dff88"
-        s += circle(4, 8, 2, light, stroke=INK, sw=1)
-        s += circle(T - 4, 8, 2, light, stroke=INK, sw=1)
-        return s
-    write("edges/bulkhead_door_sealed.svg", T, H, door("sealed"), "bulkhead door in an edge wall, sealed")
-    write("edges/bulkhead_door_open.svg", T, H, door("open"), "bulkhead door in an edge wall, open")
-
-
-# ---------------------------------------------------------------------------
-# Components
-# ---------------------------------------------------------------------------
-
-def housing(w, h, inset=4):
-    return (rect(0, 0, w, h, DECK_SEAM)
-            + plate(inset, inset, w - 2 * inset, h - 2 * inset, HOUSING, HOUSING_HI, INK, rx=4))
-
-
-def reactor(size):
-    n = PRIMARY[size][0]
-    w = h = n * T
-    u = uid(f"reactor_{size}")
-    c = ACCENT["reactor"]
-    defs = glow(f"{u}_g", c)
-    s = housing(w, h)
-    cx = cy = w / 2
-    R = w * 0.36
-    # coolant pipes to the corners
-    for (px, py) in ((10, 10), (w - 10, 10), (10, h - 10), (w - 10, h - 10)):
-        s += line(cx, cy, px, py, STEEL_DARK, sw=max(4, n * 3))
-        s += line(cx, cy, px, py, STEEL_MID, sw=max(2, n * 1.5))
-        s += circle(px, py, max(3, n * 2), STEEL_MID, stroke=INK, sw=1.5)
-    s += circle(cx, cy, R, STEEL_DARK, stroke=INK, sw=2)
-    s += circle(cx, cy, R * 0.8, HOUSING, stroke=INK, sw=1.5)
-    rods = 6 if n < 3 else (8 if n < 5 else 12)
-    if n > 1:
-        for i in range(rods):
-            a = 2 * math.pi * i / rods
-            s += circle(cx + math.cos(a) * R * 0.9, cy + math.sin(a) * R * 0.9, R * 0.07, c, stroke=INK, sw=1)
-    s += circle(cx, cy, R * 0.6, f"url(#{u}_g)")
-    s += circle(cx, cy, R * 0.5, "none", stroke=c, sw=1.5, extra=' opacity="0.8"')
-    s += circle(cx, cy, R * 0.22, "#fff1d6", stroke=c, sw=1.5)
-    return w, h, s, defs
-
-
-def shield_emitter(size):
-    n = PRIMARY[size][0]
-    w = h = n * T
-    u = uid(f"shield_emitter_{size}")
-    c = ACCENT["shield_emitter"]
-    defs = glow(f"{u}_g", c)
-    s = housing(w, h)
-    cx = cy = w / 2
-    R = w * 0.38
-    hexagon = [(cx + R * math.cos(math.pi / 6 + i * math.pi / 3), cy + R * math.sin(math.pi / 6 + i * math.pi / 3))
-               for i in range(6)]
-    s += poly(hexagon, STEEL_DARK, stroke=INK, sw=2)
-    # emitter prongs at the hex corners
-    for (px, py) in hexagon:
-        s += circle(px, py, max(2.5, R * 0.1), c, stroke=INK, sw=1.2)
-    s += circle(cx, cy, R * 0.62, HOUSING, stroke=INK, sw=1.5)
-    s += circle(cx, cy, R * 0.55, f"url(#{u}_g)")
-    for k in (0.42, 0.28):
-        s += circle(cx, cy, R * k, "none", stroke=c, sw=1.2, extra=' opacity="0.85"')
-    s += circle(cx, cy, R * 0.1, "#e9fbff")
-    return w, h, s, defs
-
-
-def turret_mount(size):
-    n = PRIMARY[size][0]
-    w = h = n * T
-    c = ACCENT["turret_mount"]
-    s = housing(w, h)
-    cx = cy = w / 2
-    R = w * 0.4
-    s += circle(cx, cy, R, STEEL_DARK, stroke=INK, sw=2)
-    bolts = 8 if n < 3 else 16
-    for i in range(bolts):
-        a = 2 * math.pi * i / bolts
-        s += circle(cx + math.cos(a) * R * 0.88, cy + math.sin(a) * R * 0.88, max(1.4, R * 0.04), STEEL_HI)
-    s += circle(cx, cy, R * 0.74, STEEL_MID, stroke=INK, sw=1.5)
-    # ammunition / power feed toward the bottom (into the ship), breech toward the top
-    s += rect(cx - R * 0.16, cy, R * 0.32, R * 0.95, HOUSING, stroke=INK, sw=1.5)
-    s += rect(cx - R * 0.3, cy - R * 0.55, R * 0.6, R * 0.7, HOUSING_HI, rx=2, stroke=INK, sw=1.5)
-    s += poly([(cx, cy - R * 0.72), (cx - R * 0.14, cy - R * 0.5), (cx + R * 0.14, cy - R * 0.5)], c,
-              stroke=INK, sw=1)
-    s += circle(cx, cy + R * 0.45, R * 0.07, c)
-    return w, h, s, ""
-
-
-def console_row(x, y, w, color, seat=True):
-    """One crew station facing +y (up): a desk with a screen at the top, a chair below."""
-    s = rect(x + 4, y + 4, w - 8, 16, HOUSING, rx=2, stroke=INK, sw=1.5)
-    s += screen(x + 9, y + 6, w - 18, 10, color)
-    s += rect(x + 6, y + 20, w - 12, 4, HOUSING_HI, stroke=INK, sw=1)
-    if seat:
-        s += rect(x + w / 2 - 9, y + 32, 18, 16, "#2b2f36", rx=5, stroke=INK, sw=1.5)
-        s += rect(x + w / 2 - 9, y + 44, 18, 6, "#1e2227", rx=2, stroke=INK, sw=1.2)
-        s += rect(x + w / 2 - 12, y + 34, 3, 10, "#2b2f36", rx=1.5, stroke=INK, sw=1)
-        s += rect(x + w / 2 + 9, y + 34, 3, 10, "#2b2f36", rx=1.5, stroke=INK, sw=1)
-    return s
-
-
 def floor_area(w, h, x0=0, y0=0):
     s = ""
     for ty in range(int(h // T)):
         for tx in range(int(w // T)):
-            s += deck(x0 + tx * T, y0 + ty * T, seed=tx * 7 + ty)
+            s += deck(x0 + tx * T, y0 + ty * T)
     return s
 
 
-def holotable(cx, cy, r, color):
-    s = circle(cx, cy, r, HOUSING, stroke=INK, sw=2)
-    s += circle(cx, cy, r * 0.8, GLASS, stroke=INK, sw=1)
-    s += circle(cx, cy, r * 0.8, color, extra=' opacity="0.18"')
-    for k in (0.55, 0.3):
-        s += circle(cx, cy, r * k, "none", stroke=color, sw=1, extra=' opacity="0.8"')
-    s += line(cx - r * 0.7, cy, cx + r * 0.7, cy, color, sw=0.8, extra=' opacity="0.6"')
-    s += line(cx, cy - r * 0.7, cx, cy + r * 0.7, color, sw=0.8, extra=' opacity="0.6"')
-    return s
+def floors():
+    a = Art()
+    a.b = deck()
+    write("tiles/floor.svg", T, T, a, "floor: steel deck plate")
+
+    # Power conduit: a deck plate with a junction box; arms are overlays drawn toward
+    # each conduit neighbor. The junction's lamp shows whether the circuit is live.
+    a = Art()
+    a.b = deck()
+    a.b += rect(20, 20, 24, 24, HOUSING, rx=3, stroke=INK)
+    a.b += bevel(21, 21, 22, 22, HOUSING_HI, INK)
+    a.b += circle(32, 32, 6, "#6b5a2e", stroke=INK, sw=1.5)
+    a.e += circle(32, 32, 9, POWER, extra=' opacity="0.2"')
+    a.e += circle(32, 32, 5, POWER)
+    a.e += circle(32, 32, 2.5, "#fff3c4")
+    write("tiles/conduit.svg", T, T, a, "conduit: deck plate with a power junction", unpowered=unp("tiles/conduit.svg"))
+
+    a = Art()
+    a.b = rect(26, 0, 12, 22, "#20262e", stroke=INK, sw=1.5)
+    a.b += rect(29.5, 0, 5, 22, "#6b5a2e")
+    for yy in (5, 14):
+        a.b += rect(26, yy, 12, 2.5, STEEL_DARK)
+    a.e += rect(29.5, 0, 5, 5, POWER) + rect(29.5, 7.5, 5, 6.5, POWER) + rect(29.5, 16.5, 5, 5.5, POWER)
+    a.e += line(32, 0, 32, 22, "#fff3c4", sw=1.2, extra=' opacity="0.6"')
+    write("tiles/conduit_arm.svg", T, T, a,
+          "conduit arm overlay: runs from the junction to the top edge; rotate toward each conduit neighbor",
+          unpowered=unp("tiles/conduit_arm.svg"))
+
+    a = Art()
+    a.b = rect(0, 0, T, T, "#5a2a33")
+    for yy in range(2, T, 4):
+        a.b += line(0, yy, T, yy, "#6b333d", sw=1.2)
+    for xx in range(0, T, 16):
+        a.b += line(xx, 0, xx, T, "#4a2229", sw=0.8, extra=' opacity="0.6"')
+    write("tiles/covering_carpet.svg", T, T, a, "covering_carpet: carpet laid over the deck (fire fuel)")
 
 
-def station_console(kind, size):
-    """Helm and weapons consoles: crew stations facing +y with floor behind them."""
+# ---------------------------------------------------------------------------
+# Full-tile walls: one file per join pattern
+# ---------------------------------------------------------------------------
+
+WALLS = {
+    # id: (side face, top plate, plate highlight, band width, groove width, bolt radius)
+    "hull_light": ("#4a5462", "#6a7586", "#8e99a8", 4, 4, 1.6),
+    "hull_medium": ("#3d4552", "#5b6675", STEEL_HI, 6, 6, 2.2),
+    "hull_heavy": ("#2c333d", "#4b5563", "#6d7888", 8, 10, 2.8),
+    "internal_wall": ("#4f5866", "#727d8b", "#98a3b1", 5, 5, 1.8),
+}
+WALLS["hull"] = WALLS["hull_medium"]
+MASKS = ["".join(d for d, bit in zip("nesw", (m & 1, m & 2, m & 4, m & 8)) if bit) for m in range(16)]
+
+
+def wall_tile(tid, mask):
+    """A wall tile that joins its neighbors of the same type on the sides in `mask`
+    ('n' up, 'e' right, 's' down, 'w' left). Joined sides run straight into the
+    neighbor's art with only a faint seam; open sides show the wall's face."""
+    face, top, hi, band, groove, bolt = WALLS[tid]
+    a = Art()
+    s = rect(0, 0, T, T, top)
+    exposed = [d for d in "nesw" if d not in mask]
+    sides = {"n": (0, 0, T, band), "s": (0, T - band, T, band), "w": (0, 0, band, T), "e": (T - band, 0, band, T)}
+    # grooves from the center toward each joined side, so a run of walls reads as one beam
+    c0, c1 = 32 - groove / 2, 32 + groove / 2
+    g = {"n": (c0, 0, groove, 32), "s": (c0, 32, groove, 32), "w": (0, c0, 32, groove), "e": (32, c0, 32, groove)}
+    for d in mask:
+        x, y, w, h = g[d]
+        s += rect(x, y, w, h, face)
+        if d in "ns":
+            s += line(c0 + 0.8, y, c0 + 0.8, y + h, hi, sw=1, extra=' opacity="0.7"')
+        else:
+            s += line(x, c0 + 0.8, x + w, c0 + 0.8, hi, sw=1, extra=' opacity="0.7"')
+    boss = groove + 8
+    s += rect(32 - boss / 2, 32 - boss / 2, boss, boss, top, rx=2, stroke=INK, sw=1.5)
+    s += bevel(32 - boss / 2 + 1, 32 - boss / 2 + 1, boss - 2, boss - 2, hi, INK, sw=1)
+    if tid == "hull_heavy":
+        s += circle(32, 32, 3, hi, stroke=INK, sw=1)
+    # side faces on open sides; lit from the top-left
+    for d in exposed:
+        x, y, w, h = sides[d]
+        s += rect(x, y, w, h, face)
+        shade = ('#ffffff" opacity="0.12' if d in "nw" else '#000000" opacity="0.22')
+        s += rect(x, y, w, h, shade)
+    # the inner edge of each face, and the outer edge of the wall
+    for d in exposed:
+        if d == "n":
+            s += line(0, band, T, band, INK, sw=1.2) + line(0, 1, T, 1, INK, sw=2)
+        if d == "s":
+            s += line(0, T - band, T, T - band, INK, sw=1.2) + line(0, T - 1, T, T - 1, INK, sw=2)
+        if d == "w":
+            s += line(band, 0, band, T, INK, sw=1.2) + line(1, 0, 1, T, INK, sw=2)
+        if d == "e":
+            s += line(T - band, 0, T - band, T, INK, sw=1.2) + line(T - 1, 0, T - 1, T, INK, sw=2)
+    # inside corners: where two joined sides meet, the neighbors' faces turn the corner here
+    # (assumes the diagonal neighbor is open, as it is for walls one tile thick)
+    for d1, d2, (x, y) in (("n", "e", (T - band, 0)), ("e", "s", (T - band, T - band)),
+                           ("s", "w", (0, T - band)), ("w", "n", (0, 0))):
+        if d1 in mask and d2 in mask:
+            s += rect(x, y, band, band, face)
+            # the two edges of the square that face this tile's interior
+            vx = x + band if x == 0 else x
+            hy = y + band if y == 0 else y
+            s += line(vx, y, vx, y + band, INK, sw=1.2) + line(x, hy, x + band, hy, INK, sw=1.2)
+    # faint seams on joined sides (east and south only, so each seam is drawn once)
+    for d in mask:
+        if d == "e":
+            s += line(T - 0.5, 0, T - 0.5, T, INK, sw=1, extra=' opacity="0.25"')
+        if d == "s":
+            s += line(0, T - 0.5, T, T - 0.5, INK, sw=1, extra=' opacity="0.25"')
+    # bolts along open sides
+    for d in exposed:
+        for k in (16, 48):
+            if d == "n":
+                s += circle(k, band + 5, bolt, hi, stroke=INK, sw=0.8)
+            if d == "s":
+                s += circle(k, T - band - 5, bolt, hi, stroke=INK, sw=0.8)
+            if d == "w":
+                s += circle(band + 5, k, bolt, hi, stroke=INK, sw=0.8)
+            if d == "e":
+                s += circle(T - band - 5, k, bolt, hi, stroke=INK, sw=0.8)
+    a.b = s
+    return a
+
+
+def walls():
+    for tid in WALLS:
+        for mask in MASKS:
+            name = f"walls/{tid}_{mask or '0'}.svg"
+            write(name, T, T, wall_tile(tid, mask),
+                  f"{tid}, joined {('on ' + ', '.join(mask)) if mask else 'on no side'}")
+
+    # Hull wedges: right triangle with legs on the left and bottom edges, sloped face
+    # toward +x/+y (up and right on screen).
+    for weight in ("light", "medium", "heavy"):
+        face, top, hi, band, groove, bolt = WALLS[f"hull_{weight}"]
+        for (bw, bh) in ((1, 1), (1, 2)):
+            w, h = bw * T, bh * T
+            tri = [(0, 0), (0, h), (w, h)]
+            a = Art()
+            a.b = poly(tri, top, stroke=INK, sw=2)
+            # the sloped face: a band inside the hypotenuse
+            hyp = math.hypot(w, h)
+            inner = [(0, band * hyp / w), (w - band * hyp / h, h)]
+            a.b += poly([(0, 0), (w, h), inner[1], inner[0]], face, stroke=INK, sw=1.2)
+            a.b += poly([(0, 0), (w, h), inner[1], inner[0]], "#ffffff", extra=' opacity="0.14"')
+            a.b += circle(12, h - 12, bolt, hi, stroke=INK, sw=0.8)
+            write(f"walls/hull_{weight}_wedge_{bw}x{bh}.svg", w, h, a,
+                  f"hull_{weight} wedge {bw}x{bh}: sloped face toward +x/+y at rotation 0")
+    shutil.copy(os.path.join(OUT, "walls/hull_medium_wedge_1x1.svg"), os.path.join(OUT, "walls/hull_wedge_1x1.svg"))
+    shutil.copy(os.path.join(OUT, "walls/hull_medium_wedge_1x2.svg"), os.path.join(OUT, "walls/hull_wedge_1x2.svg"))
+    written.extend(["walls/hull_wedge_1x1.svg", "walls/hull_wedge_1x2.svg"])
+
+
+# ---------------------------------------------------------------------------
+# Edge walls: segments along tile edges, joints at the grid's vertices, doors
+# ---------------------------------------------------------------------------
+
+EDGE = {"light": (6, "#6a7586"), "medium": (9, "#5b6675"), "heavy": (12, "#4b5563")}
+
+
+def edges():
+    for weight, (t, fill) in EDGE.items():
+        lo, hi_ = 8 - t / 2, 8 + t / 2
+        a = Art()
+        a.b = rect(0, lo, T, t, fill)
+        a.b += line(0, lo, T, lo, INK, sw=1.5) + line(0, hi_, T, hi_, INK, sw=1.5)
+        a.b += line(0, lo + 1.5, T, lo + 1.5, STEEL_HI, sw=1)
+        for xx in (16, 48):
+            a.b += rivet(xx, 8, 1.3)
+        write(f"edges/edge_wall_{weight}_h.svg", T, 16, a,
+              f"edge_wall_{weight}, horizontal: wall along a tile edge (edge at y=8), open ends meet joints")
+        a = Art()
+        a.b = rect(lo, 0, t, T, fill)
+        a.b += line(lo, 0, lo, T, INK, sw=1.5) + line(hi_, 0, hi_, T, INK, sw=1.5)
+        a.b += line(lo + 1.5, 0, lo + 1.5, T, STEEL_HI, sw=1)
+        for yy in (16, 48):
+            a.b += rivet(8, yy, 1.3)
+        write(f"edges/edge_wall_{weight}_v.svg", 16, T, a,
+              f"edge_wall_{weight}, vertical: wall along a tile edge (edge at x=8)")
+        # Joints at a vertex, by which of the four edges meeting there carry a wall.
+        for mask in MASKS[1:]:
+            a = Art()
+            s = rect(lo, lo, t, t, fill)
+            if "n" in mask:
+                s += rect(lo, 0, t, lo, fill)
+            if "s" in mask:
+                s += rect(lo, hi_, t, 16 - hi_, fill)
+            if "w" in mask:
+                s += rect(0, lo, lo, t, fill)
+            if "e" in mask:
+                s += rect(hi_, lo, 16 - hi_, t, fill)
+            # outline: walk each side of the center square; extend along joined arms
+            if "n" in mask:
+                s += line(lo, 0, lo, lo, INK, sw=1.5) + line(hi_, 0, hi_, lo, INK, sw=1.5)
+            else:
+                s += line(lo, lo, hi_, lo, INK, sw=1.5)
+            if "s" in mask:
+                s += line(lo, hi_, lo, 16, INK, sw=1.5) + line(hi_, hi_, hi_, 16, INK, sw=1.5)
+            else:
+                s += line(lo, hi_, hi_, hi_, INK, sw=1.5)
+            if "w" in mask:
+                s += line(0, lo, lo, lo, INK, sw=1.5) + line(0, hi_, lo, hi_, INK, sw=1.5)
+            else:
+                s += line(lo, lo, lo, hi_, INK, sw=1.5)
+            if "e" in mask:
+                s += line(hi_, lo, 16, lo, INK, sw=1.5) + line(hi_, hi_, 16, hi_, INK, sw=1.5)
+            else:
+                s += line(hi_, lo, hi_, hi_, INK, sw=1.5)
+            if len(mask) >= 3 or mask in ("ne", "es", "sw", "nw"):
+                s += rivet(8, 8, 1.4)
+            a.b = s
+            write(f"edges/edge_wall_{weight}_joint_{mask}.svg", 16, 16, a,
+                  f"edge_wall_{weight} joint, centered on a vertex, walls toward {', '.join(mask)}")
+
+    # Bulkhead doors: sealed and open, powered and unpowered, both orientations.
+    for state in ("sealed", "open"):
+        a = Art()
+        a.b += rect(0, 2, 8, 12, STEEL_MID, rx=1, stroke=INK, sw=1.5)
+        a.b += rect(T - 8, 2, 8, 12, STEEL_MID, rx=1, stroke=INK, sw=1.5)
+        if state == "sealed":
+            a.b += rect(8, 4, 24, 8, "#7a8594", stroke=INK, sw=1.5)
+            a.b += rect(32, 4, 24, 8, "#7a8594", stroke=INK, sw=1.5)
+            a.b += hazard_band(10, 6.5, 20, 3, f"door_{state}_a")
+            a.b += hazard_band(34, 6.5, 20, 3, f"door_{state}_b")
+            col = RED
+        else:
+            a.b += rect(8, 4, 5, 8, "#7a8594", stroke=INK, sw=1.5)
+            a.b += rect(T - 13, 4, 5, 8, "#7a8594", stroke=INK, sw=1.5)
+            col = GREEN
+        light(a, 4, 8, 2, col, halo=False)
+        light(a, T - 4, 8, 2, col, halo=False)
+        write(f"edges/bulkhead_door_{state}_h.svg", T, 16, a, f"bulkhead door, {state}, horizontal",
+              unpowered=f"edges/bulkhead_door_{state}_unpowered_h.svg")
+        write(f"edges/bulkhead_door_{state}_v.svg", 16, T, a, f"bulkhead door, {state}, vertical",
+              unpowered=f"edges/bulkhead_door_{state}_unpowered_v.svg", transform="translate(16,0) rotate(90)")
+
+
+# ---------------------------------------------------------------------------
+# Components. Each size is its own design; sizes share parts and palette, not layout.
+# ---------------------------------------------------------------------------
+
+def housing(a, w, h, inset=4):
+    a.b += rect(0, 0, w, h, DECK_SEAM)
+    a.b += plate(inset, inset, w - 2 * inset, h - 2 * inset, HOUSING, HOUSING_HI, INK, rx=4)
+
+
+def pipe(a, x1, y1, x2, y2, wdt=6, color=STEEL_MID):
+    a.b += line(x1, y1, x2, y2, INK, sw=wdt + 3)
+    a.b += line(x1, y1, x2, y2, color, sw=wdt)
+    a.b += line(x1, y1, x2, y2, STEEL_HI, sw=1, extra=' opacity="0.5"')
+
+
+def pump(a, cx, cy, r):
+    a.b += circle(cx, cy, r, STEEL_DARK, stroke=INK, sw=2)
+    for i in range(5):
+        ang = 2 * math.pi * i / 5
+        a.b += path(f"M{f(cx)},{f(cy)} Q{f(cx + math.cos(ang + 0.6) * r * 0.8)},{f(cy + math.sin(ang + 0.6) * r * 0.8)} "
+                    f"{f(cx + math.cos(ang + 1.0) * r * 0.85)},{f(cy + math.sin(ang + 1.0) * r * 0.85)}",
+                    stroke=STEEL_HI, sw=max(1.5, r * 0.12))
+    a.b += circle(cx, cy, r * 0.22, HOUSING_HI, stroke=INK, sw=1)
+
+
+def tank(a, x, y, w, h, fill="#2a4a38", hi="#4e8a66"):
+    r = min(w, h) / 2
+    a.b += rect(x, y, w, h, fill, rx=r, stroke=INK, sw=2)
+    if h >= w:
+        a.b += rect(x + w * 0.15, y + r * 0.4, w * 0.2, h - r * 0.8, hi, rx=w * 0.1)
+    else:
+        a.b += rect(x + r * 0.4, y + h * 0.15, w - r * 0.8, h * 0.2, hi, rx=h * 0.1)
+
+
+# --- Reactor -----------------------------------------------------------------
+
+def reactor(size):
+    n = PRIMARY[size][0]
+    w = h = n * T
+    c = ACCENT["reactor"]
+    a = Art()
+    gid = f"reactor_{size}_g"
+    a.defs = glow_def(gid, c) + halo_def(gid + "h", c)
+    housing(a, w, h)
+    cx = cy = w / 2
+    if size == "s":
+        # compact core: a sealed canister with three cooling fins and one lamp
+        for i in range(3):
+            ang = -math.pi / 2 + 2 * math.pi * i / 3
+            a.b += line(cx, cy, cx + math.cos(ang) * 24, cy + math.sin(ang) * 24, INK, sw=9)
+            a.b += line(cx, cy, cx + math.cos(ang) * 24, cy + math.sin(ang) * 24, STEEL, sw=6)
+        a.b += circle(cx, cy, 13, STEEL_DARK, stroke=INK, sw=2)
+        a.b += circle(cx, cy, 7, "#4a3320", stroke=INK, sw=1.5)
+        a.e += circle(cx, cy, 12, f"url(#{gid})")
+        light(a, 54, 54, 2.5, c)
+    elif size == "m":
+        # fission pile: core, ring of six control rods, coolant pipes to the corners
+        for (px, py) in ((12, 12), (w - 12, 12), (12, h - 12), (w - 12, h - 12)):
+            pipe(a, cx, cy, px, py, 6)
+            a.b += circle(px, py, 5, STEEL_MID, stroke=INK, sw=1.5)
+        a.b += circle(cx, cy, 44, STEEL_DARK, stroke=INK, sw=2)
+        a.b += circle(cx, cy, 34, HOUSING, stroke=INK, sw=1.5)
+        for i in range(6):
+            ang = 2 * math.pi * i / 6
+            px, py = cx + math.cos(ang) * 39, cy + math.sin(ang) * 39
+            a.b += circle(px, py, 3.5, "#4a3320", stroke=INK, sw=1)
+            a.e += circle(px, py, 2.5, c)
+        a.b += circle(cx, cy, 16, "#4a3320", stroke=INK, sw=1.5)
+        a.e += circle(cx, cy, 26, f"url(#{gid})")
+        a.e += circle(cx, cy, 20, "none", stroke=c, sw=1.5, extra=' opacity="0.8"')
+    elif size == "l":
+        # tokamak: a segmented torus around the core, four coolant pumps, a control panel
+        for (px, py) in ((30, 30), (w - 30, 30), (30, h - 30), (w - 30, h - 30)):
+            pipe(a, cx, cy, px, py, 8)
+            pump(a, px, py, 17)
+        a.b += circle(cx, cy, 66, STEEL_DARK, stroke=INK, sw=2.5)
+        a.b += circle(cx, cy, 46, HOUSING, stroke=INK, sw=2)
+        for i in range(12):
+            ang = 2 * math.pi * i / 12
+            a.b += line(cx + math.cos(ang) * 47, cy + math.sin(ang) * 47, cx + math.cos(ang) * 65,
+                        cy + math.sin(ang) * 65, INK, sw=2)
+        for i in range(12):
+            ang = 2 * math.pi * (i + 0.5) / 12
+            a.b += rect(cx + math.cos(ang) * 56 - 3, cy + math.sin(ang) * 56 - 3, 6, 6, STEEL, rx=1, stroke=INK,
+                        sw=1)
+        a.e += circle(cx, cy, 56, "none", stroke=c, sw=7, extra=' opacity="0.45"')
+        a.e += circle(cx, cy, 56, "none", stroke="#ffe0b8", sw=1.5, extra=' opacity="0.9"')
+        a.b += circle(cx, cy, 22, "#4a3320", stroke=INK, sw=2)
+        a.e += circle(cx, cy, 34, f"url(#{gid})")
+        console(a, cx - 30, h - 26, 60, 18, c)
+    else:
+        # fusion plant: outer magnet ring with twelve coils, inner plasma ring, four pump
+        # stations, a coolant loop and two control desks
+        a.b += circle(cx, cy, 128, "none", stroke=INK, sw=13)
+        a.b += circle(cx, cy, 128, "none", stroke=STEEL_MID, sw=9)
+        for (px, py) in ((40, 40), (w - 40, 40), (40, h - 40), (w - 40, h - 40)):
+            pipe(a, px, py, cx + (px - cx) * 0.55, cy + (py - cy) * 0.55, 10)
+            pump(a, px, py, 24)
+        a.b += circle(cx, cy, 104, STEEL_DARK, stroke=INK, sw=2.5)
+        for i in range(12):
+            ang = 2 * math.pi * i / 12
+            px, py = cx + math.cos(ang) * 92, cy + math.sin(ang) * 92
+            a.b += circle(px, py, 13, "#8a6a3a", stroke=INK, sw=2)
+            a.b += circle(px, py, 8, "#b38a4a", stroke=INK, sw=1)
+        a.b += circle(cx, cy, 72, HOUSING, stroke=INK, sw=2)
+        a.e += circle(cx, cy, 62, "none", stroke=c, sw=12, extra=' opacity="0.4"')
+        a.e += circle(cx, cy, 62, "none", stroke="#ffe0b8", sw=2.5)
+        a.b += circle(cx, cy, 34, STEEL_DARK, stroke=INK, sw=2)
+        a.b += circle(cx, cy, 22, "#4a3320", stroke=INK, sw=2)
+        a.e += circle(cx, cy, 40, f"url(#{gid})")
+        console(a, 24, cy - 40, 22, 80, c, 1)
+        console(a, w - 46, cy - 40, 22, 80, c, 3)
+        for ang in (0.25, 0.75, 1.25, 1.75):
+            light(a, cx + math.cos(ang * math.pi) * 116, cy + math.sin(ang * math.pi) * 116, 3, c)
+    return w, h, a
+
+
+# --- Shield emitter ----------------------------------------------------------
+
+def shield_emitter(size):
+    n = PRIMARY[size][0]
+    w = h = n * T
+    c = ACCENT["shield_emitter"]
+    a = Art()
+    gid = f"shield_{size}_g"
+    a.defs = glow_def(gid, c)
+    housing(a, w, h)
+    cx = cy = w / 2
+
+    def emitter(x, y, r, prongs):
+        pts = [(x + r * math.cos(math.pi / 2 + i * 2 * math.pi / prongs),
+                y - r * math.sin(math.pi / 2 + i * 2 * math.pi / prongs)) for i in range(prongs)]
+        a.b += poly(pts, STEEL_DARK, stroke=INK, sw=2)
+        for (px, py) in pts:
+            a.b += circle(px, py, max(2.5, r * 0.11), "#1f4a5a", stroke=INK, sw=1.2)
+            a.e += circle(px, py, max(1.8, r * 0.08), c)
+        a.b += circle(x, y, r * 0.6, HOUSING, stroke=INK, sw=1.5)
+        a.e += circle(x, y, r * 0.55, f"url(#{gid})")
+        a.e += circle(x, y, r * 0.35, "none", stroke=c, sw=1.2, extra=' opacity="0.85"')
+
+    def capacitors(x, y, count, vertical):
+        for i in range(count):
+            px, py = (x, y + i * 22) if vertical else (x + i * 22, y)
+            a.b += rect(px, py, 18, 18, "#24414d", rx=3, stroke=INK, sw=1.5)
+            a.b += rect(px + 4, py + 4, 10, 10, "#1b2f38", rx=2)
+            a.e += rect(px + 6, py + 7, 6, 4, c, extra=' opacity="0.8"')
+
+    if size == "s":
+        emitter(cx, cy + 2, 22, 3)
+    elif size == "m":
+        emitter(cx, cy, 46, 6)
+    elif size == "l":
+        emitter(cx, cy - 6, 62, 6)
+        capacitors(14, h - 32, 7, False)
+        light(a, 14, 14, 3, c)
+        light(a, w - 14, 14, 3, c)
+    else:
+        # field projector ringed by six emitter nodes, capacitor banks on both sides
+        a.b += circle(cx, cy, 110, STEEL_DARK, stroke=INK, sw=2)
+        for i in range(6):
+            ang = 2 * math.pi * i / 6
+            nx_, ny_ = cx + math.cos(ang) * 92, cy + math.sin(ang) * 92
+            pipe(a, cx, cy, nx_, ny_, 6, "#2f5664")
+            emitter(nx_, ny_, 18, 3)
+        a.b += circle(cx, cy, 50, HOUSING, stroke=INK, sw=2)
+        a.e += circle(cx, cy, 48, f"url(#{gid})")
+        for k in (0.75, 0.5, 0.25):
+            a.e += circle(cx, cy, 48 * k, "none", stroke=c, sw=1.2, extra=' opacity="0.85"')
+        capacitors(14, 30, 12, True)
+        capacitors(w - 32, 30, 12, True)
+    return w, h, a
+
+
+# --- Turret mount: mounting hardware and the operator's station ---------------
+
+def turret_mount(size):
+    """The turret's base under the deck: bearing ring, traverse drive, feed, and the
+    operator's station. The turret itself (turrets/) sits on top at the mount's center."""
+    n = PRIMARY[size][0]
+    w = h = n * T
+    c = ACCENT["turret_mount"]
+    a = Art()
+    housing(a, w, h)
+    cx = cy = w / 2
+
+    def ring(x, y, r, bolts):
+        a.b += circle(x, y, r, STEEL_DARK, stroke=INK, sw=2)
+        a.b += circle(x, y, r * 0.86, "none", stroke=INK, sw=1, extra=' stroke-dasharray="3 3"')
+        for i in range(bolts):
+            ang = 2 * math.pi * i / bolts
+            a.b += circle(x + math.cos(ang) * r * 0.93, y + math.sin(ang) * r * 0.93, max(1.3, r * 0.035), STEEL_HI)
+        a.b += circle(x, y, r * 0.72, STEEL_MID, stroke=INK, sw=1.5)
+        a.b += circle(x, y, r * 0.3, HOUSING, stroke=INK, sw=1.5)
+        a.b += circle(x, y, r * 0.12, STEEL_HI)
+
+    def drive(x, y, r):
+        """A traverse motor meshing with the bearing ring."""
+        a.b += circle(x, y, r, HOUSING_HI, stroke=INK, sw=1.5)
+        for i in range(8):
+            ang = 2 * math.pi * i / 8
+            a.b += line(x + math.cos(ang) * r, y + math.sin(ang) * r, x + math.cos(ang) * (r + 3),
+                        y + math.sin(ang) * (r + 3), INK, sw=2)
+        a.b += circle(x, y, r * 0.4, STEEL_HI, stroke=INK, sw=1)
+
+    def drive_at(r_ring, r_drive, deg):
+        d = r_ring + r_drive + 2
+        drive(cx + math.cos(math.radians(deg)) * d, cy + math.sin(math.radians(deg)) * d, r_drive)
+
+    # The bearing ring is centered on the mount: the turret's pivot is the mount's center.
+    if size == "s":
+        ring(cx, cy, 15, 8)
+        a.b += rect(10, 50, 44, 11, HOUSING_HI, rx=2, stroke=INK, sw=1.5)
+        screen(a, 13, 51.5, 22, 8, c)
+        a.b += circle(44, 55.5, 3.5, SEAT, stroke=INK, sw=1)  # control grip
+        light(a, 56, 8, 2.2, c)
+    elif size == "m":
+        ring(cx, cy, 32, 12)
+        drive_at(32, 8, -45)
+        a.b += rect(8, 14, 14, 60, "#3a3226", rx=2, stroke=INK, sw=1.5)  # ammunition feed
+        for yy in range(18, 72, 6):
+            a.b += line(10, yy, 20, yy, "#8f6b3e", sw=2)
+        console(a, 8, 102, 56, 18, c)
+        seat(a, 84, 111, "left", 0.8)
+        light(a, 116, 12, 2.5, c)
+    elif size == "l":
+        ring(cx, cy, 50, 16)
+        drive_at(50, 10, -135)
+        drive_at(50, 10, -45)
+        a.b += rect(8, 40, 18, 100, "#3a3226", rx=2, stroke=INK, sw=1.5)  # ammunition hoist
+        for yy in range(44, 138, 7):
+            a.b += line(11, yy, 23, yy, "#8f6b3e", sw=2.5)
+        a.b += rect(w - 26, 40, 18, 100, HOUSING_HI, rx=2, stroke=INK, sw=1.5)  # power and cooling
+        pipe(a, w - 17, 48, w - 17, 132, 5, "#2f5664")
+        console(a, 14, 154, 60, 22, c)
+        seat(a, 92, 165, "left", 0.9)
+        console(a, 124, 156, 52, 18, c, 2)  # loader's panel
+        light(a, 14, 14, 3, c)
+        light(a, w - 14, 14, 3, c)
+    else:
+        # barbette: a large bearing race with two drives, an ammunition conveyor, the
+        # gunner's station and a loader's station
+        ring(cx, cy, 82, 24)
+        drive_at(82, 14, -135)
+        drive_at(82, 14, -45)
+        a.b += rect(14, 40, 26, 196, "#3a3226", rx=3, stroke=INK, sw=2)
+        for yy in range(46, 230, 9):
+            a.b += rect(18, yy, 18, 6, "#8f6b3e", rx=1, stroke=INK, sw=0.8)
+        a.b += rect(w - 40, 40, 26, 196, HOUSING_HI, rx=3, stroke=INK, sw=2)
+        for xx in (w - 34, w - 22):
+            pipe(a, xx, 48, xx, 228, 4, "#2f5664")
+        console(a, 30, 250, 96, 24, c)
+        seat(a, 78, 292, "up")
+        console(a, 186, 252, 96, 22, c, 3)
+        seat(a, 234, 292, "up")
+        for xx in (24, w - 24):
+            light(a, xx, 24, 3.5, c)
+    return w, h, a
+
+
+# --- Crew rooms: helm and weapons --------------------------------------------
+
+def crew_room(kind, size):
     tw, th = AUX[size]
     w, h = tw * T, th * T
     c = ACCENT[kind]
-    s = floor_area(w, h)
-    s += rect(0, 0, w, h, "none", stroke=INK, sw=2)
-    # a console bank along the top edge, one station per tile column
-    for i in range(tw):
-        s += console_row(i * T, 0, T, c)
-    if th >= 3:
-        # second row of stations for bigger rooms, and a holotable or plot in the middle
-        if th >= 7:
-            for i in range(tw):
-                if tw >= 3 and i == tw // 2:
-                    continue
-                s += console_row(i * T, 2 * T, T, c)
-            s += holotable(w / 2, h * 0.62, min(w, h) * 0.3, c)
-        else:
-            s += holotable(w / 2, h - T * 0.9, min(w * 0.35, T * 0.7), c)
-    if kind == "weapons":
-        # targeting reticles on the screens
-        for i in range(tw):
-            s += circle(i * T + 32, 11, 3, "none", stroke=c, sw=1)
-    return w, h, s, ""
+    a = Art()
+    a.b = floor_area(w, h)
+    a.b += rect(0, 0, w, h, "none", stroke=INK, sw=2)
 
+    def holo(cx, cy, r):
+        a.b += circle(cx, cy, r, HOUSING, stroke=INK, sw=2)
+        a.b += circle(cx, cy, r * 0.8, GLASS, stroke=INK, sw=1)
+        a.e += circle(cx, cy, r * 0.8, c, extra=' opacity="0.2"')
+        for k in (0.55, 0.3):
+            a.e += circle(cx, cy, r * k, "none", stroke=c, sw=1, extra=' opacity="0.8"')
+        a.e += line(cx - r * 0.7, cy, cx + r * 0.7, cy, c, sw=0.8, extra=' opacity="0.6"')
+        a.e += line(cx, cy - r * 0.7, cx, cy + r * 0.7, c, sw=0.8, extra=' opacity="0.6"')
+        if kind == "weapons":
+            for (dx, dy) in ((0.3, -0.2), (-0.25, 0.35), (0.45, 0.3)):
+                a.e += poly([(cx + dx * r, cy + dy * r - 3), (cx + dx * r + 3, cy + dy * r + 2),
+                             (cx + dx * r - 3, cy + dy * r + 2)], "#ff5a5a")
+
+    def arc_console(cx, cy, r, a0, a1, depth):
+        """A curved console bank following an arc (angles in degrees, 0 = +x, screen y down)."""
+        p0 = (cx + r * math.cos(math.radians(a0)), cy + r * math.sin(math.radians(a0)))
+        p1 = (cx + r * math.cos(math.radians(a1)), cy + r * math.sin(math.radians(a1)))
+        r2 = r - depth
+        q0 = (cx + r2 * math.cos(math.radians(a0)), cy + r2 * math.sin(math.radians(a0)))
+        q1 = (cx + r2 * math.cos(math.radians(a1)), cy + r2 * math.sin(math.radians(a1)))
+        large = 1 if abs(a1 - a0) > 180 else 0
+        d = (f"M{f(p0[0])},{f(p0[1])} A{f(r)},{f(r)} 0 {large} 1 {f(p1[0])},{f(p1[1])} "
+             f"L{f(q1[0])},{f(q1[1])} A{f(r2)},{f(r2)} 0 {large} 0 {f(q0[0])},{f(q0[1])} Z")
+        a.b += path(d, fill=HOUSING, stroke=INK, sw=1.5)
+        rs = r - depth * 0.45
+        steps = max(2, int(abs(a1 - a0) / 18))
+        for i in range(steps):
+            t0 = math.radians(a0 + (a1 - a0) * (i + 0.15) / steps)
+            t1 = math.radians(a0 + (a1 - a0) * (i + 0.85) / steps)
+            a.b += line(cx + rs * math.cos(t0), cy + rs * math.sin(t0), cx + rs * math.cos(t1),
+                        cy + rs * math.sin(t1), GLASS, sw=depth * 0.45)
+            a.e += line(cx + rs * math.cos(t0), cy + rs * math.sin(t0), cx + rs * math.cos(t1),
+                        cy + rs * math.sin(t1), c, sw=depth * 0.2, extra=' opacity="0.7"')
+
+    if kind == "helm":
+        if size == "s":
+            # one pilot: a console with a control yoke, facing +y
+            console(a, 6, 6, 52, 22, c)
+            a.b += rect(24, 30, 16, 5, SEAT_DARK, rx=2, stroke=INK, sw=1)
+            seat(a, 32, 50, "up")
+            light(a, 32, 112, 2.5, c)
+        elif size == "m":
+            # pilot and copilot at a wraparound console, a nav display behind them
+            arc_console(64, 96, 88, 238, 302, 20)
+            seat(a, 40, 70, "up")
+            seat(a, 88, 70, "up")
+            console(a, 30, 140, 68, 26, c, 2)
+            light(a, 12, 180, 2.5, c)
+        elif size == "l":
+            # bridge: forward arc with three stations, the captain's chair, nav table
+            # and side consoles
+            arc_console(96, 150, 140, 240, 300, 24)
+            for x in (50, 96, 142):
+                seat(a, x, 70 if x == 96 else 82, "up")
+            seat(a, 96, 170, "up", 1.2)
+            a.b += rect(80, 186, 32, 6, HOUSING_HI, rx=2, stroke=INK, sw=1)
+            holo(96, 270, 42)
+            console(a, 8, 220, 24, 90, c, 1)
+            console(a, w - 32, 220, 24, 90, c, 4)
+            for x in (40, 152):
+                seat(a, x, 345, "down", 0.9)
+            console(a, 20, 360, 40, 20, c, 5)
+            console(a, 132, 360, 40, 20, c, 6)
+            strip_light(a, 70, h - 12, 52, 5)
+        else:
+            # command bridge: five forward stations on a wide arc, a raised captain's dais,
+            # a large plot table, side banks and a briefing table aft
+            arc_console(160, 250, 236, 236, 304, 28)
+            for i, x in enumerate((60, 110, 160, 210, 260)):
+                seat(a, x, 76 if x == 160 else (86 if x in (110, 210) else 108), "up")
+            a.b += circle(160, 220, 44, DECK_HI, stroke=INK, sw=2)
+            a.b += circle(160, 220, 38, "none", stroke=DECK_SEAM, sw=1.5)
+            seat(a, 160, 220, "up", 1.3)
+            console(a, 136, 250, 48, 10, c)
+            holo(160, 380, 70)
+            for yy in (300, 420):
+                console(a, 8, yy, 26, 90, c, yy)
+                console(a, w - 34, yy, 26, 90, c, yy + 1)
+                seat(a, 50, yy + 45, "left", 0.9)
+                seat(a, w - 50, yy + 45, "right", 0.9)
+            a.b += rect(100, 560, 120, 70, "#6b5a48", rx=6, stroke=INK, sw=2)
+            screen(a, 112, 572, 96, 46, c, 3)
+            for x in (120, 160, 200):
+                seat(a, x, 650, "up", 0.85)
+                seat(a, x, 540, "down", 0.85)
+            for x in (60, 260):
+                strip_light(a, x - 30, h - 14, 60, 6)
+    else:
+        if size == "s":
+            # one fire-control director: a console with a targeting scope, facing +y
+            console(a, 6, 6, 52, 22, c)
+            a.b += circle(32, 40, 6, HOUSING_HI, stroke=INK, sw=1.5)  # scope
+            a.e += circle(32, 40, 2.5, c)
+            seat(a, 32, 60, "up")
+            light(a, 32, 112, 2.5, c)
+        elif size == "m":
+            # two gunnery stations facing a tactical screen wall
+            a.b += rect(6, 6, w - 12, 18, HOUSING, rx=2, stroke=INK, sw=1.5)
+            screen(a, 10, 9, w - 20, 12, c)
+            for x in (36, 92):
+                console(a, x - 22, 40, 44, 18, c, x)
+                seat(a, x, 76, "up")
+            holo(64, 140, 30)
+        elif size == "l":
+            # fire-control room: plot table in the middle, consoles along both walls
+            a.b += rect(6, 6, w - 12, 18, HOUSING, rx=2, stroke=INK, sw=1.5)
+            screen(a, 10, 9, w - 20, 12, c, 1)
+            holo(96, 180, 52)
+            for yy in (60, 250, 330):
+                console(a, 8, yy, 22, 56, c, yy)
+                seat(a, 46, yy + 28, "left", 0.85)
+                console(a, w - 30, yy, 22, 56, c, yy + 2)
+                seat(a, w - 46, yy + 28, "right", 0.85)
+            seat(a, 96, 260, "up", 1.1)
+            strip_light(a, 70, h - 12, 52, 5)
+        else:
+            # combat information center: a ring of consoles around the tactical plot,
+            # an ammunition and damage board on the aft wall
+            a.b += rect(6, 6, w - 12, 22, HOUSING, rx=2, stroke=INK, sw=1.5)
+            screen(a, 10, 9, w - 20, 16, c, 2)
+            cx, cy = 160, 300
+            holo(cx, cy, 78)
+            for i in range(8):
+                ang = 2 * math.pi * (i + 0.5) / 8
+                px, py = cx + math.cos(ang) * 120, cy + math.sin(ang) * 120
+                a.b += f'    <g transform="rotate({f(math.degrees(ang) + 90)} {f(px)} {f(py)})">\n'
+                console(a, px - 22, py - 10, 44, 18, c, i)
+                a.b += "    </g>\n"
+                seat(a, cx + math.cos(ang) * 150, cy + math.sin(ang) * 150, "up", 0.85)
+            for yy in (500, 580):
+                console(a, 8, yy, 26, 64, c, yy)
+                console(a, w - 34, yy, 26, 64, c, yy + 1)
+            a.b += rect(30, h - 70, w - 60, 52, HOUSING, rx=3, stroke=INK, sw=2)
+            for i in range(10):
+                screen(a, 38 + i * 25, h - 62, 20, 36, c if i % 3 else "#ff5a5a", i)
+            strip_light(a, 130, 452, 60, 6)
+    return w, h, a
+
+
+# --- Life support --------------------------------------------------------------
 
 def life_support(size):
     tw, th = AUX[size]
     w, h = tw * T, th * T
     c = ACCENT["life_support"]
-    s = housing(w, h)
-    # one oxygen tank and one scrubber fan per tile, alternating down the slot
-    for ty in range(th):
-        for tx in range(tw):
-            x, y = tx * T, ty * T
-            if (tx + ty) % 2 == 0:
-                s += rect(x + 14, y + 8, 36, 48, "#2a4a38", rx=16, stroke=INK, sw=2)
-                s += rect(x + 18, y + 12, 8, 40, "#4e8a66", rx=4)
-                s += circle(x + 32, y + 32, 6, c, stroke=INK, sw=1.5)
-                s += rect(x + 29, y + 4, 6, 6, STEEL_MID, stroke=INK, sw=1)
-            else:
-                s += circle(x + 32, y + 32, 22, STEEL_DARK, stroke=INK, sw=2)
-                for i in range(6):
-                    a = 2 * math.pi * i / 6
-                    s += path(f"M{f(x+32)},{f(y+32)} Q{f(x+32+math.cos(a+0.6)*18)},{f(y+32+math.sin(a+0.6)*18)} "
-                              f"{f(x+32+math.cos(a+1.0)*19)},{f(y+32+math.sin(a+1.0)*19)}",
-                              stroke=STEEL_HI, sw=3)
-                s += circle(x + 32, y + 32, 5, c, stroke=INK, sw=1.2)
-            if ty > 0:
-                s += line(x + 32, y - 4, x + 32, y + 6, c, sw=2, extra=' opacity="0.7"')
-    return w, h, s, ""
+    a = Art()
+    housing(a, w, h)
+    if size == "s":
+        # a compact scrubber: oxygen canister over a fan
+        tank(a, 14, 10, 36, 48)
+        a.b += rect(29, 6, 6, 6, STEEL_MID, stroke=INK, sw=1)
+        pump(a, 32, 92, 22)
+        light(a, 32, 34, 4, c)
+    elif size == "m":
+        # two oxygen tanks, a scrubber bank and a control panel
+        tank(a, 12, 12, 46, 70)
+        tank(a, 70, 12, 46, 70)
+        pipe(a, 35, 82, 35, 100, 5)
+        pipe(a, 93, 82, 93, 100, 5)
+        pipe(a, 35, 100, 93, 100, 5)
+        for x in (36, 92):
+            pump(a, x, 140, 22)
+        console(a, 30, 168, 68, 16, c)
+        light(a, 35, 46, 4, c)
+        light(a, 93, 46, 4, c)
+    elif size == "l":
+        # an air plant: electrolysis cell, water tank, scrubber columns, fans, a manifold
+        tank(a, 14, 14, 164, 54, "#2a3f4a", "#4f7a8c")  # water
+        tank(a, 22, 84, 64, 120)  # oxygen
+        tank(a, 106, 84, 64, 120)
+        a.b += rect(22, 220, 148, 64, "#2b3a33", rx=6, stroke=INK, sw=2)  # electrolysis cell
+        for x in range(32, 166, 14):
+            a.b += rect(x, 228, 8, 48, "#3d5a4a", rx=2, stroke=INK, sw=1)
+            a.e += rect(x + 2, 232, 4, 8, c, extra=' opacity="0.7"')
+        for i, x in enumerate((24, 64, 104, 144)):
+            a.b += rect(x, 300, 24, 70, "#33403a", rx=12, stroke=INK, sw=2)  # scrubber columns
+            a.b += line(x + 12, 306, x + 12, 364, "#556b5f", sw=3)
+        pipe(a, 14, 390, 178, 390, 6, "#3f6b55")
+        for x in (60, 132):
+            pump(a, x, 414, 22)
+        light(a, 54, 144, 4, c)
+        light(a, 138, 144, 4, c)
+        strip_light(a, 76, h - 12, 40, 5, c)
+    else:
+        # atmosphere processing: algae vats, twin oxygen tanks, a fan bank, pumps and a
+        # control room
+        for i in range(3):
+            y = 14 + i * 110
+            a.b += rect(14, y, w - 28, 96, "#1f3a2a", rx=8, stroke=INK, sw=2)
+            for k in range(6):
+                a.b += circle(40 + k * 48, y + 48, 18, "#2a5a3a", stroke=INK, sw=1)
+                a.e += circle(40 + k * 48, y + 48, 14, c, extra=' opacity="0.28"')
+            light(a, w - 26, y + 14, 3, c)
+        tank(a, 20, 360, 130, 64)
+        tank(a, 170, 360, 130, 64)
+        tank(a, 20, 440, 130, 64)
+        tank(a, 170, 440, 130, 64)
+        for i in range(5):
+            pump(a, 36 + i * 62, 552, 24)
+        pipe(a, 14, 590, w - 14, 590, 8, "#3f6b55")
+        for x in (60, 160, 260):
+            pipe(a, x, 504, x, 590, 6, "#3f6b55")
+        a.b += rect(14, 610, w - 28, 150, DECK, rx=4, stroke=INK, sw=2)
+        console(a, 30, 624, 120, 30, c)
+        console(a, 170, 624, 120, 30, c, 3)
+        seat(a, 90, 680, "up")
+        seat(a, 230, 680, "up")
+        a.b += rect(30, 716, 260, 30, HOUSING, rx=3, stroke=INK, sw=1.5)
+        for i in range(8):
+            screen(a, 36 + i * 32, 720, 26, 22, c, i)
+    return w, h, a
 
+
+# --- Cargo bay (passive: no emissives) -----------------------------------------
 
 def cargo(size):
     tw, th = AUX[size]
     w, h = tw * T, th * T
     c = ACCENT["cargo"]
-    s = floor_area(w, h)
-    # bay floor markings: a yellow boundary line and a tie-down ring on every tile
-    s += rect(3, 3, w - 6, h - 6, "none", stroke=HAZARD, sw=2.5, extra=' stroke-dasharray="10 6"')
-    for ty in range(th):
-        for tx in range(tw):
-            x, y = tx * T + 32, ty * T + 32
-            for (dx, dy) in ((-20, -20), (20, -20), (-20, 20), (20, 20)):
-                s += circle(x + dx, y + dy, 3, "none", stroke=c, sw=1.5)
-    s += rect(0, 0, w, h, "none", stroke=INK, sw=2)
-    return w, h, s, ""
+    a = Art()
+    a.b = floor_area(w, h)
 
+    def tiedowns(x0, y0, x1, y1):
+        for ty in range(int((y1 - y0) // T)):
+            for tx in range(int((x1 - x0) // T)):
+                for (dx, dy) in ((12, 12), (52, 12), (12, 52), (52, 52)):
+                    a.b += circle(x0 + tx * T + dx, y0 + ty * T + dy, 3, "none", stroke=c, sw=1.5)
+
+    if size == "s":
+        # a cargo locker: cage frame and a strap net
+        a.b += rect(4, 4, 56, 120, "none", stroke=STEEL_MID, sw=4)
+        for k in range(1, 6):
+            a.b += line(4, 4 + k * 20, 60, 4 + k * 20 - 20, "#8f7a52", sw=1.5, extra=' opacity="0.8"')
+            a.b += line(4, 4 + k * 20 - 20, 60, 4 + k * 20, "#8f7a52", sw=1.5, extra=' opacity="0.8"')
+        a.b += rect(4, 4, 56, 120, "none", stroke=INK, sw=1.5)
+    elif size == "m":
+        a.b += rect(3, 3, w - 6, h - 6, "none", stroke=HAZARD, sw=2.5, extra=' stroke-dasharray="10 6"')
+        tiedowns(0, 0, w, h)
+        a.b += hazard_band(8, h - 18, w - 16, 10, "cargo_m")
+    elif size == "l":
+        # a bay with a gantry crane rail across it and loading lanes
+        a.b += rect(3, 3, w - 6, h - 6, "none", stroke=HAZARD, sw=2.5, extra=' stroke-dasharray="10 6"')
+        tiedowns(0, 0, w, h)
+        for x in (10, w - 18):
+            a.b += rect(x, 6, 8, h - 12, STEEL_MID, stroke=INK, sw=1.5)
+        a.b += rect(10, 196, w - 20, 18, STEEL, stroke=INK, sw=2)  # gantry beam
+        a.b += rect(84, 190, 24, 30, HOUSING_HI, rx=2, stroke=INK, sw=1.5)  # trolley
+        a.b += circle(96, 205, 5, INK)
+        a.b += line(w / 2, 20, w / 2, h - 20, HAZARD, sw=2, extra=' opacity="0.6" stroke-dasharray="14 10"')
+    else:
+        # a hold with two crane rails, a cargo lift and marked sectors
+        a.b += rect(3, 3, w - 6, h - 6, "none", stroke=HAZARD, sw=3, extra=' stroke-dasharray="12 8"')
+        tiedowns(0, 0, w, h)
+        for x in (10, w - 20):
+            a.b += rect(x, 6, 10, h - 12, STEEL_MID, stroke=INK, sw=1.5)
+        for y in (220, 540):
+            a.b += rect(10, y, w - 20, 22, STEEL, stroke=INK, sw=2)
+            a.b += rect(w / 2 - 18, y - 8, 36, 38, HOUSING_HI, rx=2, stroke=INK, sw=1.5)
+            a.b += circle(w / 2, y + 11, 6, INK)
+        a.b += rect(w / 2 - 70, 330, 140, 110, "#33393f", stroke=INK, sw=2)  # lift platform
+        a.b += hazard_band(w / 2 - 70, 330, 140, 10, "lift_a")
+        a.b += hazard_band(w / 2 - 70, 430, 140, 10, "lift_b")
+        for k in range(1, 4):
+            a.b += line(w / 2 - 64, 340 + k * 23, w / 2 + 64, 340 + k * 23, INK, sw=1.5)
+        a.b += line(20, 384, w / 2 - 74, 384, HAZARD, sw=2.5, extra=' opacity="0.7"')
+        a.b += line(w / 2 + 74, 384, w - 20, 384, HAZARD, sw=2.5, extra=' opacity="0.7"')
+    a.b += rect(0, 0, w, h, "none", stroke=INK, sw=2)
+    return w, h, a
+
+
+# --- Airlock -------------------------------------------------------------------
 
 def airlock(size):
     tw, th = AUX[size]
     w, h = tw * T, th * T
-    u = uid(f"airlock_{size}")
-    s = housing(w, h, inset=2)
-    # grated chamber floor between two doors at the short ends
-    gx, gy, gw, gh = 8, 16, w - 16, h - 32
-    s += rect(gx, gy, gw, gh, "#20262e", stroke=INK, sw=1.5)
-    for xx in range(int(gx) + 4, int(gx + gw), 6):
-        s += line(xx, gy + 2, xx, gy + gh - 2, STEEL_DARK, sw=2)
-    # a cross rail on every tile boundary, and suit racks along the walls of wider locks
-    for ty in range(1, th):
-        s += rect(gx, ty * T - 2, gw, 4, STEEL_MID, stroke=INK, sw=1)
-    if tw >= 2:
-        for ty in range(th):
-            for side_x in (gx + 2, w - gx - 14):
-                if ty * T + 22 > h - 30:
-                    continue
-                s += rect(side_x, ty * T + 22, 12, 22, "#d8dde4", rx=5, stroke=INK, sw=1.2)
-                s += circle(side_x + 6, ty * T + 28, 4, GLASS, stroke=INK, sw=1)
-                s += circle(side_x + 6, ty * T + 28, 4, "#6aa8ff", extra=' opacity="0.35"')
-    s += hazard_band(6, 4, w - 12, 10, u + "a")
-    s += hazard_band(6, h - 14, w - 12, 10, u + "b")
-    s += circle(w - 12, 22, 3, "#ff4d4d", stroke=INK, sw=1)
-    s += circle(12, h - 22, 3, "#4dff88", stroke=INK, sw=1)
-    return w, h, s, ""
+    a = Art()
+    housing(a, w, h, inset=2)
 
+    def grate(x, y, gw, gh):
+        a.b += rect(x, y, gw, gh, "#20262e", stroke=INK, sw=1.5)
+        for xx in range(int(x) + 4, int(x + gw), 6):
+            a.b += line(xx, y + 2, xx, y + gh - 2, STEEL_DARK, sw=2)
+
+    def door(x, y, dw, key, col):
+        a.b += hazard_band(x, y, dw, 10, key)
+        light(a, w - 12 if y < h / 2 else 12, y + 18 if y < h / 2 else y - 8, 2.5, col)
+
+    def suit(x, y):
+        a.b += rect(x, y, 14, 24, "#d8dde4", rx=6, stroke=INK, sw=1.2)
+        a.b += circle(x + 7, y + 7, 5, GLASS, stroke=INK, sw=1)
+        a.e += circle(x + 7, y + 7, 4, "#6aa8ff", extra=' opacity="0.35"')
+
+    if size == "s":
+        grate(8, 16, 48, 96)
+        door(6, 4, 52, "al_s_a", RED)
+        door(6, h - 14, 52, "al_s_b", GREEN)
+    elif size == "m":
+        grate(8, 16, 76, h - 32)
+        door(6, 4, 80, "al_m_a", RED)
+        door(6, h - 14, 80, "al_m_b", GREEN)
+        for y in (24, 64, 104, 144):
+            suit(100, y)
+        a.b += rect(94, 18, 26, h - 36, "none", stroke=STEEL_MID, sw=2)
+    elif size == "l":
+        # two chambers with a middle door, suit racks and EVA lockers
+        grate(8, 16, w - 16, 190)
+        grate(8, 230, w - 16, 186)
+        door(6, 4, w - 12, "al_l_a", RED)
+        a.b += rect(6, 210, w - 12, 14, STEEL_MID, stroke=INK, sw=1.5)
+        a.b += hazard_band(30, 212, w - 60, 10, "al_l_mid")
+        door(6, h - 14, w - 12, "al_l_b", GREEN)
+        for y in range(240, 400, 34):
+            suit(12, y)
+            suit(w - 26, y)
+        for y in (40, 100, 160):
+            a.b += rect(14, y, 28, 40, "#566a7a", rx=2, stroke=INK, sw=1.5)
+            a.b += line(28, y + 2, 28, y + 38, INK, sw=1)
+        console(a, w - 50, 40, 36, 60, ACCENT["helm"])
+    else:
+        # a cargo airlock: wide outer doors, a staging floor, a suit room on one side
+        door(6, 4, w - 12, "al_xl_a", RED)
+        grate(8, 16, w - 16, 420)
+        for k in range(1, 6):
+            a.b += line(14, 16 + k * 70, w - 14, 16 + k * 70, STEEL_MID, sw=3)
+        a.b += rect(6, 440, w - 12, 14, STEEL_MID, stroke=INK, sw=1.5)
+        a.b += hazard_band(20, 442, w - 40, 10, "al_xl_mid")
+        a.b += floor_area(192, 256, 8, 460)
+        a.b += rect(200, 460, 112, 256, HOUSING, stroke=INK, sw=2)  # suit room
+        for y in range(472, 700, 34):
+            suit(212, y)
+            suit(284, y)
+        console(a, 20, 480, 80, 26, ACCENT["helm"])
+        seat(a, 60, 524, "up")
+        door(6, h - 14, w - 12, "al_xl_b", GREEN)
+    return w, h, a
+
+
+# --- Docking port ----------------------------------------------------------------
 
 def docking_port(size, state):
     tw, td = PORT[size]
     w, h = tw * T, td * T
-    u = uid(f"docking_port_{size}_{state}")
+    a = Art()
     # Frame tiles at both ends of the width (hull), opening between, door on the top (outer) edge.
-    s = ""
     for side in (0, w - T):
         for ty in range(td):
-            s += rect(side, ty * T, T, T, "#3d4552")
-            s += plate(side + 5, ty * T + 5, T - 10, T - 10, "#5b6675", STEEL_HI, INK, rx=3)
-        s += hazard_band(side + 10, 10, T - 20, 8, f"{u}_f{side}")
-    s += floor_area(w - 2 * T, h, T, 0)
-    # guidance chevrons in the opening pointing out the door
+            a.b += rect(side, ty * T, T, T, "#3d4552")
+            a.b += plate(side + 5, ty * T + 5, T - 10, T - 10, "#5b6675", STEEL_HI, INK, rx=3)
+        a.b += hazard_band(side + 10, 10, T - 20, 8, f"dp_{size}_{state}_{side}")
+    a.b += floor_area(w - 2 * T, h, T, 0)
     ow = w - 2 * T
     for ty in range(td):
         cy = ty * T + 40
-        s += path(f"M{f(T + ow/2 - 14)},{f(cy)} L{f(T + ow/2)},{f(cy - 12)} L{f(T + ow/2 + 14)},{f(cy)}",
-                  stroke=HAZARD, sw=4, extra=' opacity="0.85"')
+        a.b += path(f"M{f(T + ow/2 - 14)},{f(cy)} L{f(T + ow/2)},{f(cy - 12)} L{f(T + ow/2 + 14)},{f(cy)}",
+                    stroke=HAZARD, sw=4, extra=' opacity="0.85"')
     if state == "sealed":
-        s += rect(T - 4, -1, ow + 8, 12, "#7a8594", stroke=INK, sw=2)
-        s += hazard_band(T + 2, 2, ow - 4, 6, f"{u}_d")
-        s += line(T + ow / 2, -1, T + ow / 2, 11, INK, sw=2)
-        light = "#ff4d4d"
+        a.b += rect(T - 4, -1, ow + 8, 12, "#7a8594", stroke=INK, sw=2)
+        a.b += hazard_band(T + 2, 2, ow - 4, 6, f"dpd_{size}")
+        a.b += line(T + ow / 2, -1, T + ow / 2, 11, INK, sw=2)
+        col = RED
     else:
-        s += rect(T - 4, -1, 10, 12, "#7a8594", stroke=INK, sw=2)
-        s += rect(T + ow - 6, -1, 10, 12, "#7a8594", stroke=INK, sw=2)
-        light = "#4dff88"
-    s += circle(T / 2, h - 12 if td > 1 else 40, 4, light, stroke=INK, sw=1.2)
-    s += circle(w - T / 2, h - 12 if td > 1 else 40, 4, light, stroke=INK, sw=1.2)
-    s += rect(0, 0, w, h, "none", stroke=INK, sw=2)
-    return w, h, s, ""
+        a.b += rect(T - 4, -1, 10, 12, "#7a8594", stroke=INK, sw=2)
+        a.b += rect(T + ow - 6, -1, 10, 12, "#7a8594", stroke=INK, sw=2)
+        col = GREEN
+    ly = h - 14 if td > 1 else 42
+    light(a, T / 2, ly, 4, col)
+    light(a, w - T / 2, ly, 4, col)
+    a.b += rect(0, 0, w, h, "none", stroke=INK, sw=2)
+    return w, h, a
 
 
 def docking_collar(size):
     """The latch collar outside a port's outer edge: W tiles wide, half a tile deep."""
     tw, _ = PORT[size]
     w, h = tw * T, T / 2
-    s = rect(T * 0.5, 4, w - T, h - 4, STEEL_MID, rx=3, stroke=INK, sw=2)
-    s += bevel(T * 0.5 + 1, 5, w - T - 2, h - 6, STEEL_HI, INK)
-    s += rect(T, 0, w - 2 * T, 8, HOUSING, rx=2, stroke=INK, sw=1.5)
+    a = Art()
+    a.b += rect(T * 0.5, 4, w - T, h - 4, STEEL_MID, rx=3, stroke=INK, sw=2)
+    a.b += bevel(T * 0.5 + 1, 5, w - T - 2, h - 6, STEEL_HI, INK)
+    a.b += rect(T, 0, w - 2 * T, 8, HOUSING, rx=2, stroke=INK, sw=1.5)
     n = tw * 2
     for i in range(1, n):
         x = T * 0.5 + (w - T) * i / n
-        s += rect(x - 3, h - 10, 6, 8, "#7a8594", rx=1, stroke=INK, sw=1)
-    s += circle(T * 0.5 + 8, h / 2 + 2, 3, HAZARD, stroke=INK, sw=1)
-    s += circle(w - T * 0.5 - 8, h / 2 + 2, 3, HAZARD, stroke=INK, sw=1)
-    return w, h, s
+        a.b += rect(x - 3, h - 10, 6, 8, "#7a8594", rx=1, stroke=INK, sw=1)
+    light(a, T * 0.5 + 8, h / 2 + 2, 3, HAZARD)
+    light(a, w - T * 0.5 - 8, h / 2 + 2, 3, HAZARD)
+    return w, h, a
 
 
 def components():
     for size in SIZES:
         for name, fn in (("reactor", reactor), ("shield_emitter", shield_emitter), ("turret_mount", turret_mount)):
-            w, h, s, defs = fn(size)
-            write(f"components/{name}_{size}.svg", w, h, s, f"{name} {size.upper()}: {w//T}x{h//T} primary mount",
-                  defs)
+            w, h, a = fn(size)
+            p = f"components/{name}_{size}.svg"
+            write(p, w, h, a, f"{name} {size.upper()}: {w//T}x{h//T} primary mount", unpowered=unp(p))
         for name in ("helm", "weapons"):
-            w, h, s, defs = station_console(name, size)
-            write(f"components/{name}_{size}.svg", w, h, s, f"{name} {size.upper()}: {w//T}x{h//T} auxiliary slot",
-                  defs)
-        for name, fn in (("life_support", life_support), ("cargo", cargo), ("airlock", airlock)):
-            w, h, s, defs = fn(size)
-            write(f"components/{name}_{size}.svg", w, h, s, f"{name} {size.upper()}: {w//T}x{h//T} auxiliary slot",
-                  defs)
+            w, h, a = crew_room(name, size)
+            p = f"components/{name}_{size}.svg"
+            write(p, w, h, a, f"{name} {size.upper()}: {w//T}x{h//T} auxiliary slot", unpowered=unp(p))
+        for name, fn in (("life_support", life_support), ("airlock", airlock)):
+            w, h, a = fn(size)
+            p = f"components/{name}_{size}.svg"
+            write(p, w, h, a, f"{name} {size.upper()}: {w//T}x{h//T} auxiliary slot", unpowered=unp(p))
+        w, h, a = cargo(size)
+        write(f"components/cargo_{size}.svg", w, h, a, f"cargo {size.upper()}: {w//T}x{h//T} auxiliary slot, unpowered")
     for size in PORT:
         for state in ("sealed", "open"):
-            w, h, s, defs = docking_port(size, state)
-            name = f"docking_port_{size}" + ("_open" if state == "open" else "")
-            write(f"components/{name}.svg", w, h, s,
-                  f"docking_port {size.upper()}: {w//T}x{h//T} port mount, door {state}, facing +y at rotation 0")
-        w, h, s = docking_collar(size)
-        write(f"components/docking_collar_{size}.svg", w, h, s,
-              f"docking collar {size.upper()}: sits half a tile outside the port's outer edge")
+            w, h, a = docking_port(size, state)
+            p = f"components/docking_port_{size}" + ("_open" if state == "open" else "") + ".svg"
+            write(p, w, h, a,
+                  f"docking_port {size.upper()}: {w//T}x{h//T} port mount, door {state}, facing +y at rotation 0",
+                  unpowered=unp(p))
+        w, h, a = docking_collar(size)
+        p = f"components/docking_collar_{size}.svg"
+        write(p, w, h, a, f"docking collar {size.upper()}: sits half a tile outside the port's outer edge",
+              unpowered=unp(p))
 
 
 # ---------------------------------------------------------------------------
@@ -621,40 +1224,41 @@ def effects():
         "large": [(16, 58, 34, 22), (34, 60, 44, 28), (52, 56, 32, 20), (24, 30, 22, 16), (44, 28, 24, 16)],
     }
     for name, flames in layouts.items():
-        s = circle(32, 36, 26 if name != "small" else 16, "#ff5a1f", extra=' opacity="0.18"')
+        a = Art()
+        a.e = circle(32, 36, 26 if name != "small" else 16, "#ff5a1f", extra=' opacity="0.18"')
         for (cx, base, hh, ww) in flames:
-            s += flame(cx, base, hh, ww, cols)
-        write(f"effects/fire_{name}.svg", T, T, s, f"fire_{name}: fire overlay (Tile.FireSize.{name.upper()})")
+            a.e += flame(cx, base, hh, ww, cols)
+        write(f"effects/fire_{name}.svg", T, T, a, f"fire_{name}: fire overlay (Tile.FireSize.{name.upper()})")
 
     rnd = random.Random(4)
-    s = ""
+    a = Art()
     for i in range(14):
-        a = rnd.uniform(0, 2 * math.pi)
+        ang = rnd.uniform(0, 2 * math.pi)
         r = rnd.uniform(4, 24)
-        s += circle(32 + math.cos(a) * r, 32 + math.sin(a) * r, rnd.uniform(6, 13), "#0b0d10",
-                    extra=f' opacity="{f(rnd.uniform(0.25, 0.45))}"')
-    write("effects/scorch.svg", T, T, s, "scorch: burn mark left after a fire")
+        a.b += circle(32 + math.cos(ang) * r, 32 + math.sin(ang) * r, rnd.uniform(6, 13), "#0b0d10",
+                      extra=f' opacity="{f(rnd.uniform(0.25, 0.45))}"')
+    write("effects/scorch.svg", T, T, a, "scorch: burn mark left after a fire")
 
-    # Hull breach: a torn hole showing space, with bent plating at the edge.
     pts = []
     rnd = random.Random(11)
     for i in range(16):
-        a = 2 * math.pi * i / 16
+        ang = 2 * math.pi * i / 16
         r = rnd.uniform(16, 26)
-        pts.append((32 + math.cos(a) * r, 32 + math.sin(a) * r))
-    s = poly(pts, STEEL_DARK, stroke=INK, sw=2)
+        pts.append((32 + math.cos(ang) * r, 32 + math.sin(ang) * r))
+    a = Art()
+    a.b = poly(pts, STEEL_DARK, stroke=INK, sw=2)
     inner = [(32 + (x - 32) * 0.72, 32 + (y - 32) * 0.72) for x, y in pts]
-    s += poly(inner, "#03050a", stroke=INK, sw=1.5)
+    a.b += poly(inner, "#03050a", stroke=INK, sw=1.5)
     for (sx, sy) in ((26, 28), (38, 36), (31, 40)):
-        s += circle(sx, sy, 0.9, "#cfe3ff")
+        a.b += circle(sx, sy, 0.9, "#cfe3ff")
     for i in range(0, 16, 3):
         x, y = pts[i]
-        s += line(x, y, 32 + (x - 32) * 1.2, 32 + (y - 32) * 1.2, STEEL_HI, sw=1.5)
-    write("effects/breach.svg", T, T, s, "breach: hull tile at integrity 0, open to space")
+        a.b += line(x, y, 32 + (x - 32) * 1.2, 32 + (y - 32) * 1.2, STEEL_HI, sw=1.5)
+    write("effects/breach.svg", T, T, a, "breach: hull tile at integrity 0, open to space")
 
     for name, n, sw in (("light", 3, 1.2), ("heavy", 7, 2)):
         rnd = random.Random(7 if name == "light" else 9)
-        s = ""
+        a = Art()
         for i in range(n):
             x, y = rnd.uniform(10, 54), rnd.uniform(10, 54)
             d = f"M{f(x)},{f(y)}"
@@ -662,25 +1266,18 @@ def effects():
                 x += rnd.uniform(-10, 10)
                 y += rnd.uniform(-10, 10)
                 d += f" L{f(min(62, max(2, x)))},{f(min(62, max(2, y)))}"
-            s += path(d, stroke=INK, sw=sw, extra=' opacity="0.85"')
-        write(f"effects/damage_{name}.svg", T, T, s,
+            a.b += path(d, stroke=INK, sw=sw, extra=' opacity="0.85"')
+        write(f"effects/damage_{name}.svg", T, T, a,
               f"damage_{name}: cracks for a tile or system below {'half' if name == 'light' else 'a quarter'} integrity")
 
-    # Emergency bulkhead seal: a patch plate bolted over the tile.
-    s = rect(3, 3, 58, 58, "#8a6d1f", rx=4, stroke=INK, sw=2)
-    s += hazard_band(7, 7, 50, 8, "seal_top")
-    s += hazard_band(7, 49, 50, 8, "seal_bottom")
-    s += rect(7, 17, 50, 30, "#a8862a", stroke=INK, sw=1.5)
+    a = Art()
+    a.b = rect(3, 3, 58, 58, "#8a6d1f", rx=4, stroke=INK, sw=2)
+    a.b += hazard_band(7, 7, 50, 8, "seal_top")
+    a.b += hazard_band(7, 49, 50, 8, "seal_bottom")
+    a.b += rect(7, 17, 50, 30, "#a8862a", stroke=INK, sw=1.5)
     for xx in (12, 24, 40, 52):
-        s += circle(xx, 32, 2, "#d9c27a", stroke=INK, sw=1)
-    write("effects/bulkhead_seal.svg", T, T, s, "bulkhead_seal: emergency seal over a tile (Tile.bulkheadSealed)")
-
-    # Unpowered system: a dim cover with a power-off mark, drawn over a component.
-    s = rect(0, 0, T, T, "#000000", extra=' opacity="0.35"')
-    s += circle(32, 32, 12, "none", stroke="#d0d6de", sw=3, extra=' opacity="0.8"')
-    s += rect(29, 14, 6, 18, "#3a434f")
-    s += line(32, 16, 32, 30, "#d0d6de", sw=3, extra=' opacity="0.8"')
-    write("effects/unpowered.svg", T, T, s, "unpowered: overlay for a system with no power (stretch over the footprint)")
+        a.b += circle(xx, 32, 2, "#d9c27a", stroke=INK, sw=1)
+    write("effects/bulkhead_seal.svg", T, T, a, "bulkhead_seal: emergency seal over a tile (Tile.bulkheadSealed)")
 
 
 # ---------------------------------------------------------------------------
@@ -688,181 +1285,186 @@ def effects():
 # ---------------------------------------------------------------------------
 
 def decor():
-    # Floor vent grate, 32x32
-    s = rect(2, 2, 28, 28, HOUSING, rx=3, stroke=INK, sw=2)
+    def out(name, w, h, a, title, powered=False):
+        p = f"decor/{name}.svg"
+        write(p, w, h, a, title, unpowered=unp(p) if powered else None)
+
+    a = Art()
+    a.b = rect(2, 2, 28, 28, HOUSING, rx=3, stroke=INK, sw=2)
     for yy in range(8, 27, 5):
-        s += line(7, yy, 25, yy, INK, sw=2.5)
-    s += bevel(3, 3, 26, 26, HOUSING_HI, INK, sw=1)
-    write("decor/vent_grate.svg", 32, 32, s, "vent_grate: floor vent, 2x2 sub-tiles")
+        a.b += line(7, yy, 25, yy, INK, sw=2.5)
+    a.b += bevel(3, 3, 26, 26, HOUSING_HI, INK, sw=1)
+    out("vent_grate", 32, 32, a, "vent_grate: floor vent, 2x2 sub-tiles")
 
-    # Floor hatch, 32x32
-    s = rect(2, 2, 28, 28, STEEL_MID, rx=2, stroke=INK, sw=2)
-    s += rect(7, 7, 18, 18, STEEL_DARK, rx=2, stroke=INK, sw=1.5)
-    s += rect(13, 14, 6, 4, HAZARD, stroke=INK, sw=1)
-    write("decor/floor_hatch.svg", 32, 32, s, "floor_hatch: maintenance hatch, 2x2 sub-tiles")
+    a = Art()
+    a.b = rect(2, 2, 28, 28, STEEL_MID, rx=2, stroke=INK, sw=2)
+    a.b += rect(7, 7, 18, 18, STEEL_DARK, rx=2, stroke=INK, sw=1.5)
+    a.b += rect(13, 14, 6, 4, HAZARD, stroke=INK, sw=1)
+    out("floor_hatch", 32, 32, a, "floor_hatch: maintenance hatch, 2x2 sub-tiles")
 
-    # Pipe run along a wall, 64x16 (pipes at the top, against the wall)
-    s = rect(0, 2, 64, 5, "#4f7a8c", stroke=INK, sw=1.5)
-    s += rect(0, 9, 64, 5, "#8c6a4f", stroke=INK, sw=1.5)
+    a = Art()
+    a.b = rect(0, 2, 64, 5, "#4f7a8c", stroke=INK, sw=1.5)
+    a.b += rect(0, 9, 64, 5, "#8c6a4f", stroke=INK, sw=1.5)
     for xx in (10, 54):
-        s += rect(xx - 2, 0, 4, 16, STEEL_DARK, rx=1, stroke=INK, sw=1)
-    s += line(0, 3.5, 64, 3.5, "#9fc3d1", sw=1, extra=' opacity="0.6"')
-    write("decor/pipe_run.svg", 64, 16, s, "pipe_run: water and coolant pipes along a wall, tiles end to end")
+        a.b += rect(xx - 2, 0, 4, 16, STEEL_DARK, rx=1, stroke=INK, sw=1)
+    a.b += line(0, 3.5, 64, 3.5, "#9fc3d1", sw=1, extra=' opacity="0.6"')
+    out("pipe_run", 64, 16, a, "pipe_run: water and coolant pipes along a wall, tiles end to end")
 
-    s = rect(0, 2, 64, 5, "#4f7a8c", stroke=INK, sw=1.5)
-    s += rect(0, 9, 64, 5, "#8c6a4f", stroke=INK, sw=1.5)
-    s += circle(32, 4.5, 6, "#b33b3b", stroke=INK, sw=1.5)
-    s += line(26, 4.5, 38, 4.5, "#e0e0e0", sw=1.5)
-    write("decor/pipe_valve.svg", 64, 16, s, "pipe_valve: pipe run with a hand valve")
+    a = Art()
+    a.b = rect(0, 2, 64, 5, "#4f7a8c", stroke=INK, sw=1.5)
+    a.b += rect(0, 9, 64, 5, "#8c6a4f", stroke=INK, sw=1.5)
+    a.b += circle(32, 4.5, 6, "#b33b3b", stroke=INK, sw=1.5)
+    a.b += line(26, 4.5, 38, 4.5, "#e0e0e0", sw=1.5)
+    out("pipe_valve", 64, 16, a, "pipe_valve: pipe run with a hand valve")
 
-    # Cable tray, 64x16
-    s = rect(0, 3, 64, 10, HOUSING, stroke=INK, sw=1.5)
+    a = Art()
+    a.b = rect(0, 3, 64, 10, HOUSING, stroke=INK, sw=1.5)
     for k, col in enumerate(("#d24b4b", POWER, "#4b8bd2", "#e0e0e0")):
-        s += line(0, 5 + k * 2, 64, 5 + k * 2, col, sw=1.4)
+        a.b += line(0, 5 + k * 2, 64, 5 + k * 2, col, sw=1.4)
     for xx in (16, 48):
-        s += rect(xx - 1.5, 2, 3, 12, STEEL_MID, stroke=INK, sw=0.8)
-    write("decor/cable_tray.svg", 64, 16, s, "cable_tray: cables along a wall")
+        a.b += rect(xx - 1.5, 2, 3, 12, STEEL_MID, stroke=INK, sw=0.8)
+    out("cable_tray", 64, 16, a, "cable_tray: cables along a wall")
 
-    # Wall light, 32x16
-    s = rect(2, 2, 28, 7, HOUSING, rx=2, stroke=INK, sw=1.5)
-    s += rect(5, 4, 22, 3, "#fff7d6")
-    s += path("M4,9 L28,9 L24,15 L8,15 Z", fill="#fff7d6", extra=' opacity="0.25"')
-    write("decor/wall_light.svg", 32, 16, s, "wall_light: light strip on a wall")
+    a = Art()
+    a.b = rect(2, 2, 28, 7, HOUSING, rx=2, stroke=INK, sw=1.5)
+    a.b += rect(5, 4, 22, 3, LENS)
+    a.e = rect(5, 4, 22, 3, "#fff7d6")
+    a.e += path("M4,9 L28,9 L24,15 L8,15 Z", fill="#fff7d6", extra=' opacity="0.25"')
+    out("wall_light", 32, 16, a, "wall_light: light strip on a wall", powered=True)
 
-    # Hazard stripe, 64x16
-    write("decor/hazard_stripe.svg", 64, 16, hazard_band(0, 4, 64, 8, "hazstripe"), "hazard_stripe: floor marking")
+    a = Art()
+    a.b = hazard_band(0, 4, 64, 8, "hazstripe")
+    out("hazard_stripe", 64, 16, a, "hazard_stripe: floor marking")
 
-    # Floor arrow, 32x32
-    s = poly([(16, 4), (28, 18), (21, 18), (21, 28), (11, 28), (11, 18), (4, 18)], HAZARD, stroke=INK, sw=1.5,
-             extra=' opacity="0.85"')
-    write("decor/floor_arrow.svg", 32, 32, s, "floor_arrow: direction marking, points +y")
+    a = Art()
+    a.b = poly([(16, 4), (28, 18), (21, 18), (21, 28), (11, 28), (11, 18), (4, 18)], HAZARD, stroke=INK,
+               sw=1.5, extra=' opacity="0.85"')
+    out("floor_arrow", 32, 32, a, "floor_arrow: direction marking, points +y")
 
-    # Crates
     for name, sz in (("crate_small", 32), ("crate_large", 48)):
-        s = rect(2, 2, sz - 4, sz - 4, "#7a5a33", rx=2, stroke=INK, sw=2)
-        s += rect(6, 6, sz - 12, sz - 12, "#8f6b3e", stroke=INK, sw=1.2)
-        s += line(6, 6, sz - 6, sz - 6, "#6a4d2b", sw=2)
-        s += line(sz - 6, 6, 6, sz - 6, "#6a4d2b", sw=2)
-        s += bevel(3, 3, sz - 6, sz - 6, "#b48a55", "#4d371e", sw=1)
-        s += collider_rect(2, 2, sz - 4, sz - 4)
-        write(f"decor/{name}.svg", sz, sz, s, f"{name}: loose crate, {sz//16}x{sz//16} sub-tiles")
+        a = Art()
+        a.b = rect(2, 2, sz - 4, sz - 4, "#7a5a33", rx=2, stroke=INK, sw=2)
+        a.b += rect(6, 6, sz - 12, sz - 12, "#8f6b3e", stroke=INK, sw=1.2)
+        a.b += line(6, 6, sz - 6, sz - 6, "#6a4d2b", sw=2)
+        a.b += line(sz - 6, 6, 6, sz - 6, "#6a4d2b", sw=2)
+        a.b += bevel(3, 3, sz - 6, sz - 6, "#b48a55", "#4d371e", sw=1)
+        a.m = collider_rect(2, 2, sz - 4, sz - 4)
+        out(name, sz, sz, a, f"{name}: loose crate, {sz//16}x{sz//16} sub-tiles")
 
-    # Barrel, 32x32 (top view)
-    s = circle(16, 16, 13, "#3d6b8f", stroke=INK, sw=2)
-    s += circle(16, 16, 10, "none", stroke="#2b4d68", sw=1.5)
-    s += circle(11, 12, 2.5, "#c9d6e0", stroke=INK, sw=1)
-    s += circle(16, 16, 13, "none", stroke="#6f9bbd", sw=1, extra=' stroke-dasharray="10 30"')
-    s += collider_circle(16, 16, 13)
-    write("decor/barrel.svg", 32, 32, s, "barrel: drum seen from above")
+    a = Art()
+    a.b = circle(16, 16, 13, "#3d6b8f", stroke=INK, sw=2)
+    a.b += circle(16, 16, 10, "none", stroke="#2b4d68", sw=1.5)
+    a.b += circle(11, 12, 2.5, "#c9d6e0", stroke=INK, sw=1)
+    a.m = collider_circle(16, 16, 13)
+    out("barrel", 32, 32, a, "barrel: drum seen from above")
 
-    # Locker, 32x16 against a wall (wall side at the top)
-    s = rect(1, 1, 30, 14, "#566a7a", rx=1, stroke=INK, sw=1.5)
-    s += line(16, 2, 16, 14, INK, sw=1.2)
-    s += rect(12, 9, 2, 4, "#c9d6e0")
-    s += rect(18, 9, 2, 4, "#c9d6e0")
-    s += collider_rect(1, 1, 30, 14)
-    write("decor/locker.svg", 32, 16, s, "locker: crew locker against a wall")
+    a = Art()
+    a.b = rect(1, 1, 30, 14, "#566a7a", rx=1, stroke=INK, sw=1.5)
+    a.b += line(16, 2, 16, 14, INK, sw=1.2)
+    a.b += rect(12, 9, 2, 4, "#c9d6e0") + rect(18, 9, 2, 4, "#c9d6e0")
+    a.m = collider_rect(1, 1, 30, 14)
+    out("locker", 32, 16, a, "locker: crew locker against a wall")
 
-    # Bunk, 32x64
-    s = rect(2, 2, 28, 60, "#3a404a", rx=3, stroke=INK, sw=2)
-    s += rect(5, 5, 22, 54, "#5a6b80", rx=3, stroke=INK, sw=1.2)
-    s += rect(7, 7, 18, 10, "#d8dde4", rx=3, stroke=INK, sw=1)
-    s += rect(5, 30, 22, 29, "#2f5a8a", rx=2, stroke=INK, sw=1)
-    s += line(5, 33, 27, 33, "#4a78ad", sw=1.5)
-    s += collider_rect(2, 2, 28, 60)
-    s += interact_point(16, 40)
-    write("decor/bunk.svg", 32, 64, s, "bunk: crew bed, pillow toward +y")
+    a = Art()
+    a.b = rect(2, 2, 28, 60, "#3a404a", rx=3, stroke=INK, sw=2)
+    a.b += rect(5, 5, 22, 54, "#5a6b80", rx=3, stroke=INK, sw=1.2)
+    a.b += rect(7, 7, 18, 10, "#d8dde4", rx=3, stroke=INK, sw=1)
+    a.b += rect(5, 30, 22, 29, "#2f5a8a", rx=2, stroke=INK, sw=1)
+    a.b += line(5, 33, 27, 33, "#4a78ad", sw=1.5)
+    a.m = collider_rect(2, 2, 28, 60) + interact_point(16, 40)
+    out("bunk", 32, 64, a, "bunk: crew bed, pillow toward +y")
 
-    # Table and chair
-    s = rect(3, 3, 26, 26, "#6b5a48", rx=3, stroke=INK, sw=2)
-    s += bevel(4, 4, 24, 24, "#8a755e", "#4a3e31", sw=1)
-    s += circle(10, 11, 3, "#d8dde4", stroke=INK, sw=0.8)
-    s += collider_rect(3, 3, 26, 26)
-    write("decor/table.svg", 32, 32, s, "table: small table")
+    a = Art()
+    a.b = rect(3, 3, 26, 26, "#6b5a48", rx=3, stroke=INK, sw=2)
+    a.b += bevel(4, 4, 24, 24, "#8a755e", "#4a3e31", sw=1)
+    a.b += circle(10, 11, 3, "#d8dde4", stroke=INK, sw=0.8)
+    a.m = collider_rect(3, 3, 26, 26)
+    out("table", 32, 32, a, "table: small table")
 
-    s = rect(2, 2, 60, 28, "#6b5a48", rx=3, stroke=INK, sw=2)
-    s += bevel(3, 3, 58, 26, "#8a755e", "#4a3e31", sw=1)
+    a = Art()
+    a.b = rect(2, 2, 60, 28, "#6b5a48", rx=3, stroke=INK, sw=2)
+    a.b += bevel(3, 3, 58, 26, "#8a755e", "#4a3e31", sw=1)
     for xx in (14, 32, 50):
-        s += circle(xx, 16, 3.5, "#d8dde4", stroke=INK, sw=0.8)
-    s += collider_rect(2, 2, 60, 28)
-    write("decor/mess_table.svg", 64, 32, s, "mess_table: long table, 4x2 sub-tiles")
+        a.b += circle(xx, 16, 3.5, "#d8dde4", stroke=INK, sw=0.8)
+    a.m = collider_rect(2, 2, 60, 28)
+    out("mess_table", 64, 32, a, "mess_table: long table, 4x2 sub-tiles")
 
-    s = rect(3, 4, 10, 10, "#2b2f36", rx=3, stroke=INK, sw=1.5)
-    s += rect(3, 1, 10, 4, "#1e2227", rx=1.5, stroke=INK, sw=1)
-    s += collider_rect(3, 1, 10, 13)
-    write("decor/chair.svg", 16, 16, s, "chair: seat facing -y (back toward +y)")
+    a = Art()
+    a.b = rect(3, 4, 10, 10, SEAT, rx=3, stroke=INK, sw=1.5)
+    a.b += rect(3, 1, 10, 4, SEAT_DARK, rx=1.5, stroke=INK, sw=1)
+    a.m = collider_rect(3, 1, 10, 13)
+    out("chair", 16, 16, a, "chair: seat facing -y (back toward +y)")
 
-    # Plant in a hydroponics pot, 16x16
-    s = circle(8, 8, 6.5, "#4a3e31", stroke=INK, sw=1.5)
+    a = Art()
+    a.b = circle(8, 8, 6.5, "#4a3e31", stroke=INK, sw=1.5)
     for i in range(5):
-        a = 2 * math.pi * i / 5
-        s += path(f"M8,8 Q{f(8+math.cos(a)*4)},{f(8+math.sin(a)*1)} {f(8+math.cos(a)*7)},{f(8+math.sin(a)*7)}",
-                  stroke="#5ec46a", sw=2.5)
-    s += circle(8, 8, 1.8, "#8fe39a")
-    s += collider_circle(8, 8, 6.5)
-    write("decor/plant.svg", 16, 16, s, "plant: potted plant")
+        ang = 2 * math.pi * i / 5
+        a.b += path(f"M8,8 Q{f(8+math.cos(ang)*4)},{f(8+math.sin(ang)*1)} {f(8+math.cos(ang)*7)},{f(8+math.sin(ang)*7)}",
+                    stroke="#5ec46a", sw=2.5)
+    a.b += circle(8, 8, 1.8, "#8fe39a")
+    a.m = collider_circle(8, 8, 6.5)
+    out("plant", 16, 16, a, "plant: potted plant")
 
 
 def interactive():
-    # Fire extinguisher, 16x16 (bracketed to a wall at the top)
-    s = rect(4, 0, 8, 3, STEEL_DARK, stroke=INK, sw=1)
-    s += circle(8, 9, 5, "#d33a3a", stroke=INK, sw=1.5)
-    s += circle(8, 9, 2, "#2b2f36")
-    s += line(8, 4, 12, 2, "#2b2f36", sw=1.5)
-    s += collider_circle(8, 9, 5)
-    s += interact_point(8, 14)
-    write("interactive/fire_extinguisher.svg", 16, 16, s, "fire_extinguisher: crew pick it up to fight fires")
+    def out(name, w, h, a, title, powered=False):
+        p = f"interactive/{name}.svg"
+        write(p, w, h, a, title, unpowered=unp(p) if powered else None)
 
-    # Bulkhead control panel, 16x16 on a wall
-    s = rect(2, 1, 12, 9, HOUSING, rx=1.5, stroke=INK, sw=1.2)
-    s += rect(4, 3, 3.5, 5, "#4dff88")
-    s += rect(8.5, 3, 3.5, 5, "#ff4d4d")
-    s += interact_point(8, 14)
-    write("interactive/bulkhead_panel.svg", 16, 16, s, "bulkhead_panel: opens and seals a nearby bulkhead door")
+    a = Art()
+    a.b = rect(4, 0, 8, 3, STEEL_DARK, stroke=INK, sw=1)
+    a.b += circle(8, 9, 5, "#d33a3a", stroke=INK, sw=1.5)
+    a.b += circle(8, 9, 2, "#2b2f36")
+    a.b += line(8, 4, 12, 2, "#2b2f36", sw=1.5)
+    a.m = collider_circle(8, 9, 5) + interact_point(8, 14)
+    out("fire_extinguisher", 16, 16, a, "fire_extinguisher: crew pick it up to fight fires")
 
-    # Breaker / power switch, 16x16
-    s = rect(2, 1, 12, 10, "#3a414c", rx=1.5, stroke=INK, sw=1.2)
-    s += rect(6, 3, 4, 6, "#1e2227", stroke=INK, sw=0.8)
-    s += rect(6.5, 3.5, 3, 2.5, POWER)
-    s += interact_point(8, 14)
-    write("interactive/breaker.svg", 16, 16, s, "breaker: switches a system on or off")
+    a = Art()
+    a.b = rect(2, 1, 12, 9, HOUSING, rx=1.5, stroke=INK, sw=1.2)
+    a.b += rect(4, 3, 3.5, 5, LENS) + rect(8.5, 3, 3.5, 5, LENS)
+    a.e = rect(4, 3, 3.5, 5, GREEN) + rect(8.5, 3, 3.5, 5, RED)
+    a.m = interact_point(8, 14)
+    out("bulkhead_panel", 16, 16, a, "bulkhead_panel: opens and seals a nearby bulkhead door", True)
 
-    # Wall terminal, 32x16
-    s = rect(2, 1, 28, 10, HOUSING, rx=2, stroke=INK, sw=1.5)
-    s += screen(5, 2.5, 22, 7, ACCENT["helm"])
-    s += interact_point(16, 14)
-    write("interactive/terminal.svg", 32, 16, s, "terminal: wall terminal")
+    a = Art()
+    a.b = rect(2, 1, 12, 10, "#3a414c", rx=1.5, stroke=INK, sw=1.2)
+    a.b += rect(6, 3, 4, 6, SEAT_DARK, stroke=INK, sw=0.8)
+    a.b += rect(6.5, 3.5, 3, 2.5, LENS)
+    a.e = rect(6.5, 3.5, 3, 2.5, POWER)
+    a.m = interact_point(8, 14)
+    out("breaker", 16, 16, a, "breaker: switches a system on or off", True)
 
-    # Emergency suit locker, 32x16
-    s = rect(1, 1, 30, 14, "#8a6d1f", rx=1, stroke=INK, sw=1.5)
-    s += hazard_band(3, 3, 26, 3, "suitlocker")
-    s += rect(6, 8, 20, 5, "#d33a3a", rx=1, stroke=INK, sw=1)
-    s += rect(14, 9, 4, 3, "#fff")
-    s += collider_rect(1, 1, 30, 14)
-    s += interact_point(16, 15)
-    write("interactive/emergency_locker.svg", 32, 16, s, "emergency_locker: oxygen and vacuum suits")
+    a = Art()
+    a.b = rect(2, 1, 28, 10, HOUSING, rx=2, stroke=INK, sw=1.5)
+    screen(a, 5, 2.5, 22, 7, ACCENT["helm"])
+    a.m = interact_point(16, 14)
+    out("terminal", 32, 16, a, "terminal: wall terminal", True)
 
-    # Repair kit (breach patches), 16x16
-    s = rect(2, 3, 12, 10, "#c46a1f", rx=1.5, stroke=INK, sw=1.2)
-    s += rect(6, 1.5, 4, 2.5, STEEL_DARK, stroke=INK, sw=0.8)
-    s += rect(6.5, 6, 3, 4, "#fff")
-    s += rect(5, 7, 6, 2, "#fff")
-    s += collider_rect(2, 2, 12, 11)
-    s += interact_point(8, 8)
-    write("interactive/repair_kit.svg", 16, 16, s, "repair_kit: patches for repairs and breaches")
+    a = Art()
+    a.b = rect(1, 1, 30, 14, "#8a6d1f", rx=1, stroke=INK, sw=1.5)
+    a.b += hazard_band(3, 3, 26, 3, "suitlocker")
+    a.b += rect(6, 8, 20, 5, "#d33a3a", rx=1, stroke=INK, sw=1)
+    a.b += rect(14, 9, 4, 3, "#fff")
+    a.m = collider_rect(1, 1, 30, 14) + interact_point(16, 15)
+    out("emergency_locker", 32, 16, a, "emergency_locker: oxygen and vacuum suits")
 
-    # Medical bed, 32x64
-    s = rect(2, 2, 28, 60, "#c9d2dc", rx=3, stroke=INK, sw=2)
-    s += rect(5, 5, 22, 54, "#e8edf2", rx=3, stroke=INK, sw=1)
-    s += rect(8, 7, 16, 9, "#ffffff", rx=3, stroke=INK, sw=1)
-    s += rect(10, 46, 12, 8, "#5ee08a", rx=1, extra=' opacity="0.8"')
-    s += line(13, 50, 19, 50, "#fff", sw=1.5)
-    s += line(16, 47, 16, 53, "#fff", sw=1.5)
-    s += collider_rect(2, 2, 28, 60)
-    s += interact_point(16, 34)
-    write("interactive/med_bed.svg", 32, 64, s, "med_bed: medical bed, head toward +y")
+    a = Art()
+    a.b = rect(2, 3, 12, 10, "#c46a1f", rx=1.5, stroke=INK, sw=1.2)
+    a.b += rect(6, 1.5, 4, 2.5, STEEL_DARK, stroke=INK, sw=0.8)
+    a.b += rect(6.5, 6, 3, 4, "#fff") + rect(5, 7, 6, 2, "#fff")
+    a.m = collider_rect(2, 2, 12, 11) + interact_point(8, 8)
+    out("repair_kit", 16, 16, a, "repair_kit: patches for repairs and breaches")
 
-    # Cargo stacks on a bay tile at three fill levels (CargoHoldComponent stacks)
+    a = Art()
+    a.b = rect(2, 2, 28, 60, "#c9d2dc", rx=3, stroke=INK, sw=2)
+    a.b += rect(5, 5, 22, 54, "#e8edf2", rx=3, stroke=INK, sw=1)
+    a.b += rect(8, 7, 16, 9, "#ffffff", rx=3, stroke=INK, sw=1)
+    a.b += rect(10, 46, 12, 8, GLASS, rx=1)
+    a.e = rect(10, 46, 12, 8, "#5ee08a", rx=1, extra=' opacity="0.8"')
+    a.e += line(13, 50, 19, 50, "#fff", sw=1.5) + line(16, 47, 16, 53, "#fff", sw=1.5)
+    a.m = collider_rect(2, 2, 28, 60) + interact_point(16, 34)
+    out("med_bed", 32, 64, a, "med_bed: medical bed, head toward +y", True)
+
     def crate(x, y, w, h, col):
         q = rect(x, y, w, h, col, rx=1.5, stroke=INK, sw=1.5)
         q += line(x + 3, y + 3, x + w - 3, y + h - 3, INK, sw=1, extra=' opacity="0.4"')
@@ -874,19 +1476,18 @@ def interactive():
         3: [(4, 4, 27, 27), (33, 4, 27, 27), (4, 33, 27, 27), (33, 33, 27, 27)],
     }
     for level, crates in stacks.items():
-        s = ""
+        a = Art()
         for i, (x, y, w, h) in enumerate(crates):
-            s += crate(x, y, w, h, ("#8f6b3e", "#7a5a33", "#a07a48", "#86643a")[i % 4])
+            a.b += crate(x, y, w, h, ("#8f6b3e", "#7a5a33", "#a07a48", "#86643a")[i % 4])
         if level == 3:
-            s += rect(4, 30, 56, 4, HAZARD, extra=' opacity="0.9"')  # strap
-            s += rect(30, 4, 4, 56, HAZARD, extra=' opacity="0.9"')
-        s += interact_point(32, 32)
-        write(f"interactive/cargo_stack_{level}.svg", T, T, s,
-              f"cargo_stack_{level}: one cargo stack on a bay tile, {['', 'a third', 'two thirds', 'full'][level]}")
+            a.b += rect(4, 30, 56, 4, HAZARD, extra=' opacity="0.9"') + rect(30, 4, 4, 56, HAZARD, extra=' opacity="0.9"')
+        a.m = interact_point(32, 32)
+        out(f"cargo_stack_{level}", T, T, a,
+            f"cargo_stack_{level}: one cargo stack on a bay tile, {['', 'a third', 'two thirds', 'full'][level]}")
 
 
 # ---------------------------------------------------------------------------
-# Exterior: ship hulls, station hulls, turrets
+# Exterior: ship and station hulls built on the chassis grid, turrets
 # ---------------------------------------------------------------------------
 
 def load_toml(name):
@@ -894,265 +1495,267 @@ def load_toml(name):
         return tomllib.load(fh)
 
 
-def port_clusters(chassis):
-    """Docking ports in a chassis map, as (grid x, grid y, w, h) rectangles."""
-    rows = chassis["rows"]
-    H = len(rows)
-    seen = set()
-    out = []
+LETTERS = {"R": "reactor", "S": "shield_emitter", "T": "turret_mount", "L": "life_support", "H": "helm",
+           "W": "weapons", "C": "cargo", "A": "airlock", "D": "docking_port"}
+KIND = {"reactor": "P", "shield_emitter": "P", "turret_mount": "P", "life_support": "A", "helm": "A",
+        "weapons": "A", "cargo": "A", "airlock": "A", "docking_port": "D"}
+WALL_CHARS = set("#123")
+
+
+def clusters(rows, letter):
+    seen, out = set(), []
     for r, row in enumerate(rows):
         for c, ch in enumerate(row):
-            if ch != "D" or (c, r) in seen:
+            if ch != letter or (c, r) in seen:
                 continue
-            stack = [(c, r)]
-            cells = []
+            stack, cells = [(c, r)], []
             seen.add((c, r))
             while stack:
                 x, y = stack.pop()
                 cells.append((x, y))
                 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     nx, ny = x + dx, y + dy
-                    if 0 <= ny < H and 0 <= nx < len(rows[ny]) and rows[ny][nx] == "D" and (nx, ny) not in seen:
+                    if 0 <= ny < len(rows) and 0 <= nx < len(rows[ny]) and rows[ny][nx] == letter \
+                            and (nx, ny) not in seen:
                         seen.add((nx, ny))
                         stack.append((nx, ny))
-            xs = [p[0] for p in cells]
-            ys = [p[1] for p in cells]
-            x0, x1, r0, r1 = min(xs), max(xs), min(ys), max(ys)
-            out.append((x0, H - 1 - r1, x1 - x0 + 1, r1 - r0 + 1))
+            xs, ys = [p[0] for p in cells], [p[1] for p in cells]
+            out.append((min(xs), min(ys), max(xs) - min(xs) + 1, max(ys) - min(ys) + 1))
     return out
 
 
-def port_marks(chassis, ox, oy):
-    """Port rings and collars on an exterior hull, in body coordinates scaled to SVG."""
-    s = ""
-    W = max(len(r) for r in chassis["rows"])
-    H = len(chassis["rows"])
-    for (gx, gy, w, h) in port_clusters(chassis):
-        bx, by = (gx + ox) * T, -(gy + h + oy) * T  # top-left in SVG units
-        bw, bh = w * T, h * T
-        s += rect(bx, by, bw, bh, STEEL_DARK, rx=3, stroke=INK, sw=2)
-        # facing: the side of the grid the cluster touches
-        if gy + h == H:
-            cx, cy, cw, ch_ = bx + T * 0.5, by - T * 0.5, bw - T, T * 0.5
-        elif gy == 0:
-            cx, cy, cw, ch_ = bx + T * 0.5, by + bh, bw - T, T * 0.5
-        elif gx == 0:
-            cx, cy, cw, ch_ = bx - T * 0.5, by + T * 0.5, T * 0.5, bh - T
-        else:
-            cx, cy, cw, ch_ = bx + bw, by + T * 0.5, T * 0.5, bh - T
-        s += rect(cx, cy, cw, ch_, STEEL_MID, rx=3, stroke=INK, sw=2)
-        s += rect(bx + 10, by + 10, bw - 20, bh - 20, "none", stroke=HAZARD, sw=4, extra=' stroke-dasharray="12 8"')
-    return s
+def chassis_mounts(ch):
+    """Every mount in a chassis as (component, col, row, w, h) in map cells (row 0 at the top),
+    from the explicit mounts list and the map letters, the way the loader reads them."""
+    rows = ch["rows"]
+    H = len(rows)
+    out, covered = [], set()
+    sizes = {"P": {"S": (1, 1), "M": (2, 2), "L": (3, 3), "XL": (5, 5)},
+             "A": {"S": (1, 2), "M": (2, 3), "L": (3, 7), "XL": (5, 12)}}
+    for m in ch.get("mounts", []):
+        name = m.get("type", "").lower()
+        if name not in KIND:
+            continue
+        bw, bh = sizes[KIND[name]][m["size"]]
+        w, h = (bh, bw) if m.get("rotation", 0) % 2 else (bw, bh)
+        col, row = m["x"], H - (m["y"] + h)
+        out.append((name, col, row, w, h))
+        covered |= {(col + i, row + j) for i in range(w) for j in range(h)}
+    for letter, name in LETTERS.items():
+        for (x, y, w, h) in clusters(rows, letter):
+            if {(x + i, y + j) for i in range(w) for j in range(h)} <= covered:
+                continue
+            out.append((name, x, y, w, h))
+    return out
 
 
-def panel_lines(x0, y0, x1, y1, step, clip_id):
-    s = f'  <g clip-path="url(#{clip_id})" opacity="0.55">\n'
-    x = x0 + step
-    while x < x1:
-        s += line(x, y0, x, y1, STEEL_DARK, sw=2)
-        x += step
-    y = y0 + step
-    while y < y1:
-        s += line(x0, y, x1, y, STEEL_DARK, sw=1.5)
-        y += step
-    return s + "  </g>\n"
+def hull_svg(ch, overhang=None, engines=False):
+    """Exterior art for a chassis: plating on every tile of the grid (tile edges as panel
+    lines), the wall ring as armor, each system's exterior fitting over its footprint,
+    and engine mounts on the aft (-x) edge for ships."""
+    rows = ch["rows"]
+    H, W = len(rows), max(len(r) for r in rows)
+    ox, oy = ch["origin_x"], ch["origin_y"]
 
+    def cell(col, row):
+        """SVG top-left of a map cell (body frame x64, y flipped)."""
+        return (col + ox) * T, -(H - row + oy) * T
 
-def engine(x, y, r):
-    """An engine at the aft (-x) edge, centered on (x, y): a housing and a flared bell."""
-    s = rect(x - r * 1.2, y - r * 0.9, r * 1.6, r * 1.8, STEEL_DARK, rx=r * 0.25, stroke=INK, sw=2)
-    s += path(f"M{f(x - r*1.2)},{f(y - r*0.75)} L{f(x - r*2.2)},{f(y - r*1.15)} L{f(x - r*2.2)},{f(y + r*1.15)} "
-              f"L{f(x - r*1.2)},{f(y + r*0.75)} Z", fill=STEEL, stroke=INK, sw=2)
-    s += path(f"M{f(x - r*1.35)},{f(y - r*0.6)} L{f(x - r*2.05)},{f(y - r*0.95)} L{f(x - r*2.05)},{f(y + r*0.95)} "
-              f"L{f(x - r*1.35)},{f(y + r*0.6)} Z", fill=HOUSING)
-    s += rect(x - r * 2.3, y - r * 1.1, r * 0.18, r * 2.2, "#ffb15c", rx=2, extra=' opacity="0.75"')
-    for k in (-0.45, 0, 0.45):
-        s += line(x - r * 1.0, y + r * k, x + r * 0.2, y + r * k, STEEL_MID, sw=2)
-    return s
+    a = Art()
+    solid = {(c, r) for r, row in enumerate(rows) for c, chh in enumerate(row) if chh != " "}
+    x0, y0 = cell(0, 0)
+    gw, gh = W * T, H * T
+    if overhang:
+        a.b += poly(overhang, STEEL, stroke=INK, sw=3)
+        a.b += poly(overhang, "#000000", extra=' opacity="0.12"')
+    if engines:
+        # engine mounts: a bracket and socket on the aft edge for every third row, centered
+        for k in range(H // 3):
+            r = k * 3 + (H % 3) / 2 + 1.5
+            cy = y0 + r * T
+            a.b += rect(x0 - T * 0.55, cy - T * 0.8, T * 0.7, T * 1.6, STEEL_DARK, rx=6, stroke=INK, sw=2)
+            a.b += circle(x0 - T * 0.25, cy, T * 0.45, HOUSING, stroke=INK, sw=2)
+            a.b += circle(x0 - T * 0.25, cy, T * 0.28, "#14181e", stroke=INK, sw=1.5)
+            for dy in (-0.62, 0.62):
+                a.b += circle(x0 - T * 0.25, cy + dy * T, 3, STEEL_HI, stroke=INK, sw=1)
+    for (c, r) in solid:
+        x, y = cell(c, r)
+        wall = rows[r][c] in WALL_CHARS or rows[r][c] == "I"
+        a.b += rect(x, y, T, T, STEEL_MID if wall and rows[r][c] != "I" else STEEL)
+        a.b += rect(x + 0.5, y + 0.5, T - 1, T - 1, "none", stroke=STEEL_DARK, sw=1, extra=' opacity="0.7"')
+    # outline around the grid's footprint
+    for (c, r) in solid:
+        x, y = cell(c, r)
+        if (c, r - 1) not in solid:
+            a.b += line(x, y, x + T, y, INK, sw=3)
+        if (c, r + 1) not in solid:
+            a.b += line(x, y + T, x + T, y + T, INK, sw=3)
+        if (c - 1, r) not in solid:
+            a.b += line(x, y, x, y + T, INK, sw=3)
+        if (c + 1, r) not in solid:
+            a.b += line(x + T, y, x + T, y + T, INK, sw=3)
+    # a highlight along the top and a shade along the bottom of the footprint
+    a.b += rect(x0, y0, gw, T * 0.12, "#ffffff", extra=' opacity="0.1"')
+    a.b += rect(x0, y0 + gh - T * 0.12, gw, T * 0.12, "#000000", extra=' opacity="0.2"')
 
-
-def radiator(x, y, w, h):
-    """A radiator panel: fins across its length."""
-    s = rect(x, y, w, h, "#3f4855", rx=3, stroke=INK, sw=2)
-    k = x + 6
-    while k < x + w - 4:
-        s += line(k, y + 4, k, y + h - 4, "#6d7a8a", sw=2)
-        k += 7
-    return s
+    for (name, col, row, w, h) in chassis_mounts(ch):
+        x, y = cell(col, row)
+        pw, ph = w * T, h * T
+        cx, cy = x + pw / 2, y + ph / 2
+        if name == "turret_mount":
+            r = min(pw, ph) * 0.46
+            a.b += circle(cx, cy, r, STEEL_DARK, stroke=INK, sw=2)
+            a.b += circle(cx, cy, r * 0.8, "none", stroke=STEEL_HI, sw=1.5, extra=' stroke-dasharray="4 4"')
+            a.b += circle(cx, cy, r * 0.3, INK)
+        elif name == "reactor":
+            a.b += rect(x + 6, y + 6, pw - 12, ph - 12, "#3f4855", rx=4, stroke=INK, sw=2)
+            k = x + 12
+            while k < x + pw - 10:
+                a.b += line(k, y + 10, k, y + ph - 10, "#6d7a8a", sw=2)
+                k += 7
+            light(a, x + pw - 12, y + 12, 3, ACCENT["reactor"])
+        elif name == "shield_emitter":
+            a.b += circle(cx, cy, min(pw, ph) * 0.4, "#2f5664", stroke=INK, sw=2)
+            a.e += circle(cx, cy, min(pw, ph) * 0.25, ACCENT["shield_emitter"], extra=' opacity="0.6"')
+        elif name == "life_support":
+            a.b += rect(x + 8, y + 8, pw - 16, ph - 16, HOUSING, rx=4, stroke=INK, sw=2)
+            for k in range(int((ph - 24) // 8)):
+                a.b += line(x + 14, y + 16 + k * 8, x + pw - 14, y + 16 + k * 8, STEEL_MID, sw=3)
+        elif name == "helm":
+            a.b += rect(x + 6, y + 6, pw - 12, ph - 12, GLASS, rx=10, stroke=INK, sw=2)
+            a.e += rect(x + 12, y + 12, (pw - 24) * 0.35, ph - 24, ACCENT["helm"], rx=6, extra=' opacity="0.45"')
+        elif name == "weapons":
+            a.b += circle(cx, cy, min(pw, ph) * 0.32, STEEL, stroke=INK, sw=2)
+            a.b += line(cx, cy, cx + min(pw, ph) * 0.3, cy - min(pw, ph) * 0.3, INK, sw=2)
+            light(a, cx, cy, 3, ACCENT["weapons"])
+        elif name == "cargo":
+            a.b += rect(x + 5, y + 5, pw - 10, ph - 10, "#55606e", rx=5, stroke=INK, sw=2)
+            a.b += bevel(x + 6, y + 6, pw - 12, ph - 12, STEEL_HI, INK)
+            long_ = pw >= ph
+            for k in range(1, max(w, h)):
+                if long_:
+                    a.b += line(x + k * T, y + 8, x + k * T, y + ph - 8, INK, sw=1.5)
+                else:
+                    a.b += line(x + 8, y + k * T, x + pw - 8, y + k * T, INK, sw=1.5)
+            a.b += rect(x + 10, y + 10, pw - 20, ph - 20, "none", stroke=HAZARD, sw=2.5,
+                        extra=' stroke-dasharray="10 8" opacity="0.7"')
+        elif name == "airlock":
+            a.b += rect(x + 6, y + 6, pw - 12, ph - 12, STEEL_DARK, rx=6, stroke=INK, sw=2)
+            a.b += hazard_band(x + 10, y + 10, pw - 20, 8, f"ext_al_{col}_{row}")
+            light(a, cx, cy, 4, HAZARD)
+        elif name == "docking_port":
+            a.b += rect(x, y, pw, ph, STEEL_DARK, rx=3, stroke=INK, sw=2)
+            a.b += rect(x + 10, y + 10, pw - 20, ph - 20, "none", stroke=HAZARD, sw=4,
+                        extra=' stroke-dasharray="12 8"')
+            # collar half a tile out on the open side
+            if row == 0:
+                a.b += rect(x + T * 0.5, y - T * 0.5, pw - T, T * 0.5, STEEL_MID, rx=3, stroke=INK, sw=2)
+            elif row + h == H:
+                a.b += rect(x + T * 0.5, y + ph, pw - T, T * 0.5, STEEL_MID, rx=3, stroke=INK, sw=2)
+            elif col == 0:
+                a.b += rect(x - T * 0.5, y + T * 0.5, T * 0.5, ph - T, STEEL_MID, rx=3, stroke=INK, sw=2)
+            else:
+                a.b += rect(x + pw, y + T * 0.5, T * 0.5, ph - T, STEEL_MID, rx=3, stroke=INK, sw=2)
+    # navigation lights at the grid corners: red to port (+y), green to starboard
+    light(a, x0 + gw - 12, y0 + 12, 4, RED)
+    light(a, x0 + gw - 12, y0 + gh - 12, 4, GREEN)
+    light(a, x0 + 12, y0 + 12, 4, "#ffffff")
+    light(a, x0 + 12, y0 + gh - 12, 4, "#ffffff")
+    return a, (x0, y0, gw, gh)
 
 
 def hulls():
     ships = load_toml("ships.toml")["ship"]
     chassis = load_toml("chassis.toml")["chassis"]
-
+    done = set()
     for ship_id, ship in ships.items():
-        ch = chassis[ship["chassis"]]
         name = ship["chassis"]
+        if name in done:
+            continue
+        done.add(name)
         pts = [(x * T, -y * T) for x, y in ship["hull"]]
-        xs = [p[0] for p in pts]
-        ys = [p[1] for p in pts]
-        minx, maxx, miny, maxy = min(xs), max(xs), min(ys), max(ys)
-        pad = T * 1.5
-        vb = (minx - pad, miny - T, maxx - minx + pad + T * 0.5, maxy - miny + 2 * T)
-        u = f"hull_{name}"
-        defs = (f'<clipPath id="{u}_clip"><polygon points="{" ".join(f"{f(x)},{f(y)}" for x, y in pts)}"/></clipPath>'
-                f'<linearGradient id="{u}_shade" x1="0" y1="0" x2="0" y2="1">'
-                f'<stop offset="0" stop-color="#ffffff" stop-opacity="0.12"/>'
-                f'<stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>'
-                f'<stop offset="1" stop-color="#000000" stop-opacity="0.25"/></linearGradient>')
-        s = ""
-        height = maxy - miny
-        engines = 2 if height <= 6 * T else 4
-        for i in range(engines):
-            ey = miny + height * (i + 0.5) / engines
-            s += engine(minx, ey, min(T * 0.9, height / engines * 0.32))
-        s += poly(pts, STEEL_MID, stroke=INK, sw=3)
-        s += panel_lines(minx, miny, maxx, maxy, T * 2, f"{u}_clip")
-        s += f'  <polygon points="{" ".join(f"{f(x)},{f(y)}" for x, y in pts)}" fill="url(#{u}_shade)"/>\n'
-        hps = [(hp["x"] * T, -hp["y"] * T) for hp in ship.get("hardpoints", [])]
-        # bridge glazing near the bow, moved aft until it clears every hardpoint ring
-        bridge_x = maxx - T * 2.6
-        while any(abs(hx - (bridge_x + T * 0.45)) < T * 1.1 and abs(hy) < T * 1.6 for hx, hy in hps):
-            bridge_x -= T * 0.5
-        # armor strakes along the beam edges and a nose cap
-        s += f'  <g clip-path="url(#{u}_clip)">\n'
-        s += rect(minx, miny, maxx - minx, T * 0.45, STEEL_DARK)
-        s += rect(minx, maxy - T * 0.45, maxx - minx, T * 0.45, STEEL_DARK)
-        nose = max(x for x, y in pts if abs(y) >= height / 2 - 1)
-        if maxx - nose > T * 0.5:
-            s += rect(nose, miny, maxx - nose, height, "#5f6a7a")
-            s += line(nose, miny, nose, maxy, INK, sw=2)
-        s += "  </g>\n"
-        # dorsal spine from the engines to the bridge
-        spine_w = bridge_x - (minx + T)
-        s += rect(minx + T, -T * 0.6, spine_w, T * 1.2, STEEL, rx=6, stroke=INK, sw=2)
-        s += bevel(minx + T + 1, -T * 0.6 + 1, spine_w - 2, T * 1.2 - 2, STEEL_HI, INK)
-        for k in range(1, int(spine_w // (T * 1.5)) + 1):
-            s += line(minx + T + k * T * 1.5, -T * 0.6, minx + T + k * T * 1.5, T * 0.6, STEEL_DARK, sw=2)
-        # radiators over the engine room, either side of the spine
-        s += radiator(minx + T * 1.3, -T * 0.6 - T * 1.3, T * 2.2, T * 0.9)
-        s += radiator(minx + T * 1.3, T * 0.6 + T * 0.4, T * 2.2, T * 0.9)
-        if "freighter" in name:
-            # cargo bay hatches over the two bays (grid x 4-15, either side of the spine)
-            ox, oy = ch["origin_x"], ch["origin_y"]
-            for (gy0, gy1) in ((7, 12), (1, 6)):
-                bx, by = (4 + ox) * T, -(gy1 + oy) * T
-                bw, bh = 12 * T, (gy1 - gy0) * T
-                for k in range(3):
-                    s += rect(bx + k * bw / 3 + 4, by + 6, bw / 3 - 8, bh - 12, "#55606e", rx=4, stroke=INK, sw=2)
-                    s += bevel(bx + k * bw / 3 + 5, by + 7, bw / 3 - 10, bh - 14, STEEL_HI, INK)
-                    s += line(bx + k * bw / 3 + 12, by + bh / 2, bx + (k + 1) * bw / 3 - 12, by + bh / 2,
-                              HAZARD, sw=3, extra=' opacity="0.7" stroke-dasharray="10 8"')
-        # bridge glazing
-        s += rect(bridge_x, -T * 0.9, T * 0.9, T * 1.8, GLASS, rx=8, stroke=INK, sw=2)
-        s += rect(bridge_x + T * 0.1, -T * 0.8, T * 0.3, T * 1.6, ACCENT["helm"], rx=4, extra=' opacity="0.5"')
-        # hardpoint rings
-        for hx, hy in hps:
-            s += circle(hx, hy, T * 0.55, STEEL_DARK, stroke=INK, sw=2)
-            s += circle(hx, hy, T * 0.4, "none", stroke=STEEL_HI, sw=1.5, extra=' stroke-dasharray="4 4"')
-        s += port_marks(ch, ch["origin_x"], ch["origin_y"])
-        # running lights: red to port (+y), green to starboard (-y)
-        s += circle(maxx - T * 1.2, miny + 10, 5, "#ff4d4d", stroke=INK, sw=1)
-        s += circle(maxx - T * 1.2, maxy - 10, 5, "#4dff88", stroke=INK, sw=1)
-        write(f"hulls/{name}.svg", vb[2], vb[3], s,
-              f"{name} exterior hull ({ship_id}): body frame, origin at the SVG origin, bow toward +x",
-              defs, viewbox=" ".join(f(v) for v in vb))
-
+        a, (x0, y0, gw, gh) = hull_svg(chassis[name], overhang=pts, engines=True)
+        xs, ys = [p[0] for p in pts] + [x0, x0 + gw], [p[1] for p in pts] + [y0, y0 + gh]
+        vb = (min(xs) - T, min(ys) - T, max(xs) - min(xs) + 2 * T, max(ys) - min(ys) + 2 * T)
+        write(f"hulls/{name}.svg", vb[2], vb[3], a,
+              f"{name} exterior hull: body frame, origin at the SVG origin, bow toward +x, tiles on the chassis grid",
+              viewbox=" ".join(f(v) for v in vb))
     for name, ch in chassis.items():
         if not ch.get("station"):
             continue
-        rows = ch["rows"]
-        W, H = max(len(r) for r in rows), len(rows)
-        ox, oy = ch["origin_x"], ch["origin_y"]
-        x0, y0, w, h = ox * T, -(oy + H) * T, W * T, H * T
-        vb = (x0 - T, y0 - T, w + 2 * T, h + 2 * T)
-        u = f"hull_{name}"
-        defs = f'<clipPath id="{u}_clip"><rect x="{f(x0)}" y="{f(y0)}" width="{f(w)}" height="{f(h)}"/></clipPath>'
-        s = rect(x0, y0, w, h, STEEL_MID, rx=T * 0.6, stroke=INK, sw=3)
-        s += panel_lines(x0, y0, x0 + w, y0 + h, T * 2, f"{u}_clip")
-        # outer truss ring
-        s += rect(x0 + T * 0.5, y0 + T * 0.5, w - T, h - T, "none", stroke=STEEL_HI, sw=4, extra=' opacity="0.6"')
-        # reactor dome over the reactor mount
-        rc = [(c, len(rows) - 1 - r) for r, row in enumerate(rows) for c, chh in enumerate(row) if chh == "R"]
-        if rc:
-            cx = (sum(p[0] for p in rc) / len(rc) + 0.5 + ox) * T
-            cy = -(sum(p[1] for p in rc) / len(rc) + 0.5 + oy) * T
-            s += circle(cx, cy, T * 2.6, STEEL, stroke=INK, sw=3)
-            s += circle(cx, cy, T * 1.8, STEEL_DARK, stroke=INK, sw=2)
-            s += circle(cx, cy, T * 0.8, ACCENT["reactor"], stroke=INK, sw=2, extra=' opacity="0.85"')
-            for i in range(8):
-                a = 2 * math.pi * i / 8
-                s += line(cx + math.cos(a) * T * 1.8, cy + math.sin(a) * T * 1.8,
-                          cx + math.cos(a) * T * 2.6, cy + math.sin(a) * T * 2.6, INK, sw=2)
-        # cargo bay roofs over cargo mounts
-        cc = [(c, len(rows) - 1 - r) for r, row in enumerate(rows) for c, chh in enumerate(row) if chh == "C"]
-        if cc:
-            groups = {}
-            for (c, r) in cc:
-                groups.setdefault(c < W / 2, []).append((c, r))
-            for cells in groups.values():
-                gx0, gx1 = min(p[0] for p in cells), max(p[0] for p in cells) + 1
-                gy0, gy1 = min(p[1] for p in cells), max(p[1] for p in cells) + 1
-                bx, by = (gx0 + ox) * T, -(gy1 + oy) * T
-                s += rect(bx, by, (gx1 - gx0) * T, (gy1 - gy0) * T, "#55606e", rx=6, stroke=INK, sw=2)
-                s += rect(bx + 8, by + 8, (gx1 - gx0) * T - 16, (gy1 - gy0) * T - 16, "none",
-                          stroke=HAZARD, sw=3, extra=' stroke-dasharray="10 8" opacity="0.7"')
-        s += port_marks(ch, ox, oy)
-        # beacon lights on the corners
-        for (bx, by) in ((x0 + 20, y0 + 20), (x0 + w - 20, y0 + 20), (x0 + 20, y0 + h - 20), (x0 + w - 20, y0 + h - 20)):
-            s += circle(bx, by, 6, "#ffd34d", stroke=INK, sw=1.5)
-        write(f"hulls/{name}.svg", vb[2], vb[3], s,
-              f"{name} exterior hull: body frame, origin at the SVG origin, matches the chassis grid",
-              defs, viewbox=" ".join(f(v) for v in vb))
+        a, (x0, y0, gw, gh) = hull_svg(ch)
+        vb = (x0 - T, y0 - T, gw + 2 * T, gh + 2 * T)
+        write(f"hulls/{name}.svg", vb[2], vb[3], a,
+              f"{name} exterior hull: body frame, origin at the SVG origin, tiles on the chassis grid",
+              viewbox=" ".join(f(v) for v in vb))
 
-
-def turrets():
-    """Weapon turrets seen from above, barrel toward +x, pivot at the SVG origin."""
-    def base(r):
-        return circle(0, 0, r, STEEL, stroke=INK, sw=2) + circle(0, 0, r * 0.7, STEEL_MID, stroke=INK, sw=1.5)
-    vb = lambda left, right, half: (f"{f(left)} {f(-half)} {f(right - left)} {f(2 * half)}",
-                                    right - left, 2 * half)
-
-    s = base(28) + rect(10, -6, 74, 12, STEEL_DARK, rx=2, stroke=INK, sw=2)
-    s += rect(10, -3, 74, 2, "#4fd1ff", extra=' opacity="0.6"')
-    s += rect(80, -8, 8, 16, STEEL_MID, rx=2, stroke=INK, sw=2)
-    s += rect(-20, -16, 30, 32, HOUSING, rx=4, stroke=INK, sw=2)
-    v, w, h = vb(-32, 92, 32)
-    write("turrets/railgun_mk1.svg", w, h, s, "railgun_mk1 turret: pivot at origin, barrel toward +x", viewbox=v)
-
-    s = base(20)
-    for dy in (-5, 5):
-        s += rect(6, dy - 3, 40, 6, STEEL_DARK, rx=1.5, stroke=INK, sw=1.5)
-    s += rect(-12, -12, 22, 24, HOUSING, rx=4, stroke=INK, sw=2)
-    v, w, h = vb(-24, 52, 24)
-    write("turrets/autocannon_mk1.svg", w, h, s, "autocannon_mk1 turret: pivot at origin, barrels toward +x", viewbox=v)
-
-    s = base(22) + rect(4, -7, 36, 14, HOUSING, rx=6, stroke=INK, sw=2)
-    s += circle(40, 0, 7, "#ff5a5a", stroke=INK, sw=2)
-    s += circle(40, 0, 3, "#ffd6d6")
-    s += rect(-14, -10, 18, 20, STEEL_DARK, rx=3, stroke=INK, sw=2)
-    v, w, h = vb(-26, 52, 26)
-    write("turrets/laser_mk1.svg", w, h, s, "laser_mk1 turret: pivot at origin, emitter toward +x", viewbox=v)
-
-    s = base(24) + rect(-14, -18, 44, 36, STEEL_DARK, rx=4, stroke=INK, sw=2)
-    for (cx, cy) in ((4, -8), (20, -8), (4, 8), (20, 8)):
-        s += circle(cx, cy, 6, "#1e2227", stroke=INK, sw=1.5)
-        s += circle(cx, cy, 2.5, "#ff5a5a")
-    v, w, h = vb(-28, 36, 28)
-    write("turrets/harpoon_launcher.svg", w, h, s, "harpoon_launcher: pivot at origin, tubes facing +x", viewbox=v)
-
-    # Engine plume, drawn behind an engine bell, pointing -x (exhaust), origin at the nozzle
-    defs = ('<linearGradient id="plume_g" x1="1" y1="0" x2="0" y2="0">'
-            '<stop offset="0" stop-color="#ffffff"/><stop offset="0.25" stop-color="#9fd8ff"/>'
-            '<stop offset="1" stop-color="#4f8fff" stop-opacity="0"/></linearGradient>')
-    s = path("M0,-24 C-60,-20 -150,-8 -192,0 C-150,8 -60,20 0,24 Z", fill="url(#plume_g)", extra=' opacity="0.9"')
-    s += path("M0,-10 C-40,-8 -80,-3 -110,0 C-80,3 -40,8 0,10 Z", fill="#ffffff", extra=' opacity="0.8"')
-    write("hulls/thruster_plume.svg", 192, 48, s, "thruster plume: origin at the nozzle, exhaust toward -x", defs,
+    # Engine plume, drawn behind an engine, pointing -x (exhaust), origin at the nozzle
+    a = Art()
+    a.defs = ('<linearGradient id="plume_g" x1="1" y1="0" x2="0" y2="0">'
+              '<stop offset="0" stop-color="#ffffff"/><stop offset="0.25" stop-color="#9fd8ff"/>'
+              '<stop offset="1" stop-color="#4f8fff" stop-opacity="0"/></linearGradient>')
+    a.e = path("M0,-24 C-60,-20 -150,-8 -192,0 C-150,8 -60,20 0,24 Z", fill="url(#plume_g)", extra=' opacity="0.9"')
+    a.e += path("M0,-10 C-40,-8 -80,-3 -110,0 C-80,3 -40,8 0,10 Z", fill="#ffffff", extra=' opacity="0.8"')
+    write("hulls/thruster_plume.svg", 192, 48, a, "thruster plume: origin at the nozzle, exhaust toward -x",
           viewbox="-192 -24 192 48")
 
 
+def turrets():
+    """Weapon turrets seen from above, barrel toward +x, pivot at the SVG origin. The
+    pivot goes on the center of the turret mount the weapon is wired to."""
+    def base(a, r):
+        a.b += circle(0, 0, r, STEEL, stroke=INK, sw=2) + circle(0, 0, r * 0.7, STEEL_MID, stroke=INK, sw=1.5)
+
+    def vb(left, right, half):
+        return f"{f(left)} {f(-half)} {f(right - left)} {f(2 * half)}", right - left, 2 * half
+
+    a = Art()
+    base(a, 28)
+    a.b += rect(10, -6, 74, 12, STEEL_DARK, rx=2, stroke=INK, sw=2)
+    a.b += rect(10, -3, 74, 2, "#1f4a5a")
+    a.e += rect(10, -3, 74, 2, "#4fd1ff", extra=' opacity="0.7"')
+    a.b += rect(80, -8, 8, 16, STEEL_MID, rx=2, stroke=INK, sw=2)
+    a.b += rect(-20, -16, 30, 32, HOUSING, rx=4, stroke=INK, sw=2)
+    v, w, h = vb(-32, 92, 32)
+    write("turrets/railgun_mk1.svg", w, h, a, "railgun_mk1 turret: pivot at origin, barrel toward +x", viewbox=v,
+          unpowered="turrets/railgun_mk1_unpowered.svg")
+
+    a = Art()
+    base(a, 20)
+    for dy in (-5, 5):
+        a.b += rect(6, dy - 3, 40, 6, STEEL_DARK, rx=1.5, stroke=INK, sw=1.5)
+    a.b += rect(-12, -12, 22, 24, HOUSING, rx=4, stroke=INK, sw=2)
+    v, w, h = vb(-24, 52, 24)
+    write("turrets/autocannon_mk1.svg", w, h, a, "autocannon_mk1 turret: pivot at origin, barrels toward +x", viewbox=v)
+
+    a = Art()
+    base(a, 22)
+    a.b += rect(4, -7, 36, 14, HOUSING, rx=6, stroke=INK, sw=2)
+    a.b += circle(40, 0, 7, "#4a1f1f", stroke=INK, sw=2)
+    a.e += circle(40, 0, 10, "#ff5a5a", extra=' opacity="0.25"')
+    a.e += circle(40, 0, 5.5, "#ff5a5a") + circle(40, 0, 2.5, "#ffd6d6")
+    a.b += rect(-14, -10, 18, 20, STEEL_DARK, rx=3, stroke=INK, sw=2)
+    v, w, h = vb(-26, 52, 26)
+    write("turrets/laser_mk1.svg", w, h, a, "laser_mk1 turret: pivot at origin, emitter toward +x", viewbox=v,
+          unpowered="turrets/laser_mk1_unpowered.svg")
+
+    a = Art()
+    base(a, 24)
+    a.b += rect(-14, -18, 44, 36, STEEL_DARK, rx=4, stroke=INK, sw=2)
+    for (cx, cy) in ((4, -8), (20, -8), (4, 8), (20, 8)):
+        a.b += circle(cx, cy, 6, SEAT_DARK, stroke=INK, sw=1.5)
+        a.b += circle(cx, cy, 2.5, "#8a2a2a")
+    v, w, h = vb(-28, 36, 28)
+    write("turrets/harpoon_launcher.svg", w, h, a, "harpoon_launcher: pivot at origin, tubes facing +x", viewbox=v)
+
+
 def main():
-    tiles()
+    if os.path.isdir(OUT):
+        for sub in os.listdir(OUT):
+            if os.path.isdir(os.path.join(OUT, sub)):
+                shutil.rmtree(os.path.join(OUT, sub))
+    floors()
+    walls()
     edges()
     components()
     effects()

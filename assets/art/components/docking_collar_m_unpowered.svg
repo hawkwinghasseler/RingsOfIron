@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="32" viewBox="0 0 320 32">
+  <title>docking collar M: sits half a tile outside the port's outer edge, unpowered</title>
+  <g id="base">
+    <rect x="32" y="4" width="256" height="28" rx="3" fill="#4b5563" stroke="#10141a" stroke-width="2"/>
+    <path d="M33.75,30.25 L33.75,5.75 L286.25,5.75" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M286.25,5.75 L286.25,30.25 L33.75,30.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="64" y="0" width="192" height="8" rx="2" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="54.6" y="22" width="6" height="8" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="80.2" y="22" width="6" height="8" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="105.8" y="22" width="6" height="8" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="131.4" y="22" width="6" height="8" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="157" y="22" width="6" height="8" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="182.6" y="22" width="6" height="8" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="208.2" y="22" width="6" height="8" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="233.8" y="22" width="6" height="8" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="259.4" y="22" width="6" height="8" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <circle cx="40" cy="18" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+    <circle cx="280" cy="18" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+  </g>
+</svg>
