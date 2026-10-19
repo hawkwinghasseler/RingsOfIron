@@ -64,7 +64,7 @@ public class PlayerDocking {
             case GRANTED:
                 return station + " gives clearance: port " + (c.port + 1) + " is armed for you";
             case DENIED:
-                return station + " refuses docking clearance; port armed";
+                return station + " refuses docking clearance" + (c.reason.isEmpty() ? "" : " (" + c.reason + ")") + "; port armed";
             case NO_FREE_PORT:
                 return station + " has no free " + port.size + " port; port armed";
             default:

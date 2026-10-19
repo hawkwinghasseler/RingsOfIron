@@ -74,6 +74,7 @@ import com.ringsofiron.stationsdocking.DockingBubbleHandoff;
 import com.ringsofiron.stationsdocking.DockingData;
 import com.ringsofiron.stationsdocking.DockingSystem;
 import com.ringsofiron.stationsdocking.StationBodies;
+import com.ringsofiron.stationsdocking.StationComponent;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -148,6 +149,10 @@ public class GameWorld implements Disposable {
     public final DockingSystem docking;
     /** Station loaders carrying traded goods across the dock, a load at a time. */
     public final CargoLoading cargo;
+    /** The player's standing with each faction, and what hostile acts cost it. */
+    public final FactionStanding standing;
+    /** Crew prying, cutting or hacking at a shut port door across a dock. */
+    public final DoorForcing forcing;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -259,8 +264,16 @@ public class GameWorld implements Disposable {
         // ai-crew
         crew = CrewFactory.install(engine.getEcsEngine());
         CrewSaveParticipant.install(crew, engine);
-        // Station crew are nobody's enemy; boarders and defenders fight
-        crew.hostility = StationCrew::hostile;
+        // Ships' crews of two factions fight; station crew only once the player has crossed them
+        standing = new FactionStanding(this::getPlayer);
+        crew.hostility = standing::hostile;
+        docking.events.add((signal, e) -> standing.onDockingEvent(e));
+        docking.clearance = (station, vessel) -> {
+            if (!station.getComponent(StationComponent.class).grantsClearance) return "";
+            return standing.refusal(station, vessel);
+        };
+        forcing = new DoorForcing(docking, crew, engine::getSimSeconds);
+        engine.addSystem(forcing);
         cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, new MarketCargo(macroSim));
         engine.addSystem(cargo);
         avatar = new AvatarInteractor(engine.getEcsEngine());

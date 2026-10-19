@@ -26,6 +26,8 @@ import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.DeckView;
+import com.hawkwing.RingsOfIron.game.DoorForcing;
+import com.hawkwing.RingsOfIron.game.FactionStanding;
 import com.hawkwing.RingsOfIron.game.StationCrew;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
@@ -39,6 +41,7 @@ import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.stationsdocking.ForceMethod;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.orbital.warp.TimeWarpController;
@@ -66,7 +69,8 @@ import java.nio.file.Paths;
  * target, Space fire the guns and laser (the turrets lead the locked target themselves), R launch
  * a missile at it, F drop a decoy, comma/period time warp down/up, mouse wheel zoom. Point defense
  * shoots down incoming missiles by itself. The raider fights back once you shoot at it. V switches
- * to the deck view, where WASD walks your character and E uses the console you stand at. F5
+ * to the deck view, where WASD walks your character, E uses the console you stand at, and F or B
+ * forces the shut door across a dock (pry or hack, or cut). F5
  * quick-saves, F9 loads the quick save. Esc quits.
  *
  * <p>Docking: G arms the selected docking port and asks the nearest station for clearance (a
@@ -235,10 +239,17 @@ public class RingsOfIronGame extends ApplicationAdapter {
             walker.moveX = 0f;
             walker.moveY = 0f;
         }
+        reportForcing();
         if (consoleOpen) return;
 
         if (hud.getViewMode().getMode() == ViewMode.INTERIOR) {
             if (walker == null) return;
+            // Force the shut door across a dock: pry or hack it as its power allows (F), or cut it (B)
+            if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
+                DoorForcing.Target t = world.forcing.target(game.avatar, new DoorForcing.Target());
+                show(world.forcing.start(game.avatar, t.state == ForceMethod.DoorState.UNPOWERED ? ForceMethod.PRY : ForceMethod.HACK));
+            }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.B)) show(world.forcing.start(game.avatar, ForceMethod.CUT));
             // Up the screen is W whichever way the craft the avatar is aboard is turned
             float sx = 0f, sy = 0f;
             if (Gdx.input.isKeyPressed(Input.Keys.W)) sy += 1f;
@@ -347,6 +358,20 @@ public class RingsOfIronGame extends ApplicationAdapter {
             Gdx.app.error("RingsOfIron", "Load failed", e);
             show("Load failed; see the log");
         }
+    }
+
+    /** How door forcing went, and what the factions made of it. */
+    private void reportForcing() {
+        if (!world.forcing.lastOutcome.isEmpty()) {
+            show(world.forcing.lastOutcome);
+            world.forcing.lastOutcome = "";
+        }
+        for (FactionStanding.Act act : world.standing.acts) {
+            show(String.format(java.util.Locale.ROOT, "%s takes that as a hostile act: standing %+.0f%s",
+                    PlayerDocking.name(act.victim), act.standing,
+                    act.standing < FactionStanding.REFUSE_BELOW ? "; its stations will refuse you clearance" : ""));
+        }
+        world.standing.acts.clear();
     }
 
     private void show(String message) {
@@ -533,7 +558,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Actor shipPanel = hud.getMinimapPanel();
         float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
         font.draw(batch, hud.getViewMode().getMode() == ViewMode.INTERIOR
-                ? "WASD walk (through an open docked port too)   E use console   V outside view   F5 save  F9 load   Esc quit"
+                ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   V outside view   F5 save  F9 load   Esc quit"
                 : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  F5 save  F9 load  Esc quit",
                 hintX, 24f);
         if (notice != null && noticeTime > 0f) {

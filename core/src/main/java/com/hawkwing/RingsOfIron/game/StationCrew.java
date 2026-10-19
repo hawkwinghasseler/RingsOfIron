@@ -16,7 +16,8 @@ import java.util.List;
 
 /**
  * A station's own hands: loaders who carry traded goods across the dock ({@link CargoLoading}).
- * They are of their own faction, {@link #FACTION}, which no one fights for now.
+ * They are of their own faction, {@link #FACTION}, which fights the player's only once the
+ * player has crossed it ({@link FactionStanding}).
  */
 public final class StationCrew {
     /** The faction of every station's crew. */
@@ -27,11 +28,6 @@ public final class StationCrew {
             "Dock hand Moss", "Dock hand Qadir", "Dock hand Vey", "Dock hand Brann"};
 
     private StationCrew() {
-    }
-
-    /** Whether crew of factions {@code a} and {@code b} fight: any two but station crew, who are left alone. */
-    public static boolean hostile(int a, int b) {
-        return a != b && a != FACTION && b != FACTION;
     }
 
     /**

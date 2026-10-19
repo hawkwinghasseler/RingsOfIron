@@ -53,8 +53,8 @@ final class DockLinks {
             joined.setGap(bestDistance / ga.tileSize);
             link.gridLinks.add(joined);
         }
-        setDoors(ga, ma, link.pa.consented);
-        setDoors(gb, mb, link.pb.consented);
+        setDoors(ga, ma, link.pa.consented || link.pa.forced);
+        setDoors(gb, mb, link.pb.consented || link.pb.forced);
     }
 
     /** Takes the links away; with {@code shut}, both port doors close too. Either grid may be null. */
@@ -81,7 +81,7 @@ final class DockLinks {
         return m != null && m.kind == MountFootprint.MountKind.PORT ? m : null;
     }
 
-    private static Array<int[]> doorTiles(MountFootprint port) {
+    static Array<int[]> doorTiles(MountFootprint port) {
         Array<int[]> out = new Array<>();
         for (int y = port.originY; y < port.originY + port.height(); y++) {
             for (int x = port.originX; x < port.originX + port.width(); x++) {

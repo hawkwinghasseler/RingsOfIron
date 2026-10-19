@@ -31,7 +31,10 @@ import com.badlogic.gdx.utils.IdentityMap;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.ringsofiron.coreengine.UuidRegistry;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.DockingPortLayout;
+import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.GridLink;
+import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.physicsexterior.CollisionCategories;
@@ -81,6 +84,18 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     public final Signal<DockingEvent> events = new Signal<>();
     /** Ports only arm while their docking port system has power. Tests without a reactor turn it off. */
     public boolean requirePower = true;
+    /** Integrity a door is left at once it has been cut through: below half, so it leaks once shut. */
+    public static final float CUT_DOOR_INTEGRITY = 0.4f;
+
+    /** Whether a station gives a craft docking clearance. */
+    public interface ClearancePolicy {
+        /** Null to grant clearance; otherwise why it is refused ("" for no reason given). */
+        String refuse(Entity station, Entity vessel);
+    }
+
+    /** By default a station grants clearance if {@link StationComponent#grantsClearance} says so. */
+    public ClearancePolicy clearance = (station, vessel) ->
+            station.getComponent(StationComponent.class).grantsClearance ? null : "";
 
     private final PhysicsManager physics;
     private final UuidRegistry uuids;
@@ -145,6 +160,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         public Entity station;
         /** The station port armed for the asking craft, when granted. */
         public int port = -1;
+        /** Why the station refused, when it did and said; empty otherwise. */
+        public String reason = "";
     }
 
     /** How a port lines up with the nearest free port it could dock with, for a pilot's readout. */
@@ -247,8 +264,10 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             }
         }
         if (out.station == null) return out;
-        if (!stationMapper.get(out.station).grantsClearance) {
+        String refused = clearance.refuse(out.station, vessel);
+        if (refused != null) {
             out.outcome = Clearance.Outcome.DENIED;
+            out.reason = refused;
             return out;
         }
         DockingPortsComponent stationPorts = portsMapper.get(out.station);
@@ -320,6 +339,65 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
                 if (other != null) return other;
             }
         }
+        return null;
+    }
+
+    /**
+     * The door of {@code craft}'s port {@code index} as seen from across the dock: open, or shut
+     * with or without power. {@link ForceMethod.DoorState#NONE} unless the port is latched.
+     */
+    public ForceMethod.DoorState doorState(Entity craft, int index) {
+        DockingPortsComponent ports = portsMapper.get(craft);
+        DockingPort port = ports == null ? null : ports.get(index);
+        ShipGridComponent grid = gridMapper.get(craft);
+        MountFootprint mount = port == null || grid == null || port.state != DockingPort.State.DOCKED ? null
+                : DockLinks.mount(grid, port);
+        if (mount == null) return ForceMethod.DoorState.NONE;
+        boolean any = false;
+        for (int[] t : DockLinks.doorTiles(mount)) {
+            EdgeWall door = DockingPortLayout.door(grid, mount, t[0], t[1]);
+            if (door == null) continue;
+            any = true;
+            if (!door.blocks()) return ForceMethod.DoorState.OPEN;
+        }
+        if (!any) return ForceMethod.DoorState.NONE;
+        return hasPower(craft, port) ? ForceMethod.DoorState.LOCKED : ForceMethod.DoorState.UNPOWERED;
+    }
+
+    /**
+     * Forces the shut door of {@code craft}'s port {@code index} open, done by crew of {@code actor}
+     * (the work itself is the caller's to time): it stays open while the craft are latched. Cutting
+     * leaves it damaged. Reported as {@link DockingEvent.Kind#DOOR_FORCED}, a hostile act. Returns
+     * null when forced, or why not.
+     */
+    public String forceDoor(Entity actor, Entity craft, int index, ForceMethod how) {
+        ForceMethod.DoorState state = doorState(craft, index);
+        if (state == ForceMethod.DoorState.NONE) return "no docked port door there";
+        if (state == ForceMethod.DoorState.OPEN) return "the door is open";
+        if (!how.works(state)) {
+            return state == ForceMethod.DoorState.LOCKED ? "the door is powered: hack it or cut it"
+                    : "the door has no power to hack: pry it or cut it";
+        }
+        DockingPort port = portsMapper.get(craft).get(index);
+        ShipGridComponent grid = gridMapper.get(craft);
+        MountFootprint mount = DockLinks.mount(grid, port);
+        port.forced = true;
+        DockLinks.setDoors(grid, mount, true);
+        if (how.damages) {
+            for (int[] t : DockLinks.doorTiles(mount)) {
+                EdgeWall door = DockingPortLayout.door(grid, mount, t[0], t[1]);
+                if (door != null && !door.isDestroyed()) door.integrity = Math.min(door.integrity, CUT_DOOR_INTEGRITY);
+            }
+        }
+        event.kind = DockingEvent.Kind.DOOR_FORCED;
+        event.vessel = actor;
+        event.port = -1;
+        event.other = craft;
+        event.otherPort = index;
+        event.permitted = port.permitted;
+        event.method = how;
+        events.dispatch(event);
+        event.method = null;
         return null;
     }
 

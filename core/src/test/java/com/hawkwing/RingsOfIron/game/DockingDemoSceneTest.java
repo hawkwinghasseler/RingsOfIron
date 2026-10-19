@@ -3,7 +3,9 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
+import com.ringsofiron.stationsdocking.ForceMethod;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -199,6 +201,104 @@ class DockingDemoSceneTest {
         assertTrue(demo.docking.undock().startsWith("Undocked"));
         double total = demo.held(demo.player, DockingDemoScene.WATER) + demo.held(demo.target, DockingDemoScene.WATER);
         assertEquals(20, total, 1e-6, "a crate in hand went back, none lost");
+    }
+
+    @Test
+    void hackingTheOutpostsDoorLetsYouInAndCostsStanding() {
+        demo.load(DockingDemoScene.Scene.FORCE);
+        DoorForcing.Target t = demo.world.forcing.target(demo.avatar, new DoorForcing.Target());
+        assertSame(demo.target, t.craft, "the outpost's door is across the dock");
+        assertEquals(ForceMethod.DoorState.LOCKED, t.state, "powered and locked");
+        assertTrue(demo.force(ForceMethod.PRY).contains("hack it or cut it"), demo.notice());
+        assertTrue(demo.force(ForceMethod.HACK).startsWith("Hacking"), demo.notice());
+        for (int i = 0; i < 60 * 40; i++) demo.update(FRAME);
+        assertEquals(ForceMethod.DoorState.LOCKED, demo.world.docking.doorState(demo.target, t.port), "not yet");
+        for (int i = 0; i < 60 * 10; i++) demo.update(FRAME);
+        assertEquals(ForceMethod.DoorState.OPEN, demo.world.docking.doorState(demo.target, t.port), "hacked open");
+        float standing = demo.world.standing.standing(StationCrew.FACTION);
+        assertEquals(-FactionStanding.HACK_COST, standing, 1e-3, "a hostile act");
+        ShipGridComponent deck = demo.player.getComponent(ShipGridComponent.class);
+        assertTrue(deck.links.first().canCross(), "the way onto the station is open");
+        assertFalse(demo.world.crew.hostility.hostile(0, StationCrew.FACTION), "not enough to make them fight");
+
+        // Saved and loaded: the door stays forced open, and the station remembers
+        String station = demo.target.getComponent(com.ringsofiron.coreengine.components.UuidComponent.class).id;
+        String save = demo.world.engine.getSerializationService().saveGame();
+        demo.world.engine.getSerializationService().loadGame(save);
+        for (int i = 0; i < 120; i++) demo.world.update(FRAME);
+        Entity outpost = demo.world.engine.getEntity(station);
+        assertEquals(ForceMethod.DoorState.OPEN, demo.world.docking.doorState(outpost, t.port), "still forced open");
+        assertEquals(-FactionStanding.HACK_COST, demo.world.standing.standing(StationCrew.FACTION), 1e-3);
+    }
+
+    @Test
+    void twoCutsMakeTheStationCrewFight() {
+        demo.load(DockingDemoScene.Scene.FORCE);
+        demo.world.standing.change(StationCrew.FACTION, -FactionStanding.CUT_COST);
+        assertFalse(demo.world.crew.hostility.hostile(StationCrew.FACTION, 0));
+        demo.force(ForceMethod.CUT);
+        for (int i = 0; i < 60 * 21; i++) demo.update(FRAME);
+        assertEquals(-2 * FactionStanding.CUT_COST, demo.world.standing.standing(StationCrew.FACTION), 1e-3);
+        assertTrue(demo.world.crew.hostility.hostile(StationCrew.FACTION, 0), "the dock hands turn on you");
+        assertFalse(demo.world.crew.hostility.hostile(StationCrew.FACTION, 1), "but not on anyone else");
+        assertTrue(demo.world.crew.hostility.hostile(0, 1), "two ships' crews still fight");
+    }
+
+    @Test
+    void cuttingTheDoorDamagesItAndTheOutpostRefusesClearanceAfter() {
+        demo.load(DockingDemoScene.Scene.FORCE);
+        DoorForcing.Target t = demo.world.forcing.target(demo.avatar, new DoorForcing.Target());
+        demo.force(ForceMethod.CUT);
+        for (int i = 0; i < 60 * 21; i++) demo.update(FRAME);
+        assertEquals(ForceMethod.DoorState.OPEN, demo.world.docking.doorState(demo.target, t.port));
+        assertEquals(-FactionStanding.CUT_COST, demo.world.standing.standing(StationCrew.FACTION), 1e-3);
+        ShipGridComponent station = demo.target.getComponent(ShipGridComponent.class);
+        DockingPort port = demo.target.getComponent(com.ringsofiron.stationsdocking.DockingPortsComponent.class).ports[t.port];
+        com.ringsofiron.interiorgrid.MountFootprint m = station.getTile(port.gridX, port.gridY).mount;
+        boolean damaged = false;
+        for (int y = m.originY; y < m.originY + m.height(); y++) {
+            for (int x = m.originX; x < m.originX + m.width(); x++) {
+                com.ringsofiron.interiorgrid.EdgeWall door = com.ringsofiron.interiorgrid.DockingPortLayout.door(station, m, x, y);
+                if (door != null && door.integrity < 0.5f) damaged = true;
+            }
+        }
+        assertTrue(damaged, "the cut door is left damaged");
+        // Off again, and the outpost won't have you back
+        demo.world.docking.undock(demo.player);
+        for (int i = 0; i < 60 * 2; i++) demo.update(FRAME);
+        demo.target.getComponent(com.ringsofiron.stationsdocking.StationComponent.class).grantsClearance = true;
+        com.ringsofiron.stationsdocking.DockingSystem.Clearance c = demo.world.docking.requestClearance(demo.player, 0);
+        assertEquals(com.ringsofiron.stationsdocking.DockingSystem.Clearance.Outcome.DENIED, c.outcome);
+        assertEquals("you forced their doors", c.reason);
+    }
+
+    @Test
+    void anUnpoweredDoorIsPried() {
+        demo.load(DockingDemoScene.Scene.FORCE);
+        demo.toggleStationPower();
+        for (int i = 0; i < 60; i++) demo.update(FRAME);
+        DoorForcing.Target t = demo.world.forcing.target(demo.avatar, new DoorForcing.Target());
+        assertEquals(ForceMethod.DoorState.UNPOWERED, t.state);
+        assertTrue(demo.force(ForceMethod.HACK).contains("pry it or cut it"));
+        demo.force(ForceMethod.PRY);
+        for (int i = 0; i < 60 * 9; i++) demo.update(FRAME);
+        assertEquals(ForceMethod.DoorState.OPEN, demo.world.docking.doorState(demo.target, t.port));
+        assertEquals(-FactionStanding.PRY_COST, demo.world.standing.standing(StationCrew.FACTION), 1e-3);
+    }
+
+    @Test
+    void steppingAwayStopsTheWork() {
+        demo.load(DockingDemoScene.Scene.FORCE);
+        demo.force(ForceMethod.CUT);
+        for (int i = 0; i < 60 * 5; i++) demo.update(FRAME);
+        com.ringsofiron.aicrew.GridPositionComponent pos = demo.avatar.getComponent(com.ringsofiron.aicrew.GridPositionComponent.class);
+        pos.setTile(pos.tileX() + 1, pos.tileY());
+        int[] home = DockingDemoScene.insidePort(demo.player, 0);
+        pos.setTile(home[0], home[1]);
+        demo.update(FRAME);
+        assertNull(demo.world.forcing.jobOf(demo.avatar));
+        assertEquals("Stepped away from the door", demo.world.forcing.lastOutcome);
+        assertEquals(0f, demo.world.standing.standing(StationCrew.FACTION), 1e-6, "nothing done, nothing held against you");
     }
 
     @Test

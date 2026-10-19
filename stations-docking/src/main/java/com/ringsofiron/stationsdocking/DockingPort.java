@@ -67,6 +67,8 @@ public class DockingPort {
      * clearance, keeps its door shut.
      */
     public boolean consented;
+    /** Its door was forced open from the other craft; it stays open while latched, and shuts on undocking. */
+    public boolean forced;
 
     /** How far the active collar is out now, meters. Runtime only. */
     public transient float extension;
@@ -119,6 +121,7 @@ public class DockingPort {
         partnerPort = -1;
         permitted = false;
         consented = false;
+        forced = false;
     }
 
     @Override

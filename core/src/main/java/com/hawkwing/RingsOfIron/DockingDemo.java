@@ -21,6 +21,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.ashley.core.Family;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.DockingDemoScene;
+import com.hawkwing.RingsOfIron.game.DoorForcing;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
 import com.hawkwing.RingsOfIron.game.StationCrew;
 import com.ringsofiron.aicrew.CrewMemberComponent;
@@ -38,6 +39,7 @@ import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
+import com.ringsofiron.stationsdocking.ForceMethod;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.minimap.TileShade;
 
@@ -49,12 +51,14 @@ import java.nio.file.Paths;
  * game's own corvette, stations and keys. Run with {@code gradlew :lwjgl3:runDockingDemo}, or
  * {@code demos/Docking demo.bat} on Windows.
  *
- * <p>1-8 pick a scene, R restarts it. W/S thrust, A/D turn, Z/C strafe. G arms your docking port
+ * <p>1-9 pick a scene, R restarts it. W/S thrust, A/D turn, Z/C strafe. G arms your docking port
  * and asks a station for clearance (again to disarm), H picks the next port, U undocks, P flies
  * the approach for you until the magnets or the collar take over. V switches to deck view, where
  * WASD walks your crew avatar (through an open port onto whatever you are docked with) and the
  * view follows it (W is up the screen aboard either craft). In the loading scene L orders water
- * carried aboard and K sends it back. Mouse wheel zooms, Esc quits.
+ * carried aboard and K sends it back. In deck view, standing in your port's opening, F pries or
+ * hacks the shut door across the dock and B cuts it; in the forcing scene O switches the
+ * outpost's reactor off and on. Mouse wheel zooms, Esc quits.
  *
  * <p>Drawn: hulls and deck plans, docking collars (yellow), port faces (green while armed, cyan
  * latched, red torn off), the collar head of an active port while it is out (orange), port doors
@@ -83,6 +87,7 @@ public class DockingDemo extends ApplicationAdapter {
     private final Vector2 tmp = new Vector2();
     private final Color color = new Color();
     private final float[] polygon = new float[16];
+    private final DoorForcing.Target target = new DoorForcing.Target();
 
     public DockingDemo() {
         this(Paths.get("").toAbsolutePath());
@@ -181,6 +186,15 @@ public class DockingDemo extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(Input.Keys.H)) demo.docking.nextPort();
         if (Gdx.input.isKeyJustPressed(Input.Keys.U)) demo.docking.undock();
         if (Gdx.input.isKeyJustPressed(Input.Keys.P)) demo.autopilot = !demo.autopilot;
+        if (demo.deckView) {
+            // Force the door across the dock: pry it or hack it as its power allows, or cut it
+            if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
+                DoorForcing.Target t = demo.world.forcing.target(demo.avatar, target);
+                demo.force(t.state == ForceMethod.DoorState.UNPOWERED ? ForceMethod.PRY : ForceMethod.HACK);
+            }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.B)) demo.force(ForceMethod.CUT);
+        }
+        if (demo.scene == DockingDemoScene.Scene.FORCE && Gdx.input.isKeyJustPressed(Input.Keys.O)) demo.toggleStationPower();
         if (demo.scene == DockingDemoScene.Scene.LOADING) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.L)) demo.orderWater(true);
             if (Gdx.input.isKeyJustPressed(Input.Keys.K)) demo.orderWater(false);
@@ -336,6 +350,24 @@ public class DockingDemo extends ApplicationAdapter {
         if (!demo.notice().equals(demo.scene.help)) {
             y -= font.draw(batch, demo.notice(), x, y, PANEL_WIDTH, Align.left, true).height + 12f;
         }
+        DoorForcing.Job job = demo.world.forcing.jobOf(demo.avatar);
+        DoorForcing.Target door = demo.world.forcing.target(demo.avatar, target);
+        if (job != null || door.craft != null && door.state != ForceMethod.DoorState.OPEN
+                || demo.scene == DockingDemoScene.Scene.FORCE) {
+            font.setColor(Color.WHITE);
+            String line = job != null ? String.format(java.util.Locale.ROOT, "%s the door: %.0f%%",
+                    Character.toUpperCase(job.method.doing.charAt(0)) + job.method.doing.substring(1), job.progress() * 100f)
+                    : door.craft == null ? "Not at a docked door" : doorLine(door);
+            font.draw(batch, line + String.format(java.util.Locale.ROOT, "   standing with the stations %+.0f",
+                    demo.world.standing.standing(StationCrew.FACTION)), x, y);
+            y -= 18f;
+            if (!demo.world.forcing.lastOutcome.isEmpty()) {
+                font.setColor(Color.ORANGE);
+                font.draw(batch, demo.world.forcing.lastOutcome, x, y);
+                y -= 18f;
+            }
+            y -= 4f;
+        }
         if (demo.scene == DockingDemoScene.Scene.LOADING) {
             font.setColor(Color.WHITE);
             font.draw(batch, String.format(java.util.Locale.ROOT, "Water: %.0f aboard, %.0f at the outpost   [L] load  [K] send back",
@@ -356,7 +388,7 @@ public class DockingDemo extends ApplicationAdapter {
         for (DockingDemoScene.Scene s : DockingDemoScene.Scene.values()) {
             scenes.append(s.ordinal() + 1).append(' ').append(s.title).append("   ");
         }
-        font.draw(batch, scenes.toString(), x, 44f);
+        font.draw(batch, scenes.toString(), x, 64f);
         if (demo.deckView) {
             font.setColor(Color.YELLOW);
             Entity aboard = demo.aboard();
@@ -365,8 +397,23 @@ public class DockingDemo extends ApplicationAdapter {
             font.setColor(Color.GRAY);
         }
         font.draw(batch, "W/S thrust  A/D turn  Z/C strafe  G arm port + clearance  H next port  U undock"
-                + "  P autopilot  V deck view  L/K load/unload (8)  R restart  wheel zoom  Esc quit", x, 24f);
+                + "  P autopilot  V deck view  R restart  wheel zoom  Esc quit", x, 44f);
+        font.draw(batch, "Deck view: F pry/hack the door across  B cut it   Scene 8: L load water  K send back"
+                + "   Scene 9: O outpost power", x, 24f);
         batch.end();
+    }
+
+    private static String doorLine(DoorForcing.Target door) {
+        switch (door.state) {
+            case OPEN:
+                return "The door across is open";
+            case UNPOWERED:
+                return "The door across has no power: [F] pry  [B] cut";
+            case LOCKED:
+                return "The door across is powered and locked: [F] hack  [B] cut";
+            default:
+                return "No door across";
+        }
     }
 
     @Override
