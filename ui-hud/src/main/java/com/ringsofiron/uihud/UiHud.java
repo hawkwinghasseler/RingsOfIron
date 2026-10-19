@@ -234,6 +234,8 @@ public class UiHud implements Disposable {
         stage.addActor(crewWindow);
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
+        hudRenderSystem.keepClear(threatBanner, () -> threatOverlay.isVisible() && threatBanner.getText().length() > 0);
+        hudRenderSystem.keepClear(dockHint, dockHint::isVisible);
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
         interactPromptSystem = new InteractPromptSystem(prompt, this::openConsole);
         flightReadoutSystem = new FlightReadoutSystem(flight, skin, viewMode);
