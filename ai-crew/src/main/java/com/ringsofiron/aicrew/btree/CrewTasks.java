@@ -183,6 +183,37 @@ public final class CrewTasks {
         }
     }
 
+    /**
+     * Puts the agent's space suit on before they go to a task whose spot is out of breathable air
+     * (a breach, a room losing its air). Succeeds at once if they need none, have it on, or have none.
+     */
+    public static class SuitUp extends CrewLeaf {
+        private float elapsed;
+
+        @Override
+        public void start() {
+            elapsed = 0f;
+        }
+
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            CrewTask t = a.crew.task;
+            if (t == null) return Status.FAILED;
+            if (a.crew.suited || a.crew.def.suitAir <= 0f) return Status.SUCCEEDED;
+            ShipGridComponent grid = a.grid();
+            if (!TaskRules.needsSuit(grid, TaskRules.targetX(t, a.service), TaskRules.targetY(t, a.service))) {
+                return Status.SUCCEEDED;
+            }
+            a.pos.stop();
+            a.crew.activity = "putting on a suit";
+            elapsed += a.dt;
+            if (elapsed < a.crew.def.suitTime) return Status.RUNNING;
+            a.crew.setSuited(true);
+            return Status.SUCCEEDED;
+        }
+    }
+
     /** Does the work of a repair, seal, extinguish or treat task until it is finished. */
     public static class DoWork extends CrewLeaf {
         private float elapsed;
@@ -509,9 +540,19 @@ public final class CrewTasks {
 
     /**
      * Stands by. Heads home if aboard another craft, and moves off a tile that is not safe to
-     * breathe on. Never finishes.
+     * breathe on. A suited crew member takes the suit off after {@link #SUIT_OFF_DELAY} seconds
+     * standing by on a safe tile. Never finishes.
      */
     public static class Idle extends CrewLeaf {
+        /** Seconds on a safe tile with nothing to do before a suit comes off. */
+        public static final float SUIT_OFF_DELAY = 5f;
+        private float calm;
+
+        @Override
+        public void start() {
+            calm = 0f;
+        }
+
         @Override
         public Status execute() {
             CrewAgent a = agent();
@@ -528,8 +569,18 @@ public final class CrewTasks {
             int x = a.pos.tileX(), y = a.pos.tileY();
             if (TaskRules.isSafe(grid, x, y)) {
                 if (!a.pos.isMoving()) a.crew.activity = "idle";
+                if (a.crew.suited && !a.pos.isMoving()) {
+                    calm += a.dt;
+                    if (calm >= SUIT_OFF_DELAY) a.crew.activity = "taking off a suit";
+                    if (calm >= SUIT_OFF_DELAY + a.crew.def.suitTime * 0.5f) {
+                        a.crew.setSuited(false);
+                        a.crew.activity = "idle";
+                        calm = 0f;
+                    }
+                }
                 return Status.RUNNING;
             }
+            calm = 0f;
             if (!a.pos.isMoving() || a.pos.pathBlocked) {
                 if (a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
                     a.pos.setPath(a.pathScratch);

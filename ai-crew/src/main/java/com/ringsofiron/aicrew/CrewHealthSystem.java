@@ -41,7 +41,10 @@ public class CrewHealthSystem extends FixedIteratingSystem {
         CrewDef d = c.def;
 
         float oxygen = grid.oxygenRatioAt(x, y);
-        if (oxygen < d.asphyxiationThreshold) {
+        if (c.breathesFromSuit()) {
+            // On suit air wherever the air outside isn't fit to breathe
+            if (!TaskRules.isBreathable(grid, x, y)) c.suitAir = Math.max(0f, c.suitAir - dt);
+        } else if (oxygen < d.asphyxiationThreshold) {
             float severity = 1f - oxygen / d.asphyxiationThreshold;
             service.applyDamage(e, d.asphyxiationRate * severity * dt, CrewDamageSink.DamageCause.ASPHYXIATION);
         }

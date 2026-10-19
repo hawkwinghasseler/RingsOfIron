@@ -5,8 +5,11 @@ import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
+import com.ringsofiron.interiorgrid.AirflowEdge;
+import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Tile;
 
 /**
  * Bulkhead doors crew open on their way and shut behind them.
@@ -15,7 +18,9 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
  * ({@link #OPEN_SECONDS}), walks through, and the door shuts again once no one is in the doorway or
  * about to step through. Only doors a crew member opened are shut again: one left open by hand
  * stays open. Who may open which door is {@link #mayOpen}: not the doors of a hostile craft (those
- * are forced), and not a door onto thin air from breathable air, unless suited.
+ * are forced), and not a door onto thin air from breathable air, except by a suited crew member
+ * into a room that is not open to space (the two rooms share their air, and life support makes
+ * it up).
  *
  * <p>Owned by the {@link CrewService}; the {@link CrewMovementSystem} opens doors and shuts them
  * each tick. Which doors are held open is not saved: after a load a door that was held stays open.
@@ -56,7 +61,8 @@ public final class CrewDoors {
     /**
      * True if {@code crew} may open the shut door between (x, y) and (nx, ny) on {@code ship}, going
      * that way: the craft's crew are not hostile to them, and they are not stepping from breathable
-     * air into air too thin to breathe (which would let it out) without a suit on.
+     * air into air too thin to breathe (which would let it out), unless they breathe from a suit and
+     * the room beyond is not open to space.
      */
     public boolean mayOpen(Entity crew, Entity ship, int x, int y, int nx, int ny) {
         CrewMemberComponent c = service.crew(crew);
@@ -66,7 +72,18 @@ public final class CrewDoors {
         if (board != null && service.hostility.hostile(board.faction, c.faction)) return false;
         boolean hereThick = grid.pressureRatioAt(x, y) >= TaskRules.SAFE_PRESSURE;
         boolean thereThick = grid.pressureRatioAt(nx, ny) >= TaskRules.SAFE_PRESSURE;
-        return !hereThick || thereThick;
+        if (!hereThick || thereThick) return true;
+        return c.breathesFromSuit() && !openToSpace(grid, grid.compartmentAt(nx, ny));
+    }
+
+    /** True if {@code room} has a hole to space (not just a leak), or is no room at all. */
+    static boolean openToSpace(ShipGridComponent grid, Compartment room) {
+        if (room == null) return true;
+        for (int i = 0; i < grid.airflow.size; i++) {
+            AirflowEdge e = grid.airflow.get(i);
+            if (e.room == room && e.other == null && e.width > Tile.LEAK_CAP) return true;
+        }
+        return false;
     }
 
     /**

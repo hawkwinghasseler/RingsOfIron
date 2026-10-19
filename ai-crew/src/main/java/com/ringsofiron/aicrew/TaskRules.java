@@ -116,6 +116,27 @@ public final class TaskRules {
         return (x, y) -> isWorkSpot(task, grid, nav, crew, x, y);
     }
 
+    /** True if the air on (x, y) is fit to breathe: pressure and oxygen enough, whatever the heat. */
+    public static boolean isBreathable(ShipGridComponent grid, int x, int y) {
+        return grid.pressureRatioAt(x, y) >= SAFE_PRESSURE && grid.oxygenRatioAt(x, y) >= SAFE_OXYGEN;
+    }
+
+    /**
+     * True if working at (x, y) means being out of breathable air: a tile whose air is too thin or
+     * foul, or one with no air (a hull breach, a sealed tile) beside such a tile or open to space.
+     */
+    public static boolean needsSuit(ShipGridComponent grid, int x, int y) {
+        Tile t = grid.getTile(x, y);
+        if (t == null) return false;
+        if (t.holdsAir()) return !isBreathable(grid, x, y);
+        if (t.isSpaceExposed()) return true;
+        for (Side s : Side.values()) {
+            Tile n = grid.getTile(x + s.dx, y + s.dy);
+            if (n != null && n.holdsAir() && !isBreathable(grid, x + s.dx, y + s.dy)) return true;
+        }
+        return false;
+    }
+
     /** True if a crew member can breathe safely on (x, y): pressurized, oxygenated, not burning or hot. */
     public static boolean isSafe(ShipGridComponent grid, int x, int y) {
         Tile t = grid.getTile(x, y);
