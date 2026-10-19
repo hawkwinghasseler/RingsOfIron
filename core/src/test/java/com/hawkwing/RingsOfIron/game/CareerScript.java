@@ -59,6 +59,8 @@ abstract class CareerScript {
     /** The fight whose leak the crew patched from the stores, once one has. */
     String patchedAfter;
     final java.util.Set<String> warpBlocks = new java.util.HashSet<>();
+    /** Times the yard work is ordered again after the ship came loose of the latch. */
+    int yardTries = 3;
 
     /** The journal's file name in {@code build/}, without the extension. */
     abstract String journalName();
@@ -85,6 +87,7 @@ abstract class CareerScript {
     void start(long seed) {
         world = new GameWorld();
         game = GameScenario.start(world, assets(), assets().resolve("no-mods-here"), NewGame.seeded(seed, "patrol"));
+        world.carriedHome.add((sig, t) -> log("  (the player is down: the crew bring them to %s, %.1f d later)", t.stationName, t.skipped / 86_400));
     }
 
     // ------------------------------------------------------------------ round 3's career
@@ -364,7 +367,7 @@ abstract class CareerScript {
         // Should the ship come loose of the latch for a moment, the work is called off: order it again
         // (the yard surviving a blip is round 5's docking part)
         int again = 0;
-        for (; again < 3 && world.yard.repairCost(game.player) > 0.5; again++) {
+        for (; again < yardTries && world.yard.repairCost(game.player) > 0.5; again++) {
             for (String n : world.yard.notices) log("  yard: %s", n);
             world.yard.notices.clear();
             if (world.docking.dockedTo(game.player) != station) assertTrue(game.dockAt(world.universe.uuidOf(station)));

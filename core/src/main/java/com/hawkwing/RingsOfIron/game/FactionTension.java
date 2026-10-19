@@ -35,7 +35,8 @@ public class FactionTension extends EntitySystem implements SaveParticipant {
     public static final float RIVAL_CLEARANCE = 10f;
     /** Share of a hostile act's standing cost that becomes tension with the player's sponsor. */
     public static final float DEED_SHARE = 0.5f;
-    public static final float RELAX_PER_WEEK = 2f;
+    /** Tension each pair loses a week (round 5: 5, so world events keep it moving rather than pinned high). */
+    public static final float RELAX_PER_WEEK = 5f;
     /** Negative standing regained each week, with every faction. */
     public static final float RECOVERY_PER_WEEK = 1f;
     static final double WEEK = 7 * 86_400.0;

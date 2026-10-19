@@ -66,8 +66,9 @@ class TensionSaveTest {
         // Most of a week gone before the save
         world.macroSim.advanceTo(start + ServiceBudget.WEEK - 3_600);
         world.update(FRAME);
-        assertEquals(20f, world.tension.get(world.standing.factions().index("patrol"),
-                world.standing.factions().index("selene")), 1e-4, "not a week yet");
+        // Not a week yet: nothing eased (the week's world events may have strained it further)
+        float before = world.tension.get(world.standing.factions().index("patrol"), world.standing.factions().index("selene"));
+        assertTrue(before >= 20f, "not a week yet");
         FileHandle file = new FileHandle(dir.resolve("week.json").toFile());
         assertNull(game.quickSave(file));
         GameWorld fresh = load(file);
@@ -76,7 +77,7 @@ class TensionSaveTest {
             fresh.macroSim.advanceTo(fresh.macroSim.now() + 7_200);
             fresh.update(FRAME);
             Factions f = fresh.standing.factions();
-            assertEquals(20f - FactionTension.RELAX_PER_WEEK, fresh.tension.get(f.index("patrol"), f.index("selene")), 1e-4);
+            assertEquals(before - FactionTension.RELAX_PER_WEEK, fresh.tension.get(f.index("patrol"), f.index("selene")), 1e-4);
         } finally {
             fresh.dispose();
         }

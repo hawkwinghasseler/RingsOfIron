@@ -63,7 +63,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
     /** How long each event's jobs stay up, days. */
     public static final double SHORTAGE_DAYS = 3, RAID_DAYS = 2, TENSION_DAYS = 3;
     /** Tension each kind of event adds (round 5): a rival flexing, with the sponsor; the rest, the station's owner with every other side. */
-    public static final float FLEX_STRAIN = 10f, RAID_STRAIN = 4f, LOST_STRAIN = 3f, ROBBED_STRAIN = 1f;
+    public static final float FLEX_STRAIN = 6f, RAID_STRAIN = 2f, LOST_STRAIN = 2f, ROBBED_STRAIN = 0.5f;
     /** Events the log keeps. */
     public static final int LOG = 50;
     /** The seed until a new game sets one (round 3's seeded world). */
