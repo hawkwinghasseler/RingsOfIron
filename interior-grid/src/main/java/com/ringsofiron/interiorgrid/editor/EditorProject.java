@@ -5,6 +5,7 @@ import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
 import com.ringsofiron.interiorgrid.CompartmentBuilder;
 import com.ringsofiron.interiorgrid.InteriorGridData;
+import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.PowerRoutingSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipPartCatalog;
@@ -95,7 +96,9 @@ public class EditorProject {
     public final Map<String, Item<ShipComponentDef>> components = new LinkedHashMap<>();
     /** Sections to remove on the next save. */
     private final List<Item<?>> deleted = new ArrayList<>();
-    /** Problems loading the data, and symbol clashes in the current catalog. */
+    /** Every material id, for tile types to choose from. */
+    public final List<String> materials = new ArrayList<>();
+    /** Problems loading the data. */
     public final List<String> problems = new ArrayList<>();
 
     private ShipPartCatalog catalog;
@@ -124,6 +127,8 @@ public class EditorProject {
             if (e.severity != LoadReport.Severity.INFO) p.problems.add(e.toString());
         }
 
+        for (DefEntry e : defs.entries("material")) p.materials.add(e.id);
+        if (!p.materials.contains(MaterialTable.DEFAULT_MATERIAL)) p.materials.add(0, MaterialTable.DEFAULT_MATERIAL);
         ShipPartCatalog builtIn = ShipPartCatalog.builtIn();
         for (ShipPartCatalog.TileType t : builtIn.tiles()) {
             p.tiles.put(t.id, new Item<>(Kind.TILE, t.id, ShipPartCatalog.toDef(t)));

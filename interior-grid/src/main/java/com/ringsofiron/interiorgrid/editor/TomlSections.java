@@ -276,11 +276,22 @@ public final class TomlSections {
         return sb.append('"').toString();
     }
 
-    /** A TOML float: always with a decimal point or exponent, so it reads back as a float. */
+    /**
+     * A TOML float: always with a decimal point or exponent, so it reads back as a float. Large
+     * values are written as the data files write them, {@code 2.4e6}.
+     */
     public static String num(double v) {
-        if (v == Math.rint(v) && Math.abs(v) < 1e7) return Long.toString((long) v) + ".0";
-        String s = Double.toString(v).replace('E', 'e');
-        return s;
+        double abs = Math.abs(v);
+        if (abs >= 1e5 && !Double.isInfinite(v)) {
+            int exp = (int) Math.floor(Math.log10(abs));
+            java.math.BigDecimal mantissa = new java.math.BigDecimal(v).movePointLeft(exp)
+                    .round(new java.math.MathContext(12)).stripTrailingZeros();
+            String m = mantissa.toPlainString();
+            if (!m.contains(".")) m += ".0";
+            return m + "e" + exp;
+        }
+        if (v == Math.rint(v)) return Long.toString((long) v) + ".0";
+        return Double.toString(v).replace('E', 'e');
     }
 
     /** A float as written, without the noise of widening it to a double (1.4, not 1.399999976). */

@@ -83,6 +83,11 @@ class TomlSectionsTest {
         assertEquals("-9.5", TomlSections.num(-9.5f));
         assertEquals("1.4", TomlSections.num(1.4f));
         assertEquals("1.0e7", TomlSections.num(1e7));
+        assertEquals("2.4e6", TomlSections.num(2.4e6));
+        assertEquals("-3.0e5", TomlSections.num(-3e5));
+        assertEquals("1.4e7", TomlSections.num(1.4e7));
+        assertEquals("1.2e5", TomlSections.num(1.2e5));
+        assertEquals("99999.0", TomlSections.num(99999));
         assertEquals("\"a\\\"b\"", TomlSections.str("a\"b"));
     }
 }

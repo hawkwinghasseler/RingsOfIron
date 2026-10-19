@@ -58,24 +58,24 @@ Chassis rows draw components by their symbol, as before. An explicit mount may n
 ## The Editor
 
 ### Layout
-The screen is the ship on a tile grid, with a panel on the right. Three tabs at the top of the panel switch what it edits: **Layout**, **Tiles** and **Components**. Mouse wheel zooms, middle or right drag pans. Ctrl+Z / Ctrl+Y undo and redo, Ctrl+S saves everything that changed, Esc quits (asking to save unsaved work first).
+The screen is the ship on a tile grid, with a panel on the right. Three tabs at the top of the panel (or Tab) switch what it edits: **Layout**, **Tiles** and **Components**. The mouse wheel zooms the grid (over the panel it scrolls the panel), right or middle drag pans, F fits the ship to the view. Ctrl+Z / Ctrl+Y undo and redo, Ctrl+S (or the Save button) saves everything that changed, and Esc quits; with unsaved changes it warns first and quits on a second Esc (closing the window works the same way). The line at the bottom left describes the tile under the cursor, with its position on the body in meters.
 
 ### Layout tab
-- **Chassis list**: pick a chassis to edit, or **New** (asks for an id and a size). **Duplicate** copies the open one under a new id.
+- **Chassis list**: pick a chassis to edit, or **New** (asks for an id; it starts as a 16 x 9 hull around steel floor). **Duplicate** copies the open one under a new id, **Delete** removes it (from its file on the next save).
 - **Tools** (number keys or click):
   1. **Paint**: left-click or drag paints the selected tile type; drag with Shift fills a rectangle.
   2. **Component**: places the selected component at the cursor with the selected size; R rotates. The ghost is green where the game would accept it and red (with the reason) where it would not.
-  3. **Edge wall**: click near a tile edge to add or remove a thin wall there; B toggles a bulkhead door, and weight class follows the selected weight.
-  4. **Hull piece**: places a wedge or block (W switches), R rotates.
-  5. **Covering**: drag a rectangle to lay carpet; right-click a covered tile removes that covering.
+  3. **Edge wall**: click near a tile edge to add or remove a thin wall there, with the weight class and bulkhead door chosen in the panel.
+  4. **Hull piece**: places a wedge or block of the size chosen in the panel; R rotates.
+  5. **Covering**: drag a rectangle to lay carpet.
   6. **Erase**: removes the component, hull piece, edge wall or covering under the cursor, or paints void.
   7. **Port**: click a docking port to toggle it active or passive.
-- **Grid**: buttons add or remove a row or column on any side (everything listed shifts to match), set the tile size, and **Center origin** puts the body origin in the middle of the grid.
+- **Grid**: buttons add or remove a row or column on any side (everything listed shifts to match, and the origin moves so the rest of the ship stays put on the body); fields set the tile size and the origin, and **Center origin** puts the body origin in the middle of the grid (drawn as a blue cross).
 - **Properties**: name, `station` flag.
 - **Check**: every edit is rebuilt through `ChassisBlueprintLoader`; the panel shows the result (tile count, mounts, cargo volume, rooms, power reach) or the loader's error, and the problem tile is outlined in red. A chassis with an error can still be saved, so work in progress is never lost, but the panel warns that the game will refuse it.
 
 ### Tiles and Components tabs
-Each lists every definition with its symbol and color. **New** makes one (from the selected one, so a new turret starts as a copy of the turret mount); every field is an editable row: text fields take typing, choices cycle on click. A definition that chassis use cannot be deleted until they stop using it; changing its symbol rewrites those chassis rows to match.
+Each lists every definition with its symbol and color. **New from selected** makes one as a copy of the selected one (so a new turret starts as a copy of the turret mount) under an id you type, with a free symbol; every field is an editable row: text fields take typing (Enter keeps, Esc cancels), choices are buttons. A component's sizes are toggles; its behavior can change freely while no chassis mounts it, and only within the same mount shape while one does. A definition that chassis use cannot be deleted until they stop using it; changing its symbol rewrites those chassis rows to match.
 
 ### Saving
 The editor writes TOML by hand rather than through the parser, so the files stay readable and keep their comments:
