@@ -25,6 +25,7 @@ import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
+import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
@@ -234,10 +235,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
         if (hud.getViewMode().getMode() == ViewMode.INTERIOR) {
             if (walker == null) return;
-            if (Gdx.input.isKeyPressed(Input.Keys.W)) walker.moveY += WALK_SPEED;
-            if (Gdx.input.isKeyPressed(Input.Keys.S)) walker.moveY -= WALK_SPEED;
-            if (Gdx.input.isKeyPressed(Input.Keys.A)) walker.moveX -= WALK_SPEED;
-            if (Gdx.input.isKeyPressed(Input.Keys.D)) walker.moveX += WALK_SPEED;
+            // Up the screen is W whichever way the craft the avatar is aboard is turned
+            float sx = 0f, sy = 0f;
+            if (Gdx.input.isKeyPressed(Input.Keys.W)) sy += 1f;
+            if (Gdx.input.isKeyPressed(Input.Keys.S)) sy -= 1f;
+            if (Gdx.input.isKeyPressed(Input.Keys.A)) sx -= 1f;
+            if (Gdx.input.isKeyPressed(Input.Keys.D)) sx += 1f;
+            Entity aboard = world.avatar.getAvatarShip();
+            DeckView.walk(walker, aboard == null ? null : world.docking.bodyOf(aboard), sx, sy, WALK_SPEED);
             return;
         }
         if (controls != null) {
@@ -475,6 +480,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                     shapes.rect(p.x - s / 2f + 0.03f, p.y - s / 2f + 0.03f, s - 0.06f, s - 0.06f);
                 }
             }
+            DeckView.walls(shapes, g, color);
             drawCargo(g, ship.getComponent(CargoHoldComponent.class));
             for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);

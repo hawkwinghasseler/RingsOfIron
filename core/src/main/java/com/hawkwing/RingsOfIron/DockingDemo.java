@@ -19,6 +19,7 @@ import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.ashley.core.Family;
+import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.DockingDemoScene;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
 import com.ringsofiron.aicrew.CrewMemberComponent;
@@ -49,11 +50,12 @@ import java.nio.file.Paths;
  * and asks a station for clearance (again to disarm), H picks the next port, U undocks, P flies
  * the approach for you until the magnets or the collar take over. V switches to deck view, where
  * WASD walks your crew avatar (through an open port onto whatever you are docked with) and the
- * view follows it. Mouse wheel zooms, Esc quits.
+ * view follows it (W is up the screen aboard either craft). Mouse wheel zooms, Esc quits.
  *
  * <p>Drawn: hulls and deck plans, docking collars (yellow), port faces (green while armed, cyan
  * latched, red torn off), the collar head of an active port while it is out (orange), port doors
- * (green open, red shut) and crew (white, you in yellow).
+ * (green open, red shut), mounted systems (grey blocks: crew walk around them) and crew (white,
+ * you in yellow).
  */
 public class DockingDemo extends ApplicationAdapter {
     private static final float PANEL_WIDTH = 430f;
@@ -151,11 +153,14 @@ public class DockingDemo extends ApplicationAdapter {
             controls.strafe = 0f;
         }
         if (demo.deckView) {
-            // In the deck's own axes, of whichever craft the avatar is aboard
-            if (Gdx.input.isKeyPressed(Input.Keys.W)) walker.moveY += WALK_SPEED;
-            if (Gdx.input.isKeyPressed(Input.Keys.S)) walker.moveY -= WALK_SPEED;
-            if (Gdx.input.isKeyPressed(Input.Keys.A)) walker.moveX -= WALK_SPEED;
-            if (Gdx.input.isKeyPressed(Input.Keys.D)) walker.moveX += WALK_SPEED;
+            // Up the screen is W whichever way the craft the avatar is aboard is turned
+            float sx = 0f, sy = 0f;
+            if (Gdx.input.isKeyPressed(Input.Keys.W)) sy += 1f;
+            if (Gdx.input.isKeyPressed(Input.Keys.S)) sy -= 1f;
+            if (Gdx.input.isKeyPressed(Input.Keys.A)) sx -= 1f;
+            if (Gdx.input.isKeyPressed(Input.Keys.D)) sx += 1f;
+            Entity aboard = demo.aboard();
+            DeckView.walk(walker, aboard == null ? null : demo.world.docking.bodyOf(aboard), sx, sy, WALK_SPEED);
         } else if (controls != null) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.X)) controls.rotationAssist = !controls.rotationAssist;
             if (Gdx.input.isKeyPressed(Input.Keys.W)) controls.forward += 1f;
@@ -197,6 +202,7 @@ public class DockingDemo extends ApplicationAdapter {
                     shapes.rect(p.x - s / 2f + 0.05f, p.y - s / 2f + 0.05f, s - 0.1f, s - 0.1f);
                 }
             }
+            DeckView.walls(shapes, grid, color);
         }
         bodies.clear();
         shapes.end();
