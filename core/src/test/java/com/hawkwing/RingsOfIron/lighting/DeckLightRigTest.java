@@ -78,6 +78,29 @@ class DeckLightRigTest {
     }
 
     @Test
+    void aSystemLightsTheRoomFromAFewPartsTheMarkedOnesFirst() {
+        // A helm whose art marks every screen as a light, besides a bigger unmarked part
+        StringBuilder lights = new StringBuilder("{\"x\": 64, \"y\": 96, \"w\": 60, \"h\": 60, \"color\": \"#ffffff\", \"alpha\": 1}");
+        for (int i = 0; i < 6; i++) {
+            lights.append(", {\"x\": ").append(20 + 16 * i).append(", \"y\": 40, \"w\": 10, \"h\": 10, \"color\": \"#66ccff\", ")
+                    .append("\"alpha\": 1, \"light\": \"point\", \"reach\": 2.5, \"intensity\": 0.5}");
+        }
+        EmissiveLights art = EmissiveLights.parse("{\"components/helm_m\": {\"canvas\": [0, 0, 128, 192], \"lights\": [" + lights + "]}}");
+        ShipGridComponent g = room();
+        LightSpots spots = new LightSpots();
+        new DeckLightRig(art).collect(g, spots);
+        int casting = 0;
+        for (int i = 0; i < spots.size(); i++) {
+            LightSpot s = spots.get(i);
+            if (!s.casts()) continue;
+            casting++;
+            assertEquals(2.5f * g.tileSize, s.reach, 1e-4f, "a marked screen, not the bigger unmarked part");
+        }
+        assertEquals(DeckLightRig.CASTS_PER_SYSTEM, casting);
+        assertEquals(7, spots.size(), "the rest still glow");
+    }
+
+    @Test
     void aTurnedSystemsLightsTurnWithIt() {
         ShipGridComponent g = room();
         LightSpots spots = new LightSpots();

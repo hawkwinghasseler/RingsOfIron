@@ -21,12 +21,13 @@ import java.util.Locale;
  *
  * <p>A part the art marks with {@code data-light} lights (point, cone) or only glows (glow) as
  * marked, with its own reach and intensity if given. Otherwise its size decides: parts of at
- * least {@link #CAST_MIN_SIZE} light the room, the biggest {@link #CASTS_PER_SYSTEM} of a system.
+ * least {@link #CAST_MIN_SIZE} can light the room. A system lights the room from at most
+ * {@link #CASTS_PER_SYSTEM} parts, those the art marks first, then the biggest; the rest glow.
  */
 public final class DeckLightRig {
     /** Glowing parts smaller than this (SVG units) only glow; bigger ones light the room. */
     public static final float CAST_MIN_SIZE = 8f;
-    /** At most this many parts of one system's art light the room, the biggest first. */
+    /** At most this many parts of one system's art light the room, the marked ones first, then the biggest. */
     public static final int CASTS_PER_SYSTEM = 3;
     /** How far a light reaches, tiles: this much... */
     static final float REACH_BASE = 0.6f;
@@ -39,7 +40,11 @@ public final class DeckLightRig {
     public static final String WALL_LIGHT = "decor/wall_light";
 
     private final EmissiveLights art;
-    private final float[] order = new float[64];
+    /** A part the art marks as a light ranks above any it does not: more than any part's area. */
+    private static final float MARKED = 1e7f;
+
+    /** Which parts of the art being placed light the room. */
+    private boolean[] cast = new boolean[16];
 
     public DeckLightRig(EmissiveLights art) {
         this.art = art;
@@ -100,14 +105,14 @@ public final class DeckLightRig {
     }
 
     private void mount(ShipGridComponent grid, MountFootprint m, EmissiveLights.Art a, boolean on, LightSpots out) {
-        // The biggest few parts light the room; the rest only glow
-        float castFloor = castFloor(a);
-        for (EmissiveLights.Source src : a.lights) {
+        // A few parts light the room; the rest only glow
+        boolean[] casting = casting(a);
+        for (int i = 0; i < a.lights.length; i++) {
+            EmissiveLights.Source src = a.lights[i];
             float[] p = rotated(a, src.x, src.y, m.rotation);
             LightSpot s = place(grid, m.originX + p[0], m.originY + p[1], src, out);
             s.on = on;
-            float weight = src.w * src.h * src.alpha;
-            if (src.kind == null && (src.size() < CAST_MIN_SIZE || weight < castFloor)) s.reach = 0f;
+            if (!casting[i]) s.reach = 0f;
             if (s.isCone) s.direction += m.rotation * MathUtils.HALF_PI;
         }
     }
@@ -140,15 +145,32 @@ public final class DeckLightRig {
         return s;
     }
 
-    /** The weight (area times opacity) a part must reach to be among the system's biggest. */
-    private float castFloor(EmissiveLights.Art a) {
-        int n = 0;
-        for (EmissiveLights.Source src : a.lights) {
-            if (src.kind == null && src.size() >= CAST_MIN_SIZE && n < order.length) order[n++] = src.w * src.h * src.alpha;
+    /** Which of {@code a}'s parts light the room: at most {@link #CASTS_PER_SYSTEM}, by {@link #castRank}. */
+    private boolean[] casting(EmissiveLights.Art a) {
+        int n = a.lights.length;
+        if (cast.length < n) cast = new boolean[n];
+        java.util.Arrays.fill(cast, 0, n, false);
+        for (int k = 0; k < CASTS_PER_SYSTEM; k++) {
+            int best = -1;
+            float bestRank = 0f;
+            for (int i = 0; i < n; i++) {
+                float rank = cast[i] ? 0f : castRank(a.lights[i]);
+                if (rank > bestRank) {
+                    best = i;
+                    bestRank = rank;
+                }
+            }
+            if (best < 0) break;
+            cast[best] = true;
         }
-        if (n <= CASTS_PER_SYSTEM) return 0f;
-        java.util.Arrays.sort(order, 0, n);
-        return order[n - CASTS_PER_SYSTEM];
+        return cast;
+    }
+
+    /** How strong a claim a part has to light the room: 0 for none, any marked light above any unmarked part. */
+    private static float castRank(EmissiveLights.Source src) {
+        float weight = src.w * src.h * src.alpha;
+        if (src.kind == null) return src.size() < CAST_MIN_SIZE ? 0f : weight;
+        return src.kind == EmissiveLights.Kind.GLOW ? 0f : MARKED + weight;
     }
 
     /**
