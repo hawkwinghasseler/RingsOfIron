@@ -59,6 +59,13 @@ Thin walls between tiles are drawn in pieces: a segment for each tile edge and a
 - `edges/edge_wall_<weight>_h.svg` (64x16) lies along a horizontal edge, which runs along y = 8; `_v` (16x64) along a vertical edge, at x = 8. A segment's ends are open, so segments in a line join with no seam.
 - `edges/edge_wall_<weight>_joint_<sides>.svg` (16x16) is centered on a vertex; `<sides>` lists which of the four edges meeting there carry a wall, in the same `nesw` order. An end cap is a single side (`_joint_n`), a corner two at right angles (`_joint_ne`), a T three, a cross all four. Draw it over the segments.
 
+### Edge conduits
+Power conduits that run along tile edges (inside thin walls, or along full-tile and hull walls) are drawn the same way, over the walls so they stay in sight. Each piece has an `_unpowered` variant without the lit core, which is tagged `data-light="glow"`.
+
+- `edges/edge_conduit_h.svg` (64x16) along a horizontal edge at y = 8, `_v` (16x64) along a vertical edge at x = 8, with open ends.
+- `edges/edge_conduit_joint_<sides>.svg` (16x16) is centered on a vertex, `<sides>` as for edge walls: an end cap or straight joint is a clamp, and a corner, T or cross is a junction box with a lamp.
+- `edges/edge_conduit_tap.svg` (16x16) is a junction box centered on the middle of an edge, where a tile's `conduit_arm` reaches an edge run. It is square, so it fits horizontal and vertical edges alike.
+
 ### Doors
 Bulkhead doors take the place of an edge wall segment: `edges/bulkhead_door_<state>[_unpowered]_<h|v>.svg`, state `sealed` or `open`. A powered door's lamp is red when sealed and green when open; an unpowered door has dark lamps.
 
@@ -125,7 +132,7 @@ File names are lowercase `snake_case` and start with the id in data, so code can
 |---|---|---|
 | `tiles/` | the floor tile type's id in `tiles.toml`; coverings as `covering_<covering>` | `floor`, `conduit`, `conduit_arm`, `covering_carpet` |
 | `walls/` | `<tile id>_<sides>`; wedges as `<tile id>_wedge_<w>x<h>` | `hull_heavy_nes`, `internal_wall_0`, `hull_medium_wedge_1x2` |
-| `edges/` | `edge_wall_<weight>_<h\|v>`, `edge_wall_<weight>_joint_<sides>`, `bulkhead_door_<state>_<h\|v>` | `edge_wall_light_joint_ne`, `bulkhead_door_open_unpowered_v` |
+| `edges/` | `edge_wall_<weight>_<h\|v>`, `edge_wall_<weight>_joint_<sides>`, `bulkhead_door_<state>_<h\|v>`, `edge_conduit_<h\|v>`, `edge_conduit_joint_<sides>`, `edge_conduit_tap` | `edge_wall_light_joint_ne`, `bulkhead_door_open_unpowered_v`, `edge_conduit_joint_unpowered_es` |
 | `components/` | `<component id>_<size>`, size `s`, `m`, `l` or `xl` | `reactor_xl`, `helm_m_unpowered`, `docking_port_l_open`, `docking_collar_s` |
 | `effects/` | the state it shows; animation frames as a number suffix | `fire_medium`, `breach`, `explosion_3`, `beam` |
 | `decor/` | the object | `crate_small`, `pipe_run`, `wall_light_unpowered` |
@@ -180,7 +187,7 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 ## Asset list
 - **Tiles (7):** floor, conduit and conduit arm (powered and unpowered), carpet covering, dock walkway.
 - **Walls (88):** `hull`, `hull_light`, `hull_medium`, `hull_heavy` and `internal_wall` in all 16 join patterns, and 1x1 and 1x2 wedges for each hull weight.
-- **Edges (59):** edge wall segments (horizontal and vertical) and 15 joints for each weight; bulkhead doors sealed and open, powered and unpowered, both orientations.
+- **Edges (95):** edge wall segments (horizontal and vertical) and 15 joints for each weight; bulkhead doors sealed and open, powered and unpowered, both orientations; edge conduit segments, 15 joints and the tap, powered and unpowered.
 - **Components (78):** reactor, shield emitter and turret mount (S-XL); helm, weapons console, life support, cargo bay and airlock (S-XL); docking port S-L sealed and open, and the collar for each size; with an unpowered variant of each powered one.
 - **Effects (14):** fire small, medium and large, scorch, breach, light and heavy damage, bulkhead seal, explosion (one frame, and four frames `explosion_1` to `_4`), laser beam.
 - **Decor (18):** vent grate, floor hatch, pipe run, pipe valve, cable tray, wall light, hazard stripe, floor arrow, small and large crates, barrel, locker, bunk, table, mess table, chair, plant.
