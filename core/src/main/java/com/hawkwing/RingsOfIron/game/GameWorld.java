@@ -262,6 +262,12 @@ public class GameWorld implements Disposable {
         engine.addSystem(new GridHazardSystem());
         engine.addSystem(new PowerRoutingSystem());
         engine.addSystem(new LifeSupportSystem());
+        // Thrust and planned burns burn propellant from the tanks piped to the engines
+        engine.addSystem(new PropellantFeed());
+        orbitalEvents.burnBudget = (ship, dv) -> {
+            ShipGridComponent.MassProperties m = shipMass(ship);
+            return m == null ? dv : PropellantFeed.payForBurn(ship, m.mass, dv);
+        };
         engine.getSerializationService().addParticipant(new InteriorGridSaveParticipant(engine));
         // Traded goods sit in the ships' cargo bays and weigh them down
         engine.addSystem(new ShipCargo(this::shipMass));
