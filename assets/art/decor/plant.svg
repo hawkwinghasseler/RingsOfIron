@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <title>plant: potted plant</title>
+  <circle cx="8" cy="8" r="6.5" fill="#4a3e31" stroke="#10141a" stroke-width="1.5"/>
+  <path d="M8,8 Q12,8 15,8" fill="none" stroke="#5ec46a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8,8 Q9.24,8.95 10.16,14.66" fill="none" stroke="#5ec46a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8,8 Q4.76,8.59 2.34,12.11" fill="none" stroke="#5ec46a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8,8 Q4.76,7.41 2.34,3.89" fill="none" stroke="#5ec46a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8,8 Q9.24,7.05 10.16,1.34" fill="none" stroke="#5ec46a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="8" cy="8" r="1.8" fill="#8fe39a"/>
+  <circle id="collider" cx="8" cy="8" r="6.5" fill="none" stroke="none"/>
+</svg>

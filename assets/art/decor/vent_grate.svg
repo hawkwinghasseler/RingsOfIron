@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <title>vent_grate: floor vent, 2x2 sub-tiles</title>
+  <rect x="2" y="2" width="28" height="28" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+  <line x1="7" y1="8" x2="25" y2="8" stroke="#10141a" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="7" y1="13" x2="25" y2="13" stroke="#10141a" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="7" y1="18" x2="25" y2="18" stroke="#10141a" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="7" y1="23" x2="25" y2="23" stroke="#10141a" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M3.5,28.5 L3.5,3.5 L28.5,3.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M28.5,3.5 L28.5,28.5 L3.5,28.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

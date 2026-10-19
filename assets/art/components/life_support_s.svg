@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="128" viewBox="0 0 64 128">
+  <title>life_support S: 1x2 auxiliary slot</title>
+  <rect x="0" y="0" width="64" height="128" fill="#2a3039"/>
+  <rect x="4" y="4" width="56" height="120" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+  <path d="M5.75,122.25 L5.75,5.75 L58.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M58.25,5.75 L58.25,122.25 L5.75,122.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <rect x="14" y="8" width="36" height="48" rx="16" fill="#2a4a38" stroke="#10141a" stroke-width="2"/>
+  <rect x="18" y="12" width="8" height="40" rx="4" fill="#4e8a66"/>
+  <circle cx="32" cy="32" r="6" fill="#5ee08a" stroke="#10141a" stroke-width="1.5"/>
+  <rect x="29" y="4" width="6" height="6" fill="#4b5563" stroke="#10141a" stroke-width="1"/>
+  <circle cx="32" cy="96" r="22" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+  <path d="M32,96 Q46.86,106.16 42.27,111.99" fill="none" stroke="#7d8898" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32,96 Q30.63,113.95 23.29,112.88" fill="none" stroke="#7d8898" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32,96 Q15.77,103.78 13.02,96.9" fill="none" stroke="#7d8898" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32,96 Q17.14,85.84 21.73,80.01" fill="none" stroke="#7d8898" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32,96 Q33.37,78.05 40.71,79.12" fill="none" stroke="#7d8898" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32,96 Q48.23,88.22 50.98,95.1" fill="none" stroke="#7d8898" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="96" r="5" fill="#5ee08a" stroke="#10141a" stroke-width="1.2"/>
+  <line x1="32" y1="60" x2="32" y2="70" stroke="#5ee08a" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>bulkhead_seal: emergency seal over a tile (Tile.bulkheadSealed)</title>
+  <rect x="3" y="3" width="58" height="58" rx="4" fill="#8a6d1f" stroke="#10141a" stroke-width="2"/>
+  <clipPath id="seal_top_hz7_7"><rect x="7" y="7" width="50" height="8"/></clipPath>
+  <rect x="7" y="7" width="50" height="8" fill="#f2c230"/>
+  <g clip-path="url(#seal_top_hz7_7)">
+  <polygon points="-9,15 -1,15 7,7 -1,7" fill="#10141a"/>
+  <polygon points="7,15 15,15 23,7 15,7" fill="#10141a"/>
+  <polygon points="23,15 31,15 39,7 31,7" fill="#10141a"/>
+  <polygon points="39,15 47,15 55,7 47,7" fill="#10141a"/>
+  <polygon points="55,15 63,15 71,7 63,7" fill="#10141a"/>
+  <polygon points="71,15 79,15 87,7 79,7" fill="#10141a"/>
+  </g>
+  <rect x="7" y="7" width="50" height="8" fill="none" stroke="#10141a" stroke-width="1.5"/>
+  <clipPath id="seal_bottom_hz7_49"><rect x="7" y="49" width="50" height="8"/></clipPath>
+  <rect x="7" y="49" width="50" height="8" fill="#f2c230"/>
+  <g clip-path="url(#seal_bottom_hz7_49)">
+  <polygon points="-9,57 -1,57 7,49 -1,49" fill="#10141a"/>
+  <polygon points="7,57 15,57 23,49 15,49" fill="#10141a"/>
+  <polygon points="23,57 31,57 39,49 31,49" fill="#10141a"/>
+  <polygon points="39,57 47,57 55,49 47,49" fill="#10141a"/>
+  <polygon points="55,57 63,57 71,49 63,49" fill="#10141a"/>
+  <polygon points="71,57 79,57 87,49 79,49" fill="#10141a"/>
+  </g>
+  <rect x="7" y="49" width="50" height="8" fill="none" stroke="#10141a" stroke-width="1.5"/>
+  <rect x="7" y="17" width="50" height="30" fill="#a8862a" stroke="#10141a" stroke-width="1.5"/>
+  <circle cx="12" cy="32" r="2" fill="#d9c27a" stroke="#10141a" stroke-width="1"/>
+  <circle cx="24" cy="32" r="2" fill="#d9c27a" stroke="#10141a" stroke-width="1"/>
+  <circle cx="40" cy="32" r="2" fill="#d9c27a" stroke="#10141a" stroke-width="1"/>
+  <circle cx="52" cy="32" r="2" fill="#d9c27a" stroke="#10141a" stroke-width="1"/>
+</svg>

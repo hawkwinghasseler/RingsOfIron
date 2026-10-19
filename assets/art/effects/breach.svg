@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>breach: hull tile at integrity 0, open to space</title>
+  <polygon points="52.52,32 51.95,40.27 49.85,49.85 39.9,51.08 32,53.08 23.63,52.21 19.38,44.62 12.49,40.08 9.7,32 9.89,22.84 20.02,20.02 24.72,14.41 32,15.09 41.22,9.74 48.22,15.78 47.17,25.72" fill="#373f4b" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="46.78,32 46.37,37.95 44.85,44.85 37.69,45.74 32,47.18 25.97,46.55 22.91,41.09 17.95,37.82 15.94,32 16.08,25.41 23.37,23.37 26.76,19.34 32,19.83 38.64,15.97 43.68,20.32 42.92,27.48" fill="#03050a" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round"/>
+  <circle cx="26" cy="28" r="0.9" fill="#cfe3ff"/>
+  <circle cx="38" cy="36" r="0.9" fill="#cfe3ff"/>
+  <circle cx="31" cy="40" r="0.9" fill="#cfe3ff"/>
+  <line x1="52.52" y1="32" x2="56.63" y2="32" stroke="#7d8898" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="39.9" y1="51.08" x2="41.49" y2="54.9" stroke="#7d8898" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="19.38" y1="44.62" x2="16.86" y2="47.14" stroke="#7d8898" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="9.89" y1="22.84" x2="5.47" y2="21.01" stroke="#7d8898" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="32" y1="15.09" x2="32" y2="11.71" stroke="#7d8898" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="47.17" y1="25.72" x2="50.2" y2="24.46" stroke="#7d8898" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

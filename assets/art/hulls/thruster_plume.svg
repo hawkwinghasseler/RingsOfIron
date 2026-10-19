@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="48" viewBox="-192 -24 192 48">
+  <title>thruster plume: origin at the nozzle, exhaust toward -x</title>
+  <defs><linearGradient id="plume_g" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="0.25" stop-color="#9fd8ff"/><stop offset="1" stop-color="#4f8fff" stop-opacity="0"/></linearGradient></defs>
+  <path d="M0,-24 C-60,-20 -150,-8 -192,0 C-150,8 -60,20 0,24 Z" fill="url(#plume_g)" opacity="0.9"/>
+  <path d="M0,-10 C-40,-8 -80,-3 -110,0 C-80,3 -40,8 0,10 Z" fill="#ffffff" opacity="0.8"/>
+</svg>

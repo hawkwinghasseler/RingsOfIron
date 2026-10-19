@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <title>turret_mount XL: 5x5 primary mount</title>
+  <rect x="0" y="0" width="320" height="320" fill="#2a3039"/>
+  <rect x="4" y="4" width="312" height="312" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+  <path d="M5.75,314.25 L5.75,5.75 L314.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M314.25,5.75 L314.25,314.25 L5.75,314.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="160" cy="160" r="128" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+  <circle cx="272.64" cy="160" r="5.12" fill="#7d8898"/>
+  <circle cx="264.07" cy="203.11" r="5.12" fill="#7d8898"/>
+  <circle cx="239.65" cy="239.65" r="5.12" fill="#7d8898"/>
+  <circle cx="203.11" cy="264.07" r="5.12" fill="#7d8898"/>
+  <circle cx="160" cy="272.64" r="5.12" fill="#7d8898"/>
+  <circle cx="116.89" cy="264.07" r="5.12" fill="#7d8898"/>
+  <circle cx="80.35" cy="239.65" r="5.12" fill="#7d8898"/>
+  <circle cx="55.93" cy="203.11" r="5.12" fill="#7d8898"/>
+  <circle cx="47.36" cy="160" r="5.12" fill="#7d8898"/>
+  <circle cx="55.93" cy="116.89" r="5.12" fill="#7d8898"/>
+  <circle cx="80.35" cy="80.35" r="5.12" fill="#7d8898"/>
+  <circle cx="116.89" cy="55.93" r="5.12" fill="#7d8898"/>
+  <circle cx="160" cy="47.36" r="5.12" fill="#7d8898"/>
+  <circle cx="203.11" cy="55.93" r="5.12" fill="#7d8898"/>
+  <circle cx="239.65" cy="80.35" r="5.12" fill="#7d8898"/>
+  <circle cx="264.07" cy="116.89" r="5.12" fill="#7d8898"/>
+  <circle cx="160" cy="160" r="94.72" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+  <rect x="139.52" y="160" width="40.96" height="121.6" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+  <rect x="121.6" y="89.6" width="76.8" height="89.6" rx="2" fill="#465060" stroke="#10141a" stroke-width="1.5"/>
+  <polygon points="160,67.84 142.08,96 177.92,96" fill="#ff5a5a" stroke="#10141a" stroke-width="1" stroke-linejoin="round"/>
+  <circle cx="160" cy="217.6" r="8.96" fill="#ff5a5a"/>
+</svg>

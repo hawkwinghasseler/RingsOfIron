@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16" viewBox="0 0 32 16">
+  <title>wall_light: light strip on a wall</title>
+  <rect x="2" y="2" width="28" height="7" rx="2" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+  <rect x="5" y="4" width="22" height="3" fill="#fff7d6"/>
+  <path d="M4,9 L28,9 L24,15 L8,15 Z" fill="#fff7d6" opacity="0.25"/>
+</svg>

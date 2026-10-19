@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <title>shield_emitter L: 3x3 primary mount</title>
+  <defs><radialGradient id="shield_emitter_l_g"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#4fd1ff" stop-opacity="0.9"/><stop offset="1" stop-color="#4fd1ff" stop-opacity="0"/></radialGradient></defs>
+  <rect x="0" y="0" width="192" height="192" fill="#2a3039"/>
+  <rect x="4" y="4" width="184" height="184" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+  <path d="M5.75,186.25 L5.75,5.75 L186.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M186.25,5.75 L186.25,186.25 L5.75,186.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <polygon points="159.19,132.48 96,168.96 32.81,132.48 32.81,59.52 96,23.04 159.19,59.52" fill="#373f4b" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="159.19" cy="132.48" r="7.3" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="96" cy="168.96" r="7.3" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="32.81" cy="132.48" r="7.3" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="32.81" cy="59.52" r="7.3" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="96" cy="23.04" r="7.3" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="159.19" cy="59.52" r="7.3" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="96" cy="96" r="45.24" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+  <circle cx="96" cy="96" r="40.13" fill="url(#shield_emitter_l_g)"/>
+  <circle cx="96" cy="96" r="30.64" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+  <circle cx="96" cy="96" r="20.43" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+  <circle cx="96" cy="96" r="7.3" fill="#e9fbff"/>
+</svg>

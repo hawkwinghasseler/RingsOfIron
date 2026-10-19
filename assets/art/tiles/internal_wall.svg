@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>internal_wall: interior bulkhead tile</title>
+  <rect x="0" y="0" width="64" height="64" fill="#545e6c"/>
+  <rect x="4" y="4" width="56" height="56" rx="2" fill="#68737f" stroke="#10141a" stroke-width="2"/>
+  <path d="M5.75,58.25 L5.75,5.75 L58.25,5.75" fill="none" stroke="#8b96a4" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M58.25,5.75 L58.25,58.25 L5.75,58.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <rect x="4" y="26" width="56" height="12" fill="#4a5361" stroke="#10141a" stroke-width="1.5"/>
+  <line x1="9" y1="28" x2="15" y2="36" stroke="#3a414c" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="19" y1="28" x2="25" y2="36" stroke="#3a414c" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="29" y1="28" x2="35" y2="36" stroke="#3a414c" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="39" y1="28" x2="45" y2="36" stroke="#3a414c" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="49" y1="28" x2="55" y2="36" stroke="#3a414c" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="10" cy="10" r="1.8" fill="#9aa5b3" opacity="0.9"/>
+  <circle cx="54" cy="10" r="1.8" fill="#9aa5b3" opacity="0.9"/>
+  <circle cx="10" cy="54" r="1.8" fill="#9aa5b3" opacity="0.9"/>
+  <circle cx="54" cy="54" r="1.8" fill="#9aa5b3" opacity="0.9"/>
+</svg>

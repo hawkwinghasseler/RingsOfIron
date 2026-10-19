@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="128" viewBox="0 0 64 128">
+  <title>hull_heavy wedge 1x2: sloped face toward +x/+y at rotation 0</title>
+  <polygon points="0,0 0,128 64,128" fill="#2f3641" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="5.6,23.72 5.6,122.4 54.94,122.4" fill="#4b5563" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="7.6" y1="28.72" x2="49.94" y2="120.4" stroke="#7d8898" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="11.6" cy="116.4" r="2.8" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
+</svg>

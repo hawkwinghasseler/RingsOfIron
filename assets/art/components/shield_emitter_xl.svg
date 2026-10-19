@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <title>shield_emitter XL: 5x5 primary mount</title>
+  <defs><radialGradient id="shield_emitter_xl_g"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#4fd1ff" stop-opacity="0.9"/><stop offset="1" stop-color="#4fd1ff" stop-opacity="0"/></radialGradient></defs>
+  <rect x="0" y="0" width="320" height="320" fill="#2a3039"/>
+  <rect x="4" y="4" width="312" height="312" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+  <path d="M5.75,314.25 L5.75,5.75 L314.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M314.25,5.75 L314.25,314.25 L5.75,314.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <polygon points="265.31,220.8 160,281.6 54.69,220.8 54.69,99.2 160,38.4 265.31,99.2" fill="#373f4b" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="265.31" cy="220.8" r="12.16" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="160" cy="281.6" r="12.16" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="54.69" cy="220.8" r="12.16" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="54.69" cy="99.2" r="12.16" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="160" cy="38.4" r="12.16" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="265.31" cy="99.2" r="12.16" fill="#4fd1ff" stroke="#10141a" stroke-width="1.2"/>
+  <circle cx="160" cy="160" r="75.39" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+  <circle cx="160" cy="160" r="66.88" fill="url(#shield_emitter_xl_g)"/>
+  <circle cx="160" cy="160" r="51.07" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+  <circle cx="160" cy="160" r="34.05" fill="none" stroke="#4fd1ff" stroke-width="1.2" opacity="0.85"/>
+  <circle cx="160" cy="160" r="12.16" fill="#e9fbff"/>
+</svg>

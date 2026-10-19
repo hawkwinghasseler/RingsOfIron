@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <title>reactor XL: 5x5 primary mount</title>
+  <defs><radialGradient id="reactor_xl_g"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#ff9a3c" stop-opacity="0.9"/><stop offset="1" stop-color="#ff9a3c" stop-opacity="0"/></radialGradient></defs>
+  <rect x="0" y="0" width="320" height="320" fill="#2a3039"/>
+  <rect x="4" y="4" width="312" height="312" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+  <path d="M5.75,314.25 L5.75,5.75 L314.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M314.25,5.75 L314.25,314.25 L5.75,314.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <line x1="160" y1="160" x2="10" y2="10" stroke="#373f4b" stroke-width="15" stroke-linecap="round"/>
+  <line x1="160" y1="160" x2="10" y2="10" stroke="#4b5563" stroke-width="7.5" stroke-linecap="round"/>
+  <circle cx="10" cy="10" r="10" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+  <line x1="160" y1="160" x2="310" y2="10" stroke="#373f4b" stroke-width="15" stroke-linecap="round"/>
+  <line x1="160" y1="160" x2="310" y2="10" stroke="#4b5563" stroke-width="7.5" stroke-linecap="round"/>
+  <circle cx="310" cy="10" r="10" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+  <line x1="160" y1="160" x2="10" y2="310" stroke="#373f4b" stroke-width="15" stroke-linecap="round"/>
+  <line x1="160" y1="160" x2="10" y2="310" stroke="#4b5563" stroke-width="7.5" stroke-linecap="round"/>
+  <circle cx="10" cy="310" r="10" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+  <line x1="160" y1="160" x2="310" y2="310" stroke="#373f4b" stroke-width="15" stroke-linecap="round"/>
+  <line x1="160" y1="160" x2="310" y2="310" stroke="#4b5563" stroke-width="7.5" stroke-linecap="round"/>
+  <circle cx="310" cy="310" r="10" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+  <circle cx="160" cy="160" r="115.2" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+  <circle cx="160" cy="160" r="92.16" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+  <circle cx="263.68" cy="160" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="249.79" cy="211.84" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="211.84" cy="249.79" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="160" cy="263.68" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="108.16" cy="249.79" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="70.21" cy="211.84" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="56.32" cy="160" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="70.21" cy="108.16" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="108.16" cy="70.21" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="160" cy="56.32" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="211.84" cy="70.21" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="249.79" cy="108.16" r="8.06" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="160" cy="160" r="69.12" fill="url(#reactor_xl_g)"/>
+  <circle cx="160" cy="160" r="57.6" fill="none" stroke="#ff9a3c" stroke-width="1.5" opacity="0.8"/>
+  <circle cx="160" cy="160" r="25.34" fill="#fff1d6" stroke="#ff9a3c" stroke-width="1.5"/>
+</svg>

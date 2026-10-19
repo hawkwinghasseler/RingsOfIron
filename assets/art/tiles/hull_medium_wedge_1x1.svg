@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>hull_medium wedge 1x1: sloped face toward +x/+y at rotation 0</title>
+  <polygon points="0,0 0,64 64,64" fill="#3d4552" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="4,9.66 4,60 54.34,60" fill="#5b6675" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="6" y1="14.66" x2="49.34" y2="58" stroke="#7d8898" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="10" cy="54" r="2.2" fill="#7d8898" stroke="#10141a" stroke-width="1"/>
+</svg>

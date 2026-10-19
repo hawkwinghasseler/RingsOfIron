@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>damage_light: cracks for a tile or system below half integrity</title>
+  <path d="M24.25,16.64 L27.27,8.09 L27.98,5.4 L19.14,5.55 L9.89,4.22" fill="none" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+  <path d="M13.07,13.99 L11.56,20.53 L4.04,14.99 L6.59,23.95 L8.13,21.88" fill="none" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+  <path d="M52.96,12.05 L60.12,7.84 L53.01,2 L49.18,6.52 L42.79,8.15" fill="none" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+</svg>

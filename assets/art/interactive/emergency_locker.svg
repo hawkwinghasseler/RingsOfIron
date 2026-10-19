@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16" viewBox="0 0 32 16">
+  <title>emergency_locker: oxygen and vacuum suits</title>
+  <rect x="1" y="1" width="30" height="14" rx="1" fill="#8a6d1f" stroke="#10141a" stroke-width="1.5"/>
+  <clipPath id="suitlocker_hz3_3"><rect x="3" y="3" width="26" height="3"/></clipPath>
+  <rect x="3" y="3" width="26" height="3" fill="#f2c230"/>
+  <g clip-path="url(#suitlocker_hz3_3)">
+  <polygon points="-8,6 0,6 3,3 -5,3" fill="#10141a"/>
+  <polygon points="8,6 16,6 19,3 11,3" fill="#10141a"/>
+  <polygon points="24,6 32,6 35,3 27,3" fill="#10141a"/>
+  </g>
+  <rect x="3" y="3" width="26" height="3" fill="none" stroke="#10141a" stroke-width="1.5"/>
+  <rect x="6" y="8" width="20" height="5" rx="1" fill="#d33a3a" stroke="#10141a" stroke-width="1"/>
+  <rect x="14" y="9" width="4" height="3" fill="#fff"/>
+  <rect id="collider" x="1" y="1" width="30" height="14" fill="none" stroke="none"/>
+  <circle id="interact" cx="16" cy="15" r="2" fill="none" stroke="none"/>
+</svg>

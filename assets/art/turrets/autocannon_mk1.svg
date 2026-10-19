@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="76" height="48" viewBox="-24 -24 76 48">
+  <title>autocannon_mk1 turret: pivot at origin, barrels toward +x</title>
+  <circle cx="0" cy="0" r="20" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
+  <circle cx="0" cy="0" r="14" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+  <rect x="6" y="-8" width="40" height="6" rx="1.5" fill="#373f4b" stroke="#10141a" stroke-width="1.5"/>
+  <rect x="6" y="2" width="40" height="6" rx="1.5" fill="#373f4b" stroke="#10141a" stroke-width="1.5"/>
+  <rect x="-12" y="-12" width="22" height="24" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+</svg>

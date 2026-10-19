@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <title>reactor L: 3x3 primary mount</title>
+  <defs><radialGradient id="reactor_l_g"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#ff9a3c" stop-opacity="0.9"/><stop offset="1" stop-color="#ff9a3c" stop-opacity="0"/></radialGradient></defs>
+  <rect x="0" y="0" width="192" height="192" fill="#2a3039"/>
+  <rect x="4" y="4" width="184" height="184" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+  <path d="M5.75,186.25 L5.75,5.75 L186.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M186.25,5.75 L186.25,186.25 L5.75,186.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <line x1="96" y1="96" x2="10" y2="10" stroke="#373f4b" stroke-width="9" stroke-linecap="round"/>
+  <line x1="96" y1="96" x2="10" y2="10" stroke="#4b5563" stroke-width="4.5" stroke-linecap="round"/>
+  <circle cx="10" cy="10" r="6" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+  <line x1="96" y1="96" x2="182" y2="10" stroke="#373f4b" stroke-width="9" stroke-linecap="round"/>
+  <line x1="96" y1="96" x2="182" y2="10" stroke="#4b5563" stroke-width="4.5" stroke-linecap="round"/>
+  <circle cx="182" cy="10" r="6" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+  <line x1="96" y1="96" x2="10" y2="182" stroke="#373f4b" stroke-width="9" stroke-linecap="round"/>
+  <line x1="96" y1="96" x2="10" y2="182" stroke="#4b5563" stroke-width="4.5" stroke-linecap="round"/>
+  <circle cx="10" cy="182" r="6" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+  <line x1="96" y1="96" x2="182" y2="182" stroke="#373f4b" stroke-width="9" stroke-linecap="round"/>
+  <line x1="96" y1="96" x2="182" y2="182" stroke="#4b5563" stroke-width="4.5" stroke-linecap="round"/>
+  <circle cx="182" cy="182" r="6" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+  <circle cx="96" cy="96" r="69.12" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+  <circle cx="96" cy="96" r="55.3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+  <circle cx="158.21" cy="96" r="4.84" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="139.99" cy="139.99" r="4.84" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="96" cy="158.21" r="4.84" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="52.01" cy="139.99" r="4.84" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="33.79" cy="96" r="4.84" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="52.01" cy="52.01" r="4.84" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="96" cy="33.79" r="4.84" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="139.99" cy="52.01" r="4.84" fill="#ff9a3c" stroke="#10141a" stroke-width="1"/>
+  <circle cx="96" cy="96" r="41.47" fill="url(#reactor_l_g)"/>
+  <circle cx="96" cy="96" r="34.56" fill="none" stroke="#ff9a3c" stroke-width="1.5" opacity="0.8"/>
+  <circle cx="96" cy="96" r="15.21" fill="#fff1d6" stroke="#ff9a3c" stroke-width="1.5"/>
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>turret_mount S: 1x1 primary mount</title>
+  <rect x="0" y="0" width="64" height="64" fill="#2a3039"/>
+  <rect x="4" y="4" width="56" height="56" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+  <path d="M5.75,58.25 L5.75,5.75 L58.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M58.25,5.75 L58.25,58.25 L5.75,58.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="25.6" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+  <circle cx="54.53" cy="32" r="1.4" fill="#7d8898"/>
+  <circle cx="47.93" cy="47.93" r="1.4" fill="#7d8898"/>
+  <circle cx="32" cy="54.53" r="1.4" fill="#7d8898"/>
+  <circle cx="16.07" cy="47.93" r="1.4" fill="#7d8898"/>
+  <circle cx="9.47" cy="32" r="1.4" fill="#7d8898"/>
+  <circle cx="16.07" cy="16.07" r="1.4" fill="#7d8898"/>
+  <circle cx="32" cy="9.47" r="1.4" fill="#7d8898"/>
+  <circle cx="47.93" cy="16.07" r="1.4" fill="#7d8898"/>
+  <circle cx="32" cy="32" r="18.94" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+  <rect x="27.9" y="32" width="8.19" height="24.32" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+  <rect x="24.32" y="17.92" width="15.36" height="17.92" rx="2" fill="#465060" stroke="#10141a" stroke-width="1.5"/>
+  <polygon points="32,13.57 28.42,19.2 35.58,19.2" fill="#ff5a5a" stroke="#10141a" stroke-width="1" stroke-linejoin="round"/>
+  <circle cx="32" cy="43.52" r="1.79" fill="#ff5a5a"/>
+</svg>

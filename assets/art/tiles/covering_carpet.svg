@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>covering_carpet: carpet laid over the deck (fire fuel)</title>
+  <rect x="0" y="0" width="64" height="64" fill="#5a2a33"/>
+  <line x1="0" y1="2" x2="64" y2="2" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="6" x2="64" y2="6" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="10" x2="64" y2="10" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="14" x2="64" y2="14" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="18" x2="64" y2="18" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="22" x2="64" y2="22" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="26" x2="64" y2="26" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="30" x2="64" y2="30" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="34" x2="64" y2="34" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="38" x2="64" y2="38" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="42" x2="64" y2="42" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="46" x2="64" y2="46" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="50" x2="64" y2="50" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="54" x2="64" y2="54" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="58" x2="64" y2="58" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="62" x2="64" y2="62" stroke="#6b333d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="0" y1="0" x2="0" y2="64" stroke="#4a2229" stroke-width="0.8" stroke-linecap="round" opacity="0.6"/>
+  <line x1="16" y1="0" x2="16" y2="64" stroke="#4a2229" stroke-width="0.8" stroke-linecap="round" opacity="0.6"/>
+  <line x1="32" y1="0" x2="32" y2="64" stroke="#4a2229" stroke-width="0.8" stroke-linecap="round" opacity="0.6"/>
+  <line x1="48" y1="0" x2="48" y2="64" stroke="#4a2229" stroke-width="0.8" stroke-linecap="round" opacity="0.6"/>
+  <rect x="0" y="0" width="64" height="64" fill="none" stroke="#3d1b21" stroke-width="1"/>
+</svg>
