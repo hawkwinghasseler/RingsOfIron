@@ -33,3 +33,34 @@ mass = 300000.0
 max_thrust = 3.0e6
 max_torque = 1.5e6
 crew = 3
+
+# Hostile traffic (core's HostileTraffic): pirates fly these, and faction patrols the gunship.
+[ship.raider_light]
+name = "Light Raider"
+chassis = "raider"
+texture = "tex_raider"
+mass = 60000.0
+max_thrust = 2.8e6
+max_torque = 6.0e5
+crew = 3
+# One chaingun in the nose turret, no missiles
+hardpoints = [
+  { weapon = "chaingun_mk1", x = 6.0, y = 0.0, rotation = 0.0 },
+]
+
+[ship.gunship_heavy]
+name = "Gunship"
+chassis = "gunship"
+texture = "tex_gunship"
+mass = 240000.0
+max_thrust = 3.4e6
+max_torque = 2.0e6
+crew = 5
+# A railgun in the nose, a missile launcher on each beam aft, point defense on each beam forward
+hardpoints = [
+  { weapon = "railgun_mk1", x = 8.0, y = 0.0, rotation = 0.0 },
+  { weapon = "harpoon_launcher", x = 1.5, y = 2.5, rotation = 90.0 },
+  { weapon = "harpoon_launcher", x = 1.5, y = -2.5, rotation = -90.0 },
+  { weapon = "autocannon_mk1", x = 5.5, y = 2.5, rotation = 90.0 },
+  { weapon = "autocannon_mk1", x = 5.5, y = -2.5, rotation = -90.0 },
+]

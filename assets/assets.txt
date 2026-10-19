@@ -458,6 +458,8 @@ art/engines/exhaust_s.svg
 art/engines/exhaust_xl.svg
 art/hulls/corvette.svg
 art/hulls/freighter.svg
+art/hulls/gunship.svg
+art/hulls/raider.svg
 art/hulls/station_hub.svg
 art/hulls/station_outpost.svg
 art/hulls/thruster_plume.svg
@@ -492,6 +494,7 @@ art/tiles/floor.svg
 art/tiles/pipe_arm.svg
 art/tiles/pipe_hub.svg
 art/turrets/autocannon_mk1.svg
+art/turrets/chaingun_mk1.svg
 art/turrets/harpoon_launcher.svg
 art/turrets/laser_mk1.svg
 art/turrets/laser_mk1_unpowered.svg
