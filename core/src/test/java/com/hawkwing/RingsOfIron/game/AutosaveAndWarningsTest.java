@@ -53,6 +53,8 @@ class AutosaveAndWarningsTest {
     @Test
     void lowPropellantWarnsOnceUntilTheTanksAreFilledAgain() {
         FlightWarnings w = world.warnings;
+        // The 20% rule alone: docked at Highport, navigation's estimate would say home is reached
+        w.returnPropellantKg = null;
         w.checkPropellant(0.5f, 1000);
         assertNull(world.notices.latest());
         w.checkPropellant(0.19f, 380);
@@ -75,6 +77,17 @@ class AutosaveAndWarningsTest {
         assertNull(world.notices.latest(), "below 20% but enough for the trip home");
         w.checkPropellant(0.05f, 100);
         assertNotNull(world.notices.latest());
+    }
+
+    @Test
+    void navigationsReturnEstimateDecidesWhetherLowIsLow() {
+        game.beginCareer();
+        for (int i = 0; i < 120; i++) world.update(1f / 60f);
+        assertNotNull(world.warnings.returnPropellantKg, "navigation sets it");
+        assertEquals(0, world.warnings.returnPropellantKg.getAsDouble(), 1e-9, "docked at a friendly station, home already");
+        int before = world.notices.history().size();
+        world.warnings.checkPropellant(0.1f, 50);
+        assertEquals(before, world.notices.history().size(), "so 10% docked at Highport is not a warning");
     }
 
     @Test

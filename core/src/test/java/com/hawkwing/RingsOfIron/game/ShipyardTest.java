@@ -39,7 +39,8 @@ class ShipyardTest {
 
     GameWorld world;
     GameScenario game;
-    Entity highport;
+    /** Anvil Yards, the Patrol's shipyard, where each test starts docked. */
+    Entity yard;
 
     @BeforeAll
     static void loadNatives() {
@@ -51,9 +52,15 @@ class ShipyardTest {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         world = new GameWorld();
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
-        highport = world.engine.getEntity(game.highport);
+        yard = world.engine.getEntity(game.shipyard);
         game.beginCareer();
         run(120);
+        // From Highport over to the yards, docked there: the flying, done by hand
+        assertTrue(world.docking.undock(game.player));
+        run(60);
+        assertTrue(game.dockAt(game.shipyard));
+        run(120);
+        assertSame(yard, world.docking.dockedTo(game.player), "docked at Anvil Yards");
     }
 
     @AfterEach
@@ -88,17 +95,18 @@ class ShipyardTest {
         return out;
     }
 
-    /** Sells {@code shipId} at Highport too, for a test: free and open to an ensign. */
-    private void sellAtHighport(String shipId) {
+    /** Sells {@code shipId} at the Patrol's yards too, for a test: free and open to an ensign. */
+    private void sellAtTheYard(String shipId) {
         world.getContent().defs.mergeFile(Map.of("ship_sale", Map.of("test_" + shipId,
                 Map.of("ship", shipId, "seller", "patrol", "price", 1.0))), "test", new LoadReport());
     }
 
     @Test
-    void highportSellsThePatrolsShipsAndTheDepotNone() {
-        assertSame(highport, world.shipyard.dockedStation());
+    void anvilYardsSellsThePatrolsShipsAndHighportAndTheDepotNone() {
+        assertSame(yard, world.shipyard.dockedStation());
         List<String> sold = new ArrayList<>();
-        for (Shipyard.Listing l : world.shipyard.listings(highport)) sold.add(l.shipId);
+        for (Shipyard.Listing l : world.shipyard.listings(yard)) sold.add(l.shipId);
+        assertTrue(world.shipyard.listings(world.engine.getEntity(game.highport)).isEmpty(), "Highport only repairs and refits");
         assertEquals(List.of("corvette_patrol", "gunship_heavy", "frigate_patrol"), sold);
         assertTrue(world.shipyard.listings(world.engine.getEntity(game.depot)).isEmpty(), "the depot is no yard");
         // The Selene Combine sells its raider hull at its own station
@@ -112,7 +120,7 @@ class ShipyardTest {
     void theShipyardWindowListsThemWithTheTradeInAndWhatsLocked() {
         com.ringsofiron.uihud.providers.ShipyardProvider.Yard yard = new com.ringsofiron.uihud.providers.ShipyardProvider.Yard();
         new ShipyardWork(world).collect(yard);
-        assertEquals("Highport", yard.stationName);
+        assertEquals("Anvil Yards", yard.stationName);
         assertTrue(yard.current.startsWith("Your Patrol Corvette: trade-in "), yard.current);
         assertEquals(3, yard.ships.size);
         assertEquals("Gunship", yard.ships.get(1).name);
@@ -192,7 +200,7 @@ class ShipyardTest {
         for (Entity sys : old.getComponent(ShipSubsystemRegistryComponent.class).subsystems) oldSystems.add(sys);
 
         String said = world.shipyard.buy("patrol_gunship");
-        assertTrue(said.startsWith("Bought the Gunship at Highport"), said);
+        assertTrue(said.startsWith("Bought the Gunship at Anvil Yards"), said);
         assertEquals(1, deals.size());
         assertNotSame(old, game.player, "the player flies the new ship");
         assertSame(game.player, world.getPlayer());
@@ -210,9 +218,9 @@ class ShipyardTest {
         assertTrue(world.bridge.playerAtHelm(), "seated at the gunship's helm");
         assertEquals(0, game.player.getComponent(ShipTaskBoardComponent.class).faction, "the player's crew");
 
-        // Latched at Highport in the old ship's place
+        // Latched at the yards in the old ship's place
         run(120);
-        assertSame(highport, world.docking.dockedTo(game.player));
+        assertSame(yard, world.docking.dockedTo(game.player));
         assertTrue(world.docking.dockedWithClearance(game.player));
         // The bigger ship counts in net worth: with the credits back as they were, the difficulty is higher
         account().credits = 400_000;
@@ -230,7 +238,7 @@ class ShipyardTest {
             for (int i = 0; i < 120; i++) loaded.update(FRAME);
             assertEquals("gunship_heavy", again.player.getComponent(DefRefComponent.class).defId);
             assertEquals(400_000 - cost, again.player.getComponent(TraderComponent.class).credits, 1e-6);
-            assertEquals(world.engine.getEntity(game.highport).getComponent(com.ringsofiron.stationsdocking.StationComponent.class).name,
+            assertEquals(yard.getComponent(com.ringsofiron.stationsdocking.StationComponent.class).name,
                     loaded.docking.dockedTo(again.player).getComponent(com.ringsofiron.stationsdocking.StationComponent.class).name);
         } finally {
             loaded.dispose();
@@ -239,7 +247,7 @@ class ShipyardTest {
 
     @Test
     void cargoThatWontFitAndMorePeopleThanSeatsAreRefused() {
-        sellAtHighport("raider_light");
+        sellAtTheYard("raider_light");
         Shipyard.Listing raider = world.shipyard.listing("test_raider_light");
         account().credits = 1e6;
         assertNull(world.shipyard.refusal(raider));
@@ -258,7 +266,7 @@ class ShipyardTest {
     @ParameterizedTest
     @ValueSource(strings = {"raider_light", "gunship_heavy", "frigate_patrol"})
     void flyableAsThePlayersShip(String shipId) {
-        sellAtHighport(shipId);
+        sellAtTheYard(shipId);
         promote(world.standing.ranks().size() - 1);
         String said = world.shipyard.buy("test_" + shipId);
         assertTrue(said.startsWith("Bought the"), said);
