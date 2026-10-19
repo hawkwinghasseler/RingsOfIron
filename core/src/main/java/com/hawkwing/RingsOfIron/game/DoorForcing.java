@@ -5,6 +5,9 @@ import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.aicrew.ForceDoorTask;
+import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.interiorgrid.crew.CrewTask;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -22,6 +25,10 @@ import java.util.function.DoubleSupplier;
  * ({@link ForceMethod}) for as long as the method takes. Stepping away, being knocked out or the
  * door opening some other way stops the work. Once through, {@link DockingSystem#forceDoor} opens
  * the door and reports the hostile act.
+ *
+ * <p>The player can also order their crew to do it ({@link #order}): a {@link ForceDoorTask} on the
+ * ship's board sends the best-suited crew member (marines first, then engineers) to the opening,
+ * where they start the same work.
  */
 public class DoorForcing extends EntitySystem {
 
@@ -115,6 +122,75 @@ public class DoorForcing extends EntitySystem {
         jobs.add(new Job(member, pos.ship, pos.tileX(), pos.tileY(), t.craft, t.port, how));
         return Character.toUpperCase(how.doing.charAt(0)) + how.doing.substring(1) + " the door of "
                 + PlayerDocking.name(t.craft) + " (" + (int) how.seconds + " s)";
+    }
+
+    /**
+     * Orders the crew of {@code ship} to force the shut port door of a craft docked to it: pried or
+     * hacked as its power allows, or cut. One order per door; the crew member who takes it walks to
+     * the opening across from the door and works there until it opens. Returns what was ordered,
+     * or why nothing was.
+     */
+    public String order(Entity ship, boolean cut) {
+        ShipGridComponent grid = crew.grid(ship);
+        ShipTaskBoardComponent board = crew.board(ship);
+        if (grid == null || board == null) return "No crew aboard to order";
+        int ordered = 0;
+        String name = null;
+        for (GridLink l : grid.links) {
+            int port = portAt(l.otherShip, l.ox, l.oy);
+            if (port < 0) continue;
+            ForceMethod.DoorState state = docking.doorState(l.otherShip, port);
+            if (state != ForceMethod.DoorState.UNPOWERED && state != ForceMethod.DoorState.LOCKED) continue;
+            ForceMethod how = cut ? ForceMethod.CUT : state == ForceMethod.DoorState.UNPOWERED ? ForceMethod.PRY : ForceMethod.HACK;
+            if (alreadyOrdered(board, l.otherShip, port)) continue;
+            board.post(new ForceDoorTask(ship, l.x, l.y, new Order(l.otherShip, port, how)));
+            name = PlayerDocking.name(l.otherShip);
+            ordered++;
+            break; // one opening is enough: the door is one door
+        }
+        if (ordered == 0) return "No shut door across a dock to force";
+        return "Crew ordered to " + (cut ? "cut" : "force") + " the door of " + name;
+    }
+
+    private static boolean alreadyOrdered(ShipTaskBoardComponent board, Entity craft, int port) {
+        for (CrewTask t : board.tasks) {
+            if (!t.isActive() || !(t instanceof ForceDoorTask)) continue;
+            ForceDoorTask.Job j = ((ForceDoorTask) t).job;
+            if (j instanceof Order && ((Order) j).craft == craft && ((Order) j).port == port) return true;
+        }
+        return false;
+    }
+
+    /** The work behind an order: once at the spot, the crew member starts a {@link Job} on the door. */
+    private final class Order implements ForceDoorTask.Job {
+        final Entity craft;
+        final int port;
+        final ForceMethod how;
+
+        Order(Entity craft, int port, ForceMethod how) {
+            this.craft = craft;
+            this.port = port;
+            this.how = how;
+        }
+
+        @Override
+        public boolean work(Entity member, float dt) {
+            if (docking.doorState(craft, port) == ForceMethod.DoorState.OPEN) return true;
+            Job j = jobOf(member);
+            if (j == null || j.craft != craft || j.port != port) start(member, how);
+            return false;
+        }
+
+        @Override
+        public boolean isOpen() {
+            ForceMethod.DoorState state = docking.doorState(craft, port);
+            return how.works(state);
+        }
+
+        @Override
+        public String what() {
+            return how.doing + " the door of " + PlayerDocking.name(craft);
+        }
     }
 
     /** The job {@code member} is at, or null. */

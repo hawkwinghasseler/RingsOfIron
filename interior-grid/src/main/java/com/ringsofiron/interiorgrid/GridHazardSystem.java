@@ -161,9 +161,12 @@ public class GridHazardSystem extends FixedLogicSystem {
     }
 
     /**
-     * Air through this grid's {@link GridLink}s into docked craft: the same pressure-driven flow
-     * and mixing as between two rooms of one ship, for each pair of rooms the links join. Runs
-     * once per pair of links, from the primary side. Call after both grids have stepped.
+     * Air, heat and fire through this grid's {@link GridLink}s into docked craft. Air: the same
+     * pressure-driven flow and mixing as between two rooms of one ship, for each pair of rooms the
+     * links join. Heat: convection between the two tiles of each link, as across an open doorway
+     * (the collars carry none by conduction). Fire: a fire on either tile can jump to the other,
+     * as to a neighbour, through the share of the opening the doors leave. Runs once per pair of
+     * links, from the primary side. Call after both grids have stepped.
      */
     public void exchangeAcrossLinks(ShipGridComponent grid, float dt) {
         for (int i = 0; i < grid.links.size; i++) {
@@ -172,7 +175,17 @@ public class GridHazardSystem extends FixedLogicSystem {
             float w = l.flowWidth();
             if (w <= 0f) continue;
             Compartment a = grid.compartmentAt(l.x, l.y), b = l.other.compartmentAt(l.ox, l.oy);
-            if (a != null && b != null) exchange(a, b, w, dt);
+            if (a == null || b == null) continue;
+            exchange(a, b, w, dt);
+            Tile ta = grid.getTile(l.x, l.y), tb = l.other.getTile(l.ox, l.oy);
+            float pressure = Math.min(1f, Math.min(a.pressureRatio(), b.pressureRatio()));
+            float flux = CONVECTION * w * pressure * (tb.temperature - ta.temperature) * dt / TILE_HEAT_CAPACITY;
+            // No more than evens them out
+            flux = Math.signum(flux) * Math.min(Math.abs(flux), Math.abs(tb.temperature - ta.temperature) * 0.5f);
+            ta.temperature += flux;
+            tb.temperature -= flux;
+            if (catches(ta, tb, w, dt)) tb.ignite();
+            else if (catches(tb, ta, w, dt)) ta.ignite();
         }
     }
 
@@ -614,16 +627,24 @@ public class GridHazardSystem extends FixedLogicSystem {
                     int nx = x + s.dx, ny = y + s.dy;
                     if (!grid.canFlow(x, y, nx, ny)) continue;
                     Tile nb = grid.tiles[ny][nx];
-                    if (nb.isBurning() || !nb.isFlammable() || oxygenFactor(nb.compartment) <= 0f) continue;
-                    float heat = (nb.temperature - Compartment.AMBIENT_TEMPERATURE)
-                            / (IGNITION_TEMPERATURE - Compartment.AMBIENT_TEMPERATURE);
-                    heat = Math.max(0f, Math.min(1f, heat));
-                    float chance = SPREAD_RATE * t.fireIntensity * (SPREAD_COLD_FACTOR + (1f - SPREAD_COLD_FACTOR) * heat);
-                    if (random.nextFloat() < chance * dt) ignitions.add(nb);
+                    if (catches(t, nb, 1f, dt)) ignitions.add(nb);
                 }
             }
         }
         for (Tile t : ignitions) t.ignite();
+    }
+
+    /**
+     * Rolls whether the fire on {@code t} jumps to {@code nb} this tick, through an opening
+     * {@code width} tiles wide: bigger fires and hotter targets catch sooner.
+     */
+    private boolean catches(Tile t, Tile nb, float width, float dt) {
+        if (!t.isBurning() || nb.isBurning() || !nb.isFlammable() || oxygenFactor(nb.compartment) <= 0f) return false;
+        float heat = (nb.temperature - Compartment.AMBIENT_TEMPERATURE)
+                / (IGNITION_TEMPERATURE - Compartment.AMBIENT_TEMPERATURE);
+        heat = Math.max(0f, Math.min(1f, heat));
+        float chance = SPREAD_RATE * width * t.fireIntensity * (SPREAD_COLD_FACTOR + (1f - SPREAD_COLD_FACTOR) * heat);
+        return random.nextFloat() < chance * dt;
     }
 
     // -----------------------------------------------------------------------

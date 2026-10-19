@@ -47,6 +47,10 @@ public class CrewMemberComponent implements Component {
     public transient Entity treatedBy;
     /** Item in hand, for display. */
     public String equippedItem = "";
+    /** Whether this crew member has their space suit on. */
+    public boolean suited;
+    /** Seconds of air left in their suit; topped up when it is taken off. */
+    public float suitAir;
 
     /** Seconds until this crew member can fire again. */
     public float fireCooldown = 0f;
@@ -55,6 +59,7 @@ public class CrewMemberComponent implements Component {
 
     public CrewMemberComponent() {
         this.health = def.maxHealth;
+        this.suitAir = def.suitAir;
     }
 
     public CrewMemberComponent(String name, CrewRole role, int faction) {
@@ -63,6 +68,19 @@ public class CrewMemberComponent implements Component {
         this.faction = faction;
         this.def = CrewDef.forRole(role);
         this.health = def.maxHealth;
+        this.suitAir = def.suitAir;
+    }
+
+    /** True while this crew member breathes from their suit: wearing it, with air left in it. */
+    public boolean breathesFromSuit() {
+        return suited && suitAir > 0f;
+    }
+
+    /** Puts their suit on, or takes it off (topping its air up). */
+    public void setSuited(boolean on) {
+        suited = on;
+        if (!on) suitAir = def.suitAir;
+        equippedItem = on ? "space suit" : "";
     }
 
     /** Goods carried by hand on a {@link CarryTask}. */

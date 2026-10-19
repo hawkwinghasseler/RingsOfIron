@@ -210,8 +210,10 @@ def shapes_of(group, gradients):
         xs, ys = [p[0] for p in pts], [p[1] for p in pts]
         out.append((min(xs) - half, min(ys) - half, max(xs) + half, max(ys) + half, rgb, a, settings))
 
+    # The group's own transform too: turned art (a vertical door) turns its emissive layer with it
+    top = compose((1.0, 0.0, 0.0, 1.0, 0.0, 0.0), parse_transform(group.get("transform")))
     for ch in group:
-        walk(ch, (1.0, 0.0, 0.0, 1.0, 0.0, 0.0), 1.0, settings_of(group, {}))
+        walk(ch, top, 1.0, settings_of(group, {}))
     return out
 
 

@@ -43,6 +43,7 @@ import com.hawkwing.RingsOfIron.lighting.DeckLightRig;
 import com.hawkwing.RingsOfIron.lighting.EmissiveLights;
 import com.hawkwing.RingsOfIron.lighting.HullArt;
 import com.hawkwing.RingsOfIron.lighting.SceneLighting;
+import com.ringsofiron.aicrew.CrewBody;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -274,12 +275,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
         if (hud.getViewMode().getMode() == ViewMode.INTERIOR) {
             if (walker == null) return;
-            // Force the shut door across a dock: pry or hack it as its power allows (F), or cut it (B)
-            if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
+            // Force the shut door across a dock: pry or hack it as its power allows (F), or cut it (B).
+            // Standing anywhere else, the same keys order the crew to.
+            if (Gdx.input.isKeyJustPressed(Input.Keys.F) || Gdx.input.isKeyJustPressed(Input.Keys.B)) {
+                boolean cut = Gdx.input.isKeyJustPressed(Input.Keys.B);
                 DoorForcing.Target t = world.forcing.target(game.avatar, new DoorForcing.Target());
-                show(world.forcing.start(game.avatar, t.state == ForceMethod.DoorState.UNPOWERED ? ForceMethod.PRY : ForceMethod.HACK));
+                if (t.craft == null) show(world.forcing.order(game.player, cut));
+                else show(world.forcing.start(game.avatar, cut ? ForceMethod.CUT
+                        : t.state == ForceMethod.DoorState.UNPOWERED ? ForceMethod.PRY : ForceMethod.HACK));
             }
-            if (Gdx.input.isKeyJustPressed(Input.Keys.B)) show(world.forcing.start(game.avatar, ForceMethod.CUT));
             if (Gdx.input.isKeyJustPressed(Input.Keys.L)) {
                 lightsOn = !lightsOn;
                 show(lightsOn ? "Deck lighting on" : "Deck lighting off");
@@ -606,7 +610,17 @@ public class RingsOfIronGame extends ApplicationAdapter {
             shapes.identity();
             shapes.translate(at.x, at.y, 0f);
             shapes.rotate(0f, 0f, 1f, degrees);
-            if (lightsOn) lighting.addDeck(g, at.x, at.y, body.getAngle());
+            if (lightsOn) {
+                lighting.addDeck(g, at.x, at.y, body.getAngle());
+                float cos = MathUtils.cos(body.getAngle()), sin = MathUtils.sin(body.getAngle());
+                for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                    GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
+                    if (pos.ship != ship) continue;
+                    Vector2 local = pos.toShipLocal(g, tmp2);
+                    lighting.addCrew(at.x + cos * local.x - sin * local.y, at.y + sin * local.x + cos * local.y,
+                            CrewBody.RADIUS * g.tileSize);
+                }
+            }
             float s = g.tileSize;
             if (withArt) {
                 DeckView.atmosphere(shapes, g, blink);

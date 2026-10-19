@@ -185,4 +185,67 @@ class DeckLightRigTest {
         }
         assertTrue(found, "a large fire gives off light");
     }
+
+    /** Two rooms with a reactor, split at x = 5 by a thin wall with a bulkhead door at y = 2. */
+    static ShipGridComponent twoRooms(boolean sealed) {
+        ChassisBlueprint bp = new ChassisBlueprint(
+                "##########",
+                "#RR......#",
+                "#RR......#",
+                "#........#",
+                "##########");
+        for (int y = 1; y <= 3; y++) bp.edgeWall(5, y, com.ringsofiron.interiorgrid.Side.LEFT,
+                com.ringsofiron.interiorgrid.WeightClass.LIGHT, y == 2);
+        ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(bp);
+        for (ChassisBlueprintLoader.SubsystemPlacement p : r.subsystems) {
+            Entity sys = new Entity();
+            SubsystemComponent sub = new SubsystemComponent(p.footprint, p.type);
+            sub.isOperational = true;
+            sys.add(sub);
+            p.footprint.installed = sys;
+        }
+        r.grid.getEdge(5, 2, com.ringsofiron.interiorgrid.Side.LEFT).bulkheadSealed = sealed;
+        return r.grid;
+    }
+
+    /** The spots near the door at x = 5, y = 2.5 tiles that light the floor. */
+    static java.util.List<LightSpot> doorLights(ShipGridComponent g, LightSpots spots) {
+        java.util.List<LightSpot> out = new java.util.ArrayList<>();
+        for (int i = 0; i < spots.size(); i++) {
+            LightSpot s = spots.get(i);
+            float tx = (s.x - g.gridOriginLocal.x) / g.tileSize, ty = (s.y - g.gridOriginLocal.y) / g.tileSize;
+            if (Math.abs(tx - 5f) < 0.5f && Math.abs(ty - 2.5f) < 0.1f && s.casts()) out.add(s);
+        }
+        return out;
+    }
+
+    @Test
+    void aDoorsLampsLightTheFloorEachSideInTheirColor() {
+        ShipGridComponent g = twoRooms(true);
+        LightSpots spots = new LightSpots();
+        new DeckLightRig(ART).collect(g, spots);
+        java.util.List<LightSpot> lamps = doorLights(g, spots);
+        assertEquals(2, lamps.size(), "one each side");
+        assertTrue(lamps.get(0).x < g.gridOriginLocal.x + 5f * g.tileSize);
+        assertTrue(lamps.get(1).x > g.gridOriginLocal.x + 5f * g.tileSize);
+        for (LightSpot s : lamps) {
+            assertTrue(s.on && s.reach <= 2f * g.tileSize);
+            assertTrue(s.color.r > s.color.g, "red while shut");
+        }
+        assertSame(lamps.get(1), spots.get(spots.size() - 1), "doors come last, the first left out");
+
+        g.getEdge(5, 2, com.ringsofiron.interiorgrid.Side.LEFT).bulkheadSealed = false;
+        spots.clear();
+        new DeckLightRig(ART).collect(g, spots);
+        for (LightSpot s : doorLights(g, spots)) assertTrue(s.color.g > s.color.r, "green while open");
+    }
+
+    @Test
+    void doorLampsGoOutWithThePower() {
+        ShipGridComponent g = twoRooms(true);
+        for (MountFootprint m : g.mounts) m.installed.getComponent(SubsystemComponent.class).isOperational = false;
+        LightSpots spots = new LightSpots();
+        new DeckLightRig(ART).collect(g, spots);
+        assertTrue(doorLights(g, spots).isEmpty());
+    }
 }

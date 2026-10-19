@@ -21,7 +21,9 @@ public abstract class CrewTask {
         /** Carry goods from one craft's cargo bays to another's (or within one). */
         CARRY,
         /** Yard work on a docked craft: repairing a damaged tile or system, or installing a refit part. */
-        YARD
+        YARD,
+        /** Force a shut door from where it can be reached: an order, e.g. a port door across a dock. */
+        FORCE_DOOR
     }
 
     public enum Status {
