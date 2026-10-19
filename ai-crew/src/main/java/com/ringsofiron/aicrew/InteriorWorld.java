@@ -42,6 +42,8 @@ final class InteriorWorld implements Disposable {
     /** Which tile edges are walls: vertical edges (x from 0 to width, then y), then horizontal ones. */
     private boolean[] barriers = new boolean[0];
     private boolean[] scratch = new boolean[0];
+    /** Which tiles crew can walk, row by row, as of the last {@link #syncWalls}. */
+    private boolean[] walkable = new boolean[0];
 
     InteriorWorld(GridNavGraph nav) {
         // Both are no-ops once loaded; the game's backend has usually loaded them already
@@ -58,6 +60,11 @@ final class InteriorWorld implements Disposable {
         int w = grid.width, h = grid.height;
         int n = (w + 1) * h + w * (h + 1);
         if (scratch.length != n) scratch = new boolean[n];
+        // Each tile borders four edges: whether it can be walked is worked out once, not per edge
+        if (walkable.length != w * h) walkable = new boolean[w * h];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) walkable[y * w + x] = nav.isWalkable(x, y);
+        }
         int i = 0;
         for (int y = 0; y < h; y++) {
             for (int x = 0; x <= w; x++) scratch[i++] = blocks(x - 1, y, x, y, Side.RIGHT);
@@ -75,7 +82,7 @@ final class InteriorWorld implements Disposable {
     /** True if the edge from tile (ax, ay) across its {@code side} to tile (bx, by) is a wall. */
     private boolean blocks(int ax, int ay, int bx, int by, Side side) {
         Tile a = grid.getTile(ax, ay), b = grid.getTile(bx, by);
-        boolean aOpen = a != null && nav.isWalkable(ax, ay), bOpen = b != null && nav.isWalkable(bx, by);
+        boolean aOpen = a != null && walkable[ay * grid.width + ax], bOpen = b != null && walkable[by * grid.width + bx];
         if (aOpen && bOpen) return grid.isEdgeBlocked(ax, ay, bx, by);
         if (aOpen) return !crossable(ax, ay, side, b);
         if (bOpen) return !crossable(bx, by, side.opposite(), a);

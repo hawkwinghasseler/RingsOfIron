@@ -40,6 +40,8 @@ public class CrewAgent {
     final Array<GridNode> pathScratch = new Array<>();
     /** The shut doors this crew member may open on the craft they are aboard ({@link com.ringsofiron.aicrew.CrewDoors}). */
     public final GridNavGraph.DoorKey doorKey;
+    /** Crew aboard this one's ship, gathered while looking for hostiles. */
+    final Array<Entity> aboardScratch = new Array<>();
 
     public CrewAgent(Entity entity, CrewMemberComponent crew, GridPositionComponent pos, CrewService service) {
         this.entity = entity;

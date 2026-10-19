@@ -123,6 +123,11 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
         return GridRayTraversal.hasLineOfSight(a, from.tileX(), from.tileY(), b, to.tileX(), to.tileY());
     }
 
+    /** True if craft {@code a} and {@code b} are the same craft, or docked straight to each other. */
+    public boolean joined(Entity a, Entity b) {
+        return a == b || linkBetween(grid(a), grid(b)) != null;
+    }
+
     /** A link from grid {@code a} straight onto grid {@code b}, or null if they are not docked. */
     private static GridLink linkBetween(ShipGridComponent a, ShipGridComponent b) {
         if (a == null || b == null) return null;
