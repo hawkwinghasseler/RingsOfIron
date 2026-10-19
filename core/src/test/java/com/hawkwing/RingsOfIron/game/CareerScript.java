@@ -355,10 +355,10 @@ abstract class CareerScript {
         double cost = world.yard.repairCost(game.player), paid = credits(), r0 = world.engine.getSimSeconds();
         log("Yard: %s (quoted %.0f cr).", world.yard.orderRepairs(game.player, station), cost);
         assertTrue(runUntil(2 * 3_600f, () -> !world.yard.repairing(game.player)), "the yard finished");
-        // A ship venting hard through an unsealed breach can shake loose of the latch for a moment, which
-        // calls the work off: order it again (the yard surviving a blip is round 5's docking part)
+        // Should the ship come loose of the latch for a moment, the work is called off: order it again
+        // (the yard surviving a blip is round 5's docking part)
         int again = 0;
-        for (; again < 8 && world.yard.repairCost(game.player) > 0.5; again++) {
+        for (; again < 3 && world.yard.repairCost(game.player) > 0.5; again++) {
             for (String n : world.yard.notices) log("  yard: %s", n);
             world.yard.notices.clear();
             if (world.docking.dockedTo(game.player) != station) assertTrue(game.dockAt(world.universe.uuidOf(station)));
