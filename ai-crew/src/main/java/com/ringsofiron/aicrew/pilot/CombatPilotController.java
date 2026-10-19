@@ -16,9 +16,13 @@ import com.ringsofiron.aicrew.pilot.PilotController.ShipState;
  *       goes across its line of approach, the way that most stretches its turn.</li>
  *   <li>Flank ({@link NpcCombatComponent.Stance#FLANK}): toward the point {@code preferredRange}
  *       behind the target, off its stern where the engines are, and hold there, nose still on it.</li>
+ *   <li>Kite ({@link NpcCombatComponent.Stance#KITE}): the range band without the drift around the
+ *       target, and {@link #KITE_GAIN} times as quick to open the range when the target comes inside it.</li>
  * </ul>
  */
 public class CombatPilotController {
+    /** How much harder a kiting ship answers the target closing inside its range. */
+    public static final float KITE_GAIN = 4f;
 
     private final PilotController mixer = new PilotController();
     private final Vector2 los = new Vector2(), side = new Vector2(), desired = new Vector2(), tmp = new Vector2();
@@ -62,10 +66,12 @@ public class CombatPilotController {
         // Hold the range band: closing speed in proportion to the range error, and a drift
         // around the target that grows as the range settles.
         float error = dist - combat.preferredRange;
-        float closing = Math.max(-combat.maxClosingSpeed, Math.min(combat.maxClosingSpeed, error * combat.rangeGain));
+        boolean kite = combat.stance == NpcCombatComponent.Stance.KITE;
+        float gain = kite && error < 0f ? combat.rangeGain * KITE_GAIN : combat.rangeGain;
+        float closing = Math.max(-combat.maxClosingSpeed, Math.min(combat.maxClosingSpeed, error * gain));
         float settled = Math.max(0f, 1f - Math.abs(closing) / combat.maxClosingSpeed);
         combat.mode = settled > 0.5f ? Mode.HOLDING : Mode.CLOSING;
-        side.set(-los.y, los.x).scl(combat.side * combat.circleSpeed * settled);
+        side.set(-los.y, los.x).scl(kite ? 0f : combat.side * combat.circleSpeed * settled);
         desired.set(targetVel).mulAdd(los, closing).add(side);
         mixer.steer(desired.sub(s.velocity), facing, s, dt, out);
     }
