@@ -21,6 +21,14 @@ public interface YardProvider {
         return "This yard doesn't refill tanks";
     }
 
+    /**
+     * Opens the ship editor on the ship's layout, for the yard to rebuild its decks to. Returns null
+     * when the editor opened, or what the yard says instead.
+     */
+    default String openLayoutEditor() {
+        return "This yard doesn't rebuild decks";
+    }
+
     /** Orders {@code weaponId}, new or used, fitted to hardpoint {@code hardpoint}; returns what the yard says. */
     String orderRefit(int hardpoint, String weaponId, boolean used);
 

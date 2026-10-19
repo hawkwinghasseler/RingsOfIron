@@ -18,7 +18,8 @@ import java.util.Locale;
 /**
  * A station's yard while the ship is docked there: what is damaged and what putting it right costs,
  * with a button to order the repairs, then one row per weapon hardpoint with the weapon on it, a
- * weapon to fit instead (click to pick the next), and buttons to order it new or used. Refreshes
+ * weapon to fit instead (click to pick the next), and buttons to order it new or used. Rebuild
+ * decks opens the ship editor for the yard to rebuild the ship to a new layout. Refreshes
  * from the {@link YardProvider} a few times a second; closes itself when the ship leaves the yard.
  */
 public class YardWindow extends Window {
@@ -104,7 +105,15 @@ public class YardWindow extends Window {
         add(fuel).left().padTop(4f).row();
         add(rows).left().padTop(8f).row();
         add(status).left().padTop(8f).row();
-        add(button("Close [Y]", () -> setOpen(false))).right().padTop(10f);
+        Table bottom = new Table();
+        bottom.add(button("Rebuild decks...", () -> {
+            if (provider == null) return;
+            String said = provider.openLayoutEditor();
+            if (said == null) setOpen(false);
+            else say(said);
+        })).padRight(10f);
+        bottom.add(button("Close [Y]", () -> setOpen(false)));
+        add(bottom).right().padTop(10f);
         setVisible(false);
     }
 

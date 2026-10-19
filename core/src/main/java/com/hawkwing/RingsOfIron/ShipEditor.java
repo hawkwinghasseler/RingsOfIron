@@ -54,6 +54,10 @@ import java.util.function.Consumer;
  * ship to the view. Ctrl+Z / Ctrl+Y undo and redo, Ctrl+S saves, Esc quits (twice with unsaved
  * changes). Every edit is built through the game's own loader, so the panel shows what the game
  * will make of the layout, or why it refuses it. A toggles between the art pack and flat colors.
+ *
+ * <p>Opened from a station yard in the game ({@link Refit}), it edits the layout of the player's
+ * ship instead: only that layout, on the Layout tab, and Ctrl+S has the yard rebuild the ship to it
+ * rather than writing the data files. Esc goes back to the game.
  */
 public class ShipEditor extends ApplicationAdapter {
 
@@ -117,8 +121,22 @@ public class ShipEditor extends ApplicationAdapter {
         }
     }
 
+    /** A station yard's refit of the player's ship, which the editor is open for. */
+    public interface Refit {
+        /** The layout the ship is built to now. */
+        ChassisDef layout();
+
+        /** Has the yard rebuild the ship to {@code layout}; returns null when done, or why not. */
+        String apply(ChassisDef layout);
+
+        /** Back to the game. */
+        void close();
+    }
+
     private final Path assetsDir;
     private final Path modsDir;
+    /** The yard refit this editor is open for, or null for the editor on its own. */
+    private final Refit refit;
     private EditorProject project;
 
     private ShapeRenderer shapes;
@@ -183,8 +201,14 @@ public class ShipEditor extends ApplicationAdapter {
     }
 
     public ShipEditor(Path assetsDir, Path modsDir) {
+        this(assetsDir, modsDir, null);
+    }
+
+    /** The editor open on the layout of a ship a station yard is to rebuild. */
+    public ShipEditor(Path assetsDir, Path modsDir, Refit refit) {
         this.assetsDir = assetsDir;
         this.modsDir = modsDir;
+        this.refit = refit;
     }
 
     @Override
@@ -196,12 +220,40 @@ public class ShipEditor extends ApplicationAdapter {
         ui = new OrthographicCamera();
         project = EditorProject.load(assetsDir, modsDir);
         if (!project.chassis.isEmpty()) chassisId = project.chassis.keySet().iterator().next();
+        if (refit != null) openRefit();
         resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         fit();
-        if (!project.problems.isEmpty()) say(project.problems.size() + " problem(s) loading data: " + project.problems.get(0));
+        if (refit != null) say("Refit: change the layout, then Ctrl+S to have the yard rebuild the ship, or Esc to leave it");
+        else if (!project.problems.isEmpty()) say(project.problems.size() + " problem(s) loading data: " + project.problems.get(0));
         else say("Loaded " + project.chassis.size() + " chassis, " + project.tiles.size() + " tile types and "
                 + project.components.size() + " components from " + project.dataDir);
         Gdx.input.setInputProcessor(new EditorInput());
+    }
+
+    /** Puts the ship's layout in the project, in place of its chassis as the data has it, and opens it. */
+    private void openRefit() {
+        ChassisDef def = refit.layout();
+        if (def == null) return;
+        ChassisModel model = ChassisModel.fromDef(def, catalog());
+        EditorProject.Item<ChassisModel> item = project.chassis.get(def.id);
+        if (item == null) item = project.addChassis(model);
+        item.value = model;
+        item.readOnly = false;
+        item.dirty = false;
+        chassisId = item.id;
+        revision++;
+    }
+
+    /** Has the yard rebuild the ship to the layout as drawn, and goes back to the game when it has. */
+    private void applyRefit() {
+        ChassisModel m = model();
+        if (m == null) return;
+        String why = refit.apply(m.toDef(catalog()));
+        if (why != null) {
+            say(why);
+            return;
+        }
+        refit.close();
     }
 
     @Override
@@ -331,6 +383,8 @@ public class ShipEditor extends ApplicationAdapter {
     }
 
     private void openChassis(String id) {
+        // A refit edits the one ship's layout
+        if (refit != null && !id.equals(chassisId)) return;
         chassisId = id;
         revision++;
         fit();
@@ -1313,10 +1367,17 @@ public class ShipEditor extends ApplicationAdapter {
         // Tabs
         float bx = x;
         bx += button(bx, y, "Layout", tab == Tab.LAYOUT, () -> tab = Tab.LAYOUT);
-        bx += button(bx, y, "Tiles", tab == Tab.TILES, () -> tab = Tab.TILES);
-        bx += button(bx, y, "Components", tab == Tab.COMPONENTS, () -> tab = Tab.COMPONENTS);
-        String unsaved = project.hasUnsavedChanges() ? "unsaved *" : "saved";
-        button(bx + 10, y, "Save (" + unsaved + ")", false, this::save);
+        if (refit != null) {
+            // The yard builds from the parts it has: tile types and components stay as they are
+            tab = Tab.LAYOUT;
+            bx += button(bx + 10, y, "Rebuild ship", false, this::applyRefit) + 20f;
+            button(bx, y, "Leave", false, refit::close);
+        } else {
+            bx += button(bx, y, "Tiles", tab == Tab.TILES, () -> tab = Tab.TILES);
+            bx += button(bx, y, "Components", tab == Tab.COMPONENTS, () -> tab = Tab.COMPONENTS);
+            String unsaved = project.hasUnsavedChanges() ? "unsaved *" : "saved";
+            button(bx + 10, y, "Save (" + unsaved + ")", false, this::save);
+        }
         y -= LINE * 1.6f;
         switch (tab) {
             case LAYOUT: y = layoutPanel(x, y); break;
@@ -1330,7 +1391,8 @@ public class ShipEditor extends ApplicationAdapter {
         List<String> status = wrap(this.status, PANEL_WIDTH - 2 * PAD);
         float sy = LINE * 3.2f;
         for (int i = 0; i < Math.min(2, status.size()); i++, sy -= LINE) text(x, sy, status.get(i), Color.YELLOW);
-        text(x, LINE * 1.0f, "Ctrl+S save  Ctrl+Z/Y undo/redo  F fit  Esc quit", Color.GRAY);
+        text(x, LINE * 1.0f, refit != null ? "Ctrl+S rebuild ship  Ctrl+Z/Y undo/redo  F fit  Esc leave"
+                : "Ctrl+S save  Ctrl+Z/Y undo/redo  F fit  Esc quit", Color.GRAY);
 
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (float[] r : rects) {
@@ -1349,6 +1411,7 @@ public class ShipEditor extends ApplicationAdapter {
 
     private float layoutPanel(float x, float y) {
         ShipPartCatalog cat = catalog();
+        if (refit != null) return layoutDetails(x, y + LINE * 1.4f, cat);
         text(x, y, "Chassis", Color.CYAN);
         y -= LINE;
         float bx = x;
@@ -1390,6 +1453,12 @@ public class ShipEditor extends ApplicationAdapter {
             y -= LINE;
             text(x, y, "Type an id (lowercase, digits, _) and press Enter", Color.GRAY);
         }
+        return layoutDetails(x, y, cat);
+    }
+
+    /** The open layout's size, check and tools, below the chassis list. */
+    private float layoutDetails(float x, float y, ShipPartCatalog cat) {
+        float bx;
         ChassisModel m = model();
         if (m == null) return y - LINE;
         boolean ed = editable();
@@ -2299,14 +2368,23 @@ public class ShipEditor extends ApplicationAdapter {
                 return true;
             }
             if (ctrl) {
-                if (keycode == com.badlogic.gdx.Input.Keys.S) save();
+                if (keycode == com.badlogic.gdx.Input.Keys.S) {
+                    if (refit != null) applyRefit();
+                    else save();
+                }
                 else if (keycode == com.badlogic.gdx.Input.Keys.Z) undoStep();
                 else if (keycode == com.badlogic.gdx.Input.Keys.Y) redoStep();
                 return true;
             }
             switch (keycode) {
                 case com.badlogic.gdx.Input.Keys.ESCAPE:
-                    if (!project.hasUnsavedChanges() || quitArmed) Gdx.app.exit();
+                    if (refit != null) {
+                        if (!project.hasUnsavedChanges() || quitArmed) refit.close();
+                        else {
+                            quitArmed = true;
+                            say("Layout changed: Esc again to leave it unbuilt, or Ctrl+S to have the yard rebuild the ship");
+                        }
+                    } else if (!project.hasUnsavedChanges() || quitArmed) Gdx.app.exit();
                     else requestClose();
                     return true;
                 case com.badlogic.gdx.Input.Keys.F:
@@ -2324,7 +2402,7 @@ public class ShipEditor extends ApplicationAdapter {
                     if (tab == Tab.LAYOUT && tool == Tool.HULL) flipPiece();
                     return true;
                 case com.badlogic.gdx.Input.Keys.TAB:
-                    tab = Tab.values()[(tab.ordinal() + 1) % Tab.values().length];
+                    if (refit == null) tab = Tab.values()[(tab.ordinal() + 1) % Tab.values().length];
                     return true;
                 default:
                     break;

@@ -20,6 +20,8 @@ import java.util.Locale;
  */
 public class YardWork implements YardProvider {
     private final GameWorld world;
+    /** Opens the ship editor for a refit; set by the game screen. */
+    private Runnable layoutEditor;
 
     public YardWork(GameWorld world) {
         this.world = world;
@@ -89,6 +91,21 @@ public class YardWork implements YardProvider {
                     .append(String.format(Locale.ROOT, " %.0f%%", 100 * have / full));
         }
         return sb.toString();
+    }
+
+    /** What opens the ship editor for the yard's deck rebuild ({@link ShipRefit}). */
+    public void setLayoutEditor(Runnable layoutEditor) {
+        this.layoutEditor = layoutEditor;
+    }
+
+    @Override
+    public String openLayoutEditor() {
+        if (station() == null) return "No yard here";
+        if (layoutEditor == null) return YardProvider.super.openLayoutEditor();
+        String no = ShipRefit.refused(world, world.getPlayer());
+        if (no != null) return no;
+        layoutEditor.run();
+        return null;
     }
 
     @Override

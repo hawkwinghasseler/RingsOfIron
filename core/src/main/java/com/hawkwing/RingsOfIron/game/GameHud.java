@@ -27,6 +27,9 @@ public class GameHud implements Disposable {
         this(world, new UiHud());
     }
 
+    /** The docked station's yard, as the yard window sees it. */
+    public final YardWork yard;
+
     public GameHud(GameWorld world, UiHud hud) {
         this.world = world;
         this.hud = hud;
@@ -42,7 +45,7 @@ public class GameHud implements Disposable {
         // macro-sim's station markets for the [T] trade window.
         hud.setTrade(new MarketTrade(world));
         // The docked station's yard for the [Y] yard window: repairs and refits.
-        hud.setYard(new YardWork(world));
+        hud.setYard(yard = new YardWork(world));
         hullHits = (signal, hit) -> {
             if (hit.ship != null && hit.ship == world.getPlayer()) hud.flashHullHit(hit.tileX, hit.tileY);
         };
