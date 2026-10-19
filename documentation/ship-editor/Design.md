@@ -1,0 +1,91 @@
+# Ship Editor Design
+
+## Overview
+The ship editor is a standalone libGDX tool for making and changing the game's ships. It edits three kinds of data, all of it the same data the game loads, so whatever is saved in the editor is what the game builds the next time it starts:
+
+- **Ship layouts**: the `[chassis.*]` interior layouts in `assets/data/chassis.toml` (ships and station layouts alike).
+- **Tile types**: the `[tile.*]` building blocks a layout is painted with (floors, conduits, hull, internal walls), in `assets/data/tiles.toml`.
+- **Ship components**: the `[component.*]` systems a layout mounts (reactors, life support, cargo bays, docking ports...), in `assets/data/components.toml`.
+
+Run it with `gradlew :lwjgl3:runShipEditor`, or `demos/Ship editor.bat` on Windows. It opens on the first chassis found.
+
+## Implementation Dependencies
+- **`modding-data`**: the definitions (`ChassisDef`, `TileTypeDef`, `ShipComponentDef`) and `DataFileParser`, so the editor reads data exactly as the game does.
+- **`interior-grid`**: `ChassisBlueprintLoader` builds every edit into a real `ShipGridComponent`, so the editor shows and validates what the game will build. The editor's data model and its TOML writer (`com.ringsofiron.interiorgrid.editor`) live here, free of rendering, so they are unit tested.
+- **`core`**: the editor screen (`ShipEditor`), drawn with `ShapeRenderer` and the default `BitmapFont` like the other demos. `lwjgl3` has its launcher.
+
+## Data-Driven Tiles and Components
+Until now the map characters and the systems they stand for were fixed in code (`Tile.WallType`, `Tile.FloorType`, `SubsystemComponent.SubsystemType`). To let a designer make new ones, each becomes a definition that names the built-in behavior it uses and the settings it changes. Code keeps the behaviors; data says which ones exist and what they are called.
+
+### Tile types
+```toml
+[tile.armor_plate]
+name = "Armor plate"
+symbol = "X"              # one character, used in chassis rows
+base = "HULL"             # VOID, FLOOR, CONDUIT, HULL or INTERNAL_WALL
+weight_class = "HEAVY"    # walls: LIGHT, MEDIUM or HEAVY
+material = "composite_armor"  # a [material.*] id
+covering = "NONE"         # floors: NONE or CARPET, laid when the ship is built
+color = "#7a8a9a"         # how the editor draws it
+```
+`assets/data/tiles.toml` restates the built-in characters as definitions (`#`, `1`-`3`, `I`, `.`, `+` and space) so they can be edited like any other; a tile type a data file leaves out keeps its built-in meaning, so blueprints made in code still load.
+
+### Ship components
+```toml
+[component.fusion_core]
+name = "Fusion core"
+symbol = "F"              # one letter, used in chassis rows
+behavior = "REACTOR"      # a SubsystemType: REACTOR, SHIELD_EMITTER, TURRET_MOUNT, LIFE_SUPPORT,
+                          # HELM, WEAPONS, CARGO, AIRLOCK or DOCKING_PORT
+sizes = ["M", "L"]        # mount sizes it comes in (default: every size its mount kind has)
+color = "#ff9a3c"
+power_output = { M = 4.0e6, L = 1.4e7 }   # REACTOR: watts at full health, by size
+```
+The behavior fixes the mount kind (square primary, rectangular auxiliary or hull-edge port) and what the system does. The settings a component can change today are:
+
+| Setting | Behavior | Meaning | Default |
+|---|---|---|---|
+| `power_output` | `REACTOR` | Watts by mount size | 1, 3, 10, 30 MW for S-XL |
+| `throughput` | `LIFE_SUPPORT` | Multiplies scrubbing, air and oxygen supply | 1.0 |
+
+Each installed system keeps its component id and these values on its `SubsystemComponent` (so a save restores them, even if the data changes later). Other systems read the behavior through `SubsystemComponent.type`, exactly as before, so a new turret component works wherever a turret mount does. More settings (shield strength, cargo stack height, crew console speed) are added the same way when the systems that would read them want them.
+
+Symbols are one character and share one namespace: no two tile types or components may use the same one. The catalog that resolves them (`ShipPartCatalog`) is built from the definitions when data loads, and throws on a clash, a bad base or behavior, or a size a component's mount kind lacks.
+
+### Chassis
+Chassis rows draw components by their symbol, as before. An explicit mount may name a component instead of a behavior: `mounts = [{ component = "fusion_core", size = "M", x = 3, y = 2 }]` (`type = "REACTOR"` still means the built-in `reactor` component).
+
+## The Editor
+
+### Layout
+The screen is the ship on a tile grid, with a panel on the right. Three tabs at the top of the panel switch what it edits: **Layout**, **Tiles** and **Components**. Mouse wheel zooms, middle or right drag pans. Ctrl+Z / Ctrl+Y undo and redo, Ctrl+S saves everything that changed, Esc quits (asking to save unsaved work first).
+
+### Layout tab
+- **Chassis list**: pick a chassis to edit, or **New** (asks for an id and a size). **Duplicate** copies the open one under a new id.
+- **Tools** (number keys or click):
+  1. **Paint**: left-click or drag paints the selected tile type; drag with Shift fills a rectangle.
+  2. **Component**: places the selected component at the cursor with the selected size; R rotates. The ghost is green where the game would accept it and red (with the reason) where it would not.
+  3. **Edge wall**: click near a tile edge to add or remove a thin wall there; B toggles a bulkhead door, and weight class follows the selected weight.
+  4. **Hull piece**: places a wedge or block (W switches), R rotates.
+  5. **Covering**: drag a rectangle to lay carpet; right-click a covered tile removes that covering.
+  6. **Erase**: removes the component, hull piece, edge wall or covering under the cursor, or paints void.
+  7. **Port**: click a docking port to toggle it active or passive.
+- **Grid**: buttons add or remove a row or column on any side (everything listed shifts to match), set the tile size, and **Center origin** puts the body origin in the middle of the grid.
+- **Properties**: name, `station` flag.
+- **Check**: every edit is rebuilt through `ChassisBlueprintLoader`; the panel shows the result (tile count, mounts, cargo volume, rooms, power reach) or the loader's error, and the problem tile is outlined in red. A chassis with an error can still be saved, so work in progress is never lost, but the panel warns that the game will refuse it.
+
+### Tiles and Components tabs
+Each lists every definition with its symbol and color. **New** makes one (from the selected one, so a new turret starts as a copy of the turret mount); every field is an editable row: text fields take typing, choices cycle on click. A definition that chassis use cannot be deleted until they stop using it; changing its symbol rewrites those chassis rows to match.
+
+### Saving
+The editor writes TOML by hand rather than through the parser, so the files stay readable and keep their comments:
+- A definition that came from a file is rewritten **in place**: its `[type.id]` section is replaced and the rest of the file is left untouched. Comment lines inside the section stay with the key they sat above.
+- A new definition is appended to the file its type lives in (`chassis.toml`, `tiles.toml`, `components.toml`).
+- Rows are written as a column of quoted strings. A mount is drawn in the rows when the loader would read it back exactly (no touching neighbor with the same symbol, and the rotation the loader would infer); otherwise it goes in `mounts`. Mounts that came from `mounts` stay there.
+- Saving only touches base data in `assets/data`. Mods are read so their parts show up, but not written.
+
+The ship's exterior (`hull` polygon, hardpoints, mass) in `ships.toml` is not edited here; the panel shows the grid's extent in body coordinates so the hull polygon can be matched to it.
+
+## Open Questions
+- Should the hull polygon in `ships.toml` be generated from the layout's outer hull?
+- Per-tile art: tile types carry a `color` for now; a texture key could follow once tile art exists.
