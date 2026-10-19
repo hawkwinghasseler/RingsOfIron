@@ -26,6 +26,10 @@ public class AudioEventCatalog {
     public static final String FOOTSTEP = "event:/crew/footstep";
     /** A crew member calling out: taking a job, or crying out when knocked down. */
     public static final String VOICE = "event:/crew/voice";
+    /** An interface chime for news that matters: a promotion, a contract done. Heard wherever the listener is. */
+    public static final String UI_NOTICE = "event:/ui/notice";
+    /** An interface warning tone: danger, such as a hostile intercepting. */
+    public static final String UI_WARNING = "event:/ui/warning";
     // Paths named in assets.toml's [audio_event] table (modding-data's AssetRegistry keys
     // evt_railgun_fire and evt_hull_breach)
     public static final String RAILGUN = "event:/weapons/railgun";
@@ -54,6 +58,9 @@ public class AudioEventCatalog {
         c.register(SoundEventDef.loop(HULL_BREACH, 2f, 40f, 0.8f));
         c.register(SoundEventDef.oneShot(FOOTSTEP, 0.12f, 1f, 15f, 0.35f));
         c.register(SoundEventDef.oneShot(VOICE, 0.6f, 1.5f, 25f, 0.6f));
+        // Interface sounds play at the listener, so their distances never cut in
+        c.register(SoundEventDef.oneShot(UI_NOTICE, 0.45f, 1e6f, 2e6f, 0.45f));
+        c.register(SoundEventDef.oneShot(UI_WARNING, 0.6f, 1e6f, 2e6f, 0.5f));
         return c;
     }
 
