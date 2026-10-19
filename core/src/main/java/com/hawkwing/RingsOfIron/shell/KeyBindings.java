@@ -33,7 +33,7 @@ public final class KeyBindings {
         WARP_DOWN("Time warp down", Input.Keys.COMMA),
         VIEW("Deck / outside view", Input.Keys.V),
         USE("Use console", Input.Keys.E),
-        LIGHTS("Deck lights", Input.Keys.L),
+        LIGHTS("Deck lights", Input.Keys.O),
         MAP("Traffic map", Input.Keys.M),
         TRADE("Station market", Input.Keys.T),
         YARD("Station yard", Input.Keys.Y),
@@ -48,6 +48,11 @@ public final class KeyBindings {
         BURN_LATER("Burn: move later", Input.Keys.RIGHT_BRACKET),
         BURN_EARLIER("Burn: move earlier", Input.Keys.LEFT_BRACKET),
         BURN_DELETE("Burn: delete", Input.Keys.FORWARD_DEL),
+        MISSIONS("Mission board", Input.Keys.J),
+        BOARD("Boarding window", Input.Keys.K),
+        ABANDON("Abandon ship (press twice)", Input.Keys.P),
+        LOG("Notice log", Input.Keys.L),
+        HELP("Controls", Input.Keys.F1),
         QUICK_SAVE("Quick save", Input.Keys.F5),
         QUICK_LOAD("Quick load", Input.Keys.F9);
 

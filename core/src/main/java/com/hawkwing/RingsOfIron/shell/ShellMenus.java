@@ -58,6 +58,7 @@ class ShellMenus {
     private Table frame(Table root, Panel p, String title) {
         panel = p;
         root.clear();
+        shell.menuNav.clear();
         Table t = new Table();
         t.setBackground(skin.getDrawable("panel"));
         t.pad(24f);
@@ -111,6 +112,14 @@ class ShellMenus {
     void showPause(Table root) {
         Table t = frame(root, Panel.PAUSE, "PAUSED");
         t.add(button("Resume", shell::resumeGame)).width(260f).colspan(3).row();
+        if (shell.getGame() != null && shell.getGame().canCallTow()) {
+            // The distress beacon, for a ship that can't get home
+            t.add(button("Call a tow", () -> {
+                String said = shell.getGame().callTowNow();
+                shell.resumeGame();
+                shell.getGame().showNotice(said);
+            })).width(260f).colspan(3).row();
+        }
         t.add(button("Save", () -> showSave(root))).width(260f).colspan(3).row();
         TextButton load = button("Load", () -> showLoad(root));
         load.setDisabled(shell.slots().latest() == null);
@@ -118,7 +127,7 @@ class ShellMenus {
         t.add(button("Settings", () -> showSettings(root))).width(260f).colspan(3).row();
         t.add(button("Quit to menu", shell::quitToMenu)).width(260f).colspan(3).row();
         t.add(button("Quit game", shell::quit)).width(260f).colspan(3).row();
-        t.add(new Label("Esc resumes", skin, "dim")).colspan(3).padTop(8f).row();
+        t.add(new Label("Esc resumes   Arrow keys or the pad choose", skin, "dim")).colspan(3).padTop(8f).row();
         endFrame(t);
     }
 
@@ -257,6 +266,15 @@ class ShellMenus {
             }
         });
         t.add(gamepad).left().colspan(3).row();
+        CheckBox guide = new CheckBox(" Walkthrough at the start of a new game", skin);
+        guide.setChecked(s.openingGuide);
+        guide.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                s.openingGuide = guide.isChecked();
+            }
+        });
+        t.add(guide).left().colspan(3).row();
         Table keys = new Table();
         keys.top().left();
         Array<TextButton> keyButtons = new Array<>();
@@ -268,14 +286,7 @@ class ShellMenus {
                 @Override
                 public void changed(ChangeEvent event, Actor actor) {
                     b.setText("press a key (Esc cancels)");
-                    shell.captureKey(key -> {
-                        if (key >= 0) {
-                            KeyBindings.Action moved = shell.bindings().bind(a, key);
-                            showMessage(moved == null ? ""
-                                    : moved.label + " moved to " + KeyBindings.keyName(shell.bindings().keyOf(moved)));
-                        }
-                        refreshKeys(keyButtons);
-                    });
+                    capture(a, keyButtons);
                 }
             });
             keys.add(b).width(200f).pad(1f).row();
@@ -302,6 +313,41 @@ class ShellMenus {
         }));
         t.add(buttons).colspan(3).padTop(10f).row();
         endFrame(t);
+    }
+
+    /**
+     * Waits for the key to bind {@code a} to. A key another action has asks first: the same key
+     * again swaps the two, another key is taken as the choice instead, Esc cancels.
+     */
+    private void capture(KeyBindings.Action a, Array<TextButton> keyButtons) {
+        shell.captureKey(key -> choose(a, key, keyButtons));
+    }
+
+    private void choose(KeyBindings.Action a, int key, Array<TextButton> keyButtons) {
+        KeyBindings.Action other = key < 0 ? null : shell.bindings().actionOn(key);
+        if (other == null || other == a) {
+            if (key >= 0) bindAndSay(a, key);
+            else showMessage("");
+            refreshKeys(keyButtons);
+            return;
+        }
+        String name = KeyBindings.keyName(key);
+        showMessage(name + " is " + other.label + ". " + name + " again swaps them (" + other.label + " moves to "
+                + KeyBindings.keyName(shell.bindings().keyOf(a)) + "); another key picks that instead; Esc cancels");
+        shell.captureKey(again -> {
+            if (again == key) {
+                bindAndSay(a, key);
+                refreshKeys(keyButtons);
+            } else {
+                choose(a, again, keyButtons);
+            }
+        });
+    }
+
+    private void bindAndSay(KeyBindings.Action a, int key) {
+        KeyBindings.Action moved = shell.bindings().bind(a, key);
+        showMessage(moved == null ? (KeyBindings.reserved(key) ? KeyBindings.keyName(key) + " can't be bound" : "")
+                : moved.label + " moved to " + KeyBindings.keyName(shell.bindings().keyOf(moved)));
     }
 
     private void refreshKeys(Array<TextButton> buttons) {
@@ -369,6 +415,7 @@ class ShellMenus {
         c.windowWidth = s.windowWidth;
         c.windowHeight = s.windowHeight;
         c.gamepad = s.gamepad;
+        c.openingGuide = s.openingGuide;
         c.keys = new ObjectMap<>(s.keys);
         return c;
     }

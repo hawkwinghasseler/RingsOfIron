@@ -246,6 +246,13 @@ public class UiHud implements Disposable {
 
     /** Handles HUD keys. Public so games that route input themselves can forward keys. */
     public boolean handleKey(int keycode) {
+        // The open window has the arrow keys and Enter, for the keyboard and the pad
+        com.badlogic.gdx.scenes.scene2d.Group window = openWindow();
+        if (window != focusWindow) {
+            focusNav.clear();
+            focusWindow = window;
+        }
+        if (window != null && focusNav.key(window, keycode)) return true;
         switch (keycode) {
             case Input.Keys.E:
                 if (consoleWindow.isOpen()) return false;
@@ -300,6 +307,19 @@ public class UiHud implements Disposable {
             default:
                 return false;
         }
+    }
+
+    private final FocusNav focusNav = new FocusNav();
+    private com.badlogic.gdx.scenes.scene2d.Group focusWindow;
+
+    /** The window that has the keys, or null: the console, market, yard, mission board or boarding window. */
+    public com.badlogic.gdx.scenes.scene2d.Group openWindow() {
+        if (consoleWindow.isOpen()) return consoleWindow;
+        if (tradeWindow.isOpen()) return tradeWindow;
+        if (yardWindow.isOpen()) return yardWindow;
+        if (missionWindow.isOpen()) return missionWindow;
+        if (boardingWindow.isOpen()) return boardingWindow;
+        return null;
     }
 
     private void openConsole(Entity console, InteractableConsoleComponent data) {

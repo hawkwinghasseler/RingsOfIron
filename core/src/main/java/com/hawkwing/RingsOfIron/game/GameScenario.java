@@ -310,6 +310,8 @@ public class GameScenario {
         world.standing.reset();
         // ...and with no contracts
         world.contracts.reset();
+        // ...and outside First Play and the opening walkthrough
+        world.guides.reset();
         world.engine.getSerializationService().loadFromFile(file);
         relink();
         world.standing.migrateLegacy(player);
