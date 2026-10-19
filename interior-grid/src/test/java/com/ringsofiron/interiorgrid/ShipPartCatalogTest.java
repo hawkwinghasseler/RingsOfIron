@@ -160,7 +160,8 @@ class ShipPartCatalogTest {
         ShipPartCatalog data = ShipPartCatalog.from(defs);
         ShipPartCatalog builtIn = ShipPartCatalog.builtIn();
         assertEquals(builtIn.tiles().size(), data.tiles().size());
-        assertEquals(builtIn.components().size(), data.components().size());
+        // Every built-in, and the components only data has (the freighter's freight drive)
+        assertTrue(data.components().size() >= builtIn.components().size());
         for (ShipPartCatalog.TileType t : builtIn.tiles()) {
             ShipPartCatalog.TileType d = data.tile(t.id);
             assertEquals(t.symbol, d.symbol, t.id);

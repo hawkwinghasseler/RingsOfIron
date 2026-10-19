@@ -10,6 +10,8 @@
 #   throughput    LIFE_SUPPORT: multiplies scrubbing, air and oxygen supply (1.0 standard)
 #   fluid         TANK: OXYGEN, NITROGEN or PROPELLANT (the default)
 #   capacity      TANK: kilograms by size (standard 150 kg of a gas, 1,000 kg of propellant a tile)
+#   thrust        ENGINE: newtons at full health by size (standard 1.2, 3.6, 12, 36 MN for S-XL);
+#                 a ship's main engine is the sum of its working engines, scaled by their damage
 # These restate the built-in letters; a component left out keeps its built-in meaning.
 
 [component.reactor]
@@ -65,6 +67,15 @@ name = "Engine"
 symbol = "E"
 behavior = "ENGINE"
 color = "#6aa8e8"
+
+# A hauler's drive: big and frugal, but slow to push a loaded hull. The freighter's two
+# Medium ones give it the 3.0 MN it had before engines set thrust.
+[component.freight_drive]
+name = "Freight drive"
+symbol = "Q"
+behavior = "ENGINE"
+color = "#5a8ec0"
+thrust = { M = 1.5e6 }
 
 [component.docking_port]
 name = "Docking port"

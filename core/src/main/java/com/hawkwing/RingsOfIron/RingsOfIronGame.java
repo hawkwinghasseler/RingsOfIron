@@ -29,6 +29,7 @@ import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.art.ExteriorArt;
+import com.hawkwing.RingsOfIron.game.Bridge;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.DeckView;
@@ -83,8 +84,15 @@ import java.nio.file.Paths;
  * <p>Controls, outside: W/S main engine, A/D turn, Z/C strafe, X rotation assist, Tab cycle
  * target, Space fire the guns and laser (the turrets lead the locked target themselves), R launch
  * a missile at it, F drop a decoy, comma/period time warp down/up, mouse wheel zoom. Point defense
- * shoots down incoming missiles by itself. The raider fights back once you shoot at it. V switches
- * to the deck view, where WASD walks your character, E uses the console you stand at, and F or B
+ * shoots down incoming missiles by itself. The raider fights back once you shoot at it.
+ *
+ * <p>The outside view is what you see seated at a console ({@link Bridge}): you start at the helm,
+ * which flies the ship and fires it too. V stands you up into the deck view, where WASD walks your
+ * character; V again beside the helm or the weapons console sits you there and looks outside. At the
+ * weapons console only the guns, missiles, decoys and Tab answer, and the helm flies the ship: Bea, the
+ * helmsman, holds the heading you left it on, and with nobody at the helm the ship drifts. Run with
+ * {@code -Dview.anywhere=true} to switch views anywhere and fly from the deck, as before. In the deck
+ * view E uses the console you stand at, and F or B
  * forces the shut door across a dock (pry or hack, or cut), and L turns the deck lighting off and
  * back on. F5
  * quick-saves, F9 loads the quick save. Esc quits.
@@ -114,6 +122,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private static final float START_VIEW = 160f;
     private static final float STATUS_WIDTH = 420f;
     private static final float WALK_SPEED = 1f;
+    /** {@code -Dview.anywhere=true}: V switches the view anywhere and the ship flies from the deck, for testing. */
+    private static final boolean VIEW_ANYWHERE = Boolean.getBoolean("view.anywhere");
 
     private final Path assetsDir;
     private final Path modsDir;
@@ -218,6 +228,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.combatEvents.detonations.add((signal, boom) ->
                 explosions.add(new float[]{boom.worldPoint.x, boom.worldPoint.y, 0f}));
 
+        world.bridge.playerAlwaysAtHelm = VIEW_ANYWHERE;
+        if (!VIEW_ANYWHERE) {
+            hud.setViewKey(this::sitOrStand);
+            // Pushed off, knocked out or the console shot away: back on deck
+            world.bridge.unseated.add((signal, why) -> {
+                show(why);
+                hud.getViewMode().setMode(ViewMode.INTERIOR);
+            });
+        }
         hud.getViewMode().addListener((previous, current) -> {
             if (previous == current) return;
             if (current == ViewMode.INTERIOR) {
@@ -240,6 +259,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             }
         }));
         if (firstPlayMode) firstPlay = FirstPlay.start(world, game);
+        matchViewToSeat();
         show(game.content.report.hasErrors() ? "Content loaded with errors; see the log" : "Welcome aboard");
         if (game.content.report.hasErrors()) Gdx.app.error("RingsOfIron", game.content.report.toString());
     }
@@ -330,7 +350,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
             DeckView.walk(walker, aboard == null ? null : world.docking.bodyOf(aboard), sx, sy, WALK_SPEED);
             return;
         }
-        if (controls != null) {
+        // At the weapons console only the weapons answer; the helm flies the ship
+        boolean helm = world.bridge.playerAtHelm();
+        if (helm && controls != null) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.X)) controls.rotationAssist = !controls.rotationAssist;
             if (Gdx.input.isKeyPressed(Input.Keys.W)) controls.forward += 1f;
             if (Gdx.input.isKeyPressed(Input.Keys.S)) controls.forward -= 1f;
@@ -344,11 +366,40 @@ public class RingsOfIronGame extends ApplicationAdapter {
             show(gun.getTarget() == null ? "No target for the missile" : "Launcher reloading");
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.F) && gun.dropDecoy()) show("Decoy away");
+        if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) gun.setTarget(game.nextContact(gun.getTarget()));
+        if (!helm) return;
         if (Gdx.input.isKeyJustPressed(Input.Keys.G)) show(docking.toggleArm());
         if (Gdx.input.isKeyJustPressed(Input.Keys.H)) show(docking.nextPort());
         if (Gdx.input.isKeyJustPressed(Input.Keys.U)) show(docking.undock());
         planBurns();
-        if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) gun.setTarget(game.nextContact(gun.getTarget()));
+    }
+
+    /** V: stand up from the console into the deck view, or sit at the console beside you and look outside. */
+    private void sitOrStand() {
+        if (hud.getViewMode().getMode() == ViewMode.EXTERIOR) {
+            boolean leftHelm = world.bridge.playerAtHelm();
+            world.bridge.stand();
+            hud.getViewMode().setMode(ViewMode.INTERIOR);
+            if (!leftHelm) show("You leave the weapons console");
+            else if (world.bridge.helmsman(game.player) != null) show("You leave the helm; the helmsman holds your heading");
+            else show("You leave the helm; nobody has it now");
+            return;
+        }
+        String refused = world.bridge.sit();
+        if (refused != null) {
+            show(refused);
+            return;
+        }
+        hud.getViewMode().setMode(ViewMode.EXTERIOR);
+        String fault = world.bridge.helmFault(game.player);
+        show(world.bridge.playerAtHelm() ? (fault == null ? "You take the helm" : "You take the helm, but " + fault)
+                : "You take the weapons console");
+    }
+
+    /** Outside while seated at a console, on deck otherwise. */
+    private void matchViewToSeat() {
+        if (VIEW_ANYWHERE) return;
+        hud.getViewMode().setMode(world.bridge.seat() != null ? ViewMode.EXTERIOR : ViewMode.INTERIOR);
     }
 
     private void planBurns() {
@@ -423,6 +474,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             gun = new PlayerGunnery(world, game.player);
             if (gun.getTarget() == null) gun.setTarget(game.nextContact(null));
             hud.setTargeting(new CombatTargetingProvider(gun));
+            matchViewToSeat();
             show("Game loaded");
         } catch (RuntimeException e) {
             Gdx.app.error("RingsOfIron", "Load failed", e);
@@ -796,8 +848,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Actor shipPanel = hud.getMinimapPanel();
         float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
         font.draw(batch, hud.getViewMode().getMode() == ViewMode.INTERIOR
-                ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   L lights   V outside view   F5 save  F9 load   Esc quit"
-                : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  F5 save  F9 load  Esc quit",
+                ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   L lights   "
+                        + (VIEW_ANYWHERE ? "V outside view" : "V sit at the helm or weapons console") + "   F5 save  F9 load   Esc quit"
+                : world.bridge.playerAtWeapons()
+                ? "Weapons console: Space guns  R missile  F decoy  Tab target  , . warp  V stand up  F5 save  F9 load  Esc quit"
+                : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V "
+                        + (VIEW_ANYWHERE ? "deck view" : "stand up") + "  F5 save  F9 load  Esc quit",
                 hintX, 24f);
         if (notice != null && noticeTime > 0f) {
             font.setColor(Color.ORANGE);
@@ -811,11 +867,26 @@ public class RingsOfIronGame extends ApplicationAdapter {
             font.draw(batch, firstPlay.objective(), left, top - 90f - 20f * dock.length - 10f, STATUS_WIDTH - 10f,
                     com.badlogic.gdx.utils.Align.left, true);
         }
-        if (hud.getViewMode().getMode() != ViewMode.INTERIOR) {
+        if (hud.getViewMode().getMode() != ViewMode.INTERIOR && world.bridge.playerAtHelm()) {
             font.setColor(Color.LIGHT_GRAY);
             font.draw(batch, "G arm port + ask clearance   H next port   U undock   T trade, Y yard when docked", hintX, 44f);
         }
+        String bridge = bridgeLine();
+        if (bridge != null) {
+            font.setColor(Color.LIGHT_GRAY);
+            font.draw(batch, bridge, left, top - 90f - 20f * dock.length - (firstPlay != null ? 70f : 10f));
+        }
         batch.end();
+    }
+
+    /** Who has the helm, when it isn't simply the player at it. */
+    private String bridgeLine() {
+        if (VIEW_ANYWHERE) return null;
+        String fault = world.bridge.helmFault(game.player);
+        if (world.bridge.playerAtHelm()) return fault == null ? null : "Helm: " + fault;
+        if (fault != null) return "Helm: " + fault + "; the ship drifts";
+        return world.bridge.helmsman(game.player) != null ? "Helm: the helmsman holds the heading"
+                : "Helm: nobody; the ship drifts";
     }
 
     @Override

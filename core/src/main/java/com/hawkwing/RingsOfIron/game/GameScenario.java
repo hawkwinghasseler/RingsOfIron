@@ -10,6 +10,8 @@ import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
@@ -105,11 +107,18 @@ public class GameScenario {
         FlightControlComponent controls = player.getComponent(FlightControlComponent.class);
         if (controls != null) controls.rotationAssist = true;
 
+        Bridge.install(player);
+
         ShipGridComponent grid = player.getComponent(ShipGridComponent.class);
         List<int[]> floor = floorTiles(grid);
-        avatar = floor.isEmpty() ? null
-                : CrewFactory.spawnPlayer(world.crew, player, "You", floor.get(0)[0], floor.get(0)[1]);
-        CrewRole[] roles = {CrewRole.ENGINEER, CrewRole.MEDIC, CrewRole.MARINE};
+        // The player starts seated at the helm, so the game opens on the ship from outside
+        int[] seat = besideHelm(player, floor);
+        avatar = seat == null ? null : CrewFactory.spawnPlayer(world.crew, player, "You", seat[0], seat[1]);
+        if (avatar != null) world.bridge.sit(SubsystemComponent.SubsystemType.HELM);
+        // ... and nobody else starts in their seat
+        if (seat != null && floor.size() > 1) floor.remove(seat);
+        // Bea is the helmsman: she takes the helm whenever the player leaves it
+        CrewRole[] roles = {CrewRole.ENGINEER, CrewRole.CREWMAN, CrewRole.MARINE};
         String[] names = {"Ada", "Bea", "Cole"};
         for (int i = 0; i < roles.length && i + 1 < floor.size(); i++) {
             int[] t = floor.get((i + 1) * floor.size() / (roles.length + 1));
@@ -236,6 +245,8 @@ public class GameScenario {
     private void relink() {
         player = world.getPlayer();
         if (player != null) ShipCargo.attach(player);
+        // Saves from before the bridge: the player starts on deck, and the helm takes over from there
+        if (player != null) Bridge.install(player);
         avatar = null;
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(PlayerAvatarComponent.class).get())) {
             avatar = e;
@@ -275,6 +286,25 @@ public class GameScenario {
     static StateVector circular(double mu, double radius, double angle) {
         var s = KeplerOrbit.circular(mu, radius, angle, 0, 1).stateAt(0);
         return new StateVector().set(s.x, s.y, s.vx, s.vy);
+    }
+
+    /** The floor tile nearest the ship's helm, if one is near enough to sit at it from; else the first floor tile. */
+    static int[] besideHelm(Entity ship, List<int[]> floor) {
+        if (floor.isEmpty()) return null;
+        SubsystemComponent helm = Bridge.console(ship, SubsystemComponent.SubsystemType.HELM);
+        if (helm == null) return floor.get(0);
+        int[] best = floor.get(0);
+        float nearest = Float.MAX_VALUE;
+        GridPositionComponent at = new GridPositionComponent();
+        for (int[] t : floor) {
+            at.setTile(t[0], t[1]);
+            float d = Bridge.reach(at, helm.footprint);
+            if (d < nearest) {
+                nearest = d;
+                best = t;
+            }
+        }
+        return best;
     }
 
     /** Open deck tiles clear of mounted systems, scanning from the middle row outwards. */

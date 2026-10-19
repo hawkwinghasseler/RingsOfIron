@@ -59,6 +59,8 @@ public class UiHud implements Disposable {
     private final Skin skin;
     private final Stage stage;
     private final ViewModeController viewMode = new ViewModeController();
+    /** What V does instead of switching the view, when a game decides when the view may switch. */
+    private Runnable viewKey;
 
     private final Group markerLayer = new Group();
     private final WireframeMinimap minimap;
@@ -232,7 +234,8 @@ public class UiHud implements Disposable {
                 setTrafficMapVisible(!trafficMap.isVisible());
                 return true;
             case Input.Keys.V:
-                viewMode.toggle();
+                if (viewKey != null) viewKey.run();
+                else viewMode.toggle();
                 return true;
             default:
                 return false;
@@ -242,6 +245,14 @@ public class UiHud implements Disposable {
     private void openConsole(Entity console, InteractableConsoleComponent data) {
         interactPromptSystem.setPromptsEnabled(false);
         consoleWindow.open(console, data, consoleLayouts.get(data.consoleId));
+    }
+
+    /**
+     * Makes V run {@code action} instead of switching the view, for a game where the view only
+     * switches when the player sits down at a console or stands up from it; null switches it again.
+     */
+    public void setViewKey(Runnable action) {
+        viewKey = action;
     }
 
     /** Registers a custom window layout for consoles with this id (e.g. "helm"). */
