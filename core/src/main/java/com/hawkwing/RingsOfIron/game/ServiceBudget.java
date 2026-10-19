@@ -71,7 +71,7 @@ public class ServiceBudget extends FixedLogicSystem {
     public String describe() {
         double left = untilNextPay();
         long days = (long) (left / 86_400), hours = (long) (left / 3_600) % 24;
-        return String.format(Locale.ROOT, "%s   Budget %,.0f cr/wk in %dd %02dh", standing.rank().name,
+        return String.format(Locale.ROOT, "%s   Budget %,.0f cr/wk in %dd %02dh", standing.rankName(),
                 standing.rank().budget, days, hours);
     }
 }

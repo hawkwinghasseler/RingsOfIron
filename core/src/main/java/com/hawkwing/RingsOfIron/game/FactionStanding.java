@@ -125,6 +125,29 @@ public class FactionStanding implements SaveParticipant {
         return ranks.get(record.rank);
     }
 
+    /** What the sponsor calls rank {@code i}: its own name for it, else the ladder's. */
+    public String rankName(int i) {
+        FactionDef s = factions.def(sponsor());
+        int at = Math.max(0, Math.min(ranks.size() - 1, i));
+        if (s != null && at < s.rankNames.size() && s.rankNames.get(at) != null) return s.rankNames.get(at);
+        return ranks.get(at).name;
+    }
+
+    /** What the sponsor calls the player's current rank. */
+    public String rankName() {
+        return rankName(record.rank);
+    }
+
+    /**
+     * Starts the career serving faction {@code id} instead of the data's sponsor; nothing if the
+     * data has no such faction or it is not {@code sponsorable}. Call on a fresh career, before any
+     * standing is earned.
+     */
+    public void serve(String id) {
+        FactionDef f = factions.def(factions.index(id));
+        if (f != null && (f.sponsor || f.sponsorable)) record.sponsor = id;
+    }
+
     /** The faction a craft belongs to: a station's owner, or its crew's; -1 for a craft of no one's. */
     public int factionOf(Entity craft) {
         if (craft == null) return -1;
@@ -252,7 +275,7 @@ public class FactionStanding implements SaveParticipant {
         while (record.rank < earned) {
             record.rank++;
             RankDef r = ranks.get(record.rank);
-            notices.add(String.format(Locale.ROOT, "Promoted to %s of the %s%s", r.name, factions.name(sponsor()),
+            notices.add(String.format(Locale.ROOT, "Promoted to %s of the %s%s", rankName(), factions.name(sponsor()),
                     r.budget > 0 ? String.format(Locale.ROOT, ": budget %,.0f cr a week", r.budget) : ""));
         }
     }
@@ -297,6 +320,6 @@ public class FactionStanding implements SaveParticipant {
     /** The sponsor's name and the player's rank, for the screen. */
     public String describeRank() {
         FactionDef s = factions.def(sponsor());
-        return rank().name + ", " + (s == null ? "" : s.name);
+        return rankName() + ", " + (s == null ? "" : s.name);
     }
 }

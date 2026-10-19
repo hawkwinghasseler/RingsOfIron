@@ -113,6 +113,11 @@ public class GameScenario {
      * would never drift into a transfer window with it (the freighters' planner waited forever).
      */
     public static final double FREEHOLD_ORBIT = 200_000e3;
+    /** How far the home station starts ahead of the player along their shared orbit, m. */
+    static final double HOME_LEAD = 8e3;
+    public static final String LUNAR_MINE_NAME = "Shackleton Ice";
+    /** The name of the station the career starts docked at: the sponsor's home. */
+    private String homeName = "Highport";
     /** Highport's attitude: half a turn, so its Small ports face back along the orbit, towards the player. */
     public static final float HIGHPORT_ANGLE = (float) Math.PI;
 
@@ -141,7 +146,18 @@ public class GameScenario {
         moon.add(new OrbitComponent(EARTH, KeplerOrbit.circular(MU_EARTH, MOON_DISTANCE, MOON_ANGLE, 0, 1)));
         world.engine.addEntity(moon);
         world.macroSim.registerMassiveBody(MOON);
-        world.setAnchor(EARTH, KeplerOrbit.circular(MU_EARTH, ORBIT_RADIUS, 0, world.engine.getSimSeconds(), 1));
+        // The career serves the sponsor the new game chose, and starts beside that sponsor's home
+        world.standing.serve(newGame.sponsor);
+        var sponsor = world.standing.factions().def(world.standing.sponsor());
+        homeName = sponsor == null || sponsor.home == null ? "Highport" : sponsor.home;
+        // Shackleton Ice's place is drawn first, so a career starting there can be put beside it
+        double lunarPhase = phase(0);
+        if (LUNAR_MINE_NAME.equals(homeName)) {
+            double r = R_MOON + 100e3;
+            world.setAnchor(MOON, KeplerOrbit.circular(MU_MOON, r, lunarPhase - HOME_LEAD / r, world.engine.getSimSeconds(), 1));
+        } else {
+            world.setAnchor(EARTH, KeplerOrbit.circular(MU_EARTH, ORBIT_RADIUS, 0, world.engine.getSimSeconds(), 1));
+        }
 
         player = content.factory.spawnShip(PLAYER_SHIP, 0f, 0f, 90f);
         player.add(new PlayerControllerComponent());
@@ -194,7 +210,7 @@ public class GameScenario {
                 Entity ship = world.engine.getEntity(uuid);
                 if (ship == null) return;
                 if (ship.getComponent(TransformComponent.class) == null) ship.add(new TransformComponent());
-                ship.add(HostileTraffic.markerFor(ship));
+                ship.add(HostileTraffic.markerFor(ship, world.standing.factions().id(world.standing.sponsor())));
                 contacts.add(ship);
             }
 
@@ -229,11 +245,11 @@ public class GameScenario {
                 });
         // Water is mined only at the Moon; both Earth stations need it.
         highport = addStation("Highport", stationType("agri_dome", 0), EARTH,
-                circular(ORBIT_RADIUS, 8e3 / ORBIT_RADIUS), HIGHPORT_ANGLE);
+                circular(ORBIT_RADIUS, HOME_LEAD / ORBIT_RADIUS), HIGHPORT_ANGLE);
         depot = addStation("Deepwell Depot", stationType("fuel_depot", 1), EARTH,
                 circular(ORBIT_RADIUS + 2_000e3, phase(2.5)), 0f);
-        lunarMine = addStation("Shackleton Ice", stationType("ice_mine", 2), MOON,
-                circular(MU_MOON, R_MOON + 100e3, phase(0)), 0f);
+        lunarMine = addStation(LUNAR_MINE_NAME, stationType("ice_mine", 2), MOON,
+                circular(MU_MOON, R_MOON + 100e3, lunarPhase), LUNAR_MINE_NAME.equals(homeName) ? HIGHPORT_ANGLE : 0f);
         // The wider world: the sponsor's yard high above Earth, Selene's industry round the Moon, and
         // the Free Traders' outpost far out, half way to the Moon
         shipyard = addStation(SHIPYARD_NAME, stationType("shipyard", 4), EARTH,
@@ -315,12 +331,28 @@ public class GameScenario {
      * bounty on the raider outside. Tests that want the ship free in orbit skip this.
      */
     public void beginCareer() {
-        dockAtHighport();
+        dockAt(home());
+    }
+
+    /** The uuid of the station the career starts docked at: the sponsor's home, else Highport. */
+    public String home() {
+        return stationNamed(homeName, highport);
+    }
+
+    /** The name of the sponsor's home station. */
+    public String homeName() {
+        return homeName;
     }
 
     /** Latches the player's first port onto a free port of the same size at Highport, at once. */
     public boolean dockAtHighport() {
-        Entity station = world.engine.getEntity(highport);
+        return dockAt(highport);
+    }
+
+    /** Latches the player's first port onto a free port of the same size at {@code stationUuid}, at once. */
+    public boolean dockAt(String stationUuid) {
+        Entity station = world.engine.getEntity(stationUuid);
+        if (station == null) return false;
         DockingPortsComponent ports = station.getComponent(DockingPortsComponent.class);
         DockingPortsComponent own = player.getComponent(DockingPortsComponent.class);
         if (ports == null || own == null || own.ports.length == 0) return false;
@@ -466,7 +498,9 @@ public class GameScenario {
         // A save's stations have their own uuids, not the ones this game started with
         highport = stationNamed("Highport", highport);
         depot = stationNamed("Deepwell Depot", depot);
-        lunarMine = stationNamed("Shackleton Ice", lunarMine);
+        lunarMine = stationNamed(LUNAR_MINE_NAME, lunarMine);
+        var sponsor = world.standing.factions().def(world.standing.sponsor());
+        homeName = sponsor == null || sponsor.home == null ? "Highport" : sponsor.home;
         shipyard = stationNamed(SHIPYARD_NAME, null);
         foundry = stationNamed(FOUNDRY_NAME, null);
         oreMine = stationNamed(ORE_MINE_NAME, null);

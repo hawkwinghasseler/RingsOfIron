@@ -137,7 +137,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         FactionStanding s = world.standing;
         int giver = s.factions().index(c.giver);
         if (giver == s.sponsor()) {
-            return s.record().rank >= c.tier ? null : "Needs rank " + s.ranks().get(c.tier).name;
+            return s.record().rank >= c.tier ? null : "Needs rank " + s.rankName(c.tier);
         }
         float need = c.tier * STANDING_PER_TIER;
         return s.standing(giver) >= need ? null

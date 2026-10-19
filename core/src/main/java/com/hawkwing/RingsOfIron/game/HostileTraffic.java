@@ -506,10 +506,15 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     /** The marker a ship in the bubble gets: a hostile's name and side, else a freighter's. */
     public static HudMarkerComponent markerFor(Entity ship) {
+        return markerFor(ship, SPONSOR);
+    }
+
+    /** As {@link #markerFor(Entity)}, for a player serving the faction {@code sponsorId}: its patrols are friendly. */
+    public static HudMarkerComponent markerFor(Entity ship, String sponsorId) {
         HostileComponent h = ship.getComponent(HostileComponent.class);
         if (h == null) return new HudMarkerComponent("Freighter", HudMarkerComponent.Kind.FRIENDLY).radius(20f);
         HudMarkerComponent.Kind kind = h.isPirate() ? HudMarkerComponent.Kind.HOSTILE
-                : SPONSOR.equals(h.faction) ? HudMarkerComponent.Kind.FRIENDLY : HudMarkerComponent.Kind.NEUTRAL;
+                : h.faction != null && h.faction.equals(sponsorId) ? HudMarkerComponent.Kind.FRIENDLY : HudMarkerComponent.Kind.NEUTRAL;
         ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
         float radius = g == null ? 20f : Math.max(g.width, g.height) * g.tileSize * 0.5f;
         return new HudMarkerComponent(h.displayName, kind).radius(radius);

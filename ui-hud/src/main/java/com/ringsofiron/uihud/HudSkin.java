@@ -23,7 +23,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
  * widgets only look styles up by the names defined here.
  *
  * Style names: Label "default", "title", "dim", "alert", "warn", "prompt"; Window "default";
- * TextButton "default", "menu" (wide, for the game's menus); CheckBox "default"; Slider "default-horizontal";
+ * TextButton "default", "menu" (wide, for the game's menus), "toggle" (a menu button that stays down when picked); CheckBox "default"; Slider "default-horizontal";
  * TextField, SelectBox, List and ScrollPane "default"; drawables "white", "panel", "panel-border", "prompt-bg".
  */
 public final class HudSkin {
@@ -87,6 +87,10 @@ public final class HudSkin {
         menu.disabledFontColor = HUD_DIM;
         menu.disabled = skin.newDrawable("white", new Color(0.06f, 0.1f, 0.14f, 0.9f));
         skin.add("menu", menu);
+        TextButton.TextButtonStyle toggle = new TextButton.TextButtonStyle(menu);
+        toggle.checked = skin.getDrawable("button-down");
+        toggle.checkedFontColor = HUD_CYAN;
+        skin.add("toggle", toggle);
 
         Drawable track = skin.newDrawable("white", new Color(0.1f, 0.2f, 0.3f, 1f));
         track.setMinHeight(6f);

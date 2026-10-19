@@ -126,6 +126,9 @@ class ShellMenus {
 
     // --- New game ----------------------------------------------------------------------
 
+    /** The factions a new career may serve: id, then the button's label. */
+    static final String[][] SPONSORS = {{"patrol", "Terran Patrol"}, {"selene", "Selene Combine"}};
+
     /** A new career: a typed seed replays that world, an empty one rolls a new world. */
     void showNewGame(Table root) {
         Table t = frame(root, Panel.NEW_GAME, "NEW GAME");
@@ -136,8 +139,31 @@ class ShellMenus {
         t.add(seed).width(300f).colspan(2).row();
         t.add(new Label("Leave it empty for a new world; the same seed gives the same start", skin, "dim"))
                 .colspan(3).padBottom(10f).row();
+        // Who to serve: the Patrol from Highport, or the Combine from its ice mine on the Moon
+        String[] sponsor = {null};
+        Table sponsors = new Table();
+        com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup<TextButton> group = new com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup<>();
+        for (String[] s : SPONSORS) {
+            TextButton b = new TextButton(s[1], skin, "toggle");
+            b.pad(6f, 16f, 6f, 16f);
+            b.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    if (b.isChecked()) sponsor[0] = s[0];
+                }
+            });
+            group.add(b);
+            sponsors.add(b).padRight(8f);
+        }
+        group.setMinCheckCount(1);
+        group.setMaxCheckCount(1);
+        group.getButtons().first().setChecked(true);
+        t.add(new Label("Serve", skin, "dim")).left();
+        t.add(sponsors).left().colspan(2).row();
+        t.add(new Label("The Patrol starts you at Highport in Earth orbit; the Combine at Shackleton Ice above the Moon",
+                skin, "dim")).colspan(3).padBottom(10f).row();
         Table buttons = new Table();
-        buttons.add(button("Start", () -> shell.newGame(com.hawkwing.RingsOfIron.game.NewGame.fromText(seed.getText(), null))))
+        buttons.add(button("Start", () -> shell.newGame(com.hawkwing.RingsOfIron.game.NewGame.fromText(seed.getText(), sponsor[0]))))
                 .padRight(10f);
         buttons.add(button("Back", shell::back));
         t.add(buttons).colspan(3).padTop(10f).row();

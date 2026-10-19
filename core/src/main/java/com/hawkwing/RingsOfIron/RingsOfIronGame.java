@@ -324,7 +324,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         else game.beginCareer();
         matchViewToSeat();
         show(game.content.report.hasErrors() ? "Content loaded with errors; see the log"
-                : "Welcome aboard, " + world.standing.describeRank() + ". " + key(Action.MISSIONS) + " opens Highport's mission board");
+                : "Welcome aboard, " + world.standing.describeRank() + ". " + key(Action.MISSIONS) + " opens " + game.homeName() + "'s mission board");
         if (game.content.report.hasErrors()) Gdx.app.error("RingsOfIron", game.content.report.toString());
     }
 
