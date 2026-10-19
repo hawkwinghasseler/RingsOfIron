@@ -8,6 +8,7 @@ import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.damage.IonStun;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
@@ -19,7 +20,8 @@ import java.util.function.Function;
  * A short scripted first play over the starting scenario, one objective at a time: the ship starts
  * docked at Highport; take the bounty on the raider from the mission board, undock, fly clear, beat
  * the raider (it turns on you once you are clear), latch on and board it, come back and dock, and
- * have the yard repair the damage. Each objective is met by playing, not by a key: the script only
+ * have the yard repair the damage, look back over the notice log, and plan a transfer to a station
+ * beyond Highport. Each objective is met by playing, not by a key: the script only
  * watches the world and says what to do next. Docking again while the raider still fights counts as
  * getting away from it; docking again before boarding it skips the boarding, and undocking without
  * a contract skips taking one.
@@ -39,6 +41,9 @@ public final class FirstPlay {
                 + "boarding party, and strip what you want once it is taken"),
         DOCK("Back to Highport and dock: {NEXT_PORT} picks the port, {ARM_PORT} arms it and asks for clearance"),
         REPAIR("Open the yard with {YARD} and order repairs"),
+        NOTICES("{LOG} opens the notice log: the fight, the bounty and the yard's work are all there"),
+        PLAN("Plan a trip: {NAV_TARGET} picks a navigation target (Shackleton Ice, at the Moon, say), {PLAN_TO_TARGET} "
+                + "plans the transfer, {ACCEPT_PLAN} accepts it and {DISCARD_PLAN} discards it"),
         DONE("That's the loop: work from the board ({MISSIONS}) pays and earns rank. Trade or sell salvage with "
                 + "{TRADE}, refit at the yard ({YARD}), or fly on");
 
@@ -55,6 +60,7 @@ public final class FirstPlay {
     private final GameWorld world;
     private final GameScenario game;
     private Step step = Step.ACCEPT;
+    private boolean logOpened;
     private final Vector2 a = new Vector2(), b = new Vector2();
 
     private FirstPlay(GameWorld world, GameScenario game) {
@@ -87,6 +93,11 @@ public final class FirstPlay {
     /** Latches the player's first port onto a free port of the same size at Highport, at once. */
     static boolean dockAtHighport(GameWorld world, GameScenario game) {
         return game.dockAtHighport();
+    }
+
+    /** Called when the player opens the notice log. */
+    public void logOpened() {
+        logOpened = true;
     }
 
     public Step step() {
@@ -138,7 +149,12 @@ public final class FirstPlay {
                 return docked ? Step.REPAIR : step;
             case REPAIR:
                 if (!docked) return step;
-                return world.yard.repairing(game.player) || world.yard.damage(game.player).isEmpty() ? Step.DONE : step;
+                return world.yard.repairing(game.player) || world.yard.damage(game.player).isEmpty() ? Step.NOTICES : step;
+            case NOTICES:
+                return logOpened ? Step.PLAN : step;
+            case PLAN:
+                ManeuverNodeComponent nodes = world.burns.nodes();
+                return world.nav.transfer.proposal() != null || (nodes != null && nodes.nodes.size > 0) ? Step.DONE : step;
             default:
                 return step;
         }

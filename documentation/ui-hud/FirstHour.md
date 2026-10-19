@@ -52,6 +52,9 @@ If the crew were ordered to the pods before impact, the pods with anyone aboard 
 ### Opening walkthrough (`OpeningGuide`)
 A new game (not First Play) opens with gold guide text: open the board, take a job, then a last word on undocking, thrust, turning, the map and F1. It stops after a contract is held, or quietly if the player leaves the station first. "Walkthrough at the start of a new game" in the settings (`GameSettings.openingGuide`, on by default) turns it off, which also stops one under way.
 
+### First Play's last two objectives
+After the yard, First Play (`FirstPlay`, now nine objectives) asks the player to open the notice log (L) and then to plan a transfer: pick a navigation target (Q), plan to it (;), and accept or discard the plan. Opening the log is reported by `FirstPlay.logOpened`, which `RingsOfIronGame` calls when the log opens; it is not saved, so a game loaded at that objective waits for the log to be opened again. Any proposed or accepted plan meets the last objective.
+
 ### Small fixes
 - `Rescue.skipTo` calls `orbitalEvents.orbitChanged`, so a rescue from a ship falling into a planet no longer crashes the new ship on arrival.
 - `AbandonShip.launchNow` sets the deadline a second past due.

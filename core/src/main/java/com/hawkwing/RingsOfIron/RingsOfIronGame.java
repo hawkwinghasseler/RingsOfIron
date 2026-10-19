@@ -436,6 +436,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (just(Action.LOG)) {
             logOpen = !logOpen;
             logScroll = 0;
+            if (logOpen && firstPlay != null) firstPlay.logOpened();
             helpOpen = false;
         }
         if (just(Action.HELP)) {
