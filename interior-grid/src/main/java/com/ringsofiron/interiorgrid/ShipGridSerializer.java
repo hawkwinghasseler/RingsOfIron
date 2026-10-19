@@ -48,6 +48,8 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
 
         writeEdges(json, "edgeH", grid.edgeH);
         writeEdges(json, "edgeV", grid.edgeV);
+        writeConduits(json, "conduitH", grid.conduitH);
+        writeConduits(json, "conduitV", grid.conduitV);
 
         json.writeArrayStart("pieces");
         for (HullPiece p : grid.hullPieces) {
@@ -124,6 +126,20 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
         json.writeArrayEnd();
     }
 
+    private static void writeConduits(Json json, String name, EdgeConduit[][] conduits) {
+        json.writeArrayStart(name);
+        for (int y = 0; y < conduits.length; y++) {
+            for (int x = 0; x < conduits[y].length; x++) {
+                if (conduits[y][x] == null) continue;
+                json.writeObjectStart();
+                json.writeValue("x", x);
+                json.writeValue("y", y);
+                json.writeObjectEnd();
+            }
+        }
+        json.writeArrayEnd();
+    }
+
     @Override
     public ShipGridComponent read(Json json, JsonValue data, Class type) {
         int w = data.getInt("width"), h = data.getInt("height");
@@ -157,6 +173,9 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
 
         readEdges(data.get("edgeH"), grid.edgeH);
         readEdges(data.get("edgeV"), grid.edgeV);
+        // Saves from before edge conduits have none
+        readConduits(data.get("conduitH"), grid.conduitH);
+        readConduits(data.get("conduitV"), grid.conduitV);
 
         // Mounts were valid when saved; damage since then must not refuse them now
         for (JsonValue m = data.get("mounts").child; m != null; m = m.next) {
@@ -193,6 +212,11 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
         }
         grid.gridDirty = true;
         return grid;
+    }
+
+    private static void readConduits(JsonValue list, EdgeConduit[][] conduits) {
+        if (list == null) return;
+        for (JsonValue c = list.child; c != null; c = c.next) conduits[c.getInt("y")][c.getInt("x")] = new EdgeConduit();
     }
 
     private static void readEdges(JsonValue list, EdgeWall[][] edges) {

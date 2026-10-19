@@ -19,7 +19,7 @@ import java.util.Set;
 
 /**
  * A chassis layout as the ship editor edits it: a grid of tile-type symbols with every mounted
- * component, edge wall, hull piece and covering listed on top. It converts to and from the
+ * component, edge wall, edge conduit, hull piece and covering listed on top. It converts to and from the
  * {@link ChassisDef} the game loads; {@link #toDef} decides which mounts can be drawn as letters
  * in the rows and which must be listed.
  *
@@ -72,6 +72,8 @@ public class ChassisModel {
     public char[][] tiles;
     public final List<Mount> mounts = new ArrayList<>();
     public final List<ChassisDef.EdgeWall> edgeWalls = new ArrayList<>();
+    /** Power conduits along tile edges, each listed once (on either tile it lies between). */
+    public final List<ChassisDef.EdgeConduit> edgeConduits = new ArrayList<>();
     public final List<ChassisDef.HullPiece> hullPieces = new ArrayList<>();
     public final List<ChassisDef.Covering> coverings = new ArrayList<>();
     /** Lights hung on walls; null until the layout places any, and the game works them out. */
@@ -144,6 +146,7 @@ public class ChassisModel {
             else m.unresolvedPorts.add(p);
         }
         m.edgeWalls.addAll(def.edgeWalls);
+        m.edgeConduits.addAll(def.edgeConduits);
         m.hullPieces.addAll(def.hullPieces);
         m.coverings.addAll(def.coverings);
         m.lights = copyLights(def.lights);
@@ -210,6 +213,7 @@ public class ChassisModel {
         }
         def.ports.addAll(unresolvedPorts);
         def.edgeWalls.addAll(edgeWalls);
+        def.edgeConduits.addAll(edgeConduits);
         def.hullPieces.addAll(hullPieces);
         def.coverings.addAll(coverings);
         def.lights = copyLights(lights);
@@ -298,6 +302,16 @@ public class ChassisModel {
             Side s = Side.valueOf(w.side);
             if (w.x == x && w.y == y && s == side) return w;
             if (w.x + s.dx == x && w.y + s.dy == y && s.opposite() == side) return w;
+        }
+        return null;
+    }
+
+    /** The edge conduit on that side of tile (x, y), however it was listed, or null. */
+    public ChassisDef.EdgeConduit edgeConduitAt(int x, int y, Side side) {
+        for (ChassisDef.EdgeConduit c : edgeConduits) {
+            Side s = Side.valueOf(c.side);
+            if (c.x == x && c.y == y && s == side) return c;
+            if (c.x + s.dx == x && c.y + s.dy == y && s.opposite() == side) return c;
         }
         return null;
     }
@@ -422,6 +436,25 @@ public class ChassisModel {
         w.weightClass = weightClass;
         w.bulkhead = bulkhead;
         edgeWalls.add(w);
+    }
+
+    /**
+     * Runs a power conduit along that side of tile (x, y), or takes up the one already there. It
+     * may run inside a thin wall or along a full-tile wall. False if the tile is off the grid.
+     */
+    public boolean toggleEdgeConduit(int x, int y, Side side) {
+        if (!inBounds(x, y)) return false;
+        ChassisDef.EdgeConduit existing = edgeConduitAt(x, y, side);
+        if (existing != null) {
+            edgeConduits.remove(existing);
+            return true;
+        }
+        ChassisDef.EdgeConduit c = new ChassisDef.EdgeConduit();
+        c.x = x;
+        c.y = y;
+        c.side = side.name();
+        edgeConduits.add(c);
+        return true;
     }
 
     /**
@@ -558,6 +591,12 @@ public class ChassisModel {
             e.y += dy;
             if (!inBounds(e.x, e.y)) edgeWalls.remove(i);
         }
+        for (int i = edgeConduits.size() - 1; i >= 0; i--) {
+            ChassisDef.EdgeConduit c = edgeConduits.get(i);
+            c.x += dx;
+            c.y += dy;
+            if (!inBounds(c.x, c.y)) edgeConduits.remove(i);
+        }
         for (int i = hullPieces.size() - 1; i >= 0; i--) {
             ChassisDef.HullPiece p = hullPieces.get(i);
             p.x += dx;
@@ -613,6 +652,7 @@ public class ChassisModel {
         m.tiles = copyTiles();
         for (Mount mount : mounts) m.mounts.add(mount.copy());
         for (ChassisDef.EdgeWall e : edgeWalls) m.edgeWalls.add(Defs.copy(e, ChassisDef.EdgeWall.class));
+        for (ChassisDef.EdgeConduit c : edgeConduits) m.edgeConduits.add(Defs.copy(c, ChassisDef.EdgeConduit.class));
         for (ChassisDef.HullPiece p : hullPieces) m.hullPieces.add(Defs.copy(p, ChassisDef.HullPiece.class));
         for (ChassisDef.Covering c : coverings) m.coverings.add(Defs.copy(c, ChassisDef.Covering.class));
         for (ChassisDef.Mount u : unresolvedMounts) m.unresolvedMounts.add(Defs.copy(u, ChassisDef.Mount.class));

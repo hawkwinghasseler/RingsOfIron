@@ -20,6 +20,7 @@ import java.util.List;
  *   ...
  * ]
  * edge_walls  = [ { x = 4, y = 2, side = "TOP", weight_class = "LIGHT", bulkhead = true } ]
+ * edge_conduits = [ { x = 4, y = 2, side = "TOP" } ]
  * hull_pieces = [ { shape = "WEDGE", x = 0, y = 0, width = 1, height = 2, rotation = 0, weight_class = "MEDIUM" } ]
  * mounts      = [ { type = "TURRET_MOUNT", size = "S", x = 3, y = 3, rotation = 0 },
  *                 { component = "fusion_core", size = "M", x = 5, y = 1 } ]
@@ -40,6 +41,8 @@ public class ChassisDef {
     public float originX, originY;
     public String[] rows = new String[0];
     public List<EdgeWall> edgeWalls = new ArrayList<>();
+    /** Power conduits run along tile edges, which may lie inside walls. */
+    public List<EdgeConduit> edgeConduits = new ArrayList<>();
     public List<HullPiece> hullPieces = new ArrayList<>();
     public List<Mount> mounts = new ArrayList<>();
     public List<Covering> coverings = new ArrayList<>();
@@ -60,6 +63,13 @@ public class ChassisDef {
         public String weightClass = "MEDIUM";
         public String material = "hull_steel";
         public boolean bulkhead;
+    }
+
+    /** A power conduit along the {@code side} edge of tile (x, y), shared with the tile beyond it. */
+    public static class EdgeConduit {
+        public int x, y;
+        /** BOTTOM, TOP, LEFT or RIGHT. */
+        public String side;
     }
 
     public static class HullPiece {

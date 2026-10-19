@@ -23,6 +23,11 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
  * where a conduit runs on both sides of the wall), or through tiles at integrity 0:
  * a destroyed conduit stops conducting.
  *
+ * An {@link EdgeConduit} on a tile edge carries power along the edge, through any wall it runs
+ * in: to the edge conduits that meet it at either end, and to the conducting tiles on both sides.
+ * It stops conducting when the wall it runs in is destroyed (the thin wall on its edge, or a
+ * full-tile wall beside it).
+ *
  * Each connected part of the grid with a working reactor in it is a {@link PowerCircuit}
  * (listed on {@link ShipGridComponent#circuits}, and on each powered system's
  * {@link SubsystemComponent#circuit}). A reactor adds {@link #reactorOutput} watts to its
@@ -138,9 +143,12 @@ public class PowerRoutingSystem extends FixedLogicSystem {
             previous.put(sub, old);
         }
 
-        // Step 1: split every conducting tile into connected groups
+        // Step 1: split every conducting tile and edge conduit into connected groups
+        int[] nodeGroup = new int[nodeCount(grid)];
+        int groups = labelGroups(grid, nodeGroup);
         int[][] group = new int[grid.height][grid.width];
-        int groups = labelGroups(grid, group);
+        for (int y = 0; y < grid.height; y++)
+            for (int x = 0; x < grid.width; x++) group[y][x] = nodeGroup[y * grid.width + x];
 
         // Step 2: each working reactor joins the groups its footprint touches into one circuit
         int[] parent = new int[groups];
@@ -200,6 +208,10 @@ public class PowerRoutingSystem extends FixedLogicSystem {
                 t.isPowered = tileCircuit[y][x] != null;
             }
         }
+        for (int n = grid.width * grid.height; n < nodeGroup.length; n++) {
+            EdgeConduit c = conduitOf(grid, n);
+            if (c != null) c.isPowered = nodeGroup[n] >= 0 && byRoot[find(parent, nodeGroup[n])] != null;
+        }
         // A reactor always powers its own footprint
         for (SubsystemComponent r : reactors) {
             for (int[] t : footprintTiles(grid, r.footprint)) {
@@ -246,36 +258,137 @@ public class PowerRoutingSystem extends FixedLogicSystem {
         return c;
     }
 
-    /** Labels connected conducting tiles with a group number, -1 elsewhere. Returns the number of groups. */
-    private static int labelGroups(ShipGridComponent grid, int[][] group) {
-        for (int[] row : group) java.util.Arrays.fill(row, -1);
+    // Nodes of the conducting graph: tiles first (y * width + x), then the horizontal edges
+    // (indexed like edgeH), then the vertical edges (indexed like edgeV).
+
+    private static int nodeCount(ShipGridComponent grid) {
+        return grid.width * grid.height + (grid.height + 1) * grid.width + grid.height * (grid.width + 1);
+    }
+
+    private static int hNode(ShipGridComponent grid, int x, int y) {
+        return grid.width * grid.height + y * grid.width + x;
+    }
+
+    private static int vNode(ShipGridComponent grid, int x, int y) {
+        return grid.width * grid.height + (grid.height + 1) * grid.width + y * (grid.width + 1) + x;
+    }
+
+    /** The edge conduit node {@code n} stands for, or null for a tile or an edge without one. */
+    private static EdgeConduit conduitOf(ShipGridComponent grid, int n) {
+        int h0 = grid.width * grid.height, v0 = h0 + (grid.height + 1) * grid.width;
+        if (n < h0) return null;
+        if (n < v0) return grid.conduitH[(n - h0) / grid.width][(n - h0) % grid.width];
+        return grid.conduitV[(n - v0) / (grid.width + 1)][(n - v0) % (grid.width + 1)];
+    }
+
+    /**
+     * Labels connected conducting tiles and edge conduits with a group number, -1 elsewhere.
+     * Returns the number of groups.
+     */
+    private static int labelGroups(ShipGridComponent grid, int[] group) {
+        java.util.Arrays.fill(group, -1);
         int groups = 0;
+        int tiles = grid.width * grid.height;
         IntArray queue = new IntArray();
-        for (int sy = 0; sy < grid.height; sy++) {
-            for (int sx = 0; sx < grid.width; sx++) {
-                if (group[sy][sx] >= 0 || !conducts(grid.getTile(sx, sy))) continue;
-                int id = groups++;
-                group[sy][sx] = id;
-                queue.clear();
-                queue.add(sy * grid.width + sx);
-                for (int head = 0; head < queue.size; head++) {
-                    int cx = queue.get(head) % grid.width, cy = queue.get(head) / grid.width;
-                    Tile current = grid.getTile(cx, cy);
-                    for (Side side : Side.values()) {
-                        int nx = cx + side.dx, ny = cy + side.dy;
-                        if (!grid.inBounds(nx, ny) || group[ny][nx] >= 0) continue;
-                        Tile neighbor = grid.getTile(nx, ny);
-                        if (!conducts(neighbor)) continue;
-                        // A conduit passes through a thin wall; nothing else does
-                        if (grid.isEdgeBlocked(cx, cy, nx, ny)
-                                && !(current.isPowerConduit() && neighbor.isPowerConduit())) continue;
-                        group[ny][nx] = id;
-                        queue.add(ny * grid.width + nx);
-                    }
+        IntArray next = new IntArray();
+        for (int start = 0; start < group.length; start++) {
+            if (group[start] >= 0 || !conducts(grid, start)) continue;
+            int id = groups++;
+            group[start] = id;
+            queue.clear();
+            queue.add(start);
+            for (int head = 0; head < queue.size; head++) {
+                int n = queue.get(head);
+                next.clear();
+                if (n < tiles) tileNeighbors(grid, n % grid.width, n / grid.width, next);
+                else edgeNeighbors(grid, n, next);
+                for (int i = 0; i < next.size; i++) {
+                    int m = next.get(i);
+                    if (group[m] >= 0 || !conducts(grid, m)) continue;
+                    group[m] = id;
+                    queue.add(m);
                 }
             }
         }
         return groups;
+    }
+
+    /** What tile (x, y) passes power to, before checking that they conduct. */
+    private static void tileNeighbors(ShipGridComponent grid, int x, int y, IntArray out) {
+        Tile current = grid.getTile(x, y);
+        for (Side side : Side.values()) {
+            out.add(edgeNode(grid, x, y, side));
+            int nx = x + side.dx, ny = y + side.dy;
+            if (!grid.inBounds(nx, ny)) continue;
+            // A conduit passes through a thin wall; nothing else does
+            if (grid.isEdgeBlocked(x, y, nx, ny)
+                    && !(current.isPowerConduit() && grid.getTile(nx, ny).isPowerConduit())) continue;
+            out.add(ny * grid.width + nx);
+        }
+    }
+
+    /** What the edge conduit at node {@code n} passes power to: the tiles beside it and the edges at its ends. */
+    private static void edgeNeighbors(ShipGridComponent grid, int n, IntArray out) {
+        int h0 = grid.width * grid.height, v0 = h0 + (grid.height + 1) * grid.width;
+        if (n < v0) {
+            // From vertex (x, y) to (x + 1, y), between tiles (x, y - 1) and (x, y)
+            int x = (n - h0) % grid.width, y = (n - h0) / grid.width;
+            if (y < grid.height) out.add(y * grid.width + x);
+            if (y > 0) out.add((y - 1) * grid.width + x);
+            vertexEdges(grid, x, y, out);
+            vertexEdges(grid, x + 1, y, out);
+        } else {
+            // From vertex (x, y) to (x, y + 1), between tiles (x - 1, y) and (x, y)
+            int x = (n - v0) % (grid.width + 1), y = (n - v0) / (grid.width + 1);
+            if (x < grid.width) out.add(y * grid.width + x);
+            if (x > 0) out.add(y * grid.width + x - 1);
+            vertexEdges(grid, x, y, out);
+            vertexEdges(grid, x, y + 1, out);
+        }
+    }
+
+    /** The up to four edges that meet at grid vertex (vx, vy). */
+    private static void vertexEdges(ShipGridComponent grid, int vx, int vy, IntArray out) {
+        if (vx > 0 && vy <= grid.height) out.add(hNode(grid, vx - 1, vy));
+        if (vx < grid.width && vy <= grid.height) out.add(hNode(grid, vx, vy));
+        if (vy > 0 && vx <= grid.width) out.add(vNode(grid, vx, vy - 1));
+        if (vy < grid.height && vx <= grid.width) out.add(vNode(grid, vx, vy));
+    }
+
+    private static int edgeNode(ShipGridComponent grid, int x, int y, Side side) {
+        switch (side) {
+            case BOTTOM: return hNode(grid, x, y);
+            case TOP:    return hNode(grid, x, y + 1);
+            case LEFT:   return vNode(grid, x, y);
+            default:     return vNode(grid, x + 1, y);
+        }
+    }
+
+    private static boolean conducts(ShipGridComponent grid, int n) {
+        int tiles = grid.width * grid.height;
+        if (n < tiles) return conducts(grid.getTile(n % grid.width, n / grid.width));
+        EdgeConduit c = conduitOf(grid, n);
+        if (c == null) return false;
+        int h0 = tiles, v0 = h0 + (grid.height + 1) * grid.width;
+        EdgeWall wall;
+        Tile a, b;
+        if (n < v0) {
+            int x = (n - h0) % grid.width, y = (n - h0) / grid.width;
+            wall = grid.edgeH[y][x];
+            a = grid.getTile(x, y);
+            b = grid.getTile(x, y - 1);
+        } else {
+            int x = (n - v0) % (grid.width + 1), y = (n - v0) / (grid.width + 1);
+            wall = grid.edgeV[y][x];
+            a = grid.getTile(x, y);
+            b = grid.getTile(x - 1, y);
+        }
+        return !(wall != null && wall.isDestroyed()) && !wrecked(a) && !wrecked(b);
+    }
+
+    /** A full-tile wall that has been destroyed, cutting any conduit run along its edges. */
+    private static boolean wrecked(Tile t) {
+        return t != null && t.isWall() && t.getIntegrity() <= 0f;
     }
 
     private static Array<int[]> footprintTiles(ShipGridComponent grid, MountFootprint f) {

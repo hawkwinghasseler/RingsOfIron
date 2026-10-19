@@ -210,6 +210,7 @@ audio-spatial's `InteriorHazardAudioSystem` reads every grid after the hazard ti
 `PowerRoutingSystem` runs a breadth-first flood from every footprint tile of each reactor that is switched on and not disabled by damage, across floor and conduit tiles:
 - Intact full-tile walls and tiles at integrity 0 do not conduct.
 - Closed edge walls block power, except where a conduit runs on both sides of the wall (a conduit passes through a thin wall).
+- **Edge conduits** (`EdgeConduit`, on `ShipGridComponent.conduitH` / `conduitV`, indexed like the edge walls) run along a tile edge instead of across a tile, and may lie inside any wall: a thin wall on that edge, or a full-tile wall (hull included) on either side. One carries power to the edge conduits that meet it at either end of its edge and to the conducting tiles on both sides, whatever wall stands there, so a run of them can take power around or through a wall and feed both rooms it divides. It is cut when the wall it runs in is destroyed. Layouts list them as `edge_conduits = [{ x = 3, y = 2, side = "TOP" }]`; they are saved with the grid.
 - A system is powered if any tile of its footprint is powered. It is operational when it is switched on (`SubsystemComponent.switchedOn`), powered and not disabled by damage (`health >= SubsystemComponent.DISABLE_THRESHOLD`, 0.3). Switching a reactor off is not damage: it powers back up as soon as it is switched on.
 - It reroutes on a 1 s fixed tick, or on the next frame when damage code sets `ShipGridComponent.gridDirty`.
 

@@ -12,6 +12,18 @@ import com.badlogic.gdx.utils.Array;
  */
 public class ChassisBlueprint {
 
+    /** A power conduit along one side of a tile (see {@link EdgeConduit}). */
+    public static class EdgeConduitDef {
+        public final int x, y;
+        public final Side side;
+
+        public EdgeConduitDef(int x, int y, Side side) {
+            this.x = x;
+            this.y = y;
+            this.side = side;
+        }
+    }
+
     /** An edge wall on one side of a tile. */
     public static class EdgeWallDef {
         public final int x, y;
@@ -72,6 +84,7 @@ public class ChassisBlueprint {
     public float originLocalX = 0f, originLocalY = 0f;
 
     public final Array<EdgeWallDef> edgeWalls = new Array<>();
+    public final Array<EdgeConduitDef> edgeConduits = new Array<>();
     public final Array<HullPiece> hullPieces = new Array<>();
     public final Array<MountDef> mounts = new Array<>();
     public final Array<CoveringDef> coverings = new Array<>();
@@ -102,6 +115,12 @@ public class ChassisBlueprint {
 
     public ChassisBlueprint edgeWall(int x, int y, Side side, WeightClass weightClass, boolean hasBulkhead) {
         edgeWalls.add(new EdgeWallDef(x, y, side, weightClass, MaterialTable.DEFAULT_MATERIAL, hasBulkhead));
+        return this;
+    }
+
+    /** Runs a power conduit along the {@code side} edge of tile (x, y). */
+    public ChassisBlueprint edgeConduit(int x, int y, Side side) {
+        edgeConduits.add(new EdgeConduitDef(x, y, side));
         return this;
     }
 

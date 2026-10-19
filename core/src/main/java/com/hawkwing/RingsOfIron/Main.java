@@ -435,7 +435,10 @@ public class Main extends ApplicationAdapter {
         }
     }
 
-    /** Thin walls on tile edges: grey wall, green open door, yellow sealed door, cyan when leaking. */
+    /**
+     * Thin walls on tile edges: grey wall, green open door, yellow sealed door, cyan when leaking.
+     * Conduits along edges are gold over them, brown without power.
+     */
     private void drawEdgeWalls(float offX, float offY) {
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         float t = 4f;
@@ -453,6 +456,24 @@ public class Main extends ApplicationAdapter {
                 if (w == null || w.isDestroyed()) continue;
                 shapeRenderer.setColor(edgeWallColor(w));
                 shapeRenderer.rect(offX + x * TILE_PX - t / 2, offY + y * TILE_PX, t, TILE_PX);
+            }
+        }
+        // Conduits along edges, over the walls they may run in
+        float c = 2f;
+        for (int y = 0; y <= grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                EdgeConduit conduit = grid.conduitH[y][x];
+                if (conduit == null) continue;
+                shapeRenderer.setColor(conduit.isPowered ? Color.GOLD : Color.BROWN);
+                shapeRenderer.rect(offX + x * TILE_PX, offY + y * TILE_PX - c / 2, TILE_PX, c);
+            }
+        }
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x <= grid.width; x++) {
+                EdgeConduit conduit = grid.conduitV[y][x];
+                if (conduit == null) continue;
+                shapeRenderer.setColor(conduit.isPowered ? Color.GOLD : Color.BROWN);
+                shapeRenderer.rect(offX + x * TILE_PX - c / 2, offY + y * TILE_PX, c, TILE_PX);
             }
         }
         shapeRenderer.end();
