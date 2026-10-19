@@ -334,6 +334,11 @@ public class Rescue {
         return skipped;
     }
 
+    /** True while a towed or rescued ship is still being brought in to dock (not saved, so no save is made then). */
+    public boolean bringingIn() {
+        return docking != null;
+    }
+
     /** Docks the new ship at the station once both are in the bubble; gives up after {@link #DOCK_FRAMES}. */
     private void dock() {
         if (--dockFrames < 0 || dockingAt == null) {

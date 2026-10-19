@@ -130,6 +130,20 @@ class FirstHourSaveGapsTest {
     }
 
     @Test
+    void noSaveWhileTheTugIsStillBringingTheShipIn(@TempDir Path dir) {
+        undock();
+        drainPropellant(0.05f);
+        assertNull(world.rescue.tow(game.player));
+        FileHandle file = new FileHandle(dir.resolve("tow.json").toFile());
+        assertEquals("the tug is still bringing you in", game.quickSave(file));
+        assertFalse(file.exists());
+        for (int i = 0; i < 120 && world.rescue.bringingIn(); i++) world.update(FRAME);
+        assertFalse(world.rescue.bringingIn());
+        assertNotNull(world.docking.dockedTo(game.player), "docked at the station");
+        assertNull(game.quickSave(file));
+    }
+
+    @Test
     void noTowWithMissilesInbound() {
         undock();
         drainPropellant(0.05f);

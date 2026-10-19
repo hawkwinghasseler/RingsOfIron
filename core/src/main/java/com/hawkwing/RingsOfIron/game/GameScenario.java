@@ -446,13 +446,14 @@ public class GameScenario {
     /** Next contact after {@code current} (wrapping), or null when there are none. */
     /**
      * Saves the whole game to {@code file}. Refused (returns a reason) during rails warp, when the
-     * bubble is collapsed onto the rails, and once the ship is lost or the career over, which a
-     * save would bring back as a live game; null when saved.
+     * bubble is collapsed onto the rails, while a tug is still bringing the ship in to dock, and once
+     * the ship is lost or the career over, which a save would bring back as a live game; null when saved.
      */
     public String quickSave(FileHandle file) {
         if (world.getCrash() != null) return "the ship is lost";
         if (world.getCareerOver() != null) return "the career is over";
         if (world.timeWarp.isRailsWarp()) return "drop out of time warp first";
+        if (world.rescue.bringingIn()) return "the tug is still bringing you in";
         world.engine.getSerializationService().saveToFile(file);
         return null;
     }

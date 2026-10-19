@@ -377,13 +377,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
             handleInput(delta);
             if (world.getCrash() == null) gun.update(delta);
             world.update(delta);
-            if (world.getCrash() == null && world.getCareerOver() == null) {
-                String why = autosaves.update(world.playerStation() != null, world.timeWarp.getWarp() > 1,
-                        world.engine.getSimSeconds());
-                // Not a ship already lost: the older slots would be all that is left
-                boolean lost = ShipDisablement.reason(game.player) != null || AbandonShip.abandoning(game.player);
-                if (why != null && !lost) autosave(why);
-            }
+            String why = autosaves.due(world, game.player);
+            if (why != null) autosave(why);
         }
         world.notices.update(delta);
         abandonAsked -= delta;
