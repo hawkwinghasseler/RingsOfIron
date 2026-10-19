@@ -34,13 +34,15 @@ public class CrewMemberComponent implements Component {
     public CrewDamageSink.DamageCause lastDamageCause;
     /** Worst wound from hits ({@link Wound}); health is the environment's (air, heat, fire). */
     public Wound wound = Wound.NONE;
+    /** Points of injury from hits, added up: how bad {@link #wound} is ({@link CrewDef#woundFor}). */
+    public float injury;
     /** What gave the wound, for the notice if it kills. */
     public CrewDamageSink.DamageCause woundCause;
     /** Seconds a critical wound can still go untreated before it kills. */
     public float bleedOut;
     /** Seconds of a baseline medic's care given toward bringing the wound down a level. */
     public float care;
-    /** Seconds a light wound has been healing by itself. */
+    /** Seconds a light or serious wound has been easing by itself. */
     public float healing;
 
     /** The board task this crew member has claimed, or null. */

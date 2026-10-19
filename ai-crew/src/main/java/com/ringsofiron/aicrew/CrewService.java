@@ -238,28 +238,29 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     }
 
     /**
-     * Wounds {@code c} by a hit of {@code amount} health points: under {@link CrewDef#grazeWound} it
-     * is a graze, under {@link CrewDef#seriousWound} light, under {@link CrewDef#criticalWound}
-     * serious and above that critical; at {@link CrewDef#lethalWound} it kills outright. A serious or critical hit on someone already seriously wounded or
-     * worse makes the wound a level worse; light hits don't add up. A critical wound starts its {@link CrewDef#bleedOutTime} clock; another
-     * bad hit halves what is left of it.
+     * Wounds {@code c} by a hit of {@code amount} health points. A hit under
+     * {@link CrewDef#grazeWound} is a graze and does nothing; one of {@link CrewDef#lethalWound} or
+     * more kills outright. Otherwise the hit adds to {@link CrewMemberComponent#injury}, and the
+     * wound is as bad as the injury: light, serious from {@link CrewDef#seriousWound}, critical from
+     * {@link CrewDef#criticalWound}. So a hit that would once have killed (100 points) leaves a
+     * critical wound, which starts its {@link CrewDef#bleedOutTime} clock; a serious hit on someone
+     * already critical halves what is left of it.
      */
     private void wound(Entity e, CrewMemberComponent c, float amount, DamageCause cause) {
         CrewDef d = c.def;
         if (amount < d.grazeWound) return;
         if (amount >= d.lethalWound) {
-            // Nothing to treat: a direct hit from a warhead, say
+            // Nothing to treat: a warhead going off beside them, say
             c.woundCause = cause;
             c.wound = Wound.CRITICAL;
             dieOfWounds(e);
             return;
         }
-        Wound hit = amount >= d.criticalWound ? Wound.CRITICAL : amount >= d.seriousWound ? Wound.SERIOUS : Wound.LIGHT;
         Wound was = c.wound;
-        Wound now = hit.compareTo(was) > 0 ? hit : was;
-        if (hit.disabling() && was.disabling() && hit.compareTo(was) >= 0) now = was.worse();
-        if (was == Wound.CRITICAL && hit.disabling()) c.bleedOut *= 0.5f;
-        if (now == was) return;
+        c.injury += amount;
+        Wound now = d.woundFor(c.injury);
+        if (was == Wound.CRITICAL && amount >= d.seriousWound) c.bleedOut *= 0.5f;
+        if (now.compareTo(was) <= 0) return;
         c.wound = now;
         c.woundCause = cause;
         c.care = 0f;
@@ -269,13 +270,14 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     }
 
     /**
-     * Brings {@code e}'s wound down a level, as treatment does; a crew member no longer down
-     * gets up if their health allows.
+     * Brings {@code e}'s wound down a level, as treatment does, and their injury to the least of
+     * that level; a crew member no longer down gets up if their health allows.
      */
     public void easeWound(Entity e) {
         CrewMemberComponent c = crew(e);
         if (c == null || c.state == CrewState.DEAD || c.wound == Wound.NONE) return;
         c.wound = c.wound.better();
+        c.injury = c.def.injuryFor(c.wound);
         c.care = 0f;
         c.healing = 0f;
         if (c.wound == Wound.NONE) c.woundCause = null;

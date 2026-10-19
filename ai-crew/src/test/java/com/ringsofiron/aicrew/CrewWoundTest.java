@@ -30,7 +30,7 @@ class CrewWoundTest {
         Entity serious = s.spawn(CrewRole.CREWMAN, 0, 3, 1), critical = s.spawn(CrewRole.CREWMAN, 0, 4, 1);
         s.crew.applyDamage(graze, 3f, DamageCause.SPALL);
         s.crew.applyDamage(light, 25f, DamageCause.PENETRATOR);
-        s.crew.applyDamage(serious, 50f, DamageCause.PENETRATOR);
+        s.crew.applyDamage(serious, 75f, DamageCause.PENETRATOR);
         s.crew.applyDamage(critical, 100f, DamageCause.PENETRATOR);
         assertEquals(Wound.NONE, s.c(graze).wound);
         assertEquals(Wound.LIGHT, s.c(light).wound);
@@ -43,11 +43,15 @@ class CrewWoundTest {
         for (Entity e : new Entity[] {graze, light, serious, critical}) {
             assertEquals(s.c(e).def.maxHealth, s.c(e).health, 1e-6f, "a wound is not health: none of them is dying of it yet");
         }
-        // Light hits don't add up; a serious one on a serious wound makes it critical
+        // Hits add up
         s.crew.applyDamage(light, 25f, DamageCause.FRAGMENT);
-        assertEquals(Wound.LIGHT, s.c(light).wound);
-        s.crew.applyDamage(serious, 40f, DamageCause.BLAST);
-        assertEquals(Wound.CRITICAL, s.c(serious).wound);
+        assertEquals(Wound.LIGHT, s.c(light).wound, "50 points is still light");
+        s.crew.applyDamage(light, 25f, DamageCause.SPALL);
+        assertEquals(Wound.SERIOUS, s.c(light).wound, "75 is serious");
+        s.crew.applyDamage(serious, 20f, DamageCause.BLAST);
+        assertEquals(Wound.CRITICAL, s.c(serious).wound, "95 is critical");
+        s.crew.applyDamage(graze, 4f, DamageCause.SPALL);
+        assertEquals(0f, s.c(graze).injury, "grazes don't add up to anything");
     }
 
     @Test
@@ -64,13 +68,17 @@ class CrewWoundTest {
     }
 
     @Test
-    void aSeriousWoundStaysDownUntilTreatedButDoesNotKill() {
+    void aSeriousWoundStaysDownWaitingForHelpButDoesNotKill() {
         TestShips s = room();
         Entity e = s.spawn(CrewRole.CREWMAN, 0, 2, 2);
-        s.crew.applyDamage(e, 50f, DamageCause.PENETRATOR);
+        s.crew.applyDamage(e, 75f, DamageCause.PENETRATOR);
         s.run(900f);
         assertEquals(CrewState.UNCONSCIOUS, s.c(e).state);
         assertEquals(Wound.SERIOUS, s.c(e).wound);
+        // With nobody to help, they come round in the end
+        s.run(s.c(e).def.seriousHealTime - 900f + 5f);
+        assertEquals(Wound.LIGHT, s.c(e).wound);
+        assertEquals(CrewState.CONSCIOUS, s.c(e).state);
     }
 
     @Test

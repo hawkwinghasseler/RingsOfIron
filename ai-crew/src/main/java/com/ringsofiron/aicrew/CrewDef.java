@@ -34,10 +34,13 @@ public class CrewDef {
 
     /** Injury from one hit, in health points, below which it is only a graze: no wound. */
     public float grazeWound = 5f;
-    /** Injury from one hit at or above which the wound is serious. */
-    public float seriousWound = 30f;
-    /** Injury from one hit at or above which the wound is critical. */
-    public float criticalWound = 70f;
+    /**
+     * Injury, added up over hits, at which a wound is serious: about where the same damage to
+     * health would once have knocked a crew member out (at 75).
+     */
+    public float seriousWound = 70f;
+    /** Injury at which a wound is critical: short of the 100 that would once have killed. */
+    public float criticalWound = 90f;
     /**
      * Injury from one hit that kills outright: twice a crew member's health, more than a round
      * can do (at most 100 in the first room it crosses) but not a warhead going off beside them.
@@ -45,6 +48,11 @@ public class CrewDef {
     public float lethalWound = 200f;
     /** Seconds a critical wound can go untreated before it kills. */
     public float bleedOutTime = 300f;
+    /**
+     * Seconds a serious wound takes to ease to a light one by itself on a safe tile, for a crew
+     * with nobody left on their feet to treat them.
+     */
+    public float seriousHealTime = 1200f;
     /** Seconds a light wound takes to heal by itself on a safe tile. */
     public float lightHealTime = 1800f;
     /** Work and walking speed multiplier with a light wound. */
@@ -55,6 +63,22 @@ public class CrewDef {
     public static final float UNTRAINED_CARE = 0.4f;
     /** Care rate when the ship has no medical stores left. */
     public static final float NO_STORES_CARE = 0.25f;
+
+    /** How bad a wound {@code injury} points of hits make. */
+    public Wound woundFor(float injury) {
+        return injury >= criticalWound ? Wound.CRITICAL : injury >= seriousWound ? Wound.SERIOUS
+                : injury >= grazeWound ? Wound.LIGHT : Wound.NONE;
+    }
+
+    /** The least injury of a wound of level {@code wound}, where treatment leaves it. */
+    public float injuryFor(Wound wound) {
+        switch (wound) {
+            case CRITICAL: return criticalWound;
+            case SERIOUS: return seriousWound;
+            case LIGHT: return grazeWound;
+            default: return 0f;
+        }
+    }
 
     /** Seconds of a baseline medic's care that bring {@code wound} down one level. */
     public static float careTime(Wound wound) {

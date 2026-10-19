@@ -19,7 +19,8 @@ import com.ringsofiron.interiorgrid.crew.RescueTask;
  *       level per {@link CrewDef#careTime} seconds of a baseline medic's care, faster or slower by
  *       the carer's {@link CrewMemberComponent#careRate}, and uses a unit of the ship's medical
  *       stores ({@link ShipGridComponent#medicalStores}) per level; with none left care is slow
- *       ({@link CrewDef#NO_STORES_CARE}). A light wound heals by itself on a safe tile over
+ *       ({@link CrewDef#NO_STORES_CARE}). Untreated on a safe tile, a serious wound eases to light
+ *       over {@link CrewDef#seriousHealTime}, and a light wound heals over
  *       {@link CrewDef#lightHealTime}.</li>
  *   <li><b>Rescue</b>: a crew member down on an unsafe tile gets a {@link RescueTask} on their
  *       ship's board; one down on a safe tile gets a {@link TreatTask}. Prisoners held aboard
@@ -94,9 +95,10 @@ public class CrewHealthSystem extends FixedIteratingSystem {
             if (c.wound == Wound.CRITICAL) {
                 c.bleedOut -= dt;
                 if (c.bleedOut <= 0f) service.dieOfWounds(e);
-            } else if (c.wound == Wound.LIGHT && safe) {
+            } else if (safe && c.carriedBy == null) {
                 c.healing += dt;
-                if (c.healing >= c.def.lightHealTime) service.easeWound(e);
+                float time = c.wound == Wound.LIGHT ? c.def.lightHealTime : c.def.seriousHealTime;
+                if (c.healing >= time) service.easeWound(e);
             }
             return;
         }
