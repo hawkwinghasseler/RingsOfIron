@@ -22,7 +22,7 @@ The art says, with attributes on any shape of the light or on a `<g>` around its
 | `data-direction` | A cone's direction, degrees, 0 = +x, 90 = up the canvas | -90 (away from a wall at the top) |
 | `data-cone` | A cone's half-angle, degrees | 45 |
 
-A system lights the room from at most 3 of its parts, those marked `point` or `cone` first, then the biggest; the rest only glow. So a designer tunes a light where it is drawn, and the extractor copies the settings into `lights.json`. Until the art carries them, `DEFAULTS` in the script gives the same settings by art name (the wall light: a cone 90° each side, so a half circle against its wall, reaching 6 tiles at 0.7); the SVG's own attributes win. The game turns the settings into a light the same way everywhere, and the room's ambient light (`SceneLighting`) sets how dark the unlit corners are.
+A system lights the room from at most 3 of its parts, those marked `point` or `cone` first, then the biggest; the rest only glow. So a designer tunes a light where it is drawn (in `tools/art/generate_svgs.py` for the base art), and the extractor copies the settings into `lights.json`. The wall light, for one, is a cone 90° each side, so a half circle against its wall, reaching 6 tiles at 0.7. The game turns the settings into a light the same way everywhere, and the room's ambient light (`SceneLighting`) sets how dark the unlit corners are.
 
 ## Wall lights
 A wall light hangs on one edge of a floor tile, shining into that tile; it takes no room, so the tile stays free for a system, a door or anything else. Its art's top edge sits against the wall, and the art turns with the wall it hangs on.

@@ -25,8 +25,7 @@ otherwise with these attributes, in tiles and degrees with y up:
     data-direction="-90"           a cone's direction, degrees (0 = +x, 90 = up the canvas)
     data-cone="60"                 a cone's half-angle, degrees
 
-Put them on any shape of the light (or on a <g> around its shapes). DEFAULTS gives the same
-settings for art that does not carry them yet.
+Put them on any shape of the light (or on a <g> around its shapes).
 """
 import colorsys
 import json
@@ -43,11 +42,6 @@ NS = "{http://www.w3.org/2000/svg}"
 
 # Gap in SVG units within which two shapes count as touching.
 MERGE_GAP = 2.0
-# Light settings for art whose SVG does not carry them (yet); the SVG's own attributes win.
-# The wall light is the deck's main light: a broad wash over the half of the room in front of its wall.
-DEFAULTS = {
-    "wall_light": {"light": "cone", "direction": -90.0, "cone": 90.0, "reach": 6.0, "intensity": 0.7},
-}
 SETTINGS = ("light", "reach", "intensity", "direction", "cone")
 KINDS = ("glow", "point", "cone")
 
@@ -242,7 +236,7 @@ def cluster(shapes):
     return list(groups.values())
 
 
-def light_of(group, name):
+def light_of(group):
     x0 = min(s[0] for s in group)
     y0 = min(s[1] for s in group)
     x1 = max(s[2] for s in group)
@@ -256,7 +250,7 @@ def light_of(group, name):
         "color": "#%02x%02x%02x" % tuple(round(c * 255) for c in rgb),
         "alpha": round(max(s[5] for s in group), 3),
     }
-    settings = dict(DEFAULTS.get(name, {}))
+    settings = {}
     for s in group:
         settings.update(s[6])
     if settings.get("light") == "cone" and "direction" not in settings:
@@ -269,7 +263,7 @@ def light_of(group, name):
     return light
 
 
-def lights_of(path, name):
+def lights_of(path):
     root = ET.parse(path).getroot()
     group = next((g for g in root.iter(NS + "g") if g.get("id") == "emissive"), None)
     if group is None:
@@ -278,7 +272,7 @@ def lights_of(path, name):
     if not shapes:
         return None
     vb = [float(n) for n in NUM.findall(root.get("viewBox", ""))] or [0, 0, float(root.get("width")), float(root.get("height"))]
-    lights = sorted((light_of(g, name) for g in cluster(shapes)), key=lambda l: (-l["y"], l["x"]))
+    lights = sorted((light_of(g) for g in cluster(shapes)), key=lambda l: (-l["y"], l["x"]))
     return {"canvas": [vb[0], -(vb[1] + vb[3]), vb[2], vb[3]], "lights": lights}
 
 
@@ -292,7 +286,7 @@ def build():
             if not f.endswith(".svg"):
                 continue
             name = f[:-4]
-            entry = lights_of(os.path.join(d, f), name)
+            entry = lights_of(os.path.join(d, f))
             if entry:
                 out[folder + "/" + name] = entry
     return json.dumps(out, indent=1, sort_keys=True) + "\n"
