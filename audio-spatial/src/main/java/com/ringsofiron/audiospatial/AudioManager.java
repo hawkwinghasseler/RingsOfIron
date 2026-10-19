@@ -84,6 +84,19 @@ public class AudioManager {
         return i;
     }
 
+    /**
+     * Plays an interface sound once where the listener is, so it is heard the same inside and
+     * out, e.g. {@code playUi(AudioEventCatalog.UI_NOTICE)}.
+     */
+    public AudioEventInstance playUi(String eventPath) {
+        float x = 0f, y = 0f;
+        if (backend instanceof SimulatedBackend) {
+            x = ((SimulatedBackend) backend).getListenerX();
+            y = ((SimulatedBackend) backend).getListenerY();
+        }
+        return playOneShot(eventPath, x, y);
+    }
+
     /** Creates an instance the caller drives and must release. */
     public AudioEventInstance createInstance(String eventPath) {
         return backend.createInstance(eventPath);
