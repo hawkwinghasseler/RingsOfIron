@@ -228,6 +228,14 @@ public class MacroSimulation {
      */
     public void advanceTo(double t) {
         if (t < now) return;
+        try {
+            advance(t);
+        } finally {
+            rails.doneAdvancing();
+        }
+    }
+
+    private void advance(double t) {
         long start = profiler == null ? 0 : System.nanoTime();
         destroyCrashed();
         while (events.nextTime() <= t) {

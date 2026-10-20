@@ -80,8 +80,16 @@ public interface RailsModel {
     /** Cancels every pending burn of the entity. */
     void cancelBurns(String uuid);
 
-    /** Fires every due rails event (burns, SOI changes, impacts) with time at or before {@code t}, in order. */
+    /**
+     * Fires every due rails event (burns, SOI changes, impacts) with time at or before {@code t}, in
+     * order. Until {@link #doneAdvancing}, whatever is planned (an orbit set, a burn scheduled) counts
+     * from {@code t}, as from the time of the macro event that plans it.
+     */
     void processEventsUntil(double t);
+
+    /** Ends an advance begun by {@link #processEventsUntil}: what is planned now counts from the game's clock again. */
+    default void doneAdvancing() {
+    }
 
     /** Sim second of the next pending rails event, or {@code +inf}. */
     double nextEventTime();
