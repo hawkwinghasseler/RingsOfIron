@@ -367,6 +367,9 @@ abstract class CareerScript {
         prizeCredits += paid;
     }
 
+    /** Each ace fight, in order: the ace's name, how it ended and how long it took. */
+    final List<String> aceFights = new ArrayList<>();
+
     /** The aces {@link #fight} has beaten, by uuid: no contract may name one again (round 7). */
     final java.util.Set<String> acesBeaten = new java.util.HashSet<>();
 
@@ -422,10 +425,16 @@ abstract class CareerScript {
         if (won && h != null && h.ace) acesBeaten.add(ship.getComponent(com.ringsofiron.coreengine.components.UuidComponent.class).id);
         if (!won && ShipDisablement.isDisabled(game.player)) log("  we are disabled: %s.", ShipDisablement.reason(game.player));
         boolean away = !won && !carried[0] && (ran || range(game.player, ship) > GOT_AWAY);
+        String result = won ? "beaten" : carried[0] ? "we lost (carried home)" : away ? "it got away"
+                : over ? "we lost" : "neither side beaten";
+        double seconds = world.engine.getSimSeconds() - t0;
         log("%s: %.0f s, %s; it fired %d rounds, %d hit us; our hull %.2f -> %.2f, crew %d -> %d.", what,
-                world.engine.getSimSeconds() - t0, won ? "beaten" : carried[0] ? "we lost (carried home)" : away ? "it got away"
-                        : over ? "we lost" : "neither side beaten", fired[0],
-                hits[0], hull0, hull(game.player), crew0, ownCrew().size());
+                seconds, result, fired[0], hits[0], hull0, hull(game.player), crew0, ownCrew().size());
+        // Round 9: each ace fight's result on a line of its own, by the ace's name, for the sweep
+        if (h != null && h.ace) {
+            aceFights.add(String.format(Locale.ROOT, "%s %s %.0f s", h.displayName, result, seconds));
+            log("  ace fight with %s: %s in %.0f s.", h.displayName, result, seconds);
+        }
         log("  shorts and tank bursts: ours %d and %d, theirs %d and %d.", ours.shortCount - incidents0[0],
                 ours.burstCount - incidents0[1], theirs == null ? 0 : theirs.shortCount - incidents0[2],
                 theirs == null ? 0 : theirs.burstCount - incidents0[3]);
@@ -679,8 +688,7 @@ abstract class CareerScript {
             double bill = world.yard.repairCost(game.player, home) + world.yard.airCost(game.player, home) + world.yard.refillCost(game.player, home);
             if (credits() < bill) {
                 log("  short by %.0f cr for the yard: the script makes up the difference.", bill - credits());
-                grantedCredits += bill - credits();
-                account().credits = bill;
+                makeUp(bill, "the yard after the ace");
             }
             repairAt(home);
             log("  yard: %s.", world.yard.orderRefill(game.player, home));
@@ -722,8 +730,7 @@ abstract class CareerScript {
         log("  without the prizes (%.0f cr) we'd have %.0f.", prizeCredits, credits() - prizeCredits);
         if (credits() < cost) {
             log("  short by %.0f cr: the script makes up the difference.", cost - credits());
-            grantedCredits += cost + 1 - credits();
-            account().credits = cost + 1;
+            makeUp(cost + 1, "the gunship");
         }
         String said = world.shipyard.buy("patrol_gunship");
         log("  %s", said);
@@ -790,8 +797,23 @@ abstract class CareerScript {
     /** Moves the player and the prize latched to it, as one, to {@code meters} off {@code station}, at rest beside it. */
     void towTo(Entity towed, Entity station, float meters) {
         Body s = world.docking.bodyOf(station);
-        Vector2 at = PhysicsManager.getPosition(s, new Vector2());
-        Vector2 v = PhysicsManager.getVelocity(s, new Vector2());
+        Vector2 at = new Vector2(), v = new Vector2();
+        if (s != null) {
+            PhysicsManager.getPosition(s, at);
+            PhysicsManager.getVelocity(s, v);
+        } else {
+            // Round 9, seed 9: a long chase took the fight, and the bubble with it, 25 km past
+            // Highport, out of the bubble. Where it is from the bubble's anchor, off the rails
+            log("  towing in from %.0f km: %s is out of the bubble.", distance(game.player, station) / 1000, PlayerDocking.name(station));
+            double now = world.universe.now();
+            var gateway = world.macroSim.gateway();
+            Entity frame = world.universe.entity(gateway.anchorParentUuid());
+            var st = new com.ringsofiron.orbital.math.StateVector();
+            world.universe.stateInFrame(station, frame, now, st);
+            StateVector a = gateway.anchorStateAt(now, new StateVector());
+            at.set((float) (st.x - a.x), (float) (st.y - a.y));
+            v.set((float) (st.vx - a.vx), (float) (st.vy - a.vy));
+        }
         Vector2 own = PhysicsManager.getPosition(body(game.player), new Vector2());
         Vector2 prize = PhysicsManager.getPosition(body(towed), new Vector2());
         PhysicsManager.setPosition(body(game.player), at.x + meters, at.y, body(game.player).getAngle());
@@ -800,6 +822,12 @@ abstract class CareerScript {
         PhysicsManager.setVelocity(body(game.player), v.x, v.y);
         PhysicsManager.setVelocity(body(towed), v.x, v.y);
         run(2);
+        if (s == null && !world.docking.isRigid(game.player)) {
+            // Moved that far, the bubble shifts under the pair and the latch lets go: latch on again
+            world.docking.dockInPlace(game.player, 0, towed, 0);
+            boolean latched = runUntil(10f, () -> world.docking.isRigid(game.player));
+            log("  the latch let go on the way in: %s.", latched ? "latched on again" : "could not latch on again");
+        }
     }
 
     /** Puts a hostile on the rails {@code dx, dy} meters from the bubble origin and lets it come in. */
@@ -902,6 +930,21 @@ abstract class CareerScript {
 
     double days(double since) {
         return (world.engine.getSimSeconds() - since) / 86_400;
+    }
+
+    /** What the script made up each time a career ran short of credits, in order: "N cr for what". */
+    final List<String> madeUp = new ArrayList<>();
+
+    /**
+     * Puts the credits a career is short in, bringing it to {@code to}, and says so in the journal
+     * (round 9): the sweep counts it, and a career that is made up is not paced in play.
+     */
+    void makeUp(double to, String what) {
+        double n = to - credits();
+        grantedCredits += n;
+        account().credits = to;
+        madeUp.add(String.format(Locale.ROOT, "%.0f cr for %s", n, what));
+        log("  the script made up %.0f cr for %s (%.0f cr in all).", n, what, grantedCredits);
     }
 
     /**

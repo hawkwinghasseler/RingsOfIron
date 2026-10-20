@@ -268,22 +268,24 @@ class Round5CareerTest extends CareerScript {
         dockAtStation(game.shipyard);
         Shipyard.Listing frigate = world.shipyard.listing("patrol_frigate");
         double cost = world.shipyard.cost(frigate, game.player);
-        int weeks = 0;
+        int weeks = 0, docked = 0;
         // Round 7: a new Commander waits their days in rank for the first frigate too
         while ((credits() < cost || world.standing.newChassisWait(frigate.shipId) > 0) && weeks < 12) {
             // A Commander's pay, with the contracts a week brings
-            if (!takeABounty()) weeksPass(1);
-            else if (credits() < cost) weeksPass(1);
+            if (!takeABounty() || credits() < cost) {
+                weeksPass(1);
+                docked++;
+            }
             weeks++;
             dockAtStation(game.shipyard);
             cost = world.shipyard.cost(frigate, game.player);
         }
-        log("Frigate at Anvil Yards: price %.0f, trade-in %.0f, cost %.0f; we have %.0f after %d week(s). Refusal: %s.",
-                frigate.price, Shipyard.tradeIn(game.player), cost, credits(), weeks, world.shipyard.refusal(frigate));
+        // Round 9: the loop's rounds, and the weeks of them spent docked, which are what move the day
+        log("Frigate at Anvil Yards: price %.0f, trade-in %.0f, cost %.0f; we have %.0f after %d round(s), %d of them a week docked. Refusal: %s.",
+                frigate.price, Shipyard.tradeIn(game.player), cost, credits(), weeks, docked, world.shipyard.refusal(frigate));
         if (credits() < cost) {
             log("  short by %.0f cr: the script makes up the difference.", cost - credits());
-            grantedCredits += cost + 1 - credits();
-            account().credits = cost + 1;
+            makeUp(cost + 1, "the frigate");
         }
         log("  %s", world.shipyard.buy("patrol_frigate"));
         assertEquals("frigate_patrol", game.player.getComponent(DefRefComponent.class).defId);
