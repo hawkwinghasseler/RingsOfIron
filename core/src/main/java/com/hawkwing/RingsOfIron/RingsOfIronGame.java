@@ -349,7 +349,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             // The player's own ship: the newest state replaces the last, so "back in action" doesn't
             // sit above a "disabled" it has just undone
             if (change.ship == game.player) {
-                world.notices.replace("Your ship is", news, change.now != null ? NoticeLog.Kind.IMPORTANT : NoticeLog.Kind.INFO);
+                world.notices.replace("Your ship is", news, change.now != null ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
             } else {
                 show(news);
             }

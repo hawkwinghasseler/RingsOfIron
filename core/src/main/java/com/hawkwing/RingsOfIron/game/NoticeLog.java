@@ -21,11 +21,11 @@ public final class NoticeLog {
     /** How much a notice matters: important ones get their own colour, a sound and a longer hold. */
     public enum Kind {
         INFO(5f),
-        /** Promotions, contracts done or failed, the ship disabled. */
+        /** Promotions, contracts done or failed. */
         IMPORTANT(8f),
         /**
          * Danger: a hostile intercepting, propellant running low, a missile inbound, and loss: a crew
-         * member dead or critically wounded (round 9: not in a promotion's green).
+         * member dead or critically wounded, the ship disabled or boarded (round 9: not in a promotion's green).
          */
         WARNING(8f);
 
