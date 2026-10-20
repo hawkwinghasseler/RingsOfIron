@@ -65,6 +65,8 @@ class CrewHealthTest {
         s.grid.getTile(9, 2).setIntegrity(0f); // hull breach to space; nobody aboard can seal it
         Entity victim = s.spawn(CrewRole.MARINE, 0, 7, 2);
         CrewMemberComponent v = s.c(victim);
+        // No suit to pull on (round 8: with nowhere aboard safe, crew suit up)
+        v.def.suitAir = 0f;
         boolean sawRescue = false;
         for (int i = 0; i < 30 * 60 && !sawRescue; i++) {
             s.engine.update(1f / 30f);
@@ -75,6 +77,16 @@ class CrewHealthTest {
         assertTrue(sawRescue, "a rescue was posted");
         s.run(30f);
         assertEquals(CrewState.DEAD, v.state, "left in vacuum, they die");
+    }
+
+    @Test
+    void withNowhereAboardSafeCrewPullTheirSuitsOn() {
+        TestShips s = room();
+        s.grid.getTile(9, 2).setIntegrity(0f);
+        Entity hand = s.spawn(CrewRole.MARINE, 0, 7, 2);
+        s.run(60f);
+        assertTrue(s.c(hand).suited, s.c(hand).activity);
+        assertTrue(s.c(hand).isConscious(), "and stay on their feet");
     }
 
     @Test
