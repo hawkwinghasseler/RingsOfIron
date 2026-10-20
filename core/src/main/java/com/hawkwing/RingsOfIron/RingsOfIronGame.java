@@ -349,7 +349,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             // The player's own ship: the newest state replaces the last, so "back in action" doesn't
             // sit above a "disabled" it has just undone
             if (change.ship == game.player) {
-                world.notices.replace("Your ship is", news, change.now != null ? NoticeLog.Kind.IMPORTANT : NoticeLog.Kind.INFO);
+                world.notices.replace("Your ship is", news, change.now != null ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
             } else {
                 show(news);
             }
@@ -424,8 +424,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
         } else {
             drawBodies();
         }
-        gameHud.draw(delta);
+        // The status column first, so an open HUD window (the crew roster, the yard) covers it rather
+        // than having the helm's order written across its rows (round 9, real window)
         drawStatus();
+        gameHud.draw(delta);
         if (world.getCrash() != null || world.getCareerOver() != null) drawCrash();
         else if (logOpen) drawLog();
         else if (helpOpen) drawHelp();
@@ -533,8 +535,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (held(Action.STRAFE_RIGHT)) controls.strafe -= 1f;
         }
         if (held(Action.FIRE)) gun.fireGuns();
-        if (just(Action.MISSILE) && !gun.launchMissile()) {
-            show(gun.getTarget() == null ? "No target for the missile" : "Launcher reloading");
+        if (just(Action.MISSILE)) {
+            // "Launcher reloading" once per reload, not once per press
+            if (gun.launchMissile()) world.notices.allowAgain(NoticeLog.RELOADING);
+            else if (gun.getTarget() == null) show("No target for the missile");
+            else world.notices.postOnce(NoticeLog.RELOADING, NoticeLog.Kind.INFO);
         }
         if (just(Action.DECOY) && gun.dropDecoy()) show("Decoy away");
         if (just(Action.NEXT_TARGET)) gun.setTarget(game.nextContact(gun.getTarget()));

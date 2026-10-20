@@ -84,6 +84,8 @@ class PirateBoardingTest {
         CargoHoldComponent theirs = ship.getComponent(CargoHoldComponent.class);
         if (theirs != null) assertTrue(theirs.amount("ore") > 0, "what fits goes in the pirate's hold");
         assertTrue(said.stream().anyMatch(n -> n.contains("took 10 ore and 2,000 cr")));
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.contains("took 10 ore") && n.kind == NoticeLog.Kind.WARNING),
+                "a loss is a warning, not a promotion's green");
         run(3);
         assertTrue(h.brokeOff, "and it leaves");
         assertNull(world.pirateBoarding.boarder());
@@ -175,6 +177,8 @@ class PirateBoardingTest {
         HostileComponent h = hostiles.get(id);
         beatThePlayer();
         assertTrue(runUntil(600, () -> said.stream().anyMatch(n -> n.contains("has latched on"))), "latched on");
+        // Round 9: boarded is a warning, not a promotion's green
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.contains("has latched on") && n.kind == NoticeLog.Kind.WARNING));
         world.combatEvents.impacts.dispatch(hitFrom(game.player, ship));
         assertNull(world.pirateBoarding.boarder(), "one hit ends it");
         assertTrue(said.contains(h.displayName + " breaks off its boarding under fire"));

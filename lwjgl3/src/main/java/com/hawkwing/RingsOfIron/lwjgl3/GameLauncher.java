@@ -16,7 +16,9 @@ import com.hawkwing.RingsOfIron.shell.SaveSlots;
  * first play, with no menu, as before the menu existed. The window opens as the settings file says.
  * With {@code --career-saves <folder>} ({@code gradlew :lwjgl3:runGame -PcareerSaves=<folder>}) the saves in
  * that folder are first copied into the game's own ({@code saves} under the working directory), so Load
- * lists them; a save already there is never overwritten.
+ * lists them. The ones copied are listed in {@code saves/career-saves.txt}, and a later run replaces those, and
+ * only those, so a new round's saves take the place of the last round's; a save the player made, or saved
+ * over since, is never touched.
  */
 public class GameLauncher {
     public static void main(String[] args) {
@@ -35,11 +37,15 @@ public class GameLauncher {
             return;
         }
         SaveSlots mine = new SaveSlots(new FileHandle(java.nio.file.Paths.get("saves").toAbsolutePath().toFile()));
-        Array<Array<String>> result = mine.importFrom(from);
-        System.out.println("Career saves from " + from.file().getAbsolutePath() + ": copied "
-                + result.get(0).size + (result.get(0).size == 0 ? "" : " (" + result.get(0).toString(", ") + ")")
-                + ", kept " + result.get(1).size + " already in " + mine.dir().file().getAbsolutePath()
-                + (result.get(1).size == 0 ? "" : " (" + result.get(1).toString(", ") + ")"));
+        SaveSlots.Imported result = mine.importFrom(from);
+        System.out.println("Career saves from " + from.file().getAbsolutePath() + " into " + mine.dir().file().getAbsolutePath()
+                + ": copied " + named(result.copied) + ", replaced " + named(result.replaced)
+                + " (copied by an earlier run), kept " + named(result.kept)
+                + (result.kept.size == 0 ? "" : " (not copied by -PcareerSaves, or saved over since: delete one from Load to take the new copy)"));
+    }
+
+    private static String named(Array<String> names) {
+        return names.size + (names.size == 0 ? "" : " (" + names.toString(", ") + ")");
     }
 
     private static Lwjgl3Application createApplication(boolean firstPlay) {

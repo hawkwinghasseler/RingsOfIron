@@ -670,6 +670,7 @@ abstract class CareerScript {
         run(60);
         h.targetUuid = HostileComponent.PLAYER;
         bringIn(id, 3_000, 0);
+        saveForPlaytest("First ace fight");
         int crew = ownCrew().size();
         fight(ship, h, "Ace fight");
         patchIfVenting("the ace");
