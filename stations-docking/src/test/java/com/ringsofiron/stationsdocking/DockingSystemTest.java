@@ -298,6 +298,44 @@ class DockingSystemTest {
         assertEquals(DockingPort.State.DOCKED, port(pair[0]).state);
     }
 
+    /**
+     * Round 6: in the real window one heavy round (18.6 kN s about 10 m off the centre) on a ship
+     * welded to a station tore it loose; the latch now rides out ordinary hits and tears only under
+     * a load kept up or a shock many times one round.
+     */
+    @Test
+    void oneHitOnAShipDockedAtAStationLeavesTheLatchAndARamTearsIt() {
+        Entity s = station(true);
+        Entity a = ship(0f, -6f, 0f, DockingPortsComponent.hullPort(MountFootprint.MountSize.S, false, 0f, 2f, 0f, 1f));
+        docking.dockInPlace(a, 0, s, 0);
+        game.stepTicks(60 * 2);
+        assertTrue(docking.isRigid(a), "welded to the station");
+        // The round's turning impulse at this 10 m hull's end: twice the round at half the lever arm
+        hit(a, 2 * 18_600f);
+        game.stepTicks(60 * 2);
+        assertFalse(events.contains(DockingEvent.Kind.TORN), "one hit: " + events);
+        assertTrue(docking.isRigid(a), "still welded");
+        // Five more in a second's volley: still held
+        for (int i = 0; i < 5; i++) {
+            hit(a, 2 * 18_600f);
+            game.stepTicks(12);
+        }
+        game.stepTicks(60);
+        assertFalse(events.contains(DockingEvent.Kind.TORN), "a volley: " + events);
+        // A ram: fifty times the round at once
+        hit(a, 50 * 2 * 18_600f);
+        game.stepTicks(3);
+        assertTrue(events.contains(DockingEvent.Kind.TORN), "a shock that size tears it: " + events);
+    }
+
+    /** A sideways impulse, newtons-seconds, on {@code ship}'s end 5 m from its centre, for one step. */
+    private void hit(Entity ship, float impulse) {
+        Body b = body(ship);
+        Vector2 end = new Vector2(b.getWorldPoint(new Vector2(5f * PhysicsManager.UNITS_PER_METER, 0f))).scl(PhysicsManager.METERS_PER_UNIT);
+        Vector2 side = new Vector2(b.getWorldVector(new Vector2(0f, 1f))).nor();
+        PhysicsManager.applyImpulse(b, side.x * impulse, side.y * impulse, end.x, end.y);
+    }
+
     /** A 9 x 5 station with an active Small port on top, at the origin moving at 3 m/s along +x. */
     private Entity station(boolean grants) {
         return station(grants, (t, out) -> {
