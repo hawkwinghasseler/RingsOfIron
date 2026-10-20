@@ -343,8 +343,8 @@ public class Main extends ApplicationAdapter {
         batch.end();
         batch.setTransformMatrix(identity);
 
-        // Vacuum over the rooms, in the deck's meters. The batch's end turned blending
-        // off, and without it a trace of smoke covers the room in solid grey
+        // Breaches blinking over the rooms, in the deck's meters. The batch's end turned blending
+        // off, and without it the blink would hide the tile under solid red
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapeRenderer.setTransformMatrix(deckPose);

@@ -1095,7 +1095,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 batch.end();
                 batch.setTransformMatrix(identity);
             }
-            // The batch's end turned blending off; the vacuum shading needs it
+            // The batch's end turned blending off; the breach blink needs it
             Gdx.gl.glEnable(GL20.GL_BLEND);
             Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
             shapes.begin(ShapeRenderer.ShapeType.Filled);
