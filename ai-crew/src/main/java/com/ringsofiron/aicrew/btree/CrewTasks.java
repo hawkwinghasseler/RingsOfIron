@@ -355,11 +355,12 @@ public final class CrewTasks {
 
     /** Does the work of a repair, seal, extinguish or treat task until it is finished. */
     public static class DoWork extends CrewLeaf {
-        private float elapsed;
+        private float elapsed, unsuiting;
 
         @Override
         public void start() {
             elapsed = 0f;
+            unsuiting = 0f;
         }
 
         @Override
@@ -442,6 +443,17 @@ public final class CrewTasks {
                     }
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
                     p.treatedBy = a.entity;
+                    // Off battle stations and in good air, the carer slips their suit off to work (round 8):
+                    // it slowed the care of the wounded long after the fight
+                    if (a.crew.suited && (board == null || !board.battleSuits()) && !TaskRules.needsSuit(grid, a.pos.tileX(), a.pos.tileY())
+                            && !TaskRules.needsSuit(grid, t.x, t.y)) {
+                        unsuiting += a.dt;
+                        a.crew.activity = "taking off a suit";
+                        if (unsuiting >= a.crew.def.suitTime * 0.5f) {
+                            a.crew.setSuited(false);
+                            unsuiting = 0f;
+                        }
+                    }
                     return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes or the wound heals
                 }
                 case STABILISE: {
