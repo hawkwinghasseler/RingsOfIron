@@ -797,8 +797,23 @@ abstract class CareerScript {
     /** Moves the player and the prize latched to it, as one, to {@code meters} off {@code station}, at rest beside it. */
     void towTo(Entity towed, Entity station, float meters) {
         Body s = world.docking.bodyOf(station);
-        Vector2 at = PhysicsManager.getPosition(s, new Vector2());
-        Vector2 v = PhysicsManager.getVelocity(s, new Vector2());
+        Vector2 at = new Vector2(), v = new Vector2();
+        if (s != null) {
+            PhysicsManager.getPosition(s, at);
+            PhysicsManager.getVelocity(s, v);
+        } else {
+            // Round 9, seed 9: a long chase took the fight, and the bubble with it, 25 km past
+            // Highport, out of the bubble. Where it is from the bubble's anchor, off the rails
+            log("  towing in from %.0f km: %s is out of the bubble.", distance(game.player, station) / 1000, PlayerDocking.name(station));
+            double now = world.universe.now();
+            var gateway = world.macroSim.gateway();
+            Entity frame = world.universe.entity(gateway.anchorParentUuid());
+            var st = new com.ringsofiron.orbital.math.StateVector();
+            world.universe.stateInFrame(station, frame, now, st);
+            StateVector a = gateway.anchorStateAt(now, new StateVector());
+            at.set((float) (st.x - a.x), (float) (st.y - a.y));
+            v.set((float) (st.vx - a.vx), (float) (st.vy - a.vy));
+        }
         Vector2 own = PhysicsManager.getPosition(body(game.player), new Vector2());
         Vector2 prize = PhysicsManager.getPosition(body(towed), new Vector2());
         PhysicsManager.setPosition(body(game.player), at.x + meters, at.y, body(game.player).getAngle());
@@ -807,6 +822,12 @@ abstract class CareerScript {
         PhysicsManager.setVelocity(body(game.player), v.x, v.y);
         PhysicsManager.setVelocity(body(towed), v.x, v.y);
         run(2);
+        if (s == null && !world.docking.isRigid(game.player)) {
+            // Moved that far, the bubble shifts under the pair and the latch lets go: latch on again
+            world.docking.dockInPlace(game.player, 0, towed, 0);
+            boolean latched = runUntil(10f, () -> world.docking.isRigid(game.player));
+            log("  the latch let go on the way in: %s.", latched ? "latched on again" : "could not latch on again");
+        }
     }
 
     /** Puts a hostile on the rails {@code dx, dy} meters from the bubble origin and lets it come in. */
