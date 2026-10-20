@@ -83,7 +83,7 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - `SponsorChoiceTest`: the Patrol by default; a Selene start, board and rank names; only sponsorable factions; flying and warping above the Moon; friendly guards; a save keeps the sponsor and home.
 - `Round5LateCareerTest`: the base's wing, its fall and the tension it eases, a save mid-raid, world events' strain, the Free Trader patrol and the board's tension line.
 - `Round6WorldTest`: the data's tuning, prices up to a quarter (refill and repairs charged at the strained price), a combat job added at high tension, a rival's shorter board, the traffic map's readout, survivors hurt by days in the pod and tended, the Captain's operation after the fall, and a new base rising after 20 strained days (with a save between).
-- `BaseDefenceTest`: launch order, a railgun raider never leading; the guns manned at the first scramble, moored and locked on the player, kept through a save; the guns are no bounty, recon or ace; spawn loadouts follow the seed., and the base's darts in flight go ballistic when it strikes (round 8).
+- `BaseDefenceTest`: launch order, a railgun raider never leading; the guns manned at the first scramble, moored and locked on the player, kept through a save; the guns are no bounty, recon or ace; spawn loadouts follow the seed; the base's darts in flight go ballistic when it strikes (round 8).
 - `EnemySurveyTest` (round 6): the base's defence against the corvette, and with `-PenemySurvey` the survey of each enemy against the corvette, gunship and frigate.
 - `FactionTensionTest`: hostile acts raise tension, pirates excluded; high tension reinforces once and refuses rivals; the weekly drift; weeks pass on the sim clock; a save keeps the strain.
 
