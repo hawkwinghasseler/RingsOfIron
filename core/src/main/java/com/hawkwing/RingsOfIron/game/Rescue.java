@@ -10,6 +10,9 @@ import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.TaskRules;
+import com.ringsofiron.combatsys.components.SensorComponent;
+import com.ringsofiron.combatsys.components.WeaponMountComponent;
+import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
@@ -243,6 +246,12 @@ public class Rescue {
         if (controls != null) controls.forward = controls.turn = controls.strafe = 0f;
         // The tug takes the ship away from whatever was after it: none follows it in
         world.macroSim.hostiles().playerTakenAway(t, t + TIME_SKIP);
+        // and from whatever it had its guns on: a lock kept through the tow had a weapons-free gun
+        // open up at the station on a prize left nearby, and its recoil tore the latch
+        SensorComponent sensor = ship.getComponent(SensorComponent.class);
+        if (sensor != null) sensor.lockedTarget = null;
+        WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);
+        if (weapons != null) for (WeaponMountComponent m : weapons.mounts) m.target = null;
         double skipped = skipTo(ship, station);
         dockingAt = station;
         docking = ship;

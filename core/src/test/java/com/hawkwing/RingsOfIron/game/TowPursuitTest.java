@@ -53,7 +53,11 @@ class TowPursuitTest {
         h.targetUuid = HostileComponent.PLAYER;
         Entity ship = bringIn(id, 12_000, 0);
         run(2);
+        // The guns on it, and weapons free: a lock kept through the tow fired at the station
+        game.player.getComponent(com.ringsofiron.combatsys.components.SensorComponent.class).lockedTarget = ship;
+        for (com.ringsofiron.combatsys.components.WeaponMountComponent m : game.player.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class).mounts) m.weaponsFree = true;
         towed();
+        assertNull(game.player.getComponent(com.ringsofiron.combatsys.components.SensorComponent.class).lockedTarget, "the lock went with it");
         assertNotEquals(HostileComponent.PLAYER, h.targetUuid, "it has lost the player");
         assertNull(ship.getComponent(PhysicsBodyComponent.class), "and isn't at the station with them");
         assertNotEquals(HostileComponent.State.IN_BUBBLE, h.state);
