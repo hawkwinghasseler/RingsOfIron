@@ -59,6 +59,17 @@ public final class DockingTuning {
     public static final float SEATING_TIME = 3f;
     /** Time constant of the low-pass filter on the strain read from the weld, seconds. */
     public static final float STRAIN_FILTER = 0.3f;
+    /**
+     * One step's strain counts toward the filtered strain only up to this many times the break
+     * limit: a single hit's spike is a shock the latch rides out, and only a load kept up (thrust,
+     * a shove, many hits close together) tears it (round 6).
+     */
+    public static final float STRAIN_SPIKE_CAP = 3f;
+    /**
+     * A single step's strain past this many times the break limit tears the latch at once: an
+     * impulse worth about two thirds of a second at the break load, as from a ram, not one round.
+     */
+    public static final float SHOCK_LIMIT = 40f;
     /** Relative speed the separation springs push the craft apart at on undock, m/s. */
     public static final float SEPARATION_SPEED = 0.3f;
 
