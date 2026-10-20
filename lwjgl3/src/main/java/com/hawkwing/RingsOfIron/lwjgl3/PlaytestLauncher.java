@@ -36,6 +36,8 @@ import java.util.List;
  *   <li>{@code away <m>}: puts the ship that far out from Highport, moving with it</li>
  *   <li>{@code disable raider} / {@code disable player}: knocks out that ship's reactor</li>
  *   <li>{@code damage}: holes the first deck tile, as battle damage</li>
+ *   <li>{@code hull <x>}: wears every hull wall down to {@code x}, so the ship is beaten on its hull
+ *       with its reactor and guns still up</li>
  *   <li>{@code latch}: latches the ship onto the raider's port</li>
  *   <li>{@code dock}: docks at Highport</li>
  *   <li>{@code strand}: empties the propellant tanks, so the ship can't fly home and the tug can be called</li>
@@ -49,6 +51,7 @@ import java.util.List;
  *       navigation target, where how many Q presses it takes changes from game to game</li>
  *   <li>{@code raid}: only reads how the raid stands (the base, the hull, the gun's and the navigation
  *       target, the helm's order, and each defender's range), so a script can fly it by keys</li>
+ *   <li>{@code seat}: only reads the console the avatar sits at and where the weapons console is from it</li>
  *   <li>{@code boarding}: only reads who is boarding the player, how close, and what the last boarder took</li>
  * </ul>
  * Run with {@code gradlew :lwjgl3:runPlaytest -Pcommands=<file> [-Psaves=<folder>]}. Saves go to a
@@ -183,6 +186,20 @@ public class PlaytestLauncher {
                     grid.getTile(0, 0).setIntegrity(0.5f);
                     grid.gridDirty = true;
                     return "holed";
+                }
+                case "hull": {
+                    // Every hull wall at this integrity: beaten on the hull with the reactor and guns
+                    // still up, where losing a fight that way by hand isn't repeatable
+                    ShipGridComponent grid = s.player.getComponent(ShipGridComponent.class);
+                    float to = Float.parseFloat(cmd[1]);
+                    for (int y = 0; y < grid.height; y++) {
+                        for (int x = 0; x < grid.width; x++) {
+                            com.ringsofiron.interiorgrid.Tile t = grid.getTile(x, y);
+                            if (t != null && t.wallType == com.ringsofiron.interiorgrid.Tile.WallType.HULL) t.setIntegrity(Math.min(t.getIntegrity(), to));
+                        }
+                    }
+                    grid.gridDirty = true;
+                    return String.format(java.util.Locale.ROOT, "hull %.2f", com.hawkwing.RingsOfIron.game.ShipDisablement.hullIntegrity(grid));
                 }
                 case "latch":
                     world.docking.dockInPlace(s.player, 0, s.raider, 0);
