@@ -264,7 +264,7 @@ public final class TaskRules {
     }
 
     /**
-     * A casualty bleeding out with this long or less left is gone in after under fire all the same
+     * A casualty bleeding out or suffocating with this long or less left is gone in after under fire all the same
      * ({@link #waitsOutFire}), seconds.
      */
     public static final float LAST_CHANCE = 120f;
@@ -272,7 +272,8 @@ public final class TaskRules {
     /**
      * True if {@code task} lies where the fire is falling on its ship ({@link
      * ShipTaskBoardComponent#underFire}) and waits for the fight to end: damage control, repairs and
-     * casualties alike, except a casualty with no more than {@link #LAST_CHANCE} to live. Manning a
+     * casualties alike, except a casualty with no more than {@link #LAST_CHANCE} to live, bleeding out
+     * or down in bad air with that much suit air or none. Manning a
      * console, orders and work away from the ship never wait.
      */
     public static boolean waitsOutFire(CrewTask task, ShipTaskBoardComponent board, CrewService crew) {
@@ -282,8 +283,16 @@ public final class TaskRules {
             default: break;
         }
         if (!board.underFire(targetX(task, crew), targetY(task, crew))) return false;
-        CrewMemberComponent c = crew.crew(mobileTarget(task));
-        return c == null || c.wound != Wound.CRITICAL || c.stabilised || c.treatedBy != null || c.bleedOut > LAST_CHANCE;
+        Entity casualty = mobileTarget(task);
+        CrewMemberComponent c = crew.crew(casualty);
+        if (c == null) return true;
+        boolean bleeding = c.wound == Wound.CRITICAL && !c.stabilised && c.treatedBy == null && c.bleedOut <= LAST_CHANCE;
+        // Down on air not fit to breathe, with little or no suit air: suffocating
+        GridPositionComponent p = crew.position(casualty);
+        ShipGridComponent grid = p == null ? null : crew.grid(p.ship);
+        boolean suffocating = grid != null && !c.isConscious() && !isBreathable(grid, p.tileX(), p.tileY())
+                && (!c.breathesFromSuit() || c.suitAir <= LAST_CHANCE);
+        return !bleeding && !suffocating;
     }
 
     /** True while {@code e}'s ship is at battle stations. */
