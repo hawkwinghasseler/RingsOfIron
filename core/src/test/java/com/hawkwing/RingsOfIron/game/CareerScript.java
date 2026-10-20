@@ -278,6 +278,11 @@ abstract class CareerScript {
      * crew rarely live through the player's guns, so the prisoners are counted, not required.
      */
     void boardAndSell(Entity ship) {
+        if (ship.getComponent(PhysicsBodyComponent.class) == null) {
+            // A long fight leaves it drifting: twenty minutes on, it can be out of the bubble
+            log("  the prize drifted out of reach before it could be boarded.");
+            return;
+        }
         flyTo(ship, 40f);
         world.docking.dockInPlace(game.player, 0, ship, 0);
         assertTrue(runUntil(10f, () -> world.boarding.target(game.player) == ship && world.docking.isRigid(game.player)),
@@ -319,13 +324,16 @@ abstract class CareerScript {
             gun.fireGuns();
             gun.launchMissile();
             gun.update(FRAME);
-            // Dark for an ion stun's few seconds isn't a lost fight: the guns come back
+            // Dark for an ion stun's few seconds isn't a lost fight: the guns come back. Judged afresh,
+            // since the disabled mark lingers until the next judgement after the stun ends
             return (h != null && h.partDropped) || ShipDisablement.isDisabled(ship)
                     || ShipDisablement.isDisabled(game.player) && !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player)
+                    && world.disablement.judge(game.player) != null
                     || world.getCrash() != null || distance(game.player, ship) > GOT_AWAY;
         });
         world.carriedHome.remove(home);
         boolean won = !carried[0] && ((h != null && h.partDropped) || ShipDisablement.isDisabled(ship));
+        if (!won && ShipDisablement.isDisabled(game.player)) log("  we are disabled: %s.", ShipDisablement.reason(game.player));
         boolean away = !won && !carried[0] && distance(game.player, ship) > GOT_AWAY;
         log("%s: %.0f s, %s; it fired %d rounds, %d hit us; our hull %.2f -> %.2f, crew %d -> %d.", what,
                 world.engine.getSimSeconds() - t0, won ? "beaten" : carried[0] ? "we lost (carried home)" : away ? "it got away"
