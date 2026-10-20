@@ -35,7 +35,7 @@ dependencies {
 
 test {
   useJUnitPlatform()
-  // ./gradlew :core:test --tests '*Round3CareerTest' -PcareerSeed=7 plays the scripted career on another seed
+  // ./gradlew :core:slowTest --tests '*Round3CareerTest' -PcareerSeed=7 plays the scripted career on another seed
   if (project.hasProperty('careerSeed')) systemProperty 'career.seed', project.property('careerSeed')
   // ./gradlew :core:test --tests '*CrewWoundSurveyTest' -PwoundSurvey=10 fights round 4's ace survey again with wounds
   if (project.hasProperty('woundSurvey')) systemProperty 'wound.survey', project.property('woundSurvey')
