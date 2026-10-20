@@ -92,6 +92,7 @@ abstract class CareerScript {
         world = new GameWorld();
         game = GameScenario.start(world, assets(), assets().resolve("no-mods-here"), NewGame.seeded(seed, "patrol"));
         world.carriedHome.add((sig, t) -> log("  (the player is down: the crew bring them to %s, %.1f d later)", t.stationName, t.skipped / 86_400));
+        world.pirateBoarding.robbed.add((sig, t) -> log("  (boarded by %s: they took %s)", t.pirateName, t.describe()));
     }
 
     // ------------------------------------------------------------------ round 3's career
