@@ -352,15 +352,33 @@ class Round5CareerTest extends CareerScript {
         log("  at %s: it scrambles %s.", world.pirateBase.name(), wing);
         float hull0 = hull(game.player);
         int crew0 = ownCrew().size();
+        boolean lost = false;
         for (String name : wing) {
             Entity ship = hostile(name);
             if (ship == null || FirstPlay.beaten(world, ship)) continue;
             HostileComponent h = ship.getComponent(HostileComponent.class);
             log("  defender %s: %s, loadout %s.", name, h.shipId, h.loadout);
             if (ship.getComponent(PhysicsBodyComponent.class) == null) bringIn(world.universe.uuidOf(ship), 3_000, 0);
-            if (!fight(ship, h, "Defender " + name)) break;
+            if (!fight(ship, h, "Defender " + name)) {
+                lost = true;
+                break;
+            }
         }
         runUntil(2 * PirateBase.CHECK_SECONDS + 1, () -> !world.pirateBase.standing());
+        // Round 7: the defence no longer leaves with a beaten leader, so a defender out only for a
+        // moment (its shorts reset) is back in the fight, and keeps the base standing: fight it again
+        for (int pass = 0; pass < 2 && !lost && world.pirateBase.standing() && world.pirateBase.defended(); pass++) {
+            for (String name : wing) {
+                Entity ship = hostile(name);
+                HostileComponent h = ship == null ? null : ship.getComponent(HostileComponent.class);
+                if (h == null || h.brokeOff || FirstPlay.beaten(world, ship) || ship.getComponent(PhysicsBodyComponent.class) == null) continue;
+                if (!fight(ship, h, "Defender " + name + ", back in the fight")) {
+                    lost = true;
+                    break;
+                }
+            }
+            runUntil(2 * PirateBase.CHECK_SECONDS + 1, () -> !world.pirateBase.standing());
+        }
         log("Raid on %s: %.0f s, base %s; our hull %.2f -> %.2f, crew %d -> %d.", world.pirateBase.name(),
                 world.engine.getSimSeconds() - t0, world.pirateBase.standing() ? "still standing" : "fallen", hull0,
                 hull(game.player), crew0, ownCrew().size());
