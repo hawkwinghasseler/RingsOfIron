@@ -378,6 +378,9 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         MountFootprint mount = port == null || grid == null || port.state != DockingPort.State.DOCKED ? null
                 : DockLinks.mount(grid, port);
         if (mount == null) return ForceMethod.DoorState.NONE;
+        // Forced open it stays open while latched, even in the frames after a load when its door is
+        // held shut until the walkway is joined again
+        if (port.forced) return ForceMethod.DoorState.OPEN;
         boolean any = false;
         for (int[] t : DockLinks.doorTiles(mount)) {
             EdgeWall door = DockingPortLayout.door(grid, mount, t[0], t[1]);
