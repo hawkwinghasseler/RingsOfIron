@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The middle and late career, played in a real window under Xvfb from saves the scripted career
 # writes, with a screenshot at each step. Needs Xvfb, xdotool and ImageMagick's import.
-#   ./gradlew :core:test --tests '*Round5CareerTest'      (writes core/build/playtest-saves/seed-2026)
+#   ./gradlew :core:slowTest --tests '*Round5CareerTest'  (writes core/build/playtest-saves/seed-2026)
 #   tools/playtest/mid-late.sh [out-dir]                    (default build/playtest-screens-late)
 # Run from the repository root. Keys and clicks play it; five things come through commands to
 # PlaytestLauncher instead: `load` picks a save by name (the load list's order shifts as autosaves
