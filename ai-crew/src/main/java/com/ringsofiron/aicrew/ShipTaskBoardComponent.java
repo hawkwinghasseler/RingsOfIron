@@ -36,6 +36,12 @@ public class ShipTaskBoardComponent implements Component {
      * default; the player toggles it for their own ship.
      */
     public boolean suitsAtBattleStations = true;
+    /**
+     * Whether the crew keep clear of where the fire fell at battle stations ({@link
+     * TaskRules#waitsOutFire}). On by default; set from their faction's data when the ship is crewed
+     * ({@code crews_keep_clear_of_fire}, round 9: the pirates stay at their posts).
+     */
+    public boolean keepsClearOfFire = true;
     /** True while the ship is in a fight: set each tick by the game, so not saved. */
     public transient boolean battleStations;
     /**

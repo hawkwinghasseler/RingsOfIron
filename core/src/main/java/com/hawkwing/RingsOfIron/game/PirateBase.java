@@ -211,6 +211,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         Entity station = world.engine.getEntity(uuid);
         int pirates = world.standing.factions().index(HostileTraffic.PIRATES);
         if (station != null && pirates >= 0 && !anyPirateAboard()) StationCrew.spawnCrew(world.crew, station, pirates);
+        if (station != null) world.standing.factions().crewHabits(world.crew.board(station));
         world.notices.post("Raiders have moved back into " + name() + ": the pirates have a base again", NoticeLog.Kind.IMPORTANT);
     }
 

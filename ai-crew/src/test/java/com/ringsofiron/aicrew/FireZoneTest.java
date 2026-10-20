@@ -3,6 +3,7 @@ package com.ringsofiron.aicrew;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
 import com.ringsofiron.interiorgrid.crew.RescueTask;
 import org.junit.jupiter.api.Test;
@@ -67,6 +68,37 @@ class FireZoneTest {
         for (int i = 0; i < 120 && TaskRules.isBreathable(s.grid, 12, 2); i++) s.run(1f);
         assertFalse(TaskRules.isBreathable(s.grid, 12, 2));
         assertFalse(TaskRules.waitsOutFire(rescue, s.board, s.crew), "unsuited in bad air, it doesn't");
+    }
+
+    /** A hall with life support at its far end, shorted where a crewmate was hit, at battle stations. */
+    static TestShips rakedShort(int faction, boolean keepsClear) {
+        TestShips s = new TestShips(
+                "################",
+                "#..............#",
+                "#..........LL..#",
+                "#..............#",
+                "################");
+        s.board.faction = faction;
+        s.board.keepsClearOfFire = keepsClear;
+        s.board.battleStations = true;
+        s.board.hitAt(12, 2);
+        SubsystemComponent life = ShortsAndTanksTest.system(s, SubsystemComponent.SubsystemType.LIFE_SUPPORT);
+        life.shorted = true;
+        s.spawn(CrewRole.ENGINEER, faction, 1, 2);
+        return s;
+    }
+
+    @Test
+    void aPirateCrewmanResetsAShortWhereTheFireFellWhileOurCrewWait() {
+        // Round 9: pirate crews don't keep clear of the fire (crews_keep_clear_of_fire = false)
+        TestShips ours = rakedShort(0, true), theirs = rakedShort(7, false);
+        assertTrue(ours.board.underFire(11, 2), "the short lies where the fire fell");
+        ours.run(30f);
+        theirs.run(30f);
+        assertTrue(ShortsAndTanksTest.system(ours, SubsystemComponent.SubsystemType.LIFE_SUPPORT).shorted,
+                "our engineer waits out the fight");
+        assertFalse(ShortsAndTanksTest.system(theirs, SubsystemComponent.SubsystemType.LIFE_SUPPORT).shorted,
+                "the pirate goes in and resets it");
     }
 
     @Test

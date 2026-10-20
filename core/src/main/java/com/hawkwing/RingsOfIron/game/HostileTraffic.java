@@ -1125,6 +1125,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         ship.remove(PhysicsBodyComponent.class);
         ShipConsoles.install(ship);
         CrewFactory.ensureBoard(ship).faction = crewFaction;
+        world.standing.factions().crewHabits(CrewFactory.ensureBoard(ship));
         ShipDef def = content.defs.get("ship", shipId, ShipDef.class);
         List<int[]> floor = GameScenario.floorTiles(ship.getComponent(ShipGridComponent.class));
         int crew = def == null ? 0 : Math.min(def.crew, floor.size());
