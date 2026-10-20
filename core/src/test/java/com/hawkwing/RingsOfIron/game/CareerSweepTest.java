@@ -120,8 +120,8 @@ class CareerSweepTest {
         out.add(String.format(Locale.ROOT, "Career sweep on %s: seeds %s, %d careers in %.0f min, %d at once.", commit(),
                 System.getProperty("career.sweep"), jobs.size(), (System.nanoTime() - t0) / 60e9, forks));
         out.add("");
-        out.add("| Seed | Career | Gunship (day) | Made up by the script | Ace fights | Crew dead | Commander | Captain | Frigate | Raid | Stopped | Minutes |");
-        out.add("|---|---|---|---|---|---|---|---|---|---|---|---|");
+        out.add("| Seed | Career | Gunship (day) | Made up by the script | Ace fights | Crew dead | Player carried home | Commander | Captain | Frigate | Raid | Stopped | Minutes |");
+        out.add("|---|---|---|---|---|---|---|---|---|---|---|---|---|");
         List<String> missing = new ArrayList<>();
         for (Job j : jobs) {
             if (j.row == null) missing.add(j + ": " + j.trouble);
@@ -194,15 +194,15 @@ class CareerSweepTest {
 
         String tableRow() {
             if (row == null) {
-                return String.format(Locale.ROOT, "| %d | %s | | | | | | | | | no row: %s | %.0f |", seed, career, trouble, minutes);
+                return String.format(Locale.ROOT, "| %d | %s | | | | | | | | | | no row: %s | %.0f |", seed, career, trouble, minutes);
             }
             String frigate = get("frigate");
             if (!frigate.equals("-")) {
                 double d = Double.parseDouble(frigate);
                 if (d < FRIGATE_EARLIEST || d > FRIGATE_LATEST) frigate += String.format(Locale.ROOT, " (outside %.0f to %.0f)", FRIGATE_EARLIEST, FRIGATE_LATEST);
             }
-            return String.format(Locale.ROOT, "| %d | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %.0f |", seed, career, get("gunship"),
-                    get("madeUp"), get("aces"), get("dead"), get("commander"), get("captain"), frigate, get("raid"),
+            return String.format(Locale.ROOT, "| %d | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %.0f |", seed, career, get("gunship"),
+                    get("madeUp"), get("aces"), get("dead"), get("down"), get("commander"), get("captain"), frigate, get("raid"),
                     get("stopped") + (trouble.isEmpty() ? "" : "; " + trouble), minutes);
         }
 
@@ -246,8 +246,26 @@ class CareerSweepTest {
             this.career = career;
         }
 
+        /** Each time the player went down and the crew carried them home: the day, the cause and where. */
+        final List<String> downs = new ArrayList<>();
+        /** The player's avatar as it lay at the end of the last update it was found down in. */
+        String avatarDown = "";
+
         /** Watches for the player's crew dying, by CrewCareer's notice, and reads the cause off the body. */
         void watch(GameWorld world) {
+            // The avatar is revived in the same update it is found dead in: read it as the systems leave it
+            world.engine.getEcsEngine().addSystem(new com.badlogic.ashley.core.EntitySystem(Integer.MAX_VALUE) {
+                @Override
+                public void update(float deltaTime) {
+                    for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                        if (e.getComponent(PlayerAvatarComponent.class) == null) continue;
+                        CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                        if (c.state == CrewState.DEAD) avatarDown = (c.lastDamageCause == null ? "no damage logged"
+                                : c.lastDamageCause.name().toLowerCase(Locale.ROOT)) + ", " + where(e, c);
+                    }
+                }
+            });
+            world.carriedHome.add((sig, t) -> downs.add(String.format(Locale.ROOT, "day %.2f, %s", world.engine.getSimSeconds() / 86_400, avatarDown)));
             world.notices.posted.add((sig, n) -> {
                 String name = n.text.endsWith(" has died of wounds") ? n.text.substring(0, n.text.length() - 19)
                         : n.text.endsWith(" is dead") ? n.text.substring(0, n.text.length() - 8) : null;
@@ -258,6 +276,7 @@ class CareerSweepTest {
                     if (!name.equals(c.name) || c.state != CrewState.DEAD || !playerCrew(e, c)) continue;
                     cause = (c.lastDamageCause == null ? "no damage logged" : c.lastDamageCause.name().toLowerCase(Locale.ROOT))
                             + (c.woundCause == null ? "" : ", wound " + c.woundCause.name().toLowerCase(Locale.ROOT) + " " + c.wound.name().toLowerCase(Locale.ROOT));
+                    cause += ", " + where(e, c);
                 }
                 Entity at = world.docking.dockedTo(career.game.player);
                 dead.add(String.format(Locale.ROOT, "%s, day %.2f, %s, %s", name, world.engine.getSimSeconds() / 86_400, cause,
@@ -277,6 +296,23 @@ class CareerSweepTest {
                             : c.lastDamageCause.name().toLowerCase(Locale.ROOT)) + ", no notice");
                 }
             }
+        }
+
+        /** Where a body lies: the ship, the tile, that tile's air, the suit and what they were doing. */
+        static String where(Entity e, CrewMemberComponent c) {
+            com.ringsofiron.aicrew.GridPositionComponent g = e.getComponent(com.ringsofiron.aicrew.GridPositionComponent.class);
+            if (g == null || g.ship == null) return "on no ship";
+            com.ringsofiron.moddingdata.components.DefRefComponent def = g.ship.getComponent(com.ringsofiron.moddingdata.components.DefRefComponent.class);
+            com.ringsofiron.interiorgrid.ShipGridComponent grid = g.ship.getComponent(com.ringsofiron.interiorgrid.ShipGridComponent.class);
+            String air = "";
+            if (grid != null) {
+                com.ringsofiron.interiorgrid.Tile t = grid.getTile((int) g.x, (int) g.y);
+                com.ringsofiron.interiorgrid.Compartment room = t == null ? null : t.compartment;
+                air = room == null ? ", no room" : String.format(Locale.ROOT, ", room %d at %.1f kPa, O2 %.1f kPa", room.id,
+                        room.pressure(), room.oxygenPressure());
+            }
+            return String.format(Locale.ROOT, "in the %s at (%.0f, %.0f)%s, %s, \"%s\"", def == null ? "?" : def.defId, g.x, g.y, air,
+                    c.suited ? String.format(Locale.ROOT, "suited (%.0f s of air)", c.suitAir) : "unsuited", c.activity);
         }
 
         static boolean playerCrew(Entity e, CrewMemberComponent c) {
@@ -306,6 +342,7 @@ class CareerSweepTest {
             p.setProperty("madeUp", career.madeUp.isEmpty() ? "none" : String.join("; ", career.madeUp));
             p.setProperty("aces", String.join("; ", career.aceFights));
             p.setProperty("dead", dead.isEmpty() ? "0" : dead.size() + ": " + String.join("; ", dead));
+            p.setProperty("down", downs.isEmpty() ? "0" : downs.size() + ": " + String.join("; ", downs));
             p.setProperty("stopped", stopped());
             if (career instanceof Round5Sweep) {
                 Round5Sweep r5 = (Round5Sweep) career;
@@ -368,6 +405,7 @@ class CareerSweepTest {
             } catch (AssertionError | RuntimeException e) {
                 tally.failure = e;
                 log("Stopped: %s", e.getMessage());
+                e.printStackTrace(System.out);
             } finally {
                 if (world != null) {
                     tally.endDay = world.engine.getSimSeconds() / 86_400;
@@ -423,6 +461,7 @@ class CareerSweepTest {
             } catch (AssertionError | RuntimeException e) {
                 tally.failure = e;
                 log("Stopped: %s", e.getMessage());
+                e.printStackTrace(System.out);
             } finally {
                 if (world != null) {
                     tally.endDay = world.engine.getSimSeconds() / 86_400;
