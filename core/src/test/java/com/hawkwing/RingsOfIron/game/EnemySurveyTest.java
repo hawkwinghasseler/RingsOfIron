@@ -433,6 +433,12 @@ class EnemySurveyTest {
             var fc = s.getComponent(com.ringsofiron.physicsexterior.components.FlightControlComponent.class);
             int[] up = world.disablement.crewCount(s);
             b.append(String.format(" | crew %d/%d", up[1], up[0]));
+            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.ringsofiron.aicrew.CrewService.CREW)) {
+                var gp = e.getComponent(com.ringsofiron.aicrew.GridPositionComponent.class);
+                if (gp.ship != s) continue;
+                var cm = e.getComponent(com.ringsofiron.aicrew.CrewMemberComponent.class);
+                b.append(String.format(" {%s %s @%d,%d %s}", cm.role, cm.state, gp.tileX(), gp.tileY(), cm.activity));
+            }
             var th = s.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
             if (pb != null && pb.body != null && th != null) b.append(String.format(" | mass %.0f fwd %.2g rev %.2g lat %.2g torque %.2g inertia %.3g",
                     com.ringsofiron.physicsexterior.PhysicsManager.getMass(pb.body), th.forwardThrust, th.reverseThrust, th.lateralThrust, th.maxTorque,
