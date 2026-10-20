@@ -80,9 +80,10 @@ class EnemyWingsTest {
         assertEquals(3, ids.size());
         HostileComponent lead = hostiles.get(ids.get(0));
         lead.targetUuid = HostileComponent.PLAYER;
-        Entity leader = bringIn(ids.get(0), 3_000, 0);
-        Entity a = bringIn(ids.get(1), 3_000, 400);
-        Entity b = bringIn(ids.get(2), 3_000, -400);
+        // Inside their chainguns' reach (round 7: a wingman still on its run in fights on instead)
+        Entity leader = bringIn(ids.get(0), 2_500, 0);
+        Entity a = bringIn(ids.get(1), 2_500, 400);
+        Entity b = bringIn(ids.get(2), 2_500, -400);
         run(3);
         for (Entity w : new Entity[]{a, b}) {
             assertSame(game.player, w.getComponent(SensorComponent.class).lockedTarget, "the wing fights together");
@@ -101,6 +102,27 @@ class EnemyWingsTest {
             assertNull(w.getComponent(NpcCombatComponent.class), "done fighting");
             assertSame(game.player, w.getComponent(SensorComponent.class).lockedTarget, "but firing as it goes");
         }
+    }
+
+    @Test
+    void aWingmanStillOnItsRunInFightsOnWithoutItsLeader() {
+        List<String> ids = world.hostiles.spawnWing(HostileTraffic.RAIDER, 2, game.highport, "raider_chaingun");
+        HostileComponent lead = hostiles.get(ids.get(0));
+        lead.targetUuid = HostileComponent.PLAYER;
+        HostileComponent wing = hostiles.get(ids.get(1));
+        wing.targetUuid = HostileComponent.PLAYER;
+        // Out past its chaingun's 3 km, as a frigate's railguns beat a leader (round 6: its wingman went home unfired)
+        Entity leader = bringIn(ids.get(0), 6_000, 0);
+        Entity w = bringIn(ids.get(1), 6_000, 400);
+        run(3);
+        wallsAt(leader, 0.6f);
+        run(3);
+        assertTrue(lead.brokeOff, "the leader breaks off");
+        assertFalse(wing.brokeOff, "its wingman has not fired yet, so it keeps coming");
+        assertNull(wing.wingOf, "and fights on alone");
+        assertNotNull(w.getComponent(NpcCombatComponent.class));
+        assertEquals(NpcCombatComponent.Stance.RUSH, w.getComponent(NpcCombatComponent.class).stance, "closing to its guns' reach");
+        assertTrue(world.hostiles.notices.stream().anyMatch(n -> n.endsWith("fights on without its leader")));
     }
 
     @Test

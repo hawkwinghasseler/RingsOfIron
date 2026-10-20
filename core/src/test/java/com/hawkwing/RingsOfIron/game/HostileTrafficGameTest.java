@@ -213,6 +213,47 @@ class HostileTrafficGameTest {
     }
 
     @Test
+    void aPirateHitByAnotherPiratesStrayFireKeepsToItsTarget() {
+        // Round 7: the base's two batteries, moored in a line, turned on each other after one's
+        // rounds hit the other, and landed nothing on the player for the rest of the raid
+        String a = null, b = null;
+        for (Map.Entry<String, HostileComponent> e : hostiles.all().entrySet()) {
+            if (!e.getValue().isPirate()) continue;
+            if (a == null) a = e.getKey();
+            else if (b == null) b = e.getKey();
+        }
+        assertNotNull(b, "two pirates");
+        hostiles.get(a).targetUuid = HostileComponent.PLAYER;
+        hostiles.get(b).targetUuid = HostileComponent.PLAYER;
+        Entity first = bringIn(a, 3_000, 500);
+        Entity second = bringIn(b, 3_000, -500);
+        run(2);
+        assertSame(game.player, second.getComponent(NpcCombatComponent.class).target);
+        world.hostiles.onShotAt(second, first);
+        run(2);
+        assertSame(game.player, second.getComponent(NpcCombatComponent.class).target, "keeps to the player");
+        assertSame(game.player, second.getComponent(SensorComponent.class).lockedTarget);
+    }
+
+    @Test
+    void aPirateWithDryTanksStrikesInAFight() {
+        // Round 7, seed 12: an ace that had robbed eleven freighters met the gunship with empty
+        // tanks and drifted 400 s, neither side beaten
+        String pirate = pirate(HostileTraffic.RAIDER);
+        hostiles.get(pirate).targetUuid = HostileComponent.PLAYER;
+        Entity raider = bringIn(pirate, 3_000, 0);
+        run(2);
+        assertNotNull(raider.getComponent(NpcCombatComponent.class), "it fights");
+        assertFalse(ShipDisablement.isDisabled(raider));
+        var tanks = raider.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
+        for (int i = 0; i < 6 / FRAME && !ShipDisablement.isDisabled(raider); i++) {
+            tanks.fuel = 0f;
+            world.update(FRAME);
+        }
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(raider));
+    }
+
+    @Test
     void aPirateTakesAFreightersCargoAlongsideAndLeaves() {
         for (int i = 0; i < 60; i++) world.update(FRAME);
         Entity freighter = null;

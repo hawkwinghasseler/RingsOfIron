@@ -369,9 +369,16 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             notices.add(h.displayName + " is breaking off");
         }
         if (!h.brokeOff && h.isPirate() && leaderDone(h)) {
-            // A wing fights together and breaks off together
-            breakOff(id, h, now);
-            notices.add(h.displayName + " is breaking off with its leader");
+            if (stillComing(e, h) || world.pirateBase.defending(h.displayName)) {
+                // Still on its run in, it came to fight: it fights on alone rather than turn for home
+                // unfired. Nor does the base's defence leave it while it stands
+                h.wingOf = null;
+                notices.add(h.displayName + " fights on without its leader");
+            } else {
+                // A wing fights together and breaks off together
+                breakOff(id, h, now);
+                notices.add(h.displayName + " is breaking off with its leader");
+            }
         }
         if (h.brokeOff) {
             leave(e);
@@ -495,6 +502,20 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         HostileComponent lh = leader == null ? null : leader.getComponent(HostileComponent.class);
         if (lh == null || leader.getComponent(PhysicsBodyComponent.class) == null) return false;
         return lh.brokeOff || ShipDisablement.isDisabled(leader);
+    }
+
+    /**
+     * True while a wingman whose leader is done is still on its run in: not yet fired a round, still
+     * beyond its guns' reach of its enemy, and not hurt past {@link Tactics#RUN_HULL}. It came to
+     * fight, and fights on alone (round 6: a frigate beat a leader at 4 km and its wingman turned for
+     * home with its chaingun never fired, in 5 of 10 wing fights).
+     */
+    private boolean stillComing(Entity e, HostileComponent h) {
+        if (h.hull < Tactics.RUN_HULL) return false;
+        WeaponsComponent weapons = e.getComponent(WeaponsComponent.class);
+        if (weapons != null) for (WeaponMountComponent m : weapons.mounts) if (m.shotsFired > 0) return false;
+        Entity enemy = enemyOf(e, h);
+        return enemy != null && range(e, enemy) > Tactics.arms(e).reach;
     }
 
     /** True when {@code h} is a wingman whose leader, in the bubble, has its guns on {@code enemy} too. */
@@ -668,6 +689,10 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         if (victim == null || attacker == null || victim == attacker) return;
         HostileComponent h = victim.getComponent(HostileComponent.class);
         if (h == null) return;
+        // Friendly fire doesn't turn a ship on its own side: round 7 found the base's two batteries,
+        // moored in a line, shooting each other for the rest of the raid after one's stray rounds
+        HostileComponent by = attacker.getComponent(HostileComponent.class);
+        if (by != null && h.faction != null && h.faction.equals(by.faction)) return;
         // A patrol hit by the player's stray rounds in someone else's fight doesn't turn on them,
         // unless the player stands hostile with its side (it used to follow them to the berth)
         if (!h.isPirate() && attacker == world.getPlayer()) {
@@ -933,11 +958,16 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
      */
     public List<String> moorGuns(String station, int count, double spacing) {
         List<String> out = new ArrayList<>();
+        boolean railgun = false;
         for (int i = 0; i < count; i++) {
             Entity ship = spawnShip(BATTERY, PIRATE_CREW);
             if (ship == null) break;
             String name = "Den battery " + (++spawned);
-            LoadoutDef loadout = Loadouts.pick(world.combatDefs, BATTERY, difficulty.getAsDouble(), false, loadoutDice(BATTERY, spawned));
+            java.util.Random dice = loadoutDice(BATTERY, spawned);
+            LoadoutDef loadout = Loadouts.pick(world.combatDefs, BATTERY, difficulty.getAsDouble(), false, dice);
+            // One railgun platform at most: the next draws again from the fits without one
+            if (loadout != null && railgun && railgun(loadout)) loadout = pickWithoutRailgun(difficulty.getAsDouble(), dice);
+            railgun |= loadout != null && railgun(loadout);
             if (loadout != null) Loadouts.apply(ship, loadout, world.combatDefs);
             HostileComponent h = new HostileComponent(name, BATTERY, PIRATES, HostileComponent.Role.PIRATE, firepower(ship));
             h.loadout = loadout == null ? null : loadout.id;
@@ -948,6 +978,28 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             out.add(uuid);
         }
         return out;
+    }
+
+    private static boolean railgun(LoadoutDef loadout) {
+        for (String w : loadout.weapons) if (w != null && w.startsWith("railgun")) return true;
+        return false;
+    }
+
+    /** A gun platform's fit drawn as {@link Loadouts#pick} draws, from those without a railgun; null if none. */
+    private LoadoutDef pickWithoutRailgun(double d, java.util.Random dice) {
+        List<LoadoutDef> fits = new ArrayList<>();
+        double total = 0;
+        for (LoadoutDef l : Loadouts.candidates(world.combatDefs, BATTERY, d, false)) {
+            if (railgun(l)) continue;
+            fits.add(l);
+            total += l.weight;
+        }
+        double roll = dice.nextDouble() * total;
+        for (LoadoutDef l : fits) {
+            roll -= l.weight;
+            if (roll < 0) return l;
+        }
+        return fits.isEmpty() ? null : fits.get(fits.size() - 1);
     }
 
     /**
