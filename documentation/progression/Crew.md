@@ -147,6 +147,7 @@ Round 9 (part 2), from a trace of every asphyxiation in the wound survey:
 - **A hand at a console suits up there.** At battle stations, or as their room loses air below 50 kPa (`TaskRules.SUIT_AT_POST_KPA`), a hand at a console puts their suit on where they sit and keeps the console manned. The gunner had sat at the weapons since before the fight began, never suited up for it, and suffocated there on four seeds.
 - **A casualty's suit is filled for them.** Down in a suit in a ship with nowhere left to breathe, a casualty is carried to an oxygen tank or the life support once their suit is low, and it is filled there. Six of the survey's dead lay suited beside full oxygen tanks until their suits ran dry.
 - A fight saved part way through keeps its raked tiles, and a suit half on or off stays so.
+- Both are for the player's crew only (`TaskRules.SUIT_CARE_FACTION`): the aces' crews given the same care won the railgun ace four more of twenty fights.
 
 ## Not done here
 - A boarding fight on the interior grid: the pirates only take the cargo and credits (round 7 plan, "Still parked").
