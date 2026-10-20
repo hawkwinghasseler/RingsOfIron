@@ -1095,7 +1095,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 batch.end();
                 batch.setTransformMatrix(identity);
             }
-            // The batch's end turned blending off; the haze and vacuum shading need it
+            // The batch's end turned blending off; the walkways drawn below are translucent
             Gdx.gl.glEnable(GL20.GL_BLEND);
             Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
             shapes.begin(ShapeRenderer.ShapeType.Filled);
@@ -1115,7 +1115,6 @@ public class RingsOfIronGame extends ApplicationAdapter {
             }
             float s = g.tileSize;
             if (withArt) {
-                DeckView.atmosphere(shapes, g, blink);
                 if (!deckArt.hasWalkways()) DeckView.walkways(shapes, g, color, 0.6f);
             } else {
                 for (int y = 0; y < g.height; y++) {
