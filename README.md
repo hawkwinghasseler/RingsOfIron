@@ -62,10 +62,14 @@ Each demo lists its own controls on screen.
 ## Building and testing
 
 ```
-./gradlew build        # compile everything and run every test
-./gradlew test         # tests only
+./gradlew build        # compile everything and run the tests, except the slow ones
+./gradlew test         # tests only, except the slow ones
 ./gradlew :combat-sys:test   # one module's tests
+./gradlew slowTest     # only the slow tests: whole careers, long autopilot and warp runs
+./gradlew test -PallTests    # every test, slow ones included
 ```
+
+A test that takes more than a few seconds (a career played through, a replay played twice, a trip flown at every warp rate) is tagged `@Tag("slow")` so it stays out of `build` and `test`. CI runs `slowTest` in its own "Slow tests" job, so nothing goes untested.
 
 The art in `assets/art` is SVG. The `art-pipeline` module rasterizes it into a texture atlas when a run task needs it, so nothing generated is committed. See `documentation/art/Design.md`.
 
