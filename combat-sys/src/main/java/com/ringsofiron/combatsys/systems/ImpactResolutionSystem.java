@@ -216,7 +216,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         events.pendingDetonations.clear();
         for (int i = 0; i < detonationBatch.size; i++) {
             DetonationEvent d = detonationBatch.get(i);
-            throwFragments(d.warhead, d.worldPoint, d.velocity, d.target, d.owner, null);
+            throwFragments(d.warhead, d.worldPoint, d.velocity, d.target, d.owner, null, d.sinceFired);
             events.detonations.dispatch(d);
         }
         detonationBatch.clear();
@@ -377,7 +377,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
             if (result.outcome == PenetrationResolver.Result.Outcome.STOPPED) {
                 // Went off on the outer hull: vacuum, so fragments only, thrown into the hull.
                 tmp.set(hit.worldNormal).scl(EXIT_CLEARANCE).add(hit.worldPoint);
-                throwFragments(warhead, tmp, surfaceVel, ship, hit.owner, hit.worldNormal);
+                throwFragments(warhead, tmp, surfaceVel, ship, hit.owner, hit.worldNormal, hit.sinceFired);
             } else {
                 absorbed += resolver.detonateInside(grid, ship, result.detonationX, result.detonationY,
                         warhead, rng, report);
@@ -443,7 +443,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
      * outside a hull does.
      */
     private void throwFragments(WarheadDef warhead, Vector2 point, Vector2 baseVel, Entity target, Entity owner,
-                                Vector2 outwardNormal) {
+                                Vector2 outwardNormal, float sinceFired) {
         if (warhead == null || warhead.fragmentCount <= 0) return;
         float aim;
         if (outwardNormal != null) {
@@ -461,7 +461,8 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
             float a = aim + (rng.nextFloat() * 2f - 1f) * half;
             float vx = baseVel.x + MathUtils.cos(a) * warhead.fragmentSpeed;
             float vy = baseVel.y + MathUtils.sin(a) * warhead.fragmentSpeed;
-            ballistics.spawn(fragment, warhead.fragmentMass, point.x, point.y, vx, vy, owner);
+            Entity f = ballistics.spawn(fragment, warhead.fragmentMass, point.x, point.y, vx, vy, owner);
+            f.getComponent(ProjectileComponent.class).firedAt = ballistics.getClock() - sinceFired;
         }
     }
 

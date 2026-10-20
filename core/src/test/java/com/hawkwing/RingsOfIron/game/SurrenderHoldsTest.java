@@ -104,7 +104,37 @@ class SurrenderHoldsTest {
         assertNotEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship), "attacked again, the surrender is off");
     }
 
+    @Test
+    void aMissileFiredBeforeTheSurrenderDoesNotLiftIt() {
+        String id = pirate();
+        HostileComponent h = world.macroSim.hostiles().get(id);
+        h.targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 2_500, 0);
+        run(3);
+        for (SubsystemComponent s : turrets(ship)) s.health = 0f;
+        run(2);
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
+        run(15);
+
+        // A heavy missile's fragments, launched 20 s ago, land after the grace (seed 12's second raider)
+        world.combatEvents.impacts.dispatch(hitFromPlayer(ship, 20f));
+        assertTrue(h.surrendered, "fire from before the surrender doesn't count");
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
+
+        // A round fired now does
+        world.combatEvents.impacts.dispatch(hitFromPlayer(ship, 0.5f));
+        assertFalse(h.surrendered, "fired on again, the surrender is off");
+    }
+
     // ------------------------------------------------------------------
+
+    private com.ringsofiron.combatsys.events.ImpactEvent hitFromPlayer(Entity ship, float sinceFired) {
+        var hit = new com.ringsofiron.combatsys.events.ImpactEvent();
+        hit.target = ship;
+        hit.owner = game.player;
+        hit.sinceFired = sinceFired;
+        return hit;
+    }
 
     private AtomicInteger shotsBy(Entity ship) {
         AtomicInteger n = new AtomicInteger();

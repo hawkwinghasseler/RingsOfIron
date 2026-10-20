@@ -14,4 +14,6 @@ public class DetonationEvent {
     /** The entity the fuse detected, if any; fragments are thrown toward it. */
     public Entity target;
     public long tick;
+    /** Seconds since the missile was launched. */
+    public float sinceFired;
 }

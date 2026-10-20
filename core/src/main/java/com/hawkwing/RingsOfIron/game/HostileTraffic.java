@@ -164,12 +164,12 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         world.timeWarp.addDropOutSource(this);
         world.timeWarp.changes.add((signal, change) -> alertAt = Double.NaN);
         world.combatEvents.shots.add((signal, shot) -> onShotAt(shot.target, shot.shooter));
-        world.combatEvents.impacts.add((signal, hit) -> onShotAt(hit.target, hit.owner));
+        world.combatEvents.impacts.add((signal, hit) -> onShotAt(hit.target, hit.owner, world.engine.getSimSeconds() - hit.sinceFired));
         world.disablement.changes.add((signal, change) -> surrendering(change));
         world.engine.getSerializationService().addParticipant(this);
     }
 
-    /** Seconds after a surrender in which the player's rounds still in flight don't count as firing on it again. */
+    /** Seconds after a surrender in which the player's fire doesn't yet count as firing on it again. */
     static final double SURRENDER_GRACE = 10;
 
     /**
@@ -658,6 +658,11 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     /** {@code attacker} shot at {@code victim}: a hostile fights back whoever attacked it last. */
     public void onShotAt(Entity victim, Entity attacker) {
+        onShotAt(victim, attacker, world.engine.getSimSeconds());
+    }
+
+    /** As {@link #onShotAt(Entity, Entity)}, for a shot fired at sim second {@code firedAt}. */
+    void onShotAt(Entity victim, Entity attacker, double firedAt) {
         if (victim == null || attacker == null || victim == attacker) return;
         HostileComponent h = victim.getComponent(HostileComponent.class);
         if (h == null) return;
@@ -668,9 +673,11 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             if (side < 0 || !world.standing.hostile(FactionStanding.PLAYER, side)) return;
         }
         if (h.surrendered) {
-            // A prize stays one unless the player fires on it again, after their last rounds have landed
+            // A prize stays one unless the player fires on it again. A round or missile fired before
+            // it gave up doesn't count, however long it flew: a heavy missile's fragments landing
+            // 15 s after a surrender lifted it on seed 12, and the prize then tore the boarding latch
             DisabledComponent d = victim.getComponent(DisabledComponent.class);
-            if (attacker != world.getPlayer() || d != null && world.engine.getSimSeconds() - d.since < SURRENDER_GRACE) return;
+            if (attacker != world.getPlayer() || d != null && firedAt - d.since < SURRENDER_GRACE) return;
             h.surrendered = false;
             if (d != null && d.reason == DisabledComponent.Reason.SURRENDERED) world.disablement.set(victim, null);
         }

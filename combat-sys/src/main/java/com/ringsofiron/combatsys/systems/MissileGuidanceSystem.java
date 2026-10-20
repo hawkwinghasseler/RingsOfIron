@@ -344,6 +344,7 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         boom.owner = m.launcher;
         boom.target = victim;
         boom.tick = events.tick;
+        boom.sinceFired = ballistics.getClock() - p.firedAt;
         events.pendingDetonations.add(boom);
         return true;
     }
