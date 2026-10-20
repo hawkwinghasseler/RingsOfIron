@@ -369,9 +369,15 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             notices.add(h.displayName + " is breaking off");
         }
         if (!h.brokeOff && h.isPirate() && leaderDone(h)) {
-            // A wing fights together and breaks off together
-            breakOff(id, h, now);
-            notices.add(h.displayName + " is breaking off with its leader");
+            if (stillComing(e, h)) {
+                // Still on its run in, it came to fight: it fights on alone rather than turn for home unfired
+                h.wingOf = null;
+                notices.add(h.displayName + " fights on without its leader");
+            } else {
+                // A wing fights together and breaks off together
+                breakOff(id, h, now);
+                notices.add(h.displayName + " is breaking off with its leader");
+            }
         }
         if (h.brokeOff) {
             leave(e);
@@ -495,6 +501,20 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         HostileComponent lh = leader == null ? null : leader.getComponent(HostileComponent.class);
         if (lh == null || leader.getComponent(PhysicsBodyComponent.class) == null) return false;
         return lh.brokeOff || ShipDisablement.isDisabled(leader);
+    }
+
+    /**
+     * True while a wingman whose leader is done is still on its run in: not yet fired a round, still
+     * beyond its guns' reach of its enemy, and not hurt past {@link Tactics#RUN_HULL}. It came to
+     * fight, and fights on alone (round 6: a frigate beat a leader at 4 km and its wingman turned for
+     * home with its chaingun never fired, in 5 of 10 wing fights).
+     */
+    private boolean stillComing(Entity e, HostileComponent h) {
+        if (h.hull < Tactics.RUN_HULL) return false;
+        WeaponsComponent weapons = e.getComponent(WeaponsComponent.class);
+        if (weapons != null) for (WeaponMountComponent m : weapons.mounts) if (m.shotsFired > 0) return false;
+        Entity enemy = enemyOf(e, h);
+        return enemy != null && range(e, enemy) > Tactics.arms(e).reach;
     }
 
     /** True when {@code h} is a wingman whose leader, in the bubble, has its guns on {@code enemy} too. */
