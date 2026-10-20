@@ -168,6 +168,20 @@ class EnemySurveyTest {
      * or {@link #FRIGATE}, bought at Anvil Yards as a Commander and crewed from its hiring pool); a
      * {@code shipId} of {@link #BASE} raids the pirate base instead, from 8 km.
      */
+    /**
+     * Gives the ranks the survey's standing earned at once, and lets the yard sell a new rank's ship: the
+     * survey isn't about round 7's time in grade, so each rank counts as held long ago.
+     */
+    static void servedTime(GameWorld world) {
+        ServiceRecord record = world.standing.record();
+        for (int i = 0; i < world.standing.ranks().size(); i++) {
+            record.promotedAt = -1e9;
+            world.standing.promoteDue();
+        }
+        record.promotedAt = -1e9;
+        java.util.Arrays.fill(record.promotions, -1e9);
+    }
+
     static Result fight(long seed, int ours, String shipId, int size, String loadout) {
         boolean gunship = ours != CORVETTE;
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
@@ -180,6 +194,7 @@ class EnemySurveyTest {
             run(world, 60);
             float need = world.standing.ranks().get(ours + 1).standing - world.standing.standing(world.standing.sponsor());
             if (need > 0) world.standing.reward(world.standing.sponsor(), need + 0.5f, "survey");
+            servedTime(world);
             if (gunship) {
                 assertTrue(game.dockAt(game.shipyard));
                 run(world, 120);
