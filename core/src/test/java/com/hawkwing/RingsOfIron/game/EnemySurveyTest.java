@@ -62,12 +62,14 @@ class EnemySurveyTest {
         double difficulty;
         /** How each enemy ship ended, for the detail lines: beaten and why, or still fighting. */
         String ends = "";
+        /** Why our ship was beaten, when it was. */
+        String ourEnd = "";
 
         @Override
         public String toString() {
             return String.format("%s in %.0f s; they fired %d, %d hit%s; our hull %.2f -> %.2f; crew %d -> %d; theirs %d -> %d [%s, difficulty %.2f]%s",
                     outcome, seconds, fired, hits, gunFired > 0 ? String.format("; its guns fired %d, %d hit", gunFired, gunHits) : "", hull0, hull1, crew0, crew1, enemyCrew0, enemyCrew1, loadouts, difficulty,
-                    ends.isEmpty() ? "" : " (" + ends + ")");
+                    ends.isEmpty() ? "" : " (" + ends + ")") + (ourEnd.isEmpty() ? "" : "; we were beaten: " + ourEnd);
         }
     }
 
@@ -102,6 +104,7 @@ class EnemySurveyTest {
                 + "|---|---|---|---|---|---|---|---|---|---|---|---|---|\n");
         String[][] enemies = {{"Lone raider", HostileTraffic.RAIDER, "1"}, {"Wing of two raiders", HostileTraffic.RAIDER, "2"},
                 {"Pirate gunship", HostileTraffic.PIRATE_GUNSHIP, "1"}, {"Ace's gunship", HostileTraffic.PIRATE_GUNSHIP, "1", "ace"},
+                {"Ace's chaingun raider", HostileTraffic.RAIDER, "1", "ace:raider_ace_chaingun"},
                 {"The base's defence", BASE, "0"}};
         int trials = Integer.getInteger("enemy.survey.trials", 10);
         String only = System.getProperty("enemy.survey.rows", "").toLowerCase(java.util.Locale.ROOT);
@@ -110,7 +113,7 @@ class EnemySurveyTest {
             if (!enemy[0].toLowerCase(java.util.Locale.ROOT).contains(only)) continue;
             for (int ship = CORVETTE; ship <= FRIGATE; ship++) {
                 // An ace takes a gunship only once the player flies one
-                if (enemy.length > 3 && ship == CORVETTE) continue;
+                if (enemy.length > 3 && "ace".equals(enemy[3]) && ship == CORVETTE) continue;
                 int won = 0, ran = 0, lost = 0, fired = 0, hits = 0, killed = 0, theirs = 0, firedIn = 0, gunFired = 0, gunHits = 0;
                 float minHull = 1, sumHull = 0;
                 double beatTime = 0;
@@ -191,8 +194,9 @@ class EnemySurveyTest {
             if (BASE.equals(shipId)) return raid(world, game);
             String lurk = game.highport;
             // Armed as the difficulty would arm it, drawn by the seed (the top-up's own draw is the same in every game)
-            boolean ace = "ace".equals(loadout);
-            if (ace) loadout = null;
+            // "ace", or "ace:<fit>" for an ace armed with that fit (the career's first ace, Red Kestrel)
+            boolean ace = loadout != null && (loadout.equals("ace") || loadout.startsWith("ace:"));
+            if (ace) loadout = loadout.startsWith("ace:") ? loadout.substring(4) : null;
             String fit = loadout != null ? loadout : Loadouts.pick(world.combatDefs, shipId, Difficulty.of(world), false,
                     new java.util.Random(seed * 7_919L + shipId.hashCode())).id;
             List<String> ids = world.hostiles.spawnWing(shipId, size, lurk, fit);
@@ -205,6 +209,10 @@ class EnemySurveyTest {
                 HostileComponent h = world.macroSim.hostiles().get(ids.get(0));
                 assertTrue(PirateAces.promote(world, world.engine.getEntity(ids.get(0)), h, world.macroSim.hostiles().all().values(),
                         r.difficulty, false));
+                if (loadout != null) {
+                    Loadouts.apply(world.engine.getEntity(ids.get(0)), world.combatDefs.loadouts.get(loadout), world.combatDefs);
+                    h.loadout = loadout;
+                }
             }
             for (int i = 0; i < ids.size(); i++) {
                 HostileComponent h = world.macroSim.hostiles().get(ids.get(i));
@@ -263,6 +271,7 @@ class EnemySurveyTest {
                 anyEscaped |= !beaten && s.getComponent(PhysicsBodyComponent.class) == null;
             }
             r.outcome = FirstPlay.beaten(world, player) || r.crew1 == 0 ? "lost" : allBeaten ? "won" : anyEscaped && over ? "ran" : "draw";
+            if ("lost".equals(r.outcome)) r.ourEnd = String.valueOf(ShipDisablement.reason(player));
             return r;
         } finally {
             world.dispose();
