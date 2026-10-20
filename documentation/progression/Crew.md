@@ -90,7 +90,9 @@ The round 5 ace survey had the railgun ace killing 29 of 30 crew. Traced fight b
 | Chaingun | 10 | 4 of 30 (0 with part 1's breach sealing) | 3 | 6 of 30 |
 | Railgun | 2 | 3 of 30 (5 with part 1) | 9 | 29 of 30, beaten 1 |
 
-The fights stay a risk: the railgun ace still beats the corvette 8 of 10, with our hull at 0.44 to 0.77 as before.
+The fights stay a risk: the railgun ace still beats the corvette 8 of 10, with our hull at 0.44 to 0.77 as before. Part 4's missile fix (#122) leaves these numbers where they were: 29 of 30 railgun deaths on it alone, 3 of 30 with this part, 5 of 30 chaingun. Round 3's seed 2026 career loses no crew (4 aboard throughout).
+
+Found on the way: a deck plate shot down to nothing (no hull wall, so no breach to seal) took patch after patch, since a patch put on at condition 0 read as none, until the stores were empty and the ship vented at its berth for good. A patch now holds there (`Tile.patchMark`).
 
 Choices made without Joe:
 - **A round strikes 40% of the people on a tile it crosses.** A body fills well under half of a 1 m tile. It lowers every kind of hit on crew, not only the railgun's.
