@@ -455,6 +455,8 @@ public class GameWorld implements Disposable {
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
         impacts.setEntityIds(engine.getEntityIds());
         engine.addSystem(impacts);
+        // Hits beside a docking port wear its collar
+        CollarWear.install(combatEvents);
         beams = new BeamSystem(physics, impacts);
         engine.addSystem(beams);
         // Ships out of power, crew or hull, or beaten, stop fighting
