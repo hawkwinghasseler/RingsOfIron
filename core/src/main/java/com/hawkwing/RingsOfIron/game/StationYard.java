@@ -655,6 +655,8 @@ public class StationYard extends EntitySystem {
         double now = simSeconds.getAsDouble();
         float dt = Double.isNaN(lastTime) ? 0f : (float) Math.max(0, now - lastTime);
         lastTime = now;
+        // Round 8: none of a station's hands leaves with a ship (StationHands)
+        StationHands.sendHome(crew);
         for (int i = ships.size() - 1; i >= 0; i--) {
             Entity ship = ships.get(i);
             YardOrdersComponent orders = ORDERS_M.get(ship);
