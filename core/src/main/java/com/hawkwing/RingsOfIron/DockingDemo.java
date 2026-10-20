@@ -239,7 +239,7 @@ public class DockingDemo extends ApplicationAdapter {
             }
             batch.setTransformMatrix(pose.idt());
         }
-        // The batch's end turned blending off; the breach blink needs it
+        // The batch's end turned blending off; the walkways drawn below are translucent
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
@@ -252,7 +252,6 @@ public class DockingDemo extends ApplicationAdapter {
             shapes.translate(at.x, at.y, 0f);
             shapes.rotate(0f, 0f, 1f, body.getAngle() * com.badlogic.gdx.math.MathUtils.radiansToDegrees);
             if (deckArt.available()) {
-                DeckView.atmosphere(shapes, grid, false);
                 if (!deckArt.hasWalkways()) DeckView.walkways(shapes, grid, color, 0.6f);
                 continue;
             }

@@ -77,23 +77,6 @@ public final class DeckView {
     }
 
     /**
-     * What the deck art does not show, over it: a breach blinks red. Smoke is left to the smoke
-     * particles, and a room losing pressure is not shaded. In the grid's local meters, inside a
-     * filled batch.
-     */
-    public static void atmosphere(ShapeRenderer shapes, ShipGridComponent grid, boolean blinkOn) {
-        float s = grid.tileSize, ox = grid.gridOriginLocal.x, oy = grid.gridOriginLocal.y;
-        for (int y = 0; y < grid.height; y++) {
-            for (int x = 0; x < grid.width; x++) {
-                Tile t = grid.getTile(x, y);
-                if (t == null || !t.isHullBreach() || !blinkOn) continue;
-                shapes.setColor(TileShade.BREACH.r, TileShade.BREACH.g, TileShade.BREACH.b, 0.45f);
-                shapes.rect(ox + x * s, oy + y * s, s, s);
-            }
-        }
-    }
-
-    /**
      * Mounted systems as solid blocks and the walls between tiles as lines, in the grid's local
      * meters. Inside a filled batch already moved and turned to the craft's pose.
      */
