@@ -4,6 +4,8 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
+import com.ringsofiron.interiorgrid.AirflowEdge;
+import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.LeakPatches;
@@ -220,6 +222,37 @@ public final class TaskRules {
             if (n != null && n.holdsAir() && !isBreathable(grid, x + s.dx, y + s.dy)) return true;
         }
         return false;
+    }
+
+    /**
+     * Room pressure, kPa, below which a hand at a console whose room is losing air puts their suit on
+     * where they sit ({@link #suitsUpAtPost}). Round 9.
+     */
+    public static final float SUIT_AT_POST_KPA = 50f;
+
+    /**
+     * True if an unsuited hand at a post on (x, y) should put their suit on there, still holding the
+     * post (round 9): at battle stations with suits ordered ({@link ShipTaskBoardComponent#battleSuits}),
+     * or with their room losing air ({@link #losingAir}) and below {@link #SUIT_AT_POST_KPA}. Round 8's
+     * wound survey: a gunner sat at the weapons from before the fight began, so never suited up for
+     * it, and suffocated there as the cabin vented. A steady cabin, however thin, never empties a console.
+     */
+    public static boolean suitsUpAtPost(ShipGridComponent grid, ShipTaskBoardComponent board, int x, int y) {
+        if (board != null && board.battleSuits()) return true;
+        Compartment room = grid.compartmentAt(x, y);
+        if (room == null) return needsSuit(grid, x, y);
+        return room.pressure() < SUIT_AT_POST_KPA && losingAir(grid, room);
+    }
+
+    /** True while more air leaves {@code room} than comes in, by more than {@link ShipGridComponent#VENTING_HAZARD_FLOW}, as of the last hazard tick. */
+    public static boolean losingAir(ShipGridComponent grid, Compartment room) {
+        float out = 0f;
+        for (int i = 0; i < grid.airflow.size; i++) {
+            AirflowEdge e = grid.airflow.get(i);
+            // Each opening is listed from both its sides, so its own side's flow is enough
+            if (e.room == room) out += e.flow;
+        }
+        return out > ShipGridComponent.VENTING_HAZARD_FLOW;
     }
 
     /** True if a crew member can breathe safely on (x, y): pressurized, oxygenated, not burning or hot. */

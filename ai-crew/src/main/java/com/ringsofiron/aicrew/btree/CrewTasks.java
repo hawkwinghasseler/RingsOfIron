@@ -118,14 +118,7 @@ public final class CrewTasks {
             a.crew.activity = "filling their suit";
             filled += a.dt;
             if (filled < a.crew.def.suitRefillTime) return Status.RUNNING;
-            SubsystemComponent at = beside(grid, supplies, a.pos.tileX(), a.pos.tileY());
-            if (at != null) {
-                if (at.type == SubsystemComponent.SubsystemType.TANK) {
-                    at.contents = Math.max(0, at.contents - CrewDef.SUIT_OXYGEN_KG);
-                } else {
-                    TankSupply.draw(at, Fluid.OXYGEN, CrewDef.SUIT_OXYGEN_KG);
-                }
-            }
+            drawSuitOxygen(beside(grid, supplies, a.pos.tileX(), a.pos.tileY()));
             a.crew.suitAir = a.crew.def.suitAir;
             a.refilling = false;
             return Status.SUCCEEDED;
@@ -138,7 +131,7 @@ public final class CrewTasks {
         }
 
         /** The supply in {@code supplies} that (x, y) stands beside, open to it, or null. */
-        private static SubsystemComponent beside(ShipGridComponent grid, Array<SubsystemComponent> supplies, int x, int y) {
+        static SubsystemComponent beside(ShipGridComponent grid, Array<SubsystemComponent> supplies, int x, int y) {
             for (SubsystemComponent s : supplies) {
                 for (Side side : Side.values()) {
                     int nx = x + side.dx, ny = y + side.dy;
@@ -146,6 +139,16 @@ public final class CrewTasks {
                 }
             }
             return null;
+        }
+    }
+
+    /** Takes a suit's fill of oxygen ({@link CrewDef#SUIT_OXYGEN_KG}) from {@code at}, a tank or life support; nothing if null. */
+    static void drawSuitOxygen(SubsystemComponent at) {
+        if (at == null) return;
+        if (at.type == SubsystemComponent.SubsystemType.TANK) {
+            at.contents = Math.max(0, at.contents - CrewDef.SUIT_OXYGEN_KG);
+        } else {
+            TankSupply.draw(at, Fluid.OXYGEN, CrewDef.SUIT_OXYGEN_KG);
         }
     }
 
@@ -361,12 +364,11 @@ public final class CrewTasks {
 
     /** Does the work of a repair, seal, extinguish or treat task until it is finished. */
     public static class DoWork extends CrewLeaf {
-        private float elapsed, unsuiting;
+        private float elapsed;
 
         @Override
         public void start() {
             elapsed = 0f;
-            unsuiting = 0f;
         }
 
         @Override
@@ -453,12 +455,10 @@ public final class CrewTasks {
                     // it slowed the care of the wounded long after the fight
                     if (a.crew.suited && (board == null || !board.battleSuits()) && !TaskRules.needsSuit(grid, a.pos.tileX(), a.pos.tileY())
                             && !TaskRules.needsSuit(grid, t.x, t.y)) {
-                        unsuiting += a.dt;
+                        // On the crew member, so it is saved (round 9)
+                        a.crew.unsuiting += a.dt;
                         a.crew.activity = "taking off a suit";
-                        if (unsuiting >= a.crew.def.suitTime * 0.5f) {
-                            a.crew.setSuited(false);
-                            unsuiting = 0f;
-                        }
+                        if (a.crew.unsuiting >= a.crew.def.suitTime * 0.5f) a.crew.setSuited(false);
                     }
                     return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes or the wound heals
                 }
@@ -472,9 +472,17 @@ public final class CrewTasks {
                     return Status.SUCCEEDED;
                 }
                 case MAN_CONSOLE: {
+                    ShipTaskBoardComponent board = a.board();
+                    // The suit goes on where they sit, the post still held, for battle stations or as
+                    // their room's air goes (round 9)
+                    if (!a.crew.suited && a.crew.def.suitAir > 0f && TaskRules.suitsUpAtPost(grid, board, a.pos.tileX(), a.pos.tileY())) {
+                        a.crew.activity = "putting on a suit at their post";
+                        a.crew.suiting += a.dt;
+                        if (a.crew.suiting >= a.crew.def.suitTime) a.crew.setSuited(true);
+                        return Status.RUNNING;
+                    }
                     // At it until anything else on the board wants them: then the console goes back up.
                     // The helm the ship needs isn't left to sit with a patient
-                    ShipTaskBoardComponent board = a.board();
                     boolean wanted = board != null && board.helmWanted && ((ManConsoleTask) t).type() == SubsystemComponent.SubsystemType.HELM;
                     if (board != null && board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(),
                             o -> o.kind != CrewTask.Kind.MAN_CONSOLE && !(wanted && o.kind == CrewTask.Kind.TREAT)
@@ -542,14 +550,18 @@ public final class CrewTasks {
      * Carries the casualty to the nearest safe tile, or for a {@link MedbayCarryTask} to the nearest
      * free medbay bed. With nowhere aboard to carry them to (the whole
      * ship holed), the rescuer puts the casualty's suit on them where they are instead, taking their
-     * own suit time, and leaves them for the next try.
+     * own suit time, and leaves them for the next try. Round 9: once that suit runs low
+     * ({@link CrewDef#suitRefillShare}), they carry the casualty to the ship's oxygen and fill it
+     * there, as they would their own ({@link RefillSuit}). The wound survey lost six crew who lay
+     * down in a holed ship, suited, until their suits ran dry beside full oxygen tanks.
      */
     public static class CarryToSafety extends CrewLeaf {
-        private float suiting;
+        private float suiting, filling;
 
         @Override
         public void start() {
             suiting = 0f;
+            filling = 0f;
         }
 
         @Override
@@ -589,12 +601,36 @@ public final class CrewTasks {
                         if (suiting < a.crew.def.suitTime) return Status.RUNNING;
                         c.setSuited(true);
                     }
+                    if (!medbay && c.suited && c.suitAir < c.def.suitAir * c.def.suitRefillShare) {
+                        Status fill = fillSuit(a, c, grid);
+                        if (fill != null) return fill;
+                    }
                     a.abandonUnreachable();
                     return Status.FAILED;
                 }
                 a.pos.setPath(a.pathScratch);
             }
             return Status.RUNNING;
+        }
+
+        /** Takes the casualty to the ship's oxygen and fills their suit; null if there is none to be reached. */
+        private Status fillSuit(CrewAgent a, CrewMemberComponent c, ShipGridComponent grid) {
+            Array<SubsystemComponent> supplies = new Array<>();
+            if (!oxygenSupplies(a, supplies)) return null;
+            GridNavGraph nav = a.pathfinder().graph;
+            CrewAgent.Travel go = a.travel(a.pos.ship, (x, y) -> nav.isWalkable(x, y) && RefillSuit.beside(grid, supplies, x, y) != null);
+            if (go == CrewAgent.Travel.UNREACHABLE) return null;
+            if (go == CrewAgent.Travel.GOING) {
+                a.crew.activity = "carrying " + c.name + " to fill their suit";
+                return Status.RUNNING;
+            }
+            a.crew.activity = "filling " + c.name + "'s suit";
+            filling += a.dt;
+            if (filling < c.def.suitRefillTime) return Status.RUNNING;
+            drawSuitOxygen(RefillSuit.beside(grid, supplies, a.pos.tileX(), a.pos.tileY()));
+            c.suitAir = c.def.suitAir;
+            filling = 0f;
+            return Status.SUCCEEDED;
         }
     }
 
