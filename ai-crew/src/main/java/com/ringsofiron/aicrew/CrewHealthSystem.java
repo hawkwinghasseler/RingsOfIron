@@ -86,13 +86,17 @@ public class CrewHealthSystem extends FixedIteratingSystem {
         // (a ship's crew carried onto the station it is docked to while it could not be breathed)
         boolean cared = board != null && (board.faction == c.faction || c.held
                 || c.home != null && c.home != p.ship && service.friendlyTo(c.faction, p.ship));
+        // First aid for a light wound needs no good air while the patient breathes from a suit (round 8:
+        // the cabin slow to come back on emergency oxygen left a graze open for ten minutes and more)
+        boolean firstAid = safe || c.breathesFromSuit() && tile != null && tile.holdsAir() && !tile.isBurning()
+                && tile.temperature <= TaskRules.SAFE_TEMPERATURE;
         if (c.wound != Wound.NONE) {
-            tend(e, c, grid, safe, dt);
+            tend(e, c, grid, safe, firstAid, dt);
             if (c.state == CrewState.DEAD) return;
             if (c.wound == Wound.CRITICAL && !c.stabilised && c.treatedBy == null && c.carriedBy == null && cared) {
                 board.post(new StabiliseTask(e, x, y));
             }
-            if (c.wound == Wound.LIGHT && c.isConscious() && safe && cared && !board.battleStations) {
+            if (c.wound == Wound.LIGHT && c.isConscious() && firstAid && cared && !board.battleStations) {
                 board.post(new TreatTask(e, x, y, TreatTask.LIGHT_PRIORITY));
             }
         }
@@ -138,13 +142,16 @@ public class CrewHealthSystem extends FixedIteratingSystem {
         return c.wound == Wound.CRITICAL && !c.stabilised && c.treatedBy == null;
     }
 
-    /** A wound's course: bleeding out untreated, treatment by whoever tends it, a light wound healing. */
-    private void tend(Entity e, CrewMemberComponent c, ShipGridComponent grid, boolean safe, float dt) {
+    /**
+     * A wound's course: bleeding out untreated, treatment by whoever tends it, a light wound healing.
+     * {@code firstAid}: where the patient lies, they can see to their own light wound.
+     */
+    private void tend(Entity e, CrewMemberComponent c, ShipGridComponent grid, boolean safe, boolean firstAid, float dt) {
         CrewMemberComponent carer = c.treatedBy == null ? null : service.crew(c.treatedBy);
         if (carer != null && !carer.isConscious()) carer = null;
         // Idle, or sat at a console, with nobody to treat them, the lightly wounded see to themselves
         if (carer == null && c.wound == Wound.LIGHT && c.isConscious() && (c.task == null || c.task.kind == CrewTask.Kind.MAN_CONSOLE)
-                && safe && !atBattleStations(e)) carer = c;
+                && firstAid && !atBattleStations(e)) carer = c;
         if (carer == null) {
             if (c.wound == Wound.CRITICAL) {
                 if (c.stabilised) return;
