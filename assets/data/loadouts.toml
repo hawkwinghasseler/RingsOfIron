@@ -128,3 +128,26 @@ weapons = ["railgun_heavy", "", "", "flak_mk1", "flak_mk1"]
 ace = true
 weight = 1
 min_difficulty = 3.0
+
+# The pirate base's gun platforms (round 6, PirateBase): drawn like a spawn's, by the career's seed.
+# Its stock fit is two chainguns, a dart rack and flak; the heavier fits come with the difficulty.
+# No railgun: the frigate meets the base's railgun raiders already, and a railgun battery would kill
+# whole crews from out of the chainguns' reach.
+[loadout.battery_stock]
+name = "Den battery"
+ship = "den_battery"
+weapons = []
+weight = 3
+
+[loadout.battery_darts]
+name = "Dart battery"
+ship = "den_battery"
+weapons = ["", "", "dart_rack", "dart_rack"]
+weight = 1
+
+[loadout.battery_heavy]
+name = "Heavy battery"
+ship = "den_battery"
+weapons = ["chaingun_mk2", "chaingun_mk2", "dart_rack", "flak_mk1"]
+weight = 2
+min_difficulty = 2.5

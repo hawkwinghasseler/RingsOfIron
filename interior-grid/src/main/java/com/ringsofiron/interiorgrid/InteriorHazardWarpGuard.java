@@ -4,8 +4,8 @@ import com.ringsofiron.coreengine.RailsWarpGuard;
 
 /**
  * Refuses rails warp while a fire burns or air vents aboard one ship, normally the
- * player's, at a rate that matters ({@link ShipGridComponent#isVenting}). A patched or sealed
- * leak does not vent. Register it with {@code GameEngine.addRailsWarpGuard}; point it at a new
+ * player's, at a rate that matters ({@link ShipGridComponent#isVenting}), or while any leak is open
+ * that the crew have patches for, however slowly it vents. A patched or sealed leak does not vent. Register it with {@code GameEngine.addRailsWarpGuard}; point it at a new
  * ship with {@link #setGrid} when the player changes ships.
  */
 public class InteriorHazardWarpGuard implements RailsWarpGuard {
@@ -25,6 +25,10 @@ public class InteriorHazardWarpGuard implements RailsWarpGuard {
         if (grid == null) return null;
         if (grid.hasFire()) return "Fire aboard";
         if (grid.isVenting()) return ventingReason(grid);
+        // A slow leak, or a room already emptied, still drains the tanks into space while warp skips
+        // the crew's work: wait while they can patch it (round 6: in the 2026 career a slow leak ran the
+        // gunship's nitrogen out over two warped days and the crew suffocated)
+        if (grid.patchKits > 0 && LeakPatches.leaks(grid).size > 0) return ventingReason(grid);
         return null;
     }
 

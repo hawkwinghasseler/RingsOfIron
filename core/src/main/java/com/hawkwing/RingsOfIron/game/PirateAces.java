@@ -68,7 +68,7 @@ public final class PirateAces {
      */
     public static boolean promote(GameWorld world, Entity ship, HostileComponent h, Collection<HostileComponent> all,
             double difficulty, boolean grudge) {
-        if (!h.isPirate() || h.ace || alive(all) >= MAX_ACES) return false;
+        if (!h.isPirate() || h.moored() || h.ace || alive(all) >= MAX_ACES) return false;
         h.ace = true;
         h.grudge = grudge;
         String was = h.displayName;
@@ -79,7 +79,8 @@ public final class PirateAces {
         if (marker != null && was != null && marker.label.startsWith(was)) {
             marker.label = h.displayName + marker.label.substring(was.length());
         }
-        Random rng = new Random(h.displayName.hashCode() * 31L + h.plunders + h.escapes);
+        // The career's seed too, so two careers' aces take different refits (round 6)
+        Random rng = new Random(NewGame.mix(world.events.seed, h.displayName.hashCode() * 31L + h.plunders + h.escapes));
         LoadoutDef refit = Loadouts.pick(world.combatDefs, h.shipId, difficulty, true, rng);
         if (refit != null && Loadouts.apply(ship, refit, world.combatDefs) > 0) h.loadout = refit.id;
         h.firepower = HostileTraffic.firepower(ship);

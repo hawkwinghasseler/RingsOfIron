@@ -135,6 +135,14 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
     public Entity launch(MissileDef def, Entity launcher, Entity datalinkSubsystem, Entity target,
                          float x, float y, float vx, float vy, float heading) {
         Entity e = ballistics.spawn(bodyDef(def), def.dryMass + def.propellantMass, x, y, vx, vy, launcher);
+        // A missile never strikes the ship that launched it: thrown forward from a beam launcher aft
+        // on a long hull (the frigate's), it armed before it was clear and blew up on its own bow
+        // (round 6, part 4: two harpoons took out both of a frigate's railguns with their first salvo)
+        ProjectileComponent body = e.getComponent(ProjectileComponent.class);
+        if (body != null) {
+            body.ignore = launcher;
+            body.ignoreUntil = Float.MAX_VALUE;
+        }
         MissileComponent m = new MissileComponent();
         m.def = def;
         m.heading = heading;

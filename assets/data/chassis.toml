@@ -153,6 +153,30 @@ lights = [
   { x = 13, y = 1, side = "BOTTOM" },
 ]
 
+[chassis.battery]
+name = "Gun Platform"
+tile_size = 1.0
+origin_x = -4.5
+origin_y = -3.5
+# The pirate base's guns (round 6): a squat armoured platform moored beside the base, with no engines.
+# Four Small turret mounts on the corners, a Medium reactor, life support and a weapons console. Its
+# crew man the guns; it is silenced by knocking out its reactor or every turret.
+rows = [
+  "#########",
+  "#T.....T#",
+  "#..RR.L.#",
+  "#..RR.L.#",
+  "#..WW...#",
+  "#T.....T#",
+  "#########",
+]
+lights = [
+  { x = 4, y = 1, side = "BOTTOM" },
+  { x = 1, y = 2, side = "LEFT" },
+  { x = 7, y = 2, side = "RIGHT" },
+  { x = 4, y = 5, side = "TOP" },
+]
+
 [chassis.gunship]
 name = "Gunship"
 tile_size = 1.0

@@ -11,8 +11,10 @@ import com.ringsofiron.combatsys.defs.WeaponDef;
  * odds, re-picked every look {@link HostileTraffic} takes at the bubble. In order:
  * <ol>
  *   <li>{@link Plan#RUN}: a pirate that has been hit ({@link #RUN_HULL}) runs when outgunned
- *       ({@link #RUN_ODDS}), or when it is under fire from several sides and not winning.
- *       Patrols and aces never run; they break off at their hull line like before.</li>
+ *       ({@link #RUN_ODDS}), or when it is under fire from several sides and not winning; but not
+ *       while it is still closing to its guns' reach (round 6: it came to fight, and used to turn
+ *       for home before it had fired a round). Patrols and aces never run; they break off at their
+ *       hull line like before.</li>
  *   <li>{@link Plan#STANDOFF}: a ship with launchers and long guns that isn't clearly winning
  *       ({@link #STANDOFF_ODDS}), or with nothing but launchers, keeps out at missile range. One whose
  *       guns are all short closes to use them instead (round 5: the pirate gunship stood off at 5 km
@@ -48,7 +50,14 @@ public final class Tactics {
     public static final float SHORT_GUN = 3_500f;
     /** Ranges and closing speeds of the stances, m and m/s. */
     public static final float HOLD_RANGE = 1_500f, STANDOFF_RANGE = 5_000f, RUSH_RANGE = 600f, FLANK_RANGE = 1_000f;
-    public static final float HOLD_CLOSING = 80f, STANDOFF_CLOSING = 100f, RUSH_CLOSING = 160f, FLANK_CLOSING = 120f;
+    public static final float HOLD_CLOSING = 80f, STANDOFF_CLOSING = 100f, RUSH_CLOSING = 240f, FLANK_CLOSING = 120f;
+    /**
+     * How close an inbound missile comes before a ship breaks across its line, m. A rushing ship holds
+     * its run in until {@link #RUSH_EVADE}: round 6 found lone raiders spending a fight weaving round
+     * the corvette's harpoons from 3 km out, beaten before their chainguns ever reached (3 of 10
+     * fired nothing). Was 3,000 m and 160 m/s for a rush.
+     */
+    public static final float EVADE_RANGE = 3_000f, RUSH_EVADE = 1_000f;
     /**
      * A kiting ship's range, m: past the short guns, and no further than {@link #KITE_REACH} of its own
      * shortest-reaching gun. It opens the range again at {@link #KITE_CLOSING}.
@@ -103,7 +112,17 @@ public final class Tactics {
      */
     public static Plan choose(Arms arms, double odds, double hull, boolean pirate, boolean crossfire, boolean ace,
             boolean wingman) {
-        if (pirate && hull < RUN_HULL && (odds < RUN_ODDS || (crossfire && odds < 1))) return Plan.RUN;
+        return choose(arms, odds, hull, pirate, crossfire, ace, wingman, false);
+    }
+
+    /**
+     * As {@link #choose(Arms, double, double, boolean, boolean, boolean, boolean)}, for a ship that is
+     * {@code beyondReach}: further from its enemy than its shortest-reaching gun reaches, so it does
+     * not run yet.
+     */
+    public static Plan choose(Arms arms, double odds, double hull, boolean pirate, boolean crossfire, boolean ace,
+            boolean wingman, boolean beyondReach) {
+        if (pirate && !beyondReach && hull < RUN_HULL && (odds < RUN_ODDS || (crossfire && odds < 1))) return Plan.RUN;
         if (arms.launchers && (!arms.guns || (!arms.shortGunsOnly && odds < STANDOFF_ODDS))) return Plan.STANDOFF;
         if (wingman && arms.guns && !arms.longGunsOnly) return Plan.FLANK;
         if (arms.longGunsOnly && (ace || odds < FLANK_ODDS)) return Plan.KITE;
@@ -133,6 +152,7 @@ public final class Tactics {
                 break;
             case RUSH:
                 set(combat, NpcCombatComponent.Stance.RUSH, RUSH_RANGE, RUSH_CLOSING);
+                combat.evadeRange = RUSH_EVADE;
                 break;
             case FLANK:
                 set(combat, NpcCombatComponent.Stance.FLANK, FLANK_RANGE, FLANK_CLOSING);
@@ -144,6 +164,7 @@ public final class Tactics {
     }
 
     private static void set(NpcCombatComponent combat, NpcCombatComponent.Stance stance, float range, float closing) {
+        combat.evadeRange = EVADE_RANGE;
         combat.stance = stance;
         combat.preferredRange = range;
         combat.maxClosingSpeed = closing;
