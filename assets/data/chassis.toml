@@ -121,17 +121,20 @@ name = "Light Raider"
 tile_size = 1.0
 origin_x = -7.5
 origin_y = -2.5
-# A pirate's fast boat: a Medium reactor forward, one turret mount in the nose (6, 0), and two
-# Small engines in the stern either side of the nitrogen tank. One pipe run joins the engines,
-# the nitrogen and oxygen tanks, the propellant tank and life support. A two-tile hold for loot,
-# and a Small passive docking port on top, so it can be boarded once beaten.
-# A Small escape pod (4 seats) stands at x 12 forward of the hold, its hatch out through the top
-# hull, so the raider can be flown as a player ship.
+# A pirate's fast boat: one turret mount in the nose (6, 0), and two Small engines in the stern
+# either side of the nitrogen tank. One pipe run joins the engines, the nitrogen and oxygen tanks,
+# the propellant tank and life support. A Small passive docking port on top, so it can be boarded
+# once beaten. A Small escape pod (4 seats) stands at x 12 behind the turret, its hatch out
+# through the top hull, so the raider can be flown as a player ship.
+# Round 9: the Medium reactor sits amidships, just forward of life support, behind the helm and
+# weapons consoles, the two-tile hold for loot (now standing across the ship at x 11) and the pod.
+# A railgun slug from ahead meets those first: round 8 found slugs at 3 to 4 km shorting the
+# reactor when it stood right behind the turret, so the raider went dark before it was in reach.
 rows = [
   "###DDD#########",
-  "#EE..L.HH.RR..#",
-  "#...PL.WW.RR.T#",
-  "#EE.P..CC.....#",
+  "#EE..LRR.HHC..#",
+  "#...PLRR.WWC.T#",
+  "#EE.P.........#",
   "###############",
 ]
 mounts = [
