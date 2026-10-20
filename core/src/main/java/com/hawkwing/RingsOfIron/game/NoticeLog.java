@@ -134,10 +134,18 @@ public final class NoticeLog {
      * Posts it afresh if {@code old} has left the log. Returns the notice now holding it.
      */
     public Notice revise(Notice old, String text) {
+        return revise(old, text, old == null ? Kind.INFO : old.kind);
+    }
+
+    /**
+     * {@link #revise(Notice, String)} as another kind: a wound that worsens in the same moment ("lightly",
+     * then "critically wounded") is one line, in the worse one's colour.
+     */
+    public Notice revise(Notice old, String text, Kind kind) {
         if (text == null || text.isEmpty()) return old;
-        if (old == null || !history.contains(old)) return post(text, old == null ? Kind.INFO : old.kind);
-        Notice n = new Notice(text, old.kind, old.time);
-        n.left = Math.max(old.left, old.kind.seconds);
+        if (old == null || !history.contains(old)) return post(text, kind);
+        Notice n = new Notice(text, kind, old.time);
+        n.left = Math.max(old.left, kind.seconds);
         List<Notice> kept = new ArrayList<>(history);
         kept.set(kept.indexOf(old), n);
         history.clear();

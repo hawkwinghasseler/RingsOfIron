@@ -154,6 +154,8 @@ class CrewMedicalTest {
         world.crew.applyDamage(bea, 80f, DamageCause.SPALL);
         run(world, 1);
         assertTrue(world.notices.history().stream().anyMatch(n -> n.text.startsWith("Bea is critically wounded: treat within 2:")), notices());
+        // Round 9: told in place while the first is still up, not a line for every cut
+        assertEquals(1, world.notices.history().stream().filter(n -> n.text.startsWith("Bea is critically")).count(), notices());
 
         world.crew.dieOfWounds(bea);
         world.crewCareer.update();

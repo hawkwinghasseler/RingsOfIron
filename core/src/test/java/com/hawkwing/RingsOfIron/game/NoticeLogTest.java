@@ -104,6 +104,16 @@ class NoticeLogTest {
     }
 
     @Test
+    void aRevisionCanTakeAWorseKind() {
+        NoticeLog log = new NoticeLog(() -> now);
+        NoticeLog.Notice light = log.post("Cole is lightly wounded", NoticeLog.Kind.INFO);
+        NoticeLog.Notice critical = log.revise(light, "Cole is critically wounded", NoticeLog.Kind.WARNING);
+        assertEquals(1, log.history().size());
+        assertEquals(NoticeLog.Kind.WARNING, critical.kind);
+        assertSame(critical, log.showing().get(0));
+    }
+
+    @Test
     void theLogIsStampedWithSimTime() {
         NoticeLog log = new NoticeLog(() -> now);
         now = 86_400 * 2 + 3600;

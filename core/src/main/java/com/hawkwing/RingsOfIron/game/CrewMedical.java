@@ -50,6 +50,8 @@ public final class CrewMedical {
     private final Map<Entity, Wound> seen = new IdentityHashMap<>();
     /** Each critical casualty's bleed-out clock at the last look, to tell the player when a new hit cuts it. */
     private final Map<Entity, Float> clocks = new IdentityHashMap<>();
+    /** Each one's last wound notice, revised in place while it is still on screen. */
+    private final Map<Entity, NoticeLog.Notice> told = new IdentityHashMap<>();
 
     public CrewMedical(GameWorld world) {
         this.world = world;
@@ -173,9 +175,14 @@ public final class CrewMedical {
             if (!own && !prisoner) continue;
             String who = prisoner ? "Prisoner " + c.name : c.name;
             // Critical and serious alike are warnings, not a promotion's green (round 9)
-            world.notices.post(describe(who, c), c.wound == Wound.CRITICAL || c.wound == Wound.SERIOUS
-                    ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
+            NoticeLog.Kind kind = c.wound == Wound.CRITICAL || c.wound == Wound.SERIOUS ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO;
+            // While the last notice is still up, the new one takes its place: a burst of hits cut Ivo
+            // Castell's clock nine times in a second, nine lines in the log (round 9, real window)
+            NoticeLog.Notice last = told.get(e);
+            told.put(e, last != null && world.notices.showing().contains(last)
+                    ? world.notices.revise(last, describe(who, c), kind) : world.notices.post(describe(who, c), kind));
         }
+        told.keySet().removeIf(e -> crew.crew(e) == null || !crew.crew(e).isAlive());
         seen.keySet().removeIf(e -> crew.crew(e) == null);
         clocks.keySet().removeIf(e -> crew.crew(e) == null);
     }
