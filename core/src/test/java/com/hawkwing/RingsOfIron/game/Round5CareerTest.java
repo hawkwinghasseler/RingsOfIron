@@ -62,6 +62,9 @@ class Round5CareerTest extends CareerScript {
         // 3. Hunt the Hunters, in the frigate: its last step is the raid on the pirates' base
         flyTheHunt();
 
+        // 3b. Round 6: with the base fallen, the sponsor's Captain's operation to scatter what is left
+        if (!world.pirateBase.standing() && rank() >= 4 && flyAnOperation("after the fall")) row("After the fall");
+
         // 4. On towards Captain, as far as the days allow, if the raid left the ship fit to fly
         while (!world.pirateBase.standing() && rank() < 4 && day() < LAST_DAY && jobs < MOST_JOBS) {
             if (!flyAnOperation("Captain") && !takeABounty()) weeksPass(1);
@@ -79,9 +82,11 @@ class Round5CareerTest extends CareerScript {
         log("| Milestone | Day | Rank | Standing | Credits | Ship | Difficulty |");
         log("|---|---|---|---|---|---|---|");
         for (String r : rows) log("%s", r);
-        // The raid is flown and the base fights back; whether it falls is logged (see the class doc)
+        // The raid is flown, the base fights back, and it falls
         assertTrue(raidsFought > 0, "the raid was flown");
         assertTrue(scrambled > 0, "the base scrambled its wing");
+        // Round 6: the Captain in the frigate wins the raid
+        assertFalse(world.pirateBase.standing(), "the base falls to the raid");
         assertEquals("frigate_patrol", game.player.getComponent(DefRefComponent.class).defId);
         assertTrue(rank() >= 3);
     }

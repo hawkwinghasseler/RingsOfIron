@@ -174,8 +174,9 @@ class Round5LateCareerTest {
     @Test
     void defendersGrowWithDifficulty() {
         assertEquals(2, PirateBase.defendersFor(1.0));
-        assertEquals(2, PirateBase.defendersFor(1.9));
-        assertEquals(3, PirateBase.defendersFor(2.0));
+        assertEquals(2, PirateBase.defendersFor(2.4), "round 6: two up to 2.5, so the frigate's raid can be won");
+        assertEquals(3, PirateBase.defendersFor(2.5));
+        assertEquals(4, PirateBase.defendersFor(4.0));
         assertEquals(PirateBase.MAX_DEFENDERS, PirateBase.defendersFor(9));
     }
 

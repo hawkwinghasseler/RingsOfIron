@@ -43,6 +43,12 @@ import java.util.List;
  * ({@link HostileTraffic#BATTERY}) moored beside it, which fire on the player while it stands. It
  * strikes once its wing is beaten, whatever its guns, which fall silent with it. They stay moored
  * there, saved like any hostile, and open fire again when the player comes back.
+ *
+ * <p>Round 6: a fallen base does not stay empty. Once the lawful factions have spent
+ * {@link com.ringsofiron.moddingdata.defs.TensionDef#baseRisesAfterDays} days with any pair of them
+ * at high tension ({@link FactionTension#anyHigh}) since it fell, the raiders move back in
+ * ({@link #rise}): it stands again where it was, known, crewed and growing, so the late career keeps
+ * a base to raid.
  */
 public class PirateBase extends EntitySystem implements SaveParticipant {
     /** How close the player must come to find it, m. */
@@ -59,6 +65,8 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     public static final double STRIKE_RANGE = 20_000;
     /** How far from the base the defenders launch, m, each a little further round. */
     static final double LAUNCH_OFFSET = 4_000;
+    /** Difficulty for each defender past the first two (round 6: 1.5; it was 1). */
+    public static final double DIFFICULTY_PER_DEFENDER = 1.5;
     /** Most defenders the base scrambles. */
     public static final int MAX_DEFENDERS = 4;
     /** Tension eased between every pair of lawful factions when the base falls. */
@@ -87,6 +95,10 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     private boolean waveDue;
     /** The names of the gun platforms it has manned; empty until its first scramble. */
     private final List<String> guns = new ArrayList<>();
+    /** Sim seconds spent fallen with some pair of lawful factions at high tension, towards {@link #rise}. */
+    private double strainedSeconds;
+    /** Sim second of the last look at that, NaN before the first. */
+    private double lastStrainLook = Double.NaN;
     private final StateVector a = new StateVector();
     private final StateVector b = new StateVector();
 
@@ -104,6 +116,8 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         scrambleDue = false;
         clearWave();
         guns.clear();
+        strainedSeconds = 0;
+        lastStrainLook = Double.NaN;
     }
 
     private void clearWave() {
@@ -161,13 +175,54 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
             HostileComponent h = hostileNamed(name);
             if (h != null) h.targetUuid = null;
         }
+        strainedSeconds = 0;
         world.notices.post(name() + " has fallen" + (why == null ? "" : ": " + why), NoticeLog.Kind.IMPORTANT);
         world.tension.easeAll(FALL_RELIEF);
+        // The boards offer what its fall opens (a Captain's operation) at once
+        world.contracts.worldChanged();
     }
 
-    /** Defenders the base scrambles at difficulty {@code d}: two, and one more for each full point above 1, up to {@link #MAX_DEFENDERS}. */
+    /**
+     * The raiders move back into the fallen base: it stands again, known to the player, crewed anew
+     * if none of its pirates lived, and grows from now. Nothing happens to a base that stands.
+     */
+    public void rise() {
+        if (uuid == null || standing()) return;
+        fallen = false;
+        found = true;
+        establishedAt = world.macroSim.now();
+        strainedSeconds = 0;
+        defenders.clear();
+        scrambleDue = false;
+        clearWave();
+        Entity station = world.engine.getEntity(uuid);
+        int pirates = world.standing.factions().index(HostileTraffic.PIRATES);
+        if (station != null && pirates >= 0 && !anyPirateAboard()) StationCrew.spawnCrew(world.crew, station, pirates);
+        world.notices.post("Raiders have moved back into " + name() + ": the pirates have a base again", NoticeLog.Kind.IMPORTANT);
+    }
+
+    /** Days the fallen base has spent with the factions strained, towards rising again. */
+    public double strainedDays() {
+        return strainedSeconds / 86_400;
+    }
+
+    /** While it lies fallen, counts the time any pair of lawful factions runs high, and rises once it is enough. */
+    private void strain() {
+        double now = world.macroSim.now();
+        double since = Double.isNaN(lastStrainLook) ? 0 : Math.max(0, now - lastStrainLook);
+        lastStrainLook = now;
+        if (uuid == null || standing()) return;
+        if (world.tension.anyHigh()) strainedSeconds += since;
+        if (strainedSeconds >= world.tension.tuning().baseRisesAfterDays * 86_400) rise();
+    }
+
+    /**
+     * Defenders the base scrambles at difficulty {@code d}: two, and one more for each
+     * {@link #DIFFICULTY_PER_DEFENDER} above 1, up to {@link #MAX_DEFENDERS}. Round 6: one more each
+     * 1.5 rather than each point, so a Captain's frigate (difficulty about 2.3) meets two, and wins.
+     */
     public static int defendersFor(double d) {
-        return Math.min(MAX_DEFENDERS, 2 + (int) Math.floor(Math.max(0, d - 1)));
+        return Math.min(MAX_DEFENDERS, 2 + (int) Math.floor(Math.max(0, d - 1) / DIFFICULTY_PER_DEFENDER));
     }
 
     /** The names of the gun platforms it has manned, beaten ones included; empty before its first scramble. */
@@ -351,6 +406,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         since += deltaTime;
         if (since < CHECK_SECONDS) return;
         since = 0f;
+        strain();
         // A station stays on the rails; close by, the bubble shows it as a kinematic transient
         look(world.macroSim.bubble().inBubble().contains(uuid) || world.macroSim.bubble().fastPasses().contains(uuid));
     }
@@ -445,6 +501,8 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         json.writeValue("waiting", waiting.toArray(new String[0]), String[].class);
         if (!Double.isNaN(waveAt)) json.writeValue("waveAt", waveAt);
         json.writeValue("guns", guns.toArray(new String[0]), String[].class);
+        json.writeValue("strainedSeconds", strainedSeconds);
+        json.writeValue("lastStrainLook", lastStrainLook);
     }
 
     @Override
@@ -461,6 +519,8 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         waveAt = data.getDouble("waveAt", Double.NaN);
         guns.clear();
         readNames(json, data, "guns", guns);
+        strainedSeconds = data.getDouble("strainedSeconds", 0);
+        lastStrainLook = data.getDouble("lastStrainLook", Double.NaN);
     }
 
     private static void readNames(Json json, JsonValue data, String key, List<String> into) {

@@ -6,6 +6,7 @@ import com.badlogic.ashley.core.Family;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
@@ -117,6 +118,8 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
      */
     public static final int RAID_RANK = 3;
     static final double RAID_PAY = 40_000, RAID_DAYS = 6;
+    /** The note on a job a board posts because tension runs high at its stations (round 6). */
+    static final String TENSION_JOB = "Tension runs high here: the station wants more armed ships on its lanes";
 
     private static final Family SHIPS = Family.all(ShipTaskBoardComponent.class, UuidComponent.class)
             .exclude(StationComponent.class, PlayerControllerComponent.class).get();
@@ -184,6 +187,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             boards.put(stationUuid, board);
         }
         promoted(board);
+        reshowIfStale();
         List<Contract> out = new ArrayList<>();
         for (Contract c : extra) {
             if (stationUuid.equals(c.stationUuid) && c.status == Contract.Status.OFFERED && now() <= c.deadline) out.add(c);
@@ -214,6 +218,30 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             return;
         }
         board.rank = rank;
+        reshowOperations(board);
+    }
+
+    /**
+     * The world opened an operation a posted board does not show yet (the pirates' base has fallen):
+     * every board shows the operations it would offer now, at once rather than the next day.
+     */
+    public void worldChanged() {
+        operationsStale = true;
+        reshowIfStale();
+    }
+
+    /** Boards whose operations {@link #worldChanged} made stale; not saved, since a load posts afresh by day. */
+    private boolean operationsStale;
+
+    /** Reshows every board's operations if the world changed, once none runs (while one runs the boards show none). */
+    private void reshowIfStale() {
+        if (!operationsStale || running != null) return;
+        operationsStale = false;
+        for (StationOffers board : boards.values()) reshowOperations(board);
+    }
+
+    /** Puts the operations {@code board}'s giver offers now in place of those it showed. */
+    private void reshowOperations(StationOffers board) {
         Entity station = world.engine.getEntity(board.station);
         EconomyNode node = world.macroSim.station(board.station);
         int giver = world.standing.factionOf(station);
@@ -579,15 +607,18 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
                 c.arrivedAt = now();
                 return;
             }
-            int aboard = boardSurvivors(c, player, n);
+            int[] hurt = new int[2];
+            int aboard = boardSurvivors(c, player, n, podExposure(pod), hurt);
             if (aboard <= 0) return;
             world.derelicts.remove(pod.id);
             c.progress = 1;
             c.arrivedAt = -1;
             c.carried = aboard;
-            notices.add(String.format(Locale.ROOT, "Picked up %d survivors from %s; now to %s%s", aboard, c.targetName,
+            notices.add(String.format(Locale.ROOT, "Picked up %d survivors from %s; now to %s%s%s", aboard, c.targetName,
                     c.destinationName, aboard < c.quantity ? String.format(Locale.ROOT, " (no berths for %.0f more)",
-                            c.quantity - aboard) : ""));
+                            c.quantity - aboard) : "",
+                    hurt[0] == 0 ? "" : String.format(Locale.ROOT, ". %d hurt%s: your crew will tend them", hurt[0],
+                            hurt[1] == 0 ? "" : String.format(Locale.ROOT, ", %d critically", hurt[1]))));
             return;
         }
         if (!dockedAt(player, c.destinationUuid)) return;
@@ -605,8 +636,19 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         end(c, Contract.Status.DONE, alive + (alive == 1 ? " survivor" : " survivors") + " brought home");
     }
 
-    /** Brings {@code n} of rescue {@code c}'s survivors aboard {@code ship}, on free deck tiles; returns how many came. */
-    private int boardSurvivors(Contract c, Entity ship, int n) {
+    /** How far a pod's air has run down, 0 (just cast off) to 1 (out of air). */
+    double podExposure(Derelicts.Derelict pod) {
+        double left = pod.expires - now();
+        return Math.max(0, Math.min(1, 1 - left / Derelicts.POD_AIR));
+    }
+
+    /**
+     * Brings {@code n} of rescue {@code c}'s survivors aboard {@code ship}, on free deck tiles; returns
+     * how many came. Round 6: they come aboard as the pod left them ({@link #hurtInPod}), the worse the
+     * longer it drifted ({@code exposure}); {@code hurt} gets how many are wounded and how many of
+     * them critically.
+     */
+    private int boardSurvivors(Contract c, Entity ship, int n, double exposure, int[] hurt) {
         String from = c.targetName == null ? "the pod" : c.targetName;
         String crewOf = from.endsWith("'s pod") ? from.substring(0, from.length() - 6) : from;
         int faction = world.standing.factionOf(world.engine.getEntity(c.stationUuid));
@@ -622,9 +664,36 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             s.contract = c.id;
             s.from = from;
             e.add(s);
+            Wound w = hurtInPod(e, exposure, new Random(NewGame.mix(c.id, i)));
+            if (w != Wound.NONE) hurt[0]++;
+            if (w == Wound.CRITICAL) hurt[1]++;
             aboard++;
         }
         return aboard;
+    }
+
+    /** Share of a pod's survivors wounded when picked up at once, and the further share by the time its air runs out. */
+    static final double POD_HURT = 0.25, POD_HURT_LATE = 0.5;
+    /** Share of the wounded critically hurt by the time the air runs out (none at once), and seriously at any time. */
+    static final double POD_CRITICAL_LATE = 0.3, POD_SERIOUS = 0.4;
+    /** Share of their health the stale air of a pod about to run out has taken. */
+    static final float POD_STALE_AIR = 0.4f;
+
+    /**
+     * A survivor as the pod leaves them: short of breath by how long it drifted, and wounded one time in
+     * {@link #POD_HURT} (more the longer), seriously or critically more often late. Their wound is treated
+     * aboard like a crew member's (they are cared for as held), so one left untreated can die before the
+     * station. Returns the wound.
+     */
+    private Wound hurtInPod(Entity e, double exposure, Random dice) {
+        com.ringsofiron.aicrew.CrewMemberComponent m = world.crew.crew(e);
+        if (exposure > 0) world.crew.applyDamage(e, (float) (POD_STALE_AIR * exposure) * m.def.maxHealth,
+                com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.ASPHYXIATION);
+        if (dice.nextDouble() >= POD_HURT + POD_HURT_LATE * exposure) return Wound.NONE;
+        double v = dice.nextDouble();
+        Wound w = v < POD_CRITICAL_LATE * exposure ? Wound.CRITICAL : v < POD_CRITICAL_LATE * exposure + POD_SERIOUS ? Wound.SERIOUS : Wound.LIGHT;
+        world.crew.applyDamage(e, m.def.injuryFor(w), com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.FRAGMENT);
+        return m.wound;
     }
 
     /**
@@ -1032,7 +1101,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         FactionStanding s = world.standing;
         if (content == null || running != null) return out;
         for (OperationDef def : content.defs.all("operation", OperationDef.class)) {
-            if (operationsDone.contains(def.id) || def.steps.isEmpty()) continue;
+            if (operationsDone.contains(def.id) || def.steps.isEmpty() || !ready(def)) continue;
             String giverId = def.giver == null || def.giver.isEmpty() ? s.factions().id(s.sponsor()) : def.giver;
             if (s.factions().index(giverId) != giver) continue;
             int rank = rankIndex(def.rank);
@@ -1050,10 +1119,19 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             c.deadline = now() + DAY;
             out.add(c);
         }
-        // The newest the rank opens first, and only a few, so a board still shows other work
-        out.sort(java.util.Comparator.comparingInt((Contract c) -> -rankIndex(operationDef(c.operationId).rank)));
+        // The newest the rank opens first, one the world has just opened (the base fallen) ahead of
+        // its rank's others, and only a few, so a board still shows other work
+        out.sort(java.util.Comparator.comparingInt((Contract c) -> -rankIndex(operationDef(c.operationId).rank))
+                .thenComparing(c -> operationDef(c.operationId).requires == null || operationDef(c.operationId).requires.isEmpty()));
         while (out.size() > OPERATIONS_SHOWN) out.remove(out.size() - 1);
         return out;
+    }
+
+    /** Whether the world is as {@code def} waits for ({@link OperationDef#requires}): the pirates' base fallen, say. */
+    private boolean ready(OperationDef def) {
+        if (def.requires == null || def.requires.isEmpty()) return true;
+        if ("base_fallen".equals(def.requires)) return world.pirateBase.uuid() != null && !world.pirateBase.standing();
+        return false;
     }
 
     private int rankIndex(String id) {
@@ -1147,16 +1225,29 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         // An operation the player has earned heads the board, and a raid on the pirates' base after it
         out.addAll(operations(giver));
         out.addAll(raids(giver, false));
+        // A rival of the sponsor that distrusts the player offers fewer jobs (round 6)
+        int limit = world.tension.offersFor(giver, OFFERS_PER_STATION);
         // Round robin over the kinds, so a board shows a spread
-        for (int i = 0; out.size() < OFFERS_PER_STATION; i++) {
+        for (int i = 0; out.size() < limit; i++) {
             boolean any = false;
             for (List<Contract> k : kinds) {
-                if (i < k.size() && out.size() < OFFERS_PER_STATION) {
+                if (i < k.size() && out.size() < limit) {
                     out.add(k.get(i));
                     any = true;
                 }
             }
             if (!any) break;
+        }
+        // High tension at its stations: more work for an armed ship, bounties first, then escorts
+        int combat = world.tension.combatJobs(giver);
+        for (List<Contract> k : List.of(kinds.get(2), kinds.get(1))) {
+            for (Contract c : k) {
+                if (combat <= 0) break;
+                if (out.contains(c)) continue;
+                c.reason = c.reason == null || c.reason.isEmpty() ? TENSION_JOB : c.reason;
+                out.add(c);
+                combat--;
+            }
         }
         // The board always has something a newcomer may take
         boolean open = false;

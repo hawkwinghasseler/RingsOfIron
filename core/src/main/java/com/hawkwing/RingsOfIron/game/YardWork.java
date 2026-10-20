@@ -36,9 +36,9 @@ public class YardWork implements YardProvider {
         TraderComponent trader = ship.getComponent(TraderComponent.class);
         out.credits = trader == null ? 0 : trader.credits;
         out.damaged = world.yard.damage(ship).size();
-        out.repairCost = world.yard.repairCost(ship);
+        out.repairCost = world.yard.repairCost(ship, station);
         out.usedPrice = StationYard.USED_PRICE;
-        out.refillCost = world.yard.refillCost(ship);
+        out.refillCost = world.yard.refillCost(ship, station);
         out.tanks = tanks(ship);
         List<String> progress = world.yard.progress(ship);
         if (world.yard.repairing(ship) && !progress.isEmpty()) out.repairs = progress.get(0);
