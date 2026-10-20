@@ -71,7 +71,9 @@ final class DockLinks {
     static void setDoors(ShipGridComponent grid, MountFootprint port, boolean open) {
         for (int[] t : doorTiles(port)) {
             EdgeWall door = DockingPortLayout.door(grid, port, t[0], t[1]);
-            if (door != null && !door.isDestroyed()) door.bulkheadSealed = !open;
+            if (door == null || door.isDestroyed()) continue;
+            door.bulkheadSealed = !open;
+            door.opensForCrew = false;
         }
     }
 

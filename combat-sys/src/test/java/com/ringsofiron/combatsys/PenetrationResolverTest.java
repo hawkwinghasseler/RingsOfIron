@@ -83,6 +83,18 @@ class PenetrationResolverTest {
     }
 
     @Test
+    void aRoundAlongTheHullsSkinGrazesOffRatherThanBoringThroughTheRow() {
+        ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.MEDIUM);
+        // Head-on into the corner of the bottom hull row, then on along it
+        Result r = shootFromLeft(grid, 0, 1e8f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
+        assertEquals(Result.Outcome.OVER_PENETRATED, r.outcome);
+        assertTrue(grid.getTile(0, 0).getIntegrity() < 1f, "the corner it hit");
+        for (int x = 1; x < 8; x++) {
+            assertEquals(1f, grid.getTile(x, 0).getIntegrity(), 1e-6f, "the row beyond it, at " + x);
+        }
+    }
+
+    @Test
     void energyIsNeverCreated() {
         float[] budgets = {1e5f, 3e6f, 9e6f, 2e7f, 1e8f};
         for (float budget : budgets) {

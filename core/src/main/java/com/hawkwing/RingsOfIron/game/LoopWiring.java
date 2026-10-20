@@ -22,7 +22,7 @@ import java.util.Set;
  *   <li>A ship the player beats (disabled, surrendered or wrecked within {@link #CREDIT_SECONDS}
  *       of the player's last hit on it) counts as destroyed with the factions, once
  *       ({@link FactionStanding#onShipDestroyed}): it costs standing with its owners and gains
- *       standing with their enemies, so beating pirates is how a career starts.</li>
+ *       standing with the factions sworn against them, so beating pirates is how a career starts.</li>
  * </ul>
  */
 public final class LoopWiring {

@@ -8,6 +8,7 @@ import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.interiorgrid.AirflowEdge;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 
@@ -140,6 +141,24 @@ public final class CrewDoors {
             int cx = p.tileX(), cy = p.tileY();
             if (cx == h.x && cy == h.y && next.x == h.nx && next.y == h.ny) return true;
             if (cx == h.nx && cy == h.ny && next.x == h.x && next.y == h.y) return true;
+        }
+        return false;
+    }
+
+    /**
+     * True if a crew member of {@code service} is walking through the docked port opening of
+     * {@code link} (either way): out on its walkway, or on either opening tile on their way across.
+     */
+    public static boolean crossingPort(CrewService service, GridLink link) {
+        ImmutableArray<Entity> all = service.crewEntities();
+        for (int i = 0; i < all.size(); i++) {
+            GridPositionComponent p = service.position(all.get(i));
+            if (p.walkway == link || p.walkway == link.mate) return true;
+            if (p.crossing != link && p.crossing != link.mate) continue;
+            ShipGridComponent grid = service.grid(p.ship);
+            int x = p.tileX(), y = p.tileY();
+            if (grid == link.grid() && x == link.x && y == link.y) return true;
+            if (grid == link.other && x == link.ox && y == link.oy) return true;
         }
         return false;
     }

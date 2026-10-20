@@ -64,6 +64,11 @@ public class GameScenario {
     /** Where the Moon starts along its orbit, radians from Earth's +x axis. */
     public static final double MOON_ANGLE = 2.0;
     public static final String PLAYER_SHIP = "corvette_patrol";
+    /**
+     * The raider outside Highport: the player's corvette refitted by pirates, a chaingun where the
+     * railgun was. As the player's twin it won or lost on who fired first (round 2 playtest).
+     */
+    public static final String RAIDER_SHIP = "corvette_raider";
     /** The ship the traffic flies, which sizes the freighters' holds. */
     public static final String FREIGHTER_SHIP = "freighter_hauler";
     /** The faction the raider flies for, when the data has it. */
@@ -76,7 +81,7 @@ public class GameScenario {
     /** The player's ship and avatar; a load replaces them with the loaded entities. */
     public Entity player;
     public Entity avatar;
-    /** A hostile corvette close by, armed like the player's ship; also replaced by a load. */
+    /** A hostile corvette close by ({@link #RAIDER_SHIP}), outgunned by the player's; also replaced by a load. */
     public Entity raider;
     /** Ships the player can lock: hostiles and traffic in the bubble. */
     public final Array<Entity> contacts = new Array<>();
@@ -132,7 +137,7 @@ public class GameScenario {
             CrewFactory.spawn(world.crew, player, names[i], roles[i], 0, t[0], t[1]);
         }
 
-        raider = content.factory.spawnShip(PLAYER_SHIP, 1_200f, 400f, 200f);
+        raider = content.factory.spawnShip(content.defs.has("ship", RAIDER_SHIP) ? RAIDER_SHIP : PLAYER_SHIP, 1_200f, 400f, 200f);
         ShipConsoles.install(raider);
         // Flies for the pirates, if the data has them, so beating it counts with the factions
         int pirates = world.standing.factions().index(PIRATES);

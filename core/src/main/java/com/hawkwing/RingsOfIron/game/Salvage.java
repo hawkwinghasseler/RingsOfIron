@@ -48,8 +48,13 @@ import java.util.Locale;
 public class Salvage extends EntitySystem {
     /** Prefix of the commodity a part is carried and stowed as; the same as a yard's refit parts. */
     public static final String PART = StationYard.PART;
-    /** Share of a part's price a station pays for it. */
-    public static final double SALE_SHARE = 0.25;
+    /**
+     * Share of a part's price a station pays for it: a twentieth, so one stripped laser (2,250 cr)
+     * pays under half a first bounty (5,000), and stripping a whole raider about two bounties for
+     * many minutes of crew work. At a quarter, one laser paid over twice the bounty (round 2
+     * playtest). Placeholder number.
+     */
+    public static final double SALE_SHARE = 0.05;
     /** Work (at an engineer's repair rate) to strip one tile of a mount. */
     public static final float STRIP_WORK_PER_TILE = 1f;
     /** A crate's bulk, m³, and its weight, kg. */

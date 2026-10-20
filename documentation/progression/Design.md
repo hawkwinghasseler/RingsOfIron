@@ -37,7 +37,7 @@ Factions are data: `[faction.<id>]` in `assets/data/factions.toml` (`FactionDef`
 
 | Id | Name | Owns | Notes |
 |---|---|---|---|
-| `patrol` | Terran Patrol Authority | Highport, Deepwell Depot | The sponsor |
+| `patrol` | Terran Patrol Authority | Highport, Deepwell Depot | The sponsor; enemies: pirates |
 | `selene` | Selene Mining Combine | Shackleton Ice | |
 | `pirates` | Void Raiders | nothing | Hostile to all |
 
@@ -46,14 +46,14 @@ Factions are data: `[faction.<id>]` in `assets/data/factions.toml` (`FactionDef`
 ## Standing
 The player's career is a `ServiceRecord`, saved as its own save module (`"factions"`) rather than on the ship, so it outlives a ship lost to rescue. It holds the sponsor's id, the rank, and standing per faction id, which is clamped to -100..100.
 
-- **Changing it:** `FactionStanding.reward` and `penalize` (by faction id or number) are the one way contracts, combat and boarding change standing. `hostileAct` costs standing with the victim and gives each faction at war with it half that (`ENEMY_SHARE`).
+- **Changing it:** `FactionStanding.reward` and `penalize` (by faction id or number) are the one way contracts, combat and boarding change standing. `hostileAct` costs standing with the victim and gives each faction sworn against it half that (`ENEMY_SHARE`). Sworn means listed in `enemies` either way (`Factions.swornEnemiesOf`): being at war with a `hostile_to_all` faction is not enough, so the Patrol, which lists the pirates, gains from beating them and the Selene Combine does not.
 - **Hostile acts:**
 
   | Act | Standing cost |
   |---|---|
   | Prying or hacking a door | 10 |
   | Cutting a door | 25 |
-  | Destroying a faction's ship (`onShipDestroyed`, `KILL_COST`) | 30 |
+  | Destroying a faction's ship (`onShipDestroyed`, `KILL_COST`) | 30, and 5 to its sworn enemies (`KILL_SHARE`, a sixth) |
   | Boarding a faction's ship (`Boarding.STANDING_COST`) | 20 |
 - **Thresholds:** below -15 the faction's stations refuse clearance, with the reason from the last grievance ("you forced their doors") or "your standing with X is too low". At -50 or below its crew fight the player's (`FactionStanding.hostile`).
 - **Crew hostility:** factions at war fight each other, and a hostile-to-all faction fights everyone. A known faction and an unaligned crew don't fight; two unaligned crews always do. Held prisoners fight no one.
@@ -155,7 +155,7 @@ Boarding is crew work across a ship-to-ship dock: the corvette's port is active 
 - **Salvage:**
   - From the boarding window, each component can be marked to strip. Engineers strip it at one unit of work per mount tile, and loaders carry it home as a `part:<component>` crate (1 m³, 250 kg) to the player's hold. "Take all" carries cargo across too.
   - A stripped system is dead for good.
-- **Selling salvage:** stations buy parts at a quarter of their price (`Salvage.SALE_SHARE`), listed as "Salvaged ..." in the trade window. Station markets never sell parts.
+- **Selling salvage:** stations buy parts at a twentieth of their price (`Salvage.SALE_SHARE`), listed as "Salvaged ..." in the trade window. Station markets never sell parts. A stripped laser sells for 2,250 cr, under half the first bounty, and the whole First Play raider for about two bounties (at a quarter, one laser paid 11,250 cr, over twice the bounty).
 - **Refitting with salvage:** a salvaged weapon can be fitted at a yard for free, like a used one, from the yard's "Salvaged" button.
 
 ## The Loop in the Main Game
@@ -163,11 +163,11 @@ Boarding is crew work across a ship-to-ship dock: the corvette's port is active 
 - **Encounters** scale with `Difficulty.of(world)` (`HostileTraffic.difficulty`).
 - **Outlaws:** ships of a faction `hostile_to_all` cost nothing to board (`Boarding.outlaw`).
 - **Rescue** wakes the player at the nearest station the sponsor owns (`Rescue.sponsorStation`), in the best ship of `LoopWiring.REQUISITION` (the gunship, then the starter corvette) that `RankLadder.mayRequisition` allows, free. Freighters are never requisitioned. The new ship gets a helm and the player is seated at it.
-- **Ships beaten:** a ship disabled, surrendered or wrecked within 120 s of the player's last hit on it counts once as destroyed (`FactionStanding.onShipDestroyed`): 30 standing off its owners, 15 to each faction at war with them. Beating a pirate raises standing with both the sponsor and Selene.
+- **Ships beaten:** a ship disabled, surrendered or wrecked within 120 s of the player's last hit on it counts once as destroyed (`FactionStanding.onShipDestroyed`): 30 standing off its owners, 5 to each faction sworn against them. Beating a pirate raises standing with the sponsor only.
 
-A new game (the main menu's New game, and First Play) starts docked at Highport as an ensign of the sponsor (`GameScenario.beginCareer`). The board's first bounty is on the raider outside: bounties on ships in the bubble are offered before those on pirates out on the rails. First Play's steps are: take the bounty, undock, fly clear, beat the raider, board it, dock, repair.
+A new game (the main menu's New game, and First Play) starts docked at Highport as an ensign of the sponsor (`GameScenario.beginCareer`). The raider outside flies `corvette_raider`: the player's corvette refitted by pirates, a chaingun where the railgun was, with the laser, launcher and point defense kept. As the player's twin it won or lost on who fired first. The board's first bounty is on the raider outside: bounties on ships in the bubble are offered before those on pirates out on the rails. First Play's steps are: take the bounty, undock, fly clear, beat the raider, board it, dock, repair.
 
-`PlayableLoopTest` plays the loop headless: take the bounty, undock, fight the raider with the real guns and missiles until it gives up, board it, strip a gun, dock, sell it, and be promoted to Lieutenant (the bounty's 6 and the kill's 15 standing). A second test abandons ship as a Lieutenant Commander and wakes at a sponsor station seated at a gunship's helm.
+`PlayableLoopTest` plays the loop headless: take the bounty, undock, fight the raider with the real guns and missiles until it gives up, board it, strip a gun, dock and sell it, and come away 11 standing up (the bounty's 6 and the kill's 5), one more such fight from Lieutenant's 15. `BalancePacingTest` plays the round 2 playtest's fixes with their numbers: the raider woken as First Play wakes it comes in firing, lands hits, and takes the player's guns over 20 s to beat (combat-sys's grazing rounds and smaller machinery bites; it was 7 s), a stripped laser pays under half the bounty, one fight is not a promotion and two are, beating a pirate pleases only the Patrol, and a ship latched to a holed one keeps its air while its boarding party still crosses. A second test abandons ship as a Lieutenant Commander and wakes at a sponsor station seated at a gunship's helm.
 
 ## Saves
 - **Save modules:** the career (`"factions"`) and contracts (`"contracts"`).

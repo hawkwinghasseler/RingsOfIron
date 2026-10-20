@@ -55,8 +55,13 @@ public class PenetrationResolver {
     public static final float CREW_JOULES_PER_HP = 20f;
     /** Overpressure on a tile, J, that kills an unprotected crew member outright (100 hp). */
     public static final float CREW_BLAST_LETHAL = 2e6f;
-    /** Machinery share of a system's hardness that one tile of it can absorb from a single ray. */
-    public static final float SUBSYSTEM_TILE_SHARE = 0.25f;
+    /**
+     * Machinery share of a system's hardness that one tile of it can absorb from a single ray: what
+     * a round drilling through it can wreck. At a quarter, three railgun slugs through a corvette's
+     * nose shut its reactor down and fights ended in seconds (round 2 playtest); at a tenth a ship
+     * takes several, and its crew have fires, breaches and repairs to deal with meanwhile.
+     */
+    public static final float SUBSYSTEM_TILE_SHARE = 0.1f;
     /** Below this health a system stops working; at 0 it is destroyed. interior-grid owns the value. */
     public static final float DISABLE_THRESHOLD = SubsystemComponent.DISABLE_THRESHOLD;
     /** Edge walls are thin: this share of a full tile's hit points and armor. */
@@ -439,6 +444,8 @@ public class PenetrationResolver {
         int depth;
         float originX, originY;
         int skipX = Integer.MIN_VALUE, skipY = Integer.MIN_VALUE;
+        /** The hull tile the ray was last in, to tell a ray running along the hull's skin; MIN_VALUE if none. */
+        int hullX = Integer.MIN_VALUE, hullY = Integer.MIN_VALUE;
     }
 
     private void trace(final Ray ray, float startX, float startY) {
@@ -489,13 +496,21 @@ public class PenetrationResolver {
             return false;
         }
 
+        boolean wasInHull = ray.hullX != Integer.MIN_VALUE;
+        int fromX = ray.hullX, fromY = ray.hullY;
+        ray.hullX = ray.hullY = Integer.MIN_VALUE;
         if (tile.isWall()) {
+            boolean hull = tile.wallType == Tile.WallType.HULL;
+            if (hull && wasInHull && alongSkin(fromX, fromY, x, y)) return glanceOut(ray, tEnter);
+            if (hull) {
+                ray.hullX = x;
+                ray.hullY = y;
+            }
             if (tile.getIntegrity() <= 0f) {
                 // A hole.
-                if (tile.wallType == Tile.WallType.HULL) ray.pastHull = true;
+                if (hull) ray.pastHull = true;
                 return advance(ray, x, y, tile);
             }
-            boolean hull = tile.wallType == Tile.WallType.HULL;
             boolean wasBreach = tile.isHullBreach();
             hitStructure(ray, tile, x, y, 1f);
             if (tile.getIntegrity() <= 0f) {
@@ -543,10 +558,18 @@ public class PenetrationResolver {
         if (integrity <= 0f) {
             // Straight through an existing hole.
             ray.pastHull = true;
+            if (tile.wallType == Tile.WallType.HULL) {
+                ray.hullX = x;
+                ray.hullY = y;
+            }
             return advance(ray, x, y, tile);
         }
 
         boolean hull = tile.wallType == Tile.WallType.HULL;
+        if (hull) {
+            ray.hullX = x;
+            ray.hullY = y;
+        }
         boolean wasBreach = tile.isHullBreach();
         hitStructure(ray, tile, x, y, scale);
         if (tile.getIntegrity() <= 0f) {
@@ -555,6 +578,36 @@ public class PenetrationResolver {
         }
         if (ray.budget > 0f) penetratedHull(ray, x, y);
         return advance(ray, x, y, tile);
+    }
+
+    /**
+     * True if the step from hull tile (fx, fy) to hull tile (x, y) runs along the hull's skin: both
+     * face open space on the same side, square to the step. The hull is a thin skin drawn a tile
+     * thick, so a round going that way is grazing the plating, not boring along inside it (round 2
+     * playtest: railgun slugs down a corvette's length took out a whole row of hull each).
+     */
+    private boolean alongSkin(int fx, int fy, int x, int y) {
+        int dx = x - fx, dy = y - fy;
+        if (Math.abs(dx) + Math.abs(dy) != 1) return false;
+        for (int side = -1; side <= 1; side += 2) {
+            int sx = dy * side, sy = dx * side;
+            if (open(fx + sx, fy + sy) && open(x + sx, y + sy)) return true;
+        }
+        return false;
+    }
+
+    private boolean open(int x, int y) {
+        Tile t = grid.getTile(x, y);
+        return t == null || t.isVoid();
+    }
+
+    /** A round grazing along the hull's skin leaves it with what it has left. */
+    private boolean glanceOut(Ray ray, float t) {
+        if (ray.result != null) {
+            ray.result.outcome = Result.Outcome.OVER_PENETRATED;
+            ray.result.exitPoint.set(ray.originX + ray.dirX * t, ray.originY + ray.dirY * t);
+        }
+        return false;
     }
 
     private void penetratedHull(Ray ray, int x, int y) {

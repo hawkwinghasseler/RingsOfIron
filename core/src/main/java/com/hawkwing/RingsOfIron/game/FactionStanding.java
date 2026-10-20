@@ -23,8 +23,8 @@ import java.util.function.Supplier;
  *
  * <p>Deeds move standing through {@link #reward} and {@link #penalize}; contracts, combat and
  * boarding call them. A hostile act ({@link #hostileAct}), such as forcing a door or destroying a
- * ship ({@link #onShipDestroyed}), costs standing with the victim's faction and gains half as much
- * with the factions at war with it. Forcing a door costs more cut than pried or hacked; docking
+ * ship ({@link #onShipDestroyed}), costs standing with the victim's faction and gains a share of it
+ * with the factions sworn against it ({@link Factions#swornEnemiesOf}). Forcing a door costs more cut than pried or hacked; docking
  * without clearance costs nothing by itself. Below {@link #REFUSE_BELOW} a faction's stations refuse
  * the player docking clearance; at {@link #HOSTILE_AT} or below its crew fight the player's.
  *
@@ -37,8 +37,14 @@ public class FactionStanding implements SaveParticipant {
     public static final float PRY_COST = 10f, HACK_COST = 10f, CUT_COST = 25f;
     /** Standing lost with a faction for destroying one of its ships. */
     public static final float KILL_COST = 30f;
-    /** Share of a hostile act's cost its victim's enemies give the player. */
+    /** Share of a hostile act's cost its victim's sworn enemies give the player. */
     public static final float ENEMY_SHARE = 0.5f;
+    /**
+     * Share of a kill's cost its victim's sworn enemies give the player: 5 standing a ship, so a
+     * bounty (6) and its kill come to 11, short of Lieutenant's 15 (round 2 playtest: one fight
+     * was a promotion). Placeholder number.
+     */
+    public static final float KILL_SHARE = 1f / 6f;
     /** Below this, the faction's stations refuse the player clearance. */
     public static final float REFUSE_BELOW = -15f;
     /** At or below this, the faction's crew fight the player's. */
@@ -171,17 +177,24 @@ public class FactionStanding implements SaveParticipant {
 
     /**
      * A hostile act against {@code faction}: costs {@code cost} standing with it, and gains
-     * {@link #ENEMY_SHARE} of that with every faction at war with it.
+     * {@link #ENEMY_SHARE} of that with every faction sworn against it.
      */
     public void hostileAct(int faction, float cost, String why) {
-        if (!factions.known(faction)) return;
-        penalize(faction, cost, why);
-        for (int enemy : factions.enemiesOf(faction)) reward(enemy, cost * ENEMY_SHARE, why);
+        hostileAct(faction, cost, ENEMY_SHARE, why);
     }
 
-    /** The player destroyed (or disabled for good) {@code ship}: a hostile act against its faction. */
+    private void hostileAct(int faction, float cost, float share, String why) {
+        if (!factions.known(faction)) return;
+        penalize(faction, cost, why);
+        for (int enemy : factions.swornEnemiesOf(faction)) reward(enemy, cost * share, why);
+    }
+
+    /**
+     * The player destroyed (or disabled for good) {@code ship}: a hostile act against its faction,
+     * {@link #KILL_SHARE} of it to the factions sworn against it.
+     */
     public void onShipDestroyed(Entity ship) {
-        hostileAct(factionOf(ship), KILL_COST, "destroyed their ships");
+        hostileAct(factionOf(ship), KILL_COST, KILL_SHARE, "destroyed their ships");
     }
 
     /** Takes note of a docking event: a door the player's crew forced costs standing with its owners. */
