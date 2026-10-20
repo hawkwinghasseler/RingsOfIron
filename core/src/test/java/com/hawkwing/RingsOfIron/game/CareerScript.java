@@ -94,8 +94,20 @@ abstract class CareerScript {
     void start(long seed) {
         world = new GameWorld();
         game = GameScenario.start(world, assets(), assets().resolve("no-mods-here"), NewGame.seeded(seed, "patrol"));
-        world.carriedHome.add((sig, t) -> log("  (the player is down: the crew bring them to %s, %.1f d later)", t.stationName, t.skipped / 86_400));
+        world.carriedHome.add((sig, t) -> {
+            log("  (the player is down: the crew bring them to %s, %.1f d later)", t.stationName, t.skipped / 86_400);
+            // Round 7: down, towed home venting and dry, then down again at the berth, for ever
+            double now = world.engine.getSimSeconds();
+            while (!carried.isEmpty() && carried.peekFirst() < now - 86_400) carried.removeFirst();
+            carried.addLast(now);
+            assertTrue(carried.size() < MOST_CARRIED_A_DAY, "the player keeps going down: carried home "
+                    + carried.size() + " times in a day, last to " + t.stationName);
+        });
     }
+
+    /** When the crew carried the player home, in the last day; a day with this many fails the career. */
+    final java.util.ArrayDeque<Double> carried = new java.util.ArrayDeque<>();
+    static final int MOST_CARRIED_A_DAY = 3;
 
     // ------------------------------------------------------------------ round 3's career
 
@@ -564,6 +576,17 @@ abstract class CareerScript {
             log("  disabled: tow refusal %s.", world.beacon.refusal());
             log("  %s", world.beacon.call());
             assertTrue(runUntil(30f, () -> world.docking.dockedTo(game.player) != null), "towed home");
+            // Towed in holed and dry: the yard mends and fills it, or the Moon trip can't start
+            run(120);
+            Entity home = world.docking.dockedTo(game.player);
+            double bill = world.yard.repairCost(game.player, home) + world.yard.refillCost(game.player, home);
+            if (credits() < bill) {
+                log("  short by %.0f cr for the yard: the script makes up the difference.", bill - credits());
+                grantedCredits += bill - credits();
+                account().credits = bill;
+            }
+            repairAt(home);
+            log("  yard: %s.", world.yard.orderRefill(game.player, home));
         } else {
             assertTrue(game.dockAtHighport());
             run(120);
