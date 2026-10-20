@@ -229,6 +229,28 @@ class SurrenderHoldsTest {
         assertFalse(world.macroSim.hostiles().get(id).surrendered, "aimed fire after the grace brings it back");
     }
 
+    @Test
+    void theTriggerHeldOnAShipThatStrikesDoesNotBringItBack() {
+        // Part 6's window: after the fall, Space held with the lock still on a struck raider brought it
+        // back into action, and the guns wrecked it
+        String id = pirate();
+        world.macroSim.hostiles().get(id).targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 2_500, 0);
+        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        gun.setTarget(ship);
+        run(3);
+        for (SubsystemComponent s : turrets(ship)) s.health = 0f;
+        run(2);
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
+        assertNull(gun.getTarget(), "the lock lets go of a ship that strikes");
+        for (int i = 0; i < 20 / FRAME; i++) {
+            gun.fireGuns();
+            world.update(FRAME);
+        }
+        assertTrue(world.macroSim.hostiles().get(id).surrendered, "the trigger held past the grace doesn't bring it back");
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
+    }
+
     // ------------------------------------------------------------------
 
     /** Brings in raider {@code id} to fight the player, then silences its guns: it surrenders. */

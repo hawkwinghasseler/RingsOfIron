@@ -221,7 +221,7 @@ public class PirateBoarding implements SaveParticipant {
      * opens up once the power is back, and its recoil tears the ship off the berth (seed 2026, round
      * 7: torn loose seven times at Highport, the yard's work called off each time).
      */
-    private static void standDown(Entity player, Entity pirate) {
+    static void standDown(Entity player, Entity pirate) {
         if (player == null) return;
         SensorComponent sensor = player.getComponent(SensorComponent.class);
         if (sensor != null && sensor.lockedTarget == pirate) sensor.lockedTarget = null;

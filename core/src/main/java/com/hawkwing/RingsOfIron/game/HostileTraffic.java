@@ -197,6 +197,9 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             h.surrendered = true;
             if (h.huntingPlayer()) h.targetUuid = null;
             provoked.remove(change.ship);
+            // The player's guns let go of it: a lock left on it made the trigger aimed fire after the
+            // grace (round 9, part 6's window: Space held after the fall brought Pirate raider 22 back)
+            PirateBoarding.standDown(world.getPlayer(), change.ship);
         } else if (change.was == DisabledComponent.Reason.SURRENDERED && change.now == null) {
             h.surrendered = false;
         }
