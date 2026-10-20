@@ -238,9 +238,12 @@ public class UiHud implements Disposable {
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         hudRenderSystem.keepClear(threatBanner, () -> threatOverlay.isVisible() && threatBanner.getText().length() > 0);
         hudRenderSystem.keepClear(dockHint, dockHint::isVisible);
-        // Names by the bottom edge rise clear of the ship and orbit panels rather than writing over them
+        // Names by the bottom edge rise clear of the ship and orbit panels rather than writing over them,
+        // and names by the left edge clear the flight readout and the gauges
         hudRenderSystem.keepClear(() -> stageBounds(minimapPanel));
         hudRenderSystem.keepClear(() -> stageBounds(orbitPanel));
+        hudRenderSystem.keepClear(() -> stageBounds(flightPanel));
+        hudRenderSystem.keepClear(() -> stageBounds(gauges));
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
         interactPromptSystem = new InteractPromptSystem(prompt, this::openConsole);
         flightReadoutSystem = new FlightReadoutSystem(flight, skin, viewMode);
