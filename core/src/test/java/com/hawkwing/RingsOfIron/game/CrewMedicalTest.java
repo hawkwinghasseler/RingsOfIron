@@ -91,6 +91,27 @@ class CrewMedicalTest {
         assertFalse(world.medical.inBattle(game.player, now + CrewMedical.BATTLE_HOLD + 1));
     }
 
+    @Test
+    void fireAtABeatenShipDoesNotHoldBattleStations() {
+        // Round 8: the corvette's guns fired on by themselves at the beaten ace every few seconds,
+        // which held its crew at battle stations, and their light wounds untreated, for ten minutes
+        game.raider.remove(com.ringsofiron.aicrew.pilot.NpcCombatComponent.class);
+        world.disablement.set(game.raider, DisabledComponent.Reason.NO_POWER);
+        com.ringsofiron.combatsys.events.ShotFiredEvent s = shot(game.player);
+        s.target = game.raider;
+        world.combatEvents.shots.dispatch(s);
+        com.ringsofiron.combatsys.events.ImpactEvent hit = new com.ringsofiron.combatsys.events.ImpactEvent();
+        hit.owner = game.player;
+        hit.target = game.raider;
+        world.combatEvents.impacts.dispatch(hit);
+        assertFalse(world.medical.inBattle(game.player, world.engine.getSimSeconds()), "the fight is over");
+        assertTrue(world.medical.inBattle(game.raider, world.engine.getSimSeconds()), "the wreck was still shot at");
+        // A shot at a ship still fighting holds them, as before
+        world.disablement.set(game.raider, null);
+        world.combatEvents.shots.dispatch(s);
+        assertTrue(world.medical.inBattle(game.player, world.engine.getSimSeconds()));
+    }
+
     private static com.ringsofiron.combatsys.events.ShotFiredEvent shot(Entity shooter) {
         com.ringsofiron.combatsys.events.ShotFiredEvent s = new com.ringsofiron.combatsys.events.ShotFiredEvent();
         s.shooter = shooter;
