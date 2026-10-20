@@ -350,6 +350,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         latchRecords(a, portA, pa, b, portB, pb, DockingPort.State.DOCKED, true);
         pa.consented = true;
         pb.consented = true;
+        pa.clamped = true;
+        pb.clamped = true;
         Link link = linkFor(a, portA, pa, b, portB, pb);
         link.snap = true;
     }
@@ -899,6 +901,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         pb.consented = agreed(pb, a);
         pa.clearanceUntil = Double.NaN;
         pb.clearanceUntil = Double.NaN;
+        pa.clamped = false;
+        pb.clamped = false;
     }
 
     /** The port's own side wanted this dock: armed by its crew, or for the craft now docking. */
@@ -983,11 +987,12 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         float force = link.joint.getReactionForce(invDt).len() * M;
         float torque = Math.abs(link.joint.getReactionTorque(invDt)) * M * M;
         float k = Math.min(1f, dt / DockingTuning.STRAIN_FILTER);
-        // A collar part torn holds that much less of its load. A collar torn off altogether can only
-        // be latched in place (a tug's or a yard's berth), whose clamps hold it as a whole one would:
-        // scaled to nothing it tore every step, and the ship could never stay at the yard that mends it
+        // A collar part torn holds that much less of its load. A latch made in place (a tug's or a
+        // yard's berth, a boarding latch) is held by its clamps as a whole collar would be: scaled to
+        // nothing a torn-off collar tore every step, and the ship could never stay at the yard that
+        // mends it; worn to a tenth by hits, a shot-up prize tore loose as soon as it was boarded
         float hold = Math.min(link.pa.collarIntegrity, link.pb.collarIntegrity);
-        if (hold <= 0f) hold = 1f;
+        if (hold <= 0f || link.pa.clamped || link.pb.clamped) hold = 1f;
         float breakForce = t.breakForce * hold, breakTorque = t.breakTorque * hold;
         boolean shock = force > DockingTuning.SHOCK_LIMIT * breakForce || torque > DockingTuning.SHOCK_LIMIT * breakTorque;
         // One round's hit on a ship welded to a station is a one-step spike many times the limit;
