@@ -22,7 +22,7 @@ import java.util.Map;
  * <ul>
  *   <li><b>Battle stations.</b> A ship is at battle stations while an armed ship fights it (an NPC
  *       captain has it as their target), while it fights one itself, and for {@link #BATTLE_HOLD}
- *       seconds after a shot fired or taken. Its crew suit up then, unless the player turned that
+ *       seconds after a shot fired or taken (fire at a ship already disabled doesn't count). Its crew suit up then, unless the player turned that
  *       off for their ship ({@link ShipTaskBoardComponent#suitsAtBattleStations}, from the crew
  *       window).</li>
  *   <li><b>Notices.</b> The player hears as their crew are wounded (a critical wound with the time
@@ -52,14 +52,22 @@ public final class CrewMedical {
         this.crew = world.crew;
         this.boards = world.engine.getEcsEngine().getEntitiesFor(BOARDS);
         this.fighters = world.engine.getEcsEngine().getEntitiesFor(FIGHTERS);
-        world.combatEvents.shots.add((signal, shot) -> shot(shot.shooter));
+        // Fire at a ship already beaten doesn't keep the shooter at battle stations (round 8): a
+        // ship whose power came back fires on at the wreck by itself, which held the crew there
+        world.combatEvents.shots.add((signal, shot) -> {
+            if (!beaten(shot.target)) shot(shot.shooter);
+        });
         world.combatEvents.impacts.add((signal, hit) -> {
-            shot(hit.owner);
+            if (!beaten(hit.target)) shot(hit.owner);
             shot(hit.target);
         });
         world.boarding.taken.add((signal, ship) -> taken(ship));
         world.hints.register(HintRegistry.Context.ANY, "crew (wounded need a medic)", 4, Action.CREW)
                 .onlyWhen(this::criticalAboard);
+    }
+
+    private static boolean beaten(Entity target) {
+        return target != null && ShipDisablement.isDisabled(target);
     }
 
     private void shot(Entity ship) {

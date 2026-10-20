@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
@@ -176,6 +177,43 @@ abstract class CareerScript {
 
     static float top(CrewHiring.Candidate c) {
         return Math.max(c.record.gunnery, Math.max(c.record.engineering, c.record.marine));
+    }
+
+    /** The player's own crew fit to work: conscious, and no worse than lightly wounded. */
+    int fitCrew() {
+        int n = 0;
+        for (Entity e : ownCrew()) {
+            CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+            if (c.isConscious() && c.wound.ordinal() <= Wound.LIGHT.ordinal()) n++;
+        }
+        return n;
+    }
+
+    /**
+     * After a fight that left hands dead or down, hires at the docked station, as a player would
+     * before the next job, while fewer than {@code want} are fit to work and a berth is free: a medic
+     * first while anyone aboard is seriously wounded or worse, else the most skilled hand.
+     */
+    void hireReplacements(int want) {
+        Entity at = world.docking.dockedTo(game.player);
+        if (at == null) return;
+        String uuid = world.universe.uuidOf(at);
+        while (fitCrew() < want) {
+            boolean bleeding = false;
+            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                if (c.isAlive() && c.wound.ordinal() >= Wound.SERIOUS.ordinal()
+                        && e.getComponent(GridPositionComponent.class).ship == game.player) bleeding = true;
+            }
+            CrewHiring.Candidate best = null;
+            for (CrewHiring.Candidate c : world.crewHiring.pool(uuid)) {
+                if (best == null || (bleeding ? c.record.medicine > best.record.medicine : top(c) > top(best))) best = c;
+            }
+            if (best == null) break;
+            String why = world.crewHiring.hire(best.key);
+            if (why != null) { log("  could not hire %s: %s", best.name, why); break; }
+            log("  hired %s (%s, %s) to make up the hands lost", best.name, best.role, best.record.describeSkills());
+        }
     }
 
     void fightTheRaiderAndTowItHome() {
@@ -567,6 +605,7 @@ abstract class CareerScript {
         run(60);
         h.targetUuid = HostileComponent.PLAYER;
         bringIn(id, 3_000, 0);
+        int crew = ownCrew().size();
         fight(ship, h, "Ace fight");
         patchIfVenting("the ace");
         run(60 * 10);
@@ -577,10 +616,11 @@ abstract class CareerScript {
             log("  disabled: tow refusal %s.", world.beacon.refusal());
             log("  %s", world.beacon.call());
             assertTrue(runUntil(30f, () -> world.docking.dockedTo(game.player) != null), "towed home");
+            hireReplacements(crew);
             // Towed in holed and dry: the yard mends and fills it, or the Moon trip can't start
             run(120);
             Entity home = world.docking.dockedTo(game.player);
-            double bill = world.yard.repairCost(game.player, home) + world.yard.refillCost(game.player, home);
+            double bill = world.yard.repairCost(game.player, home) + world.yard.airCost(game.player, home) + world.yard.refillCost(game.player, home);
             if (credits() < bill) {
                 log("  short by %.0f cr for the yard: the script makes up the difference.", bill - credits());
                 grantedCredits += bill - credits();
@@ -591,9 +631,12 @@ abstract class CareerScript {
         } else {
             assertTrue(game.dockAtHighport());
             run(120);
+            hireReplacements(crew);
             // The ace's rounds holed the hull: Highport's yard mends it before the crew run out of air
             repairAt(world.engine.getEntity(game.highport));
         }
+        // Berths the dead held are free again
+        hireReplacements(crew);
         snapshot("home again");
     }
 
@@ -817,6 +860,14 @@ abstract class CareerScript {
             log("Granted %.0f standing (%s) for rank %s.", need + 0.5f, standsFor, world.standing.describeRank());
         } else {
             log("Rank %s earned in play.", world.standing.describeRank());
+        }
+        // Standing enough, but not yet long enough in grade: a player waits it out docked
+        for (int r = world.standing.record().rank + 1; r <= rank; r = world.standing.record().rank + 1) {
+            double left = world.standing.timeInGradeLeft(r);
+            if (left <= 0) break;
+            log("  %.1f more days in grade before rank %d.", left / 86_400, r);
+            warpFor(left + 60);
+            world.standing.promoteDue();
         }
         assertTrue(world.standing.record().rank >= rank);
     }

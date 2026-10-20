@@ -116,6 +116,24 @@ How it runs aboard is in `ai-crew/Design.md` section 5; on the game's side:
 - **Hiring** shows a medic as "Medic (2.5x care)", and adds ", none aboard" when the crew has no medic. The starting corvette still has none (round 6 found it not needed).
 - **Pirates board a beaten player** (`PirateBoarding`). A pirate that beats the player and still has 70% of its hull comes alongside with its guns cold and latches on within 300 m. After 60 s it has taken everything in the hold (into its own hold where it fits) and 10% of the credits, at most 5,000 cr, and it leaves. Notices say it is coming, that it has latched on, and what it took. There is no fight on the interior grid, and the crew aren't harmed. One pirate boards at a time; the rest, and any pirate below the line, leave the player drifting as before. A boarding in progress is saved.
 
+### Crew care after a fight (round 8 part 5)
+Round 7's wound survey left crew wounded ten minutes after a won ace fight. Traced with `CrewWoundSurveyTest -PwoundTrace`, the causes were:
+- **Battle stations never ended.** The ship's guns fired on by themselves at the beaten ace every few seconds (once a ship's power comes back, `ShipDisablement` makes all its mounts weapons free), and each shot restarted the 60 s hold. Fire at a ship already disabled no longer holds battle stations (`CrewMedical`). The guns firing by themselves is left as it is: the survey's lost fights lean on it, and changing it is combat's call.
+- **The one hand free sat at the guns.** A crew member at a console never leaves it for a light wound, so a lightly wounded gunner went untreated while the others saw to a worse patient. Off battle stations, a hand at a console now sees to their own light wound there.
+- **The rate.** A light wound is first aid: anyone treats it at a medic's rate for their skill (`CrewMemberComponent.careRate(Wound)`), at the full rate unless a worse wound aboard waits with nobody treating it (then half, `CrewDef.LIGHT_CARE`). Still no stores, still only off battle stations, and still no medic on the corvette.
+- **Suits.** A carer kept their battle stations suit on (care at 0.8) the whole ten minutes; once battle stations are over and the air is good, they take it off to work, as the idle crew already did.
+
+The yard puts the air back: a repair order ends with every room at station pressure and the standard oxygen share, from the station's air, at the refill's prices (oxygen 2 cr/kg, nitrogen 1 cr/kg) inside the repair bill (`StationYard.topUpAir`). Round 7's "Before the Moon trip" save loaded at 4 kPa because the yard mended the hull and left life support to refill the cabin. `YardAirTest` holes the corvette at Highport and checks every room is breathable when the yard finishes.
+
+| Ace refit (10 fights each) | Our crew dead | Still wounded 10 min on | Light wounds open 10 min after a win |
+|---|---|---|---|
+| raider_ace_chaingun, round 7 | 3 of 30 | 4 | 2 |
+| raider_ace_chaingun, round 8 | 3 of 30 | 0 | 0 |
+| raider_ace_railgun, round 7 | 3 of 30 | 12 | 1 |
+| raider_ace_railgun, round 8 | 3 of 30 | 10 | 0 |
+
+The railgun ace wins 8 of its 10 fights, and its boarders and the beaten corvette's vacuum keep the wounds after a loss open.
+
 ## Not done here
 - A boarding fight on the interior grid: the pirates only take the cargo and credits (round 7 plan, "Still parked").
 - The starting corvette has no medic (Ada, Bea and Cole are an engineer, a crewman and a marine), and no medbay.
