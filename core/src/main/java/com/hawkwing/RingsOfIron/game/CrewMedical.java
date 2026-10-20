@@ -172,8 +172,9 @@ public final class CrewMedical {
             boolean prisoner = c.held && crew.position(e).ship == ship;
             if (!own && !prisoner) continue;
             String who = prisoner ? "Prisoner " + c.name : c.name;
-            world.notices.post(describe(who, c), c.wound == Wound.CRITICAL ? NoticeLog.Kind.IMPORTANT
-                    : c.wound == Wound.SERIOUS ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
+            // Critical and serious alike are warnings, not a promotion's green (round 9)
+            world.notices.post(describe(who, c), c.wound == Wound.CRITICAL || c.wound == Wound.SERIOUS
+                    ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
         }
         seen.keySet().removeIf(e -> crew.crew(e) == null);
         clocks.keySet().removeIf(e -> crew.crew(e) == null);

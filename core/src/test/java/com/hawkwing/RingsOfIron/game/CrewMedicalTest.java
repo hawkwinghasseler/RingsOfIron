@@ -143,6 +143,8 @@ class CrewMedicalTest {
         world.crew.applyDamage(ada, 30f, DamageCause.SPALL);
         run(world, 1);
         assertTrue(noticed("Bea is critically wounded: treat within 5:00 or they die"), notices());
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.startsWith("Bea is critically")
+                && n.kind == NoticeLog.Kind.WARNING), "a critical wound is a warning, not a promotion's green");
         assertTrue(noticed("Ada is lightly wounded and working slower"), notices());
         assertEquals("Light wound 100%", CrewCareer.condition(world.crew.crew(ada)));
         assertTrue(CrewCareer.condition(world.crew.crew(bea)).startsWith("Critical wound"),
@@ -156,6 +158,8 @@ class CrewMedicalTest {
         world.crew.dieOfWounds(bea);
         world.crewCareer.update();
         assertTrue(noticed("Bea has died of wounds"), notices());
+        assertEquals(NoticeLog.Kind.WARNING, world.notices.history().stream()
+                .filter(n -> n.text.equals("Bea has died of wounds")).findFirst().orElseThrow().kind);
         assertEquals("You are lightly wounded and working slower", CrewMedical.describe("You", world.crew.crew(ada)));
     }
 
