@@ -3,12 +3,12 @@
 # writes, with a screenshot at each step. Needs Xvfb, xdotool and ImageMagick's import.
 #   ./gradlew :core:slowTest --tests '*Round5CareerTest'  (writes core/build/playtest-saves/seed-2026)
 #   tools/playtest/mid-late.sh [out-dir]                    (default build/playtest-screens-late)
-# Run from the repository root. Keys and clicks play it; five things come through commands to
+# Run from the repository root. Keys and clicks play it; six things come through commands to
 # PlaytestLauncher instead: `load` picks a save by name (the load list's order shifts as autosaves
 # land), `target` picks a navigation target by name (how many Q presses that takes changes from
 # save to save), `strand` empties the tanks so the tug can be called, and `docked` lets the
 # script wait for the helmsman's approach to finish. `raid` reads how the raid stands, so the script
-# can fight it to its end.
+# can fight it to its end, and `boarding` who is boarding the beaten ship and what they took.
 set -u
 OUT=${1:-$(pwd)/build/playtest-screens-late}
 SAVES=${SAVES:-$(pwd)/core/build/playtest-saves/seed-2026}
@@ -81,5 +81,19 @@ pause 3; shot 32-raid-end
 key l; pause 1; shot 33-raid-end-notices; key l; pause 1
 key i; pause 1; shot 34-crew-after-the-raid; key i; pause 1
 key m; pause 1; shot 35-traffic-map-after-the-raid; key m; pause 1
+
+# Round 7 part 4: a pirate in good shape that beats the player comes alongside and boards.
+# Watch it close, latch on and take its share, then read the log
+boarding_state() { cmd boarding; pause 0.5; grep 'PLAYTEST boarding:' "$OUT/game.log" | tail -1; }
+echo "boarding: $(boarding_state)"
+for i in $(seq 1 60); do
+  state=$(boarding_state)
+  case "$state" in *" took "*|*"no boarder"*) break;; esac
+  [ $((i % 15)) -eq 0 ] && shot "36-boarding-$((i / 15))"
+  pause 2
+done
+echo "boarding ended: $(boarding_state)"
+pause 2; shot 37-boarded
+key l; pause 1; shot 38-boarded-notices; key l; pause 1
 
 finish

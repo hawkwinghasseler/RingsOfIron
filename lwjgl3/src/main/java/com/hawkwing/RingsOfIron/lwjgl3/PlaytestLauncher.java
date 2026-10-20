@@ -79,6 +79,9 @@ public class PlaytestLauncher {
         private final Path commands;
         private final Path saves;
         private int done;
+        /** The world the boarding watch listens to, and what its boarders last took. */
+        private Object boardingWatched;
+        private String robbed;
 
         Driven(GameShell shell, Path commands, Path saves) {
             this.shell = shell;
@@ -237,6 +240,21 @@ public class PlaytestLauncher {
                             PhysicsManager.getPosition(bb.body, new Vector2()).dst(PhysicsManager.getPosition(ours, new Vector2())) / 1000f));
                     for (String name : world.pirateBase.defenders()) out.append("\n  defender ").append(name);
                     return out.toString();
+                }
+                case "boarding": {
+                    // Who is boarding the player and how close, and what the last boarder took
+                    if (boardingWatched != world) {
+                        boardingWatched = world;
+                        robbed = null;
+                        world.pirateBoarding.robbed.add((sig, t) -> robbed = t.pirateName + " took " + t.describe());
+                    }
+                    Entity boarder = world.pirateBoarding.boarder();
+                    PhysicsBodyComponent pb = boarder == null ? null : boarder.getComponent(PhysicsBodyComponent.class);
+                    Body ours = s.player.getComponent(PhysicsBodyComponent.class).body;
+                    String at = pb == null || pb.body == null || ours == null ? "" : String.format(java.util.Locale.ROOT, " at %.0f m",
+                            PhysicsManager.getPosition(pb.body, new Vector2()).dst(PhysicsManager.getPosition(ours, new Vector2())));
+                    return (boarder == null ? "no boarder" : "boarder " + PlayerDocking.name(boarder) + at)
+                            + (robbed == null ? "" : ", " + robbed);
                 }
                 case "docked":
                     return world.docking.dockedTo(s.player) != null ? "yes" : "no";
