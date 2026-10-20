@@ -47,6 +47,9 @@ import java.util.List;
  *       to finish an approach without a guessed pause</li>
  *   <li>{@code target <name>}: makes the first station or craft whose name holds {@code <name>} the
  *       navigation target, where how many Q presses it takes changes from game to game</li>
+ *   <li>{@code raid}: only reads how the raid stands (the base, the hull, the gun's and the navigation
+ *       target, the helm's order, and each defender's range), so a script can fly it by keys</li>
+ *   <li>{@code boarding}: only reads who is boarding the player, how close, and what the last boarder took</li>
  * </ul>
  * Run with {@code gradlew :lwjgl3:runPlaytest -Pcommands=<file> [-Psaves=<folder>]}. Saves go to a
  * temporary folder, into which the saves in {@code <folder>} (the career test's
@@ -238,7 +241,32 @@ public class PlaytestLauncher {
                     Body ours = s.player.getComponent(PhysicsBodyComponent.class).body;
                     if (bb != null && bb.body != null && ours != null) out.append(String.format(java.util.Locale.ROOT, ", base at %.1f km",
                             PhysicsManager.getPosition(bb.body, new Vector2()).dst(PhysicsManager.getPosition(ours, new Vector2())) / 1000f));
-                    for (String name : world.pirateBase.defenders()) out.append("\n  defender ").append(name);
+                    out.append(", helm ").append(world.nav.helm.mode()).append(", nav ")
+                            .append(world.nav.target.uuid() == null ? "none" : world.nav.target.name());
+                    // Missiles aimed at us, and how many still steer (the rest coast as slugs)
+                    int darts = 0, homing = 0;
+                    for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.badlogic.ashley.core.Family.all(
+                            com.ringsofiron.combatsys.components.MissileComponent.class).get())) {
+                        com.ringsofiron.combatsys.components.MissileComponent m = e.getComponent(com.ringsofiron.combatsys.components.MissileComponent.class);
+                        if (m.target != s.player && m.seekerLock != s.player) continue;
+                        darts++;
+                        if (m.phase != com.ringsofiron.combatsys.components.MissileComponent.Phase.COAST) homing++;
+                    }
+                    out.append(", darts at us ").append(darts).append(" (").append(homing).append(" homing)");
+                    out.append(String.format(java.util.Locale.ROOT, ", sim %.1f s", world.engine.getSimSeconds()));
+                    // Each defender's range and whether it is beaten, so a script can Tab to the nearest
+                    for (String name : world.pirateBase.defenders()) {
+                        out.append("\n  defender ").append(name);
+                        for (var h : world.macroSim.hostiles().all().entrySet()) {
+                            if (!name.equals(h.getValue().displayName)) continue;
+                            Entity e = world.engine.getEntity(h.getKey());
+                            PhysicsBodyComponent pb = e == null ? null : e.getComponent(PhysicsBodyComponent.class);
+                            if (pb != null && pb.body != null && ours != null) out.append(String.format(java.util.Locale.ROOT, " at %.1f km",
+                                    PhysicsManager.getPosition(pb.body, new Vector2()).dst(PhysicsManager.getPosition(ours, new Vector2())) / 1000f));
+                            if (e != null && com.hawkwing.RingsOfIron.game.FirstPlay.beaten(world, e)) out.append(" beaten");
+                            if (e != null && e == target) out.append(" (target)");
+                        }
+                    }
                     return out.toString();
                 }
                 case "boarding": {
