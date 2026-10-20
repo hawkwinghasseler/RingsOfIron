@@ -328,6 +328,20 @@ class DockingSystemTest {
         assertTrue(events.contains(DockingEvent.Kind.TORN), "a shock that size tears it: " + events);
     }
 
+    @Test
+    void aTornCollarLatchedInPlaceStaysLatched() {
+        Entity s = station(true);
+        Entity a = ship(0f, -6f, 0f, DockingPortsComponent.hullPort(MountFootprint.MountSize.S, false, 0f, 2f, 0f, 1f));
+        // Torn in a fight: the tug or the yard's berth clamps it on in place, for the yard to mend
+        a.getComponent(DockingPortsComponent.class).get(0).collarIntegrity = 0f;
+        docking.dockInPlace(a, 0, s, 0);
+        game.stepTicks(60 * 2);
+        hit(a, 1_000f);
+        game.stepTicks(60);
+        assertFalse(events.contains(DockingEvent.Kind.TORN), "held by the berth: " + events);
+        assertTrue(docking.isRigid(a), "welded to the station");
+    }
+
     /** A sideways impulse, newtons-seconds, on {@code ship}'s end 5 m from its centre, for one step. */
     private void hit(Entity ship, float impulse) {
         Body b = body(ship);

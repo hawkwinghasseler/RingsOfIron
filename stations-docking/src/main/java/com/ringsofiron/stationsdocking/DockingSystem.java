@@ -977,8 +977,11 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         float force = link.joint.getReactionForce(invDt).len() * M;
         float torque = Math.abs(link.joint.getReactionTorque(invDt)) * M * M;
         float k = Math.min(1f, dt / DockingTuning.STRAIN_FILTER);
-        // A collar part torn holds that much less of its load
+        // A collar part torn holds that much less of its load. A collar torn off altogether can only
+        // be latched in place (a tug's or a yard's berth), whose clamps hold it as a whole one would:
+        // scaled to nothing it tore every step, and the ship could never stay at the yard that mends it
         float hold = Math.min(link.pa.collarIntegrity, link.pb.collarIntegrity);
+        if (hold <= 0f) hold = 1f;
         float breakForce = t.breakForce * hold, breakTorque = t.breakTorque * hold;
         boolean shock = force > DockingTuning.SHOCK_LIMIT * breakForce || torque > DockingTuning.SHOCK_LIMIT * breakTorque;
         // One round's hit on a ship welded to a station is a one-step spike many times the limit;
