@@ -54,6 +54,8 @@ public class HudRenderSystem extends EntitySystem {
     private final com.badlogic.gdx.utils.Array<Rectangle> edgeText = new com.badlogic.gdx.utils.Array<>();
     /** Banners the edge text keeps clear of while they are up. */
     private final ObjectMap<Label, BooleanSupplier> keepClear = new ObjectMap<>();
+    /** Other areas of the screen the edge text keeps clear of, such as text drawn outside the stage. */
+    private final com.badlogic.gdx.utils.Array<java.util.function.Supplier<Rectangle>> keepClearAreas = new com.badlogic.gdx.utils.Array<>();
     private final Vector2 screen = new Vector2();
     private final Vector2 lead = new Vector2();
     private ImmutableArray<Entity> marked;
@@ -78,6 +80,11 @@ public class HudRenderSystem extends EntitySystem {
     /** Off-screen markers' text moves out from under this banner while {@code up} says it is showing. */
     public void keepClear(Label banner, BooleanSupplier up) {
         keepClear.put(banner, up);
+    }
+
+    /** Off-screen markers' text moves out of the area {@code area} gives, in UI coordinates, each frame. */
+    public void keepClear(java.util.function.Supplier<Rectangle> area) {
+        keepClearAreas.add(area);
     }
 
     public TargetingProvider getTargeting() {
@@ -115,6 +122,7 @@ public class HudRenderSystem extends EntitySystem {
             float width = b.key.getPrefWidth();
             edgeText.add(new Rectangle(at.x - width / 2f, at.y, width, b.key.getPrefHeight()));
         }
+        for (java.util.function.Supplier<Rectangle> area : keepClearAreas) edgeText.add(new Rectangle(area.get()));
         for (Entity e : marked) {
             HudMarkerComponent m = MARKERS.get(e);
             TransformComponent t = TRANSFORMS.get(e);
