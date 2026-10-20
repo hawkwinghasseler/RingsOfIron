@@ -709,7 +709,19 @@ abstract class CareerScript {
         world.budget.pay();
         double budget = world.standing.rank().budget;
         float morale0 = meanMorale();
+        Entity berth = world.docking.dockedTo(game.player);
+        double until = t0 + weeks * ServiceBudget.WEEK;
         warpFor(weeks * ServiceBudget.WEEK);
+        // Round 9, seed 4 on the suits branch: a Free Trader flew through Crisium's berths and tore the
+        // ship loose, and warp gave up two weeks short. A player docks again and waits out the rest
+        for (int again = 0; again < 3 && berth != null && world.docking.dockedTo(game.player) == null
+                && world.engine.getSimSeconds() < until && world.getCrash() == null; again++) {
+            log("  came loose of %s's berth on day %.2f (hull %.2f): docked again.", PlayerDocking.name(berth),
+                    world.engine.getSimSeconds() / 86_400, hull(game.player));
+            assertTrue(game.dockAt(world.universe.uuidOf(berth)), "a port free at " + PlayerDocking.name(berth));
+            run(120);
+            warpFor(until - world.engine.getSimSeconds());
+        }
         log("%d weeks docked: credits %+.0f (budget %.0f a week before wages), crew morale %.2f -> %.2f.", weeks,
                 credits() - credits0, budget, morale0, meanMorale());
         log("  %.1f days passed.", days(t0));
