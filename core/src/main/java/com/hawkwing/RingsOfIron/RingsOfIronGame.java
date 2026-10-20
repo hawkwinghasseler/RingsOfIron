@@ -424,8 +424,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
         } else {
             drawBodies();
         }
-        gameHud.draw(delta);
+        // The status column first, so an open HUD window (the crew roster, the yard) covers it rather
+        // than having the helm's order written across its rows (round 9, real window)
         drawStatus();
+        gameHud.draw(delta);
         if (world.getCrash() != null || world.getCareerOver() != null) drawCrash();
         else if (logOpen) drawLog();
         else if (helpOpen) drawHelp();
