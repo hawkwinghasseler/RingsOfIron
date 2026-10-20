@@ -76,12 +76,18 @@ class BerthShelterTest {
         for (Compartment c : grid.compartments) highest = Math.max(highest, c.pressure());
         assertTrue(highest < 20, "the cabin vented, to " + highest + " kPa");
         // Long past a suit's air
-        for (int i = 0; i < 25 * 60; i++) run(60);
+        boolean casualtyAshore = false, captainAshore = false;
+        for (int i = 0; i < 25 * 60; i++) {
+            run(60);
+            casualtyAshore |= world.crew.position(down).ship != game.player;
+            captainAshore |= world.crew.position(game.avatar).ship != game.player;
+        }
         StringBuilder all = new StringBuilder();
         for (Entity e : crew) all.append(describe(e)).append("; ");
         for (Entity e : crew) assertTrue(world.crew.crew(e).isAlive(), describe(e) + " / " + all);
         assertTrue(world.crew.crew(game.avatar).isAlive(), "the captain alive");
-        assertNotSame(game.player, world.crew.position(down).ship, "the casualty was carried aboard the station: " + describe(down));
+        assertTrue(captainAshore, "the captain went aboard the station: " + describe(game.avatar));
+        assertTrue(casualtyAshore, "the casualty was carried aboard the station: " + describe(down));
 
         // The yard mends it and puts the air back: everyone comes home
         Entity highport = world.engine.getEntity(game.highport);
@@ -97,6 +103,7 @@ class BerthShelterTest {
             assertTrue(world.crew.crew(e).isAlive(), after.toString());
             assertSame(game.player, world.crew.position(e).ship, "back aboard: " + after);
         }
+        assertSame(game.player, world.crew.position(game.avatar).ship, "the captain home: " + describe(game.avatar));
     }
 
     private String describe(Entity e) {

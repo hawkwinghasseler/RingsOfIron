@@ -985,7 +985,7 @@ public final class CrewTasks {
     static final String SHELTER = "the docked craft";
 
     /** True if a crew member could stand somewhere on {@code grid} and breathe. */
-    static boolean anywhereSafe(ShipGridComponent grid) {
+    public static boolean anywhereSafe(ShipGridComponent grid) {
         if (grid == null) return false;
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
