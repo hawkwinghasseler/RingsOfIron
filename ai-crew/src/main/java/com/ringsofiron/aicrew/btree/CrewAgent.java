@@ -8,6 +8,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.TreatTask;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
@@ -157,13 +158,15 @@ public class CrewAgent {
     /**
      * True if this crew member would take {@code task} now: not one they just found unreachable, and
      * only carrying, yard work and boarding while away from the craft they work for (other work is
-     * done from home), and only a boarding order that is theirs. A crew member held prisoner takes nothing.
+     * done from home), and only a boarding order that is theirs, and nothing where the fire is falling
+     * ({@link TaskRules#waitsOutFire}). A crew member held prisoner takes nothing.
      */
     public boolean mayTake(CrewTask task) {
         if (isIgnoring(task) || crew.held) return false;
         // The lightly wounded patch themselves up while idle (CrewHealthSystem), leaving the task to others
         if (task instanceof TreatTask && ((TreatTask) task).patient == entity) return false;
         if (task instanceof BoardTask && !((BoardTask) task).isFor(entity)) return false;
+        if (TaskRules.waitsOutFire(task, board(), service)) return false;
         return pos.ship == service.homeOf(entity) || task.kind == CrewTask.Kind.CARRY || task.kind == CrewTask.Kind.YARD
                 || task.kind == CrewTask.Kind.BOARD;
     }

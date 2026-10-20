@@ -255,6 +255,10 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     private void wound(Entity e, CrewMemberComponent c, float amount, DamageCause cause) {
         CrewDef d = c.def;
         if (amount < d.grazeWound) return;
+        // The crew keep out of where the fire fell until the fight is over (ShipTaskBoardComponent#underFire)
+        GridPositionComponent at = position(e);
+        ShipTaskBoardComponent hit = at == null ? null : board(at.ship);
+        if (hit != null) hit.hitAt(at.tileX(), at.tileY());
         if (amount >= d.lethalWound) {
             // Nothing to treat: a warhead going off beside them, say
             c.woundCause = cause;
