@@ -208,4 +208,71 @@ class CrewCareTest {
         assertEquals(Wound.NONE, s.c(grazed).wound, s.c(mate).activity);
         assertTrue(s.c(grazed).isAlive() && s.c(mate).isAlive());
     }
+
+    @Test
+    void aHandAlreadyAtTheGunsSuitsUpThereForBattleStations() {
+        // Round 9's trace: on four of the wound survey's seeds the gunner sat at the weapons from
+        // before the fight began, so never suited up for it, and suffocated there as the cabin vented
+        TestShips s = ConsoleTest.bridge();
+        Entity marine = s.spawn(CrewRole.MARINE, 0, 8, 4);
+        s.run(8f);
+        assertTrue(CrewQueries.isManning(marine, SubsystemType.WEAPONS), s.c(marine).activity);
+        assertFalse(s.c(marine).suited);
+        s.board.battleStations = true;
+        s.run(s.c(marine).def.suitTime + 1f);
+        assertTrue(s.c(marine).suited, s.c(marine).activity);
+        assertTrue(CrewQueries.isManning(marine, SubsystemType.WEAPONS), "and the guns held all the while");
+    }
+
+    @Test
+    void anEnemyCrewGetsNoSuitCare() {
+        TestShips s = ConsoleTest.bridge();
+        s.board.faction = 1;
+        Entity marine = s.spawn(CrewRole.MARINE, 1, 8, 4);
+        s.run(8f);
+        assertTrue(CrewQueries.isManning(marine, SubsystemType.WEAPONS), s.c(marine).activity);
+        s.grid.getTile(9, 1).setIntegrity(0f);
+        s.run(30f);
+        assertFalse(s.c(marine).suited, "as before round 9: " + s.c(marine).activity);
+    }
+
+    @Test
+    void aHandAtAConsoleSuitsUpThereAsTheRoomVentsOffBattleStations() {
+        TestShips s = ConsoleTest.bridge();
+        Entity marine = s.spawn(CrewRole.MARINE, 0, 8, 4);
+        s.run(8f);
+        assertTrue(CrewQueries.isManning(marine, SubsystemType.WEAPONS), s.c(marine).activity);
+        s.run(30f);
+        assertFalse(s.c(marine).suited, "a steady cabin never empties a console");
+        s.grid.getTile(9, 1).setIntegrity(0f);
+        s.run(60f);
+        assertTrue(s.c(marine).suited, s.c(marine).activity);
+        assertTrue(s.c(marine).isConscious(), "and on their feet");
+    }
+
+    @Test
+    void aCasualtysSuitIsFilledForThemWithNowhereAboardToBreathe() {
+        // Round 9's trace: six of the wound survey's dead lay down, suited, in a ship holed past
+        // holding, until their suits ran dry beside oxygen enough to fill them many times over
+        TestShips s = new TestShips(
+                "##########",
+                "#L.......#",
+                "#L.......#",
+                "#........#",
+                "##########");
+        for (com.ringsofiron.interiorgrid.Compartment room : s.grid.compartments) {
+            room.oxygen = 0;
+            room.nitrogen = 0;
+        }
+        Entity down = s.spawn(CrewRole.CREWMAN, 0, 7, 3);
+        Entity mate = s.spawn(CrewRole.CREWMAN, 0, 5, 2);
+        s.c(down).setSuited(true);
+        s.c(mate).setSuited(true);
+        s.crew.applyDamage(down, 75f, DamageCause.PENETRATOR);
+        assertEquals(CrewState.UNCONSCIOUS, s.c(down).state);
+        s.c(down).suitAir = 100f;
+        s.run(300f);
+        assertTrue(s.c(down).isAlive(), s.c(mate).activity);
+        assertTrue(s.c(down).suitAir > 100f, "filled: " + s.c(down).suitAir);
+    }
 }
