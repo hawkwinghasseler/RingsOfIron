@@ -131,6 +131,18 @@ public class PlaytestLauncher {
             });
         }
 
+        /** How many of a ship's systems are shorted out, 0 for none or no ship. */
+        private static int shorted(Entity ship) {
+            ShipSubsystemRegistryComponent r = ship == null ? null : ship.getComponent(ShipSubsystemRegistryComponent.class);
+            if (r == null) return 0;
+            int n = 0;
+            for (Entity e : r.subsystems) {
+                SubsystemComponent sub = e.getComponent(SubsystemComponent.class);
+                if (sub != null && sub.shorted) n++;
+            }
+            return n;
+        }
+
         private static String label(Object o) {
             return o instanceof Entity ? PlayerDocking.name((Entity) o) : String.valueOf(o);
         }
@@ -281,6 +293,9 @@ public class PlaytestLauncher {
                             if (pb != null && pb.body != null && ours != null) out.append(String.format(java.util.Locale.ROOT, " at %.1f km",
                                     PhysicsManager.getPosition(pb.body, new Vector2()).dst(PhysicsManager.getPosition(ours, new Vector2())) / 1000f));
                             if (e != null && com.hawkwing.RingsOfIron.game.FirstPlay.beaten(world, e)) out.append(" beaten");
+                            // Its systems shorted out by our hits (round 9: do its crew still fire after one?)
+                            int shorted = shorted(e);
+                            if (shorted > 0) out.append(" shorted ").append(shorted);
                             if (e != null && e == target) out.append(" (target)");
                         }
                     }
@@ -300,6 +315,20 @@ public class PlaytestLauncher {
                             PhysicsManager.getPosition(pb.body, new Vector2()).dst(PhysicsManager.getPosition(ours, new Vector2())));
                     return (boarder == null ? "no boarder" : "boarder " + PlayerDocking.name(boarder) + at)
                             + (robbed == null ? "" : ", " + robbed);
+                }
+                case "crew": {
+                    // Only reads: each of the player's crew aboard, living or dead, with their wound and suit
+                    StringBuilder out = new StringBuilder();
+                    com.badlogic.ashley.utils.ImmutableArray<Entity> all = world.crew.crewEntities();
+                    for (int i = 0; i < all.size(); i++) {
+                        Entity e = all.get(i);
+                        com.ringsofiron.aicrew.CrewMemberComponent c = world.crew.crew(e);
+                        if (c == null || world.crew.homeOf(e) != s.player) continue;
+                        out.append(String.format(java.util.Locale.ROOT, "%n  %s: %s, %s", c.name,
+                                com.hawkwing.RingsOfIron.game.CrewMedical.condition(c),
+                                c.suited ? String.format(java.util.Locale.ROOT, "suited (%.0f s of air)", c.suitAir) : "unsuited"));
+                    }
+                    return out.length() == 0 ? "no crew" : out.toString();
                 }
                 case "docked":
                     return world.docking.dockedTo(s.player) != null ? "yes" : "no";
