@@ -185,6 +185,7 @@ a_cmd      = a_lateral + a_closing
 - **Decoys** are short-lived entities with a `SignatureComponent` (radar/thermal strength). In terminal, a seeker locks the strongest signature in its FOV, weighted by a per-seeker `discrimination` value. Decoys that outshine the ship steal the lock.
 - **Point defense** is ordinary gunfire on a missile track. The solver handles accelerating targets via `a_t`, which is why the tracker's gamma term matters. A missile dies when hits reduce `hitPoints` to 0.
 - **Burnout is a weakness.** A coasting missile flies a predictable ballistic path, so PD solutions on it are near-perfect.
+- **Who a mount firing at will leaves alone** (round 9, `WeaponControlSystem.setSpared`): a mount that isn't on the trigger never takes a spared ship as its target, though the trigger still fires on it. The game spares a ship that has struck, for the player's guns, so their point defense and crewed guns never pick a prize. Point defense only ever takes missiles; its rounds that fly on past a dart and hit a ship behind it are stray fire (`ImpactEvent.pointDefense`).
 
 ### 4.5 Detonation
 On contact or proximity fuse, the missile emits an `ImpactEvent` (contact) or a `DetonationEvent` (proximity, a point in space) carrying its warhead def. Section 5 resolves both.
@@ -205,6 +206,7 @@ This section expands the original "Penetration Raycasting" algorithm into a full
 | `relVelocity` | `v_proj − (v_ship + ω × r_hit)`: projectile velocity relative to the hull surface it hit |
 | `mass`, `defId` | Projectile or missile mass and its def (damage type, penetration factor, warhead) |
 | `tick` | For deterministic ordering |
+| `aimedAt`, `pointDefense` | What the weapon was engaging when it fired (null for a shot down the barrel) and whether it was a point-defense mount. Kept by a missile's fragments, by its `DetonationEvent` and by ricochets, so the game can tell a stray hit from an aimed one (round 9) |
 
 ### 5.2 World to grid
 1. Transform `worldPoint` and `relVelocity` into the ship's local frame using the ship body's transform (inverse rotation for the velocity).
