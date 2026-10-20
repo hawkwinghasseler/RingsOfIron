@@ -861,6 +861,14 @@ abstract class CareerScript {
         } else {
             log("Rank %s earned in play.", world.standing.describeRank());
         }
+        // Standing enough, but not yet long enough in grade: a player waits it out docked
+        for (int r = world.standing.record().rank + 1; r <= rank; r = world.standing.record().rank + 1) {
+            double left = world.standing.timeInGradeLeft(r);
+            if (left <= 0) break;
+            log("  %.1f more days in grade before rank %d.", left / 86_400, r);
+            warpFor(left + 60);
+            world.standing.promoteDue();
+        }
         assertTrue(world.standing.record().rank >= rank);
     }
 
