@@ -204,7 +204,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
 
     private boolean stillWanted(Contract c) {
         Entity target = world.engine.getEntity(c.targetUuid);
-        return target != null && !FirstPlay.beaten(world, target) && !targeted(c.targetUuid);
+        return target != null && !FirstPlay.beaten(world, target) && !FirstPlay.aceBeaten(target) && !targeted(c.targetUuid);
     }
 
     /**
@@ -1338,7 +1338,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
     private boolean isAce(String uuid) {
         Entity e = world.engine.getEntity(uuid);
         HostileComponent h = e == null ? null : e.getComponent(HostileComponent.class);
-        return h != null && h.ace;
+        return h != null && h.ace && !h.partDropped;
     }
 
     private boolean inBubble(String uuid) {
@@ -1355,7 +1355,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             int faction = e.getComponent(ShipTaskBoardComponent.class).faction;
             String uuid = e.getComponent(UuidComponent.class).id;
             if (e == player || !world.standing.factions().known(faction) || !world.standing.factions().atWar(giver, faction)
-                    || targeted(uuid) || FirstPlay.beaten(world, e)) continue;
+                    || targeted(uuid) || FirstPlay.beaten(world, e) || FirstPlay.aceBeaten(e)) continue;
             // The pirate base's moored guns go with the base's raid, not a bounty of their own
             HostileComponent moored = e.getComponent(HostileComponent.class);
             if (moored != null && moored.moored()) continue;
@@ -1387,7 +1387,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
                 // A named ace pays far more, and the giver remembers who brought it in
                 c.targetName = "the ace " + c.targetName;
                 c.reward = Math.round(c.reward * PirateAces.BOUNTY_SCALE);
-                c.standing += PirateAces.BOUNTY_STANDING;
+                c.standing += PirateAces.BOUNTY_STANDING_PER_TIER * (1 + c.tier);
             }
             // Beating a ship far weaker than the player's earns less standing: a Commander in a frigate
             // climbs on what can hurt a frigate, not on light raiders (round 5's late career)
@@ -1473,13 +1473,15 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
     }
 
     /** Pirates at war with the giver, to be found where they lurk; {@code skip} (a pirate already found) last. */
-    private List<Contract> recons(int giver, String skip) {
+    List<Contract> recons(int giver, String skip) {
         List<Contract> out = new ArrayList<>();
         for (Map.Entry<String, HostileComponent> e : world.macroSim.hostiles().all().entrySet()) {
             HostileComponent h = e.getValue();
             Entity ship = world.engine.getEntity(e.getKey());
             int faction = ship == null ? -1 : world.standing.factionOf(ship);
             if (!h.isPirate() || h.moored() || ship == null || e.getKey().equals(skip) || targeted(e.getKey())) continue;
+            // Nothing to find in a beaten ship, or in an ace already beaten once (round 6's recons named both)
+            if (FirstPlay.beaten(world, ship) || FirstPlay.aceBeaten(ship)) continue;
             if (faction >= 0 && !world.standing.factions().atWar(giver, faction)) continue;
             Contract c = new Contract();
             c.type = Contract.Type.RECON;

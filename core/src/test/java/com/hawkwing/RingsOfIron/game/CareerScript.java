@@ -264,7 +264,8 @@ abstract class CareerScript {
             run(60 * 20);
             assertEquals(Contract.Status.DONE, bounty.status, bounty.outcome);
             snapshot("second bounty paid");
-            boardAndSell(ship);
+            // Beaten with its guns silenced but not yet disabled, there is no boarding it
+            if (ShipDisablement.isDisabled(ship)) boardAndSell(ship);
         }
         assertTrue(game.dockAtHighport());
         run(120);
@@ -303,6 +304,9 @@ abstract class CareerScript {
         prizeCredits += paid;
     }
 
+    /** The aces {@link #fight} has beaten, by uuid: no contract may name one again (round 7). */
+    final java.util.Set<String> acesBeaten = new java.util.HashSet<>();
+
     /** Fights {@code ship} with every gun and missile until one side is beaten; true if it was. */
     boolean fight(Entity ship, HostileComponent h, String what) {
         PlayerGunnery gun = new PlayerGunnery(world, game.player);
@@ -325,14 +329,16 @@ abstract class CareerScript {
             gun.launchMissile();
             gun.update(FRAME);
             // Dark for an ion stun's few seconds isn't a lost fight: the guns come back. Judged afresh,
-            // since the disabled mark lingers until the next judgement after the stun ends
-            return (h != null && h.partDropped) || ShipDisablement.isDisabled(ship)
+            // since the disabled mark lingers until the next judgement after the stun ends. Won as
+            // contracts count it (round 7: a beaten ace's dropped part ended a fight with a fit ship)
+            return FirstPlay.beaten(world, ship)
                     || ShipDisablement.isDisabled(game.player) && !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player)
                     && world.disablement.judge(game.player) != null
                     || world.getCrash() != null || distance(game.player, ship) > GOT_AWAY;
         });
         world.carriedHome.remove(home);
-        boolean won = !carried[0] && ((h != null && h.partDropped) || ShipDisablement.isDisabled(ship));
+        boolean won = !carried[0] && FirstPlay.beaten(world, ship);
+        if (won && h != null && h.ace) acesBeaten.add(ship.getComponent(com.ringsofiron.coreengine.components.UuidComponent.class).id);
         if (!won && ShipDisablement.isDisabled(game.player)) log("  we are disabled: %s.", ShipDisablement.reason(game.player));
         boolean away = !won && !carried[0] && distance(game.player, ship) > GOT_AWAY;
         log("%s: %.0f s, %s; it fired %d rounds, %d hit us; our hull %.2f -> %.2f, crew %d -> %d.", what,
