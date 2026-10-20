@@ -163,7 +163,7 @@ public class CrewCareer extends FixedLogicSystem {
         for (Entity e : died) {
             CrewMemberComponent c = crew.crew(e);
             boolean ofWounds = c.lastDamageCause != null && CrewService.wounds(c.lastDamageCause);
-            world.notices.post(c.name + (ofWounds ? " has died of wounds" : " is dead"), NoticeLog.Kind.IMPORTANT);
+            world.notices.post(c.name + (ofWounds ? " has died of wounds" : " is dead"), NoticeLog.Kind.WARNING);
             Entity home = crew.homeOf(e);
             for (Entity other : ownCrew(home)) record(other).changeMorale(DEATH_MORALE);
         }

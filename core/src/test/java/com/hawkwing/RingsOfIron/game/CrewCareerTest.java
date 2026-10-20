@@ -204,6 +204,8 @@ class CrewCareerTest {
         world.crew.applyDamage(ada, 10_000f, null);
         world.crewCareer.update();
         assertTrue(noticed("Ada is dead"), noticesText());
+        // A death is a warning, not a promotion's green (round 9)
+        assertEquals(NoticeLog.Kind.WARNING, world.notices.latest().kind);
         assertEquals(before + CrewCareer.DEATH_MORALE, world.crew.crew(bea).record().morale, 1e-6);
 
         CrewMemberComponent c = world.crew.crew(bea);
