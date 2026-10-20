@@ -23,7 +23,11 @@ if want raider; then
 click 640 433; pause 15
 key j; pause 1; key Return; pause 1; key Escape; pause 1; key u; pause 3
 hold w 6; pause 15; shot p00a-first-raider-coming
-key Tab; for i in $(seq 1 16); do key r; hold space 4; [ $((i % 8)) -eq 0 ] && shot "p00b-first-raider-fight-$((i / 8))"; done
+# Tab until the gun has a target (the raider is the only contact that answers), then R and Space
+gun_target() { cmd raid; pause 0.5; grep 'PLAYTEST raid:' "$OUT/game.log" | tail -1 | sed -n 's/.*, target \([^,]*\),.*/\1/p'; }
+for i in $(seq 1 16); do
+  for _ in 1 2 3 4 5; do case "$(gun_target)" in Raider*) break;; esac; key Tab; done
+  key r; hold space 4; [ $((i % 8)) -eq 0 ] && shot "p00b-first-raider-fight-$((i / 8))"; done
 key l; pause 1; shot p00c-first-raider-notices; key l; pause 1
 echo "first raider: $(grep -c 'impact on .* from Raider ' "$OUT/game.log") hits on us, $(grep -c 'impact on Raider ' "$OUT/game.log") on it"
 fi
