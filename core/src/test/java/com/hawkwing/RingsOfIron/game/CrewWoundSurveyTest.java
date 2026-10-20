@@ -152,7 +152,9 @@ class CrewWoundSurveyTest {
             HostileComponent ace = h;
             boolean trace = Boolean.getBoolean("wound.survey.trace");
             Map<Entity, Float> injury = new java.util.IdentityHashMap<>();
+            AirTracer air = trace ? new AirTracer(world, game.player, ours, refit, seed, t0) : null;
             runUntil(world, 300f, () -> {
+                if (air != null) air.tick();
                 if (trace) {
                     for (Entity e : ours) {
                         CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
@@ -232,7 +234,10 @@ class CrewWoundSurveyTest {
                         }
                     }
                     TRACE.append(line).append('\n');
-                    run(world, 600);
+                    for (int f = 0; f < 600; f++) {
+                        world.update(FRAME);
+                        air.tick();
+                    }
                 }
             } else {
                 run(world, 60 * 60 * 10);
@@ -251,6 +256,95 @@ class CrewWoundSurveyTest {
             return t;
         } finally {
             world.dispose();
+        }
+    }
+
+    /**
+     * Round 9: with -PwoundTrace, each of our crew's air through the fight and after, to the trace as
+     * AIR lines: when they first stood in air not fit to breathe, suited or not, when their suit ran
+     * dry, and when they went down and died of it, with their room, task, suit air, the room's
+     * pressure, the reactor, life support and the oxygen left, and whether their tile was raked.
+     */
+    static final class AirTracer {
+        final GameWorld world;
+        final Entity ship;
+        final List<Entity> ours;
+        final String refit;
+        final long seed;
+        final double t0;
+        final Map<Entity, Double> badAirSince = new java.util.IdentityHashMap<>(), dryAt = new java.util.IdentityHashMap<>();
+        final Map<Entity, com.ringsofiron.aicrew.CrewState> was = new java.util.IdentityHashMap<>();
+
+        AirTracer(GameWorld world, Entity ship, List<Entity> ours, String refit, long seed, double t0) {
+            this.world = world;
+            this.ship = ship;
+            this.ours = ours;
+            this.refit = refit;
+            this.seed = seed;
+            this.t0 = t0;
+        }
+
+        void tick() {
+            double now = world.engine.getSimSeconds() - t0;
+            for (Entity e : ours) {
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                GridPositionComponent p = e.getComponent(GridPositionComponent.class);
+                ShipGridComponent g = world.crew.grid(p.ship);
+                if (g == null) continue;
+                com.ringsofiron.aicrew.CrewState before = was.put(e, c.state);
+                if (before == com.ringsofiron.aicrew.CrewState.DEAD) continue;
+                boolean bad = !com.ringsofiron.aicrew.TaskRules.isBreathable(g, p.tileX(), p.tileY());
+                if (bad && !badAirSince.containsKey(e)) {
+                    badAirSince.put(e, now);
+                    log(e, "into bad air", now);
+                } else if (!bad && badAirSince.containsKey(e)) {
+                    log(e, "back in good air after " + Math.round(now - badAirSince.remove(e)) + " s", now);
+                }
+                if (c.suited && c.suitAir <= 0f && !dryAt.containsKey(e)) {
+                    dryAt.put(e, now);
+                    log(e, "suit dry", now);
+                } else if (c.suitAir > 0f) {
+                    dryAt.remove(e);
+                }
+                if (before != null && before != c.state && c.lastDamageCause == com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.ASPHYXIATION) {
+                    log(e, c.state == com.ringsofiron.aicrew.CrewState.DEAD ? "DIED of asphyxiation" : "now " + c.state, now);
+                }
+            }
+        }
+
+        void log(Entity e, String what, double now) {
+            CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+            GridPositionComponent p = e.getComponent(GridPositionComponent.class);
+            ShipGridComponent g = world.crew.grid(p.ship);
+            com.ringsofiron.interiorgrid.Compartment room = g.compartmentAt(p.tileX(), p.tileY());
+            com.ringsofiron.aicrew.ShipTaskBoardComponent board = world.crew.board(p.ship);
+            StringBuilder line = new StringBuilder(String.format(Locale.ROOT,
+                    "AIR %s %d t=%.0f %s (%s) %s at %d,%d room %s p%.2f o%.2f; %s; suited %s air %.0f; task %s; %s%s%s",
+                    refit, seed, now, c.name, c.role, what, p.tileX(), p.tileY(), room == null ? "-" : String.valueOf(room.id),
+                    g.pressureRatioAt(p.tileX(), p.tileY()), g.oxygenRatioAt(p.tileX(), p.tileY()), c.state, c.suited, c.suitAir,
+                    c.task == null ? "none" : c.task.kind, c.activity,
+                    board != null && board.battleStations ? "; battle stations" : "",
+                    board != null && board.underFire(p.tileX(), p.tileY()) ? "; RAKED" : ""));
+            double tanks = 0;
+            for (Entity sub : p.ship.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent.class).subsystems) {
+                com.ringsofiron.interiorgrid.SubsystemComponent ss = sub.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class);
+                if (ss.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.TANK && ss.fluid == com.ringsofiron.interiorgrid.Fluid.OXYGEN) {
+                    tanks += ss.canSupply() ? ss.contents : 0;
+                } else if (ss.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.REACTOR) {
+                    line.append(String.format(Locale.ROOT, "; reactor %.2f%s", ss.health, ss.isOperational ? "" : " down"));
+                } else if (ss.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.LIFE_SUPPORT) {
+                    line.append(String.format(Locale.ROOT, "; life support %.2f%s reserve %.0f kg", ss.health, ss.isOperational ? "" : " down",
+                            com.ringsofiron.interiorgrid.TankSupply.reserve(ss)));
+                }
+            }
+            line.append(String.format(Locale.ROOT, "; O2 tanks %.0f kg; breaches %d", tanks, breaches(g)));
+            TRACE.append(line).append('\n');
+        }
+
+        static int breaches(ShipGridComponent g) {
+            int n = 0;
+            for (int y = 0; y < g.height; y++) for (int x = 0; x < g.width; x++) if (g.getTile(x, y) != null && g.getTile(x, y).isHullBreach()) n++;
+            return n;
         }
     }
 
