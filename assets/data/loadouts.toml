@@ -131,10 +131,10 @@ min_difficulty = 3.0
 
 # The pirate base's gun platforms (round 6, PirateBase): drawn like a spawn's, by the career's seed.
 # Its stock fit is two chainguns, a dart rack and flak; the heavier fits come with the difficulty.
-# battery_railgun is off (weight 0): round 7 hit the raid's targets without it. Give it a weight
-# (2 was tried) and, once the player flies a frigate, one platform may carry a railgun that reaches
+# battery_railgun: once the player flies a frigate, one platform may carry a railgun that reaches
 # a ship standing off out of its chainguns' range; HostileTraffic.moorGuns keeps it to one, since a
-# second would kill whole crews from out there.
+# second would kill whole crews from out there. Round 7 left it at weight 0; round 8 gives it 5
+# (about half the frigate's raids meet one) to make the raid hurt with three defenders, not four.
 [loadout.battery_stock]
 name = "Den battery"
 ship = "den_battery"
@@ -158,5 +158,5 @@ min_difficulty = 2.5
 name = "Railgun battery"
 ship = "den_battery"
 weapons = ["railgun_mk1", "", "", ""]
-weight = 0
+weight = 5
 min_difficulty = 2.2

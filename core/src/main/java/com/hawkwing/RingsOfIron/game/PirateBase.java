@@ -65,10 +65,12 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     /** How far from the base the defenders launch, m, each a little further round. */
     static final double LAUNCH_OFFSET = 4_000;
     /**
-     * Difficulty for each defender past the first two: the knob to tune the raid by. Round 7 lowers
-     * round 5's 1 so a Commander's gunship meets three and a Captain's frigate four.
+     * Difficulty for each defender past the first two: the knob to tune the raid by. Round 7 lowered
+     * round 5's 1 to 0.6, so a Commander's gunship met three and a Captain's frigate four. Round 8
+     * raises it to 0.8: a Commander's gunship still meets three, a Captain's frigate (about 2.5) three
+     * now, since with the helm holding on the base under fire four left the frigate 5 wins in 10.
      */
-    public static final double DIFFICULTY_PER_DEFENDER = 0.6;
+    public static final double DIFFICULTY_PER_DEFENDER = 0.8;
     /** Most defenders the base scrambles. */
     public static final int MAX_DEFENDERS = 4;
     /** Tension eased between every pair of lawful factions when the base falls. */
