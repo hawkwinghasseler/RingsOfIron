@@ -12,6 +12,7 @@ import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -41,6 +42,7 @@ class Round5CareerTest extends CareerScript {
         return "round5-career";
     }
 
+    @Tag("slow")
     @Test
     void theCareerPastTheGunship() {
         playToTheGunship();

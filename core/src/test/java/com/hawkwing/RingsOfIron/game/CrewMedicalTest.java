@@ -19,6 +19,7 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -159,6 +160,7 @@ class CrewMedicalTest {
         return o;
     }
 
+    @Tag("slow")
     @Test
     void woundsStoresAndTheSuitSettingComeThroughASave(@TempDir Path dir) {
         Entity bea = crewNamed(world, game.player, "Bea");

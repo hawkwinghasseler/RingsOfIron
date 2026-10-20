@@ -655,7 +655,7 @@ abstract class CareerScript {
             // Time stood still for ten seconds of frames: something holds the game, so fail rather than spin
             if (frames % 600 == 0) {
                 assertNotEquals(last, world.engine.getSimSeconds(), "game time stopped; warp: "
-                        + world.engine.getRailsWarpBlockedReason());
+                        + world.engine.getRailsWarpBlockedReason() + "; career over: " + world.getCareerOver());
                 last = world.engine.getSimSeconds();
             }
             if (world.timeWarp.getWarp() == 1 && world.getCrash() == null) {
