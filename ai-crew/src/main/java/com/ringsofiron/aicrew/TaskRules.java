@@ -72,6 +72,11 @@ public final class TaskRules {
                 CrewMemberComponent c = crew.crew(((TreatTask) task).patient);
                 return c != null && c.state == CrewState.UNCONSCIOUS && c.carriedBy == null;
             }
+            case STABILISE: {
+                CrewMemberComponent c = crew.crew(((StabiliseTask) task).patient);
+                return c != null && c.state != CrewState.DEAD && c.wound == Wound.CRITICAL && !c.stabilised
+                        && c.carriedBy == null;
+            }
             case CARRY:
                 return ((CarryTask) task).job.isOpen();
             case YARD:
@@ -123,6 +128,7 @@ public final class TaskRules {
     private static Entity mobileTarget(CrewTask task) {
         if (task instanceof RescueTask) return ((RescueTask) task).casualty;
         if (task instanceof TreatTask) return ((TreatTask) task).patient;
+        if (task instanceof StabiliseTask) return ((StabiliseTask) task).patient;
         return null;
     }
 
@@ -171,6 +177,7 @@ public final class TaskRules {
                 return false;
             }
             case TREAT:
+            case STABILISE:
                 if (isAdjacent(x, y, tx, ty) && grid.canPass(x, y, tx, ty)) return true;
                 return x == tx && y == ty;
             case EVACUATE:

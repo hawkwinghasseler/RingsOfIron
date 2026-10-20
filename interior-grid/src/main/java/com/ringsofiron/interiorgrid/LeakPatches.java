@@ -97,7 +97,7 @@ public final class LeakPatches {
         if (grid.patchKits <= 0 || !leaks(grid, x, y, side)) return false;
         if (side != null) {
             EdgeWall wall = grid.getEdge(x, y, side);
-            wall.patchedAt = wall.integrity;
+            wall.patchedAt = Tile.patchMark(wall.integrity);
         } else {
             grid.getTile(x, y).patch();
         }

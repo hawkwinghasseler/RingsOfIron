@@ -86,6 +86,30 @@ The player's own figure has no behaviour tree, so `CaptainSafety` does for it wh
 - **Down anyway:** the crew carry the figure to the nearest breathable tile like any casualty (`RescueTask`, priority 90, above fires and breaches), or put its suit on where it lies when nowhere aboard has air. Being carried home to a station stays the last resort, when the figure dies.
 - The suit and its air are saved with the figure; a suit half on when the game is saved starts again after a load, and a carry under way is set down and taken up again (as for any crew member).
 
+### Railgun lethality (round 6 part 3)
+The round 5 ace survey had the railgun ace killing 29 of 30 crew. Traced fight by fight (`CrewWoundSurveyTest -PwoundTrace`), the deaths were not untreated wounds on a ship without a medic:
+- **Everyone went down together.** An engineer sealing a breach at the bow was hit; whoever came to help her stood on her tile, and every slug through that tile struck everyone on it for a critical wound. A round crossing a tile now strikes each person on it 40% of the time (`PenetrationResolver.CREW_HIT_CHANCE`), fragments and spall alike.
+- **The ace went on firing** into the disabled corvette for the survey's ten minutes after the fight (300 to 500 hits). A pirate now leaves a beaten player drifting ("Raider leaves you drifting") and flies off with its guns cold (`HostileTraffic.fly`).
+- **Nobody stopped the bleeding.** Anyone now stabilises a critical wound (ai-crew Design.md, section 5), before a rescue that may have nowhere to go.
+- **The suits ran dry.** Holed past its patch kits, the beaten corvette held no air anywhere; its crew now fill their suits at an oxygen tank or the life support.
+
+| Ace refit (10 fights each) | Beaten | Our crew dead | Wounded | Before (round 5) |
+|---|---|---|---|---|
+| Chaingun | 10 | 4 of 30 (0 with part 1's breach sealing) | 3 | 6 of 30 |
+| Railgun | 2 | 3 of 30 (5 with part 1) | 9 | 29 of 30, beaten 1 |
+
+The fights stay a risk: the railgun ace still beats the corvette 8 of 10, with our hull at 0.44 to 0.77 as before. Part 4's missile fix (#122) leaves these numbers where they were: 29 of 30 railgun deaths on it alone, 3 of 30 with this part, 5 of 30 chaingun. Round 3's seed 2026 career loses no crew (4 aboard throughout).
+
+Found on the way: a deck plate shot down to nothing (no hull wall, so no breach to seal) took patch after patch, since a patch put on at condition 0 read as none, until the stores were empty and the ship vented at its berth for good. A patch now holds there (`Tile.patchMark`).
+
+Choices made without Joe:
+- **A round strikes 40% of the people on a tile it crosses.** A body fills well under half of a 1 m tile. It lowers every kind of hit on crew, not only the railgun's.
+- **A pirate leaves a beaten player** rather than boarding them or firing on. Pirates boarding the player is not built.
+- **Stabilise:** 15 s, one medical store, anyone; a medic in half the time.
+- **Suit refill:** at 30% of the suit's air, 20 s, at an oxygen tank or working life support.
+- **No medic in the starting crew, no medbay, no change to penetrator falloff past the first tile:** the target (8 or fewer of 30) was met without them. The plan's steps 2 to 4 are left for Joe.
+
 ## Not done here
 - No medbay or berth tiles exist in the ship data yet, so the wounded are treated where they lie once on a safe tile, rather than carried to a medbay.
 - Light wounds are not treated, only left to heal.
+- The starting corvette has no medic (Ada, Bea and Cole are an engineer, a crewman and a marine).

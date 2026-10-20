@@ -33,7 +33,9 @@ public abstract class CrewTask {
         /** Get into an escape pod and wait there for launch: the order to abandon ship. */
         EVACUATE,
         /** Go aboard another craft as one of a boarding party and sweep it: an order. */
-        BOARD
+        BOARD,
+        /** Stop a critical wound's bleeding where the casualty lies, so it no longer kills; treatment still to follow. */
+        STABILISE
     }
 
     public enum Status {

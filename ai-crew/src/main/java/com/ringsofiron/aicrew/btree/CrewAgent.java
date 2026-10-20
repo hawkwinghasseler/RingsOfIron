@@ -43,6 +43,10 @@ public class CrewAgent {
     public final GridNavGraph.DoorKey doorKey;
     /** Crew aboard this one's ship, gathered while looking for hostiles. */
     final Array<Entity> aboardScratch = new Array<>();
+    /** On the way to fill their suit, or filling it ({@link CrewTasks.RefillSuit}). */
+    boolean refilling;
+    /** Sim time until which no oxygen supply aboard was found reachable. */
+    float refillBlockedUntil = Float.NEGATIVE_INFINITY;
 
     public CrewAgent(Entity entity, CrewMemberComponent crew, GridPositionComponent pos, CrewService service) {
         this.entity = entity;

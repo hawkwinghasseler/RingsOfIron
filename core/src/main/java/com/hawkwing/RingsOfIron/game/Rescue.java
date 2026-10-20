@@ -265,6 +265,7 @@ public class Rescue {
         // Patched up on the way: hurt, but no wound left to bleed from or slow them
         c.wound = com.ringsofiron.aicrew.Wound.NONE;
         c.care = c.bleedOut = c.healing = 0f;
+        c.stabilised = false;
         c.activity = "idle";
         c.treatedBy = null;
         if (c.carriedBy != null) world.crew.releaseTask(c.carriedBy);

@@ -244,7 +244,7 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
      * wound is as bad as the injury: light, serious from {@link CrewDef#seriousWound}, critical from
      * {@link CrewDef#criticalWound}. So a hit that would once have killed (100 points) leaves a
      * critical wound, which starts its {@link CrewDef#bleedOutTime} clock; a serious hit on someone
-     * already critical halves what is left of it.
+     * already critical halves what is left of it and opens a wound someone had stabilised.
      */
     private void wound(Entity e, CrewMemberComponent c, float amount, DamageCause cause) {
         CrewDef d = c.def;
@@ -259,13 +259,19 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
         Wound was = c.wound;
         c.injury += amount;
         Wound now = d.woundFor(c.injury);
-        if (was == Wound.CRITICAL && amount >= d.seriousWound) c.bleedOut *= 0.5f;
+        if (was == Wound.CRITICAL && amount >= d.seriousWound) {
+            c.bleedOut *= 0.5f;
+            c.stabilised = false;
+        }
         if (now.compareTo(was) <= 0) return;
         c.wound = now;
         c.woundCause = cause;
         c.care = 0f;
         c.healing = 0f;
-        if (now == Wound.CRITICAL) c.bleedOut = d.bleedOutTime;
+        if (now == Wound.CRITICAL) {
+            c.bleedOut = d.bleedOutTime;
+            c.stabilised = false;
+        }
         updateState(e);
     }
 
@@ -278,6 +284,7 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
         if (c == null || c.state == CrewState.DEAD || c.wound == Wound.NONE) return;
         c.wound = c.wound.better();
         c.injury = c.def.injuryFor(c.wound);
+        c.stabilised = false;
         c.care = 0f;
         c.healing = 0f;
         if (c.wound == Wound.NONE) c.woundCause = null;

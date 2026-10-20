@@ -83,6 +83,25 @@ class LeakPatchesTest {
     }
 
     @Test
+    void aWreckedDeckPlateTakesOnePatchAndHolds() {
+        // A deck plate open to space below it, shot down to nothing: no wall, so no breach to seal
+        ShipGridComponent g = grid();
+        Tile deck = g.getTile(1, 3);
+        deck.setIntegrity(0f);
+        new GridHazardSystem(1).step(g, DT);
+        Array<LeakPatches.Leak> leaks = LeakPatches.leaks(g);
+        assertEquals(1, leaks.size);
+        assertTrue(leaks.first().same(1, 3, null));
+        int kits = g.patchKits;
+        assertTrue(LeakPatches.patch(g, 1, 3, null));
+        assertTrue(deck.isPatched(), "the patch holds on a wrecked plate");
+        assertFalse(LeakPatches.patch(g, 1, 3, null), "and needs no second one");
+        assertEquals(kits - 1, g.patchKits);
+        run(new GridHazardSystem(1), g, 5f);
+        assertEquals(0, LeakPatches.leaks(g).size);
+    }
+
+    @Test
     void aLeakingThinWallToSpaceCanBePatched() {
         ShipGridComponent g = WallLightSaveTest.room();
         // Open the right end to space behind a thin wall, and damage the wall

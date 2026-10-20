@@ -221,12 +221,18 @@ public class Tile {
 
     /**
      * True while a field patch put on at condition {@code patchedAt} still holds at
-     * {@code condition}: the piece leaks (below {@link #LEAK_START}, above 0) and has taken no
-     * new damage since. A patch stops the leak but does not restore condition; a yard repair
-     * past {@link #LEAK_START} or a hit that lowers the condition ends it.
+     * {@code condition}: the piece leaks (below {@link #LEAK_START}) and has taken no new damage
+     * since. A patch stops the leak but does not restore condition; a yard repair past
+     * {@link #LEAK_START} or a hit that lowers the condition ends it. A deck plate wrecked to 0
+     * still takes a patch (see {@link #patchMark}): one that didn't hold there used up every kit aboard.
      */
     public static boolean isPatched(float patchedAt, float condition) {
-        return patchedAt > 0f && condition > 0f && condition < LEAK_START && condition >= patchedAt - PATCH_SLACK;
+        return patchedAt > 0f && condition < LEAK_START && condition >= patchedAt - PATCH_SLACK;
+    }
+
+    /** What a patch put on at {@code condition} records: above 0 even on a wrecked piece, as 0 means no patch. */
+    public static float patchMark(float condition) {
+        return Math.max(condition, PATCH_SLACK);
     }
 
     /** How far condition may read below the patch's own before the patch counts as broken. */
@@ -239,8 +245,8 @@ public class Tile {
 
     /** Patches this tile (or its whole hull piece) at its present condition. */
     public void patch() {
-        if (piece != null) piece.patchedAt = piece.integrity;
-        else patchedAt = integrity;
+        if (piece != null) piece.patchedAt = patchMark(piece.integrity);
+        else patchedAt = patchMark(integrity);
     }
 
     public void clearPatch() {

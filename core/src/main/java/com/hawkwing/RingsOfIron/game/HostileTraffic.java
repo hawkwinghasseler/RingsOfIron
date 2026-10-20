@@ -378,6 +378,15 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             return;
         }
         Entity enemy = enemyOf(e, h);
+        if (enemy != null && h.isPirate() && enemy == world.getPlayer() && ShipDisablement.isDisabled(enemy)) {
+            // Beaten: a pirate leaves the player drifting rather than shoot a crippled ship and its
+            // wounded crew to pieces (round 6: the railgun ace went on firing for minutes)
+            breakOff(id, h, now);
+            notices.add(h.displayName + " leaves you drifting");
+            disengage(e);
+            leave(e);
+            return;
+        }
         if (enemy != null) {
             if (enemy == world.getPlayer()) h.foughtPlayer = true;
             // An ace never runs on the odds: it fights to its break-off line
