@@ -797,7 +797,7 @@ abstract class CareerScript {
      * A save the game refuses (in warp, say) is logged and skipped.
      */
     void saveForPlaytest(String name) {
-        Path dir = Paths.get(System.getProperty("user.dir")).resolve("build").resolve("playtest-saves").resolve("seed-" + SEED);
+        Path dir = Paths.get(System.getProperty("user.dir")).resolve("build").resolve("playtest-saves").resolve("seed-" + seed);
         try {
             Files.createDirectories(dir);
         } catch (IOException e) {
