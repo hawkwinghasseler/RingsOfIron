@@ -8,6 +8,7 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.Fluid;
+import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -70,6 +71,8 @@ class BurstOxygenTankTest {
         for (Entity e : world.crewCareer.ownCrew(game.player)) world.crew.crew(e).setSuited(true);
         world.crew.crew(game.avatar).setSuited(true);
         DamageStates.burst(grid, o2, new RandomXS128(1));
+        // Part 6's save: the burst left the cabin at 0% oxygen
+        for (Compartment c : grid.compartments) c.oxygen = 0;
         int holed = 0;
         for (int y = 0; y < grid.height && holed == 0; y++) {
             for (int x = 0; x < grid.width && holed == 0; x++) {
@@ -88,8 +91,10 @@ class BurstOxygenTankTest {
         assertTrue(world.crew.crew(game.avatar).isAlive(), "the captain alive");
         boolean breathable = false;
         for (int[] t : GameScenario.floorTiles(grid)) breathable |= TaskRules.isBreathable(grid, t[0], t[1]);
-        assertTrue(breathable, "the cabin can be breathed again");
-        assertTrue(unit.reserveUsed > 0, "on life support's own oxygen");
+        StringBuilder air = new StringBuilder("reserve used " + unit.reserveUsed + ", unit op " + unit.isOperational + " powered " + unit.powered + ", venting " + grid.isVenting() + "; ");
+        for (Compartment c : grid.compartments) air.append(String.format(java.util.Locale.ROOT, "[%.1f m3 %.0f kPa o2 %.2f kg] ", c.volume, c.pressure(), c.oxygen));
+        assertTrue(breathable, "the cabin can be breathed again: " + air);
+        assertTrue(unit.reserveUsed > 0, "on life support's own oxygen; tank " + o2.contents + " of " + o2.capacity + ", available " + com.ringsofiron.interiorgrid.TankSupply.available(unit, Fluid.OXYGEN));
     }
 
     private static boolean besideAir(ShipGridComponent grid, int x, int y) {

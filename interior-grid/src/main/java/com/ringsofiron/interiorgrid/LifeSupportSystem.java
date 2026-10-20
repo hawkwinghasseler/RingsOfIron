@@ -51,10 +51,11 @@ public class LifeSupportSystem extends FixedLogicSystem {
     /**
      * Kilograms of oxygen a unit of standard throughput keeps for itself (oxygen candles), drawn once
      * the tanks piped to it are dry. Round 8: a burst oxygen tank left a gunship that had patched its
-     * hull at 0% oxygen for good, and its crew died as their suits ran dry. Enough to bring a small
-     * cabin's oxygen back once and to fill the crew's suits many times over.
+     * hull at 0% oxygen for good, and its crew died as their suits ran dry. Enough to bring a
+     * corvette's 140 m³ cabin back from no oxygen at all (about 40 kg) and to fill the crew's suits
+     * many times over; 30 kg left it a little short of breathable.
      */
-    public static final double EMERGENCY_OXYGEN_KG = 30;
+    public static final double EMERGENCY_OXYGEN_KG = 60;
     /** Ticks at the same rate as the hazard simulation. */
     public static final float TICK = GridHazardSystem.HAZARD_TICK;
     /** Runs after the hazard step, so it works on that tick's air and airflow. */

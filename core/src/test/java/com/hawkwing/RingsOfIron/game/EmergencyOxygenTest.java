@@ -67,7 +67,8 @@ class EmergencyOxygenTest {
         game.player.getComponent(TraderComponent.class).credits = 1e6;
         world.yard.orderRefill(game.player, highport);
         assertEquals(0, lifeSupport().reserveUsed, 1e-9, "made good");
-        assertEquals(30, com.ringsofiron.interiorgrid.TankSupply.reserve(lifeSupport()), 1e-9);
-        assertTrue(com.ringsofiron.interiorgrid.TankSupply.available(lifeSupport(), Fluid.OXYGEN) > 30, "and the tanks behind it");
+        double full = com.ringsofiron.interiorgrid.LifeSupportSystem.EMERGENCY_OXYGEN_KG * lifeSupport().throughput;
+        assertEquals(full, com.ringsofiron.interiorgrid.TankSupply.reserve(lifeSupport()), 1e-9);
+        assertTrue(com.ringsofiron.interiorgrid.TankSupply.available(lifeSupport(), Fluid.OXYGEN) > full, "and the tanks behind it");
     }
 }
