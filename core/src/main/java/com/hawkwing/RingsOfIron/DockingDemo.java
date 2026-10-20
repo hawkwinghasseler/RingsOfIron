@@ -239,6 +239,9 @@ public class DockingDemo extends ApplicationAdapter {
             }
             batch.setTransformMatrix(pose.idt());
         }
+        // The batch's end turned blending off; the haze and vacuum shading need it
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (Body body : bodies) {
             Entity e = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
