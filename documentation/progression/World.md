@@ -101,7 +101,7 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - Round 6: two gun platforms, moored 1.5 km and 3 km behind the base and manned at the first scramble, never a railgun among their fits; their hull art is generated from the chassis grid (`tools/art/generate_svgs.py`) and they borrow the raider's texture.
 - Round 6: the second wave launches when the first defender is beaten or after 90 s; ties in firepower launch by name; when every defender carries a railgun the order stands.
 - Round 7: the frigate's raid is tuned to win 6 to 8 of 10 in the enemy survey with mean hull 0.50 to 0.75: it wins 7, at 0.74. The career seeds 2026, 7 and 12 drew no railgun raider for the raid and still end it at hull 0.89 or better.
-- Round 8: the career flies the survey's raid. The survey's frigate wins 7 of 10 at mean hull 0.74 (worst 0.43). On the career seeds the raid is a draw of the same fight: seed 12 meets a railgun platform and wins at 0.79; seed 2026 meets a railgun raider, loses at 0.52 and wins its second try at 1.00; seed 7 meets neither and wins at 1.00.
+- Round 8: the career flies the survey's raid. The survey's frigate wins 7 of 10 at mean hull 0.73 (worst 0.43). On the career seeds the raid is a draw of the same fight: seed 2026 meets a railgun raider and wins at 0.50, seed 12 meets a railgun platform and wins at 0.79, and seed 7 meets neither and wins at 1.00.
 - All the numbers above are placeholders.
 
 ## Not built
