@@ -11,7 +11,9 @@ import com.badlogic.gdx.physics.box2d.FixtureDef;
  * One crew member's body in their deck's {@link InteriorWorld}: a circle of {@link #RADIUS} that
  * walls stop, and inside it a solid core of {@link #CORE_RADIUS} that other crew cannot get into.
  * Between the core and {@link #SOFT_RADIUS} crew are pushed apart softly, harder the closer they
- * get, and a little to each one's right, so two meeting head on in a corridor sidestep each other.
+ * get. Two closing on each other are also turned a little to each one's right, so two meeting head
+ * on in a corridor sidestep each other; crew who aren't closing (standing on the same spot) are only
+ * pushed straight apart, so they settle side by side rather than circling each other.
  *
  * Crew walk by force: each tick {@link #steer} pulls the body's velocity toward the one wanted,
  * up to {@link #ACCEL}. Positions are in the grid's tile units.
@@ -22,12 +24,14 @@ public final class CrewBody {
     public static final float RADIUS = 0.3f;
     /** The solid core no other crew member gets into, tiles. */
     public static final float CORE_RADIUS = 0.15f;
-    /** Where the push between two crew begins, tiles from each one's middle. */
-    public static final float SOFT_RADIUS = 0.4f;
+    /** Where the push between two crew begins, tiles from each one's middle: the edge of the dot drawn for them. */
+    public static final float SOFT_RADIUS = RADIUS;
     /** Push between two crew per tile they overlap, tiles/s². */
-    public static final float PUSH = 80f;
-    /** The share of the push turned to each one's right. */
+    public static final float PUSH = 40f;
+    /** The share of the push turned to each one's right, when closing at {@link #SIDESTEP_SPEED} or faster. */
     public static final float SIDESTEP = 0.5f;
+    /** How fast two crew close on each other for the full sidestep, tiles/s; slower closes sidestep less. */
+    static final float SIDESTEP_SPEED = 0.5f;
     /** Most a crew member's own legs can change their velocity, tiles/s². */
     public static final float ACCEL = 25f;
     /** How quickly the velocity closes on the one wanted, per second. */
@@ -146,7 +150,11 @@ public final class CrewBody {
             ny = dy / d;
         }
         float push = PUSH * (reach - d) * mass;
-        float fx = push * (nx - SIDESTEP * ny), fy = push * (ny + SIDESTEP * nx);
+        // Sidestep only while closing: two holding the same spot would otherwise chase each other round it
+        Vector2 va = body.getLinearVelocity(), vb = other.body.getLinearVelocity();
+        float closing = -((va.x - vb.x) * nx + (va.y - vb.y) * ny);
+        float side = SIDESTEP * Math.max(0f, Math.min(1f, closing / SIDESTEP_SPEED));
+        float fx = push * (nx - side * ny), fy = push * (ny + side * nx);
         body.applyForceToCenter(fx, fy, true);
         other.body.applyForceToCenter(-fx, -fy, true);
     }
