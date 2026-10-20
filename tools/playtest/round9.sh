@@ -7,8 +7,8 @@
 #   posts    part 1: the raid's defenders still firing after a short (Tab, R and Space from the helm)
 #   suits    part 2: "Gunship bounty fight" left unanswered, the crew panel (I) as the cabin vents
 #   raider   part 3: the guided first play's lone raider, firing back after our first hit
-#   prizes   part 4: the raid fought to the fall, then point defence firing past the struck defenders;
-#            and `hull 0.4` at the raid, how close a boarder comes before it breaks off
+#   prizes   part 4: the raid fought to the fall, then a minute of Space past the struck defenders
+#   boarding part 4: `hull 0.4` at the raid; how close a boarder comes, then Tab to it and fire
 #   ace      the crew-care fix: "First ace fight" fought with Tab, R and Space, then the crew afterwards
 #   reload   R pressed through one reload: "Launcher reloading" once in the log (L)
 # Part 5's sweep saves are loaded the same way with SAVES=core/build/playtest-saves/seed-<n>; the
@@ -96,8 +96,7 @@ if want raider; then
   echo "raider: first hit on it at sim ${t:-never}; it hit us $(hits_from_after Raider "${t:-0}") times after that, $(grep -c '^PLAYTEST impact on Raider' "$OUT/game.log") hits on it"
 fi
 
-# Part 4: the raid fought to the fall, then point defence (Space) at the darts past the struck
-# defenders for a minute; then, beaten on the hull, how close a boarder comes
+# Part 4: the raid fought to the fall, then Space for a minute past the struck defenders
 if want prizes; then
   cmd load Before the raid; pause 14
   for i in $(seq 1 60); do
@@ -111,8 +110,12 @@ if want prizes; then
   cmd hostiles; pause 1
   shot p4-02-a-minute-of-fire-after-the-fall
   key l; pause 1; shot p4-03-notices-after-the-fall; key l; pause 1
-  echo "prizes: back in action after the fall: $(awk '/^PLAYTEST hostiles:/ { last = NR } { line[NR] = $0 } END { for (i = last + 1; i <= NR && line[i] ~ /^  /; i++) print line[i] }' "$OUT/game.log" | grep -c -v 'SURRENDER\|STRUCK\|struck\|surrender')"
+  echo "prizes: defenders not struck after a minute of fire: $(awk '/^PLAYTEST hostiles:/ { last = NR } { line[NR] = $0 } END { for (i = last + 1; i <= NR && line[i] ~ /^  /; i++) print line[i] }' "$OUT/game.log" | grep 'Pirate raider' | grep -v -c 'SURRENDERED\|WRECKED')"
+fi
 
+# Part 4: beaten on the hull at the raid (`hull 0.4`), how close a boarder comes; once it is inside
+# 1 km, Tab to it and fire, and whether it breaks off
+if want boarding; then
   cmd load Before the raid; pause 14
   for _ in 1 2 3 4 5 6 7 8 9 10; do cmd hull 0.4; grep 'PLAYTEST hull' "$OUT/game.log" | tail -1 | grep -q "no game" || break; pause 2; done
   pause 2; shot p4-04-beaten-on-the-hull
@@ -124,7 +127,9 @@ if want prizes; then
     range=$(echo "$state" | sed -n 's/.* at \([0-9]*\) m.*/\1/p')
     if [ -n "$range" ] && [ "$range" -lt "$closest" ]; then
       closest=$range; closest_by=$(echo "$state" | sed -n 's/.*boarder \(.*\) at .*/\1/p')
-      [ "$range" -lt 1000 ] && [ -z "${close_shot:-}" ] && { close_shot=1; shot p4-05-boarder-within-1km; }
+      [ "$range" -lt 1000 ] && [ -z "${close_shot:-}" ] && { close_shot=1; shot p4-05-boarder-within-1km
+        for _ in $(seq 1 10); do [ "$(gun_target)" = "$closest_by" ] && break; key Tab; done
+        hold space 4; }
     fi
     [ -n "$closest_by" ] && [ -z "$range" ] && case "$state" in *"no boarder"*) break;; esac
     pause 2
