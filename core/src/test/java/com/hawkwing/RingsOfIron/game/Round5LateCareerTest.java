@@ -213,6 +213,15 @@ class Round5LateCareerTest {
         assertTrue(ShipDisablement.isDisabled(game.player), "our reactor down, we are beaten");
         assertTrue(world.pirateBase.standing(), "the base stands over a beaten raider");
         assertTrue(world.pirateBase.defenders().isEmpty(), "the wing that won is forgotten");
+        // The log says so once, and the base's guns stop shooting at the wreck (real window: its
+        // batteries went on firing darts, under a missile warning, after the raiders had gone)
+        long lost = world.notices.history().stream().filter(n -> n.text.startsWith("The raid on ")).count();
+        assertEquals(1, lost, "one notice says the raid is lost");
+        for (String name : world.pirateBase.guns()) {
+            Entity gun = ship(name);
+            var sensor = gun == null ? null : gun.getComponent(com.ringsofiron.combatsys.components.SensorComponent.class);
+            if (sensor != null) assertNotSame(game.player, sensor.lockedTarget, name + " stands down");
+        }
         // Power back, the base still stands: nobody drove its defence off
         for (var r : reactors) r.switchedOn = true;
         run(2 * PirateBase.CHECK_SECONDS + 5);

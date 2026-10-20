@@ -248,11 +248,18 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
 
     /**
      * The player lost the raid: the defence that beat them is forgotten, so a defender leaving them
-     * drifting is never counted as driven off, and a raid flown again meets a new scramble.
+     * drifting is never counted as driven off, and a raid flown again meets a new scramble. Its guns
+     * stand down until the player comes back for another try.
      */
     public void raidLost() {
+        if (defenders.isEmpty()) return;
         defenders.clear();
         clearWave();
+        for (String name : guns) {
+            HostileComponent h = hostileNamed(name);
+            if (h != null) h.targetUuid = null;
+        }
+        world.notices.post("The raid on " + name() + " is lost: it still stands", NoticeLog.Kind.IMPORTANT);
     }
 
     /** True while a defender it scrambled is still in the fight: in the bubble, not beaten and not driven off. */

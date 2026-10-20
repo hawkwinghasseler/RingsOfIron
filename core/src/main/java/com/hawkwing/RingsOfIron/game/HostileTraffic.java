@@ -145,6 +145,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     private float since = CHECK_SECONDS;
     /** Who last shot at whom, victim to shooter: a hostile fights whoever attacked it. */
     private final Map<Entity, Entity> provoked = new IdentityHashMap<>();
+    /** Pirates that left the beaten player this check, for one notice. */
+    private final List<String> drifting = new ArrayList<>();
     /** Sim second each hostile in the bubble last had something to do. */
     private final Map<String, Double> busySince = new HashMap<>();
     /** Sim seconds a pirate has held alongside its prey. */
@@ -353,6 +355,17 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             }
             fly(id, e, h, now);
         }
+        // A wing that beat the player leaves together: one line, not one per pirate
+        if (!drifting.isEmpty()) {
+            notices.add(and(drifting) + (drifting.size() == 1 ? " leaves" : " leave") + " you drifting");
+            drifting.clear();
+        }
+    }
+
+    /** "A", "A and B", "A, B and C". */
+    private static String and(List<String> names) {
+        if (names.size() == 1) return names.get(0);
+        return String.join(", ", names.subList(0, names.size() - 1)) + " and " + names.get(names.size() - 1);
     }
 
     private void fly(String id, Entity e, HostileComponent h, double now) {
@@ -393,7 +406,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             // A base's defender leaves as the winner, not driven off: the base does not strike
             if (world.pirateBase.defending(h.displayName)) world.pirateBase.raidLost();
             breakOff(id, h, now);
-            notices.add(h.displayName + " leaves you drifting");
+            drifting.add(h.displayName);
             disengage(e);
             leave(e);
             return;
@@ -441,6 +454,10 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             Entity player = world.getPlayer();
             enemy = h.huntingPlayer() && player != null && player.getComponent(PhysicsBodyComponent.class) != null ? player : null;
         }
+        // Nor does a gun shoot a beaten ship to pieces (round 7: the den's batteries went on firing
+        // darts at a frigate dead in space after its raiders had left it)
+        if (enemy != null && enemy == world.getPlayer() && ShipDisablement.isDisabled(enemy)
+                && FirstPlay.beaten(world, enemy)) enemy = null;
         SensorComponent sensor = e.getComponent(SensorComponent.class);
         if (sensor != null) sensor.lockedTarget = enemy;
     }
