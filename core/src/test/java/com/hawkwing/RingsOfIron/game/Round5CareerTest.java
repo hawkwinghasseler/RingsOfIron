@@ -442,8 +442,14 @@ class Round5CareerTest extends CareerScript {
         }
     }
 
+    /** Longest the script waits out a boarding before it goes home anyway, sim seconds: the trip in and the time aboard. */
+    static final float BOARDING_WAIT = (float) PirateBoarding.BOARD_SECONDS + 600f;
+
     /** Repairs at Highport if the last job left any damage. */
     private void repairIfNeeded() {
+        // Round 8: beaten with pirates coming aboard, the ship waits out the boarding before it goes
+        // home, as a beaten player would (seed 2026 went home mid-boarding and was boarded at the berth)
+        if (world.pirateBoarding.boarder() != null) runUntil(BOARDING_WAIT, () -> world.pirateBoarding.boarder() == null);
         if (world.yard.repairCost(game.player) > 0.5) {
             dockAtStation(game.highport);
             yardRepair(world.engine.getEntity(game.highport));
