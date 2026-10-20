@@ -213,6 +213,19 @@ class ShipDisablementTest {
     }
 
     @Test
+    void aBrokenHullIsBeatenEvenWhileStunned() {
+        for (SubsystemComponent r : systems(game.player, SubsystemComponent.SubsystemType.REACTOR)) r.stunned = 30f;
+        run(40);
+        assertEquals(DisabledComponent.Reason.NO_POWER, ShipDisablement.reason(game.player));
+        assertFalse(FirstPlay.beaten(world, game.player), "dark only for a stun: the fight goes on");
+        setHull(game.player, 0.4f);
+        run(40);
+        assertEquals(DisabledComponent.Reason.HULL, ShipDisablement.reason(game.player));
+        // Round 8: an ion raider kept the broken frigate stunned, so the raid wasn't lost until it was a wreck
+        assertTrue(FirstPlay.beaten(world, game.player), "broken is beaten, stunned or not");
+    }
+
+    @Test
     void thePlayersMainGunsWaitForTheTriggerWhenPowerComesBack() {
         Entity target = game.raider;
         game.player.getComponent(SensorComponent.class).lockedTarget = target;

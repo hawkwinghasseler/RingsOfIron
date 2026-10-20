@@ -401,9 +401,11 @@ abstract class CareerScript {
             gun.update(FRAME);
             // Dark for an ion stun's few seconds isn't a lost fight: the guns come back. Judged afresh,
             // since the disabled mark lingers until the next judgement after the stun ends. Won as
-            // contracts count it (round 7: a beaten ace's dropped part ended a fight with a fit ship)
+            // contracts count it (round 7: a beaten ace's dropped part ended a fight with a fit ship).
+            // A broken hull is lost, stunned or not (round 8, as FirstPlay.beaten)
             return FirstPlay.beaten(world, ship)
-                    || ShipDisablement.isDisabled(game.player) && !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player)
+                    || ShipDisablement.isDisabled(game.player) && (ShipDisablement.reason(game.player) != DisabledComponent.Reason.NO_POWER
+                            || !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player))
                     && world.disablement.judge(game.player) != null
                     || world.getCrash() != null || range(game.player, ship) > GOT_AWAY;
         });

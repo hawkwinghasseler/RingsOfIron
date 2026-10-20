@@ -120,7 +120,7 @@ Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. I
 |---|---|---|---|---|---|
 | Delivery | An unclaimed trade order out of the station, claimed in the player's name (`claimedBy = "player"`) | 15% of the cargo's value (at least 500) on top of the sale, with the sale paid at least the agreed price | 3 + 2·tier | 2 days, or 8 if the buyer orbits another body | The goods are sold at the buyer, docked with clearance; partial deliveries count up |
 | Escort | A trade order already claimed by a freighter | 1,500 | 4 + 2·tier | 2 or 8 days after the freighter's arrival | The freighter arrives with the player within 50 km of its destination; it fails if the player is not there within 30 minutes of its arrival, or if the freighter is lost |
-| Bounty | A ship of a faction at war with the giver | 5,000 × (1 + tier) × difficulty; ×4 for an ace | 6 + 3·tier; +6 for an ace | 3 days | The target is gone, or beaten (`FirstPlay.beaten`: disabled, reactor out or guns silenced; never while ion-stunned) |
+| Bounty | A ship of a faction at war with the giver | 5,000 × (1 + tier) × difficulty; ×4 for an ace | 6 + 3·tier; +6 for an ace | 3 days | The target is gone, or beaten (`FirstPlay.beaten`: disabled, reactor out or guns silenced; never while only dark for an ion stun) |
 | Patrol | Another station whose owner is not at war with the giver | 1,000, ×1.5 for another faction's station | 3 + 2·tier | 2 days, or 10 if far | The player passes within 20 km of the station, then comes back within 20 km of the giver's |
 
 - **Far jobs:** a job to a station orbiting another body is tier 1 and pays 3×.
