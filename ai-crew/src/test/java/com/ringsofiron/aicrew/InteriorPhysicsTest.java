@@ -86,6 +86,27 @@ class InteriorPhysicsTest {
     }
 
     @Test
+    void crewHoldingTheSameSpotSettleSideBySideInsteadOfCircling() {
+        TestShips s = new TestShips(new ChassisBlueprint(
+                "#######",
+                "#.....#",
+                "#.....#",
+                "#.....#",
+                "#######"), false);
+        Entity a = walker(s, 3, 2), b = walker(s, 3, 2);
+        s.p(b).x += 0.05f;
+        s.p(b).y += 0.02f;
+        s.run(3f);
+        float ax = s.p(a).x, ay = s.p(a).y, bx = s.p(b).x, by = s.p(b).y;
+        s.run(3f);
+        float drift = (float) Math.max(Math.hypot(s.p(a).x - ax, s.p(a).y - ay), Math.hypot(s.p(b).x - bx, s.p(b).y - by));
+        assertTrue(drift < 0.02f, "they stand still once apart (moved " + drift + ")");
+        float d = distance(s, a, b);
+        assertTrue(d >= 2 * CrewBody.CORE_RADIUS - 0.02f && d < 2 * CrewBody.SOFT_RADIUS,
+                "close, inside each other's soft edge but out of the cores (" + d + ")");
+    }
+
+    @Test
     void theAvatarSlidesAlongWallsAndStopsShortOfThem() {
         TestShips s = corridor();
         Entity me = CrewFactory.spawnPlayer(s.crew, s.ship, "Me", 3, 1);
