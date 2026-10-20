@@ -7,6 +7,8 @@ import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
+import com.ringsofiron.combatsys.components.WeaponMountComponent;
+import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
@@ -202,6 +204,20 @@ public class PirateBoarding implements SaveParticipant {
         HostileComponent h = pirate == null ? null : pirate.getComponent(HostileComponent.class);
         reset();
         world.notices.post((h == null ? "The pirate" : h.displayName) + " " + why, NoticeLog.Kind.INFO);
+        if (pirate != null) standDown(world.getPlayer(), pirate);
+    }
+
+    /**
+     * The player's guns let go of {@code pirate}: docked with it alongside, a gun still locked on it
+     * opens up once the power is back, and its recoil tears the ship off the berth (seed 2026, round
+     * 7: torn loose seven times at Highport, the yard's work called off each time).
+     */
+    private static void standDown(Entity player, Entity pirate) {
+        if (player == null) return;
+        SensorComponent sensor = player.getComponent(SensorComponent.class);
+        if (sensor != null && sensor.lockedTarget == pirate) sensor.lockedTarget = null;
+        WeaponsComponent weapons = player.getComponent(WeaponsComponent.class);
+        if (weapons != null) for (WeaponMountComponent m : weapons.mounts) if (m.target == pirate) m.target = null;
     }
 
     /** The pirate boarding the player now, or null. */

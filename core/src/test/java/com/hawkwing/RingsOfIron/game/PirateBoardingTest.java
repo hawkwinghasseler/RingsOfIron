@@ -244,10 +244,14 @@ class PirateBoardingTest {
         HostileComponent h = hostiles.get(id);
         beatThePlayer();
         assertTrue(runUntil(600, () -> said.stream().anyMatch(n -> n.contains("has latched on"))), "latched on");
+        SensorComponent ours = game.player.getComponent(SensorComponent.class);
+        ours.lockedTarget = ship;
         assertTrue(game.dockAtHighport());
         run(2);
         assertNull(world.pirateBoarding.boarder(), "docked, the boarding is over");
         assertTrue(said.contains(h.displayName + " casts off: you are at a berth"));
+        // A gun left locked on it would open up from the berth once the power is back, and tear the latch
+        assertNotSame(ship, ours.lockedTarget, "our guns let it go");
         assertTrue(runUntil(5, () -> h.brokeOff));
         run(PirateBoarding.BOARD_SECONDS + 60);
         assertTrue(takes.isEmpty());
