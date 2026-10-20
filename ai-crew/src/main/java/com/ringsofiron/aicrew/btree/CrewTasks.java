@@ -362,8 +362,19 @@ public final class CrewTasks {
         }
     }
 
-    /** Carries the casualty to the nearest safe tile. */
+    /**
+     * Carries the casualty to the nearest safe tile. With nowhere aboard to carry them to (the whole
+     * ship holed), the rescuer puts the casualty's suit on them where they are instead, taking their
+     * own suit time, and leaves them for the next try.
+     */
     public static class CarryToSafety extends CrewLeaf {
+        private float suiting;
+
+        @Override
+        public void start() {
+            suiting = 0f;
+        }
+
         @Override
         public Status execute() {
             CrewAgent a = agent();
@@ -377,6 +388,13 @@ public final class CrewTasks {
             boolean destValid = dest != null && a.pos.isMoving() && !a.pos.pathBlocked && TaskRules.isSafe(grid, dest.x, dest.y);
             if (!destValid) {
                 if (!a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
+                    if (!c.suited && c.def.suitAir > 0f) {
+                        a.pos.stop();
+                        a.crew.activity = "putting a suit on " + c.name;
+                        suiting += a.dt;
+                        if (suiting < a.crew.def.suitTime) return Status.RUNNING;
+                        c.setSuited(true);
+                    }
                     a.abandonUnreachable();
                     return Status.FAILED;
                 }

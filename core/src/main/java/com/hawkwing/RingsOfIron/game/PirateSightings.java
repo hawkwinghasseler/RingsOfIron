@@ -63,7 +63,8 @@ public class PirateSightings extends EntitySystem {
         }
         double now = world.universe.now();
         for (Map.Entry<String, HostileComponent> e : hostiles.entrySet()) {
-            if (!e.getValue().isPirate()) continue;
+            // The base's moored guns are found with the base, not sighted on the lanes
+            if (!e.getValue().isPirate() || e.getValue().moored()) continue;
             Entity pirate = world.engine.getEntity(e.getKey());
             if (pirate == null || world.universe.orbit(pirate) == null) {
                 // In the bubble the world markers show it; it is no longer where the map last had it

@@ -25,7 +25,7 @@ Round 3, category 2. The player can pick a navigation target, see the closest ap
 ### Warp to burn and the burn marker
 - / (`WARP_TO_BURN`) sets rails warp by how far off the next burn is: 100,000x past 2 days, 10,000x past 3 hours, 1,000x past 10 minutes, otherwise 100x. `Navigation` is a `DropOutSource` and stops warp `WARP_LEAD` (60 s) before the burn. It refuses when the burn is 5 s or less away.
 - While the helm is ordered to fly burns, warp always drops out in time for that, with an extra `HelmOrders.TURN_LEAD` (120 s) plus half the burn time.
-- The readout shows "Next burn in T: N m/s", then "Then burns in ..." for up to three burns after it (round 5). `NavOverlay` draws an amber arrow and ring from the ship along the next burn on the outside view.
+- The readout shows "Next burn in T: N m/s", then "Then burns in ..." for up to three burns after it (round 5). `NavOverlay` draws an amber arrow from the ship along every planned burn on the outside view (round 6, below).
 
 ### Helm autopilot (`HelmOrders`)
 - Keys: 1 fly the planned burns, 2 match the target's velocity, 3 hold position relative to the target, 4 approach the target, 0 cancel. Pressing 4 again steps the distance off the hull through 500, 1,000, 2,000 and 250 m. The order lives in a `HelmOrderComponent` on the ship.
@@ -60,7 +60,7 @@ Round 3, category 2. The player can pick a navigation target, see the closest ap
 - `PropellantFeed.deltaVLeft` uses the rocket equation on the propellant the working engines draw on; a ship with no engine counts as unlimited.
 - The readout shows "Delta-v needed N / left M m/s", with "NOT ENOUGH PROPELLANT" when short. Needed is the proposal's total, or else the sum of the planned burns. Plan to target refuses a plan the tanks can't cover ("Not enough propellant: N m/s left").
 - Warship drives (the corvette, pirate corvette, light raider, gunship and frigate) run at an exhaust velocity of 700 km/s, set in `ships.toml` during integration. At the 100 km/s default the corvette had about 1,030 m/s against a 3,877 m/s trans-lunar burn; it now has about 7.2 km/s. `MoonTransferTest` flies the Moon plan at 1,000x, 10,000x and 100,000x warp.
-- `Navigation.returnDeltaV` estimates the delta-v to the nearest station that would give clearance (0 when docked at one), with `RoutePlanner.estimate`.
+- `Navigation.returnDeltaV` estimates the delta-v to the nearest station that would give clearance (0 when docked at one), with `RoutePlanner.estimate`. `returnPropellantKg` turns it into kg for `FlightWarnings` (round 6, below).
 
 ### Messages and hints
 Navigation posts to `world.notices`: dropped orders and cut burns as warnings, the rest as info. Its keys are registered with `world.hints` in the helm and weapons console contexts, with accept and discard put first while a proposal waits. Messages name keys from the player's bindings.
@@ -68,6 +68,7 @@ Navigation posts to `world.notices`: dropped orders and cut burns as warnings, t
 ## Saves
 - `NavTargetComponent` and `HelmOrderComponent` are plain components on the player's ship, so the serialization service writes them field by field: the target, the order, its target, approach distance, hold point, and a burn in progress with its remaining delta-v.
 - The rest of an accepted multi-body leg (`continueIn`, `continueTo`) is in `TransferLegComponent` on the player's ship, so after a save past the trans-lunar burn the capture is still proposed on reaching the Moon.
+- The transfer autopilot's state is `AutopilotComponent`, and its target and the navigation target keep pointing at the same ship after a load (round 6).
 - Not saved: a waiting proposal, the warp-to-burn flag, and `PirateSightings`. After a load pirates are known again when seen, and bounty targets at once.
 
 ## Tests
@@ -95,6 +96,11 @@ Navigation posts to `world.notices`: dropped orders and cut burns as warnings, t
 - The orbit map labels every planned burn with its number and countdown (`OrbitPath.nodeLabels`, drawn by `OrbitMap`).
 - A target on rails around another body has its orbit drawn about where that body is now: the lunar mine's from Earth orbit, or a planet station's from the Moon.
 
+### Round 6
+- **A marker for every planned burn.** `Navigation.plannedBurnMarkers` gives each burn still to come as a direction, delta-v and countdown, each after the first aimed on the orbit the burns before it leave (as the orbit map draws it). `NavOverlay` draws the next burn's arrow and ring as before, and each later one fainter and 22 px further out, all labelled "2: 3,084 m/s in 4m 10s" by their heads (`NavOverlay.drawLabels`, from the status pass).
+- **Low propellant means short of home.** `FlightWarnings` warns when the tanks hold less than 1.25 times the propellant navigation's trip home takes, whatever share of the tanks that is, and re-arms at 1.5 times; the warning names what home takes. Without a finite estimate (no friendly station in reach) it falls back on a fifth of the tanks. The estimate is refreshed once a second, not every frame, since it plans a route to every station.
+- **Targets across a save.** A ship keeps its UUID through a save and load (freighters on the rails and in the bubble, hostiles, the player), so the transfer autopilot and the helm hold their targets by UUID as before. `AutopilotTargetSaveTest` aims the autopilot at a freighter, saves, loads and flies its next burn, and checks the helm's approach to a ship in the bubble holds.
+- **Seed 7's Moon trip** stopped because the ship was latched to Highport twice (carried home by its crew, then docked again by the script) and the first latch's weld stayed after undocking, holding the ship through its burn. `DockingSystem.dockInPlace` now lets go of a port's old latch, and `GameScenario.dockAt` does nothing when already docked there (stations-docking Design).
+
 ## Not built
-- Only the next burn has a marker on the outside view.
 - The transfer autopilot flies burns as impulses. It does not fly them on the main engine unless the helm's fly-burns order is also given.

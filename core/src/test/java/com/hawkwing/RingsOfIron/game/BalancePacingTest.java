@@ -47,9 +47,6 @@ class BalancePacingTest {
     void setUp() {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         world = new GameWorld();
-        // The designed game hands out random UUIDs, and since round 5 a hit's shorts and bursts are
-        // rolled from the ship's UUID: seeded ones make each fight replay the same
-        world.engine.getEntityIds().seed(2026);
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
     }
 
@@ -103,20 +100,11 @@ class BalancePacingTest {
 
     @Test
     void theFirstRaiderComesInFiringAndTheFightLastsUnderFire() {
-        // A raider that closes slowly may be beaten before its guns reach: a few starts, a few
-        // hundredths of a second apart, and the first where it lands any rounds on the hull is the one
-        // checked. (Round 5: hits used to be counted by damage reports, which a chaingun round that
-        // only scars the armour never sends, so most of its hits went uncounted)
-        String said = null;
-        for (int start = 0; start < 3; start++) {
-            if (start > 0) {
-                world.dispose();
-                setUp();
-            }
-            said = firstFight(start);
-            if (said != null) break;
-        }
-        assertNotNull(said, "the raider lands hits in one of three fights");
+        // Round 6: on the first start, with no retries (round 5 tried three starts a few hundredths of a
+        // second apart, since a raider that closed slowly was often beaten before its guns reached).
+        // Hits are counted on the hull: a chaingun round that only scars the armour sends no damage report
+        String said = firstFight(0);
+        assertNotNull(said, "the raider lands hits");
         assertTrue(HostileTraffic.firepower(game.raider) < HostileTraffic.firepower(game.player), "and the raider is outgunned");
     }
 

@@ -9,21 +9,28 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.stationsdocking.DockingSystem;
 
 /**
- * Flight aids drawn over the outside view, in world meters: an arrow from the ship along the next
- * planned burn, and, closing on a free docking port within {@link PlayerDocking#READOUT_RANGE}, the
+ * Flight aids drawn over the outside view, in world meters: an arrow from the ship along every
+ * planned burn (the next one brightest and nearest the ship, the later ones fainter and further out,
+ * each labelled with its number and countdown), and, closing on a free docking port within {@link PlayerDocking#READOUT_RANGE}, the
  * approach corridor out from that port, green while the closing speed is safe for the distance,
  * amber over it and red well over it.
  */
 public class NavOverlay {
     private static final Color BURN = new Color(1f, 0.7f, 0.2f, 1f);
+    private static final Color LATER_BURN = new Color(1f, 0.7f, 0.2f, 0.5f);
+    /** Pixels from the ship to the next burn's arrowhead, and how much further out each later one is. */
+    static final float BURN_LENGTH = 60f, LATER_STEP = 22f;
     private static final Color SAFE = new Color(0.35f, 1f, 0.45f, 0.8f);
     private static final Color FAST = new Color(1f, 0.7f, 0.2f, 0.9f);
     private static final Color DANGER = new Color(1f, 0.25f, 0.2f, 1f);
 
     private final GameWorld world;
     private final PlayerDocking docking;
-    private final double[] burn = new double[3];
+    private final com.badlogic.gdx.utils.FloatArray burns = new com.badlogic.gdx.utils.FloatArray();
     private final Vector2 at = new Vector2();
+    /** Where each burn's label goes, world meters, and its text: filled by {@link #draw}. */
+    final com.badlogic.gdx.utils.FloatArray labelAt = new com.badlogic.gdx.utils.FloatArray();
+    final com.badlogic.gdx.utils.Array<String> labels = new com.badlogic.gdx.utils.Array<>();
 
     public NavOverlay(GameWorld world, PlayerDocking docking) {
         this.world = world;
@@ -40,20 +47,49 @@ public class NavOverlay {
         if (body == null) return;
         PhysicsManager.getPosition(body, at);
         shapes.begin(ShapeRenderer.ShapeType.Line);
-        if (world.nav.nextBurnDirection(burn)) {
-            float len = 60f * px;
-            float x1 = at.x + (float) burn[0] * len, y1 = at.y + (float) burn[1] * len;
-            shapes.setColor(BURN);
-            shapes.line(at.x + (float) burn[0] * 20f * px, at.y + (float) burn[1] * 20f * px, x1, y1);
-            // The head, and a ring to line the nose up on
-            float hx = -(float) burn[0] * 8f * px, hy = -(float) burn[1] * 8f * px;
+        world.nav.plannedBurnMarkers(burns);
+        labelAt.clear();
+        labels.clear();
+        for (int i = burns.size / 4 - 1; i >= 0; i--) {
+            float dx = burns.get(4 * i), dy = burns.get(4 * i + 1);
+            float len = (BURN_LENGTH + LATER_STEP * i) * px;
+            float x1 = at.x + dx * len, y1 = at.y + dy * len;
+            shapes.setColor(i == 0 ? BURN : LATER_BURN);
+            shapes.line(at.x + dx * 20f * px, at.y + dy * 20f * px, x1, y1);
+            // The head, and on the next burn a ring to line the nose up on
+            float hx = -dx * 8f * px, hy = -dy * 8f * px;
             shapes.line(x1, y1, x1 + hx - hy * 0.5f, y1 + hy + hx * 0.5f);
             shapes.line(x1, y1, x1 + hx + hy * 0.5f, y1 + hy - hx * 0.5f);
-            shapes.circle(x1, y1, 5f * px, 16);
+            if (i == 0) shapes.circle(x1, y1, 5f * px, 16);
+            labelAt.addAll(x1 + dx * 10f * px, y1 + dy * 10f * px);
+            labels.add(label(i + 1, burns.get(4 * i + 2), burns.get(4 * i + 3)));
         }
         DockingSystem.Approach a = docking.approach();
         if (a.target != null && a.distance > 1f) corridor(shapes, a, px);
         shapes.end();
+    }
+
+    /** "2: 3,084 m/s in 4m 10s" */
+    static String label(int number, float deltaV, float in) {
+        return String.format(java.util.Locale.ROOT, "%d: %,.0f m/s in %s", number, deltaV, Navigation.formatTime(in));
+    }
+
+    /**
+     * Writes each burn's label by its arrowhead, as {@link #draw} placed them this frame; {@code toUi}
+     * turns world meters into the UI coordinates {@code batch} draws in. Call inside the batch.
+     */
+    public void drawLabels(com.badlogic.gdx.graphics.g2d.SpriteBatch batch, com.badlogic.gdx.graphics.g2d.BitmapFont font,
+                           java.util.function.BiFunction<Float, Float, Vector2> toUi) {
+        for (int i = 0; i < labels.size; i++) {
+            Vector2 ui = toUi.apply(labelAt.get(2 * i), labelAt.get(2 * i + 1));
+            // labels were added last burn first: the next burn's is the last one
+            font.setColor(i == labels.size - 1 ? BURN : LATER_BURN);
+            font.draw(batch, labels.get(i), ui.x + 4f, ui.y + 6f);
+        }
+        font.setColor(Color.WHITE);
+        // Drawn once: a frame without the outside view leaves none behind
+        labels.clear();
+        labelAt.clear();
     }
 
     /** Out along the target port's normal past the ship, widening with distance. */

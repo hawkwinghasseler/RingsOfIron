@@ -98,6 +98,60 @@ class CrewHealthTest {
         assertNotEquals(CrewState.DEAD, s.c(casualty).state);
     }
 
+    /** Holds the air of the compartment over (x, y) at {@code share} of standard for {@code seconds}. */
+    private static void thinAir(TestShips s, int x, int y, double share, float seconds) {
+        float dt = 1f / 30f;
+        for (float t = 0; t < seconds; t += dt) {
+            Compartment room = s.grid.compartmentAt(x, y);
+            double full = room.volume * Compartment.STANDARD_PRESSURE * 1000.0 / (Compartment.R * room.temperature);
+            room.oxygen = Math.min(room.oxygen, share * full * Compartment.STANDARD_O2_FRACTION);
+            room.nitrogen = Math.min(room.nitrogen, share * full * (1 - Compartment.STANDARD_O2_FRACTION));
+            s.engine.update(dt);
+        }
+    }
+
+    @Test
+    void aDownedCaptainIsCarriedOutOfAVentingRoomToAir() {
+        // Two rooms with a shut door between; the right one losing its air
+        TestShips s = new TestShips(new com.ringsofiron.interiorgrid.ChassisBlueprint(
+                "###########",
+                "#....I....#",
+                "#.........#",
+                "#....I....#",
+                "###########")
+                .edgeWall(5, 2, com.ringsofiron.interiorgrid.Side.LEFT, com.ringsofiron.interiorgrid.WeightClass.MEDIUM, true), true);
+        s.grid.getEdge(5, 2, com.ringsofiron.interiorgrid.Side.LEFT).bulkheadSealed = true;
+        s.grid.gridDirty = true;
+        s.run(0.1f);
+        Entity you = CrewFactory.spawnPlayer(s.crew, s.ship, "You", 8, 2);
+        Entity medic = s.spawn(CrewRole.MEDIC, 0, 1, 2);
+        s.crew.applyDamage(you, 80f, DamageCause.ASPHYXIATION);
+        thinAir(s, 8, 2, 0.28, 3f);
+        assertEquals(CrewState.UNCONSCIOUS, s.c(you).state, "the captain went down in the thin air");
+        thinAir(s, 8, 2, 0.28, 30f);
+        GridPositionComponent p = s.p(you);
+        assertTrue(p.tileX() < 5, "carried through the door to the other room, now at " + p.tileX());
+        assertTrue(TaskRules.isSafe(s.grid, p.tileX(), p.tileY()));
+        assertNull(s.c(medic).carrying);
+        assertTrue(s.c(you).isAlive());
+    }
+
+    @Test
+    void withNoAirAboardARescuerPutsTheCasualtysSuitOn() {
+        TestShips s = room();
+        Entity you = CrewFactory.spawnPlayer(s.crew, s.ship, "You", 7, 2);
+        Entity medic = s.spawn(CrewRole.MEDIC, 0, 2, 2);
+        s.crew.applyDamage(you, 80f, DamageCause.ASPHYXIATION);
+        thinAir(s, 7, 2, 0.28, 3f);
+        assertEquals(CrewState.UNCONSCIOUS, s.c(you).state);
+        assertFalse(s.c(you).suited);
+        thinAir(s, 7, 2, 0.28, 20f);
+        assertTrue(s.c(you).suited, "suited where they lay: nowhere aboard has air");
+        assertTrue(s.c(medic).suited, "the medic suited up to go in");
+        thinAir(s, 7, 2, 0.28, 60f);
+        assertTrue(s.c(you).isAlive(), "breathing from the suit");
+    }
+
     @Test
     void unconsciousCrewRecoverOnASafeTile() {
         TestShips s = room();

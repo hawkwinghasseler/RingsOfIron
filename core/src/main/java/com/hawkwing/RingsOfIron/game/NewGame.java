@@ -17,6 +17,13 @@ public final class NewGame {
     /** Freighters a seeded game adds to the one based at each station, at most. */
     public static final int EXTRA_FREIGHTERS = 4;
 
+    /**
+     * The seed of the designed start's UUIDs. 2026, which the round 5 tests that fight in a designed
+     * game were first seeded with by hand; with some other UUIDs, the first fight in
+     * {@code PlayableLoopTest} holes the ship and the captain goes down while stripping the prize.
+     */
+    public static final long DESIGNED_IDS = 2026;
+
     public final long seed;
     /** False for the designed start: no variation, and the round-2 dice. */
     public final boolean seeded;

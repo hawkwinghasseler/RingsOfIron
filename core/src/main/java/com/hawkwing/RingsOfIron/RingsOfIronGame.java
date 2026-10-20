@@ -960,7 +960,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         shapes.end();
         bodies.clear();
         drawCombat(Gdx.graphics.getDeltaTime());
-        // The next burn's direction, and the corridor into a docking port
+        // Every planned burn's direction, and the corridor into a docking port
         navOverlay.draw(shapes, viewports.getViewMeters() / 400f);
         // Navigation lights and the glow of running systems, a few pixels across at least
         lighting.renderGlow(batch, viewports.getWorldCamera(), 2.5f * viewports.getViewMeters() / 400f);
@@ -1219,6 +1219,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         float top = viewports.getUiViewport().getWorldHeight() - 10f;
         TimeWarpController warp = world.timeWarp;
         double t = world.engine.getSimSeconds();
+        // Each planned burn's number and countdown, by its arrow on the outside view
+        navOverlay.drawLabels(batch, font, (x, y) -> viewports.worldToUi(x, y, tmp2));
         font.setColor(Color.WHITE);
         font.draw(batch, String.format("Day %d  %02d:%02d:%02d    Warp %dx%s", (long) (t / 86400),
                 (long) (t / 3600) % 24, (long) (t / 60) % 60, (long) t % 60, warp.getWarp(),

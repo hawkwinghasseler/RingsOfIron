@@ -83,6 +83,16 @@ public class HostileComponent implements Component {
     public boolean partDropped;
     /** It has fought the player in the bubble since it last came in: leaving the bubble whole, it got away. */
     public boolean foughtPlayer;
+    /**
+     * A gun platform moored at its station (round 6: the pirate base's own guns): meters behind the
+     * station it rides, as a lurk's offset. It never flies, hunts or plunders. 0 for a ship that flies.
+     */
+    public double mooring;
+    /**
+     * True once it has surrendered to the player (round 6): a prize, it never goes after them again,
+     * in the bubble or on the rails, until they fire on it again.
+     */
+    public boolean surrendered;
     public transient long eventId;
 
     public HostileComponent() {
@@ -98,6 +108,11 @@ public class HostileComponent implements Component {
 
     public boolean isPirate() {
         return role == Role.PIRATE;
+    }
+
+    /** True for a gun platform moored at its station ({@link #mooring}). */
+    public boolean moored() {
+        return mooring > 0;
     }
 
     /** True when it is going after the player. */

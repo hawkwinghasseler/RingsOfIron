@@ -59,6 +59,30 @@ class CrewBehaviorTest {
     }
 
     @Test
+    void engineersSealABreachBehindAMachineByReachingAcrossIt() {
+        // Seed 12's first fight: the hull holed behind a machine, whose footprint is the only tile
+        // beside the breach. The crew reach across the machine to seal it, as they do to patch a leak
+        TestShips s = new TestShips(
+                "#######",
+                "#.....#",
+                "#....R#",
+                "#.....#",
+                "#######");
+        Tile breach = s.grid.getTile(6, 2);
+        assertNotNull(s.grid.getTile(5, 2).mount, "a machine stands against the hull");
+        breach.setIntegrity(0f);
+        s.grid.gridDirty = true;
+        assertTrue(breach.isHullBreach());
+        Entity e = s.spawn(CrewRole.ENGINEER, 0, 1, 1);
+        s.run(30f);
+        assertFalse(breach.isHullBreach(), "sealed from across the machine");
+        assertTrue(breach.bulkheadSealed);
+        assertTrue(s.c(e).isConscious());
+        GridPositionComponent p = s.p(e);
+        assertEquals(4, p.tileX(), "worked from the far side of the machine");
+    }
+
+    @Test
     void hostileInSightInterruptsWork() {
         TestShips s = CrewHealthTest.room();
         Tile t = s.grid.getTile(8, 3);
