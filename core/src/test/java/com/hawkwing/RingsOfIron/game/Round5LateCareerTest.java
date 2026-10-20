@@ -190,9 +190,11 @@ class Round5LateCareerTest {
 
     @Test
     void defendersGrowWithDifficulty() {
+        // Round 7: one more for each 0.6 of difficulty past 1, so a Captain's frigate meets four
         assertEquals(2, PirateBase.defendersFor(1.0));
-        assertEquals(2, PirateBase.defendersFor(1.9));
+        assertEquals(2, PirateBase.defendersFor(1.5));
         assertEquals(3, PirateBase.defendersFor(2.0));
+        assertEquals(4, PirateBase.defendersFor(2.3));
         assertEquals(PirateBase.MAX_DEFENDERS, PirateBase.defendersFor(9));
     }
 

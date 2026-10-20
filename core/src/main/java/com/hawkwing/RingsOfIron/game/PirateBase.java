@@ -65,14 +65,17 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     public static final double STRIKE_RANGE = 20_000;
     /** How far from the base the defenders launch, m, each a little further round. */
     static final double LAUNCH_OFFSET = 4_000;
-    /** Difficulty for each defender past the first two: the knob to tune the raid by (round 6 keeps round 5's 1). */
-    public static final double DIFFICULTY_PER_DEFENDER = 1.0;
+    /**
+     * Difficulty for each defender past the first two: the knob to tune the raid by. Round 7 lowers
+     * round 5's 1 so a Commander's gunship meets three and a Captain's frigate four.
+     */
+    public static final double DIFFICULTY_PER_DEFENDER = 0.6;
     /** Most defenders the base scrambles. */
     public static final int MAX_DEFENDERS = 4;
     /** Tension eased between every pair of lawful factions when the base falls. */
     public static final float FALL_RELIEF = 15f;
-    /** The rest of the defence launches this long after the first defender at the latest, sim seconds. */
-    public static final double SECOND_WAVE_SECONDS = 90;
+    /** The rest of the defence launches this long after the first defender at the latest, sim seconds (round 6: 90). */
+    public static final double SECOND_WAVE_SECONDS = 45;
     /** Gun platforms the base mans. */
     public static final int BATTERIES = 2;
     /** How far behind the base, along its orbit, the first gun platform is moored, and each next one further, m. */
@@ -219,8 +222,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     /**
      * Defenders the base scrambles at difficulty {@code d}: two, and one more for each
      * {@link #DIFFICULTY_PER_DEFENDER} above 1, up to {@link #MAX_DEFENDERS}. A Captain's frigate
-     * (difficulty about 2.3) meets three, and with the launch order and its harpoons fixed (round 6),
-     * wins on seed 2026.
+     * (difficulty about 2.3 to 2.5) meets four (round 7; three before).
      */
     public static int defendersFor(double d) {
         return Math.min(MAX_DEFENDERS, 2 + (int) Math.floor(Math.max(0, d - 1) / DIFFICULTY_PER_DEFENDER));
@@ -238,6 +240,11 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
      */
     public List<String> defenders() {
         return java.util.Collections.unmodifiableList(defenders);
+    }
+
+    /** True if the pirate named {@code name} is one of the wing the base scrambled, while it stands. */
+    public boolean defending(String name) {
+        return standing() && name != null && defenders.contains(name);
     }
 
     /** True while a defender it scrambled is still in the fight: in the bubble, not beaten and not driven off. */

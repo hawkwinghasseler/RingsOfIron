@@ -369,8 +369,9 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             notices.add(h.displayName + " is breaking off");
         }
         if (!h.brokeOff && h.isPirate() && leaderDone(h)) {
-            if (stillComing(e, h)) {
-                // Still on its run in, it came to fight: it fights on alone rather than turn for home unfired
+            if (stillComing(e, h) || world.pirateBase.defending(h.displayName)) {
+                // Still on its run in, it came to fight: it fights on alone rather than turn for home
+                // unfired. Nor does the base's defence leave it while it stands
                 h.wingOf = null;
                 notices.add(h.displayName + " fights on without its leader");
             } else {
@@ -953,11 +954,16 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
      */
     public List<String> moorGuns(String station, int count, double spacing) {
         List<String> out = new ArrayList<>();
+        boolean railgun = false;
         for (int i = 0; i < count; i++) {
             Entity ship = spawnShip(BATTERY, PIRATE_CREW);
             if (ship == null) break;
             String name = "Den battery " + (++spawned);
-            LoadoutDef loadout = Loadouts.pick(world.combatDefs, BATTERY, difficulty.getAsDouble(), false, loadoutDice(BATTERY, spawned));
+            java.util.Random dice = loadoutDice(BATTERY, spawned);
+            LoadoutDef loadout = Loadouts.pick(world.combatDefs, BATTERY, difficulty.getAsDouble(), false, dice);
+            // One railgun platform at most: the next draws again from the fits without one
+            if (loadout != null && railgun && railgun(loadout)) loadout = pickWithoutRailgun(difficulty.getAsDouble(), dice);
+            railgun |= loadout != null && railgun(loadout);
             if (loadout != null) Loadouts.apply(ship, loadout, world.combatDefs);
             HostileComponent h = new HostileComponent(name, BATTERY, PIRATES, HostileComponent.Role.PIRATE, firepower(ship));
             h.loadout = loadout == null ? null : loadout.id;
@@ -968,6 +974,28 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             out.add(uuid);
         }
         return out;
+    }
+
+    private static boolean railgun(LoadoutDef loadout) {
+        for (String w : loadout.weapons) if (w != null && w.startsWith("railgun")) return true;
+        return false;
+    }
+
+    /** A gun platform's fit drawn as {@link Loadouts#pick} draws, from those without a railgun; null if none. */
+    private LoadoutDef pickWithoutRailgun(double d, java.util.Random dice) {
+        List<LoadoutDef> fits = new ArrayList<>();
+        double total = 0;
+        for (LoadoutDef l : Loadouts.candidates(world.combatDefs, BATTERY, d, false)) {
+            if (railgun(l)) continue;
+            fits.add(l);
+            total += l.weight;
+        }
+        double roll = dice.nextDouble() * total;
+        for (LoadoutDef l : fits) {
+            roll -= l.weight;
+            if (roll < 0) return l;
+        }
+        return fits.isEmpty() ? null : fits.get(fits.size() - 1);
     }
 
     /**
