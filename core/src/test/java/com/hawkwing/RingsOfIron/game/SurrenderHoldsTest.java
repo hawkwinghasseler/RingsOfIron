@@ -126,6 +126,34 @@ class SurrenderHoldsTest {
         assertFalse(h.surrendered, "fired on again, the surrender is off");
     }
 
+    @Test
+    void aBeatenAceStaysStruckWhenFiredOnAgain() {
+        String id = pirate();
+        HostileComponent h = world.macroSim.hostiles().get(id);
+        h.targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 2_500, 0);
+        assertTrue(PirateAces.promote(world, ship, h, world.macroSim.hostiles().all().values(), 1, false));
+        run(3);
+        for (SubsystemComponent s : turrets(ship)) s.health = 0f;
+        run(2);
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
+        assertTrue(h.partDropped, "beaten: its part is crated and its bounty pays");
+        assertTrue(FirstPlay.aceBeaten(ship));
+        for (SubsystemComponent s : turrets(ship)) s.health = 1f;
+        run(15);
+
+        // The player's guns go on firing past the grace: the ace stays struck, and out of the fight
+        AtomicInteger shots = shotsBy(ship);
+        world.combatEvents.impacts.dispatch(hitFromPlayer(ship, 0.5f));
+        world.hostiles.onShotAt(ship, game.player);
+        assertTrue(h.surrendered);
+        run(10);
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship), "never back in action");
+        assertNull(ship.getComponent(NpcCombatComponent.class));
+        assertFalse(h.brokeOff, "nor running");
+        assertEquals(0, shots.get());
+    }
+
     // ------------------------------------------------------------------
 
     private com.ringsofiron.combatsys.events.ImpactEvent hitFromPlayer(Entity ship, float sinceFired) {

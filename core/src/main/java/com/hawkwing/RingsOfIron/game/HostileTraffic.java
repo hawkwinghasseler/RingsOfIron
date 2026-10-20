@@ -115,6 +115,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     private final GameWorld world;
     private final HostileTrafficController controller;
+    /** Pirates' refuelling on the rails (round 8). */
+    private final PirateUpkeep upkeep;
     /**
      * How hard the game is: 1 is the default. Scales the pirate population; the loop merge points it
      * at the game's difficulty setting.
@@ -160,6 +162,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     private HostileTraffic(GameWorld world) {
         this.world = world;
         controller = world.macroSim.hostiles();
+        upkeep = new PirateUpkeep(world);
         controller.addListener(this);
         controller.playerFirepower = () -> firepower(world.getPlayer());
         world.macroSim.bubble().addListener(this);
@@ -236,6 +239,12 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         sentPatrols.clear();
         busySince.clear();
         alongside.clear();
+        upkeep.last = Double.NaN;
+    }
+
+    /** Rails time pirates' refuelling last ran at ({@link PirateUpkeep}); NaN before it first runs. */
+    double upkeepClock() {
+        return upkeep.last;
     }
 
     /** The number a hostile's name ends with ("Pirate raider 3"), or 0. */
@@ -341,6 +350,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         since += deltaTime;
         if (since < CHECK_SECONDS) return;
         since = 0f;
+        upkeep.update(controller.all(), now);
         for (String id : world.macroSim.bubble().inBubble()) {
             Entity e = world.engine.getEntity(id);
             HostileComponent h = e == null ? null : e.getComponent(HostileComponent.class);
@@ -729,6 +739,10 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             if (side < 0 || !world.standing.hostile(FactionStanding.PLAYER, side)) return;
         }
         if (h.surrendered) {
+            // A beaten ace whose bounty paid stays struck, fired on or not (round 8: in the window Black
+            // Sal surrendered, the bounty paid, and the gunship's guns, still firing, brought it back
+            // into the fight and set it running)
+            if (h.partDropped) return;
             // A prize stays one unless the player fires on it again. A round or missile fired before
             // it gave up doesn't count, however long it flew: a heavy missile's fragments landing
             // 15 s after a surrender lifted it on seed 12, and the prize then tore the boarding latch
@@ -792,6 +806,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     public void plundered(String hostile, String freighter, String commodity, double quantity, double t) {
         HostileComponent h = controller.get(hostile);
         Entity e = world.engine.getEntity(hostile);
+        // Round 8: it fills up from its prey's reaction mass before anything else
+        if (e != null) PirateUpkeep.robbed(e, world.engine.getEntity(freighter));
         if (h == null || e == null || h.ace || h.plunders < PirateAces.PLUNDERS_TO_ACE) return;
         String was = h.displayName;
         if (PirateAces.promote(world, e, h, controller.all().values(), difficulty.getAsDouble(), false)) {
@@ -838,6 +854,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         json.writeValue("playerGraceUntil", controller.playerGraceUntil);
         writeTimes(json, "busySince", busySince);
         writeTimes(json, "alongside", alongside);
+        if (!Double.isNaN(upkeep.last)) json.writeValue("upkeepAt", upkeep.last);
     }
 
     @Override
@@ -850,6 +867,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         controller.playerGraceUntil = data.getDouble("playerGraceUntil", 0);
         readTimes(data.get("busySince"), busySince);
         readTimes(data.get("alongside"), alongside);
+        upkeep.last = data.getDouble("upkeepAt", Double.NaN);
     }
 
     private static void writeTimes(Json json, String name, Map<String, Double> times) {

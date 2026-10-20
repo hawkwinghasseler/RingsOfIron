@@ -372,6 +372,7 @@ abstract class CareerScript {
         double t0 = world.engine.getSimSeconds();
         float hull0 = hull(game.player);
         int crew0 = ownCrew().size();
+        if (h != null) log("  as it opens: %s.", openingState(ship, h));
         ShipGridComponent ours = game.player.getComponent(ShipGridComponent.class), theirs = ship.getComponent(ShipGridComponent.class);
         int[] incidents0 = {ours.shortCount, ours.burstCount, theirs == null ? 0 : theirs.shortCount, theirs == null ? 0 : theirs.burstCount};
         // Shot down at the helm, the player is carried home by the crew: the fight is lost
@@ -422,6 +423,42 @@ abstract class CareerScript {
         assertTrue(over || ran, "the fight ends one way or the other");
         if (!won) fightsLost++;
         return won;
+    }
+
+    /**
+     * A hostile's state as a fight with it opens (round 8): its tanks, how many of its own crew are
+     * up, the systems a short or damage has out, and why it is already beaten, if it is.
+     */
+    String openingState(Entity ship, HostileComponent h) {
+        com.ringsofiron.physicsexterior.components.ThrusterComponent t =
+                ship.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
+        // What the propellant tanks hold, and what the thrusters can draw: the feed gives them nothing
+        // while the engines are down, so the two differ on a ship whose tanks are full but can't burn
+        double held = 0, capacity = 0;
+        ShipSubsystemRegistryComponent tanksOf = ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (tanksOf != null) {
+            for (SubsystemComponent tank : com.ringsofiron.interiorgrid.TankSupply.tanks(tanksOf, com.ringsofiron.interiorgrid.Fluid.PROPELLANT)) {
+                held += tank.contents;
+                capacity += tank.capacity;
+            }
+        }
+        String tanks = String.format(Locale.ROOT, "tanks %.0f of %.0f kg, thrusters see %.0f", held, capacity, t == null ? 0f : t.fuel);
+        int[] crew = world.disablement.crewCount(ship);
+        ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
+        List<String> shorted = new ArrayList<>(), out = new ArrayList<>();
+        if (registry != null) {
+            for (Entity e : registry.subsystems) {
+                SubsystemComponent s = e == null ? null : e.getComponent(SubsystemComponent.class);
+                if (s == null) continue;
+                if (s.shorted) shorted.add(s.type.name().toLowerCase(Locale.ROOT));
+                else if (!s.isOperational || s.isDisabled()) out.add(s.type.name().toLowerCase(Locale.ROOT));
+            }
+        }
+        DisabledComponent.Reason beaten = ShipDisablement.reason(ship);
+        return String.format(Locale.ROOT, "%s, crew %d of %d up, shorted %s, out %s, hull %.2f, %s, %d plunders",
+                tanks, crew[1], crew[0], shorted.isEmpty() ? "none" : String.join("/", shorted),
+                out.isEmpty() ? "none" : String.join("/", out), hull(ship),
+                beaten == null ? "not beaten" : "already beaten (" + beaten.label + ")", h.plunders);
     }
 
     /**

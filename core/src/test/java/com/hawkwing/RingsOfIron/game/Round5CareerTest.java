@@ -245,7 +245,10 @@ class Round5CareerTest extends CareerScript {
         }
         HostileComponent h = target.getComponent(HostileComponent.class);
         undockForAFight();
-        if (target.getComponent(PhysicsBodyComponent.class) == null) bringIn(c.targetUuid, 3_000, 0);
+        boolean onRails = target.getComponent(PhysicsBodyComponent.class) == null;
+        if (h != null) log("  found it %s.", onRails ? "on the rails (" + h.state + "), brought in at 3 km"
+                : String.format(java.util.Locale.ROOT, "in the bubble (%s), %.0f m off", h.state, range(game.player, target)));
+        if (onRails) bringIn(c.targetUuid, 3_000, 0);
         else flyTo(target, 3_000f);
         if (h != null) h.targetUuid = HostileComponent.PLAYER;
         if (!savedAFight && "gunship_heavy".equals(game.player.getComponent(DefRefComponent.class).defId)) {
