@@ -120,6 +120,29 @@ public final class NoticeLog {
         return post(text, kind);
     }
 
+    /**
+     * Puts {@code text} in place of {@code old}, on screen and in the log, for a warning that grows
+     * while it is still the same event (a missile salvo's count): one line, and no second sound.
+     * Posts it afresh if {@code old} has left the log. Returns the notice now holding it.
+     */
+    public Notice revise(Notice old, String text) {
+        if (text == null || text.isEmpty()) return old;
+        if (old == null || !history.contains(old)) return post(text, old == null ? Kind.INFO : old.kind);
+        Notice n = new Notice(text, old.kind, old.time);
+        n.left = Math.max(old.left, old.kind.seconds);
+        List<Notice> kept = new ArrayList<>(history);
+        kept.set(kept.indexOf(old), n);
+        history.clear();
+        history.addAll(kept);
+        int at = showing.indexOf(old);
+        if (at >= 0) showing.set(at, n);
+        else {
+            showing.add(0, n);
+            while (showing.size() > STACK) showing.remove(showing.size() - 1);
+        }
+        return n;
+    }
+
     private Notice find(String text) {
         for (Notice n : showing) if (n.text.equals(text)) return n;
         return null;
