@@ -9,6 +9,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
@@ -261,16 +262,42 @@ public class Rescue {
         CrewMemberComponent c = avatar.getComponent(CrewMemberComponent.class);
         c.state = com.ringsofiron.aicrew.CrewState.CONSCIOUS;
         c.health = c.def.maxHealth * 0.5f;
+        // Patched up on the way: hurt, but no wound left to bleed from or slow them
+        c.wound = com.ringsofiron.aicrew.Wound.NONE;
+        c.care = c.bleedOut = c.healing = 0f;
         c.activity = "idle";
         c.treatedBy = null;
         if (c.carriedBy != null) world.crew.releaseTask(c.carriedBy);
         GridPositionComponent p = avatar.getComponent(GridPositionComponent.class);
-        if (p.ship != ship) {
-            List<int[]> floor = GameScenario.floorTiles(ship.getComponent(ShipGridComponent.class));
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        // Laid somewhere they can breathe, or suited with a fresh bottle when the whole ship is holed:
+        // waking where they fell, in a vented room, they'd go down again at once
+        boolean safeWhereTheyLie = p.ship == ship && TaskRules.isSafe(grid, p.tileX(), p.tileY());
+        if (!safeWhereTheyLie) {
+            List<int[]> floor = GameScenario.floorTiles(grid);
+            int[] to = null;
+            for (int[] t : floor) {
+                if (TaskRules.isSafe(grid, t[0], t[1])) {
+                    to = t;
+                    break;
+                }
+            }
+            if (to == null && !floor.isEmpty()) to = floor.get(0);
             p.stop();
             p.crossing = null;
             p.setShip(ship);
-            if (!floor.isEmpty()) p.setTile(floor.get(0)[0], floor.get(0)[1]);
+            if (to != null) p.setTile(to[0], to[1]);
+            if (to == null || !TaskRules.isSafe(grid, to[0], to[1])) {
+                c.setSuited(false);
+                c.setSuited(true);
+            }
+        }
+        // Already in at a station: the crew carry you to its doctor, and the ship stays latched (and the yard's work on it goes on)
+        Entity docked = world.docking.dockedTo(ship);
+        StationComponent at = docked == null ? null : docked.getComponent(StationComponent.class);
+        if (at != null) {
+            tows.dispatch(new Tow(ship, docked, at.name, 0));
+            return null;
         }
         return tow(ship);
     }
@@ -309,13 +336,26 @@ public class Rescue {
      * passed: 0 if rails warp was refused, when the new ship still ends up at the station.
      */
     private double skipTo(Entity ship, Entity station) {
+        return skipTo(ship, station, ARRIVAL_OFFSET, TIME_SKIP);
+    }
+
+    /**
+     * Puts {@code ship} on {@code station}'s orbit {@code behind} meters back from it, at once, and
+     * rebuilds the bubble there: a jump for scripted careers and tests (round 5's raid on the
+     * pirates' base), with no time skipped. The ship should not be docked.
+     */
+    void jumpBeside(Entity ship, Entity station, double behind) {
+        skipTo(ship, station, behind, 0);
+    }
+
+    private double skipTo(Entity ship, Entity station, double offset, double timeSkip) {
         world.macroSim.setBubbleSuspended(true);
         bubble.collapseToRails();
         double t = world.engine.getSimSeconds();
         OrbitComponent so = station.getComponent(OrbitComponent.class);
         so.stateAt(t, state);
         double v = Math.hypot(state.vx, state.vy);
-        double back = v > 0 ? ARRIVAL_OFFSET / v : 0;
+        double back = v > 0 ? offset / v : 0;
         OrbitComponent orbit = new OrbitComponent(so.parentUuid, KeplerOrbit.fromState(
                 state.x - state.vx * back, state.y - state.vy * back, state.vx, state.vy, so.mu, t));
         orbit.attitude = Math.atan2(state.vy, state.vx);
@@ -325,8 +365,8 @@ public class Rescue {
             world.orbitalEvents.orbitChanged(ship);
         }
         double skipped = 0;
-        if (world.engine.advanceRails(SimClock.secondsToTicks(TIME_SKIP))) {
-            skipped = TIME_SKIP;
+        if (timeSkip > 0 && world.engine.advanceRails(SimClock.secondsToTicks(timeSkip))) {
+            skipped = timeSkip;
             world.orbitalEvents.processUntil(world.engine.getSimSeconds());
         }
         bubble.rebuildFromRails();

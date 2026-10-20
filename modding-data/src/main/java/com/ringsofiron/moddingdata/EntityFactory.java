@@ -81,7 +81,7 @@ public class EntityFactory {
             throw new IllegalArgumentException("Unknown " + defType + " '" + defId + "'. Known: " + defs.ids(defType));
         }
         Entity entity = engine.createEntity();
-        entity.add(new UuidComponent());
+        entity.add(new UuidComponent(engine.newUuid()));
         entity.add(new TransformComponent(x, y, rotation));
         entity.add(new DefRefComponent(defType, defId));
         for (ComponentAssembler a : assemblers(defType)) a.assemble(entity, def, this);

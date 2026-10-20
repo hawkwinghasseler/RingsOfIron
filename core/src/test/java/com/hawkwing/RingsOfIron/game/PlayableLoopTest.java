@@ -53,6 +53,9 @@ class PlayableLoopTest {
     void setUp() {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         world = new GameWorld();
+        // The designed game hands out random UUIDs, and since round 5 a hit's shorts and bursts are
+        // rolled from the ship's UUID: seeded ones make each fight replay the same
+        world.engine.getEntityIds().seed(2026);
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
     }
 
@@ -205,7 +208,9 @@ class PlayableLoopTest {
         world.standing.reward(world.standing.sponsor(), 40f, "test");
         assertEquals(2, world.standing.record().rank);
         assertEquals("gunship_heavy", world.loop.bestRequisition());
-        Contract held = world.contracts.offers(game.highport).get(0);
+        // A plain job: the operations heading the board may have nothing to do just now
+        Contract held = world.contracts.offers(game.highport).stream()
+                .filter(c -> c.type != Contract.Type.OPERATION && c.type != Contract.Type.RAID).findFirst().orElseThrow();
         assertNull(world.contracts.accept(held.id));
         game.player.getComponent(TraderComponent.class).credits = 9_000;
 

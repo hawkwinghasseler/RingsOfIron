@@ -20,7 +20,8 @@ import java.util.Locale;
  * The crew roster: everyone aboard with their skills, condition, morale, wage and record, and a
  * button to let each go while docked; while docked at a station that hires, who is looking for a
  * berth, with a button to hire each; and the prisoners held aboard, with what can be done with
- * them. Refreshes from the {@link CrewProvider} a few times a second.
+ * them, and how each is; and whether the crew suit up at battle stations, with a button to
+ * change it. Refreshes from the {@link CrewProvider} a few times a second.
  */
 public class CrewWindow extends Window {
     public static final float REFRESH_INTERVAL = 0.5f;
@@ -38,7 +39,9 @@ public class CrewWindow extends Window {
     private String shown = null;
     /** Labels updated in place: each crew member's condition, morale and record. */
     private final Array<Label> conditions = new Array<>(), morales = new Array<>(), histories = new Array<>(),
-            skills = new Array<>();
+            skills = new Array<>(), prisonerConditions = new Array<>();
+    /** Suits at battle stations, and the button that turns them on or off. */
+    private final Label suits;
 
     public CrewWindow(Skin skin) {
         super("", skin);
@@ -49,7 +52,12 @@ public class CrewWindow extends Window {
         getTitleTable().padLeft(8f);
         summary = new Label("", skin, "dim");
         status = new Label("", skin, "dim");
+        suits = new Label("", skin);
         add(summary).left().row();
+        Table suitRow = new Table();
+        suitRow.add(suits).left().padRight(12f);
+        suitRow.add(button("Change", () -> say(provider.toggleSuits())));
+        add(suitRow).left().padTop(4f).row();
         add(crew).left().padTop(8f).row();
         add(prisoners).left().padTop(12f).row();
         add(hires).left().padTop(12f).row();
@@ -110,6 +118,7 @@ public class CrewWindow extends Window {
         }
         getTitleLabel().setText(title(sheet));
         summary.setText(sheet.summary);
+        suits.setText(sheet.suits);
         String now = signature();
         if (!now.equals(shown)) {
             rebuild();
@@ -122,6 +131,9 @@ public class CrewWindow extends Window {
             morales.get(i).setText(m.morale);
             histories.get(i).setText(m.history);
             skills.get(i).setText(m.skills);
+        }
+        for (int i = 0; i < prisonerConditions.size && i < sheet.prisoners.size; i++) {
+            prisonerConditions.get(i).setText(sheet.prisoners.get(i).condition);
         }
     }
 
@@ -156,11 +168,15 @@ public class CrewWindow extends Window {
         }
 
         prisoners.clearChildren();
+        prisonerConditions.clear();
         if (sheet.prisoners.size > 0 || sheet.prisonersAlongside) {
-            prisoners.add(new Label("Prisoners", skin, "dim")).left().colspan(4).row();
+            prisoners.add(new Label("Prisoners", skin, "dim")).left().colspan(5).row();
             for (Prisoner p : sheet.prisoners) {
                 prisoners.add(new Label(p.name, skin)).left().padRight(12f);
                 prisoners.add(new Label(p.detail, skin, "dim")).left().padRight(12f);
+                Label cond = new Label(p.condition, skin);
+                prisonerConditions.add(cond);
+                prisoners.add(cond).left().padRight(12f);
                 long id = p.id;
                 if (!p.option.isEmpty()) prisoners.add(button(p.option, () -> say(provider.settlePrisoner(id)))).padRight(6f);
                 else prisoners.add();
@@ -169,7 +185,7 @@ public class CrewWindow extends Window {
                 prisoners.row();
             }
             if (sheet.prisonersAlongside) {
-                prisoners.add(button("Bring prisoners aboard", () -> say(provider.takePrisoners()))).left().colspan(4).row();
+                prisoners.add(button("Bring prisoners aboard", () -> say(provider.takePrisoners()))).left().colspan(5).row();
             }
         }
 

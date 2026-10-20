@@ -35,18 +35,22 @@ Rustwake, a Void Raiders station of the new `pirate_den` type (no production, no
 
 While it stands, `HostileTraffic` keeps one extra raider for every 14 days since the career began, up to 4, spawned at the base. It falls through `fall` (meant for a raid) or by itself once no living pirate is aboard while it is in the bubble; then the growth stops. Both post an important notice.
 
+Round 5: the base fights back. A station is never a ship in the bubble, so the base counts as here when it is in the bubble or passes through it on the rails. When a player at war with the pirates comes within 15 km (`SCRAMBLE_RANGE`) it scrambles a wing of `defendersFor(difficulty)` raiders, 2 at difficulty 1 and one more for each step after, up to 4, launched 4 km round the base and hunting the player as one wing. Their names are saved. Once all of them are beaten (surrendered, disabled or gone) and the player is still within 20 km (`STRIKE_RANGE`), the base strikes its colours and falls. Its fall eases every pair's tension by 15 (`FALL_RELIEF`). The raid contract is in [Contracts.md](Contracts.md).
+
 ### Choosing a sponsor
 `[faction.*]` gains `sponsorable`, `home` and `rank_names` (`FactionDef`). Only the data's sponsor or a sponsorable faction can be served (`FactionStanding.serve`). The panel offers the Terran Patrol (home Highport) and the Selene Combine (home Shackleton Ice). A Selene career starts docked at Shackleton with the bubble anchored in low lunar orbit 8 km behind it, the raider's bounty on Shackleton's board, Selene's guards marked friendly, and its own rank names: Prospector, Surveyor, Foreman, Superintendent, Director. The sponsor is fixed for the career.
 
 ### Faction tension (`FactionTension`)
-A value from 0 to 100 for each pair of the data's factions, pirates aside. Each hostile act of the player against a faction raises its tension with the player's sponsor by half the standing it cost; `raise` lets other systems move it. It relaxes by 2 a week. When a pair first reaches 50 a warning notice posts and each side gets one more patrol (`HostileTraffic.reinforce`, spawned after the update; only once until it falls below 50 again). While it is 50 or more, the rival's stations refuse a player of the other side whose standing with them is below 10.
+A value from 0 to 100 for each pair of the data's factions, pirates aside. Each hostile act of the player against a faction raises its tension with the player's sponsor by half the standing it cost; `raise` lets other systems move it. World events strain it too (round 5, see [Contracts.md](Contracts.md)). It relaxes by 5 a week (2 in round 3; with events adding to it, 2 left every pair pinned near 100 by day 40). When a pair first reaches 50 a warning notice posts and each side gets one more patrol (`HostileTraffic.reinforce`, spawned after the update; only once until it falls below 50 again). From round 5 the Free Traders, who fly no patrols of their own, then send an escort to watch the lanes between the two sides' first stations (by name), with a notice (`HostileTraffic.patrol`). While it is 50 or more, the rival's stations refuse a player of the other side whose standing with them is below 10.
+
+The mission window shows a tension line under the career: each faction's tension with the player's sponsor, HIGH past 50 (`FactionTension.describe`).
 
 ### Standing recovery
 In the same weekly step, negative standing with every faction moves 1 back towards zero. Positive standing never decays.
 
 ## Saves
 - `newGame`: the seed, whether the game is seeded, and the sponsor. A load replaces the scenario's own and recomputes the pirates' lurk order from it.
-- `pirateBase`: when it was established, found and fallen. A load finds the base by name.
+- `pirateBase`: when it was established, found and fallen, and the names of the wing it scrambled. A load finds the base by name.
 - `tension`: every pair's value, which pairs have been reinforced, and when the next week falls.
 - The sponsor is also in `ServiceRecord`, as before; a load reads the home from it.
 - The stations, freighters and stock are saved as the world's entities. A load finds the new stations by name, and a save from before them loads without them.
@@ -58,6 +62,7 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - `WiderWorldTest`: the new stations' types and owners, the Free Traders at war only with pirates, reachability between all stations, patrol routes covering the new stations.
 - `PirateBaseTest`: the base's orbit, trade and clearance; hidden until revealed; found by proximity; growth and gathering at the base; falling when its crew are dead; a save keeps found and fallen.
 - `SponsorChoiceTest`: the Patrol by default; a Selene start, board and rank names; only sponsorable factions; flying and warping above the Moon; friendly guards; a save keeps the sponsor and home.
+- `Round5LateCareerTest`: the base's wing, its fall and the tension it eases, a save mid-raid, world events' strain, the Free Trader patrol and the board's tension line.
 - `FactionTensionTest`: hostile acts raise tension, pirates excluded; high tension reinforces once and refuses rivals; the weekly drift; weeks pass on the sim clock; a save keeps the strain.
 
 ## Choices made without Joe
@@ -66,10 +71,11 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - The designed start keeps round 2's layout and dice, and pirates still lurk by the first three stations first.
 - Selene still does not name the pirates an enemy, so a Selene career climbs by contracts and bounties rather than kills.
 - No one is cleared at a pirate station.
+- Round 5: the base scrambles 2 to 4 raiders by difficulty and falls once they are beaten with the player close; its fall eases tension by 15.
+- Round 5: the Free Trader escort flies between the two strained sides' alphabetically first stations, so a replayed career sends it the same way.
 - All the numbers above are placeholders.
 
 ## Not built
-- Raiding the base as a contract, and operations that reveal it (category 6 calls `fall` and `reveal`).
-- World events that raise tension; only the player's deeds do.
-- Patrols for the Free Traders, and a ship market at Anvil Yards.
-- Any screen showing tension.
+- The base's own guns; it fights only through its wing.
+- A tension readout on the traffic map (the mission window has it).
+- Tension does not yet change prices or which jobs a rival's board offers.

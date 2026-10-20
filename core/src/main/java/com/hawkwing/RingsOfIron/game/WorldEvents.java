@@ -28,13 +28,20 @@ import java.util.Random;
  *       station posts their defence.</li>
  *   <li><b>Freighter lost</b>: a hauler out on the rails is lost; its crew drift in a pod and its
  *       cargo in the wreck ({@link Derelicts}), and its stations post their rescue and recovery. A
- *       new hauler takes its place after {@link #REPLACE_DAYS}.</li>
+ *       new hauler takes its place after {@link #REPLACE_DAYS}. No more than one in
+ *       {@link #LOST_GAP_DAYS} days.</li>
  *   <li><b>Tension</b>: a rival faction flexes; the sponsor's stations post shows of force out to
  *       its stations, and bounties on its ships if the two are at war.</li>
  * </ul>
  * Besides the daily roll, a freighter a pirate robs may leave some of its crew in a pod
  * ({@link #POD_CHANCE}), with a rescue posted for them. Events go in {@link #log()} and saves, and
  * are told to the player through {@link GameWorld#notices}.
+ *
+ * <p>Round 5: events strain the lawful factions ({@link FactionTension}) as the player's deeds do.
+ * A rival flexing raises its tension with the sponsor by {@link #FLEX_STRAIN}; a raid on a station,
+ * a freighter lost on its lanes or robbed on its way there sets its owner against every other
+ * lawful faction ({@link #RAID_STRAIN}, {@link #LOST_STRAIN}, {@link #ROBBED_STRAIN}), each side
+ * blaming the other's patrols and the lanes they let the pirates work.
  */
 public class WorldEvents implements SaveParticipant, HostileTrafficController.Listener {
     public static final double DAY = 86_400;
@@ -44,12 +51,19 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
     public static final double POD_CHANCE = 1.0 / 3.0;
     /** Days before a lost freighter is replaced. */
     public static final double REPLACE_DAYS = 3;
+    /**
+     * Days after a freighter is lost before another can be (round 4): two or three a fortnight at
+     * most, never on neighbouring days. Pirates robbing haulers are not held to it.
+     */
+    public static final long LOST_GAP_DAYS = 5;
     /** Share of its stock a station short of something keeps. */
     public static final double SHORTAGE_LEFT = 0.15;
     /** What an urgent delivery pays per unit over the short station's price. */
     public static final double URGENT_PREMIUM = 1.5;
     /** How long each event's jobs stay up, days. */
     public static final double SHORTAGE_DAYS = 3, RAID_DAYS = 2, TENSION_DAYS = 3;
+    /** Tension each kind of event adds (round 5): a rival flexing, with the sponsor; the rest, the station's owner with every other side. */
+    public static final float FLEX_STRAIN = 6f, RAID_STRAIN = 2f, LOST_STRAIN = 2f, ROBBED_STRAIN = 0.5f;
     /** Events the log keeps. */
     public static final int LOG = 50;
     /** The seed until a new game sets one (round 3's seeded world). */
@@ -244,11 +258,13 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         c.reason = e.text;
         world.contracts.postEvent(c);
         post(e.text + ": " + c.destinationName + " asks for help");
+        strain(node.stationUuid, RAID_STRAIN, e.text);
         return true;
     }
 
     /** A hauler out on the rails is lost: a pod and a wreck drift where it was, and its stations post their rescue and recovery. */
     private boolean freighterLost(long day, Random rnd) {
+        for (Event e : log) if (e.kind == Kind.FREIGHTER_LOST && day - e.day < LOST_GAP_DAYS) return false;
         List<String> candidates = new ArrayList<>();
         for (var entry : world.macroSim.freighters().all().entrySet()) {
             FreighterComponent f = entry.getValue();
@@ -281,7 +297,8 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         r.station = home == null ? post : home;
         r.at = world.engine.getSimSeconds() + DAY * REPLACE_DAYS;
         replacements.add(r);
-        world.macroSim.destroy(uuid);
+        // With its crew and systems, which would otherwise go on working aboard a ship that is gone
+        world.shipyard.retire(ship);
         Event e = record(Kind.FREIGHTER_LOST, day, post, wreck == null ? null : wreck.commodity, null,
                 "Contact lost with " + name + "; pirates are suspected");
         Contract rescue = world.contracts.offerFor(pod, post, e.text);
@@ -289,6 +306,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         Contract recovery = wreck == null ? null : world.contracts.offerFor(wreck, post, e.text);
         if (recovery != null) world.contracts.postEvent(recovery);
         post(e.text + ". " + stationName(post) + " posts a rescue" + (recovery == null ? "" : " and a recovery"));
+        strain(post, LOST_STRAIN, e.text);
         return true;
     }
 
@@ -344,6 +362,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
             }
         }
         post(e.text + (posted > 0 ? ": the " + s.factions().name(sponsor) + " posts patrols" : ""));
+        world.tension.raise(sponsor, rival, FLEX_STRAIN, e.text);
         return true;
     }
 
@@ -351,10 +370,12 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
 
     @Override
     public void plundered(String hostile, String freighter, String commodity, double quantity, double t) {
+        FreighterComponent f = world.macroSim.freighters().get(freighter);
+        // A hauler robbed on its way somewhere strains that station's owner with the other sides
+        if (f != null && friendly(f.destinationUuid)) strain(f.destinationUuid, ROBBED_STRAIN, null);
         Random rnd = new Random(seed ^ freighter.hashCode() * 0x9E3779B97F4A7C15L ^ (long) t);
         if (rnd.nextDouble() >= POD_CHANCE) return;
         Entity ship = world.engine.getEntity(freighter);
-        FreighterComponent f = world.macroSim.freighters().get(freighter);
         HostileComponent h = world.macroSim.hostiles().get(hostile);
         if (ship == null || f == null) return;
         String post = friendly(f.destinationUuid) ? f.destinationUuid : nearestFriendly();
@@ -372,6 +393,23 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /**
+     * Raises tension between the owner of {@code station} and every other lawful faction with
+     * stations by {@code amount}; {@code why} for the notice if a pair runs high.
+     */
+    private void strain(String station, float amount, String why) {
+        FactionStanding s = world.standing;
+        int owner = s.factionOf(world.engine.getEntity(station));
+        FactionDef own = s.factions().def(owner);
+        if (own == null || own.hostileToAll) return;
+        for (int i = 0; i < s.factions().all().size(); i++) {
+            int other = Factions.FIRST + i;
+            FactionDef def = s.factions().def(other);
+            if (other == owner || def == null || def.hostileToAll || stationsOf(other).isEmpty()) continue;
+            world.tension.raise(owner, other, amount, why);
+        }
+    }
 
     /** Tells the player: a world event is worth noticing, a pod after a robbery is news. */
     private void post(String text) {

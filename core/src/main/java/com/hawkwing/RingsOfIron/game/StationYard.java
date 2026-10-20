@@ -25,6 +25,7 @@ import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.HullPiece;
+import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
@@ -78,6 +79,11 @@ public class StationYard extends EntitySystem {
     public static final double PART_TRIP_SECONDS = 30;
     /** Commodity id prefix a part is carried as. */
     public static final String PART = "part:";
+    /**
+     * How long the work waits for a ship that came loose of the station to latch again before it
+     * is called off, sim seconds. The player undocking calls it off at once ({@link #undocked}).
+     */
+    public static final double LOOSE_GRACE = 10;
     private static final float EPS = 1e-4f;
     /** A technician's pace, for work in the background. */
     private static final float REPAIR_RATE = new CrewDef().repairRate;
@@ -166,12 +172,25 @@ public class StationYard extends EntitySystem {
                 case HULL:
                     if (piece != null) piece.integrity = after;
                     else tile.integrity = after;
+                    // Mended past where it leaks, a field patch comes off
+                    if (after >= Tile.LEAK_START) {
+                        if (piece != null) piece.patchedAt = 0f;
+                        else tile.patchedAt = 0f;
+                    }
+                    // A conduit mended whole carries power again, short or no short
+                    if (tile != null && after >= 1f - EPS) tile.shorted = false;
                     break;
                 case WALL:
                     wall.integrity = after;
+                    if (after >= Tile.LEAK_START) wall.patchedAt = 0f;
                     break;
                 case SYSTEM:
                     system.health = after;
+                    // Mended whole: a short is cleared and an isolated tank opened again
+                    if (after >= 1f - EPS) {
+                        system.shorted = false;
+                        system.isolated = false;
+                    }
                     break;
                 default:
                     // A collar is whole or torn: it goes back on only when the work is done
@@ -246,7 +265,8 @@ public class StationYard extends EntitySystem {
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
-                if (t.piece == null && t.isWall() && t.integrity < 1f - EPS) {
+                // A holed deck plate too: it vents straight to space (round 4: the ace's 40 mm rounds hole them)
+                if (t.piece == null && (t.isWall() || t.isFloor()) && t.integrity < 1f - EPS) {
                     out.add(new Damage(Damage.Kind.HULL, x, y, 1, 1, null, t, null, null, null));
                 }
             }
@@ -396,15 +416,33 @@ public class StationYard extends EntitySystem {
         return String.format(Locale.ROOT, "The technicians are fitting the salvaged %s to %s", def.displayName(), hardpointName(mount));
     }
 
-    /** Has {@code station}'s yard repair everything damaged aboard {@code ship}. Returns what it says. */
+    /**
+     * Puts the ship's hull patches and medical stores back to a full set, as part of a repair order
+     * (no charge), and when it is done. Returns true if anything was short.
+     */
+    static boolean restockPatches(Entity ship) {
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        if (grid == null) return false;
+        boolean short_ = grid.patchKits < LeakPatches.DEFAULT_KITS || grid.medicalStores < ShipGridComponent.DEFAULT_MEDICAL_STORES;
+        grid.patchKits = Math.max(grid.patchKits, LeakPatches.DEFAULT_KITS);
+        grid.medicalStores = Math.max(grid.medicalStores, ShipGridComponent.DEFAULT_MEDICAL_STORES);
+        return short_;
+    }
+
+    /**
+     * Has {@code station}'s yard repair everything damaged aboard {@code ship}, patched leaks
+     * included, and restock its hull patches and medical stores. With nothing to repair it still
+     * restocks them. Returns what it says.
+     */
     public String orderRepairs(Entity ship, Entity station) {
         if (!canWork(ship, station)) return "No yard here to do the work";
         double cost = repairCost(ship);
-        if (cost <= 0.5) return "Nothing aboard needs repairing";
+        if (cost <= 0.5) return restockPatches(ship) ? "Nothing aboard needs repairing: stores restocked" : "Nothing aboard needs repairing";
         YardOrdersComponent orders = orders(ship, station);
         if (orders == null) return "The yard is working for another station's ship";
         orders.repairs = true;
         orders.repairsPaid = 0;
+        restockPatches(ship);
         return String.format(Locale.ROOT, "Repairs ordered: about %,.0f cr, paid as the work is done", cost);
     }
 
@@ -523,10 +561,19 @@ public class StationYard extends EntitySystem {
             Entity ship = ships.get(i);
             YardOrdersComponent orders = ORDERS_M.get(ship);
             Entity station = orders.station == null ? null : orders.station.get(uuids);
-            if (station == null || !docking.docked(ship, station)) {
+            if (station == null) {
                 callOff(ship, orders);
                 continue;
             }
+            if (!docking.docked(ship, station)) {
+                // Come loose: a ship latched again within a few seconds (a seat lost and found, a
+                // collar drawing it back in) carries on; one gone elsewhere or for longer does not
+                Entity other = docking.dockedTo(ship);
+                if (orders.looseSince < 0) orders.looseSince = now;
+                if (other != null || now - orders.looseSince > LOOSE_GRACE) callOff(ship, orders);
+                continue;
+            }
+            orders.looseSince = -1;
             boolean walkway = walkway(ship, station);
             boolean[][] reach = walkway ? reachable(ship.getComponent(ShipGridComponent.class), crew, station) : null;
             if (orders.repairs) repairs(ship, station, orders, reach, dt);
@@ -544,6 +591,8 @@ public class StationYard extends EntitySystem {
         repairing.values().removeIf(t -> !t.isActive() && t.ship == ship);
         if (damage.isEmpty()) {
             orders.repairs = false;
+            // Again at the end: the crew may have patched a leak from the stores while the yard worked
+            restockPatches(ship);
             notices.add(String.format(Locale.ROOT, "%s's yard finished the repairs: %,.0f cr",
                     PlayerDocking.name(station), orders.repairsPaid));
             return;
@@ -706,6 +755,12 @@ public class StationYard extends EntitySystem {
         if (trader != null) trader.credits += credit;
         notices.add(String.format(Locale.ROOT, "%s fitted %s with a %s%s", PlayerDocking.name(station), hardpointName(mount),
                 def.displayName(), credit > 0 ? String.format(Locale.ROOT, "; %,.0f cr for the old %s", credit, old.displayName()) : ""));
+    }
+
+    /** The player undocked {@code ship} on purpose: its yard work is called off now, not after {@link #LOOSE_GRACE}. */
+    public void undocked(Entity ship) {
+        YardOrdersComponent orders = ship == null ? null : ORDERS_M.get(ship);
+        if (orders != null) callOff(ship, orders);
     }
 
     /** The ship left: tasks come off the board, and a part paid for but not fitted is refunded. */

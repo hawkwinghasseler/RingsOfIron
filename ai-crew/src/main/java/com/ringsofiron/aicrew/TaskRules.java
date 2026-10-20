@@ -3,13 +3,18 @@ package com.ringsofiron.aicrew;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
+import com.ringsofiron.interiorgrid.DamageStates;
+import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
+import com.ringsofiron.interiorgrid.crew.IsolateTankTask;
+import com.ringsofiron.interiorgrid.crew.PatchLeakTask;
 import com.ringsofiron.interiorgrid.crew.RepairTask;
 import com.ringsofiron.interiorgrid.crew.RescueTask;
+import com.ringsofiron.interiorgrid.crew.ResetShortTask;
 
 /**
  * What each kind of task needs: whether it still needs doing, where a crew member stands
@@ -26,7 +31,10 @@ public final class TaskRules {
 
     private TaskRules() {}
 
-    /** False once the job is done (fire out, breach sealed, system repaired, casualty safe or dead). */
+    /**
+     * False once the job is done (fire out, breach sealed, leak patched, system repaired, casualty
+     * safe or dead), or can't be done (no patch kits left).
+     */
     public static boolean isStillNeeded(CrewTask task, ShipGridComponent grid, CrewService crew) {
         Tile t = grid.getTile(task.x, task.y);
         switch (task.kind) {
@@ -34,6 +42,10 @@ public final class TaskRules {
                 return t != null && t.isBurning();
             case SEAL_BREACH:
                 return t != null && t.isHullBreach();
+            case PATCH_LEAK: {
+                PatchLeakTask p = (PatchLeakTask) task;
+                return grid.patchKits > 0 && LeakPatches.leaks(grid, p.x, p.y, p.side);
+            }
             case REPAIR: {
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && s.health < 1f;
@@ -41,6 +53,15 @@ public final class TaskRules {
             case MAN_CONSOLE: {
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && !s.isDestroyed();
+            }
+            case RESET_SHORT: {
+                if (((ResetShortTask) task).subsystem == null) return t != null && t.shorted;
+                SubsystemComponent s = subsystemOf(task);
+                return s != null && s.shorted;
+            }
+            case ISOLATE_TANK: {
+                SubsystemComponent s = subsystemOf(task);
+                return s != null && DamageStates.needsIsolating(s);
             }
             case RESCUE: {
                 CrewMemberComponent c = crew.crew(((RescueTask) task).casualty);
@@ -68,7 +89,9 @@ public final class TaskRules {
 
     static SubsystemComponent subsystemOf(CrewTask task) {
         Entity e = task instanceof RepairTask ? ((RepairTask) task).subsystem
-                : task instanceof ManConsoleTask ? ((ManConsoleTask) task).console : null;
+                : task instanceof ManConsoleTask ? ((ManConsoleTask) task).console
+                : task instanceof ResetShortTask ? ((ResetShortTask) task).subsystem
+                : task instanceof IsolateTankTask ? ((IsolateTankTask) task).tank : null;
         return e == null ? null : e.getComponent(SubsystemComponent.class);
     }
 
@@ -116,6 +139,24 @@ public final class TaskRules {
             }
             case SEAL_BREACH:
                 return isAdjacent(x, y, tx, ty) && !grid.isEdgeBlocked(x, y, tx, ty);
+            case PATCH_LEAK: {
+                // A thin wall from the air tile beside it; a wall from a tile next to it, or reaching
+                // across a machine that stands against it; a deck plate from on it or next to it
+                Side side = ((PatchLeakTask) task).side;
+                if (side != null) return x == tx && y == ty;
+                Tile t = grid.getTile(tx, ty);
+                if (t != null && t.isFloor() && x == tx && y == ty) return true;
+                if (isAdjacent(x, y, tx, ty)) return !grid.isEdgeBlocked(x, y, tx, ty);
+                return reachesAcrossMount(grid, x, y, tx, ty);
+            }
+            case RESET_SHORT:
+                if (((ResetShortTask) task).subsystem == null) {
+                    // A conduit tile: from on it, or beside it
+                    if (x == tx && y == ty) return true;
+                    return isAdjacent(x, y, tx, ty) && !grid.isEdgeBlocked(x, y, tx, ty);
+                }
+                // fall through: a system is worked like a repair
+            case ISOLATE_TANK:
             case REPAIR:
             case MAN_CONSOLE: {
                 SubsystemComponent s = subsystemOf(task);
@@ -167,6 +208,29 @@ public final class TaskRules {
         Tile t = grid.getTile(x, y);
         if (t == null || !t.holdsAir() || t.isBurning() || t.temperature > SAFE_TEMPERATURE) return false;
         return grid.pressureRatioAt(x, y) >= SAFE_PRESSURE && grid.oxygenRatioAt(x, y) >= SAFE_OXYGEN;
+    }
+
+    /** How far, in tiles, a crew member can reach across machinery to a wall behind it. */
+    public static final int REACH_ACROSS = 4;
+
+    /**
+     * True if (x, y) lies in a straight line from (tx, ty), at most {@link #REACH_ACROSS} tiles
+     * off, with only machines' footprints between them and no thin wall in the way: someone
+     * standing there can reach over the machinery to the wall behind it.
+     */
+    static boolean reachesAcrossMount(ShipGridComponent grid, int x, int y, int tx, int ty) {
+        int dx = Integer.signum(tx - x), dy = Integer.signum(ty - y);
+        int dist = Math.abs(tx - x) + Math.abs(ty - y);
+        if ((dx != 0 && dy != 0) || dist < 2 || dist > REACH_ACROSS) return false;
+        int px = x, py = y;
+        for (int i = 1; i < dist; i++) {
+            int mx = px + dx, my = py + dy;
+            Tile mid = grid.getTile(mx, my);
+            if (mid == null || mid.mount == null || mid.isWall() || grid.isEdgeBlocked(px, py, mx, my)) return false;
+            px = mx;
+            py = my;
+        }
+        return !grid.isEdgeBlocked(px, py, tx, ty);
     }
 
     private static boolean isAdjacent(int x, int y, int nx, int ny) {

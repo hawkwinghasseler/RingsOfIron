@@ -19,7 +19,10 @@ import java.util.TreeMap;
  *       {@link #DEED_SHARE} of the standing they cost; world events raise it through {@link #raise}.</li>
  *   <li>Tension relaxes by {@link #RELAX_PER_WEEK} a week.</li>
  *   <li>At {@link #HIGH} or above, each side flies one more patrol, and a rival's stations refuse a
- *       player of the other side whose standing with them is below {@link #RIVAL_CLEARANCE}.</li>
+ *       player of the other side whose standing with them is below {@link #RIVAL_CLEARANCE}. The
+ *       Free Traders, neutral and living off the lanes, send a patrol of their own to fly between
+ *       the two sides' stations (round 5).</li>
+ *   <li>The pirates' base falling eases every pair ({@link #easeAll}).</li>
  *   <li>Negative standing with any faction drifts {@link #RECOVERY_PER_WEEK} a week back towards
  *       zero; positive standing never decays.</li>
  * </ul>
@@ -32,10 +35,13 @@ public class FactionTension extends EntitySystem implements SaveParticipant {
     public static final float RIVAL_CLEARANCE = 10f;
     /** Share of a hostile act's standing cost that becomes tension with the player's sponsor. */
     public static final float DEED_SHARE = 0.5f;
-    public static final float RELAX_PER_WEEK = 2f;
+    /** Tension each pair loses a week (round 5: 5, so world events keep it moving rather than pinned high). */
+    public static final float RELAX_PER_WEEK = 5f;
     /** Negative standing regained each week, with every faction. */
     public static final float RECOVERY_PER_WEEK = 1f;
     static final double WEEK = 7 * 86_400.0;
+    /** Faction whose patrols watch the lanes between two strained sides. */
+    public static final String WATCHERS = HostileTraffic.TRADERS;
 
     private final GameWorld world;
     /** Tension by pair, "a|b" with the ids in order. */
@@ -83,12 +89,73 @@ public class FactionTension extends EntitySystem implements SaveParticipant {
 
     private void runsHigh(int a, int b, String key, String why) {
         Factions f = world.standing.factions();
+        if (!reinforced.getOrDefault(key, false)) {
+            reinforced.put(key, true);
+            world.hostiles.reinforce(f.id(a));
+            world.hostiles.reinforce(f.id(b));
+            watch(a, b);
+        }
         world.notices.post(String.format(Locale.ROOT, "%sTension between the %s and the %s runs high: more patrols, and their stations clear only friends",
                 why == null ? "" : why + ". ", f.name(a), f.name(b)), NoticeLog.Kind.WARNING);
-        if (reinforced.getOrDefault(key, false)) return;
-        reinforced.put(key, true);
-        world.hostiles.reinforce(f.id(a));
-        world.hostiles.reinforce(f.id(b));
+    }
+
+    /**
+     * The Free Traders send a patrol to fly between a station of {@code a} and one of {@code b}, by way
+     * of their own, if they have stations and are neither side.
+     */
+    private void watch(int a, int b) {
+        Factions f = world.standing.factions();
+        int watchers = f.index(WATCHERS);
+        if (watchers < 0 || watchers == a || watchers == b) return;
+        String home = firstStation(watchers), sa = firstStation(a), sb = firstStation(b);
+        if (home == null || sa == null || sb == null) return;
+        if (world.hostiles.patrol(WATCHERS, home, sa, sb)) {
+            world.notices.post(String.format(Locale.ROOT, "The %s send a patrol to watch the lanes between the %s and the %s",
+                    f.name(watchers), f.name(a), f.name(b)), NoticeLog.Kind.INFO);
+        }
+    }
+
+    /** The station of {@code faction} first by name (not by the economy's order, which a load may change). */
+    private String firstStation(int faction) {
+        String best = null, bestName = null;
+        for (var n : world.macroSim.stations()) {
+            if (world.standing.factionOf(world.engine.getEntity(n.stationUuid)) != faction) continue;
+            String name = n.displayName == null ? n.stationUuid : n.displayName;
+            if (bestName == null || name.compareTo(bestName) < 0) {
+                best = n.stationUuid;
+                bestName = name;
+            }
+        }
+        return best;
+    }
+
+    /** Eases every pair by {@code amount}: a weight off all sides, such as the pirates' base falling. */
+    public void easeAll(float amount) {
+        for (Map.Entry<String, Float> e : tension.entrySet()) {
+            float v = Math.max(0f, e.getValue() - amount);
+            e.setValue(v);
+            if (v < HIGH) reinforced.remove(e.getKey());
+        }
+    }
+
+    /**
+     * "Tension: Selene Combine 34, Free Traders 4 (high at 50)": the strain between {@code faction}
+     * and each other lawful faction, for the mission board; empty if there is none to show.
+     */
+    public String describe(int faction) {
+        Factions f = world.standing.factions();
+        FactionDef own = f.def(faction);
+        if (own == null || own.hostileToAll) return "";
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < f.all().size(); i++) {
+            int other = Factions.FIRST + i;
+            if (other == faction || key(faction, other) == null) continue;
+            out.append(out.length() == 0 ? "Tension: " : ", ").append(f.name(other))
+                    .append(String.format(Locale.ROOT, " %.0f", get(faction, other)));
+            if (high(faction, other)) out.append(" HIGH");
+        }
+        if (out.length() == 0) return "";
+        return out.append(String.format(Locale.ROOT, " (high at %.0f)", HIGH)).toString();
     }
 
     /**

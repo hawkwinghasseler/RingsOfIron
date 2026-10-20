@@ -124,7 +124,8 @@ public class FlightReadoutSystem extends EntitySystem {
         // Closing speed: positive when the gap is shrinking.
         float closing = range > 0f ? -((tv.x - v.x) * dx + (tv.y - v.y) * dy) / range : 0f;
         float tti = targeting.getTimeToImpact();
-        String ttiText = Float.isNaN(tti) ? "no solution" : fmt("TTI %.1f s", tti);
+        // The gun's flight time to the lead point; "TTI" read like the time until the ships meet
+        String ttiText = Float.isNaN(tti) ? "no firing solution" : fmt("shot %.1f s", tti);
         set(targetDetail, HudRenderSystem.formatRange(range) + fmt("  closing %+.0f m/s  ", closing) + ttiText);
     }
 

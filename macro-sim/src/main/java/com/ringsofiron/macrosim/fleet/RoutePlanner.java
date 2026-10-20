@@ -288,6 +288,8 @@ public final class RoutePlanner {
         double dv = Math.sqrt(vInf * vInf + 2 * muC / r) - Math.sqrt(muC / r);
         KeplerOrbit shipOrbit = KeplerOrbit.fromState(ship.x, ship.y, ship.vx, ship.vy, muC, t);
         double lap = shipOrbit.period();
+        // Not on a closed orbit round the moon (just cast off, say): no escape to plan from here yet
+        if (!(lap > 0) || !Double.isFinite(lap)) return null;
 
         int samples = 72;
         double step = lap / samples;

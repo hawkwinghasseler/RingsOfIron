@@ -66,6 +66,19 @@ public class Tile {
      * hull tile patches the breach.
      */
     public boolean bulkheadSealed = false;
+    /**
+     * The condition at which the crew patched this tile in the field, or 0 for no patch. Read
+     * and write through {@link #isPatched()}, {@link #patch()} and {@link #clearPatch()} so hull
+     * pieces share it. See {@link #isPatched(float, float)}.
+     */
+    public float patchedAt = 0f;
+    /**
+     * A power conduit tile a short circuit has faulted (see {@link DamageStates}): it carries no
+     * power until the crew reset it or a yard repairs it. Saved.
+     */
+    public boolean shorted = false;
+    /** Seconds it has been shorted (see {@link DamageStates#AUTO_RESET}). Not saved: a loaded short starts its wait again. */
+    public float shortedFor = 0f;
     /** Whether this tile is connected to a powered reactor via power conduits. */
     public boolean isPowered = false;
 
@@ -197,9 +210,42 @@ public class Tile {
         return LEAK_CAP * (LEAK_START - condition) / (LEAK_START - LEAK_CAP_CONDITION);
     }
 
-    /** {@link #leakFactor(float)} at this tile's condition. A sealed tile does not leak. */
+    /** {@link #leakFactor(float)} at this tile's condition. A sealed or patched tile does not leak. */
     public float leakFactor() {
-        return bulkheadSealed ? 0f : leakFactor(getIntegrity());
+        return bulkheadSealed || isPatched() ? 0f : leakFactor(getIntegrity());
+    }
+
+    // -----------------------------------------------------------------------
+    // Field patches
+    // -----------------------------------------------------------------------
+
+    /**
+     * True while a field patch put on at condition {@code patchedAt} still holds at
+     * {@code condition}: the piece leaks (below {@link #LEAK_START}, above 0) and has taken no
+     * new damage since. A patch stops the leak but does not restore condition; a yard repair
+     * past {@link #LEAK_START} or a hit that lowers the condition ends it.
+     */
+    public static boolean isPatched(float patchedAt, float condition) {
+        return patchedAt > 0f && condition > 0f && condition < LEAK_START && condition >= patchedAt - PATCH_SLACK;
+    }
+
+    /** How far condition may read below the patch's own before the patch counts as broken. */
+    private static final float PATCH_SLACK = 1e-4f;
+
+    /** Whether this tile (or its hull piece) carries a field patch that still holds. */
+    public boolean isPatched() {
+        return isPatched(piece != null ? piece.patchedAt : patchedAt, getIntegrity());
+    }
+
+    /** Patches this tile (or its whole hull piece) at its present condition. */
+    public void patch() {
+        if (piece != null) piece.patchedAt = piece.integrity;
+        else patchedAt = integrity;
+    }
+
+    public void clearPatch() {
+        if (piece != null) piece.patchedAt = 0f;
+        else patchedAt = 0f;
     }
 
     @Override

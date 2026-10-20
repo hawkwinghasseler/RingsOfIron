@@ -463,7 +463,10 @@ art/effects/explosion_4.svg
 art/effects/fire_large.svg
 art/effects/fire_medium.svg
 art/effects/fire_small.svg
+art/effects/hull_patch.svg
+art/effects/propellant_spill.svg
 art/effects/scorch.svg
+art/effects/short_circuit.svg
 art/engines/engine_l.svg
 art/engines/engine_l_unpowered.svg
 art/engines/engine_m.svg

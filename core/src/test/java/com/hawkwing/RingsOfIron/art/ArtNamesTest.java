@@ -209,7 +209,7 @@ class ArtNamesTest {
         assertEquals("interactive/cargo_stack_1", ArtNames.cargoStack(0.2f));
         assertEquals("interactive/cargo_stack_3", ArtNames.cargoStack(1f));
         for (float fill : new float[]{0.2f, 0.5f, 1f}) assertArt(ArtNames.cargoStack(fill));
-        for (String e : new String[]{"breach", "bulkhead_seal"}) assertArt("effects/" + e);
+        for (String e : new String[]{"breach", "bulkhead_seal", "hull_patch", "short_circuit", "propellant_spill"}) assertArt("effects/" + e);
         assertArt(ArtNames.wallLight(true));
         assertArt(ArtNames.wallLight(false));
     }

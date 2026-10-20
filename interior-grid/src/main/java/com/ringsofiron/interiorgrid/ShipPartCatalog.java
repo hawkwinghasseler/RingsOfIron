@@ -112,6 +112,12 @@ public class ShipPartCatalog {
         public final Fluid fluid;
         /** TANK: kilograms it holds by size; sizes missing here hold {@link Fluid#capacityPerTile} a tile. */
         public final Map<MountFootprint.MountSize, Double> capacity;
+        /** Chance a damaging hit shorts a system of this component; below 0, the standard for its behavior (see {@link DamageStates}). */
+        public float shortChance = -1f;
+        /** TANK: health below which a hit can burst it; below 0, the standard. */
+        public float burstThreshold = -1f;
+        /** TANK: chance each hit below the threshold bursts it; below 0, the standard for its fluid. */
+        public float burstChance = -1f;
 
         public ComponentType(String id, String name, char symbol, SubsystemComponent.SubsystemType behavior,
                              EnumSet<MountFootprint.MountSize> sizes, int color,
@@ -165,6 +171,9 @@ public class ShipPartCatalog {
             system.fluid = fluid;
             system.capacity = capacity(system.footprint.size);
             system.contents = system.capacity;
+            system.shortChance = shortChance;
+            system.burstThreshold = fluid != null ? burstThreshold : -1f;
+            system.burstChance = fluid != null ? burstChance : -1f;
         }
     }
 
@@ -355,6 +364,9 @@ public class ShipPartCatalog {
             Double kg = t.capacity.get(size);
             if (kg != null) d.capacity.put(size.name(), kg);
         }
+        if (t.shortChance >= 0f) d.shortChance = t.shortChance;
+        if (t.burstThreshold >= 0f) d.burstThreshold = t.burstThreshold;
+        if (t.burstChance >= 0f) d.burstChance = t.burstChance;
         return d;
     }
 
@@ -396,8 +408,17 @@ public class ShipPartCatalog {
         }
         char symbol = symbol(d.symbol, who);
         if (!Character.isLetter(symbol)) throw new IllegalArgumentException(who + ": symbol must be a letter");
-        return new ComponentType(d.id, d.name != null ? d.name : d.id, symbol, behavior, sizes,
+        ComponentType type = new ComponentType(d.id, d.name != null ? d.name : d.id, symbol, behavior, sizes,
                 parseColor(d.color, 0x808080), output, d.throughput, fluid, capacity);
+        if (d.shortChance != null) type.shortChance = chance(d.shortChance, who + " short_chance");
+        if (d.burstThreshold != null) type.burstThreshold = chance(d.burstThreshold, who + " burst_threshold");
+        if (d.burstChance != null) type.burstChance = chance(d.burstChance, who + " burst_chance");
+        return type;
+    }
+
+    private static float chance(float value, String what) {
+        if (!(value >= 0f && value <= 1f)) throw new IllegalArgumentException(what + " must be between 0 and 1");
+        return value;
     }
 
     private static char symbol(String s, String who) {

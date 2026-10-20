@@ -222,8 +222,12 @@ class ShellMenus {
         Table t = frame(root, Panel.SAVE, "SAVE GAME");
         TextField name = new TextField(shell.slots().nextName(), skin);
         name.setMaxLength(40);
-        t.add(new Label("Name", skin, "dim")).left();
-        t.add(name).width(360f).colspan(2).row();
+        // The rows in a table of their own: spread over the frame's three columns they ran out past
+        // its background on the left and right
+        Table form = new Table();
+        form.defaults().pad(4f);
+        form.add(new Label("Name", skin, "dim")).left().padRight(8f);
+        form.add(name).width(360f).row();
         Table list = new Table();
         list.top().left();
         for (SaveSummary s : shell.slots().list()) {
@@ -239,11 +243,12 @@ class ShellMenus {
             list.add(pick).left().fillX().expandX().pad(2f).row();
         }
         if (list.getCells().size > 0) {
-            t.add(new Label("Overwrite", skin, "dim")).left().top();
+            form.add(new Label("Overwrite", skin, "dim")).left().top().padRight(8f);
             ScrollPane scroll = new ScrollPane(list, skin);
             scroll.setFadeScrollBars(false);
-            t.add(scroll).width(360f).height(Math.min(260f, Gdx.graphics.getHeight() * 0.4f)).colspan(2).row();
+            form.add(scroll).width(360f).height(Math.min(260f, Gdx.graphics.getHeight() * 0.4f)).row();
         }
+        t.add(form).colspan(3).row();
         Table buttons = new Table();
         buttons.add(button("Save", () -> {
             String failed = shell.saveGame(name.getText());

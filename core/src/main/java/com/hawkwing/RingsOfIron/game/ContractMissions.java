@@ -29,6 +29,7 @@ public class ContractMissions implements MissionProvider {
             int faction = s.factionOf(station);
             out.career = String.format(Locale.ROOT, "%s.  Standing with %s %+.0f", s.describeRank(),
                     s.factions().name(faction), s.standing(faction));
+            out.tension = world.tension.describe(faction);
             for (Contract c : board.offers(uuid)) {
                 Job j = out.addOffer();
                 j.id = c.id;

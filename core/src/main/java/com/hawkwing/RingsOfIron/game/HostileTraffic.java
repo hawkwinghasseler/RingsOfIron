@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
@@ -27,18 +28,17 @@ import com.ringsofiron.macrosim.hostile.HostileTrafficController;
 import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.orbital.warp.DropOutSource;
+import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.BodyShapeComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.function.DoubleSupplier;
 
 /**
@@ -99,9 +99,12 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     public static final double SPAWN_CLEARANCE = 200_000;
 
     public static final String RAIDER = "raider_light";
+    /** The gunship hull: the patrols' cutters and Selene's guards fly it. */
     public static final String GUNSHIP = "gunship_heavy";
+    /** The pirates' own gunship (round 5): the hull stripped down and rearmed by the Void Raiders. */
+    public static final String PIRATE_GUNSHIP = "gunship_raider";
     /** Faction ids, as the factions work names them: the player's sponsor, Selene, and the pirates. */
-    public static final String SPONSOR = "patrol", SELENE = "selene", PIRATES = "pirates";
+    public static final String SPONSOR = "patrol", SELENE = "selene", PIRATES = "pirates", TRADERS = "traders";
     /** Crew factions (ai-crew numbers) of each; the sponsor's is the stations' own. */
     static final int SPONSOR_CREW = StationCrew.FACTION, PIRATE_CREW = 3, SELENE_CREW = 4;
 
@@ -131,6 +134,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     private final Map<String, String[]> routes = new HashMap<>();
     /** Patrols to spawn once the update is over. */
     private final List<String> reinforcements = new ArrayList<>();
+    /** Patrols sent on routes of their own ({@link #patrol}), each its faction then its stations, spawned after the update. */
+    private final List<String[]> sentPatrols = new ArrayList<>();
     private int spawned;
     private double nextTopUp = Double.POSITIVE_INFINITY;
     /** Sim second a pirate started an intercept on the player; NaN when there is no alert. */
@@ -146,6 +151,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     private final Map<Entity, Map<Entity, Double>> attackers = new IdentityHashMap<>();
     private final StateVector a = new StateVector();
     private final StateVector b = new StateVector();
+    private final Vector2 here = new Vector2(), there = new Vector2();
 
     private HostileTraffic(GameWorld world) {
         this.world = world;
@@ -202,6 +208,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         alertAt = Double.NaN;
         controller.playerGraceUntil = 0;
         provoked.clear();
+        sentPatrols.clear();
         busySince.clear();
         alongside.clear();
     }
@@ -242,6 +249,20 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         return true;
     }
 
+    /**
+     * Sends faction {@code faction} a patrol flying {@code route}'s stations, once the engine update is
+     * over: the Free Traders watching lanes where tension runs high ({@link FactionTension}), say.
+     * False for an empty route.
+     */
+    public boolean patrol(String faction, String... route) {
+        if (route == null || route.length == 0) return false;
+        String[] entry = new String[route.length + 1];
+        entry[0] = faction;
+        System.arraycopy(route, 0, entry, 1, route.length);
+        sentPatrols.add(entry);
+        return true;
+    }
+
     /** Patrols of each faction flying, reinforcements included. */
     public int patrols(String faction) {
         int n = 0;
@@ -251,14 +272,19 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         return n;
     }
 
-    /** Raiders the population keeps at difficulty {@code d}. */
+    /** Raiders the population keeps at difficulty {@code d} ({@link Difficulty#raiders}). */
     public static int raidersFor(double d) {
-        return 1 + (int) Math.round(Math.max(0, d));
+        return Difficulty.raiders(d);
     }
 
-    /** Gunships the population keeps at difficulty {@code d}. */
+    /** Gunships the population keeps at difficulty {@code d} ({@link Difficulty#gunships}). */
     public static int gunshipsFor(double d) {
-        return (int) Math.floor(Math.max(0, d));
+        return Difficulty.gunships(d);
+    }
+
+    /** True for a pirate gunship's hull: the pirates' own, or (in a save from before round 5) the patrols'. */
+    static boolean gunshipHull(String shipId) {
+        return PIRATE_GUNSHIP.equals(shipId) || GUNSHIP.equals(shipId);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -268,6 +294,10 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         while (!reinforcements.isEmpty()) {
             String faction = reinforcements.remove(0);
             spawnPatrol(faction, routes.get(faction));
+        }
+        while (!sentPatrols.isEmpty()) {
+            String[] entry = sentPatrols.remove(0);
+            spawnPatrol(entry[0], java.util.Arrays.copyOfRange(entry, 1, entry.length));
         }
         if (!topUpDue) return;
         topUpDue = false;
@@ -292,6 +322,12 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             if (h == null || h.state != HostileComponent.State.IN_BUBBLE) continue;
             if (e.getComponent(PhysicsBodyComponent.class) == null) continue;
             if (h.ace && !h.partDropped && FirstPlay.beaten(world, e)) aceBeaten(e, h);
+            if (ShipDisablement.isDisabled(e)) {
+                // Beaten or surrendered, it drifts where it is to be boarded: no flying off with a prize crew aboard
+                disengage(e);
+                e.remove(NpcPilotComponent.class);
+                continue;
+            }
             fly(id, e, h, now);
         }
     }
@@ -299,9 +335,14 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     private void fly(String id, Entity e, HostileComponent h, double now) {
         h.hull = hull(e);
         boolean crossfire = crossfire(e, now);
-        if (!h.brokeOff && h.hull < (crossfire ? CROSSFIRE_BREAK_OFF_HULL : BREAK_OFF_HULL)) {
+        if (!h.brokeOff && h.hull < breakOffHull(h, crossfire)) {
             breakOff(id, h, now);
             notices.add(h.displayName + " is breaking off");
+        }
+        if (!h.brokeOff && h.isPirate() && leaderDone(h)) {
+            // A wing fights together and breaks off together
+            breakOff(id, h, now);
+            notices.add(h.displayName + " is breaking off with its leader");
         }
         if (h.brokeOff) {
             leave(e);
@@ -310,7 +351,11 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         Entity enemy = enemyOf(e, h);
         if (enemy != null) {
             if (enemy == world.getPlayer()) h.foughtPlayer = true;
-            Tactics.Plan plan = Tactics.choose(Tactics.arms(e), odds(id, e, h, enemy), h.hull, h.isPirate(), crossfire);
+            // An ace never runs on the odds: it fights to its break-off line
+            Tactics.Arms arms = Tactics.arms(e);
+            boolean wingman = besideLeader(h, enemy);
+            Tactics.Plan plan = Tactics.choose(arms, odds(id, e, h, enemy), h.hull, h.isPirate() && !aceAtLarge(h),
+                    crossfire, aceAtLarge(h), wingman);
             if (plan == Tactics.Plan.RUN) {
                 breakOff(id, h, now);
                 world.notices.post(h.displayName + " is running", NoticeLog.Kind.INFO);
@@ -318,7 +363,10 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
                 return;
             }
             engage(e, enemy, true, Tactics.HOLD_RANGE);
-            Tactics.apply(e.getComponent(NpcCombatComponent.class), plan);
+            NpcCombatComponent combat = e.getComponent(NpcCombatComponent.class);
+            Tactics.apply(combat, plan, arms);
+            // A wingman circles the other way from its leader, so the two come at the enemy from both sides
+            combat.side = wingman ? -1f : 1f;
             busySince.put(id, now);
         } else if (h.isPirate() && h.targetUuid != null && !h.huntingPlayer()) {
             stalk(id, e, h, now);
@@ -330,6 +378,19 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         Double busy = busySince.get(id);
         if (busy == null) busySince.put(id, now);
         else if (!h.brokeOff && now - busy > IDLE_LIMIT) breakOff(id, h, now);
+    }
+
+    /**
+     * The share of its hull below which {@code h} breaks off: {@link #BREAK_OFF_HULL}, or sooner under
+     * crossfire; an ace holds on to {@link PirateAces#BREAK_OFF_HULL}, and under crossfire to a plain pirate's line.
+     */
+    static double breakOffHull(HostileComponent h, boolean crossfire) {
+        if (aceAtLarge(h)) return crossfire ? BREAK_OFF_HULL : PirateAces.BREAK_OFF_HULL;
+        return crossfire ? CROSSFIRE_BREAK_OFF_HULL : BREAK_OFF_HULL;
+    }
+
+    private static boolean aceAtLarge(HostileComponent h) {
+        return h.ace && !h.partDropped;
     }
 
     /** Who the hostile fights in the bubble now, or null. */
@@ -362,6 +423,25 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         return best;
     }
 
+    /**
+     * True when {@code h} flies on a leader that is in the bubble and done fighting: breaking off,
+     * or beaten. A wing breaks off with its leader.
+     */
+    private boolean leaderDone(HostileComponent h) {
+        Entity leader = h.wingOf == null ? null : world.engine.getEntity(h.wingOf);
+        HostileComponent lh = leader == null ? null : leader.getComponent(HostileComponent.class);
+        if (lh == null || leader.getComponent(PhysicsBodyComponent.class) == null) return false;
+        return lh.brokeOff || ShipDisablement.isDisabled(leader);
+    }
+
+    /** True when {@code h} is a wingman whose leader, in the bubble, has its guns on {@code enemy} too. */
+    private boolean besideLeader(HostileComponent h, Entity enemy) {
+        Entity leader = h.wingOf == null ? null : world.engine.getEntity(h.wingOf);
+        SensorComponent sensor = leader == null || leader.getComponent(PhysicsBodyComponent.class) == null ? null
+                : leader.getComponent(SensorComponent.class);
+        return sensor != null && sensor.lockedTarget == enemy;
+    }
+
     /** A wingman fights whatever its leader has its guns on in the bubble; null if nothing. */
     private Entity leadersEnemy(HostileComponent h) {
         Entity leader = h.wingOf == null ? null : world.engine.getEntity(h.wingOf);
@@ -380,7 +460,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             if (other.equals(id)) continue;
             Entity o = world.engine.getEntity(other);
             HostileComponent oh = o == null ? null : o.getComponent(HostileComponent.class);
-            if (oh == null || !sameWing(id, h, other, oh)) continue;
+            if (oh == null || oh.brokeOff || !sameWing(id, h, other, oh)) continue;
             SensorComponent sensor = o.getComponent(SensorComponent.class);
             if (sensor != null && sensor.lockedTarget == enemy) ours += firepower(o) * oh.hull;
         }
@@ -441,7 +521,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         // Alongside, guns cold: it wants the cargo, not a wreck
         engage(e, prey, false, PLUNDER_RANGE * 0.5f);
         Body body = e.getComponent(PhysicsBodyComponent.class).body;
-        if (body.getPosition().dst(pb.body.getPosition()) > PLUNDER_RANGE) {
+        // Box2D works in its own units: the range is in meters
+        if (PhysicsManager.getPosition(body, here).dst(PhysicsManager.getPosition(pb.body, there)) > PLUNDER_RANGE) {
             alongside.remove(id);
             return;
         }
@@ -489,9 +570,15 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         e.remove(NpcCombatComponent.class);
     }
 
-    /** Flies off out of the bubble; macro-sim takes it back at the edge. */
+    /**
+     * Flies off out of the bubble; macro-sim takes it back at the edge. Its guns stay on whatever it
+     * was fighting as it goes (round 5: a raider that ran used to go quiet).
+     */
     private static void leave(Entity e) {
+        SensorComponent sensor = e.getComponent(SensorComponent.class);
+        Entity parting = sensor == null ? null : sensor.lockedTarget;
         disengage(e);
+        if (parting != null && parting.getComponent(PhysicsBodyComponent.class) != null) sensor.lockedTarget = parting;
         NpcPilotComponent pilot = e.getComponent(NpcPilotComponent.class);
         if (pilot == null || !pilot.burns.isEmpty() || pilot.seekTarget != null) e.add(new NpcPilotComponent());
     }
@@ -513,6 +600,12 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         if (victim == null || attacker == null || victim == attacker) return;
         HostileComponent h = victim.getComponent(HostileComponent.class);
         if (h == null) return;
+        // A patrol hit by the player's stray rounds in someone else's fight doesn't turn on them,
+        // unless the player stands hostile with its side (it used to follow them to the berth)
+        if (!h.isPirate() && attacker == world.getPlayer()) {
+            int side = world.standing.factions().index(h.faction);
+            if (side < 0 || !world.standing.hostile(FactionStanding.PLAYER, side)) return;
+        }
         provoked.put(victim, attacker);
         attackers.computeIfAbsent(victim, k -> new IdentityHashMap<>()).put(attacker, world.macroSim.now());
         if (attacker == world.getPlayer()) h.foughtPlayer = true;
@@ -568,6 +661,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         if (PirateAces.promote(world, e, h, controller.all().values(), difficulty.getAsDouble(), false)) {
             world.notices.post(String.format("%s has robbed %d freighters: they call it %s now, an ace", was, h.plunders,
                     h.displayName), NoticeLog.Kind.INFO);
+            PirateAces.postBounty(world, hostile);
         }
     }
 
@@ -582,6 +676,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         if (PirateAces.promote(world, e, h, controller.all().values(), difficulty.getAsDouble(), true)) {
             world.notices.post(was + " got away from you: it flies as the ace " + h.displayName
                     + " now, and it will come looking for you", NoticeLog.Kind.WARNING);
+            PirateAces.postBounty(world, e.getComponent(UuidComponent.class).id);
         }
     }
 
@@ -639,16 +734,34 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         topUp(world.macroSim.now(), false);
     }
 
-    /** Spawns pirates until the population is what {@link #difficulty} asks for. */
+    /**
+     * Spawns pirates until the population is what {@link #difficulty} asks for; once the player flies
+     * a gunship, an ace takes one of the pirates' gunships ({@link PirateAces#gunshipAce}).
+     */
     private void topUp(double now, boolean anywhere) {
         if (lurks.length == 0) return;
         double d = difficulty.getAsDouble();
         int extra = extraRaiders.getAsInt();
-        int raiders = raidersFor(d) + extra - count(RAIDER), gunships = gunshipsFor(d) - count(GUNSHIP);
-        for (int i = 0; i < gunships; i++) spawnPirate(GUNSHIP, now, anywhere, null);
+        int raiders = raidersFor(d) + extra - count(RAIDER), gunships = gunshipsFor(d) - countGunships();
+        for (int i = 0; i < gunships; i++) spawnPirate(PIRATE_GUNSHIP, now, anywhere, null);
+        if (Difficulty.fliesAtLeast(world, PIRATE_GUNSHIP)) {
+            String ace = PirateAces.gunshipAce(world, controller.all(), d);
+            if (ace != null) {
+                HostileComponent h = controller.get(ace);
+                world.notices.post("Word on the lanes: the ace " + h.displayName + " flies a pirate gunship now",
+                        NoticeLog.Kind.WARNING);
+                PirateAces.postBounty(world, ace);
+            }
+        }
         // The base's band gathers at the base; the rest at the lurks in turn
         int atBase = extraLurk == null ? 0 : Math.max(0, extra - countAt(extraLurk));
         for (int i = 0; i < raiders; i++) spawnPirate(RAIDER, now, anywhere, i < atBase ? extraLurk : null);
+    }
+
+    private int countGunships() {
+        int n = 0;
+        for (HostileComponent h : controller.all().values()) if (h.isPirate() && gunshipHull(h.shipId)) n++;
+        return n;
     }
 
     private int count(String shipId) {
@@ -665,10 +778,11 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     /**
      * Spawns a pirate at {@code at} if given (and out of the player's sight), else at the next lurk that is.
-     * A raider with no place given flies as the wingman of a raider on its own, by its lurk.
+     * A raider with no place given flies on the wing of a raider leading fewer than the difficulty's
+     * {@link Difficulty#wingSize}, by its lurk.
      */
     private void spawnPirate(String shipId, double now, boolean anywhere, String at) {
-        String leader = RAIDER.equals(shipId) && at == null ? loneRaider() : null;
+        String leader = RAIDER.equals(shipId) && at == null ? openWing(Difficulty.wingSize(difficulty.getAsDouble())) : null;
         String[] choices = at != null && (anywhere || !nearPlayer(at, now)) ? new String[]{at} : lurks;
         for (int k = 0; k < choices.length; k++) {
             String lurk = leader != null ? controller.get(leader).stationUuid : choices[(spawned + k) % choices.length];
@@ -678,21 +792,23 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
                 k = -1;
                 continue;
             }
-            spawnPirateAt(shipId, lurk, leader);
+            spawnPirateAt(shipId, lurk, leader, null);
             return;
         }
     }
 
     /**
      * A pirate of {@code shipId} lurking by {@code lurk}, armed from its hull's loadouts and flying as
-     * {@code leader}'s wingman if given; its uuid, or null if the data has no such ship.
+     * {@code leader}'s wingman if given; its uuid, or null if the data has no such ship. {@code loadoutId}
+     * names its loadout; null picks one for the difficulty.
      */
-    private String spawnPirateAt(String shipId, String lurk, String leader) {
+    private String spawnPirateAt(String shipId, String lurk, String leader, String loadoutId) {
         Entity ship = spawnShip(shipId, PIRATE_CREW);
         if (ship == null) return null;
-        String name = (GUNSHIP.equals(shipId) ? "Pirate gunship " : "Pirate raider ") + (++spawned);
-        LoadoutDef loadout = Loadouts.pick(world.combatDefs, shipId, difficulty.getAsDouble(), false,
-                new Random(spawned * 7_919L + shipId.hashCode()));
+        String name = (gunshipHull(shipId) ? "Pirate gunship " : "Pirate raider ") + (++spawned);
+        LoadoutDef loadout = loadoutId != null ? world.combatDefs.loadouts.get(loadoutId)
+                : Loadouts.pick(world.combatDefs, shipId, difficulty.getAsDouble(), false,
+                        new Random(spawned * 7_919L + shipId.hashCode()));
         if (loadout != null) Loadouts.apply(ship, loadout, world.combatDefs);
         HostileComponent h = new HostileComponent(name, shipId, PIRATES, HostileComponent.Role.PIRATE,
                 firepower(ship));
@@ -713,30 +829,56 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     public List<String> raid(String station, int count) {
         List<String> out = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            String uuid = spawnPirateAt(RAIDER, station, null);
+            String uuid = spawnPirateAt(RAIDER, station, null, null);
             if (uuid != null) out.add(uuid);
         }
         return out;
     }
 
-    /** A raider flying on its own, with no wingman: the first, by uuid order. */
-    private String loneRaider() {
-        Set<String> leaders = new HashSet<>();
-        for (HostileComponent h : controller.all().values()) if (h.wingOf != null) leaders.add(h.wingOf);
+    /**
+     * A wing of {@code size} pirates of {@code shipId} lurking by {@code lurk}: the first leads and the
+     * rest fly on its wing. Each is armed with {@code loadoutId}, or as the difficulty picks when null.
+     * Call outside the engine's update. Returns their uuids, the leader first.
+     */
+    public List<String> spawnWing(String shipId, int size, String lurk, String loadoutId) {
+        List<String> out = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            String uuid = spawnPirateAt(shipId, lurk, out.isEmpty() ? null : out.get(0), loadoutId);
+            if (uuid != null) out.add(uuid);
+        }
+        return out;
+    }
+
+    /**
+     * A raider leading a wing with room in it, {@code size} with the leader: the first, by uuid order,
+     * of those with the fewest wingmen. Null when every wing is full, or wings are one strong.
+     */
+    private String openWing(int size) {
+        if (size <= 1) return null;
+        Map<String, Integer> wingmen = new HashMap<>();
+        for (HostileComponent h : controller.all().values()) if (h.wingOf != null) wingmen.merge(h.wingOf, 1, Integer::sum);
         String best = null;
+        int fewest = Integer.MAX_VALUE;
         for (Map.Entry<String, HostileComponent> en : controller.all().entrySet()) {
             HostileComponent h = en.getValue();
-            if (!h.isPirate() || !RAIDER.equals(h.shipId) || h.wingOf != null || h.ace || leaders.contains(en.getKey())
-                    || h.stationUuid == null) continue;
-            if (best == null || en.getKey().compareTo(best) < 0) best = en.getKey();
+            if (!h.isPirate() || !RAIDER.equals(h.shipId) || h.wingOf != null || h.ace || h.stationUuid == null) continue;
+            int n = wingmen.getOrDefault(en.getKey(), 0);
+            if (n >= size - 1) continue;
+            if (n < fewest || (n == fewest && en.getKey().compareTo(best) < 0)) {
+                best = en.getKey();
+                fewest = n;
+            }
         }
         return best;
     }
 
     private void spawnPatrol(String faction, String[] route) {
-        Entity ship = spawnShip(GUNSHIP, SPONSOR.equals(faction) ? SPONSOR_CREW : SELENE_CREW);
+        int crew = SPONSOR.equals(faction) ? SPONSOR_CREW : SELENE.equals(faction) ? SELENE_CREW
+                : world.standing.factions().index(faction);
+        Entity ship = spawnShip(GUNSHIP, crew);
         if (ship == null) return;
-        String name = (SPONSOR.equals(faction) ? "Patrol cutter " : "Selene guard ") + (++spawned);
+        String name = (SPONSOR.equals(faction) ? "Patrol cutter " : SELENE.equals(faction) ? "Selene guard "
+                : TRADERS.equals(faction) ? "Free Trader escort " : "Patrol ") + (++spawned);
         HostileComponent h = new HostileComponent(name, GUNSHIP, faction, HostileComponent.Role.PATROL,
                 firepower(ship));
         ship.add(h);

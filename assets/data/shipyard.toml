@@ -1,7 +1,7 @@
 # Ship markets (round 3): where factions sell ships, and what they sell (GDD section 5,
 # "ship procurement and outfitting"). Bought while docked at one of the faction's yards, from the
 # yard window's Ships for sale (Y). The ship the player flies is traded in at its value (Difficulty's hull and
-# weapons) times its condition times 60%; cargo and crew move across to the new ship.
+# weapons) times its condition times 80%; cargo and crew move across to the new ship.
 #
 # [shipyard.<id>]: a faction's yards. A station sells that faction's ships when the faction owns it
 # and it is of one of station_types (economy.json) or named in stations.
@@ -30,13 +30,16 @@ price = 280000.0
 [ship_sale.patrol_gunship]
 ship = "gunship_heavy"
 seller = "patrol"
-price = 360000.0
+# Round 4: a little over its 304,000 value (was 360,000), so the round 3 career buys it at Lieutenant Commander
+price = 310000.0
 rank = "lieutenant_commander"
 
 [ship_sale.patrol_frigate]
 ship = "frigate_patrol"
 seller = "patrol"
-price = 720000.0
+# Round 5: a little over its 444,000 value (was 720,000), as the gunship is, so a Commander can buy it
+# on pay and contracts
+price = 455000.0
 rank = "commander"
 
 # The Combine sells the light raider's hull as a fast courier to captains it trusts

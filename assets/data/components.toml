@@ -13,6 +13,11 @@
 #   capacity      TANK: kilograms by size (standard 150 kg of a gas, 1,000 kg of propellant a tile)
 #   thrust        ENGINE: newtons at full health by size (standard 1.2, 3.6, 12, 36 MN for S-XL);
 #                 a ship's main engine is the sum of its working engines, scaled by their damage
+#   short_chance  chance, 0-1, that a damaging hit shorts the system out while powered (standard:
+#                 reactor 0.08, shield emitter 0.06, tanks, cargo and escape pods 0, the rest 0.04)
+#   burst_threshold  TANK: health below which a hit can burst it (standard 0.25)
+#   burst_chance  TANK: chance each such hit bursts it (standard: propellant 0.35, oxygen 0.3,
+#                 nitrogen 0.2). See documentation/interior-grid/Design.md, "Damage states".
 # These restate the built-in letters; a component left out keeps its built-in meaning.
 
 [component.reactor]
@@ -20,6 +25,7 @@ name = "Reactor"
 symbol = "R"
 behavior = "REACTOR"
 color = "#e0703a"
+short_chance = 0.08
 
 [component.shield_emitter]
 name = "Shield emitter"
@@ -99,6 +105,8 @@ symbol = "P"
 behavior = "TANK"
 color = "#c08a3a"
 fluid = "PROPELLANT"
+burst_threshold = 0.25
+burst_chance = 0.35
 
 [component.oxygen_tank]
 name = "Oxygen tank"
@@ -106,6 +114,8 @@ symbol = "O"
 behavior = "TANK"
 color = "#6aa8e0"
 fluid = "OXYGEN"
+burst_threshold = 0.25
+burst_chance = 0.3
 
 [component.nitrogen_tank]
 name = "Nitrogen tank"
@@ -113,6 +123,8 @@ symbol = "N"
 behavior = "TANK"
 color = "#8a94a8"
 fluid = "NITROGEN"
+burst_threshold = 0.25
+burst_chance = 0.2
 
 [component.escape_pod]
 name = "Escape pod"

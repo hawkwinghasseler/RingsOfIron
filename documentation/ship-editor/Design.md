@@ -50,8 +50,11 @@ The behavior fixes the mount kind (square primary, rectangular auxiliary or hull
 | `throughput` | `LIFE_SUPPORT` | Multiplies scrubbing, air and oxygen supply | 1.0 |
 | `fluid` | `TANK` | What it holds: `OXYGEN`, `NITROGEN` or `PROPELLANT` | `PROPELLANT` |
 | `capacity` | `TANK` | Kilograms by mount size | 150 kg of a gas or 1,000 kg of propellant a tile |
+| `short_chance` | any | Chance a damaging hit shorts it out while powered (`DamageStates`) | reactor 0.08, shield emitter 0.06, tank, cargo and escape pod 0, the rest 0.04 |
+| `burst_threshold` | `TANK` | Health below which a hit can burst it | 0.25 |
+| `burst_chance` | `TANK` | Chance each such hit bursts it | propellant 0.35, oxygen 0.3, nitrogen 0.2 |
 
-Each installed system keeps its component id and these values on its `SubsystemComponent` (so a save restores them, even if the data changes later). Other systems read the behavior through `SubsystemComponent.type`, exactly as before, so a new turret component works wherever a turret mount does. More settings (shield strength, cargo stack height, crew console speed) are added the same way when the systems that would read them want them.
+Each installed system keeps its component id and these values on its `SubsystemComponent` (so a save restores them, even if the data changes later). Other systems read the behavior through `SubsystemComponent.type`, exactly as before, so a new turret component works wherever a turret mount does. More settings (shield strength, cargo stack height, crew console speed) are added the same way when the systems that would read them want them. The editor has no fields for the three damage settings yet: they are edited in `components.toml`, and the editor keeps them when it rewrites the file.
 
 Symbols are one character and share one namespace: no two tile types or components may use the same one. The catalog that resolves them (`ShipPartCatalog`) is built from the definitions when data loads, and throws on a clash, a bad base or behavior, or a size a component's mount kind lacks.
 

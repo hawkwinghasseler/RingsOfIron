@@ -28,13 +28,18 @@ public interface CrewProvider {
     /** Takes prisoner {@code id}, who offered to join, into the crew; returns what came of it. */
     String recruit(long id);
 
+    /** Turns suits at battle stations on or off for the player's ship; returns what came of it. */
+    default String toggleSuits() {
+        return "";
+    }
+
     final class Member {
         public long id;
         public String name = "";
         public String role = "";
         /** "Gun 62  Eng 50  Mar 50". */
         public String skills = "";
-        /** "OK 100%", "Unconscious 20%". */
+        /** "OK 100%", "Unconscious 20%", "Light wound 100%", "Critical wound, 4:10 to live". */
         public String condition = "";
         /** "Morale 70%". */
         public String morale = "";
@@ -60,6 +65,8 @@ public interface CrewProvider {
         public String name = "";
         /** Their faction and role. */
         public String detail = "";
+        /** As {@link Member#condition}. */
+        public String condition = "";
         /** What can be done with them here: "Hand over", "Ransom", "Release"; empty when not docked. */
         public String option = "";
         public boolean offersToJoin;
@@ -74,6 +81,8 @@ public interface CrewProvider {
         public String stationName = "";
         /** True when a taken ship is alongside with prisoners to bring aboard. */
         public boolean prisonersAlongside;
+        /** "Suits at battle stations: on"; empty when it can't be set. */
+        public String suits = "";
         public final Array<Member> crew = new Array<>();
         public final Array<Hire> hires = new Array<>();
         public final Array<Prisoner> prisoners = new Array<>();
@@ -106,6 +115,7 @@ public interface CrewProvider {
             summary = "";
             stationName = "";
             prisonersAlongside = false;
+            suits = "";
             crew.clear();
             hires.clear();
             prisoners.clear();

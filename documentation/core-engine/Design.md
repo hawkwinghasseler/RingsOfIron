@@ -24,6 +24,7 @@ To implement this module independently:
    - Create a `UuidComponent` containing a `String id`.
    - Create a `UuidRegistry` (singleton or passed via dependency injection) that maintains a `Map<String, Entity>` for O(1) lookups.
    - Implement an `EntityListener` added to the Ashley Engine that automatically registers entities with a `UuidComponent` when added, and removes them from the map when removed.
+   - New ids come from the engine's `EntityIds` (`GameEngine.newUuid()`, `createEntityWithUuid()`, and so `EntityFactory` and macro-sim's stations and freighters). They are random until `EntityIds.seed(long)`: a seeded career's entities then get the same UUIDs every run, so maps keyed by UUID iterate alike and rolls made from a UUID replay. The seed and the count handed out are saved (`engine.ids`), so a loaded game goes on with the ids it would have made; a save without them goes on with random ones.
 
 4. **Serialization Architecture:**
    - Create a `SerializationService`.

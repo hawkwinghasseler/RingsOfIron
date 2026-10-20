@@ -7,8 +7,10 @@ import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Group;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
@@ -21,6 +23,7 @@ import com.ringsofiron.uihud.widgets.LeadReticle;
 import com.ringsofiron.uihud.widgets.MarkerWidget;
 
 import java.util.Locale;
+import java.util.function.BooleanSupplier;
 
 /**
  * Projects every {@link HudMarkerComponent} entity from world meters to the UI stage each frame
@@ -47,6 +50,10 @@ public class HudRenderSystem extends EntitySystem {
     private final LeadReticle reticle;
     private final ObjectMap<Entity, MarkerWidget> widgets = new ObjectMap<>();
     private final ObjectMap<Entity, MarkerWidget> seen = new ObjectMap<>();
+    /** Where the off-screen markers' text went this frame, so the next one can keep clear. */
+    private final com.badlogic.gdx.utils.Array<Rectangle> edgeText = new com.badlogic.gdx.utils.Array<>();
+    /** Banners the edge text keeps clear of while they are up. */
+    private final ObjectMap<Label, BooleanSupplier> keepClear = new ObjectMap<>();
     private final Vector2 screen = new Vector2();
     private final Vector2 lead = new Vector2();
     private ImmutableArray<Entity> marked;
@@ -66,6 +73,11 @@ public class HudRenderSystem extends EntitySystem {
 
     public void setTargeting(TargetingProvider targeting) {
         this.targeting = targeting;
+    }
+
+    /** Off-screen markers' text moves out from under this banner while {@code up} says it is showing. */
+    public void keepClear(Label banner, BooleanSupplier up) {
+        keepClear.put(banner, up);
     }
 
     public TargetingProvider getTargeting() {
@@ -95,6 +107,14 @@ public class HudRenderSystem extends EntitySystem {
         Entity locked = targeting != null ? targeting.getLockedTarget() : null;
 
         seen.clear();
+        edgeText.clear();
+        for (ObjectMap.Entry<Label, BooleanSupplier> b : keepClear) {
+            if (!b.value.getAsBoolean()) continue;
+            // Centred in its row; the text may have changed since the row's last layout
+            Vector2 at = b.key.localToStageCoordinates(new Vector2(b.key.getWidth() / 2f, 0f));
+            float width = b.key.getPrefWidth();
+            edgeText.add(new Rectangle(at.x - width / 2f, at.y, width, b.key.getPrefHeight()));
+        }
         for (Entity e : marked) {
             HudMarkerComponent m = MARKERS.get(e);
             TransformComponent t = TRANSFORMS.get(e);
@@ -120,6 +140,7 @@ public class HudRenderSystem extends EntitySystem {
             String range = player != null ? formatRange(Vector2.dst(player.x, player.y, t.x, t.y)) : "";
             float half = Math.max(MIN_BRACKET, m.radius * pixelsPerMeter * 1.2f);
             widget.set(m.label, range, m.color, half, !onScreen, angle, e == locked);
+            if (!onScreen) unstack(widget, screen.y < h / 2f ? 1f : -1f);
         }
 
         // Drop widgets whose entity lost its marker or left the engine.
@@ -132,6 +153,23 @@ public class HudRenderSystem extends EntitySystem {
         }
 
         updateReticle(locked);
+    }
+
+    /**
+     * Two contacts the same way off screen put their names on top of each other at the edge: moves
+     * this one's text inward ({@code dir} up or down) until it clears the ones already placed.
+     */
+    private void unstack(MarkerWidget widget, float dir) {
+        Rectangle box = widget.textBounds(new Rectangle());
+        for (int tries = 0; tries < 8; tries++) {
+            Rectangle hit = null;
+            for (Rectangle r : edgeText) if (r.overlaps(box)) hit = r;
+            if (hit == null) break;
+            float dy = dir > 0 ? hit.y + hit.height + 2f - box.y : hit.y - 2f - (box.y + box.height);
+            widget.nudgeText(0f, dy);
+            box.y += dy;
+        }
+        edgeText.add(box);
     }
 
     private void updateReticle(Entity locked) {

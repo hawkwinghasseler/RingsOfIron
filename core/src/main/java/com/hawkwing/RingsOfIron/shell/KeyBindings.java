@@ -63,6 +63,8 @@ public final class KeyBindings {
         HELM_MATCH_VELOCITY("Helm: match target velocity", Input.Keys.NUM_2),
         HELM_HOLD("Helm: hold position", Input.Keys.NUM_3),
         HELM_APPROACH("Helm: approach target", Input.Keys.NUM_4),
+        HELM_DOCK("Helm: dock at target", Input.Keys.NUM_5),
+        AUTOPILOT("Autopilot: fly the transfer", Input.Keys.NUM_6),
         HELM_CANCEL("Helm: cancel order", Input.Keys.NUM_0),
         QUICK_SAVE("Quick save", Input.Keys.F5),
         QUICK_LOAD("Quick load", Input.Keys.F9);

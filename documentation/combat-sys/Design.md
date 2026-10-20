@@ -283,6 +283,8 @@ Some interior rules need small changes in `interior-grid` for damage to read cor
 - `ShipGridComponent`'s comment says tile [0][0] is the top-left. It should say bottom-left with +y up, to match Box2D (5.2). Grid rendering and the `Main.java` demo should follow.
 - Combat sets a `gridDirty` flag so power can reroute immediately after heavy damage, without waiting for the 1 s tick (optional).
 
+**Shorts and bursts (round 5).** Every hit on a system, by a round, spall, a blast or a beam, rolls for a short circuit (`DamageStates.maybeShort`), and every hit on a powered conduit tile that leaves it standing rolls too (`maybeShortConduit`). Every hit that leaves a tank below its burst threshold rolls for a burst instead. Bursts go off once the round and its secondaries are done: the tank vents (`DamageStates.burst`), and a large one (500 kg or more) sets off a small blast of its own, `min(1 MJ, 500 J/kg)` at its tile out to 1 tile, through the same overpressure flood as a warhead, so it can hurt crew (`HitCause.BLAST`) and burst another tank (up to 8 in a chain). A burst's blast is the tank's energy, not the round's, so `Result.absorbed` leaves it out. `DamageReport.shorts` and `bursts` list the tiles.
+
 Crew-facing outputs, through `DamageTaskSink`:
 - `SealBreachTask` per new hull breach.
 - `RepairTask` per subsystem below 1.0 health.
@@ -299,7 +301,8 @@ Penetrating hits, spall, fragments and interior blast all damage crew. Combat on
 | **Unconscious** | Health at or below `unconsciousThreshold` | Drops its current task, cannot act or move on its own, still occupies its tile |
 | **Dead** | Health reaches 0 | Removed from duty |
 
-- Unconscious crew are still on their tile, so **further hits can kill them**. A second round through the same corridor is deadlier than the first.
+- Unconscious crew are still on their tile, so **further hits make their wounds worse**. A second round through the same corridor is deadlier than the first.
+- **Round 5: hits wound.** Since round 5 `ai-crew` turns hit damage into wounds (light, serious, critical) rather than taking health, and only a critical wound left untreated kills (`ai-crew/Design.md` section 5). A crew member takes at most `CREW_RESISTANCE` / `CREW_JOULES_PER_HP` (100 points) from a round, a critical wound; and a round loses half its crew injury for every open tile it crosses after the first (`CREW_FALLOFF_PER_TILE`), so a slug through three crew in a corridor leaves the first critically wounded and the others lightly (50 and 25 points). The round's budget and what it does to machinery and structure are unchanged. A laser's burn arrives as `BURN`, apart from the `FIRE` of standing in a burning room.
 - **Asphyxiation** is the other route to death. Crew on a tile with too little oxygen lose health over time (as the oxygen ratio of their compartment, `grid.oxygenRatioAt(x, y)`, falls; the hazard system tracks it), so they pass out first and then die. A hull breach therefore threatens crew who were never in the line of fire, and unconscious crew in a venting room need rescue.
 - Combat posts a `RescueTask` (move an unconscious crew member to a pressurized tile) alongside its other damage tasks. Whether and how unconscious crew recover is `ai-crew`'s call.
 - `CrewDamageSink.applyDamage(crewEntity, amount, cause)` is the third interface combat owns and `ai-crew` implements, next to `GridOccupantQuery` and `DamageTaskSink`.

@@ -129,6 +129,9 @@ public class GameScenario {
     private GameScenario(GameWorld world, Path assetsDir, Path modsDir, NewGame newGame) {
         this.world = world;
         this.newGame = newGame;
+        // A seeded world's stations and ships get the same UUIDs every time, so whatever is keyed or
+        // rolled by UUID replays too
+        if (newGame.seeded) world.engine.getEntityIds().seed(newGame.stream(7));
         dice = new java.util.Random(newGame.stream(3));
         content = world.loadContent(assetsDir, modsDir);
         // The designed start keeps whatever dice the world was built with
@@ -485,6 +488,7 @@ public class GameScenario {
         // The old game's notices are not this one's (the log is not saved)
         world.notices.clear();
         world.engine.getSerializationService().loadFromFile(file);
+        world.loaded();
         // A seeded career's combat and crew dice come from its seed, as at its start
         if (newGame.seeded) world.reseed(newGame.combatSeed(), newGame.crewSeed());
         relink();

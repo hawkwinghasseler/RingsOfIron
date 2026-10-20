@@ -76,6 +76,11 @@ public class Contract {
     public int progress;
     /** Escort: sim second the freighter docked, while waiting to see the player arrive; negative before. */
     public double arrivedAt = -1;
+    /**
+     * Rescue: survivors brought aboard as people ({@link SurvivorComponent}) at the pickup; -1 for a
+     * pickup saved before they were (round 5), paid by {@link #quantity} as before.
+     */
+    public int carried = -1;
     /** Why it ended, for the screen. */
     public String outcome = "";
     /** Convoy and defend: the freighters or raiders the job is about, by uuid, and their names. */

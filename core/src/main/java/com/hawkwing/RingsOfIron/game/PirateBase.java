@@ -8,7 +8,13 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.coreengine.SaveParticipant;
+import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.rails.StateVector;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The pirates' hidden base: a station of the hostile-to-all faction on an eccentric high orbit,
@@ -20,6 +26,14 @@ import com.ringsofiron.macrosim.rails.StateVector;
  * difficulty asks for, one more every {@link #GROWTH_DAYS} up to {@link #MAX_EXTRA}, spawned at the
  * base. It falls through {@link #fall} (a raid that disables or takes it), or by itself once no
  * living pirate is left aboard; then the growth stops.
+ *
+ * <p>Round 5: the base fights back. When the player comes within {@link #SCRAMBLE_RANGE} of it in
+ * the bubble, it scrambles a wing of {@link #defendersFor defenders} (a leader and its wingmen) that
+ * goes straight for the player. Once every defender is beaten or driven out of the bubble with the
+ * player still within {@link #STRIKE_RANGE}, the base strikes its colours and falls. A fallen base
+ * eases the strain between the lawful factions by {@link #FALL_RELIEF} (the pirates were what set
+ * them against each other). The defenders are saved, so a raid broken off and flown again meets
+ * whoever is left of the wing rather than a new one.
  */
 public class PirateBase extends EntitySystem implements SaveParticipant {
     /** How close the player must come to find it, m. */
@@ -30,6 +44,16 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     public static final int MAX_EXTRA = 4;
     /** Seconds between looks at whether the player is near or the base's crew are gone. */
     static final float CHECK_SECONDS = 2f;
+    /** How close the player must come to the base, in the bubble, for it to scramble its defenders, m. */
+    public static final double SCRAMBLE_RANGE = 15_000;
+    /** How close the player must still be when the last defender is beaten for the base to strike, m. */
+    public static final double STRIKE_RANGE = 20_000;
+    /** How far from the base the defenders launch, m, each a little further round. */
+    static final double LAUNCH_OFFSET = 4_000;
+    /** Most defenders the base scrambles. */
+    public static final int MAX_DEFENDERS = 4;
+    /** Tension eased between every pair of lawful factions when the base falls. */
+    public static final float FALL_RELIEF = 15f;
 
     private final GameWorld world;
     private String uuid;
@@ -37,6 +61,10 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     private boolean found;
     private boolean fallen;
     private float since = CHECK_SECONDS;
+    /** The names of the wing it scrambled, leader first; saved by name, since a load gives ships new uuids. */
+    private final List<String> defenders = new ArrayList<>();
+    /** A scramble seen due in {@link #update}, flown out after the engine's update. */
+    private boolean scrambleDue;
     private final StateVector a = new StateVector();
     private final StateVector b = new StateVector();
 
@@ -50,6 +78,8 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         establishedAt = now;
         found = false;
         fallen = false;
+        defenders.clear();
+        scrambleDue = false;
     }
 
     /** Points at a loaded game's base, which has a new uuid; null if the save has none. */
@@ -85,12 +115,90 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
                 : how + ": " + name() + " is on the traffic map", NoticeLog.Kind.IMPORTANT);
     }
 
-    /** The base falls: no more pirates gather there. {@code why} is for the notice. */
+    /**
+     * The base falls: no more pirates gather there, and the lawful factions' strain eases by
+     * {@link #FALL_RELIEF}. {@code why} is for the notice.
+     */
     public void fall(String why) {
         if (!standing()) return;
         fallen = true;
         found = true;
+        defenders.clear();
+        scrambleDue = false;
         world.notices.post(name() + " has fallen" + (why == null ? "" : ": " + why), NoticeLog.Kind.IMPORTANT);
+        world.tension.easeAll(FALL_RELIEF);
+    }
+
+    /** Defenders the base scrambles at difficulty {@code d}: two, and one more for each full point above 1, up to {@link #MAX_DEFENDERS}. */
+    public static int defendersFor(double d) {
+        return Math.min(MAX_DEFENDERS, 2 + (int) Math.floor(Math.max(0, d - 1)));
+    }
+
+    /** The names of the wing it scrambled, leader first; empty before a raid or once it has fallen. */
+    public List<String> defenders() {
+        return java.util.Collections.unmodifiableList(defenders);
+    }
+
+    /** True while a defender it scrambled is still in the fight: in the bubble and not beaten. */
+    public boolean defended() {
+        for (String id : defenders) if (fighting(id)) return true;
+        return false;
+    }
+
+    private boolean fighting(String name) {
+        String id = uuidOf(name);
+        Entity e = id == null ? null : world.engine.getEntity(id);
+        return e != null && world.macroSim.bubble().inBubble().contains(id) && !FirstPlay.beaten(world, e);
+    }
+
+    /** True while a defender it scrambled is alive and unbeaten anywhere, in the bubble or out on the rails. */
+    private boolean anyDefenderLeft() {
+        for (String name : defenders) {
+            String id = uuidOf(name);
+            Entity e = id == null ? null : world.engine.getEntity(id);
+            if (e != null && !FirstPlay.beaten(world, e)) return true;
+        }
+        return false;
+    }
+
+    /** The uuid of the hostile named {@code name}, or null if none flies now. */
+    private String uuidOf(String name) {
+        for (var e : world.macroSim.hostiles().all().entrySet()) if (name.equals(e.getValue().displayName)) return e.getKey();
+        return null;
+    }
+
+    /**
+     * Flies out a scramble {@link #update} found due: {@link #defendersFor} raiders, the first leading
+     * the rest, launched beside the base and hunting the player. Call after the engine's update.
+     */
+    public void afterUpdate() {
+        if (!scrambleDue) return;
+        scrambleDue = false;
+        if (!standing() || world.getPlayer() == null) return;
+        double now = world.macroSim.now();
+        StateVector at = new StateVector();
+        if (!offset(now, at)) return;
+        int n = defendersFor(Difficulty.of(world));
+        List<String> wing = world.hostiles.raid(uuid, n);
+        if (wing.isEmpty()) return;
+        defenders.clear();
+        String parent = world.macroSim.gateway().anchorParentUuid();
+        for (int i = 0; i < wing.size(); i++) {
+            String id = wing.get(i);
+            HostileComponent h = world.macroSim.hostiles().get(id);
+            if (h != null) {
+                h.wingOf = i == 0 ? null : wing.get(0);
+                h.targetUuid = HostileComponent.PLAYER;
+                defenders.add(h.displayName);
+            }
+            // Launched from the base's side, a little apart, where the bubble takes them in at once
+            double angle = 2 * Math.PI * i / wing.size();
+            StateVector s = world.macroSim.gateway().anchorStateAt(now, new StateVector());
+            world.macroSim.rails().attach(id, parent, s.set(s.x + at.x + LAUNCH_OFFSET * Math.cos(angle),
+                    s.y + at.y + LAUNCH_OFFSET * Math.sin(angle), s.vx, s.vy), now);
+        }
+        world.notices.post(String.format(java.util.Locale.ROOT, "%s scrambles %d raider%s against you", name(), wing.size(),
+                wing.size() == 1 ? "" : "s"), NoticeLog.Kind.WARNING);
     }
 
     /** Raiders beyond the difficulty's that the base keeps now: one more each {@link #GROWTH_DAYS} it stands. */
@@ -112,14 +220,46 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         since += deltaTime;
         if (since < CHECK_SECONDS) return;
         since = 0f;
-        look(world.macroSim.bubble().inBubble().contains(uuid));
+        // A station stays on the rails; close by, the bubble shows it as a kinematic transient
+        look(world.macroSim.bubble().inBubble().contains(uuid) || world.macroSim.bubble().fastPasses().contains(uuid));
     }
 
-    /** Finds the base if the player is near or it is {@code here} in the bubble, and lets it fall if it is here and empty. */
+    /**
+     * Finds the base if the player is near or it is {@code here} in the bubble, and lets it fall if it
+     * is here and empty. Here with the player close, it scrambles its defenders, unless some of the
+     * last wing are still about; once they are all beaten or driven off, it strikes.
+     */
     void look(boolean here) {
         if (uuid == null) return;
         if (!found && (here || near())) reveal(null);
         if (here && standing() && !anyPirateAboard()) fall("no pirate is left alive aboard");
+        if (!here || !standing()) return;
+        double range = playerRange();
+        if (!defenders.isEmpty() && !defended() && range <= STRIKE_RANGE) {
+            fall("its defenders are beaten, and it strikes its colours");
+        } else if (!anyDefenderLeft() && range <= SCRAMBLE_RANGE) {
+            scrambleDue = true;
+        }
+    }
+
+    /** Meters from the player's ship, in the bubble, to the base; infinite if the ship is not in the bubble. */
+    private double playerRange() {
+        Entity player = world.getPlayer();
+        PhysicsBodyComponent b = player == null ? null : player.getComponent(PhysicsBodyComponent.class);
+        StateVector at = new StateVector();
+        if (b == null || b.body == null || !offset(world.macroSim.now(), at)) return Double.POSITIVE_INFINITY;
+        var p = PhysicsManager.getPosition(b.body, new com.badlogic.gdx.math.Vector2());
+        return Math.hypot(at.x - p.x, at.y - p.y);
+    }
+
+    /** The base's place in the bubble at sim second {@code t}: its rails state less the anchor's. False if it is elsewhere. */
+    private boolean offset(double t, StateVector out) {
+        var rails = world.macroSim.rails();
+        if (!rails.isOnRails(uuid) || !rails.parentOf(uuid).equals(world.macroSim.gateway().anchorParentUuid())) return false;
+        rails.stateAt(uuid, t, out);
+        world.macroSim.gateway().anchorStateAt(t, b);
+        out.set(out.x - b.x, out.y - b.y, out.vx - b.vx, out.vy - b.vy);
+        return true;
     }
 
     /** True if the player is within {@link #DETECT_RANGE} of the base, both round the same body. */
@@ -154,6 +294,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         json.writeValue("establishedAt", establishedAt);
         json.writeValue("found", found);
         json.writeValue("fallen", fallen);
+        json.writeValue("defenders", defenders.toArray(new String[0]), String[].class);
     }
 
     @Override
@@ -161,5 +302,9 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         establishedAt = data.getDouble("establishedAt", Double.NaN);
         found = data.getBoolean("found", false);
         fallen = data.getBoolean("fallen", false);
+        defenders.clear();
+        String[] wing = data.has("defenders") ? json.readValue(String[].class, data.get("defenders")) : null;
+        if (wing != null) for (String id : wing) if (id != null) defenders.add(id);
+        scrambleDue = false;
     }
 }

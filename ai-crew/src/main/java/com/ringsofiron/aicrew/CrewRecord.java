@@ -8,7 +8,8 @@ package com.ringsofiron.aicrew;
  * {@link #CAP}, so it rises quickly at first and ever more slowly after. {@link #applyTo} turns
  * the skills and morale into the {@link CrewDef} the crew AI works from: gunnery and tracking are
  * the def's own skills, engineering scales how fast they repair, fight fires and seal breaches,
- * and the marine skill how often they hit with small arms. A skill of {@link #BASELINE} is the
+ * the marine skill how often they hit with small arms, and medicine how fast they treat the wounded
+ * ({@link CrewMemberComponent#careRate}). A skill of {@link #BASELINE} is the
  * role's def as it stands, so a crew member who has learned nothing works as before.
  *
  * <p>Experience comes in through the {@code pending} counters, which the crew AI adds to as the
@@ -33,13 +34,17 @@ public class CrewRecord {
         /** Repairs, fire fighting, sealing breaches, yard work and stripping salvage. */
         ENGINEERING,
         /** Fighting aboard: small arms and boarding. */
-        MARINE
+        MARINE,
+        /** Treating the wounded. */
+        MEDICINE
     }
 
     public float gunnery = BASELINE;
     public float tracking = BASELINE;
     public float engineering = BASELINE;
     public float marine = BASELINE;
+    /** Treating the wounded: a medic's own skill ({@link CrewMemberComponent#careRate}). */
+    public float medicine = BASELINE;
     /** 0 (mutinous) .. 1 (keen). */
     public float morale = STEADY_MORALE;
     /** Credits a week; 0 for crew the player does not pay. */
@@ -56,6 +61,8 @@ public class CrewRecord {
 
     /** Seconds of engineering work since the game last drained it. */
     public transient float pendingWork;
+    /** Seconds of treating the wounded since the game last drained it. */
+    public transient float pendingCare;
     /** Small-arms hits since the game last drained them. */
     public transient int pendingHits;
     /** Enemies downed since the game last drained them. */
@@ -82,6 +89,9 @@ public class CrewRecord {
             case ENGINEERING:
                 engineering = toward(engineering, xp);
                 break;
+            case MEDICINE:
+                medicine = toward(medicine, xp);
+                break;
             default:
                 marine = toward(marine, xp);
                 break;
@@ -97,6 +107,7 @@ public class CrewRecord {
         switch (skill) {
             case GUNNERY: return gunnery;
             case ENGINEERING: return engineering;
+            case MEDICINE: return medicine;
             default: return marine;
         }
     }
@@ -126,12 +137,15 @@ public class CrewRecord {
         d.repairRate = base.repairRate * work;
         d.extinguishRate = base.extinguishRate * work;
         d.sealTime = base.sealTime / work;
+        d.patchTime = base.patchTime / work;
+        d.resetTime = base.resetTime / work;
+        d.isolateTime = base.isolateTime / work;
         d.hitChance = Math.min(0.95f, base.hitChance * factor(marine));
     }
 
-    /** The skills in a line: "Gun 62  Eng 50  Mar 50". */
+    /** The skills in a line: "Gun 62  Eng 50  Mar 50  Med 50". */
     public String describeSkills() {
-        return String.format(java.util.Locale.ROOT, "Gun %.0f  Eng %.0f  Mar %.0f",
-                gunnery * 100f, engineering * 100f, marine * 100f);
+        return String.format(java.util.Locale.ROOT, "Gun %.0f  Eng %.0f  Mar %.0f  Med %.0f",
+                gunnery * 100f, engineering * 100f, marine * 100f, medicine * 100f);
     }
 }

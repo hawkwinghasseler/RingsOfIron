@@ -71,6 +71,8 @@ import java.util.Set;
  */
 public class ContractBoard extends EntitySystem implements SaveParticipant {
     public static final int OFFERS_PER_STATION = 5;
+    /** Operations a board shows at most, the ones the highest rank opens first (round 5 has seven). */
+    public static final int OPERATIONS_SHOWN = 2;
     /** Contracts the player can hold at once. */
     public static final int MAX_ACTIVE = 3;
     /** Boards are refreshed each in-game day. */
@@ -92,7 +94,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
 
     // Placeholder pay and standing; tuned with the loop in category 9.
     static final double DELIVERY_FEE_SHARE = 0.15, DELIVERY_MIN_FEE = 500;
-    static final double ESCORT_PAY = 1_500, BOUNTY_PAY = 5_000, PATROL_PAY = 1_000;
+    static final double ESCORT_PAY = 1_500, BOUNTY_PAY = 7_500, PATROL_PAY = 1_000;
     /** Pay and time for a job that crosses to another body's orbit. */
     static final double FAR_PAY = 3, NEAR_DAYS = 2, FAR_DAYS = 8;
     /** Pay for each freighter of a convoy, and for each survivor of a pod; recovery's share of the cargo's value. */
@@ -101,10 +103,19 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
     /** A bounty's pay rises by this share for each freighter its pirate has robbed, up to {@link #RECORD_CAP}. */
     static final double RECORD_PREMIUM = 0.5;
     static final int RECORD_CAP = 4;
+    /** A bounty on a ship worth less than this share of the player's pays {@link #WEAK_STANDING} of its standing. */
+    static final double WEAK_RATIO = 0.33;
+    static final float WEAK_STANDING = 0.5f;
+    /** From this rank (Commander) a single job pays {@link #SENIOR_STANDING} of its standing. */
+    static final int SENIOR_RANK = 3;
+    static final float SENIOR_STANDING = 0.5f;
     /** How close the player must come to a pirate to find it, meters: about a sensor sweep. */
     public static final double RECON_RANGE = 100_000;
-    /** Rank with the sponsor a raid on the pirate base needs (Lieutenant Commander). */
-    public static final int RAID_RANK = 2;
+    /**
+     * Rank with the sponsor a raid on the pirate base needs: Commander since round 5, when the base
+     * scrambles a wing against the raid ({@link PirateBase}); it was Lieutenant Commander.
+     */
+    public static final int RAID_RANK = 3;
     static final double RAID_PAY = 40_000, RAID_DAYS = 6;
 
     private static final Family SHIPS = Family.all(ShipTaskBoardComponent.class, UuidComponent.class)
@@ -177,8 +188,19 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         for (Contract c : extra) {
             if (stationUuid.equals(c.stationUuid) && c.status == Contract.Status.OFFERED && now() <= c.deadline) out.add(c);
         }
-        for (Contract c : board.offers) if (c.status == Contract.Status.OFFERED) out.add(c);
+        for (Contract c : board.offers) {
+            // One operation at a time: the others leave the board while one runs
+            if (c.status != Contract.Status.OFFERED || (running != null && c.type == Contract.Type.OPERATION)) continue;
+            // A bounty whose ship was beaten, is gone, or is already being hunted leaves the board
+            if (c.type == Contract.Type.BOUNTY && !stillWanted(c)) continue;
+            out.add(c);
+        }
         return out;
+    }
+
+    private boolean stillWanted(Contract c) {
+        Entity target = world.engine.getEntity(c.targetUuid);
+        return target != null && !FirstPlay.beaten(world, target) && !targeted(c.targetUuid);
     }
 
     /**
@@ -197,10 +219,18 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         int giver = world.standing.factionOf(station);
         FactionDef def = world.standing.factions().def(giver);
         if (station == null || node == null || def == null || def.hostileToAll) return;
+        // The operations the new rank shows take the place of those the board showed
         List<Contract> more = new ArrayList<>();
-        for (Contract op : operations(giver)) {
+        List<Contract> kept = new ArrayList<>();
+        List<Contract> ops = operations(giver);
+        for (Contract c : board.offers) {
+            boolean still = c.type != Contract.Type.OPERATION;
+            for (Contract op : ops) still |= op.operationId.equals(c.operationId);
+            if (still) kept.add(c);
+        }
+        for (Contract op : ops) {
             boolean shown = false;
-            for (Contract c : board.offers) shown |= op.operationId.equals(c.operationId);
+            for (Contract c : kept) shown |= op.operationId.equals(c.operationId);
             if (shown) continue;
             op.id = nextId++;
             op.giver = def.id;
@@ -208,8 +238,8 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             op.stationName = node.displayName;
             more.add(op);
         }
-        if (more.isEmpty()) return;
-        more.addAll(List.of(board.offers));
+        if (more.isEmpty() && kept.size() == board.offers.length) return;
+        more.addAll(kept);
         board.offers = more.toArray(new Contract[0]);
     }
 
@@ -318,6 +348,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         if (why != null) return why;
         if (held() >= MAX_ACTIVE) return "You already hold " + MAX_ACTIVE + " contracts";
         if (now() > c.deadline) return "Too late for that one";
+        if (c.type == Contract.Type.BOUNTY && !stillWanted(c)) return "That ship is no longer wanted";
         switch (c.type) {
             case DELIVERY: {
                 if (c.orderId < 0) break; // a world event's: no trade order behind it
@@ -407,6 +438,12 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         Entity player = world.getPlayer();
         if (player == null || world.getCrash() != null) return;
         for (Contract c : new ArrayList<>(active)) check(c, player);
+        // Survivors whose rescue ended some other way go ashore at the next station the ship docks at
+        if (world.docking.dockedWithClearance(player) && world.macroSim.station(world.universe.uuidOf(world.docking.dockedTo(player))) != null) {
+            int n = landSurvivors(player, -1);
+            if (n > 0) notices.add(n + (n == 1 ? " survivor goes" : " survivors go") + " ashore at "
+                    + PlayerDocking.name(world.docking.dockedTo(player)));
+        }
         updateMarkers();
     }
 
@@ -521,7 +558,11 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         }
     }
 
-    /** Picks the pod's survivors up with a slow close pass, then brings them in on docking at the station. */
+    /**
+     * Picks the pod's survivors up with a slow close pass, as many as there are free berths for, and
+     * brings them aboard as people ({@link SurvivorComponent}); docked at the station, those still alive
+     * go ashore and are paid for. Any left in the pod for want of berths are left to the station's tug.
+     */
     private void checkRescue(Contract c, Entity player) {
         if (c.progress == 0) {
             Derelicts.Derelict pod = world.derelicts.get(c.targetUuid);
@@ -530,13 +571,101 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
                 return;
             }
             if (!world.derelicts.closeTo(player, pod)) return;
+            int room = CrewHiring.berths(player) - world.crewHiring.aboard(player);
+            int n = (int) Math.min(Math.round(c.quantity), Math.max(0, room));
+            if (n <= 0) {
+                // Said once a pass, not every frame
+                if (c.arrivedAt < 0) notices.add("No berth free for " + c.targetName + "'s survivors");
+                c.arrivedAt = now();
+                return;
+            }
+            int aboard = boardSurvivors(c, player, n);
+            if (aboard <= 0) return;
             world.derelicts.remove(pod.id);
             c.progress = 1;
-            notices.add(String.format(Locale.ROOT, "Picked up %.0f survivors from %s; now to %s", c.quantity,
-                    c.targetName, c.destinationName));
+            c.arrivedAt = -1;
+            c.carried = aboard;
+            notices.add(String.format(Locale.ROOT, "Picked up %d survivors from %s; now to %s%s", aboard, c.targetName,
+                    c.destinationName, aboard < c.quantity ? String.format(Locale.ROOT, " (no berths for %.0f more)",
+                            c.quantity - aboard) : ""));
             return;
         }
-        if (dockedAt(player, c.destinationUuid)) end(c, Contract.Status.DONE, "survivors brought home");
+        if (!dockedAt(player, c.destinationUuid)) return;
+        if (c.carried < 0) {
+            // Picked up before survivors came aboard as people: paid by the pod's count, as then
+            end(c, Contract.Status.DONE, "survivors brought home");
+            return;
+        }
+        int alive = landSurvivors(player, c.id);
+        if (alive == 0) {
+            end(c, Contract.Status.FAILED, "none of the survivors lived");
+            return;
+        }
+        c.reward = RESCUE_PAY + RESCUE_PER_SURVIVOR * alive;
+        end(c, Contract.Status.DONE, alive + (alive == 1 ? " survivor" : " survivors") + " brought home");
+    }
+
+    /** Brings {@code n} of rescue {@code c}'s survivors aboard {@code ship}, on free deck tiles; returns how many came. */
+    private int boardSurvivors(Contract c, Entity ship, int n) {
+        String from = c.targetName == null ? "the pod" : c.targetName;
+        String crewOf = from.endsWith("'s pod") ? from.substring(0, from.length() - 6) : from;
+        int faction = world.standing.factionOf(world.engine.getEntity(c.stationUuid));
+        int aboard = 0;
+        for (int i = 0; i < n; i++) {
+            int[] tile = world.crewHiring.freeTile(ship);
+            if (tile == null) break;
+            Entity e = com.ringsofiron.aicrew.CrewFactory.spawn(world.crew, ship, crewOf + " hand " + (i + 1),
+                    com.ringsofiron.aicrew.CrewRole.CREWMAN, faction, tile[0], tile[1]);
+            // Carried, not crew: no work, no fights, a berth taken
+            world.crew.crew(e).held = true;
+            SurvivorComponent s = new SurvivorComponent();
+            s.contract = c.id;
+            s.from = from;
+            e.add(s);
+            aboard++;
+        }
+        return aboard;
+    }
+
+    /**
+     * Sends ashore the survivors aboard {@code ship} picked up for contract {@code contract}, or with
+     * {@code contract} negative, every survivor whose rescue is no longer held. Returns how many
+     * went ashore alive; the dead are taken off too.
+     */
+    private int landSurvivors(Entity ship, long contract) {
+        int alive = 0;
+        var all = world.crew.crewEntities();
+        List<Entity> ashore = new ArrayList<>();
+        for (int i = 0; i < all.size(); i++) {
+            Entity e = all.get(i);
+            SurvivorComponent s = e.getComponent(SurvivorComponent.class);
+            if (s == null || world.crew.position(e).ship != ship) continue;
+            if (contract >= 0 ? s.contract != contract : held(s.contract)) continue;
+            ashore.add(e);
+        }
+        for (Entity e : ashore) {
+            if (world.crew.crew(e).isAlive()) alive++;
+            world.crew.releaseTask(e);
+            world.engine.getEcsEngine().removeEntity(e);
+        }
+        return alive;
+    }
+
+    private boolean held(long contract) {
+        for (Contract c : active) if (c.id == contract) return true;
+        return false;
+    }
+
+    /** Survivors aboard {@code ship} picked up for a rescue, alive. */
+    public int survivorsAboard(Entity ship) {
+        int n = 0;
+        var all = world.crew.crewEntities();
+        for (int i = 0; i < all.size(); i++) {
+            Entity e = all.get(i);
+            if (e.getComponent(SurvivorComponent.class) != null && world.crew.position(e).ship == ship
+                    && world.crew.crew(e).isAlive()) n++;
+        }
+        return n;
     }
 
     /**
@@ -847,6 +976,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         c.operationName = op.name;
         c.step = op.step;
         c.steps = op.steps.length;
+        senior(c);
         // Taken as it is posted
         switch (c.type) {
             case DELIVERY: {
@@ -920,6 +1050,9 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             c.deadline = now() + DAY;
             out.add(c);
         }
+        // The newest the rank opens first, and only a few, so a board still shows other work
+        out.sort(java.util.Comparator.comparingInt((Contract c) -> -rankIndex(operationDef(c.operationId).rank)));
+        while (out.size() > OPERATIONS_SHOWN) out.remove(out.size() - 1);
         return out;
     }
 
@@ -1005,15 +1138,15 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
         kinds.add(bounties(node, giver));
         kinds.add(patrols(node, giver));
         kinds.add(convoys(node, giver));
-        kinds.add(raids(giver, false));
         for (List<Contract> k : kinds) Collections.shuffle(k, rnd);
         // Named aces come first, then wanted ships close by (in the bubble), so a bounty can be flown at once
         kinds.get(2).sort(java.util.Comparator.<Contract, Boolean>comparing(c -> !isAce(c.targetUuid))
                 .thenComparing(c -> !inBubble(c.targetUuid)));
         // ...and near lanes come first, so with many stations the patrol on show is one a newcomer may fly
         kinds.get(3).sort(java.util.Comparator.comparingInt(c -> c.tier));
-        // An operation the player has earned heads the board
+        // An operation the player has earned heads the board, and a raid on the pirates' base after it
         out.addAll(operations(giver));
+        out.addAll(raids(giver, false));
         // Round robin over the kinds, so a board shows a spread
         for (int i = 0; out.size() < OFFERS_PER_STATION; i++) {
             boolean any = false;
@@ -1036,12 +1169,22 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             }
         }
         for (Contract c : out) {
+            if (c.type != Contract.Type.OPERATION) senior(c);
             c.id = nextId++;
             c.giver = def.id;
             c.stationUuid = stationUuid;
             c.stationName = node.displayName;
         }
         return out;
+    }
+
+    /**
+     * From {@link #SENIOR_RANK} on, a single job pays {@link #SENIOR_STANDING} of its standing: a senior
+     * officer climbs on operations and raids (whose own standing is untouched), not on one more bounty.
+     */
+    private void senior(Contract c) {
+        if (c.type == Contract.Type.RAID || world.standing.record().rank < SENIOR_RANK) return;
+        c.standing = Math.max(1, Math.round(c.standing * SENIOR_STANDING));
     }
 
     /** Hauls from this station's open trade orders, sized to the player's hold. */
@@ -1139,8 +1282,12 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             int robbed = hostile == null ? 0 : hostile.plunders;
             if (robbed > 0) {
                 c.record = record(hostile);
-                c.reward = Math.round(c.reward * (1 + RECORD_PREMIUM * Math.min(robbed, RECORD_CAP)));
-                c.standing += Math.min(robbed, RECORD_CAP);
+                // An ace's price already counts what made it an ace (round 5: the two stacked to twelve
+                // times a bounty, and an ace that kept robbing paid a rank's standing at once)
+                if (!hostile.ace) {
+                    c.reward = Math.round(c.reward * (1 + RECORD_PREMIUM * Math.min(robbed, RECORD_CAP)));
+                    c.standing += Math.min(robbed, RECORD_CAP);
+                }
             }
             if (hostile != null && hostile.ace) {
                 // A named ace pays far more, and the giver remembers who brought it in
@@ -1148,6 +1295,9 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
                 c.reward = Math.round(c.reward * PirateAces.BOUNTY_SCALE);
                 c.standing += PirateAces.BOUNTY_STANDING;
             }
+            // Beating a ship far weaker than the player's earns less standing: a Commander in a frigate
+            // climbs on what can hurt a frigate, not on light raiders (round 5's late career)
+            if (ratio < WEAK_RATIO) c.standing = Math.round(c.standing * WEAK_STANDING);
             c.deadline = now() + 3 * DAY;
             out.add(c);
         }

@@ -58,6 +58,19 @@ public class MarkerWidget extends Group {
         }
     }
 
+    /** The name and range text's box, in the parent's coordinates, into {@code out}. */
+    public com.badlogic.gdx.math.Rectangle textBounds(com.badlogic.gdx.math.Rectangle out) {
+        float left = Math.min(name.getX(), range.getX());
+        float width = Math.max(name.getX() + name.getWidth(), range.getX() + range.getWidth()) - left;
+        return out.set(getX() + left, getY() + range.getY(), width, name.getY() + name.getHeight() - range.getY());
+    }
+
+    /** Moves the text by (dx, dy) from where {@link #set} put it, clear of another marker's. */
+    public void nudgeText(float dx, float dy) {
+        name.moveBy(dx, dy);
+        range.moveBy(dx, dy);
+    }
+
     @Override
     public void draw(Batch batch, float parentAlpha) {
         Color c = getColor();

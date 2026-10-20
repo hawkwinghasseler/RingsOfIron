@@ -39,7 +39,8 @@ public final class Defs {
     public static final Set<String> TILE_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "base",
             "weight_class", "material", "covering", "art", "color"));
     public static final Set<String> COMPONENT_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "behavior",
-            "sizes", "color", "power_output", "throughput", "fluid", "capacity", "thrust"));
+            "sizes", "color", "power_output", "throughput", "fluid", "capacity", "thrust", "short_chance",
+            "burst_threshold", "burst_chance"));
 
     public static List<Entry> chassis(ChassisDef d) {
         List<Entry> out = new ArrayList<>();
@@ -168,6 +169,11 @@ public final class Defs {
             if (!d.capacity.isEmpty()) out.add(new Entry("capacity", sizeTable(d.capacity)));
         }
         if ("ENGINE".equals(d.behavior) && !d.thrust.isEmpty()) out.add(new Entry("thrust", sizeTable(d.thrust)));
+        if (d.shortChance != null) out.add(new Entry("short_chance", num(d.shortChance)));
+        if ("TANK".equals(d.behavior)) {
+            if (d.burstThreshold != null) out.add(new Entry("burst_threshold", num(d.burstThreshold)));
+            if (d.burstChance != null) out.add(new Entry("burst_chance", num(d.burstChance)));
+        }
         return out;
     }
 

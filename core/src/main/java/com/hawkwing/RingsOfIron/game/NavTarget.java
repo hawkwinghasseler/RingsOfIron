@@ -80,7 +80,9 @@ public class NavTarget {
 
     /**
      * What can be targeted, in the order {@link #cycle} goes through it: contract waypoints first,
-     * then stations, known pirates, craft in the bubble and the freighters on the rails.
+     * then hostiles in the bubble, the other craft in the bubble, known pirates, stations and the
+     * freighters on the rails. Craft close by come before the stations so the ship you are
+     * fighting is a press or two away.
      */
     public List<String> candidates() {
         Set<String> out = new LinkedHashSet<>();
@@ -88,13 +90,17 @@ public class NavTarget {
             String w = c.waypointUuid();
             if (w != null && world.engine.getEntity(w) != null) out.add(w);
         }
-        for (EconomyNode s : world.macroSim.stations()) if (!world.pirateBase.hidden(s.stationUuid)) out.add(s.stationUuid);
-        out.addAll(sightings.known());
+        List<String> others = new ArrayList<>();
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(MARKED)) {
             if (e == world.getPlayer() || e.getComponent(StationComponent.class) != null) continue;
             String uuid = world.universe.uuidOf(e);
-            if (uuid != null) out.add(uuid);
+            if (uuid == null) continue;
+            if (world.macroSim.hostiles().get(uuid) != null) out.add(uuid);
+            else others.add(uuid);
         }
+        out.addAll(others);
+        out.addAll(sightings.known());
+        for (EconomyNode s : world.macroSim.stations()) if (!world.pirateBase.hidden(s.stationUuid)) out.add(s.stationUuid);
         out.addAll(world.macroSim.freighters().all().keySet());
         Entity ship = world.getPlayer();
         if (ship != null) out.remove(world.universe.uuidOf(ship));
