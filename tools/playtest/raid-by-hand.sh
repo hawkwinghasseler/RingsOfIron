@@ -36,7 +36,7 @@ walk() { local t; t=$(awk -v n="$3" 'BEGIN { n = n < 0 ? -n : n; printf "%.2f", 
   case "$3" in -*) hold "$2" "$t";; *) hold "$1" "$t";; esac; }
 to_weapons() {
   local o0 ow od steps
-  for try in 1 2 3 4; do
+  for try in 1 2 3 4 5 6; do
     o0=$(offset); hold w 0.4; ow=$(offset); hold d 0.4; od=$(offset)
     # Solve offset = a * (W step) + b * (D step); a negative count walks S or A
     steps=$(echo "$o0 $ow $od" | awk '{ wx = $1 - $3; wy = $2 - $4; dx = $3 - $5; dy = $4 - $6; x = $5; y = $6
@@ -44,8 +44,10 @@ to_weapons() {
       printf "%.1f %.1f", (x * dy - y * dx) / det, (wx * y - wy * x) / det }')
     set -- $steps
     walk w s "$1"; walk d a "$2"
+    # V sits at the nearer console: at the helm, stand and walk on; refused, try once more
     key v; pause 0.5
-    case "$(seat_state)" in *"seat WEAPONS"*) return 0;; esac
+    case "$(seat_state)" in *"seat WEAPONS"*) return 0;; *"seat HELM"*) key v; pause 0.5;; *) key v; pause 0.5;; esac
+    case "$(seat_state)" in *"seat WEAPONS"*) return 0;; *"seat HELM"*) key v; pause 0.5;; esac
   done
   echo "never reached the weapons console: $(seat_state)"; return 1
 }
@@ -56,7 +58,7 @@ echo "start: $(first "$start")"
 if [ "$MODE" = hold ]; then
   for _ in $(seq 1 12); do case "$(first "$(raid_state)")" in *"nav Rustwake"*) break;; esac; key q; done
   key 3; key v; pause 0.5
-  to_weapons
+  to_weapons || { finish; exit 1; }
   echo "seated: $(first "$(raid_state)")"
   shot r02-helm-holds
 fi
