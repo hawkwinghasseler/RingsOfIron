@@ -66,7 +66,10 @@ crew = 3
 name = "Light Raider"
 chassis = "raider"
 texture = "tex_raider"
-mass = 60000.0
+# What it weighs in the bubble with full tanks: its layout's 75 tiles at 2 t each (materials.toml's medium
+# steel, floors included) and about 2.6 t in its tanks. A ship with a layout weighs its layout, so this
+# figure only stands in for it (round 8: it said 60 t, but the raider has always flown at 153 t)
+mass = 153000.0
 max_thrust = 2.8e6
 max_torque = 6.0e5
 exhaust_velocity = 700000.0
