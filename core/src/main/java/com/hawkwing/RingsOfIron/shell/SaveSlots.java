@@ -104,36 +104,84 @@ public class SaveSlots {
     }
 
     /**
+     * The list of saves {@link #importFrom} copied in, kept beside them so a later copy knows which
+     * are its own: one {@code <file> <crc32 in hex>} line each.
+     */
+    public static final String CAREER_LIST = "career-saves.txt";
+
+    /** {@link #importFrom}'s result, each list of file names without {@code .json}. */
+    public static final class Imported {
+        /** Saves that weren't here before. */
+        public final Array<String> copied = new Array<>();
+        /** Saves an earlier copy put here, untouched since, now replaced by the new folder's. */
+        public final Array<String> replaced = new Array<>();
+        /** Saves already here that no copy made, or that the player has saved over since: left alone. */
+        public final Array<String> kept = new Array<>();
+    }
+
+    /**
      * Copies the saves in {@code from} (the career test's {@code core/build/playtest-saves/seed-2026},
      * say) into this folder, each with its summary, so the load list shows them beside the player's own.
-     * A save whose file is already here is left alone, its summary too, and so is any settings file.
-     * @return the file names copied, then the ones kept as they were, each without {@code .json}
+     * Each one copied is noted in {@link #CAREER_LIST} with its checksum. A later copy replaces those
+     * files, and only those, so a new round's saves take the place of the last round's. A save no copy
+     * made, or one the player has saved over since (its checksum moved), is left alone, its summary too,
+     * and so is any settings file.
      */
-    public Array<Array<String>> importFrom(FileHandle from) {
-        Array<String> copied = new Array<>();
-        Array<String> kept = new Array<>();
-        if (from.isDirectory()) {
-            dir.mkdirs();
-            FileHandle[] files = from.list(".json");
-            java.util.Arrays.sort(files, (a, b) -> a.name().compareTo(b.name()));
-            for (FileHandle f : files) {
-                String n = f.name();
-                if (n.endsWith(SaveSummary.META_SUFFIX) || n.equals(GameSettings.FILE_NAME)) continue;
-                FileHandle to = dir.child(n);
-                if (to.exists()) {
-                    kept.add(f.nameWithoutExtension());
+    public Imported importFrom(FileHandle from) {
+        Imported out = new Imported();
+        if (!from.isDirectory()) return out;
+        dir.mkdirs();
+        java.util.Map<String, String> ours = readCareerList();
+        FileHandle[] files = from.list(".json");
+        java.util.Arrays.sort(files, (a, b) -> a.name().compareTo(b.name()));
+        for (FileHandle f : files) {
+            String n = f.name();
+            if (n.endsWith(SaveSummary.META_SUFFIX) || n.equals(GameSettings.FILE_NAME)) continue;
+            FileHandle to = dir.child(n);
+            boolean replacing = false;
+            if (to.exists()) {
+                if (!checksum(to).equals(ours.get(n))) {
+                    ours.remove(n);
+                    out.kept.add(f.nameWithoutExtension());
                     continue;
                 }
-                f.copyTo(to);
-                FileHandle meta = SaveSummary.metaFor(f);
-                if (meta.exists()) meta.copyTo(SaveSummary.metaFor(to));
-                copied.add(f.nameWithoutExtension());
+                replacing = true;
             }
+            f.copyTo(to);
+            FileHandle meta = SaveSummary.metaFor(f);
+            if (meta.exists()) meta.copyTo(SaveSummary.metaFor(to));
+            else SaveSummary.metaFor(to).delete();
+            ours.put(n, checksum(to));
+            (replacing ? out.replaced : out.copied).add(f.nameWithoutExtension());
         }
-        Array<Array<String>> out = new Array<>();
-        out.add(copied);
-        out.add(kept);
+        writeCareerList(ours);
         return out;
+    }
+
+    private java.util.Map<String, String> readCareerList() {
+        java.util.Map<String, String> ours = new java.util.TreeMap<>();
+        FileHandle list = dir.child(CAREER_LIST);
+        if (!list.exists()) return ours;
+        for (String line : list.readString("UTF-8").split("\\R")) {
+            int at = line.lastIndexOf(' ');
+            if (at > 0) ours.put(line.substring(0, at), line.substring(at + 1).trim());
+        }
+        return ours;
+    }
+
+    private void writeCareerList(java.util.Map<String, String> ours) {
+        StringBuilder sb = new StringBuilder();
+        for (java.util.Map.Entry<String, String> e : ours.entrySet()) {
+            // Gone from this folder (the player deleted it): nothing left to replace
+            if (dir.child(e.getKey()).exists()) sb.append(e.getKey()).append(' ').append(e.getValue()).append('\n');
+        }
+        dir.child(CAREER_LIST).writeString(sb.toString(), false, "UTF-8");
+    }
+
+    private static String checksum(FileHandle f) {
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        crc.update(f.readBytes());
+        return Long.toHexString(crc.getValue());
     }
 
     /** "Save N" for the first N with no such save yet. */
