@@ -35,7 +35,7 @@ dependencies {
 
 test {
   useJUnitPlatform()
-  // ./gradlew :core:test --tests '*Round3CareerTest' -PcareerSeed=7 plays the scripted career on another seed
+  // ./gradlew :core:slowTest --tests '*Round3CareerTest' -PcareerSeed=7 plays the scripted career on another seed
   if (project.hasProperty('careerSeed')) systemProperty 'career.seed', project.property('careerSeed')
   // ./gradlew :core:test --tests '*CareerSeedsTest' -PcareerSeeds=2026,7,12 plays each seed's career twice (CI's career seed jobs)
   if (project.hasProperty('careerSeeds')) systemProperty 'career.seeds', project.property('careerSeeds')

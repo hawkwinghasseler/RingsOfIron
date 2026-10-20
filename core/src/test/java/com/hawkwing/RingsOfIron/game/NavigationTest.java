@@ -23,6 +23,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** Navigation target, closest approach, plan to target, the helm's autopilot, pirates on the map, warp to burn. */
@@ -191,6 +192,7 @@ class NavigationTest {
         assertEquals(HelmOrderComponent.Mode.NONE, world.nav.helm.mode());
     }
 
+    @Tag("slow")
     @Test
     void theHelmsmanApproachesTheTargetAndHoldsThere() {
         world.nav.target.select(game.highport);
@@ -208,6 +210,7 @@ class NavigationTest {
         assertTrue(world.nav.helm.describe().startsWith("Helm: approaching Highport"), world.nav.helm.describe());
     }
 
+    @Tag("slow")
     @Test
     void theHelmsmanMatchesTheTargetsVelocity() {
         world.nav.target.select(game.highport);
@@ -222,6 +225,7 @@ class NavigationTest {
         assertTrue(relativeSpeed() < 0.3, "matched: " + relativeSpeed());
     }
 
+    @Tag("slow")
     @Test
     void theHelmsmanFliesAPlannedBurnWithTheMainEngine() {
         handOverTheHelm();
