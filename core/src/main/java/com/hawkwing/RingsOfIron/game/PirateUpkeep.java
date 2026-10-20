@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -15,9 +16,10 @@ import java.util.Map;
  * Pirates' upkeep on the rails (round 8). Round 7 made a hostile with dry tanks give up in a fight,
  * and pirates burn propellant coming alongside freighters, but only freighters refuelled: aces met
  * the player with empty tanks and gave up in the first second of their bounty fight (seed 2026's
- * Cold Teodor met the gunship with 0 of 4,000 kg). Now a pirate off in the rails refills its
+ * Cold Teodor met the gunship with 0 of 4,000 kg). Now a pirate off on the rails refills its
  * propellant tanks, full in {@link #RAILS_REFUEL_DAYS}, and a robbery tops it up first from its
- * prey's own reaction mass ({@link #robbed}). In the bubble it burns as before, and takes on nothing.
+ * prey's own reaction mass ({@link #robbed}). In the bubble it burns as before; it takes on nothing
+ * while it fights or stalks, and refills at the rails' rate only while it lies {@link #idle}.
  *
  * <p>Holds no state of its own beyond the clock it last ran at, which {@link HostileTraffic} saves:
  * what the tanks hold is saved with the ship's grid.
@@ -44,9 +46,20 @@ public final class PirateUpkeep {
             HostileComponent h = e.getValue();
             if (!h.isPirate() || h.moored()) continue;
             Entity ship = world.engine.getEntity(e.getKey());
-            if (ship == null || ship.getComponent(PhysicsBodyComponent.class) != null) continue;
+            if (ship == null || !idle(ship)) continue;
             refuel(ship, dt);
         }
+    }
+
+    /**
+     * True for a pirate that refuels now: one out on the rails, or one in the bubble that is neither
+     * fighting nor stalking (no combat pilot) and not beaten. A pirate that ran its tanks dry in the
+     * bubble can't fly out past its edge, so it waits there for its reserve to come back (round 8:
+     * seeds 7 and 12 found aces drifting dry 15 km from the player's station for weeks).
+     */
+    static boolean idle(Entity ship) {
+        if (ship.getComponent(PhysicsBodyComponent.class) == null) return true;
+        return ship.getComponent(NpcCombatComponent.class) == null && !ShipDisablement.isDisabled(ship);
     }
 
     /** Puts {@code seconds} of rails refuelling into {@code ship}'s propellant tanks. Returns the kg taken on. */

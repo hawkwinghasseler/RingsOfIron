@@ -6,6 +6,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -69,14 +70,27 @@ class PirateUpkeepTest {
     }
 
     @Test
-    void aPirateInTheBubbleTakesOnNothing() {
+    void aPirateFightingInTheBubbleTakesOnNothing() {
         String id = pirate(HostileTraffic.RAIDER);
         Entity ship = bringIn(id, 3_000, 0);
+        ship.add(new NpcCombatComponent(game.player));
         empty(ship);
         PirateUpkeep upkeep = new PirateUpkeep(world);
         upkeep.update(hostiles.all(), 0);
         upkeep.update(hostiles.all(), PirateUpkeep.DAY);
         assertEquals(0, PirateUpkeep.fuelShare(ship), 1e-9);
+    }
+
+    @Test
+    void aPirateLyingIdleInTheBubbleRefuelsAsOnTheRails() {
+        String id = pirate(HostileTraffic.RAIDER);
+        Entity ship = bringIn(id, 3_000, 0);
+        ship.remove(NpcCombatComponent.class);
+        empty(ship);
+        PirateUpkeep upkeep = new PirateUpkeep(world);
+        upkeep.update(hostiles.all(), 0);
+        upkeep.update(hostiles.all(), PirateUpkeep.DAY);
+        assertEquals(1 / PirateUpkeep.RAILS_REFUEL_DAYS, PirateUpkeep.fuelShare(ship), 1e-6);
     }
 
     @Test
