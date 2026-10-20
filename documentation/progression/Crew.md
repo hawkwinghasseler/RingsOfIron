@@ -89,7 +89,7 @@ The player's own figure has no behaviour tree, so `CaptainSafety` does for it wh
 ### Railgun lethality (round 6 part 3)
 The round 5 ace survey had the railgun ace killing 29 of 30 crew. Traced fight by fight (`CrewWoundSurveyTest -PwoundTrace`), the deaths were not untreated wounds on a ship without a medic:
 - **Everyone went down together.** An engineer sealing a breach at the bow was hit; whoever came to help her stood on her tile, and every slug through that tile struck everyone on it for a critical wound. A round crossing a tile now strikes each person on it 40% of the time (`PenetrationResolver.CREW_HIT_CHANCE`), fragments and spall alike.
-- **The ace went on firing** into the disabled corvette for the survey's ten minutes after the fight (300 to 500 hits). A pirate now leaves a beaten player drifting ("Raider leaves you drifting") and flies off with its guns cold (`HostileTraffic.fly`).
+- **The ace went on firing** into the disabled corvette for the survey's ten minutes after the fight (300 to 500 hits). A pirate now leaves a beaten player drifting ("Raider leaves you drifting") and flies off with its guns cold (`HostileTraffic.fly`). Beaten means `FirstPlay.beaten`: a player dark only for an ion stun is not, and the fight goes on.
 - **Nobody stopped the bleeding.** Anyone now stabilises a critical wound (ai-crew Design.md, section 5), before a rescue that may have nowhere to go.
 - **The suits ran dry.** Holed past its patch kits, the beaten corvette held no air anywhere; its crew now fill their suits at an oxygen tank or the life support.
 
