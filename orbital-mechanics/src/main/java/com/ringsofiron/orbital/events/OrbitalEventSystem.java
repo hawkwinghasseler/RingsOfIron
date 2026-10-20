@@ -233,9 +233,18 @@ public class OrbitalEventSystem extends EntitySystem implements SaveParticipant 
 
     /** Redo every prediction for this entity after its orbit changed outside the event system. */
     public void orbitChanged(Entity entity) {
+        orbitChanged(entity, universe.now());
+    }
+
+    /**
+     * As {@link #orbitChanged(Entity)}, for a change made at sim second {@code t}: a change made by
+     * an event inside a rails jump is made at that event's time, not the jump's end, and a burn it
+     * plans fires when it is due.
+     */
+    public void orbitChanged(Entity entity, double t) {
         String id = uuidMapper.get(entity).id;
         queue.removeFor(id);
-        schedule(entity, universe.now());
+        schedule(entity, t);
     }
 
     /** Cancels everything pending for an entity that is leaving the rails (e.g. entering the bubble). */

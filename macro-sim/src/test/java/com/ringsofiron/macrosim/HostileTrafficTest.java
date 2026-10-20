@@ -11,10 +11,14 @@ import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent.Role;
 import com.ringsofiron.macrosim.hostile.HostileComponent.State;
 import com.ringsofiron.macrosim.hostile.HostileTrafficController;
+import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.macrosim.rails.StateVector;
+import com.ringsofiron.macrosim.rails.stub.StubRailsModel;
 import com.ringsofiron.macrosim.rails.orbital.OrbitalRailsModel;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -113,6 +117,64 @@ class HostileTrafficTest {
             assertTrue(h.state == State.HOLDING || h.state == State.INTERCEPTING || h.state == State.AMBUSHING
                     || h.state == State.RETURNING, h.state.name());
         }
+    }
+
+    @Test
+    void aPirateNeverFliesThroughTheStationItLaysAnAmbushBy() {
+        // Round 7: leaving its ambush 5 km behind Deepwell Depot for a lurk farther out, a pirate's
+        // transfer burn carried it straight along the orbit through the station and the ships docked
+        // there; coming in from above to wait there would have done the same
+        GameEngine engine = new GameEngine();
+        StubRailsModel rails = new StubRailsModel();
+        rails.addBody(MacroSimDemo.PLANET, MacroSimDemo.EARTH_MU);
+        MacroSimulation sim = MacroSimDemo.build(engine, rails, MacroSimDemo.PLANET);
+        Map<String, String> hunts = new HashMap<>();
+        sim.hostiles().addListener(new HostileTrafficController.Listener() {
+            @Override
+            public void intercepting(String hostile, String target, double t) {
+                hunts.put(hostile, sim.hostiles().get(hostile).ambushStationUuid);
+            }
+        });
+        for (EconomyNode n : new ArrayList<>(sim.stations())) {
+            sim.addPirate(ship(engine), pirate("Raider of " + n.displayName, 1), n.stationUuid);
+        }
+        Map<String, Double> due = new HashMap<>();
+        int flown = 0;
+        double closest = Double.POSITIVE_INFINITY;
+        for (double t = 0; t <= 20 * 86400 && flown < 8; t += 60) {
+            sim.advanceTo(t);
+            for (Map.Entry<String, String> hunt : hunts.entrySet()) {
+                String id = hunt.getKey();
+                if (hunt.getValue() == null) continue;
+                List<RailsModel.Burn> burns = rails.pendingBurns(id);
+                double next = burns.isEmpty() ? Double.NaN : burns.get(0).time;
+                Double was = due.get(id);
+                if (was != null && was < t && !Double.isNaN(next) && next > t) {
+                    // The transfer burn fired and the arrival's is next: on the transfer orbit now, so its
+                    // first minute out and its last minute in are both exact
+                    closest = Math.min(closest, closestPass(sim, id, hunt.getValue(), was, was + 60));
+                    closest = Math.min(closest, closestPass(sim, id, hunt.getValue(), next - 60, next));
+                    flown++;
+                }
+                if (Double.isNaN(next)) due.remove(id);
+                else due.put(id, next);
+            }
+        }
+        assertTrue(flown >= 2, "pirates flew to their ambushes and home: " + flown);
+        assertTrue(closest > 0.9 * HostileTrafficController.AMBUSH_OFFSET,
+                String.format("one came within %.0f m of the station", closest));
+    }
+
+    /** The closest {@code ship} came to {@code station} on its present orbit between {@code from} and {@code to}, m. */
+    private static double closestPass(MacroSimulation sim, String ship, String station, double from, double to) {
+        StateVector p = new StateVector(), q = new StateVector();
+        double closest = Double.POSITIVE_INFINITY;
+        for (double s = from + 0.1; s <= to; s += 0.1) {
+            sim.rails().stateAt(ship, s, p);
+            sim.rails().stateAt(station, s, q);
+            closest = Math.min(closest, Math.hypot(p.x - q.x, p.y - q.y));
+        }
+        return closest;
     }
 
     @Test
@@ -311,6 +373,63 @@ class HostileTrafficTest {
         assertFalse(sim.rails().isOnRails(raider));
         assertFalse(sim.destroy(raider), "only once");
         sim.advanceTo(2 * 86400);
+    }
+
+    @Test
+    void burnsPlannedInTheMiddleOfOneLongJumpFireWhenDue() {
+        // Round 7: in the game the rails read the engine's clock, which a rails jump (the tow's three
+        // days) has already moved to its end. Every burn a pirate planned during the jump fired at once
+        // at its end, so it never reached its ambush, and its burn home fired as the towed ship docked
+        for (double days : new double[]{1, 2, 3}) {
+            double[] played = playPirates(days * 86400, days * 86400 / 144);
+            double[] jumped = playPirates(days * 86400, days * 86400);
+            assertArrayEquals(played, jumped, 1, "one jump of " + days + " days flies the pirates as many small steps do");
+        }
+    }
+
+    /**
+     * Pirates hunting the demo system's freighters for {@code seconds} on rails that read a game
+     * clock, advanced {@code step} seconds at a time with the clock moved to each step's end first,
+     * as the game's engine moves it. Returns where each pirate is and how fast it moves, x, y, vx and vy.
+     */
+    private double[] playPirates(double seconds, double step) {
+        GameEngine engine = new GameEngine();
+        double[] clock = {0};
+        com.ringsofiron.orbital.rails.RailsUniverse universe = new com.ringsofiron.orbital.rails.RailsUniverse(
+                engine.getEcsEngine(), engine.getUuidRegistry(), () -> clock[0]);
+        com.ringsofiron.orbital.events.OrbitalEventSystem events = new com.ringsofiron.orbital.events.OrbitalEventSystem(
+                universe, new com.ringsofiron.orbital.events.OrbitalEventQueue());
+        engine.getEcsEngine().addSystem(events);
+        events.setProcessing(false);
+        OrbitalRailsModel rails = new OrbitalRailsModel(engine, universe, events);
+        Entity planet = engine.createEntityWithUuid();
+        planet.add(new CelestialBodyComponent("Terra", MacroSimDemo.EARTH_MU, 6_371e3, Double.POSITIVE_INFINITY));
+        engine.addEntity(planet);
+        MacroSimulation sim = MacroSimDemo.build(engine, rails, planet.getComponent(UuidComponent.class).id);
+        listen(sim);
+        List<String> pirates = new ArrayList<>();
+        for (EconomyNode n : new ArrayList<>(sim.stations())) {
+            String id = ship(engine);
+            sim.addPirate(id, pirate("Raider of " + n.displayName, 1), n.stationUuid);
+            pirates.add(id);
+        }
+        for (double t = step; t <= seconds; t += step) {
+            clock[0] = t;
+            sim.advanceTo(t);
+        }
+        assertFalse(intercepts.isEmpty(), "the pirates went hunting");
+        double[] out = new double[4 * pirates.size()];
+        StateVector s = new StateVector();
+        for (int i = 0; i < pirates.size(); i++) {
+            rails.stateAt(pirates.get(i), seconds, s);
+            out[4 * i] = s.x;
+            out[4 * i + 1] = s.y;
+            out[4 * i + 2] = s.vx;
+            out[4 * i + 3] = s.vy;
+        }
+        intercepts.clear();
+        plunders.clear();
+        return out;
     }
 
     @Test

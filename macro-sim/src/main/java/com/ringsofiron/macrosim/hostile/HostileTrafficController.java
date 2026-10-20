@@ -68,6 +68,11 @@ public class HostileTrafficController {
     public static final double PLAYER_NERVE = 0.8;
     /** How far behind its leader a wingman lurks and arrives, meters. */
     public static final double WING_SPACING = 2_000;
+    /**
+     * Holds nearer a station than this along its orbit (an ambush, a patrol's) take the side of it
+     * clear of the ship's own way in and out, meters. See {@link #arrivalSide}.
+     */
+    public static final double CLEAR_SIDE = 20_000;
     /** The player's orbit must be this close to circular for a pirate to plan a rendezvous with it. */
     static final double MAX_PLAYER_ECCENTRICITY = 0.02;
     /** Lowest altitude any planned orbit may reach, above the body's surface, meters. */
@@ -159,7 +164,11 @@ public class HostileTrafficController {
         h.routeIndex = 0;
         h.stationUuid = route[0];
         hostiles.put(uuid, h);
-        holdAt(uuid, h, route[0], HOLD_OFFSET, now);
+        // On the side clear of the way to its next stop
+        double offset = route.length > 1 && rails.isOnRails(route[0]) && rails.isOnRails(route[1])
+                ? departureSide(HOLD_OFFSET, rails.stateAt(route[1], now, a).distance(), rails.stateAt(route[0], now, b).distance())
+                : HOLD_OFFSET;
+        holdAt(uuid, h, route[0], offset, now);
         if (route.length > 1) schedule(uuid, h, now + PATROL_HOLD);
     }
 
@@ -210,6 +219,23 @@ public class HostileTrafficController {
             } else if (home && (h.state == State.RETURNING || h.state == State.HOLDING)) {
                 goHome(uuid, h, now);
             }
+        }
+    }
+
+    /**
+     * The player was taken somewhere else on the rails (a tow): every hostile after them loses them,
+     * a pirate on its way to them flies home, and none sets out after them again before
+     * {@code until}. Surrendered ships are left as they are.
+     */
+    public void playerTakenAway(double now, double until) {
+        playerGraceUntil = Math.max(playerGraceUntil, until);
+        for (Map.Entry<String, HostileComponent> e : hostiles.entrySet()) {
+            String uuid = e.getKey();
+            HostileComponent h = e.getValue();
+            if (!h.huntingPlayer() || h.surrendered) continue;
+            h.targetUuid = null;
+            // Only pirates hunt the player on the rails
+            if (h.state == State.INTERCEPTING && h.role == Role.PIRATE && rails.isOnRails(uuid)) goHome(uuid, h, now);
         }
     }
 
@@ -319,12 +345,12 @@ public class HostileTrafficController {
                 ambush(uuid, h, now);
                 break;
             case RETURNING:
-                holdAt(uuid, h, h.stationUuid, lurkOffset(h), now);
+                holdAt(uuid, h, h.stationUuid, sideKept(uuid, h.stationUuid, lurkOffset(h), now), now);
                 h.state = State.HOLDING;
                 schedule(uuid, h, Math.max(now + LOOK_INTERVAL, h.restUntil));
                 break;
             case PATROLLING:
-                holdAt(uuid, h, h.stationUuid, HOLD_OFFSET, now);
+                holdAt(uuid, h, h.stationUuid, sideKept(uuid, h.stationUuid, HOLD_OFFSET, now), now);
                 h.state = State.HOLDING;
                 if (h.route.length > 1) schedule(uuid, h, now + PATROL_HOLD);
                 break;
@@ -434,10 +460,12 @@ public class HostileTrafficController {
     /** Arrived by the prey's destination: waits there for it, if it is still coming. */
     private void lieInWait(String uuid, HostileComponent h, double now) {
         FreighterComponent f = freighters.get(h.targetUuid);
-        holdAt(uuid, h, h.ambushStationUuid, h.wingOf == null ? AMBUSH_OFFSET : AMBUSH_OFFSET + WING_SPACING, now);
+        double offset = h.wingOf == null ? AMBUSH_OFFSET : AMBUSH_OFFSET + WING_SPACING;
+        holdAt(uuid, h, h.ambushStationUuid, sideKept(uuid, h.ambushStationUuid, offset, now), now);
         if (f == null || !h.ambushStationUuid.equals(f.destinationUuid) || Double.isNaN(f.arrivalTime)
                 || f.arrivalTime - AMBUSH_LEAD < now) {
             h.targetUuid = null;
+            leaveHold(uuid, h.ambushStationUuid, h.stationUuid, now);
             goHome(uuid, h, now);
             return;
         }
@@ -458,6 +486,7 @@ public class HostileTrafficController {
                 plunder(uuid, h, prey, now);
             }
         }
+        leaveHold(uuid, h.ambushStationUuid, h.stationUuid, now);
         h.targetUuid = null;
         h.ambushStationUuid = null;
         h.restUntil = Math.max(h.restUntil, now + REST);
@@ -485,11 +514,12 @@ public class HostileTrafficController {
     /** A patrol moves on to the next station of its route. */
     private void nextLeg(String uuid, HostileComponent h, double now) {
         if (h.route.length < 2) return;
+        leaveHold(uuid, h.stationUuid, h.route[(h.routeIndex + 1) % h.route.length], now);
         h.routeIndex = (h.routeIndex + 1) % h.route.length;
         h.stationUuid = h.route[h.routeIndex];
         TransferPlanner.Plan plan = planTo(uuid, h.stationUuid, HOLD_OFFSET, now, now + DEPART_DELAY);
         if (plan == null) {
-            holdAt(uuid, h, h.stationUuid, HOLD_OFFSET, now);
+            holdAt(uuid, h, h.stationUuid, sideKept(uuid, h.stationUuid, HOLD_OFFSET, now), now);
             schedule(uuid, h, now + PATROL_HOLD);
             return;
         }
@@ -546,11 +576,15 @@ public class HostileTrafficController {
         return planFrom(rails.parentOf(uuid), rails.stateAt(uuid, now, a), station, offset, now, minStart);
     }
 
-    /** A transfer from a near-circular orbit to {@code offset} behind a station around the same body. */
+    /**
+     * A transfer from a near-circular orbit to {@code offset} behind a station around the same body,
+     * or as far ahead of it when that is the side clear of the way in ({@link #arrivalSide}).
+     */
     private TransferPlanner.Plan planFrom(String parent, StateVector ship, String station, double offset, double now,
                                           double minStart) {
         if (station == null || !rails.isOnRails(station) || !parent.equals(rails.parentOf(station))) return null;
-        StateVector target = behind(rails.stateAt(station, now, b), offset);
+        rails.stateAt(station, now, b);
+        StateVector target = behind(b, arrivalSide(offset, ship.distance(), b.distance()));
         return TransferPlanner.plan(rails.muOf(parent), ship, target, now, minStart, floor(parent));
     }
 
@@ -591,6 +625,65 @@ public class HostileTrafficController {
 
     private double floor(String parent) {
         return rails.radiusOf(parent) + SAFE_ALTITUDE;
+    }
+
+    /**
+     * Where a ship coming in from an orbit of radius {@code from} holds {@code offset} meters off a
+     * station on its orbit (radius {@code station}): behind it (the {@code offset} as given) or as far
+     * ahead (its negative). In its last seconds a transfer runs straight along the station's orbit: in
+     * from below, slower than the station, the ship drifts back onto its hold from ahead, and in from
+     * above, faster, it comes up from behind. Held on the side it comes in from, its way in doesn't
+     * pass through the station and whatever is docked there. Holds {@link #CLEAR_SIDE} or more off,
+     * where the path has curved clear, stay behind.
+     */
+    static double arrivalSide(double offset, double from, double station) {
+        if (offset <= 0 || offset >= CLEAR_SIDE) return offset;
+        return from < station ? -offset : offset;
+    }
+
+    /**
+     * Where a ship leaving for an orbit of radius {@code to} should hold {@code offset} meters off a
+     * station (radius {@code station}): its burn starts it straight along the orbit, forward when it
+     * climbs and back when it drops, so it holds ahead to climb away and behind to drop away. Round 7:
+     * a pirate leaving its ambush behind Deepwell Depot for Anvil Yards' orbit flew through the depot
+     * and rammed the ships docked there.
+     */
+    static double departureSide(double offset, double to, double station) {
+        if (offset <= 0 || offset >= CLEAR_SIDE) return offset;
+        return to > station ? -offset : offset;
+    }
+
+    /**
+     * {@code offset} for a hold by {@code station} on the side the ship is on now, ahead or behind,
+     * so a hold taken on arrival keeps the side it came in on ({@link #arrivalSide}).
+     */
+    private double sideKept(String uuid, String station, double offset, double now) {
+        if (offset <= 0 || offset >= CLEAR_SIDE || station == null || !rails.isOnRails(uuid) || !rails.isOnRails(station)) {
+            return offset;
+        }
+        return aheadOf(uuid, station, now) > 0 ? -offset : offset;
+    }
+
+    /** How far {@code uuid} is ahead of {@code station} along the way it moves, meters; negative when behind. */
+    private double aheadOf(String uuid, String station, double now) {
+        rails.stateAt(uuid, now, a);
+        rails.stateAt(station, now, b);
+        int dir = (b.x * b.vy - b.y * b.vx) < 0 ? -1 : 1;
+        return dir * (b.x * a.y - b.y * a.x) / b.distance();
+    }
+
+    /**
+     * Before a ship holding near {@code station} leaves it for {@code next}'s orbit: if its hold is on
+     * the side its burn would carry it through the station from ({@link #departureSide}), it moves
+     * round to the other side first, as far off.
+     */
+    private void leaveHold(String uuid, String station, String next, double now) {
+        if (station == null || next == null || !rails.isOnRails(uuid) || !rails.isOnRails(station) || !rails.isOnRails(next)) return;
+        double ahead = aheadOf(uuid, station, now);
+        double off = Math.hypot(a.x - b.x, a.y - b.y);
+        if (off >= CLEAR_SIDE || Math.abs(a.distance() - b.distance()) > off) return;
+        double want = departureSide(off, rails.stateAt(next, now, a).distance(), b.distance());
+        if ((want < 0) != (ahead > 0)) holdAt(uuid, hostiles.get(uuid), station, want, now);
     }
 
     /**

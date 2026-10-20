@@ -42,6 +42,14 @@ public class OrbitalRailsModel implements RailsModel {
     private final OrbitalEventSystem events;
     private final com.ringsofiron.orbital.math.StateVector scratch = new com.ringsofiron.orbital.math.StateVector();
     private final double[] now;
+    /**
+     * The sim second the rails are being advanced to, event by event, or NaN outside an advance. In the
+     * game the universe's clock is the engine's, which a rails jump has already moved to its end; a
+     * burn a macro event plans in the middle of the jump is scheduled from this instead, so it fires
+     * when it is due rather than all at once at the jump's end (round 7: after a tow, a pirate's burn
+     * home from its ambush, due days before, fired as the ship docked and flew it through Deepwell Depot).
+     */
+    private double advancing = Double.NaN;
 
     /** Over the game's existing event system, which must already be in the engine. */
     public OrbitalRailsModel(GameEngine engine, RailsUniverse universe, OrbitalEventSystem events) {
@@ -135,7 +143,7 @@ public class OrbitalRailsModel implements RailsModel {
             e.add(new OrbitComponent(parentUuid, k)); // the event system's listener schedules it
         } else {
             o.reparent(parentUuid, k);
-            events.orbitChanged(e);
+            events.orbitChanged(e, time());
         }
     }
 
@@ -163,7 +171,7 @@ public class OrbitalRailsModel implements RailsModel {
             e.add(m);
         }
         m.add(burn.time, burn.prograde, burn.radial);
-        events.orbitChanged(e);
+        events.orbitChanged(e, time());
     }
 
     @Override
@@ -172,7 +180,7 @@ public class OrbitalRailsModel implements RailsModel {
         ManeuverNodeComponent m = maneuvers.get(e);
         if (m == null || m.nodes.size == 0) return;
         m.nodes.clear();
-        if (orbits.has(e)) events.orbitChanged(e);
+        if (orbits.has(e)) events.orbitChanged(e, time());
     }
 
     @Override
@@ -181,9 +189,21 @@ public class OrbitalRailsModel implements RailsModel {
         OrbitalEvent next;
         while ((next = events.getQueue().peek()) != null && next.time <= t) {
             now[0] = Math.max(now[0], next.time);
+            advancing = next.time;
             events.processUntil(next.time);
         }
         now[0] = Math.max(now[0], t);
+        advancing = t;
+    }
+
+    @Override
+    public void doneAdvancing() {
+        advancing = Double.NaN;
+    }
+
+    /** When a change made now is made: the time being advanced to, else the universe's clock. */
+    private double time() {
+        return Double.isNaN(advancing) ? universe.now() : advancing;
     }
 
     @Override
