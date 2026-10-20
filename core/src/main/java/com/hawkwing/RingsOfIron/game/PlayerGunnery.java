@@ -32,11 +32,13 @@ public class PlayerGunnery {
     public PlayerGunnery(GameWorld world, Entity ship) {
         this.world = world;
         this.ship = ship;
-        WeaponsComponent weapons = weapons();
-        if (weapons != null) {
-            // The main guns wait for the player; point defense is weapons free.
-            for (WeaponMountComponent m : weapons.mounts) m.weaponsFree = m.def != null && m.def.pointDefense;
-        }
+        holdMainGuns(weapons());
+    }
+
+    /** The main guns wait for the player; point defense is weapons free. */
+    static void holdMainGuns(WeaponsComponent weapons) {
+        if (weapons == null) return;
+        for (WeaponMountComponent m : weapons.mounts) m.weaponsFree = m.def != null && m.def.pointDefense;
     }
 
     public Entity ship() {

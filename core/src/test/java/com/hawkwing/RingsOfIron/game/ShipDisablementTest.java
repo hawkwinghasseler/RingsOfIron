@@ -213,6 +213,23 @@ class ShipDisablementTest {
     }
 
     @Test
+    void thePlayersMainGunsWaitForTheTriggerWhenPowerComesBack() {
+        Entity target = game.raider;
+        game.player.getComponent(SensorComponent.class).lockedTarget = target;
+        run(10);
+        for (SubsystemComponent r : systems(game.player, SubsystemComponent.SubsystemType.REACTOR)) r.switchedOn = false;
+        run(60);
+        assertEquals(DisabledComponent.Reason.NO_POWER, ShipDisablement.reason(game.player));
+        for (SubsystemComponent r : systems(game.player, SubsystemComponent.SubsystemType.REACTOR)) r.switchedOn = true;
+        run(60);
+        assertFalse(ShipDisablement.isDisabled(game.player), "power back, fit again");
+        // Round 8: they used to come back weapons free and fire on their own at the locked target
+        for (WeaponMountComponent m : game.player.getComponent(WeaponsComponent.class).mounts) {
+            assertEquals(m.def != null && m.def.pointDefense, m.weaponsFree, "only point defense fires by itself");
+        }
+    }
+
+    @Test
     void theDisabledStateIsSaved(@TempDir Path dir) {
         game.provokeRaider();
         run(10);

@@ -231,7 +231,10 @@ public class ShipDisablement extends EntitySystem {
                 if (current.markerLabel != null) marker.label = current.markerLabel;
                 marker.color.set(marker.kind.defaultColor);
             }
-            holdFire(ship, false);
+            // The player's main guns wait for the trigger again (round 8: power back after a loss, they
+            // opened fire by themselves at the locked target, and the recoil shook the ship off its berth)
+            if (isPlayer(ship)) PlayerGunnery.holdMainGuns(ship.getComponent(WeaponsComponent.class));
+            else holdFire(ship, false);
         } else {
             if (current == null) {
                 current = new DisabledComponent(reason, simSeconds.getAsDouble());
