@@ -48,6 +48,8 @@ abstract class CareerScript {
     static final float FRAME = 1f / 60f;
     /** 2026 unless {@code -PcareerSeed=n} is given, to play the career on other seeds. */
     static final long SEED = Long.getLong("career.seed", 2026);
+    /** The seed this script plays: {@link #SEED}, unless a test plays other seeds side by side. */
+    long seed = SEED;
 
     GameWorld world;
     GameScenario game;
@@ -99,12 +101,12 @@ abstract class CareerScript {
      * Moon trip and three weeks' pay. Returns the station the ship was docked at before the weeks passed.
      */
     String playToTheGunship() {
-        start(SEED);
+        start(seed);
         game.beginCareer();
         run(120);
         Entity highport = world.engine.getEntity(game.highport);
         assertSame(highport, world.docking.dockedTo(game.player), "a Patrol career starts docked at Highport");
-        log("Seed %d, Patrol career. %d stations, %d freighters, %d pirates, %d crew aboard.", SEED,
+        log("Seed %d, Patrol career. %d stations, %d freighters, %d pirates, %d crew aboard.", seed,
                 world.macroSim.stations().size(), world.macroSim.freighters().all().size(), pirates(), ownCrew().size());
         snapshot("start");
         logBoard(game.highport);
@@ -276,6 +278,11 @@ abstract class CareerScript {
      * crew rarely live through the player's guns, so the prisoners are counted, not required.
      */
     void boardAndSell(Entity ship) {
+        if (ship.getComponent(PhysicsBodyComponent.class) == null) {
+            // A long fight leaves it drifting: twenty minutes on, it can be out of the bubble
+            log("  the prize drifted out of reach before it could be boarded.");
+            return;
+        }
         flyTo(ship, 40f);
         world.docking.dockInPlace(game.player, 0, ship, 0);
         assertTrue(runUntil(10f, () -> world.boarding.target(game.player) == ship && world.docking.isRigid(game.player)),
@@ -317,11 +324,16 @@ abstract class CareerScript {
             gun.fireGuns();
             gun.launchMissile();
             gun.update(FRAME);
-            return (h != null && h.partDropped) || ShipDisablement.isDisabled(ship) || ShipDisablement.isDisabled(game.player)
+            // Dark for an ion stun's few seconds isn't a lost fight: the guns come back. Judged afresh,
+            // since the disabled mark lingers until the next judgement after the stun ends
+            return (h != null && h.partDropped) || ShipDisablement.isDisabled(ship)
+                    || ShipDisablement.isDisabled(game.player) && !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player)
+                    && world.disablement.judge(game.player) != null
                     || world.getCrash() != null || distance(game.player, ship) > GOT_AWAY;
         });
         world.carriedHome.remove(home);
         boolean won = !carried[0] && ((h != null && h.partDropped) || ShipDisablement.isDisabled(ship));
+        if (!won && ShipDisablement.isDisabled(game.player)) log("  we are disabled: %s.", ShipDisablement.reason(game.player));
         boolean away = !won && !carried[0] && distance(game.player, ship) > GOT_AWAY;
         log("%s: %.0f s, %s; it fired %d rounds, %d hit us; our hull %.2f -> %.2f, crew %d -> %d.", what,
                 world.engine.getSimSeconds() - t0, won ? "beaten" : carried[0] ? "we lost (carried home)" : away ? "it got away"
@@ -422,6 +434,7 @@ abstract class CareerScript {
 
     void flyToTheMoon() {
         logVenting("before the Moon trip");
+        saveForPlaytest("Before the Moon trip");
         String target = game.oreMine != null ? game.oreMine : game.lunarMine;
         Entity station = world.engine.getEntity(target);
         assertTrue(world.docking.undock(game.player));
@@ -770,6 +783,26 @@ abstract class CareerScript {
                 when, world.engine.getSimSeconds() / 86_400, credits(), world.standing.standing(world.standing.sponsor()),
                 world.standing.describeRank(), Difficulty.of(world), Difficulty.shipValue(game.player), hull(game.player),
                 ownCrew().size());
+    }
+
+    /**
+     * Saves the game as {@code name} into {@code build/playtest-saves/seed-<seed>/}, with the summary
+     * the load menu lists, for the real-window playtest to load ({@code tools/playtest/mid-late.sh}).
+     * A save the game refuses (in warp, say) is logged and skipped.
+     */
+    void saveForPlaytest(String name) {
+        Path dir = Paths.get(System.getProperty("user.dir")).resolve("build").resolve("playtest-saves").resolve("seed-" + SEED);
+        try {
+            Files.createDirectories(dir);
+        } catch (IOException e) {
+            log("  (playtest save %s: %s)", name, e.getMessage());
+            return;
+        }
+        com.badlogic.gdx.files.FileHandle file = new com.badlogic.gdx.files.FileHandle(
+                dir.resolve(name.replaceAll("[^A-Za-z0-9_-]+", "_") + ".json").toFile());
+        String refused = game.quickSave(file);
+        if (refused == null) com.hawkwing.RingsOfIron.shell.SaveSummary.of(game, name).writeFor(file);
+        log("  (playtest save %s: %s)", name, refused == null ? "written" : refused);
     }
 
     void logBoard(String station) {

@@ -34,6 +34,21 @@ import java.util.List;
  * eases the strain between the lawful factions by {@link #FALL_RELIEF} (the pirates were what set
  * them against each other). The defenders are saved, so a raid broken off and flown again meets
  * whoever is left of the wing rather than a new one.
+ *
+ * <p>Round 6: a fallen base does not stay empty. Once the lawful factions have spent
+ * {@link com.ringsofiron.moddingdata.defs.TensionDef#baseRisesAfterDays} days with any pair of them
+ * at high tension ({@link FactionTension#anyHigh}) since it fell, the raiders move back in
+ * ({@link #rise}): it stands again where it was, known, crewed and growing, so the late career keeps
+ * a base to raid.
+ *
+ * <p>Round 6: the defence launches in an order, and the base has guns of its own. The lightest
+ * defender (by {@link HostileTraffic#firepower}) goes out first, alone; the rest follow as a wing
+ * once it is beaten or {@link #SECOND_WAVE_SECONDS} have passed, and a railgun raider never leads
+ * (round 5 on seed 2026: a railgun raider first put 33 of 33 rounds into the frigate and decided the
+ * raid). At its first scramble the base also mans {@link #BATTERIES} gun platforms
+ * ({@link HostileTraffic#BATTERY}) moored beside it, which fire on the player while it stands. It
+ * strikes once its wing is beaten, whatever its guns, which fall silent with it. They stay moored
+ * there, saved like any hostile, and open fire again when the player comes back.
  */
 public class PirateBase extends EntitySystem implements SaveParticipant {
     /** How close the player must come to find it, m. */
@@ -50,10 +65,18 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     public static final double STRIKE_RANGE = 20_000;
     /** How far from the base the defenders launch, m, each a little further round. */
     static final double LAUNCH_OFFSET = 4_000;
+    /** Difficulty for each defender past the first two: the knob to tune the raid by (round 6 keeps round 5's 1). */
+    public static final double DIFFICULTY_PER_DEFENDER = 1.0;
     /** Most defenders the base scrambles. */
     public static final int MAX_DEFENDERS = 4;
     /** Tension eased between every pair of lawful factions when the base falls. */
     public static final float FALL_RELIEF = 15f;
+    /** The rest of the defence launches this long after the first defender at the latest, sim seconds. */
+    public static final double SECOND_WAVE_SECONDS = 90;
+    /** Gun platforms the base mans. */
+    public static final int BATTERIES = 2;
+    /** How far behind the base, along its orbit, the first gun platform is moored, and each next one further, m. */
+    public static final double BATTERY_SPACING = 1_500;
 
     private final GameWorld world;
     private String uuid;
@@ -65,6 +88,17 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     private final List<String> defenders = new ArrayList<>();
     /** A scramble seen due in {@link #update}, flown out after the engine's update. */
     private boolean scrambleDue;
+    /** Sim seconds spent fallen with some pair of lawful factions at high tension, towards {@link #rise}. */
+    private double strainedSeconds;
+    /** Sim second of the last look at that, NaN before the first. */
+    private double lastStrainLook = Double.NaN;
+    /** Defenders scrambled but not yet launched (the second wave), by name; launched after the engine's update. */
+    private final List<String> waiting = new ArrayList<>();
+    /** Sim second the second wave launches at the latest; NaN when none waits. */
+    private double waveAt = Double.NaN;
+    private boolean waveDue;
+    /** The names of the gun platforms it has manned; empty until its first scramble. */
+    private final List<String> guns = new ArrayList<>();
     private final StateVector a = new StateVector();
     private final StateVector b = new StateVector();
 
@@ -80,6 +114,16 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         fallen = false;
         defenders.clear();
         scrambleDue = false;
+        strainedSeconds = 0;
+        lastStrainLook = Double.NaN;
+        clearWave();
+        guns.clear();
+    }
+
+    private void clearWave() {
+        waiting.clear();
+        waveAt = Double.NaN;
+        waveDue = false;
     }
 
     /** Points at a loaded game's base, which has a new uuid; null if the save has none. */
@@ -125,21 +169,78 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         found = true;
         defenders.clear();
         scrambleDue = false;
+        strainedSeconds = 0;
+        clearWave();
+        // Its guns fall silent with it
+        for (String name : guns) {
+            HostileComponent h = hostileNamed(name);
+            if (h != null) h.targetUuid = null;
+        }
         world.notices.post(name() + " has fallen" + (why == null ? "" : ": " + why), NoticeLog.Kind.IMPORTANT);
         world.tension.easeAll(FALL_RELIEF);
+        // The boards offer what its fall opens (a Captain's operation) at once
+        world.contracts.worldChanged();
     }
 
-    /** Defenders the base scrambles at difficulty {@code d}: two, and one more for each full point above 1, up to {@link #MAX_DEFENDERS}. */
+    /**
+     * The raiders move back into the fallen base: it stands again, known to the player, crewed anew
+     * if none of its pirates lived, and grows from now. Nothing happens to a base that stands.
+     */
+    public void rise() {
+        if (uuid == null || standing()) return;
+        fallen = false;
+        found = true;
+        establishedAt = world.macroSim.now();
+        strainedSeconds = 0;
+        defenders.clear();
+        scrambleDue = false;
+        clearWave();
+        Entity station = world.engine.getEntity(uuid);
+        int pirates = world.standing.factions().index(HostileTraffic.PIRATES);
+        if (station != null && pirates >= 0 && !anyPirateAboard()) StationCrew.spawnCrew(world.crew, station, pirates);
+        world.notices.post("Raiders have moved back into " + name() + ": the pirates have a base again", NoticeLog.Kind.IMPORTANT);
+    }
+
+    /** Days the fallen base has spent with the factions strained, towards rising again. */
+    public double strainedDays() {
+        return strainedSeconds / 86_400;
+    }
+
+    /** While it lies fallen, counts the time any pair of lawful factions runs high, and rises once it is enough. */
+    private void strain() {
+        double now = world.macroSim.now();
+        double since = Double.isNaN(lastStrainLook) ? 0 : Math.max(0, now - lastStrainLook);
+        lastStrainLook = now;
+        if (uuid == null || standing()) return;
+        if (world.tension.anyHigh()) strainedSeconds += since;
+        if (strainedSeconds >= world.tension.tuning().baseRisesAfterDays * 86_400) rise();
+    }
+
+    /**
+     * Defenders the base scrambles at difficulty {@code d}: two, and one more for each
+     * {@link #DIFFICULTY_PER_DEFENDER} above 1, up to {@link #MAX_DEFENDERS}. A Captain's frigate
+     * (difficulty about 2.3) meets three, and with the launch order and its harpoons fixed (round 6),
+     * wins on seed 2026.
+     */
     public static int defendersFor(double d) {
-        return Math.min(MAX_DEFENDERS, 2 + (int) Math.floor(Math.max(0, d - 1)));
+        return Math.min(MAX_DEFENDERS, 2 + (int) Math.floor(Math.max(0, d - 1) / DIFFICULTY_PER_DEFENDER));
     }
 
-    /** The names of the wing it scrambled, leader first; empty before a raid or once it has fallen. */
+    /** The names of the gun platforms it has manned, beaten ones included; empty before its first scramble. */
+    public List<String> guns() {
+        return java.util.Collections.unmodifiableList(guns);
+    }
+
+    /**
+     * The names of the wing it scrambled, in the order they launch: first the lone defender, then the
+     * second wave. Its guns ({@link #guns}) are not among them: the base strikes once its wing is
+     * beaten, whatever its guns. Empty before a raid or once it has fallen.
+     */
     public List<String> defenders() {
         return java.util.Collections.unmodifiableList(defenders);
     }
 
-    /** True while a defender it scrambled is still in the fight: in the bubble and not beaten. */
+    /** True while a defender it scrambled is still in the fight: in the bubble, not beaten and not driven off. */
     public boolean defended() {
         for (String id : defenders) if (fighting(id)) return true;
         return false;
@@ -148,7 +249,11 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     private boolean fighting(String name) {
         String id = uuidOf(name);
         Entity e = id == null ? null : world.engine.getEntity(id);
-        return e != null && world.macroSim.bubble().inBubble().contains(id) && !FirstPlay.beaten(world, e);
+        if (e == null || !world.macroSim.bubble().inBubble().contains(id) || FirstPlay.beaten(world, e)) return false;
+        // Broken off and running (a wingman goes when its leader is beaten) is driven off: on seed 12
+        // the last defender fled with its leader and, still in the bubble, kept the base from striking
+        HostileComponent h = e.getComponent(HostileComponent.class);
+        return h == null || !h.brokeOff;
     }
 
     /** True while a defender it scrambled is alive and unbeaten anywhere, in the bubble or out on the rails. */
@@ -161,6 +266,11 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         return false;
     }
 
+    private HostileComponent hostileNamed(String name) {
+        String id = uuidOf(name);
+        return id == null ? null : world.macroSim.hostiles().get(id);
+    }
+
     /** The uuid of the hostile named {@code name}, or null if none flies now. */
     private String uuidOf(String name) {
         for (var e : world.macroSim.hostiles().all().entrySet()) if (name.equals(e.getValue().displayName)) return e.getKey();
@@ -168,37 +278,118 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     }
 
     /**
-     * Flies out a scramble {@link #update} found due: {@link #defendersFor} raiders, the first leading
-     * the rest, launched beside the base and hunting the player. Call after the engine's update.
+     * Flies out a scramble {@link #update} found due: {@link #defendersFor} raiders put in launch
+     * order ({@link #launchOrder}), the first launched alone beside the base and hunting the player
+     * and the rest left for the second wave; and, the first time, its gun platforms manned. Or the
+     * second wave, once due. Call after the engine's update.
      */
     public void afterUpdate() {
+        if (waveDue) {
+            waveDue = false;
+            launchWave();
+        }
         if (!scrambleDue) return;
         scrambleDue = false;
         if (!standing() || world.getPlayer() == null) return;
-        double now = world.macroSim.now();
         StateVector at = new StateVector();
-        if (!offset(now, at)) return;
+        if (!offset(world.macroSim.now(), at)) return;
         int n = defendersFor(Difficulty.of(world));
-        List<String> wing = world.hostiles.raid(uuid, n);
+        List<String> wing = launchOrder(world.hostiles.raid(uuid, n));
         if (wing.isEmpty()) return;
         defenders.clear();
-        String parent = world.macroSim.gateway().anchorParentUuid();
-        for (int i = 0; i < wing.size(); i++) {
-            String id = wing.get(i);
+        clearWave();
+        for (String id : wing) {
             HostileComponent h = world.macroSim.hostiles().get(id);
-            if (h != null) {
-                h.wingOf = i == 0 ? null : wing.get(0);
-                h.targetUuid = HostileComponent.PLAYER;
-                defenders.add(h.displayName);
+            if (h == null) continue;
+            h.targetUuid = HostileComponent.PLAYER;
+            defenders.add(h.displayName);
+        }
+        // The rest fly as a wing: the second leads it
+        for (int i = 2; i < wing.size(); i++) {
+            HostileComponent h = world.macroSim.hostiles().get(wing.get(i));
+            if (h != null) h.wingOf = wing.get(1);
+        }
+        launch(wing.subList(0, 1));
+        for (int i = 1; i < wing.size(); i++) waiting.add(defenders.get(i));
+        if (!waiting.isEmpty()) waveAt = world.macroSim.now() + SECOND_WAVE_SECONDS;
+        if (guns.isEmpty()) {
+            for (String id : world.hostiles.moorGuns(uuid, BATTERIES, BATTERY_SPACING)) {
+                HostileComponent h = world.macroSim.hostiles().get(id);
+                if (h != null) guns.add(h.displayName);
             }
-            // Launched from the base's side, a little apart, where the bubble takes them in at once
-            double angle = 2 * Math.PI * i / wing.size();
+        }
+        boolean manned = false;
+        for (String name : guns) {
+            HostileComponent h = hostileNamed(name);
+            Entity e = h == null ? null : world.engine.getEntity(uuidOf(name));
+            if (e == null || FirstPlay.beaten(world, e)) continue;
+            h.targetUuid = HostileComponent.PLAYER;
+            manned = true;
+        }
+        world.notices.post(String.format(java.util.Locale.ROOT, "%s scrambles %d raider%s against you%s", name(), wing.size(),
+                wing.size() == 1 ? "" : "s", manned ? ", and its guns open up" : ""), NoticeLog.Kind.WARNING);
+    }
+
+    /**
+     * The defence's launch order: lightest first by {@link HostileTraffic#firepower} (ties by name),
+     * and a railgun raider never first while there is another.
+     */
+    List<String> launchOrder(List<String> wing) {
+        List<String> out = new ArrayList<>(wing);
+        java.util.Comparator<String> light = java.util.Comparator.comparingDouble(id -> {
+            HostileComponent h = world.macroSim.hostiles().get(id);
+            return h == null ? 0 : h.firepower;
+        });
+        out.sort(light.thenComparing(id -> {
+            HostileComponent h = world.macroSim.hostiles().get(id);
+            return h == null || h.displayName == null ? "" : h.displayName;
+        }));
+        if (out.size() > 1 && railgun(out.get(0))) {
+            for (int i = 1; i < out.size(); i++) {
+                if (!railgun(out.get(i))) {
+                    out.add(0, out.remove(i));
+                    break;
+                }
+            }
+        }
+        return out;
+    }
+
+    /** True if the ship {@code id} carries a railgun. */
+    private boolean railgun(String id) {
+        Entity e = world.engine.getEntity(id);
+        var weapons = e == null ? null : e.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class);
+        if (weapons == null) return false;
+        for (var m : weapons.mounts) if (m.def != null && m.def.id != null && m.def.id.startsWith("railgun")) return true;
+        return false;
+    }
+
+    /** Launches the second wave: those still waiting and not already in the bubble. */
+    private void launchWave() {
+        List<String> ids = new ArrayList<>();
+        for (String name : waiting) {
+            String id = uuidOf(name);
+            if (id != null && !world.macroSim.bubble().inBubble().contains(id)) ids.add(id);
+        }
+        clearWave();
+        if (!standing() || ids.isEmpty()) return;
+        if (launch(ids)) world.notices.post(String.format(java.util.Locale.ROOT, "%s launches %d more raider%s", name(),
+                ids.size(), ids.size() == 1 ? "" : "s"), NoticeLog.Kind.WARNING);
+    }
+
+    /** Launches {@code ids} from the base's side, a little apart, where the bubble takes them in at once. */
+    private boolean launch(List<String> ids) {
+        double now = world.macroSim.now();
+        StateVector at = new StateVector();
+        if (!offset(now, at)) return false;
+        String parent = world.macroSim.gateway().anchorParentUuid();
+        for (int i = 0; i < ids.size(); i++) {
+            double angle = 2 * Math.PI * i / ids.size();
             StateVector s = world.macroSim.gateway().anchorStateAt(now, new StateVector());
-            world.macroSim.rails().attach(id, parent, s.set(s.x + at.x + LAUNCH_OFFSET * Math.cos(angle),
+            world.macroSim.rails().attach(ids.get(i), parent, s.set(s.x + at.x + LAUNCH_OFFSET * Math.cos(angle),
                     s.y + at.y + LAUNCH_OFFSET * Math.sin(angle), s.vx, s.vy), now);
         }
-        world.notices.post(String.format(java.util.Locale.ROOT, "%s scrambles %d raider%s against you", name(), wing.size(),
-                wing.size() == 1 ? "" : "s"), NoticeLog.Kind.WARNING);
+        return true;
     }
 
     /** Raiders beyond the difficulty's that the base keeps now: one more each {@link #GROWTH_DAYS} it stands. */
@@ -220,6 +411,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         since += deltaTime;
         if (since < CHECK_SECONDS) return;
         since = 0f;
+        strain();
         // A station stays on the rails; close by, the bubble shows it as a kinematic transient
         look(world.macroSim.bubble().inBubble().contains(uuid) || world.macroSim.bubble().fastPasses().contains(uuid));
     }
@@ -235,11 +427,27 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         if (here && standing() && !anyPirateAboard()) fall("no pirate is left alive aboard");
         if (!here || !standing()) return;
         double range = playerRange();
-        if (!defenders.isEmpty() && !defended() && range <= STRIKE_RANGE) {
+        if (!waiting.isEmpty() && (world.macroSim.now() >= waveAt || !leadDefenderFighting())) waveDue = true;
+        if (!defenders.isEmpty() && waiting.isEmpty() && !defended() && range <= STRIKE_RANGE) {
             fall("its defenders are beaten, and it strikes its colours");
         } else if (!anyDefenderLeft() && range <= SCRAMBLE_RANGE) {
             scrambleDue = true;
+        } else if (range <= SCRAMBLE_RANGE) {
+            // Back for another try: whoever is left of the defence, and its guns, go for the player again
+            for (String name : defenders) {
+                HostileComponent h = hostileNamed(name);
+                if (h != null && !h.brokeOff) h.targetUuid = HostileComponent.PLAYER;
+            }
+            for (String name : guns) {
+                HostileComponent h = hostileNamed(name);
+                if (h != null) h.targetUuid = HostileComponent.PLAYER;
+            }
         }
+    }
+
+    /** True while the defender that launched first is still in the fight. */
+    private boolean leadDefenderFighting() {
+        return !defenders.isEmpty() && fighting(defenders.get(0));
     }
 
     /** Meters from the player's ship, in the bubble, to the base; infinite if the ship is not in the bubble. */
@@ -295,6 +503,11 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         json.writeValue("found", found);
         json.writeValue("fallen", fallen);
         json.writeValue("defenders", defenders.toArray(new String[0]), String[].class);
+        json.writeValue("strainedSeconds", strainedSeconds);
+        json.writeValue("lastStrainLook", lastStrainLook);
+        json.writeValue("waiting", waiting.toArray(new String[0]), String[].class);
+        if (!Double.isNaN(waveAt)) json.writeValue("waveAt", waveAt);
+        json.writeValue("guns", guns.toArray(new String[0]), String[].class);
     }
 
     @Override
@@ -306,5 +519,17 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         String[] wing = data.has("defenders") ? json.readValue(String[].class, data.get("defenders")) : null;
         if (wing != null) for (String id : wing) if (id != null) defenders.add(id);
         scrambleDue = false;
+        strainedSeconds = data.getDouble("strainedSeconds", 0);
+        lastStrainLook = data.getDouble("lastStrainLook", Double.NaN);
+        clearWave();
+        readNames(json, data, "waiting", waiting);
+        waveAt = data.getDouble("waveAt", Double.NaN);
+        guns.clear();
+        readNames(json, data, "guns", guns);
+    }
+
+    private static void readNames(Json json, JsonValue data, String key, List<String> into) {
+        String[] names = data.has(key) ? json.readValue(String[].class, data.get(key)) : null;
+        if (names != null) for (String n : names) if (n != null) into.add(n);
     }
 }

@@ -184,7 +184,8 @@ public final class CrewMedical {
 
     /**
      * A crew member's state for the roster: "OK 100%", "Unconscious 20%", "Light wound 90%",
-     * "Serious wound, down", "Critical wound, 4:10 to live", "Critical wound, being treated", "Dead".
+     * "Serious wound, down", "Critical wound, 4:10 to live", "Critical wound, stabilised",
+     * "Critical wound, being treated", "Dead".
      */
     public static String condition(CrewMemberComponent c) {
         if (c.state == CrewState.DEAD) return "Dead";
@@ -192,6 +193,7 @@ public final class CrewMedical {
         switch (c.wound) {
             case CRITICAL:
                 return c.treatedBy != null ? "Critical wound, being treated"
+                        : c.stabilised ? "Critical wound, stabilised"
                         : "Critical wound, " + clock(c.bleedOut) + " to live";
             case SERIOUS:
                 return c.treatedBy != null ? "Serious wound, being treated" : "Serious wound, down";

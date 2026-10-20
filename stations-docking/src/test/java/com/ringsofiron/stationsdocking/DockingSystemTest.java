@@ -298,6 +298,58 @@ class DockingSystemTest {
         assertEquals(DockingPort.State.DOCKED, port(pair[0]).state);
     }
 
+    /**
+     * Round 6: in the real window one heavy round (18.6 kN s about 10 m off the centre) on a ship
+     * welded to a station tore it loose; the latch now rides out ordinary hits and tears only under
+     * a load kept up or a shock many times one round.
+     */
+    @Test
+    void oneHitOnAShipDockedAtAStationLeavesTheLatchAndARamTearsIt() {
+        Entity s = station(true);
+        Entity a = ship(0f, -6f, 0f, DockingPortsComponent.hullPort(MountFootprint.MountSize.S, false, 0f, 2f, 0f, 1f));
+        docking.dockInPlace(a, 0, s, 0);
+        game.stepTicks(60 * 2);
+        assertTrue(docking.isRigid(a), "welded to the station");
+        // The round's turning impulse at this 10 m hull's end: twice the round at half the lever arm
+        hit(a, 2 * 18_600f);
+        game.stepTicks(60 * 2);
+        assertFalse(events.contains(DockingEvent.Kind.TORN), "one hit: " + events);
+        assertTrue(docking.isRigid(a), "still welded");
+        // Five more in a second's volley: still held
+        for (int i = 0; i < 5; i++) {
+            hit(a, 2 * 18_600f);
+            game.stepTicks(12);
+        }
+        game.stepTicks(60);
+        assertFalse(events.contains(DockingEvent.Kind.TORN), "a volley: " + events);
+        // A ram: fifty times the round at once
+        hit(a, 50 * 2 * 18_600f);
+        game.stepTicks(3);
+        assertTrue(events.contains(DockingEvent.Kind.TORN), "a shock that size tears it: " + events);
+    }
+
+    @Test
+    void aTornCollarLatchedInPlaceStaysLatched() {
+        Entity s = station(true);
+        Entity a = ship(0f, -6f, 0f, DockingPortsComponent.hullPort(MountFootprint.MountSize.S, false, 0f, 2f, 0f, 1f));
+        // Torn in a fight: the tug or the yard's berth clamps it on in place, for the yard to mend
+        a.getComponent(DockingPortsComponent.class).get(0).collarIntegrity = 0f;
+        docking.dockInPlace(a, 0, s, 0);
+        game.stepTicks(60 * 2);
+        hit(a, 1_000f);
+        game.stepTicks(60);
+        assertFalse(events.contains(DockingEvent.Kind.TORN), "held by the berth: " + events);
+        assertTrue(docking.isRigid(a), "welded to the station");
+    }
+
+    /** A sideways impulse, newtons-seconds, on {@code ship}'s end 5 m from its centre, for one step. */
+    private void hit(Entity ship, float impulse) {
+        Body b = body(ship);
+        Vector2 end = new Vector2(b.getWorldPoint(new Vector2(5f * PhysicsManager.UNITS_PER_METER, 0f))).scl(PhysicsManager.METERS_PER_UNIT);
+        Vector2 side = new Vector2(b.getWorldVector(new Vector2(0f, 1f))).nor();
+        PhysicsManager.applyImpulse(b, side.x * impulse, side.y * impulse, end.x, end.y);
+    }
+
     /** A 9 x 5 station with an active Small port on top, at the origin moving at 3 m/s along +x. */
     private Entity station(boolean grants) {
         return station(grants, (t, out) -> {
@@ -441,5 +493,30 @@ class DockingSystemTest {
         assertEquals(0f, face(body(a), port(a)).dst(face(stationBody(s), port(s))), 0.05f, "where it was docked");
         assertEquals(0f, PhysicsManager.getPosition(body(a), new Vector2()).len(), 50f, "the bubble is on the player");
         assertNull(a.getComponent(DockedRideComponent.class));
+    }
+
+    @Test
+    void latchingAPortAgainLetsGoOfItsFirstLatch() {
+        // Round 6, seed 7: a ship carried home and latched in place, then latched again by its first
+        // port, kept the first weld after undocking and was dragged back by it from its Moon burn
+        Entity a = ship(0f, 0f, 0f, false);
+        Entity b = ship(13f, 0f, MathUtils.PI, false);
+        Entity c = ship(0f, 30f, 0f, false);
+        docking.dockInPlace(a, 0, b, 0);
+        game.stepTicks(60);
+        assertTrue(docking.isRigid(a));
+        docking.dockInPlace(a, 0, b, 0);
+        game.stepTicks(60);
+        assertEquals(1, body(a).getJointList().size, "the same latch again changes nothing");
+
+        docking.dockInPlace(a, 0, c, 0);
+        game.stepTicks(60);
+        assertSame(c, docking.dockedTo(a), "latched to the new partner");
+        assertNull(docking.dockedTo(b), "and the first let go");
+        assertEquals(0, body(b).getJointList().size, "no weld left on the first");
+        assertTrue(docking.undock(a));
+        game.stepTicks(2);
+        assertNull(docking.dockedTo(a));
+        assertEquals(0, body(a).getJointList().size, "undocked, nothing holds it");
     }
 }

@@ -8,6 +8,7 @@ import com.ringsofiron.moddingdata.defs.RankDef;
 import com.ringsofiron.moddingdata.defs.ShipSaleDef;
 import com.ringsofiron.moddingdata.defs.ShipyardDef;
 import com.ringsofiron.moddingdata.defs.ShipComponentDef;
+import com.ringsofiron.moddingdata.defs.TensionDef;
 import com.ringsofiron.moddingdata.defs.TileTypeDef;
 import com.ringsofiron.moddingdata.defs.CommodityDef;
 import com.ringsofiron.moddingdata.defs.MaterialDef;
@@ -49,6 +50,7 @@ public class ModdingBootstrap {
         defs.registerType("faction", FactionDef.class);
         defs.registerType("rank", RankDef.class);
         defs.registerType("operation", OperationDef.class);
+        defs.registerType("tension", TensionDef.class);
         defs.registerType("shipyard", ShipyardDef.class);
         defs.registerType("ship_sale", ShipSaleDef.class);
     }

@@ -37,6 +37,10 @@ While it stands, `HostileTraffic` keeps one extra raider for every 14 days since
 
 Round 5: the base fights back. A station is never a ship in the bubble, so the base counts as here when it is in the bubble or passes through it on the rails. When a player at war with the pirates comes within 15 km (`SCRAMBLE_RANGE`) it scrambles a wing of `defendersFor(difficulty)` raiders, 2 at difficulty 1 and one more for each step after, up to 4, launched 4 km round the base and hunting the player as one wing. Their names are saved. Once all of them are beaten (surrendered, disabled or gone) and the player is still within 20 km (`STRIKE_RANGE`), the base strikes its colours and falls. Its fall eases every pair's tension by 15 (`FALL_RELIEF`). The raid contract is in [Contracts.md](Contracts.md).
 
+Round 6: the base has guns, and its wing comes out in order. At the first scramble it mans `BATTERIES` (2) gun platforms (`den_battery` in `ships.toml`, the `battery` chassis, loadouts `battery_*` in `loadouts.toml`), moored 1.5 km and 3 km behind it (`HostileComponent.mooring`). A moored ship has no schedule on the rails and nothing flies it: in the bubble it only keeps its guns locked on the player, and out of it it rides the base's orbit. It is never counted as raider traffic, a sighting, a recon or bounty target, or an ace. The guns are manned once and kept; a later raid meets the same platforms. The base falls only once its wing is beaten or driven off (a defender that has broken off and runs, as a wingman does when its leader is beaten, no longer defends it); the guns need not be. The wing launches lightest first (`launchOrder`: by firepower, then name), and a railgun raider never leads unless every defender carries one. The first launches alone; the rest launch as one wing behind the second, once the first is beaten or after 90 s (`SECOND_WAVE_SECONDS`).
+
+Spawn loadouts and an ace's refit are drawn from the career seed (`NewGame.mix(world.events.seed, …)`) with the ship and its spawn count, so a seed meets the same fits and another seed other fits.
+
 ### Choosing a sponsor
 `[faction.*]` gains `sponsorable`, `home` and `rank_names` (`FactionDef`). Only the data's sponsor or a sponsorable faction can be served (`FactionStanding.serve`). The panel offers the Terran Patrol (home Highport) and the Selene Combine (home Shackleton Ice). A Selene career starts docked at Shackleton with the bubble anchored in low lunar orbit 8 km behind it, the raider's bounty on Shackleton's board, Selene's guards marked friendly, and its own rank names: Prospector, Surveyor, Foreman, Superintendent, Director. The sponsor is fixed for the career.
 
@@ -45,12 +49,23 @@ A value from 0 to 100 for each pair of the data's factions, pirates aside. Each 
 
 The mission window shows a tension line under the career: each faction's tension with the player's sponsor, HIGH past 50 (`FactionTension.describe`).
 
+### The world reacts to tension (round 6)
+`[tension.default]` in `factions.toml` (`TensionDef`) tunes it. A station's tension is its owner's highest with any other lawful faction (`FactionTension.regional`).
+
+- **Prices.** A station's yard charges more for repairs and for filling the tanks (propellant, oxygen, nitrogen): +25% at full tension (`price_rise`), in proportion below it, so +10% at 40 (`priceFactor`, applied by `StationYard`). The yard window shows the strained price. Freighters refuel at the base price.
+- **Combat jobs.** From 50 (`combat_jobs_at`) a board posts one more job (`combat_jobs`) on top of its five: the next bounty it had, else an escort, with the note "Tension runs high here".
+- **A rival's board.** A faction strained with the player's sponsor posts one job fewer for each 25 of that tension (`distrust_per_job`), never fewer than 2 (`fewest_offers`), unless the player's standing with it is 10 or more (`trusted_standing`).
+- **The traffic map** shows a TENSION readout in its bottom left corner, a line per faction with stations: "Selene Mining Combine: 60 HIGH, yards +15%", in red from 50 (`FactionTension.regions`, `RailsTrafficMap`).
+
+### After the base falls (round 6)
+The sponsor offers a Captain's operation, Scatter the Remnants (recon, bounty, patrol; `requires = "base_fallen"` in `operations.toml`), ahead of its rank's others. A fallen base does not stay empty: once any pair of lawful factions has spent 20 days at 50 or more since it fell (`base_rises_after_days`, counted on the sim clock and saved), the raiders move back in (`PirateBase.rise`). It stands again where it was, still on the map, crewed anew if its pirates died, growing from that day, and the sponsor's raid contract comes back.
+
 ### Standing recovery
 In the same weekly step, negative standing with every faction moves 1 back towards zero. Positive standing never decays.
 
 ## Saves
 - `newGame`: the seed, whether the game is seeded, and the sponsor. A load replaces the scenario's own and recomputes the pirates' lurk order from it.
-- `pirateBase`: when it was established, found and fallen, and the names of the wing it scrambled. A load finds the base by name.
+- `pirateBase`: when it was established, found and fallen, and the names of the wing it scrambled. A load finds the base by name. Round 6 adds the names still waiting to launch, when they launch, the names of its guns (the guns themselves save as hostiles, with their mooring), and the days it has lain fallen with the factions strained.
 - `tension`: every pair's value, which pairs have been reinforced, and when the next week falls.
 - The sponsor is also in `ServiceRecord`, as before; a load reads the home from it.
 - The stations, freighters and stock are saved as the world's entities. A load finds the new stations by name, and a save from before them loads without them.
@@ -63,6 +78,9 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - `PirateBaseTest`: the base's orbit, trade and clearance; hidden until revealed; found by proximity; growth and gathering at the base; falling when its crew are dead; a save keeps found and fallen.
 - `SponsorChoiceTest`: the Patrol by default; a Selene start, board and rank names; only sponsorable factions; flying and warping above the Moon; friendly guards; a save keeps the sponsor and home.
 - `Round5LateCareerTest`: the base's wing, its fall and the tension it eases, a save mid-raid, world events' strain, the Free Trader patrol and the board's tension line.
+- `Round6WorldTest`: the data's tuning, prices up to a quarter (refill and repairs charged at the strained price), a combat job added at high tension, a rival's shorter board, the traffic map's readout, survivors hurt by days in the pod and tended, the Captain's operation after the fall, and a new base rising after 20 strained days (with a save between).
+- `BaseDefenceTest`: launch order, a railgun raider never leading; the guns manned at the first scramble, moored and locked on the player, kept through a save; the guns are no bounty, recon or ace; spawn loadouts follow the seed.
+- `EnemySurveyTest` (round 6): the base's defence against the corvette, and with `-PenemySurvey` the survey of each enemy against the corvette, gunship and frigate.
 - `FactionTensionTest`: hostile acts raise tension, pirates excluded; high tension reinforces once and refuses rivals; the weekly drift; weeks pass on the sim clock; a save keeps the strain.
 
 ## Choices made without Joe
@@ -73,9 +91,13 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - No one is cleared at a pirate station.
 - Round 5: the base scrambles 2 to 4 raiders by difficulty and falls once they are beaten with the player close; its fall eases tension by 15.
 - Round 5: the Free Trader escort flies between the two strained sides' alphabetically first stations, so a replayed career sends it the same way.
+- Round 6: a station's tension is its owner's highest with any lawful faction, not only with the player's sponsor, so both sides of a strain pay more. Prices rise in proportion from 0, not only once tension runs high, so a strain is felt before it is HIGH. Only the yard's prices move; the commodity markets do not.
+- Round 6: the extra combat job is the board's next bounty, else an escort, so it is work the world already has rather than a made-up target.
+- Round 6: a new base rises at Rustwake itself, known to the player, rather than somewhere new and hidden: the hunt's intel step is never offered twice, so a hidden base would be hard to find again.
+- Round 6: two gun platforms, moored 1.5 km and 3 km behind the base and manned at the first scramble, never a railgun among their fits; their hull art is generated from the chassis grid (`tools/art/generate_svgs.py`) and they borrow the raider's texture.
+- Round 6: the second wave launches when the first defender is beaten or after 90 s; ties in firepower launch by name; when every defender carries a railgun the order stands.
 - All the numbers above are placeholders.
 
 ## Not built
-- The base's own guns; it fights only through its wing.
-- A tension readout on the traffic map (the mission window has it).
-- Tension does not yet change prices or which jobs a rival's board offers.
+- The guns have only generated hull art, not a hand-drawn platform, and the base itself still cannot be shot.
+- Tension does not move commodity prices at the markets, only the yard's.

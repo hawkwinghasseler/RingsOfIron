@@ -134,6 +134,7 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
         p.prevPos.set(x, y);
         p.vel.set(vx, vy);
         p.owner = owner;
+        p.firedAt = clock;
         e.add(p);
         e.add(new TransientComponent());
         engine.addEntity(e);
@@ -276,6 +277,7 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
         hit.def = p.def;
         hit.penetration = p.penetration;
         hit.tick = events.tick;
+        hit.sinceFired = clock - p.firedAt;
         if (hit.target != null) events.pendingImpacts.add(hit);
         return true;
     }

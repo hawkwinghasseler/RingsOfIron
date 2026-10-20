@@ -265,6 +265,7 @@ public class Rescue {
         // Patched up on the way: hurt, but no wound left to bleed from or slow them
         c.wound = com.ringsofiron.aicrew.Wound.NONE;
         c.care = c.bleedOut = c.healing = 0f;
+        c.stabilised = false;
         c.activity = "idle";
         c.treatedBy = null;
         if (c.carriedBy != null) world.crew.releaseTask(c.carriedBy);
@@ -394,7 +395,10 @@ public class Rescue {
             MountFootprint.MountSize size = own.ports[0].size;
             for (int i = 0; i < ports.ports.length; i++) {
                 DockingPort p = ports.ports[i];
-                if (p.size == size && p.state != DockingPort.State.DOCKED) {
+                // Not one a freighter's collar has hold of, or that is armed for one coming in: two
+                // craft on one port tears one of them loose
+                boolean spoken = p.armedFor != null && !p.armedFor.equals(world.universe.uuidOf(docking));
+                if (p.size == size && p.state == DockingPort.State.IDLE && !spoken) {
                     world.docking.dockInPlace(docking, 0, dockingAt, i);
                     break;
                 }

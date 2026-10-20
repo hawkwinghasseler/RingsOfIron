@@ -97,25 +97,37 @@ class Round5LateCareerTest {
         besideTheBase(8_000);
         run(2 * PirateBase.CHECK_SECONDS + 1);
         List<String> wing = world.pirateBase.defenders();
-        assertEquals(PirateBase.defendersFor(Difficulty.of(world)), wing.size(), "a wing scrambled: " + wing);
-        assertTrue(world.notices.latest().text.contains("scrambles"), world.notices.latest().text);
-        Entity leader = ship(wing.get(0));
-        assertNotNull(leader);
-        String leaderUuid = world.universe.uuidOf(leader);
+        int raiders = PirateBase.defendersFor(Difficulty.of(world));
+        assertEquals(raiders, wing.size(), "a wing scrambled: " + wing);
+        // Round 6: and the base's own guns manned
+        List<String> guns = world.pirateBase.guns();
+        assertEquals(PirateBase.BATTERIES, guns.size());
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.contains("scrambles") && n.text.contains("its guns open up")),
+                () -> world.notices.history().stream().map(n -> n.text).toList().toString());
+        String secondUuid = world.universe.uuidOf(ship(wing.get(1)));
         for (int i = 0; i < wing.size(); i++) {
-            Entity e = ship(wing.get(i));
-            HostileComponent h = e.getComponent(HostileComponent.class);
+            HostileComponent h = ship(wing.get(i)).getComponent(HostileComponent.class);
             assertTrue(h.huntingPlayer(), "it goes for the player");
-            assertEquals(i == 0 ? null : leaderUuid, h.wingOf, "one wing, behind its leader");
+            assertEquals(i < 2 ? null : secondUuid, h.wingOf, "the first alone, the rest one wing");
+        }
+        for (String name : guns) {
+            HostileComponent h = ship(name).getComponent(HostileComponent.class);
+            assertTrue(h.moored() && h.huntingPlayer(), "the guns are moored, and on the player");
         }
         run(5);
-        for (String name : wing) assertNotNull(ship(name).getComponent(PhysicsBodyComponent.class), name + " came into the bubble");
+        assertNotNull(ship(wing.get(0)).getComponent(PhysicsBodyComponent.class), "the first defender came into the bubble");
+        assertNull(ship(wing.get(1)).getComponent(PhysicsBodyComponent.class), "the rest wait for the second wave");
         assertTrue(world.pirateBase.defended());
 
-        // Beaten one by one: the base stands while any fights on
+        // Beaten one by one: the base stands while any fights on, and the rest launch once the first is beaten
         run(2 * PirateBase.CHECK_SECONDS);
         assertTrue(world.pirateBase.standing());
-        for (int i = 0; i < wing.size() - 1; i++) beat(ship(wing.get(i)));
+        beat(ship(wing.get(0)));
+        run(2 * PirateBase.CHECK_SECONDS + 5);
+        for (int i = 1; i < raiders; i++) {
+            assertNotNull(ship(wing.get(i)).getComponent(PhysicsBodyComponent.class), wing.get(i) + " launched in the second wave");
+        }
+        for (int i = 1; i < wing.size() - 1; i++) beat(ship(wing.get(i)));
         run(2 * PirateBase.CHECK_SECONDS);
         assertTrue(world.pirateBase.standing(), "one defender still fights");
         assertEquals(wing, world.pirateBase.defenders(), "no second wing while the first is out");
@@ -129,6 +141,23 @@ class Round5LateCareerTest {
         assertEquals(Contract.Status.DONE, raid.status, raid.outcome);
         assertEquals(credits + raid.reward, trader.credits, 1e-6);
         assertTrue(world.pirateBase.defenders().isEmpty());
+    }
+
+    @Test
+    void aDefenderThatRunsWithItsLeaderLeavesTheBaseToStrike() {
+        // Seed 12 (round 6): the last defender broke off with its beaten leader and fled, still in
+        // the bubble, and the base never struck
+        besideTheBase(8_000);
+        run(2 * PirateBase.CHECK_SECONDS + 1);
+        List<String> wing = world.pirateBase.defenders();
+        beat(ship(wing.get(0)));
+        run(2 * PirateBase.CHECK_SECONDS + 5);
+        for (int i = 1; i < wing.size() - 1; i++) beat(ship(wing.get(i)));
+        run(2 * PirateBase.CHECK_SECONDS);
+        assertTrue(world.pirateBase.standing(), "one defender still fights");
+        ship(wing.get(wing.size() - 1)).getComponent(HostileComponent.class).brokeOff = true;
+        run(2 * PirateBase.CHECK_SECONDS);
+        assertFalse(world.pirateBase.standing(), "its last defender driven off, it strikes its colours");
     }
 
     @Test

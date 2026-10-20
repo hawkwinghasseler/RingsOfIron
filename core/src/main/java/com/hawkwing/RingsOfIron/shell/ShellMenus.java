@@ -3,6 +3,8 @@ package com.hawkwing.RingsOfIron.shell;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
@@ -200,6 +202,8 @@ class ShellMenus {
         list.defaults().pad(3f);
         for (SaveSummary s : shell.slots().list()) {
             Table info = new Table();
+            // Each save's lines start at the same left edge, however long its name
+            info.left();
             info.add(new Label(s.name, skin, "default")).left().row();
             info.add(new Label(s.details(), skin, "dim")).left().row();
             info.add(new Label(savedAt(s.savedAt), skin, "dim")).left();
@@ -211,11 +215,22 @@ class ShellMenus {
             })).row();
         }
         if (list.getCells().size == 0) list.add(new Label("No saves yet", skin, "dim"));
-        ScrollPane scroll = new ScrollPane(list, skin);
+        ScrollPane scroll = wheelScrolls(new ScrollPane(list, skin));
         scroll.setFadeScrollBars(false);
         t.add(scroll).width(560f).height(Math.min(420f, Gdx.graphics.getHeight() * 0.6f)).colspan(3).row();
         t.add(button("Back", shell::back)).colspan(3).padTop(10f).row();
         endFrame(t);
+    }
+
+    /** The mouse wheel scrolls {@code pane} while the pointer is over it (scene2d sends the wheel only to the scroll focus). */
+    private static ScrollPane wheelScrolls(ScrollPane pane) {
+        pane.addListener(new InputListener() {
+            @Override
+            public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
+                if (pane.getStage() != null) pane.getStage().setScrollFocus(pane);
+            }
+        });
+        return pane;
     }
 
     void showSave(Table root) {
@@ -244,7 +259,7 @@ class ShellMenus {
         }
         if (list.getCells().size > 0) {
             form.add(new Label("Overwrite", skin, "dim")).left().top().padRight(8f);
-            ScrollPane scroll = new ScrollPane(list, skin);
+            ScrollPane scroll = wheelScrolls(new ScrollPane(list, skin));
             scroll.setFadeScrollBars(false);
             form.add(scroll).width(360f).height(Math.min(260f, Gdx.graphics.getHeight() * 0.4f)).row();
         }
@@ -356,7 +371,7 @@ class ShellMenus {
             });
             keys.add(b).width(200f).pad(1f).row();
         }
-        ScrollPane scroll = new ScrollPane(keys, skin);
+        ScrollPane scroll = wheelScrolls(new ScrollPane(keys, skin));
         scroll.setFadeScrollBars(false);
         t.add(scroll).width(520f).height(Math.min(240f, Gdx.graphics.getHeight() * 0.3f)).colspan(3).row();
 

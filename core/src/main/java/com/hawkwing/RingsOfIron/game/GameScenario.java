@@ -130,8 +130,11 @@ public class GameScenario {
         this.world = world;
         this.newGame = newGame;
         // A seeded world's stations and ships get the same UUIDs every time, so whatever is keyed or
-        // rolled by UUID replays too
-        if (newGame.seeded) world.engine.getEntityIds().seed(newGame.stream(7));
+        // rolled by UUID replays too. So do the designed start's, so every test and First Play
+        // replays, unless whoever built the world seeded them already
+        var ids = world.engine.getEntityIds();
+        if (newGame.seeded) ids.seed(newGame.stream(7));
+        else if (!ids.isSeeded()) ids.seed(NewGame.DESIGNED_IDS);
         dice = new java.util.Random(newGame.stream(3));
         content = world.loadContent(assetsDir, modsDir);
         // The designed start keeps whatever dice the world was built with
@@ -361,13 +364,14 @@ public class GameScenario {
         return dockAt(highport);
     }
 
-    /** Latches the player's first port onto a free port of the same size at {@code stationUuid}, at once. */
+    /** Latches the player's first port onto a free port of the same size at {@code stationUuid}, at once; true as it is when already latched there. */
     public boolean dockAt(String stationUuid) {
         Entity station = world.engine.getEntity(stationUuid);
         if (station == null) return false;
         DockingPortsComponent ports = station.getComponent(DockingPortsComponent.class);
         DockingPortsComponent own = player.getComponent(DockingPortsComponent.class);
         if (ports == null || own == null || own.ports.length == 0) return false;
+        if (world.docking.docked(player, station)) return true;
         MountFootprint.MountSize size = own.ports[0].size;
         for (int i = 0; i < ports.ports.length; i++) {
             DockingPort p = ports.ports[i];
@@ -442,6 +446,8 @@ public class GameScenario {
 
     /** True once the raider is fighting back. */
     public boolean raiderHostile() {
+        // A save from after the first raider was dealt with has none
+        if (raider == null) return false;
         SensorComponent sensor = raider.getComponent(SensorComponent.class);
         return sensor != null && sensor.lockedTarget == player;
     }

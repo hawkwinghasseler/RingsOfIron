@@ -7,7 +7,8 @@
 # standing. Steps: patrol, recon (find a pirate where it lurks), bounty (on the pirate the recon
 # found, else any the giver is at war with), escort, convoy, delivery, intel (find a pirate and
 # follow it home to the pirates' base; skipped once the base is known) and raid (take or disable
-# the base). Placeholder numbers.
+# the base). requires = "base_fallen" holds an operation back until the pirates' base has fallen.
+# Placeholder numbers.
 
 [operation.clear_the_lanes]
 name = "Clear the Lanes"
@@ -75,3 +76,15 @@ rank = "captain"
 reward = 45000.0
 standing = 12.0
 steps = ["patrol", "recon", "bounty", "recon", "bounty", "delivery"]
+
+# Round 6: after the base falls, the Patrol wants what is left of the raiders run down before they
+# find a new home.
+[operation.scatter_the_remnants]
+name = "Scatter the Remnants"
+text = "Rustwake has fallen, but its crews are still out there. Find the ones who got away, take them, and show the haulers the lanes are safe."
+giver = ""
+rank = "captain"
+reward = 50000.0
+standing = 12.0
+steps = ["recon", "bounty", "patrol"]
+requires = "base_fallen"

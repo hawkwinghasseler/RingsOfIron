@@ -233,7 +233,11 @@ public class Boarding extends EntitySystem {
         }
     }
 
-    /** Keeps the party's orders posted: one room to sweep for each boarder without one. */
+    /**
+     * Keeps the party's orders posted: one room to sweep for each boarder without one. Each order is
+     * the boarder's own, so only the party goes (not the crewman at the helm), and all of it at once
+     * however few rooms the craft has.
+     */
     private void sweep(Entity ship, Entity target, BoardedComponent b) {
         for (int i = b.orders.size - 1; i >= 0; i--) {
             if (!b.orders.get(i).isActive()) b.orders.removeIndex(i);
@@ -243,18 +247,21 @@ public class Boarding extends EntitySystem {
         ShipTaskBoardComponent board = crew.board(ship);
         if (board == null) return;
         Array<Entity> party = party(ship);
-        // Boarders call their own ship home, so they come back to it
+        int spots = b.sweep.length / 2;
         for (Entity e : party) {
+            // Boarders call their own ship home, so they come back to it
             CrewMemberComponent c = crew.crew(e);
             if (c.home == null) c.setHome(ship);
-        }
-        int want = party.size;
-        int spots = b.sweep.length / 2;
-        for (int tries = 0; b.orders.size < want && tries < spots; tries++) {
+            if (hasOrder(b, e)) continue;
             int k = b.next++ % spots;
-            BoardTask t = new BoardTask(target, b.sweep[2 * k], b.sweep[2 * k + 1], new Sweep(target));
+            BoardTask t = new BoardTask(target, b.sweep[2 * k], b.sweep[2 * k + 1], new Sweep(target), e);
             if (board.post(t)) b.orders.add(t);
         }
+    }
+
+    private static boolean hasOrder(BoardedComponent b, Entity member) {
+        for (BoardTask t : b.orders) if (t.member == member) return true;
+        return false;
     }
 
     /** The craft is taken: its crew are held, the party stands down, and it stays surrendered. */

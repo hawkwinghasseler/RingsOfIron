@@ -233,6 +233,8 @@ public class GameWorld implements Disposable {
     public final CrewMedical medical;
     /** A ship docked with a hole to space: the station warns, and warp waits. */
     public final BerthVenting berthVenting;
+    /** The player's figure suiting up at battle stations and in thin air. */
+    public final CaptainSafety captain;
     /** The distress beacon: a stranded ship towed home. */
     public final DistressBeacon beacon = new DistressBeacon(this);
     /** First Play's and the opening walkthrough's progress, saved with the game. */
@@ -450,6 +452,7 @@ public class GameWorld implements Disposable {
         impacts = new ImpactResolutionSystem(physics, combatEvents, combatDefs, ballistics,
                 MaterialTable.createDefault(), modules.combatSeed);
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
+        impacts.setEntityIds(engine.getEntityIds());
         engine.addSystem(impacts);
         beams = new BeamSystem(physics, impacts);
         engine.addSystem(beams);
@@ -498,6 +501,7 @@ public class GameWorld implements Disposable {
         tension = new FactionTension(this);
         engine.addSystem(tension);
         engine.getSerializationService().addParticipant(tension);
+        yard.priceFactor = tension::priceFactor;
         nav = Navigation.install(this);
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);
@@ -514,6 +518,7 @@ public class GameWorld implements Disposable {
         damageControl = new DamageControl(this);
         medical = new CrewMedical(this);
         berthVenting = new BerthVenting(this);
+        captain = new CaptainSafety(this);
     }
 
     /**
@@ -624,6 +629,7 @@ public class GameWorld implements Disposable {
         damageControl.update();
         medical.update();
         berthVenting.update();
+        captain.update();
         // Warp changes only between updates: the autopilot raises it again after a burn
         nav.autopilot.afterUpdate();
     }

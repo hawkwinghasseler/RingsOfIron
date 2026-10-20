@@ -35,4 +35,6 @@ public class ImpactEvent {
     public boolean ram;
     /** Fixed tick number, for deterministic ordering. */
     public long tick;
+    /** Seconds since the shot was fired (a fragment's: since its missile was), 0 for a ram. */
+    public float sinceFired;
 }

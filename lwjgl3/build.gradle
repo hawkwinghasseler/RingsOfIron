@@ -235,7 +235,7 @@ tasks.register('runPlaytest', JavaExec) {
   mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.PlaytestLauncher'
   classpath = sourceSets.main.runtimeClasspath
   workingDir = rootProject.file('assets').path
-  args = [(project.findProperty('commands') ?: 'playtest-commands.txt').toString()]
+  args = [(project.findProperty('commands') ?: 'playtest-commands.txt').toString(), (project.findProperty('saves') ?: '').toString()]
   jvmArgs += "--enable-native-access=ALL-UNNAMED"
   jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"

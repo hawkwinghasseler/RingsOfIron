@@ -5,7 +5,9 @@ import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CarryTask;
 import com.ringsofiron.aicrew.YardTask;
+import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
+import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -14,6 +16,7 @@ import com.ringsofiron.aicrew.BoardTask;
 import com.ringsofiron.aicrew.ManConsoleTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
+import com.ringsofiron.aicrew.StabiliseTask;
 import com.ringsofiron.aicrew.TreatTask;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
@@ -23,6 +26,9 @@ import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
+import com.ringsofiron.interiorgrid.TankSupply;
+import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
+import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
@@ -50,6 +56,119 @@ public final class CrewTasks {
             a.target = findHostile(a);
             return a.target != null ? Status.SUCCEEDED : Status.FAILED;
         }
+    }
+
+    /**
+     * Succeeds while the agent's suit is running low ({@link CrewDef#suitRefillShare}) out of
+     * breathable air and the ship has oxygen to fill it from, and on until the suit is full.
+     */
+    public static class SuitAirLow extends CrewLeaf {
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            CrewMemberComponent c = a.crew;
+            if (!c.suited || c.def.suitAir <= 0f || c.held || a.time < a.refillBlockedUntil) return fail(a);
+            if (!a.refilling) {
+                ShipGridComponent grid = a.grid();
+                if (grid == null || TaskRules.isBreathable(grid, a.pos.tileX(), a.pos.tileY())) return fail(a);
+                if (c.suitAir >= c.def.suitAir * c.def.suitRefillShare) return fail(a);
+            } else if (c.suitAir >= c.def.suitAir) {
+                return fail(a);
+            }
+            return oxygenSupplies(a, null) ? Status.SUCCEEDED : fail(a);
+        }
+
+        private static Status fail(CrewAgent a) {
+            a.refilling = false;
+            return Status.FAILED;
+        }
+    }
+
+    /**
+     * Drops whatever they were doing, walks to an oxygen tank or a working life support aboard and
+     * fills their suit there over {@link CrewDef#suitRefillTime}, drawing {@link CrewDef#SUIT_OXYGEN_KG}.
+     */
+    public static class RefillSuit extends CrewLeaf {
+        private float filled;
+
+        @Override
+        public void start() {
+            filled = 0f;
+            CrewAgent a = agent();
+            a.refilling = true;
+            if (a.crew.task != null) a.releaseTask();
+        }
+
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            ShipGridComponent grid = a.grid();
+            Array<SubsystemComponent> supplies = new Array<>();
+            if (grid == null || !oxygenSupplies(a, supplies)) return blocked(a);
+            GridNavGraph nav = a.pathfinder().graph;
+            GridPathfinder.TilePredicate spots = (x, y) -> nav.isWalkable(x, y) && beside(grid, supplies, x, y) != null;
+            CrewAgent.Travel go = a.travel(a.pos.ship, spots);
+            if (go == CrewAgent.Travel.UNREACHABLE) return blocked(a);
+            if (go == CrewAgent.Travel.GOING) {
+                a.crew.activity = "going to fill their suit";
+                return Status.RUNNING;
+            }
+            a.crew.activity = "filling their suit";
+            filled += a.dt;
+            if (filled < a.crew.def.suitRefillTime) return Status.RUNNING;
+            SubsystemComponent at = beside(grid, supplies, a.pos.tileX(), a.pos.tileY());
+            if (at != null) {
+                if (at.type == SubsystemComponent.SubsystemType.TANK) {
+                    at.contents = Math.max(0, at.contents - CrewDef.SUIT_OXYGEN_KG);
+                } else {
+                    TankSupply.draw(at, Fluid.OXYGEN, CrewDef.SUIT_OXYGEN_KG);
+                }
+            }
+            a.crew.suitAir = a.crew.def.suitAir;
+            a.refilling = false;
+            return Status.SUCCEEDED;
+        }
+
+        private static Status blocked(CrewAgent a) {
+            a.refilling = false;
+            a.refillBlockedUntil = a.time + CrewAgent.UNREACHABLE_COOLDOWN * 2f;
+            return Status.FAILED;
+        }
+
+        /** The supply in {@code supplies} that (x, y) stands beside, open to it, or null. */
+        private static SubsystemComponent beside(ShipGridComponent grid, Array<SubsystemComponent> supplies, int x, int y) {
+            for (SubsystemComponent s : supplies) {
+                for (Side side : Side.values()) {
+                    int nx = x + side.dx, ny = y + side.dy;
+                    if (s.covers(nx, ny) && !grid.isEdgeBlocked(x, y, nx, ny)) return s;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Whether the agent's ship has oxygen to fill a suit from: an oxygen tank holding some, or a
+     * working life support with oxygen piped to it (or with no oxygen tanks aboard at all, a layout
+     * from before tanks). Adds each to {@code out} when given.
+     */
+    static boolean oxygenSupplies(CrewAgent a, Array<SubsystemComponent> out) {
+        ShipSubsystemRegistryComponent registry = a.pos.ship == null ? null : a.pos.ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (registry == null) return false;
+        boolean tanks = TankSupply.hasTanks(registry, Fluid.OXYGEN), any = false;
+        for (Entity e : registry.subsystems) {
+            SubsystemComponent s = e == null ? null : e.getComponent(SubsystemComponent.class);
+            if (s == null) continue;
+            boolean supply = s.type == SubsystemComponent.SubsystemType.TANK
+                    ? s.fluid == Fluid.OXYGEN && s.canSupply() && s.contents > CrewDef.SUIT_OXYGEN_KG
+                    : s.type == SubsystemComponent.SubsystemType.LIFE_SUPPORT && s.isOperational && !s.isDisabled()
+                            && (!tanks || TankSupply.available(s, Fluid.OXYGEN) > CrewDef.SUIT_OXYGEN_KG);
+            if (!supply) continue;
+            any = true;
+            if (out == null) return true;
+            out.add(s);
+        }
+        return any;
     }
 
     /** Succeeds when the agent holds a task or the board has one for them. */
@@ -307,6 +426,15 @@ public final class CrewTasks {
                     p.treatedBy = a.entity;
                     return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes
                 }
+                case STABILISE: {
+                    // Quicker for a medic and for skill; slow with no medical stores left
+                    float time = a.crew.def.stabiliseTime * (a.crew.role == CrewRole.MEDIC ? CrewDef.MEDIC_STABILISE : 1f)
+                            / CrewRecord.factor(a.crew.record().medicine) / (grid.medicalStores > 0 ? 1f : CrewDef.NO_STORES_CARE);
+                    if (elapsed < time) return Status.RUNNING;
+                    if (grid.medicalStores > 0) grid.medicalStores--;
+                    a.service.crew(((StabiliseTask) t).patient).stabilised = true;
+                    return Status.SUCCEEDED;
+                }
                 case MAN_CONSOLE: {
                     // At it until anything else on the board wants them: then the console goes back up
                     ShipTaskBoardComponent board = a.board();
@@ -362,8 +490,19 @@ public final class CrewTasks {
         }
     }
 
-    /** Carries the casualty to the nearest safe tile. */
+    /**
+     * Carries the casualty to the nearest safe tile. With nowhere aboard to carry them to (the whole
+     * ship holed), the rescuer puts the casualty's suit on them where they are instead, taking their
+     * own suit time, and leaves them for the next try.
+     */
     public static class CarryToSafety extends CrewLeaf {
+        private float suiting;
+
+        @Override
+        public void start() {
+            suiting = 0f;
+        }
+
         @Override
         public Status execute() {
             CrewAgent a = agent();
@@ -377,6 +516,13 @@ public final class CrewTasks {
             boolean destValid = dest != null && a.pos.isMoving() && !a.pos.pathBlocked && TaskRules.isSafe(grid, dest.x, dest.y);
             if (!destValid) {
                 if (!a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
+                    if (!c.suited && c.def.suitAir > 0f) {
+                        a.pos.stop();
+                        a.crew.activity = "putting a suit on " + c.name;
+                        suiting += a.dt;
+                        if (suiting < a.crew.def.suitTime) return Status.RUNNING;
+                        c.setSuited(true);
+                    }
                     a.abandonUnreachable();
                     return Status.FAILED;
                 }
@@ -844,6 +990,7 @@ public final class CrewTasks {
             case FORCE_DOOR: return ((ForceDoorTask) t).job.what();
             case BOARD: return ((BoardTask) t).job.what();
             case TREAT: return "treating a patient";
+            case STABILISE: return "stopping a patient's bleeding";
             case EVACUATE: return "the escape pods";
             case MAN_CONSOLE: {
                 SubsystemComponent.SubsystemType type = ((ManConsoleTask) t).type();

@@ -125,6 +125,9 @@ public final class DefValidator {
                 report.warn(e.lastSource(), e + " needs unknown rank '" + op.rank + "'");
             }
             if (op.steps.isEmpty()) report.warn(e.lastSource(), e + " has no steps");
+            if (op.requires != null && !op.requires.isEmpty() && !OPERATION_REQUIRES.contains(op.requires)) {
+                report.warn(e.lastSource(), e + " requires unknown state '" + op.requires + "'");
+            }
             for (String step : op.steps) {
                 if (!OPERATION_STEPS.contains(step)) report.warn(e.lastSource(), e + " has unknown step '" + step + "'");
             }
@@ -160,6 +163,9 @@ public final class DefValidator {
             if (sale.price < 0) report.warn(e.lastSource(), e + " has a negative price");
         }
     }
+
+    /** What an operation may wait for in the world before it is offered. */
+    public static final java.util.Set<String> OPERATION_REQUIRES = java.util.Set.of("base_fallen");
 
     /** The contract types an operation's steps may be. */
     public static final java.util.Set<String> OPERATION_STEPS =

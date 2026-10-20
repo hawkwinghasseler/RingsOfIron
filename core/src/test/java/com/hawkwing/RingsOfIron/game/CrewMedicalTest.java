@@ -165,12 +165,16 @@ class CrewMedicalTest {
     void woundsStoresAndTheSuitSettingComeThroughASave(@TempDir Path dir) {
         Entity bea = crewNamed(world, game.player, "Bea");
         world.crew.applyDamage(bea, 75f, DamageCause.FRAGMENT);
+        // Round 6: a critical wound someone has stabilised stays stabilised
+        Entity cole = crewNamed(world, game.player, "Cole");
+        world.crew.applyDamage(cole, 100f, DamageCause.PENETRATOR);
+        world.crew.crew(cole).stabilised = true;
         int[] t = GameScenario.floorTiles(game.player.getComponent(ShipGridComponent.class)).get(0);
         Entity prisoner = CrewFactory.spawn(world.crew, game.player, "Held", CrewRole.CREWMAN,
                 world.standing.factions().index(GameScenario.PIRATES), t[0], t[1]);
         world.crew.crew(prisoner).held = true;
         world.crew.applyDamage(prisoner, 95f, DamageCause.PENETRATOR);
-        game.player.getComponent(ShipGridComponent.class).medicalStores = 3;
+        game.player.getComponent(ShipGridComponent.class).medicalStores = 6;
         board().suitsAtBattleStations = false;
         FileHandle file = new FileHandle(dir.resolve("wounds.json").toFile());
         assertNull(game.quickSave(file));
@@ -184,13 +188,16 @@ class CrewMedicalTest {
             assertEquals(Wound.SERIOUS, b.wound);
             assertEquals(75f, b.injury, 1e-3f);
             assertEquals(DamageCause.FRAGMENT, b.woundCause);
+            CrewMemberComponent c = fresh.crew.crew(crewNamed(fresh, loaded.player, "Cole"));
+            assertEquals(Wound.CRITICAL, c.wound);
+            assertTrue(c.stabilised, "the bleeding still stopped");
             CrewMemberComponent p = fresh.crew.crew(fresh.prisoners.aboard(loaded.player).get(0));
             assertEquals(Wound.CRITICAL, p.wound);
             assertTrue(p.bleedOut > 0f && p.bleedOut <= p.def.bleedOutTime);
-            assertEquals(3, loaded.player.getComponent(ShipGridComponent.class).medicalStores);
+            assertEquals(6, loaded.player.getComponent(ShipGridComponent.class).medicalStores);
             assertFalse(loaded.player.getComponent(ShipTaskBoardComponent.class).suitsAtBattleStations);
-            // The prisoner is treated aboard after the load, and lives
-            run(fresh, 60 * 60 * 6);
+            // The prisoner is treated aboard after the load, and lives (Cole's treatment takes the quickest hands)
+            run(fresh, 60 * 60 * 10);
             assertTrue(p.isAlive(), "treated in time: " + CrewMedical.condition(p));
             assertTrue(p.wound.compareTo(Wound.CRITICAL) < 0, CrewMedical.condition(p));
         } finally {

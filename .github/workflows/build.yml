@@ -29,6 +29,32 @@ jobs:
           name: test-reports
           path: '**/build/reports/tests/'
 
+  # Round 3's career on each seed, played twice: the journals must match and the career reach the
+  # gunship, unless the seed is listed as stopping at a known place
+  # (CareerSeedsTest.STOPS); a seed that stops anywhere else, or gets through while listed, fails.
+  career-seeds:
+    name: Career seed ${{ matrix.seed }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [2026, 7, 12]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Play the career twice
+        run: ./gradlew :core:test --tests '*CareerSeedsTest' -PcareerSeeds=${{ matrix.seed }} --console=plain
+      - name: Upload the journals
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: career-seed-${{ matrix.seed }}
+          path: core/build/career-seed-*.txt
+
   # The tests tagged slow (whole careers, long autopilot and warp runs), which ./gradlew build skips
   slow-tests:
     name: Slow tests

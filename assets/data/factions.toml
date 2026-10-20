@@ -49,6 +49,23 @@ hostile_to_all = true
 # Their hidden base, on an eccentric high orbit
 stations = ["Rustwake"]
 
+# [tension.default]: how the strain between the lawful factions changes the world (round 6). A
+# station's tension is its owner's highest with any other lawful faction. Its yard's prices (repairs,
+# propellant and gases) rise in proportion, by price_rise at full tension; from combat_jobs_at its
+# board posts combat_jobs more escorts or bounties. A rival of the player's sponsor posts one job
+# fewer for each distrust_per_job of tension with the sponsor, down to fewest_offers, unless the
+# player's own standing with it is trusted_standing or more. Once the pirates' base has fallen, a
+# new one rises after base_rises_after_days spent with any pair at high tension (50). Placeholder
+# numbers.
+[tension.default]
+price_rise = 0.25
+combat_jobs_at = 50.0
+combat_jobs = 1
+distrust_per_job = 25.0
+fewest_offers = 2
+trusted_standing = 10.0
+base_rises_after_days = 20.0
+
 [rank.ensign]
 name = "Ensign"
 order = 0

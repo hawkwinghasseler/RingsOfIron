@@ -60,7 +60,10 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
  *   is welded to it (captured), and the slider's motor draws the craft together until the collar
  *   is home, which latches.</li>
  *   <li>A latch seats the craft into line with a motor joint, then welds them rigidly. The weld's
- *   strain, low-pass filtered, tears both collars off past the port's break force or torque.</li>
+ *   strain, low-pass filtered, tears both collars off past the port's break force or torque (one
+ *   step's spike counts only up to {@link DockingTuning#STRAIN_SPIKE_CAP} times it, so a single hit
+ *   doesn't; a shock past {@link DockingTuning#SHOCK_LIMIT} times it tears at once), scaled by the
+ *   weaker collar's integrity.</li>
  * </ul>
  * A ship is the entity's {@link PhysicsBodyComponent} body; a station is the kinematic body on its
  * {@link KinematicTransientComponent}. Latch records live on the ports and are saved; the joints
@@ -338,6 +341,12 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     public void dockInPlace(Entity a, int portA, Entity b, int portB) {
         DockingPort pa = portsMapper.get(a).get(portA);
         DockingPort pb = portsMapper.get(b).get(portB);
+        Link held = links.get(pa);
+        if (held != null && held == links.get(pb)) return;
+        // A port already latched elsewhere lets go first: a second latch on it would leave the first
+        // link's weld holding the craft, unseen by undock (seed 7's Moon trip, round 6)
+        if (held != null) dropLink(held, true);
+        if (links.get(pb) != null) dropLink(links.get(pb), true);
         latchRecords(a, portA, pa, b, portB, pb, DockingPort.State.DOCKED, true);
         pa.consented = true;
         pb.consented = true;
@@ -432,7 +441,9 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         DockingPortsComponent ports = portsMapper.get(vessel);
         if (ports == null) return false;
         for (DockingPort p : ports.ports) {
-            if (p.state == DockingPort.State.DOCKED && p.permitted) return true;
+            // Latched to something there is (as dockedTo has it): a save can name a partner since gone
+            if (p.state == DockingPort.State.DOCKED && p.permitted && p.partnerUuid != null
+                    && uuids.getEntity(p.partnerUuid) != null) return true;
         }
         return false;
     }
@@ -966,9 +977,18 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         float force = link.joint.getReactionForce(invDt).len() * M;
         float torque = Math.abs(link.joint.getReactionTorque(invDt)) * M * M;
         float k = Math.min(1f, dt / DockingTuning.STRAIN_FILTER);
-        link.strainForce += (force - link.strainForce) * k;
-        link.strainTorque += (torque - link.strainTorque) * k;
-        if ((link.strainForce > t.breakForce || link.strainTorque > t.breakTorque) && !towLocked.test(link.a, link.b)) {
+        // A collar part torn holds that much less of its load. A collar torn off altogether can only
+        // be latched in place (a tug's or a yard's berth), whose clamps hold it as a whole one would:
+        // scaled to nothing it tore every step, and the ship could never stay at the yard that mends it
+        float hold = Math.min(link.pa.collarIntegrity, link.pb.collarIntegrity);
+        if (hold <= 0f) hold = 1f;
+        float breakForce = t.breakForce * hold, breakTorque = t.breakTorque * hold;
+        boolean shock = force > DockingTuning.SHOCK_LIMIT * breakForce || torque > DockingTuning.SHOCK_LIMIT * breakTorque;
+        // One round's hit on a ship welded to a station is a one-step spike many times the limit;
+        // it counts only up to the cap, so the latch rides out ordinary hits
+        link.strainForce += (Math.min(force, DockingTuning.STRAIN_SPIKE_CAP * breakForce) - link.strainForce) * k;
+        link.strainTorque += (Math.min(torque, DockingTuning.STRAIN_SPIKE_CAP * breakTorque) - link.strainTorque) * k;
+        if ((shock || link.strainForce > breakForce || link.strainTorque > breakTorque) && !towLocked.test(link.a, link.b)) {
             tear(link);
             return;
         }

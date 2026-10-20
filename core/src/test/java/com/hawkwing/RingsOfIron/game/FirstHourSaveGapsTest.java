@@ -120,6 +120,21 @@ class FirstHourSaveGapsTest {
     }
 
     @Test
+    void aPortLatchedToSomethingGoneIsNotDocked() {
+        // A save can name a partner the game no longer has: the ship is not docked anywhere then,
+        // and the systems that ask where (the contract board, landing survivors) must not trip on it
+        undock();
+        com.ringsofiron.stationsdocking.DockingPort port =
+                game.player.getComponent(com.ringsofiron.stationsdocking.DockingPortsComponent.class).ports[0];
+        port.state = com.ringsofiron.stationsdocking.DockingPort.State.DOCKED;
+        port.permitted = true;
+        port.partnerUuid = "gone";
+        assertNull(world.docking.dockedTo(game.player));
+        assertFalse(world.docking.dockedWithClearance(game.player), "no clearance from nothing");
+        assertDoesNotThrow(() -> world.update(FRAME));
+    }
+
+    @Test
     void noTowWhileThePodsAreAway() {
         undock();
         world.abandon.launches.dispatch(new AbandonShip.Escape(game.player, null, new ArrayList<>(), true,

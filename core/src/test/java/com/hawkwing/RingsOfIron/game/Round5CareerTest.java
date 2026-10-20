@@ -35,6 +35,7 @@ class Round5CareerTest extends CareerScript {
     int jobs, operationsDone, bountiesDone, raidsFought;
     double repairsLeft;
     int scrambled;
+    boolean savedAFight;
 
     @Override
     String journalName() {
@@ -50,6 +51,7 @@ class Round5CareerTest extends CareerScript {
         yardTries = 12;
         crewUp();
         row("Gunship");
+        saveForPlaytest("Gunship");
         logBoard(game.highport);
 
         // 1. A Lieutenant Commander's operation, then bounties, to Commander
@@ -57,12 +59,16 @@ class Round5CareerTest extends CareerScript {
         while (rank() < 3 && day() < LAST_DAY && jobs < MOST_JOBS && takeABounty()) { }
         requireRank(3, "a commander's standing");
         row("Commander");
+        saveForPlaytest("Commander");
 
         // 2. A Commander's pay and contracts buy the frigate at Anvil Yards
         buyTheFrigate();
 
         // 3. Hunt the Hunters, in the frigate: its last step is the raid on the pirates' base
         flyTheHunt();
+
+        // 3b. Round 6: with the base fallen, the sponsor's Captain's operation to scatter what is left
+        if (!world.pirateBase.standing() && rank() >= 4 && flyAnOperation("after the fall")) row("After the fall");
 
         // 4. On towards Captain, as far as the days allow, if the raid left the ship fit to fly
         while (!world.pirateBase.standing() && rank() < 4 && day() < LAST_DAY && jobs < MOST_JOBS) {
@@ -81,9 +87,11 @@ class Round5CareerTest extends CareerScript {
         log("| Milestone | Day | Rank | Standing | Credits | Ship | Difficulty |");
         log("|---|---|---|---|---|---|---|");
         for (String r : rows) log("%s", r);
-        // The raid is flown and the base fights back; whether it falls is logged (see the class doc)
+        // The raid is flown, the base fights back, and it falls
         assertTrue(raidsFought > 0, "the raid was flown");
         assertTrue(scrambled > 0, "the base scrambled its wing");
+        // Round 6: the Captain in the frigate wins the raid
+        assertFalse(world.pirateBase.standing(), "the base falls to the raid");
         assertEquals("frigate_patrol", game.player.getComponent(DefRefComponent.class).defId);
         assertTrue(rank() >= 3);
     }
@@ -224,6 +232,10 @@ class Round5CareerTest extends CareerScript {
         if (target.getComponent(PhysicsBodyComponent.class) == null) bringIn(c.targetUuid, 3_000, 0);
         else flyTo(target, 3_000f);
         if (h != null) h.targetUuid = HostileComponent.PLAYER;
+        if (!savedAFight && "gunship_heavy".equals(game.player.getComponent(DefRefComponent.class).defId)) {
+            savedAFight = true;
+            saveForPlaytest("Gunship bounty fight");
+        }
         fight(target, h, "Bounty on " + c.targetName);
         run(60 * 10);
     }
@@ -256,6 +268,7 @@ class Round5CareerTest extends CareerScript {
         crewUp();
         row("Frigate");
         snapshot("in the frigate");
+        saveForPlaytest("Frigate");
     }
 
     /** Hires the best hands the docked station offers until the ship carries the crew its design calls for. */
@@ -333,6 +346,7 @@ class Round5CareerTest extends CareerScript {
         Entity base = world.engine.getEntity(world.pirateBase.uuid());
         undockForAFight();
         world.rescue.jumpBeside(game.player, base, 8_000);
+        if (raidsFought == 1) saveForPlaytest("Before the raid");
         double t0 = world.engine.getSimSeconds();
         runUntil(10f, () -> !world.pirateBase.defenders().isEmpty());
         List<String> wing = new ArrayList<>(world.pirateBase.defenders());

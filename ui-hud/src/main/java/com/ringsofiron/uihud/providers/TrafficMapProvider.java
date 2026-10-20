@@ -36,6 +36,13 @@ public interface TrafficMapProvider {
         public String id = "";
     }
 
+    /** One region's line in the map's tension readout, e.g. "Selene Mining Combine: tension 34". */
+    final class Region {
+        public String line = "";
+        /** Strained enough to show as a warning. */
+        public boolean high;
+    }
+
     /** Everything one map refresh shows; reused between refreshes. */
     final class TrafficFrame {
         /** Name and radius of the body at the map center; empty name means no frame. */
@@ -45,6 +52,8 @@ public interface TrafficMapProvider {
         public double time;
         public final Array<MapBody> bodies = new Array<>();
         public final Array<Contact> contacts = new Array<>();
+        /** The tension readout, a line per region; empty for none. */
+        public final Array<Region> regions = new Array<>();
         private final Array<MapBody> bodyPool = new Array<>();
         private final Array<Contact> contactPool = new Array<>();
 
@@ -65,7 +74,16 @@ public interface TrafficMapProvider {
             return c;
         }
 
+        public Region addRegion(String line, boolean high) {
+            Region r = new Region();
+            r.line = line;
+            r.high = high;
+            regions.add(r);
+            return r;
+        }
+
         public void clear() {
+            regions.clear();
             bodyPool.addAll(bodies);
             contactPool.addAll(contacts);
             bodies.clear();

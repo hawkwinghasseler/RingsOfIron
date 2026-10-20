@@ -10,10 +10,15 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
+import com.hawkwing.RingsOfIron.game.PlayerDocking;
+import com.ringsofiron.stationsdocking.DockingEvent;
 import com.hawkwing.RingsOfIron.shell.GameShell;
+import com.hawkwing.RingsOfIron.shell.SaveSummary;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.interiorgrid.Fluid;
+import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
@@ -33,13 +38,29 @@ import java.util.List;
  *   <li>{@code damage}: holes the first deck tile, as battle damage</li>
  *   <li>{@code latch}: latches the ship onto the raider's port</li>
  *   <li>{@code dock}: docks at Highport</li>
+ *   <li>{@code strand}: empties the propellant tanks, so the ship can't fly home and the tug can be called</li>
+ *   <li>{@code load <name>}: loads the save named {@code <name>}, as its Load button would, where
+ *       finding the button in a list that autosaves keep adding to isn't repeatable</li>
+ *   <li>{@code docked}: says whether the ship is docked, so a script can wait for the helmsman
+ *       to finish an approach without a guessed pause</li>
+ *   <li>{@code target <name>}: makes the first station or craft whose name holds {@code <name>} the
+ *       navigation target, where how many Q presses it takes changes from game to game</li>
  * </ul>
- * Run with {@code gradlew :lwjgl3:runPlaytest -Pcommands=<file>}. Saves go to a temporary folder.
+ * Run with {@code gradlew :lwjgl3:runPlaytest -Pcommands=<file> [-Psaves=<folder>]}. Saves go to a
+ * temporary folder, into which the saves in {@code <folder>} (the career test's
+ * {@code core/build/playtest-saves/seed-2026}, say) are copied first so the load menu lists them.
  */
 public class PlaytestLauncher {
     public static void main(String[] args) throws IOException {
         Path commands = Paths.get(args.length > 0 ? args[0] : "playtest-commands.txt").toAbsolutePath();
         Path saves = Files.createTempDirectory("ringsofiron-playtest-saves");
+        if (args.length > 1 && !args[1].isEmpty()) {
+            try (java.util.stream.Stream<Path> from = Files.list(Paths.get(args[1]).toAbsolutePath())) {
+                for (Path f : (Iterable<Path>) from::iterator) {
+                    if (f.toString().endsWith(".json")) Files.copy(f, saves.resolve(f.getFileName()));
+                }
+            }
+        }
         GameShell shell = new GameShell(Paths.get("").toAbsolutePath(), Paths.get("mods").toAbsolutePath(),
                 new FileHandle(saves.toFile()));
         Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
@@ -48,17 +69,19 @@ public class PlaytestLauncher {
         config.setForegroundFPS(60);
         config.setWindowedMode(Integer.getInteger("playtest.width", 1280), Integer.getInteger("playtest.height", 800));
         config.disableAudio(true);
-        new Lwjgl3Application(new Driven(shell, commands), config);
+        new Lwjgl3Application(new Driven(shell, commands, saves), config);
     }
 
     private static final class Driven implements ApplicationListener {
         private final GameShell shell;
         private final Path commands;
+        private final Path saves;
         private int done;
 
-        Driven(GameShell shell, Path commands) {
+        Driven(GameShell shell, Path commands, Path saves) {
             this.shell = shell;
             this.commands = commands;
+            this.saves = saves;
         }
 
         @Override public void create() { shell.create(); }
@@ -70,7 +93,33 @@ public class PlaytestLauncher {
         @Override
         public void render() {
             readCommands();
+            watchDocking();
             shell.render();
+        }
+
+        private GameWorld watched;
+
+        /** Logs every docking event, and at a tear whatever the two craft are touching. */
+        private void watchDocking() {
+            RingsOfIronGame game = shell.getGame();
+            GameWorld world = game == null ? null : game.getWorld();
+            if (world == null || world == watched) return;
+            watched = world;
+            world.docking.events.add((sig, e) -> {
+                System.out.println("PLAYTEST docking " + e.kind + " " + PlayerDocking.name(e.vessel) + " / " + PlayerDocking.name(e.other)
+                        + " at " + world.engine.getSimSeconds());
+                if (e.kind != DockingEvent.Kind.TORN) return;
+                for (com.badlogic.gdx.physics.box2d.Contact c : world.physics.getWorld().getContactList()) {
+                    if (!c.isTouching() || c.getFixtureA().isSensor() || c.getFixtureB().isSensor()) continue;
+                    Object a = c.getFixtureA().getBody().getUserData(), b = c.getFixtureB().getBody().getUserData();
+                    if (a != e.vessel && b != e.vessel && a != e.other && b != e.other) continue;
+                    System.out.println("PLAYTEST   touching " + label(a) + " / " + label(b));
+                }
+            });
+        }
+
+        private static String label(Object o) {
+            return o instanceof Entity ? PlayerDocking.name((Entity) o) : String.valueOf(o);
         }
 
         private void readCommands() {
@@ -90,6 +139,13 @@ public class PlaytestLauncher {
         }
 
         private String run(String[] cmd) {
+            if ("load".equals(cmd[0])) {
+                String name = String.join(" ", java.util.Arrays.copyOfRange(cmd, 1, cmd.length));
+                FileHandle file = new FileHandle(saves.resolve(name.replaceAll("[^A-Za-z0-9_-]+", "_") + ".json").toFile());
+                if (!file.exists()) return "no such save";
+                shell.load(SaveSummary.readFor(file, name));
+                return "loading";
+            }
             RingsOfIronGame game = shell.getGame();
             if (game == null) return "no game";
             GameWorld world = game.getWorld();
@@ -123,6 +179,24 @@ public class PlaytestLauncher {
                     return "latched";
                 case "dock":
                     return s.dockAtHighport() ? "docked" : "could not dock";
+                case "strand": {
+                    ShipSubsystemRegistryComponent r = s.player.getComponent(ShipSubsystemRegistryComponent.class);
+                    for (SubsystemComponent t : TankSupply.tanks(r, Fluid.PROPELLANT)) t.contents = 0;
+                    return "tanks empty";
+                }
+                case "docked":
+                    return world.docking.dockedTo(s.player) != null ? "yes" : "no";
+                case "target": {
+                    String want = String.join(" ", java.util.Arrays.copyOfRange(cmd, 1, cmd.length)).toLowerCase(java.util.Locale.ROOT);
+                    for (String uuid : world.nav.target.candidates()) {
+                        String name = world.nav.target.name(uuid);
+                        if (name.toLowerCase(java.util.Locale.ROOT).contains(want)) {
+                            world.nav.target.select(uuid);
+                            return "target " + name;
+                        }
+                    }
+                    return "no such target";
+                }
                 default:
                     return "unknown command";
             }

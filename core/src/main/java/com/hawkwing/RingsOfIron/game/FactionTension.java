@@ -6,6 +6,7 @@ import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.moddingdata.defs.FactionDef;
+import com.ringsofiron.moddingdata.defs.TensionDef;
 
 import java.util.Locale;
 import java.util.Map;
@@ -23,6 +24,12 @@ import java.util.TreeMap;
  *       Free Traders, neutral and living off the lanes, send a patrol of their own to fly between
  *       the two sides' stations (round 5).</li>
  *   <li>The pirates' base falling eases every pair ({@link #easeAll}).</li>
+ *   <li>Round 6, the world reacts ({@code [tension.default]} in the data, {@link TensionDef}): a
+ *       station's yard charges more for repairs and its tanks the higher its owner's tension
+ *       ({@link #priceFactor}), its board posts more combat jobs once that runs high
+ *       ({@link #combatJobs}), and a rival of the player's sponsor posts fewer jobs to a player it
+ *       distrusts ({@link #offersFor}). A station's tension is its owner's highest with any other
+ *       lawful faction ({@link #regional}).</li>
  *   <li>Negative standing with any faction drifts {@link #RECOVERY_PER_WEEK} a week back towards
  *       zero; positive standing never decays.</li>
  * </ul>
@@ -192,6 +199,84 @@ public class FactionTension extends EntitySystem implements SaveParticipant {
         for (FactionDef f : world.standing.factions().all()) {
             float s = record.get(f.id);
             if (s < 0f) record.set(f.id, Math.min(0f, s + RECOVERY_PER_WEEK));
+        }
+    }
+
+    // ------------------------------------------------------------------ the world reacting (round 6)
+
+    /** The data's tuning, {@code [tension.default]}; the class's defaults if the data has none. */
+    public TensionDef tuning() {
+        if (tuning == null) {
+            var content = world.getContent();
+            tuning = content != null && content.defs.has("tension", "default")
+                    ? content.defs.get("tension", "default", TensionDef.class) : new TensionDef();
+        }
+        return tuning;
+    }
+
+    private TensionDef tuning;
+
+    /**
+     * The strain on {@code faction}'s stations: its highest tension with any other lawful faction.
+     * 0 for the pirates, who are at war with everyone anyway, and for unknowns.
+     */
+    public float regional(int faction) {
+        Factions f = world.standing.factions();
+        float most = 0f;
+        for (int i = 0; i < f.all().size(); i++) most = Math.max(most, get(faction, Factions.FIRST + i));
+        return most;
+    }
+
+    /** True while any pair of lawful factions is at {@link #HIGH} or above. */
+    public boolean anyHigh() {
+        for (float v : tension.values()) if (v >= HIGH) return true;
+        return false;
+    }
+
+    /**
+     * What {@code station}'s yard charges against its base prices, for repairs and refills: 1 plus
+     * {@link TensionDef#priceRise} at full tension, in proportion below it.
+     */
+    public double priceFactor(Entity station) {
+        if (station == null) return 1;
+        return 1 + tuning().priceRise * regional(world.standing.factionOf(station)) / MAX;
+    }
+
+    /** Combat jobs (escorts and bounties) a board of {@code owner} posts beyond its usual number. */
+    public int combatJobs(int owner) {
+        TensionDef t = tuning();
+        return regional(owner) >= t.combatJobsAt ? Math.max(0, t.combatJobs) : 0;
+    }
+
+    /**
+     * How many of {@code n} jobs a board of {@code owner} offers the player: all of them from the
+     * sponsor or a faction that trusts the player ({@link TensionDef#trustedStanding}), one fewer for
+     * each {@link TensionDef#distrustPerJob} of the owner's tension with the sponsor otherwise, but
+     * never fewer than {@link TensionDef#fewestOffers}.
+     */
+    public int offersFor(int owner, int n) {
+        TensionDef t = tuning();
+        int sponsor = world.standing.sponsor();
+        if (owner == sponsor || world.standing.standing(owner) >= t.trustedStanding || t.distrustPerJob <= 0) return n;
+        int cut = (int) Math.floor(get(owner, sponsor) / t.distrustPerJob);
+        return Math.max(Math.min(n, t.fewestOffers), n - cut);
+    }
+
+    /**
+     * One line per lawful faction with stations, for the traffic map: its name, its tension (its
+     * stations' {@link #regional}) and what that does to its yards' prices, each given to {@code out}
+     * with whether it is {@link #HIGH}.
+     */
+    public void regions(java.util.function.BiConsumer<String, Boolean> out) {
+        Factions f = world.standing.factions();
+        for (int i = 0; i < f.all().size(); i++) {
+            int faction = Factions.FIRST + i;
+            FactionDef def = f.def(faction);
+            if (def == null || def.hostileToAll || def.stations.isEmpty()) continue;
+            float v = regional(faction);
+            double rise = tuning().priceRise * v / MAX;
+            out.accept(String.format(Locale.ROOT, "%s: %.0f%s%s", f.name(faction), v, v >= HIGH ? " HIGH" : "",
+                    rise >= 0.005 ? String.format(Locale.ROOT, ", yards +%.0f%%", 100 * rise) : ""), v >= HIGH);
         }
     }
 

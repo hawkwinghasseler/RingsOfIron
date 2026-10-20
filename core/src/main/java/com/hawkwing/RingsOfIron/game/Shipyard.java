@@ -365,6 +365,7 @@ public class Shipyard extends EntitySystem {
         List<int[]> floor = GameScenario.floorTiles(to.getComponent(ShipGridComponent.class));
         CrewFactory.ensureBoard(to);
         world.crew.clearPathfinders();
+        sendStaffHome(from);
         // The avatar first, so it gets the first tile; the helm seat is the caller's to give
         crew.sort((p, q) -> Boolean.compare(q.getComponent(PlayerAvatarComponent.class) != null,
                 p.getComponent(PlayerAvatarComponent.class) != null));
@@ -386,6 +387,24 @@ public class Shipyard extends EntitySystem {
         }
     }
 
+    /** A station's technicians or loaders still aboard {@code ship} step back aboard their station before it goes. */
+    private void sendStaffHome(Entity ship) {
+        for (Entity e : world.crew.crewEntities()) {
+            CrewMemberComponent c = world.crew.crew(e);
+            GridPositionComponent p = world.crew.position(e);
+            if (c == null || p == null || p.ship != ship || c.home == null || c.home == ship
+                    || c.home.getComponent(StationComponent.class) == null) continue;
+            List<int[]> floor = GameScenario.floorTiles(c.home.getComponent(ShipGridComponent.class));
+            if (floor.isEmpty()) continue;
+            world.crew.releaseTask(e);
+            p.stop();
+            p.crossing = null;
+            p.setShip(c.home);
+            int[] t = floor.get(floor.size() / 2);
+            p.setTile(t[0], t[1]);
+        }
+    }
+
     /** The living crew (and the player's avatar) aboard {@code ship} or calling it home. */
     Array<Entity> crewOf(Entity ship) {
         Array<Entity> out = new Array<>();
@@ -393,6 +412,9 @@ public class Shipyard extends EntitySystem {
             CrewMemberComponent c = world.crew.crew(e);
             GridPositionComponent p = world.crew.position(e);
             if (c == null || p == null || !c.isAlive()) continue;
+            // A station's own people aboard (a technician walking back from the yard's work) stay with it:
+            // on round 6's seed 2026 the frigate carried off Highport's technicians, and its yard could do no more
+            if (c.home != null && c.home != ship && c.home.getComponent(StationComponent.class) != null) continue;
             if (p.ship == ship || c.home == ship) out.add(e);
         }
         return out;
