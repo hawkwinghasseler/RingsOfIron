@@ -21,9 +21,11 @@ import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.damage.IonStun;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.DamageStates;
+import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -170,19 +172,30 @@ public class ShipDisablement extends EntitySystem {
         // A pirate still on its run in, its guns not yet in reach, presses on with whoever is up:
         // round 7 found raiders giving up at 4 km to a frigate's first slugs with two of three crew
         // knocked out, before their chaingun ever reached
-        if (count[0] > 0 && count[1] < crewLine * count[0] && !closingToReach(ship)) return true;
+        boolean runIn = closingToReach(ship);
+        if (count[0] > 0 && count[1] < crewLine * count[0] && !runIn) return true;
         // Tanks dry, it can neither close nor run: on seed 12 an ace that had robbed eleven
         // freighters met the gunship empty and drifted 400 s, its one gun rarely bearing
         if (dry(ship)) return true;
-        return gunsSilenced(ship);
+        // Nor does it strike on its run in for guns a short has only cut off: they're back within
+        // DamageStates.AUTO_RESET. Round 8 found raiders' reactors shorted by a railgun slug at 3 to 4 km
+        return gunsSilenced(ship, runIn);
     }
 
-    /** True for a hostile whose tanks are empty. */
+    /**
+     * True for a hostile whose tanks are empty. Its engines read out of fuel too while they are only
+     * unpowered (PropellantFeed feeds working engines alone), as when a slug shorts its reactor: round 8
+     * found raiders striking for "dry tanks" at 4 km with full ones, so the tanks themselves must be empty.
+     */
     static boolean dry(Entity ship) {
         if (ship.getComponent(HostileComponent.class) == null) return false;
         com.ringsofiron.physicsexterior.components.ThrusterComponent t =
                 ship.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
-        return t != null && t.isOutOfFuel();
+        if (t == null || !t.isOutOfFuel()) return false;
+        ShipSubsystemRegistryComponent registry = REGISTRY.get(ship);
+        if (registry == null) return true;
+        for (SubsystemComponent tank : TankSupply.tanks(registry, Fluid.PROPELLANT)) if (tank.contents > 0) return false;
+        return true;
     }
 
     /** True for a pirate fighting a ship further off than its shortest-reaching gun reaches. */
@@ -343,14 +356,23 @@ public class ShipDisablement extends EntitySystem {
      * short has cut off do count: a pirate crew left in the dark loses heart.
      */
     static boolean gunsSilenced(Entity ship) {
+        return gunsSilenced(ship, false);
+    }
+
+    /**
+     * As {@link #gunsSilenced(Entity)}; with {@code waitOutShorts}, a gun still sound (above its disable
+     * line) while a short aboard waits for its reset doesn't count either: its power is coming back.
+     */
+    static boolean gunsSilenced(Entity ship, boolean waitOutShorts) {
         WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);
         if (weapons == null || IonStun.anyStunned(ship)) return false;
+        boolean shorted = waitOutShorts && DamageStates.awaitingReset(GRID.get(ship), REGISTRY.get(ship));
         boolean any = false;
         for (WeaponMountComponent m : weapons.mounts) {
             if (m.def == null || m.def.pointDefense) continue;
             any = true;
             SubsystemComponent sub = m.subsystem == null ? null : m.subsystem.getComponent(SubsystemComponent.class);
-            if (sub == null || (!sub.isDisabled() && sub.isOperational)) return false;
+            if (sub == null || (!sub.isDisabled() && (sub.isOperational || shorted))) return false;
         }
         return any;
     }
