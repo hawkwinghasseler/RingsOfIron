@@ -76,7 +76,9 @@ class CrewWoundSurveyTest {
         List<Trial> all = new ArrayList<>();
         // -PwoundRefits=raider_ace_railgun surveys one refit only
         String[] refits = System.getProperty("wound.survey.refits", String.join(",", REFITS)).split(",");
-        for (String refit : refits) for (int i = 0; i < n; i++) all.add(trial(refit, 2026 + i));
+        // -PwoundSeed=2036 starts the seeds there instead (round 9: a second sample of the same fights)
+        long first = Long.getLong("wound.survey.seed", 2026);
+        for (String refit : refits) for (int i = 0; i < n; i++) all.add(trial(refit, first + i));
         StringBuilder out = new StringBuilder("| Ace refit | Seed | Result | Our hull | Our crew wounded (light/serious/critical) | Our crew dead (in the fight) | Of | Hits after | Ace crew alive | Still wounded 10 min on (light/serious/critical) | Boarded, took |\n|---|---|---|---|---|---|---|---|---|---|---|\n");
         for (Trial t : all) {
             out.append(String.format(Locale.ROOT, "| %s | %d | %s in %.0f s | %.2f | %d/%d/%d | %d of %d (%d) | %s | %d | %d of %d | %d (%d/%d/%d) | %s |%n",

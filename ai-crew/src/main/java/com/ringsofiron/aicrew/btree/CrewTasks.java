@@ -601,7 +601,7 @@ public final class CrewTasks {
                         if (suiting < a.crew.def.suitTime) return Status.RUNNING;
                         c.setSuited(true);
                     }
-                    if (!medbay && c.suited && c.suitAir < c.def.suitAir * c.def.suitRefillShare) {
+                    if (!medbay && c.suited && c.suitAir < c.def.suitAir * c.def.suitRefillShare && TaskRules.suitCare(a.board())) {
                         Status fill = fillSuit(a, c, grid);
                         if (fill != null) return fill;
                     }

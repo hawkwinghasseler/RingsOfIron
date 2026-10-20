@@ -225,6 +225,18 @@ class CrewCareTest {
     }
 
     @Test
+    void anEnemyCrewGetsNoSuitCare() {
+        TestShips s = ConsoleTest.bridge();
+        s.board.faction = 1;
+        Entity marine = s.spawn(CrewRole.MARINE, 1, 8, 4);
+        s.run(8f);
+        assertTrue(CrewQueries.isManning(marine, SubsystemType.WEAPONS), s.c(marine).activity);
+        s.grid.getTile(9, 1).setIntegrity(0f);
+        s.run(30f);
+        assertFalse(s.c(marine).suited, "as before round 9: " + s.c(marine).activity);
+    }
+
+    @Test
     void aHandAtAConsoleSuitsUpThereAsTheRoomVentsOffBattleStations() {
         TestShips s = ConsoleTest.bridge();
         Entity marine = s.spawn(CrewRole.MARINE, 0, 8, 4);
