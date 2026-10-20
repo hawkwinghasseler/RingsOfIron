@@ -286,6 +286,18 @@ public class PlaytestLauncher {
                 }
                 case "docked":
                     return world.docking.dockedTo(s.player) != null ? "yes" : "no";
+                case "seat": {
+                    // Only reads: the console the avatar sits at, and the weapons console's offset from where
+                    // it stands, in deck tiles, so a script can walk there by keys
+                    Entity avatar = world.avatar.getAvatar();
+                    com.ringsofiron.aicrew.GridPositionComponent pos = avatar == null ? null
+                            : avatar.getComponent(com.ringsofiron.aicrew.GridPositionComponent.class);
+                    SubsystemComponent w = com.hawkwing.RingsOfIron.game.Bridge.console(s.player, SubsystemComponent.SubsystemType.WEAPONS);
+                    if (pos == null || w == null) return "seat " + world.bridge.seat() + ", no avatar or no weapons console";
+                    float cx = w.footprint.originX + w.footprint.width() / 2f, cy = w.footprint.originY + w.footprint.height() / 2f;
+                    return String.format(java.util.Locale.ROOT, "seat %s, weapons %.2f %.2f off", world.bridge.seat(),
+                            cx - pos.x, cy - pos.y);
+                }
                 case "target": {
                     String want = String.join(" ", java.util.Arrays.copyOfRange(cmd, 1, cmd.length)).toLowerCase(java.util.Locale.ROOT);
                     for (String uuid : world.nav.target.candidates()) {
