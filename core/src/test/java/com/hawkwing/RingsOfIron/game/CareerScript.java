@@ -394,7 +394,17 @@ abstract class CareerScript {
     String openingState(Entity ship, HostileComponent h) {
         com.ringsofiron.physicsexterior.components.ThrusterComponent t =
                 ship.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
-        String tanks = t == null ? "no tanks" : String.format(Locale.ROOT, "tanks %.0f of %.0f kg", t.fuel, t.fuelCapacity);
+        // What the propellant tanks hold, and what the thrusters can draw: the feed gives them nothing
+        // while the engines are down, so the two differ on a ship whose tanks are full but can't burn
+        double held = 0, capacity = 0;
+        ShipSubsystemRegistryComponent tanksOf = ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (tanksOf != null) {
+            for (SubsystemComponent tank : com.ringsofiron.interiorgrid.TankSupply.tanks(tanksOf, com.ringsofiron.interiorgrid.Fluid.PROPELLANT)) {
+                held += tank.contents;
+                capacity += tank.capacity;
+            }
+        }
+        String tanks = String.format(Locale.ROOT, "tanks %.0f of %.0f kg, thrusters see %.0f", held, capacity, t == null ? 0f : t.fuel);
         int[] crew = world.disablement.crewCount(ship);
         ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
         List<String> shorted = new ArrayList<>(), out = new ArrayList<>();
