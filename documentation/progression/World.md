@@ -41,6 +41,8 @@ Round 6: the base has guns, and its wing comes out in order. At the first scramb
 
 Round 7: the raid hurts again. The second wave launches after 45 s at the latest (was 90). `defendersFor` adds one defender for each 0.6 of difficulty past 1 (`DIFFICULTY_PER_DEFENDER`, was 1.0), so a Commander's gunship meets 3 and a Captain's frigate 4 (`MAX_DEFENDERS`). While the base stands, a defender whose leader is beaten fights on alone rather than break off with it (`PirateBase.defending`). `loadout.battery_railgun` lets one platform carry a railgun (`HostileTraffic.moorGuns` keeps it to one), but it ships at weight 0: the raid met its targets without it. Survey and steps: `planning/round7-raid.md` in the project folder.
 
+Round 8: one raid, flown the same way by the enemy survey and the scripted career (`RaidRoutine` in core's tests): the player jumps in 8 km from the base, the helm holds position on it, each defender is fought as the base launches it, and nothing jumps once the fight is on. A lost raid is flown again after the yard, up to three tries. The helm's hold position and match velocity now carry on under fire (`HelmOrders.survivesThreat`); before, the first dart dropped the hold. With a real hold the frigate lost too often, so `DIFFICULTY_PER_DEFENDER` is 0.8 (a Commander's gunship still meets 3 defenders, a Captain's frigate 3 until difficulty 2.6, then 4) and `battery_railgun` has weight 5, so about half a frigate's raids meet a railgun platform. When the base strikes its colours its defenders' and platforms' missiles in flight go ballistic (`MissileGuidanceSystem.goBallistic`), so the missile warning clears with the fall. Survey and steps: `planning/round8-raid.md` in the project folder.
+
 Spawn loadouts and an ace's refit are drawn from the career seed (`NewGame.mix(world.events.seed, …)`) with the ship and its spawn count, so a seed meets the same fits and another seed other fits.
 
 ### Choosing a sponsor
@@ -81,7 +83,7 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - `SponsorChoiceTest`: the Patrol by default; a Selene start, board and rank names; only sponsorable factions; flying and warping above the Moon; friendly guards; a save keeps the sponsor and home.
 - `Round5LateCareerTest`: the base's wing, its fall and the tension it eases, a save mid-raid, world events' strain, the Free Trader patrol and the board's tension line.
 - `Round6WorldTest`: the data's tuning, prices up to a quarter (refill and repairs charged at the strained price), a combat job added at high tension, a rival's shorter board, the traffic map's readout, survivors hurt by days in the pod and tended, the Captain's operation after the fall, and a new base rising after 20 strained days (with a save between).
-- `BaseDefenceTest`: launch order, a railgun raider never leading; the guns manned at the first scramble, moored and locked on the player, kept through a save; the guns are no bounty, recon or ace; spawn loadouts follow the seed.
+- `BaseDefenceTest`: launch order, a railgun raider never leading; the guns manned at the first scramble, moored and locked on the player, kept through a save; the guns are no bounty, recon or ace; spawn loadouts follow the seed; the base's darts in flight go ballistic when it strikes (round 8).
 - `EnemySurveyTest` (round 6): the base's defence against the corvette, and with `-PenemySurvey` the survey of each enemy against the corvette, gunship and frigate.
 - `FactionTensionTest`: hostile acts raise tension, pirates excluded; high tension reinforces once and refuses rivals; the weekly drift; weeks pass on the sim clock; a save keeps the strain.
 
@@ -99,6 +101,7 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - Round 6: two gun platforms, moored 1.5 km and 3 km behind the base and manned at the first scramble, never a railgun among their fits; their hull art is generated from the chassis grid (`tools/art/generate_svgs.py`) and they borrow the raider's texture.
 - Round 6: the second wave launches when the first defender is beaten or after 90 s; ties in firepower launch by name; when every defender carries a railgun the order stands.
 - Round 7: the frigate's raid is tuned to win 6 to 8 of 10 in the enemy survey with mean hull 0.50 to 0.75: it wins 7, at 0.74. The career seeds 2026, 7 and 12 drew no railgun raider for the raid and still end it at hull 0.89 or better.
+- Round 8: the career flies the survey's raid. The survey's frigate wins 7 of 10 at mean hull 0.73 (worst 0.43). On the career seeds the raid is a draw of the same fight: seed 2026 meets a railgun raider and wins at 0.50, seed 12 meets a railgun platform and wins at 0.79, and seed 7 meets neither and wins at 1.00.
 - All the numbers above are placeholders.
 
 ## Not built
