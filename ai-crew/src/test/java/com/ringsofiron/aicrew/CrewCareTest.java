@@ -184,4 +184,28 @@ class CrewCareTest {
         assertFalse(s.c(medic).suited, "out of the suit to work");
         assertTrue(s.c(medic).task instanceof TreatTask, "and treating still");
     }
+    @Test
+    void inThinAirSuitedHandsStillGiveFirstAid() {
+        // Round 8, part 6's burst oxygen tank: the cabin came back slowly on life support's own
+        // oxygen, nowhere aboard was safe, and a suited hand's graze stayed open
+        TestShips s = ward();
+        Entity grazed = s.spawn(CrewRole.CREWMAN, 0, 3, 2);
+        Entity mate = s.spawn(CrewRole.MARINE, 0, 6, 2);
+        s.c(grazed).setSuited(true);
+        s.c(mate).setSuited(true);
+        s.crew.applyDamage(grazed, 30f, DamageCause.PENETRATOR);
+        s.board.standDown();
+        assertEquals(Wound.LIGHT, s.c(grazed).wound);
+        float dt = 1f / 30f;
+        for (float t = 0; t < 240f; t += dt) {
+            com.ringsofiron.interiorgrid.Compartment room = s.grid.compartmentAt(3, 2);
+            double full = room.volume * com.ringsofiron.interiorgrid.Compartment.STANDARD_PRESSURE * 1000.0
+                    / (com.ringsofiron.interiorgrid.Compartment.R * room.temperature);
+            room.oxygen = Math.min(room.oxygen, 0.6 * full * com.ringsofiron.interiorgrid.Compartment.STANDARD_O2_FRACTION);
+            s.engine.update(dt);
+        }
+        assertFalse(TaskRules.isSafe(s.grid, 3, 2), "the air still thin");
+        assertEquals(Wound.NONE, s.c(grazed).wound, s.c(mate).activity);
+        assertTrue(s.c(grazed).isAlive() && s.c(mate).isAlive());
+    }
 }

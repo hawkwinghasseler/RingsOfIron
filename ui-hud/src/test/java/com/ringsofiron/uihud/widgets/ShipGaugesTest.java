@@ -38,6 +38,12 @@ class ShipGaugesTest {
         s.oxygen = 0.3f;
         s.cabinPressure = 1f;
         assertEquals("30%  LOW O2", ShipGauges.oxygenText(s));
+        s.oxygen = 0f;
+        s.emergencyOxygenKg = 41.6;
+        s.emergencyOxygen = 0.69f;
+        assertEquals("EMERGENCY 42 kg", ShipGauges.oxygenText(s));
+        s.emergencyOxygenKg = Double.NaN;
+        s.emergencyOxygen = Float.NaN;
         s.oxygen = Float.NaN;
         s.cabinPressure = 0.5f;
         assertEquals("air 50%  LOW AIR", ShipGauges.oxygenText(s));
