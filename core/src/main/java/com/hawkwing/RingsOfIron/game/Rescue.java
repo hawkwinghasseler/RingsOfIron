@@ -241,6 +241,8 @@ public class Rescue {
         if (AbandonShip.abandoning(ship)) world.abandon.callOff(ship);
         FlightControlComponent controls = ship.getComponent(FlightControlComponent.class);
         if (controls != null) controls.forward = controls.turn = controls.strafe = 0f;
+        // The tug takes the ship away from whatever was after it: none follows it in
+        world.macroSim.hostiles().playerTakenAway(t, t + TIME_SKIP);
         double skipped = skipTo(ship, station);
         dockingAt = station;
         docking = ship;
