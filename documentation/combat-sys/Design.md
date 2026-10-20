@@ -161,7 +161,7 @@ Missiles are self-propelled projectiles with a heading, a rocket and a seeker. A
 - **State:** `LAUNCH → BOOST → MIDCOURSE → TERMINAL → (COAST | DEAD)`.
 
 ### 4.2 Flight phases
-1. **Launch (cold).** The missile is ejected at `ejectSpeed` on top of the launcher's velocity, and its motor stays dark until `armingDelay`. This keeps it from torching or hitting its own ship. Ejection reaction is applied to the launcher as an impulse.
+1. **Launch (cold).** The missile is ejected at `ejectSpeed` on top of the launcher's velocity, and its motor stays dark until `armingDelay`. This keeps it from torching or hitting its own ship. Ejection reaction is applied to the launcher as an impulse. As built (round 6), a missile also never strikes its own launcher at all: an aft launcher's missile turning onto a target ahead flew up its own ship's hull and blew the frigate's bow railguns off.
 2. **Boost / midcourse.** The missile steers on the **launching ship's track**, received by datalink. The datalink only works while the launcher's `WEAPONS` subsystem is operational and powered. If it drops, the missile switches to its own seeker early or, with no lock, coasts.
 3. **Terminal.** Once the target is inside `seekerRange` and `seekerFov`, with line of sight not blocked by an asteroid (Box2D raycast), the missile steers on its own seeker. If it loses lock, it holds the last estimate for `memoryTime` and then coasts.
 4. **Coast.** With no fuel or no guidance, the missile is a ballistic slug. It is still armed, and still dangerous at closing speed.

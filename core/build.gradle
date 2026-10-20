@@ -44,6 +44,7 @@ test {
   // ./gradlew :core:test --tests '*EnemySurveyTest' -PenemySurvey runs the round 5 enemy survey (core/build/enemy-survey.txt)
   if (project.hasProperty('enemySurvey')) systemProperty 'enemy.survey', 'true'
   if (project.hasProperty('surveyTrials')) systemProperty 'enemy.survey.trials', project.property('surveyTrials')
+  if (project.hasProperty('surveyRows')) systemProperty 'enemy.survey.rows', project.property('surveyRows')
   if (project.hasProperty('enemyDebug')) systemProperty 'enemy.debug', 'true'
   if (project.hasProperty('enemyProbe')) systemProperty 'enemy.probe', project.property('enemyProbe')
   // A failing test says why in the CI log, not only in the report (the build logs at quiet, see gradle.properties)

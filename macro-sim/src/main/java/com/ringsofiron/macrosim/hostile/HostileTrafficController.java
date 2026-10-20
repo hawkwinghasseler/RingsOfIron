@@ -129,11 +129,16 @@ public class HostileTrafficController {
         h.stationUuid = stationUuid;
         hostiles.put(uuid, h);
         holdAt(uuid, h, stationUuid, lurkOffset(h), now);
-        schedule(uuid, h, now + LOOK_INTERVAL);
+        // A moored gun platform stays where it is: it never looks for prey
+        if (!h.moored()) schedule(uuid, h, now + LOOK_INTERVAL);
     }
 
-    /** How far behind its lurk station a pirate holds: a wingman sits {@link #WING_SPACING} behind its leader. */
+    /**
+     * How far behind its lurk station a pirate holds: a wingman sits {@link #WING_SPACING} behind its
+     * leader, and a moored gun platform at its {@link HostileComponent#mooring}.
+     */
     static double lurkOffset(HostileComponent h) {
+        if (h.moored()) return h.mooring;
         return h.wingOf == null ? LURK_OFFSET : LURK_OFFSET + WING_SPACING;
     }
 
@@ -186,6 +191,7 @@ public class HostileTrafficController {
         for (Map.Entry<String, HostileComponent> e : hostiles.entrySet()) {
             String uuid = e.getKey();
             HostileComponent h = e.getValue();
+            if (h.moored()) continue;
             if (h.role == Role.PATROL) {
                 List<String> route = new ArrayList<>(List.of(h.route));
                 if (route.remove(stationUuid)) {
@@ -227,6 +233,12 @@ public class HostileTrafficController {
         if (h == null || h.state != State.IN_BUBBLE) return;
         h.state = h.resumeState;
         h.brokeOff = false;
+        if (h.moored()) {
+            // Back on its mooring, where the bubble left it riding beside its station
+            h.state = State.HOLDING;
+            holdAt(uuid, h, h.stationUuid, h.mooring, now);
+            return;
+        }
         double tBurn = now + 1;
         String parent = rails.parentOf(uuid);
         double mu = rails.muOf(parent);
@@ -286,7 +298,7 @@ public class HostileTrafficController {
     }
 
     private void due(String uuid, HostileComponent h, double now) {
-        if (hostiles.get(uuid) != h || !rails.isOnRails(uuid)) return;
+        if (hostiles.get(uuid) != h || !rails.isOnRails(uuid) || h.moored()) return;
         h.eventId = 0;
         h.eventTime = -1;
         switch (h.state) {
@@ -398,6 +410,7 @@ public class HostileTrafficController {
     /** A rendezvous with the player, if this pirate would go after them now; else null. */
     private TransferPlanner.Plan playerIntercept(String uuid, HostileComponent h, String parent, double now) {
         if (gateway == null || now < playerGraceUntil || !parent.equals(gateway.anchorParentUuid())) return null;
+        if (h.surrendered) return null;
         if (hunted(HostileComponent.PLAYER)) return null;
         if (!h.grudge && pairFirepower(uuid, h) < PLAYER_NERVE * playerFirepower.getAsDouble()) return null;
         double mu = rails.muOf(parent);
@@ -554,7 +567,7 @@ public class HostileTrafficController {
 
     /** True if some pirate is already after {@code target}. */
     private boolean hunted(String target) {
-        for (HostileComponent h : hostiles.values()) if (target.equals(h.targetUuid)) return true;
+        for (HostileComponent h : hostiles.values()) if (!h.moored() && target.equals(h.targetUuid)) return true;
         return false;
     }
 

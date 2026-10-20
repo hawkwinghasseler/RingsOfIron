@@ -82,15 +82,15 @@ Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. I
 - **Pirates** fly for the Void Raiders. They lie in wait near trade lanes and rob loaded freighters. A pirate hunts the player only when it is bold enough: firepower at least 0.8 of the player's, and only after the first 6 hours of a game. A pirate breaks off below 65% of its hull, before it is beaten badly enough to surrender (55%), so a losing pirate runs first and gives up only if it is caught and hit again.
 - **Patrols** fly for the sponsor and for Selene between their stations and engage pirates. A pirate won't strike at a station guarded by an equal or stronger patrol.
 - **Warp:** a hostile moving to intercept the player stops time warp.
-- **Loadouts** (round 3): each pirate is armed from a weighted list for its hull and the difficulty (`loadouts.toml`). Raiders carry a chaingun or darts, and from difficulty 1 an ion gun, from 1.5 a railgun. Gunships range from the stock fit to flak, brawler, ion-and-darts and, from 1.5, the heavy railgun. Patrols and the First Play raider keep their stock weapons.
+- **Loadouts** (round 3): each pirate is armed from a weighted list for its hull and the difficulty (`loadouts.toml`). Raiders carry a chaingun or darts, and from difficulty 1 an ion gun, from 1.5 a railgun. Gunships range from the stock fit to flak, brawler, ion-and-darts and, from 1.5, the heavy railgun. Patrols and the First Play raider keep their stock weapons. Round 6: the pick is drawn from the career seed with the ship and how many have spawned (`HostileTraffic.loadoutDice`), so the same seed meets the same fits.
 - **Wings** (round 3 pairs, round 5 sizes): a new raider joins the wing of a raider leading fewer than `Difficulty.wingSize` (the one with fewest wingmen first), at its lurk, and in the bubble fights whatever its leader has its guns on. A wing breaks off together: when its leader breaks off, runs or is beaten in the bubble, its wingmen break off too. `HostileTraffic.spawnWing` puts a wing of any hull and size by a station (for a base's defence, say).
 - **Tactics** (round 3, `Tactics`): each look at the bubble (1 s), a captain picks a plan from its weapons and the odds (its firepower times its hull, with its wing's, over the enemy's):
-  - **Run:** a pirate that has been hit (hull below 80%; round 4's 90% sent raiders off at the first hit, before they were in their own guns' range, so they never fired) runs when outgunned (odds below 0.5), or when it is in a crossfire and not winning. Aces and patrols never run.
+  - **Run** (round 6: never while the enemy is still beyond its guns' reach, so it fires before it runs): a pirate that has been hit (hull below 80%; round 4's 90% sent raiders off at the first hit, before they were in their own guns' range, so they never fired) runs when outgunned (odds below 0.5), or when it is in a crossfire and not winning. Aces and patrols never run.
   - **Firing as it goes:** a ship that runs or breaks off keeps its guns on whatever it was fighting as it flies off.
   - **Standoff:** a ship with launchers and long guns that isn't clearly winning (odds below 1.2), or with nothing but launchers, keeps 5 km off. One whose guns are all short closes to use them.
   - **Flank as a wingman** (round 5): a wingman whose leader fights the same enemy swings round astern of it, circling the other way, so the wing has it in a crossfire.
   - **Kite** (round 5): a ship whose guns all reach past 3.5 km keeps 4.5 km off (or 85% of its shortest gun's reach), nose on, and backs straight off as the enemy closes, unless it clearly outguns it; an ace with long guns always kites.
-  - **Rush:** a ship with only short guns (3.5 km or less) closes to 600 m, fast.
+  - **Rush:** a ship with only short guns (3.5 km or less) closes to 600 m, fast. Round 6: it closes at up to 240 m/s (160 before) and dodges only missiles within 1 km, not 3 km, so a raider reaches its guns' range and comes in firing.
   - **Flank:** a ship that clearly outguns its enemy (odds 1.5 or more) swings round to 1 km astern, to hit its engines.
   - **Hold:** otherwise it holds 1.5 km and circles, as before.
 - **Crossfire** (round 3): a hostile fired on lately (20 s) by attackers 60° or more apart in bearing breaks off below 80% of its hull, not 65%.
@@ -143,6 +143,7 @@ Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. I
 
 - **What happens to a disabled NPC:** its pilot and gunnery stop, its weapons go cold, and its HUD marker turns grey with the reason ("Raider (reactor down)"). Recovering puts all of that back.
 - **Who surrenders:** the player's ship never does. An NPC's `MoraleComponent` can turn surrender off or change its thresholds.
+- **A surrender holds** (round 6): a hostile that surrenders lets go of the player (`HostileComponent.surrendered`, saved). It never hunts them again, on the rails or back in the bubble, where it comes in still surrendered and holds its fire. Only the player firing on it again, 10 s or more after it gave up (`HostileTraffic.SURRENDER_GRACE`, so rounds already in flight don't count), lifts it. Before this, a surrendered raider fought again once its guns were mended and followed the player through a tow.
 - **What stays:** disabled ships and wrecks stay in the world as targets for boarding and salvage.
 - **First Play:** a disabled raider counts as beaten.
 
@@ -217,6 +218,7 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
 
 ## Saves
 - **Save modules:** the career (`"factions"`), contracts (`"contracts"`) and hostile traffic's own state (`"hostile-traffic"`: the next top-up, the counter that names new pirates, an intercept alert holding warp off, the player's opening grace, and each hostile's idle and plunder timers in the bubble).
+- **Saved on `HostileComponent`** (round 6): whether it has surrendered to the player, and a gun platform's mooring.
 - **Saved as components:** disabled state, morale, abandon orders, boarding state, prisoners, salvage orders and stripped mounts, all on their entities.
 - **Not saved:** a rescue between the pod launch and the new ship latching, which is in memory only.
 - **Not saved:** who last shot at whom (`HostileTraffic.provoked`, which holds live entities). A provoked hostile keeps fighting from its locked target; one that had not locked on yet forgets.

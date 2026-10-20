@@ -1265,6 +1265,9 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             String uuid = e.getComponent(UuidComponent.class).id;
             if (e == player || !world.standing.factions().known(faction) || !world.standing.factions().atWar(giver, faction)
                     || targeted(uuid) || FirstPlay.beaten(world, e)) continue;
+            // The pirate base's moored guns go with the base's raid, not a bounty of their own
+            HostileComponent moored = e.getComponent(HostileComponent.class);
+            if (moored != null && moored.moored()) continue;
             HudMarkerComponent m = e.getComponent(HudMarkerComponent.class);
             Contract c = new Contract();
             c.type = Contract.Type.BOUNTY;
@@ -1385,7 +1388,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             HostileComponent h = e.getValue();
             Entity ship = world.engine.getEntity(e.getKey());
             int faction = ship == null ? -1 : world.standing.factionOf(ship);
-            if (!h.isPirate() || ship == null || e.getKey().equals(skip) || targeted(e.getKey())) continue;
+            if (!h.isPirate() || h.moored() || ship == null || e.getKey().equals(skip) || targeted(e.getKey())) continue;
             if (faction >= 0 && !world.standing.factions().atWar(giver, faction)) continue;
             Contract c = new Contract();
             c.type = Contract.Type.RECON;
