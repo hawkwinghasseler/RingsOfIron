@@ -41,6 +41,8 @@ import java.util.List;
  *   <li>{@code strand}: empties the propellant tanks, so the ship can't fly home and the tug can be called</li>
  *   <li>{@code load <name>}: loads the save named {@code <name>}, as its Load button would, where
  *       finding the button in a list that autosaves keep adding to isn't repeatable</li>
+ *   <li>{@code helm}: puts the captain at the helm for V to sit them, where walking there from wherever the save
+ *       left them on deck isn't repeatable</li>
  *   <li>{@code docked}: says whether the ship is docked, so a script can wait for the helmsman
  *       to finish an approach without a guessed pause</li>
  *   <li>{@code target <name>}: makes the first station or craft whose name holds {@code <name>} the
@@ -105,6 +107,8 @@ public class PlaytestLauncher {
             GameWorld world = game == null ? null : game.getWorld();
             if (world == null || world == watched) return;
             watched = world;
+            world.combatEvents.impacts.add((sig, e) -> System.out.println("PLAYTEST impact on " + label(e.target) + " from " + label(e.owner)
+                    + (e.ram ? " (ram)" : "") + " mass " + e.mass + " at " + world.engine.getSimSeconds()));
             world.docking.events.add((sig, e) -> {
                 System.out.println("PLAYTEST docking " + e.kind + " " + PlayerDocking.name(e.vessel) + " / " + PlayerDocking.name(e.other)
                         + " at " + world.engine.getSimSeconds());
@@ -183,6 +187,52 @@ public class PlaytestLauncher {
                     ShipSubsystemRegistryComponent r = s.player.getComponent(ShipSubsystemRegistryComponent.class);
                     for (SubsystemComponent t : TankSupply.tanks(r, Fluid.PROPELLANT)) t.contents = 0;
                     return "tanks empty";
+                }
+                case "helm": {
+                    // Where the save left the captain on deck changes from career to career, so the
+                    // walk to the helm isn't repeatable: they are put at the helm, for V to sit them
+                    Entity avatar = world.avatar.getAvatar();
+                    if (avatar == null) return "no avatar";
+                    for (Entity e : s.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+                        SubsystemComponent sub = e.getComponent(SubsystemComponent.class);
+                        if (sub == null || sub.type != SubsystemComponent.SubsystemType.HELM) continue;
+                        com.ringsofiron.aicrew.GridPositionComponent pos = avatar.getComponent(com.ringsofiron.aicrew.GridPositionComponent.class);
+                        pos.path.clear();
+                        pos.setTile(sub.footprint.originX, sub.footprint.originY);
+                        return "at the helm";
+                    }
+                    return "no helm";
+                }
+                case "hostiles": {
+                    // Every hostile craft: where it is and what it's doing, for a script's log
+                    StringBuilder out = new StringBuilder();
+                    Body ship = s.player.getComponent(PhysicsBodyComponent.class).body;
+                    for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.badlogic.ashley.core.Family.all(
+                            com.ringsofiron.macrosim.hostile.HostileComponent.class).get())) {
+                        com.ringsofiron.macrosim.hostile.HostileComponent h = e.getComponent(com.ringsofiron.macrosim.hostile.HostileComponent.class);
+                        com.hawkwing.RingsOfIron.game.DisabledComponent d = e.getComponent(com.hawkwing.RingsOfIron.game.DisabledComponent.class);
+                        PhysicsBodyComponent pb = e.getComponent(PhysicsBodyComponent.class);
+                        String range = pb == null || pb.body == null || ship == null ? "rails"
+                                : String.format(java.util.Locale.ROOT, "%.0f m", PhysicsManager.getPosition(pb.body, new Vector2())
+                                        .dst(PhysicsManager.getPosition(ship, new Vector2())));
+                        out.append(String.format("%n  %s %s target=%s %s %s", h.displayName, h.state, h.targetUuid,
+                                d == null ? "fit" : d.reason, range));
+                    }
+                    return out.toString();
+                }
+                case "ports": {
+                    // The ports of the station the ship is at, and what is at each, for a script's log
+                    Entity at = world.docking.dockedTo(s.player);
+                    if (at == null) return "not docked";
+                    StringBuilder out = new StringBuilder(PlayerDocking.name(at));
+                    com.ringsofiron.stationsdocking.DockingPortsComponent ports = at.getComponent(com.ringsofiron.stationsdocking.DockingPortsComponent.class);
+                    for (int i = 0; i < ports.ports.length; i++) {
+                        com.ringsofiron.stationsdocking.DockingPort p = ports.ports[i];
+                        Entity other = p.partnerUuid == null ? null : world.engine.getEntity(p.partnerUuid);
+                        out.append(String.format(java.util.Locale.ROOT, "%n  #%d %s at (%.1f, %.1f) facing (%.0f, %.0f) %s %s", i, p.size,
+                                p.edgeX, p.edgeY, p.normalX, p.normalY, p.state, other == null ? "" : PlayerDocking.name(other)));
+                    }
+                    return out.toString();
                 }
                 case "docked":
                     return world.docking.dockedTo(s.player) != null ? "yes" : "no";
