@@ -912,7 +912,10 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             p.release();
             return;
         }
-        linkFor(e, index, p, other, p.partnerPort, q);
+        Link link = linkFor(e, index, p, other, p.partnerPort, q);
+        // Latched from a save, or back from the rails: the doors stay shut until the weld holds and the
+        // walkway is joined again, so the opening isn't left open to space in the frames before
+        if (link.gridLinks.isEmpty()) DockLinks.unjoin(link, gridMapper.get(link.a), gridMapper.get(link.b), true);
     }
 
     private Link linkFor(Entity a, int portA, DockingPort pa, Entity b, int portB, DockingPort pb) {

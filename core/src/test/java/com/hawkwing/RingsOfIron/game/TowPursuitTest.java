@@ -92,6 +92,23 @@ class TowPursuitTest {
     }
 
     @Test
+    void aSaveAfterTheTowKeepsThePursuersDropped(@org.junit.jupiter.api.io.TempDir Path dir) {
+        String id = pirate();
+        HostileComponent h = hostiles.get(id);
+        h.targetUuid = HostileComponent.PLAYER;
+        h.state = HostileComponent.State.INTERCEPTING;
+        towed();
+        double grace = hostiles.playerGraceUntil;
+        assertTrue(grace >= world.engine.getSimSeconds() - 1, "no hunt while the tug brought the ship in");
+        com.badlogic.gdx.files.FileHandle file = new com.badlogic.gdx.files.FileHandle(dir.resolve("towed.json").toFile());
+        assertNull(game.quickSave(file));
+        game.quickLoad(file);
+        hostiles = world.macroSim.hostiles();
+        assertNotEquals(HostileComponent.PLAYER, hostiles.get(id).targetUuid, "still dropped");
+        assertEquals(grace, hostiles.playerGraceUntil, 1e-6);
+    }
+
+    @Test
     void aSurrenderedPirateStaysAPrizeThroughATow() {
         String id = pirate();
         HostileComponent h = hostiles.get(id);
