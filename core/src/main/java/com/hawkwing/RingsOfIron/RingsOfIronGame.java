@@ -533,8 +533,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (held(Action.STRAFE_RIGHT)) controls.strafe -= 1f;
         }
         if (held(Action.FIRE)) gun.fireGuns();
-        if (just(Action.MISSILE) && !gun.launchMissile()) {
-            show(gun.getTarget() == null ? "No target for the missile" : "Launcher reloading");
+        if (just(Action.MISSILE)) {
+            // "Launcher reloading" once per reload, not once per press
+            if (gun.launchMissile()) world.notices.allowAgain(NoticeLog.RELOADING);
+            else if (gun.getTarget() == null) show("No target for the missile");
+            else world.notices.postOnce(NoticeLog.RELOADING, NoticeLog.Kind.INFO);
         }
         if (just(Action.DECOY) && gun.dropDecoy()) show("Decoy away");
         if (just(Action.NEXT_TARGET)) gun.setTarget(game.nextContact(gun.getTarget()));
