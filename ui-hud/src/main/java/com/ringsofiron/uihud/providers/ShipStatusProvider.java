@@ -21,6 +21,12 @@ public interface ShipStatusProvider {
         public double powerOutputWatts;
         /** Share of the oxygen tanks' capacity they hold, 0 to 1; NaN for a ship with no oxygen tanks. */
         public float oxygen = Float.NaN;
+        /**
+         * Once the oxygen tanks are dry: kilograms of life support's own emergency oxygen left, and its
+         * share of what it holds full. NaN while the tanks hold any.
+         */
+        public double emergencyOxygenKg = Double.NaN;
+        public float emergencyOxygen = Float.NaN;
         /** Pressure of the worst room aboard, as a share of normal, 0 to 1. */
         public float cabinPressure = 1f;
 
@@ -31,6 +37,8 @@ public interface ShipStatusProvider {
             power = Float.NaN;
             powerOutputWatts = 0;
             oxygen = Float.NaN;
+            emergencyOxygenKg = Double.NaN;
+            emergencyOxygen = Float.NaN;
             cabinPressure = 1f;
         }
     }
