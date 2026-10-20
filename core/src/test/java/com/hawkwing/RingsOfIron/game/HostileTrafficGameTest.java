@@ -254,12 +254,31 @@ class HostileTrafficGameTest {
         run(2);
         assertNotNull(raider.getComponent(NpcCombatComponent.class), "it fights");
         assertFalse(ShipDisablement.isDisabled(raider));
-        var tanks = raider.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
-        for (int i = 0; i < 6 / FRAME && !ShipDisablement.isDisabled(raider); i++) {
-            tanks.fuel = 0f;
-            world.update(FRAME);
+        for (SubsystemComponent tank : com.ringsofiron.interiorgrid.TankSupply.tanks(
+                raider.getComponent(ShipSubsystemRegistryComponent.class), com.ringsofiron.interiorgrid.Fluid.PROPELLANT)) {
+            tank.contents = 0;
         }
+        for (int i = 0; i < 6 / FRAME && !ShipDisablement.isDisabled(raider); i++) world.update(FRAME);
         assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(raider));
+    }
+
+    @Test
+    void aPirateWhoseEnginesLosePowerIsNotDry() {
+        // Round 8: a slug that shorts a raider's reactor leaves its engines unfed, which read as out of
+        // fuel; raiders struck for dry tanks at 4 km with full ones, their chaingun never fired
+        String pirate = pirate(HostileTraffic.RAIDER);
+        hostiles.get(pirate).targetUuid = HostileComponent.PLAYER;
+        Entity raider = bringIn(pirate, 3_000, 0);
+        run(2);
+        for (Entity e : raider.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s != null && s.type == SubsystemComponent.SubsystemType.ENGINE) s.switchedOn = false;
+        }
+        run(1);
+        assertTrue(raider.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class).isOutOfFuel(),
+                "its engines draw nothing");
+        run(5);
+        assertFalse(ShipDisablement.isDisabled(raider), "its tanks are full: " + ShipDisablement.reason(raider));
     }
 
     @Test
