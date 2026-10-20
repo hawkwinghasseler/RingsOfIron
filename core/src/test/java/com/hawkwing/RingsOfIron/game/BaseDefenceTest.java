@@ -120,6 +120,36 @@ class BaseDefenceTest {
     }
 
     @Test
+    void theBasesDartsInFlightGoBallisticWhenItStrikes() {
+        besideTheBase();
+        Entity gun = ship(world.pirateBase.guns().get(0));
+        var dart = world.combatDefs.missile("dart");
+        var at = com.ringsofiron.physicsexterior.PhysicsManager.getPosition(
+                game.player.getComponent(PhysicsBodyComponent.class).body, new com.badlogic.gdx.math.Vector2());
+        Entity ours = world.missiles.launch(dart, gun, null, game.player, at.x + 3_000, at.y, -100, 0, (float) Math.PI);
+        // Another's dart, not the base's, still homes
+        Entity other = world.missiles.launch(dart, world.engine.getEntity(world.pirateBase.uuid()), null, game.player,
+                at.x, at.y + 3_000, 0, -100, (float) -Math.PI / 2);
+        run(1);
+        CombatThreats threats = new CombatThreats(world);
+        var frame = new com.ringsofiron.uihud.providers.ThreatProvider.ThreatFrame();
+        threats.collect(frame);
+        assertTrue(frame.incoming() >= 2, "both darts inbound, with any the defence has fired");
+
+        world.pirateBase.fall("a test");
+        run(1);
+        var m = ours.getComponent(com.ringsofiron.combatsys.components.MissileComponent.class);
+        assertTrue(m.guidanceCut);
+        assertNull(m.target);
+        assertEquals(0f, m.throttle);
+        assertEquals(com.ringsofiron.combatsys.components.MissileComponent.Phase.COAST, m.phase);
+        frame.clear();
+        threats.collect(frame);
+        assertEquals(1, frame.incoming(), "only the other dart is inbound once the base strikes: its own all go ballistic");
+        assertFalse(other.getComponent(com.ringsofiron.combatsys.components.MissileComponent.class).guidanceCut);
+    }
+
+    @Test
     void theBaseMansItsGunsAtItsFirstScrambleAndTheyHoldTheirMooring(@TempDir Path dir) {
         assertEquals(0, batteries(), "no guns before the first raid: the first weeks are as before");
         besideTheBase();

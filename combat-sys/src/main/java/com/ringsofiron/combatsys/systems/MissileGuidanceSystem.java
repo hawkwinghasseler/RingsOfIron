@@ -156,6 +156,28 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         return e;
     }
 
+    /**
+     * Cuts the guidance of every missile {@code launcher} has in flight: each forgets its target,
+     * its motor goes dark and it coasts on as a ballistic slug, so it no longer homes on anyone or
+     * counts as inbound. Returns how many.
+     */
+    public int goBallistic(Entity launcher) {
+        if (launcher == null || missiles == null) return 0;
+        int n = 0;
+        for (int i = 0; i < missiles.size(); i++) {
+            MissileComponent m = missileMapper.get(missiles.get(i));
+            if (m.launcher != launcher || m.guidanceCut) continue;
+            m.guidanceCut = true;
+            m.target = null;
+            m.seekerLock = null;
+            m.propellant = 0f;
+            m.throttle = 0f;
+            m.phase = MissileComponent.Phase.COAST;
+            n++;
+        }
+        return n;
+    }
+
     /** Drops a decoy at a point with a velocity; it shines for {@code lifetime} seconds. */
     public Entity dropDecoy(Entity owner, float x, float y, float vx, float vy, float radar, float thermal, float lifetime) {
         Entity e = new Entity();
@@ -219,8 +241,13 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         MissileDef def = m.def;
         m.throttle = 0f;
         p.mass = m.mass();
-        if (p.age < def.armingDelay) {
+        if (p.age < def.armingDelay && !m.guidanceCut) {
             m.phase = MissileComponent.Phase.LAUNCH;
+            return false;
+        }
+        if (m.guidanceCut) {
+            m.phase = MissileComponent.Phase.COAST;
+            updateSignature(e, m);
             return false;
         }
 

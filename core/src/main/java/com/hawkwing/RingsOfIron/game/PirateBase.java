@@ -169,6 +169,10 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         if (!standing()) return;
         fallen = true;
         found = true;
+        // Round 8: its darts in flight go ballistic, so the missile warning clears with the fall
+        // (round 7's window: the warning stayed up about a minute after it struck)
+        for (String name : defenders) world.missiles.goBallistic(shipNamed(name));
+        for (String name : guns) world.missiles.goBallistic(shipNamed(name));
         defenders.clear();
         scrambleDue = false;
         strainedSeconds = 0;
@@ -291,6 +295,12 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     private HostileComponent hostileNamed(String name) {
         String id = uuidOf(name);
         return id == null ? null : world.macroSim.hostiles().get(id);
+    }
+
+    /** The ship of the hostile named {@code name}, or null if none flies now. */
+    private Entity shipNamed(String name) {
+        String id = uuidOf(name);
+        return id == null ? null : world.engine.getEntity(id);
     }
 
     /** The uuid of the hostile named {@code name}, or null if none flies now. */
