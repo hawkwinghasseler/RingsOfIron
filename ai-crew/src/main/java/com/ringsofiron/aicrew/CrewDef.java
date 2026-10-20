@@ -70,6 +70,13 @@ public class CrewDef {
     public static final float UNTRAINED_CARE = 0.4f;
     /** Care rate when the ship has no medical stores left. */
     public static final float NO_STORES_CARE = 0.25f;
+    /**
+     * Share of the care rate a light wound is treated at (round 7): half the pace, and it uses no
+     * medical stores, so a crew with nothing else to do patches up its grazes between fights.
+     */
+    public static final float LIGHT_CARE = 0.5f;
+    /** Care rate multiplier for a patient lying in a medbay (round 7). */
+    public static final float MEDBAY_CARE = 1.5f;
 
     /** How bad a wound {@code injury} points of hits make. */
     public Wound woundFor(float injury) {

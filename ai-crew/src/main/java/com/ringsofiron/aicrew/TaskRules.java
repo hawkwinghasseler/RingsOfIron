@@ -1,9 +1,11 @@
 package com.ringsofiron.aicrew;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.DamageStates;
+import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
@@ -66,11 +68,18 @@ public final class TaskRules {
             case RESCUE: {
                 CrewMemberComponent c = crew.crew(((RescueTask) task).casualty);
                 // Still needed while being carried: the rescue is under way.
-                return c != null && c.state == CrewState.UNCONSCIOUS;
+                if (c == null || c.state != CrewState.UNCONSCIOUS) return false;
+                if (!(task instanceof MedbayCarryTask) || c.carriedBy != null) return true;
+                GridPositionComponent p = crew.position(((RescueTask) task).casualty);
+                return !isMedbay(grid, p.tileX(), p.tileY()) && freeBed(grid, crew, p.ship, null) != null;
             }
             case TREAT: {
-                CrewMemberComponent c = crew.crew(((TreatTask) task).patient);
-                return c != null && c.state == CrewState.UNCONSCIOUS && c.carriedBy == null;
+                Entity patient = ((TreatTask) task).patient;
+                CrewMemberComponent c = crew.crew(patient);
+                if (c == null || c.carriedBy != null) return false;
+                if (c.state == CrewState.UNCONSCIOUS) return true;
+                // A light wound on someone on their feet waits for the fight to be over
+                return c.isConscious() && c.wound == Wound.LIGHT && !atBattleStations(crew, patient);
             }
             case STABILISE: {
                 CrewMemberComponent c = crew.crew(((StabiliseTask) task).patient);
@@ -218,6 +227,47 @@ public final class TaskRules {
         Tile t = grid.getTile(x, y);
         if (t == null || !t.holdsAir() || t.isBurning() || t.temperature > SAFE_TEMPERATURE) return false;
         return grid.pressureRatioAt(x, y) >= SAFE_PRESSURE && grid.oxygenRatioAt(x, y) >= SAFE_OXYGEN;
+    }
+
+    /** True if (x, y) is a medbay bed: medbay deck that is safe to lie on. */
+    public static boolean isMedbay(ShipGridComponent grid, int x, int y) {
+        Tile t = grid.getTile(x, y);
+        return t != null && t.covering == FloorCovering.MEDBAY;
+    }
+
+    /**
+     * A free bed in {@code ship}'s medbay: a safe medbay tile nobody else lies on ({@code patient}
+     * may), as {x, y}; null if every bed is taken or the ship has none.
+     */
+    public static int[] freeBed(ShipGridComponent grid, CrewService crew, Entity ship, Entity patient) {
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                if (isMedbay(grid, x, y) && isSafe(grid, x, y) && !bedTaken(crew, ship, patient, x, y)) return new int[]{x, y};
+            }
+        }
+        return null;
+    }
+
+    /** True if someone other than {@code patient} lies down on (x, y) aboard {@code ship}. */
+    public static boolean bedTaken(CrewService crew, Entity ship, Entity patient, int x, int y) {
+        ImmutableArray<Entity> all = crew.crewEntities();
+        for (int i = 0; i < all.size(); i++) {
+            Entity e = all.get(i);
+            if (e == patient) continue;
+            CrewMemberComponent c = crew.crew(e);
+            GridPositionComponent p = crew.position(e);
+            if (c.state == CrewState.UNCONSCIOUS && c.carriedBy == null && p.ship == ship && p.tileX() == x && p.tileY() == y) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True while {@code e}'s ship is at battle stations. */
+    static boolean atBattleStations(CrewService crew, Entity e) {
+        GridPositionComponent p = crew.position(e);
+        ShipTaskBoardComponent board = p == null ? null : crew.board(p.ship);
+        return board != null && board.battleStations;
     }
 
     /** How far, in tiles, a crew member can reach across machinery to a wall behind it. */

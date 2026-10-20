@@ -18,7 +18,7 @@ import java.util.Map;
  * symbol. Tile types and components share that namespace.
  *
  * {@link #builtIn()} holds the characters the game has always had ({@code #}, {@code 1}-{@code 6},
- * {@code I}, {@code .}, {@code +}, space, and the system letters {@code R S T L H W C A D}, plus
+ * {@code I}, {@code .}, {@code m} (a medbay's deck), {@code +}, space, and the system letters {@code R S T L H W C A D}, plus
  * {@code E} for the engine, {@code P O N} for propellant, oxygen and nitrogen tanks, and {@code B} for an escape pod (lifeboat)).
  * {@link #from(DefRegistry)} starts from those and applies the {@code [tile.*]} and
  * {@code [component.*]} definitions, which replace a built-in of the same id or add new ones.
@@ -202,6 +202,7 @@ public class ShipPartCatalog {
         String steel = MaterialTable.DEFAULT_MATERIAL;
         c.put(new TileType("void", "Void", ' ', TileBase.VOID, WeightClass.MEDIUM, steel, FloorCovering.NONE, 0x000000));
         c.put(new TileType("floor", "Steel floor", '.', TileBase.FLOOR, WeightClass.MEDIUM, steel, FloorCovering.NONE, 0x4a5058));
+        c.put(new TileType("medbay", "Medbay deck", 'm', TileBase.FLOOR, WeightClass.MEDIUM, steel, FloorCovering.MEDBAY, 0x9fc4c0));
         c.put(new TileType("conduit", "Power conduit", '+', TileBase.CONDUIT, WeightClass.MEDIUM, steel, FloorCovering.NONE, 0x5a6a3a));
         c.put(new TileType("hull", "Hull, medium", '#', TileBase.HULL, WeightClass.MEDIUM, steel, FloorCovering.NONE, 0x9aa4b0));
         c.put(new TileType("hull_light", "Hull, light", '1', TileBase.HULL, WeightClass.LIGHT, steel, FloorCovering.NONE, 0xb8c0ca));

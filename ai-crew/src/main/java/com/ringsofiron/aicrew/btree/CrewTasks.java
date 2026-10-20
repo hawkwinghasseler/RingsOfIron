@@ -14,6 +14,7 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ForceDoorTask;
 import com.ringsofiron.aicrew.BoardTask;
 import com.ringsofiron.aicrew.ManConsoleTask;
+import com.ringsofiron.aicrew.MedbayCarryTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.StabiliseTask;
@@ -428,9 +429,20 @@ public final class CrewTasks {
                         a.releaseTask();
                         return Status.FAILED;
                     }
+                    // A light wound waits for nothing else: anything else on the board comes first
+                    if (TreatTask.isLight(t, a.service) && board != null && board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(),
+                            o -> o.kind != CrewTask.Kind.MAN_CONSOLE && !TreatTask.isLight(o, a.service) && a.mayTake(o)) != null) {
+                        a.releaseTask();
+                        return Status.FAILED;
+                    }
+                    // The fight over, the patient goes to a medbay bed first: whoever treats them carries them
+                    if (carryWaits(board, ((TreatTask) t).patient)) {
+                        a.releaseTask();
+                        return Status.FAILED;
+                    }
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
                     p.treatedBy = a.entity;
-                    return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes
+                    return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes or the wound heals
                 }
                 case STABILISE: {
                     // Quicker for a medic and for skill; slow with no medical stores left
@@ -447,7 +459,8 @@ public final class CrewTasks {
                     ShipTaskBoardComponent board = a.board();
                     boolean wanted = board != null && board.helmWanted && ((ManConsoleTask) t).type() == SubsystemComponent.SubsystemType.HELM;
                     if (board != null && board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(),
-                            o -> o.kind != CrewTask.Kind.MAN_CONSOLE && !(wanted && o.kind == CrewTask.Kind.TREAT) && a.mayTake(o)) != null) {
+                            o -> o.kind != CrewTask.Kind.MAN_CONSOLE && !(wanted && o.kind == CrewTask.Kind.TREAT)
+                                    && !TreatTask.isLight(o, a.service) && a.mayTake(o)) != null) {
                         a.releaseTask();
                         return Status.FAILED;
                     }
@@ -461,6 +474,15 @@ public final class CrewTasks {
                     return Status.FAILED;
             }
         }
+    }
+
+    /** True while an open {@link MedbayCarryTask} on {@code board} waits for {@code patient}. */
+    static boolean carryWaits(ShipTaskBoardComponent board, Entity patient) {
+        if (board == null) return false;
+        for (CrewTask o : board.tasks) {
+            if (o.status == CrewTask.Status.OPEN && o instanceof MedbayCarryTask && ((MedbayCarryTask) o).casualty == patient) return true;
+        }
+        return false;
     }
 
     /** Marks the agent's task done on the board. */
@@ -499,7 +521,8 @@ public final class CrewTasks {
     }
 
     /**
-     * Carries the casualty to the nearest safe tile. With nowhere aboard to carry them to (the whole
+     * Carries the casualty to the nearest safe tile, or for a {@link MedbayCarryTask} to the nearest
+     * free medbay bed. With nowhere aboard to carry them to (the whole
      * ship holed), the rescuer puts the casualty's suit on them where they are instead, taking their
      * own suit time, and leaves them for the next try.
      */
@@ -517,14 +540,21 @@ public final class CrewTasks {
             CrewMemberComponent c = a.service.crew(a.crew.carrying);
             if (c == null || c.state != CrewState.UNCONSCIOUS) return Status.FAILED;
             ShipGridComponent grid = a.grid();
-            a.crew.activity = "carrying " + c.name + " to safety";
+            Entity casualty = a.crew.carrying;
+            boolean medbay = a.crew.task instanceof MedbayCarryTask;
+            GridPathfinder.TilePredicate there = medbay
+                    ? (tx, ty) -> TaskRules.isSafe(grid, tx, ty) && TaskRules.isMedbay(grid, tx, ty)
+                            && !TaskRules.bedTaken(a.service, a.pos.ship, casualty, tx, ty)
+                    : (tx, ty) -> TaskRules.isSafe(grid, tx, ty);
+            a.crew.activity = "carrying " + c.name + (medbay ? " to the medbay" : " to safety");
             int x = a.pos.tileX(), y = a.pos.tileY();
-            if (!a.pos.isMoving() && TaskRules.isSafe(grid, x, y)) return Status.SUCCEEDED;
+            if (!a.pos.isMoving() && there.test(x, y)) return Status.SUCCEEDED;
             GridNode dest = a.pos.destination();
-            boolean destValid = dest != null && a.pos.isMoving() && !a.pos.pathBlocked && TaskRules.isSafe(grid, dest.x, dest.y);
+            boolean destValid = dest != null && a.pos.isMoving() && !a.pos.pathBlocked && there.test(dest.x, dest.y);
             if (!destValid) {
-                if (!a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
-                    if (!c.suited && c.def.suitAir > 0f) {
+                if (!a.nearest(x, y, there, a.pathScratch)) {
+                    // No bed to be reached: they are put down where they are, on safe deck
+                    if (!medbay && !c.suited && c.def.suitAir > 0f) {
                         a.pos.stop();
                         a.crew.activity = "putting a suit on " + c.name;
                         suiting += a.dt;

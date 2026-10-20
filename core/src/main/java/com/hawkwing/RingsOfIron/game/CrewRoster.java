@@ -2,8 +2,10 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRecord;
+import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.moddingdata.components.DefRefComponent;
 import com.ringsofiron.moddingdata.defs.ShipDef;
@@ -18,6 +20,12 @@ import java.util.Locale;
  * named to the window by their entity's identity, which holds for as long as they are aboard.
  */
 public class CrewRoster implements CrewProvider {
+    /**
+     * What a medic is worth, after the role in the hiring list (round 7): "Medic (2.5x care, none
+     * aboard)". Anyone can treat the wounded, but slower ({@link CrewDef#UNTRAINED_CARE}).
+     */
+    static final String MEDIC_NOTE = String.format(Locale.ROOT, " (%.1fx care", 1f / CrewDef.UNTRAINED_CARE);
+
     private final GameWorld world;
 
     public CrewRoster(GameWorld world) {
@@ -67,11 +75,13 @@ public class CrewRoster implements CrewProvider {
             String uuid = station.getComponent(UuidComponent.class).id;
             var node = world.macroSim.station(uuid);
             out.stationName = node == null || node.displayName == null ? "Station" : node.displayName;
+            boolean medic = false;
+            for (Entity e : crew) medic |= world.crew.crew(e).role == CrewRole.MEDIC;
             for (CrewHiring.Candidate c : world.crewHiring.pool(uuid)) {
                 Hire h = out.addHire();
                 h.key = c.key;
                 h.name = c.name;
-                h.role = CrewHiring.roleName(c.role);
+                h.role = CrewHiring.roleName(c.role) + (c.role != CrewRole.MEDIC ? "" : medic ? MEDIC_NOTE + ")" : MEDIC_NOTE + ", none aboard)");
                 h.skills = c.record.describeSkills();
                 h.terms = String.format(Locale.ROOT, "%,.0f cr/wk, %,.0f cr to sign", c.record.wage, c.signing);
             }

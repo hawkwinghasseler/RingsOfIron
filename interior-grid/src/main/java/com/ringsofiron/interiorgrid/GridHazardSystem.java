@@ -617,7 +617,7 @@ public class GridHazardSystem extends FixedLogicSystem {
                 if (t.fuel <= BURNT_OUT * FUEL_TAPER * area) {
                     // The carpet is gone; the steel floor stays
                     t.fuel = 0f;
-                    t.covering = FloorCovering.NONE;
+                    if (t.covering.fuelPerArea > 0f) t.covering = FloorCovering.NONE;
                     t.extinguish();
                     continue;
                 }

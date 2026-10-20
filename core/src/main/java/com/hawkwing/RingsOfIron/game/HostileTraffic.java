@@ -402,9 +402,14 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
                 && FirstPlay.beaten(world, enemy)) {
             // Beaten: a pirate leaves the player drifting rather than shoot a crippled ship and its
             // wounded crew to pieces (round 6: the railgun ace went on firing for minutes). Dark for
-            // an ion stun's few seconds is not beaten: the fight goes on (seed 2026's ion raider left)
+            // an ion stun's few seconds is not beaten: the fight goes on (seed 2026's ion raider left).
             // A base's defender leaves as the winner, not driven off: the base does not strike
             if (world.pirateBase.defending(h.displayName)) world.pirateBase.raidLost();
+            // Round 7: one in good shape comes alongside first and takes the cargo (PirateBoarding)
+            if (world.pirateBoarding.board(id, e, h, enemy, CHECK_SECONDS)) {
+                busySince.put(id, now);
+                return;
+            }
             breakOff(id, h, now);
             drifting.add(h.displayName);
             disengage(e);

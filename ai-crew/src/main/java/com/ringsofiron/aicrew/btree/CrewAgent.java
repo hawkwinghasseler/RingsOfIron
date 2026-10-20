@@ -8,6 +8,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.aicrew.TreatTask;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
@@ -160,6 +161,8 @@ public class CrewAgent {
      */
     public boolean mayTake(CrewTask task) {
         if (isIgnoring(task) || crew.held) return false;
+        // The lightly wounded patch themselves up while idle (CrewHealthSystem), leaving the task to others
+        if (task instanceof TreatTask && ((TreatTask) task).patient == entity) return false;
         if (task instanceof BoardTask && !((BoardTask) task).isFor(entity)) return false;
         return pos.ship == service.homeOf(entity) || task.kind == CrewTask.Kind.CARRY || task.kind == CrewTask.Kind.YARD
                 || task.kind == CrewTask.Kind.BOARD;

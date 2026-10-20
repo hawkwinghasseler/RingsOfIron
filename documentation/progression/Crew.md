@@ -104,12 +104,18 @@ Found on the way: a deck plate shot down to nothing (no hull wall, so no breach 
 
 Choices made without Joe:
 - **A round strikes 40% of the people on a tile it crosses.** A body fills well under half of a 1 m tile. It lowers every kind of hit on crew, not only the railgun's.
-- **A pirate leaves a beaten player** rather than boarding them or firing on. Pirates boarding the player is not built.
+- **A pirate leaves a beaten player** rather than firing on. (Round 7 part 4: one in good shape boards first.)
 - **Stabilise:** 15 s, one medical store, anyone; a medic in half the time.
 - **Suit refill:** at 30% of the suit's air, 20 s, at an oxygen tank or working life support.
 - **No medic in the starting crew, no medbay, no change to penetrator falloff past the first tile:** the target (8 or fewer of 30) was met without them. The plan's steps 2 to 4 are left for Joe.
 
+### Crew care (round 7 part 4)
+How it runs aboard is in `ai-crew/Design.md` section 5; on the game's side:
+- **Light wounds are treated** once the ship is off battle stations: whoever has nothing else to do takes it, a medic keenest, at half the care rate and with no stores (`CrewDef.LIGHT_CARE`). It gives way to any other work, and crew at a console stay there. Alone and idle, the wounded see to it themselves. A light wound that took 30 minutes to heal now takes a medic 3 minutes.
+- **Medbays:** the gunship and frigate each have four beds (`m` in `chassis.toml`, the `MEDBAY` floor covering in `tiles.toml`). Once a fight is over, the wounded are carried to a free bed, where treatment runs 1.5x (`CrewDef.MEDBAY_CARE`). The corvette keeps its crew room.
+- **Hiring** shows a medic as "Medic (2.5x care)", and adds ", none aboard" when the crew has no medic. The starting corvette still has none (round 6 found it not needed).
+- **Pirates board a beaten player** (`PirateBoarding`). A pirate that beats the player and still has 70% of its hull comes alongside with its guns cold and latches on within 300 m. After 60 s it has taken everything in the hold (into its own hold where it fits) and 10% of the credits, at most 5,000 cr, and it leaves. Notices say it is coming, that it has latched on, and what it took. There is no fight on the interior grid, and the crew aren't harmed. One pirate boards at a time; the rest, and any pirate below the line, leave the player drifting as before. A boarding in progress is saved.
+
 ## Not done here
-- No medbay or berth tiles exist in the ship data yet, so the wounded are treated where they lie once on a safe tile, rather than carried to a medbay.
-- Light wounds are not treated, only left to heal.
-- The starting corvette has no medic (Ada, Bea and Cole are an engineer, a crewman and a marine).
+- A boarding fight on the interior grid: the pirates only take the cargo and credits (round 7 plan, "Still parked").
+- The starting corvette has no medic (Ada, Bea and Cole are an engineer, a crewman and a marine), and no medbay.

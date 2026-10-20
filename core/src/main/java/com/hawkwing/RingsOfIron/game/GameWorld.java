@@ -158,6 +158,8 @@ public class GameWorld implements Disposable {
     public final AudioListenerSync audioListener;
     /** Pirates and faction patrols: their ships, and how they fly and fight in the bubble. */
     public final HostileTraffic hostiles;
+    /** Pirates boarding the player once they have beaten them (round 7). */
+    public final PirateBoarding pirateBoarding;
     /** The pirates' hidden base, once the scenario has one: found or not, standing or fallen. */
     public final PirateBase pirateBase;
     /** Strain between the factions, and the weekly drifts of tension and of grudges against the player. */
@@ -500,6 +502,8 @@ public class GameWorld implements Disposable {
         PhysicsSaveParticipant.install(physics, engine);
         // Pirates and faction patrols, on the rails and in the bubble
         hostiles = HostileTraffic.install(this);
+        pirateBoarding = new PirateBoarding(this);
+        engine.getSerializationService().addParticipant(pirateBoarding);
         pirateBase = new PirateBase(this);
         engine.addSystem(pirateBase);
         engine.getSerializationService().addParticipant(pirateBase);
@@ -625,6 +629,7 @@ public class GameWorld implements Disposable {
         wrecks.clear();
         rescue.update();
         hostiles.afterUpdate();
+        pirateBoarding.update();
         pirateBase.afterUpdate();
         derelicts.update();
         events.update();

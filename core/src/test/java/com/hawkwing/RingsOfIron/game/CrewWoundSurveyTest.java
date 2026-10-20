@@ -57,6 +57,10 @@ class CrewWoundSurveyTest {
         int crew, dead, aceCrew, aceAlive;
         /** Of our dead, those who died before the fight was over; hits we took after it. */
         int deadInFight, hitsAfter;
+        /** Round 7: our crew still wounded after the ten minutes for the medics. */
+        int woundedAfter;
+        /** Round 7: what the ace's boarders took, or "" if it didn't board. */
+        String boarded = "";
         final Map<Wound, Integer> wounds = new EnumMap<>(Wound.class);
         /** What killed each of our dead. */
         final List<String> causes = new ArrayList<>();
@@ -71,16 +75,16 @@ class CrewWoundSurveyTest {
         // -PwoundRefits=raider_ace_railgun surveys one refit only
         String[] refits = System.getProperty("wound.survey.refits", String.join(",", REFITS)).split(",");
         for (String refit : refits) for (int i = 0; i < n; i++) all.add(trial(refit, 2026 + i));
-        StringBuilder out = new StringBuilder("| Ace refit | Seed | Result | Our hull | Our crew wounded (light/serious/critical) | Our crew dead (in the fight) | Of | Hits after | Ace crew alive |\n|---|---|---|---|---|---|---|---|---|\n");
+        StringBuilder out = new StringBuilder("| Ace refit | Seed | Result | Our hull | Our crew wounded (light/serious/critical) | Our crew dead (in the fight) | Of | Hits after | Ace crew alive | Still wounded 10 min on | Boarded, took |\n|---|---|---|---|---|---|---|---|---|---|---|\n");
         for (Trial t : all) {
-            out.append(String.format(Locale.ROOT, "| %s | %d | %s in %.0f s | %.2f | %d/%d/%d | %d of %d (%d) | %s | %d | %d of %d |%n",
+            out.append(String.format(Locale.ROOT, "| %s | %d | %s in %.0f s | %.2f | %d/%d/%d | %d of %d (%d) | %s | %d | %d of %d | %d | %s |%n",
                     t.refit, t.seed, t.beaten ? "beaten" : t.lost ? "we lost" : "neither", t.seconds, t.hull,
                     t.wounds.getOrDefault(Wound.LIGHT, 0), t.wounds.getOrDefault(Wound.SERIOUS, 0),
                     t.wounds.getOrDefault(Wound.CRITICAL, 0), t.dead, t.crew, t.deadInFight, String.join(", ", t.causes),
-                    t.hitsAfter, t.aceAlive, t.aceCrew));
+                    t.hitsAfter, t.aceAlive, t.aceCrew, t.woundedAfter, t.boarded));
         }
         for (String refit : refits) {
-            int fights = 0, dead = 0, crew = 0, beaten = 0, wounded = 0, aceAlive = 0, aceCrew = 0;
+            int fights = 0, dead = 0, crew = 0, beaten = 0, wounded = 0, aceAlive = 0, aceCrew = 0, woundedAfter = 0, boarded = 0;
             for (Trial t : all) {
                 if (!t.refit.equals(refit)) continue;
                 fights++;
@@ -90,9 +94,12 @@ class CrewWoundSurveyTest {
                 for (int w : t.wounds.values()) wounded += w;
                 aceAlive += t.aceAlive;
                 aceCrew += t.aceCrew;
+                woundedAfter += t.woundedAfter;
+                if (!t.boarded.isEmpty()) boarded++;
             }
-            out.append(String.format(Locale.ROOT, "%n%s: %d fights, beaten %d; our crew wounded %d and dead %d of %d; the ace's crew alive %d of %d.",
-                    refit, fights, beaten, wounded, dead, crew, aceAlive, aceCrew));
+            out.append(String.format(Locale.ROOT, "%n%s: %d fights, beaten %d; our crew wounded %d and dead %d of %d; the ace's crew alive %d of %d;"
+                            + " still wounded ten minutes on %d; boarded %d.",
+                    refit, fights, beaten, wounded, dead, crew, aceAlive, aceCrew, woundedAfter, boarded));
         }
         System.out.println(out);
         Files.writeString(Paths.get(System.getProperty("user.dir")).resolve("build/wound-survey.txt"), out.toString());
@@ -182,6 +189,7 @@ class CrewWoundSurveyTest {
             world.combatEvents.impacts.add((signal, hit) -> {
                 if (hit.target == player) t.hitsAfter++;
             });
+            world.pirateBoarding.robbed.add((signal, take) -> t.boarded = take.describe());
             // Ten minutes for the medics (and for critical wounds left untreated to run out)
             if (Boolean.getBoolean("wound.survey.trace")) {
                 for (int k = 0; k <= 60; k++) {
@@ -225,6 +233,7 @@ class CrewWoundSurveyTest {
             }
             for (Entity e : ours) {
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                if (c.isAlive() && c.wound != Wound.NONE) t.woundedAfter++;
                 if (c.isAlive()) continue;
                 t.dead++;
                 t.causes.add(String.valueOf(c.lastDamageCause).toLowerCase(Locale.ROOT));
