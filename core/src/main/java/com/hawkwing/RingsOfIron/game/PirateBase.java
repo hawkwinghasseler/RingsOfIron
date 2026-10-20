@@ -150,6 +150,11 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         return uuid != null && !fallen;
     }
 
+    /** True for one of the base's gun platforms ({@code displayName}) once the base has struck: it fires no more. */
+    public boolean silenced(String displayName) {
+        return uuid != null && fallen && guns.contains(displayName);
+    }
+
     /** True if {@code stationUuid} is the base and the player has not found it yet: keep it off the map. */
     public boolean hidden(String stationUuid) {
         return uuid != null && !found && uuid.equals(stationUuid);

@@ -35,6 +35,8 @@ import java.util.Map;
 public final class CrewMedical {
     /** Seconds a ship stays at battle stations after the last shot it fired or took. */
     public static final double BATTLE_HOLD = 60;
+    /** A critical casualty's clock falling below this share of what it was a frame ago was cut by a new hit (one halves it). */
+    static final float CLOCK_CUT = 0.75f;
 
     private static final Family BOARDS = Family.all(ShipTaskBoardComponent.class).get();
     private static final Family FIGHTERS = Family.all(NpcCombatComponent.class).get();
@@ -46,6 +48,8 @@ public final class CrewMedical {
     private final Map<Entity, Double> lastShot = new IdentityHashMap<>();
     /** The wound each crew member had at the last update, so a worse one is told once. */
     private final Map<Entity, Wound> seen = new IdentityHashMap<>();
+    /** Each critical casualty's bleed-out clock at the last look, to tell the player when a new hit cuts it. */
+    private final Map<Entity, Float> clocks = new IdentityHashMap<>();
 
     public CrewMedical(GameWorld world) {
         this.world = world;
@@ -157,7 +161,13 @@ public final class CrewMedical {
             Entity e = all.get(i);
             CrewMemberComponent c = crew.crew(e);
             Wound was = seen.put(e, c.isAlive() ? c.wound : Wound.NONE);
-            if (ship == null || !c.isAlive() || was == null || c.wound.compareTo(was) <= 0) continue;
+            boolean critical = c.isAlive() && c.wound == Wound.CRITICAL;
+            Float clock = critical ? clocks.put(e, c.bleedOut) : clocks.remove(e);
+            boolean worse = was != null && c.wound.compareTo(was) > 0;
+            // A new hit on someone already critical halves what is left of their clock (round 8, real
+            // window: told 5:00, Bea died of her wounds a minute later)
+            boolean cut = critical && was == Wound.CRITICAL && clock != null && c.bleedOut < clock * CLOCK_CUT;
+            if (ship == null || !c.isAlive() || !worse && !cut) continue;
             boolean own = c.faction == FactionStanding.PLAYER && !c.held && crew.homeOf(e) == ship;
             boolean prisoner = c.held && crew.position(e).ship == ship;
             if (!own && !prisoner) continue;
@@ -166,17 +176,21 @@ public final class CrewMedical {
                     : c.wound == Wound.SERIOUS ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
         }
         seen.keySet().removeIf(e -> crew.crew(e) == null);
+        clocks.keySet().removeIf(e -> crew.crew(e) == null);
     }
 
     static String describe(String who, CrewMemberComponent c) {
+        // The player's own figure is "You" (round 8, real window: "You is lightly wounded")
+        boolean you = "You".equals(who);
+        String is = you ? " are" : " is";
         switch (c.wound) {
             case CRITICAL:
-                return String.format(Locale.ROOT, "%s is critically wounded: treat within %s or they die", who,
-                        clock(c.bleedOut));
+                return String.format(Locale.ROOT, "%s%s critically wounded: treat within %s or %s die", who, is,
+                        clock(c.bleedOut), you ? "you" : "they");
             case SERIOUS:
-                return who + " is seriously wounded and down until treated";
+                return who + is + " seriously wounded and down until treated";
             default:
-                return who + " is lightly wounded and working slower";
+                return who + is + " lightly wounded and working slower";
         }
     }
 

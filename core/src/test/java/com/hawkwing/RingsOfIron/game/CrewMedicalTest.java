@@ -148,9 +148,15 @@ class CrewMedicalTest {
         assertTrue(CrewCareer.condition(world.crew.crew(bea)).startsWith("Critical wound"),
                 CrewCareer.condition(world.crew.crew(bea)));
 
+        // Round 8: hit again, the clock is cut, and the player is told the new one
+        world.crew.applyDamage(bea, 80f, DamageCause.SPALL);
+        run(world, 1);
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.startsWith("Bea is critically wounded: treat within 2:")), notices());
+
         world.crew.dieOfWounds(bea);
         world.crewCareer.update();
         assertTrue(noticed("Bea has died of wounds"), notices());
+        assertEquals("You are lightly wounded and working slower", CrewMedical.describe("You", world.crew.crew(ada)));
     }
 
     @Test

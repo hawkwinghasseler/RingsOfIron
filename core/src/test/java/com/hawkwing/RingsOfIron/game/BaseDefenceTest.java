@@ -150,6 +150,20 @@ class BaseDefenceTest {
     }
 
     @Test
+    void aStruckBasesGunsStrikeWithItEvenWhenProvoked() {
+        besideTheBase();
+        run(5);
+        // Round 8, real window: two batteries the player had hit went on launching darts after the fall
+        for (String name : world.pirateBase.guns()) world.hostiles.onShotAt(ship(name), game.player);
+        world.pirateBase.fall("a test");
+        run(5);
+        for (String name : world.pirateBase.guns()) {
+            assertTrue(world.pirateBase.silenced(name));
+            assertNull(ship(name).getComponent(SensorComponent.class).lockedTarget, name + " is off the player");
+        }
+    }
+
+    @Test
     void theBaseMansItsGunsAtItsFirstScrambleAndTheyHoldTheirMooring(@TempDir Path dir) {
         assertEquals(0, batteries(), "no guns before the first raid: the first weeks are as before");
         besideTheBase();

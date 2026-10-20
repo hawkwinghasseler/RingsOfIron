@@ -479,6 +479,9 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         // darts at a frigate dead in space after its raiders had left it)
         if (enemy != null && enemy == world.getPlayer() && ShipDisablement.isDisabled(enemy)
                 && FirstPlay.beaten(world, enemy)) enemy = null;
+        // A struck base's guns strike with it, provoked or not (round 8, real window: two of Rustwake's
+        // batteries went on launching darts for a minute after it fell)
+        if (world.pirateBase.silenced(h.displayName)) enemy = null;
         SensorComponent sensor = e.getComponent(SensorComponent.class);
         if (sensor != null) sensor.lockedTarget = enemy;
     }
