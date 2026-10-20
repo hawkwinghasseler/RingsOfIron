@@ -240,7 +240,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         return java.util.Collections.unmodifiableList(defenders);
     }
 
-    /** True while a defender it scrambled is still in the fight: in the bubble and not beaten. */
+    /** True while a defender it scrambled is still in the fight: in the bubble, not beaten and not driven off. */
     public boolean defended() {
         for (String id : defenders) if (fighting(id)) return true;
         return false;
@@ -249,7 +249,11 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     private boolean fighting(String name) {
         String id = uuidOf(name);
         Entity e = id == null ? null : world.engine.getEntity(id);
-        return e != null && world.macroSim.bubble().inBubble().contains(id) && !FirstPlay.beaten(world, e);
+        if (e == null || !world.macroSim.bubble().inBubble().contains(id) || FirstPlay.beaten(world, e)) return false;
+        // Broken off and running (a wingman goes when its leader is beaten) is driven off: on seed 12
+        // the last defender fled with its leader and, still in the bubble, kept the base from striking
+        HostileComponent h = e.getComponent(HostileComponent.class);
+        return h == null || !h.brokeOff;
     }
 
     /** True while a defender it scrambled is alive and unbeaten anywhere, in the bubble or out on the rails. */

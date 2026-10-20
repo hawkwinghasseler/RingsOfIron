@@ -144,6 +144,23 @@ class Round5LateCareerTest {
     }
 
     @Test
+    void aDefenderThatRunsWithItsLeaderLeavesTheBaseToStrike() {
+        // Seed 12 (round 6): the last defender broke off with its beaten leader and fled, still in
+        // the bubble, and the base never struck
+        besideTheBase(8_000);
+        run(2 * PirateBase.CHECK_SECONDS + 1);
+        List<String> wing = world.pirateBase.defenders();
+        beat(ship(wing.get(0)));
+        run(2 * PirateBase.CHECK_SECONDS + 5);
+        for (int i = 1; i < wing.size() - 1; i++) beat(ship(wing.get(i)));
+        run(2 * PirateBase.CHECK_SECONDS);
+        assertTrue(world.pirateBase.standing(), "one defender still fights");
+        ship(wing.get(wing.size() - 1)).getComponent(HostileComponent.class).brokeOff = true;
+        run(2 * PirateBase.CHECK_SECONDS);
+        assertFalse(world.pirateBase.standing(), "its last defender driven off, it strikes its colours");
+    }
+
+    @Test
     void theBaseWaitsForThePlayerToComeCloseAndAWingStillOutIsNotReplaced(@TempDir Path dir) {
         besideTheBase(PirateBase.SCRAMBLE_RANGE + 3_000);
         run(2 * PirateBase.CHECK_SECONDS + 1);
