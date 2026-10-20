@@ -1311,14 +1311,17 @@ public class RingsOfIronGame extends ApplicationAdapter {
         font.draw(batch, world.hints.line(hintContexts(), this::key), hintX, 24f);
         // Rank, sponsor and the weekly budget
         font.draw(batch, world.budget.describe(), left, top - 60f);
-        // On deck there is no threat overlay: the missile warning goes up here
+        // On deck there is no threat overlay: the missile warning goes up here, between the flight
+        // readout and this column, wrapping rather than running under either
         if (hud.getViewMode().getMode() == ViewMode.INTERIOR && world.warnings.inbound() > 0) {
             float impact = world.warnings.soonestImpact();
+            Actor flight = hud.getFlightPanel();
+            float from = flight.localToStageCoordinates(tmp.set(flight.getWidth(), 0f)).x + 12f;
             font.setColor(Color.RED);
             font.getData().setScale(1.5f);
             font.draw(batch, String.format(java.util.Locale.ROOT, "MISSILE WARNING   %d inbound%s", world.warnings.inbound(),
                     Float.isNaN(impact) ? "" : String.format(java.util.Locale.ROOT, "   impact %.1f s", impact)),
-                    0f, top - 30f, viewports.getUiViewport().getWorldWidth(), com.badlogic.gdx.utils.Align.center, false);
+                    from, top - 30f, Math.max(left - 12f - from, 200f), com.badlogic.gdx.utils.Align.center, true);
             font.getData().setScale(1f);
             font.setColor(Color.LIGHT_GRAY);
         }
@@ -1331,9 +1334,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
             y -= 20f;
         } else if (disabled != null) {
             font.setColor(Color.RED);
-            font.draw(batch, "SHIP DISABLED: " + disabled.label + "   " + key(Action.ABANDON) + " twice abandons ship"
-                    + (world.beacon.refusal() == null ? ", " + key(Action.CUT) + " twice calls a tow" : ""), left, y);
-            y -= 20f;
+            // Wrapped to the column, as the notices are: with the tow offered it ran off the window's edge
+            layout.setText(font, "SHIP DISABLED: " + disabled.label + "   " + key(Action.ABANDON) + " twice abandons ship"
+                    + (world.beacon.refusal() == null ? ", " + key(Action.CUT) + " twice calls a tow" : ""),
+                    font.getColor(), STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+            font.draw(batch, layout, left, y);
+            y -= layout.height + 6f;
         }
         for (NoticeLog.Notice n : world.notices.showing()) {
             font.setColor(noticeColor(n.kind, Math.min(1f, n.secondsLeft())));

@@ -82,6 +82,7 @@ public class UiHud implements Disposable {
     private final Group markerLayer = new Group();
     private final WireframeMinimap minimap;
     private final Table minimapPanel;
+    private final Table flightPanel;
     private final OrbitMap orbitMap;
     private final Table orbitPanel;
     private final ConsoleWindow consoleWindow;
@@ -127,6 +128,7 @@ public class UiHud implements Disposable {
         stage.addActor(root);
 
         Table flight = new Table();
+        flightPanel = flight;
         flight.setBackground(skin.getDrawable("panel"));
         flight.pad(8f);
         // Top left: the flight readout, the ship's gauges under it and the proximity scanner beside them,
@@ -236,6 +238,9 @@ public class UiHud implements Disposable {
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         hudRenderSystem.keepClear(threatBanner, () -> threatOverlay.isVisible() && threatBanner.getText().length() > 0);
         hudRenderSystem.keepClear(dockHint, dockHint::isVisible);
+        // Names by the bottom edge rise clear of the ship and orbit panels rather than writing over them
+        hudRenderSystem.keepClear(() -> stageBounds(minimapPanel));
+        hudRenderSystem.keepClear(() -> stageBounds(orbitPanel));
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
         interactPromptSystem = new InteractPromptSystem(prompt, this::openConsole);
         flightReadoutSystem = new FlightReadoutSystem(flight, skin, viewMode);
@@ -567,6 +572,18 @@ public class UiHud implements Disposable {
 
     public Skin getSkin() {
         return skin;
+    }
+
+    /** Where {@code a} is drawn on the stage, or an empty box while it is hidden. */
+    private static com.badlogic.gdx.math.Rectangle stageBounds(com.badlogic.gdx.scenes.scene2d.Actor a) {
+        if (a.getStage() == null || !a.ancestorsVisible()) return new com.badlogic.gdx.math.Rectangle();
+        com.badlogic.gdx.math.Vector2 at = a.localToStageCoordinates(new com.badlogic.gdx.math.Vector2());
+        return new com.badlogic.gdx.math.Rectangle(at.x, at.y, a.getWidth(), a.getHeight());
+    }
+
+    /** The flight readout at the top left, for laying out around it. */
+    public Table getFlightPanel() {
+        return flightPanel;
     }
 
     /** The ship panel at the bottom left (hidden in interior view), for laying out around it. */
