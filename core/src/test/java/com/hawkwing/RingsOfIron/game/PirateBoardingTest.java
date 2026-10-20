@@ -175,6 +175,8 @@ class PirateBoardingTest {
         HostileComponent h = hostiles.get(id);
         beatThePlayer();
         assertTrue(runUntil(600, () -> said.stream().anyMatch(n -> n.contains("has latched on"))), "latched on");
+        // Round 9: boarded is a warning, not a promotion's green
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.contains("has latched on") && n.kind == NoticeLog.Kind.WARNING));
         world.combatEvents.impacts.dispatch(hitFrom(game.player, ship));
         assertNull(world.pirateBoarding.boarder(), "one hit ends it");
         assertTrue(said.contains(h.displayName + " breaks off its boarding under fire"));

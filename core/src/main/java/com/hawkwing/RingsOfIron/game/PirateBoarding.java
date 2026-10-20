@@ -152,7 +152,7 @@ public class PirateBoarding implements SaveParticipant {
         if (range(pirate, player) > LATCH_RANGE) return true;
         if (!aboard) {
             aboard = true;
-            world.notices.post(h.displayName + " has latched on: pirates are aboard", NoticeLog.Kind.IMPORTANT);
+            world.notices.post(h.displayName + " has latched on: pirates are aboard", NoticeLog.Kind.WARNING);
         }
         latched += seconds;
         if (latched < BOARD_SECONDS) return true;
