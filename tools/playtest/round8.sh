@@ -45,7 +45,8 @@ fi
 # guns left; once a pirate comes alongside, Tab to it and fire
 if want boarding; then
 cmd load Before the raid; pause 14
-cmd hull 0.4; pause 2; shot p10-beaten-on-the-hull
+for _ in 1 2 3 4 5 6 7 8 9 10; do cmd hull 0.4; grep 'PLAYTEST hull' "$OUT/game.log" | tail -1 | grep -q "no game" || break; pause 2; done
+pause 2; shot p10-beaten-on-the-hull
 boarding_state() { cmd boarding; pause 0.5; grep 'PLAYTEST boarding:' "$OUT/game.log" | tail -1; }
 target() { cmd raid; pause 0.5; grep 'PLAYTEST raid:' "$OUT/game.log" | tail -1 | sed -n 's/.*, target \([^,]*\),.*/\1/p'; }
 boarder=""

@@ -10,6 +10,8 @@ if ! xdpyinfo >/dev/null 2>&1; then
   XVFB=$!
   sleep 2
 fi
+# A window left from the last run would be taken for this one's: wait for it to close
+for _ in $(seq 1 30); do xdotool search --name "^Rings of Iron$" >/dev/null 2>&1 || break; timeout 1 tail -0f /dev/null; done
 ./gradlew :lwjgl3:runPlaytest -Pcommands="$CMDS" -Psaves="${SAVES:-}" --console=plain -q > "$OUT/game.log" 2>&1 &
 GAME=$!
 
