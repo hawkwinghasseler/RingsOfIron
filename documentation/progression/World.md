@@ -78,9 +78,9 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - `PirateBaseTest`: the base's orbit, trade and clearance; hidden until revealed; found by proximity; growth and gathering at the base; falling when its crew are dead; a save keeps found and fallen.
 - `SponsorChoiceTest`: the Patrol by default; a Selene start, board and rank names; only sponsorable factions; flying and warping above the Moon; friendly guards; a save keeps the sponsor and home.
 - `Round5LateCareerTest`: the base's wing, its fall and the tension it eases, a save mid-raid, world events' strain, the Free Trader patrol and the board's tension line.
+- `Round6WorldTest`: the data's tuning, prices up to a quarter (refill and repairs charged at the strained price), a combat job added at high tension, a rival's shorter board, the traffic map's readout, survivors hurt by days in the pod and tended, the Captain's operation after the fall, and a new base rising after 20 strained days (with a save between).
 - `BaseDefenceTest`: launch order, a railgun raider never leading; the guns manned at the first scramble, moored and locked on the player, kept through a save; the guns are no bounty, recon or ace; spawn loadouts follow the seed.
 - `EnemySurveyTest` (round 6): the base's defence against the corvette, and with `-PenemySurvey` the survey of each enemy against the corvette, gunship and frigate.
-- `Round6WorldTest`: the data's tuning, prices up to a quarter (refill and repairs charged at the strained price), a combat job added at high tension, a rival's shorter board, the traffic map's readout, survivors hurt by days in the pod and tended, the Captain's operation after the fall, and a new base rising after 20 strained days (with a save between).
 - `FactionTensionTest`: hostile acts raise tension, pirates excluded; high tension reinforces once and refuses rivals; the weekly drift; weeks pass on the sim clock; a save keeps the strain.
 
 ## Choices made without Joe
@@ -91,11 +91,11 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - No one is cleared at a pirate station.
 - Round 5: the base scrambles 2 to 4 raiders by difficulty and falls once they are beaten with the player close; its fall eases tension by 15.
 - Round 5: the Free Trader escort flies between the two strained sides' alphabetically first stations, so a replayed career sends it the same way.
-- Round 6: two gun platforms, moored 1.5 km and 3 km behind the base and manned at the first scramble, never a railgun among their fits; their hull art is generated from the chassis grid (`tools/art/generate_svgs.py`) and they borrow the raider's texture.
-- Round 6: the second wave launches when the first defender is beaten or after 90 s; ties in firepower launch by name; when every defender carries a railgun the order stands.
 - Round 6: a station's tension is its owner's highest with any lawful faction, not only with the player's sponsor, so both sides of a strain pay more. Prices rise in proportion from 0, not only once tension runs high, so a strain is felt before it is HIGH. Only the yard's prices move; the commodity markets do not.
 - Round 6: the extra combat job is the board's next bounty, else an escort, so it is work the world already has rather than a made-up target.
 - Round 6: a new base rises at Rustwake itself, known to the player, rather than somewhere new and hidden: the hunt's intel step is never offered twice, so a hidden base would be hard to find again.
+- Round 6: two gun platforms, moored 1.5 km and 3 km behind the base and manned at the first scramble, never a railgun among their fits; their hull art is generated from the chassis grid (`tools/art/generate_svgs.py`) and they borrow the raider's texture.
+- Round 6: the second wave launches when the first defender is beaten or after 90 s; ties in firepower launch by name; when every defender carries a railgun the order stands.
 - All the numbers above are placeholders.
 
 ## Not built
