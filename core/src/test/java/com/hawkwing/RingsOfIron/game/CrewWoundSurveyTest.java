@@ -59,6 +59,8 @@ class CrewWoundSurveyTest {
         int deadInFight, hitsAfter;
         /** Round 7: our crew still wounded after the ten minutes for the medics. */
         int woundedAfter;
+        /** Round 8: of them, by wound. */
+        final Map<Wound, Integer> woundsAfter = new EnumMap<>(Wound.class);
         /** Round 7: what the ace's boarders took, or "" if it didn't board. */
         String boarded = "";
         final Map<Wound, Integer> wounds = new EnumMap<>(Wound.class);
@@ -75,16 +77,17 @@ class CrewWoundSurveyTest {
         // -PwoundRefits=raider_ace_railgun surveys one refit only
         String[] refits = System.getProperty("wound.survey.refits", String.join(",", REFITS)).split(",");
         for (String refit : refits) for (int i = 0; i < n; i++) all.add(trial(refit, 2026 + i));
-        StringBuilder out = new StringBuilder("| Ace refit | Seed | Result | Our hull | Our crew wounded (light/serious/critical) | Our crew dead (in the fight) | Of | Hits after | Ace crew alive | Still wounded 10 min on | Boarded, took |\n|---|---|---|---|---|---|---|---|---|---|---|\n");
+        StringBuilder out = new StringBuilder("| Ace refit | Seed | Result | Our hull | Our crew wounded (light/serious/critical) | Our crew dead (in the fight) | Of | Hits after | Ace crew alive | Still wounded 10 min on (light/serious/critical) | Boarded, took |\n|---|---|---|---|---|---|---|---|---|---|---|\n");
         for (Trial t : all) {
-            out.append(String.format(Locale.ROOT, "| %s | %d | %s in %.0f s | %.2f | %d/%d/%d | %d of %d (%d) | %s | %d | %d of %d | %d | %s |%n",
+            out.append(String.format(Locale.ROOT, "| %s | %d | %s in %.0f s | %.2f | %d/%d/%d | %d of %d (%d) | %s | %d | %d of %d | %d (%d/%d/%d) | %s |%n",
                     t.refit, t.seed, t.beaten ? "beaten" : t.lost ? "we lost" : "neither", t.seconds, t.hull,
                     t.wounds.getOrDefault(Wound.LIGHT, 0), t.wounds.getOrDefault(Wound.SERIOUS, 0),
                     t.wounds.getOrDefault(Wound.CRITICAL, 0), t.dead, t.crew, t.deadInFight, String.join(", ", t.causes),
-                    t.hitsAfter, t.aceAlive, t.aceCrew, t.woundedAfter, t.boarded));
+                    t.hitsAfter, t.aceAlive, t.aceCrew, t.woundedAfter, t.woundsAfter.getOrDefault(Wound.LIGHT, 0),
+                    t.woundsAfter.getOrDefault(Wound.SERIOUS, 0), t.woundsAfter.getOrDefault(Wound.CRITICAL, 0), t.boarded));
         }
         for (String refit : refits) {
-            int fights = 0, dead = 0, crew = 0, beaten = 0, wounded = 0, aceAlive = 0, aceCrew = 0, woundedAfter = 0, boarded = 0;
+            int fights = 0, dead = 0, crew = 0, beaten = 0, wounded = 0, aceAlive = 0, aceCrew = 0, woundedAfter = 0, boarded = 0, lightAfterWins = 0;
             for (Trial t : all) {
                 if (!t.refit.equals(refit)) continue;
                 fights++;
@@ -96,10 +99,11 @@ class CrewWoundSurveyTest {
                 aceCrew += t.aceCrew;
                 woundedAfter += t.woundedAfter;
                 if (!t.boarded.isEmpty()) boarded++;
+                if (t.beaten) lightAfterWins += t.woundsAfter.getOrDefault(Wound.LIGHT, 0);
             }
             out.append(String.format(Locale.ROOT, "%n%s: %d fights, beaten %d; our crew wounded %d and dead %d of %d; the ace's crew alive %d of %d;"
-                            + " still wounded ten minutes on %d; boarded %d.",
-                    refit, fights, beaten, wounded, dead, crew, aceAlive, aceCrew, woundedAfter, boarded));
+                            + " still wounded ten minutes on %d, light wounds open ten minutes after a win %d; boarded %d.",
+                    refit, fights, beaten, wounded, dead, crew, aceAlive, aceCrew, woundedAfter, lightAfterWins, boarded));
         }
         System.out.println(out);
         Files.writeString(Paths.get(System.getProperty("user.dir")).resolve("build/wound-survey.txt"), out.toString());
@@ -202,6 +206,8 @@ class CrewWoundSurveyTest {
                                 c.stabilised ? "+stab" : "", c.health, c.bleedOut, c.suited, c.suitAir,
                                 com.ringsofiron.aicrew.TaskRules.isBreathable(g, p.tileX(), p.tileY()), c.activity));
                     }
+                    com.ringsofiron.aicrew.ShipTaskBoardComponent board = game.player.getComponent(com.ringsofiron.aicrew.ShipTaskBoardComponent.class);
+                    line.append(" battle ").append(board.battleStations).append(" helm wanted ").append(board.helmWanted);
                     line.append(" stores ").append(g.medicalStores).append(" kits ").append(g.patchKits)
                             .append(" disabled ").append(ShipDisablement.reason(game.player));
                     int floor = 0, breathable = 0, breaches = 0;
@@ -233,7 +239,10 @@ class CrewWoundSurveyTest {
             }
             for (Entity e : ours) {
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-                if (c.isAlive() && c.wound != Wound.NONE) t.woundedAfter++;
+                if (c.isAlive() && c.wound != Wound.NONE) {
+                    t.woundedAfter++;
+                    t.woundsAfter.merge(c.wound, 1, Integer::sum);
+                }
                 if (c.isAlive()) continue;
                 t.dead++;
                 t.causes.add(String.valueOf(c.lastDamageCause).toLowerCase(Locale.ROOT));
