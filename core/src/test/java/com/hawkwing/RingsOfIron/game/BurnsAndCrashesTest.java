@@ -16,6 +16,7 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** The orbit map, the burn planner and crashes, in the starting scenario. */
@@ -168,6 +169,7 @@ class BurnsAndCrashesTest {
         assertEquals("ice_mine", world.macroSim.station(game.lunarMine).stationTypeId);
     }
 
+    @Tag("slow")
     @Test
     void haulersFlyBetweenEarthAndTheMoon() {
         java.util.Set<String> parents = new java.util.HashSet<>();
