@@ -39,6 +39,8 @@ Round 5: the base fights back. A station is never a ship in the bubble, so the b
 
 Round 6: the base has guns, and its wing comes out in order. At the first scramble it mans `BATTERIES` (2) gun platforms (`den_battery` in `ships.toml`, the `battery` chassis, loadouts `battery_*` in `loadouts.toml`), moored 1.5 km and 3 km behind it (`HostileComponent.mooring`). A moored ship has no schedule on the rails and nothing flies it: in the bubble it only keeps its guns locked on the player, and out of it it rides the base's orbit. It is never counted as raider traffic, a sighting, a recon or bounty target, or an ace. The guns are manned once and kept; a later raid meets the same platforms. The base falls only once its wing is beaten or driven off (a defender that has broken off and runs, as a wingman does when its leader is beaten, no longer defends it); the guns need not be. The wing launches lightest first (`launchOrder`: by firepower, then name), and a railgun raider never leads unless every defender carries one. The first launches alone; the rest launch as one wing behind the second, once the first is beaten or after 90 s (`SECOND_WAVE_SECONDS`).
 
+Round 7: the raid hurts again. The second wave launches after 45 s at the latest (was 90). `defendersFor` adds one defender for each 0.6 of difficulty past 1 (`DIFFICULTY_PER_DEFENDER`, was 1.0), so a Commander's gunship meets 3 and a Captain's frigate 4 (`MAX_DEFENDERS`). While the base stands, a defender whose leader is beaten fights on alone rather than break off with it (`PirateBase.defending`). `loadout.battery_railgun` lets one platform carry a railgun (`HostileTraffic.moorGuns` keeps it to one), but it ships at weight 0: the raid met its targets without it. Survey and steps: `planning/round7-raid.md` in the project folder.
+
 Spawn loadouts and an ace's refit are drawn from the career seed (`NewGame.mix(world.events.seed, …)`) with the ship and its spawn count, so a seed meets the same fits and another seed other fits.
 
 ### Choosing a sponsor
@@ -96,6 +98,7 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - Round 6: a new base rises at Rustwake itself, known to the player, rather than somewhere new and hidden: the hunt's intel step is never offered twice, so a hidden base would be hard to find again.
 - Round 6: two gun platforms, moored 1.5 km and 3 km behind the base and manned at the first scramble, never a railgun among their fits; their hull art is generated from the chassis grid (`tools/art/generate_svgs.py`) and they borrow the raider's texture.
 - Round 6: the second wave launches when the first defender is beaten or after 90 s; ties in firepower launch by name; when every defender carries a railgun the order stands.
+- Round 7: the frigate's raid is tuned to win 6 to 8 of 10 in the enemy survey with mean hull 0.50 to 0.75: it wins 7, at 0.74. The career seeds 2026, 7 and 12 drew no railgun raider for the raid and still end it at hull 0.89 or better.
 - All the numbers above are placeholders.
 
 ## Not built

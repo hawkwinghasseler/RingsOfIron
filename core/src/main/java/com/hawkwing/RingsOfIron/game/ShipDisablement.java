@@ -167,8 +167,23 @@ public class ShipDisablement extends EntitySystem {
         float crewLine = morale == null ? SURRENDER_CREW : morale.surrenderCrew;
         if (fleeing) return count[0] > 0 && count[1] < crewLine * count[0];
         if (hull < hullLine) return true;
-        if (count[0] > 0 && count[1] < crewLine * count[0]) return true;
+        // A pirate still on its run in, its guns not yet in reach, presses on with whoever is up:
+        // round 7 found raiders giving up at 4 km to a frigate's first slugs with two of three crew
+        // knocked out, before their chaingun ever reached
+        if (count[0] > 0 && count[1] < crewLine * count[0] && !closingToReach(ship)) return true;
         return gunsSilenced(ship);
+    }
+
+    /** True for a pirate fighting a ship further off than its shortest-reaching gun reaches. */
+    static boolean closingToReach(Entity ship) {
+        HostileComponent h = ship.getComponent(HostileComponent.class);
+        NpcCombatComponent combat = ship.getComponent(NpcCombatComponent.class);
+        if (h == null || !h.isPirate() || combat == null || combat.target == null) return false;
+        PhysicsBodyComponent a = ship.getComponent(PhysicsBodyComponent.class), b = combat.target.getComponent(PhysicsBodyComponent.class);
+        if (a == null || a.body == null || b == null || b.body == null) return false;
+        float meters = com.ringsofiron.physicsexterior.PhysicsManager.getPosition(a.body, new com.badlogic.gdx.math.Vector2())
+                .dst(com.ringsofiron.physicsexterior.PhysicsManager.getPosition(b.body, new com.badlogic.gdx.math.Vector2()));
+        return meters > Tactics.arms(ship).reach;
     }
 
     /** True while {@code ship} is at battle stations: in a fight or lately shot at ({@link CrewMedical}). */
