@@ -415,7 +415,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
                 return;
             }
             breakOff(id, h, now);
-            drifting.add(h.displayName);
+            // At a berth the player isn't left drifting: it just goes (round 8)
+            if (!world.pirateBoarding.atBerth(enemy)) drifting.add(h.displayName);
             disengage(e);
             leave(e);
             return;
