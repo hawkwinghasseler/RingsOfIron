@@ -135,6 +135,24 @@ class HostileTrafficGameTest {
     }
 
     @Test
+    void aPirateFightsOnWhileThePlayerIsDarkFromAnIonStun() {
+        // Seed 2026's ion raider stunned the corvette's reactor and flew off as if it had won
+        String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
+        HostileComponent h = hostiles.get(id);
+        h.targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 3_000, 0);
+        run(2);
+        for (Entity e : game.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s.type == SubsystemComponent.SubsystemType.REACTOR) s.stunned = 20f;
+        }
+        run(3);
+        assertTrue(ShipDisablement.isDisabled(game.player), "dark while the stun lasts");
+        assertFalse(h.brokeOff, "a stun is not a beaten ship");
+        assertSame(game.player, ship.getComponent(SensorComponent.class).lockedTarget);
+    }
+
+    @Test
     void aPirateBreaksOffBeforeItIsBeatenEnoughToSurrender() {
         String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
         HostileComponent h = hostiles.get(id);

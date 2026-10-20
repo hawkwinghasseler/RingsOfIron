@@ -319,7 +319,9 @@ abstract class CareerScript {
             gun.fireGuns();
             gun.launchMissile();
             gun.update(FRAME);
-            return (h != null && h.partDropped) || ShipDisablement.isDisabled(ship) || ShipDisablement.isDisabled(game.player)
+            // Dark for an ion stun's few seconds isn't a lost fight: the guns come back
+            return (h != null && h.partDropped) || ShipDisablement.isDisabled(ship)
+                    || ShipDisablement.isDisabled(game.player) && !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player)
                     || world.getCrash() != null || distance(game.player, ship) > GOT_AWAY;
         });
         world.carriedHome.remove(home);
