@@ -83,6 +83,7 @@ class ServiceBudgetTest {
         assertTrue(Difficulty.shipValue(game.player) > 100_000, "hull and weapons count");
         assertEquals(1.5, Difficulty.of(2, 0), 1e-9);
         assertEquals(1.5, Difficulty.of(0, 2 * Difficulty.BASE_WORTH), 1e-9, "a doubling of net worth");
+        FactionStandingTest.skipTimeInGrade(world.standing);
         world.standing.reward("patrol", 100f, "test");
         assertEquals(2.0, Difficulty.of(world), 1e-9, "a captain in the same ship");
     }

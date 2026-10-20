@@ -60,7 +60,7 @@ The player's career is a `ServiceRecord`, saved as its own save module (`"factio
 - **Old saves:** a save without the `"factions"` module loads as rank 0 with the sponsor. `migrateLegacy` folds round 1's `FactionStandingComponent` from the player's ship into the record and removes it.
 
 ## Rank and Budget
-Ranks are data: `[rank.<id>]` (`RankDef`) with `name`, `order`, `standing` (needed with the sponsor), `budget` (credits per in-game week) and `max_chassis`.
+Ranks are data: `[rank.<id>]` (`RankDef`) with `name`, `order`, `standing` (needed with the sponsor), `budget` (credits per in-game week), `max_chassis`, and from round 7 `min_days` and `ship_days` (time in grade, below).
 
 | Rank | Standing | Budget (cr/week) | Largest chassis |
 |---|---|---|---|
@@ -71,6 +71,8 @@ Ranks are data: `[rank.<id>]` (`RankDef`) with `name`, `order`, `standing` (need
 | Captain | 85 | 40,000 | frigate |
 
 - **Promotion:** only standing with the sponsor promotes. `checkPromotion` climbs one rank at a time with a notice ("Promoted to Lieutenant of the Terran Patrol Authority: budget 5,000 cr a week"). Ranks are never taken back.
+  - **Time in grade** (round 7): a rank's `min_days` is the least time the player holds the rank below before it is given, whatever their standing. Commander and Captain each have 5; the others none. A promotion held back says so once ("Standing enough for Captain: promoted after 3.2 more days as Commander") and is given as the days pass (`FactionStanding.promoteDue`, from `ServiceBudget`'s tick). `ServiceRecord.promotedAt` is saved with the career. Round 6's seed 7 made Commander and Captain on the same day.
+  - **A new rank's ship** (round 7): a rank's `ship_days` is how long after it is given the sponsor's yards wait to sell a chassis no lower rank may fly, whatever rank the player has reached since (`ServiceRecord.promotions`, saved) (`FactionStanding.newChassisWait`; the yard says "Sold to a new Commander after 4.0 more days in rank"). A Commander waits 10 days for the first frigate; the Lieutenant Commander's gunship has no wait. Seed 7 bought the frigate a week after making Commander, on four ace bounties.
 - **Budget:** `ServiceBudget` pays the budget into the player ship's credits every `WEEK` (604,800 sim seconds). It catches up on every payday passed during time warp, at the rank held when paying. The first payday is a week after the career starts. Paydays wait while the player has no ship with credits. The HUD shows "Ensign   Budget 2,000 cr/wk in 6d 23h".
 - **What a rank flies:** `RankLadder.mayFly` compares a ship's chassis size in tiles with the rank's `max_chassis`, for a requisition after a rescue (`mayRequisition`) and a purchase at a yard alike. Sizes: light raider 75, corvette 96, gunship 160, frigate 240, freighter 260, so no rank flies a freighter. (Round 2 named the freighter at Lieutenant Commander and above, which let the gunship in by size alone; round 3 names the gunship and the frigate.)
 - **Difficulty** (GDD §5): `Difficulty.of(rank, worth) = 1 + 0.25·rank + 0.5·log2(worth / 300,000)`, where the worth term counts only above 300,000. Net worth is credits plus the ship's value: 1,000 a hull tile plus its weapons' prices.
@@ -98,8 +100,9 @@ Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. I
 - **Aces** (round 3, `PirateAces`): a pirate that gets away from a fight with the player (it fought them and left the bubble unbeaten), or that has robbed 3 freighters, becomes a named ace, if fewer than 3 are about. Round 5: once the player flies a gunship, the hourly top-up makes the first plain pirate gunship an ace when no ace flies one (no grudge; it hunts by the odds), and says so.
   - It takes a callsign, its crew's gunnery and tracking rise to at least 0.85, and it is refitted from its ship's ace loadouts, which carry a rare weapon.
   - One that got away from the player keeps a grudge and hunts them whatever the odds; one that gets away again keeps it.
-  - Its bounty is 4 × a pirate's, with 6 more standing, and ace bounties come first on a board. Round 5: the bounty is posted the day the ace appears on every board that would list it (`PirateAces.postBounty`, through `ContractBoard.postEvent`) until the day turns, when the day's boards take it up; round 4 waited for the next day's boards.
+  - Its bounty is 4 × a pirate's, with 3 more standing for each step of the bounty's tier counting from 1 (round 7; it was 6 for any ace, and seed 7 rose from Lieutenant Commander to Captain in a week on four light aces), and ace bounties come first on a board. Round 5: the bounty is posted the day the ace appears on every board that would list it (`PirateAces.postBounty`, through `ContractBoard.postEvent`) until the day turns, when the day's boards take it up; round 4 waited for the next day's boards.
   - Beaten, it leaves a crate of its rare weapon in its hold for whoever boards it, forgets its grudge and frees its place.
+  - An ace beaten once (`FirstPlay.aceBeaten`) is done with as far as contracts go, even after its crew get the ship flying again out on the rails: no recon, bounty or operation step names it again (round 6: Hunt the Hunters sent the frigate to find Iron Dagny, beaten a week before).
   - Every step is a notice in the log (L).
 
 ## Contracts and the Mission Board

@@ -16,7 +16,10 @@
 # at or above a rank's standing earns it; promotions never go back down. budget is paid
 # into the player's credits each in-game week; max_chassis is the largest chassis the rank
 # may fly: the largest ship it may requisition after a rescue or buy at a yard (shipyard.toml).
-# Chassis are compared by their size in tiles. Placeholder numbers.
+# Chassis are compared by their size in tiles. min_days is the least time, in in-game days, the
+# player holds the rank below before this one is given, whatever their standing (0 if left out);
+# ship_days is how long they hold a rank before the sponsor's yards sell them a chassis no lower
+# rank may fly (0 if left out). Placeholder numbers.
 
 [faction.patrol]
 name = "Terran Patrol Authority"
@@ -94,6 +97,10 @@ order = 3
 standing = 60.0
 budget = 20000.0
 max_chassis = "frigate"
+# Round 7: seed 7 made Commander and Captain in one week, on ace bounties, and bought the frigate
+# a week after that
+min_days = 5.0
+ship_days = 10.0
 
 [rank.captain]
 name = "Captain"
@@ -101,3 +108,4 @@ order = 4
 standing = 85.0
 budget = 40000.0
 max_chassis = "frigate"
+min_days = 5.0
