@@ -229,6 +229,12 @@ public class PlaytestLauncher {
                             com.hawkwing.RingsOfIron.game.ShipDisablement.isDisabled(s.player) ? ", we are beaten" : "",
                             target == null ? "none" : com.hawkwing.RingsOfIron.game.FirstPlay.beaten(world, target)
                                     ? "beaten" : PlayerDocking.name(target)));
+                    // How far the base is: it strikes only with the player within PirateBase.STRIKE_RANGE
+                    Entity base = world.pirateBase.uuid() == null ? null : world.engine.getEntity(world.pirateBase.uuid());
+                    PhysicsBodyComponent bb = base == null ? null : base.getComponent(PhysicsBodyComponent.class);
+                    Body ours = s.player.getComponent(PhysicsBodyComponent.class).body;
+                    if (bb != null && bb.body != null && ours != null) out.append(String.format(java.util.Locale.ROOT, ", base at %.1f km",
+                            PhysicsManager.getPosition(bb.body, new Vector2()).dst(PhysicsManager.getPosition(ours, new Vector2())) / 1000f));
                     for (String name : world.pirateBase.defenders()) out.append("\n  defender ").append(name);
                     return out.toString();
                 }
