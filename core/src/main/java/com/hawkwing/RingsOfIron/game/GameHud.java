@@ -37,6 +37,8 @@ public class GameHud implements Disposable {
         hud.setPhysics(world.physics);
         hud.setOrbitInfo(new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
         hud.setOrbitPath(new PlayerOrbitPath(world, world.burns));
+        // interior-grid's tanks, hull and power circuits on the ship gauges.
+        hud.setShipStatus(new PlayerShipStatus(world::getPlayer));
         hud.setInteractor(world.avatar);
         hud.getViewMode().addListener((previous, current) -> world.audioListener.setMode(toListenerMode(current)));
         world.audioListener.setMode(toListenerMode(hud.getViewMode().getMode()));
@@ -46,6 +48,10 @@ public class GameHud implements Disposable {
         hud.setTrade(new MarketTrade(world));
         // The docked station's yard for the [Y] yard window: repairs and refits.
         hud.setYard(yard = new YardWork(world));
+        // The station's mission board and the contracts held, for the [J] mission window.
+        hud.setMissions(new ContractMissions(world));
+        // The ship latched to, for the [K] boarding window: boarding it, then stripping it.
+        hud.setBoarding(new BoardingWork(world));
         hullHits = (signal, hit) -> {
             if (hit.ship != null && hit.ship == world.getPlayer()) hud.flashHullHit(hit.tileX, hit.tileY);
         };

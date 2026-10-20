@@ -73,7 +73,8 @@ public class PenetrationResolver {
             case SHIELD_EMITTER: return 2e7f;
             case TURRET_MOUNT:   return 2.5e7f;
             case CARGO:          return 1e7f;
-            case AIRLOCK:        return 1.5e7f;
+            case AIRLOCK:
+            case ESCAPE_POD:     return 1.5e7f;
             default:             return 8e6f;
         }
     }

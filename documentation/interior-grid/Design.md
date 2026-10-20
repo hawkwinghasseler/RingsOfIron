@@ -67,11 +67,14 @@ Ship systems install into fixed-size mounts (`MountFootprint`):
 | L | 3×3 | 3×7 |
 | XL | 5×5 | 5×12 |
 
-- **Primary** systems (generators/reactors, shield emitters, turret mounts) use square mounts. **Auxiliary and utility** systems (life support, helm, weapons console, cargo, airlock, tanks, engines) use rectangular slots, which can be placed in either orientation. Each `SubsystemType` declares which kind it needs, and a system cannot be installed in the wrong kind.
+- **Primary** systems (generators/reactors, shield emitters, turret mounts) use square mounts. **Auxiliary and utility** systems (life support, helm, weapons console, cargo, airlock, tanks, engines, escape pods) use rectangular slots, which can be placed in either orientation. Each `SubsystemType` declares which kind it needs, and a system cannot be installed in the wrong kind.
 - A mount's footprint is its origin (bottom-left tile), size, kind and rotation. A rotation of 1 or 3 turns a rectangular slot on its side; on a square mount it only sets the system's facing.
 - **Every tile in the footprint belongs to the installed system**, so a hit on any of them damages it. `Tile.mount` points at the footprint, and `MountFootprint.installed` at the system entity; `ShipGridComponent.subsystemAt(x, y)` is the tile→subsystem index combat uses.
 - A footprint must lie entirely on interior floor, may not overlap another mount, and may not have an edge wall running through it.
-- What crew cannot walk through is `CrewObstacles`: the footprints of the big systems (`SOLID`: reactor, shield emitter, turret mount, life support) and cargo bay tiles with goods stacked on them (`CARGO_FILL`). Consoles, airlocks, docking ports and empty bays stay walkable. Per-part colliders from the art could refine this later; until then a whole footprint blocks or none of it does.
+- What crew cannot walk through is `CrewObstacles`: the footprints of the big systems (`SOLID`: reactor, shield emitter, turret mount, life support) and cargo bay tiles with goods stacked on them (`CARGO_FILL`). Consoles, airlocks, docking ports, escape pods and empty bays stay walkable. Per-part colliders from the art could refine this later; until then a whole footprint blocks or none of it does.
+
+- **Escape pods** (round 2): `ESCAPE_POD` (`B` in a chassis map) seats 4, 8, 20 or 48 crew for sizes S to XL. A pod is hard to penetrate (1.5e7, the same as an airlock). Crew reach one through an `EvacuateTask` (ai-crew), and the game launches it (`AbandonShip` in core; see `documentation/progression/Design.md`). A launched pod is switched off for good.
+- **Crew tasks** (round 2): `CrewTask.Kind` gains `EVACUATE` (to a pod, priority 1000) and `BOARD` (a boarding party sweeping another craft, priority 30). Both are defined in ai-crew.
 
 ### Cargo bays
 Cargo is physical: goods sit on the floor tiles of the ship's cargo bays (the footprints of its `CARGO` systems), not in an abstract number. `CargoHoldComponent` on the ship lists the bay tiles and the stack on each:

@@ -32,9 +32,16 @@ public interface YardProvider {
     /** Orders {@code weaponId}, new or used, fitted to hardpoint {@code hardpoint}; returns what the yard says. */
     String orderRefit(int hardpoint, String weaponId, boolean used);
 
+    /** Orders a salvaged {@code weaponId} out of the ship's own hold fitted to hardpoint {@code hardpoint}; returns what the yard says. */
+    default String orderSalvagedRefit(int hardpoint, String weaponId) {
+        return "This yard doesn't fit salvaged parts";
+    }
+
     final class Offer {
         public String weaponId = "";
         public String name = "";
+        /** Salvaged ones in the ship's hold, fitted for nothing. */
+        public int salvaged;
         /** Credits new; a used one costs {@link YardBoard#usedPrice} of it. */
         public double price;
     }

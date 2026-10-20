@@ -4,7 +4,9 @@
 #   R reactor, S shield, T turret (square mounts); L life support, H helm,
 #   W weapons console, C cargo, A airlock, E engine (an engine's nozzle faces aft
 #   (-x) when it lies along x, and +y when it stands along y), P propellant tank,
-#   O oxygen tank, N nitrogen tank (rectangular slots)
+#   O oxygen tank, N nitrogen tank, Q freight drive and G gunship drive (engines), B escape pod
+#   (rectangular slots; a pod's hatch is the end that faces +y at rotation 0, so it
+#   lies against the hull it launches through)
 #   D docking port, drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium, 7 x 3 Large.
 #     The end tiles are frame, the rest the opening, with the port door on its
 #     outer edge. It faces the side with only space beyond it. Ports are passive
@@ -36,8 +38,11 @@ origin_y = -3.0
 # Cargo: a hold aft of the crew spaces with two 3 x 2 bays (x 3-5; listed under
 # mounts, since two bays side by side can't be told apart in the map), a walkway
 # at x 6, and two small bays up front. 16 tiles, 40 m3 at 2.5 m3 a tile.
-# A Small passive docking port on the port (+y) side opens onto the walkway beside
-# the hold.
+# A Small docking port on the port (+y) side opens onto the walkway beside the hold.
+# It is active: its collar reaches out and takes hold of another ship's port, armed
+# or not, so the corvette can latch onto a ship as well as a station.
+# A Small escape pod (4 seats) stands at x 8 between the life support and the
+# turrets, its hatch out through the starboard (-y) hull; crew walk through its bay.
 rows = [
   "#####DDD########",
   "#EE....HHTCCTRR#",
@@ -46,11 +51,13 @@ rows = [
   "#EE...PL.T..TCC#",
   "################",
 ]
+ports = [ { x = 6, y = 5, active = true } ]
 mounts = [
   { type = "CARGO", size = "M", x = 3, y = 1, rotation = 1 },
   { type = "CARGO", size = "M", x = 3, y = 3, rotation = 1 },
   { component = "oxygen_tank", size = "S", x = 1, y = 2, rotation = 1 },
   { component = "nitrogen_tank", size = "S", x = 1, y = 3, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 8, y = 1, rotation = 2 },
 ]
 pipes = [
   { x = 2, y = 1 }, { x = 2, y = 2 }, { x = 2, y = 3 }, { x = 2, y = 4 },
@@ -61,8 +68,7 @@ pipes = [
 # Carpet through the crew spaces, so a fire here has something to burn
 coverings = [ { covering = "CARPET", x = 7, y = 1, width = 6, height = 4 } ]
 lights = [
-  { x = 8, y = 1, side = "BOTTOM" },
-  { x = 11, y = 1, side = "BOTTOM" },
+  { x = 10, y = 1, side = "BOTTOM" },
 ]
 
 [chassis.freighter]
@@ -71,15 +77,17 @@ tile_size = 1.0
 origin_x = -10.0
 origin_y = -6.5
 # Two 12 x 5 cargo bays either side of a conduit spine: 120 tiles, 300 m3 of cargo.
-# Engineering aft (left) between two Medium engines in the stern corners, the helm
+# Engineering aft (left) between two Medium freight drives in the stern corners, the helm
 # forward, and a Medium passive docking port in the bow at the end of the spine.
 # Above the lower engine, the oxygen, nitrogen and a propellant tank, and a second
 # propellant tank by the reactor; a pipe up x 3 joins both engines and the tanks,
 # and a branch takes the gases to life support.
+# Two Small escape pods (4 seats each) in the bow corners at x 18, hatches out
+# through the top and bottom hull.
 rows = [
   "####################",
-  "#EEECCCCCCCCCCCC...#",
-  "#EEECCCCCCCCCCCC...#",
+  "#QQQCCCCCCCCCCCC...#",
+  "#QQQCCCCCCCCCCCC...#",
   "#RR.CCCCCCCCCCCC.HH#",
   "#RR.CCCCCCCCCCCC..DD",
   "#...CCCCCCCCCCCC..DD",
@@ -87,12 +95,14 @@ rows = [
   "#L..CCCCCCCCCCCC..DD",
   "#ONPCCCCCCCCCCCC..DD",
   "#ONPCCCCCCCCCCCC...#",
-  "#EEECCCCCCCCCCCC...#",
-  "#EEECCCCCCCCCCCC...#",
+  "#QQQCCCCCCCCCCCC...#",
+  "#QQQCCCCCCCCCCCC...#",
   "####################",
 ]
 mounts = [
   { component = "tank", size = "S", x = 1, y = 7, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 18, y = 10, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 18, y = 1, rotation = 2 },
 ]
 pipes = [
   { x = 3, y = 2 }, { x = 3, y = 3 }, { x = 3, y = 4 }, { x = 3, y = 5 }, { x = 3, y = 6 },
@@ -104,6 +114,93 @@ lights = [
   { x = 17, y = 4, side = "RIGHT" },
   { x = 17, y = 8, side = "RIGHT" },
   { x = 16, y = 11, side = "TOP" },
+]
+
+[chassis.raider]
+name = "Light Raider"
+tile_size = 1.0
+origin_x = -7.5
+origin_y = -2.5
+# A pirate's fast boat: a Medium reactor forward, one turret mount in the nose (6, 0), and two
+# Small engines in the stern either side of the nitrogen tank. One pipe run joins the engines,
+# the nitrogen and oxygen tanks, the propellant tank and life support. A two-tile hold for loot,
+# and a Small passive docking port on top, so it can be boarded once beaten.
+rows = [
+  "###DDD#########",
+  "#EE..L.HH.RR..#",
+  "#...PL.WW.RR.T#",
+  "#EE.P..CC.....#",
+  "###############",
+]
+mounts = [
+  { component = "nitrogen_tank", size = "S", x = 1, y = 2, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 3, y = 2 },
+]
+pipes = [
+  { x = 2, y = 1 },
+  { x = 2, y = 2 },
+  { x = 2, y = 3 },
+  { x = 3, y = 2 },
+  { x = 4, y = 2 },
+  { x = 5, y = 2 },
+]
+lights = [
+  { x = 5, y = 1, side = "BOTTOM" },
+  { x = 10, y = 1, side = "BOTTOM" },
+  { x = 13, y = 1, side = "BOTTOM" },
+]
+
+[chassis.gunship]
+name = "Gunship"
+tile_size = 1.0
+origin_x = -10.0
+origin_y = -4.0
+# Heavier than the corvette: a Large reactor amidships, two Medium gunship drives (G) in the stern corners
+# with a propellant tank beside each, and five turret mounts: a Medium one in the nose for the
+# railgun (8, 0), launchers at (1.5, 2.5) and (1.5, -2.5) and point defense at (5.5, 2.5) and
+# (5.5, -2.5). Oxygen and nitrogen between the engines; pipes up x 2 and x 5 and across y 3 join
+# both engines, every tank and life support. A Small passive docking port on top.
+rows = [
+  "#######DDD##########",
+  "#GGG.P.....T...T...#",
+  "#GGG.P..RRR........#",
+  "#.....L.RRR.C.HH.TT#",
+  "#.....L.RRR.C.WW.TT#",
+  "#GGG.P.............#",
+  "#GGG.P.....T...T...#",
+  "####################",
+]
+mounts = [
+  { component = "oxygen_tank", size = "S", x = 1, y = 4, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 1, y = 3, rotation = 1 },
+]
+pipes = [
+  { x = 2, y = 1 },
+  { x = 2, y = 2 },
+  { x = 2, y = 3 },
+  { x = 2, y = 4 },
+  { x = 2, y = 5 },
+  { x = 2, y = 6 },
+  { x = 3, y = 3 },
+  { x = 4, y = 3 },
+  { x = 5, y = 3 },
+  { x = 6, y = 3 },
+  { x = 5, y = 1 },
+  { x = 5, y = 2 },
+  { x = 5, y = 4 },
+  { x = 5, y = 5 },
+  { x = 5, y = 6 },
+]
+lights = [
+  { x = 4, y = 1, side = "BOTTOM" },
+  { x = 7, y = 1, side = "BOTTOM" },
+  { x = 12, y = 1, side = "BOTTOM" },
+  { x = 18, y = 2, side = "RIGHT" },
+  { x = 18, y = 5, side = "RIGHT" },
+  { x = 4, y = 6, side = "TOP" },
+  { x = 7, y = 6, side = "TOP" },
+  { x = 10, y = 6, side = "TOP" },
+  { x = 14, y = 6, side = "TOP" },
 ]
 
 # Stations. Every station type carries docking ports of all three sizes, so any ship

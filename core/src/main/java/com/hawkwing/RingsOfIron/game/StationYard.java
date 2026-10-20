@@ -51,7 +51,8 @@ import java.util.function.DoubleSupplier;
  * is done. A refit ({@link #orderRefit}) is a new or used weapon for one hardpoint: the station's
  * loaders carry the part from its bays to the hardpoint's mount ({@link CarryTask}), where it is
  * paid for, and the technicians then fit it one mount tile at a time; the weapon it replaces goes
- * back to the yard for part of its price.
+ * back to the yard for part of its price. A salvaged weapon in the ship's own bays is fitted the same
+ * way, as a used one with nothing to pay ({@link #orderSalvagedRefit}).
  *
  * <p>The yard also refills the ship's tanks ({@link #orderRefill}): propellant, oxygen and nitrogen,
  * at once, paid by the kilogram ({@link #pricePerKg}); short of credits, every tank gets the same
@@ -360,6 +361,38 @@ public class StationYard extends EntitySystem {
     // ------------------------------------------------------------------
     // Orders
     // ------------------------------------------------------------------
+
+    /**
+     * Has {@code station}'s yard fit a salvaged {@code weaponId} out of the ship's own cargo bays
+     * ({@link Salvage}) to hardpoint {@code hardpoint}, like a used one but with nothing to pay: the
+     * crate is taken out of the hold now, and goes back if the work is called off. Returns what it says.
+     */
+    public String orderSalvagedRefit(Entity ship, Entity station, int hardpoint, String weaponId) {
+        if (!canWork(ship, station)) return "No yard here to do the work";
+        WeaponsComponent mounts = ship.getComponent(WeaponsComponent.class);
+        WeaponDef def = weapons.weapons.get(weaponId);
+        if (mounts == null || hardpoint < 0 || hardpoint >= mounts.mounts.size) return "No such hardpoint";
+        CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
+        if (def == null || hold == null || hold.amount(PART + weaponId) < 1 - EPS) return "No salvaged one in the hold";
+        WeaponMountComponent mount = mounts.mounts.get(hardpoint);
+        if (mount.subsystem == null || mount.subsystem.getComponent(SubsystemComponent.class) == null) {
+            return "That hardpoint has no mount aboard to fit it to";
+        }
+        YardOrdersComponent orders = orders(ship, station);
+        if (orders == null) return "The yard is working for another station's ship";
+        YardOrdersComponent.Refit old = orders.refit(hardpoint);
+        if (old != null) {
+            if (old.aboard) return "A part is already being fitted there";
+            cancel(old);
+            orders.refits.remove(old);
+        }
+        hold.unload(PART + weaponId, 1);
+        YardOrdersComponent.Refit r = new YardOrdersComponent.Refit(hardpoint, weaponId, true);
+        r.salvaged = true;
+        r.aboard = true;
+        orders.refits.add(r);
+        return String.format(Locale.ROOT, "The technicians are fitting the salvaged %s to %s", def.displayName(), hardpointName(mount));
+    }
 
     /** Has {@code station}'s yard repair everything damaged aboard {@code ship}. Returns what it says. */
     public String orderRepairs(Entity ship, Entity station) {
@@ -684,6 +717,13 @@ public class StationYard extends EntitySystem {
     }
 
     private void refund(Entity ship, YardOrdersComponent.Refit r) {
+        if (r.salvaged) {
+            // The salvaged part goes back in the hold
+            CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
+            if (hold != null && !r.weapon.isEmpty()) hold.load(PART + r.weapon, 1, Salvage.CRATE_VOLUME, Salvage.CRATE_MASS);
+            r.salvaged = false;
+            return;
+        }
         TraderComponent trader = ship.getComponent(TraderComponent.class);
         if (trader != null && r.paid > 0) trader.credits += r.paid;
         r.paid = 0;

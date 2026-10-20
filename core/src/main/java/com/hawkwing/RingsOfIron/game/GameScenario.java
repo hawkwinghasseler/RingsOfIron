@@ -10,6 +10,8 @@ import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
@@ -18,6 +20,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.bubble.BubbleTransitionListener;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.moddingdata.ModContext;
@@ -29,7 +32,10 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.stationsdocking.DockingData;
+import com.ringsofiron.stationsdocking.DockingPort;
+import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
@@ -60,6 +66,8 @@ public class GameScenario {
     public static final String PLAYER_SHIP = "corvette_patrol";
     /** The ship the traffic flies, which sizes the freighters' holds. */
     public static final String FREIGHTER_SHIP = "freighter_hauler";
+    /** The faction the raider flies for, when the data has it. */
+    public static final String PIRATES = "pirates";
     /** What the player starts with for trading at station markets. Placeholder value. */
     public static final double STARTING_CREDITS = 5_000;
 
@@ -72,10 +80,11 @@ public class GameScenario {
     public Entity raider;
     /** Ships the player can lock: hostiles and traffic in the bubble. */
     public final Array<Entity> contacts = new Array<>();
-    public final String highport;
-    public final String depot;
+    /** The stations' uuids; a load replaces them with the loaded stations'. */
+    public String highport;
+    public String depot;
     /** The ice mine in low lunar orbit. */
-    public final String lunarMine;
+    public String lunarMine;
     /** Highport's attitude: half a turn, so its Small ports face back along the orbit, towards the player. */
     public static final float HIGHPORT_ANGLE = (float) Math.PI;
 
@@ -105,11 +114,18 @@ public class GameScenario {
         FlightControlComponent controls = player.getComponent(FlightControlComponent.class);
         if (controls != null) controls.rotationAssist = true;
 
+        Bridge.install(player);
+
         ShipGridComponent grid = player.getComponent(ShipGridComponent.class);
         List<int[]> floor = floorTiles(grid);
-        avatar = floor.isEmpty() ? null
-                : CrewFactory.spawnPlayer(world.crew, player, "You", floor.get(0)[0], floor.get(0)[1]);
-        CrewRole[] roles = {CrewRole.ENGINEER, CrewRole.MEDIC, CrewRole.MARINE};
+        // The player starts seated at the helm, so the game opens on the ship from outside
+        int[] seat = besideHelm(player, floor);
+        avatar = seat == null ? null : CrewFactory.spawnPlayer(world.crew, player, "You", seat[0], seat[1]);
+        if (avatar != null) world.bridge.sit(SubsystemComponent.SubsystemType.HELM);
+        // ... and nobody else starts in their seat
+        if (seat != null && floor.size() > 1) floor.remove(seat);
+        // Bea is the helmsman: she takes the helm whenever the player leaves it
+        CrewRole[] roles = {CrewRole.ENGINEER, CrewRole.CREWMAN, CrewRole.MARINE};
         String[] names = {"Ada", "Bea", "Cole"};
         for (int i = 0; i < roles.length && i + 1 < floor.size(); i++) {
             int[] t = floor.get((i + 1) * floor.size() / (roles.length + 1));
@@ -118,6 +134,9 @@ public class GameScenario {
 
         raider = content.factory.spawnShip(PLAYER_SHIP, 1_200f, 400f, 200f);
         ShipConsoles.install(raider);
+        // Flies for the pirates, if the data has them, so beating it counts with the factions
+        int pirates = world.standing.factions().index(PIRATES);
+        if (pirates >= 0) CrewFactory.ensureBoard(raider).faction = pirates;
         raider.add(new HudMarkerComponent("Raider", HudMarkerComponent.Kind.HOSTILE).radius(10f));
         PhysicsBodyComponent rb = raider.getComponent(PhysicsBodyComponent.class);
         if (rb != null) PhysicsManager.setVelocity(rb.body, -12f, -3f);
@@ -137,7 +156,7 @@ public class GameScenario {
                 Entity ship = world.engine.getEntity(uuid);
                 if (ship == null) return;
                 if (ship.getComponent(TransformComponent.class) == null) ship.add(new TransformComponent());
-                ship.add(new HudMarkerComponent("Freighter", HudMarkerComponent.Kind.FRIENDLY).radius(20f));
+                ship.add(HostileTraffic.markerFor(ship));
                 contacts.add(ship);
             }
 
@@ -179,6 +198,19 @@ public class GameScenario {
         world.macroSim.addFreighter("Hauler Kestrel", hold, 20_000, highport);
         for (int i = 0; i < 4; i++) world.macroSim.addFreighter("Hauler " + (i + 1), hold, 20_000, depot);
         for (int i = 0; i < 2; i++) world.macroSim.addFreighter("Lunar Hauler " + (i + 1), hold, 20_000, lunarMine);
+        // Rescued after abandoning ship: the player flies the ship requisitioned at the station
+        world.rescue.rescues.add((signal, rescue) -> {
+            player = rescue.newShip;
+            seatAtHelm();
+            contacts.clear();
+            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(HudMarkerComponent.class).get())) {
+                if (e == player || e.getComponent(StationComponent.class) != null) continue;
+                if (e.getComponent(PhysicsBodyComponent.class) != null) contacts.add(e);
+            }
+        });
+        // Pirates lurk by all three; the sponsor patrols Earth's stations, Selene guards its mine
+        world.hostiles.start(lurks(), new String[]{depot, highport},
+                new String[]{lunarMine});
         content.hooks.fireWorldReady();
     }
 
@@ -188,8 +220,46 @@ public class GameScenario {
         StationComponent station = DockingData.buildStation(world.engine.getEntity(uuid), content.defs,
                 world.engine, name, typeId);
         station.angle = angle;
-        StationCrew.spawnCrew(world.crew, world.engine.getEntity(uuid));
+        StationCrew.spawnCrew(world.crew, world.engine.getEntity(uuid), world.standing.factions().ofStation(name));
         return uuid;
+    }
+
+    /**
+     * Starts the career proper (the main game's New game, and First Play): the player is an
+     * ensign of the sponsor, docked at Highport, where the mission board's first offer is the
+     * bounty on the raider outside. Tests that want the ship free in orbit skip this.
+     */
+    public void beginCareer() {
+        dockAtHighport();
+    }
+
+    /** Latches the player's first port onto a free port of the same size at Highport, at once. */
+    public boolean dockAtHighport() {
+        Entity station = world.engine.getEntity(highport);
+        DockingPortsComponent ports = station.getComponent(DockingPortsComponent.class);
+        DockingPortsComponent own = player.getComponent(DockingPortsComponent.class);
+        if (ports == null || own == null || own.ports.length == 0) return false;
+        MountFootprint.MountSize size = own.ports[0].size;
+        for (int i = 0; i < ports.ports.length; i++) {
+            DockingPort p = ports.ports[i];
+            if (p.size == size && p.state != DockingPort.State.DOCKED) {
+                world.docking.dockInPlace(player, 0, station, i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Gives the player's (new) ship a helm and sits the avatar at it, as at the start of a game. */
+    private void seatAtHelm() {
+        Bridge.install(player);
+        if (avatar == null) return;
+        int[] seat = besideHelm(player, floorTiles(player.getComponent(ShipGridComponent.class)));
+        GridPositionComponent at = avatar.getComponent(GridPositionComponent.class);
+        if (seat == null || at == null || at.ship != player) return;
+        at.stop();
+        at.setTile(seat[0], seat[1]);
+        world.bridge.sit(SubsystemComponent.SubsystemType.HELM);
     }
 
     /** Loads base data and mods and sets up a new game in {@code world}. */
@@ -199,9 +269,11 @@ public class GameScenario {
 
     /**
      * Turns the raider on the player: its turrets and launcher engage the player's ship, and
-     * ai-crew's combat pilot closes to fighting range, circles and dodges missiles.
+     * ai-crew's combat pilot closes to fighting range, circles and dodges missiles. A disabled
+     * raider stays out of it.
      */
     public void provokeRaider() {
+        if (ShipDisablement.isDisabled(raider)) return;
         SensorComponent sensor = raider.getComponent(SensorComponent.class);
         if (sensor != null && sensor.lockedTarget == null) sensor.lockedTarget = player;
         if (raider.getComponent(NpcCombatComponent.class) == null) raider.add(new NpcCombatComponent(player));
@@ -229,13 +301,39 @@ public class GameScenario {
      * {@link #avatar}, {@link #raider} and {@link #contacts} at the loaded entities.
      */
     public void quickLoad(FileHandle file) {
+        // A save from before the career was saved loads as a new one: rank 0 with the sponsor
+        world.standing.reset();
+        // ...and with no contracts
+        world.contracts.reset();
         world.engine.getSerializationService().loadFromFile(file);
         relink();
+        world.standing.migrateLegacy(player);
+    }
+
+    /** Where pirates lurk, in turn. */
+    private String[] lurks() {
+        return new String[]{depot, lunarMine, highport};
+    }
+
+    /** The uuid of the loaded station named {@code name}, or {@code fallback} if the save has none. */
+    private String stationNamed(String name, String fallback) {
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(StationComponent.class).get())) {
+            UuidComponent u = e.getComponent(UuidComponent.class);
+            if (u != null && name.equals(e.getComponent(StationComponent.class).name)) return u.id;
+        }
+        return fallback;
     }
 
     private void relink() {
+        // A save's stations have their own uuids, not the ones this game started with
+        highport = stationNamed("Highport", highport);
+        depot = stationNamed("Deepwell Depot", depot);
+        lunarMine = stationNamed("Shackleton Ice", lunarMine);
+        world.hostiles.relink(lurks());
         player = world.getPlayer();
         if (player != null) ShipCargo.attach(player);
+        // Saves from before the bridge: the player starts on deck, and the helm takes over from there
+        if (player != null) Bridge.install(player);
         avatar = null;
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(PlayerAvatarComponent.class).get())) {
             avatar = e;
@@ -245,7 +343,8 @@ public class GameScenario {
         for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(HudMarkerComponent.class).get())) {
             if (e == player || e.getComponent(StationComponent.class) != null) continue;
             contacts.add(e);
-            if (e.getComponent(HudMarkerComponent.class).kind == HudMarkerComponent.Kind.HOSTILE) raider = e;
+            if (e.getComponent(HudMarkerComponent.class).kind == HudMarkerComponent.Kind.HOSTILE
+                    && e.getComponent(HostileComponent.class) == null) raider = e;
         }
     }
 
@@ -275,6 +374,25 @@ public class GameScenario {
     static StateVector circular(double mu, double radius, double angle) {
         var s = KeplerOrbit.circular(mu, radius, angle, 0, 1).stateAt(0);
         return new StateVector().set(s.x, s.y, s.vx, s.vy);
+    }
+
+    /** The floor tile nearest the ship's helm, if one is near enough to sit at it from; else the first floor tile. */
+    static int[] besideHelm(Entity ship, List<int[]> floor) {
+        if (floor.isEmpty()) return null;
+        SubsystemComponent helm = Bridge.console(ship, SubsystemComponent.SubsystemType.HELM);
+        if (helm == null) return floor.get(0);
+        int[] best = floor.get(0);
+        float nearest = Float.MAX_VALUE;
+        GridPositionComponent at = new GridPositionComponent();
+        for (int[] t : floor) {
+            at.setTile(t[0], t[1]);
+            float d = Bridge.reach(at, helm.footprint);
+            if (d < nearest) {
+                nearest = d;
+                best = t;
+            }
+        }
+        return best;
     }
 
     /** Open deck tiles clear of mounted systems, scanning from the middle row outwards. */

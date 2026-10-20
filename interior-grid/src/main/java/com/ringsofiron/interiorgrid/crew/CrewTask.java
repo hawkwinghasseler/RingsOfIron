@@ -23,7 +23,11 @@ public abstract class CrewTask {
         /** Yard work on a docked craft: repairing a damaged tile or system, or installing a refit part. */
         YARD,
         /** Force a shut door from where it can be reached: an order, e.g. a port door across a dock. */
-        FORCE_DOOR
+        FORCE_DOOR,
+        /** Get into an escape pod and wait there for launch: the order to abandon ship. */
+        EVACUATE,
+        /** Go aboard another craft as one of a boarding party and sweep it: an order. */
+        BOARD
     }
 
     public enum Status {

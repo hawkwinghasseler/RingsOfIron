@@ -52,6 +52,7 @@ ACCENT = {
     "airlock": HAZARD,
     "docking_port": HAZARD,
     "engine": "#9fd8ff",
+    "escape_pod": "#ff7a2a",
 }
 
 # What a tank holds, by component: its band color (see Fluid in interior-grid)
@@ -1379,6 +1380,49 @@ def airlock(size):
     return w, h, a
 
 
+# --- Escape pod ------------------------------------------------------------------
+
+POD_SEATS = {"s": (2, 2), "m": (2, 4), "l": (4, 5), "xl": (6, 8)}  # columns, rows: 4, 8, 20, 48 seats
+
+
+def escape_pod(size):
+    """A lifeboat in its bay, hatch toward +y (the top of the canvas) at rotation 0, where it
+    launches through the hull: an orange-banded capsule with rows of crash couches facing
+    the hatch and a status panel on its own battery. The bay is walkable deck around it."""
+    tw, th = AUX[size]
+    w, h = tw * T, th * T
+    c = ACCENT["escape_pod"]
+    a = Art()
+    a.b += floor_area(w, h)
+    inset = 5
+    rx = min(w, h) * 0.22
+    # the capsule shell
+    a.b += rect(inset, inset + 8, w - 2 * inset, h - 2 * inset - 8, "#46505e", rx=rx, stroke=INK, sw=2)
+    a.b += bevel(inset + 3, inset + 11, w - 2 * inset - 6, h - 2 * inset - 14, STEEL_HI, INK, sw=1.2)
+    # orange flotation band around the capsule
+    a.b += rect(inset + 2, h / 2 - 5, w - 2 * inset - 4, 10, c, stroke=INK, sw=1.2)
+    # the hatch: a hazard-striped ring at the +y end
+    a.b += hazard_band(inset + 8, 2, w - 2 * inset - 16, 10, f"pod_{size}_hatch")
+    a.b += rect(w / 2 - 12, 4, 24, 6, STEEL_DARK, stroke=INK, sw=1.2)
+    # crash couches, facing the hatch
+    cols, rws = POD_SEATS[size]
+    x0, x1 = inset + 10, w - inset - 10
+    y0, y1 = inset + 26, h - inset - 16
+    s = 0.7 if size == "s" else 0.9
+    for j in range(rws):
+        for i in range(cols):
+            cx = x0 + (x1 - x0) * (i + 0.5) / cols
+            cy = y0 + (y1 - y0) * (j + 0.5) / rws
+            if abs(cy - h / 2) < 9:
+                cy += 9 if cy >= h / 2 else -9
+            seat(a, cx, cy, "up", s)
+    # status panel and launch lamp, on the pod's battery
+    screen(a, w - inset - 22, h - inset - 18, 14, 10, c, 3)
+    light(a, inset + 12, 18, 3, GREEN)
+    a.b += rect(0, 0, w, h, "none", stroke=INK, sw=2)
+    return w, h, a
+
+
 # --- Docking port ----------------------------------------------------------------
 
 def docking_port(size, state):
@@ -1610,7 +1654,7 @@ def components():
             w, h, a = crew_room(name, size)
             p = f"components/{name}_{size}.svg"
             component_states(p, w, h, a, f"{name} {size.upper()}: {w//T}x{h//T} auxiliary slot", True)
-        for name, fn in (("life_support", life_support), ("airlock", airlock)):
+        for name, fn in (("life_support", life_support), ("airlock", airlock), ("escape_pod", escape_pod)):
             w, h, a = fn(size)
             p = f"components/{name}_{size}.svg"
             component_states(p, w, h, a, f"{name} {size.upper()}: {w//T}x{h//T} auxiliary slot", True)
@@ -1935,10 +1979,12 @@ def load_toml(name):
 
 LETTERS = {"R": "reactor", "S": "shield_emitter", "T": "turret_mount", "L": "life_support", "H": "helm",
            "W": "weapons", "C": "cargo", "A": "airlock", "D": "docking_port", "E": "engine", "P": "tank",
-           "O": "oxygen_tank", "N": "nitrogen_tank"}
+           "O": "oxygen_tank", "N": "nitrogen_tank", "B": "escape_pod",
+           # The freighter's freight drives and the gunship's drives are engines on the outside
+           "Q": "engine", "G": "engine"}
 KIND = {"reactor": "P", "shield_emitter": "P", "turret_mount": "P", "life_support": "A", "helm": "A",
         "weapons": "A", "cargo": "A", "airlock": "A", "docking_port": "D", "engine": "A", "tank": "A",
-        "oxygen_tank": "A", "nitrogen_tank": "A"}
+        "oxygen_tank": "A", "nitrogen_tank": "A", "escape_pod": "A"}
 WALL_CHARS = set("#123")
 
 
@@ -2100,6 +2146,15 @@ def hull_svg(ch, overhang=None, engines=False):
             a.b += rect(x + 6, y + 6, pw - 12, ph - 12, STEEL_DARK, rx=6, stroke=INK, sw=2)
             a.b += hazard_band(x + 10, y + 10, pw - 20, 8, f"ext_al_{col}_{row}")
             light(a, cx, cy, 4, HAZARD)
+        elif name == "escape_pod":
+            # the pod's hull hatch: a round cover ringed in its band color, with explosive bolts
+            r = min(pw, ph) * 0.4
+            a.b += circle(cx, cy, r, STEEL_DARK, stroke=INK, sw=2)
+            a.b += circle(cx, cy, r * 0.78, "none", stroke=ACCENT["escape_pod"], sw=4)
+            a.b += circle(cx, cy, r * 0.45, HOUSING, stroke=INK, sw=1.5)
+            for k in range(6):
+                ang = k * math.pi / 3
+                a.b += circle(cx + math.cos(ang) * r * 0.92, cy + math.sin(ang) * r * 0.92, 2, HAZARD, stroke=INK, sw=0.8)
         elif name == "docking_port":
             a.b += rect(x, y, pw, ph, STEEL_DARK, rx=3, stroke=INK, sw=2)
             a.b += rect(x + 10, y + 10, pw - 20, ph - 20, "none", stroke=HAZARD, sw=4,
@@ -2127,6 +2182,8 @@ def hull_svg(ch, overhang=None, engines=False):
 OVERHANG = {
     "corvette": [(-11.0, -3.0), (5.0, -3.0), (6.5, 0.0), (5.0, 3.0), (-11.0, 3.0)],  # the bow
     "freighter": [(-10.0, -6.5), (10.0, -6.5), (10.0, 6.5), (-10.0, 6.5)],
+    "raider": [(-7.5, -2.5), (7.5, -2.5), (9.5, 0.0), (7.5, 2.5), (-7.5, 2.5)],  # a sharp bow
+    "gunship": [(-10.0, -4.0), (10.0, -4.0), (12.0, -1.5), (12.0, 1.5), (10.0, 4.0), (-10.0, 4.0)],  # a blunt ram bow
 }
 
 
@@ -2258,6 +2315,17 @@ def turrets():
     a.b += rect(-12, -12, 22, 24, HOUSING, rx=4, stroke=INK, sw=2)
     v, w, h = vb(-24, 52, 24)
     write("turrets/autocannon_mk1.svg", w, h, a, "autocannon_mk1 turret: pivot at origin, barrels toward +x", viewbox=v)
+
+    a = Art()
+    base(a, 22)
+    for dy in (-6, 0, 6):
+        a.b += rect(8, dy - 2.5, 50, 5, STEEL_DARK, rx=1.5, stroke=INK, sw=1.5)
+    a.b += rect(44, -10, 6, 20, STEEL_MID, rx=2, stroke=INK, sw=1.5)
+    a.b += rect(-14, -14, 24, 28, HOUSING, rx=4, stroke=INK, sw=2)
+    a.b += hazard_band(-12, -12, 20, 5, "chaingun")
+    v, w, h = vb(-26, 62, 26)
+    write("turrets/chaingun_mk1.svg", w, h, a, "chaingun_mk1 turret: pivot at origin, three barrels toward +x",
+          viewbox=v)
 
     a = Art()
     base(a, 22)

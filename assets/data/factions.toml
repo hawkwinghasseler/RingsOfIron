@@ -1,0 +1,63 @@
+# Factions and the sponsor's rank ladder (GDD section 5).
+#
+# [faction.<id>]: a power the player can serve, fight or trade with. The one marked
+# sponsor = true is the faction the player serves; its rank ladder below is the player's
+# career. stations lists the station names it owns; a station no faction lists belongs to
+# the sponsor. enemies are at war with it (either side listing the other is enough), and
+# hostile_to_all is at war with everyone, the player included.
+#
+# [rank.<id>]: a step on the sponsor's ladder, lowest order first. Standing with the sponsor
+# at or above a rank's standing earns it; promotions never go back down. budget is paid
+# into the player's credits each in-game week; max_chassis is the largest chassis the rank
+# may requisition a ship of. Placeholder numbers.
+
+[faction.patrol]
+name = "Terran Patrol Authority"
+color = "#4a90d9"
+sponsor = true
+stations = ["Highport", "Deepwell Depot"]
+
+[faction.selene]
+name = "Selene Mining Combine"
+color = "#d9a441"
+stations = ["Shackleton Ice"]
+
+[faction.pirates]
+name = "Void Raiders"
+color = "#d94a4a"
+hostile_to_all = true
+
+[rank.ensign]
+name = "Ensign"
+order = 0
+standing = 0.0
+budget = 2000.0
+max_chassis = "corvette"
+
+[rank.lieutenant]
+name = "Lieutenant"
+order = 1
+standing = 15.0
+budget = 5000.0
+max_chassis = "corvette"
+
+[rank.lieutenant_commander]
+name = "Lieutenant Commander"
+order = 2
+standing = 35.0
+budget = 10000.0
+max_chassis = "freighter"
+
+[rank.commander]
+name = "Commander"
+order = 3
+standing = 60.0
+budget = 20000.0
+max_chassis = "freighter"
+
+[rank.captain]
+name = "Captain"
+order = 4
+standing = 85.0
+budget = 40000.0
+max_chassis = "freighter"

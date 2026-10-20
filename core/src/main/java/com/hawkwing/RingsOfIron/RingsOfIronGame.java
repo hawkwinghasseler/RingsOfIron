@@ -29,15 +29,19 @@ import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.art.ExteriorArt;
+import com.hawkwing.RingsOfIron.game.AbandonShip;
+import com.hawkwing.RingsOfIron.game.Bridge;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
+import com.hawkwing.RingsOfIron.game.Rescue;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.FirstPlay;
+import com.hawkwing.RingsOfIron.game.ShipDisablement;
 import com.hawkwing.RingsOfIron.game.ShipRefit;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.hawkwing.RingsOfIron.game.DoorForcing;
 import com.hawkwing.RingsOfIron.game.FactionStanding;
-import com.hawkwing.RingsOfIron.game.StationCrew;
+import com.hawkwing.RingsOfIron.game.DisabledComponent;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
@@ -47,6 +51,8 @@ import com.hawkwing.RingsOfIron.lighting.DeckLightRig;
 import com.hawkwing.RingsOfIron.lighting.EmissiveLights;
 import com.hawkwing.RingsOfIron.lighting.HullArt;
 import com.hawkwing.RingsOfIron.lighting.SceneLighting;
+import com.hawkwing.RingsOfIron.shell.SaveSlots;
+import com.hawkwing.RingsOfIron.shell.SaveSummary;
 import com.ringsofiron.aicrew.CrewBody;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
@@ -83,11 +89,21 @@ import java.nio.file.Paths;
  * <p>Controls, outside: W/S main engine, A/D turn, Z/C strafe, X rotation assist, Tab cycle
  * target, Space fire the guns and laser (the turrets lead the locked target themselves), R launch
  * a missile at it, F drop a decoy, comma/period time warp down/up, mouse wheel zoom. Point defense
- * shoots down incoming missiles by itself. The raider fights back once you shoot at it. V switches
- * to the deck view, where WASD walks your character, E uses the console you stand at, and F or B
+ * shoots down incoming missiles by itself. The raider fights back once you shoot at it.
+ *
+ * <p>The outside view is what you see seated at a console ({@link Bridge}): you start at the helm,
+ * which flies the ship and fires it too. V stands you up into the deck view, where WASD walks your
+ * character; V again beside the helm or the weapons console sits you there and looks outside. At the
+ * weapons console only the guns, missiles, decoys and Tab answer, and the helm flies the ship: Bea, the
+ * helmsman, holds the heading you left it on, and with nobody at the helm the ship drifts. Run with
+ * {@code -Dview.anywhere=true} to switch views anywhere and fly from the deck, as before. In the deck
+ * view E uses the console you stand at, and F or B
  * forces the shut door across a dock (pry or hack, or cut), and L turns the deck lighting off and
- * back on. F5
- * quick-saves, F9 loads the quick save. Esc quits.
+ * back on. P twice abandons ship: the crew make for the escape pods (your character walks there
+ * by itself unless you steer it), and P again launches them; you wake days later at a station in a
+ * requisitioned ship. F5
+ * quick-saves, F9 loads the quick save. Esc quits, or opens the pause menu when the game runs inside
+ * {@link com.hawkwing.RingsOfIron.shell.GameShell}.
  *
  * <p>Docking: G arms the selected docking port and asks the nearest station for clearance (a
  * station that gives it reaches out with its collar and draws the ship in), or disarms it; H
@@ -95,6 +111,12 @@ import java.nio.file.Paths;
  * Rebuild decks opens the ship editor on the ship's layout for the yard to rebuild it to (the game
  * waits meanwhile; Ctrl+S rebuilds, Esc comes back). The readout under the
  * notices shows how the port lines up with the nearest free port of its size.
+ *
+ * <p>Boarding: G with no station near latches the port onto a ship alongside. Latched to a disabled
+ * ship, K opens the boarding window: send the boarding party across (they force the door first if
+ * it is shut), and once the ship is taken, mark systems to strip and cargo to carry over. Parts
+ * come home as crates in the cargo bays; stations buy them in the market, and a yard fits a salvaged
+ * weapon for nothing.
  *
  * <p>Burn planner, shown on the orbit map: N plans a burn, B selects the next one, Up/Down add
  * prograde/retrograde delta-v, Left/Right radial in/out, [ and ] move it along the orbit (Shift for
@@ -114,6 +136,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private static final float START_VIEW = 160f;
     private static final float STATUS_WIDTH = 420f;
     private static final float WALK_SPEED = 1f;
+    /** {@code -Dview.anywhere=true}: V switches the view anywhere and the ship flies from the deck, for testing. */
+    private static final boolean VIEW_ANYWHERE = Boolean.getBoolean("view.anywhere");
 
     private final Path assetsDir;
     private final Path modsDir;
@@ -153,6 +177,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private InputProcessor gameInput;
     private String notice;
     private float noticeTime;
+    /** Hosted by the game shell: Esc is its pause menu, and the game stands still while paused. */
+    private boolean hosted;
+    private boolean paused;
+    /** Where F5 and F9 keep the quick save; the shell points it at its own saves folder. */
+    private SaveSlots slots;
 
     private final Array<Body> bodies = new Array<>();
     /** The craft whose decks the interior view draws. */
@@ -218,6 +247,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.combatEvents.detonations.add((signal, boom) ->
                 explosions.add(new float[]{boom.worldPoint.x, boom.worldPoint.y, 0f}));
 
+        world.bridge.playerAlwaysAtHelm = VIEW_ANYWHERE;
+        if (!VIEW_ANYWHERE) {
+            hud.setViewKey(this::sitOrStand);
+            // Pushed off, knocked out or the console shot away: back on deck
+            world.bridge.unseated.add((signal, why) -> {
+                show(why);
+                hud.getViewMode().setMode(ViewMode.INTERIOR);
+            });
+        }
         hud.getViewMode().addListener((previous, current) -> {
             if (previous == current) return;
             if (current == ViewMode.INTERIOR) {
@@ -226,6 +264,18 @@ public class RingsOfIronGame extends ApplicationAdapter {
             } else {
                 viewports.setViewMeters(exteriorViewMeters);
             }
+        });
+        world.rescue.rescues.add((signal, rescue) -> {
+            // The new ship's own weapons
+            gun = new PlayerGunnery(world, game.player);
+            gun.setTarget(game.nextContact(null));
+            hud.setTargeting(new CombatTargetingProvider(gun));
+            matchViewToSeat();
+            show(rescueNotice(rescue));
+        });
+        world.disablement.changes.add((signal, change) -> {
+            String news = disabledNotice(change);
+            if (news != null) show(news);
         });
         world.timeWarp.changes.add((signal, change) -> {
             if (change.blockedReason != null) show("Time warp refused: " + change.blockedReason);
@@ -239,8 +289,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 return true;
             }
         }));
+        // A new career: docked at Highport with the board's first job on offer (First Play scripts the same start)
         if (firstPlayMode) firstPlay = FirstPlay.start(world, game);
-        show(game.content.report.hasErrors() ? "Content loaded with errors; see the log" : "Welcome aboard");
+        else game.beginCareer();
+        matchViewToSeat();
+        show(game.content.report.hasErrors() ? "Content loaded with errors; see the log"
+                : "Welcome aboard, " + world.standing.describeRank() + ". J opens Highport's mission board");
         if (game.content.report.hasErrors()) Gdx.app.error("RingsOfIron", game.content.report.toString());
     }
 
@@ -252,11 +306,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
             return;
         }
         if (refitEditor != null) closeRefit();
-        float delta = Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
-        handleInput(delta);
-        if (world.getCrash() == null) gun.update(delta);
-        world.update(delta);
+        float delta = paused ? 0f : Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
+        if (!paused) {
+            handleInput(delta);
+            if (world.getCrash() == null) gun.update(delta);
+            world.update(delta);
+        }
         noticeTime -= delta;
+        abandonAsked -= delta;
         if (firstPlay != null) {
             String next = firstPlay.update();
             if (next != null) show(next.substring(next.indexOf(':') + 1).trim());
@@ -284,12 +341,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     private void handleInput(float delta) {
         boolean consoleOpen = hud.getConsoleWindow().isOpen();
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !consoleOpen) Gdx.app.exit();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !consoleOpen && !hosted) Gdx.app.exit();
         if (Gdx.input.isKeyJustPressed(Input.Keys.F9)) quickLoad();
         if (world.getCrash() != null) return;
         if (Gdx.input.isKeyJustPressed(Input.Keys.PERIOD)) warp(1);
         if (Gdx.input.isKeyJustPressed(Input.Keys.COMMA)) warp(-1);
         if (Gdx.input.isKeyJustPressed(Input.Keys.F5)) quickSave();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.P)) abandonShip();
 
         FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
         PlayerAvatarComponent walker = game.avatar == null ? null : game.avatar.getComponent(PlayerAvatarComponent.class);
@@ -330,7 +388,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
             DeckView.walk(walker, aboard == null ? null : world.docking.bodyOf(aboard), sx, sy, WALK_SPEED);
             return;
         }
-        if (controls != null) {
+        // At the weapons console only the weapons answer; the helm flies the ship
+        boolean helm = world.bridge.playerAtHelm();
+        if (helm && controls != null) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.X)) controls.rotationAssist = !controls.rotationAssist;
             if (Gdx.input.isKeyPressed(Input.Keys.W)) controls.forward += 1f;
             if (Gdx.input.isKeyPressed(Input.Keys.S)) controls.forward -= 1f;
@@ -344,11 +404,40 @@ public class RingsOfIronGame extends ApplicationAdapter {
             show(gun.getTarget() == null ? "No target for the missile" : "Launcher reloading");
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.F) && gun.dropDecoy()) show("Decoy away");
+        if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) gun.setTarget(game.nextContact(gun.getTarget()));
+        if (!helm) return;
         if (Gdx.input.isKeyJustPressed(Input.Keys.G)) show(docking.toggleArm());
         if (Gdx.input.isKeyJustPressed(Input.Keys.H)) show(docking.nextPort());
         if (Gdx.input.isKeyJustPressed(Input.Keys.U)) show(docking.undock());
         planBurns();
-        if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) gun.setTarget(game.nextContact(gun.getTarget()));
+    }
+
+    /** V: stand up from the console into the deck view, or sit at the console beside you and look outside. */
+    private void sitOrStand() {
+        if (hud.getViewMode().getMode() == ViewMode.EXTERIOR) {
+            boolean leftHelm = world.bridge.playerAtHelm();
+            world.bridge.stand();
+            hud.getViewMode().setMode(ViewMode.INTERIOR);
+            if (!leftHelm) show("You leave the weapons console");
+            else if (world.bridge.helmsman(game.player) != null) show("You leave the helm; the helmsman holds your heading");
+            else show("You leave the helm; nobody has it now");
+            return;
+        }
+        String refused = world.bridge.sit();
+        if (refused != null) {
+            show(refused);
+            return;
+        }
+        hud.getViewMode().setMode(ViewMode.EXTERIOR);
+        String fault = world.bridge.helmFault(game.player);
+        show(world.bridge.playerAtHelm() ? (fault == null ? "You take the helm" : "You take the helm, but " + fault)
+                : "You take the weapons console");
+    }
+
+    /** Outside while seated at a console, on deck otherwise. */
+    private void matchViewToSeat() {
+        if (VIEW_ANYWHERE) return;
+        hud.getViewMode().setMode(world.bridge.seat() != null ? ViewMode.EXTERIOR : ViewMode.INTERIOR);
     }
 
     private void planBurns() {
@@ -385,7 +474,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 0f, h / 2f - 10f, w, com.badlogic.gdx.utils.Align.center, false);
         font.getData().setScale(1f);
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, "F9 loads the quick save   Esc quits", 0f, h / 2f - 50f, w, com.badlogic.gdx.utils.Align.center, false);
+        font.draw(batch, "F9 loads the quick save   Esc " + (hosted ? "menu" : "quits"), 0f, h / 2f - 50f, w, com.badlogic.gdx.utils.Align.center, false);
         batch.end();
     }
 
@@ -397,16 +486,28 @@ public class RingsOfIronGame extends ApplicationAdapter {
     }
 
     private FileHandle quickSaveFile() {
-        return Gdx.files.local("saves/quicksave.json");
+        if (slots == null) slots = new SaveSlots(Gdx.files.local("saves"));
+        return slots.quickSave();
     }
 
     private void quickSave() {
+        String failed = save(quickSaveFile(), SaveSlots.QUICK_SAVE_NAME);
+        show(failed == null ? "Game saved" : failed);
+    }
+
+    /**
+     * Saves the game to {@code file} with a {@link SaveSummary} named {@code name} beside it for the
+     * load list. Null when saved, otherwise what to tell the player.
+     */
+    public String save(FileHandle file, String name) {
         try {
-            String refused = game.quickSave(quickSaveFile());
-            show(refused == null ? "Game saved" : "Can't save: " + refused);
+            String refused = game.quickSave(file);
+            if (refused != null) return "Can't save: " + refused;
+            SaveSummary.of(game, name).writeFor(file);
+            return null;
         } catch (RuntimeException e) {
             Gdx.app.error("RingsOfIron", "Save failed", e);
-            show("Save failed; see the log");
+            return "Save failed; see the log";
         }
     }
 
@@ -416,6 +517,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
             show("No quick save yet (F5 saves)");
             return;
         }
+        load(file);
+    }
+
+    /** Replaces the game with the one saved in {@code file}. True when it loaded. */
+    public boolean load(FileHandle file) {
         try {
             game.quickLoad(file);
             world.clearCrash();
@@ -423,14 +529,52 @@ public class RingsOfIronGame extends ApplicationAdapter {
             gun = new PlayerGunnery(world, game.player);
             if (gun.getTarget() == null) gun.setTarget(game.nextContact(null));
             hud.setTargeting(new CombatTargetingProvider(gun));
+            matchViewToSeat();
             show("Game loaded");
+            return true;
         } catch (RuntimeException e) {
             Gdx.app.error("RingsOfIron", "Load failed", e);
             show("Load failed; see the log");
+            return false;
         }
     }
 
-    /** How door forcing went, what the factions made of it, and the yard's news. */
+    /** Run by {@link com.hawkwing.RingsOfIron.shell.GameShell}: Esc no longer quits, and the shell pauses the game. */
+    public void setHosted(boolean hosted) {
+        this.hosted = hosted;
+    }
+
+    public void setSaveSlots(SaveSlots slots) {
+        this.slots = slots;
+    }
+
+    /** Paused, the game draws but neither reads input nor moves on. */
+    public void setPaused(boolean paused) {
+        this.paused = paused;
+    }
+
+    /** True while the ship editor is open for a yard rebuild; it has the keyboard then. */
+    public boolean isRefitOpen() {
+        return refitEditor != null;
+    }
+
+    public UiHud getHud() {
+        return hud;
+    }
+
+    public GameWorld getWorld() {
+        return world;
+    }
+
+    public GameScenario getScenario() {
+        return game;
+    }
+
+    public void showNotice(String message) {
+        show(message);
+    }
+
+    /** How door forcing went, what the factions made of it, career news, and the yard's news. */
     private void reportForcing() {
         if (!world.forcing.lastOutcome.isEmpty()) {
             show(world.forcing.lastOutcome);
@@ -442,9 +586,22 @@ public class RingsOfIronGame extends ApplicationAdapter {
                     act.standing < FactionStanding.REFUSE_BELOW ? "; its stations will refuse you clearance" : ""));
         }
         world.standing.acts.clear();
+        // Contracts taken, delivered, done or failed
+        for (String news : world.contracts.notices) show(news);
+        world.contracts.notices.clear();
+        // Promotions and budget paydays
+        for (String news : world.standing.notices) show(news);
+        world.standing.notices.clear();
         // What the yard last said about its work on the ship
         if (!world.yard.notices.isEmpty()) show(world.yard.notices.get(world.yard.notices.size() - 1));
         world.yard.notices.clear();
+        if (!world.boarding.notices.isEmpty()) show(world.boarding.notices.get(world.boarding.notices.size() - 1));
+        world.boarding.notices.clear();
+        if (!world.salvage.notices.isEmpty()) show(world.salvage.notices.get(world.salvage.notices.size() - 1));
+        world.salvage.notices.clear();
+        // Pirates moving to intercept, robbing freighters, breaking off
+        for (String notice : world.hostiles.notices) show(notice);
+        world.hostiles.notices.clear();
     }
 
     /** Opens the ship editor on the player's layout, for the docked station's yard to rebuild the decks to. */
@@ -485,9 +642,58 @@ public class RingsOfIronGame extends ApplicationAdapter {
         resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
     }
 
+    /** Seconds to press P again to confirm abandoning ship. */
+    private static final float ABANDON_CONFIRM = 3f;
+    private float abandonAsked;
+
     private void show(String message) {
         notice = message;
         noticeTime = 4f;
+    }
+
+    /**
+     * P: the first press asks, a second within {@link #ABANDON_CONFIRM} seconds orders the crew to
+     * the escape pods, and once they are going it launches the pods with whoever is aboard.
+     */
+    private void abandonShip() {
+        if (AbandonShip.abandoning(game.player)) {
+            world.abandon.launchNow(game.player);
+            show("Launching the pods");
+            return;
+        }
+        if (abandonAsked <= 0f) {
+            abandonAsked = ABANDON_CONFIRM;
+            show("Abandon ship? P again to send the crew to the escape pods");
+            return;
+        }
+        abandonAsked = 0f;
+        String refused = world.abandon.order(game.player);
+        show(refused == null ? "Abandon ship! Crew to the escape pods" : "Can't abandon ship: " + refused);
+    }
+
+    /** "Rescued: you wake at Highport three days later ..." */
+    private static String rescueNotice(Rescue.Result r) {
+        long days = Math.round(r.skipped / 86_400);
+        String crew = r.survivors.isEmpty() ? "no crew came through" : r.survivors.size() + " crew came through";
+        return "Rescued: you wake at " + r.stationName + (days > 0 ? " " + days + " days later" : "")
+                + " in a requisitioned ship; " + crew + (r.lost > 0 ? ", " + r.lost + " lost" : "");
+    }
+
+    /** What to tell the player about a ship disabled, surrendering, breaking up or recovering; null for nothing. */
+    private String disabledNotice(ShipDisablement.Change change) {
+        boolean mine = change.ship == game.player;
+        DisabledComponent d = change.ship.getComponent(DisabledComponent.class);
+        HudMarkerComponent marker = MARKERS.get(change.ship);
+        String name = mine ? "Your ship" : d != null && d.markerLabel != null ? d.markerLabel
+                : marker != null ? marker.label : null;
+        if (name == null) return null;
+        if (change.now == null) return name + " is back in action";
+        switch (change.now) {
+            case SURRENDERED: return name + " cuts thrust and surrenders";
+            case WRECKED: return name + " breaks up: a wreck";
+            case ABANDONED: return name + " is abandoned";
+            default: return name + " is disabled: " + change.now.label;
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -714,7 +920,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
                 if (pos.ship != ship) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-                Color mark = e == game.avatar ? Color.WHITE : c.faction == StationCrew.FACTION ? DeckView.STATION_CREW : Color.GOLD;
+                Color mark = e == game.avatar ? Color.WHITE : world.standing.factions().known(c.faction) ? DeckView.STATION_CREW : Color.GOLD;
                 Vector2 local = pos.toShipLocal(g, tmp2);
                 DeckView.crew(shapes, c, local.x, local.y, s, mark, color);
             }
@@ -727,7 +933,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                     if (pos.ship != ship) continue;
                     CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                     ArtNames.Crew who = e == game.avatar ? ArtNames.Crew.PLAYER
-                            : c.faction == StationCrew.FACTION ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP;
+                            : world.standing.factions().known(c.faction) ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP;
                     Vector2 local = pos.toShipLocal(g, tmp2);
                     deckArt.crew(batch, e, who, c.load == null ? null : c.load.task.job.commodity(), local.x, local.y, s);
                 }
@@ -796,26 +1002,63 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Actor shipPanel = hud.getMinimapPanel();
         float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
         font.draw(batch, hud.getViewMode().getMode() == ViewMode.INTERIOR
-                ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   L lights   V outside view   F5 save  F9 load   Esc quit"
-                : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V deck view  F5 save  F9 load  Esc quit",
+                ? "WASD walk (through an open docked port too)   E use console   F/B force a shut door across a dock   L lights   "
+                        + (VIEW_ANYWHERE ? "V outside view" : "V sit at the helm or weapons console") + "   P P abandon ship   F5 save  F9 load   Esc " + (hosted ? "menu" : "quit")
+                : world.bridge.playerAtWeapons()
+                ? "Weapons console: Space guns  R missile  F decoy  Tab target  , . warp  V stand up  P P abandon ship  F5 save  F9 load  Esc " + (hosted ? "menu" : "quit")
+                : "W/S thrust  A/D turn  Z/C strafe  Space guns  R missile  F decoy  Tab target  , . warp  V "
+                        + (VIEW_ANYWHERE ? "deck view" : "stand up") + "  P P abandon ship  F5 save  F9 load  Esc " + (hosted ? "menu" : "quit"),
                 hintX, 24f);
+        // Rank, sponsor and the weekly budget
+        font.setColor(Color.LIGHT_GRAY);
+        font.draw(batch, world.budget.describe(), left, top - 60f);
+        DisabledComponent.Reason disabled = ShipDisablement.reason(game.player);
         if (notice != null && noticeTime > 0f) {
             font.setColor(Color.ORANGE);
-            font.draw(batch, notice, left, top - 60f);
+            font.draw(batch, notice, left, top - 80f);
+        } else if (AbandonShip.abandoning(game.player)) {
+            font.setColor(Color.RED);
+            font.draw(batch, "ABANDON SHIP: crew to the pods (P launches now)", left, top - 80f);
+        } else if (disabled != null) {
+            // Stays up while the ship is disabled; news takes the line for a moment
+            font.setColor(Color.RED);
+            font.draw(batch, "SHIP DISABLED: " + disabled.label + "   P P abandons ship", left, top - 80f);
         }
         font.setColor(Color.SKY);
         String[] dock = docking.readout();
-        for (int i = 0; i < dock.length; i++) font.draw(batch, dock[i], left, top - 90f - 20f * i);
-        if (firstPlay != null) {
-            font.setColor(Color.GOLD);
-            font.draw(batch, firstPlay.objective(), left, top - 90f - 20f * dock.length - 10f, STATUS_WIDTH - 10f,
-                    com.badlogic.gdx.utils.Align.left, true);
+        for (int i = 0; i < dock.length; i++) font.draw(batch, dock[i], left, top - 110f - 20f * i);
+        float below = top - 110f - 20f * dock.length - 10f;
+        // The contracts held: what, how long left and how far
+        font.setColor(Color.GOLD);
+        for (com.hawkwing.RingsOfIron.game.Contract c : world.contracts.active()) {
+            font.draw(batch, world.contracts.describe(c), left, below, STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+            below -= 20f;
         }
-        if (hud.getViewMode().getMode() != ViewMode.INTERIOR) {
+        if (firstPlay != null) {
+            font.draw(batch, firstPlay.objective(), left, below, STATUS_WIDTH - 10f,
+                    com.badlogic.gdx.utils.Align.left, true);
+            below -= 60f;
+        }
+        if (hud.getViewMode().getMode() != ViewMode.INTERIOR && world.bridge.playerAtHelm()) {
             font.setColor(Color.LIGHT_GRAY);
-            font.draw(batch, "G arm port + ask clearance   H next port   U undock   T trade, Y yard when docked", hintX, 44f);
+            font.draw(batch, "G arm port + ask clearance   H next port   U undock   T trade, Y yard, J missions when docked   K board a latched ship", hintX, 44f);
+        }
+        String bridge = bridgeLine();
+        if (bridge != null) {
+            font.setColor(Color.LIGHT_GRAY);
+            font.draw(batch, bridge, left, below);
         }
         batch.end();
+    }
+
+    /** Who has the helm, when it isn't simply the player at it. */
+    private String bridgeLine() {
+        if (VIEW_ANYWHERE) return null;
+        String fault = world.bridge.helmFault(game.player);
+        if (world.bridge.playerAtHelm()) return fault == null ? null : "Helm: " + fault;
+        if (fault != null) return "Helm: " + fault + "; the ship drifts";
+        return world.bridge.helmsman(game.player) != null ? "Helm: the helmsman holds the heading"
+                : "Helm: nobody; the ship drifts";
     }
 
     @Override

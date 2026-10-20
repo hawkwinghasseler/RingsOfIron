@@ -63,6 +63,7 @@ public class RailsTrafficMap implements TrafficMapProvider {
             Contact c = out.addContact();
             c.x = entryState.x;
             c.y = entryState.y;
+            c.objective = world.contracts.isWaypoint(e.uuid);
             if (station != null) {
                 c.kind = ContactKind.STATION;
                 c.name = station.displayName == null ? "Station" : station.displayName;

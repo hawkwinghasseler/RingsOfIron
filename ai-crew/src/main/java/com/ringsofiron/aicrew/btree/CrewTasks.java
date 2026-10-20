@@ -10,6 +10,7 @@ import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ForceDoorTask;
+import com.ringsofiron.aicrew.BoardTask;
 import com.ringsofiron.aicrew.ManConsoleTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
@@ -207,7 +208,10 @@ public final class CrewTasks {
             CrewTask t = a.crew.task;
             if (t == null) return Status.FAILED;
             if (a.crew.suited || a.crew.def.suitAir <= 0f) return Status.SUCCEEDED;
-            ShipGridComponent grid = a.grid();
+            // The spot may be on another craft: a ship latched alongside being stripped, say
+            Entity site = TaskRules.siteOf(t);
+            ShipGridComponent grid = site == null ? null : a.service.grid(site);
+            if (grid == null) grid = a.grid();
             if (!TaskRules.needsSuit(grid, TaskRules.targetX(t, a.service), TaskRules.targetY(t, a.service))) {
                 return Status.SUCCEEDED;
             }
@@ -279,6 +283,10 @@ public final class CrewTasks {
                     }
                     return Status.RUNNING;
                 }
+                case EVACUATE:
+                    // In the pod: wait there for launch
+                    a.crew.activity = "waiting in an escape pod";
+                    return Status.RUNNING;
                 default:
                     return Status.FAILED;
             }
@@ -368,8 +376,8 @@ public final class CrewTasks {
     // -----------------------------------------------------------------------
 
     /**
-     * Walks to a bay of the carry task's source craft (across a docked link if need be), lifts a
-     * load off it and takes it in hand. Fails, ending the trip, when nothing more is to go.
+     * Walks to a bay of the carry task's source craft (across a docked link if need be), or to the
+     * tile the load waits by ({@link CarryTask#fromTile}), lifts a load off it and takes it in hand. Fails, ending the trip, when nothing more is to go.
      */
     public static class PickUpLoad extends CrewLeaf {
         private float working;
@@ -388,8 +396,9 @@ public final class CrewTasks {
             if (a.crew.load != null) return Status.SUCCEEDED;
             if (!t.job.isOpen()) return finish(a, t);
             a.crew.activity = "going for " + t.job.commodity();
-            CrewAgent.Travel go = a.travel(t.from, beside(a, t.from, anyBay ? null : t.job.commodity(), true));
-            if (go == CrewAgent.Travel.UNREACHABLE && !anyBay) {
+            CrewAgent.Travel go = t.fromTile ? a.travel(t.from, near(a, t.from, t.x, t.y, 1, 1))
+                    : a.travel(t.from, beside(a, t.from, anyBay ? null : t.job.commodity(), true));
+            if (go == CrewAgent.Travel.UNREACHABLE && !anyBay && !t.fromTile) {
                 // No way to the bays it is in: work from whichever bay of the hold can be reached
                 anyBay = true;
                 go = a.travel(t.from, beside(a, t.from, null, true));
@@ -511,6 +520,42 @@ public final class CrewTasks {
     }
 
     /**
+     * Goes aboard {@link BoardTask#ship} to the task's tile, suited (no one boards a hostile craft
+     * without a suit), and reports arriving to the job.
+     */
+    public static class Board extends CrewLeaf {
+        private float suiting;
+
+        @Override
+        public void start() {
+            suiting = 0f;
+        }
+
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            BoardTask t = (BoardTask) a.crew.task;
+            if (!t.job.isOpen()) return Status.FAILED;
+            if (!a.crew.suited && a.crew.def.suitAir > 0f) {
+                a.pos.stop();
+                a.crew.activity = "suiting up to board";
+                suiting += a.dt;
+                if (suiting < a.crew.def.suitTime) return Status.RUNNING;
+                a.crew.setSuited(true);
+            }
+            a.crew.activity = t.job.what();
+            CrewAgent.Travel go = a.travel(t.ship, near(a, t.ship, t.x, t.y, 1, 1));
+            if (go == CrewAgent.Travel.UNREACHABLE) {
+                a.abandonUnreachable();
+                return Status.FAILED;
+            }
+            if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
+            t.job.arrived(a.entity);
+            return Status.SUCCEEDED;
+        }
+    }
+
+    /**
      * Walkable tiles of {@code ship} from which the {@code w} x {@code h} tiles from (x, y) are
      * worked: inside them, or next to one of them.
      */
@@ -610,6 +655,15 @@ public final class CrewTasks {
                 }
             }
             int x = a.pos.tileX(), y = a.pos.tileY();
+            // Nobody idles in a docked port's opening: it is the only way across, one tile wide
+            if (TaskRules.isSafe(grid, x, y) && onLink(grid, x, y)) {
+                if (!a.pos.isMoving() && a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty) && !onLink(grid, tx, ty),
+                        a.pathScratch)) {
+                    a.pos.setPath(a.pathScratch);
+                    a.crew.activity = "stepping clear of the port";
+                }
+                return Status.RUNNING;
+            }
             if (TaskRules.isSafe(grid, x, y)) {
                 if (!a.pos.isMoving()) a.crew.activity = "idle";
                 if (a.crew.suited && !a.pos.isMoving()) {
@@ -637,6 +691,14 @@ public final class CrewTasks {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /** True if (x, y) is the opening of a port docked to another craft. */
+    static boolean onLink(ShipGridComponent grid, int x, int y) {
+        for (int i = 0; i < grid.links.size; i++) {
+            if (grid.links.get(i).x == x && grid.links.get(i).y == y) return true;
+        }
+        return false;
+    }
 
     /**
      * The hostile to engage: the nearest conscious crew member of another faction the agent can
@@ -716,7 +778,9 @@ public final class CrewTasks {
             case CARRY: return "carrying " + ((CarryTask) t).job.commodity();
             case YARD: return ((YardTask) t).job.what();
             case FORCE_DOOR: return ((ForceDoorTask) t).job.what();
+            case BOARD: return ((BoardTask) t).job.what();
             case TREAT: return "treating a patient";
+            case EVACUATE: return "the escape pods";
             case MAN_CONSOLE: {
                 SubsystemComponent.SubsystemType type = ((ManConsoleTask) t).type();
                 return "manning the " + (type == null ? "console" : type.name().toLowerCase());

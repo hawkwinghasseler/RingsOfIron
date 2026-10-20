@@ -16,6 +16,8 @@ import com.ringsofiron.macrosim.economy.EconomySimulation;
 import com.ringsofiron.macrosim.economy.StationMarket;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.fleet.FreighterController;
+import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.macrosim.hostile.HostileTrafficController;
 import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.macrosim.rails.RailsModel.Burn;
 import com.ringsofiron.macrosim.rails.StateVector;
@@ -33,8 +35,8 @@ import java.util.concurrent.Future;
 
 /**
  * Entry point of the macro-sim module: the living universe outside the player bubble.
- * Owns the economy, the NPC freighter fleet, background encounter prediction and the bubble
- * transitions. Driven by sim time through {@link #advanceTo(double)}, on the main thread; a rails
+ * Owns the economy, the NPC freighter fleet, pirates and patrols, background encounter prediction
+ * and the bubble transitions. Driven by sim time through {@link #advanceTo(double)}, on the main thread; a rails
  * warp jump is one call with a large target time.
  */
 public class MacroSimulation {
@@ -54,6 +56,7 @@ public class MacroSimulation {
     private final MacroEventQueue events = new MacroEventQueue();
     private final EconomySimulation economy;
     private final FreighterController freighters;
+    private final HostileTrafficController hostiles;
     private final StationMarket market;
     private final BubbleTransitionSystem bubble;
     private final Map<String, EconomyNode> stations = new LinkedHashMap<>();
@@ -81,6 +84,7 @@ public class MacroSimulation {
         this.predictionExecutor = predictionExecutor;
         this.economy = new EconomySimulation(catalog);
         this.freighters = new FreighterController(rails, economy, events, stations::get);
+        this.hostiles = new HostileTrafficController(rails, events, freighters, gateway);
         this.market = new StationMarket(economy);
         this.now = startTime;
         this.nextPrediction = startTime;
@@ -90,16 +94,19 @@ public class MacroSimulation {
                 @Override
                 public void onEnterBubble(String uuid, List<Burn> cancelledBurns, double t) {
                     freighters.onEnterBubble(uuid);
+                    hostiles.onEnterBubble(uuid);
                 }
 
                 @Override
                 public void onExitBubble(String uuid, double t) {
                     freighters.onExitBubble(uuid, t);
+                    hostiles.onExitBubble(uuid, t);
                 }
             });
         }
         rails.addImpactListener((uuid, t) -> {
-            if ((stations.containsKey(uuid) || freighters.get(uuid) != null) && !crashed.contains(uuid)) crashed.add(uuid);
+            if ((stations.containsKey(uuid) || freighters.get(uuid) != null || hostiles.get(uuid) != null)
+                    && !crashed.contains(uuid)) crashed.add(uuid);
         });
         scheduleEconomyPass(startTime + EconomySimulation.PASS_INTERVAL);
     }
@@ -126,6 +133,7 @@ public class MacroSimulation {
         events.clear();
         stations.clear();
         freighters.clear();
+        hostiles.clear();
         if (pendingForecast != null) pendingForecast.cancel(true);
         pendingForecast = null;
         this.now = now;
@@ -148,6 +156,17 @@ public class MacroSimulation {
         if (e == null) return;
         e.add(f);
         freighters.restore(uuid, f, order);
+    }
+
+    /**
+     * Re-attaches every saved pirate and patrol: their {@link HostileComponent}s came back with their
+     * entities, their orbits and burns with the rails.
+     */
+    void restoreHostiles() {
+        for (Entity e : engine.getEcsEngine().getEntitiesFor(
+                com.badlogic.ashley.core.Family.all(HostileComponent.class, UuidComponent.class).get())) {
+            hostiles.restore(e.getComponent(UuidComponent.class).id, e.getComponent(HostileComponent.class));
+        }
     }
 
     /** Marks a UUID as a massive body (planet, moon): never handed to the bubble or predicted. */
@@ -180,6 +199,27 @@ public class MacroSimulation {
         engine.addEntity(e);
         freighters.addDocked(id.id, f, stationUuid, now);
         return id.id;
+    }
+
+    /**
+     * Makes the entity {@code uuid} (already in the engine, with its ship) a pirate lurking by
+     * {@code stationUuid}, on the rails there. An entity added during an engine update is only
+     * registered once the update ends; its caller gives it {@code h} itself then.
+     */
+    public void addPirate(String uuid, HostileComponent h, String stationUuid) {
+        give(uuid, h);
+        hostiles.addPirate(uuid, h, stationUuid, now);
+    }
+
+    /** Makes the entity {@code uuid} a patrol flying between {@code route}'s stations, starting at the first. */
+    public void addPatrol(String uuid, HostileComponent h, String... route) {
+        give(uuid, h);
+        hostiles.addPatrol(uuid, h, route, now);
+    }
+
+    private void give(String uuid, HostileComponent h) {
+        Entity e = engine.getEntity(uuid);
+        if (e != null && e.getComponent(HostileComponent.class) != h) e.add(h);
     }
 
     /**
@@ -311,17 +351,21 @@ public class MacroSimulation {
     }
 
     /**
-     * Destroys a station or freighter: it leaves the economy, fleet and bubble cleanly (orders
-     * cancelled, reservations released, cargo lost) and its entity is removed. Returns false if
+     * Destroys a station, freighter, pirate or patrol: it leaves the economy, fleet and bubble cleanly
+     * (orders cancelled, reservations released, cargo lost) and its entity is removed. Returns false if
      * macro-sim does not own {@code uuid}. Crashes into a surface call this on their own.
      */
     public boolean destroy(String uuid) {
         boolean station = stations.containsKey(uuid);
-        if (!station && freighters.get(uuid) == null) return false;
+        boolean hostile = hostiles.get(uuid) != null;
+        if (!station && !hostile && freighters.get(uuid) == null) return false;
         if (station) {
             stations.remove(uuid);
             economy.dropOrdersFor(uuid);
             freighters.stationLost(uuid, stations.keySet(), now);
+            hostiles.stationLost(uuid, stations.keySet(), now);
+        } else if (hostile) {
+            hostiles.lose(uuid);
         } else {
             freighters.lose(uuid);
         }
@@ -355,6 +399,11 @@ public class MacroSimulation {
 
     public FreighterController freighters() {
         return freighters;
+    }
+
+    /** Pirates and patrols. */
+    public HostileTrafficController hostiles() {
+        return hostiles;
     }
 
     public BubbleGateway gateway() {

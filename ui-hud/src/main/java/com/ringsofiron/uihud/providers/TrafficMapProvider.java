@@ -26,6 +26,8 @@ public interface TrafficMapProvider {
         public double x, y;
         /** One short line under the name, e.g. "to Gateway, 2 h" or "docked at Gateway". */
         public String detail = "";
+        /** Where one of the player's contracts points; ringed on the map. */
+        public boolean objective;
     }
 
     /** Everything one map refresh shows; reused between refreshes. */
@@ -49,6 +51,7 @@ public interface TrafficMapProvider {
         public Contact addContact() {
             Contact c = contactPool.size > 0 ? contactPool.pop() : new Contact();
             c.detail = "";
+            c.objective = false;
             contacts.add(c);
             return c;
         }

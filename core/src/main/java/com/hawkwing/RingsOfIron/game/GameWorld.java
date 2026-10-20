@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Disposable;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewSaveParticipant;
@@ -60,6 +61,7 @@ import com.ringsofiron.orbital.rails.RailsUniverse;
 import com.ringsofiron.orbital.warp.BubbleHandoff;
 import com.ringsofiron.orbital.warp.EncounterPredictor;
 import com.ringsofiron.orbital.warp.TimeWarpController;
+import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.physicsexterior.OrbitalAnchorBridge;
@@ -146,7 +148,13 @@ public class GameWorld implements Disposable {
     public final BeamSystem beams;
     public final AudioManager audio;
     public final AvatarInteractor avatar;
+    /** The player's seat at the helm or weapons console, and the helm flying the ship meanwhile. */
+    public final Bridge bridge;
     public final AudioListenerSync audioListener;
+    /** Pirates and faction patrols: their ships, and how they fly and fight in the bubble. */
+    public final HostileTraffic hostiles;
+    /** Ties the career (factions and rank) to encounters, rescue, boarding and ships beaten. */
+    public final LoopWiring loop;
     /** The player's planned burns. */
     public final BurnPlanner burns;
     /** Docking ports, collars and latches of every ship and station in the bubble. */
@@ -157,10 +165,26 @@ public class GameWorld implements Disposable {
     public final CargoLoading cargo;
     /** The player's standing with each faction, and what hostile acts cost it. */
     public final FactionStanding standing;
+    /** The player's rank budget, paid weekly into their credits. */
+    public final ServiceBudget budget;
     /** Crew prying, cutting or hacking at a shut port door across a dock. */
     public final DoorForcing forcing;
     /** Station yards repairing and refitting docked ships. */
     public final StationYard yard;
+    /** Station mission boards and the player's contracts. */
+    public final ContractBoard contracts;
+    /** Which ships are disabled, surrendered or wrecked, and why. */
+    public final ShipDisablement disablement;
+    /** Crews ordered to the escape pods, and the pods launching. */
+    public final AbandonShip abandon;
+    /** Where the player wakes after their pod launches, and in what ship. */
+    public final Rescue rescue;
+    /** Boarding parties sent onto beaten ships, and the ships they take. */
+    public final Boarding boarding;
+    /** Taken ships stripped for parts, and their cargo carried off. */
+    public final Salvage salvage;
+    /** How carried cargo is settled: the market's, plus salvage's between ships and parts sold. */
+    public final SalvageSettlement cargoSettlement;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -250,8 +274,11 @@ public class GameWorld implements Disposable {
 
         // macro-sim, on the same rails and event system. Prediction runs inline so warp drop-out
         // always sees a current forecast; the bubble pauses while rails warp has it collapsed.
+        GameBubbleGateway bubbleGateway = new GameBubbleGateway(physics, engine.getUuidRegistry());
+        // Pirates and patrols come into the bubble on their own layouts
+        bubbleGateway.setShipBodies(this::buildShipBody);
         macroSim = new MacroSimulation(engine, new OrbitalRailsModel(engine, universe, orbitalEvents),
-                new GameBubbleGateway(physics, engine.getUuidRegistry()), commodities, null, engine.getSimSeconds());
+                bubbleGateway, commodities, null, engine.getSimSeconds());
         macroSim.bubble().addListener(new NpcBubblePilots(engine.getUuidRegistry()));
         // Freighters in the bubble dock at their stations under their own power, and leave the same way
         FreighterTraffic traffic = new FreighterTraffic(this);
@@ -269,6 +296,8 @@ public class GameWorld implements Disposable {
         engine.addSystem(new LifeSupportSystem());
         // Thrust and planned burns burn propellant from the tanks piped to the engines
         engine.addSystem(new PropellantFeed());
+        // ...and the engines themselves set how hard the ship can push, less as they take damage
+        engine.addSystem(new EngineThrust(this::getContent));
         orbitalEvents.burnBudget = (ship, dv) -> {
             ShipGridComponent.MassProperties m = shipMass(ship);
             return m == null ? dv : PropellantFeed.payForBurn(ship, m.mass, dv);
@@ -289,8 +318,11 @@ public class GameWorld implements Disposable {
         // ai-crew
         crew = CrewFactory.install(engine.getEcsEngine());
         CrewSaveParticipant.install(crew, engine);
-        // Ships' crews of two factions fight; station crew only once the player has crossed them
+        // Crews fight by their factions' wars and the player's standing; the career saves with the game
         standing = new FactionStanding(this::getPlayer);
+        engine.getSerializationService().addParticipant(standing);
+        budget = new ServiceBudget(standing, this::getPlayer, engine::getSimSeconds);
+        engine.addSystem(budget);
         crew.hostility = standing::hostile;
         docking.events.add((signal, e) -> standing.onDockingEvent(e));
         docking.clearance = (station, vessel) -> {
@@ -299,9 +331,14 @@ public class GameWorld implements Disposable {
         };
         forcing = new DoorForcing(docking, crew, engine::getSimSeconds);
         engine.addSystem(forcing);
-        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, new MarketCargo(macroSim));
+        cargoSettlement = new SalvageSettlement(new MarketCargo(macroSim), commodities,
+                this::partPrice);
+        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, cargoSettlement);
         engine.addSystem(cargo);
         avatar = new AvatarInteractor(engine.getEcsEngine());
+        // Who sits at the player's consoles, and who flies the ship when the player isn't at the helm
+        bridge = new Bridge(this);
+        engine.addSystem(bridge);
 
         // combat-sys
         combatEvents = new CombatEvents();
@@ -313,6 +350,10 @@ public class GameWorld implements Disposable {
         // stations-docking: the yards fit weapons from combat-sys's defs
         yard = new StationYard(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, combatDefs);
         engine.addSystem(yard);
+        // Mission boards, and the player's contracts checked against the world; saved with the game
+        contracts = new ContractBoard(this);
+        engine.addSystem(contracts);
+        engine.getSerializationService().addParticipant(contracts);
         // NPC freighters fill their tanks wherever they dock
         engine.addSystem(new FreighterRefueling(docking::dockedTo));
         // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
@@ -335,6 +376,18 @@ public class GameWorld implements Disposable {
         engine.addSystem(impacts);
         beams = new BeamSystem(physics, impacts);
         engine.addSystem(beams);
+        // Ships out of power, crew or hull, or beaten, stop fighting
+        disablement = new ShipDisablement(engine::getSimSeconds);
+        engine.addSystem(disablement);
+        // ... and their crews take to the pods; the player's pod ends in a rescue
+        abandon = new AbandonShip(crew, disablement, engine::getSimSeconds, docking::dockedTo);
+        engine.addSystem(abandon);
+        rescue = new Rescue(this, bubble);
+        // Beaten ships are boarded, taken and stripped
+        boarding = new Boarding(docking, crew, forcing, standing, disablement, engine.getUuidRegistry(), engine::getSimSeconds);
+        engine.addSystem(boarding);
+        salvage = new Salvage(docking, crew, boarding, cargo, engine.getUuidRegistry(), combatDefs);
+        engine.addSystem(salvage);
 
         // audio-spatial
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
@@ -355,6 +408,10 @@ public class GameWorld implements Disposable {
 
         // Bubble bodies are saved as true states, never as live Box2D bodies.
         PhysicsSaveParticipant.install(physics, engine);
+        // Pirates and faction patrols, on the rails and in the bubble
+        hostiles = HostileTraffic.install(this);
+        // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
+        loop = LoopWiring.install(this);
     }
 
     /**
@@ -385,6 +442,7 @@ public class GameWorld implements Disposable {
         DefRegistryCommodityCatalog economy = new DefRegistryCommodityCatalog(content.defs);
         if (!economy.commodities().isEmpty()) commodities.set(economy);
         registerSounds(content, audio.getCatalog());
+        standing.setData(Factions.from(content.defs), RankLadder.from(content.defs));
         return content;
     }
 
@@ -419,6 +477,8 @@ public class GameWorld implements Disposable {
         engine.update(frameDelta);
         for (Entity wreck : wrecks) engine.removeEntity(wreck);
         wrecks.clear();
+        rescue.update();
+        hostiles.afterUpdate();
         checkBubbleCrash();
         if (crash != null && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
     }
@@ -510,6 +570,21 @@ public class GameWorld implements Disposable {
         return PhysicsManager.replacePolygonFixtures(pb.body, hulls.hullFor(ship, null));
     }
 
+    /**
+     * A Box2D body for a ship with a layout, at the bubble origin: shaped as the physics assembler
+     * shapes it ({@link ShipHulls}) and weighing what {@link #shipMass} says. Null for a craft
+     * without a grid, or before content has loaded.
+     */
+    public Body buildShipBody(Entity ship) {
+        ShipGridComponent.MassProperties m = shipMass(ship);
+        java.util.List<float[]> hull = hulls == null || m == null ? null : hulls.hullFor(ship, null);
+        if (hull == null || hull.isEmpty()) return null;
+        Body body = physics.createPolygonBody(ship, 0f, 0f, 0f, hull, 1f,
+                CollisionCategories.CATEGORY_SHIP, CollisionCategories.MASK_ALL);
+        PhysicsManager.setMassData(body, m.mass, m.center.x, m.center.y, m.inertia);
+        return body;
+    }
+
     /** A ship's mass for the physics assembler, from {@link #shipMass}. */
     private ShipPhysicsAssembler.MassSource gridMass(ModContext ctx) {
         return (entity, def, out) -> {
@@ -521,6 +596,11 @@ public class GameWorld implements Disposable {
             out[3] = m.inertia;
             return true;
         };
+    }
+
+    /** What a station pays for a salvaged part. */
+    private double partPrice(String part) {
+        return salvage == null ? 0 : salvage.salePrice(part);
     }
 
     private void mergeCombatDefs(CombatDefs loaded) {

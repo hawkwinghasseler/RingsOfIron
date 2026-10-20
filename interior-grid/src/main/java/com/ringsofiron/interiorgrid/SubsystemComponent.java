@@ -22,7 +22,8 @@ public class SubsystemComponent implements Component {
         AIRLOCK(MountFootprint.MountKind.AUXILIARY),        // Can be opened to space. Requires power to cycle.
         TANK(MountFootprint.MountKind.AUXILIARY),           // Holds one fluid for the systems piped to it. Passive.
         ENGINE(MountFootprint.MountKind.AUXILIARY),         // Main engine, burning propellant from piped tanks; its nozzle faces +y at rotation 0 (-x at 1). Requires power.
-        DOCKING_PORT(MountFootprint.MountKind.PORT);        // Airlock in the hull edge with a latch collar. Arming needs power.
+        DOCKING_PORT(MountFootprint.MountKind.PORT),        // Airlock in the hull edge with a latch collar. Arming needs power.
+        ESCAPE_POD(MountFootprint.MountKind.AUXILIARY);     // Lifeboat in its bay, seats by size; launches on its own battery. Walkable.
 
         /** The kind of mount this system installs into. */
         public final MountFootprint.MountKind mountKind;

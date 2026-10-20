@@ -10,7 +10,8 @@ You need a JDK 17 or newer to start the Gradle wrapper, which is included. The b
 
 | Launcher | Gradle task | What it shows |
 |---|---|---|
-| `Play Rings of Iron.bat` | `./gradlew :lwjgl3:runGame` | The game: flight, combat, crew, docking, trading and time warp together |
+| `Play Rings of Iron.bat` | `./gradlew :lwjgl3:runGame` | The game, from its main menu: flight, combat, crew, docking, trading and time warp together |
+| | `./gradlew :lwjgl3:runFirstPlay` | The guided first play, straight in with no menu (also on the main menu) |
 | `demos/Flight demo.bat` | `./gradlew :lwjgl3:runFlightDemo` | Newtonian flight, the floating origin, orbit around a planet and fast passes |
 | `demos/Orbit demo.bat` | `./gradlew :lwjgl3:runOrbitDemo` | Rails orbits, sphere-of-influence changes and time warp |
 | `demos/Interior Grid Demo.bat` | `./gradlew :lwjgl3:run` | One ship's deck: air, fire, breaches, doors and power routing |
@@ -20,28 +21,28 @@ You need a JDK 17 or newer to start the Gradle wrapper, which is included. The b
 | `demos/Audio demo.bat` | `./gradlew :lwjgl3:runAudioDemo` | Sound muffled by walls and doors, and interior versus exterior listening |
 | `demos/Ship editor.bat` | `./gradlew :lwjgl3:runShipEditor` | The ship editor, which edits the game's own layout, tile and component data |
 
-`Internal demo.bat` in the root is an older copy of the Interior Grid launcher.
-
 Some modules also have headless demos that print to the console: `./gradlew :ai-crew:runCrewConsoleDemo`, `./gradlew :macro-sim:runMacroDemo` (add `-Pdays=60` for a longer run) and `./gradlew :modding-data:runModdingDemo`.
 
 ### Game controls
 
 | Key | Action |
 |---|---|
-| W / S, A / D, Z / C | Thrust forward and back, turn, strafe |
+| W / S, A / D, Z / C | Thrust forward and back, turn, strafe (seated at the helm) |
 | X | Toggle rotation assist |
 | Space | Fire guns |
 | R | Launch a missile at the target |
 | F | Drop a decoy (on deck: force the door across a dock) |
 | Tab | Cycle the target |
-| V | Switch between the exterior and the deck view |
+| V | Stand up from your console into the deck view; on deck beside the helm or weapons console, sit there and look outside (`gradlew :lwjgl3:runGame -PviewAnywhere` switches anywhere) |
 | M | Traffic map |
 | T | Trade, when in range of a station |
 | G / H / U | Arm docking, pick the next port, undock |
 | , / . | Time warp down and up |
 | N, B, arrows, [ / ] | Plan a burn: add a node, select the next, change its Δv, move it in time |
 | F5 / F9 | Quick save and quick load |
-| Esc | Quit |
+| Esc | Pause menu: resume, save to a named slot, load, settings, quit to the main menu |
+
+Keys can be rebound in Settings, which also has the volumes, HRTF, the window and the gamepad. A gamepad flies and walks with the left stick and fires with A or the right trigger; the full mapping is in `documentation/ui-hud/Design.md`. Saves and `settings.json` are kept in `assets/saves/`.
 
 Each demo lists its own controls on screen.
 
@@ -74,4 +75,4 @@ The art in `assets/art` is SVG. The `art-pipeline` module rasterizes it into a t
 | `core` | The game itself, the demos and the ship editor, wiring the modules together |
 | `lwjgl3` | Desktop launchers |
 
-Game data lives in `assets/data` (ships, chassis layouts, tiles, components, weapons, economy). Each module's design is in `documentation/<module>/Design.md`, and `documentation/Technical Design Decisions.md` records the decisions that cut across modules.
+Game data lives in `assets/data` (ships, chassis layouts, tiles, components, weapons, economy). Each module's design is in `documentation/<module>/Design.md`, and `documentation/Technical Design Decisions.md` records the decisions that cut across modules. `documentation/progression/Design.md` covers factions, rank, contracts and rescue, which span several modules.

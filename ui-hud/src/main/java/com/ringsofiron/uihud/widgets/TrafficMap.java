@@ -27,6 +27,7 @@ public class TrafficMap extends Widget {
     public static final float REFRESH_INTERVAL = 0.25f;
     private static final Color STATION = new Color(0.4f, 0.75f, 1f, 1f);
     private static final Color HAULER = new Color(1f, 0.85f, 0.25f, 1f);
+    private static final Color OBJECTIVE = new Color(1f, 0.7f, 0.1f, 1f);
     private static final Color PLAYER = HudSkin.HUD_CYAN;
     private static final Color BODY = new Color(0.35f, 0.45f, 0.55f, 1f);
     private static final float LINE = 14f;
@@ -150,6 +151,8 @@ public class TrafficMap extends Widget {
                 batch.draw(white, x - 5f, y - 5f, 5f, 5f, 10f, 10f, 1f, 1f, 45f);
                 circle(batch, x, y, 10f, 1.5f, col, parentAlpha);
             }
+            // A contract's waypoint gets a gold ring
+            if (c.objective) circle(batch, x, y, 14f, 2f, OBJECTIVE, parentAlpha);
             float lines = c.detail.isEmpty() ? 1 : 2;
             float ly = labelY(labels, x + 9f, y + 7f, lines * LINE);
             if (ly != y + 7f) line(batch, x, y, x + 9f, ly - LINE / 2f, col, parentAlpha);

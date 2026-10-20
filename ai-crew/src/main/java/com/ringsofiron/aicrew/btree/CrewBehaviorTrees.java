@@ -16,15 +16,18 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
  *   [HasWork]         TaskBranch( ClaimTask,
  *                                 Selector( Sequence( IsTaskKind(RESCUE), SuitUp, MoveToWorkSpot,
  *                                                     PickUpCasualty, CarryToSafety, PutDownCasualty ),
- *                                           Sequence( IsTaskKind(CARRY), PickUpLoad, DeliverLoad,
+ *                                           Sequence( IsTaskKind(CARRY), SuitUp, PickUpLoad, DeliverLoad,
  *                                                     CompleteTask ),
- *                                           Sequence( IsTaskKind(YARD), WorkOnTile, CompleteTask ),
+ *                                           Sequence( IsTaskKind(YARD), SuitUp, WorkOnTile, CompleteTask ),
  *                                           Sequence( IsTaskKind(FORCE_DOOR), ForceDoor, CompleteTask ),
- *                                           Sequence( IsTaskKind(not RESCUE, CARRY, YARD or FORCE_DOOR), SuitUp,
+ *                                           Sequence( IsTaskKind(BOARD), Board, CompleteTask ),
+ *                                           Sequence( IsTaskKind(not RESCUE, CARRY, YARD, FORCE_DOOR or BOARD), SuitUp,
  *                                                     MoveToWorkSpot, DoWork, CompleteTask ) ) )
- *                     Idle (heads home first when aboard another craft; takes a suit off once calm)
+ *                     Idle (heads home first when aboard another craft; steps out of a docked port's
+ *                           opening; takes a suit off once calm)
  *
- * SuitUp puts a space suit on first when the task's spot is out of breathable air.
+ * SuitUp puts a space suit on first when the task's spot is out of breathable air, on whichever
+ * craft the spot is (a ship latched alongside being stripped, say).
  * </pre>
  *
  * Guards are re-checked every step, so a hostile coming into sight interrupts any task
@@ -43,16 +46,19 @@ public final class CrewBehaviorTrees {
                 new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.RESCUE), new CrewTasks.SuitUp(),
                         new CrewTasks.MoveToWorkSpot(),
                         new CrewTasks.PickUpCasualty(), new CrewTasks.CarryToSafety(), new CrewTasks.PutDownCasualty()),
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.CARRY), new CrewTasks.PickUpLoad(),
+                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.CARRY), new CrewTasks.SuitUp(), new CrewTasks.PickUpLoad(),
                         new CrewTasks.DeliverLoad(), new CrewTasks.CompleteTask()),
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.YARD), new CrewTasks.WorkOnTile(),
+                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.YARD), new CrewTasks.SuitUp(), new CrewTasks.WorkOnTile(),
                         new CrewTasks.CompleteTask()),
                 new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.FORCE_DOOR), new CrewTasks.ForceDoor(),
+                        new CrewTasks.CompleteTask()),
+                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.BOARD), new CrewTasks.Board(),
                         new CrewTasks.CompleteTask()),
                 new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.RESCUE, true),
                         new CrewTasks.IsTaskKind(CrewTask.Kind.CARRY, true),
                         new CrewTasks.IsTaskKind(CrewTask.Kind.YARD, true),
-                        new CrewTasks.IsTaskKind(CrewTask.Kind.FORCE_DOOR, true), new CrewTasks.SuitUp(),
+                        new CrewTasks.IsTaskKind(CrewTask.Kind.FORCE_DOOR, true),
+                        new CrewTasks.IsTaskKind(CrewTask.Kind.BOARD, true), new CrewTasks.SuitUp(),
                         new CrewTasks.MoveToWorkSpot(),
                         new CrewTasks.DoWork(), new CrewTasks.CompleteTask()));
         Task<CrewAgent> work = new TaskBranch(new CrewTasks.ClaimTask(), doTask);

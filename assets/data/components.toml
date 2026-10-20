@@ -3,13 +3,16 @@
 # editor (gradlew :lwjgl3:runShipEditor) edits this file.
 #   symbol        one letter, unique across tile types and components
 #   behavior      REACTOR, SHIELD_EMITTER, TURRET_MOUNT (square mounts); LIFE_SUPPORT, HELM,
-#                 WEAPONS, CARGO, AIRLOCK, TANK, ENGINE (rectangular slots); DOCKING_PORT (hull edge)
+#                 WEAPONS, CARGO, AIRLOCK, TANK, ENGINE, ESCAPE_POD (rectangular slots); DOCKING_PORT
+#                 (hull edge). An escape pod seats 4, 8, 20 or 48 by size (S-XL).
 #   sizes         mount sizes it comes in; leave out for every size of its mount kind
 #   color         how the editor draws it
 #   power_output  REACTOR: watts at full health by size (standard 1, 3, 10, 30 MW for S-XL)
 #   throughput    LIFE_SUPPORT: multiplies scrubbing, air and oxygen supply (1.0 standard)
 #   fluid         TANK: OXYGEN, NITROGEN or PROPELLANT (the default)
 #   capacity      TANK: kilograms by size (standard 150 kg of a gas, 1,000 kg of propellant a tile)
+#   thrust        ENGINE: newtons at full health by size (standard 1.2, 3.6, 12, 36 MN for S-XL);
+#                 a ship's main engine is the sum of its working engines, scaled by their damage
 # These restate the built-in letters; a component left out keeps its built-in meaning.
 
 [component.reactor]
@@ -66,6 +69,24 @@ symbol = "E"
 behavior = "ENGINE"
 color = "#6aa8e8"
 
+# A hauler's drive: big and frugal, but slow to push a loaded hull. The freighter's two
+# Medium ones give it the 3.0 MN it had before engines set thrust.
+# A gunship's drives: Medium, but rated down so the heavy hull is slower off the mark than the
+# corvette. The gunship's two give it the 3.4 MN its ships.toml entry restates.
+[component.gunship_drive]
+name = "Gunship drive"
+symbol = "G"
+behavior = "ENGINE"
+color = "#6a9ad8"
+thrust = { M = 1.7e6 }
+
+[component.freight_drive]
+name = "Freight drive"
+symbol = "Q"
+behavior = "ENGINE"
+color = "#5a8ec0"
+thrust = { M = 1.5e6 }
+
 [component.docking_port]
 name = "Docking port"
 symbol = "D"
@@ -92,3 +113,9 @@ symbol = "N"
 behavior = "TANK"
 color = "#8a94a8"
 fluid = "NITROGEN"
+
+[component.escape_pod]
+name = "Escape pod"
+symbol = "B"
+behavior = "ESCAPE_POD"
+color = "#ff7a2a"

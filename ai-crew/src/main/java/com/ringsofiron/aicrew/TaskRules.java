@@ -57,6 +57,10 @@ public final class TaskRules {
                 return ((YardTask) task).job.isOpen();
             case FORCE_DOOR:
                 return ((ForceDoorTask) task).job.isOpen();
+            case EVACUATE:
+                return ((EvacuateTask) task).isOpen();
+            case BOARD:
+                return ((BoardTask) task).job.isOpen();
             default:
                 return true;
         }
@@ -79,6 +83,18 @@ public final class TaskRules {
         Entity e = mobileTarget(task);
         GridPositionComponent p = e == null ? null : crew.position(e);
         return p != null ? p.tileY() : task.y;
+    }
+
+    /**
+     * The craft the task's (x, y) is on, when the task names one: yard work and boarding on the
+     * craft worked on, a carry's pick-up on the craft it comes from. Null for a task on the crew
+     * member's own craft (or wherever they stand).
+     */
+    public static Entity siteOf(CrewTask task) {
+        if (task instanceof YardTask) return ((YardTask) task).ship;
+        if (task instanceof CarryTask) return ((CarryTask) task).from;
+        if (task instanceof BoardTask) return ((BoardTask) task).ship;
+        return null;
     }
 
     private static Entity mobileTarget(CrewTask task) {
@@ -113,6 +129,8 @@ public final class TaskRules {
             case TREAT:
                 if (isAdjacent(x, y, tx, ty) && grid.canPass(x, y, tx, ty)) return true;
                 return x == tx && y == ty;
+            case EVACUATE:
+                return ((EvacuateTask) task).inPod(x, y);
             default:
                 return x == tx && y == ty;
         }

@@ -5,33 +5,36 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
-import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
-import com.ringsofiron.stationsdocking.DockingPort;
-import com.ringsofiron.stationsdocking.DockingPortsComponent;
 
 /**
  * A short scripted first play over the starting scenario, one objective at a time: the ship starts
- * docked at Highport; undock, fly clear, beat off the raider (it turns on you once you are clear),
- * come back and dock, and have the yard repair the damage. Each objective is met by playing, not by
- * a key: the script only watches the world and says what to do next. Docking again while the
- * raider still fights counts as getting away from it.
+ * docked at Highport; take the bounty on the raider from the mission board, undock, fly clear, beat
+ * the raider (it turns on you once you are clear), latch on and board it, come back and dock, and
+ * have the yard repair the damage. Each objective is met by playing, not by a key: the script only
+ * watches the world and says what to do next. Docking again while the raider still fights counts as
+ * getting away from it; docking again before boarding it skips the boarding, and undocking without
+ * a contract skips taking one.
  *
  * <p>Call {@link #update} once a frame; it returns a line to show when the objective changes.
  */
 public final class FirstPlay {
     /** The objectives, in order. */
     public enum Step {
+        ACCEPT("J opens Highport's mission board: take the bounty on the raider outside"),
         UNDOCK("Undock from Highport: U lets go of the port"),
         FLY_CLEAR("Fly clear of the station, 2 km out: W/S thrust, A/D turn, X rotation assist"),
         FIGHT("A raider is coming for you. Tab locks it, Space fires the guns, R a missile, F a decoy. "
-                + "Knock out its guns or its reactor, or run back to Highport"),
+                + "Knock out its guns or its reactor until it gives up, or run back to Highport"),
+        BOARD("The raider is beaten. Pull alongside it and press G to latch on, then K: send a boarding party, "
+                + "and strip what you want once it is taken"),
         DOCK("Back to Highport and dock: H picks the port, G arms it and asks for clearance"),
         REPAIR("Open the yard with Y and order repairs"),
-        DONE("That's the loop. Trade with T, rebuild your decks from the yard (Y), or fly on");
+        DONE("That's the loop: work from the board (J) pays and earns rank. Trade or sell salvage with T, "
+                + "refit at the yard (Y), or fly on");
 
         public final String objective;
 
@@ -45,7 +48,7 @@ public final class FirstPlay {
 
     private final GameWorld world;
     private final GameScenario game;
-    private Step step = Step.UNDOCK;
+    private Step step = Step.ACCEPT;
     private final Vector2 a = new Vector2(), b = new Vector2();
 
     private FirstPlay(GameWorld world, GameScenario game) {
@@ -55,25 +58,13 @@ public final class FirstPlay {
 
     /** Starts the first play on a new game: the player's ship latched to a free port of its size at Highport. */
     public static FirstPlay start(GameWorld world, GameScenario game) {
-        dockAtHighport(world, game);
+        game.beginCareer();
         return new FirstPlay(world, game);
     }
 
     /** Latches the player's first port onto a free port of the same size at Highport, at once. */
     static boolean dockAtHighport(GameWorld world, GameScenario game) {
-        Entity highport = world.engine.getEntity(game.highport);
-        DockingPortsComponent ports = highport.getComponent(DockingPortsComponent.class);
-        DockingPortsComponent own = game.player.getComponent(DockingPortsComponent.class);
-        if (ports == null || own == null || own.ports.length == 0) return false;
-        MountFootprint.MountSize size = own.ports[0].size;
-        for (int i = 0; i < ports.ports.length; i++) {
-            DockingPort p = ports.ports[i];
-            if (p.size == size && p.state != DockingPort.State.DOCKED) {
-                world.docking.dockInPlace(game.player, 0, highport, i);
-                return true;
-            }
-        }
-        return false;
+        return game.dockAtHighport();
     }
 
     public Step step() {
@@ -99,13 +90,21 @@ public final class FirstPlay {
         Entity highport = world.engine.getEntity(game.highport);
         boolean docked = highport != null && world.docking.dockedTo(game.player) == highport;
         switch (step) {
+            case ACCEPT:
+                if (!docked) return Step.FLY_CLEAR;
+                return world.contracts.active().isEmpty() ? step : Step.UNDOCK;
             case UNDOCK:
                 return docked ? step : Step.FLY_CLEAR;
             case FLY_CLEAR:
                 return distance(game.player, highport) > CLEAR_DISTANCE ? Step.FIGHT : step;
             case FIGHT:
                 if (docked) return Step.REPAIR;
-                return raiderBeaten() ? Step.DOCK : step;
+                return raiderBeaten() ? Step.BOARD : step;
+            case BOARD:
+                if (docked) return Step.REPAIR;
+                if (game.raider == null || world.engine.getEcsEngine().getEntities().indexOf(game.raider, true) < 0
+                        || world.boarding.takenBy(game.raider, game.player)) return Step.DOCK;
+                return step;
             case DOCK:
                 return docked ? Step.REPAIR : step;
             case REPAIR:
@@ -116,13 +115,18 @@ public final class FirstPlay {
         }
     }
 
-    /** True once the raider can no longer fight: gone, its reactor down, or every gun silenced. */
+    /** True once the raider can no longer fight: gone, disabled or surrendered, its reactor down, or every gun silenced. */
     boolean raiderBeaten() {
-        Entity raider = game.raider;
-        if (raider == null || world.engine.getEcsEngine().getEntities().indexOf(raider, true) < 0) return true;
-        ShipSubsystemRegistryComponent registry = raider.getComponent(ShipSubsystemRegistryComponent.class);
+        return beaten(world, game.raider);
+    }
+
+    /** True once {@code ship} can no longer fight: gone, disabled or surrendered, its reactor down, or every gun silenced. Contracts' bounties use it too. */
+    public static boolean beaten(GameWorld world, Entity ship) {
+        if (ship == null || world.engine.getEcsEngine().getEntities().indexOf(ship, true) < 0) return true;
+        if (ShipDisablement.isDisabled(ship)) return true;
+        ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
         if (registry != null && !powered(registry)) return true;
-        WeaponsComponent weapons = raider.getComponent(WeaponsComponent.class);
+        WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);
         if (weapons == null) return true;
         for (WeaponMountComponent m : weapons.mounts) {
             if (m.def == null) continue;

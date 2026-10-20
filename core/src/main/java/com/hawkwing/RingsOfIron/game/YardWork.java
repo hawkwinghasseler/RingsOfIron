@@ -4,6 +4,7 @@ import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.defs.WeaponDef;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -53,11 +54,13 @@ public class YardWork implements YardProvider {
                 if (r != null) h.progress = r.aboard ? "fitting: " + r.tilesDone + " tiles done" : "part on its way";
             }
         }
+        CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
         for (WeaponDef d : world.yard.offers()) {
             Offer o = out.addOffer();
             o.weaponId = d.id;
             o.name = d.displayName();
             o.price = d.price;
+            o.salvaged = hold == null ? 0 : (int) Math.floor(hold.amount(StationYard.PART + d.id) + 1e-6);
         }
     }
 
@@ -112,6 +115,12 @@ public class YardWork implements YardProvider {
     public String orderRefit(int hardpoint, String weaponId, boolean used) {
         Entity station = station();
         return station == null ? "No yard here" : world.yard.orderRefit(world.getPlayer(), station, hardpoint, weaponId, used);
+    }
+
+    @Override
+    public String orderSalvagedRefit(int hardpoint, String weaponId) {
+        Entity station = station();
+        return station == null ? "No yard here" : world.yard.orderSalvagedRefit(world.getPlayer(), station, hardpoint, weaponId);
     }
 
     /** The station the player's ship is docked at, if its yard can work on it. */

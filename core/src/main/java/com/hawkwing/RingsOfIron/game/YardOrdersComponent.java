@@ -19,6 +19,8 @@ public class YardOrdersComponent implements Component {
         public int hardpoint;
         public String weapon;
         public boolean used;
+        /** Fitted from a salvaged part out of the ship's own hold: nothing to pay, and it goes back there if called off. */
+        public boolean salvaged;
         /** Credits paid when the part came aboard. */
         public double paid;
         /** The part is aboard, by its mount. */
