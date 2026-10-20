@@ -393,6 +393,7 @@ public class GameWorld implements Disposable {
         });
         // Crews fight by their factions' wars and the player's standing; the career saves with the game
         standing = new FactionStanding(this::getPlayer);
+        standing.clock = engine::getSimSeconds;
         engine.getSerializationService().addParticipant(standing);
         budget = new ServiceBudget(standing, this::getPlayer, engine::getSimSeconds);
         engine.addSystem(budget);

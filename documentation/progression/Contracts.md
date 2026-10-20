@@ -16,7 +16,7 @@ Jobs posted outside the daily boards (by events, pods and wrecks) go through `Co
 | Recovery | 30% of the cargo's price at the posting station, at least 1,000 cr, +4 | Hold alongside the wreck for 60 s while the crew carry the cargo into the hold, then hand it over docked. A hold that takes only part of it is paid for that part. Up to 5 days. |
 | Convoy | 1,200 cr a freighter (×3 to another body's orbit), +3 + 2 a freighter | Two or more freighters hauling out of the station to the same buyer. Each that docks with the player within 50 km counts; one docking without the player (after 30 minutes' grace) or lost does not. Pay and standing are shared by how many counted; none fails it. |
 | Defend | 4,000 cr a raider × difficulty, +4 + 3 a raider, 2 days | Posted by a raid event. Each raider beaten (or gone) counts; at the deadline those beaten are paid for, and none fails it. |
-| Recon | 1,500 cr (×3 far), +3, 3 days (8 far) | Come within 100 km of the pirate where it lurks. |
+| Recon | 1,500 cr (×3 far), +3, 3 days (8 far) | Come within 100 km of the pirate where it lurks. Never on a beaten ship, nor on an ace beaten once (round 7). |
 | Raid | 40,000 cr × difficulty, +15, 6 days | Offered only by the sponsor, from Commander (`RAID_RANK` = 3; Lieutenant Commander in round 3), once the pirates' base is found and while it stands. The base scrambles its wing as the player closes (see [World.md](World.md)); done when the base falls. |
 
 The board's daily mix now also draws convoys. From round 5 the raid heads the board just after the operations, so a full board never drops it.

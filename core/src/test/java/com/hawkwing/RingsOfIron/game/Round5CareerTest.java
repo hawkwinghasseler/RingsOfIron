@@ -56,6 +56,7 @@ class Round5CareerTest extends CareerScript {
         flyAnOperation("Lieutenant Commander");
         while (rank() < 3 && day() < LAST_DAY && jobs < MOST_JOBS && takeABounty()) { }
         requireRank(3, "a commander's standing");
+        double commander = world.standing.record().promotedAt;
         row("Commander");
         saveForPlaytest("Commander");
 
@@ -73,6 +74,12 @@ class Round5CareerTest extends CareerScript {
             if (!flyAnOperation("Captain") && !takeABounty()) weeksPass(1);
         }
         noteCaptain();
+        if (rank() >= 4) {
+            // Round 7: at least 5 days as Commander before Captain (seed 7 made both in one day)
+            double captain = world.standing.record().promotedAt;
+            log("Promoted to Commander on day %.1f and Captain on day %.1f.", commander / 86_400, captain / 86_400);
+            assertTrue(captain - commander >= 5 * 86_400 - 1e-6, "five days as Commander first");
+        }
 
         snapshot("end");
         log("Operations done: %d, bounties: %d, raid fights: %d, jobs flown: %d. Fights lost: %d. Repairs the yard left undone: %.0f cr. Standing granted: %.0f, credits granted: %.0f.",
@@ -143,6 +150,8 @@ class Round5CareerTest extends CareerScript {
         jobs++;
         double t0 = world.engine.getSimSeconds();
         log("  step %s", c.heading());
+        // Round 7: a recon or bounty never names an ace already beaten (round 6's Scatter the Remnants did)
+        assertFalse(c.targetUuid != null && acesBeaten.contains(c.targetUuid), c.heading() + " names an ace already beaten");
         switch (c.type) {
             case PATROL:
                 jumpTo(c.targetUuid);
@@ -245,7 +254,8 @@ class Round5CareerTest extends CareerScript {
         Shipyard.Listing frigate = world.shipyard.listing("patrol_frigate");
         double cost = world.shipyard.cost(frigate, game.player);
         int weeks = 0;
-        while (credits() < cost && weeks < 12) {
+        // Round 7: a new Commander waits their days in rank for the first frigate too
+        while ((credits() < cost || world.standing.newChassisWait(frigate.shipId) > 0) && weeks < 12) {
             // A Commander's pay, with the contracts a week brings
             if (!takeABounty()) weeksPass(1);
             else if (credits() < cost) weeksPass(1);

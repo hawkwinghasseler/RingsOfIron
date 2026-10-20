@@ -46,6 +46,7 @@ class CareerEdgesTest {
 
     @Test
     void standingStaysWithinItsLimitsAndTheTopRankIsReachable() {
+        FactionStandingTest.skipTimeInGrade(standing);
         standing.reward("patrol", 500f, "test");
         assertEquals(FactionStanding.MAX, standing.standing("patrol"), 1e-4);
         assertEquals(standing.ranks().size() - 1, standing.record().rank, "all the way up the ladder");

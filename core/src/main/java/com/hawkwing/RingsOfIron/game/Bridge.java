@@ -129,6 +129,8 @@ public class Bridge extends FixedLogicSystem {
         SeatComponent seat = SEATS.get(avatar);
         if (seat == null) avatar.add(new SeatComponent(best.type));
         else seat.console = best.type;
+        PlayerAvatarComponent figure = avatar.getComponent(PlayerAvatarComponent.class);
+        if (figure != null) figure.seated = true;
         pos.path.clear();
         return null;
     }
@@ -136,7 +138,10 @@ public class Bridge extends FixedLogicSystem {
     /** Stands the avatar up from its console, if it is seated. */
     public void stand() {
         Entity avatar = world.avatar.getAvatar();
-        if (avatar != null) avatar.remove(SeatComponent.class);
+        if (avatar == null) return;
+        avatar.remove(SeatComponent.class);
+        PlayerAvatarComponent figure = avatar.getComponent(PlayerAvatarComponent.class);
+        if (figure != null) figure.seated = false;
     }
 
     /** The console the avatar sits at, or null. */
@@ -207,6 +212,8 @@ public class Bridge extends FixedLogicSystem {
     private void checkSeat() {
         Entity avatar = world.avatar.getAvatar();
         SeatComponent seat = avatar == null ? null : SEATS.get(avatar);
+        PlayerAvatarComponent figure = avatar == null ? null : avatar.getComponent(PlayerAvatarComponent.class);
+        if (figure != null) figure.seated = seat != null;
         if (seat == null) return;
         String why = null;
         String name = seat.console == SubsystemType.HELM ? "the helm" : "the weapons console";
@@ -220,6 +227,7 @@ public class Bridge extends FixedLogicSystem {
         else if (pos.walkway != null || reach(pos, console.footprint) > STAY_REACH) why = "You left " + name;
         if (why == null) return;
         avatar.remove(SeatComponent.class);
+        if (figure != null) figure.seated = false;
         unseated.dispatch(why);
     }
 
