@@ -12,6 +12,7 @@ import com.ringsofiron.aicrew.CrewQueries;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
@@ -204,6 +205,9 @@ public class Bridge extends FixedLogicSystem {
     protected void updateFixed(float deltaTime) {
         checkSeat();
         Entity ship = world.getPlayer();
+        // Flying with the player away from the helm, a crewman takes it ahead of a patient
+        ShipTaskBoardComponent board = ship == null ? null : world.crew.board(ship);
+        if (board != null) board.helmWanted = !playerAtHelm() && world.docking.dockedTo(ship) == null;
         HelmComponent helm = ship == null ? null : HELMS.get(ship);
         if (helm != null) steer(ship, helm, deltaTime);
     }
