@@ -32,6 +32,8 @@ public interface TrafficMapProvider {
         public boolean target;
         /** Only a last known position: out of sensor range now, drawn dim. */
         public boolean stale;
+        /** A last known position old enough to lose its label, unless it is the target or an objective. */
+        public boolean faded;
         /** What the provider knows it by, for picking it on the map; empty if it can't be picked. */
         public String id = "";
     }
@@ -69,6 +71,7 @@ public interface TrafficMapProvider {
             c.objective = false;
             c.target = false;
             c.stale = false;
+            c.faded = false;
             c.id = "";
             contacts.add(c);
             return c;

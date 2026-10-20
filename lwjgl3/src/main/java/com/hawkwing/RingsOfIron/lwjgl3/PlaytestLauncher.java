@@ -188,21 +188,6 @@ public class PlaytestLauncher {
                     for (SubsystemComponent t : TankSupply.tanks(r, Fluid.PROPELLANT)) t.contents = 0;
                     return "tanks empty";
                 }
-                case "helm": {
-                    // Where the save left the captain on deck changes from career to career, so the
-                    // walk to the helm isn't repeatable: they are put at the helm, for V to sit them
-                    Entity avatar = world.avatar.getAvatar();
-                    if (avatar == null) return "no avatar";
-                    for (Entity e : s.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
-                        SubsystemComponent sub = e.getComponent(SubsystemComponent.class);
-                        if (sub == null || sub.type != SubsystemComponent.SubsystemType.HELM) continue;
-                        com.ringsofiron.aicrew.GridPositionComponent pos = avatar.getComponent(com.ringsofiron.aicrew.GridPositionComponent.class);
-                        pos.path.clear();
-                        pos.setTile(sub.footprint.originX, sub.footprint.originY);
-                        return "at the helm";
-                    }
-                    return "no helm";
-                }
                 case "hostiles": {
                     // Every hostile craft: where it is and what it's doing, for a script's log
                     StringBuilder out = new StringBuilder();
@@ -232,6 +217,25 @@ public class PlaytestLauncher {
                         out.append(String.format(java.util.Locale.ROOT, "%n  #%d %s at (%.1f, %.1f) facing (%.0f, %.0f) %s %s", i, p.size,
                                 p.edgeX, p.edgeY, p.normalX, p.normalY, p.state, other == null ? "" : PlayerDocking.name(other)));
                     }
+                    return out.toString();
+                }
+                case "raid": {
+                    // How the raid stands, for a script to fight it to its end: one line, then a
+                    // line per defender
+                    Entity target = game.getGun() == null ? null : game.getGun().getTarget();
+                    StringBuilder out = new StringBuilder(String.format(java.util.Locale.ROOT,
+                            "base %s, hull %.2f%s, target %s", world.pirateBase.standing() ? "standing" : "fallen",
+                            com.hawkwing.RingsOfIron.game.ShipDisablement.hullIntegrity(s.player.getComponent(ShipGridComponent.class)),
+                            com.hawkwing.RingsOfIron.game.ShipDisablement.isDisabled(s.player) ? ", we are beaten" : "",
+                            target == null ? "none" : com.hawkwing.RingsOfIron.game.FirstPlay.beaten(world, target)
+                                    ? "beaten" : PlayerDocking.name(target)));
+                    // How far the base is, for the log
+                    Entity base = world.pirateBase.uuid() == null ? null : world.engine.getEntity(world.pirateBase.uuid());
+                    PhysicsBodyComponent bb = base == null ? null : base.getComponent(PhysicsBodyComponent.class);
+                    Body ours = s.player.getComponent(PhysicsBodyComponent.class).body;
+                    if (bb != null && bb.body != null && ours != null) out.append(String.format(java.util.Locale.ROOT, ", base at %.1f km",
+                            PhysicsManager.getPosition(bb.body, new Vector2()).dst(PhysicsManager.getPosition(ours, new Vector2())) / 1000f));
+                    for (String name : world.pirateBase.defenders()) out.append("\n  defender ").append(name);
                     return out.toString();
                 }
                 case "docked":

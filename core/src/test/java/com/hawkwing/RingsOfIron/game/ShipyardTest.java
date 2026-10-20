@@ -79,6 +79,7 @@ class ShipyardTest {
     /** Raises the player to rank {@code rank} with the sponsor. */
     private void promote(int rank) {
         float need = world.standing.ranks().get(rank).standing - world.standing.standing(world.standing.sponsor());
+        FactionStandingTest.skipTimeInGrade(world.standing);
         if (need > 0) world.standing.reward(world.standing.sponsor(), need + 0.5f, "test");
         assertEquals(rank, world.standing.record().rank);
     }

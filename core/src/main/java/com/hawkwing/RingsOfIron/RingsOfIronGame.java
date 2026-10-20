@@ -156,6 +156,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private static final float INTERIOR_VIEW = 40f;
     private static final float START_VIEW = 160f;
     private static final float STATUS_WIDTH = 420f;
+    /** Where the status column's text ended last frame, UI y: off-screen marker names keep above or below it. */
+    private float statusBottom = Float.MAX_VALUE;
     private static final float WALK_SPEED = 1f;
     /** {@code -Dview.anywhere=true}: V switches the view anywhere and the ship flies from the deck, for testing. */
     private static final boolean VIEW_ANYWHERE = Boolean.getBoolean("view.anywhere");
@@ -286,6 +288,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world, docking);
         world.nav.keyNames = this::key;
         // A click on the traffic map makes that station or ship the navigation target
+        // Off-screen marker names by the right edge keep clear of the status column, which is drawn
+        // outside the stage: as far down as it reached last frame
+        hud.getHudRenderSystem().keepClear(() -> new com.badlogic.gdx.math.Rectangle(
+                viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH, statusBottom - 4f, STATUS_WIDTH,
+                viewports.getUiViewport().getWorldHeight() - statusBottom + 4f));
         hud.getTrafficMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
         gameHud.yard.setLayoutEditor(this::openRefit);
         world.combatEvents.intercepts.add((signal, hit) -> {
@@ -835,6 +842,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         return game;
     }
 
+    /** The player's fire control: what the guns are aimed at. */
+    public PlayerGunnery getGun() {
+        return gun;
+    }
+
     /** "Seed 1234" or "Designed start": which world this career is, for the pause menu. */
     public String worldDescription() {
         return game == null ? "" : game.newGame().describe();
@@ -1271,7 +1283,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 warp.isRailsWarp() ? " (rails)" : ""), left, top);
         Entity target = gun.getTarget();
         HudMarkerComponent marker = target == null ? null : MARKERS.get(target);
-        font.draw(batch, "Target: " + (marker == null ? "none" : marker.label) + (gun.gunsReady() ? "" : "   (gun reloading)")
+        font.draw(batch, "Target: " + (target == null ? "none" : marker == null ? "unknown contact" : marker.label) + (gun.gunsReady() ? "" : "   (gun reloading)")
                 + (target != null && target == game.raider && game.raiderHostile() ? "   FIRING ON YOU" : ""), left, top - 20f);
         float reload = gun.missileReloadTime();
         // Inbound missiles are ui-hud's missile warning.
@@ -1344,7 +1356,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (bridge != null) {
             font.setColor(Color.LIGHT_GRAY);
             font.draw(batch, bridge, left, below);
+            below -= 20f;
         }
+        statusBottom = below;
         batch.end();
     }
 

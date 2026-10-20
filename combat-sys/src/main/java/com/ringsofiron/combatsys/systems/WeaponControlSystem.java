@@ -26,6 +26,7 @@ import com.ringsofiron.combatsys.events.ShotFiredEvent;
 import com.ringsofiron.combatsys.fire.FiringSolutionSolver;
 import com.ringsofiron.combatsys.fire.Track;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
@@ -45,6 +46,11 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
  * pass closest soonest. Launchers throw a missile at the target's track when loaded; guidance
  * takes it from there. Beams point straight at the track (light needs no lead) and burn for a
  * pulse while the gunner fights to hold the spot steady; {@link BeamSystem} finds what they touch.
+ *
+ * A gunner firing at will holds fire while a ship or station other than the target lies on the
+ * line to the aim point and {@link #setHoldFire the game's rule} says to (round 7: a pirate put
+ * some 2,200 rounds into a surrendered wingmate between it and the player). A pulled trigger fires
+ * regardless.
  *
  * Runs from {@link PhysicsManager.StepListener#beforeStep}, after {@link SensorTrackingSystem}.
  */
@@ -85,7 +91,14 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     private final RandomXS128 rng;
     private final FiringSolutionSolver solver = new FiringSolutionSolver();
     private WeaponPower power;
+    private HoldFire holdFire;
     private ImmutableArray<Entity> ships;
+    private final Entity[] blocker = new Entity[1];
+
+    /** Whether {@code shooter}, firing at will, holds fire with {@code blocker} on its line of fire. */
+    public interface HoldFire {
+        boolean holds(Entity shooter, Entity blocker);
+    }
 
     private final ShotFiredEvent shot = new ShotFiredEvent();
     private final Vector2 muzzle = new Vector2();
@@ -115,6 +128,30 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     /** Where weapons draw their energy; null (the default) gives them all they want. */
     public void setPower(WeaponPower power) {
         this.power = power;
+    }
+
+    /** Who holds fire for a ship in the way; null (the default) fires through anything. */
+    public void setHoldFire(HoldFire holdFire) {
+        this.holdFire = holdFire;
+    }
+
+    /**
+     * True if, firing at will, {@code ship} holds fire because a ship or station other than
+     * {@code target} lies between {@code from} and {@code to}.
+     */
+    private boolean blocked(Entity ship, Entity target, Vector2 from, Vector2 to) {
+        if (holdFire == null) return false;
+        blocker[0] = null;
+        physics.rayCast(from.x, from.y, to.x, to.y, (fixture, px, py, nx, ny, f) -> {
+            short category = fixture.getFilterData().categoryBits;
+            if ((category & (CollisionCategories.CATEGORY_SHIP | CollisionCategories.CATEGORY_STATION)) == 0) return -1f;
+            Object owner = fixture.getBody().getUserData();
+            if (!(owner instanceof Entity) || owner == ship || owner == target) return -1f;
+            if (!holdFire.holds(ship, (Entity) owner)) return -1f;
+            blocker[0] = (Entity) owner;
+            return 0f;
+        });
+        return blocker[0] != null;
     }
 
     /** Takes the energy for one shot: {@code power_draw * cooldown}, all or nothing. */
@@ -224,11 +261,14 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         }
         mount.onTarget = onTarget;
 
+        boolean atWill = !mount.trigger;
         boolean wantsFire = mount.trigger
                 ? (onTarget || !mount.solution.valid)
                 : (mount.weaponsFree && onTarget && mount.engagedFor >= reactionTime(mount));
         mount.trigger = false;
-        if (!wantsFire || !available || mount.cooldown > 0f || !powerShot(mount)) return;
+        if (!wantsFire || !available || mount.cooldown > 0f) return;
+        if (atWill && blocked(ship, target, muzzle, mount.solution.interceptPoint)) return;
+        if (!powerShot(mount)) return;
 
         float green = 1.5f - MathUtils.clamp(mount.gunnerySkill, 0f, 1f);
         if (!mount.biasSet || mount.sinceShot > Math.max(BURST_GAP, 3f * def.cooldown)) {
@@ -289,6 +329,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
                     ? (onTarget || !mount.solution.valid)
                     : (mount.weaponsFree && onTarget && mount.engagedFor >= reactionTime(mount));
             if (!wantsFire || mount.cooldown > 0f) return;
+            if (!mount.trigger && blocked(ship, target, muzzle, estPos)) return;
             // A pulse only starts with power to start it.
             double got = metered ? power.draw(mount, needed) : needed;
             if (got <= 0) return;

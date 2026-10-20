@@ -32,9 +32,15 @@ class ShipGaugesTest {
         s.cabinPressure = 0.5f;
         assertEquals("62%  1,240 kg", ShipGauges.propellantText(s));
         assertEquals("50%  3.0 MW", ShipGauges.powerText(s));
-        assertEquals("90%  LOW AIR", ShipGauges.oxygenText(s));
+        assertEquals("90%  cabin LOW AIR", ShipGauges.oxygenText(s));
         s.cabinPressure = 0.05f;
-        assertEquals("90%  VACUUM", ShipGauges.oxygenText(s));
+        assertEquals("90%  cabin VACUUM", ShipGauges.oxygenText(s));
+        s.oxygen = 0.3f;
+        s.cabinPressure = 1f;
+        assertEquals("30%  LOW O2", ShipGauges.oxygenText(s));
+        s.oxygen = Float.NaN;
+        s.cabinPressure = 0.5f;
+        assertEquals("air 50%  LOW AIR", ShipGauges.oxygenText(s));
         assertEquals("12 kW", ShipGauges.watts(12_000));
     }
 }

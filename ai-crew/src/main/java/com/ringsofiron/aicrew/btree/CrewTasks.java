@@ -422,6 +422,12 @@ public final class CrewTasks {
                     return Status.SUCCEEDED;
                 }
                 case TREAT: {
+                    // A patient isn't sat with while the ship flies with nobody at the helm
+                    ShipTaskBoardComponent board = a.board();
+                    if (board != null && board.wantedHelm(a.crew.role, a::mayTake) != null) {
+                        a.releaseTask();
+                        return Status.FAILED;
+                    }
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
                     p.treatedBy = a.entity;
                     return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes
@@ -436,10 +442,12 @@ public final class CrewTasks {
                     return Status.SUCCEEDED;
                 }
                 case MAN_CONSOLE: {
-                    // At it until anything else on the board wants them: then the console goes back up
+                    // At it until anything else on the board wants them: then the console goes back up.
+                    // The helm the ship needs isn't left to sit with a patient
                     ShipTaskBoardComponent board = a.board();
+                    boolean wanted = board != null && board.helmWanted && ((ManConsoleTask) t).type() == SubsystemComponent.SubsystemType.HELM;
                     if (board != null && board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(),
-                            o -> o.kind != CrewTask.Kind.MAN_CONSOLE && a.mayTake(o)) != null) {
+                            o -> o.kind != CrewTask.Kind.MAN_CONSOLE && !(wanted && o.kind == CrewTask.Kind.TREAT) && a.mayTake(o)) != null) {
                         a.releaseTask();
                         return Status.FAILED;
                     }

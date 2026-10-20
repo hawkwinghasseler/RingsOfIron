@@ -36,6 +36,8 @@ public class ServiceBudget extends FixedLogicSystem {
 
     @Override
     protected void updateFixed(float deltaTime) {
+        // A promotion held back for time in grade comes as the days pass, docked or not
+        standing.promoteDue();
         pay();
     }
 

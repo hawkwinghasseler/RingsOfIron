@@ -120,10 +120,13 @@ public class TrafficMap extends Widget {
         if (provider != null) provider.collect(frame);
     }
 
-    /** Meters from the center to the map edge before zoom: the farthest contact or body, with margin. */
+    /**
+     * Meters from the center to the map edge before zoom: the farthest contact or body, with margin.
+     * Last known positions don't stretch it; they show when the map reaches them.
+     */
     static double fitRadius(TrafficFrame f) {
         double r = f.frameRadius * 1.5;
-        for (Contact c : f.contacts) r = Math.max(r, Math.hypot(c.x, c.y) * 1.15);
+        for (Contact c : f.contacts) if (!c.stale) r = Math.max(r, Math.hypot(c.x, c.y) * 1.15);
         for (MapBody b : f.bodies) r = Math.max(r, Math.hypot(b.x, b.y) + b.radius);
         return Math.max(r, 1.0);
     }
@@ -217,7 +220,7 @@ public class TrafficMap extends Widget {
                 batch.setColor(TARGET.r, TARGET.g, TARGET.b, parentAlpha);
                 brackets(batch, x, y, 18f);
             }
-            if (dockedQuietly(c)) continue;
+            if (dockedQuietly(c) || c.faded && !c.target && !c.objective) continue;
             int atStation = c.kind == ContactKind.STATION ? docked.get(c.name, 0) : 0;
             String name = atStation == 0 ? c.name : c.name + "  (" + atStation + " docked)";
             float lines = c.detail.isEmpty() ? 1 : 2;

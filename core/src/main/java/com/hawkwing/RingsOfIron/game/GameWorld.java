@@ -393,6 +393,7 @@ public class GameWorld implements Disposable {
         });
         // Crews fight by their factions' wars and the player's standing; the career saves with the game
         standing = new FactionStanding(this::getPlayer);
+        standing.clock = engine::getSimSeconds;
         engine.getSerializationService().addParticipant(standing);
         budget = new ServiceBudget(standing, this::getPlayer, engine::getSimSeconds);
         engine.addSystem(budget);
@@ -446,6 +447,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(sensors);
         // Shots and beams draw on the ship's power circuits.
         weaponControl.setPower(new ShipWeaponPower());
+        // Round 7: other ships' gunners hold fire with a ship in the way (a pirate emptied its
+        // magazine into a surrendered wingmate); the player's guns fire as the player sets them
+        weaponControl.setHoldFire((shooter, blocker) -> shooter != getPlayer());
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
@@ -454,6 +458,8 @@ public class GameWorld implements Disposable {
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
         impacts.setEntityIds(engine.getEntityIds());
         engine.addSystem(impacts);
+        // Hits beside a docking port wear its collar
+        CollarWear.install(combatEvents);
         beams = new BeamSystem(physics, impacts);
         engine.addSystem(beams);
         // Ships out of power, crew or hull, or beaten, stop fighting

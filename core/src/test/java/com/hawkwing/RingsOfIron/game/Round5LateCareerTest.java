@@ -2,10 +2,13 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.moddingdata.defs.OperationDef;
+import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.providers.MissionProvider;
 import org.junit.jupiter.api.AfterEach;
@@ -161,6 +164,72 @@ class Round5LateCareerTest {
     }
 
     @Test
+    void theBaseStrikesWhereverInTheBubbleTheFightHasDrifted() {
+        // Round 7, real window: the frigate drifted to 30 km from the base while it fought, and the
+        // base, waiting for it within 20 km, never struck
+        besideTheBase(8_000);
+        run(2 * PirateBase.CHECK_SECONDS + 1);
+        List<String> wing = new ArrayList<>(world.pirateBase.defenders());
+        beat(ship(wing.get(0)));
+        run(2 * PirateBase.CHECK_SECONDS + 5);
+        for (int i = 1; i < wing.size() - 1; i++) beat(ship(wing.get(i)));
+        // The fight carries the player off, past 20 km from the base, which stays in the bubble
+        String last = wing.get(wing.size() - 1);
+        var body = game.player.getComponent(PhysicsBodyComponent.class).body;
+        double range = 0;
+        for (int i = 0; i < 400 && range < 21_000; i++) {
+            double now = world.macroSim.now();
+            var at = world.macroSim.rails().stateAt(world.pirateBase.uuid(), now, new StateVector());
+            var anchor = world.macroSim.gateway().anchorStateAt(now, new StateVector());
+            var off = PhysicsManager.getPosition(body, new Vector2()).sub((float) (at.x - anchor.x), (float) (at.y - anchor.y));
+            range = off.len();
+            body.setLinearVelocity(off.nor().scl(150 * PhysicsManager.UNITS_PER_METER));
+            run(0.5f);
+        }
+        assertTrue(range >= 21_000, "the player drifted off: " + range);
+        assertTrue(world.macroSim.bubble().fastPasses().contains(world.pirateBase.uuid()), "the base still in the bubble");
+        assertTrue(world.pirateBase.standing(), "one defender still fights: " + world.notices.history().stream().map(n -> n.text).toList());
+        beat(ship(last));
+        run(2 * PirateBase.CHECK_SECONDS);
+        assertFalse(world.pirateBase.standing(), "its defence beaten past 20 km off, it strikes all the same");
+    }
+
+    @Test
+    void aRaidLostIsNotARaidWon() {
+        // Round 7, real window: the frigate's reactor went down, every defender left it drifting,
+        // and Rustwake counted them driven off and struck its colours to the beaten ship
+        besideTheBase(8_000);
+        run(2 * PirateBase.CHECK_SECONDS + 1);
+        assertFalse(world.pirateBase.defenders().isEmpty(), "a wing scrambled");
+        var reactors = new ArrayList<com.ringsofiron.interiorgrid.SubsystemComponent>();
+        var registry = game.player.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent.class);
+        for (Entity e : registry.subsystems) {
+            var sub = e == null ? null : e.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class);
+            if (sub != null && sub.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.REACTOR) reactors.add(sub);
+        }
+        assertFalse(reactors.isEmpty());
+        for (var r : reactors) r.switchedOn = false;
+        run(2 * PirateBase.CHECK_SECONDS + 5);
+        assertTrue(ShipDisablement.isDisabled(game.player), "our reactor down, we are beaten");
+        assertTrue(world.pirateBase.standing(), "the base stands over a beaten raider");
+        assertTrue(world.pirateBase.defenders().isEmpty(), "the wing that won is forgotten");
+        // The log says so once, and the base's guns stop shooting at the wreck (real window: its
+        // batteries went on firing darts, under a missile warning, after the raiders had gone)
+        long lost = world.notices.history().stream().filter(n -> n.text.startsWith("The raid on ")).count();
+        assertEquals(1, lost, "one notice says the raid is lost");
+        for (String name : world.pirateBase.guns()) {
+            Entity gun = ship(name);
+            var sensor = gun == null ? null : gun.getComponent(com.ringsofiron.combatsys.components.SensorComponent.class);
+            if (sensor != null) assertNotSame(game.player, sensor.lockedTarget, name + " stands down");
+        }
+        // Power back, the base still stands: nobody drove its defence off
+        for (var r : reactors) r.switchedOn = true;
+        run(2 * PirateBase.CHECK_SECONDS + 5);
+        assertFalse(ShipDisablement.isDisabled(game.player));
+        assertTrue(world.pirateBase.standing(), "still standing once we have power again");
+    }
+
+    @Test
     void theBaseWaitsForThePlayerToComeCloseAndAWingStillOutIsNotReplaced(@TempDir Path dir) {
         besideTheBase(PirateBase.SCRAMBLE_RANGE + 3_000);
         run(2 * PirateBase.CHECK_SECONDS + 1);
@@ -190,9 +259,11 @@ class Round5LateCareerTest {
 
     @Test
     void defendersGrowWithDifficulty() {
+        // Round 7: one more for each 0.6 of difficulty past 1, so a Captain's frigate meets four
         assertEquals(2, PirateBase.defendersFor(1.0));
-        assertEquals(2, PirateBase.defendersFor(1.9));
+        assertEquals(2, PirateBase.defendersFor(1.5));
         assertEquals(3, PirateBase.defendersFor(2.0));
+        assertEquals(4, PirateBase.defendersFor(2.3));
         assertEquals(PirateBase.MAX_DEFENDERS, PirateBase.defendersFor(9));
     }
 

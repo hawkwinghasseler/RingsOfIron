@@ -252,7 +252,7 @@ class PirateEnemiesTest {
         assertTrue(bounty.targetName.startsWith("the ace " + h.displayName), bounty.targetName);
         double plain = Math.round(ContractBoard.BOUNTY_PAY * (1 + bounty.tier) * Difficulty.of(world));
         assertEquals(Math.round(plain * PirateAces.BOUNTY_SCALE), bounty.reward, 1e-6);
-        assertEquals(6 + 3 * bounty.tier + PirateAces.BOUNTY_STANDING, bounty.standing, 1e-6);
+        assertEquals(6 + 3 * bounty.tier + PirateAces.BOUNTY_STANDING_PER_TIER * (1 + bounty.tier), bounty.standing, 1e-6);
     }
 
     @Test
@@ -270,6 +270,31 @@ class PirateEnemiesTest {
         assertEquals(1, ship.getComponent(CargoHoldComponent.class).amount(Salvage.PART + rare), 1e-6);
         assertTrue(world.notices.history().stream().anyMatch(n -> n.text.startsWith("The ace " + h.displayName + " is beaten")));
         assertEquals(0, PirateAces.alive(hostiles.all().values()), "its place is free");
+    }
+
+    @Test
+    void anAceBeatenOnceIsNamedByNoReconOrBountyWhenItFliesAgain() {
+        // Round 6: Hunt the Hunters sent the frigate to find Iron Dagny, beaten a week before, whose
+        // crew had the ship going again out on the rails
+        String id = pirate(HostileTraffic.RAIDER);
+        HostileComponent h = hostiles.get(id);
+        Entity ship = world.engine.getEntity(id);
+        assertTrue(PirateAces.promote(world, ship, h, hostiles.all().values(), 1, false));
+        bringIn(id, 3_000, 0);
+        int giver = world.standing.sponsor();
+        com.ringsofiron.macrosim.economy.EconomyNode node = world.macroSim.station(game.highport);
+        assertTrue(world.contracts.recons(giver, null).stream().anyMatch(c -> id.equals(c.targetUuid)), "found while at large");
+        reactors(ship, false);
+        for (int i = 0; i < 10 / FRAME && !h.partDropped; i++) world.update(FRAME);
+        assertTrue(h.partDropped, "beaten");
+        assertTrue(world.contracts.recons(giver, null).stream().noneMatch(c -> id.equals(c.targetUuid)), "nothing to find in a beaten ship");
+
+        reactors(ship, true);
+        for (int i = 0; i < 5 / FRAME && ShipDisablement.isDisabled(ship); i++) world.update(FRAME);
+        assertFalse(FirstPlay.beaten(world, ship), "flying again");
+        assertTrue(FirstPlay.aceBeaten(ship));
+        assertTrue(world.contracts.recons(giver, null).stream().noneMatch(c -> id.equals(c.targetUuid)), "no recon on it");
+        assertTrue(world.contracts.bounties(node, giver).stream().noneMatch(c -> id.equals(c.targetUuid)), "nor a bounty");
     }
 
     @Test

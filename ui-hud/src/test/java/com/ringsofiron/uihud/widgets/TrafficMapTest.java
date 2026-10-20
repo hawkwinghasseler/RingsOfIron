@@ -37,6 +37,16 @@ class TrafficMapTest {
     }
 
     @Test
+    void aLastKnownPositionDoesNotStretchTheMap() {
+        TrafficFrame f = new TrafficFrame();
+        f.frameRadius = 1000;
+        Contact c = f.addContact();
+        c.x = 1e7;
+        c.stale = true;
+        assertEquals(1500, TrafficMap.fitRadius(f), 1e-9);
+    }
+
+    @Test
     void frameReusesPooledEntriesAndResetsDetail() {
         TrafficFrame f = new TrafficFrame();
         Contact first = f.addContact();

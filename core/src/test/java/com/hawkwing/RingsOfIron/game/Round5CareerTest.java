@@ -58,6 +58,7 @@ class Round5CareerTest extends CareerScript {
         flyAnOperation("Lieutenant Commander");
         while (rank() < 3 && day() < LAST_DAY && jobs < MOST_JOBS && takeABounty()) { }
         requireRank(3, "a commander's standing");
+        double commander = world.standing.record().promotedAt;
         row("Commander");
         saveForPlaytest("Commander");
 
@@ -75,6 +76,12 @@ class Round5CareerTest extends CareerScript {
             if (!flyAnOperation("Captain") && !takeABounty()) weeksPass(1);
         }
         noteCaptain();
+        if (rank() >= 4) {
+            // Round 7: at least 5 days as Commander before Captain (seed 7 made both in one day)
+            double captain = world.standing.record().promotedAt;
+            log("Promoted to Commander on day %.1f and Captain on day %.1f.", commander / 86_400, captain / 86_400);
+            assertTrue(captain - commander >= 5 * 86_400 - 1e-6, "five days as Commander first");
+        }
 
         snapshot("end");
         log("Operations done: %d, bounties: %d, raid fights: %d, jobs flown: %d. Fights lost: %d. Repairs the yard left undone: %.0f cr. Standing granted: %.0f, credits granted: %.0f.",
@@ -145,6 +152,8 @@ class Round5CareerTest extends CareerScript {
         jobs++;
         double t0 = world.engine.getSimSeconds();
         log("  step %s", c.heading());
+        // Round 7: a recon or bounty never names an ace already beaten (round 6's Scatter the Remnants did)
+        assertFalse(c.targetUuid != null && acesBeaten.contains(c.targetUuid), c.heading() + " names an ace already beaten");
         switch (c.type) {
             case PATROL:
                 jumpTo(c.targetUuid);
@@ -174,6 +183,13 @@ class Round5CareerTest extends CareerScript {
                 break;
             case RAID:
                 raidTheBase(c);
+                // Round 7: the frigate wins about 7 raids in 10, so a raid lost is flown again after
+                // the yard, as a player would (seed 2026 lost its reactor to the batteries' darts)
+                if (c.isActive() && world.pirateBase.standing()) {
+                    log("  the raid is lost: home for repairs, and once more.");
+                    repairIfNeeded();
+                    raidTheBase(c);
+                }
                 break;
             default:
                 log("  (no script for %s)", c.type);
@@ -247,7 +263,8 @@ class Round5CareerTest extends CareerScript {
         Shipyard.Listing frigate = world.shipyard.listing("patrol_frigate");
         double cost = world.shipyard.cost(frigate, game.player);
         int weeks = 0;
-        while (credits() < cost && weeks < 12) {
+        // Round 7: a new Commander waits their days in rank for the first frigate too
+        while ((credits() < cost || world.standing.newChassisWait(frigate.shipId) > 0) && weeks < 12) {
             // A Commander's pay, with the contracts a week brings
             if (!takeABounty()) weeksPass(1);
             else if (credits() < cost) weeksPass(1);
@@ -354,15 +371,33 @@ class Round5CareerTest extends CareerScript {
         log("  at %s: it scrambles %s.", world.pirateBase.name(), wing);
         float hull0 = hull(game.player);
         int crew0 = ownCrew().size();
+        boolean lost = false;
         for (String name : wing) {
             Entity ship = hostile(name);
             if (ship == null || FirstPlay.beaten(world, ship)) continue;
             HostileComponent h = ship.getComponent(HostileComponent.class);
             log("  defender %s: %s, loadout %s.", name, h.shipId, h.loadout);
             if (ship.getComponent(PhysicsBodyComponent.class) == null) bringIn(world.universe.uuidOf(ship), 3_000, 0);
-            if (!fight(ship, h, "Defender " + name)) break;
+            if (!fight(ship, h, "Defender " + name)) {
+                lost = true;
+                break;
+            }
         }
         runUntil(2 * PirateBase.CHECK_SECONDS + 1, () -> !world.pirateBase.standing());
+        // Round 7: the defence no longer leaves with a beaten leader, so a defender out only for a
+        // moment (its shorts reset) is back in the fight, and keeps the base standing: fight it again
+        for (int pass = 0; pass < 2 && !lost && world.pirateBase.standing() && world.pirateBase.defended(); pass++) {
+            for (String name : wing) {
+                Entity ship = hostile(name);
+                HostileComponent h = ship == null ? null : ship.getComponent(HostileComponent.class);
+                if (h == null || h.brokeOff || FirstPlay.beaten(world, ship) || ship.getComponent(PhysicsBodyComponent.class) == null) continue;
+                if (!fight(ship, h, "Defender " + name + ", back in the fight")) {
+                    lost = true;
+                    break;
+                }
+            }
+            runUntil(2 * PirateBase.CHECK_SECONDS + 1, () -> !world.pirateBase.standing());
+        }
         log("Raid on %s: %.0f s, base %s; our hull %.2f -> %.2f, crew %d -> %d.", world.pirateBase.name(),
                 world.engine.getSimSeconds() - t0, world.pirateBase.standing() ? "still standing" : "fallen", hull0,
                 hull(game.player), crew0, ownCrew().size());

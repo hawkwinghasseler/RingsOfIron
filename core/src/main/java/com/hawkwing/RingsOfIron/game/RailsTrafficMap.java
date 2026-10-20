@@ -20,6 +20,9 @@ import com.ringsofiron.uihud.providers.TrafficMapProvider;
  * tension readout, a line per faction's stations ({@link FactionTension#regions}).
  */
 public class RailsTrafficMap implements TrafficMapProvider {
+    /** A pirate's last known position loses its label on the map after this long, s. */
+    static final double SIGHTING_FADES = 86_400;
+
     private final GameWorld world;
     private final StateVector parentState = new StateVector();
     private final StateVector bodyState = new StateVector();
@@ -130,6 +133,7 @@ public class RailsTrafficMap implements TrafficMapProvider {
             c.y = entryState.y;
             c.id = uuid;
             c.stale = !s.live;
+            c.faded = !s.live && t - s.time > SIGHTING_FADES;
             c.target = uuid.equals(targetUuid);
             c.objective = world.contracts.isWaypoint(uuid);
             String bounty = world.nav.sightings.bountyHeld(uuid) ? "your bounty" : "";

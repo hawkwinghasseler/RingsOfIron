@@ -29,6 +29,12 @@ class FactionStandingTest {
     Factions factions;
     int patrol, selene, pirates;
 
+    /** Lets a test promote straight up the ladder: a clock that moves a month on each reading, so every time in grade has passed. */
+    static void skipTimeInGrade(FactionStanding standing) {
+        double[] t = {standing.clock.getAsDouble()};
+        standing.clock = () -> t[0] += 30 * FactionStanding.DAY;
+    }
+
     @BeforeAll
     static void loadNatives() {
         GdxNativesLoader.load();
@@ -121,6 +127,50 @@ class FactionStandingTest {
         assertEquals("Lieutenant Commander", standing.rank().name, "promotions are never taken back");
         standing.reward("selene", 100f, "test");
         assertEquals(2, standing.record().rank, "only the sponsor promotes");
+    }
+
+    @Test
+    void commanderAndCaptainEachWaitFiveDaysInTheRankBelow(@TempDir Path dir) {
+        // Round 7: seed 7 made Commander and Captain the same day on ace bounties
+        double[] now = {2 * FactionStanding.DAY};
+        standing.clock = () -> now[0];
+        standing.reward("patrol", 100f, "test");
+        assertEquals("Lieutenant Commander", standing.rank().name, "standing enough, but no time yet as Lieutenant Commander");
+        assertEquals(5 * FactionStanding.DAY, standing.timeInGradeLeft(3), 1e-6);
+        assertTrue(standing.notices.peek().startsWith("Standing enough for Commander: promoted after 5.0 more days"),
+                standing.notices.peek());
+        int notices = standing.notices.size;
+        now[0] += 4 * FactionStanding.DAY;
+        standing.promoteDue();
+        assertEquals(2, standing.record().rank);
+        assertEquals(notices, standing.notices.size, "said once");
+
+        now[0] += FactionStanding.DAY;
+        standing.promoteDue();
+        assertEquals("Commander", standing.rank().name);
+        assertEquals(now[0], standing.record().promotedAt, 1e-6);
+        assertEquals("Commander", standing.rank().name, "Captain waits five days more");
+        // ... and the yards sell a new Commander a frigate after ten
+        assertEquals(10 * FactionStanding.DAY, standing.newChassisWait("frigate_patrol"), 1e-6);
+        assertEquals(0, standing.newChassisWait("gunship_heavy"), 1e-6, "a Lieutenant Commander's ship at once");
+
+        // The days in rank are saved with the career
+        FileHandle file = new FileHandle(dir.resolve("grade.json").toFile());
+        assertNull(game.quickSave(file));
+        GameWorld fresh = new GameWorld();
+        try {
+            GameScenario loaded = GameScenario.start(fresh, assets, assets.resolve("no-mods-here"));
+            loaded.quickLoad(file);
+            assertEquals(now[0], fresh.standing.record().promotedAt, 1e-6);
+            fresh.standing.clock = () -> now[0] + 5 * FactionStanding.DAY;
+            assertEquals(5 * FactionStanding.DAY, fresh.standing.newChassisWait("frigate_patrol"), 1e-6, "kept across the load");
+            fresh.standing.promoteDue();
+            assertEquals("Captain", fresh.standing.rank().name);
+            assertEquals(5 * FactionStanding.DAY, fresh.standing.newChassisWait("frigate_patrol"), 1e-6,
+                    "a Captain still waits out the days from Commander");
+        } finally {
+            fresh.dispose();
+        }
     }
 
     @Test

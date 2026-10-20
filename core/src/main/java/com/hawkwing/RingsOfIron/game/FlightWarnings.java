@@ -41,6 +41,8 @@ public final class FlightWarnings {
     private double returnKg = Double.NaN;
     /** Most missiles inbound at once since the sky was last clear: a warning goes out only above it. */
     private int peak;
+    /** This salvo's warning, revised in place as the count climbs; null while the sky is clear. */
+    private NoticeLog.Notice salvo;
 
     public FlightWarnings(GameWorld world) {
         this.world = world;
@@ -59,15 +61,25 @@ public final class FlightWarnings {
         if (s != null) checkPropellant(s.propellant, s.propellantKg, returnKg);
         frame.clear();
         threats.collect(frame);
-        int n = frame.incoming();
-        if (n == 0) peak = 0;
+        missiles(frame.incoming(), frame.soonestImpact());
+    }
+
+    /**
+     * {@code n} missiles inbound, the first to land in {@code soonest} s (NaN when unknown). A salvo
+     * is everything launched until the sky is clear again, and gets one warning: posted as the first
+     * missile comes, and revised in place, in the log too, each time the count passes its peak.
+     */
+    void missiles(int n, float soonest) {
+        if (n == 0) {
+            peak = 0;
+            salvo = null;
+        }
         if (n > inbound && n > peak) {
             peak = n;
-            float t = frame.soonestImpact();
-            // The count rises and falls as missiles launch and point defense takes them: a warning goes
-            // out when more are coming than at any time since the sky was clear, and replaces the last
-            world.notices.replace("MISSILE WARNING", String.format(Locale.ROOT, "MISSILE WARNING: %d inbound%s", n,
-                    Float.isNaN(t) ? "" : String.format(Locale.ROOT, ", impact in %.0f s", t)), NoticeLog.Kind.WARNING);
+            String text = String.format(Locale.ROOT, "MISSILE WARNING: %d inbound%s", n,
+                    Float.isNaN(soonest) ? "" : String.format(Locale.ROOT, ", impact in %.0f s", soonest));
+            salvo = salvo == null ? world.notices.replace("MISSILE WARNING", text, NoticeLog.Kind.WARNING)
+                    : world.notices.revise(salvo, text);
         }
         inbound = n;
     }

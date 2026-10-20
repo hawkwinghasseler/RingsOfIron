@@ -83,10 +83,14 @@ public class ShipGauges extends Table {
         return percent(s.power) + "  " + watts(s.powerOutputWatts);
     }
 
+    /**
+     * The tank's share with its own tag ("LOW O2"), then the cabin air's, marked as the cabin's so a
+     * full tank beside thin air doesn't read "100% LOW AIR". With no tanks the bar is the cabin air.
+     */
     static String oxygenText(ShipStatus s) {
-        String air = s.cabinPressure < 0.1f ? "  VACUUM" : s.cabinPressure < 0.7f ? "  LOW AIR" : "";
-        if (Float.isNaN(s.oxygen)) return "air " + percent(s.cabinPressure) + air;
-        return percent(s.oxygen) + air;
+        String air = s.cabinPressure < 0.1f ? "VACUUM" : s.cabinPressure < 0.7f ? "LOW AIR" : "";
+        if (Float.isNaN(s.oxygen)) return "air " + percent(s.cabinPressure) + (air.isEmpty() ? "" : "  " + air);
+        return percent(s.oxygen) + (s.oxygen < LOW ? "  LOW O2" : "") + (air.isEmpty() ? "" : "  cabin " + air);
     }
 
     static String percent(float share) {
