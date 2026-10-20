@@ -282,8 +282,7 @@ class Round5CareerTest extends CareerScript {
                 frigate.price, Shipyard.tradeIn(game.player), cost, credits(), weeks, world.shipyard.refusal(frigate));
         if (credits() < cost) {
             log("  short by %.0f cr: the script makes up the difference.", cost - credits());
-            grantedCredits += cost + 1 - credits();
-            account().credits = cost + 1;
+            makeUp(cost + 1, "the frigate");
         }
         log("  %s", world.shipyard.buy("patrol_frigate"));
         assertEquals("frigate_patrol", game.player.getComponent(DefRefComponent.class).defId);
