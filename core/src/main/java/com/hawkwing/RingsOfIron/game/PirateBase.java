@@ -30,7 +30,8 @@ import java.util.List;
  * <p>Round 5: the base fights back. When the player comes within {@link #SCRAMBLE_RANGE} of it in
  * the bubble, it scrambles a wing of {@link #defendersFor defenders} (a leader and its wingmen) that
  * goes straight for the player. Once every defender is beaten or driven out of the bubble with the
- * player still within {@link #STRIKE_RANGE}, the base strikes its colours and falls. A fallen base
+ * base still in the bubble, the base strikes its colours and falls (round 7: wherever in the bubble the
+ * player is; round 5 also asked them to be within 20 km, which nothing on screen said). A fallen base
  * eases the strain between the lawful factions by {@link #FALL_RELIEF} (the pirates were what set
  * them against each other). The defenders are saved, so a raid broken off and flown again meets
  * whoever is left of the wing rather than a new one.
@@ -61,8 +62,6 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     static final float CHECK_SECONDS = 2f;
     /** How close the player must come to the base, in the bubble, for it to scramble its defenders, m. */
     public static final double SCRAMBLE_RANGE = 15_000;
-    /** How close the player must still be when the last defender is beaten for the base to strike, m. */
-    public static final double STRIKE_RANGE = 20_000;
     /** How far from the base the defenders launch, m, each a little further round. */
     static final double LAUNCH_OFFSET = 4_000;
     /**
@@ -426,7 +425,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     /**
      * Finds the base if the player is near or it is {@code here} in the bubble, and lets it fall if it
      * is here and empty. Here with the player close, it scrambles its defenders, unless some of the
-     * last wing are still about; once they are all beaten or driven off, it strikes.
+     * last wing are still about; once they are all beaten or driven off, it strikes, here at any range.
      */
     void look(boolean here) {
         if (uuid == null) return;
@@ -435,7 +434,9 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         if (!here || !standing()) return;
         double range = playerRange();
         if (!waiting.isEmpty() && (world.macroSim.now() >= waveAt || !leadDefenderFighting())) waveDue = true;
-        if (!defenders.isEmpty() && waiting.isEmpty() && !defended() && range <= STRIKE_RANGE) {
+        // Round 7: the fight drifts (a real-window raid ended 30 km off, the base still in the bubble),
+        // so the base strikes wherever the player is once it is here and its defence is beaten
+        if (!defenders.isEmpty() && waiting.isEmpty() && !defended()) {
             fall("its defenders are beaten, and it strikes its colours");
         } else if (!anyDefenderLeft() && range <= SCRAMBLE_RANGE) {
             scrambleDue = true;

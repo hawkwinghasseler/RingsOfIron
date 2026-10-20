@@ -689,6 +689,10 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         if (victim == null || attacker == null || victim == attacker) return;
         HostileComponent h = victim.getComponent(HostileComponent.class);
         if (h == null) return;
+        // Friendly fire doesn't turn a ship on its own side: round 7 found the base's two batteries,
+        // moored in a line, shooting each other for the rest of the raid after one's stray rounds
+        HostileComponent by = attacker.getComponent(HostileComponent.class);
+        if (by != null && h.faction != null && h.faction.equals(by.faction)) return;
         // A patrol hit by the player's stray rounds in someone else's fight doesn't turn on them,
         // unless the player stands hostile with its side (it used to follow them to the berth)
         if (!h.isPirate() && attacker == world.getPlayer()) {

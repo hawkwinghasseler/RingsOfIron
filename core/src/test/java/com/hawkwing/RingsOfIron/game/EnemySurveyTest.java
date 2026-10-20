@@ -111,7 +111,7 @@ class EnemySurveyTest {
             for (int ship = CORVETTE; ship <= FRIGATE; ship++) {
                 // An ace takes a gunship only once the player flies one
                 if (enemy.length > 3 && ship == CORVETTE) continue;
-                int won = 0, ran = 0, lost = 0, fired = 0, hits = 0, killed = 0, theirs = 0, firedIn = 0, gunFired = 0;
+                int won = 0, ran = 0, lost = 0, fired = 0, hits = 0, killed = 0, theirs = 0, firedIn = 0, gunFired = 0, gunHits = 0;
                 float minHull = 1, sumHull = 0;
                 double beatTime = 0;
                 for (int i = 0; i < trials; i++) {
@@ -127,6 +127,7 @@ class EnemySurveyTest {
                     fired += r.fired;
                     hits += r.hits;
                     gunFired += r.gunFired;
+                    gunHits += r.gunHits;
                     if (r.fired + r.gunFired > 0) firedIn++;
                     minHull = Math.min(minHull, r.hull1);
                     sumHull += r.hull1;
@@ -135,7 +136,7 @@ class EnemySurveyTest {
                 }
                 out.append(String.format("| %s | %s | %d | %d | %d | %d | %.0f | %.0f | %s | %.2f-%.2f | %.1f | %.1f | %s |%n", enemy[0],
                         OUR_SHIPS[ship], won, ran, lost, firedIn, fired / (double) trials, hits / (double) trials,
-                        BASE.equals(enemy[1]) ? String.format("%.0f", gunFired / (double) trials) : "-", minHull,
+                        BASE.equals(enemy[1]) ? String.format("%.0f (%.0f hit)", gunFired / (double) trials, gunHits / (double) trials) : "-", minHull,
                         sumHull / trials, killed / (double) trials, theirs / (double) trials,
                         won == 0 ? "-" : String.format("%.0f s", beatTime / won)));
             }

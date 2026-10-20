@@ -171,7 +171,18 @@ public class ShipDisablement extends EntitySystem {
         // round 7 found raiders giving up at 4 km to a frigate's first slugs with two of three crew
         // knocked out, before their chaingun ever reached
         if (count[0] > 0 && count[1] < crewLine * count[0] && !closingToReach(ship)) return true;
+        // Tanks dry, it can neither close nor run: on seed 12 an ace that had robbed eleven
+        // freighters met the gunship empty and drifted 400 s, its one gun rarely bearing
+        if (dry(ship)) return true;
         return gunsSilenced(ship);
+    }
+
+    /** True for a hostile whose tanks are empty. */
+    static boolean dry(Entity ship) {
+        if (ship.getComponent(HostileComponent.class) == null) return false;
+        com.ringsofiron.physicsexterior.components.ThrusterComponent t =
+                ship.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
+        return t != null && t.isOutOfFuel();
     }
 
     /** True for a pirate fighting a ship further off than its shortest-reaching gun reaches. */
