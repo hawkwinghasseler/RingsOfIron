@@ -446,6 +446,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(sensors);
         // Shots and beams draw on the ship's power circuits.
         weaponControl.setPower(new ShipWeaponPower());
+        // Round 7: other ships' gunners hold fire with a ship in the way (a pirate emptied its
+        // magazine into a surrendered wingmate); the player's guns fire as the player sets them
+        weaponControl.setHoldFire((shooter, blocker) -> shooter != getPlayer());
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
