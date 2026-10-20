@@ -68,6 +68,77 @@ class CrewWoundTest {
     }
 
     @Test
+    void anyoneStabilisesACriticalWoundSoItStopsBleeding() {
+        TestShips s = room();
+        Entity patient = s.spawn(CrewRole.CREWMAN, 0, 2, 2);
+        Entity hand = s.spawn(CrewRole.ENGINEER, 0, 3, 2);
+        s.crew.applyDamage(patient, 100f, DamageCause.PENETRATOR);
+        int stores = s.grid.medicalStores;
+        s.run(s.c(hand).def.stabiliseTime + 5f);
+        CrewMemberComponent p = s.c(patient);
+        assertTrue(p.stabilised || p.wound != Wound.CRITICAL, "an engineer stops the bleeding first");
+        assertTrue(s.grid.medicalStores < stores, "using a store");
+        float left = p.bleedOut;
+        if (p.wound == Wound.CRITICAL) {
+            // A fresh serious hit opens it again
+            s.crew.applyDamage(patient, 75f, DamageCause.PENETRATOR);
+            assertFalse(p.stabilised);
+            assertEquals(left * 0.5f, p.bleedOut, 1e-3f);
+        }
+    }
+
+    @Test
+    void aStabilisedWoundStaysDownWithNobodyToTreatIt() {
+        TestShips s = room();
+        Entity patient = s.spawn(CrewRole.CREWMAN, 0, 2, 2);
+        s.crew.applyDamage(patient, 100f, DamageCause.PENETRATOR);
+        CrewMemberComponent p = s.c(patient);
+        p.stabilised = true;
+        s.run(p.def.bleedOutTime * 2f);
+        assertEquals(CrewState.UNCONSCIOUS, p.state, "alive and still down");
+        assertEquals(Wound.CRITICAL, p.wound);
+        assertEquals(p.def.bleedOutTime, p.bleedOut, 1e-3f, "the clock held");
+        s.crew.easeWound(patient);
+        assertFalse(p.stabilised, "treatment past critical clears it");
+    }
+
+    @Test
+    void aSuitRunningLowInAVentedShipIsFilledAtLifeSupport() {
+        TestShips s = new TestShips(
+                "##########",
+                "#L.......#",
+                "#L.......#",
+                "#........#",
+                "##########");
+        for (com.ringsofiron.interiorgrid.Compartment room : s.grid.compartments) {
+            room.oxygen = 0;
+            room.nitrogen = 0;
+        }
+        Entity e = s.spawn(CrewRole.CREWMAN, 0, 7, 1);
+        CrewMemberComponent c = s.c(e);
+        c.setSuited(true);
+        c.suitAir = c.def.suitAir * c.def.suitRefillShare * 0.5f;
+        s.run(c.def.suitRefillTime + 15f);
+        assertEquals(CrewState.CONSCIOUS, c.state);
+        assertTrue(c.suitAir > c.def.suitAir * 0.9f, "filled their suit at the life support: " + c.suitAir);
+    }
+
+    @Test
+    void withNothingToFillItFromASuitRunsDry() {
+        TestShips s = room();
+        for (com.ringsofiron.interiorgrid.Compartment room : s.grid.compartments) {
+            room.oxygen = 0;
+            room.nitrogen = 0;
+        }
+        Entity e = s.spawn(CrewRole.CREWMAN, 0, 4, 2);
+        CrewMemberComponent c = s.c(e);
+        c.setSuited(true);
+        c.suitAir = 20f;
+        s.run(25f);
+        assertEquals(0f, c.suitAir, 1e-3f, "no oxygen aboard to fill it from");
+    }
+
+    @Test
     void aSeriousWoundStaysDownWaitingForHelpButDoesNotKill() {
         TestShips s = room();
         Entity e = s.spawn(CrewRole.CREWMAN, 0, 2, 2);
@@ -88,13 +159,13 @@ class CrewWoundTest {
         Entity medic = s.spawn(CrewRole.MEDIC, 0, 7, 3);
         s.crew.applyDamage(patient, 100f, DamageCause.PENETRATOR);
         int stores = s.grid.medicalStores;
-        // Critical to serious, then serious to light: one store each
+        // Stabilised first, then critical to serious and serious to light: one store each
         float care = CrewDef.careTime(Wound.CRITICAL) + CrewDef.careTime(Wound.SERIOUS);
         s.run(care + 30f);
         CrewMemberComponent p = s.c(patient);
         assertEquals(Wound.LIGHT, p.wound, "treated down to a light wound");
         assertEquals(CrewState.CONSCIOUS, p.state, "and back on their feet");
-        assertEquals(stores - 2, s.grid.medicalStores);
+        assertEquals(stores - 3, s.grid.medicalStores, "one to stop the bleeding, one a level");
         assertTrue(s.c(medic).record().pendingCare > 0f, "the medic learns from it");
         // The light wound heals by itself
         s.run(p.def.lightHealTime + 5f);

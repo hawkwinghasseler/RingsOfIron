@@ -49,6 +49,13 @@ public class CrewDef {
     /** Seconds a critical wound can go untreated before it kills. */
     public float bleedOutTime = 300f;
     /**
+     * Seconds a crew member of baseline medicine who isn't a medic takes to stabilise a critical
+     * wound ({@link StabiliseTask}); a medic takes {@link #MEDIC_STABILISE} of it.
+     */
+    public float stabiliseTime = 15f;
+    /** A medic's share of {@link #stabiliseTime}. */
+    public static final float MEDIC_STABILISE = 0.5f;
+    /**
      * Seconds a serious wound takes to ease to a light one by itself on a safe tile, for a crew
      * with nobody left on their feet to treat them.
      */
@@ -108,6 +115,16 @@ public class CrewDef {
     public float suitTime = 5f;
     /** Speed multiplier while suited. */
     public float suitSpeedFactor = 0.85f;
+    /**
+     * Share of {@link #suitAir} left, out of breathable air, at which a crew member goes to fill
+     * their suit from the ship's oxygen (round 6): a ship holed past its patch kits used to leave
+     * its crew to suffocate once their suits ran dry.
+     */
+    public float suitRefillShare = 0.3f;
+    /** Seconds to fill a suit from the ship's oxygen, at an oxygen tank or working life support. */
+    public float suitRefillTime = 20f;
+    /** Kilograms of oxygen a full suit takes. */
+    public static final double SUIT_OXYGEN_KG = 0.05;
 
     /** Fire intensity removed per second when fighting a fire. */
     public float extinguishRate = 0.3f;

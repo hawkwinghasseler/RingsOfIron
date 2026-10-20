@@ -43,6 +43,8 @@ public enum CrewRole {
     public float affinity(CrewTask.Kind kind) {
         // Everyone abandons ship
         if (kind == CrewTask.Kind.EVACUATE) return 1f;
+        // Anyone stops a bleed: as keen as they are to put out a fire, a medic keener
+        if (kind == CrewTask.Kind.STABILISE) return this == MEDIC ? 1.5f : Math.max(1f, affinity(CrewTask.Kind.EXTINGUISH));
         switch (this) {
             case ENGINEER:
                 switch (kind) {
