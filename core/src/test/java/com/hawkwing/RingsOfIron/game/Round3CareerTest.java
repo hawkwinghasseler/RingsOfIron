@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -48,6 +49,7 @@ import org.junit.jupiter.api.Test;
  * so instead of passing quietly. Everything else is the game's own systems. The career test writes what it saw (time, credits, standing, rank,
  * difficulty, prices) to {@code build/round3-career.txt} for the round 3 playtest notes.
  */
+@Tag("slow")
 class Round3CareerTest {
     static final float FRAME = 1f / 60f;
     /** 2026 unless {@code -PcareerSeed=n} is given, to play the career on other seeds. */
