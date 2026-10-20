@@ -274,7 +274,8 @@ public final class TaskRules {
      * ShipTaskBoardComponent#underFire}) and waits for the fight to end: damage control, repairs and
      * casualties alike, except a casualty with no more than {@link #LAST_CHANCE} to live, bleeding out
      * or down in bad air with that much suit air or none. Manning a
-     * console, orders and work away from the ship never wait.
+     * console, orders, work away from the ship and damage control on what the ship fights with
+     * ({@link #vital}) never wait.
      */
     public static boolean waitsOutFire(CrewTask task, ShipTaskBoardComponent board, CrewService crew) {
         if (board != null && !board.keepsClearOfFire) return false;
@@ -283,6 +284,7 @@ public final class TaskRules {
             case MAN_CONSOLE: case CARRY: case YARD: case FORCE_DOOR: case EVACUATE: case BOARD: return false;
             default: break;
         }
+        if (vital(task)) return false;
         if (!board.underFire(targetX(task, crew), targetY(task, crew))) return false;
         Entity casualty = mobileTarget(task);
         CrewMemberComponent c = crew.crew(casualty);
@@ -294,6 +296,26 @@ public final class TaskRules {
         boolean suffocating = grid != null && !c.isConscious() && !isBreathable(grid, p.tileX(), p.tileY())
                 && (!c.breathesFromSuit() || c.suitAir <= LAST_CHANCE);
         return !bleeding && !suffocating;
+    }
+
+    /**
+     * Resetting a short or repairing a system the ship fights with: its reactor and power conduits,
+     * shields, guns, helm, weapons console and engines. Round 8: kept out of the fire too, the crew
+     * left the corvette's shorted power dark and Red Kestrel, beaten in 36 s before, won in 69 s.
+     */
+    static boolean vital(CrewTask task) {
+        Entity subsystem;
+        if (task instanceof ResetShortTask) subsystem = ((ResetShortTask) task).subsystem;
+        else if (task instanceof RepairTask) subsystem = ((RepairTask) task).subsystem;
+        else return false;
+        // A shorted conduit carries the power to all of them
+        if (subsystem == null) return task instanceof ResetShortTask;
+        SubsystemComponent s = subsystem.getComponent(SubsystemComponent.class);
+        if (s == null) return false;
+        switch (s.type) {
+            case REACTOR: case SHIELD_EMITTER: case TURRET_MOUNT: case HELM: case WEAPONS: case ENGINE: return true;
+            default: return false;
+        }
     }
 
     /** True while {@code e}'s ship is at battle stations. */
