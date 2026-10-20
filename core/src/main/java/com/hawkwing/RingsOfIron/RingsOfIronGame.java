@@ -835,6 +835,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         return game;
     }
 
+    /** The player's fire control: what the guns are aimed at. */
+    public PlayerGunnery getGun() {
+        return gun;
+    }
+
     /** "Seed 1234" or "Designed start": which world this career is, for the pause menu. */
     public String worldDescription() {
         return game == null ? "" : game.newGame().describe();

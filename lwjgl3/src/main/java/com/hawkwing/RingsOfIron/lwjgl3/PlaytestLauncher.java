@@ -234,6 +234,19 @@ public class PlaytestLauncher {
                     }
                     return out.toString();
                 }
+                case "raid": {
+                    // How the raid stands, for a script to fight it to its end: one line, then a
+                    // line per defender
+                    Entity target = game.getGun() == null ? null : game.getGun().getTarget();
+                    StringBuilder out = new StringBuilder(String.format(java.util.Locale.ROOT,
+                            "base %s, hull %.2f%s, target %s", world.pirateBase.standing() ? "standing" : "fallen",
+                            com.hawkwing.RingsOfIron.game.ShipDisablement.hullIntegrity(s.player.getComponent(ShipGridComponent.class)),
+                            com.hawkwing.RingsOfIron.game.ShipDisablement.isDisabled(s.player) ? ", we are beaten" : "",
+                            target == null ? "none" : com.hawkwing.RingsOfIron.game.FirstPlay.beaten(world, target)
+                                    ? "beaten" : PlayerDocking.name(target)));
+                    for (String name : world.pirateBase.defenders()) out.append("\n  defender ").append(name);
+                    return out.toString();
+                }
                 case "docked":
                     return world.docking.dockedTo(s.player) != null ? "yes" : "no";
                 case "target": {
