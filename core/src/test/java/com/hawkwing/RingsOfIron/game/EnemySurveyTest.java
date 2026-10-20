@@ -276,6 +276,7 @@ class EnemySurveyTest {
             if (DEBUG) world.combatEvents.shots.add((sig, shot) -> { if (shot.shooter == player) System.out.println(String.format(
                     "SHOT t=%.2f %s from (%.1f,%.1f) dir (%.2f,%.2f)", world.engine.getSimSeconds(), shot.weaponDefId,
                     shot.muzzlePoint.x, shot.muzzlePoint.y, shot.direction.x, shot.direction.y)); });
+            if (DEBUG) trace(world, player, ships);
             int[] frame = new int[1];
             double t0 = world.engine.getSimSeconds();
             double[] end = {Double.NaN};
@@ -418,6 +419,42 @@ class EnemySurveyTest {
         return "unpowered";
     }
 
+    /**
+     * Round 9's trace of what our fire does to their ships, as TRACE lines: each round that strikes
+     * one (weapon and range), and what it shorted, burst and wore down, by system and tile.
+     */
+    private static void trace(GameWorld world, Entity player, List<Entity> ships) {
+        String[] last = {""};
+        world.combatEvents.impacts.add((sig, hit) -> {
+            if (hit.owner != player || !ships.contains(hit.target)) return;
+            PhysicsBodyComponent us = player.getComponent(PhysicsBodyComponent.class), them = hit.target.getComponent(PhysicsBodyComponent.class);
+            float km = us == null || them == null ? -1 : us.body.getPosition().dst(them.body.getPosition())
+                    * com.ringsofiron.physicsexterior.PhysicsManager.METERS_PER_UNIT / 1000f;
+            last[0] = String.format(java.util.Locale.ROOT, "%s at %.1f km", hit.def == null ? (hit.ram ? "ram" : "?") : hit.def.id, km);
+        });
+        world.combatEvents.damage.add((sig, report) -> {
+            if (!ships.contains(report.ship)) return;
+            ShipGridComponent grid = report.ship.getComponent(ShipGridComponent.class);
+            StringBuilder b = new StringBuilder(String.format(java.util.Locale.ROOT, "TRACE t=%.2f ship %d hit by %s:",
+                    world.engine.getSimSeconds(), ships.indexOf(report.ship), last[0]));
+            for (int i = 0; i < report.damagedSubsystems.size; i++) {
+                var sub = report.damagedSubsystems.get(i).getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class);
+                if (sub != null) b.append(String.format(java.util.Locale.ROOT, " %s hp %.2f%s", sub.type, sub.health, sub.shorted ? " SHORTED" : ""));
+            }
+            for (int i = 0; i < report.shorts.size; i++) {
+                int p = report.shorts.get(i);
+                b.append(" short@").append(p % grid.width).append(',').append(p / grid.width);
+            }
+            for (int i = 0; i < report.bursts.size; i++) b.append(" BURST@").append(report.bursts.get(i) % grid.width).append(',').append(report.bursts.get(i) / grid.width);
+            if (report.breaches.size > 0) b.append(" breaches ").append(report.breaches.size);
+            for (int i = 0; i < report.injuredCrew.size; i++) {
+                var cm = report.injuredCrew.get(i).getComponent(com.ringsofiron.aicrew.CrewMemberComponent.class);
+                if (cm != null) b.append(" crew ").append(cm.role).append(' ').append(cm.state);
+            }
+            System.out.println(b);
+        });
+    }
+
     private static void debug(GameWorld world, Entity player, List<Entity> ships, List<HostileComponent> hs) {
         StringBuilder b = new StringBuilder(String.format("t=%.0f", world.engine.getSimSeconds()));
         for (int i = 0; i < ships.size(); i++) {
@@ -460,6 +497,15 @@ class EnemySurveyTest {
                         sub == null ? "-" : sub.isOperational, sub == null ? "-" : sub.powered, sub == null ? "-" : sub.switchedOn,
                         sub == null ? -1f : sub.health, m.shotsFired, m.engagedFor));
             }
+            var theirs = s.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent.class);
+            if (theirs != null) for (Entity se : theirs.subsystems) {
+                var sub = se.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class);
+                if (sub != null && sub.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.REACTOR)
+                    b.append(String.format(" reactor op=%s shorted=%s for=%.0f hp=%.2f", sub.isOperational, sub.shorted, sub.shortedFor, sub.health));
+            }
+            boolean runIn = ShipDisablement.closingToReach(s);
+            b.append(String.format(" grid=%.2f why=%s runIn=%s silenced=%s dry=%s", hull(s), ShipDisablement.reason(s), runIn,
+                    ShipDisablement.gunsSilenced(s, runIn), ShipDisablement.dry(s)));
         }
         var ours = player.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class);
         b.append(" || us: hull=").append(String.format("%.2f", hull(player))).append(" disabled=").append(ShipDisablement.reason(player));
