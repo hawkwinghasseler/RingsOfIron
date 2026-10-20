@@ -179,6 +179,12 @@ class PirateEnemiesTest {
         String id = pirate(HostileTraffic.RAIDER);
         HostileComponent h = hostiles.get(id);
         String was = h.displayName;
+        // A gun runner, whatever the seed drew (round 6: fits come from the career's seed, and a prize
+        // taker's ion gun is dearer than an ace's chaingun)
+        com.ringsofiron.combatsys.modding.Loadouts.apply(world.engine.getEntity(id), world.combatDefs.loadouts.get("raider_chaingun"),
+                world.combatDefs);
+        h.loadout = "raider_chaingun";
+        h.firepower = HostileTraffic.firepower(world.engine.getEntity(id));
         double firepower = h.firepower;
         h.targetUuid = HostileComponent.PLAYER;
         Entity ship = bringIn(id, 3_000, 0);
