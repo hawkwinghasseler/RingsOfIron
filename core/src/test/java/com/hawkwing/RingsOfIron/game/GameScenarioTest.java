@@ -73,6 +73,25 @@ class GameScenarioTest {
     }
 
     @Test
+    void aShipGivenTheGoneRaidersEntityIsNotTakenForTheRaider() {
+        // Round 9: the engine pools its entities. Seed 12's ace Black Sal was handed the first
+        // raider's, and the player's first shot set its combat pilot on them a frame early
+        Entity raider = game.raider;
+        world.engine.getEcsEngine().removeEntity(raider);
+        assertNull(game.raider, "the raider is forgotten once it is gone");
+        Entity reused = null;
+        for (int i = 0; i < 200 && reused != raider; i++) reused = world.engine.getEcsEngine().createEntity();
+        assertSame(raider, reused, "the pool hands the raider's entity out again");
+        world.engine.getEcsEngine().addEntity(reused);
+        ShotFiredEvent shot = new ShotFiredEvent();
+        shot.shooter = game.player;
+        shot.target = reused;
+        shot.weaponDefId = "unknown";
+        world.combatEvents.shots.dispatch(shot);
+        assertNull(reused.getComponent(NpcCombatComponent.class), "the new ship isn't provoked as the raider");
+    }
+
+    @Test
     void startsWithAFlyableShipAndACrewAboard() {
         assertFalse(game.content.report.hasErrors(), game.content.report.toString());
         assertSame(game.player, world.getPlayer());

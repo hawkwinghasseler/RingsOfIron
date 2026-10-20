@@ -211,6 +211,18 @@ public class GameScenario {
         world.combatEvents.impacts.add((signal, hit) -> {
             if (hit.owner == player && hit.target == raider) provokeRaider();
         });
+        // Gone, the raider is forgotten: the engine pools its entities, and a later ship given the
+        // same one was provoked by the player's first shot as if it were the raider (round 9: seed
+        // 12's Black Sal flew at the player a frame early, or not, as the pool handed it out)
+        world.engine.getEcsEngine().addEntityListener(new EntityListener() {
+            @Override
+            public void entityAdded(Entity entity) {}
+
+            @Override
+            public void entityRemoved(Entity entity) {
+                if (entity == raider) raider = null;
+            }
+        });
 
         // Traffic: shown and lockable while it is in the bubble.
         world.macroSim.bubble().addListener(new BubbleTransitionListener() {
@@ -440,7 +452,7 @@ public class GameScenario {
      * raider stays out of it.
      */
     public void provokeRaider() {
-        if (ShipDisablement.isDisabled(raider)) return;
+        if (raider == null || ShipDisablement.isDisabled(raider)) return;
         SensorComponent sensor = raider.getComponent(SensorComponent.class);
         if (sensor != null && sensor.lockedTarget == null) sensor.lockedTarget = player;
         if (raider.getComponent(NpcCombatComponent.class) == null) raider.add(new NpcCombatComponent(player));
