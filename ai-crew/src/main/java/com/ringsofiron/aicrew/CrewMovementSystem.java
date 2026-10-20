@@ -103,10 +103,17 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             p.stop();
             return;
         }
+        PlayerAvatarComponent avatar = avatarM.get(e);
+        if (avatar != null && avatar.seated && avatar.moveX == 0f && avatar.moveY == 0f) {
+            // Seated at a console and not walking off: nothing for passing crew to push (round 7: a
+            // yard technician shoved the captain off the helm, and the save after found them on deck)
+            service.physics.release(e);
+            p.stop();
+            return;
+        }
         GridNavGraph nav = service.pathfinder(grid).graph;
         float speed = c.def.moveSpeed * (c.carrying != null ? c.def.carrySpeedFactor : 1f)
                 * (c.load != null ? c.def.loadSpeedFactor : 1f) * (c.suited ? c.def.suitSpeedFactor : 1f) * c.woundPace();
-        PlayerAvatarComponent avatar = avatarM.get(e);
         boolean crossingOut = avatar == null && p.crossing != null && !p.isMoving();
         if (p.walkway != null || crossingOut || !nav.isWalkable(p.tileX(), p.tileY())) {
             // Off the deck proper: moved along without a body
