@@ -28,7 +28,8 @@ import java.util.Set;
  * {@link #MAX_ACES} are about at once. An ace takes a callsign, a better crew ({@link #ACE_SKILL})
  * and a refit from its ship's {@code ace = true} loadouts, which carry a weapon no yard sells. One
  * that got away from the player keeps a grudge and hunts them whatever the odds. Beaten, it is worth
- * {@link #BOUNTY_SCALE} times a pirate's bounty, {@link #BOUNTY_STANDING} more standing, and a spare
+ * {@link #BOUNTY_SCALE} times a pirate's bounty, {@link #BOUNTY_STANDING_PER_TIER} more standing for each
+ * step of its bounty's tier (from 1 for an ace no match for the player's ship), and a spare
  * rare weapon is left crated in its hold, for whoever boards it. An ace never runs on the odds and
  * fights on to {@link #BREAK_OFF_HULL} (round 4: the one in round 3 ran at its first hit).
  *
@@ -42,7 +43,12 @@ public final class PirateAces {
     /** An ace's crew are at least this good at the guns and the sensors. */
     public static final float ACE_SKILL = 0.85f;
     public static final double BOUNTY_SCALE = 4;
-    public static final int BOUNTY_STANDING = 6;
+    /**
+     * Standing an ace's bounty adds for each step of its tier, counting from 1: 3 (an ace no match for the
+     * player's ship) to 9 (one that far outguns it). Round 7: was a flat 6, which took seed 7 from
+     * Lieutenant Commander to Captain in a week on four light aces. Placeholder number.
+     */
+    public static final int BOUNTY_STANDING_PER_TIER = 3;
     /**
      * An ace breaks off below this share of its hull (a plain pirate at {@link HostileTraffic#BREAK_OFF_HULL}),
      * and never runs on the odds: it fights on until it is nearly beaten.

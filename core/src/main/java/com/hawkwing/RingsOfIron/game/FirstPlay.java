@@ -10,6 +10,7 @@ import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -189,6 +190,17 @@ public final class FirstPlay {
             if (sub == null || (!sub.isDisabled() && sub.isOperational)) return false;
         }
         return true;
+    }
+
+    /**
+     * True for a named ace the player has beaten once ({@link PirateAces#dropPart}). Its crew may get it
+     * flying again out on the rails, so {@link #beaten} can say no days later, but contracts and
+     * operations are done with it: no recon or bounty names it again (round 6: Hunt the Hunters sent
+     * the frigate to find Iron Dagny, beaten a week before, and an operation's bounty on it never closed).
+     */
+    public static boolean aceBeaten(Entity ship) {
+        HostileComponent h = ship == null ? null : ship.getComponent(HostileComponent.class);
+        return h != null && h.ace && h.partDropped;
     }
 
     private static boolean powered(ShipSubsystemRegistryComponent registry) {
