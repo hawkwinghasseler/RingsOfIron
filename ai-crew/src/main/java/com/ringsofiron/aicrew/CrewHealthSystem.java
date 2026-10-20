@@ -25,9 +25,15 @@ import com.ringsofiron.interiorgrid.crew.RescueTask;
  *       ({@link CrewMemberComponent#stabilised}) no longer bleeds out.</li>
  *   <li><b>Rescue</b>: a crew member down on an unsafe tile (once any critical wound is
  *       stabilised) gets a {@link RescueTask} on their
- *       ship's board; one down on a safe tile gets a {@link TreatTask}. A critical wound not yet
- *       stabilised gets a {@link StabiliseTask} wherever it lies. Prisoners held aboard
+ *       ship's board; one down on a safe tile gets a {@link TreatTask}, and once the ship is off
+ *       battle stations a {@link MedbayCarryTask} to a free medbay bed if it has one. A critical
+ *       wound not yet stabilised gets a {@link StabiliseTask} wherever it lies. Prisoners held aboard
  *       get the same from the crew of the ship that holds them.</li>
+ *   <li><b>Light wounds</b> (round 7): a crew member on their feet with a light wound, on a safe
+ *       tile and off battle stations, gets a {@link TreatTask} at {@link TreatTask#LIGHT_PRIORITY},
+ *       taken by whoever else has nothing to do; alone and idle, they see to it themselves. It is treated at {@link CrewDef#LIGHT_CARE} of the
+ *       carer's rate and uses no medical stores. Any treatment runs {@link CrewDef#MEDBAY_CARE}
+ *       times faster with the patient lying in a medbay ({@link TaskRules#isMedbay}).</li>
  * </ul>
  * Dead crew are left alone.
  */
@@ -79,12 +85,22 @@ public class CrewHealthSystem extends FixedIteratingSystem {
             if (c.wound == Wound.CRITICAL && !c.stabilised && c.treatedBy == null && c.carriedBy == null && cared) {
                 board.post(new StabiliseTask(e, x, y));
             }
+            if (c.wound == Wound.LIGHT && c.isConscious() && safe && cared && !board.battleStations) {
+                board.post(new TreatTask(e, x, y, TreatTask.LIGHT_PRIORITY));
+            }
         }
         if (c.state == CrewState.UNCONSCIOUS) {
             if (safe && c.carriedBy == null) {
                 float rate = d.recoveryRate * (c.treatedBy != null ? d.treatedRecoveryFactor : 1f);
                 service.heal(e, rate * dt);
-                if (c.state == CrewState.UNCONSCIOUS && cared) board.post(new TreatTask(e, x, y));
+                if (c.state == CrewState.UNCONSCIOUS && cared) {
+                    board.post(new TreatTask(e, x, y));
+                    // The fight over, to a bed in the medbay
+                    if (!board.battleStations && !bleeding(c) && !TaskRules.isMedbay(grid, x, y)
+                            && TaskRules.freeBed(grid, service, p.ship, e) != null) {
+                        board.post(new MedbayCarryTask(e, x, y));
+                    }
+                }
             } else if (!safe && c.carriedBy == null && cared && !bleeding(c)) {
                 // A critical wound's bleeding is stopped where they lie before anyone moves them:
                 // with nowhere safe to carry them, a rescue first left them to bleed out
@@ -93,6 +109,11 @@ public class CrewHealthSystem extends FixedIteratingSystem {
         } else if (safe && c.health < d.maxHealth) {
             service.heal(e, d.regenRate * dt);
         }
+    }
+
+    private boolean atBattleStations(Entity e) {
+        ShipTaskBoardComponent board = service.board(service.position(e).ship);
+        return board != null && board.battleStations;
     }
 
     /** A critical wound nobody has stabilised yet, while someone could still stabilise it. */
@@ -104,6 +125,8 @@ public class CrewHealthSystem extends FixedIteratingSystem {
     private void tend(Entity e, CrewMemberComponent c, ShipGridComponent grid, boolean safe, float dt) {
         CrewMemberComponent carer = c.treatedBy == null ? null : service.crew(c.treatedBy);
         if (carer != null && !carer.isConscious()) carer = null;
+        // Idle with nobody to treat them, the lightly wounded see to themselves
+        if (carer == null && c.wound == Wound.LIGHT && c.isConscious() && c.task == null && safe && !atBattleStations(e)) carer = c;
         if (carer == null) {
             if (c.wound == Wound.CRITICAL) {
                 if (c.stabilised) return;
@@ -117,9 +140,14 @@ public class CrewHealthSystem extends FixedIteratingSystem {
             return;
         }
         carer.record().pendingCare += dt;
-        c.care += dt * carer.careRate() * (grid.medicalStores > 0 ? 1f : CrewDef.NO_STORES_CARE);
+        // A light wound uses no stores, at a slower pace; a medbay bed speeds any care
+        boolean light = c.wound == Wound.LIGHT;
+        float rate = light ? CrewDef.LIGHT_CARE : grid.medicalStores > 0 ? 1f : CrewDef.NO_STORES_CARE;
+        GridPositionComponent p = service.position(e);
+        if (c.carriedBy == null && TaskRules.isMedbay(grid, p.tileX(), p.tileY())) rate *= CrewDef.MEDBAY_CARE;
+        c.care += dt * carer.careRate() * rate;
         if (c.care >= CrewDef.careTime(c.wound)) {
-            if (grid.medicalStores > 0) grid.medicalStores--;
+            if (!light && grid.medicalStores > 0) grid.medicalStores--;
             service.easeWound(e);
         }
     }

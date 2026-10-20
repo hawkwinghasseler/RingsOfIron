@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>covering_medbay: a medbay's clean deck, a bed for the wounded (no fuel)</title>
+  <g id="base">
+    <rect x="0" y="0" width="64" height="64" fill="#c9d6d4"/>
+    <line x1="0" y1="0" x2="0" y2="64" stroke="#a9b9b6" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="32" y1="0" x2="32" y2="64" stroke="#a9b9b6" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="64" y1="0" x2="64" y2="64" stroke="#a9b9b6" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="64" y2="0" stroke="#a9b9b6" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="0" y1="32" x2="64" y2="32" stroke="#a9b9b6" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="0" y1="64" x2="64" y2="64" stroke="#a9b9b6" stroke-width="1.2" stroke-linecap="round"/>
+    <rect x="26" y="16" width="12" height="32" fill="#b8433f"/>
+    <rect x="16" y="26" width="32" height="12" fill="#b8433f"/>
+  </g>
+</svg>

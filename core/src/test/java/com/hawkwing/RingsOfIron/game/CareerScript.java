@@ -103,6 +103,7 @@ abstract class CareerScript {
             assertTrue(carried.size() < MOST_CARRIED_A_DAY, "the player keeps going down: carried home "
                     + carried.size() + " times in a day, last to " + t.stationName);
         });
+        world.pirateBoarding.robbed.add((sig, t) -> log("  (boarded by %s: they took %s)", t.pirateName, t.describe()));
     }
 
     /** When the crew carried the player home, in the last day; a day with this many fails the career. */
