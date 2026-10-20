@@ -79,12 +79,12 @@ public final class DeckView {
 
     /**
      * What the deck art does not show, over it: open tiles darken toward vacuum as their
-     * compartment loses pressure and haze over with smoke, and a breach blinks red. In the grid's
-     * local meters, inside a filled batch.
+     * compartment loses pressure, and a breach blinks red. Smoke is left to the smoke particles.
+     * In the grid's local meters, inside a filled batch.
      */
     public static void atmosphere(ShapeRenderer shapes, ShipGridComponent grid, boolean blinkOn) {
         float s = grid.tileSize, ox = grid.gridOriginLocal.x, oy = grid.gridOriginLocal.y;
-        Color vacuum = TileShade.VACUUM, smoke = TileShade.SMOKE;
+        Color vacuum = TileShade.VACUUM;
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
@@ -100,11 +100,6 @@ public final class DeckView {
                 float lost = 1f - (c == null ? 0f : MathUtils.clamp(c.pressureRatio(), 0f, 1f));
                 if (lost > 0.02f) {
                     shapes.setColor(vacuum.r, vacuum.g, vacuum.b, 0.65f * lost);
-                    shapes.rect(ox + x * s, oy + y * s, s, s);
-                }
-                float haze = c == null ? 0f : MathUtils.clamp(c.smokeDensity() / TileShade.THICK_SMOKE, 0f, 1f);
-                if (haze > 0f) {
-                    shapes.setColor(smoke.r, smoke.g, smoke.b, 0.55f * haze);
                     shapes.rect(ox + x * s, oy + y * s, s, s);
                 }
             }
