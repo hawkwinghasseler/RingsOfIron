@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -48,6 +49,7 @@ class HoldPositionTest {
         world.dispose();
     }
 
+    @Tag("slow")
     @Test
     void aKickedShipComesBackToWhereItWasHeld() {
         double[] held = offset();
@@ -69,6 +71,7 @@ class HoldPositionTest {
         assertEquals(HelmOrderComponent.Mode.HOLD_POSITION, world.nav.helm.mode(), "the order stands");
     }
 
+    @Tag("slow")
     @Test
     void theNaturalDriftIsHeldOffForMinutes() {
         assertTrue(relativeSpeed() > 5, "8 km apart on one orbit, their velocities differ: " + relativeSpeed());
