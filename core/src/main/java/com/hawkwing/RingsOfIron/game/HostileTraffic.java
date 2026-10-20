@@ -738,6 +738,10 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             if (side < 0 || !world.standing.hostile(FactionStanding.PLAYER, side)) return;
         }
         if (h.surrendered) {
+            // A beaten ace whose bounty paid stays struck, fired on or not (round 8: in the window Black
+            // Sal surrendered, the bounty paid, and the gunship's guns, still firing, brought it back
+            // into the fight and set it running)
+            if (h.partDropped) return;
             // A prize stays one unless the player fires on it again. A round or missile fired before
             // it gave up doesn't count, however long it flew: a heavy missile's fragments landing
             // 15 s after a surrender lifted it on seed 12, and the prize then tore the boarding latch
