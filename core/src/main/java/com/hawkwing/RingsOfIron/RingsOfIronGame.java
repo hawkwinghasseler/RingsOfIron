@@ -988,7 +988,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
             Entity e = owner instanceof Entity ? (Entity) owner : null;
             HudMarkerComponent marker = e == null ? null : MARKERS.get(e);
             ShipGridComponent hull = e == null ? null : e.getComponent(ShipGridComponent.class);
-            if (hull != null) {
+            // Only the hull's own body: a port's collar carriage and head carry the craft as owner too
+            if (hull != null && world.docking.bodyOf(e) == body) {
                 Vector2 at = PhysicsManager.getPosition(body, tmp2);
                 lighting.addHull(hullArt.chassisOf(e), hull, at.x, at.y, body.getAngle());
             }
