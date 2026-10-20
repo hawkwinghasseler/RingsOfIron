@@ -82,7 +82,10 @@ public class CrewHealthSystem extends FixedIteratingSystem {
 
         boolean safe = TaskRules.isSafe(grid, x, y);
         ShipTaskBoardComponent board = service.board(p.ship);
-        boolean cared = board != null && (board.faction == c.faction || c.held);
+        // A craft's own crew care for their own and their prisoners, and for a guest sheltering aboard
+        // (a ship's crew carried onto the station it is docked to while it could not be breathed)
+        boolean cared = board != null && (board.faction == c.faction || c.held
+                || c.home != null && c.home != p.ship && service.friendlyTo(c.faction, p.ship));
         if (c.wound != Wound.NONE) {
             tend(e, c, grid, safe, dt);
             if (c.state == CrewState.DEAD) return;
