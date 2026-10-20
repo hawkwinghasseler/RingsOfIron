@@ -104,6 +104,7 @@ Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. I
   - Beaten, it leaves a crate of its rare weapon in its hold for whoever boards it, forgets its grudge and frees its place.
   - An ace beaten once (`FirstPlay.aceBeaten`) is done with as far as contracts go, even after its crew get the ship flying again out on the rails: no recon, bounty or operation step names it again (round 6: Hunt the Hunters sent the frigate to find Iron Dagny, beaten a week before).
   - Every step is a notice in the log (L).
+- **Pirates' upkeep** (round 8, `PirateUpkeep`): a pirate out on the rails, or idle in the bubble (not fighting, not stalking, not beaten), refuels its propellant tanks, full from empty in 2 days (`RAILS_REFUEL_DAYS`), in whole 60 s steps of rails time (`STEP`, so a save and load refuel the same). A robbery tops it up first: from the prey's own tanks in the bubble, and all it lacks on the rails (`RAILS_ROBBERY_SHARE`). Round 7 had aces meet their bounty with dry tanks and strike in the first second. A beaten ace whose bounty paid stays struck when fired on again (`HostileTraffic.onShotAt`). The last step is saved (`upkeepAt`); what the tanks hold is saved with the ship.
 
 ## Contracts and the Mission Board
 `ContractBoard` keeps each station's offers, the player's active contracts and a history of the last 20. It is saved as its own module (`"contracts"`). J opens the mission window while docked at a station, or anywhere while holding a contract.
