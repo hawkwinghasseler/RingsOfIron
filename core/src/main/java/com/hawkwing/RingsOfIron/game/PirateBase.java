@@ -246,6 +246,15 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         return standing() && name != null && defenders.contains(name);
     }
 
+    /**
+     * The player lost the raid: the defence that beat them is forgotten, so a defender leaving them
+     * drifting is never counted as driven off, and a raid flown again meets a new scramble.
+     */
+    public void raidLost() {
+        defenders.clear();
+        clearWave();
+    }
+
     /** True while a defender it scrambled is still in the fight: in the bubble, not beaten and not driven off. */
     public boolean defended() {
         for (String id : defenders) if (fighting(id)) return true;
@@ -436,6 +445,15 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         if (!waiting.isEmpty() && (world.macroSim.now() >= waveAt || !leadDefenderFighting())) waveDue = true;
         // Round 7: the fight drifts (a real-window raid ended 30 km off, the base still in the bubble),
         // so the base strikes wherever the player is once it is here and its defence is beaten
+        // The player beaten, the raid is lost: the defence leaves them drifting as winners, not
+        // driven off (round 7, real window: the frigate's reactor went down and Rustwake struck to
+        // it). The wing is forgotten, and none scrambles against a beaten ship, so a raid flown
+        // again meets a new one
+        Entity player = world.getPlayer();
+        if (player != null && ShipDisablement.isDisabled(player) && FirstPlay.beaten(world, player)) {
+            raidLost();
+            return;
+        }
         if (!defenders.isEmpty() && waiting.isEmpty() && !defended()) {
             fall("its defenders are beaten, and it strikes its colours");
         } else if (!anyDefenderLeft() && range <= SCRAMBLE_RANGE) {

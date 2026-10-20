@@ -181,6 +181,13 @@ class Round5CareerTest extends CareerScript {
                 break;
             case RAID:
                 raidTheBase(c);
+                // Round 7: the frigate wins about 7 raids in 10, so a raid lost is flown again after
+                // the yard, as a player would (seed 2026 lost its reactor to the batteries' darts)
+                if (c.isActive() && world.pirateBase.standing()) {
+                    log("  the raid is lost: home for repairs, and once more.");
+                    repairIfNeeded();
+                    raidTheBase(c);
+                }
                 break;
             default:
                 log("  (no script for %s)", c.type);

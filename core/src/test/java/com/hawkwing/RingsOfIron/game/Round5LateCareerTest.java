@@ -195,6 +195,32 @@ class Round5LateCareerTest {
     }
 
     @Test
+    void aRaidLostIsNotARaidWon() {
+        // Round 7, real window: the frigate's reactor went down, every defender left it drifting,
+        // and Rustwake counted them driven off and struck its colours to the beaten ship
+        besideTheBase(8_000);
+        run(2 * PirateBase.CHECK_SECONDS + 1);
+        assertFalse(world.pirateBase.defenders().isEmpty(), "a wing scrambled");
+        var reactors = new ArrayList<com.ringsofiron.interiorgrid.SubsystemComponent>();
+        var registry = game.player.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent.class);
+        for (Entity e : registry.subsystems) {
+            var sub = e == null ? null : e.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class);
+            if (sub != null && sub.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.REACTOR) reactors.add(sub);
+        }
+        assertFalse(reactors.isEmpty());
+        for (var r : reactors) r.switchedOn = false;
+        run(2 * PirateBase.CHECK_SECONDS + 5);
+        assertTrue(ShipDisablement.isDisabled(game.player), "our reactor down, we are beaten");
+        assertTrue(world.pirateBase.standing(), "the base stands over a beaten raider");
+        assertTrue(world.pirateBase.defenders().isEmpty(), "the wing that won is forgotten");
+        // Power back, the base still stands: nobody drove its defence off
+        for (var r : reactors) r.switchedOn = true;
+        run(2 * PirateBase.CHECK_SECONDS + 5);
+        assertFalse(ShipDisablement.isDisabled(game.player));
+        assertTrue(world.pirateBase.standing(), "still standing once we have power again");
+    }
+
+    @Test
     void theBaseWaitsForThePlayerToComeCloseAndAWingStillOutIsNotReplaced(@TempDir Path dir) {
         besideTheBase(PirateBase.SCRAMBLE_RANGE + 3_000);
         run(2 * PirateBase.CHECK_SECONDS + 1);
