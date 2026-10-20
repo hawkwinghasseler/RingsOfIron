@@ -103,6 +103,39 @@ public class SaveSlots {
         SaveSummary.metaFor(save.file).delete();
     }
 
+    /**
+     * Copies the saves in {@code from} (the career test's {@code core/build/playtest-saves/seed-2026},
+     * say) into this folder, each with its summary, so the load list shows them beside the player's own.
+     * A save whose file is already here is left alone, its summary too, and so is any settings file.
+     * @return the file names copied, then the ones kept as they were, each without {@code .json}
+     */
+    public Array<Array<String>> importFrom(FileHandle from) {
+        Array<String> copied = new Array<>();
+        Array<String> kept = new Array<>();
+        if (from.isDirectory()) {
+            dir.mkdirs();
+            FileHandle[] files = from.list(".json");
+            java.util.Arrays.sort(files, (a, b) -> a.name().compareTo(b.name()));
+            for (FileHandle f : files) {
+                String n = f.name();
+                if (n.endsWith(SaveSummary.META_SUFFIX) || n.equals(GameSettings.FILE_NAME)) continue;
+                FileHandle to = dir.child(n);
+                if (to.exists()) {
+                    kept.add(f.nameWithoutExtension());
+                    continue;
+                }
+                f.copyTo(to);
+                FileHandle meta = SaveSummary.metaFor(f);
+                if (meta.exists()) meta.copyTo(SaveSummary.metaFor(to));
+                copied.add(f.nameWithoutExtension());
+            }
+        }
+        Array<Array<String>> out = new Array<>();
+        out.add(copied);
+        out.add(kept);
+        return out;
+    }
+
     /** "Save N" for the first N with no such save yet. */
     public String nextName() {
         for (int n = 1; ; n++) {
