@@ -228,6 +228,38 @@ class BridgeTest {
         assertNotEquals(sx, pos.x, 1e-3f, "walks once stood up");
     }
 
+    @Test
+    void standingUpFromTheHelmAfterALoadHandsItToTheCrewmanTendingTheWounded(@org.junit.jupiter.api.io.TempDir Path saves) {
+        // Round 7: crew knocked out in a fight, and Bea, the one crewman, sat with them. The player
+        // loaded at the helm, stood up, and nobody took it: the dock order dropped
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            if (e == game.avatar || e.getComponent(GridPositionComponent.class).ship != game.player) continue;
+            if (world.crew.crew(e).role != CrewRole.CREWMAN) world.crew.applyDamage(e, 75f, CrewDamageSink.DamageCause.BLAST);
+        }
+        for (int i = 0; i < 60 * 60 && !(crewman().task instanceof com.ringsofiron.aicrew.TreatTask); i++) world.update(FRAME);
+        assertInstanceOf(com.ringsofiron.aicrew.TreatTask.class, crewman().task, "Bea sits with the wounded while the player has the helm");
+
+        com.badlogic.gdx.files.FileHandle file = new com.badlogic.gdx.files.FileHandle(saves.resolve("wounded.json").toFile());
+        assertNull(game.quickSave(file));
+        game.quickLoad(file);
+        run(1f);
+        assertEquals(SubsystemType.HELM, world.bridge.seat(), "at the helm after the load");
+        for (int i = 0; i < 60 * 60 && !(crewman().task instanceof com.ringsofiron.aicrew.TreatTask); i++) world.update(FRAME);
+        assertInstanceOf(com.ringsofiron.aicrew.TreatTask.class, crewman().task, "and back with the wounded");
+        world.bridge.stand();
+        for (int i = 0; i < 60 * HelmOrders.UNMANNED_LIMIT && world.bridge.helmsman(game.player) == null; i++) world.update(FRAME);
+        assertNotNull(world.bridge.helmsman(game.player), "a crewman takes the helm before a helm order would drop");
+    }
+
+    /** The one crewman aboard. */
+    private CrewMemberComponent crewman() {
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            CrewMemberComponent c = world.crew.crew(e);
+            if (e != game.avatar && e.getComponent(GridPositionComponent.class).ship == game.player && c.role == CrewRole.CREWMAN) return c;
+        }
+        return null;
+    }
+
     private void waitForHelmsman() {
         for (int i = 0; i < 60 * 60 && world.bridge.helmsman(game.player) == null; i++) world.update(FRAME);
         assertNotNull(world.bridge.helmsman(game.player), "Bea takes the helm");
