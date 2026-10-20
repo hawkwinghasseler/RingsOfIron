@@ -20,7 +20,9 @@ import org.junit.jupiter.api.Test;
 /**
  * Round 9 part 4's trace: loads the career's "Before the raid" save and plays it as
  * tools/playtest/mid-late.sh does, logging every hit or shot from the player on a struck ship and
- * every surrender and comeback. -Dprize.trace.save=dir, -Dprize.trace.mode=window|career.
+ * every surrender and comeback. PRIZE_TRACE_SAVE names the save folder; PRIZE_TRACE_MODE is window (the
+ * default), career (RaidRoutine's raid), or bounty (the gunship's bounty fight lost on purpose, logging
+ * the boarder's range).
  */
 @Tag("slow")
 class PrizeTraceProbe {
@@ -39,7 +41,8 @@ class PrizeTraceProbe {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         world = new GameWorld();
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
-        game.quickLoad(new FileHandle(Paths.get(saves, "Before_the_raid.json").toFile()));
+        boolean bounty = "bounty".equals(System.getenv("PRIZE_TRACE_MODE"));
+        game.quickLoad(new FileHandle(Paths.get(saves, bounty ? "Gunship_bounty_fight.json" : "Before_the_raid.json").toFile()));
         world.notices.posted.add((s, n) -> log("NOTICE " + n.text));
         world.disablement.changes.add((s, c) -> {
             if (c.now == DisabledComponent.Reason.SURRENDERED) struckAt.put(c.ship, now());
@@ -62,7 +65,8 @@ class PrizeTraceProbe {
             log("DETONATION at struck " + name(d.target) + " aimedAt=" + name(d.aimedAt));
         });
         gun = new PlayerGunnery(world, game.player);
-        if ("career".equals(System.getenv("PRIZE_TRACE_MODE"))) career();
+        if (bounty) bounty();
+        else if ("career".equals(System.getenv("PRIZE_TRACE_MODE"))) career();
         else window();
     }
 
@@ -85,6 +89,24 @@ class PrizeTraceProbe {
             world.update(FRAME);
             if (++frame % 600 == 0) state();
             if (!world.pirateBase.standing() || FirstPlay.beaten(world, game.player)) break;
+        }
+        state();
+    }
+
+    /** The bounty fight lost on purpose: the main guns never fire, and the boarder's range is logged. */
+    private void bounty() {
+        world.combatEvents.impacts.add((s, hit) -> {
+            Entity boarder = world.pirateBoarding.boarder();
+            if (hit.owner == game.player && hit.target != null && hit.target == boarder) {
+                log("HIT on the boarder " + name(boarder) + " by " + (hit.def == null ? "?" : hit.def.id) + " pd=" + hit.pointDefense + " at " + range(boarder) + " m");
+            }
+        });
+        Entity last = null;
+        for (float t = 0; t < 900; t += 1) {
+            pause(1);
+            Entity boarder = world.pirateBoarding.boarder();
+            if (boarder != null && (boarder != last || ((int) t) % 15 == 0)) log("BOARDER " + name(boarder) + " at " + range(boarder) + " m");
+            last = boarder;
         }
         state();
     }
