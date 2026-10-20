@@ -347,10 +347,12 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             topUpDue = true;
             nextTopUp = now + TOP_UP_INTERVAL;
         }
+        // Every frame, not on the checks: the checks' phase isn't saved, and refuelling on them put
+        // a loaded game's tanks a second out from the saved one's (round 3's replay across a save)
+        upkeep.update(controller.all(), now);
         since += deltaTime;
         if (since < CHECK_SECONDS) return;
         since = 0f;
-        upkeep.update(controller.all(), now);
         for (String id : world.macroSim.bubble().inBubble()) {
             Entity e = world.engine.getEntity(id);
             HostileComponent h = e == null ? null : e.getComponent(HostileComponent.class);

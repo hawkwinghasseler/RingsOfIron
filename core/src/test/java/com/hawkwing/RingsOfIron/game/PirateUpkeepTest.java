@@ -134,10 +134,10 @@ class PirateUpkeepTest {
         assertEquals(share, PirateUpkeep.fuelShare(back), 1e-9, "the tanks as they were");
         // Played on side by side, the two refuel alike: the clock came through as well
         assertEquals(world.hostiles.upkeepClock(), loaded.hostiles.upkeepClock(), 1e-9, "the refuelling clock");
-        // Played on, the two refuel alike, give or take where the checks fall
+        // Played on, the two refuel alike
         run(world, 5);
         run(loaded, 5);
-        assertEquals(PirateUpkeep.fuelShare(ship), PirateUpkeep.fuelShare(back), 2 * HostileTraffic.CHECK_SECONDS / (PirateUpkeep.RAILS_REFUEL_DAYS * PirateUpkeep.DAY));
+        assertEquals(PirateUpkeep.fuelShare(ship), PirateUpkeep.fuelShare(back), 1e-12);
     }
 
     // ---------------------------------------------------------------------------------------------
