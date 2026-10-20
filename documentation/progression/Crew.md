@@ -78,6 +78,28 @@ How wounds work aboard is in `ai-crew/Design.md` section 5. On the game's side (
 - **A hostile breaking off under fire surrenders** once its own crew are mostly down, as one still fighting does (`ShipDisablement`): wounded crews are rarely all dead, so a raider whose crew are down no longer just runs.
 - The crew window lists each crew member's and prisoner's condition ("Light wound 100%", "Critical wound, 4:10 to live", "Serious wound, being treated") and the medical stores aboard.
 
+### Railgun lethality (round 6 part 3)
+The round 5 ace survey had the railgun ace killing 29 of 30 crew. Traced fight by fight (`CrewWoundSurveyTest -PwoundTrace`), the deaths were not untreated wounds on a ship without a medic:
+- **Everyone went down together.** An engineer sealing a breach at the bow was hit; whoever came to help her stood on her tile, and every slug through that tile struck everyone on it for a critical wound. A round crossing a tile now strikes each person on it 40% of the time (`PenetrationResolver.CREW_HIT_CHANCE`), fragments and spall alike.
+- **The ace went on firing** into the disabled corvette for the survey's ten minutes after the fight (300 to 500 hits). A pirate now leaves a beaten player drifting ("Raider leaves you drifting") and flies off with its guns cold (`HostileTraffic.fly`).
+- **Nobody stopped the bleeding.** Anyone now stabilises a critical wound (ai-crew Design.md, section 5), before a rescue that may have nowhere to go.
+- **The suits ran dry.** Holed past its patch kits, the beaten corvette held no air anywhere; its crew now fill their suits at an oxygen tank or the life support.
+
+| Ace refit (10 fights each) | Beaten | Our crew dead | Wounded | Before (round 5) |
+|---|---|---|---|---|
+| Chaingun | 10 | 4 of 30 (0 with part 1's breach sealing) | 3 | 6 of 30 |
+| Railgun | 2 | 3 of 30 (5 with part 1) | 9 | 29 of 30, beaten 1 |
+
+The fights stay a risk: the railgun ace still beats the corvette 8 of 10, with our hull at 0.44 to 0.77 as before.
+
+Choices made without Joe:
+- **A round strikes 40% of the people on a tile it crosses.** A body fills well under half of a 1 m tile. It lowers every kind of hit on crew, not only the railgun's.
+- **A pirate leaves a beaten player** rather than boarding them or firing on. Pirates boarding the player is not built.
+- **Stabilise:** 15 s, one medical store, anyone; a medic in half the time.
+- **Suit refill:** at 30% of the suit's air, 20 s, at an oxygen tank or working life support.
+- **No medic in the starting crew, no medbay, no change to penetrator falloff past the first tile:** the target (8 or fewer of 30) was met without them. The plan's steps 2 to 4 are left for Joe.
+
 ## Not done here
 - No medbay or berth tiles exist in the ship data yet, so the wounded are treated where they lie once on a safe tile, rather than carried to a medbay.
 - Light wounds are not treated, only left to heal.
+- The starting corvette has no medic (Ada, Bea and Cole are an engineer, a crewman and a marine).
