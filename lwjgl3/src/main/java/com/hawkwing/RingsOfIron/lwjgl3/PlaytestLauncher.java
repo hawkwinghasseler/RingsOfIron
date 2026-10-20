@@ -188,21 +188,6 @@ public class PlaytestLauncher {
                     for (SubsystemComponent t : TankSupply.tanks(r, Fluid.PROPELLANT)) t.contents = 0;
                     return "tanks empty";
                 }
-                case "helm": {
-                    // Where the save left the captain on deck changes from career to career, so the
-                    // walk to the helm isn't repeatable: they are put at the helm, for V to sit them
-                    Entity avatar = world.avatar.getAvatar();
-                    if (avatar == null) return "no avatar";
-                    for (Entity e : s.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
-                        SubsystemComponent sub = e.getComponent(SubsystemComponent.class);
-                        if (sub == null || sub.type != SubsystemComponent.SubsystemType.HELM) continue;
-                        com.ringsofiron.aicrew.GridPositionComponent pos = avatar.getComponent(com.ringsofiron.aicrew.GridPositionComponent.class);
-                        pos.path.clear();
-                        pos.setTile(sub.footprint.originX, sub.footprint.originY);
-                        return "at the helm";
-                    }
-                    return "no helm";
-                }
                 case "hostiles": {
                     // Every hostile craft: where it is and what it's doing, for a script's log
                     StringBuilder out = new StringBuilder();

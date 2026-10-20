@@ -3,11 +3,10 @@
 # writes, with a screenshot at each step. Needs Xvfb, xdotool and ImageMagick's import.
 #   ./gradlew :core:test --tests '*Round5CareerTest'      (writes core/build/playtest-saves/seed-2026)
 #   tools/playtest/mid-late.sh [out-dir]                    (default build/playtest-screens-late)
-# Run from the repository root. Keys and clicks play it; six things come through commands to
+# Run from the repository root. Keys and clicks play it; five things come through commands to
 # PlaytestLauncher instead: `load` picks a save by name (the load list's order shifts as autosaves
 # land), `target` picks a navigation target by name (how many Q presses that takes changes from
-# save to save), `strand` empties the tanks so the tug can be called, `helm` puts the captain at the helm
-# (where the save leaves them on deck varies), and `docked` lets the
+# save to save), `strand` empties the tanks so the tug can be called, and `docked` lets the
 # script wait for the helmsman's approach to finish. `raid` reads how the raid stands, so the script
 # can fight it to its end.
 set -u
@@ -25,8 +24,9 @@ key Escape; pause 1
 
 # The Moon trip on the transfer autopilot, from Highport
 cmd load Before the Moon trip; pause 14; shot 03-docked-at-highport
-key u; pause 1; shot 03b-undock-on-deck
-cmd helm; key v; pause 1; key u; pause 3; shot 04-undocked
+# The save has the captain seated at the helm: stand up first, to see U refused on deck
+key v; pause 1; key u; pause 1; shot 03b-undock-on-deck
+key v; pause 1; key u; pause 3; shot 04-undocked
 cmd target Shackleton; key 6; pause 3; shot 05-autopilot-engaged
 pause 20; shot 06-autopilot-at-the-moon
 pause 25; shot 07-arrived-helm-waits
