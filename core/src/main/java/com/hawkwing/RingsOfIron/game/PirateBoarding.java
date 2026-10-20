@@ -159,7 +159,7 @@ public class PirateBoarding implements SaveParticipant {
         Take take = take(pirate, h.displayName, player);
         reset();
         world.notices.post("The boarders from " + take.pirateName + " took " + take.describe() + ", and cast off",
-                NoticeLog.Kind.IMPORTANT);
+                NoticeLog.Kind.WARNING);
         robbed.dispatch(take);
         return false;
     }

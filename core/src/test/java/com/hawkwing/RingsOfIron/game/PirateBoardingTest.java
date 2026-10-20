@@ -84,6 +84,8 @@ class PirateBoardingTest {
         CargoHoldComponent theirs = ship.getComponent(CargoHoldComponent.class);
         if (theirs != null) assertTrue(theirs.amount("ore") > 0, "what fits goes in the pirate's hold");
         assertTrue(said.stream().anyMatch(n -> n.contains("took 10 ore and 2,000 cr")));
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.contains("took 10 ore") && n.kind == NoticeLog.Kind.WARNING),
+                "a loss is a warning, not a promotion's green");
         run(3);
         assertTrue(h.brokeOff, "and it leaves");
         assertNull(world.pirateBoarding.boarder());
