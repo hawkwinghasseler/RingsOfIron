@@ -38,6 +38,7 @@ import java.util.Set;
  * <p>Round 8 part 4: a boarder the player's ship hits {@link #BREAK_OFF_HITS} times before the take
  * breaks off with nothing and doesn't board again while the player stays beaten; and nobody boards a
  * ship at a berth or in tow (seed 2026's boarding finished at Highport's berth and tore it loose).
+ * Round 9: only hits within {@link #BREAK_OFF_RANGE} of the player count, so a boarding begins close in.
  */
 public class PirateBoarding implements SaveParticipant {
     /** Key of this state in the save's modules section. */
@@ -56,6 +57,12 @@ public class PirateBoarding implements SaveParticipant {
     static final double STALE_SECONDS = 3 * HostileTraffic.CHECK_SECONDS;
     /** Hits from the player's ship on the boarder, before the take, that make it break off. */
     public static final int BREAK_OFF_HITS = 1;
+    /**
+     * Hits count towards breaking off only within this range of the player's ship, m; further out a
+     * hit works as in any fight. Round 9: in round 8's window the frigate's guns hit the boarder about
+     * 4.5 km out, so a player whose ship still had power and a gun never saw a boarding latch on.
+     */
+    public static final float BREAK_OFF_RANGE = 1_000f;
 
     /** What a boarding took. */
     public static final class Take {
@@ -185,11 +192,13 @@ public class PirateBoarding implements SaveParticipant {
 
     /**
      * A round or warhead from {@code owner}, fired {@code sinceFired} seconds ago, struck {@code target}:
-     * the player's on the boarder, fired since it came to board, drives it off.
+     * the player's on the boarder, fired since it came to board, drives it off once it is within
+     * {@link #BREAK_OFF_RANGE}.
      */
     private void hit(Entity owner, Entity target, float sinceFired) {
         if (boarder == null || owner == null || owner != world.getPlayer() || target == null || target != boarder()) return;
         if (world.engine.getSimSeconds() - sinceFired < began) return;
+        if (range(target, owner) > BREAK_OFF_RANGE) return;
         if (++hits < BREAK_OFF_HITS) return;
         HostileComponent h = target.getComponent(HostileComponent.class);
         drivenOff.add(boarder);
