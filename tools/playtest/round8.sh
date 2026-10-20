@@ -13,10 +13,21 @@ OUT=${1:-$(pwd)/build/playtest-screens-round8}
 SAVES=${SAVES:-$(pwd)/core/build/playtest-saves/seed-2026}
 [ -f "$SAVES/Gunship_bounty_fight.json" ] || { echo "no career saves in $SAVES: run the round 5 career test first"; exit 1; }
 . tools/playtest/lib.sh
-# ONLY=air, ace or boarding plays just that part
+# ONLY=raider, air, ace or boarding plays just that part
 want() { [ -z "${ONLY:-}" ] || [ "$ONLY" = "$1" ]; }
 
 # Part 5: the corvette at Highport after the yard, its cabin's air on the gauges and the deck
+# Part 2: a lone raider coming in. The guided first play (from the menu, first, while it shows):
+# J and Enter take the raider's bounty, U and W clear the station, then Tab, R and Space
+if want raider; then
+click 640 433; pause 15
+key j; pause 1; key Return; pause 1; key Escape; pause 1; key u; pause 3
+hold w 6; pause 15; shot p00a-first-raider-coming
+key Tab; for i in $(seq 1 16); do key r; hold space 4; [ $((i % 8)) -eq 0 ] && shot "p00b-first-raider-fight-$((i / 8))"; done
+key l; pause 1; shot p00c-first-raider-notices; key l; pause 1
+echo "first raider: $(grep -c 'impact on .* from Raider ' "$OUT/game.log") hits on us, $(grep -c 'impact on Raider ' "$OUT/game.log") on it"
+fi
+
 if want air; then
 cmd load Before the Moon trip; pause 14; shot p01-moon-trip-air
 key v; pause 1; shot p02-moon-trip-deck; key v; pause 1
