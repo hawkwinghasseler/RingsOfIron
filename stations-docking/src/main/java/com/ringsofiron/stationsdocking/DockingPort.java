@@ -69,6 +69,12 @@ public class DockingPort {
     public boolean consented;
     /** Its door was forced open from the other craft; it stays open while latched, and shuts on undocking. */
     public boolean forced;
+    /**
+     * Latched in place by clamps rather than flown in on the collar ({@link DockingSystem#dockInPlace}:
+     * a tug, a yard's berth, a boarding latch, a freighter brought in docked). The clamps hold it as a
+     * whole collar would, however worn this one is.
+     */
+    public boolean clamped;
 
     /** How far the active collar is out now, meters. Runtime only. */
     public transient float extension;
@@ -122,6 +128,7 @@ public class DockingPort {
         permitted = false;
         consented = false;
         forced = false;
+        clamped = false;
     }
 
     @Override

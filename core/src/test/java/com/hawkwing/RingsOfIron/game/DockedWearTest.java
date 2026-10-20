@@ -75,6 +75,54 @@ class DockedWearTest {
     }
 
     @Test
+    void aWornCollarLatchedInPlaceHoldsAsAWholeOne(@TempDir Path dir) {
+        // A shot-up prize boarded, or a worn ship towed in: the clamps take the load the collar can't
+        DockingPort port = port();
+        int index = java.util.Arrays.asList(game.player.getComponent(DockingPortsComponent.class).ports).indexOf(port);
+        Entity station = world.docking.dockedTo(game.player);
+        int stationPort = port.partnerPort;
+        for (int i = 0; i < 5; i++) hitBeside(port, 1f);
+        assertEquals(CollarWear.FLOOR, port.collarIntegrity, 1e-6f);
+        java.util.List<String> torn = new java.util.ArrayList<>();
+        world.docking.events.add((sig, e) -> {
+            if (e.kind == com.ringsofiron.stationsdocking.DockingEvent.Kind.TORN) torn.add("torn");
+        });
+        world.docking.undock(game.player);
+        run(30);
+        world.docking.dockInPlace(game.player, index, station, stationPort);
+        run(60);
+        assertSame(station, world.docking.dockedTo(game.player), "latched again");
+        assertEquals(java.util.List.of(), torn, "torn on the latch");
+        com.badlogic.gdx.physics.box2d.Body body = game.player.getComponent(
+                com.ringsofiron.physicsexterior.components.PhysicsBodyComponent.class).body;
+        // Pulled straight off the port through the ship's centre of mass, so the latch takes a load
+        // and no turn: a third of what a whole collar holds, three times what a tenth of one does
+        com.badlogic.gdx.math.Vector2 off = body.getWorldVector(new com.badlogic.gdx.math.Vector2(port.normalX, port.normalY)).nor().scl(-1f);
+        float push = port.tuning().breakForce / 3f;
+        for (int i = 0; i < 5 * 60; i++) {
+            com.ringsofiron.physicsexterior.PhysicsManager.applyForce(body, off.x * push, off.y * push);
+            world.update(FRAME);
+        }
+        assertEquals(java.util.List.of(), torn);
+        assertSame(station, world.docking.dockedTo(game.player), "still latched");
+        assertEquals(CollarWear.FLOOR, port.collarIntegrity, 1e-6f, "the collar itself is still worn, for the yard");
+        // And after a load, the clamps still hold it
+        FileHandle file = new FileHandle(dir.resolve("clamped.json").toFile());
+        assertNull(game.quickSave(file));
+        game.quickLoad(file);
+        run(60);
+        DockingPort loaded = port();
+        assertTrue(loaded.clamped);
+        body = game.player.getComponent(com.ringsofiron.physicsexterior.components.PhysicsBodyComponent.class).body;
+        off = body.getWorldVector(new com.badlogic.gdx.math.Vector2(loaded.normalX, loaded.normalY)).nor().scl(-1f);
+        for (int i = 0; i < 5 * 60; i++) {
+            com.ringsofiron.physicsexterior.PhysicsManager.applyForce(body, off.x * push, off.y * push);
+            world.update(FRAME);
+        }
+        assertNotNull(world.docking.dockedTo(game.player), "still latched after a load");
+    }
+
+    @Test
     void anIonBoltWearsNothing() {
         DockingPort port = port();
         HullHitEvent e = event(port.gridX, port.gridY, 0.5f);

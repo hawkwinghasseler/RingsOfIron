@@ -51,6 +51,12 @@ import java.util.stream.Stream;
 public final class ArtPacker {
     /** SVG units in one tile (see documentation/art/Design.md). */
     public static final float UNITS_PER_TILE = 64f;
+    /**
+     * Pixels between regions in the atlas. The atlas is mipmapped, and a mip level 2^n smaller
+     * averages 2^n pixels into one, so a gap of 2 let art seen a few times smaller than it was
+     * rasterized (a hull at the starting zoom) pick up faint lines from its neighbor's edge.
+     */
+    static final int PADDING = 16;
     public static final String ATLAS_NAME = "art";
     private static final String INKSCAPE = "http://www.inkscape.org/namespaces/inkscape";
 
@@ -128,8 +134,9 @@ public final class ArtPacker {
         TexturePacker.Settings settings = new TexturePacker.Settings();
         settings.maxWidth = 4096;
         settings.maxHeight = 4096;
-        settings.paddingX = 2;
-        settings.paddingY = 2;
+        // Wide enough that the mipmaps of art drawn zoomed out don't take in their neighbors' edges
+        settings.paddingX = PADDING;
+        settings.paddingY = PADDING;
         settings.edgePadding = true;
         settings.duplicatePadding = true;
         settings.bleed = true;
