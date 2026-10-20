@@ -13,7 +13,13 @@ public abstract class CrewTask {
 
     public enum Kind {
         SEAL_BREACH,
+        /** Patch a leaking wall or deck plate from the ship's stores, so it stops venting. */
+        PATCH_LEAK,
         REPAIR,
+        /** Reset a system or conduit a short circuit faulted, so it carries power again. */
+        RESET_SHORT,
+        /** Shut a leaking tank's valve so it stops leaking. */
+        ISOLATE_TANK,
         EXTINGUISH,
         RESCUE,
         TREAT,
@@ -27,7 +33,9 @@ public abstract class CrewTask {
         /** Get into an escape pod and wait there for launch: the order to abandon ship. */
         EVACUATE,
         /** Go aboard another craft as one of a boarding party and sweep it: an order. */
-        BOARD
+        BOARD,
+        /** Stop a critical wound's bleeding where the casualty lies, so it no longer kills; treatment still to follow. */
+        STABILISE
     }
 
     public enum Status {

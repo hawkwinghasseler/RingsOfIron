@@ -33,7 +33,7 @@ To implement this module independently (mocking the core-engine if necessary):
 ## Implemented Components
 - `PhysicsBodyComponent`: Holds the Box2D `Body`.
 - `ThrusterComponent`: force, torque and fuel limits.
-- `FlightControlComponent`: stick input in [-1, 1] and rotation assist.
+- `FlightControlComponent`: stick input in [-1, 1] and rotation assist. When `towing` names a second body welded to the ship, thrust is applied at the pair's combined centre of mass and rotation assist uses the pair's combined inertia, so a towed prize neither spins the ship nor shakes the weld.
 - `BodyShapeComponent`: a body's fixtures and exact mass data, kept while it is on rails or in a save.
 - `KinematicTransientComponent`: a fast-pass body's true trajectory and sweep radius.
 

@@ -25,6 +25,7 @@ public class MissionWindow extends Window {
     private final Skin skin;
     private final MissionBoard board = new MissionBoard();
     private final Label career;
+    private final Label tension;
     private final Label status;
     private final Table offers = new Table();
     private final Table held = new Table();
@@ -42,8 +43,10 @@ public class MissionWindow extends Window {
         pad(28f, 12f, 12f, 12f);
         getTitleTable().padLeft(8f);
         career = new Label("", skin, "dim");
+        tension = new Label("", skin, "dim");
         status = new Label("", skin, "dim");
         add(career).left().row();
+        add(tension).left().row();
         add(offers).left().padTop(8f).row();
         add(held).left().padTop(12f).row();
         add(status).left().padTop(8f).row();
@@ -103,6 +106,7 @@ public class MissionWindow extends Window {
         }
         getTitleLabel().setText(title(board));
         career.setText(board.career);
+        tension.setText(board.tension);
         String now = ids();
         if (!now.equals(shown)) {
             rebuild();
@@ -136,6 +140,7 @@ public class MissionWindow extends Window {
                 } else {
                     offers.add(new Label(j.locked, skin, "warn")).left().row();
                 }
+                if (!j.note.isEmpty()) offers.add(new Label("  " + j.note, skin, "dim")).left().colspan(4).padBottom(4f).row();
             }
         }
         held.clearChildren();

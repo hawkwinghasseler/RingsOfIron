@@ -7,7 +7,11 @@ import com.ringsofiron.combatsys.damage.HitCause;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.interiorgrid.crew.GridOccupantQuery;
 
-/** Lets combat-sys find and hurt crew through ai-crew's occupant query and damage sink. */
+/**
+ * Lets combat-sys find and hurt crew through ai-crew's occupant query and damage sink. Every
+ * weapon hit wounds ({@code CrewService.wounds}): a laser's burn arrives as {@code BURN}, kept
+ * apart from {@code FIRE}, the health a crew member loses standing in a burning room.
+ */
 public class CrewDamageAdapter implements CrewDamageBridge {
     private final GridOccupantQuery occupants;
     private final CrewDamageSink sink;
@@ -34,7 +38,7 @@ public class CrewDamageAdapter implements CrewDamageBridge {
             case SPALL: return CrewDamageSink.DamageCause.SPALL;
             case FRAGMENT: return CrewDamageSink.DamageCause.FRAGMENT;
             case BLAST: return CrewDamageSink.DamageCause.BLAST;
-            case FIRE: return CrewDamageSink.DamageCause.FIRE;
+            case FIRE: return CrewDamageSink.DamageCause.BURN;
             default: return CrewDamageSink.DamageCause.OTHER;
         }
     }

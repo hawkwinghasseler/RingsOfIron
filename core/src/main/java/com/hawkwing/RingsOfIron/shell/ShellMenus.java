@@ -3,6 +3,8 @@ package com.hawkwing.RingsOfIron.shell;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
@@ -26,7 +28,7 @@ import java.util.Locale;
  * last; {@link GameShell} does what their buttons ask.
  */
 class ShellMenus {
-    enum Panel { MAIN, PAUSE, LOAD, SAVE, SETTINGS }
+    enum Panel { MAIN, PAUSE, LOAD, SAVE, SETTINGS, NEW_GAME }
 
     /** Window sizes the settings offer, filtered to what fits the screen. */
     static final int[][] RESOLUTIONS = {
@@ -58,6 +60,7 @@ class ShellMenus {
     private Table frame(Table root, Panel p, String title) {
         panel = p;
         root.clear();
+        shell.menuNav.clear();
         Table t = new Table();
         t.setBackground(skin.getDrawable("panel"));
         t.pad(24f);
@@ -98,7 +101,7 @@ class ShellMenus {
         cont.setDisabled(latest == null);
         t.add(cont).width(260f).colspan(3).row();
         if (latest != null) t.add(new Label(latest.name + "   " + latest.details(), skin, "dim")).colspan(3).row();
-        t.add(button("New game", () -> shell.newGame(false))).width(260f).colspan(3).row();
+        t.add(button("New game", () -> showNewGame(root))).width(260f).colspan(3).row();
         t.add(button("First play (guided)", () -> shell.newGame(true))).width(260f).colspan(3).row();
         TextButton load = button("Load", () -> showLoad(root));
         load.setDisabled(latest == null);
@@ -111,6 +114,14 @@ class ShellMenus {
     void showPause(Table root) {
         Table t = frame(root, Panel.PAUSE, "PAUSED");
         t.add(button("Resume", shell::resumeGame)).width(260f).colspan(3).row();
+        if (shell.getGame() != null && shell.getGame().canCallTow()) {
+            // The distress beacon, for a ship that can't get home
+            t.add(button("Call a tow", () -> {
+                String said = shell.getGame().callTowNow();
+                shell.resumeGame();
+                shell.getGame().showNotice(said);
+            })).width(260f).colspan(3).row();
+        }
         t.add(button("Save", () -> showSave(root))).width(260f).colspan(3).row();
         TextButton load = button("Load", () -> showLoad(root));
         load.setDisabled(shell.slots().latest() == null);
@@ -118,8 +129,68 @@ class ShellMenus {
         t.add(button("Settings", () -> showSettings(root))).width(260f).colspan(3).row();
         t.add(button("Quit to menu", shell::quitToMenu)).width(260f).colspan(3).row();
         t.add(button("Quit game", shell::quit)).width(260f).colspan(3).row();
-        t.add(new Label("Esc resumes", skin, "dim")).colspan(3).padTop(8f).row();
+        t.add(new Label("Esc resumes   Arrow keys or the pad choose", skin, "dim")).colspan(3).padTop(8f).row();
+        String world = shell.worldDescription();
+        if (!world.isEmpty()) t.add(new Label(world, skin, "dim")).colspan(3).row();
         endFrame(t);
+    }
+
+    // --- New game ----------------------------------------------------------------------
+
+    /** A dim line of explanation, wrapped to the panel's width. */
+    private Label note(String text) {
+        Label l = new Label(text, skin, "dim");
+        l.setWrap(true);
+        l.setAlignment(com.badlogic.gdx.utils.Align.center);
+        return l;
+    }
+
+    /** The factions a new career may serve: id, then the button's label. */
+    static final String[][] SPONSORS = {{"patrol", "Terran Patrol"}, {"selene", "Selene Combine"}};
+
+    /** A new career: a typed seed replays that world, an empty one rolls a new world. */
+    void showNewGame(Table root) {
+        Table t = frame(root, Panel.NEW_GAME, "NEW GAME");
+        TextField seed = new TextField("", skin);
+        seed.setMaxLength(24);
+        seed.setMessageText("random");
+        Table seedRow = new Table();
+        seedRow.add(new Label("Seed", skin, "dim")).padRight(12f);
+        seedRow.add(seed).width(300f);
+        t.add(seedRow).colspan(3).row();
+        t.add(note("Leave it empty for a new world; the same seed gives the same start")).width(440f).colspan(3).padBottom(10f).row();
+        // Who to serve: the Patrol from Highport, or the Combine from its ice mine on the Moon
+        String[] sponsor = {null};
+        Table sponsors = new Table();
+        com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup<TextButton> group = new com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup<>();
+        for (String[] s : SPONSORS) {
+            TextButton b = new TextButton(s[1], skin, "toggle");
+            b.pad(6f, 16f, 6f, 16f);
+            b.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    if (b.isChecked()) sponsor[0] = s[0];
+                }
+            });
+            group.add(b);
+            sponsors.add(b).padRight(8f);
+        }
+        group.setMinCheckCount(1);
+        group.setMaxCheckCount(1);
+        group.getButtons().first().setChecked(true);
+        Table serveRow = new Table();
+        serveRow.add(new Label("Serve", skin, "dim")).padRight(12f);
+        serveRow.add(sponsors);
+        t.add(serveRow).colspan(3).row();
+        t.add(note("The Patrol starts you at Highport in Earth orbit; the Combine at Shackleton Ice above the Moon")).width(440f)
+                .colspan(3).padBottom(10f).row();
+        Table buttons = new Table();
+        buttons.add(button("Start", () -> shell.newGame(com.hawkwing.RingsOfIron.game.NewGame.fromText(seed.getText(), sponsor[0]))))
+                .padRight(10f);
+        buttons.add(button("Back", shell::back));
+        t.add(buttons).colspan(3).padTop(10f).row();
+        endFrame(t);
+        root.getStage().setKeyboardFocus(seed);
     }
 
     // --- Saves -------------------------------------------------------------------------
@@ -131,6 +202,8 @@ class ShellMenus {
         list.defaults().pad(3f);
         for (SaveSummary s : shell.slots().list()) {
             Table info = new Table();
+            // Each save's lines start at the same left edge, however long its name
+            info.left();
             info.add(new Label(s.name, skin, "default")).left().row();
             info.add(new Label(s.details(), skin, "dim")).left().row();
             info.add(new Label(savedAt(s.savedAt), skin, "dim")).left();
@@ -142,19 +215,34 @@ class ShellMenus {
             })).row();
         }
         if (list.getCells().size == 0) list.add(new Label("No saves yet", skin, "dim"));
-        ScrollPane scroll = new ScrollPane(list, skin);
+        ScrollPane scroll = wheelScrolls(new ScrollPane(list, skin));
         scroll.setFadeScrollBars(false);
         t.add(scroll).width(560f).height(Math.min(420f, Gdx.graphics.getHeight() * 0.6f)).colspan(3).row();
         t.add(button("Back", shell::back)).colspan(3).padTop(10f).row();
         endFrame(t);
     }
 
+    /** The mouse wheel scrolls {@code pane} while the pointer is over it (scene2d sends the wheel only to the scroll focus). */
+    private static ScrollPane wheelScrolls(ScrollPane pane) {
+        pane.addListener(new InputListener() {
+            @Override
+            public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
+                if (pane.getStage() != null) pane.getStage().setScrollFocus(pane);
+            }
+        });
+        return pane;
+    }
+
     void showSave(Table root) {
         Table t = frame(root, Panel.SAVE, "SAVE GAME");
         TextField name = new TextField(shell.slots().nextName(), skin);
         name.setMaxLength(40);
-        t.add(new Label("Name", skin, "dim")).left();
-        t.add(name).width(360f).colspan(2).row();
+        // The rows in a table of their own: spread over the frame's three columns they ran out past
+        // its background on the left and right
+        Table form = new Table();
+        form.defaults().pad(4f);
+        form.add(new Label("Name", skin, "dim")).left().padRight(8f);
+        form.add(name).width(360f).row();
         Table list = new Table();
         list.top().left();
         for (SaveSummary s : shell.slots().list()) {
@@ -170,11 +258,12 @@ class ShellMenus {
             list.add(pick).left().fillX().expandX().pad(2f).row();
         }
         if (list.getCells().size > 0) {
-            t.add(new Label("Overwrite", skin, "dim")).left().top();
-            ScrollPane scroll = new ScrollPane(list, skin);
+            form.add(new Label("Overwrite", skin, "dim")).left().top().padRight(8f);
+            ScrollPane scroll = wheelScrolls(new ScrollPane(list, skin));
             scroll.setFadeScrollBars(false);
-            t.add(scroll).width(360f).height(Math.min(260f, Gdx.graphics.getHeight() * 0.4f)).colspan(2).row();
+            form.add(scroll).width(360f).height(Math.min(260f, Gdx.graphics.getHeight() * 0.4f)).row();
         }
+        t.add(form).colspan(3).row();
         Table buttons = new Table();
         buttons.add(button("Save", () -> {
             String failed = shell.saveGame(name.getText());
@@ -257,6 +346,15 @@ class ShellMenus {
             }
         });
         t.add(gamepad).left().colspan(3).row();
+        CheckBox guide = new CheckBox(" Walkthrough at the start of a new game", skin);
+        guide.setChecked(s.openingGuide);
+        guide.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                s.openingGuide = guide.isChecked();
+            }
+        });
+        t.add(guide).left().colspan(3).row();
         Table keys = new Table();
         keys.top().left();
         Array<TextButton> keyButtons = new Array<>();
@@ -268,19 +366,12 @@ class ShellMenus {
                 @Override
                 public void changed(ChangeEvent event, Actor actor) {
                     b.setText("press a key (Esc cancels)");
-                    shell.captureKey(key -> {
-                        if (key >= 0) {
-                            KeyBindings.Action moved = shell.bindings().bind(a, key);
-                            showMessage(moved == null ? ""
-                                    : moved.label + " moved to " + KeyBindings.keyName(shell.bindings().keyOf(moved)));
-                        }
-                        refreshKeys(keyButtons);
-                    });
+                    capture(a, keyButtons);
                 }
             });
             keys.add(b).width(200f).pad(1f).row();
         }
-        ScrollPane scroll = new ScrollPane(keys, skin);
+        ScrollPane scroll = wheelScrolls(new ScrollPane(keys, skin));
         scroll.setFadeScrollBars(false);
         t.add(scroll).width(520f).height(Math.min(240f, Gdx.graphics.getHeight() * 0.3f)).colspan(3).row();
 
@@ -302,6 +393,41 @@ class ShellMenus {
         }));
         t.add(buttons).colspan(3).padTop(10f).row();
         endFrame(t);
+    }
+
+    /**
+     * Waits for the key to bind {@code a} to. A key another action has asks first: the same key
+     * again swaps the two, another key is taken as the choice instead, Esc cancels.
+     */
+    private void capture(KeyBindings.Action a, Array<TextButton> keyButtons) {
+        shell.captureKey(key -> choose(a, key, keyButtons));
+    }
+
+    private void choose(KeyBindings.Action a, int key, Array<TextButton> keyButtons) {
+        KeyBindings.Action other = key < 0 ? null : shell.bindings().actionOn(key);
+        if (other == null || other == a) {
+            if (key >= 0) bindAndSay(a, key);
+            else showMessage("");
+            refreshKeys(keyButtons);
+            return;
+        }
+        String name = KeyBindings.keyName(key);
+        showMessage(name + " is " + other.label + ". " + name + " again swaps them (" + other.label + " moves to "
+                + KeyBindings.keyName(shell.bindings().keyOf(a)) + "); another key picks that instead; Esc cancels");
+        shell.captureKey(again -> {
+            if (again == key) {
+                bindAndSay(a, key);
+                refreshKeys(keyButtons);
+            } else {
+                choose(a, again, keyButtons);
+            }
+        });
+    }
+
+    private void bindAndSay(KeyBindings.Action a, int key) {
+        KeyBindings.Action moved = shell.bindings().bind(a, key);
+        showMessage(moved == null ? (KeyBindings.reserved(key) ? KeyBindings.keyName(key) + " can't be bound" : "")
+                : moved.label + " moved to " + KeyBindings.keyName(shell.bindings().keyOf(moved)));
     }
 
     private void refreshKeys(Array<TextButton> buttons) {
@@ -369,6 +495,7 @@ class ShellMenus {
         c.windowWidth = s.windowWidth;
         c.windowHeight = s.windowHeight;
         c.gamepad = s.gamepad;
+        c.openingGuide = s.openingGuide;
         c.keys = new ObjectMap<>(s.keys);
         return c;
     }

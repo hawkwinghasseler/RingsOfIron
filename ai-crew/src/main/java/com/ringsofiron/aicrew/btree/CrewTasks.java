@@ -5,7 +5,9 @@ import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CarryTask;
 import com.ringsofiron.aicrew.YardTask;
+import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
+import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -14,19 +16,28 @@ import com.ringsofiron.aicrew.BoardTask;
 import com.ringsofiron.aicrew.ManConsoleTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
+import com.ringsofiron.aicrew.StabiliseTask;
 import com.ringsofiron.aicrew.TreatTask;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.DamageStates;
+import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
+import com.ringsofiron.interiorgrid.TankSupply;
+import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
+import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
+import com.ringsofiron.interiorgrid.crew.IsolateTankTask;
+import com.ringsofiron.interiorgrid.crew.PatchLeakTask;
 import com.ringsofiron.interiorgrid.crew.RepairTask;
 import com.ringsofiron.interiorgrid.crew.RescueTask;
+import com.ringsofiron.interiorgrid.crew.ResetShortTask;
 
 /** The leaf tasks of the crew behavior tree. See {@link CrewBehaviorTrees} for how they fit together. */
 public final class CrewTasks {
@@ -45,6 +56,119 @@ public final class CrewTasks {
             a.target = findHostile(a);
             return a.target != null ? Status.SUCCEEDED : Status.FAILED;
         }
+    }
+
+    /**
+     * Succeeds while the agent's suit is running low ({@link CrewDef#suitRefillShare}) out of
+     * breathable air and the ship has oxygen to fill it from, and on until the suit is full.
+     */
+    public static class SuitAirLow extends CrewLeaf {
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            CrewMemberComponent c = a.crew;
+            if (!c.suited || c.def.suitAir <= 0f || c.held || a.time < a.refillBlockedUntil) return fail(a);
+            if (!a.refilling) {
+                ShipGridComponent grid = a.grid();
+                if (grid == null || TaskRules.isBreathable(grid, a.pos.tileX(), a.pos.tileY())) return fail(a);
+                if (c.suitAir >= c.def.suitAir * c.def.suitRefillShare) return fail(a);
+            } else if (c.suitAir >= c.def.suitAir) {
+                return fail(a);
+            }
+            return oxygenSupplies(a, null) ? Status.SUCCEEDED : fail(a);
+        }
+
+        private static Status fail(CrewAgent a) {
+            a.refilling = false;
+            return Status.FAILED;
+        }
+    }
+
+    /**
+     * Drops whatever they were doing, walks to an oxygen tank or a working life support aboard and
+     * fills their suit there over {@link CrewDef#suitRefillTime}, drawing {@link CrewDef#SUIT_OXYGEN_KG}.
+     */
+    public static class RefillSuit extends CrewLeaf {
+        private float filled;
+
+        @Override
+        public void start() {
+            filled = 0f;
+            CrewAgent a = agent();
+            a.refilling = true;
+            if (a.crew.task != null) a.releaseTask();
+        }
+
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            ShipGridComponent grid = a.grid();
+            Array<SubsystemComponent> supplies = new Array<>();
+            if (grid == null || !oxygenSupplies(a, supplies)) return blocked(a);
+            GridNavGraph nav = a.pathfinder().graph;
+            GridPathfinder.TilePredicate spots = (x, y) -> nav.isWalkable(x, y) && beside(grid, supplies, x, y) != null;
+            CrewAgent.Travel go = a.travel(a.pos.ship, spots);
+            if (go == CrewAgent.Travel.UNREACHABLE) return blocked(a);
+            if (go == CrewAgent.Travel.GOING) {
+                a.crew.activity = "going to fill their suit";
+                return Status.RUNNING;
+            }
+            a.crew.activity = "filling their suit";
+            filled += a.dt;
+            if (filled < a.crew.def.suitRefillTime) return Status.RUNNING;
+            SubsystemComponent at = beside(grid, supplies, a.pos.tileX(), a.pos.tileY());
+            if (at != null) {
+                if (at.type == SubsystemComponent.SubsystemType.TANK) {
+                    at.contents = Math.max(0, at.contents - CrewDef.SUIT_OXYGEN_KG);
+                } else {
+                    TankSupply.draw(at, Fluid.OXYGEN, CrewDef.SUIT_OXYGEN_KG);
+                }
+            }
+            a.crew.suitAir = a.crew.def.suitAir;
+            a.refilling = false;
+            return Status.SUCCEEDED;
+        }
+
+        private static Status blocked(CrewAgent a) {
+            a.refilling = false;
+            a.refillBlockedUntil = a.time + CrewAgent.UNREACHABLE_COOLDOWN * 2f;
+            return Status.FAILED;
+        }
+
+        /** The supply in {@code supplies} that (x, y) stands beside, open to it, or null. */
+        private static SubsystemComponent beside(ShipGridComponent grid, Array<SubsystemComponent> supplies, int x, int y) {
+            for (SubsystemComponent s : supplies) {
+                for (Side side : Side.values()) {
+                    int nx = x + side.dx, ny = y + side.dy;
+                    if (s.covers(nx, ny) && !grid.isEdgeBlocked(x, y, nx, ny)) return s;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Whether the agent's ship has oxygen to fill a suit from: an oxygen tank holding some, or a
+     * working life support with oxygen piped to it (or with no oxygen tanks aboard at all, a layout
+     * from before tanks). Adds each to {@code out} when given.
+     */
+    static boolean oxygenSupplies(CrewAgent a, Array<SubsystemComponent> out) {
+        ShipSubsystemRegistryComponent registry = a.pos.ship == null ? null : a.pos.ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (registry == null) return false;
+        boolean tanks = TankSupply.hasTanks(registry, Fluid.OXYGEN), any = false;
+        for (Entity e : registry.subsystems) {
+            SubsystemComponent s = e == null ? null : e.getComponent(SubsystemComponent.class);
+            if (s == null) continue;
+            boolean supply = s.type == SubsystemComponent.SubsystemType.TANK
+                    ? s.fluid == Fluid.OXYGEN && s.canSupply() && s.contents > CrewDef.SUIT_OXYGEN_KG
+                    : s.type == SubsystemComponent.SubsystemType.LIFE_SUPPORT && s.isOperational && !s.isDisabled()
+                            && (!tanks || TankSupply.available(s, Fluid.OXYGEN) > CrewDef.SUIT_OXYGEN_KG);
+            if (!supply) continue;
+            any = true;
+            if (out == null) return true;
+            out.add(s);
+        }
+        return any;
     }
 
     /** Succeeds when the agent holds a task or the board has one for them. */
@@ -108,6 +232,8 @@ public final class CrewTasks {
                     a.crew.fireCooldown = a.crew.def.fireInterval;
                     if (a.service.random.nextFloat() < a.crew.def.hitChance) {
                         a.service.applyDamage(a.target, a.crew.def.weaponDamage, CrewDamageSink.DamageCause.SMALL_ARMS);
+                        a.crew.record().pendingHits++;
+                        if (!t.isConscious()) a.crew.record().pendingDowns++;
                     }
                 }
                 return Status.RUNNING;
@@ -212,7 +338,9 @@ public final class CrewTasks {
             Entity site = TaskRules.siteOf(t);
             ShipGridComponent grid = site == null ? null : a.service.grid(site);
             if (grid == null) grid = a.grid();
-            if (!TaskRules.needsSuit(grid, TaskRules.targetX(t, a.service), TaskRules.targetY(t, a.service))) {
+            ShipTaskBoardComponent board = a.board();
+            if (!TaskRules.needsSuit(grid, TaskRules.targetX(t, a.service), TaskRules.targetY(t, a.service))
+                    && (board == null || !board.battleSuits())) {
                 return Status.SUCCEEDED;
             }
             a.pos.stop();
@@ -243,12 +371,19 @@ public final class CrewTasks {
             if (!TaskRules.isWorkSpot(t, grid, a.pathfinder().graph, a.service, a.pos.tileX(), a.pos.tileY())) {
                 return Status.FAILED; // target moved (a casualty was carried off); re-plan next step
             }
-            elapsed += a.dt;
+            // A light wound and a suit slow the work
+            float dt = a.dt * a.crew.workPace();
+            elapsed += dt;
             a.crew.activity = describe(t);
+            if (t.kind == CrewTask.Kind.REPAIR || t.kind == CrewTask.Kind.EXTINGUISH || t.kind == CrewTask.Kind.SEAL_BREACH
+                    || t.kind == CrewTask.Kind.PATCH_LEAK || t.kind == CrewTask.Kind.RESET_SHORT
+                    || t.kind == CrewTask.Kind.ISOLATE_TANK) {
+                a.crew.record().pendingWork += dt; // engineering experience
+            }
             Tile tile = grid.getTile(t.x, t.y);
             switch (t.kind) {
                 case EXTINGUISH:
-                    tile.fireIntensity -= a.crew.def.extinguishRate * a.dt;
+                    tile.fireIntensity -= a.crew.def.extinguishRate * dt;
                     if (tile.fireIntensity <= 0f) {
                         tile.extinguish();
                         return Status.SUCCEEDED;
@@ -259,19 +394,46 @@ public final class CrewTasks {
                     tile.bulkheadSealed = true;
                     grid.gridDirty = true;
                     return Status.SUCCEEDED;
+                case PATCH_LEAK: {
+                    if (elapsed < a.crew.def.patchTime) return Status.RUNNING;
+                    PatchLeakTask p = (PatchLeakTask) t;
+                    return LeakPatches.patch(grid, p.x, p.y, p.side) ? Status.SUCCEEDED : Status.FAILED;
+                }
                 case REPAIR: {
                     SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
-                    s.health = Math.min(1f, s.health + a.crew.def.repairRate * a.dt);
+                    s.health = Math.min(1f, s.health + a.crew.def.repairRate * dt);
                     if (s.health >= 1f) {
                         grid.gridDirty = true; // a repaired system may route power again
+                        DamageStates.repaired(grid, s);
                         return Status.SUCCEEDED;
                     }
                     return Status.RUNNING;
+                }
+                case RESET_SHORT: {
+                    if (elapsed < a.crew.def.resetTime) return Status.RUNNING;
+                    ResetShortTask r = (ResetShortTask) t;
+                    if (r.subsystem == null) DamageStates.reset(grid, t.x, t.y);
+                    else DamageStates.reset(grid, r.subsystem.getComponent(SubsystemComponent.class));
+                    return Status.SUCCEEDED;
+                }
+                case ISOLATE_TANK: {
+                    if (elapsed < a.crew.def.isolateTime) return Status.RUNNING;
+                    DamageStates.isolate(((IsolateTankTask) t).tank.getComponent(SubsystemComponent.class));
+                    return Status.SUCCEEDED;
                 }
                 case TREAT: {
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
                     p.treatedBy = a.entity;
                     return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes
+                }
+                case STABILISE: {
+                    // Quicker for a medic and for skill; slow with no medical stores left
+                    float time = a.crew.def.stabiliseTime * (a.crew.role == CrewRole.MEDIC ? CrewDef.MEDIC_STABILISE : 1f)
+                            / CrewRecord.factor(a.crew.record().medicine) / (grid.medicalStores > 0 ? 1f : CrewDef.NO_STORES_CARE);
+                    if (elapsed < time) return Status.RUNNING;
+                    if (grid.medicalStores > 0) grid.medicalStores--;
+                    a.service.crew(((StabiliseTask) t).patient).stabilised = true;
+                    return Status.SUCCEEDED;
                 }
                 case MAN_CONSOLE: {
                     // At it until anything else on the board wants them: then the console goes back up
@@ -328,8 +490,19 @@ public final class CrewTasks {
         }
     }
 
-    /** Carries the casualty to the nearest safe tile. */
+    /**
+     * Carries the casualty to the nearest safe tile. With nowhere aboard to carry them to (the whole
+     * ship holed), the rescuer puts the casualty's suit on them where they are instead, taking their
+     * own suit time, and leaves them for the next try.
+     */
     public static class CarryToSafety extends CrewLeaf {
+        private float suiting;
+
+        @Override
+        public void start() {
+            suiting = 0f;
+        }
+
         @Override
         public Status execute() {
             CrewAgent a = agent();
@@ -343,6 +516,13 @@ public final class CrewTasks {
             boolean destValid = dest != null && a.pos.isMoving() && !a.pos.pathBlocked && TaskRules.isSafe(grid, dest.x, dest.y);
             if (!destValid) {
                 if (!a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
+                    if (!c.suited && c.def.suitAir > 0f) {
+                        a.pos.stop();
+                        a.crew.activity = "putting a suit on " + c.name;
+                        suiting += a.dt;
+                        if (suiting < a.crew.def.suitTime) return Status.RUNNING;
+                        c.setSuited(true);
+                    }
                     a.abandonUnreachable();
                     return Status.FAILED;
                 }
@@ -488,7 +668,9 @@ public final class CrewTasks {
             }
             if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
             a.crew.activity = t.job.what();
-            return t.job.work(a.crew.def.repairRate * a.dt) ? Status.SUCCEEDED : Status.RUNNING;
+            float dt = a.dt * a.crew.workPace();
+            a.crew.record().pendingWork += dt;
+            return t.job.work(a.crew.def.repairRate * dt) ? Status.SUCCEEDED : Status.RUNNING;
         }
     }
 
@@ -515,7 +697,9 @@ public final class CrewTasks {
             }
             if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
             a.crew.activity = t.job.what();
-            return t.job.work(a.entity, a.dt) ? Status.SUCCEEDED : Status.RUNNING;
+            float dt = a.dt * a.crew.workPace();
+            a.crew.record().pendingWork += dt;
+            return t.job.work(a.entity, dt) ? Status.SUCCEEDED : Status.RUNNING;
         }
     }
 
@@ -628,17 +812,19 @@ public final class CrewTasks {
 
     /**
      * Stands by. Heads home if aboard another craft, and moves off a tile that is not safe to
-     * breathe on. A suited crew member takes the suit off after {@link #SUIT_OFF_DELAY} seconds
-     * standing by on a safe tile. Never finishes.
+     * breathe on. At battle stations ({@link ShipTaskBoardComponent#battleSuits}) they suit up and
+     * keep the suit on; otherwise a suited crew member takes the suit off after
+     * {@link #SUIT_OFF_DELAY} seconds standing by on a safe tile. Never finishes.
      */
     public static class Idle extends CrewLeaf {
         /** Seconds on a safe tile with nothing to do before a suit comes off. */
         public static final float SUIT_OFF_DELAY = 5f;
-        private float calm;
+        private float calm, suiting;
 
         @Override
         public void start() {
             calm = 0f;
+            suiting = 0f;
         }
 
         @Override
@@ -666,6 +852,23 @@ public final class CrewTasks {
             }
             if (TaskRules.isSafe(grid, x, y)) {
                 if (!a.pos.isMoving()) a.crew.activity = "idle";
+                ShipTaskBoardComponent board = a.board();
+                if (board != null && board.battleSuits() && a.crew.def.suitAir > 0f) {
+                    // Battle stations: suit up and keep it on
+                    calm = 0f;
+                    if (!a.crew.suited) {
+                        a.pos.stop();
+                        a.crew.activity = "suiting up for battle stations";
+                        suiting += a.dt;
+                        if (suiting >= a.crew.def.suitTime) {
+                            a.crew.setSuited(true);
+                            a.crew.activity = "idle";
+                            suiting = 0f;
+                        }
+                    }
+                    return Status.RUNNING;
+                }
+                suiting = 0f;
                 if (a.crew.suited && !a.pos.isMoving()) {
                     calm += a.dt;
                     if (calm >= SUIT_OFF_DELAY) a.crew.activity = "taking off a suit";
@@ -770,16 +973,24 @@ public final class CrewTasks {
         switch (t.kind) {
             case EXTINGUISH: return "fighting fire at " + t.x + "," + t.y;
             case SEAL_BREACH: return "sealing breach at " + t.x + "," + t.y;
+            case PATCH_LEAK: return "patching a leak at " + t.x + "," + t.y;
             case REPAIR: {
                 SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                 return "repairing " + (s == null ? "system" : s.type.name().toLowerCase());
             }
+            case RESET_SHORT: {
+                Entity e = ((ResetShortTask) t).subsystem;
+                SubsystemComponent s = e == null ? null : e.getComponent(SubsystemComponent.class);
+                return "resetting a short in the " + (s == null ? "conduit" : s.type.name().toLowerCase().replace('_', ' '));
+            }
+            case ISOLATE_TANK: return "isolating a leaking tank";
             case RESCUE: return "rescuing a casualty";
             case CARRY: return "carrying " + ((CarryTask) t).job.commodity();
             case YARD: return ((YardTask) t).job.what();
             case FORCE_DOOR: return ((ForceDoorTask) t).job.what();
             case BOARD: return ((BoardTask) t).job.what();
             case TREAT: return "treating a patient";
+            case STABILISE: return "stopping a patient's bleeding";
             case EVACUATE: return "the escape pods";
             case MAN_CONSOLE: {
                 SubsystemComponent.SubsystemType type = ((ManConsoleTask) t).type();

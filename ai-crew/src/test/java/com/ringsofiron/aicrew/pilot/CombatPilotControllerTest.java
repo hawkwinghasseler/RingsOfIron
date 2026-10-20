@@ -18,6 +18,7 @@ class CombatPilotControllerTest {
         final NpcCombatComponent combat = new NpcCombatComponent();
         final Vector2 targetPos = new Vector2(), targetVel = new Vector2();
         Vector2 missilePos, missileVel;
+        float targetAngle = Float.NaN;
 
         Sim() {
             s.maxAccel = 10f;
@@ -28,7 +29,7 @@ class CombatPilotControllerTest {
 
         void run(double seconds) {
             for (double t = 0; t < seconds; t += DT) {
-                controller.update(combat, s, targetPos, targetVel, missilePos, missileVel, DT, c);
+                controller.update(combat, s, targetPos, targetVel, targetAngle, missilePos, missileVel, DT, c);
                 float along = c.forward >= 0f ? c.forward * s.maxAccel : c.forward * s.maxReverseAccel;
                 float across = c.strafe * s.maxLateralAccel;
                 float cos = MathUtils.cos(s.angle), sin = MathUtils.sin(s.angle);
@@ -51,6 +52,32 @@ class CombatPilotControllerTest {
     }
 
     @Test
+    void aFlankerSwingsRoundBehindTheTargetsEnginesAndHoldsThere() {
+        Sim sim = new Sim();
+        // The target faces +x: its engines are toward -x. The flanker starts dead ahead of it
+        sim.targetAngle = 0f;
+        sim.s.position.set(3000f, 0f);
+        sim.combat.stance = NpcCombatComponent.Stance.FLANK;
+        sim.combat.preferredRange = 1000f;
+        sim.run(300);
+        assertEquals(-1000f, sim.s.position.x - sim.targetPos.x, 150f, "astern of it: " + sim.s.position);
+        assertEquals(0f, sim.s.position.y - sim.targetPos.y, 150f);
+        assertEquals(NpcCombatComponent.Mode.HOLDING, sim.combat.mode);
+        float bearing = new Vector2(sim.targetPos).sub(sim.s.position).angleRad();
+        assertEquals(0f, MathUtils.atan2(MathUtils.sin(sim.s.angle - bearing), MathUtils.cos(sim.s.angle - bearing)), 0.2f,
+                "nose on the target");
+    }
+
+    @Test
+    void aFlankerThatCannotSeeTheTargetsHeadingHoldsItsRange() {
+        Sim sim = new Sim();
+        sim.s.position.set(3000f, 0f);
+        sim.combat.stance = NpcCombatComponent.Stance.FLANK;
+        sim.run(240);
+        assertEquals(sim.combat.preferredRange, sim.range(), 100f);
+    }
+
+    @Test
     void closesToItsRangeAndHoldsItWithTheNoseOnTheTarget() {
         Sim sim = new Sim();
         sim.s.position.set(6000f, 0f);
@@ -60,6 +87,23 @@ class CombatPilotControllerTest {
         float bearing = new Vector2(sim.targetPos).sub(sim.s.position).angleRad();
         assertEquals(0f, PilotController.wrap(bearing - sim.s.angle), 0.1f, "nose on the target");
         assertTrue(sim.s.velocity.len() > 5f, "circling, not parked");
+    }
+
+    @Test
+    void aKiterBacksOffATargetThatClosesAndKeepsItsNoseOnIt() {
+        Sim sim = new Sim();
+        sim.combat.stance = NpcCombatComponent.Stance.KITE;
+        sim.combat.preferredRange = 4500f;
+        sim.combat.maxClosingSpeed = 140f;
+        sim.s.position.set(4500f, 0f);
+        // The target comes straight at it
+        sim.targetVel.set(60f, 0f);
+        sim.run(240);
+        assertTrue(sim.range() > 4500f - 600f, "kept its range: " + sim.range());
+        float bearing = new Vector2(sim.targetPos).sub(sim.s.position).angleRad();
+        assertEquals(0f, PilotController.wrap(bearing - sim.s.angle), 0.15f, "nose on the target");
+        // No circling: it backs straight off along the line
+        assertEquals(0f, sim.s.position.y - sim.targetPos.y, 150f);
     }
 
     @Test

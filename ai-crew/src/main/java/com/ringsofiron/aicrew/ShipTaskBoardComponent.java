@@ -28,6 +28,19 @@ public class ShipTaskBoardComponent implements Component {
     public final transient Array<CrewTask> tasks = new Array<>();
     /** The faction whose crew work this board. Boarders do not take the ship's jobs. */
     public int faction = 0;
+    /**
+     * Whether the crew suit up at battle stations, so a breach in their room doesn't suffocate them
+     * (suits slow them: {@link CrewDef#suitSpeedFactor}, {@link CrewDef#suitWorkFactor}). On by
+     * default; the player toggles it for their own ship.
+     */
+    public boolean suitsAtBattleStations = true;
+    /** True while the ship is in a fight: set each tick by the game, so not saved. */
+    public transient boolean battleStations;
+
+    /** True while the crew should keep their suits on for battle stations. */
+    public boolean battleSuits() {
+        return battleStations && suitsAtBattleStations;
+    }
 
     /** Adds the task unless the same job is already active. */
     public boolean post(CrewTask task) {

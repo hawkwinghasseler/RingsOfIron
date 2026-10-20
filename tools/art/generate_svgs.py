@@ -1758,6 +1758,47 @@ def effects():
     for xx in (12, 24, 40, 52):
         a.b += circle(xx, 32, 2, "#d9c27a", stroke=INK, sw=1)
     write("effects/bulkhead_seal.svg", T, T, a, "bulkhead_seal: emergency seal over a tile (Tile.bulkheadSealed)")
+    hull_patch()
+    short_circuit()
+    propellant_spill()
+
+
+def hull_patch():
+    # A plate bolted over a leak in the field: off-square, rivets, a weld bead and a strip of
+    # hazard tape to say it is temporary
+    a = Art()
+    plate = [(12, 15), (52, 10), (55, 50), (14, 54)]
+    a.b = poly(plate, STEEL_MID, stroke=INK, sw=2)
+    a.b += poly([(16, 19), (49, 15), (51, 46), (18, 49)], "none", stroke=STEEL_HI, sw=1)
+    for (rx, ry) in ((16, 18), (49, 14), (51, 47), (17, 50), (33, 15), (34, 51)):
+        a.b += circle(rx, ry, 1.6, STEEL_HI, stroke=INK, sw=0.8)
+    a.b += path("M20,30 L28,27 L36,31 L44,28", stroke="#d9e2ee", sw=1.4, extra=' opacity="0.8"')
+    a.b += poly([(18, 37), (50, 33), (51, 39), (19, 43)], HAZARD, stroke=INK, sw=1)
+    write("effects/hull_patch.svg", T, T, a, "hull_patch: a field patch over a leaking tile (Tile.isPatched)")
+
+
+def short_circuit():
+    # A faulted part: a jagged spark between two scorched contacts, on a dark burn mark, so a
+    # shorted system or conduit reads as dead until the crew reset it
+    a = Art()
+    a.b = poly([(14, 22), (26, 12), (44, 14), (54, 28), (50, 46), (34, 54), (16, 48), (10, 34)],
+               "#1b1f26", extra=' opacity="0.7"')
+    a.b += circle(18, 40, 4, "#5a4632", stroke=INK, sw=1)
+    a.b += circle(46, 24, 4, "#5a4632", stroke=INK, sw=1)
+    a.b += poly([(20, 38), (30, 34), (27, 30), (38, 27), (35, 23), (45, 25), (36, 31), (39, 34), (28, 38),
+                 (31, 41)], HAZARD, stroke=INK, sw=1.2)
+    a.b += path("M21,38 L30,34 L27,30 L38,27 L35,23 L44,25", stroke="#fff3b0", sw=1.2)
+    write("effects/short_circuit.svg", T, T, a, "short_circuit: a shorted system or conduit (DamageStates)")
+
+
+def propellant_spill():
+    # Propellant pooled on the deck by a burst tank: a wet, dark sheen that a fire can burn
+    a = Art()
+    a.b = poly([(10, 30), (16, 16), (32, 12), (48, 18), (55, 32), (50, 48), (34, 54), (18, 50)],
+               "#2a3a2e", extra=' opacity="0.75"')
+    a.b += poly([(18, 30), (24, 22), (36, 20), (44, 28), (40, 40), (28, 44)], "#3e5a44", extra=' opacity="0.8"')
+    a.b += path("M24,28 Q32,24 38,28", stroke="#9fc4a6", sw=1.2, extra=' opacity="0.7"')
+    write("effects/propellant_spill.svg", T, T, a, "propellant_spill: fuel a burst tank left on the deck (DamageStates)")
 
 
 # ---------------------------------------------------------------------------
@@ -2347,6 +2388,83 @@ def turrets():
     v, w, h = vb(-28, 36, 28)
     write("turrets/harpoon_launcher.svg", w, h, a, "harpoon_launcher: pivot at origin, tubes facing +x", viewbox=v)
 
+    # flak gun: a squat twin mount with short, fat barrels and a drum feed on each side
+    a = Art()
+    base(a, 22)
+    for dy in (-6, 6):
+        a.b += rect(6, dy - 4, 30, 8, STEEL_DARK, rx=2, stroke=INK, sw=1.5)
+        a.b += rect(32, dy - 5, 6, 10, STEEL_MID, rx=1.5, stroke=INK, sw=1.5)
+        a.b += circle(-4, dy * 2.4, 6, HOUSING, stroke=INK, sw=1.5)
+    a.b += rect(-14, -11, 22, 22, HOUSING, rx=4, stroke=INK, sw=2)
+    a.b += hazard_band(-12, 6, 18, 4, "flak")
+    v, w, h = vb(-26, 42, 26)
+    write("turrets/flak_mk1.svg", w, h, a, "flak_mk1 turret: pivot at origin, twin barrels toward +x", viewbox=v)
+
+    # dart rack: two slim tubes side by side on a small launcher base
+    a = Art()
+    base(a, 18)
+    a.b += rect(-10, -12, 34, 24, STEEL_DARK, rx=3, stroke=INK, sw=2)
+    for cy in (-5.5, 5.5):
+        a.b += rect(-6, cy - 4, 32, 8, HOUSING, rx=4, stroke=INK, sw=1.5)
+        a.b += circle(26, cy, 3.5, SEAT_DARK, stroke=INK, sw=1.2)
+        a.b += circle(26, cy, 1.5, "#8a2a2a")
+    v, w, h = vb(-22, 32, 22)
+    write("turrets/dart_rack.svg", w, h, a, "dart_rack: pivot at origin, two tubes facing +x", viewbox=v)
+
+    # heavy railgun: a long double-rail barrel on a big housing, coils glowing when powered
+    a = Art()
+    base(a, 34)
+    a.b += rect(12, -9, 112, 18, STEEL_DARK, rx=2, stroke=INK, sw=2)
+    a.b += rect(12, -2, 112, 4, "#1f4a5a")
+    a.e += rect(12, -2, 112, 4, "#4fd1ff", extra=' opacity="0.75"')
+    for x in (30, 54, 78, 102):
+        a.b += rect(x, -12, 6, 24, STEEL_MID, rx=1.5, stroke=INK, sw=1.5)
+    a.b += rect(118, -11, 10, 22, STEEL_MID, rx=2, stroke=INK, sw=2)
+    a.b += rect(-26, -20, 40, 40, HOUSING, rx=5, stroke=INK, sw=2)
+    a.b += hazard_band(-24, -18, 28, 5, "railheavy")
+    v, w, h = vb(-38, 132, 38)
+    write("turrets/railgun_heavy.svg", w, h, a, "railgun_heavy turret: pivot at origin, barrel toward +x", viewbox=v,
+          unpowered="turrets/railgun_heavy_unpowered.svg")
+
+    # ion cannon: a stubby barrel ending in a ring of emitter prongs, blue-white when powered
+    a = Art()
+    base(a, 22)
+    a.b += rect(6, -6, 30, 12, STEEL_DARK, rx=3, stroke=INK, sw=2)
+    a.b += circle(40, 0, 9, "#1c2a4a", stroke=INK, sw=2)
+    for dy in (-9, 9):
+        a.b += rect(36, dy - 1.5, 14, 3, STEEL_MID, rx=1, stroke=INK, sw=1)
+    a.e += circle(40, 0, 12, "#7aa8ff", extra=' opacity="0.25"')
+    a.e += circle(40, 0, 6, "#7aa8ff") + circle(40, 0, 2.5, "#e0ecff")
+    a.b += rect(-14, -11, 20, 22, HOUSING, rx=3, stroke=INK, sw=2)
+    v, w, h = vb(-26, 54, 26)
+    write("turrets/ion_mk1.svg", w, h, a, "ion_mk1 turret: pivot at origin, emitter toward +x", viewbox=v,
+          unpowered="turrets/ion_mk1_unpowered.svg")
+
+    # railgun mk2: the mk1 refined, a slimmer barrel with a gold-trimmed housing (an ace's refit)
+    a = Art()
+    base(a, 28)
+    a.b += rect(10, -5, 80, 10, STEEL_DARK, rx=2, stroke=INK, sw=2)
+    a.b += rect(10, -2, 80, 4, "#1f4a5a")
+    a.e += rect(10, -2, 80, 4, "#7ff0ff", extra=' opacity="0.8"')
+    a.b += rect(86, -7, 8, 14, STEEL_MID, rx=2, stroke=INK, sw=2)
+    a.b += rect(-20, -16, 30, 32, HOUSING, rx=4, stroke=INK, sw=2)
+    a.b += rect(-18, -14, 26, 3, "#d4a83a") + rect(-18, 11, 26, 3, "#d4a83a")
+    v, w, h = vb(-32, 98, 32)
+    write("turrets/railgun_mk2.svg", w, h, a, "railgun_mk2 turret: pivot at origin, barrel toward +x", viewbox=v,
+          unpowered="turrets/railgun_mk2_unpowered.svg")
+
+    # chaingun mk2: four barrels in a ring, gold-trimmed (an ace's refit)
+    a = Art()
+    base(a, 22)
+    for dy in (-7.5, -2.5, 2.5, 7.5):
+        a.b += rect(8, dy - 2, 54, 4, STEEL_DARK, rx=1.5, stroke=INK, sw=1.2)
+    a.b += rect(46, -11, 6, 22, STEEL_MID, rx=2, stroke=INK, sw=1.5)
+    a.b += rect(-14, -14, 24, 28, HOUSING, rx=4, stroke=INK, sw=2)
+    a.b += rect(-12, -12, 20, 3, "#d4a83a") + rect(-12, 9, 20, 3, "#d4a83a")
+    v, w, h = vb(-26, 66, 26)
+    write("turrets/chaingun_mk2.svg", w, h, a, "chaingun_mk2 turret: pivot at origin, four barrels toward +x",
+          viewbox=v)
+
 
 # ---------------------------------------------------------------------------
 # Crew (top-down, centered on the SVG origin, facing +y which is SVG up)
@@ -2439,6 +2557,42 @@ def projectiles():
     write("projectiles/autocannon_round.svg", 56, 10, a,
           "autocannon_round: 30 mm round with tracer, pivot at origin, nose toward +x",
           viewbox="-50 -5 56 10")
+
+    # heavy railgun slug: 60 kg, fatter and with a longer, hotter streak
+    a = Art()
+    streak(a, "slug_heavy_streak", -220, -12, 5, "#9fe8ff")
+    a.b += poly([(-18, -5), (8, -5), (18, 0), (8, 5), (-18, 5)], "#8d96a3", stroke=INK, sw=1.5)
+    a.b += line(-16, -2, 10, -2, "#c9d1db", sw=1.2)
+    a.e += poly([(-18, -5), (8, -5), (18, 0), (8, 5), (-18, 5)], "#bff2ff", extra=' opacity="0.4"')
+    write("projectiles/railgun_slug_heavy.svg", 242, 22, a,
+          "railgun_slug_heavy: 60 kg tungsten slug, pivot at origin, nose toward +x, streak behind",
+          viewbox="-222 -11 242 22")
+
+    # flak shell: a stubby shell with a banded fuse nose and a faint tracer
+    a = Art()
+    streak(a, "flak_tracer", -30, -4, 2.5, "#ffd27a")
+    a.b += rect(-8, -3, 8, 6, "#8a7a3a", stroke=INK, sw=1)
+    a.b += poly([(0, -3), (4, -3), (7, 0), (4, 3), (0, 3)], "#c0503a", stroke=INK, sw=1)
+    a.b += line(2, -3, 2, 3, HAZARD, sw=1)
+    write("projectiles/flak_shell.svg", 40, 12, a,
+          "flak_shell: proximity-fused shell with tracer, pivot at origin, nose toward +x",
+          viewbox="-32 -6 40 12")
+
+    # ion bolt: a crackling ball of blue light with a short tail; all emissive
+    a = Art()
+    a.defs += glow_def("ion_glow", "#7aa8ff") + halo_def("ion_halo", "#3a6aff")
+    a.e += path("M-40,0 L-4,-4 L-4,4 Z", fill="#7aa8ff", extra=' opacity="0.45"')
+    a.e += circle(0, 0, 12, "url(#ion_halo)")
+    a.e += circle(0, 0, 6, "url(#ion_glow)")
+    rnd = random.Random(44)
+    for i in range(5):
+        ang = rnd.uniform(0, 2 * math.pi)
+        r0, r1 = 4, rnd.uniform(8, 11)
+        a.e += line(r0 * math.cos(ang), r0 * math.sin(ang), r1 * math.cos(ang), r1 * math.sin(ang), "#e0ecff", sw=1)
+    a.e += circle(0, 0, 2.5, "#ffffff")
+    write("projectiles/ion_bolt.svg", 56, 28, a,
+          "ion_bolt: ball of ion light with a short tail, pivot at origin, moving toward +x",
+          viewbox="-42 -14 56 28")
 
     # missile: body in base, exhaust in emissive
     a = Art()

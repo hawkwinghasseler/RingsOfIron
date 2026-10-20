@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
@@ -16,6 +17,9 @@ import java.util.function.DoubleSupplier;
  * ui-hud's orbit map from orbital-mechanics: the player's conic now and after its planned burns,
  * sampled evenly in eccentric (or hyperbolic) anomaly rather than in time, so the curve stays smooth
  * through a fast periapsis pass. Burns already due are left out; they fire this frame.
+ *
+ * <p>With {@link Navigation}: the stations around the same body, the navigation target with its
+ * orbit (when it shares the parent), the closest approach to it, and a transfer proposed to it.
  */
 public class PlayerOrbitPath implements OrbitPathProvider {
     public static final int SEGMENTS = 128;
@@ -28,11 +32,15 @@ public class PlayerOrbitPath implements OrbitPathProvider {
     private final BurnPlanner planner;
     private final DoubleSupplier clock;
     private final RailsUniverse universe;
+    private GameWorld world;
+    private Navigation nav;
     private final Array<Entity> children = new Array<>();
     private final StateVector s = new StateVector();
 
     public PlayerOrbitPath(GameWorld world, BurnPlanner planner) {
         this(world.universe, new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer), planner);
+        this.world = world;
+        this.nav = world.nav;
     }
 
     public PlayerOrbitPath(RailsUniverse universe, PlayerOrbitInfo orbits, BurnPlanner planner) {
@@ -67,6 +75,7 @@ public class PlayerOrbitPath implements OrbitPathProvider {
                 out.nodes.add((float) s.x, (float) s.y);
                 if (n == selected) out.selectedNode = shown;
                 shown++;
+                out.nodeLabels.add(shown + ": " + Navigation.formatTime(n.time - now));
                 after = after.withBurn(n.time, n.prograde, n.radial);
                 t = n.time;
             }
@@ -74,7 +83,78 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         if (shown > 0) sample(after, t, body, out.planned);
         if (selected != null) caption(out.caption, selected, planner.selectedIndex(), m.nodes.size, now, after, body);
         else out.caption.append("N plans a burn");
+        if (nav != null) navigation(k, now, body, out);
         return true;
+    }
+
+    /** Stations, the target and its orbit, the closest approach and a proposed transfer. */
+    private void navigation(KeplerOrbit k, double now, CelestialBodyComponent body, OrbitPath out) {
+        Entity parent = orbits.parent();
+        String targetUuid = nav.target.uuid();
+        for (com.ringsofiron.macrosim.economy.EconomyNode station : world.macroSim.stations()) {
+            Entity e = world.engine.getEntity(station.stationUuid);
+            if (e == null || universe.parentOf(e) != parent || station.stationUuid.equals(targetUuid)
+                    || world.pirateBase.hidden(station.stationUuid)) continue;
+            universe.stateInFrame(e, parent, now, s);
+            MapMarker m = out.addMarker();
+            m.name = station.displayName == null ? "" : station.displayName;
+            m.x = s.x;
+            m.y = s.y;
+        }
+        PlayerTransfer.Proposal p = nav.transfer.proposal();
+        if (p != null) {
+            KeplerOrbit after = k;
+            double from = now;
+            for (double[] b : p.burns) {
+                if (b[0] < now) continue;
+                after.stateAt(b[0], s);
+                out.proposedNodes.add((float) s.x, (float) s.y);
+                after = after.withBurn(b[0], b[1], b[2]);
+                from = b[0];
+            }
+            sample(after, from, body, out.proposed);
+            out.caption.append("\nProposed: ").append(nav.transfer.describe(p)).append("\n")
+                    .append(nav.key(Action.ACCEPT_PLAN)).append(" accepts  ").append(nav.key(Action.DISCARD_PLAN)).append(" discards");
+        }
+        if (targetUuid == null) {
+            out.caption.append("\n").append(nav.key(Action.NAV_TARGET)).append(" picks a navigation target");
+            return;
+        }
+        if (nav.target.stateAt(parent, now, s)) {
+            MapMarker m = out.addMarker();
+            m.name = nav.target.name();
+            m.target = true;
+            m.x = s.x;
+            m.y = s.y;
+        }
+        Entity e = nav.target.entity();
+        OrbitComponent o = e == null ? null : universe.orbit(e);
+        Entity around = o == null ? null : universe.parentOf(e);
+        if (around != null && o.getOrbit().isElliptic()) {
+            // Around another body (a moon's station from the planet, or the planet's from a moon): its
+            // orbit drawn about where that body is now
+            double ox = 0, oy = 0;
+            if (around != parent) {
+                universe.stateInFrame(around, parent, now, s);
+                ox = s.x;
+                oy = s.y;
+            }
+            KeplerOrbit t = o.getOrbit();
+            for (int i = 0; i <= SEGMENTS; i++) {
+                t.positionAtAnomaly(2 * Math.PI * i / SEGMENTS, s);
+                out.targetOrbit.add((float) (s.x + ox), (float) (s.y + oy));
+            }
+        }
+        ClosestApproach.Result a = nav.approach();
+        out.caption.append("\nTarget ").append(nav.target.name());
+        if (a != null) {
+            out.approach.add((float) a.ship.x, (float) a.ship.y);
+            out.approach.add((float) a.target.x, (float) a.target.y);
+            out.caption.append(": closest ").append(Navigation.formatDistance(a.distance))
+                    .append(" in ").append(Navigation.formatTime(a.time - now));
+        }
+        out.caption.append("\n").append(nav.key(Action.NAV_TARGET)).append(" next target  ").append(nav.key(Action.PLAN_TO_TARGET))
+                .append(" plan to it  ").append(nav.key(Action.WARP_TO_BURN)).append(" warp to burn");
     }
 
     /** The parent's moons with their orbits, and the body the parent itself orbits. */

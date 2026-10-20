@@ -21,6 +21,11 @@ public class ProjectileComponent implements Component {
     public final Vector2 vel = new Vector2();
     /** Seconds since spawn. */
     public float age;
+    /**
+     * {@link com.ringsofiron.combatsys.systems.BallisticsSystem#getClock} when the shot this came
+     * from was fired: a warhead's fragments keep their missile's, so a hit can tell when it was fired.
+     */
+    public float firedAt;
     /** The firing ship; the round ignores it until {@code def.armingTime}. Null for none. */
     public transient Entity owner;
     /** An entity this round may not hit until {@link #ignoreUntil} (a ship it just ricocheted off). */

@@ -11,6 +11,8 @@ import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
@@ -68,7 +70,7 @@ class HostileTrafficGameTest {
             assertNotNull(board, h.displayName + " has a crew");
             if (h.isPirate()) {
                 assertEquals(HostileTraffic.PIRATE_CREW, board.faction);
-                if (HostileTraffic.GUNSHIP.equals(h.shipId)) gunships++;
+                if (HostileTraffic.PIRATE_GUNSHIP.equals(h.shipId)) gunships++;
                 else raiders++;
             } else {
                 patrols++;
@@ -89,7 +91,7 @@ class HostileTrafficGameTest {
 
     @Test
     void aHostileComesIntoTheBubbleOnItsOwnLayout() {
-        String id = pirate(HostileTraffic.GUNSHIP);
+        String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
         Entity ship = bringIn(id, 3_000, 0);
         PhysicsBodyComponent pb = ship.getComponent(PhysicsBodyComponent.class);
         assertEquals(world.shipMass(ship).mass, pb.body.getMass(), 1f, "weighs what its decks do");
@@ -101,7 +103,7 @@ class HostileTrafficGameTest {
 
     @Test
     void aPirateHuntingThePlayerFightsThem() {
-        String id = pirate(HostileTraffic.GUNSHIP);
+        String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
         hostiles.get(id).targetUuid = HostileComponent.PLAYER;
         Entity ship = bringIn(id, 3_000, 0);
         run(2);
@@ -110,8 +112,49 @@ class HostileTrafficGameTest {
     }
 
     @Test
+    void aPirateLeavesABeatenPlayerDriftingRatherThanFiringOn() {
+        // Round 6: the railgun ace went on shooting a disabled corvette, and its wounded, to pieces
+        String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
+        HostileComponent h = hostiles.get(id);
+        h.targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 3_000, 0);
+        run(2);
+        assertSame(game.player, ship.getComponent(SensorComponent.class).lockedTarget);
+        // Beaten: its reactor down
+        for (Entity e : game.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s.type == SubsystemComponent.SubsystemType.REACTOR) s.switchedOn = false;
+        }
+        run(3);
+        assertTrue(ShipDisablement.isDisabled(game.player));
+        assertTrue(h.brokeOff);
+        assertNull(ship.getComponent(SensorComponent.class).lockedTarget, "its guns go cold");
+        assertNull(ship.getComponent(NpcCombatComponent.class));
+        assertNotNull(ship.getComponent(NpcPilotComponent.class), "and it flies off");
+        assertTrue(world.hostiles.notices.stream().anyMatch(n -> n.contains("leaves you drifting")));
+    }
+
+    @Test
+    void aPirateFightsOnWhileThePlayerIsDarkFromAnIonStun() {
+        // Seed 2026's ion raider stunned the corvette's reactor and flew off as if it had won
+        String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
+        HostileComponent h = hostiles.get(id);
+        h.targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 3_000, 0);
+        run(2);
+        for (Entity e : game.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s.type == SubsystemComponent.SubsystemType.REACTOR) s.stunned = 20f;
+        }
+        run(3);
+        assertTrue(ShipDisablement.isDisabled(game.player), "dark while the stun lasts");
+        assertFalse(h.brokeOff, "a stun is not a beaten ship");
+        assertSame(game.player, ship.getComponent(SensorComponent.class).lockedTarget);
+    }
+
+    @Test
     void aPirateBreaksOffBeforeItIsBeatenEnoughToSurrender() {
-        String id = pirate(HostileTraffic.GUNSHIP);
+        String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
         HostileComponent h = hostiles.get(id);
         h.targetUuid = HostileComponent.PLAYER;
         Entity ship = bringIn(id, 3_000, 0);
@@ -152,6 +195,24 @@ class HostileTrafficGameTest {
     }
 
     @Test
+    void aPatrolHitByThePlayersStrayFireKeepsToThePirate() {
+        // Round 5: a cutter hit once in the player's fight with an ace turned on the player, and
+        // followed them to Highport's berth with its railgun
+        String pirate = pirate(HostileTraffic.RAIDER);
+        String patrol = null;
+        for (Map.Entry<String, HostileComponent> e : hostiles.all().entrySet()) {
+            if (!e.getValue().isPirate()) patrol = e.getKey();
+        }
+        Entity raider = bringIn(pirate, 4_000, 1_500);
+        Entity cutter = bringIn(patrol, 4_000, -1_500);
+        run(2);
+        world.hostiles.onShotAt(cutter, game.player);
+        run(2);
+        assertSame(raider, cutter.getComponent(NpcCombatComponent.class).target);
+        assertSame(raider, cutter.getComponent(SensorComponent.class).lockedTarget);
+    }
+
+    @Test
     void aPirateTakesAFreightersCargoAlongsideAndLeaves() {
         for (int i = 0; i < 60; i++) world.update(FRAME);
         Entity freighter = null;
@@ -187,6 +248,8 @@ class HostileTrafficGameTest {
     void aPirateGoingForThePlayerStopsTimeWarp() {
         for (int i = 0; i < 60; i++) world.update(FRAME);
         hostiles.playerGraceUntil = 0;
+        // No pirate dares the starter corvette at the start (round 5); one with a grudge does
+        hostiles.get(pirate(HostileTraffic.PIRATE_GUNSHIP)).grudge = true;
         assertTrue(world.timeWarp.setWarp(1_000), world.engine.getRailsWarpBlockedReason());
         TimeWarpController.DropReason[] reason = {null};
         world.timeWarp.changes.add((signal, change) -> {

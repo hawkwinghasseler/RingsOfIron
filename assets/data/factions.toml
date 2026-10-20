@@ -4,28 +4,67 @@
 # sponsor = true is the faction the player serves; its rank ladder below is the player's
 # career. stations lists the station names it owns; a station no faction lists belongs to
 # the sponsor. enemies are at war with it (either side listing the other is enough), and
-# hostile_to_all is at war with everyone, the player included.
+# hostile_to_all is at war with everyone, the player included. Only enemies listed here gain
+# standing when the player hurts a faction: being at war with a hostile_to_all faction is not
+# enough, so beating pirates pleases those that name them (the Patrol), not everyone.
+#
+# sponsorable = true lets a new game choose to serve that faction instead (the sponsor = true one
+# is the default); rank_names are its own names for the ladder's steps, lowest first, and home is
+# the station its careers start docked at.
 #
 # [rank.<id>]: a step on the sponsor's ladder, lowest order first. Standing with the sponsor
 # at or above a rank's standing earns it; promotions never go back down. budget is paid
 # into the player's credits each in-game week; max_chassis is the largest chassis the rank
-# may requisition a ship of. Placeholder numbers.
+# may fly: the largest ship it may requisition after a rescue or buy at a yard (shipyard.toml).
+# Chassis are compared by their size in tiles. Placeholder numbers.
 
 [faction.patrol]
 name = "Terran Patrol Authority"
 color = "#4a90d9"
 sponsor = true
-stations = ["Highport", "Deepwell Depot"]
+stations = ["Highport", "Deepwell Depot", "Anvil Yards"]
+enemies = ["pirates"]
+home = "Highport"
 
 [faction.selene]
 name = "Selene Mining Combine"
 color = "#d9a441"
-stations = ["Shackleton Ice"]
+stations = ["Shackleton Ice", "Selene Forge", "Crisium Ore Works"]
+sponsorable = true
+home = "Shackleton Ice"
+rank_names = ["Prospector", "Surveyor", "Foreman", "Superintendent", "Director"]
+
+# Independent haulers and their outpost far out on the Moon's orbit. At war with nobody but the
+# pirates; the id sorts after the others so existing crew faction numbers keep their meaning.
+[faction.traders]
+name = "Free Traders"
+color = "#5fbf7a"
+stations = ["Freehold"]
+enemies = ["pirates"]
 
 [faction.pirates]
 name = "Void Raiders"
 color = "#d94a4a"
 hostile_to_all = true
+# Their hidden base, on an eccentric high orbit
+stations = ["Rustwake"]
+
+# [tension.default]: how the strain between the lawful factions changes the world (round 6). A
+# station's tension is its owner's highest with any other lawful faction. Its yard's prices (repairs,
+# propellant and gases) rise in proportion, by price_rise at full tension; from combat_jobs_at its
+# board posts combat_jobs more escorts or bounties. A rival of the player's sponsor posts one job
+# fewer for each distrust_per_job of tension with the sponsor, down to fewest_offers, unless the
+# player's own standing with it is trusted_standing or more. Once the pirates' base has fallen, a
+# new one rises after base_rises_after_days spent with any pair at high tension (50). Placeholder
+# numbers.
+[tension.default]
+price_rise = 0.25
+combat_jobs_at = 50.0
+combat_jobs = 1
+distrust_per_job = 25.0
+fewest_offers = 2
+trusted_standing = 10.0
+base_rises_after_days = 20.0
 
 [rank.ensign]
 name = "Ensign"
@@ -38,26 +77,27 @@ max_chassis = "corvette"
 name = "Lieutenant"
 order = 1
 standing = 15.0
-budget = 5000.0
+# Round 4: 7,500 and 15,000 (were 5,000 and 10,000); see planning/round4-balance.md
+budget = 7500.0
 max_chassis = "corvette"
 
 [rank.lieutenant_commander]
 name = "Lieutenant Commander"
 order = 2
 standing = 35.0
-budget = 10000.0
-max_chassis = "freighter"
+budget = 15000.0
+max_chassis = "gunship"
 
 [rank.commander]
 name = "Commander"
 order = 3
 standing = 60.0
 budget = 20000.0
-max_chassis = "freighter"
+max_chassis = "frigate"
 
 [rank.captain]
 name = "Captain"
 order = 4
 standing = 85.0
 budget = 40000.0
-max_chassis = "freighter"
+max_chassis = "frigate"

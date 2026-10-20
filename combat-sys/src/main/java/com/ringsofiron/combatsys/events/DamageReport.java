@@ -14,6 +14,10 @@ public class DamageReport {
     public final IntArray breaches = new IntArray();
     /** Tiles this impact set on fire. */
     public final IntArray fires = new IntArray();
+    /** Systems and conduit tiles this impact shorted out, by tile. */
+    public final IntArray shorts = new IntArray();
+    /** Tanks this impact burst, by the tile at the middle of each. */
+    public final IntArray bursts = new IntArray();
     /** Subsystem entities that lost health, and the tile each was hit on. */
     public final Array<Entity> damagedSubsystems = new Array<>();
     public final IntArray subsystemTiles = new IntArray();
@@ -27,6 +31,8 @@ public class DamageReport {
         ship = null;
         breaches.clear();
         fires.clear();
+        shorts.clear();
+        bursts.clear();
         damagedSubsystems.clear();
         subsystemTiles.clear();
         injuredCrew.clear();
@@ -35,7 +41,7 @@ public class DamageReport {
     }
 
     public boolean isEmpty() {
-        return breaches.size == 0 && fires.size == 0 && damagedSubsystems.size == 0
+        return breaches.size == 0 && fires.size == 0 && shorts.size == 0 && bursts.size == 0 && damagedSubsystems.size == 0
                 && injuredCrew.size == 0 && !structureChanged;
     }
 }

@@ -83,6 +83,18 @@ class PenetrationResolverTest {
     }
 
     @Test
+    void aRoundAlongTheHullsSkinGrazesOffRatherThanBoringThroughTheRow() {
+        ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.MEDIUM);
+        // Head-on into the corner of the bottom hull row, then on along it
+        Result r = shootFromLeft(grid, 0, 1e8f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
+        assertEquals(Result.Outcome.OVER_PENETRATED, r.outcome);
+        assertTrue(grid.getTile(0, 0).getIntegrity() < 1f, "the corner it hit");
+        for (int x = 1; x < 8; x++) {
+            assertEquals(1f, grid.getTile(x, 0).getIntegrity(), 1e-6f, "the row beyond it, at " + x);
+        }
+    }
+
+    @Test
     void energyIsNeverCreated() {
         float[] budgets = {1e5f, 3e6f, 9e6f, 2e7f, 1e8f};
         for (float budget : budgets) {
@@ -164,10 +176,11 @@ class PenetrationResolverTest {
         final Entity sailor = new Entity();
         final float[] hp = {0f};
         final HitCause[] cause = {null};
+        resolver.setCrewHitChance(1f); // every round in their path strikes them
         resolver.setCrew(new CrewDamageBridge() {
             @Override
             public void occupantsAt(Entity s, int x, int y, Array<Entity> out) {
-                if (x == 3 && y == 2) out.add(sailor);
+                if (x == 1 && y == 2) out.add(sailor);
             }
 
             @Override
@@ -177,9 +190,65 @@ class PenetrationResolverTest {
             }
         });
         shootFromLeft(grid, 2, 1e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
-        assertEquals(100f, hp[0], 1e-3f, "a crew member takes the full CREW_RESISTANCE bite");
+        assertEquals(100f, hp[0], 1e-3f, "a crew member in the first room takes the full CREW_RESISTANCE bite");
         assertEquals(HitCause.PENETRATOR, cause[0]);
         assertTrue(report.injuredCrew.contains(sailor, true));
+    }
+
+    @Test
+    void aRoundHurtsCrewLessPastTheFirstTile() {
+        ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.LIGHT);
+        final Entity[] sailors = {new Entity(), new Entity(), new Entity()};
+        final float[] hp = new float[3];
+        resolver.setCrewHitChance(1f); // every round in their path strikes them
+        resolver.setCrew(new CrewDamageBridge() {
+            @Override
+            public void occupantsAt(Entity s, int x, int y, Array<Entity> out) {
+                if (y == 2 && x >= 1 && x <= 3) out.add(sailors[x - 1]);
+            }
+
+            @Override
+            public void applyDamage(Entity crew, float amount, HitCause c) {
+                for (int i = 0; i < sailors.length; i++) if (sailors[i] == crew) hp[i] += amount;
+            }
+        });
+        // A railgun slug: through all three and out the far side
+        Result r = shootFromLeft(grid, 2, 1e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
+        assertEquals(Result.Outcome.OVER_PENETRATED, r.outcome);
+        assertEquals(100f, hp[0], 1e-3f, "the first takes the full bite");
+        assertEquals(100f * PenetrationResolver.CREW_FALLOFF_PER_TILE, hp[1], 1e-3f, "the second half");
+        assertEquals(100f * PenetrationResolver.CREW_FALLOFF_PER_TILE * PenetrationResolver.CREW_FALLOFF_PER_TILE, hp[2], 1e-3f,
+                "the third a quarter");
+    }
+
+    @Test
+    void mostRoundsThroughATileMissThePeopleOnIt() {
+        ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.LIGHT);
+        final Entity[] sailors = {new Entity(), new Entity()};
+        final int[] struck = new int[2];
+        resolver.setCrew(new CrewDamageBridge() {
+            @Override
+            public void occupantsAt(Entity s, int x, int y, Array<Entity> out) {
+                // Two gathered on one tile, round a casualty say
+                if (y == 2 && x == 1) out.addAll(sailors);
+            }
+
+            @Override
+            public void applyDamage(Entity crew, float amount, HitCause c) {
+                for (int i = 0; i < sailors.length; i++) if (sailors[i] == crew) struck[i]++;
+            }
+        });
+        int shots = 400;
+        RandomXS128 rng = new RandomXS128(7);
+        Vector2 point = new Vector2(grid.gridOriginLocal.x, grid.gridOriginLocal.y + 2.5f * TILE);
+        for (int i = 0; i < shots; i++) {
+            report.clear();
+            resolver.resolveHit(grid, ship, point, new Vector2(-1, 0), new Vector2(1000, 0), 1e7f, DamageType.KINETIC,
+                    Fuse.contact(), new SpallDef(), 70f, 0.5f, rng, report, result);
+        }
+        for (int n : struck) {
+            assertEquals(PenetrationResolver.CREW_HIT_CHANCE, n / (float) shots, 0.08f, "each struck on their own odds");
+        }
     }
 
     @Test

@@ -48,8 +48,13 @@ import java.util.Locale;
 public class Salvage extends EntitySystem {
     /** Prefix of the commodity a part is carried and stowed as; the same as a yard's refit parts. */
     public static final String PART = StationYard.PART;
-    /** Share of a part's price a station pays for it. */
-    public static final double SALE_SHARE = 0.25;
+    /**
+     * Share of a part's price a station pays for it: a twentieth, so one stripped laser (2,250 cr)
+     * pays under half a first bounty (5,000), and stripping a whole raider about two bounties for
+     * many minutes of crew work. At a quarter, one laser paid over twice the bounty (round 2
+     * playtest). Placeholder number.
+     */
+    public static final double SALE_SHARE = 0.05;
     /** Work (at an engineer's repair rate) to strip one tile of a mount. */
     public static final float STRIP_WORK_PER_TILE = 1f;
     /** A crate's bulk, m³, and its weight, kg. */
@@ -182,10 +187,13 @@ public class Salvage extends EntitySystem {
     // Orders
     // ------------------------------------------------------------------
 
-    /** Why {@code ship}'s crew can't strip {@code craft}, or null if they can. */
+    /**
+     * Why {@code ship}'s crew can't strip {@code craft}, or null if they can. A check only: an
+     * undefended wreck is taken when work is ordered ({@link #mark}, {@link #takeCargo}), not here.
+     */
     public String refusal(Entity ship, Entity craft) {
         if (craft == null) return "Latch onto another ship first";
-        if (!boarding.takeUndefended(ship, craft)) {
+        if (!boarding.canTakeUndefended(ship, craft)) {
             BoardedComponent b = Boarding.of(craft);
             if (!ShipDisablement.isDisabled(craft)) return Boarding.name(craft) + " can still fight";
             return b != null && !b.taken ? "Take " + Boarding.name(craft) + " first: its crew still fight"
@@ -202,6 +210,7 @@ public class Salvage extends EntitySystem {
         Entity craft = boarding.target(ship);
         String no = refusal(ship, craft);
         if (no != null) return no;
+        boarding.takeUndefended(ship, craft);
         Part part = null;
         for (Part p : parts(craft)) {
             if (p.system.footprint.originX == x && p.system.footprint.originY == y) part = p;
@@ -246,6 +255,7 @@ public class Salvage extends EntitySystem {
         Entity craft = boarding.target(ship);
         String no = refusal(ship, craft);
         if (no != null) return no;
+        boarding.takeUndefended(ship, craft);
         CargoHoldComponent hold = craft.getComponent(CargoHoldComponent.class);
         double units = hold == null ? 0 : hold.amount(commodity);
         if (units <= 1e-6) return "No " + commodity + " aboard " + Boarding.name(craft);

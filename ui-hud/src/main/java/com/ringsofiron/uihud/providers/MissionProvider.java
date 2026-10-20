@@ -28,6 +28,8 @@ public interface MissionProvider {
         public String terms = "";
         /** Why it can't be taken yet ("Needs rank Lieutenant"), or empty. */
         public String locked = "";
+        /** A line under an offer: why it is posted, or what its target has done; empty for none. */
+        public String note = "";
     }
 
     final class MissionBoard {
@@ -35,6 +37,8 @@ public interface MissionProvider {
         public String stationName = "";
         /** The player's rank and standing with the board's faction, one line. */
         public String career = "";
+        /** How strained the board's faction is with the others ("Tension: Selene Combine 34 (high at 50)"); empty for none. */
+        public String tension = "";
         public final Array<Job> offers = new Array<>();
         /** Contracts held, with their terms showing time left and how far away. */
         public final Array<Job> held = new Array<>();
@@ -59,6 +63,7 @@ public interface MissionProvider {
         public void clear() {
             stationName = "";
             career = "";
+            tension = "";
             offers.clear();
             held.clear();
         }

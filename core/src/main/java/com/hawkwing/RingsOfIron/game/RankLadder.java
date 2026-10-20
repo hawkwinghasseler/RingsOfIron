@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * The sponsor's ranks from the data ({@code [rank.<id>]}), lowest first: the standing each needs,
- * the budget it pays each in-game week, and the largest chassis it may requisition a ship of.
+ * the budget it pays each in-game week, and the largest chassis it may fly (requisitioned or bought).
  * With no rank data there is one rank with no budget and no limit.
  */
 public final class RankLadder {
@@ -57,17 +57,37 @@ public final class RankLadder {
     }
 
     /**
-     * Whether rank {@code i} may requisition a ship of {@code shipId}: its chassis has no more
-     * tiles than the rank's {@code max_chassis}. A rank with no limit, or a ship or limit the data
-     * cannot size, allows it.
+     * Whether rank {@code i} may requisition a ship of {@code shipId} after a rescue: the same
+     * limit as {@link #mayFly}.
      */
     public boolean mayRequisition(int i, String shipId) {
+        return mayFly(i, shipId);
+    }
+
+    /**
+     * Whether rank {@code i} may fly a ship of {@code shipId}, requisitioned or bought: its chassis
+     * has no more tiles than the rank's {@code max_chassis}. A rank with no limit, or a ship or limit
+     * the data cannot size, allows it.
+     */
+    public boolean mayFly(int i, String shipId) {
         RankDef rank = get(i);
         if (defs == null || rank.maxChassis == null) return true;
         ShipDef ship = defs.get("ship", shipId, ShipDef.class);
         int size = ship == null ? -1 : chassisSize(ship.chassis);
         int limit = chassisSize(rank.maxChassis);
         return size < 0 || limit < 0 || size <= limit;
+    }
+
+    /** The lowest rank that may fly {@code shipId}, or -1 if none may. */
+    public int lowestToFly(String shipId) {
+        for (int i = 0; i < ranks.size(); i++) if (mayFly(i, shipId)) return i;
+        return -1;
+    }
+
+    /** The place on the ladder of rank {@code id}, or -1 if it is none of the ladder's. */
+    public int indexOf(String id) {
+        for (int i = 0; i < ranks.size(); i++) if (ranks.get(i).id.equals(id)) return i;
+        return -1;
     }
 
     /** Tiles of chassis {@code id} that are not void, or -1 if there is no such chassis. */

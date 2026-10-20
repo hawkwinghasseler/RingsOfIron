@@ -13,13 +13,18 @@ import com.ringsofiron.uihud.providers.TrafficMapProvider;
 /**
  * ui-hud's traffic map from macro-sim's rails snapshot: stations and haulers around the body the
  * player orbits (or the body the bubble falls around), plus that body's moons and the player.
- * Haulers inside the bubble have no rails entry and show as world markers instead.
+ * Haulers inside the bubble have no rails entry and show as world markers instead. Escape pods and
+ * wrecks ({@link Derelicts}) around the same body are shown too. Pirates the player knows of
+ * ({@link PirateSightings}) show where they are while in sensor range, else where they were last seen.
+ * Each contact carries its uuid, so a click on the map makes it the navigation target. Round 6: a
+ * tension readout, a line per faction's stations ({@link FactionTension#regions}).
  */
 public class RailsTrafficMap implements TrafficMapProvider {
     private final GameWorld world;
     private final StateVector parentState = new StateVector();
     private final StateVector bodyState = new StateVector();
     private final com.ringsofiron.macrosim.rails.StateVector entryState = new com.ringsofiron.macrosim.rails.StateVector();
+    private final StateVector derelictState = new StateVector();
     private final double[] trueState = new double[4];
     private final Array<Entity> moons = new Array<>();
 
@@ -54,16 +59,21 @@ public class RailsTrafficMap implements TrafficMapProvider {
 
         String playerUuid = player == null ? null : world.universe.uuidOf(player);
         String frameUuid = world.universe.uuidOf(frame);
+        String targetUuid = world.nav.target.uuid();
         for (RailsSnapshot.Entry e : snapshot.entries) {
             if (e.uuid.equals(playerUuid)) continue;
             EconomyNode station = world.macroSim.station(e.uuid);
             FreighterComponent hauler = station == null ? world.macroSim.freighters().get(e.uuid) : null;
             if (station == null && hauler == null) continue;
+            // The pirates' base stays off the map until it is found
+            if (station != null && world.pirateBase.hidden(e.uuid)) continue;
             if (!positionInFrame(e, frame, frameUuid, t)) continue;
             Contact c = out.addContact();
             c.x = entryState.x;
             c.y = entryState.y;
             c.objective = world.contracts.isWaypoint(e.uuid);
+            c.id = e.uuid;
+            c.target = e.uuid.equals(targetUuid);
             if (station != null) {
                 c.kind = ContactKind.STATION;
                 c.name = station.displayName == null ? "Station" : station.displayName;
@@ -74,12 +84,57 @@ public class RailsTrafficMap implements TrafficMapProvider {
             }
         }
 
+        world.universe.absoluteState(frame, t, parentState);
+        for (Derelicts.Derelict d : world.derelicts.all()) {
+            if (!world.derelicts.position(d, t, derelictState)) continue;
+            Entity parent = world.universe.entity(d.parentUuid);
+            if (parent != frame && (parent == null || world.universe.parentOf(parent) != frame)) continue;
+            Contact c = out.addContact();
+            c.kind = ContactKind.OTHER;
+            c.name = d.name == null ? "Derelict" : d.name;
+            c.detail = world.derelicts.describe(d);
+            c.x = derelictState.x - parentState.x;
+            c.y = derelictState.y - parentState.y;
+            c.objective = world.contracts.isWaypoint(d.id);
+        }
+        hostiles(out, frame, t, targetUuid);
+        // How strained each faction's stations are, and what their yards charge for it
+        world.tension.regions(out::addRegion);
+
         if (player != null && playerPosition(player, frame)) {
             Contact c = out.addContact();
             c.kind = ContactKind.PLAYER;
             c.name = "You";
             c.x = bodyState.x;
             c.y = bodyState.y;
+        }
+    }
+
+    /** Known pirates: live while in sensor range, else at their last known position. */
+    private void hostiles(TrafficFrame out, Entity frame, double t, String targetUuid) {
+        for (String uuid : world.nav.sightings.known()) {
+            PirateSightings.Sighting s = world.nav.sightings.sighting(uuid);
+            Entity parent = s == null || s.parentUuid == null ? null : world.universe.entity(s.parentUuid);
+            if (parent == null) continue;
+            entryState.set(s.state.x, s.state.y, s.state.vx, s.state.vy);
+            if (parent != frame) {
+                world.universe.stateInFrame(parent, frame, s.time, parentState);
+                entryState.x += parentState.x;
+                entryState.y += parentState.y;
+            }
+            com.ringsofiron.macrosim.hostile.HostileComponent h = world.macroSim.hostiles().get(uuid);
+            Contact c = out.addContact();
+            c.kind = ContactKind.HOSTILE;
+            c.name = h == null || h.displayName == null ? "Pirate" : h.displayName;
+            c.x = entryState.x;
+            c.y = entryState.y;
+            c.id = uuid;
+            c.stale = !s.live;
+            c.target = uuid.equals(targetUuid);
+            c.objective = world.contracts.isWaypoint(uuid);
+            String bounty = world.nav.sightings.bountyHeld(uuid) ? "your bounty" : "";
+            String seen = s.live ? "" : t - s.time < 60 ? "last seen just now" : "last seen " + formatEta(t - s.time) + " ago";
+            c.detail = bounty.isEmpty() ? seen : seen.isEmpty() ? bounty : bounty + ", " + seen;
         }
     }
 

@@ -59,6 +59,19 @@ public class TraderComponent implements Component {
         return commodity.unitVolume > 0 ? freeCargo() / commodity.unitVolume : 0;
     }
 
+    /**
+     * Stows up to {@code units} that change hands outside a market, such as cargo recovered from a
+     * wreck; returns the units stowed.
+     */
+    public double stow(CommodityType commodity, double units) {
+        return load(commodity, units);
+    }
+
+    /** Takes out up to {@code units} that change hands outside a market; returns the units taken. */
+    public double handOver(CommodityType commodity, double units) {
+        return unload(commodity, units);
+    }
+
     /** Stows up to {@code units}; returns the units stowed. */
     double load(CommodityType commodity, double units) {
         if (hold != null) return hold.load(commodity, units);

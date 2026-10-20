@@ -14,6 +14,7 @@ import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.combatsys.events.CombatEvents;
+import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.moddingdata.ModContext;
 
 import java.util.function.Supplier;
@@ -21,7 +22,8 @@ import java.util.function.Supplier;
 /**
  * Plays combat on the audio bus: each weapon's {@code sound} when it fires, a motor loop that
  * follows each missile in flight, a hull impact at every hull hit by a round (louder for harder
- * hits) and an explosion at every warhead going off. Sounds are asset keys from the
+ * hits) and an explosion at every warhead going off; an ion bolt crackles instead of a hull
+ * impact, and a shield shimmers whenever it takes part of a hit. Sounds are asset keys from the
  * {@code [audio_event]} table (such as {@code evt_railgun_fire}) or event paths. A weapon whose
  * sound is missing or not in the table plays {@link #DEFAULT_SHOT}, which the audio catalog plays
  * with its fallback one-shot; without {@link #EXPLOSION_KEY} warheads play a hull impact, and
@@ -34,6 +36,8 @@ public final class CombatAudio {
     public static final String DEFAULT_SHOT = "event:/weapons/default";
     /** Asset keys for the missile motor loop and for a warhead going off. */
     public static final String MISSILE_FLIGHT_KEY = "evt_missile_flight", EXPLOSION_KEY = "evt_explosion";
+    /** Asset keys for an ion bolt landing (in place of a hull impact) and a shield taking part of a hit. */
+    public static final String ION_HIT_KEY = "evt_ion_hit", SHIELD_HIT_KEY = "evt_shield_hit";
 
     private CombatAudio() {
     }
@@ -55,8 +59,19 @@ public final class CombatAudio {
             }
         });
         events.hullHits.add((signal, hit) -> {
+            // A shield shimmers whenever it takes part of a hit, a beam's included
+            if (hit.shielded > 0f) {
+                String shield = keyPath(SHIELD_HIT_KEY, content.get());
+                if (shield != null) audio.playOneShot(shield, hit.worldPoint.x, hit.worldPoint.y,
+                        Math.max(MIN_HIT_INTENSITY, Math.min(1f, hit.shielded / ImpactResolutionSystem.SEVERITY_SCALE)));
+            }
             // Rams are heard through audio-spatial's own fast-pass listener, and a beam at its gun.
             if (hit.ram || hit.beam) return;
+            if (hit.ion) {
+                String ion = keyPath(ION_HIT_KEY, content.get());
+                if (ion != null) audio.playOneShot(ion, hit.worldPoint.x, hit.worldPoint.y, 1f);
+                return;
+            }
             audio.playOneShot(AudioEventCatalog.HULL_IMPACT,
                     hit.worldPoint.x, hit.worldPoint.y, Math.max(MIN_HIT_INTENSITY, hit.severity));
         });

@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.signals.Signal;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.moddingdata.defs.FactionDef;
@@ -22,7 +23,9 @@ import java.util.Set;
  *   <li>A ship the player beats (disabled, surrendered or wrecked within {@link #CREDIT_SECONDS}
  *       of the player's last hit on it) counts as destroyed with the factions, once
  *       ({@link FactionStanding#onShipDestroyed}): it costs standing with its owners and gains
- *       standing with their enemies, so beating pirates is how a career starts.</li>
+ *       standing with the factions sworn against them, so beating pirates is how a career starts.</li>
+ *   <li>Being rescued costs {@link #RESCUE_COST} standing with the sponsor, and fails every contract
+ *       held (round 3).</li>
  * </ul>
  */
 public final class LoopWiring {
@@ -30,8 +33,12 @@ public final class LoopWiring {
     public static final String[] REQUISITION = {"gunship_heavy", GameScenario.PLAYER_SHIP};
     /** How long after the player's last hit a ship being beaten still counts as theirs, sim seconds. */
     public static final double CREDIT_SECONDS = 120;
+    /** Standing with the sponsor a rescue costs. Placeholder number. */
+    public static final float RESCUE_COST = 5f;
 
     private final GameWorld world;
+    /** Each ship the player is credited with beating, once. */
+    public final Signal<Entity> beaten = new Signal<>();
     /** Sim time of the player's last hit on each ship, by uuid. */
     private final Map<String, Double> lastHit = new HashMap<>();
     /** Ships already counted, by uuid, so a ship that comes back and is beaten again counts once. */
@@ -63,6 +70,10 @@ public final class LoopWiring {
         };
         world.combatEvents.impacts.add((signal, hit) -> w.hit(hit.owner, hit.target));
         world.combatEvents.detonations.add((signal, d) -> w.hit(d.owner, d.target));
+        world.rescue.rescues.add((signal, rescue) -> {
+            world.standing.penalize(world.standing.sponsor(), RESCUE_COST, "had to be rescued");
+            world.contracts.failAll("you had to be rescued");
+        });
         world.disablement.changes.add((signal, change) -> {
             if (change.was == null && change.now != null) w.beaten(change.ship);
         });
@@ -95,6 +106,7 @@ public final class LoopWiring {
         if (at == null || world.engine.getSimSeconds() - at > CREDIT_SECONDS) return;
         credited.add(uuid);
         world.standing.onShipDestroyed(ship);
+        beaten.dispatch(ship);
     }
 
     /** Whether the player has been credited with beating the ship {@code uuid}. */

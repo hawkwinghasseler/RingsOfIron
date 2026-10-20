@@ -161,7 +161,7 @@ Missiles are self-propelled projectiles with a heading, a rocket and a seeker. A
 - **State:** `LAUNCH → BOOST → MIDCOURSE → TERMINAL → (COAST | DEAD)`.
 
 ### 4.2 Flight phases
-1. **Launch (cold).** The missile is ejected at `ejectSpeed` on top of the launcher's velocity, and its motor stays dark until `armingDelay`. This keeps it from torching or hitting its own ship. Ejection reaction is applied to the launcher as an impulse.
+1. **Launch (cold).** The missile is ejected at `ejectSpeed` on top of the launcher's velocity, and its motor stays dark until `armingDelay`. This keeps it from torching or hitting its own ship. Ejection reaction is applied to the launcher as an impulse. As built (round 6), a missile also never strikes its own launcher at all: an aft launcher's missile turning onto a target ahead flew up its own ship's hull and blew the frigate's bow railguns off.
 2. **Boost / midcourse.** The missile steers on the **launching ship's track**, received by datalink. The datalink only works while the launcher's `WEAPONS` subsystem is operational and powered. If it drops, the missile switches to its own seeker early or, with no lock, coasts.
 3. **Terminal.** Once the target is inside `seekerRange` and `seekerFov`, with line of sight not blocked by an asteroid (Box2D raycast), the missile steers on its own seeker. If it loses lock, it holds the last estimate for `memoryTime` and then coasts.
 4. **Coast.** With no fuel or no guidance, the missile is a ballistic slug. It is still armed, and still dangerous at closing speed.
@@ -261,6 +261,8 @@ Stop when `P ≤ 0`, or apply the def's fuse first (`DELAYED(depthTiles)` detona
 **Breaches and exit wounds:**
 - A `HULL` tile driven to 0 integrity already reads as `isHullBreach()`. The existing `GridHazardSystem` vents it on its next tick with no extra wiring.
 - If the ray reaches void beyond the far hull with `P > 0`, the round **over-penetrates**. The exit hull tile is breached too, and the round respawns in space on the far side with `|v_exit| = |v_rel| · sqrt(P_left / P_start)` in the same direction, converted back to world velocity. It can hit something behind the ship.
+- **Along the skin** (round 2 playtest): the hull is a thin skin drawn a tile thick, so a ray that steps from one hull tile to the next along the hull (both facing open space on the same side, square to the step) is grazing the plating. It leaves the ship there with what it has left rather than boring down the row. Before this, a railgun slug fired down a corvette's length took out the whole top or bottom row of hull, and two such slugs made a ship surrender.
+- **How much machinery one ray wrecks** (`SUBSYSTEM_TILE_SHARE`): a ray crossing a system's tile takes at most a tenth of the system's hardness from it (scaled by its health), however much energy it carries: a slug drills through machinery rather than wrecking all of it. At a quarter, three railgun slugs through a corvette's nose shut its reactor down and fights ended in seconds; at a tenth a ship takes many hits, and its crew have fires, breaches and repairs to deal with meanwhile. Rounds too weak to reach the cap are unchanged.
 - **Spall (optional, per def):** when a hull tile is penetrated, spawn `spallCount` short secondary rays in a cone of `±spallAngle` around the shot line. They share `spallFraction × absorbed` and run the same traversal. This is how a "small" hit still shreds the compartment behind the armor.
 
 ### 5.5 Explosive damage
@@ -281,6 +283,8 @@ Some interior rules need small changes in `interior-grid` for damage to read cor
 - `ShipGridComponent`'s comment says tile [0][0] is the top-left. It should say bottom-left with +y up, to match Box2D (5.2). Grid rendering and the `Main.java` demo should follow.
 - Combat sets a `gridDirty` flag so power can reroute immediately after heavy damage, without waiting for the 1 s tick (optional).
 
+**Shorts and bursts (round 5).** Every hit on a system, by a round, spall, a blast or a beam, rolls for a short circuit (`DamageStates.maybeShort`), and every hit on a powered conduit tile that leaves it standing rolls too (`maybeShortConduit`). Every hit that leaves a tank below its burst threshold rolls for a burst instead. Bursts go off once the round and its secondaries are done: the tank vents (`DamageStates.burst`), and a large one (500 kg or more) sets off a small blast of its own, `min(1 MJ, 500 J/kg)` at its tile out to 1 tile, through the same overpressure flood as a warhead, so it can hurt crew (`HitCause.BLAST`) and burst another tank (up to 8 in a chain). A burst's blast is the tank's energy, not the round's, so `Result.absorbed` leaves it out. `DamageReport.shorts` and `bursts` list the tiles.
+
 Crew-facing outputs, through `DamageTaskSink`:
 - `SealBreachTask` per new hull breach.
 - `RepairTask` per subsystem below 1.0 health.
@@ -297,10 +301,16 @@ Penetrating hits, spall, fragments and interior blast all damage crew. Combat on
 | **Unconscious** | Health at or below `unconsciousThreshold` | Drops its current task, cannot act or move on its own, still occupies its tile |
 | **Dead** | Health reaches 0 | Removed from duty |
 
-- Unconscious crew are still on their tile, so **further hits can kill them**. A second round through the same corridor is deadlier than the first.
+- Unconscious crew are still on their tile, so **further hits make their wounds worse**. A second round through the same corridor is deadlier than the first.
+- **Round 5: hits wound.** Since round 5 `ai-crew` turns hit damage into wounds (light, serious, critical) rather than taking health, and only a critical wound left untreated kills (`ai-crew/Design.md` section 5). A crew member takes at most `CREW_RESISTANCE` / `CREW_JOULES_PER_HP` (100 points) from a round, a critical wound; and a round loses half its crew injury for every open tile it crosses after the first (`CREW_FALLOFF_PER_TILE`), so a slug through three crew in a corridor leaves the first critically wounded and the others lightly (50 and 25 points). The round's budget and what it does to machinery and structure are unchanged. A laser's burn arrives as `BURN`, apart from the `FIRE` of standing in a burning room.
 - **Asphyxiation** is the other route to death. Crew on a tile with too little oxygen lose health over time (as the oxygen ratio of their compartment, `grid.oxygenRatioAt(x, y)`, falls; the hazard system tracks it), so they pass out first and then die. A hull breach therefore threatens crew who were never in the line of fire, and unconscious crew in a venting room need rescue.
 - Combat posts a `RescueTask` (move an unconscious crew member to a pressurized tile) alongside its other damage tasks. Whether and how unconscious crew recover is `ai-crew`'s call.
 - `CrewDamageSink.applyDamage(crewEntity, amount, cause)` is the third interface combat owns and `ai-crew` implements, next to `GridOccupantQuery` and `DamageTaskSink`.
+
+### 5.11 Ion hits and shields (round 3)
+- **Ion** (`damage_type = "ion"`, the `ion_bolt` of `ion_mk1`): an ion hit breaks nothing. It stuns every subsystem within `stun.radius_tiles` (2) of where it struck for a random 10 to 30 s (`stun.min_seconds`, `max_seconds`), longer of what is left and the new roll (`IonStun`). Cargo, tanks and docking ports are not stunned. A stunned system is not operational, a stunned reactor feeds no circuit, and `PowerRoutingSystem` counts stuns down and reroutes when one ends. An ion hit is a hull hit with `ion = true` and no severity, and starts no fire.
+- **What a stun means:** a ship whose reactor is stunned goes dark (`NO_POWER`) and can be boarded in that window, but a stun is never a surrender or a beaten ship. `FirstPlay.beaten` is false while anything aboard is stunned (unless the ship is wrecked, surrendered or abandoned), and `ShipDisablement.gunsSilenced` ignores stunned guns, so a bounty is never paid for an ion hit.
+- **Shields** (`Shields`): each operational `SHIELD_EMITTER` absorbs `ABSORB_SHARE` (0.5) of a hit's energy, scaled by its health, up to `MAX_SHARE` (0.75) for several. It pays `JOULES_PER_ABSORBED` (0.01 J per joule) from its circuit's store, so a drained reactor store stops absorbing. Shields act on rounds, missiles and beams, not on rams. An ion bolt soaked by a shield stuns only with the chance of what got through. `HullHitEvent.shielded` carries the absorbed share for the shimmer sound. The gunship carries one small emitter.
 
 ### 5.10 Ordering and determinism
 Per 60 Hz tick:
@@ -310,7 +320,7 @@ Per 60 Hz tick:
 3. `BallisticsSystem` / `MissileGuidanceSystem`
 4. `ImpactResolutionSystem` drains that tick's events in `tick, then shipUuid` order
 
-Hazards then evolve on their own tick (0.25 s). All random draws (fire, spall, gunnery jitter) come from a per-ship seeded RNG, so replays, saves and unit tests are reproducible.
+Hazards then evolve on their own tick (0.25 s). All random draws (fire, spall, gunnery jitter) come from a per-ship seeded RNG, so replays and unit tests are reproducible. The RNG's position is not saved: after a load each ship's stream starts again from its seed, so a loaded game rolls the same as itself but not as the run it was saved from. The RNG (`ImpactResolutionSystem.rngFor`) is seeded from the game's combat seed and the ship's UUID while the engine's UUIDs are seeded (a seeded career, and since round 6 the designed start), and from the combat seed and the ship's spawn index otherwise (a world on random UUIDs), so every game rolls the same shorts and bursts each run.
 
 ---
 
@@ -389,6 +399,18 @@ All in `combat-sys/src/main/java/com/ringsofiron/combatsys` (`components` packag
 
 - **In the game** (round 2, core): `ShipDisablement` reads what combat leaves of a ship and marks it disabled (hull below 0.45, no reactor running, or no crew conscious) or wrecked (hull below 0.25). It also makes an NPC surrender when it is losing: hull below 0.55, fewer than half its crew conscious, or every gun silenced. A disabled ship stops fighting but stays in the world as a target for boarding and salvage. `HostileTraffic.firepower` rates a ship by its weapons' prices, with point defense at half; pirates compare it before picking a fight. A pirate or patrol shot at fights back. The details are in `documentation/progression/Design.md`.
 - **New weapon** (round 2): `chaingun_mk1`, the light raider's turret: 30 mm autocannon rounds every 0.15 s, 270° arc, 3 km range, 18,000 cr.
+- **New weapons** (round 3), each with turret art, a round's art and a synth patch:
+
+| Weapon | What | Fits | Price |
+|---|---|---|---|
+| `flak_mk1` | Point defense: 1.5 kg shells with a 25 m proximity fuse every 0.35 s, 3 km. A proximity fuse widens the point-defense sweep by its radius, so flak kills missiles a gun would miss | any | 16,000 |
+| `dart_rack` | Light missile rack: a 6e4 J `dart` with a light frag warhead every 4 s, 8 km | launcher | 15,000 |
+| `railgun_heavy` | 60 kg tungsten slugs every 3 s, 3 MW | `min_mount_size = "M"` | 140,000 |
+| `ion_mk1` | Ion bolts every 2 s, 3.5 km, 1.5 MW (5.11) | any | 40,000 |
+| `railgun_mk2`, `chaingun_mk2` | Faster-firing rare refits, carried only by pirate aces (`rare = true`: never sold, salvage only) | any | 95,000, 32,000 |
+
+  `WeaponDef.fitsMount` ranks mount sizes S < M < L < XL; the yard refuses a weapon too big for a hardpoint's mount (`StationYard.tooSmall`) and never offers a rare one.
+- **Loadouts** (round 3, `loadouts.toml`, `[loadout.*]`): a weighted list of weapon sets per ship, each with a difficulty range and an `ace` flag. `Loadouts.pick` draws one by weight from those the difficulty allows, and `Loadouts.apply` fits it to the hardpoints in order, skipping empty entries and weapons too big for a mount.
 
 ## Utilities
 - `FiringSolutionSolver`: pure intercept math, shared by AI, HUD and missiles.

@@ -29,6 +29,7 @@ public class ContractMissions implements MissionProvider {
             int faction = s.factionOf(station);
             out.career = String.format(Locale.ROOT, "%s.  Standing with %s %+.0f", s.describeRank(),
                     s.factions().name(faction), s.standing(faction));
+            out.tension = world.tension.describe(faction);
             for (Contract c : board.offers(uuid)) {
                 Job j = out.addOffer();
                 j.id = c.id;
@@ -37,21 +38,29 @@ public class ContractMissions implements MissionProvider {
                 j.terms = terms(c, RailsTrafficMap.formatEta(c.deadline - world.engine.getSimSeconds()));
                 String locked = board.locked(c);
                 j.locked = locked == null ? "" : locked;
+                j.note = c.reason == null ? "" : c.reason;
             }
         }
         for (Contract c : board.active()) {
             Job j = out.addHeld();
             j.id = c.id;
-            j.title = c.title();
+            j.title = c.heading();
             j.giver = world.standing.factions().name(world.standing.factions().index(c.giver));
             j.terms = terms(c, board.progress(c));
         }
     }
 
-    /** "1,500 cr, +4 standing, 2.0 d"; a delivery also names the price per unit. */
+    /**
+     * "1,500 cr, +4 standing, 2.0 d"; a delivery also names the price per unit, a convoy or defence
+     * that its pay is shared out by how it goes, an operation its steps and that it pays at the end.
+     */
     static String terms(Contract c, String time) {
         String pay = String.format(Locale.ROOT, "%,.0f cr", c.reward);
         if (c.type == Contract.Type.DELIVERY) pay = String.format(Locale.ROOT, "%,.1f cr/unit + %s", c.unitPrice, pay);
+        if (c.type == Contract.Type.CONVOY || c.type == Contract.Type.DEFEND) pay = "up to " + pay;
+        if (c.type == Contract.Type.OPERATION) {
+            return String.format(Locale.ROOT, "%d steps, then %s, %+.0f standing", c.steps, pay, c.standing);
+        }
         return String.format(Locale.ROOT, "%s, %+.0f standing, %s", pay, c.standing, time);
     }
 

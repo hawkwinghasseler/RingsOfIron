@@ -9,7 +9,8 @@ import com.ringsofiron.coreengine.components.UuidComponent;
  * Makes {@link NpcCombatSystem} fight a ship: close to {@link #preferredRange} of
  * {@link #target}, hold that range while circling it with the guns on it, and break
  * across the line of an inbound missile. Replaces the ship's {@link NpcPilotComponent}
- * while it is on.
+ * while it is on. Its {@link #stance} is the captain's plan; whoever picks it sets the range
+ * and speeds to go with it.
  */
 public class NpcCombatComponent implements Component {
 
@@ -22,6 +23,23 @@ public class NpcCombatComponent implements Component {
         HOLDING,
         /** Breaking across an inbound missile's line. */
         EVADING
+    }
+
+    /** How the captain means to fight. */
+    public enum Stance {
+        /** Hold the range band and circle the target: the default. */
+        HOLD,
+        /** Keep well out, at missile range, and let the launchers work. */
+        STANDOFF,
+        /** Close fast to gun range. */
+        RUSH,
+        /** Swing round behind the target, where its engines are, and hold there. */
+        FLANK,
+        /**
+         * Keep a long range with the nose on the target, and back straight off when it closes:
+         * long guns against short ones. No circling, so the guns keep bearing.
+         */
+        KITE
     }
 
     /** The ship being fought. Not saved; {@link #targetRef} is. */
@@ -39,6 +57,7 @@ public class NpcCombatComponent implements Component {
     /** An inbound missile inside this distance is evaded, m. */
     public float evadeRange = 3000f;
 
+    public Stance stance = Stance.HOLD;
     public Mode mode = Mode.IDLE;
     /** +1 or -1: which way the ship circles and breaks. */
     public float side = 1f;

@@ -15,6 +15,8 @@ public interface CrewDamageSink {
         FRAGMENT,
         BLAST,
         FIRE,
+        /** A weapon's burn: a laser crossing someone. Wounds, where {@link #FIRE} (standing in one) takes health. */
+        BURN,
         ASPHYXIATION,
         SMALL_ARMS,
         OTHER

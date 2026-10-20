@@ -207,13 +207,97 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     // CrewDamageSink and the state machine
     // -----------------------------------------------------------------------
 
+    /**
+     * Hits ({@link #wounds}) wound rather than take health: see {@link #wound}. Everything else
+     * (air, heat, fire, small arms) takes health as before.
+     */
     @Override
     public void applyDamage(Entity crewEntity, float amount, DamageCause cause) {
         CrewMemberComponent c = crew(crewEntity);
         if (c == null || c.state == CrewState.DEAD || amount <= 0f) return;
-        c.health = Math.max(0f, c.health - amount);
         c.lastDamageCause = cause;
+        if (wounds(cause)) {
+            wound(crewEntity, c, amount, cause);
+            return;
+        }
+        c.health = Math.max(0f, c.health - amount);
         updateState(crewEntity);
+    }
+
+    /**
+     * Whether {@code cause} wounds ({@link Wound}) rather than takes health: rounds, spall,
+     * fragments, blasts and weapon burns. Small arms take health, so boarding fights go as they
+     * did: a crew member shot down falls unconscious and comes round.
+     */
+    public static boolean wounds(DamageCause cause) {
+        if (cause == null) return false;
+        switch (cause) {
+            case PENETRATOR: case SPALL: case FRAGMENT: case BLAST: case BURN: return true;
+            default: return false;
+        }
+    }
+
+    /**
+     * Wounds {@code c} by a hit of {@code amount} health points. A hit under
+     * {@link CrewDef#grazeWound} is a graze and does nothing; one of {@link CrewDef#lethalWound} or
+     * more kills outright. Otherwise the hit adds to {@link CrewMemberComponent#injury}, and the
+     * wound is as bad as the injury: light, serious from {@link CrewDef#seriousWound}, critical from
+     * {@link CrewDef#criticalWound}. So a hit that would once have killed (100 points) leaves a
+     * critical wound, which starts its {@link CrewDef#bleedOutTime} clock; a serious hit on someone
+     * already critical halves what is left of it and opens a wound someone had stabilised.
+     */
+    private void wound(Entity e, CrewMemberComponent c, float amount, DamageCause cause) {
+        CrewDef d = c.def;
+        if (amount < d.grazeWound) return;
+        if (amount >= d.lethalWound) {
+            // Nothing to treat: a warhead going off beside them, say
+            c.woundCause = cause;
+            c.wound = Wound.CRITICAL;
+            dieOfWounds(e);
+            return;
+        }
+        Wound was = c.wound;
+        c.injury += amount;
+        Wound now = d.woundFor(c.injury);
+        if (was == Wound.CRITICAL && amount >= d.seriousWound) {
+            c.bleedOut *= 0.5f;
+            c.stabilised = false;
+        }
+        if (now.compareTo(was) <= 0) return;
+        c.wound = now;
+        c.woundCause = cause;
+        c.care = 0f;
+        c.healing = 0f;
+        if (now == Wound.CRITICAL) {
+            c.bleedOut = d.bleedOutTime;
+            c.stabilised = false;
+        }
+        updateState(e);
+    }
+
+    /**
+     * Brings {@code e}'s wound down a level, as treatment does, and their injury to the least of
+     * that level; a crew member no longer down gets up if their health allows.
+     */
+    public void easeWound(Entity e) {
+        CrewMemberComponent c = crew(e);
+        if (c == null || c.state == CrewState.DEAD || c.wound == Wound.NONE) return;
+        c.wound = c.wound.better();
+        c.injury = c.def.injuryFor(c.wound);
+        c.stabilised = false;
+        c.care = 0f;
+        c.healing = 0f;
+        if (c.wound == Wound.NONE) c.woundCause = null;
+        updateState(e);
+    }
+
+    /** {@code e} dies of their wound. */
+    public void dieOfWounds(Entity e) {
+        CrewMemberComponent c = crew(e);
+        if (c == null || c.state == CrewState.DEAD) return;
+        c.lastDamageCause = c.woundCause != null ? c.woundCause : c.lastDamageCause;
+        c.health = 0f;
+        updateState(e);
     }
 
     /** Heals (amount positive), clamped to max health, then updates the state. Dead crew stay dead. */
@@ -225,9 +309,9 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     }
 
     /**
-     * Moves the crew member between states from their health: dead at 0, unconscious at
-     * or below the threshold, conscious again once above the threshold plus the wake
-     * margin.
+     * Moves the crew member between states from their health and wound: dead at 0 health, down
+     * (unconscious) at or below the threshold or with a serious or critical wound, and up again
+     * once above the threshold plus the wake margin with no worse than a light wound.
      */
     public void updateState(Entity e) {
         CrewMemberComponent c = crew(e);
@@ -235,9 +319,10 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
         float frac = c.healthFraction();
         if (c.health <= 0f) {
             setState(e, c, CrewState.DEAD);
-        } else if (c.state == CrewState.CONSCIOUS && frac <= c.def.unconsciousThreshold) {
+        } else if (c.state == CrewState.CONSCIOUS && (frac <= c.def.unconsciousThreshold || c.wound.disabling())) {
             setState(e, c, CrewState.UNCONSCIOUS);
-        } else if (c.state == CrewState.UNCONSCIOUS && frac > c.def.unconsciousThreshold + c.def.wakeMargin) {
+        } else if (c.state == CrewState.UNCONSCIOUS && frac > c.def.unconsciousThreshold + c.def.wakeMargin
+                && !c.wound.disabling()) {
             setState(e, c, CrewState.CONSCIOUS);
         }
     }

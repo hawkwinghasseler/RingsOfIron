@@ -25,6 +25,7 @@ import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.HullPiece;
+import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
@@ -78,6 +79,11 @@ public class StationYard extends EntitySystem {
     public static final double PART_TRIP_SECONDS = 30;
     /** Commodity id prefix a part is carried as. */
     public static final String PART = "part:";
+    /**
+     * How long the work waits for a ship that came loose of the station to latch again before it
+     * is called off, sim seconds. The player undocking calls it off at once ({@link #undocked}).
+     */
+    public static final double LOOSE_GRACE = 10;
     private static final float EPS = 1e-4f;
     /** A technician's pace, for work in the background. */
     private static final float REPAIR_RATE = new CrewDef().repairRate;
@@ -166,12 +172,25 @@ public class StationYard extends EntitySystem {
                 case HULL:
                     if (piece != null) piece.integrity = after;
                     else tile.integrity = after;
+                    // Mended past where it leaks, a field patch comes off
+                    if (after >= Tile.LEAK_START) {
+                        if (piece != null) piece.patchedAt = 0f;
+                        else tile.patchedAt = 0f;
+                    }
+                    // A conduit mended whole carries power again, short or no short
+                    if (tile != null && after >= 1f - EPS) tile.shorted = false;
                     break;
                 case WALL:
                     wall.integrity = after;
+                    if (after >= Tile.LEAK_START) wall.patchedAt = 0f;
                     break;
                 case SYSTEM:
                     system.health = after;
+                    // Mended whole: a short is cleared and an isolated tank opened again
+                    if (after >= 1f - EPS) {
+                        system.shorted = false;
+                        system.isolated = false;
+                    }
                     break;
                 default:
                     // A collar is whole or torn: it goes back on only when the work is done
@@ -196,6 +215,11 @@ public class StationYard extends EntitySystem {
     private final UuidRegistry uuids;
     private final DoubleSupplier simSeconds;
     private final CombatDefs weapons;
+    /**
+     * What a station charges against the base prices for repairs and refills (round 6: more where
+     * tension runs high, {@link FactionTension#priceFactor}); 1 everywhere unless the game sets it.
+     */
+    public java.util.function.ToDoubleFunction<Entity> priceFactor = station -> 1;
     private ImmutableArray<Entity> ships;
     private double lastTime = Double.NaN;
     /** Repair work in hand: the task for each piece of damage, while it is posted. */
@@ -246,7 +270,8 @@ public class StationYard extends EntitySystem {
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
-                if (t.piece == null && t.isWall() && t.integrity < 1f - EPS) {
+                // A holed deck plate too: it vents straight to space (round 4: the ace's 40 mm rounds hole them)
+                if (t.piece == null && (t.isWall() || t.isFloor()) && t.integrity < 1f - EPS) {
                     out.add(new Damage(Damage.Kind.HULL, x, y, 1, 1, null, t, null, null, null));
                 }
             }
@@ -292,6 +317,11 @@ public class StationYard extends EntitySystem {
         return total;
     }
 
+    /** Credits to put all of {@code ship}'s damage right at {@code station}'s yard, at its {@link #priceFactor}. */
+    public double repairCost(Entity ship, Entity station) {
+        return repairCost(ship) * priceFactor.applyAsDouble(station);
+    }
+
     /** Credits a kilogram of each fluid costs at a yard. */
     public static final double PROPELLANT_PRICE = 0.5, OXYGEN_PRICE = 2, NITROGEN_PRICE = 1;
 
@@ -314,15 +344,21 @@ public class StationYard extends EntitySystem {
         return total;
     }
 
+    /** Credits to fill every tank aboard {@code ship} at {@code station}'s yard, at its {@link #priceFactor}. */
+    public double refillCost(Entity ship, Entity station) {
+        return refillCost(ship) * priceFactor.applyAsDouble(station);
+    }
+
     /** Has {@code station}'s yard fill {@code ship}'s tanks, as far as its credits go. Returns what it says. */
     public String orderRefill(Entity ship, Entity station) {
         if (!canWork(ship, station)) return "No yard here to do the work";
-        double cost = refillCost(ship);
+        double factor = priceFactor.applyAsDouble(station);
+        double cost = refillCost(ship) * factor;
         if (cost < 0.5) return "The tanks are full";
         TraderComponent trader = ship.getComponent(TraderComponent.class);
         double budget = trader == null ? Double.POSITIVE_INFINITY : trader.credits;
         if (budget <= 0) return "You're out of credits";
-        double paid = fill(ship.getComponent(ShipSubsystemRegistryComponent.class), budget);
+        double paid = fill(ship.getComponent(ShipSubsystemRegistryComponent.class), budget / factor) * factor;
         if (trader != null) trader.credits = Math.max(0, trader.credits - paid);
         return paid >= cost - 1e-6 ? String.format(Locale.ROOT, "Tanks filled: %,.0f cr", cost)
                 : String.format(Locale.ROOT, "Tanks filled to what %,.0f cr buys", paid);
@@ -348,11 +384,11 @@ public class StationYard extends EntitySystem {
         return def.price * (used ? USED_PRICE : 1);
     }
 
-    /** Weapons the yard sells, cheapest first. */
+    /** Weapons the yard sells, cheapest first; never a rare one. */
     public List<WeaponDef> offers() {
         List<WeaponDef> out = new ArrayList<>();
         for (WeaponDef d : weapons.weapons.values()) {
-            if (d.price > 0) out.add(d);
+            if (d.price > 0 && !d.rare) out.add(d);
         }
         out.sort((a, b) -> Double.compare(a.price, b.price));
         return out;
@@ -378,6 +414,8 @@ public class StationYard extends EntitySystem {
         if (mount.subsystem == null || mount.subsystem.getComponent(SubsystemComponent.class) == null) {
             return "That hardpoint has no mount aboard to fit it to";
         }
+        String small = tooSmall(mount, def);
+        if (small != null) return small;
         YardOrdersComponent orders = orders(ship, station);
         if (orders == null) return "The yard is working for another station's ship";
         YardOrdersComponent.Refit old = orders.refit(hardpoint);
@@ -394,15 +432,33 @@ public class StationYard extends EntitySystem {
         return String.format(Locale.ROOT, "The technicians are fitting the salvaged %s to %s", def.displayName(), hardpointName(mount));
     }
 
-    /** Has {@code station}'s yard repair everything damaged aboard {@code ship}. Returns what it says. */
+    /**
+     * Puts the ship's hull patches and medical stores back to a full set, as part of a repair order
+     * (no charge), and when it is done. Returns true if anything was short.
+     */
+    static boolean restockPatches(Entity ship) {
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        if (grid == null) return false;
+        boolean short_ = grid.patchKits < LeakPatches.DEFAULT_KITS || grid.medicalStores < ShipGridComponent.DEFAULT_MEDICAL_STORES;
+        grid.patchKits = Math.max(grid.patchKits, LeakPatches.DEFAULT_KITS);
+        grid.medicalStores = Math.max(grid.medicalStores, ShipGridComponent.DEFAULT_MEDICAL_STORES);
+        return short_;
+    }
+
+    /**
+     * Has {@code station}'s yard repair everything damaged aboard {@code ship}, patched leaks
+     * included, and restock its hull patches and medical stores. With nothing to repair it still
+     * restocks them. Returns what it says.
+     */
     public String orderRepairs(Entity ship, Entity station) {
         if (!canWork(ship, station)) return "No yard here to do the work";
-        double cost = repairCost(ship);
-        if (cost <= 0.5) return "Nothing aboard needs repairing";
+        double cost = repairCost(ship, station);
+        if (cost <= 0.5) return restockPatches(ship) ? "Nothing aboard needs repairing: stores restocked" : "Nothing aboard needs repairing";
         YardOrdersComponent orders = orders(ship, station);
         if (orders == null) return "The yard is working for another station's ship";
         orders.repairs = true;
         orders.repairsPaid = 0;
+        restockPatches(ship);
         return String.format(Locale.ROOT, "Repairs ordered: about %,.0f cr, paid as the work is done", cost);
     }
 
@@ -415,11 +471,13 @@ public class StationYard extends EntitySystem {
         WeaponsComponent mounts = ship.getComponent(WeaponsComponent.class);
         WeaponDef def = weapons.weapons.get(weaponId);
         if (mounts == null || hardpoint < 0 || hardpoint >= mounts.mounts.size) return "No such hardpoint";
-        if (def == null || def.price <= 0) return "The yard doesn't sell that";
+        if (def == null || def.price <= 0 || def.rare) return "The yard doesn't sell that";
         WeaponMountComponent mount = mounts.mounts.get(hardpoint);
         if (mount.subsystem == null || mount.subsystem.getComponent(SubsystemComponent.class) == null) {
             return "That hardpoint has no mount aboard to fit it to";
         }
+        String small = tooSmall(mount, def);
+        if (small != null) return small;
         if (mount.def == def && !used) return "That hardpoint already has one";
         double price = price(def, used);
         TraderComponent trader = ship.getComponent(TraderComponent.class);
@@ -435,6 +493,16 @@ public class StationYard extends EntitySystem {
         orders.refits.add(new YardOrdersComponent.Refit(hardpoint, weaponId, used));
         return String.format(Locale.ROOT, "Ordered a %s %s for %s: %,.0f cr when it comes aboard",
                 used ? "used" : "new", def.displayName(), hardpointName(mount), price);
+    }
+
+    /** Why {@code def} won't go on {@code mount}'s turret mount, too small for it; null when it fits. */
+    public static String tooSmall(WeaponMountComponent mount, WeaponDef def) {
+        if (def.minMountSize == null) return null;
+        SubsystemComponent system = mount.subsystem == null ? null : mount.subsystem.getComponent(SubsystemComponent.class);
+        String size = system == null ? null : system.footprint.size.name();
+        return def.fitsMount(size) ? null
+                : String.format(Locale.ROOT, "A %s needs a mount of size %s or bigger; %s is %s", def.displayName(),
+                        def.minMountSize, hardpointName(mount), size);
     }
 
     /** "the nose", "port", "starboard" or "aft", from where the hardpoint faces. */
@@ -509,10 +577,19 @@ public class StationYard extends EntitySystem {
             Entity ship = ships.get(i);
             YardOrdersComponent orders = ORDERS_M.get(ship);
             Entity station = orders.station == null ? null : orders.station.get(uuids);
-            if (station == null || !docking.docked(ship, station)) {
+            if (station == null) {
                 callOff(ship, orders);
                 continue;
             }
+            if (!docking.docked(ship, station)) {
+                // Come loose: a ship latched again within a few seconds (a seat lost and found, a
+                // collar drawing it back in) carries on; one gone elsewhere or for longer does not
+                Entity other = docking.dockedTo(ship);
+                if (orders.looseSince < 0) orders.looseSince = now;
+                if (other != null || now - orders.looseSince > LOOSE_GRACE) callOff(ship, orders);
+                continue;
+            }
+            orders.looseSince = -1;
             boolean walkway = walkway(ship, station);
             boolean[][] reach = walkway ? reachable(ship.getComponent(ShipGridComponent.class), crew, station) : null;
             if (orders.repairs) repairs(ship, station, orders, reach, dt);
@@ -530,6 +607,8 @@ public class StationYard extends EntitySystem {
         repairing.values().removeIf(t -> !t.isActive() && t.ship == ship);
         if (damage.isEmpty()) {
             orders.repairs = false;
+            // Again at the end: the crew may have patched a leak from the stores while the yard worked
+            restockPatches(ship);
             notices.add(String.format(Locale.ROOT, "%s's yard finished the repairs: %,.0f cr",
                     PlayerDocking.name(station), orders.repairsPaid));
             return;
@@ -577,23 +656,25 @@ public class StationYard extends EntitySystem {
     private float work(Entity ship, YardOrdersComponent orders, Damage d, float work) {
         TraderComponent trader = ship.getComponent(TraderComponent.class);
         float points = work / d.workPerPoint();
+        // The yard's own prices: dearer where tension runs high
+        double price = d.cost() * priceFactor.applyAsDouble(orders.station == null ? null : orders.station.get(uuids));
         if (d.kind == Damage.Kind.COLLAR) {
             // Whole or not at all: count the work until the collar can go back on
             float done = collarWork.getOrDefault(d.port, 0f) + points;
             float need = 1f - d.condition();
             if (done < need) {
                 collarWork.put(d.port, done);
-                charge(trader, orders, points * d.cost());
+                charge(trader, orders, points * price);
                 return work;
             }
             collarWork.remove(d.port);
-            charge(trader, orders, Math.max(0, need - (done - points)) * d.cost());
+            charge(trader, orders, Math.max(0, need - (done - points)) * price);
             d.restore(1f);
             return work;
         }
-        if (trader != null) points = (float) Math.min(points, trader.credits / d.cost());
+        if (trader != null) points = (float) Math.min(points, trader.credits / price);
         float rose = d.restore(points);
-        charge(trader, orders, rose * d.cost());
+        charge(trader, orders, rose * price);
         if (d.kind == Damage.Kind.HULL && d.condition() >= 1f - EPS && d.tile != null) d.tile.bulkheadSealed = false;
         return rose * d.workPerPoint();
     }
@@ -692,6 +773,12 @@ public class StationYard extends EntitySystem {
         if (trader != null) trader.credits += credit;
         notices.add(String.format(Locale.ROOT, "%s fitted %s with a %s%s", PlayerDocking.name(station), hardpointName(mount),
                 def.displayName(), credit > 0 ? String.format(Locale.ROOT, "; %,.0f cr for the old %s", credit, old.displayName()) : ""));
+    }
+
+    /** The player undocked {@code ship} on purpose: its yard work is called off now, not after {@link #LOOSE_GRACE}. */
+    public void undocked(Entity ship) {
+        YardOrdersComponent orders = ship == null ? null : ORDERS_M.get(ship);
+        if (orders != null) callOff(ship, orders);
     }
 
     /** The ship left: tasks come off the board, and a part paid for but not fitted is refunded. */

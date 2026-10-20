@@ -36,9 +36,23 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | V | Stand up from your console into the deck view; on deck beside the helm or weapons console, sit there and look outside (`gradlew :lwjgl3:runGame -PviewAnywhere` switches anywhere) |
 | M | Traffic map |
 | T | Trade, when in range of a station |
+| Y | Yard: repairs and refits, while docked |
+| J | Mission board: the station's contracts while docked, and the ones you hold |
+| K | Boarding: board the ship you are latched to, strip its parts and take its cargo |
+| P | Abandon ship (P again within 3 s to confirm; P while abandoning launches the pods at once) |
+| I | Crew roster: your crew, the station's hires and any prisoners |
+| L | Notice log: the last 50 notices |
+| O | Deck lights |
+| B (twice) | Call a tow from your sponsor when disabled or low on propellant (at the helm) |
+| F1 | Every control for where you are |
 | G / H / U | Arm docking, pick the next port, undock |
 | , / . | Time warp down and up |
 | N, B, arrows, [ / ] | Plan a burn: add a node, select the next, change its Δv, move it in time |
+| Q | Cycle the navigation target (or click a contact on the traffic map) |
+| ; (semicolon), Enter / Backspace | Plan a transfer to the target; accept or discard the plan |
+| / | Warp to the next burn, stopping a minute before it |
+| 1 / 2 / 3 / 4 / 5 / 0 | Helm orders while you are away from the helm: fly the planned burns, match the target's velocity, hold position, approach the target (again to change the distance), dock at the target, cancel |
+| 6 | Autopilot: fly the transfer to the navigation target under time warp and dock on arrival (again to go on after a hold, or to stop it) |
 | F5 / F9 | Quick save and quick load |
 | Esc | Pause menu: resume, save to a named slot, load, settings, quit to the main menu |
 
@@ -49,10 +63,17 @@ Each demo lists its own controls on screen.
 ## Building and testing
 
 ```
-./gradlew build        # compile everything and run every test
-./gradlew test         # tests only
+./gradlew build        # compile everything and run the tests, except the slow ones
+./gradlew test         # tests only, except the slow ones
 ./gradlew :combat-sys:test   # one module's tests
+./gradlew slowTest     # only the slow tests: whole careers, long autopilot and warp runs
+./gradlew test -PallTests    # every test, slow ones included
+./gradlew :core:test --tests '*CareerSeedsTest' -PcareerSeeds=2026,7,12   # the scripted career on each seed, twice
 ```
+
+A test that takes more than a few seconds (a career played through, a replay played twice, a trip flown at every warp rate) is tagged `@Tag("slow")` so it stays out of `build` and `test`. CI runs `slowTest` in its own "Slow tests" job, so nothing goes untested.
+
+CI plays the scripted career on seeds 2026, 7 and 12, each twice, in its "Career seed" jobs: both runs must write the same journal, and the career must reach the gunship unless `CareerSeedsTest.STOPS` lists the seed as stopping at a known place.
 
 The art in `assets/art` is SVG. The `art-pipeline` module rasterizes it into a texture atlas when a run task needs it, so nothing generated is committed. See `documentation/art/Design.md`.
 

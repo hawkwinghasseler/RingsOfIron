@@ -23,7 +23,7 @@ public class ShipEditorLauncher {
         configuration.useVsync(true);
         configuration.setForegroundFPS(Lwjgl3ApplicationConfiguration.getDisplayMode().refreshRate + 1);
         configuration.setWindowedMode(1440, 880);
-        configuration.setWindowIcon("libgdx128.png", "libgdx64.png", "libgdx32.png", "libgdx16.png");
+        configuration.setWindowIcon("icon128.png", "icon64.png", "icon32.png", "icon16.png");
         // Closing the window with unsaved changes asks for a second close first
         configuration.setWindowListener(new Lwjgl3WindowAdapter() {
             @Override

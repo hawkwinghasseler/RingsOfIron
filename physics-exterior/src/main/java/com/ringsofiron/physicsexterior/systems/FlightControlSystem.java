@@ -30,7 +30,7 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
     private final ComponentMapper<FlightControlComponent> controlMapper = ComponentMapper.getFor(FlightControlComponent.class);
 
     private final PhysicsManager physics;
-    private final Vector2 force = new Vector2();
+    private final Vector2 force = new Vector2(), center = new Vector2();
     private ImmutableArray<Entity> entities;
 
     public FlightControlSystem(PhysicsManager physics) {
@@ -71,9 +71,17 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
         float localY = strafe * thruster.lateralThrust;
         float torque = turn * thruster.maxTorque;
 
+        Body tow = control.towing;
+        if (tow != null) {
+            // The pair's centre of mass, in meters
+            float m1 = body.getMass(), m2 = tow.getMass();
+            Vector2 c1 = body.getWorldCenter(), c2 = tow.getWorldCenter();
+            center.set(c1).scl(m1).mulAdd(c2, m2).scl(PhysicsManager.METERS_PER_UNIT / (m1 + m2));
+        }
+
         if (turn == 0f && control.rotationAssist && !control.assistHeld) {
             // Torque that would cancel the current spin in one tick, within RCS limits.
-            float stopTorque = -PhysicsManager.getInertia(body) * body.getAngularVelocity() / deltaTime;
+            float stopTorque = -inertia(body, tow) * body.getAngularVelocity() / deltaTime;
             torque = MathUtils.clamp(stopTorque, -thruster.maxTorque, thruster.maxTorque);
         }
 
@@ -85,11 +93,21 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
 
         if (localX != 0f || localY != 0f) {
             force.set(localX, localY).rotateRad(body.getAngle());
-            PhysicsManager.applyForce(body, force.x, force.y);
+            if (tow != null) PhysicsManager.applyForce(body, force.x, force.y, center.x, center.y);
+            else PhysicsManager.applyForce(body, force.x, force.y);
         }
         if (torque != 0f) {
             PhysicsManager.applyTorque(body, torque);
         }
+    }
+
+    /** Rotational inertia of {@code body}, with {@code tow} welded to it if not null, about their common centre of mass, kg*m^2. */
+    private float inertia(Body body, Body tow) {
+        if (tow == null) return PhysicsManager.getInertia(body);
+        float m1 = body.getMass(), m2 = tow.getMass();
+        float d = body.getWorldCenter().dst(tow.getWorldCenter()) * PhysicsManager.METERS_PER_UNIT;
+        // Each about its own centre, plus each one's offset from the common one (parallel axes)
+        return PhysicsManager.getInertia(body) + PhysicsManager.getInertia(tow) + m1 * m2 / (m1 + m2) * d * d;
     }
 
     /** Deducts fuel for this tick and returns the fraction of the requested output that could be paid for. */

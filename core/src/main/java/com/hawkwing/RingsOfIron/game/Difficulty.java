@@ -6,11 +6,15 @@ import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.moddingdata.components.DefRefComponent;
+import com.ringsofiron.moddingdata.defs.ShipDef;
 
 /**
  * How hard the game pushes back (GDD section 5): rises with the player's rank and their net worth,
  * credits plus the value of their ship. 1 for a new ensign in the starter corvette; encounters
- * (round 2 category 2) size themselves by it.
+ * (round 2 category 2) size themselves by it. Round 5 has it pick what the pirates fly too
+ * ({@link HostileTraffic}): how many raiders and gunships, how many fly in each wing, and whether an
+ * ace takes a gunship (once the player flies one).
  */
 public final class Difficulty {
     /** Difficulty each rank above the lowest adds. */
@@ -22,7 +26,44 @@ public final class Difficulty {
     /** What a ship's hull is worth per tile of its layout, besides its weapons. Placeholder. */
     public static final double HULL_PER_TILE = 1_000;
 
+    /** From this difficulty raiders fly in pairs: a Lieutenant, or an ensign grown rich. */
+    public static final double PAIRS = 1.25;
+    /** From this difficulty raiders fly in threes. */
+    public static final double THREES = 2.0;
+
     private Difficulty() {
+    }
+
+    /** Raiders the pirate population keeps at difficulty {@code d}. */
+    public static int raiders(double d) {
+        return 1 + (int) Math.round(Math.max(0, d));
+    }
+
+    /** Pirate gunships the population keeps at difficulty {@code d}. */
+    public static int gunships(double d) {
+        return (int) Math.floor(Math.max(0, d));
+    }
+
+    /** How many raiders fly in a wing, the leader included, at difficulty {@code d}: lone ones at first. */
+    public static int wingSize(double d) {
+        return d >= THREES ? 3 : d >= PAIRS ? 2 : 1;
+    }
+
+    /**
+     * True once the player flies a ship at least the size of {@code shipId}'s: from then on an ace
+     * flies a pirate gunship ({@link PirateAces#gunshipAce}).
+     */
+    public static boolean fliesAtLeast(GameWorld world, String shipId) {
+        Entity player = world.getPlayer();
+        DefRefComponent ref = player == null ? null : player.getComponent(DefRefComponent.class);
+        var content = world.getContent();
+        if (ref == null || content == null) return false;
+        ShipDef mine = content.defs.get("ship", ref.defId, ShipDef.class);
+        ShipDef theirs = content.defs.get("ship", shipId, ShipDef.class);
+        if (mine == null || theirs == null) return false;
+        RankLadder ranks = world.standing.ranks();
+        int a = ranks.chassisSize(mine.chassis), b = ranks.chassisSize(theirs.chassis);
+        return a >= 0 && b >= 0 && a >= b;
     }
 
     /** Difficulty from a rank (0 the lowest) and a net worth in credits; never below 1. */

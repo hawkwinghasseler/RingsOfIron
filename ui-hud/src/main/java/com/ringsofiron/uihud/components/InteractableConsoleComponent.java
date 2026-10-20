@@ -7,7 +7,7 @@ import com.ringsofiron.coreengine.components.UuidComponent;
 /**
  * A console on a ship's interior grid that the player's avatar can use. When the avatar is
  * within {@code InteractPromptSystem.INTERACT_RADIUS} tiles, the HUD shows
- * "Press [E] to Access {title}", and pressing E opens the console window.
+ * "Press [E] for the {title} panel", and pressing E opens the console window.
  *
  * Usually added to a subsystem entity (helm, weapons, life support); the window then shows
  * that subsystem's status.

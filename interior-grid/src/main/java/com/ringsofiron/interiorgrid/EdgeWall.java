@@ -14,10 +14,18 @@ public class EdgeWall {
     public String material;
     /** Structural integrity 0.0 (destroyed) to 1.0 (intact). */
     public float integrity = 1.0f;
+    /** Condition at which the wall was patched in the field, or 0; see {@link Tile#isPatched(float, float)}. */
+    public float patchedAt = 0f;
     /** Whether this wall section contains a bulkhead door. */
     public boolean hasBulkhead;
     /** For walls with a bulkhead: whether the door is currently sealed. */
     public boolean bulkheadSealed;
+    /**
+     * For a docked port's door shut to hold a pressure difference: it opens for whoever walks
+     * through and shuts behind them, so while shut it stops air and fire but not the way across
+     * ({@link GridLink#canCross}). Not saved; the docking system sets it again each tick.
+     */
+    public boolean opensForCrew;
 
     public EdgeWall(WeightClass weightClass) {
         this(weightClass, MaterialTable.DEFAULT_MATERIAL, false);
@@ -35,10 +43,15 @@ public class EdgeWall {
 
     /**
      * Share of a fully open edge's airflow that seeps through this wall while it blocks.
-     * See {@link Tile#leakFactor(float)}.
+     * See {@link Tile#leakFactor(float)}. A field patch stops it.
      */
     public float leakFactor() {
-        return Tile.leakFactor(integrity);
+        return isPatched() ? 0f : Tile.leakFactor(integrity);
+    }
+
+    /** Whether a field patch on this wall still holds. */
+    public boolean isPatched() {
+        return Tile.isPatched(patchedAt, integrity);
     }
 
     /** True when this edge stops movement, atmosphere and fire. */

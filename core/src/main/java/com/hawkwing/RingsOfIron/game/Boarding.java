@@ -7,6 +7,7 @@ import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.ashley.signals.Signal;
 import com.ringsofiron.aicrew.BoardTask;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
@@ -66,6 +67,8 @@ public class Boarding extends EntitySystem {
     private ImmutableArray<Entity> boarded;
     /** Factions whose ships are anyone's to board (outlaws); by default none. */
     public IntPredicate outlaw = faction -> false;
+    /** Each craft as it is taken. */
+    public final Signal<Entity> taken = new Signal<>();
     /** What the boardings came to, for the screen; drained by the caller. */
     public final List<String> notices = new ArrayList<>();
 
@@ -135,6 +138,7 @@ public class Boarding extends EntitySystem {
         BoardedComponent b = target == null ? null : BOARDED_M.get(target);
         if (b == null || b.by.get(uuids) != ship || b.taken) return "No boarding under way";
         end(target, b);
+        bringDownedHome(target, ship);
         return "Boarding party recalled";
     }
 
@@ -144,13 +148,22 @@ public class Boarding extends EntitySystem {
      * {@code ship}.
      */
     public boolean takeUndefended(Entity ship, Entity target) {
-        if (target == null || target(ship) != target) return false;
-        BoardedComponent b = BOARDED_M.get(target);
-        if (b != null && b.taken) return b.by.get(uuids) == ship;
-        if (!ShipDisablement.isDisabled(target) || defenders(target) > 0) return false;
+        if (!canTakeUndefended(ship, target)) return false;
+        if (takenBy(target, ship)) return true;
         begin(ship, target);
         take(target, BOARDED_M.get(target));
         return true;
+    }
+
+    /**
+     * True if {@code ship} has taken {@code target}, or {@link #takeUndefended} would take it; a
+     * check only, which changes nothing.
+     */
+    public boolean canTakeUndefended(Entity ship, Entity target) {
+        if (target == null || target(ship) != target) return false;
+        BoardedComponent b = BOARDED_M.get(target);
+        if (b != null && b.taken) return b.by.get(uuids) == ship;
+        return ShipDisablement.isDisabled(target) && defenders(target) == 0;
     }
 
     /** True if {@code target} has been taken by {@code ship}. */
@@ -220,7 +233,11 @@ public class Boarding extends EntitySystem {
         }
     }
 
-    /** Keeps the party's orders posted: one room to sweep for each boarder without one. */
+    /**
+     * Keeps the party's orders posted: one room to sweep for each boarder without one. Each order is
+     * the boarder's own, so only the party goes (not the crewman at the helm), and all of it at once
+     * however few rooms the craft has.
+     */
     private void sweep(Entity ship, Entity target, BoardedComponent b) {
         for (int i = b.orders.size - 1; i >= 0; i--) {
             if (!b.orders.get(i).isActive()) b.orders.removeIndex(i);
@@ -230,25 +247,32 @@ public class Boarding extends EntitySystem {
         ShipTaskBoardComponent board = crew.board(ship);
         if (board == null) return;
         Array<Entity> party = party(ship);
-        // Boarders call their own ship home, so they come back to it
+        int spots = b.sweep.length / 2;
         for (Entity e : party) {
+            // Boarders call their own ship home, so they come back to it
             CrewMemberComponent c = crew.crew(e);
             if (c.home == null) c.setHome(ship);
-        }
-        int want = party.size;
-        int spots = b.sweep.length / 2;
-        for (int tries = 0; b.orders.size < want && tries < spots; tries++) {
+            if (hasOrder(b, e)) continue;
             int k = b.next++ % spots;
-            BoardTask t = new BoardTask(target, b.sweep[2 * k], b.sweep[2 * k + 1], new Sweep(target));
+            BoardTask t = new BoardTask(target, b.sweep[2 * k], b.sweep[2 * k + 1], new Sweep(target), e);
             if (board.post(t)) b.orders.add(t);
         }
+    }
+
+    private static boolean hasOrder(BoardedComponent b, Entity member) {
+        for (BoardTask t : b.orders) if (t.member == member) return true;
+        return false;
     }
 
     /** The craft is taken: its crew are held, the party stands down, and it stays surrendered. */
     private void take(Entity target, BoardedComponent b) {
         b.taken = true;
+        // Before the party stands down, so listeners can tell who was in it
+        taken.dispatch(target);
         cancelOrders(b);
         b.prisoners = keepHeld(target);
+        Entity by = b.by == null ? null : b.by.get(uuids);
+        if (by != null) bringDownedHome(target, by);
         DisabledComponent.Reason r = ShipDisablement.reason(target);
         if (r != DisabledComponent.Reason.WRECKED && r != DisabledComponent.Reason.ABANDONED) {
             disablement.set(target, DisabledComponent.Reason.SURRENDERED);
@@ -271,6 +295,33 @@ public class Boarding extends EntitySystem {
             n++;
         }
         return n;
+    }
+
+    /**
+     * As the party stands down, its members lying wounded or knocked out aboard {@code target} are
+     * carried back aboard {@code home} by their shipmates (moved, as prisoners are), so nobody is
+     * left behind on the craft: their own ship's crew treat them there.
+     */
+    private void bringDownedHome(Entity target, Entity home) {
+        ShipGridComponent grid = home.getComponent(ShipGridComponent.class);
+        List<int[]> floor = grid == null ? null : GameScenario.floorTiles(grid);
+        if (floor == null || floor.isEmpty()) return;
+        ImmutableArray<Entity> all = crew.crewEntities();
+        int n = 0;
+        for (int i = 0; i < all.size(); i++) {
+            Entity e = all.get(i);
+            CrewMemberComponent c = crew.crew(e);
+            GridPositionComponent p = crew.position(e);
+            if (p.ship != target || crew.homeOf(e) != home || !c.isAlive() || c.isConscious() || c.held) continue;
+            crew.releaseTask(e);
+            if (c.carriedBy != null) crew.drop(c.carriedBy);
+            p.stop();
+            p.crossing = null;
+            p.setShip(home);
+            int[] t = floor.get(n++ % floor.size());
+            p.setTile(t[0], t[1]);
+            notices.add(c.name + " is carried back aboard");
+        }
     }
 
     private void cancelOrders(BoardedComponent b) {

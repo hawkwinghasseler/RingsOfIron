@@ -36,7 +36,7 @@ To implement this module independently (mocking data providers):
 
 5. **Context Menus:**
    - Implement a system that checks the distance between the player's avatar and interactable consoles on the grid.
-   - If distance < `INTERACT_RADIUS`, spawn a contextual "Press [E] to Access" tooltip via Scene2D.
+   - If distance < `INTERACT_RADIUS`, spawn a contextual "Press [E] for the ... panel" tooltip (the game adds "[V] sit and fly" at the helm and weapons consoles) via Scene2D.
 
 ## Implemented Components
 - `HudMarkerComponent`: Attached to entities that need a UI marker (e.g., enemies, mission waypoints).
@@ -67,12 +67,15 @@ Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. C
 | `ViewportManager` | World camera (ExtendViewport, meters) and UI camera (ScreenViewport, pixels); `worldToUi` / `uiToWorld` |
 | `HudRenderSystem` | Brackets, nameplates and ranges for `HudMarkerComponent` entities; edge arrows off screen; lead reticle |
 | `WireframeMinimap`, `WireframeSyncSystem` | Live blueprint of the player ship's `ShipGridComponent` with an alert list (fire, breaches, venting, smoke, hull %) |
-| `InteractPromptSystem`, `ConsoleWindow` | "Press [E] to Access ..." within `INTERACT_RADIUS` tiles of an `InteractableConsoleComponent`; per-console layouts via `registerConsoleLayout` |
+| `InteractPromptSystem`, `ConsoleWindow` | "Press [E] for the ... panel" within `INTERACT_RADIUS` tiles of an `InteractableConsoleComponent`; per-console layouts via `registerConsoleLayout` |
 | `FlightReadoutSystem` | Speed, heading, view mode, target range/closing/time-to-impact, orbit |
 | `ViewModeController` | EXTERIOR / INTERIOR view mode with change listeners |
 | `modding.ModTrustDialog` | modding-data's `ModTrustPolicy` as a dialog: asks before mod scripts run with full access; can remember the answer per mod set and version (O in the demo) |
 | `ThreatOverlay` | Missiles over the exterior view: dashed predicted paths (red incoming, cyan yours, amber others), a cross where an incoming one meets you, edge arrows with seconds to impact, a blinking MISSILE WARNING banner under 5 s, and a ring ("PD KILL") where point defense hits a missile |
 | `TradeWindow` | Station market (T while in trading range, which a hint under the clock announces): credits, hold volume (m3), and per commodity the stock, buy and sell prices, what you carry, and Buy 1 / Buy 10 / Sell 1 / Sell all |
+| `YardWindow` | A station's yard (Y while docked): repairs priced and ordered by the damage, and refits of a weapon mount, new, used or salvaged |
+| `MissionWindow` | The mission board (J): the player's rank and standing with the station's faction, while docked the station's contracts with their pay, standing and time and a button to take each (or why it can't be taken yet), and always the contracts held, with a button to give each up |
+| `BoardingWindow` | The ship the player's is latched to (K): how it stands, a button to send the boarding party or call it back, and once taken, a row per system that can come off with its sale price and a button to strip it, and a row per cargo with a button to carry it over. Closes when the ships part |
 | `TrafficMap` | Full-screen map (M) of stations and haulers on rails around the body you orbit, with range rings; the wheel zooms toward you |
 | `ShipGauges` | Under the flight readout: propellant (with kg), structure, power (store charge and reactor output) and oxygen bars, amber below 50% and red below 25%. With no oxygen tanks the oxygen bar shows the air in the worst room |
 | `RadarScope`, `RadarSystem` | Beside the flight readout: every marked contact around the ship, north up like the view, tinted like its marker, the locked target ringed, the ship's heading as a line. Contacts out of range sit hollow on the rim. A click cycles 2, 10, 50 and 250 km |
@@ -89,6 +92,10 @@ These live in `com.ringsofiron.uihud.providers`. The adapters that implement the
 - `ThreatProvider` (combat-sys): each missile's position, path end, side and time to impact; `UiHud.flashIntercept` takes combat-sys's intercept events. The game fills it in `CombatThreats`.
 - `ShipStatusProvider` (interior-grid): the player ship's propellant and oxygen tank levels, hull integrity, power store charge and reactor output, and the worst room's pressure. The game fills it in `PlayerShipStatus`.
 - `TradeProvider` (macro-sim): the station in range, its board, the player's credits and hold, and buy/sell. The game fills it from `MacroSimulation.dockableStation` and `market()` in `MarketTrade`, using the player ship's `TraderComponent`.
+- `YardProvider` (stations-docking): the yard's repair and refit offers and orders. The game fills it in `YardWork`.
+- `MissionProvider` (core's contracts): the career line, the station's offers and the contracts held, and take or give up. The game fills it in `ContractMissions`.
+- `BoardingProvider` (core's boarding and salvage): the latched ship's state, its parts and cargo, and the orders. The game fills it in `BoardingWork`.
+- `ShipyardProvider` (core's shipyard): the ships for sale where the player is docked with their price after the trade-in and why one is locked, and the prize in tow with its sale and turn-in terms. The game fills it in `ShipyardWork`; `ShipyardWindow` shows it, opened from the yard window's Ships for sale button, or on [Y] off a station with a prize to hand over.
 - `ViewModeController.Listener`: the wiring layer bridges view-mode changes to audio-spatial's listener mode.
 - `UiHud.flashHullHit(tileX, tileY)`: call from combat-sys's hull-hit event to flash the hit on the minimap.
 
@@ -100,7 +107,7 @@ These live in `com.ringsofiron.uihud.providers`. The adapters that implement the
 
 ![Settings](settings.png)
 
-The game starts at a main menu (`com.hawkwing.RingsOfIron.shell.GameShell` in core, built with this module's skin): Continue (the newest save), New game, First play (guided), Load, Settings and Quit. In the game, Esc closes an open map, market, yard or console first; with none open it pauses the game under a menu of Resume, Save, Load, Settings, Quit to menu and Quit game. `RingsOfIronGame` runs inside the shell unchanged apart from not quitting on Esc and standing still while paused. `gradlew :lwjgl3:runFirstPlay` still starts the guided first play directly.
+The game starts at a main menu (`com.hawkwing.RingsOfIron.shell.GameShell` in core, built with this module's skin): Continue (the newest save), New game, First play (guided), Load, Settings and Quit. In the game, Esc closes an open map, market, yard, mission board, boarding window or console first; with none open it pauses the game under a menu of Resume, Save, Load, Settings, Quit to menu and Quit game. `RingsOfIronGame` runs inside the shell unchanged apart from not quitting on Esc and standing still while paused. `gradlew :lwjgl3:runFirstPlay` still starts the guided first play directly.
 
 | Class | Role |
 |---|---|

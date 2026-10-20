@@ -7,8 +7,11 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.interiorgrid.InteriorGridData;
+import com.ringsofiron.macrosim.economy.EconomyNode;
+import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.stationsdocking.DockingEvent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -56,5 +59,39 @@ class StationTrafficTest {
                         "freighters " + i + " and " + j + " overlap at " + waiting.get(i));
             }
         }
+    }
+
+    @Test
+    void freightersWaitingOutsideKeepClearOfTheOnesDocked() {
+        // Seed 2026: Deepwell Depot has one Medium port and four haulers at it. Jumping beside it
+        // (as a tow does) brings them all in at once: one latches, three wait outside. They used to
+        // wait within the docked one's length and fly off across the station, and tore it loose.
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        world = new GameWorld();
+        GameScenario game = GameScenario.start(world, assets, assets.resolve("no-mods-here"), NewGame.seeded(2026, "patrol"));
+        game.beginCareer();
+        for (int i = 0; i < 60; i++) world.update(1f / 60f);
+        world.docking.undock(game.player);
+        for (int i = 0; i < 600; i++) world.update(1f / 60f);
+        List<String> torn = new ArrayList<>();
+        world.docking.events.add((sig, e) -> {
+            if (e.kind == DockingEvent.Kind.TORN) torn.add(PlayerDocking.name(e.vessel) + " / " + PlayerDocking.name(e.other));
+        });
+        Entity deepwell = null;
+        for (EconomyNode n : world.macroSim.stations()) {
+            if ("Deepwell Depot".equals(n.displayName)) deepwell = world.engine.getEntity(n.stationUuid);
+        }
+        world.rescue.jumpBeside(game.player, deepwell, 2_000);
+        for (int i = 0; i < 20 * 60; i++) world.update(1f / 60f);
+
+        assertEquals(List.of(), torn, "nothing tears loose");
+        int docked = 0, outside = 0;
+        for (String id : world.macroSim.bubble().inBubble()) {
+            Entity e = world.engine.getEntity(id);
+            if (e == null || e.getComponent(FreighterComponent.class) == null) continue;
+            if (world.docking.dockedTo(e) == deepwell) docked++;
+            else outside++;
+        }
+        assertTrue(docked >= 1 && outside >= 1, "one docked and others waiting: " + docked + " docked, " + outside + " not");
     }
 }

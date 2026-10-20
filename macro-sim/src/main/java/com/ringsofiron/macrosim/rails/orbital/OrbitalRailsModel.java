@@ -197,6 +197,8 @@ public class OrbitalRailsModel implements RailsModel {
         List<RailsSnapshot.Entry> entries = new ArrayList<>();
         for (Entity e : engine.getEcsEngine().getEntitiesFor(RAILS)) {
             OrbitComponent o = orbits.get(e);
+            // Detached during this engine update: Ashley drops the component at once but the family later
+            if (o == null) continue;
             entries.add(new RailsSnapshot.Entry(e.getComponent(UuidComponent.class).id, o.parentUuid,
                     new KeplerTrajectory(o.getOrbit())));
         }

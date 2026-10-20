@@ -54,6 +54,32 @@ public class WeaponDef {
     public float maxRange;
     /** audio-spatial event played on firing, or null. */
     public String sound;
+    /**
+     * Smallest turret mount it fits, {@code "S"}, {@code "M"}, {@code "L"} or {@code "XL"}; null
+     * fits any. A yard won't fit it to a smaller mount, and a pirate's loadout never does.
+     */
+    public String minMountSize;
+    /** Rare: yards never sell it new; it only comes off a beaten ace. */
+    public boolean rare;
+
+    /**
+     * True if it fits a turret mount of {@code size} ({@code S} .. {@code XL}, the names of
+     * interior-grid's mount sizes); an unknown size fits only a weapon with no minimum.
+     */
+    public boolean fitsMount(String size) {
+        if (minMountSize == null) return true;
+        return size != null && sizeRank(size) >= sizeRank(minMountSize);
+    }
+
+    private static int sizeRank(String size) {
+        switch (size.toUpperCase(java.util.Locale.ROOT)) {
+            case "S": return 0;
+            case "M": return 1;
+            case "L": return 2;
+            case "XL": return 3;
+            default: return 99;
+        }
+    }
 
     /** {@link #name}, or the id when it has none. */
     public String displayName() {

@@ -4,7 +4,8 @@ import com.ringsofiron.coreengine.RailsWarpGuard;
 
 /**
  * Refuses rails warp while a fire burns or air vents aboard one ship, normally the
- * player's. Register it with {@code GameEngine.addRailsWarpGuard}; point it at a new
+ * player's, at a rate that matters ({@link ShipGridComponent#isVenting}), or while any leak is open
+ * that the crew have patches for, however slowly it vents. A patched or sealed leak does not vent. Register it with {@code GameEngine.addRailsWarpGuard}; point it at a new
  * ship with {@link #setGrid} when the player changes ships.
  */
 public class InteriorHazardWarpGuard implements RailsWarpGuard {
@@ -23,7 +24,24 @@ public class InteriorHazardWarpGuard implements RailsWarpGuard {
     public String railsWarpBlockedReason() {
         if (grid == null) return null;
         if (grid.hasFire()) return "Fire aboard";
-        if (grid.isVenting()) return "Atmosphere venting";
+        if (grid.isVenting()) return ventingReason(grid);
+        // A slow leak, or a room already emptied, still drains the tanks into space while warp skips
+        // the crew's work: wait while they can patch it (round 6: in the 2026 career a slow leak ran the
+        // gunship's nitrogen out over two warped days and the crew suffocated)
+        if (grid.patchKits > 0 && LeakPatches.leaks(grid).size > 0) return ventingReason(grid);
         return null;
+    }
+
+    /** Refusal text while air vents, naming what will stop it. */
+    public static final String VENTING = "Atmosphere venting";
+
+    /**
+     * Why warp is refused while {@code grid} vents: the crew are patching the leak, there are no
+     * patches left for it (a yard must repair it), or plain venting (a breach or an open hole).
+     */
+    public static String ventingReason(ShipGridComponent grid) {
+        if (LeakPatches.leaks(grid).size == 0) return VENTING;
+        return grid.patchKits > 0 ? VENTING + ": the crew are patching the leak"
+                : VENTING + ": no hull patches left, a yard must repair the leak";
     }
 }

@@ -45,6 +45,36 @@ class PowerRoutingSystemTest {
     }
 
     @Test
+    void aStunnedSystemIsOutUntilItsStunRunsDown() {
+        ship();
+        SubsystemComponent life = lifeSupport();
+        life.stunned = 2f;
+        grid.gridDirty = true;
+        engine.update(0f);
+        assertFalse(life.isOperational, "stunned");
+        assertTrue(life.powered, "though power still reaches it");
+        run(1);
+        assertFalse(life.isOperational);
+        run(1.25f);
+        assertEquals(0f, life.stunned);
+        assertTrue(life.isOperational, "back by itself, nothing to repair");
+        assertEquals(1f, life.health);
+    }
+
+    @Test
+    void aStunnedReactorFeedsNothingUntilItComesBack() {
+        ship();
+        reactor().stunned = 1f;
+        grid.gridDirty = true;
+        engine.update(0f);
+        assertEquals(0, grid.circuits.size, "no circuit while the only reactor is stunned");
+        assertFalse(lifeSupport().powered);
+        run(1.25f);
+        assertEquals(1, grid.circuits.size, "rerouted when the stun ran out");
+        assertTrue(lifeSupport().isOperational);
+    }
+
+    @Test
     void oneReactorFeedsOneCircuitWithAFullStore() {
         ship();
         assertEquals(1, grid.circuits.size);

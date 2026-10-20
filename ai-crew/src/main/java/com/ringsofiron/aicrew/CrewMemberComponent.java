@@ -21,12 +21,34 @@ public class CrewMemberComponent implements Component {
     public String name = "Crew";
     public CrewRole role = CrewRole.CREWMAN;
     public CrewDef def = new CrewDef();
+    /**
+     * Skills, morale, wage and history ({@link CrewRecord}); read it through {@link #record()}, which
+     * makes one from the def for a crew member saved before records existed.
+     */
+    public CrewRecord record;
     /** Crew of different factions on the same ship are hostile to each other. */
     public int faction = 0;
 
     public float health;
     public CrewState state = CrewState.CONSCIOUS;
     public CrewDamageSink.DamageCause lastDamageCause;
+    /** Worst wound from hits ({@link Wound}); health is the environment's (air, heat, fire). */
+    public Wound wound = Wound.NONE;
+    /** Points of injury from hits, added up: how bad {@link #wound} is ({@link CrewDef#woundFor}). */
+    public float injury;
+    /** What gave the wound, for the notice if it kills. */
+    public CrewDamageSink.DamageCause woundCause;
+    /** Seconds a critical wound can still go untreated before it kills. */
+    public float bleedOut;
+    /**
+     * A critical wound whose bleeding someone has stopped ({@link StabiliseTask}): its
+     * {@link #bleedOut} clock is held until treatment brings it down a level or a new hit opens it.
+     */
+    public boolean stabilised;
+    /** Seconds of a baseline medic's care given toward bringing the wound down a level. */
+    public float care;
+    /** Seconds a light or serious wound has been easing by itself. */
+    public float healing;
 
     /** The board task this crew member has claimed, or null. */
     public transient CrewTask task;
@@ -74,6 +96,13 @@ public class CrewMemberComponent implements Component {
         this.def = CrewDef.forRole(role);
         this.health = def.maxHealth;
         this.suitAir = def.suitAir;
+        this.record = CrewRecord.from(def);
+    }
+
+    /** This crew member's record, made from their def if they have none yet. */
+    public CrewRecord record() {
+        if (record == null) record = CrewRecord.from(def);
+        return record;
     }
 
     /** True while this crew member breathes from their suit: wearing it, with air left in it. */
@@ -111,6 +140,27 @@ public class CrewMemberComponent implements Component {
 
     public boolean isAlive() {
         return state != CrewState.DEAD;
+    }
+
+    /** Share of the usual work and walking speed the wound leaves. */
+    public float woundPace() {
+        return wound == Wound.LIGHT ? def.woundedWorkFactor : 1f;
+    }
+
+    /** Share of the usual work rate: slowed by a light wound and by a suit. */
+    public float workPace() {
+        return woundPace() * (suited ? def.suitWorkFactor : 1f);
+    }
+
+    /**
+     * How fast this crew member treats the wounded: 1 for a medic of {@link CrewRecord#BASELINE}
+     * medicine, who brings a wound down a level in {@link CrewDef#careTime}; anyone else at
+     * {@link CrewDef#UNTRAINED_CARE}. Skill, morale and their own wound scale it.
+     */
+    public float careRate() {
+        CrewRecord r = record();
+        float base = role == CrewRole.MEDIC ? 1f : CrewDef.UNTRAINED_CARE;
+        return base * CrewRecord.factor(r.medicine) * r.workFactor() * workPace();
     }
 
     public float healthFraction() {

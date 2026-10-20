@@ -93,9 +93,10 @@ class FactionStandingTest {
     void destroyingAShipCostsStandingWithItsFactionAndGainsItWithItsEnemies() {
         standing.onShipDestroyed(game.raider);
         assertEquals(-FactionStanding.KILL_COST, standing.standing(pirates), 1e-4);
-        float gain = FactionStanding.KILL_COST * FactionStanding.ENEMY_SHARE;
-        assertEquals(gain, standing.standing(patrol), 1e-4, "everyone is at war with the pirates");
-        assertEquals(gain, standing.standing(selene), 1e-4);
+        float gain = FactionStanding.KILL_COST * FactionStanding.KILL_SHARE;
+        assertEquals(5f, gain, 1e-4);
+        assertEquals(gain, standing.standing(patrol), 1e-4, "the Patrol names the pirates its enemy");
+        assertEquals(0f, standing.standing(selene), 1e-4, "Selene is only at war with them because they are hostile to all");
         assertEquals(gain, standing.standing("patrol"), 1e-4, "the same by id");
     }
 
@@ -127,7 +128,8 @@ class FactionStandingTest {
         RankLadder ranks = standing.ranks();
         assertTrue(ranks.mayRequisition(0, GameScenario.PLAYER_SHIP));
         assertFalse(ranks.mayRequisition(0, GameScenario.FREIGHTER_SHIP), "an ensign gets no freighter");
-        assertTrue(ranks.mayRequisition(2, GameScenario.FREIGHTER_SHIP));
+        assertTrue(ranks.mayRequisition(2, "gunship_heavy"), "a Lieutenant Commander gets the gunship");
+        assertFalse(ranks.mayRequisition(4, GameScenario.FREIGHTER_SHIP), "nor does a Captain: freighters are for haulers");
     }
 
     @Test

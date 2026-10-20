@@ -9,6 +9,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
@@ -61,10 +62,7 @@ public class Rescue {
         double price(String shipId);
     }
 
-    /**
-     * Until ranks exist (category 1 of the round-2 plan): always the starter corvette, free, so
-     * the player is never stuck.
-     */
+    /** Always the starter corvette, free, so the player is never stuck; the rank ladder's requisition replaces it. */
     public static final Requisition STARTER = new Requisition() {
         @Override
         public String ship(Entity station, double credits) {
@@ -105,6 +103,23 @@ public class Rescue {
         }
     }
 
+    /** A tow that came in: the ship itself brought to a station, with its crew and cargo. */
+    public static final class Tow {
+        public final Entity ship;
+        public final Entity station;
+        public final String stationName;
+        public final double skipped;
+
+        Tow(Entity ship, Entity station, String stationName, double skipped) {
+            this.ship = ship;
+            this.station = station;
+            this.stationName = stationName;
+            this.skipped = skipped;
+        }
+    }
+
+    /** Every tow, once the ship is at the station. See {@link DistressBeacon}. */
+    public final Signal<Tow> tows = new Signal<>();
     /** Every rescue, as soon as the player is aboard their new ship. */
     public final Signal<Result> rescues = new Signal<>();
     /** The ship the player is given. */
@@ -211,6 +226,83 @@ public class Rescue {
                 survivors, lost, skipped, price));
     }
 
+    /**
+     * Tows {@code ship} to the sponsor's nearest station: {@link #TIME_SKIP} passes on the rails
+     * and it is brought in and docked there as it is, crew, cargo, damage and all. Null when it
+     * went, else why not.
+     */
+    public String tow(Entity ship) {
+        double t = world.engine.getSimSeconds();
+        Entity station = nearestStation(ship, t);
+        if (station == null) return "no station of yours to tow you to";
+        if (world.timeWarp.isRailsWarp()) world.timeWarp.setWarp(1);
+        // Whatever it was latched to is let go, and anyone heading for the pods stands down
+        if (world.docking.dockedTo(ship) != null) world.docking.undock(ship);
+        if (AbandonShip.abandoning(ship)) world.abandon.callOff(ship);
+        FlightControlComponent controls = ship.getComponent(FlightControlComponent.class);
+        if (controls != null) controls.forward = controls.turn = controls.strafe = 0f;
+        double skipped = skipTo(ship, station);
+        dockingAt = station;
+        docking = ship;
+        dockFrames = DOCK_FRAMES;
+        StationComponent sc = station.getComponent(StationComponent.class);
+        tows.dispatch(new Tow(ship, station, sc == null ? "the nearest station" : sc.name, skipped));
+        return null;
+    }
+
+    /**
+     * The player's avatar was killed: if any of the ship's own crew are alive to bring the player
+     * home, they call the tug, and the player wakes at the station, hurt, aboard the ship; null
+     * then. Otherwise nothing happens and this says why: the career is over.
+     */
+    public String carryHome(Entity ship) {
+        Entity avatar = avatar();
+        if (avatar == null || ship == null) return "you are gone";
+        if (crewAboard(ship) == 0) return "nobody was left to bring you home";
+        CrewMemberComponent c = avatar.getComponent(CrewMemberComponent.class);
+        c.state = com.ringsofiron.aicrew.CrewState.CONSCIOUS;
+        c.health = c.def.maxHealth * 0.5f;
+        // Patched up on the way: hurt, but no wound left to bleed from or slow them
+        c.wound = com.ringsofiron.aicrew.Wound.NONE;
+        c.care = c.bleedOut = c.healing = 0f;
+        c.stabilised = false;
+        c.activity = "idle";
+        c.treatedBy = null;
+        if (c.carriedBy != null) world.crew.releaseTask(c.carriedBy);
+        GridPositionComponent p = avatar.getComponent(GridPositionComponent.class);
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        // Laid somewhere they can breathe, or suited with a fresh bottle when the whole ship is holed:
+        // waking where they fell, in a vented room, they'd go down again at once
+        boolean safeWhereTheyLie = p.ship == ship && TaskRules.isSafe(grid, p.tileX(), p.tileY());
+        if (!safeWhereTheyLie) {
+            List<int[]> floor = GameScenario.floorTiles(grid);
+            int[] to = null;
+            for (int[] t : floor) {
+                if (TaskRules.isSafe(grid, t[0], t[1])) {
+                    to = t;
+                    break;
+                }
+            }
+            if (to == null && !floor.isEmpty()) to = floor.get(0);
+            p.stop();
+            p.crossing = null;
+            p.setShip(ship);
+            if (to != null) p.setTile(to[0], to[1]);
+            if (to == null || !TaskRules.isSafe(grid, to[0], to[1])) {
+                c.setSuited(false);
+                c.setSuited(true);
+            }
+        }
+        // Already in at a station: the crew carry you to its doctor, and the ship stays latched (and the yard's work on it goes on)
+        Entity docked = world.docking.dockedTo(ship);
+        StationComponent at = docked == null ? null : docked.getComponent(StationComponent.class);
+        if (at != null) {
+            tows.dispatch(new Tow(ship, docked, at.name, 0));
+            return null;
+        }
+        return tow(ship);
+    }
+
     /** Puts the avatar and the survivors aboard {@code ship}, on its open deck tiles. */
     private void crewShip(Entity ship, Entity avatar, List<AbandonShip.Survivor> survivors) {
         CrewService crew = world.crew;
@@ -229,7 +321,13 @@ public class Rescue {
         for (int i = 0; i < survivors.size() && i + 1 < floor.size(); i++) {
             int[] tile = floor.get((i + 1) * floor.size() / (survivors.size() + 1));
             AbandonShip.Survivor s = survivors.get(i);
-            CrewFactory.spawn(crew, ship, s.name, s.role, 0, tile[0], tile[1]);
+            Entity e = CrewFactory.spawn(crew, ship, s.name, s.role, 0, tile[0], tile[1]);
+            if (s.record != null) {
+                // A veteran stays a veteran
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                c.record = s.record;
+                s.record.applyTo(c);
+            }
         }
     }
 
@@ -239,25 +337,47 @@ public class Rescue {
      * passed: 0 if rails warp was refused, when the new ship still ends up at the station.
      */
     private double skipTo(Entity ship, Entity station) {
+        return skipTo(ship, station, ARRIVAL_OFFSET, TIME_SKIP);
+    }
+
+    /**
+     * Puts {@code ship} on {@code station}'s orbit {@code behind} meters back from it, at once, and
+     * rebuilds the bubble there: a jump for scripted careers and tests (round 5's raid on the
+     * pirates' base), with no time skipped. The ship should not be docked.
+     */
+    void jumpBeside(Entity ship, Entity station, double behind) {
+        skipTo(ship, station, behind, 0);
+    }
+
+    private double skipTo(Entity ship, Entity station, double offset, double timeSkip) {
         world.macroSim.setBubbleSuspended(true);
         bubble.collapseToRails();
         double t = world.engine.getSimSeconds();
         OrbitComponent so = station.getComponent(OrbitComponent.class);
         so.stateAt(t, state);
         double v = Math.hypot(state.vx, state.vy);
-        double back = v > 0 ? ARRIVAL_OFFSET / v : 0;
+        double back = v > 0 ? offset / v : 0;
         OrbitComponent orbit = new OrbitComponent(so.parentUuid, KeplerOrbit.fromState(
                 state.x - state.vx * back, state.y - state.vy * back, state.vx, state.vy, so.mu, t));
         orbit.attitude = Math.atan2(state.vy, state.vx);
         ship.add(orbit);
+        // Whatever the rails predicted for the orbit it had (an impact, say) no longer holds
+        if (ship.getComponent(com.ringsofiron.coreengine.components.UuidComponent.class) != null) {
+            world.orbitalEvents.orbitChanged(ship);
+        }
         double skipped = 0;
-        if (world.engine.advanceRails(SimClock.secondsToTicks(TIME_SKIP))) {
-            skipped = TIME_SKIP;
+        if (timeSkip > 0 && world.engine.advanceRails(SimClock.secondsToTicks(timeSkip))) {
+            skipped = timeSkip;
             world.orbitalEvents.processUntil(world.engine.getSimSeconds());
         }
         bubble.rebuildFromRails();
         world.macroSim.setBubbleSuspended(false);
         return skipped;
+    }
+
+    /** True while a towed or rescued ship is still being brought in to dock (not saved, so no save is made then). */
+    public boolean bringingIn() {
+        return docking != null;
     }
 
     /** Docks the new ship at the station once both are in the bubble; gives up after {@link #DOCK_FRAMES}. */
@@ -275,7 +395,10 @@ public class Rescue {
             MountFootprint.MountSize size = own.ports[0].size;
             for (int i = 0; i < ports.ports.length; i++) {
                 DockingPort p = ports.ports[i];
-                if (p.size == size && p.state != DockingPort.State.DOCKED) {
+                // Not one a freighter's collar has hold of, or that is armed for one coming in: two
+                // craft on one port tears one of them loose
+                boolean spoken = p.armedFor != null && !p.armedFor.equals(world.universe.uuidOf(docking));
+                if (p.size == size && p.state == DockingPort.State.IDLE && !spoken) {
                     world.docking.dockInPlace(docking, 0, dockingAt, i);
                     break;
                 }
@@ -328,7 +451,7 @@ public class Rescue {
         for (Entity e : world.crew.crewEntities()) {
             GridPositionComponent p = e.getComponent(GridPositionComponent.class);
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-            if (p.ship == ship && c.isAlive() && e.getComponent(PlayerAvatarComponent.class) == null
+            if (p.ship == ship && c.isAlive() && !c.held && e.getComponent(PlayerAvatarComponent.class) == null
                     && (c.home == null || c.home == ship)) n++;
         }
         return n;

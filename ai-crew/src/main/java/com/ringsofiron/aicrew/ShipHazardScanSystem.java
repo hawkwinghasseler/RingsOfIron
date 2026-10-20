@@ -3,6 +3,8 @@ package com.ringsofiron.aicrew;
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
+import com.ringsofiron.interiorgrid.DamageStates;
+import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.Side;
@@ -10,13 +12,19 @@ import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
 import com.ringsofiron.interiorgrid.crew.ExtinguishTask;
+import com.ringsofiron.interiorgrid.crew.IsolateTankTask;
+import com.ringsofiron.interiorgrid.crew.PatchLeakTask;
 import com.ringsofiron.interiorgrid.crew.RepairTask;
+import com.ringsofiron.interiorgrid.crew.ResetShortTask;
 import com.ringsofiron.interiorgrid.crew.SealBreachTask;
 
 /**
  * Keeps each ship's task board in step with the grid: posts an {@link ExtinguishTask}
  * for every burning tile, a {@link SealBreachTask} for every hull breach that borders
- * the interior, a {@link RepairTask} for every damaged system and a {@link ManConsoleTask}
+ * the interior, a {@link PatchLeakTask} for every leak to space the ship's patch kits can stop
+ * (see {@link LeakPatches}), a {@link ResetShortTask} for every shorted system or conduit, an
+ * {@link IsolateTankTask} for every leaking tank (see {@link DamageStates}), a {@link RepairTask}
+ * for every damaged system and a {@link ManConsoleTask}
  * for every helm and weapons console still standing, and cancels open tasks that no
  * longer need doing.
  *
@@ -56,13 +64,19 @@ public class ShipHazardScanSystem extends FixedIteratingSystem {
                 Tile t = grid.tiles[y][x];
                 if (t.isBurning()) board.post(new ExtinguishTask(x, y));
                 else if (t.isHullBreach() && bordersInterior(grid, x, y)) board.post(new SealBreachTask(x, y));
+                if (t.shorted) board.post(new ResetShortTask(x, y));
             }
+        }
+        if (grid.patchKits > 0) {
+            for (LeakPatches.Leak leak : LeakPatches.leaks(grid)) board.post(new PatchLeakTask(leak));
         }
         ShipSubsystemRegistryComponent reg = regM.get(ship);
         if (reg != null) {
             for (Entity sys : reg.subsystems) {
                 SubsystemComponent s = sys.getComponent(SubsystemComponent.class);
                 if (s == null) continue;
+                if (s.shorted) board.post(new ResetShortTask(sys, s.footprint.originX, s.footprint.originY));
+                if (DamageStates.needsIsolating(s)) board.post(new IsolateTankTask(sys, s.footprint.originX, s.footprint.originY));
                 if (s.health < 1f) board.post(new RepairTask(sys, s.footprint.originX, s.footprint.originY));
                 if (isConsole(s.type) && !s.isDestroyed()) {
                     board.post(new ManConsoleTask(sys, s.footprint.originX, s.footprint.originY));

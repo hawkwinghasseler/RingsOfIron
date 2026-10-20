@@ -343,13 +343,9 @@ public class Main extends ApplicationAdapter {
         batch.end();
         batch.setTransformMatrix(identity);
 
-        // Vacuum and haze over the rooms, in the deck's meters
-        shapeRenderer.setTransformMatrix(deckPose);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        DeckView.atmosphere(shapeRenderer, grid, time % 1f < 0.5f);
-        shapeRenderer.end();
-        shapeRenderer.setTransformMatrix(identity);
-
+        // The batch's end turned blending off; the heat glow below is translucent
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         drawHeat(offX, offY);
         shapeRenderer.end();
@@ -649,6 +645,7 @@ public class Main extends ApplicationAdapter {
 
     private Color subsystemColor(SubsystemComponent sub) {
         if (sub.isDisabled()) return Color.DARK_GRAY;
+        if (sub.shorted) return Color.ORANGE;
         if (!sub.switchedOn) return Color.BLUE;
         if (sub.isOperational) return Color.YELLOW;
         return Color.RED;

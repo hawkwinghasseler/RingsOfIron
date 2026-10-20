@@ -116,6 +116,54 @@ class MacroSimulationTest {
     }
 
     @Test
+    void backgroundPredictionGivesTheSameForecastsHoweverLongTheThreadTakes() throws Exception {
+        assertEquals(bubbleLog(0), bubbleLog(0), "a quick thread replays");
+        assertEquals(bubbleLog(0), bubbleLog(15), "a slow thread is waited for, not skipped");
+    }
+
+    /**
+     * The forecast in use and who is in the bubble after each of 240 steps of 1/60 s, with each
+     * background prediction held up by up to {@code maxDelayMs}.
+     */
+    private static java.util.List<String> bubbleLog(int maxDelayMs) throws Exception {
+        java.util.Random delays = new java.util.Random(maxDelayMs);
+        ExecutorService exec = new java.util.concurrent.ThreadPoolExecutor(1, 1, 0, java.util.concurrent.TimeUnit.SECONDS,
+                new java.util.concurrent.LinkedBlockingQueue<>()) {
+            @Override
+            protected void beforeExecute(Thread t, Runnable r) {
+                try {
+                    Thread.sleep(maxDelayMs == 0 ? 0 : delays.nextInt(maxDelayMs));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        };
+        try {
+            double mu = MacroSimDemo.EARTH_MU;
+            StubRailsModel rails = new StubRailsModel();
+            rails.addBody("p", mu);
+            StubKeplerOrbit anchor = StubKeplerOrbit.circular(mu, 8_000e3, 0, 0, 1);
+            var gateway = new com.ringsofiron.macrosim.bubble.MockBubbleGateway("p", anchor);
+            GameEngine engine = new GameEngine();
+            engine.getEntityIds().seed(42);
+            MacroSimulation sim = new MacroSimulation(engine, rails, gateway, new DefaultCommodityCatalog(), exec, 0);
+            sim.registerMassiveBody("p");
+            String stn = sim.addStation("Close Station", "farm", "p",
+                    StubKeplerOrbit.circular(mu, 8_000e3, 10e3 / 8_000e3, 0, 1).stateAt(0, new StateVector()), 1);
+            sim.addFreighter("Neighbour", 100, 0, stn);
+            java.util.List<String> log = new java.util.ArrayList<>();
+            for (int i = 0; i < 240; i++) {
+                sim.advanceTo(i / 60.0);
+                var f = sim.bubble().forecast();
+                log.add(i + " " + (f == null ? "-" : f.from + " " + f.entries.keySet()) + " " + sim.bubble().inBubble());
+            }
+            return log;
+        } finally {
+            exec.shutdownNow();
+        }
+    }
+
+    @Test
     void engineTicksAndRailsWarpDriveTheSimulation() {
         GameEngine engine = new GameEngine();
         MacroSimulation sim = MacroSimDemo.build(engine);

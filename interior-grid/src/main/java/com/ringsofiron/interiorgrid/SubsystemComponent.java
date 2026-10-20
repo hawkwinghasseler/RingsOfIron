@@ -44,6 +44,12 @@ public class SubsystemComponent implements Component {
     public boolean switchedOn = true;
     /** Whether this subsystem is currently operational: switched on, powered and not disabled by damage. Set by PowerRoutingSystem. */
     public boolean isOperational = true;
+    /**
+     * Seconds an ion hit has knocked this system out for, counting down; 0 when it is not
+     * stunned. A stunned system is not operational, and a stunned reactor makes no power, but
+     * nothing is broken: it comes back by itself. Set by combat, run down by PowerRoutingSystem.
+     */
+    public float stunned;
     /** Structural health 0.0 = destroyed, 1.0 = fully intact. Only damage changes it. */
     public float health = 1.0f;
     /** Whether this subsystem is currently receiving power. Set by PowerRoutingSystem. */
@@ -68,6 +74,31 @@ public class SubsystemComponent implements Component {
      * when the grid is routed; not saved.
      */
     public transient Array<SubsystemComponent> pipedTanks = new Array<>();
+    /**
+     * Whether a short circuit has faulted this system (see {@link DamageStates}). A shorted system
+     * is cut off its circuit: it is not operational, and a shorted reactor feeds nothing, until
+     * the crew reset it, a repair brings it back to full health, or its breaker recloses by itself
+     * after {@link DamageStates#AUTO_RESET}. Saved.
+     */
+    public boolean shorted;
+    /** Seconds it has been shorted, counted by PowerRoutingSystem (see {@link DamageStates#AUTO_RESET}); 0 when it is not. */
+    public float shortedFor;
+    /**
+     * TANK: whether the crew have isolated it, shutting its valve so a damaged tank stops leaking
+     * (see {@link TankSupply#leak}). An isolated tank supplies nothing; a repair to full health
+     * opens it again. Saved.
+     */
+    public boolean isolated;
+    /**
+     * Chance a damaging hit shorts this system out, at full strength (see
+     * {@link DamageStates#shortChance}); below 0, the standard chance for its type. Set from its
+     * component.
+     */
+    public float shortChance = -1f;
+    /** TANK: health below which a hit can burst it; below 0, {@link DamageStates#BURST_THRESHOLD}. Set from its component. */
+    public float burstThreshold = -1f;
+    /** TANK: chance each hit below its burst threshold bursts it; below 0, the standard chance for its fluid. Set from its component. */
+    public float burstChance = -1f;
     /** The power circuit feeding this system, or null when unpowered. Set by PowerRoutingSystem; not saved. */
     public transient PowerCircuit circuit;
 
@@ -95,6 +126,11 @@ public class SubsystemComponent implements Component {
         return isOperational && circuit != null && circuit.tryDraw(joules);
     }
 
+    /** True while an ion hit has it knocked out ({@link #stunned}). */
+    public boolean isStunned() {
+        return stunned > 0f;
+    }
+
     public boolean isDestroyed() {
         return health <= 0f;
     }
@@ -111,11 +147,11 @@ public class SubsystemComponent implements Component {
     }
 
     /**
-     * TANK: true when it can deliver what it holds: its valve is open (switched on) and damage
-     * has not disabled it. A tank needs no power.
+     * TANK: true when it can deliver what it holds: its valve is open (switched on and not
+     * isolated) and damage has not disabled it. A tank needs no power.
      */
     public boolean canSupply() {
-        return type == SubsystemType.TANK && switchedOn && !isDisabled();
+        return type == SubsystemType.TANK && switchedOn && !isolated && !isDisabled();
     }
 
     /** True if tile (x, y) is part of this system's footprint. */

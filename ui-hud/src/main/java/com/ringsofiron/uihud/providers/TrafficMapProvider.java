@@ -12,7 +12,7 @@ public interface TrafficMapProvider {
     /** Fills {@code out} (already cleared) with the current picture. */
     void collect(TrafficFrame out);
 
-    enum ContactKind { PLAYER, STATION, HAULER, OTHER }
+    enum ContactKind { PLAYER, STATION, HAULER, HOSTILE, OTHER }
 
     /** A body drawn as a circle. Positions are meters relative to the frame body (the map center). */
     final class MapBody {
@@ -28,6 +28,19 @@ public interface TrafficMapProvider {
         public String detail = "";
         /** Where one of the player's contracts points; ringed on the map. */
         public boolean objective;
+        /** The player's navigation target; bracketed on the map. */
+        public boolean target;
+        /** Only a last known position: out of sensor range now, drawn dim. */
+        public boolean stale;
+        /** What the provider knows it by, for picking it on the map; empty if it can't be picked. */
+        public String id = "";
+    }
+
+    /** One region's line in the map's tension readout, e.g. "Selene Mining Combine: tension 34". */
+    final class Region {
+        public String line = "";
+        /** Strained enough to show as a warning. */
+        public boolean high;
     }
 
     /** Everything one map refresh shows; reused between refreshes. */
@@ -39,6 +52,8 @@ public interface TrafficMapProvider {
         public double time;
         public final Array<MapBody> bodies = new Array<>();
         public final Array<Contact> contacts = new Array<>();
+        /** The tension readout, a line per region; empty for none. */
+        public final Array<Region> regions = new Array<>();
         private final Array<MapBody> bodyPool = new Array<>();
         private final Array<Contact> contactPool = new Array<>();
 
@@ -52,11 +67,23 @@ public interface TrafficMapProvider {
             Contact c = contactPool.size > 0 ? contactPool.pop() : new Contact();
             c.detail = "";
             c.objective = false;
+            c.target = false;
+            c.stale = false;
+            c.id = "";
             contacts.add(c);
             return c;
         }
 
+        public Region addRegion(String line, boolean high) {
+            Region r = new Region();
+            r.line = line;
+            r.high = high;
+            regions.add(r);
+            return r;
+        }
+
         public void clear() {
+            regions.clear();
             bodyPool.addAll(bodies);
             contactPool.addAll(contacts);
             bodies.clear();

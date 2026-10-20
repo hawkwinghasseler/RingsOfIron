@@ -28,7 +28,7 @@ eclipse.project.name = appName + '-lwjgl3'
 java.sourceCompatibility = 11
 java.targetCompatibility = 11
 if (JavaVersion.current().isJava9Compatible()) {
-        compileJava.options.release.set(8)
+        compileJava.options.release.set(11)
 }
 
 dependencies {
@@ -229,6 +229,18 @@ tasks.register('runOrbitDemo', JavaExec) {
 }
 
 // Runs the game: every module wired together through GameWorld.
+tasks.register('runPlaytest', JavaExec) {
+  group = 'application'
+  description = 'Runs the game at its menu for a playtest driven by injected keys (see tools/playtest).'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.PlaytestLauncher'
+  classpath = sourceSets.main.runtimeClasspath
+  workingDir = rootProject.file('assets').path
+  args = [(project.findProperty('commands') ?: 'playtest-commands.txt').toString(), (project.findProperty('saves') ?: '').toString()]
+  jvmArgs += "--enable-native-access=ALL-UNNAMED"
+  jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
+  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+}
+
 tasks.register('runGame', JavaExec) {
   group = 'application'
   description = 'Runs Rings of Iron with every module wired together.'

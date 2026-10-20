@@ -13,6 +13,7 @@ import com.ringsofiron.combatsys.defs.Fuse;
 import com.ringsofiron.combatsys.defs.SpallDef;
 import com.ringsofiron.combatsys.defs.WarheadDef;
 import com.ringsofiron.combatsys.events.DamageReport;
+import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.GridRayTraversal;
 import com.ringsofiron.interiorgrid.HullPiece;
@@ -34,6 +35,13 @@ import com.ringsofiron.interiorgrid.Tile;
  * divided by {@code max(cos(incidence), 0.2)}. A piece is destroyed exactly when the round still
  * has budget left after it. Open floor, machinery and crew take smaller bites. Energy is only
  * ever moved from the round into the ship or into secondary rays, never created.
+ *
+ * <h2>Shorts and bursts</h2>
+ * Every hit on a system or a powered conduit rolls for a short circuit, and every hit that leaves
+ * a tank below its burst threshold for a burst ({@link DamageStates}). Bursts go off once the
+ * round and its secondaries are done: the tank vents, and a large one sets off a small blast of
+ * its own, which can burst other tanks in turn. A burst's blast is the tank's energy, not the
+ * round's, so it is not counted in {@link Result#absorbed}.
  */
 public class PenetrationResolver {
 
@@ -53,10 +61,27 @@ public class PenetrationResolver {
     public static final float CREW_RESISTANCE = 2e3f;
     /** Joules of absorbed energy per health point of crew injury. */
     public static final float CREW_JOULES_PER_HP = 20f;
-    /** Overpressure on a tile, J, that kills an unprotected crew member outright (100 hp). */
+    /**
+     * Share of a round's crew injury left for each open tile it crosses after the first: a round
+     * that has gone through one room has tumbled, shed fragments and lost most of what made it
+     * deadly, though it still wrecks machinery and structure with its full budget.
+     */
+    public static final float CREW_FALLOFF_PER_TILE = 0.5f;
+    /**
+     * Chance that a round or fragment crossing a tile strikes a given person on it: a body fills
+     * well under half of a 1 m tile seen edge-on. Round 6: at 1 every slug through a tile hit
+     * everyone on it, so crew gathered round a casualty went down together.
+     */
+    public static final float CREW_HIT_CHANCE = 0.4f;
+    /** Overpressure on a tile, J, that does an unprotected crew member 100 hp of injury: a critical wound. */
     public static final float CREW_BLAST_LETHAL = 2e6f;
-    /** Machinery share of a system's hardness that one tile of it can absorb from a single ray. */
-    public static final float SUBSYSTEM_TILE_SHARE = 0.25f;
+    /**
+     * Machinery share of a system's hardness that one tile of it can absorb from a single ray: what
+     * a round drilling through it can wreck. At a quarter, three railgun slugs through a corvette's
+     * nose shut its reactor down and fights ended in seconds (round 2 playtest); at a tenth a ship
+     * takes several, and its crew have fires, breaches and repairs to deal with meanwhile.
+     */
+    public static final float SUBSYSTEM_TILE_SHARE = 0.1f;
     /** Below this health a system stops working; at 0 it is destroyed. interior-grid owns the value. */
     public static final float DISABLE_THRESHOLD = SubsystemComponent.DISABLE_THRESHOLD;
     /** Edge walls are thin: this share of a full tile's hit points and armor. */
@@ -122,6 +147,8 @@ public class PenetrationResolver {
     private MaterialTable materials;
     private CombatDefs defs;
     private CrewDamageBridge crew;
+    /** {@link #CREW_HIT_CHANCE}, or 1 for tests that need every round in a person's path to strike them. */
+    private float crewHitChance = CREW_HIT_CHANCE;
 
     // Per-call state (one call at a time).
     private ShipGridComponent grid;
@@ -138,6 +165,11 @@ public class PenetrationResolver {
 
     public void setCrew(CrewDamageBridge crew) {
         this.crew = crew;
+    }
+
+    /** Sets the chance a round crossing a tile strikes each person on it ({@link #CREW_HIT_CHANCE}). */
+    public void setCrewHitChance(float chance) {
+        this.crewHitChance = chance;
     }
 
     public MaterialTable getMaterials() {
@@ -403,6 +435,7 @@ public class PenetrationResolver {
     }
 
     private void end() {
+        if (grid != null) processBursts();
         grid = null;
         ship = null;
         rng = null;
@@ -437,8 +470,12 @@ public class PenetrationResolver {
         boolean entered;
         boolean pastHull;
         int depth;
+        /** Open floor tiles crossed so far, for {@link #CREW_FALLOFF_PER_TILE}. */
+        int floorTiles;
         float originX, originY;
         int skipX = Integer.MIN_VALUE, skipY = Integer.MIN_VALUE;
+        /** The hull tile the ray was last in, to tell a ray running along the hull's skin; MIN_VALUE if none. */
+        int hullX = Integer.MIN_VALUE, hullY = Integer.MIN_VALUE;
     }
 
     private void trace(final Ray ray, float startX, float startY) {
@@ -489,13 +526,21 @@ public class PenetrationResolver {
             return false;
         }
 
+        boolean wasInHull = ray.hullX != Integer.MIN_VALUE;
+        int fromX = ray.hullX, fromY = ray.hullY;
+        ray.hullX = ray.hullY = Integer.MIN_VALUE;
         if (tile.isWall()) {
+            boolean hull = tile.wallType == Tile.WallType.HULL;
+            if (hull && wasInHull && alongSkin(fromX, fromY, x, y)) return glanceOut(ray, tEnter);
+            if (hull) {
+                ray.hullX = x;
+                ray.hullY = y;
+            }
             if (tile.getIntegrity() <= 0f) {
                 // A hole.
-                if (tile.wallType == Tile.WallType.HULL) ray.pastHull = true;
+                if (hull) ray.pastHull = true;
                 return advance(ray, x, y, tile);
             }
-            boolean hull = tile.wallType == Tile.WallType.HULL;
             boolean wasBreach = tile.isHullBreach();
             hitStructure(ray, tile, x, y, 1f);
             if (tile.getIntegrity() <= 0f) {
@@ -543,10 +588,18 @@ public class PenetrationResolver {
         if (integrity <= 0f) {
             // Straight through an existing hole.
             ray.pastHull = true;
+            if (tile.wallType == Tile.WallType.HULL) {
+                ray.hullX = x;
+                ray.hullY = y;
+            }
             return advance(ray, x, y, tile);
         }
 
         boolean hull = tile.wallType == Tile.WallType.HULL;
+        if (hull) {
+            ray.hullX = x;
+            ray.hullY = y;
+        }
         boolean wasBreach = tile.isHullBreach();
         hitStructure(ray, tile, x, y, scale);
         if (tile.getIntegrity() <= 0f) {
@@ -555,6 +608,36 @@ public class PenetrationResolver {
         }
         if (ray.budget > 0f) penetratedHull(ray, x, y);
         return advance(ray, x, y, tile);
+    }
+
+    /**
+     * True if the step from hull tile (fx, fy) to hull tile (x, y) runs along the hull's skin: both
+     * face open space on the same side, square to the step. The hull is a thin skin drawn a tile
+     * thick, so a round going that way is grazing the plating, not boring along inside it (round 2
+     * playtest: railgun slugs down a corvette's length took out a whole row of hull each).
+     */
+    private boolean alongSkin(int fx, int fy, int x, int y) {
+        int dx = x - fx, dy = y - fy;
+        if (Math.abs(dx) + Math.abs(dy) != 1) return false;
+        for (int side = -1; side <= 1; side += 2) {
+            int sx = dy * side, sy = dx * side;
+            if (open(fx + sx, fy + sy) && open(x + sx, y + sy)) return true;
+        }
+        return false;
+    }
+
+    private boolean open(int x, int y) {
+        Tile t = grid.getTile(x, y);
+        return t == null || t.isVoid();
+    }
+
+    /** A round grazing along the hull's skin leaves it with what it has left. */
+    private boolean glanceOut(Ray ray, float t) {
+        if (ray.result != null) {
+            ray.result.outcome = Result.Outcome.OVER_PENETRATED;
+            ray.result.exitPoint.set(ray.originX + ray.dirX * t, ray.originY + ray.dirY * t);
+        }
+        return false;
     }
 
     private void penetratedHull(Ray ray, int x, int y) {
@@ -669,14 +752,17 @@ public class PenetrationResolver {
             damageSubsystem(system, sub, take / hardness, x, y);
         }
 
-        // People. They barely slow a round down.
+        // People. They barely slow a round down, it misses most who stand in its path, and past
+        // the first room it hurts them far less.
+        float falloff = (float) Math.pow(CREW_FALLOFF_PER_TILE, ray.floorTiles++);
         if (crew != null && ray.budget > 0f) {
             occupants.clear();
             crew.occupantsAt(ship, x, y, occupants);
             for (int i = 0; i < occupants.size && ray.budget > 0f; i++) {
+                if (crewHitChance < 1f && rng.nextFloat() >= crewHitChance) continue;
                 float take = Math.min(ray.budget, CREW_RESISTANCE);
                 ray.budget -= take;
-                injure(occupants.get(i), take / CREW_JOULES_PER_HP, ray.cause, x, y);
+                injure(occupants.get(i), falloff * take / CREW_JOULES_PER_HP, ray.cause, x, y);
             }
         }
 
@@ -689,6 +775,8 @@ public class PenetrationResolver {
             if (was > 0f && tile.getIntegrity() <= 0f) {
                 grid.gridDirty = true;
                 if (report != null) report.structureChanged = true;
+            } else if (DamageStates.maybeShortConduit(grid, x, y, was - tile.getIntegrity(), rng) && report != null) {
+                report.shorts.add(pack(x, y));
             }
         } else {
             damagePiece(tile, take / materials.get(tile.material, tile.weightClass).hitPoints);
@@ -703,6 +791,11 @@ public class PenetrationResolver {
         if (healthLoss <= 0f) return;
         sub.health = Math.max(0f, sub.health - healthLoss);
         if (sub.health < DISABLE_THRESHOLD) sub.isOperational = false;
+        if (DamageStates.rollBurst(sub, healthLoss, rng)) {
+            if (!pendingBursts.contains(sub, true)) pendingBursts.add(sub);
+        } else if (DamageStates.maybeShort(grid, sub, healthLoss, x, y, rng) && report != null) {
+            report.shorts.add(pack(x, y));
+        }
         if (report != null && !report.damagedSubsystems.contains(system, true)) {
             report.damagedSubsystems.add(system);
             report.subsystemTiles.add(pack(x, y));
@@ -748,9 +841,13 @@ public class PenetrationResolver {
      * Air carries the blast, so damage scales with pressure at the detonation tile.
      */
     private float blast(int cx, int cy, WarheadDef warhead) {
+        return blast(cx, cy, warhead.blastRadiusTiles, warhead.blastDamage);
+    }
+
+    /** {@link #blast(int, int, WarheadDef)} with {@code blastDamage} J at the middle, out to {@code radius} tiles. */
+    private float blast(int cx, int cy, int radius, float blastDamage) {
         float pressure = grid.pressureRatioAt(cx, cy);
-        int radius = warhead.blastRadiusTiles;
-        if (pressure <= 0f || radius <= 0 || warhead.blastDamage <= 0f || !grid.inBounds(cx, cy)) return 0f;
+        if (pressure <= 0f || radius <= 0 || blastDamage <= 0f || !grid.inBounds(cx, cy)) return 0f;
 
         boolean[] seen = new boolean[grid.width * grid.height];
         frontier.clear();
@@ -758,7 +855,7 @@ public class PenetrationResolver {
         seen[pack(cx, cy)] = true;
         float total = 0f;
         for (int d = 0; d <= radius && frontier.size > 0; d++) {
-            float energy = warhead.blastDamage * pressure * (1f - d / (radius + 1f));
+            float energy = blastDamage * pressure * (1f - d / (radius + 1f));
             nextFrontier.clear();
             for (int i = 0; i < frontier.size; i++) {
                 int idx = frontier.get(i);
@@ -817,6 +914,27 @@ public class PenetrationResolver {
         }
         tryIgnite(tile, x, y, DamageType.EXPLOSIVE, energy / FLOOR_RESISTANCE);
         return spent;
+    }
+
+    /** Tanks this call's hits burst, set off once the rays are done. */
+    private final Array<SubsystemComponent> pendingBursts = new Array<>();
+    /** Most bursts one hit can chain into. */
+    private static final int MAX_CHAINED_BURSTS = 8;
+
+    /** Bursts every tank the hits left bursting; a large burst's blast can burst others. */
+    private void processBursts() {
+        for (int n = 0; pendingBursts.size > 0 && n < MAX_CHAINED_BURSTS; n++) {
+            SubsystemComponent tank = pendingBursts.removeIndex(0);
+            if (tank.contents <= 0) continue;
+            DamageStates.Incident burst = DamageStates.burst(grid, tank, rng);
+            if (report != null) {
+                report.bursts.add(pack(burst.x, burst.y));
+                if (burst.fire) report.fires.add(pack(burst.x, burst.y));
+                report.structureChanged = true;
+            }
+            if (burst.blastEnergy > 0f) blast(burst.x, burst.y, DamageStates.BLAST_RADIUS, burst.blastEnergy);
+        }
+        pendingBursts.clear();
     }
 
     private void queueSecondary(float x, float y, float dirX, float dirY, float budget, HitCause cause) {
