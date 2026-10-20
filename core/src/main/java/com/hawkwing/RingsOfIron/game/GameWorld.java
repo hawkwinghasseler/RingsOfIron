@@ -29,6 +29,7 @@ import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
 import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
 import com.ringsofiron.combatsys.systems.WeaponControlSystem;
+import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.TickProfiler;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
@@ -82,6 +83,7 @@ import com.ringsofiron.stationsdocking.DockingData;
 import com.ringsofiron.stationsdocking.DockingSystem;
 import com.ringsofiron.stationsdocking.StationBodies;
 import com.ringsofiron.stationsdocking.StationComponent;
+import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -154,10 +156,16 @@ public class GameWorld implements Disposable {
     public final AudioListenerSync audioListener;
     /** Pirates and faction patrols: their ships, and how they fly and fight in the bubble. */
     public final HostileTraffic hostiles;
+    /** The pirates' hidden base, once the scenario has one: found or not, standing or fallen. */
+    public final PirateBase pirateBase;
+    /** Strain between the factions, and the weekly drifts of tension and of grudges against the player. */
+    public final FactionTension tension;
     /** Ties the career (factions and rank) to encounters, rescue, boarding and ships beaten. */
     public final LoopWiring loop;
     /** The player's planned burns. */
     public final BurnPlanner burns;
+    /** The navigation target, plan to target, the helm's autopilot and the pirates known on the rails. */
+    public final Navigation nav;
     /** Docking ports, collars and latches of every ship and station in the bubble. */
     public final DockingSystem docking;
     /** Craft flying themselves in to dock at stations, and away again. */
@@ -174,6 +182,10 @@ public class GameWorld implements Disposable {
     public final StationYard yard;
     /** Station mission boards and the player's contracts. */
     public final ContractBoard contracts;
+    /** Escape pods and wrecks drifting on the rails, for rescue and recovery contracts. */
+    public final Derelicts derelicts;
+    /** Shortages, raids, lost freighters and rival tension, rolled each day, with jobs on the boards. */
+    public final WorldEvents events;
     /** Which ships are disabled, surrendered or wrecked, and why. */
     public final ShipDisablement disablement;
     /** Crews ordered to the escape pods, and the pods launching. */
@@ -184,8 +196,16 @@ public class GameWorld implements Disposable {
     public final Boarding boarding;
     /** Taken ships stripped for parts, and their cargo carried off. */
     public final Salvage salvage;
+    /** Ship markets at faction yards, and prizes towed home (round 3). */
+    public final Shipyard shipyard;
     /** How carried cargo is settled: the market's, plus salvage's between ships and parts sold. */
     public final SalvageSettlement cargoSettlement;
+    /** The player's crew: experience, morale and wages. */
+    public final CrewCareer crewCareer;
+    /** Station hiring pools, and hiring and dismissing crew. */
+    public final CrewHiring crewHiring;
+    /** Prisoners from taken ships: brought aboard, handed over, ransomed, released or recruited. */
+    public final Prisoners prisoners;
 
     /** How the player's ship was lost. */
     public static final class Crash {
@@ -199,6 +219,16 @@ public class GameWorld implements Disposable {
     }
     public final EngineAudio engineAudio;
     public final CrewAudio crewAudio;
+    /** What the game tells the player: post here rather than keeping a list of your own. */
+    public final NoticeLog notices;
+    /** Key hints by context, for the bottom line and the F1 controls panel. */
+    public final HintRegistry hints = HintRegistry.withDefaults();
+    /** Low propellant and inbound missiles, as notices. */
+    public final FlightWarnings warnings;
+    /** The distress beacon: a stranded ship towed home. */
+    public final DistressBeacon beacon = new DistressBeacon(this);
+    /** First Play's and the opening walkthrough's progress, saved with the game. */
+    public final GuideProgress guides = new GuideProgress();
 
     private final ImmutableArray<Entity> players;
     private final OrbitalAnchorBridge anchorBridge;
@@ -208,6 +238,7 @@ public class GameWorld implements Disposable {
     /** What ships collide on, once content has loaded. */
     private ShipHulls hulls;
     private Crash crash;
+    private String careerOver;
     private final List<Entity> wrecks = new ArrayList<>();
     private final double[] trueState = new double[4];
     /** Materials from the loaded data, for ships' mass. */
@@ -221,6 +252,8 @@ public class GameWorld implements Disposable {
         this.modules = modules;
         engine = new GameEngine();
         players = engine.getEcsEngine().getEntitiesFor(PLAYER);
+        notices = new NoticeLog(engine::getSimSeconds);
+        warnings = new FlightWarnings(this);
 
         physics = new PhysicsManager();
 
@@ -330,7 +363,8 @@ public class GameWorld implements Disposable {
         docking.crossing = link -> CrewDoors.crossingPort(crew, link);
         docking.clearance = (station, vessel) -> {
             if (!station.getComponent(StationComponent.class).grantsClearance) return "";
-            return standing.refusal(station, vessel);
+            String refused = standing.refusal(station, vessel);
+            return refused != null ? refused : tensionRefusal(station, vessel);
         };
         forcing = new DoorForcing(docking, crew, engine::getSimSeconds);
         engine.addSystem(forcing);
@@ -357,6 +391,9 @@ public class GameWorld implements Disposable {
         contracts = new ContractBoard(this);
         engine.addSystem(contracts);
         engine.getSerializationService().addParticipant(contracts);
+        engine.getSerializationService().addParticipant(guides);
+        // Pods and wrecks on the rails, for rescues and recoveries; saved with the game
+        derelicts = new Derelicts(this);
         // NPC freighters fill their tanks wherever they dock
         engine.addSystem(new FreighterRefueling(docking::dockedTo));
         // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
@@ -391,6 +428,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(boarding);
         salvage = new Salvage(docking, crew, boarding, cargo, engine.getUuidRegistry(), combatDefs);
         engine.addSystem(salvage);
+        // Ships bought at faction yards, and taken ships towed home as prizes
+        shipyard = new Shipyard(this);
+        engine.addSystem(shipyard);
 
         // audio-spatial
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
@@ -407,14 +447,56 @@ public class GameWorld implements Disposable {
         engine.addSystem(audioUpdate);
         new ImpactAudio(audio).attach(physics);
         CombatAudio.install(engine.getEcsEngine(), combatEvents, combatDefs, audio, this::getContent);
+        NoticeAudio.install(notices, audio);
         physics.worldShifts.add(audioUpdate.worldShiftListener());
 
         // Bubble bodies are saved as true states, never as live Box2D bodies.
         PhysicsSaveParticipant.install(physics, engine);
         // Pirates and faction patrols, on the rails and in the bubble
         hostiles = HostileTraffic.install(this);
+        pirateBase = new PirateBase(this);
+        engine.addSystem(pirateBase);
+        engine.getSerializationService().addParticipant(pirateBase);
+        hostiles.extraRaiders = pirateBase::extraRaiders;
+        tension = new FactionTension(this);
+        engine.addSystem(tension);
+        engine.getSerializationService().addParticipant(tension);
+        nav = Navigation.install(this);
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);
+        // Things that happen on their own, a day at a time, with jobs on the boards
+        events = new WorldEvents(this);
+        // The player's crew: hired at stations, paid weekly, learning from what they do
+        crewCareer = new CrewCareer(this);
+        engine.addSystem(crewCareer);
+        crewHiring = new CrewHiring(this);
+        engine.getSerializationService().addParticipant(crewHiring);
+        prisoners = new Prisoners(this);
+        hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, KeyBindings.Action.CREW)
+                .onlyWhen(() -> prisoners.takenAlongside() != null);
+    }
+
+    /**
+     * The dice a station's daily board and hiring pool are drawn from: its name and the career's seed
+     * ({@link WorldEvents#seed}), so the same seed replays the same boards and two seeds differ. A
+     * station's uuid is new each game, so drawing from it alone made every career's boards differ.
+     */
+    public long stationDice(String stationUuid) {
+        var node = macroSim.station(stationUuid);
+        String key = node != null && node.displayName != null ? node.displayName : stationUuid;
+        return key.hashCode() * 0x9E3779B97F4A7C15L ^ events.seed;
+    }
+
+    /**
+     * Starts the combat and crew dice over from a new game's seeds, as if the world had been built
+     * with them: sensors, fire control and damage from {@code combatSeed} (the same offsets as
+     * {@link Modules#combatSeed}), the crew's own draws from {@code crewSeed}.
+     */
+    public void reseed(long combatSeed, long crewSeed) {
+        sensors.reseed(combatSeed + 1);
+        weaponControl.reseed(combatSeed + 2);
+        impacts.reseed(combatSeed);
+        crew.random.setSeed(crewSeed);
     }
 
     /**
@@ -465,6 +547,11 @@ public class GameWorld implements Disposable {
         physics.setAnchorModel(new KeplerAnchor(orbit), parentUuid);
     }
 
+    /** Clearance refused for tension between the factions (built after docking's clearance check is). */
+    private String tensionRefusal(Entity station, Entity vessel) {
+        return tension.refusal(station, vessel);
+    }
+
     /** What {@link #loadContent} produced, or null before it ran. */
     public ModContext getContent() {
         return content;
@@ -472,7 +559,7 @@ public class GameWorld implements Disposable {
 
     /** One rendered frame. Once the player has crashed the world stops. */
     public void update(float frameDelta) {
-        if (crash != null) return;
+        if (crash != null || careerOver != null) return;
         TickProfiler profiler = engine.getProfiler();
         long start = profiler == null ? 0 : System.nanoTime();
         timeWarp.update(frameDelta);
@@ -482,8 +569,12 @@ public class GameWorld implements Disposable {
         wrecks.clear();
         rescue.update();
         hostiles.afterUpdate();
+        derelicts.update();
+        events.update();
         checkBubbleCrash();
-        if (crash != null && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
+        checkAvatar();
+        if ((crash != null || careerOver != null) && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
+        warnings.update();
     }
 
     /** How the player's ship was lost, or null while it still flies. */
@@ -494,6 +585,33 @@ public class GameWorld implements Disposable {
     /** Lets the world run again, after loading a save from before the crash. */
     public void clearCrash() {
         crash = null;
+        careerOver = null;
+    }
+
+    /** Why the career ended with the player's death, or null while it goes on. The world stops then. */
+    public String getCareerOver() {
+        return careerOver;
+    }
+
+    /** Fires when the player was killed and the crew brought them home. */
+    public final com.badlogic.ashley.signals.Signal<Rescue.Tow> carriedHome = new com.badlogic.ashley.signals.Signal<>();
+
+    /** The player's avatar killed: brought home by the crew if any are left, else the career ends. */
+    private void checkAvatar() {
+        Entity player = getPlayer();
+        if (player == null || crash != null || careerOver != null) return;
+        for (Entity e : crew.crewEntities()) {
+            if (e.getComponent(com.ringsofiron.aicrew.PlayerAvatarComponent.class) == null) continue;
+            if (e.getComponent(com.ringsofiron.aicrew.CrewMemberComponent.class).isAlive()) return;
+            Rescue.Tow[] tow = new Rescue.Tow[1];
+            com.badlogic.ashley.signals.Listener<Rescue.Tow> l = (signal, t) -> tow[0] = t;
+            rescue.tows.add(l);
+            String why = rescue.carryHome(player);
+            rescue.tows.remove(l);
+            if (why != null) careerOver = why;
+            else carriedHome.dispatch(tow[0]);
+            return;
+        }
     }
 
     /**
@@ -525,11 +643,31 @@ public class GameWorld implements Disposable {
     }
 
     private void crash(Entity body, double time) {
+        // Crew ordered to the pods before impact get away: whoever reached a pod launches, and if
+        // the player was among them it is a rescue, not a lost ship
+        Entity player = getPlayer();
+        if (player != null && AbandonShip.abandoning(player)) {
+            abandon.launchNow(player);
+            abandon.update(0f);
+            if (rescue.pending()) {
+                rescue.update();
+                return;
+            }
+        }
         CelestialBodyComponent c = body == null ? null : universe.celestial(body);
         crash = new Crash(c == null || c.name == null ? "the surface" : c.name, time);
     }
 
     /** The player's primary actor (their ship), or null. */
+    /** The station the player's ship is docked at with clearance, or null. */
+    public Entity playerStation() {
+        Entity player = getPlayer();
+        if (player == null || !docking.dockedWithClearance(player)) return null;
+        Entity station = docking.dockedTo(player);
+        UuidComponent u = station == null ? null : station.getComponent(UuidComponent.class);
+        return u == null || macroSim.station(u.id) == null ? null : station;
+    }
+
     public Entity getPlayer() {
         return players.size() == 0 ? null : players.first();
     }
@@ -611,6 +749,8 @@ public class GameWorld implements Disposable {
         combatDefs.projectiles.putAll(loaded.projectiles);
         combatDefs.missiles.putAll(loaded.missiles);
         combatDefs.warheads.putAll(loaded.warheads);
+        combatDefs.loadouts.putAll(loaded.loadouts);
         combatDefs.materials.putAll(loaded.materials);
     }
 }
+

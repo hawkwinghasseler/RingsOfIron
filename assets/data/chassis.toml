@@ -125,6 +125,8 @@ origin_y = -2.5
 # Small engines in the stern either side of the nitrogen tank. One pipe run joins the engines,
 # the nitrogen and oxygen tanks, the propellant tank and life support. A two-tile hold for loot,
 # and a Small passive docking port on top, so it can be boarded once beaten.
+# A Small escape pod (4 seats) stands at x 12 forward of the hold, its hatch out through the top
+# hull, so the raider can be flown as a player ship.
 rows = [
   "###DDD#########",
   "#EE..L.HH.RR..#",
@@ -135,6 +137,7 @@ rows = [
 mounts = [
   { component = "nitrogen_tank", size = "S", x = 1, y = 2, rotation = 1 },
   { component = "oxygen_tank", size = "S", x = 3, y = 2 },
+  { component = "escape_pod", size = "S", x = 12, y = 2, rotation = 0 },
 ]
 pipes = [
   { x = 2, y = 1 },
@@ -159,11 +162,15 @@ origin_y = -4.0
 # with a propellant tank beside each, and five turret mounts: a Medium one in the nose for the
 # railgun (8, 0), launchers at (1.5, 2.5) and (1.5, -2.5) and point defense at (5.5, 2.5) and
 # (5.5, -2.5). Oxygen and nitrogen between the engines; pipes up x 2 and x 5 and across y 3 join
-# both engines, every tank and life support. A Small passive docking port on top.
+# both engines, every tank and life support. A Small passive docking port on top. A Small shield
+# emitter (S) beside the reactor at (11, 5) takes half of every hit while powered, paid for from the
+# reactor's store (combat-sys's Shields).
+# Two Small escape pods (4 seats each) at x 16 aft of the turrets, hatches out through the top
+# and bottom hull, so the gunship carries a player's crew as well as a patrol's.
 rows = [
   "#######DDD##########",
   "#GGG.P.....T...T...#",
-  "#GGG.P..RRR........#",
+  "#GGG.P..RRRS.......#",
   "#.....L.RRR.C.HH.TT#",
   "#.....L.RRR.C.WW.TT#",
   "#GGG.P.............#",
@@ -173,6 +180,8 @@ rows = [
 mounts = [
   { component = "oxygen_tank", size = "S", x = 1, y = 4, rotation = 1 },
   { component = "nitrogen_tank", size = "S", x = 1, y = 3, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 16, y = 5, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 16, y = 1, rotation = 2 },
 ]
 pipes = [
   { x = 2, y = 1 },
@@ -201,6 +210,62 @@ lights = [
   { x = 7, y = 6, side = "TOP" },
   { x = 10, y = 6, side = "TOP" },
   { x = 14, y = 6, side = "TOP" },
+]
+
+[chassis.frigate]
+name = "Frigate"
+tile_size = 1.0
+origin_x = -12.0
+origin_y = -5.0
+# The Commander's and Captain's ship (round 3): longer and broader than the gunship. Two Medium
+# turret mounts on the port and starboard bow (20, 7) and (20, 1) for the main guns, launchers on
+# each beam aft (8, 8) and (8, 1), point defense on each beam forward (18, 8) and (18, 1).
+# A Large reactor amidships, two Medium gunship drives in the stern corners with a propellant tank
+# beside each; oxygen and nitrogen between the engines. Pipes up x 2 and x 5 and across y 4 join
+# both engines, every tank and life support.
+# The marine bay is the open deck under the dorsal Small port (x 10-12): room for a boarding party
+# to stand ready by the port. The port is active, so the frigate can latch onto a ship and board it.
+# Two Small escape pods (4 seats each) at x 7, hatches out through the top and bottom hull.
+# It collides on its layout: its hull art has no collision layer of its own.
+rows = [
+  "##########DDD###########",
+  "#GGG.P..T.........T.TT.#",
+  "#GGG.P..............TT.#",
+  "#......................#",
+  "#.....L..RRR.C...HH....#",
+  "#.....L..RRR.C...WW....#",
+  "#........RRR...........#",
+  "#GGG.P..............TT.#",
+  "#GGG.P..T.........T.TT.#",
+  "########################",
+]
+ports = [ { x = 11, y = 9, active = true } ]
+mounts = [
+  { component = "oxygen_tank", size = "S", x = 1, y = 5, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 1, y = 4, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 7, y = 7, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 7, y = 1, rotation = 2 },
+]
+pipes = [
+  { x = 2, y = 1 }, { x = 2, y = 2 }, { x = 2, y = 3 }, { x = 2, y = 4 },
+  { x = 2, y = 5 }, { x = 2, y = 6 }, { x = 2, y = 7 }, { x = 2, y = 8 },
+  { x = 3, y = 4 }, { x = 4, y = 4 },
+  { x = 5, y = 1 }, { x = 5, y = 2 }, { x = 5, y = 3 }, { x = 5, y = 4 },
+  { x = 5, y = 5 }, { x = 5, y = 6 }, { x = 5, y = 7 }, { x = 5, y = 8 },
+  { x = 6, y = 4 },
+]
+lights = [
+  { x = 4, y = 1, side = "BOTTOM" },
+  { x = 11, y = 1, side = "BOTTOM" },
+  { x = 14, y = 1, side = "BOTTOM" },
+  { x = 19, y = 1, side = "BOTTOM" },
+  { x = 1, y = 3, side = "LEFT" },
+  { x = 22, y = 3, side = "RIGHT" },
+  { x = 4, y = 8, side = "TOP" },
+  { x = 9, y = 8, side = "TOP" },
+  { x = 12, y = 8, side = "TOP" },
+  { x = 15, y = 8, side = "TOP" },
+  { x = 19, y = 8, side = "TOP" },
 ]
 
 # Stations. Every station type carries docking ports of all three sizes, so any ship

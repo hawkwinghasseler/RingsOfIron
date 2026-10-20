@@ -26,3 +26,13 @@ tasks.register('packArt', JavaExec) {
     args = [artSource.path, new File(artOut.get().asFile, 'art').path, '64']
   }
 }
+
+// The game window's icon, drawn from the corvette's hull; the PNGs are committed in lwjgl3's resources.
+tasks.register('windowIcons', JavaExec) {
+  group = 'build'
+  description = 'Draws the game window icon from the art pack.'
+  mainClass = 'com.ringsofiron.artpipeline.WindowIcons'
+  classpath = sourceSets.main.runtimeClasspath
+  jvmArgs += '-Djava.awt.headless=true'
+  args = [new File(artSource, 'hulls/corvette.svg').path, rootProject.file('lwjgl3/src/main/resources').path]
+}

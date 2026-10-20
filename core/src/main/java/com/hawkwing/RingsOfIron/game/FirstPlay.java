@@ -5,16 +5,23 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.combatsys.damage.IonStun;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.hawkwing.RingsOfIron.shell.KeyBindings;
+import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+
+import java.util.function.Function;
 
 /**
  * A short scripted first play over the starting scenario, one objective at a time: the ship starts
  * docked at Highport; take the bounty on the raider from the mission board, undock, fly clear, beat
  * the raider (it turns on you once you are clear), latch on and board it, come back and dock, and
- * have the yard repair the damage. Each objective is met by playing, not by a key: the script only
+ * have the yard repair the damage, look back over the notice log, and plan a transfer to a station
+ * beyond Highport. Each objective is met by playing, not by a key: the script only
  * watches the world and says what to do next. Docking again while the raider still fights counts as
  * getting away from it; docking again before boarding it skips the boarding, and undocking without
  * a contract skips taking one.
@@ -24,17 +31,21 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 public final class FirstPlay {
     /** The objectives, in order. */
     public enum Step {
-        ACCEPT("J opens Highport's mission board: take the bounty on the raider outside"),
-        UNDOCK("Undock from Highport: U lets go of the port"),
-        FLY_CLEAR("Fly clear of the station, 2 km out: W/S thrust, A/D turn, X rotation assist"),
-        FIGHT("A raider is coming for you. Tab locks it, Space fires the guns, R a missile, F a decoy. "
-                + "Knock out its guns or its reactor until it gives up, or run back to Highport"),
-        BOARD("The raider is beaten. Pull alongside it and press G to latch on, then K: send a boarding party, "
-                + "and strip what you want once it is taken"),
-        DOCK("Back to Highport and dock: H picks the port, G arms it and asks for clearance"),
-        REPAIR("Open the yard with Y and order repairs"),
-        DONE("That's the loop: work from the board (J) pays and earns rank. Trade or sell salvage with T, "
-                + "refit at the yard (Y), or fly on");
+        ACCEPT("{MISSIONS} opens Highport's mission board: take the bounty on the raider outside"),
+        UNDOCK("Undock from Highport: {UNDOCK} lets go of the port"),
+        FLY_CLEAR("Fly clear of the station, 2 km out: {THRUST}/{REVERSE} thrust, {TURN_LEFT}/{TURN_RIGHT} turn, "
+                + "{ROTATION_ASSIST} rotation assist"),
+        FIGHT("A raider is coming for you. {NEXT_TARGET} locks it, {FIRE} fires the guns, {MISSILE} a missile, "
+                + "{DECOY} a decoy. Knock out its guns or its reactor until it gives up, or run back to Highport"),
+        BOARD("The raider is beaten. Pull alongside it and press {ARM_PORT} to latch on, then {BOARD}: send a "
+                + "boarding party, and strip what you want once it is taken"),
+        DOCK("Back to Highport and dock: {NEXT_PORT} picks the port, {ARM_PORT} arms it and asks for clearance"),
+        REPAIR("Open the yard with {YARD} and order repairs"),
+        NOTICES("{LOG} opens the notice log: the fight, the bounty and the yard's work are all there"),
+        PLAN("Plan a trip: {NAV_TARGET} picks a navigation target (Shackleton Ice, at the Moon, say), {PLAN_TO_TARGET} "
+                + "plans the transfer, {ACCEPT_PLAN} accepts it and {DISCARD_PLAN} discards it"),
+        DONE("That's the loop: work from the board ({MISSIONS}) pays and earns rank. Trade or sell salvage with "
+                + "{TRADE}, refit at the yard ({YARD}), or fly on");
 
         public final String objective;
 
@@ -49,6 +60,7 @@ public final class FirstPlay {
     private final GameWorld world;
     private final GameScenario game;
     private Step step = Step.ACCEPT;
+    private boolean logOpened;
     private final Vector2 a = new Vector2(), b = new Vector2();
 
     private FirstPlay(GameWorld world, GameScenario game) {
@@ -59,7 +71,23 @@ public final class FirstPlay {
     /** Starts the first play on a new game: the player's ship latched to a free port of its size at Highport. */
     public static FirstPlay start(GameWorld world, GameScenario game) {
         game.beginCareer();
-        return new FirstPlay(world, game);
+        FirstPlay f = new FirstPlay(world, game);
+        world.guides.firstPlayStep = f.step.name();
+        return f;
+    }
+
+    /** The first play a loaded game was saved in, at its objective then; null when it was not one. */
+    public static FirstPlay resume(GameWorld world, GameScenario game) {
+        String saved = world.guides.firstPlayStep;
+        if (saved == null) return null;
+        FirstPlay f = new FirstPlay(world, game);
+        try {
+            f.step = Step.valueOf(saved);
+        } catch (IllegalArgumentException e) {
+            f.step = Step.ACCEPT;
+        }
+        world.guides.firstPlayStep = f.step.name();
+        return f;
     }
 
     /** Latches the player's first port onto a free port of the same size at Highport, at once. */
@@ -67,14 +95,25 @@ public final class FirstPlay {
         return game.dockAtHighport();
     }
 
+    /** Called when the player opens the notice log. */
+    public void logOpened() {
+        logOpened = true;
+    }
+
     public Step step() {
         return step;
     }
 
-    /** "2/5: ...", the objective now, for the screen. */
+    /** "2/7: ...", the objective now, with the default keys. */
     public String objective() {
-        if (step == Step.DONE) return step.objective;
-        return (step.ordinal() + 1) + "/" + Step.DONE.ordinal() + ": " + step.objective;
+        return objective(HintRegistry.keyNames(new KeyBindings()));
+    }
+
+    /** "2/7: ...", the objective now, naming the player's keys. */
+    public String objective(Function<Action, String> keyName) {
+        String text = HintRegistry.withKeys(step.objective, keyName);
+        if (step == Step.DONE) return text;
+        return (step.ordinal() + 1) + "/" + Step.DONE.ordinal() + ": " + text;
     }
 
     /** Moves on when the objective is met; returns the next one to show, or null when nothing changed. */
@@ -82,6 +121,7 @@ public final class FirstPlay {
         Step next = next();
         if (next == step) return null;
         step = next;
+        world.guides.firstPlayStep = step.name();
         if (step == Step.FIGHT) game.provokeRaider();
         return objective();
     }
@@ -109,7 +149,12 @@ public final class FirstPlay {
                 return docked ? Step.REPAIR : step;
             case REPAIR:
                 if (!docked) return step;
-                return world.yard.repairing(game.player) || world.yard.damage(game.player).isEmpty() ? Step.DONE : step;
+                return world.yard.repairing(game.player) || world.yard.damage(game.player).isEmpty() ? Step.NOTICES : step;
+            case NOTICES:
+                return logOpened ? Step.PLAN : step;
+            case PLAN:
+                ManeuverNodeComponent nodes = world.burns.nodes();
+                return world.nav.transfer.proposal() != null || (nodes != null && nodes.nodes.size > 0) ? Step.DONE : step;
             default:
                 return step;
         }
@@ -120,10 +165,17 @@ public final class FirstPlay {
         return beaten(world, game.raider);
     }
 
-    /** True once {@code ship} can no longer fight: gone, disabled or surrendered, its reactor down, or every gun silenced. Contracts' bounties use it too. */
+    /**
+     * True once {@code ship} can no longer fight: gone, disabled or surrendered, its reactor down, or every gun silenced.
+     * Contracts' bounties use it too. A ship an ion hit has knocked out is not beaten while a stun lasts (it comes back
+     * by itself), unless it has surrendered, been abandoned or wrecked.
+     */
     public static boolean beaten(GameWorld world, Entity ship) {
         if (ship == null || world.engine.getEcsEngine().getEntities().indexOf(ship, true) < 0) return true;
-        if (ShipDisablement.isDisabled(ship)) return true;
+        DisabledComponent.Reason why = ShipDisablement.reason(ship);
+        if (why != null && why.sticky()) return true;
+        if (IonStun.anyStunned(ship)) return false;
+        if (why != null) return true;
         ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
         if (registry != null && !powered(registry)) return true;
         WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);

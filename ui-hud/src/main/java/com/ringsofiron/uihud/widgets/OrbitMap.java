@@ -16,13 +16,20 @@ import com.ringsofiron.uihud.providers.OrbitPathProvider;
  * orbit after planned burns, the burn points and the ship. Scaled to fit the larger of the two
  * orbits, capped so an escape path does not shrink the body to a dot. Other bodies (moons, with their
  * orbits, and the body the parent orbits) are drawn where they fit, or as a labelled marker on the
- * edge of the map in their direction.
+ * edge of the map in their direction. Stations show as small squares; the navigation target as a
+ * larger magenta one with its orbit, and the closest approach to it along the planned path as a
+ * line between where each will be. A transfer proposed to the target but not accepted yet is drawn
+ * in green.
  */
 public class OrbitMap extends Widget {
     private static final Color BODY = new Color(0.12f, 0.25f, 0.42f, 1f);
     private static final Color PLANNED = new Color(1f, 0.7f, 0.2f, 1f);
     private static final Color OTHER_BODY = new Color(0.55f, 0.6f, 0.65f, 1f);
     private static final Color OTHER_ORBIT = new Color(0.55f, 0.6f, 0.65f, 0.45f);
+    private static final Color STATION = new Color(0.4f, 0.75f, 1f, 1f);
+    private static final Color TARGET = new Color(1f, 0.35f, 0.9f, 1f);
+    private static final Color TARGET_ORBIT = new Color(1f, 0.35f, 0.9f, 0.5f);
+    private static final Color PROPOSED = new Color(0.35f, 1f, 0.45f, 1f);
     /** Wide enough for a transfer to Earth's Moon, about 60 Earth radii out. */
     private static final float MAX_BODY_RADII = 80f;
     private static final float EDGE = 8f;
@@ -85,7 +92,7 @@ public class OrbitMap extends Widget {
 
         float cx = getX() + getWidth() / 2f;
         float cy = getY() + getHeight() / 2f;
-        float extent = Math.max(extent(path.current), extent(path.planned));
+        float extent = Math.max(Math.max(extent(path.current), extent(path.planned)), extent(path.proposed));
         extent = Math.max((float) path.bodyRadius * 1.1f, Math.min(extent, (float) path.bodyRadius * MAX_BODY_RADII));
         float half = Math.min(getWidth(), getHeight()) / 2f;
         float scale = (half - 4f) / extent;
@@ -102,8 +109,22 @@ public class OrbitMap extends Widget {
             batch.draw(white, cx - w, cy + y, 2f * w, 1f);
         }
 
+        polyline(batch, path.targetOrbit, cx, cy, scale, TARGET_ORBIT, a);
         polyline(batch, path.current, cx, cy, scale, HudSkin.HUD_CYAN, a);
         polyline(batch, path.planned, cx, cy, scale, PLANNED, a);
+        polyline(batch, path.proposed, cx, cy, scale, PROPOSED, a);
+        for (int i = 0; i + 1 < path.proposedNodes.size; i += 2) {
+            dot(batch, cx + path.proposedNodes.get(i) * scale, cy + path.proposedNodes.get(i + 1) * scale, 5f, PROPOSED, a);
+        }
+        if (path.approach.size >= 4) {
+            float x0 = cx + path.approach.get(0) * scale, y0 = cy + path.approach.get(1) * scale;
+            float x1 = cx + path.approach.get(2) * scale, y1 = cy + path.approach.get(3) * scale;
+            batch.setColor(TARGET.r, TARGET.g, TARGET.b, a);
+            line(batch, x0, y0, x1, y1);
+            dot(batch, x0, y0, 4f, Color.WHITE, a);
+            dot(batch, x1, y1, 4f, TARGET, a);
+        }
+        for (OrbitPathProvider.MapMarker m : path.markers) marker(batch, m, cx, cy, half, scale, a);
         for (int i = 0; i + 1 < path.nodes.size; i += 2) {
             boolean selected = i / 2 == path.selectedNode;
             dot(batch, cx + path.nodes.get(i) * scale, cy + path.nodes.get(i + 1) * scale,
@@ -135,6 +156,31 @@ public class OrbitMap extends Widget {
         int align = x > 0 ? com.badlogic.gdx.utils.Align.right : com.badlogic.gdx.utils.Align.left;
         float ly = cy + y + (y > 0 ? -6f : 14f);
         font.draw(batch, inside ? b.name : b.name + " (off map)", lx, ly, LABEL_WIDTH, align, false);
+    }
+
+    /** A station or the target as a square outline, pulled to the map's edge when off it. */
+    private void marker(Batch batch, OrbitPathProvider.MapMarker m, float cx, float cy, float half, float scale, float alpha) {
+        float x = (float) m.x * scale, y = (float) m.y * scale;
+        float reach = half - EDGE;
+        float far = Math.max(Math.abs(x), Math.abs(y));
+        if (far > reach) {
+            if (!m.target) return;
+            x *= reach / far;
+            y *= reach / far;
+        }
+        Color c = m.target ? TARGET : STATION;
+        float size = m.target ? 9f : 5f;
+        batch.setColor(c.r, c.g, c.b, c.a * alpha);
+        float x0 = cx + x - size / 2f, y0 = cy + y - size / 2f;
+        batch.draw(white, x0, y0, size, 1.5f);
+        batch.draw(white, x0, y0 + size - 1.5f, size, 1.5f);
+        batch.draw(white, x0, y0, 1.5f, size);
+        batch.draw(white, x0 + size - 1.5f, y0, 1.5f, size);
+        if (!m.target || font == null || m.name.isEmpty()) return;
+        font.setColor(c.r, c.g, c.b, alpha);
+        float lx = x > 0 ? cx + x - size / 2f - 4f - LABEL_WIDTH : cx + x + size / 2f + 4f;
+        int align = x > 0 ? com.badlogic.gdx.utils.Align.right : com.badlogic.gdx.utils.Align.left;
+        font.draw(batch, m.name, lx, cy + y + (y > 0 ? -6f : 14f), LABEL_WIDTH, align, false);
     }
 
     private static float extent(FloatArray points) {

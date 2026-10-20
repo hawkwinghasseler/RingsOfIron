@@ -15,6 +15,8 @@ public class CombatDefs {
     public final ObjectMap<String, ProjectileDef> projectiles = new ObjectMap<>();
     public final ObjectMap<String, MissileDef> missiles = new ObjectMap<>();
     public final ObjectMap<String, WarheadDef> warheads = new ObjectMap<>();
+    /** Ways to arm each hull, for NPC ships and aces' refits. */
+    public final ObjectMap<String, LoadoutDef> loadouts = new ObjectMap<>();
     /**
      * Construction materials, for how they take damage: {@code fire_chance} and
      * {@code ablation_factor}. Mass, hit points and armor reach combat through interior-grid's
@@ -55,6 +57,10 @@ public class CombatDefs {
         warheads.put(def.id, def);
     }
 
+    public void add(LoadoutDef def) {
+        loadouts.put(def.id, def);
+    }
+
     public void add(MaterialDef def) {
         materials.put(def.id, def);
     }
@@ -77,7 +83,8 @@ public class CombatDefs {
     }
 
     /** Def type names in data files: {@code [weapon.id]}, {@code [projectile.id]}, ... */
-    public static final String WEAPON = "weapon", PROJECTILE = "projectile", MISSILE = "missile", WARHEAD = "warhead";
+    public static final String WEAPON = "weapon", PROJECTILE = "projectile", MISSILE = "missile", WARHEAD = "warhead",
+            LOADOUT = "loadout";
     /** modding-data's own type, read here for its damage properties. */
     public static final String MATERIAL = "material";
 
@@ -87,6 +94,7 @@ public class CombatDefs {
         registry.registerType(PROJECTILE, ProjectileDef.class);
         registry.registerType(MISSILE, MissileDef.class);
         registry.registerType(WARHEAD, WarheadDef.class);
+        registry.registerType(LOADOUT, LoadoutDef.class);
     }
 
     /** Builds the combat tables from loaded data (modding-data's registry, mods merged in). */
@@ -97,6 +105,7 @@ public class CombatDefs {
         for (ProjectileDef d : registry.all(PROJECTILE, ProjectileDef.class)) defs.add(d);
         for (MissileDef d : registry.all(MISSILE, MissileDef.class)) defs.add(d);
         for (WarheadDef d : registry.all(WARHEAD, WarheadDef.class)) defs.add(d);
+        for (LoadoutDef d : registry.all(LOADOUT, LoadoutDef.class)) defs.add(d);
         for (MaterialDef d : registry.all(MATERIAL, MaterialDef.class)) defs.add(d);
         return defs;
     }

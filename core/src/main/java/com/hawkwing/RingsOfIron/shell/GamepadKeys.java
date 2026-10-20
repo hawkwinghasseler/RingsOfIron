@@ -17,8 +17,17 @@ import com.badlogic.gdx.utils.IntSet;
  *   <li>A or right trigger: fire, and use a console (Space, E); B: missile (R); X: decoy or force a door (F)</li>
  *   <li>Y: deck / outside view (V); left trigger: next target (Tab)</li>
  *   <li>D-pad up/down: time warp up/down; left: arm port and ask clearance (G); right: undock (U)</li>
- *   <li>Start: pause menu (Esc); Back: traffic map (M)</li>
+ *   <li>Start: pause menu (Esc); Back tapped: traffic map (M)</li>
  * </ul>
+ *
+ * <p>Holding Back gives the buttons a second layer: A mission board (J), B boarding (K), X market
+ * (T), Y yard (Y); the d-pad steers the planned burn (Up/Down prograde/retrograde, Left/Right radial
+ * in/out), the bumpers move it earlier/later, the left trigger plans a burn (N), the right trigger
+ * selects the next (B) and the right stick click deletes it; the left stick click quick-saves (F5)
+ * and Start abandons ship (P, twice). Back tapped alone opens the map when it is let go.
+ *
+ * <p>With a menu or window open ({@link #setMenuMode}), the pad drives it instead: the d-pad and
+ * left stick move between buttons (arrow keys), A presses one (Enter), B or Start backs out (Esc).
  *
  * Sticks count past {@link #DEADZONE}. The first connected pad is used.
  */
@@ -28,7 +37,7 @@ public class GamepadKeys {
     /** One frame of a pad, in the standard mapping's terms. Sticks -1 to 1, y down. */
     public static final class Pad {
         public float leftX, leftY, rightX, rightY;
-        public boolean a, b, x, y, l1, r1, l2, r2, start, back, up, down, left, right, rightStick;
+        public boolean a, b, x, y, l1, r1, l2, r2, start, back, up, down, left, right, rightStick, leftStick;
     }
 
     private IntSet down = new IntSet();
@@ -36,6 +45,15 @@ public class GamepadKeys {
     private final Pad pad = new Pad();
     private boolean enabled = true;
     private boolean failed;
+    private boolean menuMode;
+    /** Back is held and some other button was pressed with it, so letting go does not open the map. */
+    private boolean backUsed;
+    private boolean backWasDown;
+
+    /** True while a menu or window has the pad: it navigates rather than flies. */
+    public void setMenuMode(boolean menuMode) {
+        this.menuMode = menuMode;
+    }
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
@@ -59,7 +77,24 @@ public class GamepadKeys {
         }
         if (c == null || !c.isConnected()) return;
         read(c, pad);
-        keysFor(pad, down);
+        keysNow(pad);
+    }
+
+    /** The keys for this frame's pad, with Back's tap-or-layer worked out. */
+    void keysNow(Pad p) {
+        if (menuMode) {
+            menuKeysFor(p, down);
+            backWasDown = p.back;
+            backUsed = false;
+            return;
+        }
+        keysFor(p, down);
+        if (p.back && (p.a || p.b || p.x || p.y || p.l1 || p.r1 || p.l2 || p.r2 || p.up || p.down || p.left
+                || p.right || p.rightStick || p.leftStick || p.start)) backUsed = true;
+        // Back let go after a tap alone: the map, for this one frame
+        if (!p.back && backWasDown && !backUsed) down.add(Input.Keys.M);
+        if (!p.back) backUsed = false;
+        backWasDown = p.back;
     }
 
     public boolean pressed(int key) {
@@ -115,6 +150,7 @@ public class GamepadKeys {
         p.left = button(c, m.buttonDpadLeft);
         p.right = button(c, m.buttonDpadRight);
         p.rightStick = button(c, m.buttonRightStick);
+        p.leftStick = button(c, m.buttonLeftStick);
     }
 
     private static float axis(Controller c, int axis) {
@@ -125,14 +161,35 @@ public class GamepadKeys {
         return button != ControllerMapping.UNDEFINED && c.getButton(button);
     }
 
-    /** The game's keys the pad holds down. */
+    /** The game's keys the pad holds down; Back's tap (the map) is {@link #keysNow}'s. */
     public static void keysFor(Pad p, IntSet out) {
         if (p.leftY < -DEADZONE) out.add(Input.Keys.W);
         if (p.leftY > DEADZONE) out.add(Input.Keys.S);
         if (p.leftX < -DEADZONE) out.add(Input.Keys.A);
         if (p.leftX > DEADZONE) out.add(Input.Keys.D);
-        if (p.rightX < -DEADZONE || p.l1) out.add(Input.Keys.Z);
-        if (p.rightX > DEADZONE || p.r1) out.add(Input.Keys.C);
+        if (p.rightX < -DEADZONE) out.add(Input.Keys.Z);
+        if (p.rightX > DEADZONE) out.add(Input.Keys.C);
+        if (p.back) {
+            // The second layer
+            if (p.a) out.add(Input.Keys.J);
+            if (p.b) out.add(Input.Keys.K);
+            if (p.x) out.add(Input.Keys.T);
+            if (p.y) out.add(Input.Keys.Y);
+            if (p.up) out.add(Input.Keys.UP);
+            if (p.down) out.add(Input.Keys.DOWN);
+            if (p.left) out.add(Input.Keys.LEFT);
+            if (p.right) out.add(Input.Keys.RIGHT);
+            if (p.l1) out.add(Input.Keys.LEFT_BRACKET);
+            if (p.r1) out.add(Input.Keys.RIGHT_BRACKET);
+            if (p.l2) out.add(Input.Keys.N);
+            if (p.r2) out.add(Input.Keys.B);
+            if (p.rightStick) out.add(Input.Keys.FORWARD_DEL);
+            if (p.leftStick) out.add(Input.Keys.F5);
+            if (p.start) out.add(Input.Keys.P);
+            return;
+        }
+        if (p.l1) out.add(Input.Keys.Z);
+        if (p.r1) out.add(Input.Keys.C);
         if (p.rightStick) out.add(Input.Keys.X);
         if (p.a || p.r2) out.add(Input.Keys.SPACE);
         if (p.a) out.add(Input.Keys.E);
@@ -145,6 +202,15 @@ public class GamepadKeys {
         if (p.left) out.add(Input.Keys.G);
         if (p.right) out.add(Input.Keys.U);
         if (p.start) out.add(Input.Keys.ESCAPE);
-        if (p.back) out.add(Input.Keys.M);
+    }
+
+    /** The keys the pad presses in a menu or window: arrows to move, Enter to press, Esc to back out. */
+    public static void menuKeysFor(Pad p, IntSet out) {
+        if (p.up || p.leftY < -DEADZONE) out.add(Input.Keys.UP);
+        if (p.down || p.leftY > DEADZONE) out.add(Input.Keys.DOWN);
+        if (p.left || p.leftX < -DEADZONE) out.add(Input.Keys.LEFT);
+        if (p.right || p.leftX > DEADZONE) out.add(Input.Keys.RIGHT);
+        if (p.a) out.add(Input.Keys.ENTER);
+        if (p.b || p.start || p.back) out.add(Input.Keys.ESCAPE);
     }
 }

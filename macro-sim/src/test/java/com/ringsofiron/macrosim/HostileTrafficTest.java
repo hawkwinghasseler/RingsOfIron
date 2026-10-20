@@ -191,6 +191,71 @@ class HostileTrafficTest {
     }
 
     @Test
+    void aPairDaresThePlayerWhereEitherAloneWouldNotAndBothGo() {
+        GameEngine engine = new GameEngine();
+        MacroSimulation sim = MacroSimDemo.build(engine);
+        listen(sim);
+        String farm = station(sim, "Greenhouse Ring");
+        sim.hostiles().playerFirepower = () -> 10;
+        String lead = ship(engine), wing = ship(engine);
+        sim.addPirate(lead, pirate("Lead", 5), farm);
+        HostileComponent w = pirate("Wing", 5);
+        w.wingOf = lead;
+        sim.addPirate(wing, w, farm);
+        assertEquals(HostileTrafficController.WING_SPACING, distance(sim, lead, wing), 100, "the wingman lurks behind its leader");
+
+        HostileComponent h = sim.hostiles().get(lead);
+        for (double t = sim.now(); t <= 2 * HostileTrafficController.LOOK_INTERVAL && h.state == State.HOLDING; t += 60) {
+            sim.advanceTo(t);
+        }
+        assertTrue(h.huntingPlayer(), "5 + 5 against the player's 10 is bold enough");
+        assertTrue(w.huntingPlayer(), "and the wingman comes along");
+        assertEquals(State.INTERCEPTING, w.state);
+        assertEquals(1, intercepts.stream().filter(HostileComponent.PLAYER::equals).count(), "one hunt, announced once");
+    }
+
+    @Test
+    void aWingmanNeverHuntsAloneUntilItsLeaderIsGone() {
+        GameEngine engine = new GameEngine();
+        MacroSimulation sim = MacroSimDemo.build(engine);
+        listen(sim);
+        String farm = station(sim, "Greenhouse Ring");
+        sim.hostiles().playerFirepower = () -> 1;
+        String lead = ship(engine), wing = ship(engine);
+        sim.addPirate(lead, pirate("Lead", 9), farm);
+        HostileComponent w = pirate("Wing", 9);
+        w.wingOf = lead;
+        sim.addPirate(wing, w, farm);
+        // The leader rests, so the wingman would go if it hunted alone
+        sim.hostiles().get(lead).restUntil = 10 * 86400;
+        sim.advanceTo(3 * HostileTrafficController.LOOK_INTERVAL);
+        assertFalse(w.huntingPlayer(), "it waits for its leader");
+
+        sim.hostiles().lose(lead);
+        engine.removeEntity(engine.getEntity(lead));
+        assertNull(w.wingOf, "on its own now");
+        for (double t = sim.now(); t <= sim.now() + 2 * HostileTrafficController.LOOK_INTERVAL && w.state == State.HOLDING; t += 60) {
+            sim.advanceTo(t);
+        }
+        assertTrue(w.huntingPlayer());
+    }
+
+    @Test
+    void anAceWithAGrudgeHuntsThePlayerWhateverTheOdds() {
+        GameEngine engine = new GameEngine();
+        MacroSimulation sim = MacroSimDemo.build(engine);
+        listen(sim);
+        sim.hostiles().playerFirepower = () -> 100;
+        String ace = ship(engine);
+        HostileComponent h = pirate("Red Vasko", 1);
+        h.ace = true;
+        h.grudge = true;
+        sim.addPirate(ace, h, station(sim, "Greenhouse Ring"));
+        for (double t = 0; t <= 2 * HostileTrafficController.LOOK_INTERVAL && h.state == State.HOLDING; t += 60) sim.advanceTo(t);
+        assertTrue(h.huntingPlayer(), "outgunned a hundred to one, and still coming");
+    }
+
+    @Test
     void piratesLeaveThePlayerAloneDuringTheGrace() {
         GameEngine engine = new GameEngine();
         MacroSimulation sim = MacroSimDemo.build(engine);

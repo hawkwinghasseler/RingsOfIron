@@ -5,6 +5,9 @@
 # max_thrust is the main engine of a ship with no engines in its layout. A ship with engines
 # gets its thrust from them instead (thrust in components.toml), so the values below for the
 # corvette and hauler only restate what their engines give.
+# exhaust_velocity: the warships' drives run at 700 km/s (round 3 integration), so a corvette's
+# tanks give about 7 km/s, enough for a transfer to the Moon and a capture there; at the 100 km/s
+# left out elsewhere they gave about 1 km/s and the Moon was out of reach.
 
 [ship.corvette_patrol]
 name = "Patrol Corvette"
@@ -13,6 +16,7 @@ texture = "tex_corvette"
 mass = 120000.0
 max_thrust = 2.4e6
 max_torque = 8.0e5
+exhaust_velocity = 700000.0
 # The aft 2 m are the engines, then 4 m of cargo hold. Collides on the collision
 # layer of its hull art (art/hulls/corvette.svg), which adds the bow past the end
 # of the layout
@@ -38,6 +42,7 @@ texture = "tex_corvette"
 mass = 120000.0
 max_thrust = 2.4e6
 max_torque = 8.0e5
+exhaust_velocity = 700000.0
 crew = 4
 hardpoints = [
   { weapon = "chaingun_mk1", x = 3.5, y = -0.5, rotation = 0.0 },
@@ -64,6 +69,7 @@ texture = "tex_raider"
 mass = 60000.0
 max_thrust = 2.8e6
 max_torque = 6.0e5
+exhaust_velocity = 700000.0
 crew = 3
 # One chaingun in the nose turret, no missiles
 hardpoints = [
@@ -77,6 +83,7 @@ texture = "tex_gunship"
 mass = 240000.0
 max_thrust = 3.4e6
 max_torque = 2.0e6
+exhaust_velocity = 700000.0
 crew = 5
 # A railgun in the nose, a missile launcher on each beam aft, point defense on each beam forward
 hardpoints = [
@@ -85,4 +92,25 @@ hardpoints = [
   { weapon = "harpoon_launcher", x = 1.5, y = -2.5, rotation = -90.0 },
   { weapon = "autocannon_mk1", x = 5.5, y = 2.5, rotation = 90.0 },
   { weapon = "autocannon_mk1", x = 5.5, y = -2.5, rotation = -90.0 },
+]
+
+# The Commander's and Captain's ship, sold at the sponsor's yards (round 3): two main turrets on
+# the bow, a missile launcher on each beam aft, point defense on each beam forward, and a marine
+# bay under its active dorsal port for boarding. Heavier and slower than the gunship.
+[ship.frigate_patrol]
+name = "Frigate"
+chassis = "frigate"
+texture = "tex_frigate"
+mass = 380000.0
+max_thrust = 3.4e6
+max_torque = 3.2e6
+exhaust_velocity = 700000.0
+crew = 8
+hardpoints = [
+  { weapon = "railgun_mk1", x = 10.0, y = 3.0, rotation = 0.0 },
+  { weapon = "railgun_mk1", x = 10.0, y = -3.0, rotation = 0.0 },
+  { weapon = "harpoon_launcher", x = -3.5, y = 3.5, rotation = 90.0 },
+  { weapon = "harpoon_launcher", x = -3.5, y = -3.5, rotation = -90.0 },
+  { weapon = "autocannon_mk1", x = 6.5, y = 3.5, rotation = 90.0 },
+  { weapon = "autocannon_mk1", x = 6.5, y = -3.5, rotation = -90.0 },
 ]

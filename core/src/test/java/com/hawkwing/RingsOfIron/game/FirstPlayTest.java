@@ -75,7 +75,7 @@ class FirstPlayTest {
         run(60);
         assertSame(highport, world.docking.dockedTo(game.player), "starts docked");
         assertEquals(FirstPlay.Step.ACCEPT, play.step());
-        assertTrue(play.objective().startsWith("1/7"), play.objective());
+        assertTrue(play.objective().startsWith("1/9"), play.objective());
 
         // The board's first offer is the bounty on the raider outside
         Contract bounty = world.contracts.offers(game.highport).stream()
@@ -115,11 +115,26 @@ class FirstPlayTest {
 
         redock();
         assertSame(highport, world.docking.dockedTo(game.player));
-        // Undamaged, there is nothing to repair: the loop is done
+        // Undamaged, there is nothing to repair
         if (play.step() == FirstPlay.Step.REPAIR) {
             assertNotNull(world.yard.orderRepairs(game.player, highport));
             run(2);
         }
+        assertEquals(FirstPlay.Step.NOTICES, play.step());
+        assertTrue(play.objective().contains("notice log"), play.objective());
+        run(2);
+        assertEquals(FirstPlay.Step.NOTICES, play.step(), "waits for the log to be opened");
+        play.logOpened();
+        run(2);
+        assertEquals(FirstPlay.Step.PLAN, play.step());
+
+        // A transfer to the ice mine at the Moon, planned from Highport's dock
+        world.nav.target.select(game.lunarMine);
+        run(2);
+        assertEquals(FirstPlay.Step.PLAN, play.step(), "picking a target is not yet a plan");
+        String said = world.nav.transfer.plan();
+        assertNotNull(world.nav.transfer.proposal(), said);
+        run(2);
         assertEquals(FirstPlay.Step.DONE, play.step());
     }
 
@@ -131,7 +146,7 @@ class FirstPlayTest {
         run(2);
         assertEquals(FirstPlay.Step.FIGHT, play.step());
         redock();
-        assertTrue(play.step() == FirstPlay.Step.REPAIR || play.step() == FirstPlay.Step.DONE, play.step().name());
+        assertTrue(play.step() == FirstPlay.Step.REPAIR || play.step() == FirstPlay.Step.NOTICES, play.step().name());
     }
 
     @Test
@@ -155,6 +170,6 @@ class FirstPlayTest {
         assertFalse(world.yard.damage(game.player).isEmpty());
         world.yard.orderRepairs(game.player, highport);
         run(2);
-        assertEquals(FirstPlay.Step.DONE, play.step());
+        assertEquals(FirstPlay.Step.NOTICES, play.step());
     }
 }

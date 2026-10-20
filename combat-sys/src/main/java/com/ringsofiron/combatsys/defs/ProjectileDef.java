@@ -27,4 +27,14 @@ public class ProjectileDef {
     public float maxLifetime = 30f;
     /** Seconds after firing during which the round cannot hit its own ship. */
     public float armingTime = 0.05f;
+    /** {@link DamageType#ION}: what a hit stuns. TOML {@code stun = { radius_tiles, min_seconds, max_seconds }}. */
+    public StunDef stun = new StunDef();
+
+    /** How an ion hit stuns the systems near it. */
+    public static class StunDef {
+        /** Systems with a tile this close to where the bolt lands are stunned, tiles. */
+        public float radiusTiles = 2f;
+        /** Each stunned system is out for a time drawn between these, seconds. */
+        public float minSeconds = 10f, maxSeconds = 30f;
+    }
 }

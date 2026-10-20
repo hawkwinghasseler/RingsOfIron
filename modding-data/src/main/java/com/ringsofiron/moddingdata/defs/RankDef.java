@@ -8,7 +8,7 @@ package com.ringsofiron.moddingdata.defs;
  * order = 1                        # place on the ladder, lowest first
  * standing = 20.0                  # standing with the sponsor that earns it
  * budget = 5000.0                  # credits paid each in-game week while holding it
- * max_chassis = "corvette"         # largest chassis it may requisition
+ * max_chassis = "corvette"         # largest chassis it may fly, requisitioned or bought
  * </pre>
  */
 public class RankDef {

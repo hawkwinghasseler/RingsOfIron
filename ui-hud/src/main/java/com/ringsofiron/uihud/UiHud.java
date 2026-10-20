@@ -23,7 +23,9 @@ import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import com.ringsofiron.uihud.providers.ShipStatusProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider;
+import com.ringsofiron.uihud.providers.CrewProvider;
 import com.ringsofiron.uihud.providers.MissionProvider;
+import com.ringsofiron.uihud.providers.ShipyardProvider;
 import com.ringsofiron.uihud.providers.TradeProvider;
 import com.ringsofiron.uihud.providers.BoardingProvider;
 import com.ringsofiron.uihud.providers.YardProvider;
@@ -41,7 +43,9 @@ import com.ringsofiron.uihud.widgets.OrbitMap;
 import com.ringsofiron.uihud.widgets.RadarScope;
 import com.ringsofiron.uihud.widgets.ShipGauges;
 import com.ringsofiron.uihud.widgets.ThreatOverlay;
+import com.ringsofiron.uihud.widgets.CrewWindow;
 import com.ringsofiron.uihud.widgets.MissionWindow;
+import com.ringsofiron.uihud.widgets.ShipyardWindow;
 import com.ringsofiron.uihud.widgets.TradeWindow;
 import com.ringsofiron.uihud.widgets.BoardingWindow;
 import com.ringsofiron.uihud.widgets.YardWindow;
@@ -63,7 +67,9 @@ import com.ringsofiron.uihud.widgets.TrafficMap;
  *
  * Keys handled by the HUD: E use console, Esc close console, map or market, V toggle exterior/interior view,
  * M toggle the traffic map (mouse wheel zooms it while open), T open the station market while docked,
- * J the mission board (while docked, or holding a contract).
+ * J the mission board (while docked, or holding a contract), I the crew roster. The shipyard opens from
+ * the yard window's Ships for sale (while docked where ships are sold), or from Y with a prize in tow
+ * near a station.
  */
 public class UiHud implements Disposable {
     private final ViewportManager viewports;
@@ -84,7 +90,9 @@ public class UiHud implements Disposable {
     private final TradeWindow tradeWindow;
     private final YardWindow yardWindow;
     private final MissionWindow missionWindow;
+    private final ShipyardWindow shipyardWindow;
     private final BoardingWindow boardingWindow;
+    private final CrewWindow crewWindow;
     private final ThreatOverlay threatOverlay;
     private final ShipGauges gauges;
     private final RadarScope radar;
@@ -192,8 +200,15 @@ public class UiHud implements Disposable {
         tradeWindow = new TradeWindow(skin, dockHint);
         yardWindow = new YardWindow(skin);
         missionWindow = new MissionWindow(skin);
+        crewWindow = new CrewWindow(skin);
+        shipyardWindow = new ShipyardWindow(skin);
         tradeWindow.setHintSuffix(() -> (yardWindow.isAvailable() && !yardWindow.isOpen() ? "   [Y] Yard" : "")
-                + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : ""));
+                + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : "")
+                + (!yardWindow.isAvailable() && shipyardWindow.isAvailable() && !shipyardWindow.isOpen() ? "   [Y] Shipyard" : ""));
+        // Ships for sale is a yard service: the yard window's button opens the shipyard window
+        yardWindow.setShipyard(() -> {
+            if (shipyardWindow.setOpen(true)) yardWindow.setOpen(false);
+        }, () -> !shipyardWindow.getYard().stationName.isEmpty());
         boardingWindow = new BoardingWindow(skin);
 
         trafficMap = new TrafficMap(skin);
@@ -206,7 +221,9 @@ public class UiHud implements Disposable {
         stage.addActor(tradeWindow);
         stage.addActor(yardWindow);
         stage.addActor(missionWindow);
+        stage.addActor(shipyardWindow);
         stage.addActor(boardingWindow);
+        stage.addActor(crewWindow);
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
@@ -246,6 +263,13 @@ public class UiHud implements Disposable {
 
     /** Handles HUD keys. Public so games that route input themselves can forward keys. */
     public boolean handleKey(int keycode) {
+        // The open window has the arrow keys and Enter, for the keyboard and the pad
+        com.badlogic.gdx.scenes.scene2d.Group window = openWindow();
+        if (window != focusWindow) {
+            focusNav.clear();
+            focusWindow = window;
+        }
+        if (window != null && focusNav.key(window, keycode)) return true;
         switch (keycode) {
             case Input.Keys.E:
                 if (consoleWindow.isOpen()) return false;
@@ -267,8 +291,16 @@ public class UiHud implements Disposable {
                     missionWindow.setOpen(false);
                     return true;
                 }
+                if (shipyardWindow.isOpen()) {
+                    shipyardWindow.setOpen(false);
+                    return true;
+                }
                 if (boardingWindow.isOpen()) {
                     boardingWindow.setOpen(false);
+                    return true;
+                }
+                if (crewWindow.isOpen()) {
+                    crewWindow.setOpen(false);
                     return true;
                 }
                 if (!consoleWindow.isOpen()) return false;
@@ -279,9 +311,17 @@ public class UiHud implements Disposable {
                 tradeWindow.setOpen(!tradeWindow.isOpen());
                 return true;
             case Input.Keys.Y:
-                if (!yardWindow.isOpen() && !yardWindow.isAvailable()) return false;
-                yardWindow.setOpen(!yardWindow.isOpen());
-                return true;
+                // The station yard; the shipyard window is one of its services, and has the key to
+                // itself where there is no yard, as when handing over a prize off a station
+                if (shipyardWindow.isOpen()) {
+                    shipyardWindow.setOpen(false);
+                    return true;
+                }
+                if (yardWindow.isOpen() || yardWindow.isAvailable()) {
+                    yardWindow.setOpen(!yardWindow.isOpen());
+                    return true;
+                }
+                return shipyardWindow.isAvailable() && shipyardWindow.setOpen(true);
             case Input.Keys.J:
                 if (!missionWindow.isOpen() && !missionWindow.isAvailable()) return false;
                 missionWindow.setOpen(!missionWindow.isOpen());
@@ -289,6 +329,10 @@ public class UiHud implements Disposable {
             case Input.Keys.K:
                 if (!boardingWindow.isOpen() && !boardingWindow.isAvailable()) return false;
                 boardingWindow.setOpen(!boardingWindow.isOpen());
+                return true;
+            case Input.Keys.I:
+                if (!crewWindow.isOpen() && !crewWindow.isAvailable()) return false;
+                crewWindow.setOpen(!crewWindow.isOpen());
                 return true;
             case Input.Keys.M:
                 setTrafficMapVisible(!trafficMap.isVisible());
@@ -300,6 +344,19 @@ public class UiHud implements Disposable {
             default:
                 return false;
         }
+    }
+
+    private final FocusNav focusNav = new FocusNav();
+    private com.badlogic.gdx.scenes.scene2d.Group focusWindow;
+
+    /** The window that has the keys, or null: the console, market, yard, mission board or boarding window. */
+    public com.badlogic.gdx.scenes.scene2d.Group openWindow() {
+        if (consoleWindow.isOpen()) return consoleWindow;
+        if (tradeWindow.isOpen()) return tradeWindow;
+        if (yardWindow.isOpen()) return yardWindow;
+        if (missionWindow.isOpen()) return missionWindow;
+        if (boardingWindow.isOpen()) return boardingWindow;
+        return null;
     }
 
     private void openConsole(Entity console, InteractableConsoleComponent data) {
@@ -429,6 +486,24 @@ public class UiHud implements Disposable {
 
     public MissionWindow getMissionWindow() {
         return missionWindow;
+    }
+
+    /** Feeds the crew roster ([I] whenever the player has a ship); null hides it. */
+    public void setCrew(CrewProvider crew) {
+        crewWindow.setProvider(crew);
+    }
+
+    public CrewWindow getCrewWindow() {
+        return crewWindow;
+    }
+
+    /** Feeds the shipyard window (the yard window's Ships for sale, or [Y] with a prize to hand over and no yard); null hides it. */
+    public void setShipyard(ShipyardProvider shipyard) {
+        shipyardWindow.setProvider(shipyard);
+    }
+
+    public ShipyardWindow getShipyardWindow() {
+        return shipyardWindow;
     }
 
     /** Off-bubble traffic for the map view (M). Without one the map says there is no data. */

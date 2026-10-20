@@ -255,6 +255,24 @@ class BoardingSalvageTest {
     }
 
     @Test
+    void askingWhetherAWreckCanBeStrippedTakesNothing() {
+        ownedBySelene();
+        beatAndLatch();
+        for (Entity e : raiderCrew) world.crew.crew(e).state = CrewState.DEAD;
+        float standing = world.standing.standing(owner);
+
+        assertNull(world.salvage.refusal(game.player, game.raider), "no one defends it: it may be stripped");
+        assertNull(Boarding.of(game.raider), "but checking is not boarding");
+        assertFalse(world.boarding.takenBy(game.raider, game.player));
+        assertEquals(standing, world.standing.standing(owner), 1e-6, "and costs no standing");
+
+        // Ordering the work takes it, and only then is the boarding charged
+        assertTrue(world.salvage.takeCargo(game.player, "ore").startsWith("No ore aboard"));
+        assertTrue(world.boarding.takenBy(game.raider, game.player));
+        assertEquals(standing - Boarding.STANDING_COST, world.standing.standing(owner), 1e-6);
+    }
+
+    @Test
     void cargoAboardATakenShipIsCarriedOver() {
         beatAndLatch();
         CargoHoldComponent theirs = game.raider.getComponent(CargoHoldComponent.class);

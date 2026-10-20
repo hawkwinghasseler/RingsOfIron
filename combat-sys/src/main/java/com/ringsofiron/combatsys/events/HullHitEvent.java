@@ -35,5 +35,9 @@ public class HullHitEvent {
     public boolean ram;
     /** A beam burning, not a round striking: no clang, the laser is heard at the gun. */
     public boolean beam;
+    /** An ion bolt: it broke nothing, but may have stunned systems near the entry tile. */
+    public boolean ion;
+    /** Joules the ship's shields took off the hit before the hull felt it, 0 with none up. */
+    public float shielded;
     public long tick;
 }

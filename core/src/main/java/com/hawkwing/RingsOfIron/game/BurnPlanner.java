@@ -116,6 +116,24 @@ public class BurnPlanner {
         changed();
     }
 
+    /**
+     * Replaces every planned burn with {@code planned} (time, prograde, radial each), as when the
+     * player accepts a transfer; selects the first.
+     */
+    public void replace(java.util.List<double[]> planned) {
+        Entity ship = player.get();
+        if (ship == null) return;
+        ManeuverNodeComponent m = ship.getComponent(ManeuverNodeComponent.class);
+        if (m == null) {
+            m = new ManeuverNodeComponent();
+            ship.add(m);
+        }
+        m.nodes.clear();
+        for (double[] b : planned) insertSorted(m, new ManeuverNodeComponent.Node(b[0], b[1], b[2]));
+        selected = m.nodes.size == 0 ? null : m.nodes.first();
+        changed();
+    }
+
     /** One step of {@link #shiftTime}: a fraction of the orbit, or a minute on an open orbit. */
     public double timeStep() {
         KeplerOrbit k = orbits.currentConic();

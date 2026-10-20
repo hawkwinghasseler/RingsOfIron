@@ -58,14 +58,17 @@ public class NpcCombatSystem extends FixedIteratingSystem {
         state.maxAngularAccel = inertia <= 0f ? 0f : thrusters.maxTorque / inertia;
 
         Vector2 tp = null;
+        float targetAngle = Float.NaN;
         PhysicsBodyComponent tb = combat.target == null ? null : bodyM.get(combat.target);
         if (tb != null && tb.body != null) {
             PhysicsManager.getPosition(tb.body, targetPos);
             PhysicsManager.getVelocity(tb.body, targetVel);
+            targetAngle = tb.body.getAngle();
             tp = targetPos;
         }
         boolean threatened = threats.nearestInbound(ship, missilePos, missileVel);
-        controller.update(combat, state, tp, targetVel, threatened ? missilePos : null, missileVel, dt, controls);
+        controller.update(combat, state, tp, targetVel, targetAngle, threatened ? missilePos : null, missileVel, dt,
+                controls);
 
         FlightControlComponent fc = controlM.get(ship);
         fc.forward = controls.forward;

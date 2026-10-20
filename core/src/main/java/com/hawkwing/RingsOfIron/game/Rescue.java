@@ -61,10 +61,7 @@ public class Rescue {
         double price(String shipId);
     }
 
-    /**
-     * Until ranks exist (category 1 of the round-2 plan): always the starter corvette, free, so
-     * the player is never stuck.
-     */
+    /** Always the starter corvette, free, so the player is never stuck; the rank ladder's requisition replaces it. */
     public static final Requisition STARTER = new Requisition() {
         @Override
         public String ship(Entity station, double credits) {
@@ -105,6 +102,23 @@ public class Rescue {
         }
     }
 
+    /** A tow that came in: the ship itself brought to a station, with its crew and cargo. */
+    public static final class Tow {
+        public final Entity ship;
+        public final Entity station;
+        public final String stationName;
+        public final double skipped;
+
+        Tow(Entity ship, Entity station, String stationName, double skipped) {
+            this.ship = ship;
+            this.station = station;
+            this.stationName = stationName;
+            this.skipped = skipped;
+        }
+    }
+
+    /** Every tow, once the ship is at the station. See {@link DistressBeacon}. */
+    public final Signal<Tow> tows = new Signal<>();
     /** Every rescue, as soon as the player is aboard their new ship. */
     public final Signal<Result> rescues = new Signal<>();
     /** The ship the player is given. */
@@ -211,6 +225,56 @@ public class Rescue {
                 survivors, lost, skipped, price));
     }
 
+    /**
+     * Tows {@code ship} to the sponsor's nearest station: {@link #TIME_SKIP} passes on the rails
+     * and it is brought in and docked there as it is, crew, cargo, damage and all. Null when it
+     * went, else why not.
+     */
+    public String tow(Entity ship) {
+        double t = world.engine.getSimSeconds();
+        Entity station = nearestStation(ship, t);
+        if (station == null) return "no station of yours to tow you to";
+        if (world.timeWarp.isRailsWarp()) world.timeWarp.setWarp(1);
+        // Whatever it was latched to is let go, and anyone heading for the pods stands down
+        if (world.docking.dockedTo(ship) != null) world.docking.undock(ship);
+        if (AbandonShip.abandoning(ship)) world.abandon.callOff(ship);
+        FlightControlComponent controls = ship.getComponent(FlightControlComponent.class);
+        if (controls != null) controls.forward = controls.turn = controls.strafe = 0f;
+        double skipped = skipTo(ship, station);
+        dockingAt = station;
+        docking = ship;
+        dockFrames = DOCK_FRAMES;
+        StationComponent sc = station.getComponent(StationComponent.class);
+        tows.dispatch(new Tow(ship, station, sc == null ? "the nearest station" : sc.name, skipped));
+        return null;
+    }
+
+    /**
+     * The player's avatar was killed: if any of the ship's own crew are alive to bring the player
+     * home, they call the tug, and the player wakes at the station, hurt, aboard the ship; null
+     * then. Otherwise nothing happens and this says why: the career is over.
+     */
+    public String carryHome(Entity ship) {
+        Entity avatar = avatar();
+        if (avatar == null || ship == null) return "you are gone";
+        if (crewAboard(ship) == 0) return "nobody was left to bring you home";
+        CrewMemberComponent c = avatar.getComponent(CrewMemberComponent.class);
+        c.state = com.ringsofiron.aicrew.CrewState.CONSCIOUS;
+        c.health = c.def.maxHealth * 0.5f;
+        c.activity = "idle";
+        c.treatedBy = null;
+        if (c.carriedBy != null) world.crew.releaseTask(c.carriedBy);
+        GridPositionComponent p = avatar.getComponent(GridPositionComponent.class);
+        if (p.ship != ship) {
+            List<int[]> floor = GameScenario.floorTiles(ship.getComponent(ShipGridComponent.class));
+            p.stop();
+            p.crossing = null;
+            p.setShip(ship);
+            if (!floor.isEmpty()) p.setTile(floor.get(0)[0], floor.get(0)[1]);
+        }
+        return tow(ship);
+    }
+
     /** Puts the avatar and the survivors aboard {@code ship}, on its open deck tiles. */
     private void crewShip(Entity ship, Entity avatar, List<AbandonShip.Survivor> survivors) {
         CrewService crew = world.crew;
@@ -229,7 +293,13 @@ public class Rescue {
         for (int i = 0; i < survivors.size() && i + 1 < floor.size(); i++) {
             int[] tile = floor.get((i + 1) * floor.size() / (survivors.size() + 1));
             AbandonShip.Survivor s = survivors.get(i);
-            CrewFactory.spawn(crew, ship, s.name, s.role, 0, tile[0], tile[1]);
+            Entity e = CrewFactory.spawn(crew, ship, s.name, s.role, 0, tile[0], tile[1]);
+            if (s.record != null) {
+                // A veteran stays a veteran
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                c.record = s.record;
+                s.record.applyTo(c);
+            }
         }
     }
 
@@ -250,6 +320,10 @@ public class Rescue {
                 state.x - state.vx * back, state.y - state.vy * back, state.vx, state.vy, so.mu, t));
         orbit.attitude = Math.atan2(state.vy, state.vx);
         ship.add(orbit);
+        // Whatever the rails predicted for the orbit it had (an impact, say) no longer holds
+        if (ship.getComponent(com.ringsofiron.coreengine.components.UuidComponent.class) != null) {
+            world.orbitalEvents.orbitChanged(ship);
+        }
         double skipped = 0;
         if (world.engine.advanceRails(SimClock.secondsToTicks(TIME_SKIP))) {
             skipped = TIME_SKIP;
@@ -258,6 +332,11 @@ public class Rescue {
         bubble.rebuildFromRails();
         world.macroSim.setBubbleSuspended(false);
         return skipped;
+    }
+
+    /** True while a towed or rescued ship is still being brought in to dock (not saved, so no save is made then). */
+    public boolean bringingIn() {
+        return docking != null;
     }
 
     /** Docks the new ship at the station once both are in the bubble; gives up after {@link #DOCK_FRAMES}. */
@@ -328,7 +407,7 @@ public class Rescue {
         for (Entity e : world.crew.crewEntities()) {
             GridPositionComponent p = e.getComponent(GridPositionComponent.class);
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-            if (p.ship == ship && c.isAlive() && e.getComponent(PlayerAvatarComponent.class) == null
+            if (p.ship == ship && c.isAlive() && !c.held && e.getComponent(PlayerAvatarComponent.class) == null
                     && (c.home == null || c.home == ship)) n++;
         }
         return n;

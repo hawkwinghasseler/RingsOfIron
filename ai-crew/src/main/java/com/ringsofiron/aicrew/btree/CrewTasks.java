@@ -108,6 +108,8 @@ public final class CrewTasks {
                     a.crew.fireCooldown = a.crew.def.fireInterval;
                     if (a.service.random.nextFloat() < a.crew.def.hitChance) {
                         a.service.applyDamage(a.target, a.crew.def.weaponDamage, CrewDamageSink.DamageCause.SMALL_ARMS);
+                        a.crew.record().pendingHits++;
+                        if (!t.isConscious()) a.crew.record().pendingDowns++;
                     }
                 }
                 return Status.RUNNING;
@@ -245,6 +247,9 @@ public final class CrewTasks {
             }
             elapsed += a.dt;
             a.crew.activity = describe(t);
+            if (t.kind == CrewTask.Kind.REPAIR || t.kind == CrewTask.Kind.EXTINGUISH || t.kind == CrewTask.Kind.SEAL_BREACH) {
+                a.crew.record().pendingWork += a.dt; // engineering experience
+            }
             Tile tile = grid.getTile(t.x, t.y);
             switch (t.kind) {
                 case EXTINGUISH:
@@ -488,6 +493,7 @@ public final class CrewTasks {
             }
             if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
             a.crew.activity = t.job.what();
+            a.crew.record().pendingWork += a.dt;
             return t.job.work(a.crew.def.repairRate * a.dt) ? Status.SUCCEEDED : Status.RUNNING;
         }
     }
@@ -515,6 +521,7 @@ public final class CrewTasks {
             }
             if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
             a.crew.activity = t.job.what();
+            a.crew.record().pendingWork += a.dt;
             return t.job.work(a.entity, a.dt) ? Status.SUCCEEDED : Status.RUNNING;
         }
     }

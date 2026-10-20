@@ -17,6 +17,7 @@ import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.combatsys.damage.IonStun;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
@@ -292,10 +293,13 @@ public class ShipDisablement extends EntitySystem {
         return out;
     }
 
-    /** True if the ship has guns (point defense aside) and none of them can fire. */
+    /**
+     * True if the ship has guns (point defense aside) and none of them can fire. Guns an ion hit
+     * has knocked out (or whose power it has) don't count: the crew wait for them to come back.
+     */
     static boolean gunsSilenced(Entity ship) {
         WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);
-        if (weapons == null) return false;
+        if (weapons == null || IonStun.anyStunned(ship)) return false;
         boolean any = false;
         for (WeaponMountComponent m : weapons.mounts) {
             if (m.def == null || m.def.pointDefense) continue;

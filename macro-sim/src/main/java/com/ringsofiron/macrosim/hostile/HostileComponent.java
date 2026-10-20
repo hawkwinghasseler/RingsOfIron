@@ -66,6 +66,23 @@ public class HostileComponent implements Component {
     public double restUntil;
     /** True while it is breaking off a fight in the bubble, until it is back on the rails. */
     public boolean brokeOff;
+    /** The {@code [loadout.*]} it is armed with; null for its ship's stock weapons. */
+    public String loadout;
+    /**
+     * A pirate flying as another's wingman: its leader's UUID. It lurks beside the leader, goes
+     * where the leader hunts and fights beside it. Null for a leader or a pirate on its own.
+     */
+    public String wingOf;
+    /** A named ace (it got away from the player, or robbed freighters): better crew and a refit. */
+    public boolean ace;
+    /** An ace that remembers the player: it goes after them whatever the odds. */
+    public boolean grudge;
+    /** Fights with the player it got away from. */
+    public int escapes;
+    /** An ace's rare part has been left aboard it for whoever beat it. */
+    public boolean partDropped;
+    /** It has fought the player in the bubble since it last came in: leaving the bubble whole, it got away. */
+    public boolean foughtPlayer;
     public transient long eventId;
 
     public HostileComponent() {

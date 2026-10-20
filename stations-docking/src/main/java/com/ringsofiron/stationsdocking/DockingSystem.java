@@ -100,6 +100,12 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
      */
     public java.util.function.Predicate<GridLink> crossing = link -> false;
 
+    /**
+     * Pairs whose weld never tears, however hard it is pulled: a prize rigged for towing, so the
+     * pair flies as one body. The game decides which; by default none.
+     */
+    public java.util.function.BiPredicate<Entity, Entity> towLocked = (a, b) -> false;
+
     public ClearancePolicy clearance = (station, vessel) ->
             station.getComponent(StationComponent.class).grantsClearance ? null : "";
 
@@ -185,6 +191,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         public float angle;
         /** Closing speed along the target port's normal, m/s; negative when drawing apart. */
         public float closing;
+        /** The target port's face in the world, meters, and its outward normal there. */
+        public float faceX, faceY, normalX, normalY;
     }
 
     public DockingSystem(PhysicsManager physics, UuidRegistry uuids) {
@@ -960,7 +968,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         float k = Math.min(1f, dt / DockingTuning.STRAIN_FILTER);
         link.strainForce += (force - link.strainForce) * k;
         link.strainTorque += (torque - link.strainTorque) * k;
-        if (link.strainForce > t.breakForce || link.strainTorque > t.breakTorque) {
+        if ((link.strainForce > t.breakForce || link.strainTorque > t.breakTorque) && !towLocked.test(link.a, link.b)) {
             tear(link);
             return;
         }
@@ -1280,6 +1288,10 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         Vector2 va = velocityAt(body, face, new Vector2());
         Vector2 vb = velocityAt(ob, qFace, new Vector2());
         out.closing = -va.sub(vb).dot(n);
+        out.faceX = qFace.x;
+        out.faceY = qFace.y;
+        out.normalX = n.x;
+        out.normalY = n.y;
         return out;
     }
 

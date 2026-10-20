@@ -13,6 +13,7 @@ tex_corvette = "libgdx.png"       # placeholder until ship art exists
 tex_freighter = "libgdx.png"      # placeholder
 tex_raider = "libgdx.png"         # placeholder
 tex_gunship = "libgdx.png"        # placeholder
+tex_frigate = "libgdx.png"        # placeholder
 
 # Audio middleware event paths (audio-spatial); looked up with assets.getString(key).
 [audio_event]
@@ -23,3 +24,8 @@ evt_autocannon_fire = "event:/weapons/autocannon"
 evt_missile_launch = "event:/weapons/missile_launch"
 evt_missile_flight = "event:/weapons/missile_flight"
 evt_explosion = "event:/impacts/explosion"
+evt_flak_fire = "event:/weapons/flak"
+evt_railgun_heavy_fire = "event:/weapons/railgun_heavy"
+evt_ion_fire = "event:/weapons/ion"
+evt_ion_hit = "event:/impacts/ion"
+evt_shield_hit = "event:/impacts/shield"

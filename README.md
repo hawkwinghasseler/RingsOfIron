@@ -40,9 +40,18 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | J | Mission board: the station's contracts while docked, and the ones you hold |
 | K | Boarding: board the ship you are latched to, strip its parts and take its cargo |
 | P | Abandon ship (P again within 3 s to confirm; P while abandoning launches the pods at once) |
+| I | Crew roster: your crew, the station's hires and any prisoners |
+| L | Notice log: the last 50 notices |
+| O | Deck lights |
+| B (twice) | Call a tow from your sponsor when disabled or low on propellant (at the helm) |
+| F1 | Every control for where you are |
 | G / H / U | Arm docking, pick the next port, undock |
 | , / . | Time warp down and up |
 | N, B, arrows, [ / ] | Plan a burn: add a node, select the next, change its Δv, move it in time |
+| Q | Cycle the navigation target (or click a contact on the traffic map) |
+| ; (semicolon), Enter / Backspace | Plan a transfer to the target; accept or discard the plan |
+| / | Warp to the next burn, stopping a minute before it |
+| 1 / 2 / 3 / 4 / 0 | Helm orders while you are away from the helm: fly the planned burns, match the target's velocity, hold position, approach the target (again to change the distance), cancel |
 | F5 / F9 | Quick save and quick load |
 | Esc | Pause menu: resume, save to a named slot, load, settings, quit to the main menu |
 

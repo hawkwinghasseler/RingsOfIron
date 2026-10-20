@@ -14,13 +14,15 @@ import com.ringsofiron.uihud.providers.YardProvider.Offer;
 import com.ringsofiron.uihud.providers.YardProvider.YardBoard;
 
 import java.util.Locale;
+import java.util.function.BooleanSupplier;
 
 /**
  * A station's yard while the ship is docked there: what is damaged and what putting it right costs,
  * with a button to order the repairs, then one row per weapon hardpoint with the weapon on it, a
  * weapon to fit instead (click to pick the next), and buttons to order it new or used, or fitted
  * from a salvaged one in the ship's hold. Rebuild
- * decks opens the ship editor for the yard to rebuild the ship to a new layout. Refreshes
+ * decks opens the ship editor for the yard to rebuild the ship to a new layout, and Ships for sale
+ * opens the shipyard window where the station sells ships. Refreshes
  * from the {@link YardProvider} a few times a second; closes itself when the ship leaves the yard.
  */
 public class YardWindow extends Window {
@@ -34,6 +36,9 @@ public class YardWindow extends Window {
     private final Label status;
     private final Label tanks;
     private final TextButton refill;
+    private final TextButton ships;
+    private Runnable openShipyard;
+    private BooleanSupplier sellsShips = () -> false;
     private final Table rows = new Table();
     private final Array<Row> rowWidgets = new Array<>();
     private YardProvider provider;
@@ -121,6 +126,10 @@ public class YardWindow extends Window {
             if (said == null) setOpen(false);
             else say(said);
         })).padRight(10f);
+        ships = button("Ships for sale...", () -> {
+            if (openShipyard != null) openShipyard.run();
+        });
+        bottom.add(ships).padRight(10f);
         bottom.add(button("Close [Y]", () -> setOpen(false)));
         add(bottom).right().padTop(10f);
         setVisible(false);
@@ -129,6 +138,12 @@ public class YardWindow extends Window {
     public void setProvider(YardProvider provider) {
         this.provider = provider;
         refresh();
+    }
+
+    /** The Ships for sale button: {@code open} runs on a click, enabled while {@code available} is true. */
+    public void setShipyard(Runnable open, BooleanSupplier available) {
+        this.openShipyard = open;
+        this.sellsShips = available;
     }
 
     public boolean isOpen() {
@@ -181,6 +196,7 @@ public class YardWindow extends Window {
         tanks.setText(board.tanks.isEmpty() ? "No tanks aboard" : board.tanks);
         refill.setText(board.refillCost < 0.5 ? "Tanks full" : "Refill tanks " + formatCredits(board.refillCost));
         refill.setDisabled(board.refillCost < 0.5 || board.credits < 1);
+        ships.setDisabled(!sellsShips.getAsBoolean());
         if (rowWidgets.size != board.hardpoints.size) rebuildRows();
         for (int i = 0; i < rowWidgets.size; i++) rowWidgets.get(i).update(board.hardpoints.get(i));
     }

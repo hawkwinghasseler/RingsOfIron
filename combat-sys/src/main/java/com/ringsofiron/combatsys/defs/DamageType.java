@@ -6,13 +6,19 @@ import com.google.gson.annotations.SerializedName;
 public enum DamageType {
     @SerializedName(value = "kinetic", alternate = "KINETIC") KINETIC,
     @SerializedName(value = "explosive", alternate = "EXPLOSIVE") EXPLOSIVE,
-    @SerializedName(value = "energy", alternate = "ENERGY") ENERGY;
+    @SerializedName(value = "energy", alternate = "ENERGY") ENERGY,
+    /**
+     * An ion bolt: no structural damage at all. It stuns the ship's systems near where it lands
+     * for a while ({@link ProjectileDef#stun}), so a ship can be stopped without being wrecked.
+     */
+    @SerializedName(value = "ion", alternate = "ION") ION;
 
     /** Chance per joule-of-resistance that damage of this type lights a flammable tile. */
     public float fireChance() {
         switch (this) {
             case ENERGY:    return 0.6f;
             case EXPLOSIVE: return 0.35f;
+            case ION:       return 0f;
             default:        return 0.08f;
         }
     }
