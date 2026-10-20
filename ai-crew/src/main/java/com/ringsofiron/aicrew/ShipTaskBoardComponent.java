@@ -3,6 +3,7 @@ package com.ringsofiron.aicrew;
 import com.badlogic.ashley.core.Component;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
 
 /**
@@ -36,6 +37,13 @@ public class ShipTaskBoardComponent implements Component {
     public boolean suitsAtBattleStations = true;
     /** True while the ship is in a fight: set each tick by the game, so not saved. */
     public transient boolean battleStations;
+    /**
+     * True while the ship is flying and the player isn't at its helm: set each tick by the game, so
+     * not saved. Then a crew member who mans the helm takes it ahead of sitting with a patient
+     * ({@link #wantedHelm}). Round 7: with two crew knocked out, the one crewman treated them for
+     * days, and the player standing up from the helm found nobody to hand it to.
+     */
+    public transient boolean helmWanted;
 
     /** True while the crew should keep their suits on for battle stations. */
     public boolean battleSuits() {
@@ -61,7 +69,22 @@ public class ShipTaskBoardComponent implements Component {
      */
     public CrewTask best(CrewRole role, int x, int y, TaskFilter filter) {
         CrewTask t = best(role, x, y, filter, false);
+        if (t == null || t.kind == CrewTask.Kind.TREAT) {
+            CrewTask helm = wantedHelm(role, filter);
+            if (helm != null) return helm;
+        }
         return t != null ? t : best(role, x, y, filter, true);
+    }
+
+    /** The helm, open, while {@link #helmWanted} and {@code role} mans it; else null. */
+    public CrewTask wantedHelm(CrewRole role, TaskFilter filter) {
+        if (!helmWanted) return null;
+        for (CrewTask t : tasks) {
+            if (t.status != CrewTask.Status.OPEN || !(t instanceof ManConsoleTask)) continue;
+            if (((ManConsoleTask) t).type() != SubsystemComponent.SubsystemType.HELM || role.affinity(t) <= 0f) continue;
+            if (filter == null || filter.accept(t)) return t;
+        }
+        return null;
     }
 
     private CrewTask best(CrewRole role, int x, int y, TaskFilter filter, boolean consoles) {

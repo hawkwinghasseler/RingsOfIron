@@ -13,6 +13,8 @@ import com.ringsofiron.interiorgrid.Tile;
  * Floors are a translucent blueprint blue that goes dark as the compartment loses pressure,
  * hazed grey by smoke and overlaid orange by fire. Walls are bright cyan lines that shift to
  * red as their integrity drops, or orange once patched in the field. Breaches blink red.
+ * {@link #deck} is the plain shade for a deck drawn without art, where the hazard
+ * particles show smoke and fire instead.
  */
 public final class TileShade {
     public static final Color FLOOR = new Color(0.12f, 0.42f, 0.62f, 0.55f);
@@ -57,6 +59,16 @@ public final class TileShade {
             out.a = Math.max(out.a, 0.9f);
         }
         return out;
+    }
+
+    /**
+     * Shade of a tile on a deck drawn without art: floors plain blue, walls by integrity, a
+     * breach left open to space. No smoke, pressure, fire or blink; the hazard particles show those.
+     */
+    public static Color deck(Tile tile, Color out) {
+        if (tile == null || tile.isVoid() || tile.isHullBreach()) return out.set(0f, 0f, 0f, 0f);
+        if (tile.isWall() && !tile.isOpen()) return tile.isPatched() ? out.set(PATCHED) : wall(tile.getIntegrity(), out);
+        return out.set(FLOOR);
     }
 
     /** Wall color by integrity (1 = intact cyan, 0 = red). */

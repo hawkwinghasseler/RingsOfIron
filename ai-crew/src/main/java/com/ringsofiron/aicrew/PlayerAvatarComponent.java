@@ -14,4 +14,9 @@ import com.badlogic.ashley.core.Component;
 public class PlayerAvatarComponent implements Component {
     /** Desired movement in [-1, 1] along grid x and y. Input of the moment, so not saved. */
     public transient float moveX, moveY;
+    /**
+     * Sat at a console (the game's bridge sets it each tick): while it isn't walking off, it has no
+     * body, so crew walking past go by it rather than shove it off its seat. Not saved: the seat is.
+     */
+    public transient boolean seated;
 }

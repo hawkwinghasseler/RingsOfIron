@@ -158,6 +158,8 @@ public class GameWorld implements Disposable {
     public final AudioListenerSync audioListener;
     /** Pirates and faction patrols: their ships, and how they fly and fight in the bubble. */
     public final HostileTraffic hostiles;
+    /** Pirates boarding the player once they have beaten them (round 7). */
+    public final PirateBoarding pirateBoarding;
     /** The pirates' hidden base, once the scenario has one: found or not, standing or fallen. */
     public final PirateBase pirateBase;
     /** Strain between the factions, and the weekly drifts of tension and of grudges against the player. */
@@ -393,6 +395,7 @@ public class GameWorld implements Disposable {
         });
         // Crews fight by their factions' wars and the player's standing; the career saves with the game
         standing = new FactionStanding(this::getPlayer);
+        standing.clock = engine::getSimSeconds;
         engine.getSerializationService().addParticipant(standing);
         budget = new ServiceBudget(standing, this::getPlayer, engine::getSimSeconds);
         engine.addSystem(budget);
@@ -446,6 +449,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(sensors);
         // Shots and beams draw on the ship's power circuits.
         weaponControl.setPower(new ShipWeaponPower());
+        // Round 7: other ships' gunners hold fire with a ship in the way (a pirate emptied its
+        // magazine into a surrendered wingmate); the player's guns fire as the player sets them
+        weaponControl.setHoldFire((shooter, blocker) -> shooter != getPlayer());
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
@@ -454,6 +460,8 @@ public class GameWorld implements Disposable {
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
         impacts.setEntityIds(engine.getEntityIds());
         engine.addSystem(impacts);
+        // Hits beside a docking port wear its collar
+        CollarWear.install(combatEvents);
         beams = new BeamSystem(physics, impacts);
         engine.addSystem(beams);
         // Ships out of power, crew or hull, or beaten, stop fighting
@@ -494,6 +502,8 @@ public class GameWorld implements Disposable {
         PhysicsSaveParticipant.install(physics, engine);
         // Pirates and faction patrols, on the rails and in the bubble
         hostiles = HostileTraffic.install(this);
+        pirateBoarding = new PirateBoarding(this);
+        engine.getSerializationService().addParticipant(pirateBoarding);
         pirateBase = new PirateBase(this);
         engine.addSystem(pirateBase);
         engine.getSerializationService().addParticipant(pirateBase);
@@ -619,6 +629,7 @@ public class GameWorld implements Disposable {
         wrecks.clear();
         rescue.update();
         hostiles.afterUpdate();
+        pirateBoarding.update();
         pirateBase.afterUpdate();
         derelicts.update();
         events.update();

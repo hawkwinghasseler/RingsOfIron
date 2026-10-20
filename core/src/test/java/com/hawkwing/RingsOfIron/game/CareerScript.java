@@ -60,6 +60,9 @@ abstract class CareerScript {
     int fightsLost;
     /** Range, m, past which a hostile breaking off has got away: since round 5 a wounded crew can still run. */
     static final double GOT_AWAY = 40_000;
+    /** A fight looks at the range this often, seconds, and chases a pirate farther off than {@link #CHASE_RANGE}. */
+    static final double CHASE_EVERY = 20;
+    static final double CHASE_RANGE = 2_500;
     /** The fight whose leak the crew patched from the stores, once one has. */
     String patchedAfter;
     final java.util.Set<String> warpBlocks = new java.util.HashSet<>();
@@ -91,8 +94,21 @@ abstract class CareerScript {
     void start(long seed) {
         world = new GameWorld();
         game = GameScenario.start(world, assets(), assets().resolve("no-mods-here"), NewGame.seeded(seed, "patrol"));
-        world.carriedHome.add((sig, t) -> log("  (the player is down: the crew bring them to %s, %.1f d later)", t.stationName, t.skipped / 86_400));
+        world.carriedHome.add((sig, t) -> {
+            log("  (the player is down: the crew bring them to %s, %.1f d later)", t.stationName, t.skipped / 86_400);
+            // Round 7: down, towed home venting and dry, then down again at the berth, for ever
+            double now = world.engine.getSimSeconds();
+            while (!carried.isEmpty() && carried.peekFirst() < now - 86_400) carried.removeFirst();
+            carried.addLast(now);
+            assertTrue(carried.size() < MOST_CARRIED_A_DAY, "the player keeps going down: carried home "
+                    + carried.size() + " times in a day, last to " + t.stationName);
+        });
+        world.pirateBoarding.robbed.add((sig, t) -> log("  (boarded by %s: they took %s)", t.pirateName, t.describe()));
     }
+
+    /** When the crew carried the player home, in the last day; a day with this many fails the career. */
+    final java.util.ArrayDeque<Double> carried = new java.util.ArrayDeque<>();
+    static final int MOST_CARRIED_A_DAY = 3;
 
     // ------------------------------------------------------------------ round 3's career
 
@@ -264,7 +280,8 @@ abstract class CareerScript {
             run(60 * 20);
             assertEquals(Contract.Status.DONE, bounty.status, bounty.outcome);
             snapshot("second bounty paid");
-            boardAndSell(ship);
+            // Beaten with its guns silenced but not yet disabled, there is no boarding it
+            if (ShipDisablement.isDisabled(ship)) boardAndSell(ship);
         }
         assertTrue(game.dockAtHighport());
         run(120);
@@ -303,13 +320,17 @@ abstract class CareerScript {
         prizeCredits += paid;
     }
 
+    /** The aces {@link #fight} has beaten, by uuid: no contract may name one again (round 7). */
+    final java.util.Set<String> acesBeaten = new java.util.HashSet<>();
+
     /** Fights {@code ship} with every gun and missile until one side is beaten; true if it was. */
     boolean fight(Entity ship, HostileComponent h, String what) {
         PlayerGunnery gun = new PlayerGunnery(world, game.player);
         gun.setTarget(ship);
-        int[] fired = new int[1], hits = new int[1];
+        int[] fired = new int[1], hits = new int[1], landed = new int[1];
         world.combatEvents.shots.add((sig, shot) -> { if (shot.shooter == ship) fired[0]++; });
         world.combatEvents.impacts.add((sig, hit) -> { if (hit.owner == ship && hit.target == game.player) hits[0]++; });
+        world.combatEvents.impacts.add((sig, hit) -> { if (hit.owner == game.player && hit.target == ship) landed[0]++; });
         double t0 = world.engine.getSimSeconds();
         float hull0 = hull(game.player);
         int crew0 = ownCrew().size();
@@ -319,22 +340,38 @@ abstract class CareerScript {
         boolean[] carried = new boolean[1];
         com.badlogic.ashley.signals.Listener<Rescue.Tow> home = (sig, t) -> carried[0] = true;
         world.carriedHome.add(home);
+        // A pirate holding off past the guns' reach is chased in: the script's ship never flies
+        // itself (round 7: an ace held off 3 to 6 km for the whole fight). One that broke off runs.
+        int[] closed = new int[1];
+        double[] nextLook = {t0 + CHASE_EVERY};
         boolean over = runUntil(400f, () -> {
             if (carried[0]) return true;
+            if (world.engine.getSimSeconds() >= nextLook[0]) {
+                nextLook[0] += CHASE_EVERY;
+                if (inBubble(ship) && range(game.player, ship) > CHASE_RANGE && !FirstPlay.beaten(world, ship)
+                        && (h == null || !h.brokeOff)) {
+                    flyTo(ship, 1_000f);
+                    closed[0]++;
+                }
+            }
             gun.fireGuns();
             gun.launchMissile();
             gun.update(FRAME);
             // Dark for an ion stun's few seconds isn't a lost fight: the guns come back. Judged afresh,
-            // since the disabled mark lingers until the next judgement after the stun ends
-            return (h != null && h.partDropped) || ShipDisablement.isDisabled(ship)
+            // since the disabled mark lingers until the next judgement after the stun ends. Won as
+            // contracts count it (round 7: a beaten ace's dropped part ended a fight with a fit ship)
+            return FirstPlay.beaten(world, ship)
                     || ShipDisablement.isDisabled(game.player) && !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player)
                     && world.disablement.judge(game.player) != null
-                    || world.getCrash() != null || distance(game.player, ship) > GOT_AWAY;
+                    || world.getCrash() != null || range(game.player, ship) > GOT_AWAY;
         });
         world.carriedHome.remove(home);
-        boolean won = !carried[0] && ((h != null && h.partDropped) || ShipDisablement.isDisabled(ship));
+        // One that broke off and was never chased, still running when time is up, got away too
+        boolean ran = !over && h != null && h.brokeOff && !FirstPlay.beaten(world, ship);
+        boolean won = !carried[0] && FirstPlay.beaten(world, ship);
+        if (won && h != null && h.ace) acesBeaten.add(ship.getComponent(com.ringsofiron.coreengine.components.UuidComponent.class).id);
         if (!won && ShipDisablement.isDisabled(game.player)) log("  we are disabled: %s.", ShipDisablement.reason(game.player));
-        boolean away = !won && !carried[0] && distance(game.player, ship) > GOT_AWAY;
+        boolean away = !won && !carried[0] && (ran || range(game.player, ship) > GOT_AWAY);
         log("%s: %.0f s, %s; it fired %d rounds, %d hit us; our hull %.2f -> %.2f, crew %d -> %d.", what,
                 world.engine.getSimSeconds() - t0, won ? "beaten" : carried[0] ? "we lost (carried home)" : away ? "it got away"
                         : over ? "we lost" : "neither side beaten", fired[0],
@@ -342,7 +379,9 @@ abstract class CareerScript {
         log("  shorts and tank bursts: ours %d and %d, theirs %d and %d.", ours.shortCount - incidents0[0],
                 ours.burstCount - incidents0[1], theirs == null ? 0 : theirs.shortCount - incidents0[2],
                 theirs == null ? 0 : theirs.burstCount - incidents0[3]);
-        assertTrue(over, "the fight ends one way or the other");
+        if (closed[0] > 0) log("  chased it in %d time(s) from past %.0f m.", closed[0], CHASE_RANGE);
+        if (!over && !ran) log("  unfinished: %d of our hits landed, range %.0f m, its hull %.2f.", landed[0], range(game.player, ship), hull(ship));
+        assertTrue(over || ran, "the fight ends one way or the other");
         if (!won) fightsLost++;
         return won;
     }
@@ -538,6 +577,17 @@ abstract class CareerScript {
             log("  disabled: tow refusal %s.", world.beacon.refusal());
             log("  %s", world.beacon.call());
             assertTrue(runUntil(30f, () -> world.docking.dockedTo(game.player) != null), "towed home");
+            // Towed in holed and dry: the yard mends and fills it, or the Moon trip can't start
+            run(120);
+            Entity home = world.docking.dockedTo(game.player);
+            double bill = world.yard.repairCost(game.player, home) + world.yard.refillCost(game.player, home);
+            if (credits() < bill) {
+                log("  short by %.0f cr for the yard: the script makes up the difference.", bill - credits());
+                grantedCredits += bill - credits();
+                account().credits = bill;
+            }
+            repairAt(home);
+            log("  yard: %s.", world.yard.orderRefill(game.player, home));
         } else {
             assertTrue(game.dockAtHighport());
             run(120);
@@ -663,6 +713,17 @@ abstract class CareerScript {
         for (int i = 0; i < 120 && ship.getComponent(PhysicsBodyComponent.class) == null; i++) world.update(FRAME);
         assertNotNull(ship.getComponent(PhysicsBodyComponent.class), "came into the bubble");
         return ship;
+    }
+
+    static boolean inBubble(Entity ship) {
+        PhysicsBodyComponent p = ship.getComponent(PhysicsBodyComponent.class);
+        return p != null && p.body != null;
+    }
+
+    /** The range between two ships in the physics bubble, meters, or {@link #distance} for any other. */
+    double range(Entity a, Entity b) {
+        if (!inBubble(a) || !inBubble(b)) return distance(a, b);
+        return PhysicsManager.getPosition(body(a), new Vector2()).dst(PhysicsManager.getPosition(body(b), new Vector2()));
     }
 
     double distance(Entity a, Entity b) {
@@ -791,7 +852,7 @@ abstract class CareerScript {
      * A save the game refuses (in warp, say) is logged and skipped.
      */
     void saveForPlaytest(String name) {
-        Path dir = Paths.get(System.getProperty("user.dir")).resolve("build").resolve("playtest-saves").resolve("seed-" + SEED);
+        Path dir = Paths.get(System.getProperty("user.dir")).resolve("build").resolve("playtest-saves").resolve("seed-" + seed);
         try {
             Files.createDirectories(dir);
         } catch (IOException e) {

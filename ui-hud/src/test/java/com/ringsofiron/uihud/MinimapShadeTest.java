@@ -57,6 +57,19 @@ class MinimapShadeTest {
     }
 
     @Test
+    void theDeckShadeIgnoresSmokeVacuumFireAndBreaches() {
+        Tile t = grid.getTile(2, 1);
+        t.fireIntensity = 1f;
+        t.compartment.oxygen = 0;
+        t.compartment.nitrogen = 0;
+        Color c = TileShade.deck(t, new Color());
+        assertEquals(TileShade.FLOOR, c);
+        Tile hull = grid.getTile(0, 1);
+        hull.setIntegrity(0f);
+        assertEquals(0f, TileShade.deck(hull, new Color()).a, 0f, "a breach is left open to space");
+    }
+
+    @Test
     void wallsReddenWithDamage() {
         Color intact = TileShade.wall(1f, new Color());
         Color broken = TileShade.wall(0f, new Color());

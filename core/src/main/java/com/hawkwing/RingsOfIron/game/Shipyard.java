@@ -223,6 +223,11 @@ public class Shipyard extends EntitySystem {
             int lowest = ranks.lowestToFly(listing.shipId);
             return lowest < 0 ? "Too big for your commission" : "Needs rank " + ranks.get(lowest).name;
         }
+        double wait = world.standing.newChassisWait(listing.shipId);
+        if (sponsor && wait > 0) {
+            return String.format(Locale.ROOT, "Sold to a new %s after %.1f more days in rank",
+                    world.standing.rankName(ranks.lowestToFly(listing.shipId)), wait / 86_400);
+        }
         if (world.standing.standing(listing.seller) < listing.standing) {
             return String.format(Locale.ROOT, "Needs standing %.0f with the %s", listing.standing,
                     world.standing.factions().name(listing.seller));

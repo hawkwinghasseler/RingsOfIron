@@ -336,6 +336,15 @@ def floors():
         a.b += line(xx, 0, xx, T, "#4a2229", sw=0.8, extra=' opacity="0.6"')
     write("tiles/covering_carpet.svg", T, T, a, "covering_carpet: carpet laid over the deck (fire fuel)")
 
+    a = Art()
+    a.b = rect(0, 0, T, T, "#c9d6d4")
+    for xx in range(0, T + 1, 32):
+        a.b += line(xx, 0, xx, T, "#a9b9b6", sw=1.2)
+    for yy in range(0, T + 1, 32):
+        a.b += line(0, yy, T, yy, "#a9b9b6", sw=1.2)
+    a.b += rect(26, 16, 12, 32, "#b8433f") + rect(16, 26, 32, 12, "#b8433f")
+    write("tiles/covering_medbay.svg", T, T, a, "covering_medbay: a medbay's clean deck, a bed for the wounded (no fuel)")
+
 
 # ---------------------------------------------------------------------------
 # Full-tile walls: one file per join pattern

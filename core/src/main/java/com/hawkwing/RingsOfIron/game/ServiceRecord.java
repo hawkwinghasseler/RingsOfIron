@@ -17,6 +17,15 @@ public class ServiceRecord {
     public double nextPay = -1;
     /** Credits the budget has paid in all. */
     public double budgetPaid;
+    /** Sim seconds of the last promotion (0 for the career's start), for the next rank's minimum time in grade. */
+    public double promotedAt;
+    /** Sim seconds each rank was given, by its place on the ladder (0 for the start, or a save from before round 7). */
+    public double[] promotions = new double[0];
+
+    /** Sim seconds rank {@code i} was given; 0 if never recorded. */
+    public double promotedTo(int i) {
+        return i >= 0 && i < promotions.length ? promotions[i] : 0;
+    }
 
     public float get(String faction) {
         for (int i = 0; i < factions.length; i++) {

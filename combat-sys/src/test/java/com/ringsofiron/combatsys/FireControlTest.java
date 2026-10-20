@@ -155,6 +155,37 @@ class FireControlTest {
     }
 
     @Test
+    void aGunnerHoldsFireWithAShipInTheWayAndTheTriggerStillFires() {
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(1500, 0, 0, 0);
+        Entity wingmate = spawnShip(750, 0, 0, 0);
+        ship.getComponent(SensorComponent.class).lockedTarget = target;
+        WeaponMountComponent gun = arm(ship, "railgun_mk1", 6f, 0f, 0f);
+        weaponControl.setHoldFire((shooter, blocker) -> blocker == wingmate);
+        run(4f);
+        assertEquals(0, gun.shotsFired, "a wingmate on the line of fire");
+        gun.trigger = true;
+        run(DT);
+        assertEquals(1, gun.shotsFired, "a pulled trigger fires regardless");
+        // The wingmate drifts clear and the gunner opens up
+        body(wingmate).setTransform(750 * PhysicsManager.UNITS_PER_METER, 300 * PhysicsManager.UNITS_PER_METER, 0f);
+        run(2f);
+        assertTrue(gun.shotsFired > 1, "a clear line: " + gun.shotsFired);
+    }
+
+    @Test
+    void aGunnerFiresThroughAShipTheRuleLetsPass() {
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(1500, 0, 0, 0);
+        spawnShip(750, 0, 0, 0);
+        ship.getComponent(SensorComponent.class).lockedTarget = target;
+        WeaponMountComponent gun = arm(ship, "railgun_mk1", 6f, 0f, 0f);
+        weaponControl.setHoldFire((shooter, blocker) -> false);
+        run(4f);
+        assertTrue(gun.shotsFired > 0);
+    }
+
+    @Test
     void turretHoldsFireOnATargetOutsideItsArc() {
         Entity ship = spawnShip(0, 0, 0, 0);
         Entity target = spawnShip(-1500, 0, 0, 0);

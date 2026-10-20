@@ -88,6 +88,7 @@ import com.ringsofiron.combatsys.components.WeaponsComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.EnumSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -156,6 +157,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private static final float INTERIOR_VIEW = 40f;
     private static final float START_VIEW = 160f;
     private static final float STATUS_WIDTH = 420f;
+    /** Where the status column's text ended last frame, UI y: off-screen marker names keep above or below it. */
+    private float statusBottom = Float.MAX_VALUE;
     private static final float WALK_SPEED = 1f;
     /** {@code -Dview.anywhere=true}: V switches the view anywhere and the ship flies from the deck, for testing. */
     private static final boolean VIEW_ANYWHERE = Boolean.getBoolean("view.anywhere");
@@ -223,6 +226,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private final Array<Body> bodies = new Array<>();
     /** The craft whose decks the interior view draws. */
     private final Array<Entity> decks = new Array<>();
+    /** Smoke, wind and flames of each deck on show; a craft's go when it is no longer drawn. */
+    private final Map<ShipGridComponent, HazardParticles> hazards = new IdentityHashMap<>();
+    private final Map<ShipGridComponent, Boolean> hazardsDrawn = new IdentityHashMap<>();
     private final Vector2 followAt = new Vector2();
     private final Vector2 tmp = new Vector2();
     private final Vector2 tmp2 = new Vector2();
@@ -286,6 +292,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world, docking);
         world.nav.keyNames = this::key;
         // A click on the traffic map makes that station or ship the navigation target
+        // Off-screen marker names by the right edge keep clear of the status column, which is drawn
+        // outside the stage: as far down as it reached last frame
+        hud.getHudRenderSystem().keepClear(() -> new com.badlogic.gdx.math.Rectangle(
+                viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH, statusBottom - 4f, STATUS_WIDTH,
+                viewports.getUiViewport().getWorldHeight() - statusBottom + 4f));
         hud.getTrafficMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
         gameHud.yard.setLayoutEditor(this::openRefit);
         world.combatEvents.intercepts.add((signal, hit) -> {
@@ -409,7 +420,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         shapes.setProjectionMatrix(viewports.getWorldCamera().combined);
         lighting.clear(delta);
         if (hud.getViewMode().getMode() == ViewMode.INTERIOR) {
-            drawInterior();
+            drawInterior(delta);
         } else {
             drawBodies();
         }
@@ -835,6 +846,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         return game;
     }
 
+    /** The player's fire control: what the guns are aimed at. */
+    public PlayerGunnery getGun() {
+        return gun;
+    }
+
     /** "Seed 1234" or "Designed start": which world this career is, for the pause menu. */
     public String worldDescription() {
         return game == null ? "" : game.newGame().describe();
@@ -1128,9 +1144,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     /**
      * The deck plan of the craft the avatar is aboard, and of any craft docked to it, each at its
-     * own pose, in the minimap's colors, with the cargo and everyone aboard.
+     * own pose, with its smoke and flames, the cargo and everyone aboard. {@code delta} moves the
+     * smoke and flames on; nothing moves while paused.
      */
-    private void drawInterior() {
+    private void drawInterior(float delta) {
         Entity aboard = world.avatar.getAvatarShip();
         if (aboard == null) aboard = game.player;
         ShipGridComponent grid = aboard.getComponent(ShipGridComponent.class);
@@ -1141,8 +1158,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (!decks.contains(link.otherShip, true)) decks.add(link.otherShip);
         }
         Gdx.gl.glEnable(GL20.GL_BLEND);
-        boolean blink = hud.getMinimap().blinkOn();
         boolean withArt = deckArt.available();
+        hazardsDrawn.clear();
         for (Entity ship : decks) {
             ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
             Body body = world.docking.bodyOf(ship);
@@ -1182,7 +1199,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             } else {
                 for (int y = 0; y < g.height; y++) {
                     for (int x = 0; x < g.width; x++) {
-                        TileShade.fill(g.getTile(x, y), blink, color);
+                        TileShade.deck(g.getTile(x, y), color);
                         if (color.a <= 0f) continue;
                         shapes.setColor(color);
                         Vector2 p = g.tileToLocal(x, y);
@@ -1193,6 +1210,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 DeckView.walls(shapes, g, color);
                 DeckView.cargo(shapes, g, hold, color);
             }
+            // Smoke and flames over the deck, under everyone aboard; they open their own batches
+            shapes.end();
+            HazardParticles particles = hazards.get(g);
+            if (particles == null) hazards.put(g, particles = new HazardParticles());
+            hazardsDrawn.put(g, Boolean.TRUE);
+            particles.update(g, delta);
+            particles.draw(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, s);
+            shapes.begin(ShapeRenderer.ShapeType.Filled);
             boolean crewArt = withArt && deckArt.hasCrew();
             for (Entity e : crewArt ? NO_ENTITIES : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
@@ -1219,6 +1244,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 batch.setTransformMatrix(identity);
             }
         }
+        hazards.keySet().retainAll(hazardsDrawn.keySet());
         shapes.identity();
         Gdx.gl.glDisable(GL20.GL_BLEND);
         if (!lightsOn) return;
@@ -1271,7 +1297,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 warp.isRailsWarp() ? " (rails)" : ""), left, top);
         Entity target = gun.getTarget();
         HudMarkerComponent marker = target == null ? null : MARKERS.get(target);
-        font.draw(batch, "Target: " + (marker == null ? "none" : marker.label) + (gun.gunsReady() ? "" : "   (gun reloading)")
+        font.draw(batch, "Target: " + (target == null ? "none" : marker == null ? "unknown contact" : marker.label) + (gun.gunsReady() ? "" : "   (gun reloading)")
                 + (target != null && target == game.raider && game.raiderHostile() ? "   FIRING ON YOU" : ""), left, top - 20f);
         float reload = gun.missileReloadTime();
         // Inbound missiles are ui-hud's missile warning.
@@ -1344,7 +1370,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (bridge != null) {
             font.setColor(Color.LIGHT_GRAY);
             font.draw(batch, bridge, left, below);
+            below -= 20f;
         }
+        statusBottom = below;
         batch.end();
     }
 

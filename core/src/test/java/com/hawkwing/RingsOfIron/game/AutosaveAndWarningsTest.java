@@ -70,6 +70,23 @@ class AutosaveAndWarningsTest {
     }
 
     @Test
+    void aMissileSalvoIsOneWarningAtItsPeak() {
+        FlightWarnings w = world.warnings;
+        world.notices.clear();
+        // A salvo launches one by one, point defense takes some, and more launch before the sky clears
+        int[] counts = {1, 2, 3, 4, 3, 2, 3, 5, 6, 4, 1};
+        for (int n : counts) w.missiles(n, 9f);
+        assertEquals(1, world.notices.history().size(), "one warning for the salvo");
+        assertEquals("MISSILE WARNING: 6 inbound, impact in 9 s", world.notices.latest().text);
+        assertEquals(1, world.notices.showing().size());
+        assertSame(world.notices.latest(), world.notices.showing().get(0));
+        w.missiles(0, Float.NaN);
+        w.missiles(2, 5f);
+        assertEquals(2, world.notices.history().size(), "a new salvo once the sky was clear");
+        assertEquals("MISSILE WARNING: 2 inbound, impact in 5 s", world.notices.latest().text);
+    }
+
+    @Test
     void enoughToGetHomeIsNotLow() {
         FlightWarnings w = world.warnings;
         w.returnPropellantKg = () -> 150;

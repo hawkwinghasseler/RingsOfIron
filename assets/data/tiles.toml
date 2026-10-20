@@ -104,3 +104,13 @@ weight_class = "HEAVY"
 material = "composite_armor"
 art = "walls/composite_armor_heavy"
 color = "#4d5a56"
+
+# A medbay's deck (round 7): steel floor with a clean covering that doesn't burn. The wounded are
+# carried to it once a fight is over and treated there half again as fast.
+[tile.medbay]
+name = "Medbay deck"
+symbol = "m"
+base = "FLOOR"
+covering = "MEDBAY"
+art = "tiles/floor"
+color = "#9fc4c0"

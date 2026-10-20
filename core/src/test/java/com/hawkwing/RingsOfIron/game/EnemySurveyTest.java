@@ -53,16 +53,23 @@ class EnemySurveyTest {
         String outcome;
         double seconds;
         int fired, hits;
+        /** Rounds the base's gun platforms fired (a raid only), and how many hit us. */
+        int gunFired, gunHits;
         float hull0, hull1;
         int crew0, crew1;
         int enemyCrew0, enemyCrew1;
         String loadouts = "";
         double difficulty;
+        /** How each enemy ship ended, for the detail lines: beaten and why, or still fighting. */
+        String ends = "";
+        /** Why our ship was beaten, when it was. */
+        String ourEnd = "";
 
         @Override
         public String toString() {
-            return String.format("%s in %.0f s; they fired %d, %d hit; our hull %.2f -> %.2f; crew %d -> %d; theirs %d -> %d [%s, difficulty %.2f]",
-                    outcome, seconds, fired, hits, hull0, hull1, crew0, crew1, enemyCrew0, enemyCrew1, loadouts, difficulty);
+            return String.format("%s in %.0f s; they fired %d, %d hit%s; our hull %.2f -> %.2f; crew %d -> %d; theirs %d -> %d [%s, difficulty %.2f]%s",
+                    outcome, seconds, fired, hits, gunFired > 0 ? String.format("; its guns fired %d, %d hit", gunFired, gunHits) : "", hull0, hull1, crew0, crew1, enemyCrew0, enemyCrew1, loadouts, difficulty,
+                    ends.isEmpty() ? "" : " (" + ends + ")") + (ourEnd.isEmpty() ? "" : "; we were beaten: " + ourEnd);
         }
     }
 
@@ -93,10 +100,11 @@ class EnemySurveyTest {
     @Test
     @EnabledIfSystemProperty(named = "enemy.survey", matches = ".+")
     void survey() throws IOException {
-        StringBuilder out = new StringBuilder("| Enemy | Our ship | Won | Ran | Lost | Rounds at us | Hits | Our hull after (min-mean) | Our crew killed | Their crew left | Time to beat (mean) |\n"
-                + "|---|---|---|---|---|---|---|---|---|---|---|\n");
+        StringBuilder out = new StringBuilder("| Enemy | Our ship | Won | Ran | Lost | Fights they fired in | Rounds at us | Hits | Base guns' rounds | Our hull after (min-mean) | Our crew killed | Their crew left | Time to beat (mean) |\n"
+                + "|---|---|---|---|---|---|---|---|---|---|---|---|---|\n");
         String[][] enemies = {{"Lone raider", HostileTraffic.RAIDER, "1"}, {"Wing of two raiders", HostileTraffic.RAIDER, "2"},
                 {"Pirate gunship", HostileTraffic.PIRATE_GUNSHIP, "1"}, {"Ace's gunship", HostileTraffic.PIRATE_GUNSHIP, "1", "ace"},
+                {"Ace's chaingun raider", HostileTraffic.RAIDER, "1", "ace:raider_ace_chaingun"},
                 {"The base's defence", BASE, "0"}};
         int trials = Integer.getInteger("enemy.survey.trials", 10);
         String only = System.getProperty("enemy.survey.rows", "").toLowerCase(java.util.Locale.ROOT);
@@ -105,8 +113,8 @@ class EnemySurveyTest {
             if (!enemy[0].toLowerCase(java.util.Locale.ROOT).contains(only)) continue;
             for (int ship = CORVETTE; ship <= FRIGATE; ship++) {
                 // An ace takes a gunship only once the player flies one
-                if (enemy.length > 3 && ship == CORVETTE) continue;
-                int won = 0, ran = 0, lost = 0, fired = 0, hits = 0, killed = 0, theirs = 0;
+                if (enemy.length > 3 && "ace".equals(enemy[3]) && ship == CORVETTE) continue;
+                int won = 0, ran = 0, lost = 0, fired = 0, hits = 0, killed = 0, theirs = 0, firedIn = 0, gunFired = 0, gunHits = 0;
                 float minHull = 1, sumHull = 0;
                 double beatTime = 0;
                 for (int i = 0; i < trials; i++) {
@@ -121,13 +129,17 @@ class EnemySurveyTest {
                     }
                     fired += r.fired;
                     hits += r.hits;
+                    gunFired += r.gunFired;
+                    gunHits += r.gunHits;
+                    if (r.fired + r.gunFired > 0) firedIn++;
                     minHull = Math.min(minHull, r.hull1);
                     sumHull += r.hull1;
                     killed += r.crew0 - r.crew1;
                     theirs += r.enemyCrew1;
                 }
-                out.append(String.format("| %s | %s | %d | %d | %d | %.0f | %.0f | %.2f-%.2f | %.1f | %.1f | %s |%n", enemy[0],
-                        OUR_SHIPS[ship], won, ran, lost, fired / (double) trials, hits / (double) trials, minHull,
+                out.append(String.format("| %s | %s | %d | %d | %d | %d | %.0f | %.0f | %s | %.2f-%.2f | %.1f | %.1f | %s |%n", enemy[0],
+                        OUR_SHIPS[ship], won, ran, lost, firedIn, fired / (double) trials, hits / (double) trials,
+                        BASE.equals(enemy[1]) ? String.format("%.0f (%.0f hit)", gunFired / (double) trials, gunHits / (double) trials) : "-", minHull,
                         sumHull / trials, killed / (double) trials, theirs / (double) trials,
                         won == 0 ? "-" : String.format("%.0f s", beatTime / won)));
             }
@@ -156,6 +168,20 @@ class EnemySurveyTest {
      * or {@link #FRIGATE}, bought at Anvil Yards as a Commander and crewed from its hiring pool); a
      * {@code shipId} of {@link #BASE} raids the pirate base instead, from 8 km.
      */
+    /**
+     * Gives the ranks the survey's standing earned at once, and lets the yard sell a new rank's ship: the
+     * survey isn't about round 7's time in grade, so each rank counts as held long ago.
+     */
+    static void servedTime(GameWorld world) {
+        ServiceRecord record = world.standing.record();
+        for (int i = 0; i < world.standing.ranks().size(); i++) {
+            record.promotedAt = -1e9;
+            world.standing.promoteDue();
+        }
+        record.promotedAt = -1e9;
+        java.util.Arrays.fill(record.promotions, -1e9);
+    }
+
     static Result fight(long seed, int ours, String shipId, int size, String loadout) {
         boolean gunship = ours != CORVETTE;
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
@@ -168,6 +194,7 @@ class EnemySurveyTest {
             run(world, 60);
             float need = world.standing.ranks().get(ours + 1).standing - world.standing.standing(world.standing.sponsor());
             if (need > 0) world.standing.reward(world.standing.sponsor(), need + 0.5f, "survey");
+            servedTime(world);
             if (gunship) {
                 assertTrue(game.dockAt(game.shipyard));
                 run(world, 120);
@@ -182,8 +209,9 @@ class EnemySurveyTest {
             if (BASE.equals(shipId)) return raid(world, game);
             String lurk = game.highport;
             // Armed as the difficulty would arm it, drawn by the seed (the top-up's own draw is the same in every game)
-            boolean ace = "ace".equals(loadout);
-            if (ace) loadout = null;
+            // "ace", or "ace:<fit>" for an ace armed with that fit (the career's first ace, Red Kestrel)
+            boolean ace = loadout != null && (loadout.equals("ace") || loadout.startsWith("ace:"));
+            if (ace) loadout = loadout.startsWith("ace:") ? loadout.substring(4) : null;
             String fit = loadout != null ? loadout : Loadouts.pick(world.combatDefs, shipId, Difficulty.of(world), false,
                     new java.util.Random(seed * 7_919L + shipId.hashCode())).id;
             List<String> ids = world.hostiles.spawnWing(shipId, size, lurk, fit);
@@ -196,6 +224,10 @@ class EnemySurveyTest {
                 HostileComponent h = world.macroSim.hostiles().get(ids.get(0));
                 assertTrue(PirateAces.promote(world, world.engine.getEntity(ids.get(0)), h, world.macroSim.hostiles().all().values(),
                         r.difficulty, false));
+                if (loadout != null) {
+                    Loadouts.apply(world.engine.getEntity(ids.get(0)), world.combatDefs.loadouts.get(loadout), world.combatDefs);
+                    h.loadout = loadout;
+                }
             }
             for (int i = 0; i < ids.size(); i++) {
                 HostileComponent h = world.macroSim.hostiles().get(ids.get(i));
@@ -235,7 +267,7 @@ class EnemySurveyTest {
                 gun.fireGuns();
                 gun.launchMissile();
                 gun.update(FRAME);
-                if (DEBUG && frame[0]++ % 60 == 0) debug(world, player, ships, hs);
+                if (DEBUG && frame[0]++ % 15 == 0) debug(world, player, ships, hs);
                 boolean done = !anyLeft || FirstPlay.beaten(world, player) || alive(world, player) == 0 || world.getCrash() != null;
                 if (done) end[0] = world.engine.getSimSeconds();
                 return done;
@@ -248,11 +280,13 @@ class EnemySurveyTest {
             boolean allBeaten = true, anyEscaped = false;
             for (Entity s : ships) {
                 r.enemyCrew1 += alive(world, s);
+                r.ends += (r.ends.isEmpty() ? "" : ", ") + end(world, s);
                 boolean beaten = FirstPlay.beaten(world, s);
                 allBeaten &= beaten;
                 anyEscaped |= !beaten && s.getComponent(PhysicsBodyComponent.class) == null;
             }
             r.outcome = FirstPlay.beaten(world, player) || r.crew1 == 0 ? "lost" : allBeaten ? "won" : anyEscaped && over ? "ran" : "draw";
+            if ("lost".equals(r.outcome)) r.ourEnd = String.valueOf(ShipDisablement.reason(player));
             return r;
         } finally {
             world.dispose();
@@ -306,14 +340,26 @@ class EnemySurveyTest {
             }
         }
         // Its guns fire from their moorings; the base strikes once the wing is beaten, so they are not fought
+        List<Entity> batteries = new ArrayList<>();
         for (String name : world.pirateBase.guns()) {
-            for (var e : world.macroSim.hostiles().all().values()) if (name.equals(e.displayName)) r.loadouts += ", " + e.loadout;
+            for (var e : world.macroSim.hostiles().all().entrySet()) {
+                if (!name.equals(e.getValue().displayName)) continue;
+                r.loadouts += ", " + e.getValue().loadout;
+                batteries.add(world.engine.getEntity(e.getKey()));
+            }
         }
         Entity player = game.player;
         PlayerGunnery gun = new PlayerGunnery(world, player);
-        int[] fired = new int[1], hits = new int[1];
-        world.combatEvents.shots.add((sig, shot) -> { if (ships.contains(shot.shooter)) fired[0]++; });
-        world.combatEvents.impacts.add((sig, hit) -> { if (ships.contains(hit.owner) && hit.target == player) hits[0]++; });
+        int[] fired = new int[1], hits = new int[1], gunFired = new int[1], gunHits = new int[1];
+        world.combatEvents.shots.add((sig, shot) -> {
+            if (ships.contains(shot.shooter)) fired[0]++;
+            else if (batteries.contains(shot.shooter)) gunFired[0]++;
+        });
+        world.combatEvents.impacts.add((sig, hit) -> {
+            if (hit.target != player) return;
+            if (ships.contains(hit.owner)) hits[0]++;
+            else if (batteries.contains(hit.owner)) gunHits[0]++;
+        });
         double t0 = world.engine.getSimSeconds();
         double[] end = {Double.NaN};
         int[] frame = new int[1];
@@ -362,12 +408,15 @@ class EnemySurveyTest {
         });
         r.seconds = (Double.isNaN(end[0]) ? world.engine.getSimSeconds() : end[0]) - t0;
         r.fired = fired[0];
+        r.gunFired = gunFired[0];
+        r.gunHits = gunHits[0];
         r.hits = hits[0];
         r.hull1 = hull(player);
         r.crew1 = alive(world, player);
         boolean anyEscaped = false;
         for (Entity s : ships) {
             r.enemyCrew1 += alive(world, s);
+            r.ends += (r.ends.isEmpty() ? "" : ", ") + end(world, s);
             anyEscaped |= !FirstPlay.beaten(world, s) && s.getComponent(PhysicsBodyComponent.class) == null;
         }
         r.outcome = FirstPlay.beaten(world, player) || r.crew1 == 0 ? "lost" : !world.pirateBase.standing() ? "won"
@@ -376,6 +425,20 @@ class EnemySurveyTest {
     }
 
     static final boolean DEBUG = Boolean.getBoolean("enemy.debug");
+
+    /** How an enemy ship ended a fight: why it is beaten (disabled, its reactor down, its guns out), or "fighting". */
+    private static String end(GameWorld world, Entity ship) {
+        if (ship.getComponent(PhysicsBodyComponent.class) == null) return "gone";
+        if (!FirstPlay.beaten(world, ship)) return "fighting";
+        var why = ShipDisablement.reason(ship);
+        if (why != null) return why.toString().toLowerCase(java.util.Locale.ROOT);
+        var reg = ship.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent.class);
+        if (reg != null) for (Entity e : reg.subsystems) {
+            var sub = e.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class);
+            if (sub != null && sub.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.REACTOR && sub.isOperational) return "disarmed";
+        }
+        return "unpowered";
+    }
 
     private static void debug(GameWorld world, Entity player, List<Entity> ships, List<HostileComponent> hs) {
         StringBuilder b = new StringBuilder(String.format("t=%.0f", world.engine.getSimSeconds()));
@@ -387,6 +450,17 @@ class EnemySurveyTest {
             float d = pb == null || pb.body == null ? -1 : pb.body.getPosition().dst(pp.body.getPosition());
             var sensor = s.getComponent(com.ringsofiron.combatsys.components.SensorComponent.class);
             var combat = s.getComponent(com.ringsofiron.aicrew.pilot.NpcCombatComponent.class);
+            float closing = pb == null || pb.body == null ? 0 : pb.body.getLinearVelocity().cpy().sub(pp.body.getLinearVelocity())
+                    .dot(pp.body.getPosition().cpy().sub(pb.body.getPosition()).nor()) * 10f;
+            var fc = s.getComponent(com.ringsofiron.physicsexterior.components.FlightControlComponent.class);
+            int[] up = world.disablement.crewCount(s);
+            b.append(String.format(" | crew %d/%d", up[1], up[0]));
+            var th = s.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
+            if (pb != null && pb.body != null && th != null) b.append(String.format(" | mass %.0f fwd %.2g rev %.2g lat %.2g torque %.2g inertia %.3g",
+                    com.ringsofiron.physicsexterior.PhysicsManager.getMass(pb.body), th.forwardThrust, th.reverseThrust, th.lateralThrust, th.maxTorque,
+                    com.ringsofiron.physicsexterior.PhysicsManager.getInertia(pb.body)));
+            b.append(String.format(" | mode=%s closing=%.0f m/s fwd=%.2f turn=%.2f", combat == null ? "-" : combat.mode, closing,
+                    fc == null ? 0f : fc.forward, fc == null ? 0f : fc.turn));
             b.append(String.format(" | d=%.0f hull=%.2f broke=%s lock=%s track=%s stance=%s dis=%s alive=%d", d, h.hull, h.brokeOff,
                     sensor == null ? "-" : sensor.lockedTarget == player, sensor == null ? "-" : sensor.trackFor(player) != null,
                     combat == null ? "-" : combat.stance, ShipDisablement.isDisabled(s), alive(world, s)));

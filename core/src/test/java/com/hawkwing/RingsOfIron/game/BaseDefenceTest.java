@@ -92,6 +92,34 @@ class BaseDefenceTest {
     }
 
     @Test
+    void theDefenceFightsOnWhenItsLeaderIsBeatenWhileTheBaseStands() {
+        // A rich player is a harder one: a lone defender and a wing of two or more behind it
+        game.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class).credits = 50_000_000;
+        besideTheBase();
+        List<String> wing = new ArrayList<>(world.pirateBase.defenders());
+        assertTrue(wing.size() >= 3, "a wing behind the first defender: " + wing);
+        run((float) PirateBase.SECOND_WAVE_SECONDS + 2 * PirateBase.CHECK_SECONDS + 1);
+        Entity leader = ship(wing.get(1));
+        assertNotNull(leader.getComponent(PhysicsBodyComponent.class), "the second wave is out after " + PirateBase.SECOND_WAVE_SECONDS + " s");
+        var grid = leader.getComponent(com.ringsofiron.interiorgrid.ShipGridComponent.class);
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                var t = grid.getTile(x, y);
+                if (t != null && t.isWall()) t.setIntegrity(0.6f);
+            }
+        }
+        run(3);
+        assertTrue(leader.getComponent(HostileComponent.class).brokeOff, "the wing's leader breaks off");
+        for (String name : wing.subList(2, wing.size())) {
+            HostileComponent h = ship(name).getComponent(HostileComponent.class);
+            assertFalse(h.brokeOff, name + " stays to defend the base");
+            assertNull(h.wingOf, name + " fights on alone");
+            assertTrue(world.pirateBase.defending(name));
+        }
+        assertFalse(world.pirateBase.defending(leader.getComponent(HostileComponent.class).displayName + " (not one)"));
+    }
+
+    @Test
     void theBaseMansItsGunsAtItsFirstScrambleAndTheyHoldTheirMooring(@TempDir Path dir) {
         assertEquals(0, batteries(), "no guns before the first raid: the first weeks are as before");
         besideTheBase();

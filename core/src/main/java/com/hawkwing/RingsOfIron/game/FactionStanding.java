@@ -29,7 +29,9 @@ import java.util.function.Supplier;
  * the player docking clearance; at {@link #HOSTILE_AT} or below its crew fight the player's.
  *
  * <p>Standing with the sponsor climbs the rank ladder: crossing a rank's threshold promotes the
- * player, with a notice. Promotions are never taken back.
+ * player, with a notice, once they have held the rank below it for the rank's {@code min_days}
+ * (round 7: seed 7 made Commander and Captain on one day). A promotion held back for time is given
+ * when the time is up ({@link #promoteDue}). Promotions are never taken back.
  */
 public class FactionStanding implements SaveParticipant {
     public static final float MIN = -100f, MAX = 100f;
@@ -51,6 +53,8 @@ public class FactionStanding implements SaveParticipant {
     public static final float HOSTILE_AT = -50f;
     /** The player's own crew. */
     public static final int PLAYER = 0;
+    /** An in-game day, in sim seconds. */
+    static final double DAY = 86_400;
 
     /** A hostile act the player did, for the screen. */
     public static final class Act {
@@ -79,6 +83,10 @@ public class FactionStanding implements SaveParticipant {
     public java.util.function.BiConsumer<Integer, Float> hostileActs = (faction, cost) -> { };
     /** Career news not yet shown (promotions, budget paid); the screen drains them. */
     public final Array<String> notices = new Array<>();
+    /** Sim seconds, for the time in grade; the world sets it to its clock. */
+    public java.util.function.DoubleSupplier clock = () -> 0;
+    /** The rank whose promotion was last said to be waiting on time in grade, so it is said once; not saved. */
+    private int heldFor = -1;
 
     public FactionStanding(Supplier<Entity> player) {
         this.player = player;
@@ -272,11 +280,48 @@ public class FactionStanding implements SaveParticipant {
         return why != null ? "you " + why : "your standing with " + factions.name(faction) + " is too low";
     }
 
-    /** Promotes the player as far as their standing with the sponsor reaches, a notice each step. */
+    /** Gives any promotion the player's standing has earned and their time in grade now allows. */
+    public void promoteDue() {
+        checkPromotion();
+    }
+
+    /** Sim seconds the player still has to hold their rank before rank {@code i} (the next) may be given; 0 if none. */
+    public double timeInGradeLeft(int i) {
+        if (i <= record.rank || i >= ranks.size()) return 0;
+        return Math.max(0, record.promotedAt + ranks.get(i).minDays * DAY - clock.getAsDouble());
+    }
+
+    /**
+     * Sim seconds before a yard sells the player {@code shipId}: the {@code ship_days} of the lowest rank
+     * that may fly it, counted from when the player was given that rank; 0 once that has passed, or
+     * while their rank may not fly it at all (round 7: seed 7 bought the frigate a week after making Commander).
+     */
+    public double newChassisWait(String shipId) {
+        int lowest = ranks.lowestToFly(shipId);
+        if (lowest < 0 || lowest > record.rank) return 0;
+        return Math.max(0, record.promotedTo(lowest) + ranks.get(lowest).shipDays * DAY - clock.getAsDouble());
+    }
+
+    /**
+     * Promotes the player as far as their standing with the sponsor reaches, a notice each step, no
+     * further than their time in grade allows.
+     */
     private void checkPromotion() {
         int earned = ranks.earnedBy(standing(sponsor()));
         while (record.rank < earned) {
+            double left = timeInGradeLeft(record.rank + 1);
+            if (left > 0) {
+                if (heldFor != record.rank + 1) {
+                    heldFor = record.rank + 1;
+                    notices.add(String.format(Locale.ROOT, "Standing enough for %s: promoted after %.1f more days as %s",
+                            rankName(record.rank + 1), left / DAY, rankName()));
+                }
+                return;
+            }
             record.rank++;
+            record.promotedAt = clock.getAsDouble();
+            if (record.promotions.length <= record.rank) record.promotions = java.util.Arrays.copyOf(record.promotions, record.rank + 1);
+            record.promotions[record.rank] = record.promotedAt;
             RankDef r = ranks.get(record.rank);
             notices.add(String.format(Locale.ROOT, "Promoted to %s of the %s%s", rankName(), factions.name(sponsor()),
                     r.budget > 0 ? String.format(Locale.ROOT, ": budget %,.0f cr a week", r.budget) : ""));
