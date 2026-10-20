@@ -121,7 +121,7 @@ class PirateUpkeepTest {
         String id = pirate(HostileTraffic.RAIDER);
         Entity ship = world.engine.getEntity(id);
         empty(ship);
-        run(world, 2);
+        run(world, PirateUpkeep.STEP + 1);
         double share = PirateUpkeep.fuelShare(ship);
         assertTrue(share > 0 && share < 1, "refuelling: " + share);
 
@@ -134,10 +134,10 @@ class PirateUpkeepTest {
         assertEquals(share, PirateUpkeep.fuelShare(back), 1e-9, "the tanks as they were");
         // Played on side by side, the two refuel alike: the clock came through as well
         assertEquals(world.hostiles.upkeepClock(), loaded.hostiles.upkeepClock(), 1e-9, "the refuelling clock");
-        // Played on, the two refuel alike, give or take where the checks fall
-        run(world, 5);
-        run(loaded, 5);
-        assertEquals(PirateUpkeep.fuelShare(ship), PirateUpkeep.fuelShare(back), 2 * HostileTraffic.CHECK_SECONDS / (PirateUpkeep.RAILS_REFUEL_DAYS * PirateUpkeep.DAY));
+        // Played on, the two refuel alike
+        run(world, 2 * PirateUpkeep.STEP);
+        run(loaded, 2 * PirateUpkeep.STEP);
+        assertEquals(PirateUpkeep.fuelShare(ship), PirateUpkeep.fuelShare(back), 0, "to the bit");
     }
 
     // ---------------------------------------------------------------------------------------------

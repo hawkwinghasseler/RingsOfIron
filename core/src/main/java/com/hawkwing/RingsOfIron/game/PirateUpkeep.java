@@ -29,25 +29,34 @@ public final class PirateUpkeep {
     public static final double RAILS_REFUEL_DAYS = 2;
     static final double DAY = 24 * 3600.0;
 
+    /**
+     * Refuelling comes in whole steps of this many rails seconds, each on a multiple of it: however a
+     * frame or a warp cuts the time up, the tanks take the same sums in the same order, so a career
+     * replays to the bit, across a save too (round 8: refuelling by each frame's time drifted).
+     */
+    public static final double STEP = 60;
+
     private final GameWorld world;
-    /** Rails time this last ran at; NaN until it first runs (saved by {@link HostileTraffic}). */
+    /** The last step boundary refuelled, as rails time; NaN until it first runs (saved by {@link HostileTraffic}). */
     double last = Double.NaN;
 
     PirateUpkeep(GameWorld world) {
         this.world = world;
     }
 
-    /** Refuels every pirate off on the rails for the rails time since the last call. */
+    /** Refuels every pirate off on the rails for each whole step passed since the last call. */
     void update(Map<String, HostileComponent> hostiles, double now) {
-        double dt = Double.isNaN(last) ? 0 : now - last;
-        last = now;
-        if (dt <= 0) return;
+        double boundary = Math.floor(now / STEP) * STEP;
+        if (Double.isNaN(last)) last = boundary;
+        if (boundary <= last) return;
+        int steps = (int) Math.round((boundary - last) / STEP);
+        last = boundary;
         for (Map.Entry<String, HostileComponent> e : hostiles.entrySet()) {
             HostileComponent h = e.getValue();
             if (!h.isPirate() || h.moored()) continue;
             Entity ship = world.engine.getEntity(e.getKey());
             if (ship == null || !idle(ship)) continue;
-            refuel(ship, dt);
+            for (int i = 0; i < steps; i++) if (refuel(ship, STEP) <= 0) break;
         }
     }
 
