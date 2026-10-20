@@ -129,9 +129,9 @@ public class SmokeLauncher {
                 default: break;
             }
             shell.render();
-            // With -Dsmoke.shots=<dir>: the menu, the HUD in flight, the pause menu, the settings and the crew window
+            // With -Dsmoke.shots=<dir>: the main menu, the new game panel, the HUD in flight, the pause menu, the settings and the crew window
             String shots = System.getProperty("smoke.shots");
-            if (shots != null && (frame == 15 || frame == 99 || frame == 105 || frame == 235 || frame == 275)) {
+            if (shots != null && (frame == 5 || frame == 15 || frame == 99 || frame == 105 || frame == 235 || frame == 275)) {
                 int w = Gdx.graphics.getBackBufferWidth(), h = Gdx.graphics.getBackBufferHeight();
                 // Flipped to top-down rows, and opaque: what is on screen, whatever alpha the frame buffer kept
                 byte[] pixels = com.badlogic.gdx.utils.ScreenUtils.getFrameBufferPixels(0, 0, w, h, true);

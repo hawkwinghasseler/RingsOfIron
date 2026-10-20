@@ -59,6 +59,32 @@ test {
   }
 }
 
+// The main menu's version counter reads version.properties: the project version and, when the build
+// runs in a git checkout, the short commit hash. Without git the hash is left empty.
+def versionInfoDir = layout.buildDirectory.dir('generated/versionInfo')
+def generateVersionInfo = tasks.register('generateVersionInfo') {
+  def outDir = versionInfoDir
+  def ver = project.version.toString()
+  def repoDir = rootProject.rootDir
+  inputs.property 'version', ver
+  outputs.dir outDir
+  outputs.upToDateWhen { false }  // the commit can change without any input file changing
+  doLast {
+    String commit = ''
+    try {
+      def proc = new ProcessBuilder('git', 'rev-parse', '--short', 'HEAD').directory(repoDir).redirectErrorStream(true).start()
+      String out = proc.inputStream.text.trim()
+      if (proc.waitFor() == 0) commit = out
+    } catch (Exception ignored) {
+    }
+    def file = outDir.get().file('com/hawkwing/RingsOfIron/version.properties').asFile
+    file.parentFile.mkdirs()
+    file.text = "version=${ver}\ncommit=${commit}\n"
+  }
+}
+sourceSets.main.resources.srcDir(versionInfoDir)
+processResources.dependsOn generateVersionInfo
+
 jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

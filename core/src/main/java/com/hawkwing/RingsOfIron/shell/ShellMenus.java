@@ -17,6 +17,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectMap;
+import com.hawkwing.RingsOfIron.BuildInfo;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -68,7 +69,14 @@ class ShellMenus {
         Label heading = new Label(title, skin, "title");
         heading.setFontScale(p == Panel.MAIN ? 3f : 1.6f);
         t.add(heading).colspan(3).padBottom(p == Panel.MAIN ? 4f : 14f).row();
-        root.add(t);
+        if (p == Panel.MAIN) {
+            // The panel stays centred; the version sits in the bottom-right corner below it
+            root.add(t).expand().row();
+            Label version = new Label(BuildInfo.label(), skin, "dim");
+            root.add(version).right().pad(0f, 0f, 8f, 12f);
+        } else {
+            root.add(t);
+        }
         message = new Label("", skin, "warn");
         return t;
     }
