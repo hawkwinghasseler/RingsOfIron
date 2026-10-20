@@ -29,6 +29,8 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
  *       stops when either runs dry, and the oxygen top-up stops when the oxygen does. Scrubbing
  *       needs no tank. A ship with no tank of a gas at all (a layout from before tanks) is not
  *       limited by that gas.</li>
+ *   <li>Once the oxygen tanks are dry, a unit's own {@link #EMERGENCY_OXYGEN_KG} of oxygen stands in
+ *       for them, until a station makes it good.</li>
  * </ul>
  * A unit that is switched off, unpowered or destroyed does nothing. Life support is far
  * too slow to keep up with a large fire, which uses oxygen much faster than this.
@@ -46,6 +48,14 @@ public class LifeSupportSystem extends FixedLogicSystem {
     public static final float OXYGEN_SUPPLY_RATE = 1.5f;
     /** Standard air one unit can release to bring rooms back to standard pressure, mol/s. */
     public static final float AIR_SUPPLY_RATE = 20f;
+    /**
+     * Kilograms of oxygen a unit of standard throughput keeps for itself (oxygen candles), drawn once
+     * the tanks piped to it are dry. Round 8: a burst oxygen tank left a gunship that had patched its
+     * hull at 0% oxygen for good, and its crew died as their suits ran dry. Enough to bring a
+     * corvette's 140 m³ cabin back from no oxygen at all (about 40 kg) and to fill the crew's suits
+     * many times over; 30 kg left it a little short of breathable.
+     */
+    public static final double EMERGENCY_OXYGEN_KG = 60;
     /** Ticks at the same rate as the hazard simulation. */
     public static final float TICK = GridHazardSystem.HAZARD_TICK;
     /** Runs after the hazard step, so it works on that tick's air and airflow. */

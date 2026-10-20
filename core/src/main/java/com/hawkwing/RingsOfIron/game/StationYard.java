@@ -59,7 +59,7 @@ import java.util.function.DoubleSupplier;
  *
  * <p>The yard also refills the ship's tanks ({@link #orderRefill}): propellant, oxygen and nitrogen,
  * at once, paid by the kilogram ({@link #pricePerKg}); short of credits, every tank gets the same
- * share of what it lacks.
+ * share of what it lacks. It makes good the emergency oxygen life support used too, at the oxygen price.
  *
  * <p>A repair order ends with the air put back (round 8): every room aboard is brought up to
  * station pressure from the station's own air ({@link #topUpAir}), at the refill's oxygen and
@@ -347,7 +347,18 @@ public class StationYard extends EntitySystem {
         for (SubsystemComponent t : TankSupply.tanks(registry, null)) {
             total += Math.max(0, t.capacity - t.contents) * pricePerKg(t.fluid);
         }
+        for (SubsystemComponent u : lifeSupport(registry)) total += u.reserveUsed * OXYGEN_PRICE;
         return total;
+    }
+
+    /** The life support units in {@code registry}, whose emergency oxygen a refill makes good. */
+    private static Array<SubsystemComponent> lifeSupport(ShipSubsystemRegistryComponent registry) {
+        Array<SubsystemComponent> out = new Array<>();
+        for (Entity e : registry.subsystems) {
+            SubsystemComponent s = e == null ? null : e.getComponent(SubsystemComponent.class);
+            if (s != null && s.type == SubsystemComponent.SubsystemType.LIFE_SUPPORT) out.add(s);
+        }
+        return out;
     }
 
     /** Credits to fill every tank aboard {@code ship} at {@code station}'s yard, at its {@link #priceFactor}. */
@@ -376,12 +387,14 @@ public class StationYard extends EntitySystem {
      */
     public static double fill(ShipSubsystemRegistryComponent registry, double budget) {
         if (registry == null || budget <= 0) return 0;
-        Array<SubsystemComponent> tanks = TankSupply.tanks(registry, null);
+        Array<SubsystemComponent> tanks = TankSupply.tanks(registry, null), units = lifeSupport(registry);
         double cost = 0;
         for (SubsystemComponent t : tanks) cost += Math.max(0, t.capacity - t.contents) * pricePerKg(t.fluid);
+        for (SubsystemComponent u : units) cost += u.reserveUsed * OXYGEN_PRICE;
         if (cost <= 0) return 0;
         double share = Math.min(1, budget / cost);
         for (SubsystemComponent t : tanks) t.contents += Math.max(0, t.capacity - t.contents) * share;
+        for (SubsystemComponent u : units) u.reserveUsed -= u.reserveUsed * share;
         return cost * share;
     }
 
@@ -597,6 +610,17 @@ public class StationYard extends EntitySystem {
     public boolean repairing(Entity ship) {
         YardOrdersComponent orders = ORDERS_M.get(ship);
         return orders != null && orders.repairs;
+    }
+
+    /**
+     * True while {@code station}'s yard has work under way on {@code ship}: its berth clamps hold the
+     * ship however hard it pulls (round 8). A ship holed by an ace vented hard enough at the berth to
+     * tear loose again and again, each time calling the work off, and its crew suffocated there.
+     */
+    public boolean holds(Entity ship, Entity station) {
+        YardOrdersComponent orders = ship == null ? null : ORDERS_M.get(ship);
+        if (orders == null || !(orders.repairs || !orders.refits.isEmpty()) || orders.station == null) return false;
+        return orders.station.get(uuids) == station;
     }
 
     /** A line on each piece of yard work under way on {@code ship}, for the screen. */

@@ -73,6 +73,7 @@ public enum CrewRole {
                 switch (kind) {
                     case CARRY: return 1.5f;
                     case EXTINGUISH: case RESCUE: return 0.8f;
+                    case TREAT: return 0.5f;
                     default: return 0f;
                 }
             case TECHNICIAN:
@@ -80,6 +81,7 @@ public enum CrewRole {
                     case YARD: return 1.5f;
                     case REPAIR: case SEAL_BREACH: case PATCH_LEAK: case RESET_SHORT: case ISOLATE_TANK: return 1.2f;
                     case EXTINGUISH: case RESCUE: return 0.8f;
+                    case TREAT: return 0.5f;
                     default: return 0f;
                 }
             default:

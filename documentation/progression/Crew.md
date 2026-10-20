@@ -135,6 +135,12 @@ The yard puts the air back: a repair order ends with every room at station press
 
 The railgun ace wins 8 of its 10 fights, and its boarders and the beaten corvette's vacuum keep the wounds after a loss open.
 
+Later in part 5, from the careers and part 6's playtest:
+- **Nobody dies of a leak at a berth.** With nowhere aboard safe, the crew pull their suits on, then go aboard the docked station, carrying the wounded and leaving the captain's way open; station hands (loaders and technicians, first aid at half a medic's rate) see to them there. Once the ship holds air again, anyone left down ashore is carried back aboard (`BerthVenting`). While a yard works on a ship, its berth clamps hold it however hard it vents (`StationYard.holds`): seed 2026's holed gunship tore loose again and again, and each tear called the repairs off.
+- **A burst oxygen tank no longer leaves the ship unbreathable for good.** Each life support unit keeps 60 kg of its own oxygen (`LifeSupportSystem.EMERGENCY_OXYGEN_KG`, per unit of throughput), drawn once its tanks are dry: enough to bring a corvette's cabin back from 0% and fill the suits many times. It is saved, and a refill makes it good.
+- **"Air running out" notices** (`AirWatch`): one when the oxygen tanks are dry, with what life support has left, and one, kept up to date, when a suit has four minutes or less and nothing aboard can fill it.
+- **The crew keep out of where the fire fell.** At battle stations, a crew member's weapon wound marks the tiles within two of it, and nobody takes or keeps work there until the ship stands down, except a casualty with two minutes or less to live (`TaskRules.waitsOutFire`). Seed 7's ace raked one hull section and all four hands went in after each other and bled out. Consoles and orders never wait.
+
 ## Not done here
 - A boarding fight on the interior grid: the pirates only take the cargo and credits (round 7 plan, "Still parked").
 - The starting corvette has no medic (Ada, Bea and Cole are an engineer, a crewman and a marine), and no medbay.

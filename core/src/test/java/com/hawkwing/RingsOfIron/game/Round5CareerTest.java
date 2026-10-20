@@ -433,7 +433,7 @@ class Round5CareerTest extends CareerScript {
         // home, as a beaten player would (seed 2026 went home mid-boarding and was boarded at the berth)
         if (world.pirateBoarding.boarder() != null) runUntil(BOARDING_WAIT, () -> world.pirateBoarding.boarder() == null);
         // Hands down after the fight get help before the yard's hour, or bleed out during it
-        if (fitCrew() < crewWanted()) {
+        if (ownCrew().size() < crewWanted() || fitCrew() == 0) {
             dockAtStation(game.highport);
             hireReplacements(crewWanted());
         }

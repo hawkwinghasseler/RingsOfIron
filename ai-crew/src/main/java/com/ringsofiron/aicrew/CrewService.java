@@ -151,6 +151,12 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
         return hostility.hostile(a.faction, b.faction);
     }
 
+    /** True if {@code ship}'s own crew are no enemies of {@code faction}, or it has no crew of its own. */
+    public boolean friendlyTo(int faction, Entity ship) {
+        ShipTaskBoardComponent b = board(ship);
+        return b == null || !hostility.hostile(faction, b.faction);
+    }
+
     /** Drops the cached pathfinders and interior worlds, e.g. after a load replaced every grid. */
     public void clearPathfinders() {
         pathfinders.clear();
@@ -249,6 +255,10 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     private void wound(Entity e, CrewMemberComponent c, float amount, DamageCause cause) {
         CrewDef d = c.def;
         if (amount < d.grazeWound) return;
+        // The crew keep out of where the fire fell until the fight is over (ShipTaskBoardComponent#underFire)
+        GridPositionComponent at = position(e);
+        ShipTaskBoardComponent hit = at == null ? null : board(at.ship);
+        if (hit != null) hit.hitAt(at.tileX(), at.tileY());
         if (amount >= d.lethalWound) {
             // Nothing to treat: a warhead going off beside them, say
             c.woundCause = cause;

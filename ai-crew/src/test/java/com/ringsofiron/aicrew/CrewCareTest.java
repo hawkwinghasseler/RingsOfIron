@@ -174,6 +174,8 @@ class CrewCareTest {
         s.run(10f);
         assertTrue(s.c(medic).suited, "suited up for battle stations");
         s.crew.applyDamage(down, 75f, DamageCause.PENETRATOR);
+        // Hit elsewhere and already abed: no fire falls on the ward (FireZoneTest)
+        s.board.standDown();
         s.run(10f);
         assertTrue(s.c(medic).task instanceof TreatTask, "treating: " + s.c(medic).activity);
         assertTrue(s.c(medic).suited, "still suited while at battle stations");

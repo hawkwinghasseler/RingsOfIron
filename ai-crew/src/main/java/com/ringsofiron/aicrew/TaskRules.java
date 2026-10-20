@@ -263,6 +263,29 @@ public final class TaskRules {
         return false;
     }
 
+    /**
+     * A casualty bleeding out with this long or less left is gone in after under fire all the same
+     * ({@link #waitsOutFire}), seconds.
+     */
+    public static final float LAST_CHANCE = 120f;
+
+    /**
+     * True if {@code task} lies where the fire is falling on its ship ({@link
+     * ShipTaskBoardComponent#underFire}) and waits for the fight to end: damage control, repairs and
+     * casualties alike, except a casualty with no more than {@link #LAST_CHANCE} to live. Manning a
+     * console, orders and work away from the ship never wait.
+     */
+    public static boolean waitsOutFire(CrewTask task, ShipTaskBoardComponent board, CrewService crew) {
+        if (board == null || !board.battleStations || board.hitTiles.size == 0) return false;
+        switch (task.kind) {
+            case MAN_CONSOLE: case CARRY: case YARD: case FORCE_DOOR: case EVACUATE: case BOARD: return false;
+            default: break;
+        }
+        if (!board.underFire(targetX(task, crew), targetY(task, crew))) return false;
+        CrewMemberComponent c = crew.crew(mobileTarget(task));
+        return c == null || c.wound != Wound.CRITICAL || c.stabilised || c.treatedBy != null || c.bleedOut > LAST_CHANCE;
+    }
+
     /** True while {@code e}'s ship is at battle stations. */
     static boolean atBattleStations(CrewService crew, Entity e) {
         GridPositionComponent p = crew.position(e);

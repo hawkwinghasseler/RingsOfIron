@@ -79,7 +79,9 @@ public final class CrewMedical {
         double now = world.engine.getSimSeconds();
         for (int i = 0; i < boards.size(); i++) {
             Entity ship = boards.get(i);
-            ship.getComponent(ShipTaskBoardComponent.class).battleStations = inBattle(ship, now);
+            ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
+            board.battleStations = inBattle(ship, now);
+            if (!board.battleStations) board.standDown();
         }
         lastShot.values().removeIf(t -> now - t > BATTLE_HOLD);
         noticeWounds();
