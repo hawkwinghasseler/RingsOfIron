@@ -191,23 +191,26 @@ abstract class CareerScript {
 
     /**
      * After a fight that left hands dead or down, hires at the docked station, as a player would
-     * before the next job, while fewer than {@code want} are fit to work and a berth is free: a medic
-     * first while anyone aboard is seriously wounded or worse, else the most skilled hand.
+     * before the next job: the dead are replaced up to {@code want} hands, and while anyone aboard is
+     * seriously wounded or worse with nobody fit to treat them, a medic comes aboard. The most
+     * skilled hand otherwise; berths allowing.
      */
     void hireReplacements(int want) {
         Entity at = world.docking.dockedTo(game.player);
         if (at == null) return;
         String uuid = world.universe.uuidOf(at);
-        while (fitCrew() < want) {
+        while (true) {
             boolean bleeding = false;
             for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                 if (c.isAlive() && c.wound.ordinal() >= Wound.SERIOUS.ordinal()
                         && e.getComponent(GridPositionComponent.class).ship == game.player) bleeding = true;
             }
+            boolean medic = bleeding && fitCrew() == 0;
+            if (ownCrew().size() >= want && !medic) break;
             CrewHiring.Candidate best = null;
             for (CrewHiring.Candidate c : world.crewHiring.pool(uuid)) {
-                if (best == null || (bleeding ? c.record.medicine > best.record.medicine : top(c) > top(best))) best = c;
+                if (best == null || (medic ? c.record.medicine > best.record.medicine : top(c) > top(best))) best = c;
             }
             if (best == null) break;
             String why = world.crewHiring.hire(best.key);

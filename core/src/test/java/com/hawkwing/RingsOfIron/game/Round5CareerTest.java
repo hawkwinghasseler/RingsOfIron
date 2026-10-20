@@ -445,7 +445,7 @@ class Round5CareerTest extends CareerScript {
     /** Repairs at Highport if the last job left any damage. */
     private void repairIfNeeded() {
         // Hands down after the fight get help before the yard's hour, or bleed out during it
-        if (fitCrew() < crewWanted()) {
+        if (ownCrew().size() < crewWanted() || fitCrew() == 0) {
             dockAtStation(game.highport);
             hireReplacements(crewWanted());
         }
