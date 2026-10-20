@@ -154,12 +154,100 @@ class SurrenderHoldsTest {
         assertEquals(0, shots.get());
     }
 
+    @Test
+    void strayFireNeverBringsAPrizeBack() {
+        // Round 9: in round 8's window the point defense, firing at the base's darts, hit the struck
+        // raiders behind them; only fire aimed at the prize itself counts
+        String id = pirate();
+        HostileComponent h = world.macroSim.hostiles().get(id);
+        Entity ship = surrendered(id);
+        run(15);
+        Entity dart = new Entity();
+
+        var pd = hitFromPlayer(ship, 0.5f);
+        pd.aimedAt = dart;
+        pd.pointDefense = true;
+        world.combatEvents.impacts.dispatch(pd);
+        assertTrue(h.surrendered, "a point-defense round doesn't count");
+
+        var other = hitFromPlayer(ship, 0.5f);
+        other.aimedAt = world.engine.getEntity(world.macroSim.hostiles().all().keySet().stream()
+                .filter(k -> !k.equals(id)).findFirst().orElseThrow());
+        world.combatEvents.impacts.dispatch(other);
+        assertTrue(h.surrendered, "nor a round aimed at another ship");
+
+        var barrel = hitFromPlayer(ship, 0.5f);
+        barrel.aimedAt = null;
+        world.combatEvents.impacts.dispatch(barrel);
+        assertTrue(h.surrendered, "nor one fired down the barrel at nothing");
+        run(3);
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
+
+        // A round aimed at the prize, fired after the grace, still does
+        world.combatEvents.impacts.dispatch(hitFromPlayer(ship, 0.5f));
+        assertFalse(h.surrendered, "aimed fire brings it back");
+    }
+
+    @Test
+    void aimedFireWithinTheGraceDoesNotCount() {
+        String id = pirate();
+        HostileComponent h = world.macroSim.hostiles().get(id);
+        Entity ship = surrendered(id);
+        run(3);
+        world.combatEvents.impacts.dispatch(hitFromPlayer(ship, 0.5f));
+        assertTrue(h.surrendered, "still inside the grace");
+    }
+
+    @Test
+    void thePlayersGunsFiringAtWillNeverTakeAStruckShip() {
+        String id = pirate();
+        Entity ship = surrendered(id);
+        run(15);
+        // Every mount weapons free and locked on the prize, as the crewed guns would be
+        var weapons = game.player.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class);
+        for (var m : weapons.mounts) m.weaponsFree = true;
+        game.player.getComponent(SensorComponent.class).lockedTarget = ship;
+        AtomicInteger atPrize = new AtomicInteger();
+        world.combatEvents.shots.add((signal, shot) -> {
+            if (shot.shooter == game.player && shot.target == ship) atPrize.incrementAndGet();
+        });
+        for (int i = 0; i < 10 / FRAME; i++) {
+            world.update(FRAME);
+            for (var m : weapons.mounts) assertNotSame(ship, m.engaged, m.def.id + " took the prize as its target");
+        }
+        assertEquals(0, atPrize.get(), "no shot at the prize");
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
+
+        // The player's own trigger still fires on it, and that brings it back
+        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        gun.setTarget(ship);
+        for (int i = 0; i < 5 / FRAME && atPrize.get() == 0; i++) {
+            gun.fireGuns();
+            world.update(FRAME);
+        }
+        assertTrue(atPrize.get() > 0, "the trigger fires on it");
+        assertFalse(world.macroSim.hostiles().get(id).surrendered, "aimed fire after the grace brings it back");
+    }
+
     // ------------------------------------------------------------------
 
+    /** Brings in raider {@code id} to fight the player, then silences its guns: it surrenders. */
+    private Entity surrendered(String id) {
+        world.macroSim.hostiles().get(id).targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 2_500, 0);
+        run(3);
+        for (SubsystemComponent s : turrets(ship)) s.health = 0f;
+        run(2);
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
+        return ship;
+    }
+
+    /** A round from the player's ship, aimed at {@code ship}, fired {@code sinceFired} seconds ago. */
     private com.ringsofiron.combatsys.events.ImpactEvent hitFromPlayer(Entity ship, float sinceFired) {
         var hit = new com.ringsofiron.combatsys.events.ImpactEvent();
         hit.target = ship;
         hit.owner = game.player;
+        hit.aimedAt = ship;
         hit.sinceFired = sinceFired;
         return hit;
     }
