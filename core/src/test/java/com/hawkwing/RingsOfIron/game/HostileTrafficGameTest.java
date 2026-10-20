@@ -125,6 +125,15 @@ class HostileTrafficGameTest {
             SubsystemComponent s = e.getComponent(SubsystemComponent.class);
             if (s.type == SubsystemComponent.SubsystemType.REACTOR) s.switchedOn = false;
         }
+        for (int i = 0; i < 60 && !ShipDisablement.isDisabled(game.player); i++) world.update(FRAME);
+        // Then hit, too badly to board (round 7's PirateBoarding) though not enough to break off
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile t = grid.getTile(x, y);
+                if (t != null && t.isWall()) t.setIntegrity(0.68f);
+            }
+        }
         run(3);
         assertTrue(ShipDisablement.isDisabled(game.player));
         assertTrue(h.brokeOff);
