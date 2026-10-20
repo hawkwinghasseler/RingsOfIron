@@ -62,6 +62,8 @@ public class PlayerTransfer {
     public final List<String> notices = new ArrayList<>();
 
     private final java.util.function.Function<Action, String> keys;
+    /** True while the autopilot flies to {@code uuid} and so accepts the rest of a leg itself. */
+    public java.util.function.Predicate<String> autopilotFliesTo = uuid -> false;
 
     public PlayerTransfer(GameWorld world, NavTarget target, PlayerOrbitInfo orbits,
                           java.util.function.Function<Action, String> keys) {
@@ -193,8 +195,10 @@ public class PlayerTransfer {
         List<double[]> burns = new ArrayList<>();
         for (com.ringsofiron.macrosim.rails.RailsModel.Burn b : route.burns) burns.add(new double[]{b.time, b.prograde, b.radial});
         proposal = new Proposal(to, name, burns, route.arrivalTime, route.totalDeltaV, route.nextParent);
+        // The autopilot accepts it on its next frame, so the key would only mislead
         notices.add("Arrived at " + orbits.body().name + ": capture and transfer to " + name
-                + " proposed on the orbit map. " + keys.apply(Action.ACCEPT_PLAN) + " accepts");
+                + (autopilotFliesTo.test(to) ? " planned; the autopilot takes it"
+                : " proposed on the orbit map. " + keys.apply(Action.ACCEPT_PLAN) + " accepts"));
     }
 
     /**

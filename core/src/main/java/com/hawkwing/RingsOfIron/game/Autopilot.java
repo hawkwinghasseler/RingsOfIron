@@ -42,6 +42,10 @@ public class Autopilot implements DropOutSource {
         this.nav = nav;
         this.keys = keys;
         world.timeWarp.changes.add((signal, change) -> heard(change));
+        nav.transfer.autopilotFliesTo = uuid -> {
+            AutopilotComponent a = state();
+            return a != null && uuid.equals(a.targetUuid);
+        };
     }
 
     /** The autopilot's state on the player's ship, or null when it is off. */

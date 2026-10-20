@@ -25,6 +25,8 @@ import java.util.Locale;
  */
 public class CrewWindow extends Window {
     public static final float REFRESH_INTERVAL = 0.5f;
+    /** Space between the window's edge and its rows, left and right. */
+    static final float SIDE_PAD = 20f;
 
     private final Skin skin;
     private final CrewSheet sheet = new CrewSheet();
@@ -48,7 +50,7 @@ public class CrewWindow extends Window {
         this.skin = skin;
         setModal(false);
         setMovable(true);
-        pad(28f, 12f, 12f, 12f);
+        pad(28f, SIDE_PAD, 12f, SIDE_PAD);
         getTitleTable().padLeft(8f);
         summary = new Label("", skin, "dim");
         status = new Label("", skin, "dim");
@@ -143,16 +145,20 @@ public class CrewWindow extends Window {
         histories.clear();
         skills.clear();
         crew.clearChildren();
+        // Name, role and skills take the same widths for crew and hires, so the two lists line up
+        float[] cols = new float[3];
+        for (Member m : sheet.crew) widen(cols, m.name, m.role, m.skills);
+        if (!sheet.stationName.isEmpty()) for (Hire h : sheet.hires) widen(cols, h.name, h.role, h.skills);
         crew.add(new Label("Aboard", skin, "dim")).left().colspan(7).row();
         if (sheet.crew.size == 0) crew.add(new Label("No crew but you", skin)).left().colspan(7).row();
         for (Member m : sheet.crew) {
-            crew.add(new Label(m.name, skin)).left().padRight(12f);
-            crew.add(new Label(m.role, skin, "dim")).left().padRight(12f);
+            crew.add(new Label(m.name, skin)).left().width(cols[0]).padRight(12f);
+            crew.add(new Label(m.role, skin, "dim")).left().width(cols[1]).padRight(12f);
             Label skill = new Label(m.skills, skin), cond = new Label(m.condition, skin), morale = new Label(m.morale, skin);
             skills.add(skill);
             conditions.add(cond);
             morales.add(morale);
-            crew.add(skill).left().padRight(12f);
+            crew.add(skill).left().width(cols[2]).padRight(12f);
             crew.add(cond).left().padRight(12f);
             crew.add(morale).left().padRight(12f);
             crew.add(new Label(m.wage, skin)).left().padRight(12f);
@@ -194,9 +200,9 @@ public class CrewWindow extends Window {
             hires.add(new Label("Looking for a berth", skin, "dim")).left().colspan(5).row();
             if (sheet.hires.size == 0) hires.add(new Label("No one today", skin)).left().colspan(5).row();
             for (Hire h : sheet.hires) {
-                hires.add(new Label(h.name, skin)).left().padRight(12f);
-                hires.add(new Label(h.role, skin, "dim")).left().padRight(12f);
-                hires.add(new Label(h.skills, skin)).left().padRight(12f);
+                hires.add(new Label(h.name, skin)).left().width(cols[0]).padRight(12f);
+                hires.add(new Label(h.role, skin, "dim")).left().width(cols[1]).padRight(12f);
+                hires.add(new Label(h.skills, skin)).left().width(cols[2]).padRight(12f);
                 hires.add(new Label(h.terms, skin)).left().padRight(12f);
                 String key = h.key;
                 hires.add(button("Hire", () -> say(provider.hire(key)))).row();
@@ -204,9 +210,14 @@ public class CrewWindow extends Window {
         }
     }
 
+    /** Widens each of {@code cols} to fit the matching text. */
+    private void widen(float[] cols, String... texts) {
+        for (int i = 0; i < cols.length; i++) cols[i] = Math.max(cols[i], new Label(texts[i], skin).getPrefWidth());
+    }
+
     private String signature() {
         StringBuilder s = new StringBuilder(sheet.stationName).append('|');
-        for (Member m : sheet.crew) s.append(m.id).append(m.dismissable ? '+' : '-').append(m.wage).append(',');
+        for (Member m : sheet.crew) s.append(m.id).append(m.dismissable ? '+' : '-').append(m.wage).append(m.skills).append(',');
         s.append('|');
         for (Prisoner p : sheet.prisoners) s.append(p.id).append(p.option).append(p.offersToJoin).append(',');
         s.append(sheet.prisonersAlongside).append('|');

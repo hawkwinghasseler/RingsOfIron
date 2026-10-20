@@ -1268,7 +1268,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 warp.isRailsWarp() ? " (rails)" : ""), left, top);
         Entity target = gun.getTarget();
         HudMarkerComponent marker = target == null ? null : MARKERS.get(target);
-        font.draw(batch, "Target: " + (marker == null ? "none" : marker.label) + (gun.gunsReady() ? "" : "   (gun reloading)")
+        font.draw(batch, "Target: " + (target == null ? "none" : marker == null ? "unknown contact" : marker.label) + (gun.gunsReady() ? "" : "   (gun reloading)")
                 + (target != null && target == game.raider && game.raiderHostile() ? "   FIRING ON YOU" : ""), left, top - 20f);
         float reload = gun.missileReloadTime();
         // Inbound missiles are ui-hud's missile warning.
