@@ -382,7 +382,11 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             notices.add(h.displayName + " is breaking off");
         }
         if (!h.brokeOff && h.isPirate() && leaderDone(h)) {
-            if (stillComing(e, h) || world.pirateBase.defending(h.displayName)) {
+            if (world.pirateBoarding.boarder() == e) {
+                // Alongside the beaten player it finishes the boarding before it follows its leader
+                // home (round 7: a raid's raider told the player it was boarding, then just left)
+                h.wingOf = null;
+            } else if (stillComing(e, h) || world.pirateBase.defending(h.displayName)) {
                 // Still on its run in, it came to fight: it fights on alone rather than turn for home
                 // unfired. Nor does the base's defence leave it while it stands
                 h.wingOf = null;

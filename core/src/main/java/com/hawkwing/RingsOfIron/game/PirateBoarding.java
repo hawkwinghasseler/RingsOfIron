@@ -158,6 +158,10 @@ public class PirateBoarding implements SaveParticipant {
         Entity pirate = boarder();
         if (pirate != null && pirate.getComponent(PhysicsBodyComponent.class) != null && now - asked <= STALE_SECONDS) return;
         if (aboard && pirate != null) world.notices.post("The boarders cast off", NoticeLog.Kind.INFO);
+        else if (pirate != null && pirate.getComponent(HostileComponent.class) != null) {
+            // Told it was coming alongside, the player hears it isn't
+            world.notices.post(pirate.getComponent(HostileComponent.class).displayName + " turns away without boarding", NoticeLog.Kind.INFO);
+        }
         reset();
     }
 

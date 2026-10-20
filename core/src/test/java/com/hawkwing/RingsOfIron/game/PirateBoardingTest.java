@@ -143,6 +143,29 @@ class PirateBoardingTest {
         assertEquals(2_000, takes.get(0).credits, 1e-9);
     }
 
+    @Test
+    void aWingmanBoardingFinishesWhenItsLeaderLeaves() {
+        // Round 7 integration: in the raid's real-window run a raider began to board, its leader left
+        // the player drifting, and the raider broke off with it: "pirates are aboard", then nothing
+        credits(20_000);
+        List<String> ids = world.hostiles.spawnWing(HostileTraffic.RAIDER, 2, game.highport, "raider_chaingun");
+        HostileComponent lead = hostiles.get(ids.get(0));
+        HostileComponent wing = hostiles.get(ids.get(1));
+        lead.targetUuid = HostileComponent.PLAYER;
+        wing.targetUuid = HostileComponent.PLAYER;
+        bringIn(ids.get(0), 2_000, 0);
+        Entity w = bringIn(ids.get(1), 2_000, 300);
+        run(2);
+        beatThePlayer();
+        assertTrue(runUntil(2, () -> ShipDisablement.isDisabled(game.player)));
+        // The wingman comes alongside first; the leader, finding it taken, leaves the player drifting
+        assertTrue(world.pirateBoarding.board(ids.get(1), w, wing, game.player, 0));
+        assertTrue(runUntil(30, () -> lead.brokeOff), "the leader leaves");
+        assertTrue(runUntil((float) PirateBoarding.BOARD_SECONDS + 120f, () -> !takes.isEmpty()), "the wingman finishes its boarding");
+        assertSame(w, takes.get(0).pirate);
+        assertTrue(world.hostiles.notices.stream().noneMatch(n -> n.equals(wing.displayName + " is breaking off with its leader")));
+    }
+
     // ---------------------------------------------------------------------------------------------
 
     private String huntingPirate() {
@@ -161,6 +184,16 @@ class PirateBoardingTest {
         run(2);
         assertSame(game.player, ship.getComponent(SensorComponent.class).lockedTarget);
         return id;
+    }
+
+    private Entity bringIn(String uuid, float dx, float dy) {
+        double now = world.macroSim.now();
+        StateVector s = world.macroSim.gateway().anchorStateAt(now, new StateVector());
+        world.macroSim.rails().attach(uuid, world.macroSim.gateway().anchorParentUuid(), s.set(s.x + dx, s.y + dy, s.vx, s.vy), now);
+        Entity ship = world.engine.getEntity(uuid);
+        for (int i = 0; i < 120 && ship.getComponent(PhysicsBodyComponent.class) == null; i++) world.update(FRAME);
+        assertNotNull(ship.getComponent(PhysicsBodyComponent.class), "came into the bubble");
+        return ship;
     }
 
     /** The player's reactor down: beaten. */
