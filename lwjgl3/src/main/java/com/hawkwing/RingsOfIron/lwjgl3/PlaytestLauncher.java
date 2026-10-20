@@ -262,14 +262,20 @@ public class PlaytestLauncher {
                             .append(world.nav.target.uuid() == null ? "none" : world.nav.target.name());
                     // Missiles aimed at us, and how many still steer (the rest coast as slugs)
                     int darts = 0, homing = 0;
+                    java.util.Map<String, Integer> from = new java.util.TreeMap<>();
                     for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.badlogic.ashley.core.Family.all(
                             com.ringsofiron.combatsys.components.MissileComponent.class).get())) {
                         com.ringsofiron.combatsys.components.MissileComponent m = e.getComponent(com.ringsofiron.combatsys.components.MissileComponent.class);
                         if (m.target != s.player && m.seekerLock != s.player) continue;
                         darts++;
-                        if (m.phase != com.ringsofiron.combatsys.components.MissileComponent.Phase.COAST) homing++;
+                        if (m.phase == com.ringsofiron.combatsys.components.MissileComponent.Phase.COAST) continue;
+                        homing++;
+                        from.merge(m.launcher == null ? "?" : PlayerDocking.name(m.launcher), 1, Integer::sum);
                     }
-                    out.append(", darts at us ").append(darts).append(" (").append(homing).append(" homing)");
+                    out.append(", darts at us ").append(darts).append(" (").append(homing).append(" homing");
+                    // Who launched the ones still homing
+                    if (!from.isEmpty()) out.append(" from ").append(from.toString().replace("{", "").replace("}", "").replace("=", " x"));
+                    out.append(")");
                     out.append(String.format(java.util.Locale.ROOT, ", sim %.1f s", world.engine.getSimSeconds()));
                     // Each defender's range and whether it is beaten, so a script can Tab to the nearest
                     for (String name : world.pirateBase.defenders()) {
