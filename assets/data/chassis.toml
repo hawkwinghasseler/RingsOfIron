@@ -191,10 +191,11 @@ origin_y = -4.0
 # reactor's store (combat-sys's Shields).
 # Two Small escape pods (4 seats each) at x 16 aft of the turrets, hatches out through the top
 # and bottom hull, so the gunship carries a player's crew as well as a patrol's.
+# A medbay of four beds (m, round 7) forward of the shield emitter, x 12-13, y 5-6.
 rows = [
   "#######DDD##########",
-  "#GGG.P.....T...T...#",
-  "#GGG.P..RRRS.......#",
+  "#GGG.P.....Tmm.T...#",
+  "#GGG.P..RRRSmm.....#",
   "#.....L.RRR.C.HH.TT#",
   "#.....L.RRR.C.WW.TT#",
   "#GGG.P.............#",
@@ -250,6 +251,7 @@ origin_y = -5.0
 # The marine bay is the open deck under the dorsal Small port (x 10-12): room for a boarding party
 # to stand ready by the port. The port is active, so the frigate can latch onto a ship and board it.
 # Two Small escape pods (4 seats each) at x 7, hatches out through the top and bottom hull.
+# A medbay of four beds (m, round 7) forward of the reactor, x 14-15, y 2-3.
 # It collides on its layout: its hull art has no collision layer of its own.
 rows = [
   "##########DDD###########",
@@ -258,8 +260,8 @@ rows = [
   "#......................#",
   "#.....L..RRR.C...HH....#",
   "#.....L..RRR.C...WW....#",
-  "#........RRR...........#",
-  "#GGG.P..............TT.#",
+  "#........RRR..mm.......#",
+  "#GGG.P........mm....TT.#",
   "#GGG.P..T.........T.TT.#",
   "########################",
 ]
