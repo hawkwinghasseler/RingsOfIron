@@ -39,6 +39,8 @@ public final class FlightWarnings {
     private int inbound;
     private int sinceEstimate = RETURN_REFRESH;
     private double returnKg = Double.NaN;
+    /** Most missiles inbound at once since the sky was last clear: a warning goes out only above it. */
+    private int peak;
 
     public FlightWarnings(GameWorld world) {
         this.world = world;
@@ -58,9 +60,13 @@ public final class FlightWarnings {
         frame.clear();
         threats.collect(frame);
         int n = frame.incoming();
-        if (n > inbound) {
+        if (n == 0) peak = 0;
+        if (n > inbound && n > peak) {
+            peak = n;
             float t = frame.soonestImpact();
-            world.notices.post(String.format(Locale.ROOT, "MISSILE WARNING: %d inbound%s", n,
+            // The count rises and falls as missiles launch and point defense takes them: a warning goes
+            // out when more are coming than at any time since the sky was clear, and replaces the last
+            world.notices.replace("MISSILE WARNING", String.format(Locale.ROOT, "MISSILE WARNING: %d inbound%s", n,
                     Float.isNaN(t) ? "" : String.format(Locale.ROOT, ", impact in %.0f s", t)), NoticeLog.Kind.WARNING);
         }
         inbound = n;

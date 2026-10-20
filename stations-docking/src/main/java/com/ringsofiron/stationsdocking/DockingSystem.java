@@ -441,7 +441,9 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         DockingPortsComponent ports = portsMapper.get(vessel);
         if (ports == null) return false;
         for (DockingPort p : ports.ports) {
-            if (p.state == DockingPort.State.DOCKED && p.permitted) return true;
+            // Latched to something there is (as dockedTo has it): a save can name a partner since gone
+            if (p.state == DockingPort.State.DOCKED && p.permitted && p.partnerUuid != null
+                    && uuids.getEntity(p.partnerUuid) != null) return true;
         }
         return false;
     }

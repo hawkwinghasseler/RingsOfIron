@@ -345,7 +345,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         });
         world.timeWarp.changes.add((signal, change) -> {
             if (change.blockedReason != null) show("Time warp refused: " + change.blockedReason);
-            else if (change.reason != null) show("Dropped out of warp: " + change.reason);
+            else if (change.reason != null && change.reason != TimeWarpController.DropReason.REQUESTED) show(dropNotice(change));
         });
 
         world.hints.registerKey(HintRegistry.Context.ANY, "Esc", hosted ? "menu" : "quit", 90);
@@ -492,6 +492,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 else show(world.forcing.start(game.avatar, cut ? ForceMethod.CUT
                         : t.state == ForceMethod.DoorState.UNPOWERED ? ForceMethod.PRY : ForceMethod.HACK));
             }
+            // Undocking is a helm order: on deck, say where to give it rather than doing nothing
+            if (just(Action.UNDOCK) && world.docking.dockedTo(game.player) != null) {
+                show("Take the helm to undock: " + key(Action.VIEW) + " at the helm, then " + key(Action.UNDOCK));
+            }
             if (just(Action.LIGHTS)) {
                 lightsOn = !lightsOn;
                 show(lightsOn ? "Deck lighting on" : "Deck lighting off");
@@ -583,6 +587,43 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private void matchViewToSeat() {
         if (VIEW_ANYWHERE) return;
         hud.getViewMode().setMode(world.bridge.seat() != null ? ViewMode.EXTERIOR : ViewMode.INTERIOR);
+    }
+
+    /** Draws one line of the status column in the font's color, wrapped to the column; returns the y below it. */
+    private float statusLine(String text, float x, float y) {
+        layout.setText(font, text, font.getColor(), STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+        font.draw(batch, layout, x, y);
+        return y - Math.max(20f, layout.height + 6f);
+    }
+
+    /** Why warp stopped, in words ("Dropped out of warp: a planned burn is due"), not the reason's enum name. */
+    private String dropNotice(TimeWarpController.WarpChange change) {
+        String why = null;
+        switch (change.reason) {
+            case PLAYER_EVENT:
+                if (change.event == null) break;
+                switch (change.event.type) {
+                    case MANEUVER: why = "a planned burn is due"; break;
+                    case SOI_ENTRY: why = "entering " + bodyName(change.event.targetUuid) + "'s sphere of influence"; break;
+                    case SOI_EXIT: why = "leaving this body's sphere of influence"; break;
+                    case IMPACT: why = "on course to hit the surface"; break;
+                    default: break;
+                }
+                break;
+            case ENCOUNTER:
+                why = (change.encounter == null ? "a craft" : PlayerDocking.name(change.encounter)) + " is coming within 20 km";
+                break;
+            default:
+                break;
+        }
+        return why == null ? "Dropped out of warp" : "Dropped out of warp: " + why;
+    }
+
+    private String bodyName(String uuid) {
+        Entity e = uuid == null ? null : world.universe.entity(uuid);
+        com.ringsofiron.orbital.components.CelestialBodyComponent body = e == null ? null
+                : e.getComponent(com.ringsofiron.orbital.components.CelestialBodyComponent.class);
+        return body != null && body.name != null ? body.name : world.nav.target.name(uuid);
     }
 
     private void planBurns() {
@@ -1228,7 +1269,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Entity target = gun.getTarget();
         HudMarkerComponent marker = target == null ? null : MARKERS.get(target);
         font.draw(batch, "Target: " + (marker == null ? "none" : marker.label) + (gun.gunsReady() ? "" : "   (gun reloading)")
-                + (target == game.raider && game.raiderHostile() ? "   FIRING ON YOU" : ""), left, top - 20f);
+                + (target != null && target == game.raider && game.raiderHostile() ? "   FIRING ON YOU" : ""), left, top - 20f);
         float reload = gun.missileReloadTime();
         // Inbound missiles are ui-hud's missile warning.
         font.draw(batch, "Missile: " + (reload < 0f ? "offline" : reload > 0f ? String.format("%.0f s", reload) : "ready"),
@@ -1273,21 +1314,16 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         y -= 10f;
         font.setColor(Color.SKY);
-        String[] dock = docking.readout();
-        for (int i = 0; i < dock.length; i++) font.draw(batch, dock[i], left, y - 20f * i);
-        float below = y - 20f * dock.length - 10f;
+        // Long lines wrap inside the column rather than running off the window's right edge
+        float below = y;
+        for (String line : docking.readout()) below = statusLine(line, left, below);
+        below -= 10f;
         // Navigation: the target and closest approach, the next burn, the helm's order, the fuel
         font.setColor(Color.VIOLET);
-        for (String line : world.nav.readout()) {
-            font.draw(batch, line, left, below);
-            below -= 20f;
-        }
+        for (String line : world.nav.readout()) below = statusLine(line, left, below);
         // The contracts held: what, how long left and how far
         font.setColor(Color.GOLD);
-        for (com.hawkwing.RingsOfIron.game.Contract c : world.contracts.active()) {
-            font.draw(batch, world.contracts.describe(c), left, below, STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
-            below -= 20f;
-        }
+        for (com.hawkwing.RingsOfIron.game.Contract c : world.contracts.active()) below = statusLine(world.contracts.describe(c), left, below);
         // The objective stays up under the notices, once its own notice has gone from above them
         if (firstPlay != null) {
             String objective = firstPlay.objective(this::key);
@@ -1459,6 +1495,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         String fault = world.bridge.helmFault(game.player);
         if (world.bridge.playerAtHelm()) return fault == null ? null : "Helm: " + fault;
         if (fault != null) return "Helm: " + fault + "; the ship drifts";
+        // Flying an order, the helm's line in the navigation readout says what it is doing
+        com.hawkwing.RingsOfIron.game.HelmOrderComponent order = game.player.getComponent(com.hawkwing.RingsOfIron.game.HelmOrderComponent.class);
+        if (order != null && order.mode != com.hawkwing.RingsOfIron.game.HelmOrderComponent.Mode.NONE) return null;
         return world.bridge.helmsman(game.player) != null ? "Helm: the helmsman holds the heading"
                 : "Helm: nobody; the ship drifts";
     }

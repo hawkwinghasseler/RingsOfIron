@@ -70,7 +70,7 @@ public class StationTraffic implements BubbleTransitionListener {
         if (at == null) return;
         int port = freePort(at, MountFootprint.MountSize.M);
         if (port < 0) {
-            moveClear(pb.body, at);
+            moveClear(freighter, pb.body, at);
             return;
         }
         world.docking.dockInPlace(freighter, 0, at, port);
@@ -118,8 +118,12 @@ public class StationTraffic implements BubbleTransitionListener {
         return -1;
     }
 
-    /** Moves the freighter straight out from the station's middle until its hull is clear. */
-    private void moveClear(Body body, Entity at) {
+    /**
+     * Moves the freighter straight out from the station's middle until its hull is clear, and has
+     * its pilot leave on out that way: by default it would head away from the bubble origin, across
+     * the station and into the craft docked there when the player is beyond it (as after a tow).
+     */
+    private void moveClear(Entity freighter, Body body, Entity at) {
         float dx = ship.x - (float) station.x, dy = ship.y - (float) station.y;
         float len = (float) Math.hypot(dx, dy);
         if (len < 1e-3f) {
@@ -131,7 +135,10 @@ public class StationTraffic implements BubbleTransitionListener {
         }
         // Freighters waiting at the same station ride the same orbit, so they all come in at one
         // spot: each takes the nearest free spot round the station instead of piling onto the others.
-        float out = reach(at) + CLEARANCE;
+        // Clear of the freighters docked round the hull too, which stick out a whole hull's length
+        // from their ports; one latched this tick is not even there yet (it is drawn onto its port
+        // once both have bodies), so the spots cannot be checked against it.
+        float out = reach(at) + 2 * NOSE_X + CLEARANCE;
         for (int ring = 0; ring < MAX_RINGS; ring++) {
             float r = out + ring * SPACING;
             int spots = Math.max(1, (int) (MathUtils.PI2 * r / SPACING));
@@ -143,6 +150,8 @@ public class StationTraffic implements BubbleTransitionListener {
                 float y = (float) station.y + (dx * sin + dy * cos) * r;
                 if (ring < MAX_RINGS - 1 && !spotFree(body, x, y)) continue;
                 PhysicsManager.setPosition(body, x, y, body.getAngle());
+                NpcPilotComponent pilot = freighter.getComponent(NpcPilotComponent.class);
+                if (pilot != null) pilot.departDirection = new Vector2(x - (float) station.x, y - (float) station.y);
                 return;
             }
         }

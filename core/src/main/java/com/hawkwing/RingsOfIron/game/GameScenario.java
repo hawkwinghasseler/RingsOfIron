@@ -446,6 +446,8 @@ public class GameScenario {
 
     /** True once the raider is fighting back. */
     public boolean raiderHostile() {
+        // A save from after the first raider was dealt with has none
+        if (raider == null) return false;
         SensorComponent sensor = raider.getComponent(SensorComponent.class);
         return sensor != null && sensor.lockedTarget == player;
     }

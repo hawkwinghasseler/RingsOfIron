@@ -37,6 +37,33 @@ class EntityLifecycleTest {
     }
 
     @Test
+    void whatIsLoadedAfterAClearIsNotTakenByRemovalsTheClearSetOff() {
+        GameEngine game = new GameEngine();
+        game.getEcsEngine().addSystem(new NoOpFixed());
+        Entity ship = game.createEntityWithUuid();
+        Entity aboard = game.createEntityWithUuid();
+        game.addEntity(ship);
+        game.addEntity(aboard);
+        // As the crew go with their ship
+        game.getEcsEngine().addEntityListener(new com.badlogic.ashley.core.EntityListener() {
+            @Override public void entityAdded(Entity e) {}
+            @Override public void entityRemoved(Entity e) {
+                if (e == ship) game.removeEntity(aboard);
+            }
+        });
+        game.clear();
+
+        // A load: the engine's pool hands the freed entities out again
+        Entity[] loaded = new Entity[4];
+        for (int i = 0; i < loaded.length; i++) {
+            loaded[i] = game.createEntityWithUuid();
+            game.addEntity(loaded[i]);
+        }
+        game.update(1f / 60f);
+        assertEquals(loaded.length, game.getEcsEngine().getEntities().size(), "every loaded entity is still there");
+    }
+
+    @Test
     void freshUuidsAreUnique() {
         GameEngine game = new GameEngine();
         for (int i = 0; i < 1000; i++) game.addEntity(game.createEntityWithUuid());

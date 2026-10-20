@@ -189,7 +189,7 @@ public class HelmOrders {
             case MATCH_VELOCITY: what = "matching velocity with " + who; break;
             case HOLD_POSITION: what = "holding position on " + who; break;
             case APPROACH: what = String.format(java.util.Locale.ROOT, "approaching %s to %,.0f m", who, o.distance); break;
-            case DOCK: what = "docking at " + who + (o.dockStatus.isEmpty() ? "" : ": " + o.dockStatus); break;
+            case DOCK: what = "docking at " + who + (o.dockStatus.isEmpty() ? "" : ": " + Character.toLowerCase(o.dockStatus.charAt(0)) + o.dockStatus.substring(1)); break;
             default: return null;
         }
         if (world.bridge.playerAtHelm()) return "Helm order (" + what + ") waits: you have the helm (" + keys.apply(Action.VIEW) + " hands it over)";

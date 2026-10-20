@@ -424,6 +424,7 @@ abstract class CareerScript {
 
     void flyToTheMoon() {
         logVenting("before the Moon trip");
+        saveForPlaytest("Before the Moon trip");
         String target = game.oreMine != null ? game.oreMine : game.lunarMine;
         Entity station = world.engine.getEntity(target);
         assertTrue(world.docking.undock(game.player));
@@ -772,6 +773,26 @@ abstract class CareerScript {
                 when, world.engine.getSimSeconds() / 86_400, credits(), world.standing.standing(world.standing.sponsor()),
                 world.standing.describeRank(), Difficulty.of(world), Difficulty.shipValue(game.player), hull(game.player),
                 ownCrew().size());
+    }
+
+    /**
+     * Saves the game as {@code name} into {@code build/playtest-saves/seed-<seed>/}, with the summary
+     * the load menu lists, for the real-window playtest to load ({@code tools/playtest/mid-late.sh}).
+     * A save the game refuses (in warp, say) is logged and skipped.
+     */
+    void saveForPlaytest(String name) {
+        Path dir = Paths.get(System.getProperty("user.dir")).resolve("build").resolve("playtest-saves").resolve("seed-" + SEED);
+        try {
+            Files.createDirectories(dir);
+        } catch (IOException e) {
+            log("  (playtest save %s: %s)", name, e.getMessage());
+            return;
+        }
+        com.badlogic.gdx.files.FileHandle file = new com.badlogic.gdx.files.FileHandle(
+                dir.resolve(name.replaceAll("[^A-Za-z0-9_-]+", "_") + ".json").toFile());
+        String refused = game.quickSave(file);
+        if (refused == null) com.hawkwing.RingsOfIron.shell.SaveSummary.of(game, name).writeFor(file);
+        log("  (playtest save %s: %s)", name, refused == null ? "written" : refused);
     }
 
     void logBoard(String station) {
