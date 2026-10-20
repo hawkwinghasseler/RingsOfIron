@@ -580,7 +580,7 @@ abstract class CareerScript {
             // Towed in holed and dry: the yard mends and fills it, or the Moon trip can't start
             run(120);
             Entity home = world.docking.dockedTo(game.player);
-            double bill = world.yard.repairCost(game.player, home) + world.yard.refillCost(game.player, home);
+            double bill = world.yard.repairCost(game.player, home) + world.yard.airCost(game.player, home) + world.yard.refillCost(game.player, home);
             if (credits() < bill) {
                 log("  short by %.0f cr for the yard: the script makes up the difference.", bill - credits());
                 grantedCredits += bill - credits();
