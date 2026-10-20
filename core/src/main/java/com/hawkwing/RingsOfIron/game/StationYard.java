@@ -612,6 +612,17 @@ public class StationYard extends EntitySystem {
         return orders != null && orders.repairs;
     }
 
+    /**
+     * True while {@code station}'s yard has work under way on {@code ship}: its berth clamps hold the
+     * ship however hard it pulls (round 8). A ship holed by an ace vented hard enough at the berth to
+     * tear loose again and again, each time calling the work off, and its crew suffocated there.
+     */
+    public boolean holds(Entity ship, Entity station) {
+        YardOrdersComponent orders = ship == null ? null : ORDERS_M.get(ship);
+        if (orders == null || !(orders.repairs || !orders.refits.isEmpty()) || orders.station == null) return false;
+        return orders.station.get(uuids) == station;
+    }
+
     /** A line on each piece of yard work under way on {@code ship}, for the screen. */
     public List<String> progress(Entity ship) {
         List<String> out = new ArrayList<>();
