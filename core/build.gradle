@@ -35,6 +35,15 @@ dependencies {
 
 test {
   useJUnitPlatform()
+  // ./gradlew :core:slowTest --tests '*Round3CareerTest' -PcareerSeed=7 plays the scripted career on another seed
+  if (project.hasProperty('careerSeed')) systemProperty 'career.seed', project.property('careerSeed')
+  // A failing test says why in the CI log, not only in the report (the build logs at quiet, see gradle.properties)
+  testLogging {
+    quiet {
+      events 'failed'
+      exceptionFormat 'full'
+    }
+  }
 }
 
 jar {

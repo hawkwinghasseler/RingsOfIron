@@ -65,12 +65,18 @@ import java.util.Locale;
  * are saved as they always are.
  */
 public class Shipyard extends EntitySystem {
-    /** Share of the old ship's value, times its condition, the yard pays on a trade-in. Placeholder. */
-    public static final double TRADE_IN_SHARE = 0.6;
-    /** Share of a prize's value a station pays for it. Placeholder. */
-    public static final double PRIZE_SHARE = 0.25;
-    /** Share once anything has been stripped off it. Placeholder. */
-    public static final double STRIPPED_PRIZE_SHARE = 0.10;
+    /**
+     * Share of the old ship's value, times its condition, the yard pays on a trade-in. Round 4: 80%
+     * (was 60%), so a lieutenant commander's pay and fights buy the gunship (round4-balance.md).
+     */
+    public static final double TRADE_IN_SHARE = 0.8;
+    /**
+     * Share of a prize's value a station pays for it. Round 4: a twentieth (was a quarter, which paid
+     * ten bounties for a raider), so a raider prize pays one to two bounties.
+     */
+    public static final double PRIZE_SHARE = 0.05;
+    /** Share once anything has been stripped off it: under the whole prize's, as before. */
+    public static final double STRIPPED_PRIZE_SHARE = 0.02;
     /** How close to a station, centre to centre, a prize has to be brought for its tugs to take it, m. */
     public static final double PRIZE_RANGE = 2_000;
 

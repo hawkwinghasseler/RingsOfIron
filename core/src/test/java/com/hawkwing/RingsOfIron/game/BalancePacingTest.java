@@ -176,7 +176,7 @@ class BalancePacingTest {
         world.standing.reward(sponsor, bounty.standing, "bounty");
         world.standing.onShipDestroyed(game.raider);
         assertEquals(1, world.standing.record().rank, "Lieutenant after two");
-        assertTrue(world.standing.notices.contains("Promoted to Lieutenant of the Terran Patrol Authority: budget 5,000 cr a week", false),
+        assertTrue(world.standing.notices.contains("Promoted to Lieutenant of the Terran Patrol Authority: budget 7,500 cr a week", false),
                 "with a message: " + world.standing.notices);
     }
 

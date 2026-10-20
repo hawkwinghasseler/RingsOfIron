@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntityListener;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.physics.box2d.Body;
@@ -9,6 +10,7 @@ import com.ringsofiron.aicrew.CrewDoors;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewSaveParticipant;
 import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.pilot.NpcCombatSystem;
 import com.ringsofiron.aicrew.pilot.NpcPilotSystem;
 import com.ringsofiron.aicrew.pilot.PilotReference;
@@ -225,6 +227,8 @@ public class GameWorld implements Disposable {
     public final HintRegistry hints = HintRegistry.withDefaults();
     /** Low propellant and inbound missiles, as notices. */
     public final FlightWarnings warnings;
+    /** Hull leaks and the crew's patches, as notices and hints. */
+    public final DamageControl damageControl;
     /** The distress beacon: a stranded ship towed home. */
     public final DistressBeacon beacon = new DistressBeacon(this);
     /** First Play's and the opening walkthrough's progress, saved with the game. */
@@ -238,6 +242,10 @@ public class GameWorld implements Disposable {
     /** What ships collide on, once content has loaded. */
     private ShipHulls hulls;
     private Crash crash;
+    /** Frames after a load that rails warp still waits for the player's latch to weld again. */
+    static final int LOAD_SETTLE_FRAMES = 120;
+    /** Frames left of that wait: from a load until a frame has run and the player's latch is welded again. */
+    private int loadSettling;
     private String careerOver;
     private final List<Entity> wrecks = new ArrayList<>();
     private final double[] trueState = new double[4];
@@ -283,6 +291,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(docking);
         // A collar still drawing a ship in, or a latch still settling, holds rails warp back.
         engine.addRailsWarpGuard(docking::railsWarpBlockedReason);
+        // A loaded game's ships get their bodies back in its first frame and a docked ship its weld in
+        // the next; warping before then pulled the pair apart and let the air out of both
+        engine.addRailsWarpGuard(this::loadingRefusal);
         // Craft that fly themselves in to dock and away again, on their own thrusters
         berthing = new BerthingSystem(docking, engine.getUuidRegistry());
         engine.addSystem(berthing);
@@ -352,6 +363,28 @@ public class GameWorld implements Disposable {
         // ai-crew
         crew = CrewFactory.install(engine.getEcsEngine());
         CrewSaveParticipant.install(crew, engine);
+        // A ship taken out of the world (crashed on the rails, lost, wrecked) takes whoever is aboard
+        // with it, so no crew go on working on a ship that is gone
+        engine.getEcsEngine().addEntityListener(Family.all(ShipGridComponent.class).get(), new EntityListener() {
+            @Override
+            public void entityAdded(Entity entity) {
+            }
+
+            @Override
+            public void entityRemoved(Entity ship) {
+                if (!ship.isRemoving() && !ship.isScheduledForRemoval()) return; // only its layout went (a refit)
+                ImmutableArray<Entity> all = crew.crewEntities();
+                List<Entity> aboard = new ArrayList<>();
+                for (int i = 0; i < all.size(); i++) {
+                    GridPositionComponent p = crew.position(all.get(i));
+                    if (p != null && p.ship == ship) aboard.add(all.get(i));
+                }
+                for (Entity e : aboard) {
+                    crew.releaseTask(e);
+                    engine.getEcsEngine().removeEntity(e);
+                }
+            }
+        });
         // Crews fight by their factions' wars and the player's standing; the career saves with the game
         standing = new FactionStanding(this::getPlayer);
         engine.getSerializationService().addParticipant(standing);
@@ -474,6 +507,7 @@ public class GameWorld implements Disposable {
         prisoners = new Prisoners(this);
         hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, KeyBindings.Action.CREW)
                 .onlyWhen(() -> prisoners.takenAlongside() != null);
+        damageControl = new DamageControl(this);
     }
 
     /**
@@ -565,6 +599,11 @@ public class GameWorld implements Disposable {
         timeWarp.update(frameDelta);
         if (profiler != null) profiler.record("frame/TimeWarpController", System.nanoTime() - start);
         engine.update(frameDelta);
+        if (loadSettling > 0) {
+            Entity player = getPlayer();
+            boolean welding = player != null && docking.dockedTo(player) != null && !docking.isRigid(player);
+            loadSettling = welding ? loadSettling - 1 : 0;
+        }
         for (Entity wreck : wrecks) engine.removeEntity(wreck);
         wrecks.clear();
         rescue.update();
@@ -575,6 +614,17 @@ public class GameWorld implements Disposable {
         checkAvatar();
         if ((crash != null || careerOver != null) && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
         warnings.update();
+        damageControl.update();
+    }
+
+    /** Why rails warp waits after a load: until a frame has run and the player's ship is welded to its dock again. */
+    private String loadingRefusal() {
+        return loadSettling > 0 ? "the game is still loading" : null;
+    }
+
+    /** A save was just loaded: rails warp waits until its bodies and the player's latch are back. */
+    void loaded() {
+        loadSettling = LOAD_SETTLE_FRAMES;
     }
 
     /** How the player's ship was lost, or null while it still flies. */

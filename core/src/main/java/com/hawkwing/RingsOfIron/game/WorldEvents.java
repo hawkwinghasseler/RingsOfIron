@@ -28,7 +28,8 @@ import java.util.Random;
  *       station posts their defence.</li>
  *   <li><b>Freighter lost</b>: a hauler out on the rails is lost; its crew drift in a pod and its
  *       cargo in the wreck ({@link Derelicts}), and its stations post their rescue and recovery. A
- *       new hauler takes its place after {@link #REPLACE_DAYS}.</li>
+ *       new hauler takes its place after {@link #REPLACE_DAYS}. No more than one in
+ *       {@link #LOST_GAP_DAYS} days.</li>
  *   <li><b>Tension</b>: a rival faction flexes; the sponsor's stations post shows of force out to
  *       its stations, and bounties on its ships if the two are at war.</li>
  * </ul>
@@ -44,6 +45,11 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
     public static final double POD_CHANCE = 1.0 / 3.0;
     /** Days before a lost freighter is replaced. */
     public static final double REPLACE_DAYS = 3;
+    /**
+     * Days after a freighter is lost before another can be (round 4): two or three a fortnight at
+     * most, never on neighbouring days. Pirates robbing haulers are not held to it.
+     */
+    public static final long LOST_GAP_DAYS = 5;
     /** Share of its stock a station short of something keeps. */
     public static final double SHORTAGE_LEFT = 0.15;
     /** What an urgent delivery pays per unit over the short station's price. */
@@ -249,6 +255,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
 
     /** A hauler out on the rails is lost: a pod and a wreck drift where it was, and its stations post their rescue and recovery. */
     private boolean freighterLost(long day, Random rnd) {
+        for (Event e : log) if (e.kind == Kind.FREIGHTER_LOST && day - e.day < LOST_GAP_DAYS) return false;
         List<String> candidates = new ArrayList<>();
         for (var entry : world.macroSim.freighters().all().entrySet()) {
             FreighterComponent f = entry.getValue();
@@ -281,7 +288,8 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         r.station = home == null ? post : home;
         r.at = world.engine.getSimSeconds() + DAY * REPLACE_DAYS;
         replacements.add(r);
-        world.macroSim.destroy(uuid);
+        // With its crew and systems, which would otherwise go on working aboard a ship that is gone
+        world.shipyard.retire(ship);
         Event e = record(Kind.FREIGHTER_LOST, day, post, wreck == null ? null : wreck.commodity, null,
                 "Contact lost with " + name + "; pirates are suspected");
         Contract rescue = world.contracts.offerFor(pod, post, e.text);

@@ -40,6 +40,7 @@ public class GameEngine implements SimClock {
     private final PooledEngine ecsEngine;
     private final UuidRegistry uuidRegistry;
     private final SerializationService serializationService;
+    private final EntityIds entityIds = new EntityIds();
     private final Array<RailsWarpGuard> railsWarpGuards = new Array<>();
     private final Array<EntitySystem> pausedSystems = new Array<>();
 
@@ -62,6 +63,7 @@ public class GameEngine implements SimClock {
         this.ecsEngine.addEntityListener(Family.all(UuidComponent.class).get(), new UuidEntityListener(uuidRegistry));
 
         this.serializationService = new SerializationService(this);
+        serializationService.addParticipant(entityIds);
     }
 
     /**
@@ -254,8 +256,18 @@ public class GameEngine implements SimClock {
     /** Creates an entity that already carries a fresh {@link UuidComponent}, so it can be referenced and saved. */
     public Entity createEntityWithUuid() {
         Entity entity = ecsEngine.createEntity();
-        entity.add(new UuidComponent());
+        entity.add(new UuidComponent(entityIds.next()));
         return entity;
+    }
+
+    /** Where new entity UUIDs come from: random, or from a seeded game's seed. */
+    public EntityIds getEntityIds() {
+        return entityIds;
+    }
+
+    /** A new entity UUID from {@link #getEntityIds()}, for entities built without {@link #createEntityWithUuid()}. */
+    public String newUuid() {
+        return entityIds.next();
     }
 
     public void addEntity(Entity entity) {

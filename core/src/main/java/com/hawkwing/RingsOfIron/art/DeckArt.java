@@ -412,6 +412,8 @@ public final class DeckArt {
                         if (damage != null) tile(batch, damage, x0, y0, s);
                     }
                 }
+                // A leaking wall or deck plate the crew patched in the field, until a yard mends it
+                if (t.isPatched()) tile(batch, "effects/hull_patch", x0, y0, s);
                 if (t.bulkheadSealed) tile(batch, "effects/bulkhead_seal", x0, y0, s);
                 String fire = ArtNames.fire(t.fireSize());
                 if (fire != null) tile(batch, fire, x0, y0, s);

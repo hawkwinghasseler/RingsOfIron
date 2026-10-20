@@ -168,7 +168,7 @@ class PrizeTowingTest {
     }
 
     @Test
-    void aPrizeBroughtToAStationIsSoldForAQuarterOfItsValueWithItsPrisoners() {
+    void aPrizeBroughtToAStationIsSoldForItsPrizeShareWithItsPrisoners() {
         takeTheRaider();
         towTo(800f);
         assertSame(highport, world.shipyard.prizeStation());
@@ -183,7 +183,7 @@ class PrizeTowingTest {
         assertTrue(said.startsWith("Highport's tugs took the"), said);
         assertTrue(said.endsWith("2 prisoners handed over"), said);
         // Pirate prisoners handed over at a sponsor station pay as they would brought aboard
-        assertEquals(before + Math.round(0.25 * value) + 2 * Prisoners.HANDOVER_PAY, account.credits, 1e-6);
+        assertEquals(before + Math.round(Shipyard.PRIZE_SHARE * value) + 2 * Prisoners.HANDOVER_PAY, account.credits, 1e-6);
         assertNull(world.engine.getEntity(uuid), "the station took it");
         for (Entity e : raiderCrew) assertFalse(world.engine.getEcsEngine().getEntities().contains(e, true), "prisoners handed over");
         assertNull(world.docking.dockedTo(game.player));
@@ -193,12 +193,12 @@ class PrizeTowingTest {
     }
 
     @Test
-    void aStrippedPrizeSellsForATenth() {
+    void aStrippedPrizeSellsForLess() {
         takeTheRaider();
         SalvagedComponent stripped = new SalvagedComponent();
         stripped.add(1, 1);
         game.raider.add(stripped);
-        assertEquals(Math.round(0.10 * Difficulty.shipValue(game.raider)), Shipyard.prizeValue(game.raider), 1e-6);
+        assertEquals(Math.round(Shipyard.STRIPPED_PRIZE_SHARE * Difficulty.shipValue(game.raider)), Shipyard.prizeValue(game.raider), 1e-6);
     }
 
     @Test

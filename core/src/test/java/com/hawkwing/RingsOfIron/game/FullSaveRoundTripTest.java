@@ -106,6 +106,36 @@ class FullSaveRoundTripTest {
         }
     }
 
+    @Test
+    void warpAfterALoadWaitsForTheShipToBeWeldedAgainAndTheCrewKeepBreathing(@TempDir Path dir) {
+        dockAtHighport();
+        FileHandle file = new FileHandle(dir.resolve("warp.json").toFile());
+        assertNull(game.quickSave(file));
+
+        GameWorld fresh = new GameWorld();
+        try {
+            GameScenario loaded = GameScenario.start(fresh, assets, assets.resolve("no-mods-here"));
+            loaded.quickLoad(file);
+            assertNotNull(fresh.engine.getRailsWarpBlockedReason(), "no rails warp before the loaded game's first frame");
+            assertFalse(fresh.timeWarp.setWarp(1_000));
+            fresh.update(FRAME);
+            assertNotNull(fresh.engine.getRailsWarpBlockedReason(), "nor while the latch is welded again");
+            for (int i = 0; i < 60 && fresh.engine.getRailsWarpBlockedReason() != null; i++) fresh.update(FRAME);
+            assertTrue(fresh.timeWarp.setWarp(1_000), String.valueOf(fresh.engine.getRailsWarpBlockedReason()));
+            for (int i = 0; i < 600; i++) fresh.update(FRAME);
+            fresh.timeWarp.setWarp(1);
+            for (int i = 0; i < 60; i++) fresh.update(FRAME);
+            Entity loadedHighport = fresh.engine.getEntity(game.highport);
+            assertSame(loadedHighport, fresh.docking.dockedTo(loaded.player), "still docked after the warp");
+            GridPositionComponent you = loaded.avatar.getComponent(GridPositionComponent.class);
+            ShipGridComponent deck = you.ship.getComponent(ShipGridComponent.class);
+            assertTrue(deck.oxygenRatioAt(you.tileX(), you.tileY()) > 0.9f, "the air is still in");
+            assertTrue(loaded.avatar.getComponent(com.ringsofiron.aicrew.CrewMemberComponent.class).isAlive());
+        } finally {
+            fresh.dispose();
+        }
+    }
+
     // ------------------------------------------------------------------
 
     /**

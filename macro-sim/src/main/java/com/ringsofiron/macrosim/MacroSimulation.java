@@ -177,7 +177,7 @@ public class MacroSimulation {
     /** Creates a station entity on rails with a fresh economy node. Returns its UUID. */
     public String addStation(String name, String stationTypeId, String parentUuid, StateVector state, double stockFactor) {
         Entity e = engine.createEntity();
-        UuidComponent id = new UuidComponent();
+        UuidComponent id = new UuidComponent(engine.newUuid());
         e.add(id);
         EconomyNode node = new EconomyNode(id.id, stationTypeId, name);
         economy.initialize(node, stockFactor);
@@ -192,7 +192,7 @@ public class MacroSimulation {
     /** Creates a freighter entity docked at a station, with a hold of {@code capacity} m³. Returns its UUID. */
     public String addFreighter(String name, double capacity, double credits, String stationUuid) {
         Entity e = engine.createEntity();
-        UuidComponent id = new UuidComponent();
+        UuidComponent id = new UuidComponent(engine.newUuid());
         e.add(id);
         FreighterComponent f = new FreighterComponent(name, capacity, credits);
         e.add(f);
@@ -275,9 +275,16 @@ public class MacroSimulation {
         return bubbleSuspended;
     }
 
+    /**
+     * Starts a prediction every {@link #PREDICTION_INTERVAL}. A background prediction is taken up at
+     * the next slot, waiting for it if it is still running, never as soon as it happens to finish:
+     * bubble entries follow the forecast, so taking it up whenever the thread got there would let
+     * thread timing decide who meets whom. The same sim times give the same forecasts, inline or not.
+     */
     private void updatePrediction() {
         if (gateway == null) return;
-        if (pendingForecast != null && pendingForecast.isDone()) {
+        if (now < nextPrediction) return;
+        if (pendingForecast != null) {
             try {
                 bubble.setForecast(pendingForecast.get());
             } catch (InterruptedException ex) {
@@ -287,7 +294,6 @@ public class MacroSimulation {
             }
             pendingForecast = null;
         }
-        if (pendingForecast != null || now < nextPrediction) return;
         Set<String> excluded = new HashSet<>(massiveBodies);
         excluded.addAll(bubble.inBubble());
         excluded.addAll(bubble.fastPasses());

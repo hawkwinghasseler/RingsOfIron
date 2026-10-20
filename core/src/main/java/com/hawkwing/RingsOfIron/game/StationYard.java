@@ -25,6 +25,7 @@ import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.HullPiece;
+import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
@@ -166,9 +167,15 @@ public class StationYard extends EntitySystem {
                 case HULL:
                     if (piece != null) piece.integrity = after;
                     else tile.integrity = after;
+                    // Mended past where it leaks, a field patch comes off
+                    if (after >= Tile.LEAK_START) {
+                        if (piece != null) piece.patchedAt = 0f;
+                        else tile.patchedAt = 0f;
+                    }
                     break;
                 case WALL:
                     wall.integrity = after;
+                    if (after >= Tile.LEAK_START) wall.patchedAt = 0f;
                     break;
                 case SYSTEM:
                     system.health = after;
@@ -246,7 +253,8 @@ public class StationYard extends EntitySystem {
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
-                if (t.piece == null && t.isWall() && t.integrity < 1f - EPS) {
+                // A holed deck plate too: it vents straight to space (round 4: the ace's 40 mm rounds hole them)
+                if (t.piece == null && (t.isWall() || t.isFloor()) && t.integrity < 1f - EPS) {
                     out.add(new Damage(Damage.Kind.HULL, x, y, 1, 1, null, t, null, null, null));
                 }
             }
@@ -396,7 +404,16 @@ public class StationYard extends EntitySystem {
         return String.format(Locale.ROOT, "The technicians are fitting the salvaged %s to %s", def.displayName(), hardpointName(mount));
     }
 
-    /** Has {@code station}'s yard repair everything damaged aboard {@code ship}. Returns what it says. */
+    /** Puts the ship's hull patches back to a full set, as part of a repair order (no charge), and when it is done. */
+    static void restockPatches(Entity ship) {
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        if (grid != null) grid.patchKits = Math.max(grid.patchKits, LeakPatches.DEFAULT_KITS);
+    }
+
+    /**
+     * Has {@code station}'s yard repair everything damaged aboard {@code ship}, patched leaks
+     * included, and restock its hull patches. Returns what it says.
+     */
     public String orderRepairs(Entity ship, Entity station) {
         if (!canWork(ship, station)) return "No yard here to do the work";
         double cost = repairCost(ship);
@@ -405,6 +422,7 @@ public class StationYard extends EntitySystem {
         if (orders == null) return "The yard is working for another station's ship";
         orders.repairs = true;
         orders.repairsPaid = 0;
+        restockPatches(ship);
         return String.format(Locale.ROOT, "Repairs ordered: about %,.0f cr, paid as the work is done", cost);
     }
 
@@ -544,6 +562,8 @@ public class StationYard extends EntitySystem {
         repairing.values().removeIf(t -> !t.isActive() && t.ship == ship);
         if (damage.isEmpty()) {
             orders.repairs = false;
+            // Again at the end: the crew may have patched a leak from the stores while the yard worked
+            restockPatches(ship);
             notices.add(String.format(Locale.ROOT, "%s's yard finished the repairs: %,.0f cr",
                     PlayerDocking.name(station), orders.repairsPaid));
             return;

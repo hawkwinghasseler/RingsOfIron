@@ -13,6 +13,8 @@ public abstract class CrewTask {
 
     public enum Kind {
         SEAL_BREACH,
+        /** Patch a leaking wall or deck plate from the ship's stores, so it stops venting. */
+        PATCH_LEAK,
         REPAIR,
         EXTINGUISH,
         RESCUE,
