@@ -566,7 +566,7 @@ public class HazardParticles {
             shapes.setColor(0.75f, 0.9f, 1f, alpha);
             float x = offX + wind.x[i] * tilePx, y = offY + wind.y[i] * tilePx;
             float trail = 0.08f * tilePx;
-            shapes.rectLine(x, y, x - wind.vx[i] * trail, y - wind.vy[i] * trail, 2f);
+            shapes.rectLine(x, y, x - wind.vx[i] * trail, y - wind.vy[i] * trail, 0.05f * tilePx);
         }
         shapes.end();
 
