@@ -246,6 +246,31 @@ class ShipyardTest {
     }
 
     @Test
+    void aYardTechnicianAboardAtTheSaleStaysWithTheYard() {
+        promote(2);
+        account().credits = 400_000;
+        Entity old = game.player;
+        Entity tech = null;
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+            if (c.role == com.ringsofiron.aicrew.CrewRole.TECHNICIAN && c.home == yard) tech = e;
+        }
+        assertNotNull(tech, "Anvil Yards has a technician");
+        // Walking back from the yard's work, still aboard when the deal is struck
+        int[] tile = GameScenario.floorTiles(old.getComponent(ShipGridComponent.class)).get(0);
+        GridPositionComponent pos = tech.getComponent(GridPositionComponent.class);
+        pos.setShip(old);
+        pos.setTile(tile[0], tile[1]);
+        int people = crewOf(old).size() - 1;
+
+        String said = world.shipyard.buy("patrol_gunship");
+        assertTrue(said.startsWith("Bought the Gunship"), said);
+        assertSame(yard, tech.getComponent(CrewMemberComponent.class).home, "still the yard's");
+        assertFalse(crewOf(game.player).contains(tech), "not carried off in the new ship");
+        assertEquals(people, crewOf(game.player).size());
+    }
+
+    @Test
     void cargoThatWontFitAndMorePeopleThanSeatsAreRefused() {
         sellAtTheYard("raider_light");
         Shipyard.Listing raider = world.shipyard.listing("test_raider_light");
