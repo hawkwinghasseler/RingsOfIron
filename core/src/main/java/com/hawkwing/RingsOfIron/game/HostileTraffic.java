@@ -169,13 +169,21 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         world.timeWarp.addDropOutSource(this);
         world.timeWarp.changes.add((signal, change) -> alertAt = Double.NaN);
         world.combatEvents.shots.add((signal, shot) -> onShotAt(shot.target, shot.shooter));
-        world.combatEvents.impacts.add((signal, hit) -> onShotAt(hit.target, hit.owner, world.engine.getSimSeconds() - hit.sinceFired));
+        world.combatEvents.impacts.add((signal, hit) -> onShotAt(hit.target, hit.owner, world.engine.getSimSeconds() - hit.sinceFired,
+                !hit.pointDefense && hit.aimedAt == hit.target));
         world.disablement.changes.add((signal, change) -> surrendering(change));
         world.engine.getSerializationService().addParticipant(this);
     }
 
     /** Seconds after a surrender in which the player's fire doesn't yet count as firing on it again. */
     static final double SURRENDER_GRACE = 10;
+    /**
+     * Whether stray fire brings a prize back into the fight: a point-defense round, or a round or
+     * missile aimed at another ship, that hits it after the grace. Round 9: false, so only fire aimed
+     * at the prize itself does (in round 8's window the point defense, firing at the base's darts, hit
+     * the struck raiders behind them).
+     */
+    static final boolean STRAY_FIRE_REVIVES = false;
 
     /**
      * A hostile that surrenders is a prize (round 6): it lets go of the player, and stays passive
@@ -729,6 +737,14 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     /** As {@link #onShotAt(Entity, Entity)}, for a shot fired at sim second {@code firedAt}. */
     void onShotAt(Entity victim, Entity attacker, double firedAt) {
+        onShotAt(victim, attacker, firedAt, true);
+    }
+
+    /**
+     * As {@link #onShotAt(Entity, Entity, double)}; {@code aimed} is false for stray fire (a
+     * point-defense round, or one aimed at another ship), which doesn't bring a prize back.
+     */
+    void onShotAt(Entity victim, Entity attacker, double firedAt, boolean aimed) {
         if (victim == null || attacker == null || victim == attacker) return;
         HostileComponent h = victim.getComponent(HostileComponent.class);
         if (h == null) return;
@@ -752,6 +768,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             // 15 s after a surrender lifted it on seed 12, and the prize then tore the boarding latch
             DisabledComponent d = victim.getComponent(DisabledComponent.class);
             if (attacker != world.getPlayer() || d != null && firedAt - d.since < SURRENDER_GRACE) return;
+            if (!aimed && !STRAY_FIRE_REVIVES) return;
             h.surrendered = false;
             if (d != null && d.reason == DisabledComponent.Reason.SURRENDERED) world.disablement.set(victim, null);
         }
