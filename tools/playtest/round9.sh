@@ -110,7 +110,7 @@ if want prizes; then
   cmd hostiles; pause 1
   shot p4-02-a-minute-of-fire-after-the-fall
   key l; pause 1; shot p4-03-notices-after-the-fall; key l; pause 1
-  echo "prizes: defenders not struck after a minute of fire: $(awk '/^PLAYTEST hostiles:/ { last = NR } { line[NR] = $0 } END { for (i = last + 1; i <= NR && line[i] ~ /^  /; i++) print line[i] }' "$OUT/game.log" | grep 'Pirate raider' | grep -v -c 'SURRENDERED\|WRECKED')"
+  echo "prizes: defenders not struck after a minute of fire: $(awk '/^PLAYTEST hostiles:/ { last = NR } { line[NR] = $0 } END { for (i = last + 1; i <= NR && line[i] ~ /^  /; i++) print line[i] }' "$OUT/game.log" | grep 'IN_BUBBLE' | grep 'Pirate raider' | grep -v -c 'SURRENDERED\|WRECKED')"
 fi
 
 # Part 4: beaten on the hull at the raid (`hull 0.4`), how close a boarder comes; once it is inside
