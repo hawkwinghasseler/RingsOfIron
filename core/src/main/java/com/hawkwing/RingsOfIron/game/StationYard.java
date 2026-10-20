@@ -391,6 +391,11 @@ public class StationYard extends EntitySystem {
         return grid == null ? 0 : air(grid, 0);
     }
 
+    /** {@link #airCost(Entity)} at {@code station}'s yard, at its {@link #priceFactor}. */
+    public double airCost(Entity ship, Entity station) {
+        return airCost(ship) * priceFactor.applyAsDouble(station);
+    }
+
     /**
      * Brings every room in {@code grid} up to station pressure and the standard oxygen share, with
      * station air at the refill's prices, as far as {@code budget} credits go: short of them, every
@@ -512,7 +517,7 @@ public class StationYard extends EntitySystem {
         orders.repairs = true;
         orders.repairsPaid = 0;
         restockPatches(ship);
-        return String.format(Locale.ROOT, "Repairs ordered: about %,.0f cr, paid as the work is done", cost + airCost(ship) * priceFactor.applyAsDouble(station));
+        return String.format(Locale.ROOT, "Repairs ordered: about %,.0f cr, paid as the work is done", cost + airCost(ship, station));
     }
 
     /**
