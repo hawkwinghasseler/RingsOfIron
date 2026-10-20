@@ -105,6 +105,12 @@ abstract class CareerScript {
                     + carried.size() + " times in a day, last to " + t.stationName);
         });
         world.pirateBoarding.robbed.add((sig, t) -> log("  (boarded by %s: they took %s)", t.pirateName, t.describe()));
+        // The player's crew dying, as CrewCareer tells it (round 8: two died at the berth unlogged)
+        world.notices.posted.add((sig, n) -> {
+            if (n.text.endsWith(" has died of wounds") || n.text.endsWith(" is dead")) {
+                log("  (day %.2f: %s)", world.engine.getSimSeconds() / 86_400, n.text);
+            }
+        });
     }
 
     /** When the crew carried the player home, in the last day; a day with this many fails the career. */
