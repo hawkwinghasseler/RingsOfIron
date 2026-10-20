@@ -258,7 +258,7 @@ public class DockingDemo extends ApplicationAdapter {
             float s = grid.tileSize;
             for (int y = 0; y < grid.height; y++) {
                 for (int x = 0; x < grid.width; x++) {
-                    TileShade.fill(grid.getTile(x, y), false, color);
+                    TileShade.deck(grid.getTile(x, y), color);
                     if (color.a <= 0f) continue;
                     color.a *= 0.45f;
                     shapes.setColor(color);

@@ -61,7 +61,7 @@ public final class DeckView {
         float s = grid.tileSize, ox = grid.gridOriginLocal.x, oy = grid.gridOriginLocal.y;
         for (GridLink link : grid.links) {
             if (!link.canCross()) continue;
-            TileShade.fill(grid.getTile(link.x, link.y), false, tmp);
+            TileShade.deck(grid.getTile(link.x, link.y), tmp);
             if (tmp.a <= 0f) continue;
             tmp.a *= alpha;
             shapes.setColor(tmp);

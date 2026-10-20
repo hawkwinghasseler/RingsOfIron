@@ -88,6 +88,7 @@ import com.ringsofiron.combatsys.components.WeaponsComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.EnumSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -225,6 +226,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private final Array<Body> bodies = new Array<>();
     /** The craft whose decks the interior view draws. */
     private final Array<Entity> decks = new Array<>();
+    /** Smoke, wind and flames of each deck on show; a craft's go when it is no longer drawn. */
+    private final Map<ShipGridComponent, HazardParticles> hazards = new IdentityHashMap<>();
+    private final Map<ShipGridComponent, Boolean> hazardsDrawn = new IdentityHashMap<>();
     private final Vector2 followAt = new Vector2();
     private final Vector2 tmp = new Vector2();
     private final Vector2 tmp2 = new Vector2();
@@ -416,7 +420,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         shapes.setProjectionMatrix(viewports.getWorldCamera().combined);
         lighting.clear(delta);
         if (hud.getViewMode().getMode() == ViewMode.INTERIOR) {
-            drawInterior();
+            drawInterior(delta);
         } else {
             drawBodies();
         }
@@ -1140,9 +1144,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     /**
      * The deck plan of the craft the avatar is aboard, and of any craft docked to it, each at its
-     * own pose, in the minimap's colors, with the cargo and everyone aboard.
+     * own pose, with its smoke and flames, the cargo and everyone aboard. {@code delta} moves the
+     * smoke and flames on; nothing moves while paused.
      */
-    private void drawInterior() {
+    private void drawInterior(float delta) {
         Entity aboard = world.avatar.getAvatarShip();
         if (aboard == null) aboard = game.player;
         ShipGridComponent grid = aboard.getComponent(ShipGridComponent.class);
@@ -1153,8 +1158,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (!decks.contains(link.otherShip, true)) decks.add(link.otherShip);
         }
         Gdx.gl.glEnable(GL20.GL_BLEND);
-        boolean blink = hud.getMinimap().blinkOn();
         boolean withArt = deckArt.available();
+        hazardsDrawn.clear();
         for (Entity ship : decks) {
             ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
             Body body = world.docking.bodyOf(ship);
@@ -1194,7 +1199,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             } else {
                 for (int y = 0; y < g.height; y++) {
                     for (int x = 0; x < g.width; x++) {
-                        TileShade.fill(g.getTile(x, y), blink, color);
+                        TileShade.deck(g.getTile(x, y), color);
                         if (color.a <= 0f) continue;
                         shapes.setColor(color);
                         Vector2 p = g.tileToLocal(x, y);
@@ -1205,6 +1210,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 DeckView.walls(shapes, g, color);
                 DeckView.cargo(shapes, g, hold, color);
             }
+            // Smoke and flames over the deck, under everyone aboard; they open their own batches
+            shapes.end();
+            HazardParticles particles = hazards.get(g);
+            if (particles == null) hazards.put(g, particles = new HazardParticles());
+            hazardsDrawn.put(g, Boolean.TRUE);
+            particles.update(g, delta);
+            particles.draw(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, s);
+            shapes.begin(ShapeRenderer.ShapeType.Filled);
             boolean crewArt = withArt && deckArt.hasCrew();
             for (Entity e : crewArt ? NO_ENTITIES : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
@@ -1231,6 +1244,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 batch.setTransformMatrix(identity);
             }
         }
+        hazards.keySet().retainAll(hazardsDrawn.keySet());
         shapes.identity();
         Gdx.gl.glDisable(GL20.GL_BLEND);
         if (!lightsOn) return;
