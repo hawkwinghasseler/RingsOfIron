@@ -398,6 +398,14 @@ abstract class CareerScript {
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
         logVenting("after " + what);
         if (patchedAfter != null || LeakPatches.leaks(grid).size == 0) return;
+        // A fire aboard refuses warp first: the crew put it out, then the venting is what refuses it
+        // (round 8: seed 7's ace fight, flown without two of Highport's technicians aboard)
+        if (world.engine.getRailsWarpBlockedReason() != null && world.engine.getRailsWarpBlockedReason().startsWith("Fire")) {
+            boolean out = runUntil(600f, () -> world.engine.getRailsWarpBlockedReason() == null
+                    || !world.engine.getRailsWarpBlockedReason().startsWith("Fire"));
+            log("  a fire aboard after %s: %s", what, out ? "put out" : "still burning after 10 minutes");
+            if (LeakPatches.leaks(grid).size == 0) return;
+        }
         assertTrue(world.engine.getRailsWarpBlockedReason().startsWith(InteriorHazardWarpGuard.VENTING),
                 world.engine.getRailsWarpBlockedReason());
         int kits = grid.patchKits;
