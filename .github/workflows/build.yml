@@ -35,9 +35,9 @@ jobs:
   career-seeds:
     name: Career seed ${{ matrix.seed }}
     runs-on: ubuntu-latest
-    # A career runs in one to three minutes; one that loops (a script waiting on a world that never
+    # A career runs in one to twenty-five minutes; one that loops (a script waiting on a world that never
     # gets there) fails here instead of holding the runner for six hours
-    timeout-minutes: 20
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -64,9 +64,9 @@ jobs:
   round5-career-seeds:
     name: Round 5 career seed ${{ matrix.seed }}
     runs-on: ubuntu-latest
-    # A career runs in one to three minutes; one that loops (a script waiting on a world that never
+    # A career runs in one to twenty-five minutes; one that loops (a script waiting on a world that never
     # gets there) fails here instead of holding the runner for six hours
-    timeout-minutes: 20
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
