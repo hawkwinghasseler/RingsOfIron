@@ -13,6 +13,10 @@ public class ImpactEvent {
     public Entity target;
     /** Who fired the round, or null. */
     public Entity owner;
+    /** What the shot was fired at, or null; a hit on anything else is stray fire. */
+    public Entity aimedAt;
+    /** The round came from a point-defense mount. */
+    public boolean pointDefense;
     /** Hit point and outward surface normal, local (bubble) meters. */
     public final Vector2 worldPoint = new Vector2();
     public final Vector2 worldNormal = new Vector2();
