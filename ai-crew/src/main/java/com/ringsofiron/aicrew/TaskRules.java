@@ -277,6 +277,7 @@ public final class TaskRules {
      * console, orders and work away from the ship never wait.
      */
     public static boolean waitsOutFire(CrewTask task, ShipTaskBoardComponent board, CrewService crew) {
+        if (board != null && !board.keepsClearOfFire) return false;
         if (board == null || !board.battleStations || board.hitTiles.size == 0) return false;
         switch (task.kind) {
             case MAN_CONSOLE: case CARRY: case YARD: case FORCE_DOOR: case EVACUATE: case BOARD: return false;

@@ -199,6 +199,7 @@ public class GameScenario {
         // Flies for the pirates, if the data has them, so beating it counts with the factions
         int pirates = world.standing.factions().index(PIRATES);
         if (pirates >= 0) CrewFactory.ensureBoard(raider).faction = pirates;
+        world.standing.factions().crewHabits(world.crew.board(raider));
         raider.add(new HudMarkerComponent("Raider", HudMarkerComponent.Kind.HOSTILE).radius(10f));
         PhysicsBodyComponent rb = raider.getComponent(PhysicsBodyComponent.class);
         if (rb != null) PhysicsManager.setVelocity(rb.body, -12f, -3f);
@@ -337,6 +338,7 @@ public class GameScenario {
                 world.engine, name, typeId);
         station.angle = angle;
         StationCrew.spawnCrew(world.crew, world.engine.getEntity(uuid), world.standing.factions().ofStation(name));
+        world.standing.factions().crewHabits(world.crew.board(world.engine.getEntity(uuid)));
         return uuid;
     }
 
