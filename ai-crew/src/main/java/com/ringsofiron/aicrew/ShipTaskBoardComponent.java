@@ -6,6 +6,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.IntArray;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
+import com.ringsofiron.interiorgrid.crew.ResetShortTask;
 
 /**
  * The job blackboard of one ship, attached to the ship entity next to its
@@ -42,6 +43,14 @@ public class ShipTaskBoardComponent implements Component {
      * ({@code crews_keep_clear_of_fire}, round 9: the pirates stay at their posts).
      */
     public boolean keepsClearOfFire = true;
+    /**
+     * Whether the crew get the power back before anything else ({@link #powerReset}): a shorted reactor,
+     * or a shorted conduit, is taken ahead of first aid, breaches and every other job but abandoning
+     * ship. Off by default; set from their faction's data when the ship is crewed ({@code
+     * crews_reset_power_first}, round 10: a pirate raider left dark under a frigate's railguns at 4 km
+     * stopped bleeds and sealed breaches until it struck, and never fired).
+     */
+    public boolean resetsPowerFirst;
     /** True while the ship is in a fight: set each tick by the game, so not saved. */
     public transient boolean battleStations;
     /**
@@ -133,6 +142,10 @@ public class ShipTaskBoardComponent implements Component {
     }
 
     private CrewTask best(CrewRole role, int x, int y, TaskFilter filter, boolean consoles) {
+        if (resetsPowerFirst && !consoles) {
+            CrewTask power = powerReset(role, x, y, filter);
+            if (power != null) return power;
+        }
         CrewTask best = null;
         float bestScore = Float.NEGATIVE_INFINITY;
         for (CrewTask t : tasks) {
@@ -147,6 +160,44 @@ public class ShipTaskBoardComponent implements Component {
             }
         }
         return best;
+    }
+
+    /**
+     * On a board that {@link #resetsPowerFirst}, the open reset of a shorted reactor or conduit that
+     * {@code role} does at all, the nearest reactor first; else null. The guard where a crewman picks a
+     * task: {@link #best} returns it ahead of the rest, and a crewman holding any other job puts it down for
+     * it ({@link #yieldsToPower}).
+     */
+    public CrewTask powerReset(CrewRole role, int x, int y, TaskFilter filter) {
+        if (!resetsPowerFirst) return null;
+        for (CrewTask t : tasks) if (t.isActive() && t.kind == CrewTask.Kind.EVACUATE) return null; // abandoning ship
+        CrewTask best = null;
+        float bestScore = Float.NEGATIVE_INFINITY;
+        for (CrewTask t : tasks) {
+            if (t.status != CrewTask.Status.OPEN || !(t instanceof ResetShortTask)) continue;
+            ResetShortTask r = (ResetShortTask) t;
+            if (r.subsystem != null && r.priority < ResetShortTask.REACTOR_PRIORITY) continue;
+            if (role.affinity(t) <= 0f || (filter != null && !filter.accept(t))) continue;
+            float score = t.priority - DISTANCE_WEIGHT * (Math.abs(t.x - x) + Math.abs(t.y - y));
+            if (score > bestScore) {
+                bestScore = score;
+                best = t;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * True if a crewman of {@code role} at (x, y) holding {@code held} should put it down for the power
+     * ({@link #powerReset}): on a board that {@link #resetsPowerFirst}, unless what they hold is a power
+     * reset already or abandoning ship. A short found while they were at first aid or a breach otherwise
+     * waited for it to be done.
+     */
+    public boolean yieldsToPower(CrewTask held, CrewRole role, int x, int y, TaskFilter filter) {
+        if (!resetsPowerFirst || held == null || held.kind == CrewTask.Kind.EVACUATE) return false;
+        if (held instanceof ResetShortTask && (((ResetShortTask) held).subsystem == null
+                || held.priority >= ResetShortTask.REACTOR_PRIORITY)) return false;
+        return powerReset(role, x, y, filter) != null;
     }
 
     public boolean claim(CrewTask task, Entity crew) {
