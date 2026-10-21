@@ -461,6 +461,10 @@ public class GameWorld implements Disposable {
         // Round 9: the player's guns firing at will (point defense, crewed guns) never take a struck ship;
         // round 10: nor a fallen base's silenced battery (they went on hitting Den batteries 23 and 24)
         weaponControl.setSpared((shooter, target) -> shooter == getPlayer() && Struck.struck(this, target));
+        // Round 10: nor do its missiles' seekers lock a fallen base's battery they weren't fired at
+        // (part 6's window: a heavy missile fired at a raider burst on Den battery 23). Only the
+        // batteries: sparing surrendered ships too moved fights before the frigate (seed 2026's ace)
+        missiles.setSpared((shooter, target) -> shooter == getPlayer() && Struck.silencedBattery(this, target));
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
