@@ -233,7 +233,9 @@ public class PlaytestLauncher {
                 case "hostiles": {
                     // Every hostile craft: where it is and what it's doing, for a script's log
                     StringBuilder out = new StringBuilder();
-                    Body ship = s.player.getComponent(PhysicsBodyComponent.class).body;
+                    // In time warp our ship is on the rails too, with no body, and every range reads "rails"
+                    PhysicsBodyComponent ours = s.player.getComponent(PhysicsBodyComponent.class);
+                    Body ship = ours == null ? null : ours.body;
                     for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.badlogic.ashley.core.Family.all(
                             com.ringsofiron.macrosim.hostile.HostileComponent.class).get())) {
                         com.ringsofiron.macrosim.hostile.HostileComponent h = e.getComponent(com.ringsofiron.macrosim.hostile.HostileComponent.class);
