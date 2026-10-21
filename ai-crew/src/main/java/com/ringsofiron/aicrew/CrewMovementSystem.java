@@ -257,6 +257,14 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             walkAcross(p, p.walkway, -in.dx * step, -in.dy * step);
             if (p.walkway == null) p.crossing = null;
         } else if (p.ship == here) {
+            // Walked off somewhere else since the crossing was set (a task came up first): it is stale,
+            // and pushing out over the edge from there only presses them into a wall (round 10, seed 5
+            // with crew going back aboard: a hand stood 200 s against a wall, "going to fill their suit",
+            // until it ran dry)
+            if (p.walkway == null && (p.tileX() != link.x || p.tileY() != link.y)) {
+                p.crossing = null;
+                return;
+            }
             Side out = link.side;
             tryMove(p, nav, out.dx * step, out.dy * step);
         } else {

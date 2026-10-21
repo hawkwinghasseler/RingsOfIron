@@ -284,9 +284,10 @@ public final class TaskRules {
      * Whether the player's crews sheltering aboard a docked craft go back aboard their own ship for a
      * casualty ({@link #goesBackAboard}). Round 10's seed 11: the medic and two hands stood idle on
      * Highport with full suits while one crewmate bled out aboard, never stabilised, and another's
-     * suit ran dry where he lay.
+     * suit ran dry where he lay. Off, a proposal: the round 10 career sweeps lost more crew with it
+     * on than off (see the pull request that added it), and a test turns it on for itself.
      */
-    public static final boolean SHELTER_GOES_BACK = true;
+    public static boolean shelterGoesBack = false;
 
     /** Suit air, seconds, a crew member sheltering ashore needs to go back aboard for a casualty. */
     public static final float BACK_ABOARD_AIR = 240f;
@@ -297,7 +298,7 @@ public final class TaskRules {
      * out, with a suit and {@link #BACK_ABOARD_AIR} or more in it.
      */
     public static boolean goesBackAboard(CrewMemberComponent crew, CrewTask task, ShipTaskBoardComponent board) {
-        return SHELTER_GOES_BACK && suitCare(board) && (task.kind == CrewTask.Kind.STABILISE || task.kind == CrewTask.Kind.RESCUE)
+        return shelterGoesBack && suitCare(board) && (task.kind == CrewTask.Kind.STABILISE || task.kind == CrewTask.Kind.RESCUE)
                 && crew.def.suitAir > 0f && crew.suitAir >= BACK_ABOARD_AIR;
     }
 

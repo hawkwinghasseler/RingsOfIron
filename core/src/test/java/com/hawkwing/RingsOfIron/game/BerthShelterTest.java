@@ -108,6 +108,41 @@ class BerthShelterTest {
 
     @Test
     void crewShelteringAtTheStationGoBackAboardForACasualty() {
+        com.ringsofiron.aicrew.TaskRules.shelterGoesBack = true;
+        try {
+            shelterAndGoBack();
+        } finally {
+            com.ringsofiron.aicrew.TaskRules.shelterGoesBack = false;
+        }
+    }
+
+    @Test
+    void aCrossingLeftBehindIsDropped() {
+        // Round 10's seed 5: a hand set off across the link to the station, took a breach to seal
+        // instead, and after it, still marked as crossing, pressed against a wall 200 s "going to fill
+        // their suit" until it ran dry
+        Entity highport = world.docking.dockedTo(game.player);
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        com.ringsofiron.interiorgrid.GridLink link = null;
+        for (com.ringsofiron.interiorgrid.GridLink l : grid.links) if (l.otherShip == highport && l.canCross()) link = l;
+        assertNotNull(link, "a link to the station");
+        Entity hand = world.crewCareer.ownCrew(game.player).get(0);
+        int[] away = null;
+        for (int[] t : GameScenario.floorTiles(grid)) {
+            if (Math.abs(t[0] - link.x) + Math.abs(t[1] - link.y) > 4) away = t;
+        }
+        assertNotNull(away, "somewhere away from the link");
+        GridPositionComponent p = world.crew.position(hand);
+        world.crew.releaseTask(hand);
+        p.stop();
+        p.setShip(game.player);
+        p.setTile(away[0], away[1]);
+        p.crossing = link;
+        run(30);
+        assertNull(p.crossing, "the crossing is dropped, at " + p.tileX() + "," + p.tileY());
+    }
+
+    private void shelterAndGoBack() {
         // Round 10's seed 11: the medic and two hands stood idle on Highport with full suits while a
         // crewmate bled out aboard and another's suit ran dry where he lay
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
