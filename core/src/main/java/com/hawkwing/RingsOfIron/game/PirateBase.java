@@ -211,6 +211,10 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     private void strikeDefenders() {
         for (String name : defenders) {
             String id = uuidOf(name);
+            // Struck earlier, the base's call to arms set it on the player again (part 6's window:
+            // `hostiles` read struck raiders 20 and 21 as hunting the player): it lets go
+            HostileComponent h = id == null ? null : world.macroSim.hostiles().get(id);
+            if (h != null && h.surrendered && h.huntingPlayer()) h.targetUuid = null;
             Entity e = id == null ? null : world.engine.getEntity(id);
             if (e == null || e.getComponent(PhysicsBodyComponent.class) == null
                     || !world.macroSim.bubble().inBubble().contains(id)) continue;
