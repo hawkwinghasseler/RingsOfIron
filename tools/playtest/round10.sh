@@ -6,7 +6,7 @@
 # ONLY=<part> plays one part:
 #   frigate part 1: the "Frigate" save, and the day, money and rank on it (SAVES=.../seed-9 for seed 9)
 #   lone    part 3: from "Frigate", undocked, one lone raider brought in at 4 km (`raider 4`), fought
-#           with Tab, R and Space; whether it fires on the frigate
+#           with Tab, R and Space; whether it fires on the frigate. RAIDER_FIT=<loadout> arms it
 #   captain part 4: "First ace fight" by hand; if lost, the tow (B twice) and a minute of warp x4 at
 #           the berth, with the captain's air and where the figure stands before and after
 #   beaten  part 5: the raid fought to the fall, counting the Tabs that land on a beaten defender, then
@@ -57,7 +57,8 @@ if want lone; then
   ship=$(last_line career | sed -n 's/.*ship \(.*\), hull.*/\1/p')
   key u; pause 3; hold w 6; pause 20
   echo "lone: undocked: $(last_line career)"
-  said=$(last_line "raider 4"); echo "lone: $said"
+  # RAIDER_FIT picks its loadout (raider_chaingun, raider_railgun...); by default the difficulty does
+  said=$(last_line "raider 4 ${RAIDER_FIT:-}"); echo "lone: $said"
   raider=$(echo "$said" | sed -n 's/^\(.*\) (.*/\1/p')
   pause 8; shot l-01-raider-coming
   t0=$(now)
@@ -144,9 +145,14 @@ if want beaten; then
   echo "beaten: at the fall (sim $fall): $(first "$(raid_state)")"
   hostiles | grep -v ' rails$' | sed 's/^/beaten: /'
   shot b-01-the-fall
+  # Half a minute with no key (the guns at will only), then a minute of Space (with no target locked,
+  # Space pulls every main gun's trigger)
+  pause 30; quiet=$(now)
+  echo "beaten: 30 s after the fall, no keys: $(hits 'Den battery [0-9]*' "$ship" "$fall") hits on the batteries, $(hits 'Pirate raider [0-9]*' "$ship" "$fall") on raiders"
   for i in $(seq 1 12); do hold space 5; done
   shot b-02-a-minute-of-space
-  echo "beaten: in the minute after the fall: $(hits 'Den battery [0-9]*' "$ship" "$fall") hits on the batteries, $(hits "$ship" 'Pirate raider [0-9]*' "$fall") hits on us from raiders, $(hits "$ship" 'Den battery [0-9]*' "$fall") from batteries"
+  echo "beaten: then a minute of Space: $(hits 'Den battery [0-9]*' "$ship" "$quiet") hits on the batteries, $(hits 'Pirate raider [0-9]*' "$ship" "$quiet") on raiders"
+  echo "beaten: since the fall: $(hits "$ship" 'Pirate raider [0-9]*' "$fall") hits on us from raiders, $(hits "$ship" 'Den battery [0-9]*' "$fall") from batteries"
   hostiles | grep -v ' rails$' | sed 's/^/beaten: after: /'
   key l; pause 1; shot b-03-notices; key l; pause 1
   # Where Tab lands once nothing fights (no Space after it)
