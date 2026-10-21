@@ -416,7 +416,7 @@ abstract class CareerScript {
                     || ShipDisablement.isDisabled(game.player) && (ShipDisablement.reason(game.player) != DisabledComponent.Reason.NO_POWER
                             || !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player))
                     && world.disablement.judge(game.player) != null
-                    || world.getCrash() != null || range(game.player, ship) > GOT_AWAY;
+                    || world.getCrash() != null || range(game.player, ship) > GOT_AWAY || !inBubble(ship);
         });
         world.carriedHome.remove(home);
         // One that broke off and was never chased, still running when time is up, got away too
@@ -424,7 +424,9 @@ abstract class CareerScript {
         boolean won = !carried[0] && FirstPlay.beaten(world, ship);
         if (won && h != null && h.ace) acesBeaten.add(ship.getComponent(com.ringsofiron.coreengine.components.UuidComponent.class).id);
         if (!won && ShipDisablement.isDisabled(game.player)) log("  we are disabled: %s.", ShipDisablement.reason(game.player));
-        boolean away = !won && !carried[0] && (ran || range(game.player, ship) > GOT_AWAY);
+        // Round 10: one that left the bubble got away too, though the rails put it nearer than GOT_AWAY
+        // (seed 2026 on the integration: Cold Teodor at hull 0.49 ran past 25 km, out of reach of a chase)
+        boolean away = !won && !carried[0] && (ran || range(game.player, ship) > GOT_AWAY || !inBubble(ship));
         String result = won ? "beaten" : carried[0] ? "we lost (carried home)" : away ? "it got away"
                 : over ? "we lost" : "neither side beaten";
         double seconds = world.engine.getSimSeconds() - t0;
