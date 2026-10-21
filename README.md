@@ -14,7 +14,7 @@ You need a JDK 17 or newer to start the Gradle wrapper, which is included. The b
 | | `./gradlew :lwjgl3:runFirstPlay` | The guided first play, straight in with no menu (also on the main menu) |
 | `demos/Flight demo.bat` | `./gradlew :lwjgl3:runFlightDemo` | Newtonian flight, the floating origin, orbit around a planet and fast passes |
 | `demos/Orbit demo.bat` | `./gradlew :lwjgl3:runOrbitDemo` | Rails orbits, sphere-of-influence changes and time warp |
-| `demos/Interior Grid Demo.bat` | `./gradlew :lwjgl3:run` | One ship's deck: air, fire, breaches, doors and power routing |
+| `demos/Interior demo.bat` | `./gradlew :lwjgl3:run` | Any of the game's hulls with its crew, in the game's own world: hurt crew and ship with weapon fire, rams, blasts, fire, breaches and an attacking ship, spawn more crew, and watch wounds, bleed-out clocks and medics at work |
 | `demos/Crew demo.bat` | `./gradlew :lwjgl3:runCrewDemo` | AI crew fighting fires, repairing, rescuing and repelling boarders |
 | `demos/Docking demo.bat` | `./gradlew :lwjgl3:runDockingDemo` | Docking at a station, walking across the dock and carrying cargo |
 | `demos/HUD demo.bat` | `./gradlew :lwjgl3:runHudDemo` | Target brackets, lead reticle, minimap, consoles and the traffic map |
