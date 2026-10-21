@@ -9,8 +9,8 @@
 #           with Tab, R and Space; whether it fires on the frigate
 #   captain part 4: "First ace fight" by hand; if lost, the tow (B twice) and a minute of warp x4 at
 #           the berth, with the captain's air and where the figure stands before and after
-#   beaten  part 5: the raid fought to the fall, then Tab round every contact (does the gun skip the
-#           struck and the silenced?), then a minute of Space: hits on the base's batteries, and on us
+#   beaten  part 5: the raid fought to the fall, counting the Tabs that land on a beaten defender, then
+#           a minute of Space with no Tab (hits on the base's batteries, and on us), then where Tab lands
 # Part 2's raid is flown by raid-by-hand.sh, which counts the hits on us by kind of defender.
 # Commands to PlaytestLauncher only read state (`raid`, `crew`, `captain`, `career`, `hostiles`),
 # except `load` and the one stand-in `raider`.
@@ -114,29 +114,39 @@ if want captain; then
   esac
 fi
 
-# Part 5: after the fall, Tab round the contacts, then a minute of Space
+# Part 5: Tab while the raid is fought (does it land on a struck defender?), then at the fall a minute
+# of Space with no Tab (part 5: after the fall every Tab lands on a prize, and aimed fire on one brings
+# it back), then Tab round the contacts to show where it lands once nothing fights
 if want beaten; then
   cmd load Before the raid; pause 14
   ship=$(last_line career | sed -n 's/.*ship \(.*\), hull.*/\1/p')
+  tabs=0; on_struck=0
   for i in $(seq 1 60); do
-    case "$(first "$(raid_state)")" in *"base fallen"*|*"we are beaten"*) break;; esac
-    raid_round 5
+    state=$(raid_state)
+    case "$(first "$state")" in *"base fallen"*|*"we are beaten"*) break;; esac
+    for _ in $(seq 1 10); do
+      case "$(nearest "$state")" in ""|*"(target)"*) break;; esac
+      key Tab; tabs=$((tabs + 1)); state=$(raid_state)
+      echo "$state" | grep -q '^  defender .* beaten.*(target)' && on_struck=$((on_struck + 1))
+    done
+    key r; hold space 5
   done
   fall=$(now)
+  echo "beaten: during the raid, $tabs Tabs, $on_struck of them onto a beaten defender"
   echo "beaten: at the fall (sim $fall): $(first "$(raid_state)")"
-  hostiles | sed 's/^/beaten: /'
+  hostiles | grep -v ' rails$' | sed 's/^/beaten: /'
   shot b-01-the-fall
-  # Tab twelve times: every contact the gun takes, and its label
-  for i in $(seq 1 12); do
-    key Tab; t=$(gun_target)
-    echo "beaten: Tab $i: ${t:-none} $(hostiles | grep -F "  $t " | awk '{for (i = 1; i <= NF; i++) if ($i ~ /^target=/) { print $(i + 1); exit }}')"
-    [ "$i" = 1 ] && shot b-02-first-tab
-  done
   for i in $(seq 1 12); do hold space 5; done
-  shot b-03-a-minute-of-space
+  shot b-02-a-minute-of-space
   echo "beaten: in the minute after the fall: $(hits 'Den battery [0-9]*' "$ship" "$fall") hits on the batteries, $(hits "$ship" 'Pirate raider [0-9]*' "$fall") hits on us from raiders, $(hits "$ship" 'Den battery [0-9]*' "$fall") from batteries"
-  hostiles | sed 's/^/beaten: after: /'
-  key l; pause 1; shot b-04-notices; key l; pause 1
+  hostiles | grep -v ' rails$' | sed 's/^/beaten: after: /'
+  key l; pause 1; shot b-03-notices; key l; pause 1
+  # Where Tab lands once nothing fights (no Space after it)
+  for i in $(seq 1 8); do
+    key Tab; t=$(gun_target)
+    echo "beaten: Tab $i after the fall: ${t:-none} $(hostiles | grep -F "  $t " | awk '{for (i = 1; i <= NF; i++) if ($i ~ /^target=/) { print $(i + 1); exit }}')"
+    [ "$i" = 1 ] && shot b-04-tab-after-the-fall
+  done
 fi
 
 finish
