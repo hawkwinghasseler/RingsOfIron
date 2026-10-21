@@ -33,7 +33,7 @@ a command acts on the selection; a crew member, ship or target can be passed ins
 | General | `help`, `clear`, `history`, `vars`, `run(name, args...)`, `scripts`, `select(thing)`, `under`, `pause` (stop or start the world), `step(seconds)`, `notice(text)` |
 | Crew | `kill` (on a ship: everyone aboard; in flight: removes it), `heal`, `revive`, `wound(points, [cause])` through the game's own wounding (a second serious hit on someone critical halves their clock, as in play), `hurt(points)` (health, as fire takes it), `ko`, `suit`, `crew()` (the `CrewMemberComponent` to read or set), `aboard`, `spawn([role], [name])`, `boarder([role])`, `remove`, `teleport(x, y)` |
 | Decks | `fire`, `extinguish`, `damage(amount)`, `breach`, `repair`, `air`, `reactors`, `doors`, `tile()` |
-| Hits | `shoot([weapon])` (a real round, missile or beam from straight outboard), `blast([warhead])` (inside the hull), `ram([km/s], [tonnes])`, `shortOut`, `weapons`, `warheads` |
+| Hits | `shoot([weapon])` (a real round, missile or beam from straight outboard), `blast([warhead])` (inside the hull), `ram([km/s], [tonnes])` (under 1 km/s a Box2D rock that crashes as combat-sys 5.12 describes), `shortOut`, `weapons`, `warheads` |
 | Ships | `ships`, `spawnShip(id)` |
 
 A command typed on its own runs (`heal`), and Groovy's command syntax works (`wound 95, 'SPALL'`).
