@@ -35,6 +35,7 @@ import com.hawkwing.RingsOfIron.game.Bridge;
 import com.hawkwing.RingsOfIron.game.OpeningGuide;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.Rescue;
+import com.hawkwing.RingsOfIron.game.WarpNotices;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.FirstPlay;
@@ -369,10 +370,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 show(news);
             }
         });
-        world.timeWarp.changes.add((signal, change) -> {
-            if (change.blockedReason != null) show("Time warp refused: " + change.blockedReason);
-            else if (change.reason != null && change.reason != TimeWarpController.DropReason.REQUESTED) show(dropNotice(change));
-        });
+        WarpNotices.attach(world);
 
         world.hints.registerKey(HintRegistry.Context.ANY, "Esc", hosted ? "menu" : "quit", 90);
         createDevConsole();
@@ -906,36 +904,6 @@ public class RingsOfIronGame extends ApplicationAdapter {
         return y - Math.max(20f, layout.height + 6f);
     }
 
-    /** Why warp stopped, in words ("Dropped out of warp: a planned burn is due"), not the reason's enum name. */
-    private String dropNotice(TimeWarpController.WarpChange change) {
-        String why = null;
-        switch (change.reason) {
-            case PLAYER_EVENT:
-                if (change.event == null) break;
-                switch (change.event.type) {
-                    case MANEUVER: why = "a planned burn is due"; break;
-                    case SOI_ENTRY: why = "entering " + bodyName(change.event.targetUuid) + "'s sphere of influence"; break;
-                    case SOI_EXIT: why = "leaving this body's sphere of influence"; break;
-                    case IMPACT: why = "on course to hit the surface"; break;
-                    default: break;
-                }
-                break;
-            case ENCOUNTER:
-                why = (change.encounter == null ? "a craft" : PlayerDocking.name(change.encounter)) + " is coming within 20 km";
-                break;
-            default:
-                break;
-        }
-        return why == null ? "Dropped out of warp" : "Dropped out of warp: " + why;
-    }
-
-    private String bodyName(String uuid) {
-        Entity e = uuid == null ? null : world.universe.entity(uuid);
-        com.ringsofiron.orbital.components.CelestialBodyComponent body = e == null ? null
-                : e.getComponent(com.ringsofiron.orbital.components.CelestialBodyComponent.class);
-        return body != null && body.name != null ? body.name : world.nav.target.name(uuid);
-    }
-
     private void planBurns() {
         BurnPlanner burns = world.burns;
         boolean shift = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
@@ -998,10 +966,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     }
 
     private void warp(int direction) {
-        if (!world.timeWarp.step(direction)) {
-            String reason = world.engine.getRailsWarpBlockedReason();
-            show("Time warp refused" + (reason == null ? "" : ": " + reason));
-        }
+        WarpNotices.step(world, direction);
     }
 
     private SaveSlots slots() {
