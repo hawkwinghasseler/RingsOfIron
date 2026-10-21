@@ -142,8 +142,19 @@ public final class CrewTasks {
         }
     }
 
+    /**
+     * The oxygen tank or working life support aboard {@code ship} that (x, y) stands beside, open to
+     * it, with a suit's fill to give; null if none. For the player's figure, which has no tree to
+     * run {@link RefillSuit} (round 10).
+     */
+    public static SubsystemComponent suitOxygenBeside(Entity ship, ShipGridComponent grid, int x, int y) {
+        Array<SubsystemComponent> supplies = new Array<>();
+        if (grid == null || !oxygenSupplies(ship, supplies)) return null;
+        return RefillSuit.beside(grid, supplies, x, y);
+    }
+
     /** Takes a suit's fill of oxygen ({@link CrewDef#SUIT_OXYGEN_KG}) from {@code at}, a tank or life support; nothing if null. */
-    static void drawSuitOxygen(SubsystemComponent at) {
+    public static void drawSuitOxygen(SubsystemComponent at) {
         if (at == null) return;
         if (at.type == SubsystemComponent.SubsystemType.TANK) {
             at.contents = Math.max(0, at.contents - CrewDef.SUIT_OXYGEN_KG);
@@ -158,7 +169,12 @@ public final class CrewTasks {
      * from before tanks). Adds each to {@code out} when given.
      */
     static boolean oxygenSupplies(CrewAgent a, Array<SubsystemComponent> out) {
-        ShipSubsystemRegistryComponent registry = a.pos.ship == null ? null : a.pos.ship.getComponent(ShipSubsystemRegistryComponent.class);
+        return oxygenSupplies(a.pos.ship, out);
+    }
+
+    /** {@link #oxygenSupplies(CrewAgent, Array)} aboard {@code ship}. */
+    static boolean oxygenSupplies(Entity ship, Array<SubsystemComponent> out) {
+        ShipSubsystemRegistryComponent registry = ship == null ? null : ship.getComponent(ShipSubsystemRegistryComponent.class);
         if (registry == null) return false;
         boolean tanks = TankSupply.hasTanks(registry, Fluid.OXYGEN), any = false;
         for (Entity e : registry.subsystems) {

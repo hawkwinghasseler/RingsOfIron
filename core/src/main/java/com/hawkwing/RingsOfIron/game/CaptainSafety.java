@@ -13,6 +13,7 @@ import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Side;
 
 /**
  * The player's own figure in a holed ship (round 6 part 1). The crew's behaviour tree suits them up
@@ -32,6 +33,13 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
  *       be breathed. The player's own input wins, as when abandoning ship. Round 5's seed 7 lost its
  *       captain at Highport's berth: the crew were safe ashore, and nobody was left aboard to carry
  *       the figure when its suit ran dry.</li>
+ *   <li><b>Filling the suit</b> (round 10). Suited on thin air with {@link #REFILL_AT} or less
+ *       left, the figure standing still beside an oxygen tank or working life support fills its suit
+ *       there over the crew's refill time, as a crewman does.</li>
+ *   <li><b>Warp gives way to the walk</b> (round 10). While the figure is walked to air, time warp
+ *       drops to 1x and rails warp waits. At 10x the walk turned back at the walkway's halfway mark
+ *       several times a frame, and round 9's captain stood in Highport's walkway at warp until the
+ *       suit ran dry, with the crew ashore.</li>
  * </ul>
  * Should the figure go down anyway, the crew carry it to air as they would any casualty
  * ({@code CrewHealthSystem} posts the rescue), and put its suit on when nowhere aboard has air. The
@@ -45,10 +53,18 @@ public final class CaptainSafety {
     static final float MAX_STEP = 0.5f;
     /** Suit air left, seconds, at which the figure is walked aboard a docked craft with air: when the warning shows. */
     public static final float ASHORE_AT = AirWatch.WARN_AT;
+    /** Suit air left, seconds, below which standing beside the ship's oxygen fills the figure's suit: when the warning shows. */
+    public static final float REFILL_AT = AirWatch.WARN_AT;
+    /** Notice text once the figure's suit is filled. */
+    public static final String SUIT_FILLED = "Your suit is filled from the ship's oxygen";
+    /** Notice text when warp drops for the walk to air. */
+    public static final String WARP_DROPS = "Time warp drops: your suit is low, and you are walked to air";
+    /** Whether time warp gives way while the figure is walked to air (round 10). */
+    static final boolean WARP_GIVES_WAY = true;
 
     private final GameWorld world;
-    /** Seconds spent putting the suit on, or on calm air before taking it off. */
-    private float suiting, calm;
+    /** Seconds spent putting the suit on, or on calm air before taking it off, or filling it. */
+    private float suiting, calm, filling;
     /** On thin air at the last update: told once per spell. */
     private boolean warned;
     private double last = Double.NaN;
@@ -64,9 +80,14 @@ public final class CaptainSafety {
     private double repathAt = Double.NEGATIVE_INFINITY;
     private float steerX, steerY;
     private GridLink across;
+    /** Walking the figure to air, or home again, as of the last update; warp told once per walk. */
+    private boolean walking, warpTold;
+    /** Walked, and not yet breathing: what warp gives way to. */
+    private boolean fromThinAir;
 
     public CaptainSafety(GameWorld world) {
         this.world = world;
+        world.engine.addRailsWarpGuard(this::railsWarpBlockedReason);
         world.hints.register(HintRegistry.Context.DECK, "walk to air (losing air here)", 3,
                 Action.THRUST, Action.TURN_LEFT, Action.REVERSE, Action.TURN_RIGHT).onlyWhen(this::inThinAir);
     }
@@ -86,6 +107,27 @@ public final class CaptainSafety {
         return grid != null && !TaskRules.isBreathable(grid, p.tileX(), p.tileY());
     }
 
+    /**
+     * The figure was laid aboard the craft {@code ship} is docked to, to breathe (round 10: carried
+     * home by the crew while nowhere aboard could be breathed): it is walked home once the ship can be.
+     */
+    void ashore(Entity ship) {
+        ashore = true;
+        left = ship;
+        Entity e = avatar();
+        if (e != null) stopSteering(e.getComponent(PlayerAvatarComponent.class), true);
+    }
+
+    /** Why rails warp waits: while the figure is walked to air. Null when it need not. */
+    public String railsWarpBlockedReason() {
+        return WARP_GIVES_WAY && fromThinAir ? "you are being walked to air" : null;
+    }
+
+    /** True while the figure is walked to air from where it can't breathe. */
+    public boolean walkingToAir() {
+        return fromThinAir;
+    }
+
     /** Once a frame. */
     public void update() {
         double now = world.engine.getSimSeconds();
@@ -97,14 +139,17 @@ public final class CaptainSafety {
         if (c == null || !c.isConscious() || c.held || c.def.suitAir <= 0f) {
             suiting = calm = 0f;
             warned = false;
+            walking = warpTold = fromThinAir = false;
             return;
         }
         GridPositionComponent p = world.crew.position(e);
         ShipGridComponent grid = world.crew.grid(p.ship);
         if (grid == null) return;
         steerAshore(e, c, p, now);
+        giveWayToTheWalk(p);
         int x = p.tileX(), y = p.tileY();
         boolean thin = !TaskRules.isBreathable(grid, x, y);
+        fillSuit(e, c, p, grid, thin, dt);
         ShipTaskBoardComponent board = world.crew.board(world.crew.homeOf(e));
         boolean battle = board != null && board.battleSuits();
         if (thin && !warned) world.notices.post(THIN_AIR, NoticeLog.Kind.WARNING);
@@ -129,6 +174,25 @@ public final class CaptainSafety {
             c.setSuited(false);
             calm = 0f;
         }
+    }
+
+    /** Fills the figure's suit standing still beside the ship's oxygen on thin air ({@link #REFILL_AT}). */
+    private void fillSuit(Entity e, CrewMemberComponent c, GridPositionComponent p, ShipGridComponent grid, boolean thin, float dt) {
+        PlayerAvatarComponent walk = e.getComponent(PlayerAvatarComponent.class);
+        boolean still = walk.moveX == 0f && walk.moveY == 0f && p.walkway == null;
+        com.ringsofiron.interiorgrid.SubsystemComponent at = !thin || !c.suited || !still
+                || c.suitAir > (filling > 0f ? c.def.suitAir : REFILL_AT) ? null
+                : CrewTasks.suitOxygenBeside(p.ship, grid, p.tileX(), p.tileY());
+        if (at == null) {
+            filling = 0f;
+            return;
+        }
+        filling += dt;
+        if (filling < c.def.suitRefillTime) return;
+        CrewTasks.drawSuitOxygen(at);
+        c.suitAir = c.def.suitAir;
+        filling = 0f;
+        world.notices.post(SUIT_FILLED, NoticeLog.Kind.INFO);
     }
 
     /** Walks the figure aboard a docked craft with air, or home again from it ({@link #ASHORE_AT}). */
@@ -164,8 +228,12 @@ public final class CaptainSafety {
             return;
         }
         if (p.walkway != null && across != null) {
-            // Out on the walkway between the collars: on across it
-            steer(walk, across.side.dx, across.side.dy);
+            // Out on the walkway between the collars: on across it. Past halfway the figure is on
+            // the far craft's collar, in its tiles, whose port faces back the way it came (round 10:
+            // steered by the near port's side there, the figure turned back at halfway, and the
+            // captain stood in Highport's walkway until the suit ran dry)
+            Side side = p.walkway.grid() == across.grid() ? across.side : p.walkway.side.opposite();
+            steer(walk, side.dx, side.dy);
             return;
         }
         across = null;
@@ -220,7 +288,26 @@ public final class CaptainSafety {
         stopSteering(walk, true);
     }
 
+    /**
+     * While the figure is walked from thin air, warp drops to 1x, with a notice once each walk
+     * ({@link #WARP_GIVES_WAY}). Once it breathes, a step clear of the port it came in by isn't a
+     * reason to hold warp back.
+     */
+    private void giveWayToTheWalk(GridPositionComponent p) {
+        ShipGridComponent grid = world.crew.grid(p.ship);
+        fromThinAir = walking && (p.walkway != null || grid == null || !TaskRules.isBreathable(grid, p.tileX(), p.tileY()));
+        if (!fromThinAir) {
+            if (!walking) warpTold = false;
+            return;
+        }
+        if (!WARP_GIVES_WAY || world.timeWarp.getWarp() <= 1) return;
+        world.timeWarp.setWarp(1);
+        if (!warpTold) world.notices.post(WARP_DROPS, NoticeLog.Kind.WARNING);
+        warpTold = true;
+    }
+
     private void steer(PlayerAvatarComponent walk, float dx, float dy) {
+        walking = true;
         steerX = dx;
         steerY = dy;
         walk.moveX = dx;
@@ -230,6 +317,7 @@ public final class CaptainSafety {
     /** Stops walking the figure; {@code ours} if the input on it is this class's to clear. */
     private void stopSteering(PlayerAvatarComponent walk, boolean ours) {
         if (ours && walk.moveX == steerX && walk.moveY == steerY) walk.moveX = walk.moveY = 0f;
+        walking = false;
         steerX = steerY = 0f;
         path.clear();
         step = 0;
