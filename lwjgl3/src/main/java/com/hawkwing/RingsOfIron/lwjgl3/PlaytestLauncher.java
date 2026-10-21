@@ -331,6 +331,43 @@ public class PlaytestLauncher {
                 }
                 case "docked":
                     return world.docking.dockedTo(s.player) != null ? "yes" : "no";
+                case "career":
+                    // Only reads: the day, money, rank and ship, as the career script's snapshot gives them
+                    return String.format(java.util.Locale.ROOT, "day %.2f, credits %.0f, rank %s, ship %s, hull %.2f",
+                            world.engine.getSimSeconds() / 86_400,
+                            s.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class).credits,
+                            world.standing.describeRank(), PlayerDocking.name(s.player),
+                            com.hawkwing.RingsOfIron.game.ShipDisablement.hullIntegrity(s.player.getComponent(ShipGridComponent.class)));
+                case "captain": {
+                    // Only reads: the captain's wound, suit and air, and which craft the figure stands in
+                    Entity avatar = world.avatar.getAvatar();
+                    com.ringsofiron.aicrew.CrewMemberComponent c = avatar == null ? null : world.crew.crew(avatar);
+                    if (c == null) return "no captain";
+                    com.ringsofiron.aicrew.GridPositionComponent pos = world.crew.position(avatar);
+                    ShipGridComponent grid = pos == null ? null : world.crew.grid(pos.ship);
+                    return String.format(java.util.Locale.ROOT, "%s, %s, %s, in %s (%s)", com.hawkwing.RingsOfIron.game.CrewMedical.condition(c),
+                            c.isAlive() ? (c.isConscious() ? "conscious" : "down") : "dead",
+                            c.suited ? String.format(java.util.Locale.ROOT, "suited (%.0f s of air)", c.suitAir) : "unsuited",
+                            pos == null ? "nowhere" : pos.ship == s.player ? "our ship" : PlayerDocking.name(pos.ship),
+                            grid == null ? "?" : com.ringsofiron.aicrew.TaskRules.isBreathable(grid, pos.tileX(), pos.tileY()) ? "air" : "no air");
+                }
+                case "raider": {
+                    // A stand-in, like `hull`: one lone pirate raider brought in at rest <km> km out, hunting
+                    // the player, armed with [fit] or as the difficulty picks (round 10: a lone raider v the frigate)
+                    float km = cmd.length > 1 ? Float.parseFloat(cmd[1]) : 4f;
+                    String fit = cmd.length > 2 ? cmd[2] : null;
+                    List<String> ids = world.hostiles.spawnWing(com.hawkwing.RingsOfIron.game.HostileTraffic.RAIDER, 1, s.highport, fit);
+                    if (ids.isEmpty()) return "no raider";
+                    String uuid = ids.get(0);
+                    com.ringsofiron.macrosim.hostile.HostileComponent h = world.macroSim.hostiles().get(uuid);
+                    h.targetUuid = com.ringsofiron.macrosim.hostile.HostileComponent.PLAYER;
+                    double now = world.macroSim.now();
+                    com.ringsofiron.macrosim.rails.StateVector at = world.macroSim.gateway().anchorStateAt(now,
+                            new com.ringsofiron.macrosim.rails.StateVector());
+                    world.macroSim.rails().attach(uuid, world.macroSim.gateway().anchorParentUuid(),
+                            at.set(at.x + km * 1000f, at.y, at.vx, at.vy), now);
+                    return h.displayName + " (" + h.loadout + ") at " + km + " km";
+                }
                 case "seat": {
                     // Only reads: the console the avatar sits at, and the weapons console's offset from where
                     // it stands, in deck tiles, so a script can walk there by keys
