@@ -1088,6 +1088,19 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             world.macroSim.addPirate(uuid, h, station);
             out.add(uuid);
         }
+        // Round 10: a railgun platform takes the mooring nearest the station, and the others guard the
+        // approach, where their chainguns reach a ship holding off the base
+        for (int i = 1; i < out.size(); i++) {
+            HostileComponent h = world.macroSim.hostiles().get(out.get(i)), first = world.macroSim.hostiles().get(out.get(0));
+            LoadoutDef fit = h == null || h.loadout == null ? null : world.combatDefs.loadouts.get(h.loadout);
+            if (first == null || fit == null || !railgun(fit)) continue;
+            double near = first.mooring;
+            first.mooring = h.mooring;
+            h.mooring = near;
+            world.macroSim.addPirate(out.get(0), first, station);
+            world.macroSim.addPirate(out.get(i), h, station);
+            break;
+        }
         return out;
     }
 

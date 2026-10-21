@@ -122,7 +122,12 @@ final class RaidRoutine {
             if (EnemySurveyTest.DEBUG && frame[0] % 600 == 0) {
                 var pp = player.getComponent(PhysicsBodyComponent.class).body.getPosition();
                 float m = com.ringsofiron.physicsexterior.PhysicsManager.METERS_PER_UNIT;
-                StringBuilder b = new StringBuilder(String.format("TRACE t=%.0f hull=%.3f", world.engine.getSimSeconds() - t0, EnemySurveyTest.hull(player)));
+                com.badlogic.gdx.math.Vector2 bp0 = new com.badlogic.gdx.math.Vector2(), bv0 = new com.badlogic.gdx.math.Vector2(),
+                        pp0 = new com.badlogic.gdx.math.Vector2(), pv0 = new com.badlogic.gdx.math.Vector2();
+                boolean seen0 = com.ringsofiron.combatsys.ContactState.read(base, bp0, bv0);
+                com.ringsofiron.combatsys.ContactState.read(player, pp0, pv0);
+                StringBuilder b = new StringBuilder(String.format("TRACE t=%.0f hull=%.3f base %.0f m%s", world.engine.getSimSeconds() - t0,
+                        EnemySurveyTest.hull(player), bp0.dst(pp0), seen0 ? "" : " (unseen)"));
                 List<Entity> all = new ArrayList<>(ships);
                 all.addAll(batteries);
                 for (Entity sh : all) {

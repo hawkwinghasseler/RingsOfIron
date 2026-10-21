@@ -111,6 +111,24 @@ class EnemySurveyTest {
         System.out.println("RESULT " + fight(Long.parseLong(p[0]), ours, p[2], Integer.parseInt(p[3]), p.length > 4 ? p[4] : null));
     }
 
+    /**
+     * The career's raid flown again from a "Before the raid" save (round 10): RAID_SAVE names the save
+     * folder, and -PenemyDebug traces it.
+     */
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named = "RAID_SAVE", matches = ".+")
+    void raidFromSave() {
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        GameWorld world = new GameWorld();
+        try {
+            GameScenario game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
+            game.quickLoad(new com.badlogic.gdx.files.FileHandle(Paths.get(System.getenv("RAID_SAVE"), "Before_the_raid.json").toFile()));
+            System.out.println("RESULT " + RaidRoutine.fly(world, game, () -> { }));
+        } finally {
+            world.dispose();
+        }
+    }
+
     @Test
     @EnabledIfSystemProperty(named = "enemy.survey", matches = ".+")
     void survey() throws IOException {
