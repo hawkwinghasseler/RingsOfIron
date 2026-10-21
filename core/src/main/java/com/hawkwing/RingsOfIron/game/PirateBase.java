@@ -81,6 +81,12 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     public static final int BATTERIES = 2;
     /** How far behind the base, along its orbit, the first gun platform is moored, and each next one further, m. */
     public static final double BATTERY_SPACING = 1_500;
+    /**
+     * Round 10: when the base falls, its defenders still in the bubble strike with it, running or
+     * fighting ({@link #strikeDefenders}). False leaves them as round 9 did: a running defender kept
+     * firing on the player after the fall.
+     */
+    public static final boolean DEFENDERS_STRIKE_AT_FALL = true;
 
     private final GameWorld world;
     private String uuid;
@@ -180,6 +186,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         // (round 7's window: the warning stayed up about a minute after it struck)
         for (String name : defenders) world.missiles.goBallistic(shipNamed(name));
         for (String name : guns) world.missiles.goBallistic(shipNamed(name));
+        if (DEFENDERS_STRIKE_AT_FALL) strikeDefenders();
         defenders.clear();
         scrambleDue = false;
         strainedSeconds = 0;
@@ -193,6 +200,28 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         world.tension.easeAll(FALL_RELIEF);
         // The boards offer what its fall opens (a Captain's operation) at once
         world.contracts.worldChanged();
+    }
+
+    /**
+     * At the fall, the base's defenders still in the bubble strike with it, running or fighting: each
+     * not already struck or wrecked surrenders and lets go of the player. One already gone stays gone.
+     * Round 9's window on 502e8e2: raiders 20 and 22 were running, not struck, at the fall, and a
+     * running pirate keeps its guns on the ship it fought, so raider 22 hit us 85 times in 24 s.
+     */
+    private void strikeDefenders() {
+        for (String name : defenders) {
+            String id = uuidOf(name);
+            Entity e = id == null ? null : world.engine.getEntity(id);
+            if (e == null || e.getComponent(PhysicsBodyComponent.class) == null
+                    || !world.macroSim.bubble().inBubble().contains(id)) continue;
+            DisabledComponent.Reason why = ShipDisablement.reason(e);
+            if (why != null && why.sticky()) continue;
+            world.disablement.set(e, DisabledComponent.Reason.SURRENDERED);
+            // Guns cold at once, not at traffic's next look: it is a prize now
+            var sensor = e.getComponent(com.ringsofiron.combatsys.components.SensorComponent.class);
+            if (sensor != null) sensor.lockedTarget = null;
+            e.remove(com.ringsofiron.aicrew.pilot.NpcCombatComponent.class);
+        }
     }
 
     /**
