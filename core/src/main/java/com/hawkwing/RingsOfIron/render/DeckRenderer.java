@@ -22,7 +22,9 @@ import com.hawkwing.RingsOfIron.lighting.SceneLighting;
 import com.ringsofiron.aicrew.CrewBody;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -37,8 +39,10 @@ import java.util.function.Supplier;
  * The deck view, for the game and every demo that shows a deck: each craft's deck plan at its
  * pose (the art pack's when it is built, else the minimap's shades), its smoke and flames, its
  * cargo, everyone aboard, and with {@link SceneLighting} the light map and the glow of what gives
- * off light. A {@link Style} says how crew are drawn and lets a screen add to the deck and to
- * each crew member, so a demo shows what it needs on top without drawing a deck of its own.
+ * off light. Crew show their state as the game does whatever the style: the down greyed, the dead
+ * as a body where they fell, and a wound disc under the hurt. A {@link Style} says how crew are
+ * drawn and lets a screen add to the deck and to each crew member, so a demo shows what it needs on
+ * top without drawing a deck of its own.
  */
 public final class DeckRenderer {
     /** How crew are drawn, and what a screen adds over the deck. */
@@ -46,13 +50,8 @@ public final class DeckRenderer {
         /** Which crew figure to draw for {@code crew}. */
         ArtNames.Crew figure(Entity crew, CrewMemberComponent c);
 
-        /** The dot's color for {@code crew} when there is no crew art. */
+        /** The dot's color for {@code crew} when there is no crew art, before it is greyed for the down. */
         Color dot(Entity crew, CrewMemberComponent c);
-
-        /** The tint of {@code crew}'s figure; white leaves it as drawn. */
-        default Color tint(Entity crew, CrewMemberComponent c) {
-            return Color.WHITE;
-        }
 
         /**
          * Drawn over the deck, its smoke and flames, under everyone aboard: in the deck's local
@@ -61,14 +60,10 @@ public final class DeckRenderer {
         default void overDeck(ShapeRenderer shapes, Entity ship, ShipGridComponent grid) {
         }
 
-        /** Whether {@code crew} gets a figure (or a dot); what {@link #underCrew} draws is drawn either way. */
-        default boolean shown(Entity crew) {
-            return true;
-        }
-
         /**
-         * Drawn under {@code crew} at ({@code x}, {@code y}), the deck's local meters, inside the
-         * same filled batch. {@code figures} is whether the crew art is drawn over it.
+         * Drawn under living {@code crew} at ({@code x}, {@code y}), the deck's local meters, inside
+         * the same filled batch, beneath the wound disc. {@code figures} is whether the crew art is
+         * drawn over it.
          */
         default void underCrew(ShapeRenderer shapes, Entity crew, CrewMemberComponent c, float x, float y,
                                float tileSize, boolean figures) {
@@ -81,6 +76,12 @@ public final class DeckRenderer {
     }
 
     private static final Matrix4 IDENTITY = new Matrix4();
+    /** The tint of a down crew member's figure, and what their dot is scaled by. */
+    private static final Color GREYED = new Color(0.55f, 0.55f, 0.6f, 1f);
+    /** A body's cross until there is art for one. */
+    private static final Color BODY = new Color(0.55f, 0.55f, 0.55f, 1f);
+    /** How long a bleeding wound's disc takes to blink. */
+    private static final float BLINK = 0.6f;
 
     private final Supplier<GameWorld> world;
     private final ShapeRenderer shapes;
@@ -99,6 +100,9 @@ public final class DeckRenderer {
     private final Vector2 local = new Vector2();
     private final float[] angle = new float[1];
     private final Color color = new Color();
+    private final Color crewColor = new Color();
+    /** Time the decks have been drawn for, which blinks the bleeding. */
+    private float clock;
 
     /**
      * Draws the decks of the world {@code world} gives (a demo may load a new one) with {@code shapes}
@@ -185,6 +189,7 @@ public final class DeckRenderer {
      * the light map). {@code delta} moves the smoke and flames on; 0 holds them.
      */
     public void draw(Array<Entity> decks, OrthographicCamera camera, float delta) {
+        clock = (clock + delta) % BLINK;
         if (decks.size == 0) return;
         boolean withArt = deckArt.available();
         boolean lit = lighting != null && lightsOn;
@@ -255,8 +260,21 @@ public final class DeckRenderer {
                 if (pos.ship != ship) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                 Vector2 l = pos.toShipLocal(g, local);
+                if (c.state == CrewState.DEAD) {
+                    body(shapes, l.x, l.y, s);
+                    continue;
+                }
                 style.underCrew(shapes, e, c, l.x, l.y, s, figures);
-                if (!figures && style.shown(e)) DeckView.crew(shapes, c, l.x, l.y, s, style.dot(e, c), color);
+                if (c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS) {
+                    // The figure has no art of its own for being hurt or down
+                    Color w = woundColor(c, clock, crewColor);
+                    shapes.setColor(w.r, w.g, w.b, w.a * 0.7f);
+                    shapes.circle(l.x, l.y, WOUND_DISC * s, 20);
+                }
+                if (figures) continue;
+                Color dot = crewColor.set(style.dot(e, c));
+                if (c.state == CrewState.UNCONSCIOUS) dot.mul(GREYED);
+                DeckView.crew(shapes, c, l.x, l.y, s, dot, color);
             }
             shapes.end();
             if (figures) {
@@ -264,10 +282,11 @@ public final class DeckRenderer {
                 batch.begin();
                 for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                     GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                    if (pos.ship != ship || !style.shown(e)) continue;
+                    if (pos.ship != ship) continue;
                     CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                    if (c.state == CrewState.DEAD) continue;
                     Vector2 l = pos.toShipLocal(g, local);
-                    batch.setColor(style.tint(e, c));
+                    batch.setColor(c.state == CrewState.UNCONSCIOUS ? GREYED : Color.WHITE);
                     deckArt.crew(batch, e, style.figure(e, c), c.load == null ? null : c.load.task.job.commodity(), l.x, l.y, s);
                 }
                 batch.setColor(Color.WHITE);
@@ -296,6 +315,35 @@ public final class DeckRenderer {
             batch.setTransformMatrix(IDENTITY);
         }
         lighting.renderGlow(batch, camera, 0f);
+    }
+
+    /** The radius of the wound disc under a crew member, in tiles: a ring round the dot without the art. */
+    private static final float WOUND_DISC = 0.336f;
+
+    /**
+     * A wound's color, into {@code out}: near white unhurt, yellow light, orange serious, red critical
+     * (blinking on {@code clock} while it bleeds), cyan stabilised; dimmer while down.
+     */
+    private static Color woundColor(CrewMemberComponent c, float clock, Color out) {
+        switch (c.wound) {
+            case LIGHT: out.set(1f, 0.9f, 0.3f, 1f); break;
+            case SERIOUS: out.set(1f, 0.55f, 0.15f, 1f); break;
+            case CRITICAL:
+                if (c.stabilised) out.set(0.3f, 0.9f, 1f, 1f);
+                else out.set(1f, 0.15f, 0.15f, (clock % BLINK) < BLINK / 2f ? 1f : 0.45f);
+                break;
+            default: out.set(0.85f, 0.9f, 1f, 1f);
+        }
+        if (c.state == CrewState.UNCONSCIOUS) out.mul(0.75f, 0.75f, 0.75f, 1f);
+        return out;
+    }
+
+    /** A dead crew member's body at ({@code x}, {@code y}): a grey cross until there is art for one. */
+    private static void body(ShapeRenderer shapes, float x, float y, float tileSize) {
+        float r = 0.32f * tileSize, width = 0.08f * tileSize;
+        shapes.setColor(BODY);
+        shapes.rectLine(x - r, y - r, x + r, y + r, width);
+        shapes.rectLine(x - r, y + r, x + r, y - r, width);
     }
 
     private boolean bodyPose(Entity ship, Vector2 out, float[] a) {
