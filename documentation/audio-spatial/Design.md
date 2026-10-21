@@ -47,7 +47,7 @@ The module builds and is tested headlessly (`gradlew :audio-spatial:test`). The 
 
 ![Spatial audio demo](audio-demo.png)
 
-**Run the demo:** `Audio demo.bat` (or `gradlew :lwjgl3:runAudioDemo`). Walk a small ship with WASD and hear the reactor, alarm, fire and breach hiss muffle as walls and doors come between you. E opens or seals the nearest door, TAB switches between interior and exterior listening, SPACE fires a laser and H hits the hull. Headphones help with the panning.
+**Run the demo:** `Audio demo.bat` (or `gradlew :lwjgl3:runAudioDemo`). Walk the game's corvette as your crew avatar with WASD and hear the reactor, alarm, fire and breach hiss muffle as walls and doors come between you. The demo is the game's world (`AudioDemoScene` on `GameWorld`): the game's hull, crew, listener and audio systems, drawn by the game's `DeckRenderer`. The corvette in the data is one open deck, so the demo fits its own copy with two bulkheads with doors, as the ship editor could; the four hand-placed sounds (1 to 4 switch them) and their occlusion readout are the demo's own. The crew's footsteps and voices are the game's too. E opens or seals the nearest door, TAB switches between interior and exterior listening, SPACE fires a laser and H hits the hull. Headphones help with the panning.
 
 What exists (`com.ringsofiron.audiospatial`):
 - **`AudioManager`** wraps the backend: `playOneShot(path, x, y[, intensity])`, `createInstance`, `setGlobalParameter`, `loadBank`. `AudioManager.createDefault()` picks OpenAL when libGDX's desktop audio is running, otherwise the synth backend when some other libGDX audio runs, otherwise headless.
