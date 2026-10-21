@@ -221,6 +221,33 @@ class HostileTrafficGameTest {
     }
 
     @Test
+    void theHoldToFireComesThroughASave() {
+        String id = pirate(HostileTraffic.RAIDER);
+        HostileComponent h = hostiles.get(id);
+        h.targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 3_000, 0);
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile t = grid.getTile(x, y);
+                if (t != null && t.isWall()) t.setIntegrity(0.6f);
+            }
+        }
+        run(3);
+        assertFalse(h.brokeOff, "holding to fire");
+        Double since = world.hostiles.holdingSince(id);
+        assertNotNull(since);
+        com.badlogic.gdx.utils.Json json = new com.badlogic.gdx.utils.Json();
+        java.io.StringWriter out = new java.io.StringWriter();
+        json.setWriter(out);
+        json.writeObjectStart();
+        world.hostiles.write(json);
+        json.writeObjectEnd();
+        world.hostiles.read(json, new com.badlogic.gdx.utils.JsonReader().parse(out.toString()));
+        assertEquals(since, world.hostiles.holdingSince(id), "the hold's start, not a fresh hold");
+    }
+
+    @Test
     void aPatrolEngagesAPirateInTheBubble() {
         String pirate = pirate(HostileTraffic.RAIDER);
         String patrol = null;

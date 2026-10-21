@@ -942,6 +942,11 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     // ---------------------------------------------------------------------------------------------
 
+    /** When {@code id} began to hold to fire ({@link #BREAK_OFF_HOLD}), or null; for tests. */
+    Double holdingSince(String id) {
+        return inReachSince.get(id);
+    }
+
     /** Tops the population up now, out of the player's sight, as the hourly top-up does; for tests. */
     void topUpNow() {
         topUp(world.macroSim.now(), false);
