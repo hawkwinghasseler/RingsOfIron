@@ -19,6 +19,9 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
+import com.hawkwing.RingsOfIron.debug.DebugNames;
+import com.hawkwing.RingsOfIron.debug.DebugTarget;
+import com.hawkwing.RingsOfIron.debug.DevConsole;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.InteriorLab;
@@ -41,7 +44,9 @@ import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
+import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.minimap.TileShade;
+import com.ringsofiron.uihud.widgets.DevConsoleWindow;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -62,6 +67,11 @@ import java.util.List;
  * (Shift+A the next attacker hull), Space pause, - / = slower and faster, N pin the ship in place or
  * let it drift, H heal everyone, F put out every fire, V fresh air, D doors, O reactors, wheel zoom,
  * Esc quit.
+ *
+ * <p>~ opens the developer console ({@link DevConsole}) over the deck, as in the game: while it is
+ * open a left click selects (again to cycle what is under the cursor), the commands act on the
+ * selection ({@code wound 95}, {@code shoot 'railgun_mk1'}, {@code ram 3}), Space no longer pauses
+ * ({@code pause()} does) and Esc deselects, then closes it.
  */
 public class InteriorDemo extends ApplicationAdapter {
     private static final float PANEL_WIDTH = 470f;
@@ -128,6 +138,14 @@ public class InteriorDemo extends ApplicationAdapter {
     private final Vector2 tmp = new Vector2(), tmp2 = new Vector2();
     private final Color color = new Color();
 
+    /** The developer console, made again for each hull's world, in the one window. */
+    private DevConsole dev;
+    private DevConsoleWindow devWindow;
+    private com.badlogic.gdx.scenes.scene2d.Stage stage;
+    private com.badlogic.gdx.scenes.scene2d.ui.Skin skin;
+    /** Seconds the console's step() still has to run while paused. */
+    private float devStep;
+
     public InteriorDemo() {
         this(Paths.get("").toAbsolutePath());
     }
@@ -146,8 +164,35 @@ public class InteriorDemo extends ApplicationAdapter {
         camera = new OrthographicCamera();
         ui = new OrthographicCamera();
         lab = new InteriorLab(assetsDir);
+        skin = HudSkin.create();
+        stage = new com.badlogic.gdx.scenes.scene2d.Stage(new com.badlogic.gdx.utils.viewport.ScreenViewport());
         load(GameScenario.PLAYER_SHIP);
-        Gdx.input.setInputProcessor(new InputAdapter() {
+        devWindow = new DevConsoleWindow(skin, dev.console, () -> (lab.paused ? "[paused] " : "") + DebugNames.describe(dev.selected()));
+        Gdx.input.setInputProcessor(new com.badlogic.gdx.InputMultiplexer(new InputAdapter() {
+            // ~ opens and closes the console; with it open, Esc deselects, then closes it
+            @Override
+            public boolean keyDown(int keycode) {
+                if (keycode == Input.Keys.GRAVE) {
+                    devWindow.toggle(stage);
+                    return true;
+                }
+                if (keycode == Input.Keys.ESCAPE && devWindow.isOpen()) {
+                    if (!dev.deselect()) devWindow.setOpen(false, stage);
+                    return true;
+                }
+                return false;
+            }
+        }, stage, new InputAdapter() {
+            // With the console open a left click on the deck selects what is under it
+            @Override
+            public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+                if (!devWindow.isOpen() || button != Input.Buttons.LEFT || !onDeck(screenX)) return false;
+                Vector2 at = WorldDebug.toWorld(body(), local(screenX, screenY, tmp).x, tmp.y, tmp2);
+                DebugTarget t = dev.click(at.x, at.y, true, zoom, List.of(lab.ship));
+                if (t != null && t.isCrew()) selected = t.entity;
+                return true;
+            }
+        }, new InputAdapter() {
             @Override
             public boolean scrolled(float amountX, float amountY) {
                 zoom = MathUtils.clamp(zoom * (float) Math.pow(1.15f, amountY), 0.005f, 2f);
@@ -169,7 +214,7 @@ public class InteriorDemo extends ApplicationAdapter {
                 apply(local(screenX, screenY, new Vector2()), from);
                 return true;
             }
-        });
+        }));
     }
 
     private void load(String hull) {
@@ -180,6 +225,26 @@ public class InteriorDemo extends ApplicationAdapter {
     /** A new ship in the lab (by a key, or a script): fresh smoke, nobody followed, zoomed to fit. */
     private void shipLoaded() {
         shown = lab.ship;
+        // The console carries on in the new world: its scrollback, history and variables kept
+        dev = new DevConsole(lab.world, null, null, Paths.get("saves", "console-history.txt").toAbsolutePath(), lab.debug,
+                dev == null ? null : dev.console);
+        dev.setHost(new DevConsole.Host() {
+            @Override
+            public void setFrozen(boolean frozen) {
+                lab.paused = frozen;
+                devStep = 0f;
+            }
+
+            @Override
+            public boolean isFrozen() {
+                return lab.paused;
+            }
+
+            @Override
+            public void step(float seconds) {
+                devStep += seconds;
+            }
+        });
         particles = new HazardParticles();
         selected = null;
         ShipGridComponent g = grid();
@@ -214,14 +279,24 @@ public class InteriorDemo extends ApplicationAdapter {
     @Override
     public void resize(int width, int height) {
         ui.setToOrtho(false, width, height);
+        if (stage != null) stage.getViewport().update(width, height, true);
     }
 
     @Override
     public void render() {
         float delta = Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
         blink += delta;
-        handleKeys();
-        lab.update(delta);
+        if (!devWindow.isTyping()) handleKeys();
+        if (lab.paused && devStep > 0f) {
+            // step(): the paused world runs on for what is left of the seconds asked for
+            float run = Math.min(devStep, delta * lab.speed);
+            devStep -= run;
+            lab.paused = false;
+            lab.update(run / lab.speed);
+            lab.paused = true;
+        } else {
+            lab.update(delta);
+        }
         if (lab.ship != shown) shipLoaded();
         if (selected != null && (selected.isScheduledForRemoval() || lab.world.crew.crew(selected) == null)) selected = null;
 
@@ -234,7 +309,34 @@ public class InteriorDemo extends ApplicationAdapter {
         drawFlight();
         drawCrew();
         drawCursor();
+        drawDevSelection();
         drawPanels();
+        stage.getViewport().apply(true);
+        stage.act(delta);
+        stage.draw();
+    }
+
+    /** A ring round what the console has selected, in the ship's own frame as the camera is. */
+    private void drawDevSelection() {
+        if (dev.selected() == null) return;
+        float r = dev.picker.locate(dev.selected(), tmp);
+        if (r < 0f) return;
+        Vector2 at = WorldDebug.toLocal(body(), tmp.x, tmp.y, tmp2);
+        shapes.setProjectionMatrix(camera.combined);
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        shapes.setColor(1f, 0.3f, 1f, devWindow.isOpen() ? 1f : 0.5f);
+        if (dev.selected().isTile()) {
+            float s = grid().tileSize * 0.5f;
+            shapes.rect(at.x - s, at.y - s, 2f * s, 2f * s);
+        } else if (dev.selected().isCraft()) {
+            ShipGridComponent g = grid();
+            shapes.rect(g.gridOriginLocal.x, g.gridOriginLocal.y, g.width * g.tileSize, g.height * g.tileSize);
+        } else {
+            shapes.circle(at.x, at.y, Math.max(r * 1.3f, 6f * zoom), 24);
+        }
+        shapes.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     /** The ship's middle in the middle of what the panels leave: the camera works in the ship's own frame. */
@@ -800,6 +902,8 @@ public class InteriorDemo extends ApplicationAdapter {
     @Override
     public void dispose() {
         lab.dispose();
+        stage.dispose();
+        skin.dispose();
         shapes.dispose();
         batch.dispose();
         font.dispose();
