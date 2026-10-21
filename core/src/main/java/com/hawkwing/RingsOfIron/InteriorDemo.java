@@ -17,6 +17,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
+import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.GameScenario;
@@ -66,6 +67,8 @@ public class InteriorDemo extends ApplicationAdapter {
     private static final float PANEL_WIDTH = 470f;
     private static final float LOG_HEIGHT = 190f;
     private static final float LINE = 17f;
+    /** Tint of a crew figure who is down. */
+    private static final Color GREYED = new Color(0.55f, 0.55f, 0.6f, 1f);
     /** Height of the help lines at the top of the deck view, pixels. */
     private static final float TOP = 7 * LINE;
     /** How far the cursor must drag, tiles, to aim a shot from where it started. */
@@ -518,6 +521,7 @@ public class InteriorDemo extends ApplicationAdapter {
     private void drawCrew() {
         ShipGridComponent g = grid();
         Gdx.gl.glEnable(GL20.GL_BLEND);
+        boolean sprites = deckArt.available() && deckArt.hasCrew();
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         List<Entity> aboard = lab.debug.crewAboard(lab.ship);
         for (Entity e : aboard) {
@@ -538,9 +542,30 @@ public class InteriorDemo extends ApplicationAdapter {
                 shapes.setColor(Color.RED);
                 shapes.circle(at.x, at.y, r * 1.2f, 20);
             }
-            DeckView.crew(shapes, c, at.x, at.y, g.tileSize, woundColor(c), color);
+            if (!sprites) {
+                DeckView.crew(shapes, c, at.x, at.y, g.tileSize, woundColor(c), color);
+            } else if (c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS) {
+                // The wound as a disc under the figure, which has no art of its own for being hurt or down
+                Color w = woundColor(c);
+                shapes.setColor(w.r, w.g, w.b, w.a * 0.7f);
+                shapes.circle(at.x, at.y, r * 1.05f, 20);
+            }
         }
         shapes.end();
+        if (sprites) {
+            // The game's own crew figures over the discs, greyed while they are down
+            batch.begin();
+            for (Entity e : aboard) {
+                CrewMemberComponent c = lab.world.crew.crew(e);
+                if (c.state == CrewState.DEAD) continue;
+                Vector2 at = lab.world.crew.position(e).toShipLocal(g, tmp);
+                batch.setColor(c.state == CrewState.UNCONSCIOUS ? GREYED : Color.WHITE);
+                deckArt.crew(batch, e, c.faction != 0 ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP,
+                        c.load == null ? null : c.load.task.job.commodity(), at.x, at.y, g.tileSize);
+            }
+            batch.setColor(Color.WHITE);
+            batch.end();
+        }
         batch.setProjectionMatrix(ui.combined);
         batch.begin();
         Vector3 v = new Vector3();
@@ -559,7 +584,10 @@ public class InteriorDemo extends ApplicationAdapter {
         batch.setProjectionMatrix(camera.combined);
     }
 
-    /** White unhurt, yellow light, orange serious, red critical (blinking while it bleeds), cyan stabilised. */
+    /**
+     * White unhurt, yellow light, orange serious, red critical (blinking while it bleeds), cyan stabilised:
+     * the dot itself without the crew art, else a disc under the figure.
+     */
     private Color woundColor(CrewMemberComponent c) {
         switch (c.wound) {
             case LIGHT: color.set(1f, 0.9f, 0.3f, 1f); break;
