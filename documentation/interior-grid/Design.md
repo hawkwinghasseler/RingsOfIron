@@ -109,6 +109,10 @@ Hull, wall and floor tiles, hull pieces and edge walls all take damage to their 
 - An **edge wall** at 0 blocks nothing, whatever the state of its door.
 - A **floor or conduit** at 0 is a hole to space and stops carrying power; `PowerRoutingSystem` routes around it.
 
+**Crushed tiles** (collisions, combat-sys 5.12). A collision can crush a tile flat (`Tile.crushed`, or `HullPiece.crushed` for every tile of a piece; read through `isCrushed()`). A crushed tile at 0 is a breach whatever it was (`isHullBreach()` is true for it, so it vents and the crew can seal it like a hull breach), it is never open to crew (`isOpen()` false, sealed or not), and it is no longer part of the hull's outside: `HullShape` leaves crushed tiles and wedges out, and the game collides a hull with any crushed tile on its layout rather than its art's collision layer. Crushing a tile sets `ShipGridComponent.hullShapeDirty` (not saved) so the body is reshaped before the next physics step. A yard repair that takes a crushed tile back to whole rebuilds it (`uncrush`): it collides again and its corners go back where they were built.
+
+**Dents.** `ShipGridComponent.dents` holds how far collisions have pushed each tile corner, in tiles, `{x, y}` for each of the `(width + 1) x (height + 1)` corners (null while undented; at most `MAX_DENT`, 4 tiles, from where it was built). The game draws the exterior hull art warped through it. `crushed` (per tile and piece) and `dents` are saved.
+
 `Tile.isOpen()` is the single test for "crew and fire can be here" (floors and destroyed internal walls), and `Tile.holdsAir()` adds "and not sealed off by a bulkhead". `ShipGridComponent.canPass(x, y, nx, ny)` is the test for walking between two adjacent tiles (both open, no closed edge wall between them) and `canFlow(x, y, nx, ny)` the test for air, smoke and fire (both hold air, no closed edge wall). Hazards, power and crew pathfinding all use these.
 
 ## Damage states (round 5)

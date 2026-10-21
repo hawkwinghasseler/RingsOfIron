@@ -19,7 +19,8 @@ import java.util.Map;
  * ({@code art/hulls/<chassis>.svg}, the last mod that has one winning over the base game's) when
  * that file has one, otherwise its layout's tiles ({@link HullShape}). A ship a yard has rebuilt
  * ({@link ShipLayoutComponent}) collides on its new tiles, since the art's layer was drawn around
- * the layout as built. A ship without a grid keeps the {@code hull} in its def.
+ * the layout as built, and so does one a crash has crushed, less the crushed tiles. A ship
+ * without a grid keeps the {@code hull} in its def.
  *
  * The SVG is read from the art's source, not the rasterized atlas, so a ship collides the same
  * whether or not the art pack was built. Each chassis is read once.
@@ -40,7 +41,8 @@ final class ShipHulls implements ShipPhysicsAssembler.HullSource {
         ShipGridComponent grid = entity.getComponent(ShipGridComponent.class);
         if (grid == null) return null;
         ShipLayoutComponent rebuilt = entity.getComponent(ShipLayoutComponent.class);
-        if (grid.chassis != null && (rebuilt == null || rebuilt.layout == null)) {
+        // A hull a crash has crushed collides on its layout, less the crushed tiles
+        if (grid.chassis != null && (rebuilt == null || rebuilt.layout == null) && !grid.hasCrushedTiles()) {
             if (!layers.containsKey(grid.chassis)) layers.put(grid.chassis, readLayer(grid.chassis));
             List<float[]> drawn = layers.get(grid.chassis);
             if (drawn != null && !drawn.isEmpty()) return drawn;

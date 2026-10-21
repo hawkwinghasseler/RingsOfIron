@@ -406,7 +406,10 @@ public final class DeckArt {
                 Tile t = grid.getTile(x, y);
                 if (t == null || t.isVoid()) continue;
                 float x0 = grid.gridOriginLocal.x + x * s, y0 = grid.gridOriginLocal.y + y * s;
-                if (t.isWall() && !t.isOpen()) {
+                // A tile a collision crushed flat: folded plates, open to space until sealed or rebuilt
+                if (t.isCrushed()) {
+                    tile(batch, art.region(ArtNames.CRUSHED) != null ? ArtNames.CRUSHED : "effects/breach", x0, y0, s);
+                } else if (t.isWall() && !t.isOpen()) {
                     if (t.isHullBreach()) tile(batch, "effects/breach", x0, y0, s);
                     else {
                         String damage = ArtNames.damage(t.getIntegrity());

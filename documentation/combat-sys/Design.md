@@ -61,7 +61,7 @@ A fast-pass ship is a full combat participant with no Box2D body. Combat treats 
 - **Hit tests.** A fast-pass ship is not in the Box2D world, so `World.QueryAABB` will not find it. The swept tests in 2.3 must also check every kinematic transient in the bubble against the same relative-motion segment, using its fixture shapes from the chassis def. The same goes for missile proximity fuses.
 - **Being hit.** Impacts on it resolve into its interior grid exactly as for any ship (section 5), with `relVelocity` taken from its rails velocity. Momentum transfer (5.7) cannot go to a Box2D body. Instead it becomes a Δv on its orbit, handed to the orbital plan's collision handling, which already recomputes rails orbits after a collision.
 - **Firing from it.** A fast-pass ship can still fire. Projectiles spawn with its rails velocity as `v_ship`, and recoil becomes a small Δv on its orbit, the same as for momentum transfer.
-- **Ramming.** When `KinematicTransientSystem` finds a fast pass hitting a ship or asteroid, it emits a normal `ImpactEvent` whose `mass` is the smaller body's mass. At km/s, ramming is resolved by section 5 like a very large slug and will usually gut both ships along the contact line.
+- **Ramming.** When `KinematicTransientSystem` finds a fast pass hitting a ship or asteroid, it emits a normal `ImpactEvent` whose `mass` is the smaller body's mass. At km/s, ramming is resolved by section 5 like a very large slug and will usually gut both ships along the contact line. Hulls meeting below 1 km/s are Box2D bodies, and crash as section 5.12 describes.
 
 ---
 
@@ -314,6 +314,37 @@ Penetrating hits, spall, fragments and interior blast all damage crew. Combat on
 - **What a stun means:** a ship whose reactor is stunned goes dark (`NO_POWER`) and can be boarded in that window, but a stun is never a surrender or a beaten ship. `FirstPlay.beaten` is false while anything aboard is stunned unless the ship is wrecked, surrendered or abandoned, or disabled for its hull or its crew (round 8: a frigate broken at the raid was kept in the fight by the defence's ion raider and shot to a wreck; only `NO_POWER` waits out a stun), and `ShipDisablement.gunsSilenced` ignores stunned guns, so a bounty is never paid for an ion hit.
 - **Shields** (`Shields`): each operational `SHIELD_EMITTER` absorbs `ABSORB_SHARE` (0.5) of a hit's energy, scaled by its health, up to `MAX_SHARE` (0.75) for several. It pays `JOULES_PER_ABSORBED` (0.01 J per joule) from its circuit's store, so a drained reactor store stops absorbing. Shields act on rounds, missiles and beams, not on rams. An ion bolt soaked by a shield stuns only with the chance of what got through. `HullHitEvent.shielded` carries the absorbed share for the shimmer sound. The gunship carries one small emitter.
 
+### 5.12 Hull on hull: collisions
+Ships are small and slow next to orbital speeds, but two hulls meeting at tens of m/s carry a lot of energy: two 195 t starter corvettes closing at 50 m/s have 122 MJ of relative kinetic energy, about 24 medium hull tiles' worth of hit points. Before this, Box2D bounced every contact under 1 km/s off without damage. Now (`CollisionDamageSystem`, with physics-exterior's crash handling):
+
+**When it is a crash.** A new contact whose closing speed along the contact normal, `v`, is over `NO_DAMAGE_SPEED` (25 m/s), between two bodies at least one of which has an interior grid, is a crash. Contacts on sensors, docking collars and projectiles never are, and a pair that just crashed meets as plain Box2D for a quarter second after. At 25 m/s and under the hulls bump as before.
+
+**The pass-through.** For the tick they meet in, Box2D does not solve the contact: the hulls move on into each other. After the step, `physics.crashes` reports the contact (each body's contact point, the normal, the closing speed), and the system settles it in one go.
+
+**Impulse.** The crash is plastic down to the floor: one impulse `J = mu (v - v0)` along the normal at the contact, with `v0` = 25 m/s and `mu = 1 / (1/mA + 1/mB + (rA x n)^2/IA + (rB x n)^2/IB)` the pair's effective mass there, spin included. A kinematic body (a station) counts as infinitely heavy. Momentum is conserved. What is left of the hulls then meets at 25 m/s as an ordinary Box2D contact and bounces off a little (restitution 0.2).
+
+**Energy.** That impulse takes `E = mu (v^2 - v0^2) / 2` out of the pair's motion. `DAMAGE_SHARE` (0.2) of it goes into the hulls' structure; the rest is the frames flexing, heat, noise and spin, which a tile grid has no way to hold. The hulls split the damage by how hard each is where they met (the hit points of the first solid tile in from the contact): ship A takes `hpB / (hpA + hpB)`, so an armored bow does more to a freighter's flank than the other way round. A body with no grid (a rock) counts as medium hull steel and takes its share into nothing.
+
+**Crush** (`PenetrationResolver.crush`). Each ship's share spreads from the contact over the solid tiles joined to the one first struck, out to three spreads, weighted by a Gaussian `SPREAD_TILES` (1.25 tiles) wide. Each tile takes its share out of its hit points (`hitPoints`, no armor strip: armor is for rounds; a conduit's 0.4 MJ), and a share bigger than what is left pushes on into the tile behind it along the inward normal, so a hard hit crushes a column in rather than wrecking the ring around it. Machinery on a tile takes the same energy out of its hardness, crew on it are wounded by `100 * E / 5 MJ` (`HitCause.IMPACT`, which wounds), and it can catch fire like any kinetic hit. Tanks can burst.
+
+A tile at integrity 0 that the crush reached and that has a side on the void, the grid's edge or a crushed tile, is **crushed** (`Tile.crushed`, see interior-grid): folded flat into the structure behind it. Crushing spreads inward along a column. A crushed tile is open to space, is in `DamageReport.breaches` (so the crew seal it) and `crushed`, kills whoever stands in it (250 injury, past the lethal wound), and leaves the hull's collision shape: `hullShapeDirty` is set and the system reshapes the body (`HullShape` less crushed tiles, mass kept) before the next step. The hulls end up inside each other's old outlines, and the next contact is on what is left.
+
+The tile corners round every tile the crush took integrity from are pushed inward (`ShipGridComponent.dents`): 1.5 tiles per point of integrity lost round a corner, averaged over its four tiles, and a crushed column folds up to 0.2 of a tile per crushed tile against the structure behind. The exterior hull art is drawn warped by it (see the game's `ExteriorArt`).
+
+**Jolt.** Each ship's speed changes by `J / m` in an instant. Everyone aboard takes `JOLT_WOUND_PER_MPS` (1.5) injury for each m/s of it past `JOLT_SAFE_SPEED` (10 m/s), as `IMPACT`.
+
+**What it comes to**, two starter corvettes nose to nose (`CollisionDamageTest`):
+
+| Closing speed | Energy taken | Into each hull | Each hull | Crew (jolt) |
+|---|---|---|---|---|
+| 25 m/s and under | 0 | 0 | a bump | unhurt |
+| 30 m/s | 13 MJ | 1.3 MJ | 22 tiles scuffed, worst 4% | unhurt |
+| 50 m/s | 91 MJ | 9.1 MJ | 22 tiles dented, worst 30%, no breach | a scratch (12.5 m/s) |
+| 100 m/s | 457 MJ | 46 MJ | 3 tiles crushed, the bow wrecked round them, 9 tiles' worth lost | light wounds (37.5 m/s) |
+| 200 m/s | 1.9 GJ | 192 MJ | a third of the ship crushed (33 tiles) | critical (87.5 m/s) |
+
+Shields don't act on crashes. A crash publishes a `HullHitEvent` per struck ship with `ram = true` (audio plays its own collision sound from physics), and a `DamageReport`. `CollisionDamageSystem.last` keeps the last crash's numbers for tests, demos and the console. The game's debug ram (`WorldDebug.ram`) under 1 km/s flies a Box2D rock at the hull, so it crashes the same way.
+
 ### 5.10 Ordering and determinism
 Per 60 Hz tick:
 
@@ -321,6 +352,7 @@ Per 60 Hz tick:
 2. Box2D step (`PhysicsUpdateSystem`)
 3. `BallisticsSystem` / `MissileGuidanceSystem`
 4. `ImpactResolutionSystem` drains that tick's events in `tick, then shipUuid` order
+5. Crashes found in the step are settled after it (`CollisionDamageSystem`, 5.12), in the order Box2D found them; hulls they crushed are reshaped before the next step
 
 Hazards then evolve on their own tick (0.25 s). All random draws (fire, spall, gunnery jitter) come from a per-ship seeded RNG, so replays and unit tests are reproducible. The RNG's position is not saved: after a load each ship's stream starts again from its seed, so a loaded game rolls the same as itself but not as the run it was saved from. The RNG (`ImpactResolutionSystem.rngFor`) is seeded from the game's combat seed and the ship's UUID while the engine's UUIDs are seeded (a seeded career, and since round 6 the designed start), and from the combat seed and the ship's spawn index otherwise (a world on random UUIDs), so every game rolls the same shorts and bursts each run.
 
