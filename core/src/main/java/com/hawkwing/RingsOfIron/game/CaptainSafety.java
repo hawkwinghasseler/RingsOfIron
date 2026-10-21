@@ -59,6 +59,8 @@ public final class CaptainSafety {
     public static final String SUIT_FILLED = "Your suit is filled from the ship's oxygen";
     /** Notice text when warp drops for the walk to air. */
     public static final String WARP_DROPS = "Time warp drops: your suit is low, and you are walked to air";
+    /** Each sim tick, before the crew move (their movement runs at priority 10). */
+    static final int KEEP_WALKING_PRIORITY = 5;
     /** Whether time warp gives way while the figure is walked to air (round 10). */
     static final boolean WARP_GIVES_WAY = true;
 
@@ -84,10 +86,21 @@ public final class CaptainSafety {
     private boolean walking, warpTold;
     /** Walked, and not yet breathing: what warp gives way to. */
     private boolean fromThinAir;
+    /** A save was just loaded: whether the figure is ashore is read back at the next update. */
+    private boolean readAshore;
 
     public CaptainSafety(GameWorld world) {
         this.world = world;
         world.engine.addRailsWarpGuard(this::railsWarpBlockedReason);
+        // The walk is set after the engine's update, and the screen clears the figure's walk before
+        // the next one: so it is set again before the crew move, unless the player walks it
+        world.engine.addSystem(new com.ringsofiron.coreengine.systems.FixedLogicSystem(KEEP_WALKING_PRIORITY,
+                (float) com.ringsofiron.coreengine.SimClock.TICK_SECONDS) {
+            @Override
+            protected void updateFixed(float deltaTime) {
+                keepWalking();
+            }
+        });
         world.hints.register(HintRegistry.Context.DECK, "walk to air (losing air here)", 3,
                 Action.THRUST, Action.TURN_LEFT, Action.REVERSE, Action.TURN_RIGHT).onlyWhen(this::inThinAir);
     }
@@ -118,6 +131,57 @@ public final class CaptainSafety {
         if (e != null) stopSteering(e.getComponent(PlayerAvatarComponent.class), true);
     }
 
+    /**
+     * A save was loaded: what this held belonged to the game before it. Sheltering aboard the craft
+     * the player's ship is docked to, with nowhere aboard the ship to breathe, is taken up again at
+     * the next update, so the figure is still walked home once the ship can be breathed (round 10:
+     * not saved, it is read back from where the figure stands).
+     */
+    void loaded() {
+        ashore = walking = warpTold = fromThinAir = false;
+        left = null;
+        across = null;
+        path.clear();
+        step = 0;
+        steerX = steerY = 0f;
+        repathAt = Double.NEGATIVE_INFINITY;
+        last = Double.NaN;
+        suiting = calm = filling = 0f;
+        warned = false;
+        readAshore = true;
+    }
+
+    /** True while the figure is aboard a docked craft to breathe, to be walked home once the ship can be. */
+    public boolean ashore() {
+        return ashore;
+    }
+
+    /** After a load: sheltering aboard the craft the player's ship is docked to, as {@link #loaded} says. */
+    private void readAshore(Entity e) {
+        readAshore = false;
+        Entity ship = world.getPlayer();
+        Entity docked = ship == null ? null : world.docking.dockedTo(ship);
+        GridPositionComponent p = world.crew.position(e);
+        if (docked != null && p != null && p.ship == docked && !CrewTasks.anywhereSafe(world.crew.grid(ship))) {
+            ashore = true;
+            left = ship;
+        }
+    }
+
+    /**
+     * Each tick before the crew move: the walk this class set, again, if the screen cleared it (round
+     * 10: the game clears the figure's walk from the keys each frame before the world updates, and
+     * this updates after the sim ticks, so in a real window the walk ashore never moved the figure).
+     */
+    void keepWalking() {
+        if (!walking || (steerX == 0f && steerY == 0f)) return;
+        Entity e = avatar();
+        PlayerAvatarComponent walk = e == null ? null : e.getComponent(PlayerAvatarComponent.class);
+        if (walk == null || walk.moveX != 0f || walk.moveY != 0f) return;
+        walk.moveX = steerX;
+        walk.moveY = steerY;
+    }
+
     /** Why rails warp waits: while the figure is walked to air. Null when it need not. */
     public String railsWarpBlockedReason() {
         return WARP_GIVES_WAY && fromThinAir ? "you are being walked to air" : null;
@@ -135,6 +199,7 @@ public final class CaptainSafety {
         float dt = Double.isNaN(last) ? 0f : (float) Math.min(MAX_STEP, Math.max(0, now - last));
         last = now;
         Entity e = avatar();
+        if (readAshore && e != null) readAshore(e);
         CrewMemberComponent c = e == null ? null : world.crew.crew(e);
         if (c == null || !c.isConscious() || c.held || c.def.suitAir <= 0f) {
             suiting = calm = 0f;

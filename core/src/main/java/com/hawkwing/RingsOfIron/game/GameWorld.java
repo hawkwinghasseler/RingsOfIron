@@ -666,6 +666,7 @@ public class GameWorld implements Disposable {
     /** A save was just loaded: rails warp waits until its bodies and the player's latch are back. */
     void loaded() {
         loadSettling = LOAD_SETTLE_FRAMES;
+        captain.loaded();
     }
 
     /** How the player's ship was lost, or null while it still flies. */

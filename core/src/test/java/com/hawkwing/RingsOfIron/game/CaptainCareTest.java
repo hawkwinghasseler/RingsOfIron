@@ -96,8 +96,11 @@ class CaptainCareTest {
         holeTheCabin();
         assertTrue(runUntil(120f, this::vented), "the cabin vented");
         run(60 * 30);
+        // At the helm, as round 10's real window was when it lost the fight
+        assertNull(world.bridge.sit(com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.HELM), "seated at the helm");
         assertNull(world.rescue.tow(game.player));
         assertTrue(runUntil(30f, () -> world.docking.dockedTo(game.player) != null), "towed in and docked");
+        assertNotNull(world.bridge.seat(), "still at the helm at the berth");
         Entity highport = world.docking.dockedTo(game.player);
         assertTrue(vented(), "still in vacuum at the berth");
         assertTrue(you().suited, "the captain is suited");
@@ -108,7 +111,10 @@ class CaptainCareTest {
         assertEquals(10, world.timeWarp.getWarp());
         boolean ashore = false;
         double until = world.engine.getSimSeconds() + you().suitAir + 120;
+        com.ringsofiron.aicrew.PlayerAvatarComponent walker = game.avatar.getComponent(com.ringsofiron.aicrew.PlayerAvatarComponent.class);
         while (world.engine.getSimSeconds() < until && you().isAlive()) {
+            // The screen clears the figure's walk from the keys before each update: no key held
+            walker.moveX = walker.moveY = 0f;
             world.update(FRAME);
             ashore |= where().ship == highport && where().walkway == null;
             // The player keeps asking for warp: it waits while they are walked from thin air
@@ -153,6 +159,37 @@ class CaptainCareTest {
         ShipGridComponent there = world.crew.grid(p.ship);
         assertTrue(com.ringsofiron.aicrew.TaskRules.isSafe(there, p.tileX(), p.tileY()),
                 "laid where they can breathe: on " + PlayerDocking.name(p.ship));
+        assertSame(highport, p.ship, "ashore, where the crew shelter");
+        assertTrue(world.captain.ashore(), "to be walked home once the ship holds air");
+    }
+
+    @Test
+    void ashoreAtTheBerthIsKeptThroughASave(@org.junit.jupiter.api.io.TempDir Path dir) {
+        holeTheCabin();
+        assertTrue(runUntil(120f, this::vented), "the cabin vented");
+        Entity highport = world.docking.dockedTo(game.player);
+        world.crew.applyDamage(game.avatar, 10_000f, DamageCause.PENETRATOR);
+        run(2);
+        assertSame(highport, where().ship, "laid ashore");
+        assertTrue(world.captain.ashore());
+        com.badlogic.gdx.files.FileHandle file = new com.badlogic.gdx.files.FileHandle(dir.resolve("ashore.json").toFile());
+        assertNull(game.quickSave(file));
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        GameWorld fresh = new GameWorld();
+        try {
+            GameScenario loaded = GameScenario.start(fresh, assets, assets.resolve("no-mods-here"));
+            loaded.quickLoad(file);
+            for (int i = 0; i < 3; i++) fresh.update(FRAME);
+            GridPositionComponent p = fresh.crew.position(loaded.avatar);
+            assertSame(fresh.docking.dockedTo(loaded.player), p.ship, "still ashore after a load");
+            assertTrue(fresh.captain.ashore(), "and still to be walked home");
+            // Loaded again over a game where the figure was aboard: nothing stale is kept
+            game.quickLoad(file);
+            for (int i = 0; i < 3; i++) world.update(FRAME);
+            assertTrue(world.captain.ashore());
+        } finally {
+            fresh.dispose();
+        }
     }
 
     @Test
