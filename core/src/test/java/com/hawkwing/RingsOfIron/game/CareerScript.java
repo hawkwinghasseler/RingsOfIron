@@ -61,6 +61,8 @@ abstract class CareerScript {
     int fightsLost;
     /** Range, m, past which a hostile breaking off has got away: since round 5 a wounded crew can still run. */
     static final double GOT_AWAY = 40_000;
+    /** Seconds out of the bubble on end after which a hostile has got away ({@link #gone}). */
+    static final double OUT_OF_BUBBLE_GONE = 120;
     /** A fight looks at the range this often, seconds, and chases a pirate farther off than {@link #CHASE_RANGE}. */
     static final double CHASE_EVERY = 20;
     static final double CHASE_RANGE = 2_500;
@@ -373,6 +375,22 @@ abstract class CareerScript {
     /** The aces {@link #fight} has beaten, by uuid: no contract may name one again (round 7). */
     final java.util.Set<String> acesBeaten = new java.util.HashSet<>();
 
+    /**
+     * True once {@code ship} has been out of the bubble for {@link #OUT_OF_BUBBLE_GONE} on end, timed in
+     * {@code since}: it can't be chased there, though the rails may put it nearer than {@link #GOT_AWAY}.
+     * Round 10, seed 2026 on the integration: Cold Teodor at hull 0.49 ran past 25 km and stayed out,
+     * and the fight never ended. Seed 7's Red Kestrel leaves the bubble and comes back to be beaten.
+     */
+    boolean gone(Entity ship, double[] since) {
+        if (inBubble(ship)) {
+            since[0] = Double.NaN;
+            return false;
+        }
+        double now = world.engine.getSimSeconds();
+        if (Double.isNaN(since[0])) since[0] = now;
+        return now - since[0] >= OUT_OF_BUBBLE_GONE;
+    }
+
     /** Fights {@code ship} with every gun and missile until one side is beaten; true if it was. */
     boolean fight(Entity ship, HostileComponent h, String what) {
         PlayerGunnery gun = new PlayerGunnery(world, game.player);
@@ -395,6 +413,7 @@ abstract class CareerScript {
         // itself (round 7: an ace held off 3 to 6 km for the whole fight). One that broke off runs.
         int[] closed = new int[1];
         double[] nextLook = {t0 + CHASE_EVERY};
+        double[] outSince = {Double.NaN};
         boolean over = runUntil(400f, () -> {
             if (carried[0]) return true;
             if (world.engine.getSimSeconds() >= nextLook[0]) {
@@ -416,7 +435,7 @@ abstract class CareerScript {
                     || ShipDisablement.isDisabled(game.player) && (ShipDisablement.reason(game.player) != DisabledComponent.Reason.NO_POWER
                             || !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player))
                     && world.disablement.judge(game.player) != null
-                    || world.getCrash() != null || range(game.player, ship) > GOT_AWAY || !inBubble(ship);
+                    || world.getCrash() != null || range(game.player, ship) > GOT_AWAY || gone(ship, outSince);
         });
         world.carriedHome.remove(home);
         // One that broke off and was never chased, still running when time is up, got away too
@@ -424,9 +443,7 @@ abstract class CareerScript {
         boolean won = !carried[0] && FirstPlay.beaten(world, ship);
         if (won && h != null && h.ace) acesBeaten.add(ship.getComponent(com.ringsofiron.coreengine.components.UuidComponent.class).id);
         if (!won && ShipDisablement.isDisabled(game.player)) log("  we are disabled: %s.", ShipDisablement.reason(game.player));
-        // Round 10: one that left the bubble got away too, though the rails put it nearer than GOT_AWAY
-        // (seed 2026 on the integration: Cold Teodor at hull 0.49 ran past 25 km, out of reach of a chase)
-        boolean away = !won && !carried[0] && (ran || range(game.player, ship) > GOT_AWAY || !inBubble(ship));
+        boolean away = !won && !carried[0] && (ran || range(game.player, ship) > GOT_AWAY || gone(ship, outSince));
         String result = won ? "beaten" : carried[0] ? "we lost (carried home)" : away ? "it got away"
                 : over ? "we lost" : "neither side beaten";
         double seconds = world.engine.getSimSeconds() - t0;
