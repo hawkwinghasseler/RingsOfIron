@@ -61,7 +61,7 @@ class BaseDefenceTest {
     private void besideTheBase() {
         world.docking.undock(game.player);
         run(1);
-        world.rescue.jumpBeside(game.player, world.engine.getEntity(world.pirateBase.uuid()), 8_000);
+        world.rescue.jumpBeside(game.player, world.engine.getEntity(world.pirateBase.uuid()), RaidRoutine.JUMP_IN);
         run(2 * PirateBase.CHECK_SECONDS + 1);
     }
 
@@ -199,6 +199,44 @@ class BaseDefenceTest {
         } finally {
             fresh.dispose();
         }
+    }
+
+    @Test
+    void aBatteryWithoutARailgunReachesAShipHoldingWhereTheRaidHolds() {
+        // Round 10: moored 1.5 km apart, and stepped back round the body rather than along the base's
+        // path, the nearer battery stood 4 to 6 km from where the raid holds, out of its chainguns' reach,
+        // so only a railgun ever landed on the frigate (0.00 to 0.04 of hull a raid)
+        besideTheBase();
+        List<Entity> guns = new ArrayList<>();
+        for (String name : world.pirateBase.guns()) guns.add(ship(name));
+        int[] hits = new int[1];
+        world.combatEvents.impacts.add((sig, hit) -> {
+            if (hit.target == game.player && guns.contains(hit.owner) && hit.def != null && hit.def.id.startsWith("autocannon")) hits[0]++;
+        });
+        float reach = world.combatDefs.weapons.get("chaingun_mk2").maxRange;
+        var at = game.player.getComponent(PhysicsBodyComponent.class).body.getPosition();
+        float nearest = Float.MAX_VALUE;
+        for (Entity gun : guns) {
+            nearest = Math.min(nearest, gun.getComponent(PhysicsBodyComponent.class).body.getPosition().dst(at)
+                    * com.ringsofiron.physicsexterior.PhysicsManager.METERS_PER_UNIT);
+        }
+        assertTrue(nearest < reach, String.format("a battery within a 40 mm chaingun's %.0f m: the nearest is %.0f m off", reach, nearest));
+        run(20);
+        assertTrue(hits[0] > 0, "a battery's chaingun rounds land on a ship holding where the raid holds");
+    }
+
+    /**
+     * Round 10: a defence with no railgun marks a frigate holding where {@link RaidRoutine} holds it (the
+     * survey's no-railgun row, seed 10: three chaingun raiders and two stock batteries, which took 0.00
+     * of hull off on round 9's integration).
+     */
+    @Test
+    @org.junit.jupiter.api.Tag("slow")
+    void aDefenceWithNoRailgunMarksAFrigate() {
+        EnemySurveyTest.Result r = EnemySurveyTest.fight(10, EnemySurveyTest.FRIGATE, EnemySurveyTest.BASE, 0, EnemySurveyTest.NO_RAILGUN);
+        System.out.println("RESULT " + r);
+        assertFalse(r.loadouts.contains("railgun"), r.toString());
+        assertTrue(r.hull0 - r.hull1 >= 0.05f, "the raid takes hull off: " + r);
     }
 
     @Test

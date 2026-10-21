@@ -79,8 +79,13 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     public static final double SECOND_WAVE_SECONDS = 45;
     /** Gun platforms the base mans. */
     public static final int BATTERIES = 2;
-    /** How far behind the base, along its orbit, the first gun platform is moored, and each next one further, m. */
-    public static final double BATTERY_SPACING = 1_500;
+    /**
+     * How far behind the base, back along its path, the first gun platform is moored, and each next one
+     * further, m. Round 10 widens round 6's 1.5 km so the far platform stands about 3.3 km from where a
+     * raid holds (8 km behind the base, {@code RaidRoutine.JUMP_IN}), inside a 40 mm chaingun's reach;
+     * a railgun platform takes the mooring nearest the base ({@link HostileTraffic#moorGuns}).
+     */
+    public static final double BATTERY_SPACING = 2_350;
 
     private final GameWorld world;
     private String uuid;
