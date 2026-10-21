@@ -28,7 +28,10 @@ nearest() { echo "$1" | grep '^  defender .* at ' | grep -v ' beaten' | awk '{fo
 
 # Walks the standing captain to the weapons console and sits there: measures how far one step of W
 # and of D moves them on deck, then walks the offset as so many steps of each, and tries V
-seat_state() { cmd seat; pause 0.4; grep 'PLAYTEST seat:' "$OUT/game.log" | tail -1; }
+# Waits for this command's own answer: a slow frame left the last one in the log, a step behind
+seat_state() { local n; n=$(grep -c 'PLAYTEST seat:' "$OUT/game.log"); cmd seat
+  for _ in $(seq 1 20); do [ "$(grep -c 'PLAYTEST seat:' "$OUT/game.log")" -gt "$n" ] && break; pause 0.2; done
+  grep 'PLAYTEST seat:' "$OUT/game.log" | tail -1; }
 offset() { seat_state | sed -n 's/.*weapons \(-*[0-9.]*\) \(-*[0-9.]*\) off.*/\1 \2/p'; }
 # Holds key $1 (or $2 for a negative count) for $3 steps of 0.4 s
 walk() { local t; t=$(awk -v n="$3" 'BEGIN { n = n < 0 ? -n : n; printf "%.2f", n * 0.4 }')
