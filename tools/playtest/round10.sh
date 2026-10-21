@@ -60,7 +60,7 @@ if want lone; then
   echo "lone: undocked: $(last_line career)"
   # RAIDER_FIT picks its loadout (raider_chaingun, raider_railgun...); by default the difficulty does
   # RAIDER_KM sets how far out it starts (default 4): past the bubble's edge it comes in off the rails
-  said=$(last_line "raider ${RAIDER_KM:-4} ${RAIDER_FIT:-}"); echo "lone: $said"
+  said=$(last_line "raider ${RAIDER_KM:-4}${RAIDER_FIT:+ $RAIDER_FIT}"); echo "lone: $said"
   raider=$(echo "$said" | sed -n 's/^\(.*\) (.*/\1/p')
   pause 8
   for _ in $(seq 1 60); do
