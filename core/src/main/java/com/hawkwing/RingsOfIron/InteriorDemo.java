@@ -1,7 +1,6 @@
 package com.hawkwing.RingsOfIron;
 
 import com.badlogic.ashley.core.Entity;
-import com.badlogic.ashley.core.Family;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -29,14 +28,13 @@ import com.hawkwing.RingsOfIron.game.InteriorLab;
 import com.hawkwing.RingsOfIron.game.WorldDebug;
 import com.hawkwing.RingsOfIron.game.WoundWatch;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
+import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
 import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.Wound;
-import com.ringsofiron.combatsys.components.MissileComponent;
-import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -44,7 +42,6 @@ import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
-import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.minimap.TileShade;
 import com.ringsofiron.uihud.widgets.DevConsoleWindow;
@@ -83,8 +80,6 @@ public class InteriorDemo extends ApplicationAdapter {
     private static final float TOP = 7 * LINE;
     /** How far the cursor must drag, tiles, to aim a shot from where it started. */
     private static final float DRAG_TILES = 1.5f;
-    private static final Family PROJECTILES = Family.all(ProjectileComponent.class).get();
-    private static final Family ROCKS = Family.all(KinematicTransientComponent.class).get();
     private static final float[] WOUND_AMOUNTS = {10f, 30f, 50f, 70f, 80f, 90f, 100f, 150f, 200f};
     private static final DamageCause[] CAUSES = {DamageCause.SPALL, DamageCause.PENETRATOR, DamageCause.FRAGMENT,
             DamageCause.BLAST, DamageCause.BURN, DamageCause.FIRE, DamageCause.ASPHYXIATION, DamageCause.SMALL_ARMS};
@@ -117,6 +112,7 @@ public class InteriorDemo extends ApplicationAdapter {
     private ArtLibrary art;
     private DeckArt deckArt;
     private DeckRenderer deckRenderer;
+    private ExteriorRenderer exterior;
     private final Array<Entity> decks = new Array<>();
     /** Meters per screen pixel. */
     private float zoom = 0.05f;
@@ -161,6 +157,7 @@ public class InteriorDemo extends ApplicationAdapter {
         deckArt = new DeckArt(art);
         deckRenderer = new DeckRenderer(() -> lab.world, shapes, batch, deckArt, null, () -> null)
                 .inShipFrame().setStyle(crewStyle());
+        exterior = new ExteriorRenderer(() -> lab.world, shapes, batch, art, null, null, () -> null).inFrameOf(this::body);
         camera = new OrthographicCamera();
         ui = new OrthographicCamera();
         lab = new InteriorLab(assetsDir);
@@ -245,6 +242,11 @@ public class InteriorDemo extends ApplicationAdapter {
                 devStep += seconds;
             }
         });
+        // Where a warhead went off or a missile was shot down, a flash as in the game
+        lab.world.combatEvents.detonations.add((signal, boom) -> exterior.explode(boom.worldPoint.x, boom.worldPoint.y));
+        lab.world.combatEvents.intercepts.add((signal, hit) -> {
+            if (hit.destroyed && hit.missile != null) exterior.explode(hit.point.x, hit.point.y);
+        });
         selected = null;
         ShipGridComponent g = grid();
         float w = Gdx.graphics.getWidth() - PANEL_WIDTH - 60f, h = Gdx.graphics.getHeight() - LOG_HEIGHT - TOP - 40f;
@@ -306,7 +308,7 @@ public class InteriorDemo extends ApplicationAdapter {
         decks.clear();
         decks.add(lab.ship);
         deckRenderer.draw(decks, camera, lab.paused ? 0f : delta * lab.speed);
-        drawFlight();
+        drawFlight(lab.paused ? 0f : delta * lab.speed);
         drawCrewLabels();
         drawCursor();
         drawDevSelection();
@@ -560,26 +562,16 @@ public class InteriorDemo extends ApplicationAdapter {
         }
     }
 
-    /** Rounds, missiles, rocks and beams in flight, and the attacker's bearing. */
-    private void drawFlight() {
+    /**
+     * Rounds, missiles, fast passes and explosions as the game draws them ({@link ExteriorRenderer},
+     * in the ship's frame), then the beams the tools fire, and the attacker's bearing.
+     */
+    private void drawFlight(float delta) {
+        exterior.drawFlight(camera, zoom, delta);
         Body body = body();
         Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        for (Entity e : lab.world.engine.getEcsEngine().getEntitiesFor(PROJECTILES)) {
-            ProjectileComponent p = e.getComponent(ProjectileComponent.class);
-            boolean missile = e.getComponent(MissileComponent.class) != null;
-            Vector2 a = WorldDebug.toLocal(body, p.pos.x, p.pos.y, tmp);
-            float ax = a.x, ay = a.y;
-            Vector2 b = WorldDebug.toLocal(body, p.pos.x - p.vel.x * 0.01f, p.pos.y - p.vel.y * 0.01f, tmp2);
-            shapes.setColor(missile ? Color.ORANGE : Color.YELLOW);
-            shapes.rectLine(ax, ay, b.x, b.y, missile ? 0.5f : 0.15f);
-        }
-        for (Entity e : lab.world.engine.getEcsEngine().getEntitiesFor(ROCKS)) {
-            KinematicTransientComponent k = e.getComponent(KinematicTransientComponent.class);
-            Vector2 a = WorldDebug.toLocal(body, k.x, k.y, tmp);
-            shapes.setColor(Color.LIGHT_GRAY);
-            shapes.circle(a.x, a.y, Math.max(k.radius, 0.4f), 12);
-        }
         for (WorldDebug.Beam beam : lab.debug.beams()) {
             Vector2 to = lab.debug.tileWorld(beam.ship, beam.tileX, beam.tileY, new Vector2());
             Vector2 a = WorldDebug.toLocal(body, to.x, to.y, tmp);

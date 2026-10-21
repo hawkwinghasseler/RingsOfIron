@@ -15,13 +15,11 @@ import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
-import com.badlogic.gdx.physics.box2d.CircleShape;
-import com.badlogic.gdx.physics.box2d.Fixture;
-import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
+import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
 import com.hawkwing.RingsOfIron.game.DockingDemoScene;
 import com.hawkwing.RingsOfIron.game.DoorForcing;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
@@ -34,12 +32,10 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
-import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.ForceMethod;
-import com.ringsofiron.uihud.components.HudMarkerComponent;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -61,8 +57,10 @@ import java.nio.file.Paths;
  * with a new weapon and M with a used one. Mouse wheel zooms, Esc quits.
  *
  * <p>Drawn: decks, cargo and crew as the game draws them ({@link DeckRenderer}), and over them the
- * hulls, docking collars (yellow), port faces (green while armed, cyan latched, red torn off), the
- * collar head of an active port while it is out (orange) and port doors (green open, red shut).
+ * hulls and rounds in flight as the game draws them ({@link ExteriorRenderer}: with their art in
+ * flight, as outlines in deck view), docking collars (yellow), port faces (green while armed, cyan
+ * latched, red torn off), the collar head of an active port while it is out (orange) and port
+ * doors (green open, red shut).
  */
 public class DockingDemo extends ApplicationAdapter {
     private static final float PANEL_WIDTH = 430f;
@@ -79,13 +77,13 @@ public class DockingDemo extends ApplicationAdapter {
     private ArtLibrary art;
     private DeckArt deckArt;
     private DeckRenderer deckRenderer;
+    private ExteriorRenderer exterior;
     private final Array<Entity> decks = new Array<>();
     private BitmapFont font;
     private float viewMeters = 90f;
 
     private final Array<Body> bodies = new Array<>();
     private final Vector2 tmp = new Vector2();
-    private final float[] polygon = new float[16];
     private final DoorForcing.Target target = new DoorForcing.Target();
 
     public DockingDemo() {
@@ -109,6 +107,8 @@ public class DockingDemo extends ApplicationAdapter {
         demo = new DockingDemoScene(assetsDir);
         demo.load(DockingDemoScene.Scene.PASSIVE);
         deckRenderer = new DeckRenderer(() -> demo.world, shapes, batch, deckArt, null, () -> demo.avatar);
+        exterior = new ExteriorRenderer(() -> demo.world, shapes, batch, art, null, null, () -> demo.player)
+                .setStyle(outlines());
         Gdx.input.setInputProcessor(new InputAdapter() {
             @Override
             public boolean scrolled(float amountX, float amountY) {
@@ -224,25 +224,27 @@ public class DockingDemo extends ApplicationAdapter {
         deckRenderer.draw(decks, camera, Math.min(Gdx.graphics.getDeltaTime(), 0.25f));
     }
 
+    /**
+     * Hulls and everything in flight as the game draws them; on deck, every hull as its outline
+     * over the decks instead of its art.
+     */
     private void drawBodies() {
-        demo.world.physics.getWorld().getBodies(bodies);
-        shapes.begin(ShapeRenderer.ShapeType.Line);
-        for (Body body : bodies) {
-            Entity e = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
-            boolean head = e != null && demo.world.docking.bodyOf(e) != body;
-            HudMarkerComponent marker = e == null ? null : e.getComponent(HudMarkerComponent.class);
-            for (Fixture f : body.getFixtureList()) {
-                boolean collar = (f.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0;
-                if (head) shapes.setColor(Color.ORANGE);
-                else if (collar) shapes.setColor(Color.YELLOW);
-                else if (e == demo.player) shapes.setColor(Color.SKY);
-                else if (marker != null) shapes.setColor(marker.color);
-                else shapes.setColor(Color.LIGHT_GRAY);
-                drawFixture(body, f);
-            }
-        }
-        bodies.clear();
-        shapes.end();
+        exterior.setHullArt(!demo.deckView);
+        exterior.draw(camera, viewMeters * camera.zoom / 400f, Math.min(Gdx.graphics.getDeltaTime(), 0.25f));
+    }
+
+    /**
+     * The game's outline colors, with the docking gear picked out: an active port's collar head
+     * orange, collars yellow, and the player's hull sky blue.
+     */
+    private ExteriorRenderer.Style outlines() {
+        ExteriorRenderer.Style game = ExteriorRenderer.gameStyle(() -> demo.player);
+        return (e, body, f) -> {
+            if (e != null && demo.world.docking.bodyOf(e) != body) return Color.ORANGE;
+            if ((f.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0) return Color.YELLOW;
+            if (e == demo.player) return Color.SKY;
+            return game.outline(e, body, f);
+        };
     }
 
     /** A tick on each port face: green while armed, cyan latched, red torn off, grey otherwise. */
@@ -301,17 +303,6 @@ public class DockingDemo extends ApplicationAdapter {
     private static Vector2 world(Body body, float x, float y, Vector2 out) {
         Vector2 w = body.getWorldPoint(out.set(x * PhysicsManager.UNITS_PER_METER, y * PhysicsManager.UNITS_PER_METER));
         return out.set(w.x * PhysicsManager.METERS_PER_UNIT, w.y * PhysicsManager.METERS_PER_UNIT);
-    }
-
-    private void drawFixture(Body body, Fixture fixture) {
-        if (fixture.getShape() instanceof CircleShape) {
-            Vector2 c = PhysicsManager.getPosition(body, tmp);
-            shapes.circle(c.x, c.y, Math.max(0.3f, fixture.getShape().getRadius() * PhysicsManager.METERS_PER_UNIT), 16);
-        } else if (fixture.getShape() instanceof PolygonShape) {
-            PolygonShape poly = (PolygonShape) fixture.getShape();
-            int n = PolygonSkin.outline(body, poly, polygon);
-            shapes.polygon(polygon, 0, n * 2);
-        }
     }
 
     private void drawPanel() {
