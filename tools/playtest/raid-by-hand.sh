@@ -81,6 +81,9 @@ echo "end: $(first "$end")"
 case "$(first "$end")" in *"base fallen"*) result=won;; *) result=lost;; esac
 hull=$(first "$end" | sed -n 's/.*hull \([0-9.]*\).*/\1/p')
 printf 'raid by hand (%s): %s, hull %s, %.0f s\n' "$MODE" "$result" "$hull" "$(echo "$t1 - $t0" | bc)"
+# Round 10: the hits on us in the fight, by kind of defender (the impact lines name our ship "the other ship")
+between() { grep "^PLAYTEST impact on the other ship from $1 " "$OUT/game.log" | awk -v a="$t0" -v b="$t1" '$NF + 0 >= a + 0 && $NF + 0 <= b + 0' | wc -l; }
+echo "hits on us: $(between 'Pirate raider [0-9]*') from raiders, $(between 'Den battery [0-9]*') from batteries"
 shot r04-raid-end
 key l; pause 1; shot r05-raid-end-notices; key l; pause 1
 key i; pause 1; shot r06-crew-after; key i; pause 1
