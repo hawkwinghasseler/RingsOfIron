@@ -103,14 +103,14 @@ if want captain; then
     key b; pause 1; key b; pause 1
     until_docked 60
     shot c-05-towed-to-the-berth
-    echo "captain: at the berth: $(last_line captain)"
+    echo "captain: at the berth: $(last_line captain); $(last_line seat | cut -d, -f1)"
     echo "captain: crew at the berth: $(cmd crew; pause 0.5; awk '/^PLAYTEST crew:/ { block = $0; on = 1; next } on && /^  / { block = block "|" $0; next } { on = 0 } END { print block }' "$OUT/game.log")"
     key i; pause 1; shot c-06-crew-at-the-berth; key i; pause 1
     # Warp x4 in 20 s steps until the captain is out of suit air, dead, aboard the station or after
     # five minutes; part 4 drops the warp while the figure is walked out of thin air
     for i in $(seq 1 15); do
       key period; key period; key period; key period; pause 20
-      c=$(last_line captain); echo "captain: warp step $i: $c"
+      c=$(last_line captain); echo "captain: warp step $i: $c; $(last_line seat | cut -d, -f1)"
       case "$c" in *dead*|*"in Highport"*|*"(0 s of air)"*) break;; esac
       [ "$i" = 3 ] && shot c-07-warp-at-the-berth
     done
