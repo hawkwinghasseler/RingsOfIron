@@ -76,6 +76,9 @@ abstract class CareerScript {
      */
     static final String FIGHT_TRACE = System.getProperty("career.fightTrace");
 
+    /** Round 10: fastest a prize may spin, rad/s, for the script to latch on and board it. */
+    static final float PRIZE_SPIN_LIMIT = 0.5f;
+
     /** The journal's file name in {@code build/}, without the extension. */
     abstract String journalName();
 
@@ -351,6 +354,14 @@ abstract class CareerScript {
         if (ship.getComponent(PhysicsBodyComponent.class) == null) {
             // A long fight leaves it drifting: twenty minutes on, it can be out of the bubble
             log("  the prize drifted out of reach before it could be boarded.");
+            return;
+        }
+        // Round 10, seed 19: the beaten raider tumbled at 10.8 rad/s, and latching on tore both docking
+        // collars off the frame it was made. A player can't latch onto a ship spinning like that, and
+        // leaves the prize where it is
+        float spin = Math.abs(body(ship).getAngularVelocity());
+        if (spin > PRIZE_SPIN_LIMIT) {
+            log("  the prize tumbles at %.1f rad/s: too fast to latch onto, so it isn't boarded.", spin);
             return;
         }
         flyTo(ship, 40f);
