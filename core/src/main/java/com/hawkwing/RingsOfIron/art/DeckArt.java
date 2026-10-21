@@ -479,16 +479,25 @@ public final class DeckArt {
 
     /** Whether there is crew art; without it, draw crew as dots. */
     public boolean hasCrew() {
-        return art.region(ArtNames.crew(ArtNames.Crew.SHIP, false)) != null;
+        return hasCrew(ArtNames.CrewPose.STANDING);
+    }
+
+    /** Whether there is crew art for {@code pose}; without it, draw the standing figure and mark the pose. */
+    public boolean hasCrew(ArtNames.CrewPose pose) {
+        return art.region(ArtNames.crew(ArtNames.Crew.SHIP, pose, false)) != null;
     }
 
     /**
      * A crew member at ({@code x}, {@code y}) in the grid's local meters, turned the way they last
-     * walked, with the crate they carry tinted to its commodity ({@code commodity}, or null).
-     * {@code key} is the crew member, to remember their facing.
+     * walked, in {@code pose} (standing, when there is no art for it), with the crate they carry on
+     * their feet tinted to its commodity ({@code commodity}, or null). {@code key} is the crew
+     * member, to remember their facing.
      */
-    public void crew(Batch batch, Object key, ArtNames.Crew who, String commodity, float x, float y, float tileSize) {
-        TextureRegion r = art.first(ArtNames.crew(who, commodity != null), ArtNames.crew(who, false));
+    public void crew(Batch batch, Object key, ArtNames.Crew who, ArtNames.CrewPose pose, String commodity,
+                     float x, float y, float tileSize) {
+        if (pose.lying()) commodity = null;
+        TextureRegion r = art.first(ArtNames.crew(who, pose, commodity != null), ArtNames.crew(who, pose, false),
+                ArtNames.crew(who, commodity != null), ArtNames.crew(who, false));
         if (r == null) return;
         float[] f = facing.get(key);
         if (f == null) facing.put(key, f = new float[]{x, y, 0f});
