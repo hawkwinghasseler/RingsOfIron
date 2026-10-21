@@ -285,6 +285,20 @@ class OrbitalBubbleTest {
     }
 
     @Test
+    void aRayThatScalesToAPointFarOutIsSkipped() {
+        // Round 10, career seed 12's raid: a fast pass swept from one float to the next, 178,000 km
+        // off, became a zero-length ray in Box2D's units, and Box2D's assertion took the JVM down
+        float x1 = 1.7811893E8f, y1 = -1.8926838E8f, x2 = 1.7811894E8f, y2 = -1.8926837E8f;
+        assertTrue(x1 != x2 && y1 != y2);
+        int[] calls = {0};
+        physics.rayCast(x1, y1, x2, y2, (fixture, x, y, nx, ny, fraction) -> {
+            calls[0]++;
+            return fraction;
+        });
+        assertEquals(0, calls[0]);
+    }
+
+    @Test
     void rayCastAndQueryWorkInMeters() {
         Entity ship = spawnBox(100f, 50f);
         float[] hitPoint = new float[2];
