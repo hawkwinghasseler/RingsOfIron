@@ -95,7 +95,8 @@ if want captain; then
   fi
   echo "captain: start: $(last_line career), sim $(now) (saved at $(sed -n 's/.*"gameSeconds": *\([0-9.]*\).*/\1/p' "$SAVES/First_ace_fight.meta.json"))"
   for i in $(seq 1 40); do
-    case "$(first "$(raid_state)")" in *"we are beaten"*) break;; esac
+    # Dark for a moment (a short the crew resets) is not a lost fight: beaten means still beaten 10 s on
+    case "$(first "$(raid_state)")" in *"we are beaten"*) pause 10; case "$(first "$(raid_state)")" in *"we are beaten"*) break;; esac;; esac
     [ "${ACE_IDLE:-0}" != 1 ] && [ "$i" -gt 16 ] && break
     # Tab until the gun has the ace (round 9's script pressed Tab once a round, blind, which could
     # move the gun off it)
@@ -141,7 +142,8 @@ fi
 if want abandon; then
   cmd load First ace fight; pause 14
   for i in $(seq 1 40); do
-    case "$(first "$(raid_state)")" in *"we are beaten"*) break;; esac
+    # Dark for a moment (a short the crew resets) is not a lost fight: beaten means still beaten 10 s on
+    case "$(first "$(raid_state)")" in *"we are beaten"*) pause 10; case "$(first "$(raid_state)")" in *"we are beaten"*) break;; esac;; esac
     [ "${ACE_IDLE:-0}" != 1 ] && [ "$i" -gt 16 ] && break
     ace=$(hostiles | grep ' IN_BUBBLE target=@player ' | head -1 | sed 's/^  \(.*\) IN_BUBBLE .*/\1/')
     # ACE_IDLE=1 leaves the ace unanswered, so the fight is lost (the berth and abandon cases)
