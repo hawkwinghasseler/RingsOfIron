@@ -37,9 +37,13 @@ walk() { local t; t=$(awk -v n="$3" 'BEGIN { n = n < 0 ? -n : n; printf "%.2f", 
 to_weapons() {
   local o0 ow od steps
   for try in 1 2 3 4 5 6; do
-    o0=$(offset); hold w 0.4; ow=$(offset); hold d 0.4; od=$(offset)
-    # Solve offset = a * (W step) + b * (D step); a negative count walks S or A
+    # A slow frame can show a step late, so each reading waits a moment after the key
+    o0=$(offset); hold w 0.4; pause 0.5; ow=$(offset); hold d 0.4; pause 0.5; od=$(offset)
+    # Solve offset = a * (W step) + b * (D step); a negative count walks S or A. A step shorter
+    # than 0.6 was blocked (by the helm, say), and #151's frigate's own step stands in for it
     steps=$(echo "$o0 $ow $od" | awk '{ wx = $1 - $3; wy = $2 - $4; dx = $3 - $5; dy = $4 - $6; x = $5; y = $6
+      if (wx * wx + wy * wy < 0.36) { wx = -0.16; wy = -0.87 }
+      if (dx * dx + dy * dy < 0.36) { dx = -0.90; dy = 0.17 }
       det = wx * dy - wy * dx; if (det == 0) { print "0 0"; exit }
       printf "%.1f %.1f", (x * dy - y * dx) / det, (wx * y - wy * x) / det }')
     set -- $steps
