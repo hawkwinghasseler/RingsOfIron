@@ -199,6 +199,7 @@ public class GameScenario {
         // Flies for the pirates, if the data has them, so beating it counts with the factions
         int pirates = world.standing.factions().index(PIRATES);
         if (pirates >= 0) CrewFactory.ensureBoard(raider).faction = pirates;
+        world.standing.factions().crewHabits(world.crew.board(raider));
         raider.add(new HudMarkerComponent("Raider", HudMarkerComponent.Kind.HOSTILE).radius(10f));
         PhysicsBodyComponent rb = raider.getComponent(PhysicsBodyComponent.class);
         if (rb != null) PhysicsManager.setVelocity(rb.body, -12f, -3f);
@@ -209,6 +210,18 @@ public class GameScenario {
         });
         world.combatEvents.impacts.add((signal, hit) -> {
             if (hit.owner == player && hit.target == raider) provokeRaider();
+        });
+        // Gone, the raider is forgotten: the engine pools its entities, and a later ship given the
+        // same one was provoked by the player's first shot as if it were the raider (round 9: seed
+        // 12's Black Sal flew at the player a frame early, or not, as the pool handed it out)
+        world.engine.getEcsEngine().addEntityListener(new EntityListener() {
+            @Override
+            public void entityAdded(Entity entity) {}
+
+            @Override
+            public void entityRemoved(Entity entity) {
+                if (entity == raider) raider = null;
+            }
         });
 
         // Traffic: shown and lockable while it is in the bubble.
@@ -337,6 +350,7 @@ public class GameScenario {
                 world.engine, name, typeId);
         station.angle = angle;
         StationCrew.spawnCrew(world.crew, world.engine.getEntity(uuid), world.standing.factions().ofStation(name));
+        world.standing.factions().crewHabits(world.crew.board(world.engine.getEntity(uuid)));
         return uuid;
     }
 
@@ -438,7 +452,7 @@ public class GameScenario {
      * raider stays out of it.
      */
     public void provokeRaider() {
-        if (ShipDisablement.isDisabled(raider)) return;
+        if (raider == null || ShipDisablement.isDisabled(raider)) return;
         SensorComponent sensor = raider.getComponent(SensorComponent.class);
         if (sensor != null && sensor.lockedTarget == null) sensor.lockedTarget = player;
         if (raider.getComponent(NpcCombatComponent.class) == null) raider.add(new NpcCombatComponent(player));
