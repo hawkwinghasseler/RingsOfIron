@@ -309,6 +309,8 @@ public class GameWorld implements Disposable {
         // Craft that fly themselves in to dock and away again, on their own thrusters
         berthing = new BerthingSystem(docking, engine.getUuidRegistry());
         engine.addSystem(berthing);
+        // ... and ships crossing the bubble on their rails plan keep out of the stations and berths
+        engine.addSystem(new TransitClearance(docking));
 
         // orbital-mechanics
         universe = new RailsUniverse(engine);
