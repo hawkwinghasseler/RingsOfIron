@@ -109,6 +109,8 @@ public class PlaytestLauncher {
         }
 
         private GameWorld watched;
+        /** The player's rounds fired since the load, by weapon. */
+        private final java.util.Map<String, Integer> playerShots = new java.util.TreeMap<>();
 
         /** Logs every docking event, and at a tear whatever the two craft are touching. */
         private void watchDocking() {
@@ -116,6 +118,11 @@ public class PlaytestLauncher {
             GameWorld world = game == null ? null : game.getWorld();
             if (world == null || world == watched) return;
             watched = world;
+            // Round 10: the player's rounds fired, by weapon, for the `shots` command
+            playerShots.clear();
+            world.combatEvents.shots.add((sig, shot) -> {
+                if (shot.shooter == game.getScenario().player) playerShots.merge(shot.weaponDefId, 1, Integer::sum);
+            });
             world.combatEvents.impacts.add((sig, e) -> System.out.println("PLAYTEST impact on " + label(e.target) + " from " + label(e.owner)
                     + (e.ram ? " (ram)" : "") + " mass " + e.mass + " at " + world.engine.getSimSeconds()));
             world.docking.events.add((sig, e) -> {
@@ -329,6 +336,9 @@ public class PlaytestLauncher {
                     }
                     return out.length() == 0 ? "no crew" : out.toString();
                 }
+                case "shots":
+                    // Only reads: the rounds the player's ship has fired since the load, by weapon
+                    return playerShots.isEmpty() ? "none" : playerShots.toString();
                 case "docked":
                     return world.docking.dockedTo(s.player) != null ? "yes" : "no";
                 case "career":

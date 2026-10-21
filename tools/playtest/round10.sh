@@ -91,12 +91,13 @@ if want captain; then
     # Tab until the gun has the ace (round 9's script pressed Tab once a round, blind, which could
     # move the gun off it)
     ace=$(hostiles | grep ' IN_BUBBLE target=@player ' | head -1 | sed 's/^  \(.*\) IN_BUBBLE .*/\1/')
-    for _ in 1 2 3 4 5 6; do [ -n "$ace" ] && [ "$(gun_target)" = "$ace" ] && break; key Tab; done
+    for _ in 1 2 3 4 5 6; do [ -n "$ace" ] && case "$(gun_target)" in "$ace"*) true;; *) false;; esac && break; key Tab; done
     key r; hold space 4
     [ "$i" = 1 ] && shot c-01-first-ace-fight
     [ "$i" = 4 ] && shot c-02-first-ace-fight-on
   done
   echo "captain: fight: $(first "$(raid_state)")"
+  echo "captain: our rounds fired: $(last_line shots); hits on the ace: $(grep -c "^PLAYTEST impact on $ace" "$OUT/game.log")"
   echo "captain: $(last_line captain)"
   shot c-03-first-ace-fight-end
   key l; pause 1; shot c-04-notices; key l; pause 1
@@ -131,7 +132,7 @@ if want abandon; then
   for i in $(seq 1 16); do
     case "$(first "$(raid_state)")" in *"we are beaten"*) break;; esac
     ace=$(hostiles | grep ' IN_BUBBLE target=@player ' | head -1 | sed 's/^  \(.*\) IN_BUBBLE .*/\1/')
-    for _ in 1 2 3 4 5 6; do [ -n "$ace" ] && [ "$(gun_target)" = "$ace" ] && break; key Tab; done
+    for _ in 1 2 3 4 5 6; do [ -n "$ace" ] && case "$(gun_target)" in "$ace"*) true;; *) false;; esac && break; key Tab; done
     key r; hold space 4
   done
   echo "abandon: fight: $(first "$(raid_state)")"
