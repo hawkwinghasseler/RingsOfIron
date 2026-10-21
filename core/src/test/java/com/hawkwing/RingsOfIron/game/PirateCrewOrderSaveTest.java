@@ -60,6 +60,21 @@ class PirateCrewOrderSaveTest {
         assertEquals(pirateBoards, boardsKeepTheirFaction(loaded, pirates));
     }
 
+    @Test
+    void anAcesCrewKeepTheUsualOrder() {
+        // Round 10: resetting first made the aces harder (ace's chaingun raider v corvette lost one in ten)
+        var hostiles = world.macroSim.hostiles();
+        for (var e : hostiles.all().entrySet()) {
+            if (!e.getValue().isPirate() || e.getValue().moored()) continue;
+            Entity ship = world.engine.getEntity(e.getKey());
+            assertTrue(ship.getComponent(ShipTaskBoardComponent.class).resetsPowerFirst);
+            assertTrue(PirateAces.promote(world, ship, e.getValue(), hostiles.all().values(), 1.25, false));
+            assertFalse(ship.getComponent(ShipTaskBoardComponent.class).resetsPowerFirst, e.getValue().displayName);
+            return;
+        }
+        fail("no pirate");
+    }
+
     /** Checks every crewed board resets the power first only if the pirates work it; returns how many they do. */
     private static int boardsKeepTheirFaction(GameWorld w, int pirates) {
         int n = 0;
