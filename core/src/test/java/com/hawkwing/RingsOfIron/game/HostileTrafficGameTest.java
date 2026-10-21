@@ -221,6 +221,47 @@ class HostileTrafficGameTest {
     }
 
     @Test
+    void aPirateInReachWaitsForTheResetItsCrewHaveInHandBeforeItStrikes() {
+        // Round 10: survey seed 1's raider struck for silenced guns as it crossed its chaingun's 3 km from
+        // the frigate, its engineer a moment from resetting the turret mount
+        String id = pirate(HostileTraffic.RAIDER);
+        hostiles.get(id).targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 2_000, 0);
+        run(2);
+        ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
+        assertTrue(board.resetsPowerFirst, "a pirate crew");
+        java.util.List<Entity> guns = new java.util.ArrayList<>();
+        for (com.ringsofiron.combatsys.components.WeaponMountComponent m
+                : ship.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class).mounts) {
+            if (!m.def.pointDefense && m.subsystem != null) guns.add(m.subsystem);
+        }
+        assertFalse(guns.isEmpty());
+        com.ringsofiron.interiorgrid.crew.ResetShortTask reset = new com.ringsofiron.interiorgrid.crew.ResetShortTask(guns.get(0), 0, 0);
+        board.post(reset);
+        board.claim(reset, new Entity());
+        for (int i = 0; i < 120; i++) {
+            for (Entity g : guns) {
+                SubsystemComponent s = g.getComponent(SubsystemComponent.class);
+                s.shorted = true;
+                s.isOperational = false;
+            }
+            world.update(FRAME);
+        }
+        assertNotEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship),
+                "its crew are at the reset");
+        board.resetsPowerFirst = false; // as any crew but the pirates'
+        for (int i = 0; i < 120 && ShipDisablement.reason(ship) == null; i++) {
+            for (Entity g : guns) {
+                SubsystemComponent s = g.getComponent(SubsystemComponent.class);
+                s.shorted = true;
+                s.isOperational = false;
+            }
+            world.update(FRAME);
+        }
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
+    }
+
+    @Test
     void theHoldToFireComesThroughASave() {
         String id = pirate(HostileTraffic.RAIDER);
         HostileComponent h = hostiles.get(id);

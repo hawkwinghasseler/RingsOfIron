@@ -178,8 +178,26 @@ public class ShipDisablement extends EntitySystem {
         // freighters met the gunship empty and drifted 400 s, its one gun rarely bearing
         if (dry(ship)) return true;
         // Nor does it strike on its run in for guns a short has only cut off: they're back within
-        // DamageStates.AUTO_RESET. Round 8 found raiders' reactors shorted by a railgun slug at 3 to 4 km
-        return gunsSilenced(ship, runIn);
+        // DamageStates.AUTO_RESET. Round 8 found raiders' reactors shorted by a railgun slug at 3 to 4 km.
+        // In reach, a plain pirate whose crew are at a reset waits for it too (resettingInReach)
+        return gunsSilenced(ship, runIn || resettingInReach(ship));
+    }
+
+    /**
+     * True for a plain pirate (not an ace at large) whose crew reset shorts first ({@link
+     * ShipTaskBoardComponent#resetsPowerFirst}) and have one in hand. Round 10: a lone raider whose turret
+     * mount a frigate's slug shorted at 4 km struck for silenced guns as it crossed into its chaingun's
+     * 3 km, its engineer a moment from the reset.
+     */
+    static boolean resettingInReach(Entity ship) {
+        HostileComponent h = ship.getComponent(HostileComponent.class);
+        ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
+        if (h == null || !h.isPirate() || (h.ace && !h.partDropped) || board == null || !board.resetsPowerFirst) return false;
+        for (com.ringsofiron.interiorgrid.crew.CrewTask t : board.tasks) {
+            if (t.status == com.ringsofiron.interiorgrid.crew.CrewTask.Status.CLAIMED
+                    && t.kind == com.ringsofiron.interiorgrid.crew.CrewTask.Kind.RESET_SHORT) return true;
+        }
+        return false;
     }
 
     /**
