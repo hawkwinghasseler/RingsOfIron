@@ -96,12 +96,14 @@ public final class Factions {
 
     /**
      * Gives {@code board} its crew's habits from the data of the faction that works it ({@link
-     * FactionDef#crewsKeepClearOfFire}); a faction that is none of the data's keeps clear. Null is ignored.
+     * FactionDef#crewsKeepClearOfFire}, {@link FactionDef#crewsResetPowerFirst}); a faction that is none of the
+     * data's keeps clear and keeps the usual order. Null is ignored.
      */
     public void crewHabits(ShipTaskBoardComponent board) {
         if (board == null) return;
         FactionDef f = def(board.faction);
         board.keepsClearOfFire = f == null || f.crewsKeepClearOfFire;
+        board.resetsPowerFirst = f != null && f.crewsResetPowerFirst;
     }
 
     /** Whether {@code index} is one of the data's factions. */

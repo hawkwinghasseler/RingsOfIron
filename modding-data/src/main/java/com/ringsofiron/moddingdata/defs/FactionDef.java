@@ -17,6 +17,7 @@ import java.util.List;
  * rank_names = ["Cadet", ...]      # its names for the rank ladder's steps, lowest first
  * home = "Highport"                # the station a career serving it starts docked at
  * crews_keep_clear_of_fire = true  # its crews leave raked tiles alone at battle stations
+ * crews_reset_power_first = false  # its crews reset shorts, the reactor's first, before any other job
  * </pre>
  */
 public class FactionDef {
@@ -35,4 +36,6 @@ public class FactionDef {
     public String home;
     /** Its crews keep clear of where the fire fell at battle stations, leaving the jobs there till the fight ends. */
     public boolean crewsKeepClearOfFire = true;
+    /** Its crews reset shorts, the reactor's first, ahead of first aid, breaches and every other job but abandoning ship. */
+    public boolean crewsResetPowerFirst;
 }

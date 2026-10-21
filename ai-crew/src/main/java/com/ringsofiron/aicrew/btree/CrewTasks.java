@@ -198,6 +198,9 @@ public final class CrewTasks {
         public Status execute() {
             CrewAgent a = agent();
             boolean holding = a.crew.task != null && a.crew.task.isActive() && a.crew.task.claimedBy == a.entity;
+            // Pirate crews put down what they hold for the power (round 10): the task goes back, the best is claimed anew
+            if (holding && a.crew.carrying == null && a.board() != null
+                    && a.board().yieldsToPower(a.crew.task, a.crew.role, a.pos.tileX(), a.pos.tileY(), a::mayTake)) return Status.FAILED;
             return holding || a.hasAvailableTask() ? Status.SUCCEEDED : Status.FAILED;
         }
     }
