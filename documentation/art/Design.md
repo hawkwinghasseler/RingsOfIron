@@ -181,7 +181,7 @@ File names are lowercase `snake_case` and start with the id in data, so code can
 | `turrets/` | the weapon id in `weapons.toml` | `railgun_mk1`, `harpoon_launcher` |
 | `hulls/` | the chassis id in `chassis.toml` | `corvette`, `station_hub`, `thruster_plume` |
 | `engines/` | `engine_<size>`, `exhaust_<size>`, size `s`, `m`, `l` or `xl` (the engine component's slot size); `rcs_<kind>`, kind `linear` or `quad`; `rcs_puff` | `engine_m`, `engine_xl_unpowered`, `exhaust_s`, `rcs_quad_destroyed` |
-| `crew/` | `crew_<who>`, holding a crate as `_carrying` | `crew_ship`, `crew_station_carrying`, `crew_player` |
+| `crew/` | `crew_<who>`, hurt or down as `_injured`, `_wounded`, `_unconscious` or `_dead`, holding a crate as `_carrying` (standing only) | `crew_ship`, `crew_station_carrying`, `crew_player_injured_carrying`, `crew_ship_dead` |
 | `projectiles/` | the projectile | `railgun_slug`, `autocannon_round`, `missile`, `decoy_flare`, `harpoon` |
 
 Tile ids are the ones in `tiles.toml`: `floor` (`.`), `conduit` (`+`), `hull` (`#`, medium), `hull_light`/`hull_medium`/`hull_heavy` (`1`/`2`/`3`), `armor_light`/`armor_medium`/`armor_heavy` (`4`/`5`/`6`, composite armor), `internal_wall` (`I`); `void` has no art. Each tile type names its art with an `art` key in `tiles.toml` (`art = "walls/composite_armor_heavy"`): a floor's full region, or a wall's family that the join suffix is added to. Without one, the art is found from the tile's id, then its material and weight. Component ids are the ones in `components.toml`: `reactor`, `shield_emitter`, `turret_mount`, `life_support`, `helm`, `weapons`, `cargo`, `airlock`, `engine`, `docking_port`, `tank`, `oxygen_tank`, `nitrogen_tank`, `escape_pod`. A new component made in data (say `fusion_core` with behavior `REACTOR`) gets its own `fusion_core_<size>.svg`; until it has one, code can fall back to the art of its behavior's built-in component.
@@ -215,7 +215,7 @@ What the game draws with the pack:
 | Deck view (V in the game, the docking and interior demos) | Floors, carpet, conduits joined to their neighbors (dark without power), walls joined to their neighbors of the same type, wedges, every system in its mount (its `_unpowered` art when it is not working, its `_damaged` art below half health and `_destroyed` at zero), walls and wedges in their material's art, docking ports open while a dock through them can be crossed, collars, thin walls and their joints, bulkhead doors (dark when the craft has no working reactor), damage below half and a quarter integrity, breaches, seals, fire by size, and cargo stacks tinted toward their commodity. Pressure loss and smoke are still drawn as a tint over the art. |
 | Outside | Each craft's hull by the chassis it was built from (`ShipGridComponent.chassis`, saved with the grid), its turrets on their hardpoints turned to where they aim (unpowered when their system is down), and an engine at each engine mount with its exhaust while the main engine burns. Craft without hull art keep their outline. |
 | Ship editor | The layout as the deck will look; A toggles back to flat colors. |
-| Crew (deck view) | `crew_ship`, `crew_station` or `crew_player`, turned the way they last walked; carrying, the `_carrying` art with its crate tinted to the commodity. Down crew are greyed, the hurt have a disc beneath in their wound's color, and the dead lie where they fell as a grey cross with no figure, until there is art for a body. |
+| Crew (deck view) | `crew_ship`, `crew_station` or `crew_player`, turned the way they last walked; carrying, the `_carrying` art with its crate tinted to the commodity. Their state picks the art (`ArtNames.CrewPose`): `_injured` on their feet with a light wound, `_wounded` down on their back and bleeding with a serious or critical wound, `_unconscious` down without one (air, heat), `_dead` where they fell. A critical wound also has a disc beneath, blinking red while it bleeds and cyan once stabilised. A pack without a pose's art draws the standing figure, greyed while down, a disc under everyone hurt, and a grey cross for the dead. |
 | Combat (outside) | Rounds and missiles by their art (`art` in `[projectile.*]` and `[missile.*]`, else the id, else `missile`), drawn at least a few pixels long when zoomed out; decoy flares; laser beams as the `beam` strip, added to the light under them; explosions frame by frame. |
 | Docks | `dock_walkway` across each open dock, in place of the flat walkway. |
 
@@ -237,7 +237,7 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 - **Interactive (14):** fire extinguisher, bulkhead panel, breaker, terminal, emergency locker, repair kit, med bed, cargo stacks at three levels.
 - **Turrets (6):** railgun, autocannon, laser and harpoon launcher, and unpowered railgun and laser.
 - **Hulls (5):** corvette, freighter, outpost and hub stations, thruster plume.
-- **Crew (6):** ship crew, station dock hand and the player, each standing and carrying a crate.
+- **Crew (21):** ship crew, station dock hand and the player, each standing and carrying a crate, injured (standing and carrying), wounded, unconscious and dead.
 - **Projectiles (5):** railgun slug, autocannon round with tracer, missile, decoy flare, harpoon.
 
 ## Decided
