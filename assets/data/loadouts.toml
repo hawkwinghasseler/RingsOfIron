@@ -152,7 +152,7 @@ name = "Heavy battery"
 ship = "den_battery"
 weapons = ["chaingun_mk2", "chaingun_mk2", "dart_rack", "flak_mk1"]
 weight = 2
-min_difficulty = 2.5
+min_difficulty = 2.2
 
 [loadout.battery_railgun]
 name = "Railgun battery"

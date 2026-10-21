@@ -31,6 +31,16 @@ final class RaidRoutine {
      * base lists them until it strikes, the player is beaten, or {@link #RAID_SECONDS} pass.
      */
     static EnemySurveyTest.Result fly(GameWorld world, GameScenario game, Runnable arrived) {
+        return fly(world, game, arrived, -1);
+    }
+
+    /**
+     * As {@link #fly(GameWorld, GameScenario, Runnable)}; with {@code redraw} of 0 or more, every
+     * defender and gun platform the base drew with a railgun is refitted as it scrambles, from the fits
+     * without one, by dice seeded from {@code redraw} ({@link #withoutRailguns}): the survey's no-railgun
+     * row (round 10), the draw the career meets most.
+     */
+    static EnemySurveyTest.Result fly(GameWorld world, GameScenario game, Runnable arrived, long redraw) {
         EnemySurveyTest.Result r = new EnemySurveyTest.Result();
         r.difficulty = Difficulty.of(world);
         Entity base = world.engine.getEntity(world.pirateBase.uuid());
@@ -42,6 +52,7 @@ final class RaidRoutine {
         EnemySurveyTest.runUntil(world, 20f, () -> !world.pirateBase.defenders().isEmpty());
         List<String> names = new ArrayList<>(world.pirateBase.defenders());
         assertFalse(names.isEmpty(), "the base scrambled");
+        if (redraw >= 0) withoutRailguns(world, redraw);
         r.wing.addAll(names);
         List<Entity> ships = new ArrayList<>();
         for (String name : names) {
@@ -72,6 +83,20 @@ final class RaidRoutine {
             if (ships.contains(hit.owner)) hits[0]++;
             else if (batteries.contains(hit.owner)) gunHits[0]++;
         });
+        // The trace (-PenemyDebug): who hit us with what, and the hull after each ten seconds
+        java.util.Map<String, int[]> hitsBy = new java.util.TreeMap<>();
+        if (EnemySurveyTest.DEBUG) world.combatEvents.impacts.add((sig, hit) -> {
+            if (hit.target != player) return;
+            HostileComponent hc = hit.owner == null ? null : hit.owner.getComponent(HostileComponent.class);
+            String key = (hc == null ? String.valueOf(hit.owner) : hc.displayName) + " " + (hit.def == null ? "ram/blast" : hit.def.id);
+            hitsBy.computeIfAbsent(key, k -> new int[1])[0]++;
+        });
+        java.util.Map<String, int[]> shotsBy = new java.util.TreeMap<>();
+        if (EnemySurveyTest.DEBUG) world.combatEvents.shots.add((sig, shot) -> {
+            if (shot.shooter == player) return;
+            HostileComponent hc = shot.shooter == null ? null : shot.shooter.getComponent(HostileComponent.class);
+            shotsBy.computeIfAbsent((hc == null ? "?" : hc.displayName) + " " + shot.weaponDefId, k -> new int[1])[0]++;
+        });
         double t0 = world.engine.getSimSeconds();
         double[] end = {Double.NaN};
         int[] frame = new int[1];
@@ -93,6 +118,24 @@ final class RaidRoutine {
             if (frame[0] % 300 == 0 && world.nav.helm.mode() == HelmOrderComponent.Mode.NONE) {
                 world.nav.target.select(world.pirateBase.uuid());
                 world.nav.helm.give(HelmOrderComponent.Mode.HOLD_POSITION);
+            }
+            if (EnemySurveyTest.DEBUG && frame[0] % 600 == 0) {
+                var pp = player.getComponent(PhysicsBodyComponent.class).body.getPosition();
+                float m = com.ringsofiron.physicsexterior.PhysicsManager.METERS_PER_UNIT;
+                StringBuilder b = new StringBuilder(String.format("TRACE t=%.0f hull=%.3f", world.engine.getSimSeconds() - t0, EnemySurveyTest.hull(player)));
+                List<Entity> all = new ArrayList<>(ships);
+                all.addAll(batteries);
+                for (Entity sh : all) {
+                    PhysicsBodyComponent pb = sh.getComponent(PhysicsBodyComponent.class);
+                    HostileComponent hc = sh.getComponent(HostileComponent.class);
+                    b.append(String.format(" | %s %s %.0f m", hc.displayName, FirstPlay.beaten(world, sh) ? "beaten" : "up",
+                            pb == null || pb.body == null ? -1f : pb.body.getPosition().dst(pp) * m));
+                }
+                b.append(" || shots ").append(shotsBy.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()[0])
+                        .collect(java.util.stream.Collectors.joining(", ")));
+                b.append(" || hits ").append(hitsBy.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()[0])
+                        .collect(java.util.stream.Collectors.joining(", ")));
+                System.out.println(b);
             }
             if (EnemySurveyTest.DEBUG && (frame[0] % 1800 == 0 || FirstPlay.beaten(world, player))) {
                 StringBuilder b = new StringBuilder(String.format("RAID t=%.0f", world.engine.getSimSeconds()));
@@ -134,6 +177,69 @@ final class RaidRoutine {
         r.outcome = FirstPlay.beaten(world, player) || r.crew1 == 0 ? "lost" : !world.pirateBase.standing() ? "won"
                 : anyEscaped && over ? "ran" : "draw";
         return r;
+    }
+
+    /**
+     * Refits each of the base's defenders and gun platforms that carries a railgun with a fit drawn,
+     * by weight, from those its hull may draw at the difficulty that carry none; the dice are seeded
+     * from {@code seed} and the ship's name, so the same seed draws the same. Hardpoints the new fit
+     * leaves alone go back to the hull's stock weapon.
+     */
+    static void withoutRailguns(GameWorld world, long seed) {
+        List<String> names = new ArrayList<>(world.pirateBase.defenders());
+        names.addAll(world.pirateBase.guns());
+        double d = Difficulty.of(world);
+        for (var e : world.macroSim.hostiles().all().entrySet()) {
+            HostileComponent h = e.getValue();
+            Entity ship = world.engine.getEntity(e.getKey());
+            if (!names.contains(h.displayName) || ship == null || !railgun(ship)) continue;
+            List<com.ringsofiron.combatsys.defs.LoadoutDef> fits = new ArrayList<>();
+            double total = 0;
+            for (var l : com.ringsofiron.combatsys.modding.Loadouts.candidates(world.combatDefs, h.shipId, d, false)) {
+                boolean rail = false;
+                for (String w : l.weapons) rail |= w != null && w.startsWith("railgun");
+                if (rail) continue;
+                fits.add(l);
+                total += l.weight;
+            }
+            if (fits.isEmpty()) continue;
+            double roll = new java.util.Random(seed * 7_919L + h.displayName.hashCode()).nextDouble() * total;
+            var fit = fits.get(fits.size() - 1);
+            for (var l : fits) {
+                roll -= l.weight;
+                if (roll < 0) {
+                    fit = l;
+                    break;
+                }
+            }
+            stock(world, ship, h.shipId);
+            com.ringsofiron.combatsys.modding.Loadouts.apply(ship, fit, world.combatDefs);
+            h.loadout = fit.id;
+            h.firepower = HostileTraffic.firepower(ship);
+        }
+    }
+
+    /** True if {@code ship} mounts a railgun. */
+    private static boolean railgun(Entity ship) {
+        var weapons = ship.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class);
+        if (weapons == null) return false;
+        for (var m : weapons.mounts) if (m.def != null && m.def.id != null && m.def.id.startsWith("railgun")) return true;
+        return false;
+    }
+
+    /** Puts the hull {@code shipId}'s stock weapon back on each of {@code ship}'s hardpoints. */
+    private static void stock(GameWorld world, Entity ship, String shipId) {
+        var def = world.getContent().defs.get("ship", shipId, com.ringsofiron.moddingdata.defs.ShipDef.class);
+        var weapons = ship.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class);
+        for (int i = 0; i < weapons.mounts.size && i < def.hardpoints.size(); i++) {
+            var w = world.combatDefs.weapons.get(def.hardpoints.get(i).weapon);
+            var mount = weapons.mounts.get(i);
+            if (w == null || w == mount.def) continue;
+            mount.def = w;
+            mount.cooldown = w.cooldown;
+            mount.beamTime = 0f;
+            mount.biasSet = false;
+        }
     }
 
     /** The helmsman takes the helm and holds position on {@code uuid}. */

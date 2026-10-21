@@ -43,6 +43,14 @@ class EnemySurveyTest {
     static final int CORVETTE = 0, GUNSHIP = 1, FRIGATE = 2;
     /** The enemy "ship" that stands for the pirate base's whole defence. */
     static final String BASE = "base";
+    /**
+     * The base row's loadout for the no-railgun row (round 10): the frigate raids at
+     * {@link #NO_RAILGUN_DIFFICULTY}, and any railgun fit the base draws is drawn again from the fits
+     * without one ({@link RaidRoutine#withoutRailguns}).
+     */
+    static final String NO_RAILGUN = "no railgun";
+    /** The no-railgun row's difficulty: the middle of the career's raids (2.42 to 2.66 on round 9's sweep). */
+    static final double NO_RAILGUN_DIFFICULTY = 2.45;
 
     @BeforeAll
     static void loadNatives() {
@@ -115,7 +123,7 @@ class EnemySurveyTest {
                 {"Wing of two raiders, " + startName(other), HostileTraffic.RAIDER, "2", null, other},
                 {"Pirate gunship", HostileTraffic.PIRATE_GUNSHIP, "1", null, REST}, {"Ace's gunship", HostileTraffic.PIRATE_GUNSHIP, "1", "ace", REST},
                 {"Ace's chaingun raider", HostileTraffic.RAIDER, "1", "ace:raider_ace_chaingun", REST},
-                {"The base's defence", BASE, "0", null, REST}};
+                {"The base's defence", BASE, "0", null, REST}, {"The base's defence, no railgun", BASE, "0", NO_RAILGUN, REST}};
         int trials = Integer.getInteger("enemy.survey.trials", 10);
         String only = System.getProperty("enemy.survey.rows", "").toLowerCase(java.util.Locale.ROOT);
         StringBuilder detail = new StringBuilder();
@@ -124,6 +132,8 @@ class EnemySurveyTest {
             for (int ship = CORVETTE; ship <= FRIGATE; ship++) {
                 // An ace takes a gunship only once the player flies one
                 if ("ace".equals(enemy[3]) && ship == CORVETTE) continue;
+                // The career raids the base in the frigate
+                if (NO_RAILGUN.equals(enemy[3]) && ship != FRIGATE) continue;
                 int won = 0, ran = 0, lost = 0, fired = 0, hits = 0, killed = 0, theirs = 0, firedIn = 0, gunFired = 0, gunHits = 0;
                 float minHull = 1, sumHull = 0;
                 double beatTime = 0;
@@ -227,7 +237,9 @@ class EnemySurveyTest {
             }
             if (BASE.equals(shipId)) {
                 world.pirateBase.reveal(null);
-                return RaidRoutine.fly(world, game, () -> { });
+                if (!NO_RAILGUN.equals(loadout)) return RaidRoutine.fly(world, game, () -> { });
+                pinDifficulty(world, game.player, NO_RAILGUN_DIFFICULTY);
+                return RaidRoutine.fly(world, game, () -> { }, seed);
             }
             String lurk = game.highport;
             // Armed as the difficulty would arm it, drawn by the seed (the top-up's own draw is the same in every game)
@@ -325,6 +337,19 @@ class EnemySurveyTest {
         } finally {
             world.dispose();
         }
+    }
+
+    /** Takes credits off {@code player} until the difficulty is {@code d}; assumes it is above that now. */
+    static void pinDifficulty(GameWorld world, Entity player, double d) {
+        TraderComponent t = player.getComponent(TraderComponent.class);
+        double lo = 0, hi = t.credits;
+        for (int i = 0; i < 60; i++) {
+            t.credits = (lo + hi) / 2;
+            if (Difficulty.of(world) > d) hi = t.credits;
+            else lo = t.credits;
+        }
+        t.credits = lo;
+        assertEquals(d, Difficulty.of(world), 0.005, "the difficulty pinned");
     }
 
     /** Hires the best of Anvil Yards' pool until the player's ship has the crew it calls for. */
