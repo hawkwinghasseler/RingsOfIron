@@ -53,6 +53,8 @@ public class ShipGridComponent implements Component {
      * say, and the game works them out ({@link WallLightLayout}).
      */
     public Array<WallLight> wallLights;
+    /** RCS thruster blocks on the outside of its hull; empty for a craft with none. */
+    public final Array<RcsThruster> rcsThrusters = new Array<>();
     /**
      * The airtight volumes of the interior, rebuilt by {@link CompartmentBuilder} whenever
      * walls, doors or seals change. Each tile that holds air points at its compartment.

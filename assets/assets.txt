@@ -479,6 +479,11 @@ art/engines/exhaust_l.svg
 art/engines/exhaust_m.svg
 art/engines/exhaust_s.svg
 art/engines/exhaust_xl.svg
+art/engines/rcs_linear.svg
+art/engines/rcs_linear_destroyed.svg
+art/engines/rcs_puff.svg
+art/engines/rcs_quad.svg
+art/engines/rcs_quad_destroyed.svg
 art/hulls/battery.svg
 art/hulls/corvette.svg
 art/hulls/freighter.svg

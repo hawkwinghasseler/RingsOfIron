@@ -100,6 +100,7 @@ public final class DeckRenderer {
     private final Vector2 local = new Vector2();
     private final float[] angle = new float[1];
     private final Color color = new Color();
+    private final RcsNozzles nozzles = new RcsNozzles();
     private final Color crewColor = new Color();
     /** Time the decks have been drawn for, which blinks the bleeding. */
     private float clock;
@@ -219,6 +220,8 @@ public final class DeckRenderer {
             shapes.rotate(0f, 0f, 1f, degrees);
             if (lit) {
                 lighting.addDeck(g, x, y, radians);
+                // The firing RCS light the hull outside and glow; the walls keep it out of the rooms
+                nozzles.jets(ship, world.get().docking.bodyOf(ship), x, y, radians, lighting::addThruster);
                 float cos = MathUtils.cos(radians), sin = MathUtils.sin(radians);
                 for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                     GridPositionComponent pos = e.getComponent(GridPositionComponent.class);

@@ -293,6 +293,14 @@ public final class ArtNames {
         return "engines/exhaust_" + size;
     }
 
+    /** An RCS thruster block of {@code kind} (LINEAR or QUAD) seen from outside, or its wreck once its hull tile is gone. */
+    public static String rcs(String kind, boolean works) {
+        return "engines/rcs_" + kind.toLowerCase(java.util.Locale.ROOT) + (works ? "" : "_destroyed");
+    }
+
+    /** An RCS nozzle's jet. */
+    public static final String RCS_PUFF = "engines/rcs_puff";
+
     /** A weapon's turret, by its id in weapons.toml. */
     public static String[] turret(String weaponId, boolean powered) {
         String base = "turrets/" + weaponId;

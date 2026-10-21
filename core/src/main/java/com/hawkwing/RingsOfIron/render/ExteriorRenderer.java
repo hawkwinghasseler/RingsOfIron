@@ -68,6 +68,9 @@ public final class ExteriorRenderer {
     private static final Family DECOYS = Family.all(DecoyComponent.class).get();
     private static final Family ARMED = Family.all(WeaponsComponent.class).get();
     private static final Family FAST_PASSES = Family.all(KinematicTransientComponent.class).get();
+    private static final Family CRAFT = Family.all(ShipGridComponent.class).get();
+    /** How long a firing RCS nozzle's line is on a craft drawn as its outline, meters at full throttle. */
+    private static final float JET_LINE = 1.2f;
 
     private final Supplier<GameWorld> world;
     private final ShapeRenderer shapes;
@@ -91,6 +94,7 @@ public final class ExteriorRenderer {
     private final Vector2 tmp = new Vector2();
     private final Vector2 tmp2 = new Vector2();
     private final float[] polygon = new float[16];
+    private final RcsNozzles nozzles = new RcsNozzles();
 
     /**
      * Draws the world {@code world} gives (a demo may load a new one) with {@code shapes} and
@@ -190,9 +194,21 @@ public final class ExteriorRenderer {
                 shapes.setColor(c);
                 drawFixture(body, fixture.getShape());
             }
+            // A craft without hull art shows its firing RCS as short lines
+            if (hull != null && w.docking.bodyOf(e) == body) {
+                shapes.setColor(Color.ORANGE);
+                nozzles.jets(e, body, (x, y, degrees, throttle) -> shapes.line(x, y,
+                        x + MathUtils.cosDeg(degrees) * JET_LINE * throttle, y + MathUtils.sinDeg(degrees) * JET_LINE * throttle));
+            }
         }
         shapes.end();
         bodies.clear();
+        // Every firing RCS nozzle lights its surroundings and glows
+        if (lighting != null) {
+            for (Entity e : w.engine.getEcsEngine().getEntitiesFor(CRAFT)) {
+                nozzles.jets(e, w.docking.bodyOf(e), lighting::addThruster);
+            }
+        }
     }
 
     /**
