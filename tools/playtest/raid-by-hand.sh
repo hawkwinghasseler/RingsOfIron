@@ -57,7 +57,8 @@ start=$(raid_state); t0=$(sim "$start")
 echo "start: $(first "$start")"
 if [ "$MODE" = hold ]; then
   for _ in $(seq 1 12); do case "$(first "$(raid_state)")" in *"nav Rustwake"*) break;; esac; key q; done
-  key 3; key v; pause 0.5
+  # V stands the captain from the helm; a save made with the captain already up (part 2's seed 2026) skips it
+  key 3; case "$(seat_state)" in *"seat null"*) ;; *) key v; pause 0.5;; esac
   to_weapons || { finish; exit 1; }
   echo "seated: $(first "$(raid_state)")"
   shot r02-helm-holds
