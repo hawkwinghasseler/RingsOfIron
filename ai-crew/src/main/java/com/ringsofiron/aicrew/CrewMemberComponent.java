@@ -158,8 +158,16 @@ public class CrewMemberComponent implements Component {
      * {@link CrewDef#UNTRAINED_CARE}. Skill, morale and their own wound scale it.
      */
     public float careRate() {
+        return careRate(Wound.SERIOUS);
+    }
+
+    /**
+     * {@link #careRate()} for a wound of level {@code wound}: a light wound is first aid, which
+     * anyone gives at a medic's rate for their skill (round 8).
+     */
+    public float careRate(Wound wound) {
         CrewRecord r = record();
-        float base = role == CrewRole.MEDIC ? 1f : CrewDef.UNTRAINED_CARE;
+        float base = role == CrewRole.MEDIC || wound == Wound.LIGHT ? 1f : CrewDef.UNTRAINED_CARE;
         return base * CrewRecord.factor(r.medicine) * r.workFactor() * workPace();
     }
 

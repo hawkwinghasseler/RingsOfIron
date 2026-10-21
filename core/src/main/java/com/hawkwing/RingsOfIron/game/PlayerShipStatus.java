@@ -2,19 +2,22 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.interiorgrid.Fluid;
+import com.ringsofiron.interiorgrid.LifeSupportSystem;
 import com.ringsofiron.interiorgrid.PowerCircuit;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.uihud.minimap.ShipAlerts;
 import com.ringsofiron.uihud.providers.ShipStatusProvider;
 
 import java.util.function.Supplier;
 
 /**
- * ui-hud's ship gauges from interior-grid: propellant and oxygen from the ship's tanks (#84),
- * structure as the hull's mean integrity (as the minimap's alert list counts it), and power from
+ * ui-hud's ship gauges from interior-grid: propellant and oxygen from the ship's tanks (#84) and,
+ * once the oxygen tanks are dry, life support's emergency oxygen; structure as the hull's mean integrity (as the minimap's alert list counts it), and power from
  * the charge of its power circuits' stores and what their reactors produce.
  */
 public class PlayerShipStatus implements ShipStatusProvider {
@@ -53,9 +56,13 @@ public class PlayerShipStatus implements ShipStatusProvider {
         }
         ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
         if (registry != null) {
-            double propellant = 0, propellantCap = 0, oxygen = 0, oxygenCap = 0;
+            double propellant = 0, propellantCap = 0, oxygen = 0, oxygenCap = 0, reserve = 0, reserveCap = 0;
             for (Entity e : registry.subsystems) {
                 SubsystemComponent t = SUBSYSTEMS.get(e);
+                if (t != null && t.type == SubsystemComponent.SubsystemType.LIFE_SUPPORT) {
+                    reserve += TankSupply.reserve(t);
+                    reserveCap += LifeSupportSystem.EMERGENCY_OXYGEN_KG * t.throughput;
+                }
                 if (t == null || t.type != SubsystemComponent.SubsystemType.TANK) continue;
                 if (t.fluid == Fluid.PROPELLANT) {
                     propellant += Math.max(0, t.contents);
@@ -70,6 +77,11 @@ public class PlayerShipStatus implements ShipStatusProvider {
                 out.propellantKg = propellant;
             }
             if (oxygenCap > 0) out.oxygen = (float) (oxygen / oxygenCap);
+            // Dry tanks: what life support has of its own (AirWatch says so too)
+            if (oxygenCap > 0 && oxygen <= CrewDef.SUIT_OXYGEN_KG && reserveCap > 0) {
+                out.emergencyOxygenKg = reserve;
+                out.emergencyOxygen = (float) (reserve / reserveCap);
+            }
         }
         return out;
     }

@@ -24,6 +24,7 @@ import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.DamageStates;
+import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
@@ -275,9 +276,14 @@ public final class CrewTasks {
         public Status execute() {
             CrewAgent a = agent();
             CrewTask held = a.crew.task;
-            if (held != null && held.isActive() && held.claimedBy == a.entity) return Status.SUCCEEDED;
-            a.crew.task = null;
             ShipTaskBoardComponent board = a.board();
+            if (held != null && held.isActive() && held.claimedBy == a.entity) {
+                // Fire falling where the job is: put it down until the fight is over, unless already
+                // carrying someone out
+                if (a.crew.carrying == null && TaskRules.waitsOutFire(held, board, a.service)) board.release(held);
+                else return Status.SUCCEEDED;
+            }
+            a.crew.task = null;
             if (board == null || board.faction != a.crew.faction) return Status.FAILED;
             CrewTask t = board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(), a::mayTake);
             if (t == null || !board.claim(t, a.entity)) return Status.FAILED;
@@ -355,11 +361,12 @@ public final class CrewTasks {
 
     /** Does the work of a repair, seal, extinguish or treat task until it is finished. */
     public static class DoWork extends CrewLeaf {
-        private float elapsed;
+        private float elapsed, unsuiting;
 
         @Override
         public void start() {
             elapsed = 0f;
+            unsuiting = 0f;
         }
 
         @Override
@@ -442,6 +449,17 @@ public final class CrewTasks {
                     }
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
                     p.treatedBy = a.entity;
+                    // Off battle stations and in good air, the carer slips their suit off to work (round 8):
+                    // it slowed the care of the wounded long after the fight
+                    if (a.crew.suited && (board == null || !board.battleSuits()) && !TaskRules.needsSuit(grid, a.pos.tileX(), a.pos.tileY())
+                            && !TaskRules.needsSuit(grid, t.x, t.y)) {
+                        unsuiting += a.dt;
+                        a.crew.activity = "taking off a suit";
+                        if (unsuiting >= a.crew.def.suitTime * 0.5f) {
+                            a.crew.setSuited(false);
+                            unsuiting = 0f;
+                        }
+                    }
                     return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes or the wound heals
                 }
                 case STABILISE: {
@@ -553,6 +571,16 @@ public final class CrewTasks {
             boolean destValid = dest != null && a.pos.isMoving() && !a.pos.pathBlocked && there.test(dest.x, dest.y);
             if (!destValid) {
                 if (!a.nearest(x, y, there, a.pathScratch)) {
+                    // Nowhere aboard is safe: aboard the craft it is docked to, a station's berth say
+                    Entity shelter = medbay ? null : shelter(a);
+                    if (shelter != null) {
+                        ShipGridComponent ashore = a.service.grid(shelter);
+                        CrewAgent.Travel go = a.travel(shelter, (tx, ty) -> TaskRules.isSafe(ashore, tx, ty));
+                        if (go != CrewAgent.Travel.UNREACHABLE) {
+                            a.crew.activity = "carrying " + c.name + " aboard " + SHELTER;
+                            return Status.RUNNING;
+                        }
+                    }
                     // No bed to be reached: they are put down where they are, on safe deck
                     if (!medbay && !c.suited && c.def.suitAir > 0f) {
                         a.pos.stop();
@@ -870,7 +898,10 @@ public final class CrewTasks {
             CrewAgent a = agent();
             ShipGridComponent grid = a.grid();
             Entity home = a.service.homeOf(a.entity);
-            if (home != a.pos.ship || a.pos.crossing != null) {
+            // Sheltering aboard a docked craft while nowhere aboard their own is safe: they stay
+            boolean sheltering = home != a.pos.ship && a.pos.crossing == null
+                    && TaskRules.isSafe(grid, a.pos.tileX(), a.pos.tileY()) && !anywhereSafe(a.service.grid(home));
+            if ((home != a.pos.ship || a.pos.crossing != null) && !sheltering) {
                 ShipGridComponent homeGrid = a.service.grid(home);
                 GridNavGraph nav = homeGrid == null ? null : a.service.pathfinder(homeGrid).graph;
                 if (nav != null && a.travel(home, nav::isWalkable) == CrewAgent.Travel.GOING) {
@@ -923,6 +954,23 @@ public final class CrewTasks {
                 if (a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
                     a.pos.setPath(a.pathScratch);
                     a.crew.activity = "leaving hazard";
+                    return Status.RUNNING;
+                }
+                // Nowhere aboard is safe (the ship holed past holding, its air gone): they suit up, and
+                // go aboard the craft it is docked to, a station's berth say, until it is
+                if (!a.crew.suited && a.crew.def.suitAir > 0f) {
+                    a.pos.stop();
+                    a.crew.activity = "putting on a suit";
+                    suiting += a.dt;
+                    if (suiting < a.crew.def.suitTime) return Status.RUNNING;
+                    a.crew.setSuited(true);
+                    suiting = 0f;
+                }
+                Entity shelter = shelter(a);
+                if (shelter == null) return Status.RUNNING;
+                ShipGridComponent there = a.service.grid(shelter);
+                if (a.travel(shelter, (tx, ty) -> TaskRules.isSafe(there, tx, ty)) == CrewAgent.Travel.GOING) {
+                    a.crew.activity = "going aboard " + SHELTER;
                 }
             }
             return Status.RUNNING;
@@ -932,6 +980,35 @@ public final class CrewTasks {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /** What crew call the docked craft they shelter aboard. */
+    static final String SHELTER = "the docked craft";
+
+    /** True if a crew member could stand somewhere on {@code grid} and breathe. */
+    public static boolean anywhereSafe(ShipGridComponent grid) {
+        if (grid == null) return false;
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                if (grid.getTile(x, y).holdsAir() && TaskRules.isSafe(grid, x, y)) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A craft docked straight to the one the agent is aboard, through an open port, whose own crew
+     * are no enemies of theirs and with somewhere aboard safe to breathe: where to go when nowhere
+     * aboard is. Null if there is none.
+     */
+    static Entity shelter(CrewAgent a) {
+        ShipGridComponent grid = a.grid();
+        if (grid == null) return null;
+        for (int i = 0; i < grid.links.size; i++) {
+            GridLink l = grid.links.get(i);
+            if (l.canCross() && a.service.friendlyTo(a.crew.faction, l.otherShip) && anywhereSafe(l.other)) return l.otherShip;
+        }
+        return null;
+    }
 
     /** True if (x, y) is the opening of a port docked to another craft. */
     static boolean onLink(ShipGridComponent grid, int x, int y) {

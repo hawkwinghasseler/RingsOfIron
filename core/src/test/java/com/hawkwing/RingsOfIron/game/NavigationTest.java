@@ -249,7 +249,7 @@ class NavigationTest {
     }
 
     @Test
-    void beingShotAtDropsTheOrder() {
+    void beingShotAtDropsAnApproachButNotAHold() {
         world.nav.target.select(game.highport);
         world.nav.helm.give(HelmOrderComponent.Mode.HOLD_POSITION);
         assertEquals(HelmOrderComponent.Mode.HOLD_POSITION, world.nav.helm.mode());
@@ -257,6 +257,12 @@ class NavigationTest {
         shot.shooter = game.raider;
         shot.target = game.player;
         shot.weaponDefId = world.combatDefs.weapons.keys().next();
+        world.combatEvents.shots.dispatch(shot);
+        // Round 8: keeping station is what a ship under fire wants
+        assertEquals(HelmOrderComponent.Mode.HOLD_POSITION, world.nav.helm.mode(), "a hold carries on under fire");
+
+        String said = world.nav.helm.give(HelmOrderComponent.Mode.APPROACH);
+        assertEquals(HelmOrderComponent.Mode.APPROACH, world.nav.helm.mode(), said);
         world.combatEvents.shots.dispatch(shot);
         assertEquals(HelmOrderComponent.Mode.NONE, world.nav.helm.mode());
         world.update(FRAME);

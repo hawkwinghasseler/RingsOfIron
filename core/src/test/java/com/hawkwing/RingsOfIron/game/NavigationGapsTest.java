@@ -98,13 +98,17 @@ class NavigationGapsTest {
     }
 
     @Test
-    void aHitDropsTheOrder() {
+    void aHitDropsAnApproachButNotAVelocityMatch() {
         world.nav.target.select(game.highport);
         world.nav.helm.give(HelmOrderComponent.Mode.MATCH_VELOCITY);
         assertEquals(HelmOrderComponent.Mode.MATCH_VELOCITY, world.nav.helm.mode());
         ImpactEvent hit = new ImpactEvent();
         hit.owner = game.raider;
         hit.target = game.player;
+        world.combatEvents.impacts.dispatch(hit);
+        assertEquals(HelmOrderComponent.Mode.MATCH_VELOCITY, world.nav.helm.mode(), "round 8: a velocity match carries on");
+        String said = world.nav.helm.give(HelmOrderComponent.Mode.APPROACH);
+        assertEquals(HelmOrderComponent.Mode.APPROACH, world.nav.helm.mode(), said);
         world.combatEvents.impacts.dispatch(hit);
         assertEquals(HelmOrderComponent.Mode.NONE, world.nav.helm.mode());
         world.update(FRAME);

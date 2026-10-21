@@ -60,6 +60,25 @@ Keys can be rebound in Settings, which also has the volumes, HRTF, the window an
 
 Each demo lists its own controls on screen.
 
+### Trying a round's changes
+
+The scripted career saves the game at the moments each round's changes show best. To play from them in your own game:
+
+1. Write the saves (a few minutes): `./gradlew :core:slowTest --tests '*Round5CareerTest'`. They go to `core/build/playtest-saves/seed-2026`.
+2. Run the game with them: `./gradlew :lwjgl3:runGame -PcareerSaves=core/build/playtest-saves/seed-2026`. The saves are copied into `assets/saves/`, so Load lists them beside your own, and they stay there for later runs. A save already there is never overwritten: delete it from Load (or from `assets/saves/`) to take a newer one. A relative folder is read from the repository root.
+3. Pick one from Load. Continue loads the newest save, which after a fresh copy is usually the career's last.
+
+| Save | Where it starts | What it shows |
+|---|---|---|
+| Before the Moon trip | Day 1, the corvette docked at Highport, the captain at the helm | Undocking (U) and the transfer autopilot (6) to the Moon; the cabin's air |
+| Gunship | Day 26, the gunship just bought | The helm's dock order (5); the crew panel (I) |
+| Gunship bounty fight | Day 30, the gunship in a bounty fight | A fight: Tab, Space, R; wounds on the crew panel (I) |
+| Commander | Day 30, just promoted | The mission board (J) and what a Commander is offered |
+| Frigate | Day 44, the frigate at Anvil Yards | The yard (Y) and refits |
+| Before the raid | Day 44, the frigate 8 km from Rustwake, the pirates' base | The raid: Tab picks a defender, Space and R fight; the base strikes once its defenders are beaten |
+
+Each round's pull request names the save that shows its change, under "Try it in the game".
+
 ## Building and testing
 
 ```

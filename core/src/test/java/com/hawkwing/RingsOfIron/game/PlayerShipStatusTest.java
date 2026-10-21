@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.interiorgrid.Fluid;
+import com.ringsofiron.interiorgrid.LifeSupportSystem;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.TankSupply;
@@ -63,6 +64,25 @@ class PlayerShipStatusTest {
         ShipStatus s = new PlayerShipStatus(() -> game.player).getShipStatus();
         assertEquals(0.25f, s.propellant, 1e-3f);
         assertEquals(full * 0.25, s.propellantKg, 1e-6);
+    }
+
+    @Test
+    void withTheOxygenTanksDryTheGaugeShowsLifeSupportsOwn() {
+        ShipSubsystemRegistryComponent registry = game.player.getComponent(ShipSubsystemRegistryComponent.class);
+        ShipStatus s = new PlayerShipStatus(() -> game.player).getShipStatus();
+        assertTrue(Double.isNaN(s.emergencyOxygenKg), "not while the tanks hold oxygen");
+        for (SubsystemComponent t : TankSupply.tanks(registry, Fluid.OXYGEN)) t.contents = 0;
+        SubsystemComponent unit = null;
+        for (Entity e : registry.subsystems) {
+            SubsystemComponent c = e.getComponent(SubsystemComponent.class);
+            if (c != null && c.type == SubsystemComponent.SubsystemType.LIFE_SUPPORT) unit = c;
+        }
+        double full = LifeSupportSystem.EMERGENCY_OXYGEN_KG * unit.throughput;
+        unit.reserveUsed = full / 4;
+        s = new PlayerShipStatus(() -> game.player).getShipStatus();
+        assertEquals(0f, s.oxygen, 1e-6f);
+        assertEquals(full * 0.75, s.emergencyOxygenKg, 1e-6);
+        assertEquals(0.75f, s.emergencyOxygen, 1e-4f);
     }
 
     @Test

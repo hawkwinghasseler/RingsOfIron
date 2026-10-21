@@ -263,6 +263,60 @@ public final class TaskRules {
         return false;
     }
 
+    /**
+     * A casualty bleeding out or suffocating with this long or less left is gone in after under fire all the same
+     * ({@link #waitsOutFire}), seconds.
+     */
+    public static final float LAST_CHANCE = 120f;
+
+    /**
+     * True if {@code task} lies where the fire is falling on its ship ({@link
+     * ShipTaskBoardComponent#underFire}) and waits for the fight to end: damage control, repairs and
+     * casualties alike, except a casualty with no more than {@link #LAST_CHANCE} to live, bleeding out
+     * or down in bad air with that much suit air or none. Manning a
+     * console, orders, work away from the ship and damage control on what the ship fights with
+     * ({@link #vital}) never wait.
+     */
+    public static boolean waitsOutFire(CrewTask task, ShipTaskBoardComponent board, CrewService crew) {
+        if (board == null || !board.battleStations || board.hitTiles.size == 0) return false;
+        switch (task.kind) {
+            case MAN_CONSOLE: case CARRY: case YARD: case FORCE_DOOR: case EVACUATE: case BOARD: return false;
+            default: break;
+        }
+        if (vital(task)) return false;
+        if (!board.underFire(targetX(task, crew), targetY(task, crew))) return false;
+        Entity casualty = mobileTarget(task);
+        CrewMemberComponent c = crew.crew(casualty);
+        if (c == null) return true;
+        boolean bleeding = c.wound == Wound.CRITICAL && !c.stabilised && c.treatedBy == null && c.bleedOut <= LAST_CHANCE;
+        // Down on air not fit to breathe, with little or no suit air: suffocating
+        GridPositionComponent p = crew.position(casualty);
+        ShipGridComponent grid = p == null ? null : crew.grid(p.ship);
+        boolean suffocating = grid != null && !c.isConscious() && !isBreathable(grid, p.tileX(), p.tileY())
+                && (!c.breathesFromSuit() || c.suitAir <= LAST_CHANCE);
+        return !bleeding && !suffocating;
+    }
+
+    /**
+     * Resetting a short or repairing a system the ship fights with: its reactor and power conduits,
+     * shields, guns, helm, weapons console and engines. Round 8: kept out of the fire too, the crew
+     * left the corvette's shorted power dark and Red Kestrel, beaten in 36 s before, won in 69 s.
+     */
+    static boolean vital(CrewTask task) {
+        Entity subsystem;
+        if (task instanceof ResetShortTask) subsystem = ((ResetShortTask) task).subsystem;
+        else if (task instanceof RepairTask) subsystem = ((RepairTask) task).subsystem;
+        else return false;
+        // A shorted conduit carries the power to all of them
+        if (subsystem == null) return task instanceof ResetShortTask;
+        SubsystemComponent s = subsystem.getComponent(SubsystemComponent.class);
+        if (s == null) return false;
+        switch (s.type) {
+            case REACTOR: case SHIELD_EMITTER: case TURRET_MOUNT: case HELM: case WEAPONS: case ENGINE: return true;
+            default: return false;
+        }
+    }
+
     /** True while {@code e}'s ship is at battle stations. */
     static boolean atBattleStations(CrewService crew, Entity e) {
         GridPositionComponent p = crew.position(e);

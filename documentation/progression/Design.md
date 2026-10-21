@@ -104,6 +104,7 @@ Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. I
   - Beaten, it leaves a crate of its rare weapon in its hold for whoever boards it, forgets its grudge and frees its place.
   - An ace beaten once (`FirstPlay.aceBeaten`) is done with as far as contracts go, even after its crew get the ship flying again out on the rails: no recon, bounty or operation step names it again (round 6: Hunt the Hunters sent the frigate to find Iron Dagny, beaten a week before).
   - Every step is a notice in the log (L).
+- **Pirates' upkeep** (round 8, `PirateUpkeep`): a pirate out on the rails, or idle in the bubble (not fighting, not stalking, not beaten), refuels its propellant tanks, full from empty in 2 days (`RAILS_REFUEL_DAYS`), in whole 60 s steps of rails time (`STEP`, so a save and load refuel the same). A robbery tops it up first: from the prey's own tanks in the bubble, and all it lacks on the rails (`RAILS_ROBBERY_SHARE`). Round 7 had aces meet their bounty with dry tanks and strike in the first second. A beaten ace whose bounty paid stays struck when fired on again (`HostileTraffic.onShotAt`). The last step is saved (`upkeepAt`); what the tanks hold is saved with the ship.
 
 ## Contracts and the Mission Board
 `ContractBoard` keeps each station's offers, the player's active contracts and a history of the last 20. It is saved as its own module (`"contracts"`). J opens the mission window while docked at a station, or anywhere while holding a contract.
@@ -119,7 +120,7 @@ Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. I
 |---|---|---|---|---|---|
 | Delivery | An unclaimed trade order out of the station, claimed in the player's name (`claimedBy = "player"`) | 15% of the cargo's value (at least 500) on top of the sale, with the sale paid at least the agreed price | 3 + 2·tier | 2 days, or 8 if the buyer orbits another body | The goods are sold at the buyer, docked with clearance; partial deliveries count up |
 | Escort | A trade order already claimed by a freighter | 1,500 | 4 + 2·tier | 2 or 8 days after the freighter's arrival | The freighter arrives with the player within 50 km of its destination; it fails if the player is not there within 30 minutes of its arrival, or if the freighter is lost |
-| Bounty | A ship of a faction at war with the giver | 5,000 × (1 + tier) × difficulty; ×4 for an ace | 6 + 3·tier; +6 for an ace | 3 days | The target is gone, or beaten (`FirstPlay.beaten`: disabled, reactor out or guns silenced; never while ion-stunned) |
+| Bounty | A ship of a faction at war with the giver | 5,000 × (1 + tier) × difficulty; ×4 for an ace | 6 + 3·tier; +6 for an ace | 3 days | The target is gone, or beaten (`FirstPlay.beaten`: disabled, reactor out or guns silenced; never while only dark for an ion stun) |
 | Patrol | Another station whose owner is not at war with the giver | 1,000, ×1.5 for another faction's station | 3 + 2·tier | 2 days, or 10 if far | The player passes within 20 km of the station, then comes back within 20 km of the giver's |
 
 - **Far jobs:** a job to a station orbiting another body is tier 1 and pays 3×.

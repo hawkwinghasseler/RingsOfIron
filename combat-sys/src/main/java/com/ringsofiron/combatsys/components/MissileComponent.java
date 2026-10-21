@@ -46,6 +46,11 @@ public class MissileComponent implements Component {
     public final transient Track seekerTrack = new Track();
     /** Seconds since the seeker last saw its lock. */
     public float sinceSeekerFix;
+    /**
+     * Guidance cut ({@code MissileGuidanceSystem.goBallistic}): no seeker, no datalink, no motor and
+     * no proximity fuse. It flies on as a ballistic slug that still hits what it strikes.
+     */
+    public transient boolean guidanceCut;
     /** Distance to the fuse target last tick, meters, to detect closest approach. */
     public float lastFuseDistance = Float.MAX_VALUE;
 

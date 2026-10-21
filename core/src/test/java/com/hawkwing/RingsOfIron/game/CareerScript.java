@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
@@ -104,6 +105,12 @@ abstract class CareerScript {
                     + carried.size() + " times in a day, last to " + t.stationName);
         });
         world.pirateBoarding.robbed.add((sig, t) -> log("  (boarded by %s: they took %s)", t.pirateName, t.describe()));
+        // The player's crew dying, as CrewCareer tells it (round 8: two died at the berth unlogged)
+        world.notices.posted.add((sig, n) -> {
+            if (n.text.endsWith(" has died of wounds") || n.text.endsWith(" is dead")) {
+                log("  (day %.2f: %s)", world.engine.getSimSeconds() / 86_400, n.text);
+            }
+        });
     }
 
     /** When the crew carried the player home, in the last day; a day with this many fails the career. */
@@ -176,6 +183,46 @@ abstract class CareerScript {
 
     static float top(CrewHiring.Candidate c) {
         return Math.max(c.record.gunnery, Math.max(c.record.engineering, c.record.marine));
+    }
+
+    /** The player's own crew fit to work: conscious, and no worse than lightly wounded. */
+    int fitCrew() {
+        int n = 0;
+        for (Entity e : ownCrew()) {
+            CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+            if (c.isConscious() && c.wound.ordinal() <= Wound.LIGHT.ordinal()) n++;
+        }
+        return n;
+    }
+
+    /**
+     * After a fight that left hands dead or down, hires at the docked station, as a player would
+     * before the next job: the dead are replaced up to {@code want} hands, and while anyone aboard is
+     * seriously wounded or worse with nobody fit to treat them, a medic comes aboard. The most
+     * skilled hand otherwise; berths allowing.
+     */
+    void hireReplacements(int want) {
+        Entity at = world.docking.dockedTo(game.player);
+        if (at == null) return;
+        String uuid = world.universe.uuidOf(at);
+        while (true) {
+            boolean bleeding = false;
+            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                if (c.isAlive() && c.wound.ordinal() >= Wound.SERIOUS.ordinal()
+                        && e.getComponent(GridPositionComponent.class).ship == game.player) bleeding = true;
+            }
+            boolean medic = bleeding && fitCrew() == 0;
+            if (ownCrew().size() >= want && !medic) break;
+            CrewHiring.Candidate best = null;
+            for (CrewHiring.Candidate c : world.crewHiring.pool(uuid)) {
+                if (best == null || (medic ? c.record.medicine > best.record.medicine : top(c) > top(best))) best = c;
+            }
+            if (best == null) break;
+            String why = world.crewHiring.hire(best.key);
+            if (why != null) { log("  could not hire %s: %s", best.name, why); break; }
+            log("  hired %s (%s, %s) to make up the hands lost", best.name, best.role, best.record.describeSkills());
+        }
     }
 
     void fightTheRaiderAndTowItHome() {
@@ -334,6 +381,7 @@ abstract class CareerScript {
         double t0 = world.engine.getSimSeconds();
         float hull0 = hull(game.player);
         int crew0 = ownCrew().size();
+        if (h != null) log("  as it opens: %s.", openingState(ship, h));
         ShipGridComponent ours = game.player.getComponent(ShipGridComponent.class), theirs = ship.getComponent(ShipGridComponent.class);
         int[] incidents0 = {ours.shortCount, ours.burstCount, theirs == null ? 0 : theirs.shortCount, theirs == null ? 0 : theirs.burstCount};
         // Shot down at the helm, the player is carried home by the crew: the fight is lost
@@ -359,9 +407,11 @@ abstract class CareerScript {
             gun.update(FRAME);
             // Dark for an ion stun's few seconds isn't a lost fight: the guns come back. Judged afresh,
             // since the disabled mark lingers until the next judgement after the stun ends. Won as
-            // contracts count it (round 7: a beaten ace's dropped part ended a fight with a fit ship)
+            // contracts count it (round 7: a beaten ace's dropped part ended a fight with a fit ship).
+            // A broken hull is lost, stunned or not (round 8, as FirstPlay.beaten)
             return FirstPlay.beaten(world, ship)
-                    || ShipDisablement.isDisabled(game.player) && !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player)
+                    || ShipDisablement.isDisabled(game.player) && (ShipDisablement.reason(game.player) != DisabledComponent.Reason.NO_POWER
+                            || !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player))
                     && world.disablement.judge(game.player) != null
                     || world.getCrash() != null || range(game.player, ship) > GOT_AWAY;
         });
@@ -387,6 +437,42 @@ abstract class CareerScript {
     }
 
     /**
+     * A hostile's state as a fight with it opens (round 8): its tanks, how many of its own crew are
+     * up, the systems a short or damage has out, and why it is already beaten, if it is.
+     */
+    String openingState(Entity ship, HostileComponent h) {
+        com.ringsofiron.physicsexterior.components.ThrusterComponent t =
+                ship.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
+        // What the propellant tanks hold, and what the thrusters can draw: the feed gives them nothing
+        // while the engines are down, so the two differ on a ship whose tanks are full but can't burn
+        double held = 0, capacity = 0;
+        ShipSubsystemRegistryComponent tanksOf = ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (tanksOf != null) {
+            for (SubsystemComponent tank : com.ringsofiron.interiorgrid.TankSupply.tanks(tanksOf, com.ringsofiron.interiorgrid.Fluid.PROPELLANT)) {
+                held += tank.contents;
+                capacity += tank.capacity;
+            }
+        }
+        String tanks = String.format(Locale.ROOT, "tanks %.0f of %.0f kg, thrusters see %.0f", held, capacity, t == null ? 0f : t.fuel);
+        int[] crew = world.disablement.crewCount(ship);
+        ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
+        List<String> shorted = new ArrayList<>(), out = new ArrayList<>();
+        if (registry != null) {
+            for (Entity e : registry.subsystems) {
+                SubsystemComponent s = e == null ? null : e.getComponent(SubsystemComponent.class);
+                if (s == null) continue;
+                if (s.shorted) shorted.add(s.type.name().toLowerCase(Locale.ROOT));
+                else if (!s.isOperational || s.isDisabled()) out.add(s.type.name().toLowerCase(Locale.ROOT));
+            }
+        }
+        DisabledComponent.Reason beaten = ShipDisablement.reason(ship);
+        return String.format(Locale.ROOT, "%s, crew %d of %d up, shorted %s, out %s, hull %.2f, %s, %d plunders",
+                tanks, crew[1], crew[0], shorted.isEmpty() ? "none" : String.join("/", shorted),
+                out.isEmpty() ? "none" : String.join("/", out), hull(ship),
+                beaten == null ? "not beaten" : "already beaten (" + beaten.label + ")", h.plunders);
+    }
+
+    /**
      * If the fight with {@code what} left a leak the crew can patch, and no earlier fight did, checks
      * damage control on it: out here, far from a yard, warp is refused while air vents, and the crew
      * patch the leak from the ship's stores. Once nothing vents, warp is no longer refused for it
@@ -398,6 +484,14 @@ abstract class CareerScript {
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
         logVenting("after " + what);
         if (patchedAfter != null || LeakPatches.leaks(grid).size == 0) return;
+        // A fire aboard refuses warp first: the crew put it out, then the venting is what refuses it
+        // (round 8: seed 7's ace fight, flown without two of Highport's technicians aboard)
+        if (world.engine.getRailsWarpBlockedReason() != null && world.engine.getRailsWarpBlockedReason().startsWith("Fire")) {
+            boolean out = runUntil(600f, () -> world.engine.getRailsWarpBlockedReason() == null
+                    || !world.engine.getRailsWarpBlockedReason().startsWith("Fire"));
+            log("  a fire aboard after %s: %s", what, out ? "put out" : "still burning after 10 minutes");
+            if (LeakPatches.leaks(grid).size == 0) return;
+        }
         assertTrue(world.engine.getRailsWarpBlockedReason().startsWith(InteriorHazardWarpGuard.VENTING),
                 world.engine.getRailsWarpBlockedReason());
         int kits = grid.patchKits;
@@ -567,6 +661,7 @@ abstract class CareerScript {
         run(60);
         h.targetUuid = HostileComponent.PLAYER;
         bringIn(id, 3_000, 0);
+        int crew = ownCrew().size();
         fight(ship, h, "Ace fight");
         patchIfVenting("the ace");
         run(60 * 10);
@@ -577,10 +672,11 @@ abstract class CareerScript {
             log("  disabled: tow refusal %s.", world.beacon.refusal());
             log("  %s", world.beacon.call());
             assertTrue(runUntil(30f, () -> world.docking.dockedTo(game.player) != null), "towed home");
+            hireReplacements(crew);
             // Towed in holed and dry: the yard mends and fills it, or the Moon trip can't start
             run(120);
             Entity home = world.docking.dockedTo(game.player);
-            double bill = world.yard.repairCost(game.player, home) + world.yard.refillCost(game.player, home);
+            double bill = world.yard.repairCost(game.player, home) + world.yard.airCost(game.player, home) + world.yard.refillCost(game.player, home);
             if (credits() < bill) {
                 log("  short by %.0f cr for the yard: the script makes up the difference.", bill - credits());
                 grantedCredits += bill - credits();
@@ -591,9 +687,12 @@ abstract class CareerScript {
         } else {
             assertTrue(game.dockAtHighport());
             run(120);
+            hireReplacements(crew);
             // The ace's rounds holed the hull: Highport's yard mends it before the crew run out of air
             repairAt(world.engine.getEntity(game.highport));
         }
+        // Berths the dead held are free again
+        hireReplacements(crew);
         snapshot("home again");
     }
 
@@ -817,6 +916,14 @@ abstract class CareerScript {
             log("Granted %.0f standing (%s) for rank %s.", need + 0.5f, standsFor, world.standing.describeRank());
         } else {
             log("Rank %s earned in play.", world.standing.describeRank());
+        }
+        // Standing enough, but not yet long enough in grade: a player waits it out docked
+        for (int r = world.standing.record().rank + 1; r <= rank; r = world.standing.record().rank + 1) {
+            double left = world.standing.timeInGradeLeft(r);
+            if (left <= 0) break;
+            log("  %.1f more days in grade before rank %d.", left / 86_400, r);
+            warpFor(left + 60);
+            world.standing.promoteDue();
         }
         assertTrue(world.standing.record().rank >= rank);
     }

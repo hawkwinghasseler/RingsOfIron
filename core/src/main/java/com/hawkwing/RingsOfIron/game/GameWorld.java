@@ -237,6 +237,10 @@ public class GameWorld implements Disposable {
     public final BerthVenting berthVenting;
     /** The player's figure suiting up at battle stations and in thin air. */
     public final CaptainSafety captain;
+    /** Warnings before the player's people run out of air. */
+    public final AirWatch air;
+    /** A station's infirmary, treating the player's wounded at its berth (round 8). */
+    public final StationInfirmary infirmary;
     /** The distress beacon: a stranded ship towed home. */
     public final DistressBeacon beacon = new DistressBeacon(this);
     /** First Play's and the opening walkthrough's progress, saved with the game. */
@@ -529,6 +533,8 @@ public class GameWorld implements Disposable {
         medical = new CrewMedical(this);
         berthVenting = new BerthVenting(this);
         captain = new CaptainSafety(this);
+        air = new AirWatch(this);
+        infirmary = new StationInfirmary(this);
     }
 
     /**
@@ -641,6 +647,8 @@ public class GameWorld implements Disposable {
         medical.update();
         berthVenting.update();
         captain.update();
+        air.update();
+        infirmary.update();
         // Warp changes only between updates: the autopilot raises it again after a burn
         nav.autopilot.afterUpdate();
     }

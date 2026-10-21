@@ -12,8 +12,11 @@ public class ResetShortTask extends CrewTask {
 
     /** Above repairs, so a quick reset gets a system back before anyone starts the long repair; below fires. */
     public static final float DEFAULT_PRIORITY = 50f;
-    /** A shorted reactor blacks the ship out: it comes before patching leaks and fighting fires. */
-    public static final float REACTOR_PRIORITY = 75f;
+    /**
+     * A shorted reactor blacks the ship out: it comes before patching leaks, fighting fires and
+     * sealing breaches, since with the lights out nothing else on board works. Below rescues.
+     */
+    public static final float REACTOR_PRIORITY = 85f;
 
     /** The shorted system's entity, or null for a conduit tile. */
     public final Entity subsystem;

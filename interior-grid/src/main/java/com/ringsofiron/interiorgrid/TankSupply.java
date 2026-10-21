@@ -114,9 +114,18 @@ public final class TankSupply {
         return sum;
     }
 
-    /** Kilograms of {@code fluid} the tanks piped to {@code system} can deliver. */
+    /**
+     * Kilograms of {@code fluid} the tanks piped to {@code system} can deliver, and for oxygen at life
+     * support, its own emergency oxygen ({@link #reserve}).
+     */
     public static double available(SubsystemComponent system, Fluid fluid) {
-        return available(system.pipedTanks, fluid);
+        return available(system.pipedTanks, fluid) + (fluid == Fluid.OXYGEN ? reserve(system) : 0);
+    }
+
+    /** Kilograms of its emergency oxygen ({@link LifeSupportSystem#EMERGENCY_OXYGEN_KG}) a life support unit has left; 0 for other systems. */
+    public static double reserve(SubsystemComponent system) {
+        if (system.type != SubsystemComponent.SubsystemType.LIFE_SUPPORT) return 0;
+        return Math.max(0, LifeSupportSystem.EMERGENCY_OXYGEN_KG * system.throughput - system.reserveUsed);
     }
 
     /**
@@ -136,9 +145,16 @@ public final class TankSupply {
         return take;
     }
 
-    /** Takes up to {@code kg} of {@code fluid} from the tanks piped to {@code system}. */
+    /**
+     * Takes up to {@code kg} of {@code fluid} from the tanks piped to {@code system}, and for oxygen at
+     * life support, what they can't give from its emergency oxygen.
+     */
     public static double draw(SubsystemComponent system, Fluid fluid, double kg) {
-        return draw(system.pipedTanks, fluid, kg);
+        double take = draw(system.pipedTanks, fluid, kg);
+        if (fluid != Fluid.OXYGEN || take >= kg) return take;
+        double own = Math.min(kg - take, reserve(system));
+        system.reserveUsed += own;
+        return take + own;
     }
 
     /** True if any of the ship's systems is a tank of {@code fluid}, working or not. */

@@ -21,6 +21,8 @@ import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.coreengine.EntityRef;
 import com.ringsofiron.coreengine.UuidRegistry;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.Compartment;
+import com.ringsofiron.interiorgrid.CompartmentBuilder;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.GridLink;
@@ -57,7 +59,11 @@ import java.util.function.DoubleSupplier;
  *
  * <p>The yard also refills the ship's tanks ({@link #orderRefill}): propellant, oxygen and nitrogen,
  * at once, paid by the kilogram ({@link #pricePerKg}); short of credits, every tank gets the same
- * share of what it lacks.
+ * share of what it lacks. It makes good the emergency oxygen life support used too, at the oxygen price.
+ *
+ * <p>A repair order ends with the air put back (round 8): every room aboard is brought up to
+ * station pressure from the station's own air ({@link #topUpAir}), at the refill's oxygen and
+ * nitrogen prices, inside the repair bill.
  *
  * <p>Undocking calls the work off: repairs stop, and a part not yet fitted goes back, refunded.
  * Docked but on the rails together (no walkway), the work goes on in the background at the pace
@@ -341,7 +347,18 @@ public class StationYard extends EntitySystem {
         for (SubsystemComponent t : TankSupply.tanks(registry, null)) {
             total += Math.max(0, t.capacity - t.contents) * pricePerKg(t.fluid);
         }
+        for (SubsystemComponent u : lifeSupport(registry)) total += u.reserveUsed * OXYGEN_PRICE;
         return total;
+    }
+
+    /** The life support units in {@code registry}, whose emergency oxygen a refill makes good. */
+    private static Array<SubsystemComponent> lifeSupport(ShipSubsystemRegistryComponent registry) {
+        Array<SubsystemComponent> out = new Array<>();
+        for (Entity e : registry.subsystems) {
+            SubsystemComponent s = e == null ? null : e.getComponent(SubsystemComponent.class);
+            if (s != null && s.type == SubsystemComponent.SubsystemType.LIFE_SUPPORT) out.add(s);
+        }
+        return out;
     }
 
     /** Credits to fill every tank aboard {@code ship} at {@code station}'s yard, at its {@link #priceFactor}. */
@@ -370,13 +387,67 @@ public class StationYard extends EntitySystem {
      */
     public static double fill(ShipSubsystemRegistryComponent registry, double budget) {
         if (registry == null || budget <= 0) return 0;
-        Array<SubsystemComponent> tanks = TankSupply.tanks(registry, null);
+        Array<SubsystemComponent> tanks = TankSupply.tanks(registry, null), units = lifeSupport(registry);
         double cost = 0;
         for (SubsystemComponent t : tanks) cost += Math.max(0, t.capacity - t.contents) * pricePerKg(t.fluid);
+        for (SubsystemComponent u : units) cost += u.reserveUsed * OXYGEN_PRICE;
         if (cost <= 0) return 0;
         double share = Math.min(1, budget / cost);
         for (SubsystemComponent t : tanks) t.contents += Math.max(0, t.capacity - t.contents) * share;
+        for (SubsystemComponent u : units) u.reserveUsed -= u.reserveUsed * share;
         return cost * share;
+    }
+
+    /** Credits, at the base prices, to bring every room aboard {@code ship} back to station pressure. */
+    public static double airCost(Entity ship) {
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        return grid == null ? 0 : air(grid, 0);
+    }
+
+    /** {@link #airCost(Entity)} at {@code station}'s yard, at its {@link #priceFactor}. */
+    public double airCost(Entity ship, Entity station) {
+        return airCost(ship) * priceFactor.applyAsDouble(station);
+    }
+
+    /**
+     * Brings every room in {@code grid} up to station pressure and the standard oxygen share, with
+     * station air at the refill's prices, as far as {@code budget} credits go: short of them, every
+     * room gets the same share of what it lacks. Returns the credits spent, at the base prices.
+     */
+    public static double topUpAir(ShipGridComponent grid, double budget) {
+        if (grid == null || budget <= 0) return 0;
+        // The repaired walls and hull may join or close off rooms: fill the rooms as they are now
+        CompartmentBuilder.rebuildIfChanged(grid);
+        double cost = air(grid, 0);
+        if (cost <= 0) return 0;
+        double share = Math.min(1, budget / cost);
+        air(grid, share);
+        return cost * share;
+    }
+
+    /**
+     * What it costs to bring every room in {@code grid} to station pressure and the standard oxygen
+     * share; with {@code share} above 0, also puts that share of the missing air in.
+     */
+    private static double air(ShipGridComponent grid, double share) {
+        double cost = 0;
+        for (Compartment c : grid.compartments) {
+            double perMole = c.kPaPerMole();
+            if (perMole <= 0) continue;
+            // Standard air up to station pressure, then oxygen for what fires and breathing burned
+            double fill = Math.max(0, (Compartment.STANDARD_PRESSURE - c.pressure()) / perMole);
+            double o2 = fill * Compartment.STANDARD_O2_FRACTION, n2 = fill - o2;
+            double others = c.totalMoles() + fill - c.oxygen - o2;
+            double want = Math.min(others * Compartment.STANDARD_O2_FRACTION / (1 - Compartment.STANDARD_O2_FRACTION),
+                    Compartment.STANDARD_O2_PRESSURE / perMole);
+            o2 += Math.max(0, want - c.oxygen - o2);
+            cost += o2 * Fluid.OXYGEN.molarMass * OXYGEN_PRICE + n2 * Fluid.NITROGEN.molarMass * NITROGEN_PRICE;
+            if (share > 0) {
+                c.oxygen += o2 * share;
+                c.nitrogen += n2 * share;
+            }
+        }
+        return cost;
     }
 
     /** Credits a {@code def} costs at the yard, new or used. */
@@ -459,7 +530,7 @@ public class StationYard extends EntitySystem {
         orders.repairs = true;
         orders.repairsPaid = 0;
         restockPatches(ship);
-        return String.format(Locale.ROOT, "Repairs ordered: about %,.0f cr, paid as the work is done", cost);
+        return String.format(Locale.ROOT, "Repairs ordered: about %,.0f cr, paid as the work is done", cost + airCost(ship, station));
     }
 
     /**
@@ -541,6 +612,17 @@ public class StationYard extends EntitySystem {
         return orders != null && orders.repairs;
     }
 
+    /**
+     * True while {@code station}'s yard has work under way on {@code ship}: its berth clamps hold the
+     * ship however hard it pulls (round 8). A ship holed by an ace vented hard enough at the berth to
+     * tear loose again and again, each time calling the work off, and its crew suffocated there.
+     */
+    public boolean holds(Entity ship, Entity station) {
+        YardOrdersComponent orders = ship == null ? null : ORDERS_M.get(ship);
+        if (orders == null || !(orders.repairs || !orders.refits.isEmpty()) || orders.station == null) return false;
+        return orders.station.get(uuids) == station;
+    }
+
     /** A line on each piece of yard work under way on {@code ship}, for the screen. */
     public List<String> progress(Entity ship) {
         List<String> out = new ArrayList<>();
@@ -573,6 +655,8 @@ public class StationYard extends EntitySystem {
         double now = simSeconds.getAsDouble();
         float dt = Double.isNaN(lastTime) ? 0f : (float) Math.max(0, now - lastTime);
         lastTime = now;
+        // Round 8: none of a station's hands leaves with a ship (StationHands)
+        StationHands.sendHome(crew);
         for (int i = ships.size() - 1; i >= 0; i--) {
             Entity ship = ships.get(i);
             YardOrdersComponent orders = ORDERS_M.get(ship);
@@ -609,6 +693,11 @@ public class StationYard extends EntitySystem {
             orders.repairs = false;
             // Again at the end: the crew may have patched a leak from the stores while the yard worked
             restockPatches(ship);
+            // The hull whole again, the station's air fills the cabin back up, on the same bill
+            TraderComponent trader = ship.getComponent(TraderComponent.class);
+            double factor = priceFactor.applyAsDouble(station);
+            double budget = trader == null ? Double.POSITIVE_INFINITY : trader.credits / factor;
+            charge(trader, orders, topUpAir(ship.getComponent(ShipGridComponent.class), budget) * factor);
             notices.add(String.format(Locale.ROOT, "%s's yard finished the repairs: %,.0f cr",
                     PlayerDocking.name(station), orders.repairsPaid));
             return;

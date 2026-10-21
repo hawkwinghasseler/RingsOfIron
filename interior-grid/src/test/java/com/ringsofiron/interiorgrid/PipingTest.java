@@ -138,6 +138,29 @@ class PipingTest {
     }
 
     @Test
+    void withTheOxygenTankDryLifeSupportRefillsFromItsOwnOxygen() {
+        // Round 8: a burst oxygen tank left a patched gunship unbreathable for good
+        build(piped(room()));
+        tank(Fluid.OXYGEN).contents = 0;
+        SubsystemComponent unit = system(SubsystemComponent.SubsystemType.LIFE_SUPPORT, null);
+        assertEquals(LifeSupportSystem.EMERGENCY_OXYGEN_KG, TankSupply.available(unit, Fluid.OXYGEN), 1e-9);
+        vent();
+        run(600);
+        assertEquals(Compartment.STANDARD_PRESSURE, room(grid).pressure(), 2.0, "back to full pressure");
+        assertEquals(Compartment.STANDARD_O2_FRACTION, room(grid).oxygenFraction(), 0.01, "and breathable");
+        assertTrue(unit.reserveUsed > 0 && unit.reserveUsed < LifeSupportSystem.EMERGENCY_OXYGEN_KG, "used " + unit.reserveUsed);
+        assertEquals(0, tank(Fluid.OXYGEN).contents, 1e-9);
+    }
+
+    @Test
+    void lifeSupportKeepsItsOwnOxygenWhileTheTanksHaveSome() {
+        build(piped(room()));
+        vent();
+        run(60);
+        assertEquals(0, system(SubsystemComponent.SubsystemType.LIFE_SUPPORT, null).reserveUsed, 1e-12);
+    }
+
+    @Test
     void anUnpipedUnitReleasesNothingOnceTheShipHasTanks() {
         build(room());
         vent();
@@ -166,7 +189,8 @@ class PipingTest {
         build(piped(room()));
         tank(Fluid.OXYGEN).switchedOn = false;
         SubsystemComponent unit = system(SubsystemComponent.SubsystemType.LIFE_SUPPORT, null);
-        assertEquals(0, TankSupply.available(unit, Fluid.OXYGEN), 1e-9);
+        assertEquals(0, TankSupply.available(unit.pipedTanks, Fluid.OXYGEN), 1e-9);
+        assertEquals(TankSupply.reserve(unit), TankSupply.available(unit, Fluid.OXYGEN), 1e-9, "only life support's own oxygen");
         assertTrue(TankSupply.available(unit, Fluid.NITROGEN) > 0);
     }
 
@@ -207,8 +231,11 @@ class PipingTest {
         build(piped(room()));
         tank(Fluid.OXYGEN).health = 0.1f;
         assertFalse(tank(Fluid.OXYGEN).canSupply());
-        double kg = TankSupply.draw(system(SubsystemComponent.SubsystemType.LIFE_SUPPORT, null), Fluid.OXYGEN, 10);
-        assertEquals(0, kg, 1e-9);
+        double before = tank(Fluid.OXYGEN).contents;
+        SubsystemComponent unit = system(SubsystemComponent.SubsystemType.LIFE_SUPPORT, null);
+        TankSupply.draw(unit, Fluid.OXYGEN, 10);
+        assertEquals(before, tank(Fluid.OXYGEN).contents, 1e-9);
+        assertEquals(10, unit.reserveUsed, 1e-9, "it came out of life support's own oxygen");
     }
 
     @Test

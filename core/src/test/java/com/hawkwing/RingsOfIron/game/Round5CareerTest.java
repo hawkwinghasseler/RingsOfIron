@@ -30,6 +30,8 @@ class Round5CareerTest extends CareerScript {
     static final double LAST_DAY = 140;
     /** Most operation steps or bounties the script flies, so a stuck world cannot spin forever. */
     static final int MOST_JOBS = 40;
+    /** Most tries at the raid, each after the yard (round 7: 2). */
+    static final int RAID_TRIES = 3;
 
     final List<String> rows = new ArrayList<>();
     int jobs, operationsDone, bountiesDone, raidsFought;
@@ -184,8 +186,9 @@ class Round5CareerTest extends CareerScript {
             case RAID:
                 raidTheBase(c);
                 // Round 7: the frigate wins about 7 raids in 10, so a raid lost is flown again after
-                // the yard, as a player would (seed 2026 lost its reactor to the batteries' darts)
-                if (c.isActive() && world.pirateBase.standing()) {
+                // the yard, as a player would (seed 2026 lost its reactor to the batteries' darts).
+                // Round 8: up to RAID_TRIES in all, since the career now flies the survey's raid
+                for (int tries = 1; tries < RAID_TRIES && c.isActive() && world.pirateBase.standing(); tries++) {
                     log("  the raid is lost: home for repairs, and once more.");
                     repairIfNeeded();
                     raidTheBase(c);
@@ -245,7 +248,10 @@ class Round5CareerTest extends CareerScript {
         }
         HostileComponent h = target.getComponent(HostileComponent.class);
         undockForAFight();
-        if (target.getComponent(PhysicsBodyComponent.class) == null) bringIn(c.targetUuid, 3_000, 0);
+        boolean onRails = target.getComponent(PhysicsBodyComponent.class) == null;
+        if (h != null) log("  found it %s.", onRails ? "on the rails (" + h.state + "), brought in at 3 km"
+                : String.format(java.util.Locale.ROOT, "in the bubble (%s), %.0f m off", h.state, range(game.player, target)));
+        if (onRails) bringIn(c.targetUuid, 3_000, 0);
         else flyTo(target, 3_000f);
         if (h != null) h.targetUuid = HostileComponent.PLAYER;
         if (!savedAFight && "gunship_heavy".equals(game.player.getComponent(DefRefComponent.class).defId)) {
@@ -357,47 +363,23 @@ class Round5CareerTest extends CareerScript {
         snapshot("after the raid");
     }
 
-    /** Flies to the base: its wing scrambles, and each defender is fought in turn until it strikes. */
+    /**
+     * Flies the raid the survey's way ({@link RaidRoutine}, round 8): in 8 km from the base, the helm
+     * holding on it, each defender fought as the base launches it, until it strikes or we are beaten.
+     */
     private void raidTheBase(Contract c) {
         raidsFought++;
-        Entity base = world.engine.getEntity(world.pirateBase.uuid());
         undockForAFight();
-        world.rescue.jumpBeside(game.player, base, 8_000);
-        if (raidsFought == 1) saveForPlaytest("Before the raid");
         double t0 = world.engine.getSimSeconds();
-        runUntil(10f, () -> !world.pirateBase.defenders().isEmpty());
-        List<String> wing = new ArrayList<>(world.pirateBase.defenders());
-        scrambled += wing.size();
-        log("  at %s: it scrambles %s.", world.pirateBase.name(), wing);
         float hull0 = hull(game.player);
         int crew0 = ownCrew().size();
-        boolean lost = false;
-        for (String name : wing) {
-            Entity ship = hostile(name);
-            if (ship == null || FirstPlay.beaten(world, ship)) continue;
-            HostileComponent h = ship.getComponent(HostileComponent.class);
-            log("  defender %s: %s, loadout %s.", name, h.shipId, h.loadout);
-            if (ship.getComponent(PhysicsBodyComponent.class) == null) bringIn(world.universe.uuidOf(ship), 3_000, 0);
-            if (!fight(ship, h, "Defender " + name)) {
-                lost = true;
-                break;
-            }
-        }
-        runUntil(2 * PirateBase.CHECK_SECONDS + 1, () -> !world.pirateBase.standing());
-        // Round 7: the defence no longer leaves with a beaten leader, so a defender out only for a
-        // moment (its shorts reset) is back in the fight, and keeps the base standing: fight it again
-        for (int pass = 0; pass < 2 && !lost && world.pirateBase.standing() && world.pirateBase.defended(); pass++) {
-            for (String name : wing) {
-                Entity ship = hostile(name);
-                HostileComponent h = ship == null ? null : ship.getComponent(HostileComponent.class);
-                if (h == null || h.brokeOff || FirstPlay.beaten(world, ship) || ship.getComponent(PhysicsBodyComponent.class) == null) continue;
-                if (!fight(ship, h, "Defender " + name + ", back in the fight")) {
-                    lost = true;
-                    break;
-                }
-            }
-            runUntil(2 * PirateBase.CHECK_SECONDS + 1, () -> !world.pirateBase.standing());
-        }
+        EnemySurveyTest.Result r = RaidRoutine.fly(world, game, () -> {
+            if (raidsFought == 1) saveForPlaytest("Before the raid");
+        });
+        scrambled += r.wing.size();
+        log("  at %s: it scrambles %s (%s).", world.pirateBase.name(), r.wing, r.loadouts);
+        log("  try %d: %s", raidsFought, r);
+        if (!"won".equals(r.outcome)) fightsLost++;
         log("Raid on %s: %.0f s, base %s; our hull %.2f -> %.2f, crew %d -> %d.", world.pirateBase.name(),
                 world.engine.getSimSeconds() - t0, world.pirateBase.standing() ? "still standing" : "fallen", hull0,
                 hull(game.player), crew0, ownCrew().size());
@@ -442,8 +424,19 @@ class Round5CareerTest extends CareerScript {
         }
     }
 
+    /** Longest the script waits out a boarding before it goes home anyway, sim seconds: the trip in and the time aboard. */
+    static final float BOARDING_WAIT = (float) PirateBoarding.BOARD_SECONDS + 600f;
+
     /** Repairs at Highport if the last job left any damage. */
     private void repairIfNeeded() {
+        // Round 8: beaten with pirates coming aboard, the ship waits out the boarding before it goes
+        // home, as a beaten player would (seed 2026 went home mid-boarding and was boarded at the berth)
+        if (world.pirateBoarding.boarder() != null) runUntil(BOARDING_WAIT, () -> world.pirateBoarding.boarder() == null);
+        // Hands down after the fight get help before the yard's hour, or bleed out during it
+        if (ownCrew().size() < crewWanted() || fitCrew() == 0) {
+            dockAtStation(game.highport);
+            hireReplacements(crewWanted());
+        }
         if (world.yard.repairCost(game.player) > 0.5) {
             dockAtStation(game.highport);
             yardRepair(world.engine.getEntity(game.highport));
@@ -505,13 +498,6 @@ class Round5CareerTest extends CareerScript {
     private int crewWanted() {
         String defId = game.player.getComponent(DefRefComponent.class).defId;
         return Math.min(world.getContent().defs.get("ship", defId, ShipDef.class).crew, CrewHiring.berths(game.player));
-    }
-
-    private Entity hostile(String name) {
-        for (var e : world.macroSim.hostiles().all().entrySet()) {
-            if (name.equals(e.getValue().displayName)) return world.engine.getEntity(e.getKey());
-        }
-        return null;
     }
 
     private int rank() {

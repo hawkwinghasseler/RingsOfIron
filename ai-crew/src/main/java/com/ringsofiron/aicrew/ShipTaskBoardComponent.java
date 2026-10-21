@@ -3,6 +3,7 @@ package com.ringsofiron.aicrew;
 import com.badlogic.ashley.core.Component;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.IntArray;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
 
@@ -44,6 +45,44 @@ public class ShipTaskBoardComponent implements Component {
      * days, and the player standing up from the helm found nobody to hand it to.
      */
     public transient boolean helmWanted;
+
+    /**
+     * Tiles within this many (in x or y) of where a crew member was hit by weapon fire are under fire
+     * for the rest of the fight ({@link #underFire}).
+     */
+    public static final int FIRE_ZONE_RADIUS = 2;
+    /**
+     * Where crew were hit by weapon fire in this fight, as x, y pairs: set by their wounds
+     * ({@link CrewService#applyDamage}), cleared by {@link #standDown} once the ship is off battle
+     * stations. Not saved.
+     */
+    public final transient IntArray hitTiles = new IntArray();
+
+    /** Notes a crew member hit by weapon fire at (x, y). */
+    public void hitAt(int x, int y) {
+        for (int i = 0; i < hitTiles.size; i += 2) if (hitTiles.get(i) == x && hitTiles.get(i + 1) == y) return;
+        hitTiles.add(x);
+        hitTiles.add(y);
+    }
+
+    /**
+     * True while at battle stations if (x, y) is within {@link #FIRE_ZONE_RADIUS} of where a crew
+     * member was hit in this fight (round 8). Seed 7's ace raked one hull section: a hand went to patch
+     * the leak there and was cut down, and the rest went in one by one, to stop her bleeding, seal the
+     * breach and mend the turret, until all four were down and bled out.
+     */
+    public boolean underFire(int x, int y) {
+        if (!battleStations) return false;
+        for (int i = 0; i < hitTiles.size; i += 2) {
+            if (Math.abs(hitTiles.get(i) - x) <= FIRE_ZONE_RADIUS && Math.abs(hitTiles.get(i + 1) - y) <= FIRE_ZONE_RADIUS) return true;
+        }
+        return false;
+    }
+
+    /** Forgets where the fire fell: the game calls it while the ship is off battle stations. */
+    public void standDown() {
+        hitTiles.clear();
+    }
 
     /** True while the crew should keep their suits on for battle stations. */
     public boolean battleSuits() {
