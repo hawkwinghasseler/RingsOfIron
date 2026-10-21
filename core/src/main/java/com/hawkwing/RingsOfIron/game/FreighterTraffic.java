@@ -43,6 +43,13 @@ public class FreighterTraffic extends EntitySystem implements BubbleTransitionLi
             public void departed(Entity craft, Entity station) {
             }
         };
+        // Coming in to berth when warp collapses the bubble, it arrives in the warp
+        world.timeWarp.changes.add((signal, change) -> {
+            if (!change.rails) return;
+            for (String id : world.macroSim.bubble().inBubble()) {
+                world.macroSim.freighters().arriveFromBubble(id, world.engine.getSimSeconds());
+            }
+        });
     }
 
     @Override

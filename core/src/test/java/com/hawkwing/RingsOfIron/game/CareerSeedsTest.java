@@ -43,6 +43,23 @@ class CareerSeedsTest {
      */
     static final Map<Long, Stop> ROUND5_STOPS = Map.of();
 
+    /**
+     * Round 10: seeds whose round 3 career may make up more than {@link Round3CareerTest#GUNSHIP_SHORTFALL}
+     * for the gunship, with no fight lost, and the most it may. Every other CI seed is held to
+     * {@code GUNSHIP_SHORTFALL}.
+     * <ul>
+     *   <li>Seed 7: Red Kestrel is beaten by losing its gun (its turret mount at 0.24) and runs, but
+     *       is never disabled, so the 5 standing for a ship the player beats ({@code LoopWiring}'s
+     *       {@code beaten}, {@link FactionStanding#KILL_SHARE} of {@link FactionStanding#KILL_COST}) never
+     *       comes. The career stops at 33 standing, 2.5 short of Lieutenant Commander, waits three weeks
+     *       on a Lieutenant's budget, and the script makes up 12,765 cr (round 9 and 10). Crediting a
+     *       disarmed ship is a balance call left for Joe (planning/round10-sweep.md). With round 10
+     *       part 3's pirate crews resetting power first, Red Kestrel is disabled and nothing is made up;
+     *       the allowance stays while that flag may still be narrowed to plain pirates.</li>
+     * </ul>
+     */
+    static final Map<Long, Double> SHORTFALL_ALLOWED = Map.of(7L, 15_000.0);
+
     static final class Stop {
         final String step, message;
 
@@ -84,6 +101,12 @@ class CareerSeedsTest {
         if (stop == null) {
             if (first.failure != null) throw new AssertionError("seed " + seed + " stops before the gunship", first.failure);
             assertNotNull(first.home, "seed " + seed + " reaches the gunship");
+            // Round 10: the gunship paid for in play on every CI seed, as Round3CareerTest holds seed 2026
+            if (first.fightsLost == 0) {
+                double allowed = SHORTFALL_ALLOWED.getOrDefault(seed, Round3CareerTest.GUNSHIP_SHORTFALL);
+                assertTrue(first.grantedCredits <= allowed, String.format(java.util.Locale.ROOT,
+                        "seed %d: the gunship paid for in play: %.0f cr short, against %.0f", seed, first.grantedCredits, allowed));
+            }
         } else if (first.failure == null) {
             fail("seed " + seed + " now reaches the gunship: take it off CareerSeedsTest.STOPS");
         } else if (!stop.matches(first.failure)) {
