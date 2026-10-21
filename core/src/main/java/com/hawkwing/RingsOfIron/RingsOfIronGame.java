@@ -17,7 +17,6 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.CircleShape;
@@ -52,24 +51,19 @@ import com.hawkwing.RingsOfIron.game.NoticeFeeds;
 import com.hawkwing.RingsOfIron.game.NoticeLog;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
 import com.hawkwing.RingsOfIron.game.PlayerGunnery;
-import com.hawkwing.RingsOfIron.lighting.DeckLightRig;
 import com.hawkwing.RingsOfIron.lighting.EmissiveLights;
 import com.hawkwing.RingsOfIron.lighting.HullArt;
 import com.hawkwing.RingsOfIron.lighting.SceneLighting;
+import com.hawkwing.RingsOfIron.render.DeckRenderer;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
 import com.hawkwing.RingsOfIron.shell.SaveSummary;
-import com.ringsofiron.aicrew.CrewBody;
-import com.ringsofiron.aicrew.CrewMemberComponent;
-import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
-import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.stationsdocking.ForceMethod;
-import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.orbital.warp.TimeWarpController;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -79,7 +73,6 @@ import com.ringsofiron.uihud.UiHud;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
-import com.ringsofiron.uihud.minimap.TileShade;
 import com.ringsofiron.combatsys.components.DecoyComponent;
 import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
@@ -88,7 +81,6 @@ import com.ringsofiron.combatsys.components.WeaponsComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.EnumSet;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -152,8 +144,6 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private static final Family COMBAT_ROUNDS = Family.all(ProjectileComponent.class).get();
     private static final Family DECOYS = Family.all(DecoyComponent.class).get();
     private static final Family ARMED = Family.all(WeaponsComponent.class).get();
-    private static final com.badlogic.ashley.utils.ImmutableArray<Entity> NO_ENTITIES =
-            new com.badlogic.ashley.utils.ImmutableArray<>(new Array<Entity>());
     private static final float INTERIOR_VIEW = 40f;
     private static final float START_VIEW = 160f;
     private static final float STATUS_WIDTH = 420f;
@@ -192,9 +182,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     /** The art pack's atlas; empty when it was not built, and then everything is drawn in shapes. */
     private ArtLibrary art;
     private DeckArt deckArt;
+    private DeckRenderer deckRenderer;
     private ExteriorArt exteriorArt;
-    private final Matrix4 pose = new Matrix4();
-    private final Matrix4 identity = new Matrix4();
     /** Combat entities drawn with art this frame, which the shapes then skip. */
     private final Array<Entity> drawnWithArt = new Array<>();
     private BitmapFont font;
@@ -234,9 +223,6 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private final Array<Body> bodies = new Array<>();
     /** The craft whose decks the interior view draws. */
     private final Array<Entity> decks = new Array<>();
-    /** Smoke, wind and flames of each deck on show; a craft's go when it is no longer drawn. */
-    private final Map<ShipGridComponent, HazardParticles> hazards = new IdentityHashMap<>();
-    private final Map<ShipGridComponent, Boolean> hazardsDrawn = new IdentityHashMap<>();
     private final Vector2 followAt = new Vector2();
     private final Vector2 tmp = new Vector2();
     private final Vector2 tmp2 = new Vector2();
@@ -292,6 +278,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gameHud = new GameHud(world, hud);
         silencedMarkers = new com.hawkwing.RingsOfIron.game.SilencedMarkers(world);
         lighting = new SceneLighting(EmissiveLights.load(assetsDir));
+        deckRenderer = new DeckRenderer(() -> world, shapes, batch, deckArt, lighting, () -> game.avatar);
         hullArt = new HullArt(game.content.defs);
 
         gun = new PlayerGunnery(world, game.player);
@@ -537,6 +524,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             }
             if (just(Action.LIGHTS)) {
                 lightsOn = !lightsOn;
+                deckRenderer.setLightsOn(lightsOn);
                 show(lightsOn ? "Deck lighting on" : "Deck lighting off");
             }
             // Up the screen is W whichever way the craft the avatar is aboard is turned
@@ -1283,123 +1271,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
      */
     private void drawInterior(float delta) {
         Entity aboard = world.avatar.getAvatarShip();
-        if (aboard == null) aboard = game.player;
-        ShipGridComponent grid = aboard.getComponent(ShipGridComponent.class);
-        if (grid == null) return;
-        decks.clear();
-        decks.add(aboard);
-        for (GridLink link : grid.links) {
-            if (!decks.contains(link.otherShip, true)) decks.add(link.otherShip);
-        }
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        boolean withArt = deckArt.available();
-        hazardsDrawn.clear();
-        for (Entity ship : decks) {
-            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
-            Body body = world.docking.bodyOf(ship);
-            if (g == null || body == null) continue;
-            Vector2 at = PhysicsManager.getPosition(body, tmp);
-            float degrees = body.getAngle() * MathUtils.radiansToDegrees;
-            CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
-            if (withArt) {
-                batch.setProjectionMatrix(viewports.getWorldCamera().combined);
-                batch.setTransformMatrix(pose.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, degrees));
-                batch.begin();
-                deckArt.draw(batch, g, hold);
-                batch.end();
-                batch.setTransformMatrix(identity);
-            }
-            // The batch's end turned blending off; the walkways drawn below are translucent
-            Gdx.gl.glEnable(GL20.GL_BLEND);
-            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-            shapes.begin(ShapeRenderer.ShapeType.Filled);
-            shapes.identity();
-            shapes.translate(at.x, at.y, 0f);
-            shapes.rotate(0f, 0f, 1f, degrees);
-            if (lightsOn) {
-                lighting.addDeck(g, at.x, at.y, body.getAngle());
-                float cos = MathUtils.cos(body.getAngle()), sin = MathUtils.sin(body.getAngle());
-                for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
-                    GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                    if (pos.ship != ship) continue;
-                    Vector2 local = pos.toShipLocal(g, tmp2);
-                    lighting.addCrew(at.x + cos * local.x - sin * local.y, at.y + sin * local.x + cos * local.y,
-                            CrewBody.RADIUS * g.tileSize);
-                }
-            }
-            float s = g.tileSize;
-            if (withArt) {
-                if (!deckArt.hasWalkways()) DeckView.walkways(shapes, g, color, 0.6f);
-            } else {
-                for (int y = 0; y < g.height; y++) {
-                    for (int x = 0; x < g.width; x++) {
-                        TileShade.deck(g.getTile(x, y), color);
-                        if (color.a <= 0f) continue;
-                        shapes.setColor(color);
-                        Vector2 p = g.tileToLocal(x, y);
-                        shapes.rect(p.x - s / 2f + 0.03f, p.y - s / 2f + 0.03f, s - 0.06f, s - 0.06f);
-                    }
-                }
-                DeckView.walkways(shapes, g, color, 1f);
-                DeckView.walls(shapes, g, color);
-                DeckView.cargo(shapes, g, hold, color);
-            }
-            // Smoke and flames over the deck, under everyone aboard; they open their own batches
-            shapes.end();
-            HazardParticles particles = hazards.get(g);
-            if (particles == null) hazards.put(g, particles = new HazardParticles());
-            hazardsDrawn.put(g, Boolean.TRUE);
-            particles.update(g, delta);
-            particles.draw(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, s);
-            shapes.begin(ShapeRenderer.ShapeType.Filled);
-            boolean crewArt = withArt && deckArt.hasCrew();
-            for (Entity e : crewArt ? NO_ENTITIES : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
-                GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                if (pos.ship != ship) continue;
-                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-                Color mark = e == game.avatar ? Color.WHITE : world.standing.factions().known(c.faction) ? DeckView.STATION_CREW : Color.GOLD;
-                Vector2 local = pos.toShipLocal(g, tmp2);
-                DeckView.crew(shapes, c, local.x, local.y, s, mark, color);
-            }
-            shapes.end();
-            if (crewArt) {
-                batch.setTransformMatrix(pose);
-                batch.begin();
-                for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
-                    GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                    if (pos.ship != ship) continue;
-                    CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-                    ArtNames.Crew who = e == game.avatar ? ArtNames.Crew.PLAYER
-                            : world.standing.factions().known(c.faction) ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP;
-                    Vector2 local = pos.toShipLocal(g, tmp2);
-                    deckArt.crew(batch, e, who, c.load == null ? null : c.load.task.job.commodity(), local.x, local.y, s);
-                }
-                batch.end();
-                batch.setTransformMatrix(identity);
-            }
-        }
-        hazards.keySet().retainAll(hazardsDrawn.keySet());
-        shapes.identity();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
-        if (!lightsOn) return;
-        // The light map over the decks, dark when the craft aboard has no power; then the glow on top
-        lighting.renderLights(viewports.getWorldCamera(), DeckLightRig.hasPower(grid));
-        if (withArt) {
-            // What gives off light shows lit whatever light falls on it
-            batch.setProjectionMatrix(viewports.getWorldCamera().combined);
-            for (Entity ship : decks) {
-                ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
-                Body body = world.docking.bodyOf(ship);
-                if (g == null || body == null) continue;
-                Vector2 at = PhysicsManager.getPosition(body, tmp);
-                batch.setTransformMatrix(pose.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, body.getAngle() * MathUtils.radiansToDegrees));
-                batch.begin();
-                deckArt.glow(batch, g);
-                batch.end();
-            }
-            batch.setTransformMatrix(identity);
-        }
-        lighting.renderGlow(batch, viewports.getWorldCamera(), 0f);
+        deckRenderer.draw(DeckRenderer.decksAround(aboard == null ? game.player : aboard, decks),
+                viewports.getWorldCamera(), delta);
     }
 
     /** Where the avatar stands, world meters, or null when it is aboard nothing in the bubble. */

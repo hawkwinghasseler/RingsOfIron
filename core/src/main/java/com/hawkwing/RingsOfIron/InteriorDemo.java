@@ -16,17 +16,18 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.debug.DebugNames;
 import com.hawkwing.RingsOfIron.debug.DebugTarget;
 import com.hawkwing.RingsOfIron.debug.DevConsole;
-import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.InteriorLab;
 import com.hawkwing.RingsOfIron.game.WorldDebug;
 import com.hawkwing.RingsOfIron.game.WoundWatch;
+import com.hawkwing.RingsOfIron.render.DeckRenderer;
 import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
@@ -35,7 +36,6 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
-import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -116,7 +116,8 @@ public class InteriorDemo extends ApplicationAdapter {
     private BitmapFont font;
     private ArtLibrary art;
     private DeckArt deckArt;
-    private HazardParticles particles = new HazardParticles();
+    private DeckRenderer deckRenderer;
+    private final Array<Entity> decks = new Array<>();
     /** Meters per screen pixel. */
     private float zoom = 0.05f;
 
@@ -159,6 +160,8 @@ public class InteriorDemo extends ApplicationAdapter {
         font = new BitmapFont();
         art = ArtLibrary.load(ArtLibrary.DEFAULT_PATH);
         deckArt = new DeckArt(art);
+        deckRenderer = new DeckRenderer(() -> lab.world, shapes, batch, deckArt, null, () -> null)
+                .inShipFrame().setStyle(crewStyle());
         camera = new OrthographicCamera();
         ui = new OrthographicCamera();
         lab = new InteriorLab(assetsDir);
@@ -220,7 +223,7 @@ public class InteriorDemo extends ApplicationAdapter {
         shipLoaded();
     }
 
-    /** A new ship in the lab (by a key, or a script): fresh smoke, nobody followed, zoomed to fit. */
+    /** A new ship in the lab (by a key, or a script): nobody followed, zoomed to fit. */
     private void shipLoaded() {
         shown = lab.ship;
         // The console carries on in the new world: its scrollback, history and variables kept
@@ -243,7 +246,6 @@ public class InteriorDemo extends ApplicationAdapter {
                 devStep += seconds;
             }
         });
-        particles = new HazardParticles();
         selected = null;
         ShipGridComponent g = grid();
         float w = Gdx.graphics.getWidth() - PANEL_WIDTH - 60f, h = Gdx.graphics.getHeight() - LOG_HEIGHT - TOP - 40f;
@@ -303,9 +305,11 @@ public class InteriorDemo extends ApplicationAdapter {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_STENCIL_BUFFER_BIT);
         shapes.setProjectionMatrix(camera.combined);
         batch.setProjectionMatrix(camera.combined);
-        drawDeck(lab.paused ? 0f : delta * lab.speed);
+        decks.clear();
+        decks.add(lab.ship);
+        deckRenderer.draw(decks, camera, lab.paused ? 0f : delta * lab.speed);
         drawFlight();
-        drawCrew();
+        drawCrewLabels();
         drawCursor();
         drawDevSelection();
         drawPanels();
@@ -526,38 +530,22 @@ public class InteriorDemo extends ApplicationAdapter {
     // Drawing
     // -----------------------------------------------------------------------
 
-    /** The deck in the ship's own frame: the art pack's when it is built, else the minimap's plan. */
-    private void drawDeck(float delta) {
-        ShipGridComponent g = grid();
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        if (deckArt.available()) {
-            batch.begin();
-            deckArt.draw(batch, g, lab.ship.getComponent(CargoHoldComponent.class));
-            batch.end();
-        }
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
+    /**
+     * Over the deck: heat, dull red from 350 K to bright at the ignition point; thin air as a blue
+     * wash, open to space as near black; and walls marked as they are worn down.
+     */
+    private void drawWear(ShapeRenderer shapes, ShipGridComponent g) {
         float s = g.tileSize;
         for (int y = 0; y < g.height; y++) {
             for (int x = 0; x < g.width; x++) {
                 Tile t = g.getTile(x, y);
-                Vector2 p = g.tileToLocal(x, y);
-                if (!deckArt.available()) {
-                    TileShade.deck(t, color);
-                    if (color.a > 0f) {
-                        shapes.setColor(color);
-                        shapes.rect(p.x - s / 2f + 0.03f, p.y - s / 2f + 0.03f, s - 0.06f, s - 0.06f);
-                    }
-                }
                 if (t.isVoid()) continue;
-                // Heat, dull red from 350 K to bright at the ignition point
+                Vector2 p = g.tileToLocal(x, y);
                 float heat = (t.temperature - 350f) / (GridHazardSystem.IGNITION_TEMPERATURE - 350f);
                 if (heat > 0f) {
                     shapes.setColor(1f, 0.25f, 0.05f, Math.min(0.6f, heat * 0.6f));
                     shapes.rect(p.x - s / 2f, p.y - s / 2f, s, s);
                 }
-                // Thin air as a blue wash, open to space as near black
                 if (t.holdsAir()) {
                     float air = Math.min(1f, g.oxygenRatioAt(x, y));
                     if (air < 0.9f) {
@@ -572,13 +560,6 @@ public class InteriorDemo extends ApplicationAdapter {
                 }
             }
         }
-        if (!deckArt.available()) {
-            DeckView.walls(shapes, g, color);
-            DeckView.cargo(shapes, g, lab.ship.getComponent(CargoHoldComponent.class), color);
-        }
-        shapes.end();
-        particles.update(g, delta);
-        particles.draw(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, s);
     }
 
     /** Rounds, missiles, rocks and beams in flight, and the attacker's bearing. */
@@ -620,54 +601,71 @@ public class InteriorDemo extends ApplicationAdapter {
         shapes.end();
     }
 
-    private void drawCrew() {
+    /**
+     * The game's crew figures, greyed while they are down, with what this demo adds beneath: a
+     * cross for the dead, a white ring round the one followed, a red ring round boarders, and the
+     * wound as a disc (as the dot itself without the crew art).
+     */
+    private DeckRenderer.Style crewStyle() {
+        return new DeckRenderer.Style() {
+            @Override
+            public ArtNames.Crew figure(Entity crew, CrewMemberComponent c) {
+                return c.faction != 0 ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP;
+            }
+
+            @Override
+            public Color dot(Entity crew, CrewMemberComponent c) {
+                return woundColor(c);
+            }
+
+            @Override
+            public Color tint(Entity crew, CrewMemberComponent c) {
+                return c.state == CrewState.UNCONSCIOUS ? GREYED : Color.WHITE;
+            }
+
+            @Override
+            public boolean shown(Entity crew) {
+                CrewMemberComponent c = lab.world.crew.crew(crew);
+                return c == null || c.state != CrewState.DEAD;
+            }
+
+            @Override
+            public void overDeck(ShapeRenderer shapes, Entity ship, ShipGridComponent g) {
+                drawWear(shapes, g);
+            }
+
+            @Override
+            public void underCrew(ShapeRenderer shapes, Entity e, CrewMemberComponent c, float x, float y,
+                                  float tileSize, boolean figures) {
+                float r = 0.32f * tileSize;
+                if (c.state == CrewState.DEAD) {
+                    shapes.setColor(0.55f, 0.55f, 0.55f, 1f);
+                    shapes.rectLine(x - r, y - r, x + r, y + r, 0.08f);
+                    shapes.rectLine(x - r, y + r, x + r, y - r, 0.08f);
+                    return;
+                }
+                if (e == selected) {
+                    shapes.setColor(Color.WHITE);
+                    shapes.circle(x, y, r * 1.45f, 20);
+                }
+                if (c.faction != 0) {
+                    shapes.setColor(Color.RED);
+                    shapes.circle(x, y, r * 1.2f, 20);
+                }
+                if (figures && (c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS)) {
+                    // The figure has no art of its own for being hurt or down
+                    Color w = woundColor(c);
+                    shapes.setColor(w.r, w.g, w.b, w.a * 0.7f);
+                    shapes.circle(x, y, r * 1.05f, 20);
+                }
+            }
+        };
+    }
+
+    /** Each name over its owner, with the bleed-out clock of the critical. */
+    private void drawCrewLabels() {
         ShipGridComponent g = grid();
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        boolean sprites = deckArt.available() && deckArt.hasCrew();
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
         List<Entity> aboard = lab.debug.crewAboard(lab.ship);
-        for (Entity e : aboard) {
-            CrewMemberComponent c = lab.world.crew.crew(e);
-            Vector2 at = lab.world.crew.position(e).toShipLocal(g, tmp);
-            float r = 0.32f * g.tileSize;
-            if (c.state == CrewState.DEAD) {
-                shapes.setColor(0.55f, 0.55f, 0.55f, 1f);
-                shapes.rectLine(at.x - r, at.y - r, at.x + r, at.y + r, 0.08f);
-                shapes.rectLine(at.x - r, at.y + r, at.x + r, at.y - r, 0.08f);
-                continue;
-            }
-            if (e == selected) {
-                shapes.setColor(Color.WHITE);
-                shapes.circle(at.x, at.y, r * 1.45f, 20);
-            }
-            if (c.faction != 0) {
-                shapes.setColor(Color.RED);
-                shapes.circle(at.x, at.y, r * 1.2f, 20);
-            }
-            if (!sprites) {
-                DeckView.crew(shapes, c, at.x, at.y, g.tileSize, woundColor(c), color);
-            } else if (c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS) {
-                // The wound as a disc under the figure, which has no art of its own for being hurt or down
-                Color w = woundColor(c);
-                shapes.setColor(w.r, w.g, w.b, w.a * 0.7f);
-                shapes.circle(at.x, at.y, r * 1.05f, 20);
-            }
-        }
-        shapes.end();
-        if (sprites) {
-            // The game's own crew figures over the discs, greyed while they are down
-            batch.begin();
-            for (Entity e : aboard) {
-                CrewMemberComponent c = lab.world.crew.crew(e);
-                if (c.state == CrewState.DEAD) continue;
-                Vector2 at = lab.world.crew.position(e).toShipLocal(g, tmp);
-                batch.setColor(c.state == CrewState.UNCONSCIOUS ? GREYED : Color.WHITE);
-                deckArt.crew(batch, e, c.faction != 0 ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP,
-                        c.load == null ? null : c.load.task.job.commodity(), at.x, at.y, g.tileSize);
-            }
-            batch.setColor(Color.WHITE);
-            batch.end();
-        }
         batch.setProjectionMatrix(ui.combined);
         batch.begin();
         Vector3 v = new Vector3();
