@@ -230,13 +230,12 @@ public class PlaytestLauncher {
                     for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.badlogic.ashley.core.Family.all(
                             com.ringsofiron.macrosim.hostile.HostileComponent.class).get())) {
                         com.ringsofiron.macrosim.hostile.HostileComponent h = e.getComponent(com.ringsofiron.macrosim.hostile.HostileComponent.class);
-                        com.hawkwing.RingsOfIron.game.DisabledComponent d = e.getComponent(com.hawkwing.RingsOfIron.game.DisabledComponent.class);
                         PhysicsBodyComponent pb = e.getComponent(PhysicsBodyComponent.class);
                         String range = pb == null || pb.body == null || ship == null ? "rails"
                                 : String.format(java.util.Locale.ROOT, "%.0f m", PhysicsManager.getPosition(pb.body, new Vector2())
                                         .dst(PhysicsManager.getPosition(ship, new Vector2())));
                         out.append(String.format("%n  %s %s target=%s %s %s", h.displayName, h.state, h.targetUuid,
-                                d == null ? "fit" : d.reason, range));
+                                com.hawkwing.RingsOfIron.game.HostileLabel.of(world, e), range));
                     }
                     return out.toString();
                 }
