@@ -83,6 +83,36 @@ class NoticeLogTest {
         assertEquals(3, heard.size(), "nothing to say is not posted");
     }
 
+    /** Round 8's window: R pressed through one reload logged "Launcher reloading" 6 times. */
+    @Test
+    void reloadingIsToldOncePerReloadNotOncePerPress() {
+        NoticeLog log = new NoticeLog(() -> now);
+        assertNotNull(log.postOnce(NoticeLog.RELOADING, NoticeLog.Kind.INFO));
+        for (int i = 0; i < 5; i++) {
+            log.update(10f);
+            assertNull(log.postOnce(NoticeLog.RELOADING, NoticeLog.Kind.INFO), "pressed again in the same reload");
+        }
+        assertEquals(1, log.history().size());
+        assertEquals(NoticeLog.RELOADING, log.history().get(0).label(), "not counted either");
+
+        log.allowAgain(NoticeLog.RELOADING); // the launcher fired
+        assertNotNull(log.postOnce(NoticeLog.RELOADING, NoticeLog.Kind.INFO), "the next reload is told");
+        assertEquals(2, log.history().size());
+
+        log.clear(); // another game loaded
+        assertNotNull(log.postOnce(NoticeLog.RELOADING, NoticeLog.Kind.INFO));
+    }
+
+    @Test
+    void aRevisionCanTakeAWorseKind() {
+        NoticeLog log = new NoticeLog(() -> now);
+        NoticeLog.Notice light = log.post("Cole is lightly wounded", NoticeLog.Kind.INFO);
+        NoticeLog.Notice critical = log.revise(light, "Cole is critically wounded", NoticeLog.Kind.WARNING);
+        assertEquals(1, log.history().size());
+        assertEquals(NoticeLog.Kind.WARNING, critical.kind);
+        assertSame(critical, log.showing().get(0));
+    }
+
     @Test
     void theLogIsStampedWithSimTime() {
         NoticeLog log = new NoticeLog(() -> now);

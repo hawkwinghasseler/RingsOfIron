@@ -102,6 +102,8 @@ A load reseeds the combat and crew dice from a seeded save's seed (`world.reseed
 - Round 6: the second wave launches when the first defender is beaten or after 90 s; ties in firepower launch by name; when every defender carries a railgun the order stands.
 - Round 7: the frigate's raid is tuned to win 6 to 8 of 10 in the enemy survey with mean hull 0.50 to 0.75: it wins 7, at 0.74. The career seeds 2026, 7 and 12 drew no railgun raider for the raid and still end it at hull 0.89 or better.
 - Round 8: the career flies the survey's raid. The survey's frigate wins 7 of 10 at mean hull 0.73 (worst 0.43). On the career seeds the raid is a draw of the same fight: seed 2026 meets a railgun raider and wins at 0.50, seed 12 meets a railgun platform and wins at 0.79, and seed 7 meets neither and wins at 1.00.
+- Round 9: stray fire never brings a prize back (`HostileTraffic.STRAY_FIRE_REVIVES` false): point-defense rounds and rounds or missiles aimed at another ship don't count, nor a shot down the barrel at no target. Fire aimed at the prize itself after the 10 s grace still does, so locking a struck raider and firing on it brings it back. The player's point defense and crewed guns, firing at will, never take a struck ship as their target.
+- Round 9: hits on a boarder count towards breaking it off only within 1,000 m of the player's ship (`PirateBoarding.BREAK_OFF_RANGE`); further out a hit works as in any fight, so a boarding begins close in. One hit inside that range still ends it (`BREAK_OFF_HITS` 1), and a pirate driven off doesn't board again until the player recovers.
 - All the numbers above are placeholders.
 
 ## Not built

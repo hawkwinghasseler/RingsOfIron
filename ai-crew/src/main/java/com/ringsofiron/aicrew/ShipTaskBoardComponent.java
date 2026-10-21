@@ -60,9 +60,9 @@ public class ShipTaskBoardComponent implements Component {
     /**
      * Where crew were hit by weapon fire in this fight, as x, y pairs: set by their wounds
      * ({@link CrewService#applyDamage}), cleared by {@link #standDown} once the ship is off battle
-     * stations. Not saved.
+     * stations. Saved (round 9), so a fight loaded part way through still keeps clear of them.
      */
-    public final transient IntArray hitTiles = new IntArray();
+    public final IntArray hitTiles = new IntArray();
 
     /** Notes a crew member hit by weapon fire at (x, y). */
     public void hitAt(int x, int y) {

@@ -26,6 +26,13 @@ public class ProjectileComponent implements Component {
      * from was fired: a warhead's fragments keep their missile's, so a hit can tell when it was fired.
      */
     public float firedAt;
+    /**
+     * What the weapon that fired this was engaging, kept by its fragments and ricochets, or null for a
+     * shot down the barrel; a hit on anything else is stray fire.
+     */
+    public transient Entity aimedAt;
+    /** Fired by a point-defense mount, at a missile; kept by fragments and ricochets. */
+    public boolean pointDefense;
     /** The firing ship; the round ignores it until {@code def.armingTime}. Null for none. */
     public transient Entity owner;
     /** An entity this round may not hit until {@link #ignoreUntil} (a ship it just ricocheted off). */

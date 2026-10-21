@@ -1328,11 +1328,26 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
             c.tier = far ? 1 : 0;
             c.reward = ESCORT_PAY * (far ? FAR_PAY : 1);
             c.standing = 4 + 2 * c.tier;
-            double eta = Double.isNaN(f.arrivalTime) ? now() : f.arrivalTime;
-            c.deadline = Math.max(eta, now()) + DAY * (far ? FAR_DAYS : NEAR_DAYS);
+            c.deadline = dueAtBuyer(f, far) + DAY * (far ? FAR_DAYS : NEAR_DAYS);
             out.add(c);
         }
         return out;
+    }
+
+    /**
+     * About when a freighter claiming an order should reach the buyer, sim seconds. One already loaded
+     * has its arrival time (the buyer, or an SOI crossing on the way there). One still flying in to
+     * load has the rest of that leg and then the haul ahead of it, and while it crosses into another
+     * body's sphere its arrival time is only the crossing. Round 9: seed 12 was offered an escort whose
+     * freighter was a week from loading, with the deadline two days past the crossing, and lost
+     * Operation Lifeline when it ran out of time.
+     */
+    private double dueAtBuyer(FreighterComponent f, boolean far) {
+        double eta = Double.isNaN(f.arrivalTime) ? now() : Math.max(now(), f.arrivalTime);
+        FreighterComponent.State state = f.state == FreighterComponent.State.IN_BUBBLE ? f.resumeState : f.state;
+        if (state != FreighterComponent.State.TO_PICKUP) return eta;
+        if (f.transitBodyUuid != null) eta += DAY * FAR_DAYS;
+        return eta + DAY * (far ? FAR_DAYS : NEAR_DAYS);
     }
 
     private boolean isAce(String uuid) {
@@ -1434,7 +1449,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
                 FreighterComponent f = world.macroSim.freighters().get(run.get(i).claimedBy);
                 c.targets[i] = run.get(i).claimedBy;
                 c.targetNames[i] = f.displayName == null ? "a freighter" : f.displayName;
-                if (!Double.isNaN(f.arrivalTime)) eta = Math.max(eta, f.arrivalTime);
+                eta = Math.max(eta, dueAtBuyer(f, far));
             }
             c.targetUuid = c.targets[0];
             c.targetName = c.targetNames[0];

@@ -72,6 +72,18 @@ class GameScenarioTest {
         world.dispose();
     }
 
+    /** Round 9, real window: guns fired down the barrel in a save with no first raider left crashed the game. */
+    @Test
+    void aShotWithNoTargetIsFineOnceTheFirstRaiderIsGone() {
+        game.raider = null;
+        com.ringsofiron.combatsys.events.ShotFiredEvent shot = new com.ringsofiron.combatsys.events.ShotFiredEvent();
+        shot.shooter = game.player;
+        shot.weaponDefId = "autocannon_mk1";
+        assertDoesNotThrow(() -> world.combatEvents.shots.dispatch(shot));
+        assertDoesNotThrow(game::provokeRaider);
+        assertFalse(game.raiderHostile());
+    }
+
     @Test
     void aShipGivenTheGoneRaidersEntityIsNotTakenForTheRaider() {
         // Round 9: the engine pools its entities. Seed 12's ace Black Sal was handed the first

@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Real Box2D world, real ballistics: rounds fly, hit hulls and wreck interiors. */
@@ -109,6 +110,30 @@ class CombatIntegrationTest {
         float mass = PhysicsManager.getMass(body(ship));
         assertTrue(v.x * mass <= slug.mass * slug.muzzleSpeed * 1.001f);
         assertEquals(1, liveRounds(), "the slug flew on out the far side");
+    }
+
+    @Test
+    void aHitCarriesWhatItsRoundWasAimedAt() {
+        // Round 9: the game tells stray fire (point defense, or a round aimed at another ship) from aimed
+        Entity ship = spawnShip(0, 0, 0, WeightClass.MEDIUM);
+        Entity dart = new Entity();
+        Array<com.ringsofiron.combatsys.events.ImpactEvent> hits = new Array<>();
+        events.impacts.add((signal, hit) -> hits.add(hit));
+        ProjectileDef slug = defs.projectile("slug_tungsten_20kg");
+        ProjectileComponent p = ballistics.spawn(slug, slug.mass, -600f, 0.5f, slug.muzzleSpeed, 0f, null)
+                .getComponent(ProjectileComponent.class);
+        p.aimedAt = dart;
+        p.pointDefense = true;
+        run(20);
+        assertEquals(1, hits.size);
+        assertSame(ship, hits.first().target);
+        assertSame(dart, hits.first().aimedAt, "aimed at the dart, not the ship it hit");
+        assertTrue(hits.first().pointDefense);
+        // The slug flies on out the far side, still aimed where it was
+        for (Entity e : engine.getEntitiesFor(com.badlogic.ashley.core.Family.all(ProjectileComponent.class).get())) {
+            assertSame(dart, e.getComponent(ProjectileComponent.class).aimedAt);
+            assertTrue(e.getComponent(ProjectileComponent.class).pointDefense);
+        }
     }
 
     @Test

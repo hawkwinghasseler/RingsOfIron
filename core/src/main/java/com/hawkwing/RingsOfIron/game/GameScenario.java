@@ -206,10 +206,10 @@ public class GameScenario {
         contacts.add(raider);
         // The raider's point defense is always up; it opens fire once the player shoots at it.
         world.combatEvents.shots.add((signal, shot) -> {
-            if (shot.shooter == player && shot.target == raider) provokeRaider();
+            if (shot.shooter == player && shot.target != null && shot.target == raider) provokeRaider();
         });
         world.combatEvents.impacts.add((signal, hit) -> {
-            if (hit.owner == player && hit.target == raider) provokeRaider();
+            if (hit.owner == player && hit.target != null && hit.target == raider) provokeRaider();
         });
         // Gone, the raider is forgotten: the engine pools its entities, and a later ship given the
         // same one was provoked by the player's first shot as if it were the raider (round 9: seed
@@ -452,6 +452,8 @@ public class GameScenario {
      * raider stays out of it.
      */
     public void provokeRaider() {
+        // A save from after the first raider was dealt with has none (round 9, real window: a shot
+        // down the barrel, target null, matched the null raider and crashed the game)
         if (raider == null || ShipDisablement.isDisabled(raider)) return;
         SensorComponent sensor = raider.getComponent(SensorComponent.class);
         if (sensor != null && sensor.lockedTarget == null) sensor.lockedTarget = player;

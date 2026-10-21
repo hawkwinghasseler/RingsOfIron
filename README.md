@@ -65,11 +65,15 @@ Each demo lists its own controls on screen.
 The scripted career saves the game at the moments each round's changes show best. To play from them in your own game:
 
 1. Write the saves (a few minutes): `./gradlew :core:slowTest --tests '*Round5CareerTest'`. They go to `core/build/playtest-saves/seed-2026`.
-2. Run the game with them: `./gradlew :lwjgl3:runGame -PcareerSaves=core/build/playtest-saves/seed-2026`. The saves are copied into `assets/saves/`, so Load lists them beside your own, and they stay there for later runs. A save already there is never overwritten: delete it from Load (or from `assets/saves/`) to take a newer one. A relative folder is read from the repository root.
+2. Run the game with them: `./gradlew :lwjgl3:runGame -PcareerSaves=core/build/playtest-saves/seed-2026`. The saves are copied into `assets/saves/`, so Load lists them beside your own, and they stay there for later runs. A relative folder is read from the repository root.
+   - The copy lists what it put there in `assets/saves/career-saves.txt`. The next run with `-PcareerSaves` replaces those saves, and only those, so a new round's saves take the place of the last round's. The console says what it copied, replaced and kept.
+   - A save you made is never touched, and neither is a career save you have saved over since (a save under the same name): it is yours now, and kept. To take the new copy instead, delete it from Load (or from `assets/saves/`) and run again.
+   - Saves copied before round 9 aren't on the list, so the first run keeps them. Delete them from Load once, and later runs replace them for you.
 3. Pick one from Load. Continue loads the newest save, which after a fresh copy is usually the career's last.
 
 | Save | Where it starts | What it shows |
 |---|---|---|
+| First ace fight | Day 1, the corvette 3 km from the ace Red Kestrel, its bounty taken | The corvette's first ace fight: Tab, Space, R. Lost, the tug (B twice) brings you to Highport, and the crew panel (I) shows how the wounded fare at the berth |
 | Before the Moon trip | Day 1, the corvette docked at Highport, the captain at the helm | Undocking (U) and the transfer autopilot (6) to the Moon; the cabin's air |
 | Gunship | Day 26, the gunship just bought | The helm's dock order (5); the crew panel (I) |
 | Gunship bounty fight | Day 30, the gunship in a bounty fight | A fight: Tab, Space, R; wounds on the crew panel (I) |
