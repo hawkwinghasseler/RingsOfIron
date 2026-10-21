@@ -345,11 +345,12 @@ public class PlaytestLauncher {
                     if (c == null) return "no captain";
                     com.ringsofiron.aicrew.GridPositionComponent pos = world.crew.position(avatar);
                     ShipGridComponent grid = pos == null ? null : world.crew.grid(pos.ship);
-                    return String.format(java.util.Locale.ROOT, "%s, %s, %s, in %s (%s)", com.hawkwing.RingsOfIron.game.CrewMedical.condition(c),
+                    return String.format(java.util.Locale.ROOT, "%s, %s, %s, in %s (%s) at %s", com.hawkwing.RingsOfIron.game.CrewMedical.condition(c),
                             c.isAlive() ? (c.isConscious() ? "conscious" : "down") : "dead",
                             c.suited ? String.format(java.util.Locale.ROOT, "suited (%.0f s of air)", c.suitAir) : "unsuited",
                             pos == null ? "nowhere" : pos.ship == s.player ? "our ship" : PlayerDocking.name(pos.ship),
-                            grid == null ? "?" : com.ringsofiron.aicrew.TaskRules.isBreathable(grid, pos.tileX(), pos.tileY()) ? "air" : "no air");
+                            grid == null ? "?" : com.ringsofiron.aicrew.TaskRules.isBreathable(grid, pos.tileX(), pos.tileY()) ? "air" : "no air",
+                            pos == null ? "-" : String.format(java.util.Locale.ROOT, "(%.1f, %.1f)", pos.x, pos.y));
                 }
                 case "raider": {
                     // A stand-in, like `hull`: one lone pirate raider brought in at rest <km> km out, hunting

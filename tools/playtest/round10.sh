@@ -9,6 +9,7 @@
 #           with Tab, R and Space; whether it fires on the frigate. RAIDER_FIT=<loadout> arms it
 #   captain part 4: "First ace fight" by hand; if lost, the tow (B twice) and a minute of warp x4 at
 #           the berth, with the captain's air and where the figure stands before and after
+#   abandon part 4: "First ace fight" lost by hand, then P twice: the captain's walk to the pod
 #   beaten  part 5: the raid fought to the fall, counting the Tabs that land on a beaten defender, then
 #           a minute of Space with no Tab (hits on the base's batteries, and on us), then where Tab lands
 # Part 2's raid is flown by raid-by-hand.sh, which counts the hits on us by kind of defender.
@@ -120,6 +121,31 @@ if want captain; then
     shot c-07-after-warp
     key i; pause 1; shot c-08-crew-after-warp; key i; pause 1
     key l; pause 1; shot c-09-notices-at-the-berth; key l; pause 1;;
+  esac
+fi
+
+# Part 4: "First ace fight" lost by hand, then abandon ship (P twice): where the captain walks, and
+# whether the pods launch, read every 5 s for two minutes
+if want abandon; then
+  cmd load First ace fight; pause 14
+  for i in $(seq 1 16); do
+    case "$(first "$(raid_state)")" in *"we are beaten"*) break;; esac
+    ace=$(hostiles | grep ' IN_BUBBLE target=@player ' | head -1 | sed 's/^  \(.*\) IN_BUBBLE .*/\1/')
+    for _ in 1 2 3 4 5 6; do [ -n "$ace" ] && [ "$(gun_target)" = "$ace" ] && break; key Tab; done
+    key r; hold space 4
+  done
+  echo "abandon: fight: $(first "$(raid_state)")"
+  case "$(first "$(raid_state)")" in *"we are beaten"*)
+    echo "abandon: before: $(last_line captain); $(last_line seat | cut -d, -f1)"
+    key p; pause 0.5; key p; pause 1; shot a-01-abandon-ordered
+    for i in $(seq 1 24); do
+      pause 5; echo "abandon: $((i * 5)) s: $(last_line captain); $(last_line seat | cut -d, -f1)"
+      [ "$i" = 4 ] && shot a-02-abandon-20s
+      [ "$i" = 12 ] && shot a-03-abandon-60s
+    done
+    shot a-04-abandon-120s
+    key l; pause 1; shot a-05-notices; key l; pause 1;;
+  *) echo "abandon: the fight was not lost; nothing to abandon";;
   esac
 fi
 
