@@ -9,7 +9,7 @@ import com.hawkwing.RingsOfIron.CrewDemo;
 import com.hawkwing.RingsOfIron.DockingDemo;
 import com.hawkwing.RingsOfIron.FlightDemo;
 import com.hawkwing.RingsOfIron.HudDemo;
-import com.hawkwing.RingsOfIron.Main;
+import com.hawkwing.RingsOfIron.InteriorDemo;
 import com.hawkwing.RingsOfIron.OrbitDemo;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
 import com.hawkwing.RingsOfIron.ShipEditor;
@@ -30,7 +30,7 @@ public class SmokeLauncher {
         APPS.put("game", RingsOfIronGame::new);
         APPS.put("firstplay", () -> new RingsOfIronGame(java.nio.file.Paths.get("").toAbsolutePath(),
                 java.nio.file.Paths.get("mods").toAbsolutePath(), true));
-        APPS.put("interior", Main::new);
+        APPS.put("interior", InteriorScript::new);
         APPS.put("flight", FlightDemo::new);
         APPS.put("hud", HudDemo::new);
         APPS.put("audio", AudioDemo::new);
@@ -149,6 +149,63 @@ public class SmokeLauncher {
         private static void check(boolean ok, String what) {
             if (!ok) throw new IllegalStateException("Shell smoke step failed: " + what);
         }
+    }
+
+    /**
+     * The interior demo with its tools at work: an attacker set on the ship, a crew member critically
+     * wounded and hit again, a railgun round, a ram, a blast and a laser, a medic spawned, then the next
+     * hull. Any tool that throws fails the run. With -Dsmoke.shots=<dir> it saves a screenshot after the
+     * first hits and one on the next hull.
+     */
+    private static final class InteriorScript implements ApplicationListener {
+        private final InteriorDemo demo = new InteriorDemo();
+        private int frame;
+
+        @Override public void create() { demo.create(); }
+        @Override public void resize(int width, int height) { demo.resize(width, height); }
+        @Override public void render() {
+            com.hawkwing.RingsOfIron.game.InteriorLab lab = demo.lab();
+            com.badlogic.ashley.core.Entity ship = lab.ship;
+            com.ringsofiron.interiorgrid.ShipGridComponent grid = ship.getComponent(com.ringsofiron.interiorgrid.ShipGridComponent.class);
+            int mid = grid.width / 2;
+            switch (frame++) {
+                case 5: lab.attack("corvette_raider", 90f); break;
+                case 10: {
+                    com.badlogic.ashley.core.Entity hurt = lab.debug.crewAboard(ship).get(2);
+                    lab.debug.hurt(hurt, 100f, com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.SPALL);
+                    demo.select(hurt);
+                    break;
+                }
+                case 15: lab.debug.fire(ship, "railgun_mk1", mid, grid.height - 1); break;
+                case 20: lab.debug.ram(ship, mid - 2, 0); break;
+                case 25: lab.debug.blast(ship, "frag_light", mid + 1, grid.height / 2); break;
+                case 30: lab.debug.fire(ship, "laser_mk1", mid + 3, grid.height - 1); break;
+                case 35: lab.debug.hurt(lab.debug.crewAboard(ship).get(2), 80f,
+                        com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.FRAGMENT); break;
+                case 40: lab.debug.spawnCrew(ship, com.ringsofiron.aicrew.CrewRole.MEDIC); break;
+                case 200: lab.cycle(1); break;
+                default: break;
+            }
+            demo.render();
+            if (frame == 150 || frame == 260) shot("interior-" + frame);
+        }
+        @Override public void pause() { demo.pause(); }
+        @Override public void resume() { demo.resume(); }
+        @Override public void dispose() { demo.dispose(); }
+    }
+
+    /** With -Dsmoke.shots=<dir>, saves what is on screen there as {@code name}.png. */
+    private static void shot(String name) {
+        String shots = System.getProperty("smoke.shots");
+        if (shots == null) return;
+        int w = Gdx.graphics.getBackBufferWidth(), h = Gdx.graphics.getBackBufferHeight();
+        // Flipped to top-down rows, and opaque: what is on screen, whatever alpha the frame buffer kept
+        byte[] pixels = com.badlogic.gdx.utils.ScreenUtils.getFrameBufferPixels(0, 0, w, h, true);
+        for (int i = 3; i < pixels.length; i += 4) pixels[i] = (byte) 255;
+        com.badlogic.gdx.graphics.Pixmap p = new com.badlogic.gdx.graphics.Pixmap(w, h, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+        com.badlogic.gdx.utils.BufferUtils.copy(pixels, 0, p.getPixels(), pixels.length);
+        com.badlogic.gdx.graphics.PixmapIO.writePNG(Gdx.files.absolute(shots + "/" + name + ".png"), p);
+        p.dispose();
     }
 
     /** Passes every call through to the app and exits once enough frames have rendered. */

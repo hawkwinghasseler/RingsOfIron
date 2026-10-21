@@ -2,9 +2,9 @@ package com.hawkwing.RingsOfIron.lwjgl3;
 
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
-import com.hawkwing.RingsOfIron.Main;
+import com.hawkwing.RingsOfIron.InteriorDemo;
 
-/** Launches the desktop (LWJGL3) application. */
+/** Launches the interior demo ({@link InteriorDemo}). Run with {@code gradlew :lwjgl3:run}. */
 public class Lwjgl3Launcher {
     public static void main(String[] args) {
         if (StartupHelper.startNewJvmIfRequired()) return; // This handles macOS support and helps on Windows.
@@ -12,12 +12,12 @@ public class Lwjgl3Launcher {
     }
 
     private static Lwjgl3Application createApplication() {
-        return new Lwjgl3Application(new Main(), getDefaultConfiguration());
+        return new Lwjgl3Application(new InteriorDemo(), getDefaultConfiguration());
     }
 
     private static Lwjgl3ApplicationConfiguration getDefaultConfiguration() {
         Lwjgl3ApplicationConfiguration configuration = new Lwjgl3ApplicationConfiguration();
-        configuration.setTitle("RingsOfIron");
+        configuration.setTitle("RingsOfIron - Interior Demo");
         //// Vsync limits the frames per second to what your hardware can display, and helps eliminate
         //// screen tearing. This setting doesn't always work on Linux, so the line after is a safeguard.
         configuration.useVsync(true);
@@ -28,7 +28,7 @@ public class Lwjgl3Launcher {
         //// useful for testing performance, but can also be very stressful to some hardware.
         //// You may also need to configure GPU drivers to fully disable Vsync; this can cause screen tearing.
 
-        configuration.setWindowedMode(960, 720);
+        configuration.setWindowedMode(1440, 860);
         //// RGBA 8 bits, 16-bit depth and an 8-bit stencil buffer, which the demo uses to clip smoke to its room.
         configuration.setBackBufferConfig(8, 8, 8, 8, 16, 8, 0);
         //// You can change these files; they are in lwjgl3/src/main/resources/ .

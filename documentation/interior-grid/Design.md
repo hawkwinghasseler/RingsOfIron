@@ -8,7 +8,7 @@ The construction rules here are the ones combat's damage model reads (`combat-sy
 ## Implementation Dependencies
 - **`core-engine`**: Requires Ashley ECS to attach grid components to ship entities.
 - **`physics-exterior`**: (Soft Dependency) When rendering the grid in world space, the interior tiles must be offset and rotated by the parent ship's Box2D transform. The grid logic itself runs purely in local coordinates. The grid's structural mass properties feed the ship body's mass and inertia.
-- **`modding-data`**: (Hard Dependency) Chassis blueprints and the material table come from data. `InteriorGridData.toBlueprint(ChassisDef)` and `toMaterialTable(DefRegistry)` adapt the definitions. `InteriorGridData.install(ctx)`, run from `ModdingBootstrap.beforeScripts`, registers the "ship" assembler, which gives every ship spawned from data its grid, subsystem registry and one entity per installed system. `MaterialTable.createDefault()` remains for tests and the demo.
+- **`modding-data`**: (Hard Dependency) Chassis blueprints and the material table come from data. `InteriorGridData.toBlueprint(ChassisDef)` and `toMaterialTable(DefRegistry)` adapt the definitions. `InteriorGridData.install(ctx)`, run from `ModdingBootstrap.beforeScripts`, registers the "ship" assembler, which gives every ship spawned from data its grid, subsystem registry and one entity per installed system. `MaterialTable.createDefault()` remains for tests.
 
 ## Coordinate System
 The grid uses **Box2D's orientation**. Tile [0][0] is the **bottom-left**, +x is the ship body's local +x and **+y points up**. Grid coordinates are body-local coordinates offset by `gridOriginLocal` and divided by `tileSize`, with no axis flip anywhere:
