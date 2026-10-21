@@ -76,6 +76,27 @@ class FireZoneTest {
         assertFalse(TaskRules.waitsOutFire(rescue, s.board, s.crew), "unsuited in bad air, it doesn't");
     }
 
+    @Test
+    void aWoundOpenedAgainWithLittleLeftIsStoppedBeforeABreach() {
+        // Round 10: seeds 10 and 12's raids. Hit again where they lay, three crew bled out with 34 to
+        // 66 s left
+        TestShips s = hall();
+        Entity down = s.spawn(CrewRole.CREWMAN, 0, 12, 2);
+        s.crew.applyDamage(down, 95f, DamageCause.PENETRATOR);
+        StabiliseTask stop = new StabiliseTask(down, 12, 2);
+        s.board.post(new com.ringsofiron.interiorgrid.crew.SealBreachTask(3, 3));
+        s.board.post(stop);
+        assertNotSame(stop, s.board.best(CrewRole.ENGINEER, 4, 2, null), "with five minutes left it waits its turn");
+        s.c(down).bleedOut = TaskRules.LAST_CHANCE - 60f;
+        assertSame(stop, s.board.best(CrewRole.ENGINEER, 4, 2, null), "with a minute left, first");
+        Entity other = s.spawn(CrewRole.CREWMAN, 0, 5, 3);
+        s.crew.applyDamage(other, 75f, DamageCause.PENETRATOR);
+        s.board.post(new RescueTask(other, 5, 3));
+        assertSame(stop, s.board.best(CrewRole.MEDIC, 4, 2, null), "for a medic, before a rescue nearer to hand");
+        s.board.faction = 7;
+        assertNotSame(stop, s.board.best(CrewRole.ENGINEER, 4, 2, null), "another crew's order is theirs");
+    }
+
     /** A hall with life support at its far end, shorted where a crewmate was hit, at battle stations. */
     static TestShips rakedShort(int faction, boolean keepsClear) {
         TestShips s = new TestShips(

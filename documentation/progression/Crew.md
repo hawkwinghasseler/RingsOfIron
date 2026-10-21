@@ -83,7 +83,7 @@ The player's own figure has no behaviour tree, so `CaptainSafety` does for it wh
 
 - **Battle stations:** while the ship is at battle stations with suits on (the crew window's toggle), the figure suits up too, in the crew's suit time, and keeps the suit on; calm again on air fit to breathe, it takes it off as the crew do.
 - **Losing air:** on a tile whose air is no longer fit to breathe the figure pulls its suit on, the player hears "The air here is going: you pull your suit on. Get to a pressurised room", and a hint ("walk to air") stays up while it lasts. Walking to air is the player's to do; the suit's air runs out.
-- **Down anyway:** the crew carry the figure to the nearest breathable tile like any casualty (`RescueTask`, priority 90, above fires and breaches), or put its suit on where it lies when nowhere aboard has air. Being carried home to a station stays the last resort, when the figure dies.
+- **Down anyway:** the crew carry the figure to the nearest breathable tile like any casualty (`RescueTask`, priority 90, above fires and breaches), or put its suit on where it lies when nowhere aboard has air, and fill it at the ship's oxygen once it runs low (round 9). Being carried home to a station stays the last resort, when the figure dies; crew sheltering at the berth count for it (round 10).
 - The suit and its air are saved with the figure; a suit half on when the game is saved starts again after a load (a crew member's suit half on or off at work is saved, round 9), and a carry under way is set down and taken up again (as for any crew member).
 
 ### Railgun lethality (round 6 part 3)
@@ -149,6 +149,13 @@ Round 9 (part 2), from a trace of every asphyxiation in the wound survey:
 - **A casualty's suit is filled for them.** Down in a suit in a ship with nowhere left to breathe, a casualty is carried to an oxygen tank or the life support once their suit is low, and it is filled there. Six of the survey's dead lay suited beside full oxygen tanks until their suits ran dry.
 - A fight saved part way through keeps its raked tiles, and a suit half on or off stays so.
 - Both are for the player's crew only (`TaskRules.SUIT_CARE_FACTION`): the aces' crews given the same care won the railgun ace four more of twenty fights.
+
+Round 10 (part 4), the captain looked after like the crew. Round 9's real window lost "First ace fight", was towed to Highport with the cabin in vacuum, and the captain died aboard at warp ×10 with four crew alive ashore, after which the career ended. `CaptainAshoreProbe` (`-PcaptainProbe`) replays it without a window:
+- **The walk across the port.** The walk ashore at `ASHORE_AT` did start. But past the walkway's halfway mark the figure stands on the station's collar, in the station's tiles, and it was still steered by the ship's port. So it turned back at halfway, at ×1 as well, and stood in the walkway until its suit ran dry. On the far collar it is now steered in by that collar's own port.
+- **Warp gives way to the walk** (`CaptainSafety.WARP_GIVES_WAY`). While the figure is walked from air it can't breathe, time warp drops to ×1 with a notice ("Time warp drops: your suit is low, and you are walked to air"), and rails warp waits. At ×10 the figure crossed and re-crossed the halfway mark within one frame. Once it breathes, stepping clear of the port doesn't hold warp back.
+- **Crew ashore bring you home** (`Rescue.CREW_ASHORE_COUNT`). The ship's own crew, alive and free aboard the station or craft it is docked to, count as well as those aboard. With nowhere aboard to breathe, the revived captain is laid where the crew shelter, and walked home once the ship holds air. That is kept through a save: after a load, a figure aboard the craft the ship is docked to, with nowhere aboard to breathe, is read back as ashore.
+- **Your suit fills at the ship's oxygen.** Suited on thin air with four minutes or less (`CaptainSafety.REFILL_AT`), the figure standing still beside an oxygen tank or a working life support fills its suit there over the crew's refill time (20 s), as a crewman does, and the player is told.
+- **The crew fill a downed captain's suit.** This already held: round 9's casualty care treats the figure as any casualty. A test now holds it.
 
 ## Not done here
 - A boarding fight on the interior grid: the pirates only take the cargo and credits (round 7 plan, "Still parked").

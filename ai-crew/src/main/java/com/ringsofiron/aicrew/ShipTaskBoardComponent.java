@@ -140,7 +140,7 @@ public class ShipTaskBoardComponent implements Component {
             float affinity = role.affinity(t);
             if (affinity <= 0f) continue;
             if (filter != null && !filter.accept(t)) continue;
-            float score = t.priority * affinity - DISTANCE_WEIGHT * (Math.abs(t.x - x) + Math.abs(t.y - y));
+            float score = TaskRules.priority(this, t) * affinity - DISTANCE_WEIGHT * (Math.abs(t.x - x) + Math.abs(t.y - y));
             if (score > bestScore) {
                 bestScore = score;
                 best = t;
