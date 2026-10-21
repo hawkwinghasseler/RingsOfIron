@@ -566,6 +566,109 @@ class GameScenarioTest {
                 ship.getComponent(PhysicsBodyComponent.class).body), emptyMass * 1e-5, "selling lightens it again");
     }
 
+    // ---- Round 10: Tab and struck ships --------------------------------------------------------
+
+    @Test
+    void tabPassesOverASurrenderedShipAndASilencedBatteryWhileARaiderStillFights() {
+        // Beside the base: it scrambles a defender and mans its guns, and then it falls
+        world.docking.undock(game.player);
+        runFor(1);
+        world.rescue.jumpBeside(game.player, world.engine.getEntity(world.pirateBase.uuid()), 8_000);
+        runFor(2 * PirateBase.CHECK_SECONDS + 1);
+        List<String> guns = new ArrayList<>(world.pirateBase.guns());
+        assertFalse(guns.isEmpty(), "the base manned its guns");
+        String defender = world.pirateBase.defenders().get(0);
+        for (int i = 0; i < 600 && !inContacts(hostileNamed(defender)); i++) world.update(FRAME);
+        world.pirateBase.fall("a test");
+        runFor(1);
+        Entity battery = hostileNamed(guns.get(0));
+        assertTrue(inContacts(battery), "the battery is a contact");
+        assertTrue(Struck.struck(world, battery), "a fallen base's battery has struck");
+        Entity prize = hostileNamed(defender);
+        assertTrue(inContacts(prize));
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(prize));
+
+        // A raider still fights
+        Entity raider = game.raider;
+        assertTrue(inContacts(raider));
+        assertFalse(FirstPlay.beaten(world, raider));
+
+        List<Entity> seen = new ArrayList<>();
+        Entity t = null;
+        for (int i = 0; i < 2 * game.contacts.size; i++) {
+            t = game.nextContact(t);
+            assertNotNull(t);
+            assertFalse(Struck.struck(world, t), "Tab locked struck " + t.getComponent(HudMarkerComponent.class).label);
+            seen.add(t);
+        }
+        assertTrue(seen.contains(raider), "Tab reaches the raider still fighting");
+        assertFalse(seen.contains(battery));
+        assertFalse(seen.contains(prize));
+        // From a struck lock, Tab moves on to one that fights
+        assertFalse(Struck.struck(world, game.nextContact(prize)));
+        assertFalse(Struck.struck(world, game.firstTarget()), "a new fight never starts on a struck ship");
+    }
+
+    @Test
+    void withNothingElseFightingTabReachesAPrizeAndAimedFireAfterTheGraceBringsItBack() {
+        String id = null;
+        for (var e : world.macroSim.hostiles().all().entrySet()) {
+            if (e.getValue().isPirate() && HostileTraffic.RAIDER.equals(e.getValue().shipId)) id = e.getKey();
+        }
+        assertNotNull(id);
+        world.macroSim.hostiles().get(id).targetUuid = com.ringsofiron.macrosim.hostile.HostileComponent.PLAYER;
+        double now = world.macroSim.now();
+        var s = world.macroSim.gateway().anchorStateAt(now, new com.ringsofiron.macrosim.rails.StateVector());
+        world.macroSim.rails().attach(id, GameScenario.EARTH, s.set(s.x + 2_500, s.y, s.vx, s.vy), now);
+        Entity prize = world.engine.getEntity(id);
+        for (int i = 0; i < 120 && prize.getComponent(PhysicsBodyComponent.class) == null; i++) world.update(FRAME);
+        runFor(3);
+        for (Entity e : prize.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent sub = e.getComponent(SubsystemComponent.class);
+            if (sub != null && sub.type == SubsystemComponent.SubsystemType.TURRET_MOUNT) sub.health = 0f;
+        }
+        runFor(2);
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(prize));
+        // The first play's raider wrecked: nothing is left fighting
+        world.disablement.set(game.raider, DisabledComponent.Reason.WRECKED);
+        runFor(12);
+
+        Entity t = null;
+        boolean reached = false;
+        for (int i = 0; i < game.contacts.size && !reached; i++) {
+            t = game.nextContact(t);
+            reached = t == prize;
+        }
+        assertTrue(reached, "with nothing fighting, Tab cycles the struck ships too");
+        assertNotSame(prize, game.firstTarget(), "a new fight still never starts on one");
+
+        // The player chose it: the trigger fires on it after the grace, and that brings it back
+        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        gun.setTarget(prize);
+        for (int i = 0; i < 10 / FRAME && world.macroSim.hostiles().get(id).surrendered; i++) {
+            gun.fireGuns();
+            gun.launchMissile();
+            gun.update(FRAME);
+            world.update(FRAME);
+        }
+        assertFalse(world.macroSim.hostiles().get(id).surrendered, "aimed fire after the grace brings it back");
+    }
+
+    private boolean inContacts(Entity e) {
+        return e != null && game.contacts.contains(e, true);
+    }
+
+    private Entity hostileNamed(String name) {
+        for (var e : world.macroSim.hostiles().all().entrySet()) {
+            if (name.equals(e.getValue().displayName)) return world.engine.getEntity(e.getKey());
+        }
+        return null;
+    }
+
+    private void runFor(double seconds) {
+        for (int i = 0; i < seconds / FRAME; i++) world.update(FRAME);
+    }
+
     /** Console id to tile, for the consoles aboard {@code ship}. */
     private java.util.Map<String, int[]> consolesOn(Entity ship) {
         java.util.Map<String, int[]> out = new java.util.HashMap<>();

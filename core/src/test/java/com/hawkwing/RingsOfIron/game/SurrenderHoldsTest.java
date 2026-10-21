@@ -251,6 +251,78 @@ class SurrenderHoldsTest {
         assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
     }
 
+    @Test
+    void thePlayersGunsFiringAtWillSpareAFallenBasesBatteries() {
+        // Round 10: after the fall our guns went on hitting Den batteries 23 and 24, which are only
+        // silenced, not surrendered
+        besideTheBase();
+        world.pirateBase.fall("a test");
+        run(1);
+        java.util.List<Entity> batteries = new java.util.ArrayList<>();
+        for (String name : world.pirateBase.guns()) batteries.add(named(world, name));
+        assertFalse(batteries.isEmpty());
+        var weapons = game.player.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class);
+        for (var m : weapons.mounts) m.weaponsFree = true;
+        game.player.getComponent(SensorComponent.class).lockedTarget = batteries.get(0);
+        AtomicInteger atBattery = new AtomicInteger();
+        world.combatEvents.shots.add((signal, shot) -> {
+            if (shot.shooter == game.player && batteries.contains(shot.target)) atBattery.incrementAndGet();
+        });
+        for (int i = 0; i < 10 / FRAME; i++) {
+            world.update(FRAME);
+            for (var m : weapons.mounts) assertFalse(batteries.contains(m.engaged), m.def.id + " took a silenced battery as its target");
+        }
+        assertEquals(0, atBattery.get(), "no shot at a fallen base's battery");
+
+        // The trigger still fires on one: aimed fire is the player's choice
+        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        gun.setTarget(batteries.get(0));
+        for (int i = 0; i < 5 / FRAME && atBattery.get() == 0; i++) {
+            gun.fireGuns();
+            world.update(FRAME);
+        }
+        assertTrue(atBattery.get() > 0, "the trigger fires on it");
+    }
+
+    @Test
+    void atTheFallTheBasesRunningDefendersStrikeWithIt() {
+        // Round 9's window on 502e8e2: raiders 20 and 22 were running, not struck, at the fall, and
+        // raider 22 hit us 85 times in the next 24 s
+        besideTheBase();
+        String name = world.pirateBase.defenders().get(0);
+        Entity defender = null;
+        for (int i = 0; i < 600; i++) {
+            defender = named(world, name);
+            if (defender.getComponent(PhysicsBodyComponent.class) != null) break;
+            world.update(FRAME);
+        }
+        run(5);
+        HostileComponent h = defender.getComponent(HostileComponent.class);
+        assertNotNull(defender.getComponent(PhysicsBodyComponent.class), "the defender is out");
+        assertNull(ShipDisablement.reason(defender), "and fit to fight");
+        // It runs, its guns still on the player as a running pirate's are
+        world.macroSim.hostiles().breakOff(defender.getComponent(com.ringsofiron.coreengine.components.UuidComponent.class).id, world.macroSim.now());
+        defender.getComponent(SensorComponent.class).lockedTarget = game.player;
+        assertTrue(h.brokeOff);
+
+        world.pirateBase.fall("a test");
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(defender), "it strikes with the base");
+        assertTrue(h.surrendered);
+        assertNull(defender.getComponent(SensorComponent.class).lockedTarget, "its guns let go of the player at once");
+        AtomicInteger shots = shotsBy(defender);
+        run(24);
+        assertEquals(0, shots.get(), "a struck defender holds its fire");
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(defender), "and stays struck");
+    }
+
+    private void besideTheBase() {
+        world.docking.undock(game.player);
+        run(1);
+        world.rescue.jumpBeside(game.player, world.engine.getEntity(world.pirateBase.uuid()), 8_000);
+        run(2 * PirateBase.CHECK_SECONDS + 1);
+        assertFalse(world.pirateBase.defenders().isEmpty(), "the base scrambled");
+    }
+
     // ------------------------------------------------------------------
 
     /** Brings in raider {@code id} to fight the player, then silences its guns: it surrenders. */
