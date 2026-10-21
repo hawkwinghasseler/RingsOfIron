@@ -786,11 +786,15 @@ abstract class CareerScript {
                         + world.engine.getRailsWarpBlockedReason() + "; career over: " + world.getCareerOver());
                 last = world.engine.getSimSeconds();
             }
-            if (world.timeWarp.getWarp() == 1 && world.getCrash() == null) {
+            // Round 10: a warp held low (seeds 15 and 18 sat at ×10 for the weeks after a docking at
+            // Crisium held rails warp) is raised again once a second, as a player would
+            if ((world.timeWarp.getWarp() == 1 || frames % 60 == 0 && world.timeWarp.getWarp() < 100_000) && world.getCrash() == null) {
                 double left = until - world.engine.getSimSeconds();
                 String blocked = world.engine.getRailsWarpBlockedReason();
                 if (blocked != null && warpBlocks.add(blocked)) log("  (rails warp refused: %s)", blocked);
+                int now = world.timeWarp.getWarp();
                 for (int level : new int[]{100_000, 10_000, 1_000, 100, 10}) {
+                    if (level <= now && now > 1) break;
                     if (level * FRAME <= left * 2 && world.timeWarp.setWarp(level)) break;
                 }
             }
