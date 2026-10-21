@@ -286,7 +286,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         hullArt = new HullArt(game.content.defs);
 
         gun = new PlayerGunnery(world, game.player);
-        gun.setTarget(game.nextContact(null));
+        gun.setTarget(game.firstTarget());
         hud.setTargeting(new CombatTargetingProvider(gun));
         docking = new PlayerDocking(world, () -> game.player, this::show);
         navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world, docking);
@@ -329,7 +329,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.rescue.rescues.add((signal, rescue) -> {
             // The new ship's own weapons
             gun = new PlayerGunnery(world, game.player);
-            gun.setTarget(game.nextContact(null));
+            gun.setTarget(game.firstTarget());
             hud.setTargeting(new CombatTargetingProvider(gun));
             matchViewToSeat();
             show(rescueNotice(rescue));
@@ -771,7 +771,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             world.clearCrash();
             // The loaded ship's own weapons; its sensor lock comes back with the save.
             gun = new PlayerGunnery(world, game.player);
-            if (gun.getTarget() == null) gun.setTarget(game.nextContact(null));
+            if (gun.getTarget() == null) gun.setTarget(game.firstTarget());
             hud.setTargeting(new CombatTargetingProvider(gun));
             matchViewToSeat();
             // A save made in First Play carries on there; any other leaves it

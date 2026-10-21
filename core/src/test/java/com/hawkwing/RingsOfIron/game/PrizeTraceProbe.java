@@ -91,6 +91,7 @@ class PrizeTraceProbe {
             if (!world.pirateBase.standing() || FirstPlay.beaten(world, game.player)) break;
         }
         state();
+        if (!world.pirateBase.standing()) afterTheFall();
     }
 
     /** The bounty fight lost on purpose: the main guns never fire, and the boarder's range is logged. */
@@ -124,6 +125,50 @@ class PrizeTraceProbe {
             hold(6);
         }
         state();
+        if (!world.pirateBase.standing()) afterTheFall();
+    }
+
+    /**
+     * Round 10: a minute of Space after the fall, as part 6's window does it, pressing Tab whenever
+     * the lock is gone or beaten. Logs the fallen base's batteries as struck, and every hit on us.
+     */
+    private void afterTheFall() {
+        for (String name : world.pirateBase.guns()) {
+            Entity g = ship(name);
+            if (g != null) struckAt.putIfAbsent(g, now());
+        }
+        int[] onUs = new int[1];
+        world.combatEvents.impacts.add((s, hit) -> {
+            if (hit.target != game.player || hit.owner == null || hit.owner == game.player) return;
+            onUs[0]++;
+            HostileComponent h = hit.owner.getComponent(HostileComponent.class);
+            log("HIT on us by " + name(hit.owner) + " (" + ShipDisablement.reason(hit.owner) + (h != null && h.brokeOff ? ", running" : "")
+                    + ") with " + (hit.def == null ? "?" : hit.def.id));
+        });
+        log("AFTER THE FALL: a minute of Space");
+        for (int i = 0; i < 10; i++) {
+            state();
+            tabToOneFighting();
+            hold(6);
+        }
+        state();
+        log("AFTER THE FALL: " + onUs[0] + " hits on us");
+    }
+
+    /**
+     * As part 6's script does it: Tab until the gun has a ship still fighting (not struck, not
+     * beaten), at most once round the contacts; with none, the lock is let go and Space fires at nothing.
+     */
+    private void tabToOneFighting() {
+        Entity t = gun.getTarget();
+        if (t != null && !struck(t) && !FirstPlay.beaten(world, t)) return;
+        for (int n = 0; n < game.contacts.size; n++) {
+            tab();
+            t = gun.getTarget();
+            if (t != null && !struck(t) && !FirstPlay.beaten(world, t)) return;
+        }
+        gun.setTarget(null);
+        log("KEY none: nothing is left fighting, the lock is let go");
     }
 
     private void tab() {
@@ -175,7 +220,10 @@ class PrizeTraceProbe {
     }
 
     private boolean struck(Entity e) {
-        return e != null && ShipDisablement.reason(e) == DisabledComponent.Reason.SURRENDERED;
+        if (e == null) return false;
+        if (ShipDisablement.reason(e) == DisabledComponent.Reason.SURRENDERED) return true;
+        HostileComponent h = e.getComponent(HostileComponent.class);
+        return h != null && world.pirateBase.silenced(h.displayName);
     }
 
     private String since(Entity e) {
