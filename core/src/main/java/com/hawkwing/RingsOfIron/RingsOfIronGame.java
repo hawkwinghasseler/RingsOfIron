@@ -45,6 +45,7 @@ import com.hawkwing.RingsOfIron.game.NoticeLog;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
 import com.hawkwing.RingsOfIron.game.PlayerGunnery;
 import com.hawkwing.RingsOfIron.lighting.EmissiveLights;
+import com.hawkwing.RingsOfIron.lighting.ExteriorLighting;
 import com.hawkwing.RingsOfIron.lighting.HullArt;
 import com.hawkwing.RingsOfIron.lighting.SceneLighting;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
@@ -89,8 +90,8 @@ import java.util.Map;
  * helmsman, holds the heading you left it on, and with nobody at the helm the ship drifts. Run with
  * {@code -Dview.anywhere=true} to switch views anywhere and fly from the deck, as before. In the deck
  * view E uses the console you stand at, and F or B
- * forces the shut door across a dock (pry or hack, or cut), and O turns the deck lighting off and
- * back on. P twice abandons ship: the crew make for the escape pods (your character walks there
+ * forces the shut door across a dock (pry or hack, or cut). O turns the lighting off and back
+ * on, inside and out. P twice abandons ship: the crew make for the escape pods (your character walks there
  * by itself unless you steer it), and P again launches them; you wake days later at a station in a
  * requisitioned ship. F5
  * quick-saves, F9 loads the quick save. L opens the notice log, F1 the controls. Esc quits, or opens
@@ -168,6 +169,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private BitmapFont font;
     /** Deck lights and shadows, and the glow of every lamp and screen, from the art's emissive layers. */
     private SceneLighting lighting;
+    /** Light over the hulls outside: starlight, the hulls' own lights, engines, guns and blasts. */
+    private ExteriorLighting exteriorLighting;
     private HullArt hullArt;
     private boolean lightsOn = true;
     private float exteriorViewMeters = START_VIEW;
@@ -253,10 +256,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
         deckArt = new DeckArt(art);
         gameHud = new GameHud(world, hud);
         silencedMarkers = new com.hawkwing.RingsOfIron.game.SilencedMarkers(world);
-        lighting = new SceneLighting(EmissiveLights.load(assetsDir));
+        EmissiveLights emissive = EmissiveLights.load(assetsDir);
+        lighting = new SceneLighting(emissive);
+        exteriorLighting = new ExteriorLighting(emissive);
         deckRenderer = new DeckRenderer(() -> world, shapes, batch, deckArt, lighting, () -> game.avatar);
         hullArt = new HullArt(game.content.defs);
-        exterior = new ExteriorRenderer(() -> world, shapes, batch, art, lighting, hullArt, () -> game.player);
+        exterior = new ExteriorRenderer(() -> world, shapes, batch, art, lighting, hullArt, () -> game.player)
+                .setLighting(exteriorLighting);
 
         gun = new PlayerGunnery(world, game.player);
         gun.setTarget(game.firstTarget());
@@ -499,11 +505,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (just(Action.UNDOCK) && world.docking.dockedTo(game.player) != null) {
                 show("Take the helm to undock: " + key(Action.VIEW) + " at the helm, then " + key(Action.UNDOCK));
             }
-            if (just(Action.LIGHTS)) {
-                lightsOn = !lightsOn;
-                deckRenderer.setLightsOn(lightsOn);
-                show(lightsOn ? "Deck lighting on" : "Deck lighting off");
-            }
+            if (just(Action.LIGHTS)) toggleLights();
             // Up the screen is W whichever way the craft the avatar is aboard is turned
             float sx = 0f, sy = 0f;
             if (held(Action.THRUST)) sy += 1f;
@@ -525,6 +527,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (held(Action.STRAFE_LEFT)) controls.strafe += 1f;
             if (held(Action.STRAFE_RIGHT)) controls.strafe -= 1f;
         }
+        if (just(Action.LIGHTS)) toggleLights();
         if (held(Action.FIRE)) gun.fireGuns();
         if (just(Action.MISSILE)) {
             // "Launcher reloading" once per reload, not once per press
@@ -1038,6 +1041,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
         return world.beacon.call();
     }
 
+    /** O: the lighting off or back on, inside and out. */
+    private void toggleLights() {
+        lightsOn = !lightsOn;
+        deckRenderer.setLightsOn(lightsOn);
+        exterior.setLightsOn(lightsOn);
+        show(lightsOn ? "Lighting on" : "Lighting off");
+    }
+
     /**
      * P: the first press asks, a second within {@link #ABANDON_CONFIRM} seconds orders the crew to
      * the escape pods, and once they are going it launches the pods with whoever is aboard.
@@ -1388,6 +1399,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (refitEditor != null) refitEditor.dispose();
         gameHud.dispose();
         lighting.dispose();
+        exteriorLighting.dispose();
         docking.dispose();
         world.dispose();
         shapes.dispose();

@@ -18,10 +18,12 @@ import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.ObjectSet;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.ExteriorArt;
 import com.hawkwing.RingsOfIron.game.GameWorld;
+import com.hawkwing.RingsOfIron.lighting.ExteriorLighting;
 import com.hawkwing.RingsOfIron.lighting.HullArt;
 import com.hawkwing.RingsOfIron.lighting.SceneLighting;
 import com.ringsofiron.combatsys.components.DecoyComponent;
@@ -45,6 +47,11 @@ import java.util.function.Supplier;
  * {@link Style} says what color each outline is, so a demo can pick out what it shows without
  * drawing the hulls itself.
  *
+ * <p>With {@link #setLighting}, the hulls are lit ({@link ExteriorLighting}): a dim starlight,
+ * brightened by the hulls' own lights, their engines while they burn, muzzle flashes, missile
+ * plumes, beams, decoys and explosions. The light map goes over the hull art only; outlines and
+ * everything in flight are drawn after it, since they give off their own light (or are markers).
+ *
  * <p>Everything is drawn in world meters; {@link #inFrameOf} draws it instead in one body's own
  * frame, for a view that turns with a craft.
  */
@@ -59,6 +66,10 @@ public final class ExteriorRenderer {
     private static final float STREAK_SECONDS = 0.05f;
     private static final Color STREAK = new Color(0.8f, 0.8f, 0.85f, 1f);
     private static final Color STREAK_TAIL = new Color(0.8f, 0.8f, 0.85f, 0f);
+    /** A round younger than this when first seen was just fired: a muzzle flash where it left the gun. */
+    private static final float JUST_FIRED = 0.1f;
+    private static final Color BEAM_LIGHT = new Color(0.6f, 0.8f, 1f, 1f);
+    private static final Color DECOY_LIGHT = new Color(1f, 0.95f, 0.85f, 1f);
 
     private static final ComponentMapper<HudMarkerComponent> MARKERS = ComponentMapper.getFor(HudMarkerComponent.class);
     private static final ComponentMapper<ProjectileComponent> PROJECTILES = ComponentMapper.getFor(ProjectileComponent.class);
@@ -77,6 +88,10 @@ public final class ExteriorRenderer {
     private final SceneLighting lighting;
     private final HullArt hullArt;
     private final Supplier<Entity> player;
+    private ExteriorLighting exteriorLighting;
+    private boolean lightsOn = true;
+    /** Rounds seen last frame and this one, so each muzzle flashes once. */
+    private ObjectSet<Entity> roundsSeen = new ObjectSet<>(), roundsNow = new ObjectSet<>();
     private Style style;
     private boolean hullArtOn = true;
     private Supplier<Body> frame;
@@ -122,6 +137,23 @@ public final class ExteriorRenderer {
         return this;
     }
 
+    /** Lights the hulls with {@code lighting}; null for none (hulls drawn as the art is). */
+    public ExteriorRenderer setLighting(ExteriorLighting lighting) {
+        exteriorLighting = lighting;
+        return this;
+    }
+
+    /** Whether the hulls are lit (when there is lighting): off, they are drawn as the art is. */
+    public ExteriorRenderer setLightsOn(boolean on) {
+        lightsOn = on;
+        return this;
+    }
+
+    /** The lighting over the hulls, or null. */
+    public ExteriorLighting lighting() {
+        return exteriorLighting;
+    }
+
     /** Everything drawn in {@code body}'s own frame (the body a demo's view turns with); null for world meters. */
     public ExteriorRenderer inFrameOf(Supplier<Body> body) {
         frame = body;
@@ -131,6 +163,7 @@ public final class ExteriorRenderer {
     /** A flash where a warhead went off or a missile was shot down, at ({@code x}, {@code y}) world meters. */
     public void explode(float x, float y) {
         explosions.add(new float[]{x, y, 0f});
+        if (exteriorLighting != null) exteriorLighting.flash(x, y, ExteriorLighting.BLAST, 45f, 1f, 0.9f);
     }
 
     /**
@@ -159,11 +192,32 @@ public final class ExteriorRenderer {
         if (lighting != null) lighting.renderGlow(batch, camera, 2.5f * px);
     }
 
-    /** Craft with hull art drawn with it; every other body as its outline. */
+    /**
+     * Craft with hull art drawn with it, lit when there is lighting; every other body as its
+     * outline, over the light map.
+     */
     public void drawBodies(OrthographicCamera camera) {
         GameWorld w = world.get();
         Matrix4 view = view(camera);
         w.physics.getWorld().getBodies(bodies);
+        boolean lit = exteriorLighting != null && lightsOn;
+        if (lit) exteriorLighting.begin();
+        // Every hull's own lights, drawn with art or not: only the hull's own body, since a port's
+        // collar carriage and head carry the craft as owner too
+        for (Body body : bodies) {
+            Entity e = owner(body);
+            ShipGridComponent hull = e == null ? null : e.getComponent(ShipGridComponent.class);
+            if (hull == null || w.docking.bodyOf(e) != body) continue;
+            Vector2 at = PhysicsManager.getPosition(body, tmp2);
+            String chassis = hullArt == null ? null : hullArt.chassisOf(e);
+            if (lighting != null && chassis != null) lighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
+            if (lit) {
+                if (chassis != null) exteriorLighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
+                exteriorArt.burningNozzles(e, body, (x, y, exhaust, width, throttle) -> exteriorLighting.nozzle(
+                        x, y, exhaust, throttle, ExteriorLighting.ENGINE, Math.max(6f, 8f * width)));
+            }
+        }
+        if (lit) lightsInFlight();
         if (hullArtOn) {
             batch.setProjectionMatrix(view);
             batch.begin();
@@ -174,16 +228,11 @@ public final class ExteriorRenderer {
             }
             batch.end();
         }
+        if (lit) renderLightMap(camera, view);
         shapes.setProjectionMatrix(view);
         shapes.begin(ShapeRenderer.ShapeType.Line);
         for (Body body : bodies) {
             Entity e = owner(body);
-            ShipGridComponent hull = e == null ? null : e.getComponent(ShipGridComponent.class);
-            // Only the hull's own body: a port's collar carriage and head carry the craft as owner too
-            if (lighting != null && hullArt != null && hull != null && w.docking.bodyOf(e) == body) {
-                Vector2 at = PhysicsManager.getPosition(body, tmp2);
-                lighting.addHull(hullArt.chassisOf(e), hull, at.x, at.y, body.getAngle());
-            }
             for (Fixture fixture : body.getFixtureList()) {
                 Color c = style.outline(e, body, fixture);
                 if (c == null) continue;
@@ -196,6 +245,60 @@ public final class ExteriorRenderer {
     }
 
     /**
+     * The lights of what is in flight this frame: a flash where each new round left its gun,
+     * each burning missile's plume, both ends of every beam, and every decoy flare.
+     */
+    private void lightsInFlight() {
+        GameWorld w = world.get();
+        ExteriorLighting l = exteriorLighting;
+        roundsNow.clear();
+        for (Entity e : w.engine.getEcsEngine().getEntitiesFor(COMBAT_ROUNDS)) {
+            ProjectileComponent p = PROJECTILES.get(e);
+            MissileComponent m = MISSILES.get(e);
+            roundsNow.add(e);
+            if (m != null) {
+                float cos = MathUtils.cos(m.heading), sin = MathUtils.sin(m.heading), back = m.def.hitRadius * 3f;
+                l.nozzle(p.pos.x - cos * back, p.pos.y - sin * back, m.heading + MathUtils.PI, m.throttle,
+                        ExteriorLighting.ENGINE, 8f);
+            } else if (!roundsSeen.contains(e) && p.age < JUST_FIRED) {
+                // Where it left the gun: back along its flight by its age
+                float x = p.pos.x - p.vel.x * p.age, y = p.pos.y - p.vel.y * p.age;
+                if (p.pointDefense) l.flash(x, y, ExteriorLighting.MUZZLE, 4f, 0.6f, 0.08f);
+                else l.flash(x, y, ExteriorLighting.MUZZLE, 9f, 0.9f, 0.15f);
+            }
+        }
+        ObjectSet<Entity> swap = roundsSeen;
+        roundsSeen = roundsNow;
+        roundsNow = swap;
+        for (Entity e : w.engine.getEcsEngine().getEntitiesFor(ARMED)) {
+            for (WeaponMountComponent m : e.getComponent(WeaponsComponent.class).mounts) {
+                if (!m.beamOn) continue;
+                l.add(m.muzzle.x, m.muzzle.y, BEAM_LIGHT, 5f, 0.6f);
+                l.add(m.beamEnd.x, m.beamEnd.y, BEAM_LIGHT, 8f, 0.9f);
+            }
+        }
+        for (Entity e : w.engine.getEcsEngine().getEntitiesFor(DECOYS)) {
+            DecoyComponent d = e.getComponent(DecoyComponent.class);
+            l.add(d.pos.x, d.pos.y, DECOY_LIGHT, 10f, 0.8f);
+        }
+    }
+
+    /** The light map over the hull art, in the frame's body when there is one. */
+    private void renderLightMap(OrthographicCamera camera, Matrix4 view) {
+        Body body = frame == null ? null : frame.get();
+        if (body == null) {
+            exteriorLighting.render(camera);
+            return;
+        }
+        // Turned with the body: keep every light within the view's corners of it
+        Vector2 at = PhysicsManager.getPosition(body, tmp2);
+        float half = 0.5f * camera.zoom * (float) Math.hypot(camera.viewportWidth, camera.viewportHeight);
+        float cos = MathUtils.cos(body.getAngle()), sin = MathUtils.sin(body.getAngle());
+        float cx = camera.position.x, cy = camera.position.y;
+        exteriorLighting.render(view, at.x + cos * cx - sin * cy, at.y + sin * cx + cos * cy, half);
+    }
+
+    /**
      * Fast passes as streaks along their flight, rounds as streaks along their last tick's flight,
      * missiles as a nose line with a plume while they burn, beams as lines from the gun to what
      * they touch, decoys as small flares, and a fading ring where a warhead went off or a missile
@@ -204,6 +307,7 @@ public final class ExteriorRenderer {
      */
     public void drawFlight(OrthographicCamera camera, float px, float delta) {
         GameWorld w = world.get();
+        if (exteriorLighting != null) exteriorLighting.age(delta);
         Matrix4 view = view(camera);
         Entity me = player.get();
         Gdx.gl.glEnable(GL20.GL_BLEND);

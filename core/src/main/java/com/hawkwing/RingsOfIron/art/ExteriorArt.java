@@ -77,6 +77,42 @@ public final class ExteriorArt {
         }
     }
 
+    /** Where a burning engine's exhaust leaves the craft. */
+    public interface NozzleSink {
+        /**
+         * A nozzle at ({@code x}, {@code y}) world meters, its exhaust going toward
+         * {@code exhaust} radians, {@code width} meters across, burning at {@code throttle} (0-1).
+         */
+        void nozzle(float x, float y, float exhaust, float width, float throttle);
+    }
+
+    /**
+     * Each engine of {@code craft} burning now, where its plume is drawn: one for each running
+     * engine system, or on a craft with no engine systems one for each engine mount its hull art
+     * draws. Nothing for a craft without hull art, or with its main engine off.
+     */
+    public void burningNozzles(Entity craft, Body body, NozzleSink out) {
+        if (hullOf(craft) == null) return;
+        FlightControlComponent controls = craft.getComponent(FlightControlComponent.class);
+        ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
+        if (controls == null || grid == null || controls.forward <= 0f) return;
+        float throttle = Math.min(1f, controls.forward), angle = body.getAngle();
+        if (hasEngines(grid)) {
+            for (MountFootprint m : grid.mounts) {
+                SubsystemComponent sub = engineIn(m);
+                if (sub == null || !sub.isOperational || !socket(grid, m)) continue;
+                Vector2 w = world(body, socket.x, socket.y);
+                float exhaust = angle + (socketDegrees + 180f) * MathUtils.degreesToRadians;
+                out.nozzle(w.x, w.y, exhaust, Math.min(m.width(), m.height()) * grid.tileSize, throttle);
+            }
+            return;
+        }
+        for (int k = 0; k < engineCount(grid); k++) {
+            Vector2 w = engineMount(body, grid, k);
+            out.nozzle(w.x, w.y, angle + MathUtils.PI, grid.tileSize, throttle);
+        }
+    }
+
     /**
      * The craft's engines, their throats hot while the main engine burns: one for each engine
      * system, sized to its slot, where its nozzle meets space; or, on a craft with no engine

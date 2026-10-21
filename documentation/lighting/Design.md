@@ -5,8 +5,9 @@
 - **Crew** cast shadows: each crew member in view is a small circle in the shadow world (half their size, so the light's soft edge still falls across them and they are not left in their own shadow).
 - **Bulkhead doors** light the floor either side of them in their lamps' color, red shut and green open, a short way (1.6 tiles, at 0.35), while the craft has power. Door lamps are added after every other light on a deck, so when a scene has more lights than can cast at once (`SceneLighting.MAX_LIGHTS`) they are the first left out.
 - **Power** decides what is lit. A system's lights are on while it runs (`SubsystemComponent.isOperational`), so a wrecked, unpowered or switched-off system goes dark. With no reactor running, the ambient light drops from cabin light to near darkness.
-- **Outside**, a hull's emissive layer (navigation lights, bridge glazing, reactor and shield glow) is drawn as a glow on the craft. A light over a system's footprint follows that system; navigation lights follow the craft's power.
-- **L** in the deck view turns the lighting off and on.
+- **Outside**, a hull's emissive layer (navigation lights, bridge glazing, reactor and shield glow) is drawn as a glow on the craft, hull art or not. A light over a system's footprint follows that system; navigation lights follow the craft's power.
+- **Outside**, the hull art is also lit (`ExteriorLighting`): a dim starlight ambient (`ExteriorLighting.AMBIENT`), brightened and colored by what gives off light near it (see [Light outside](#light-outside)).
+- **O** turns the lighting off and on, in the deck view and outside alike.
 
 ## Where the lights come from
 `tools/art/extract_lights.py` reads the `<g id="emissive">` group of every SVG in `assets/art` and writes `assets/art/lights.json`. Shapes that touch are one light (a lamp's white center, colored body and halo), its color the most saturated one among them (the accent), its size the group's bounding box. Re-run it whenever the art changes; a test fails when `lights.json` and the SVGs disagree about which art glows.
@@ -37,6 +38,22 @@ lights = [
 ```
 `lights = []` means none. A layout without the key gets lights worked out from its rooms (`WallLightLayout`, in `interior-grid`): each room gets lights on its walls until every floor tile is within 3.5 tiles in front of one, the wall lighting the most dark tiles first, never two within 3 tiles, and never behind a system. The ship editor's **Auto-place lights** writes exactly that into the layout, so it can be adjusted by hand from there, and its **Light** tool hangs or takes down one at a time (see `documentation/ship-editor/Design.md`). The base layouts carry their auto-placed lights. A saved game keeps a deck's lights with its grid. `WallLightLayout.lightsOf(grid)` gives the lights a deck has either way, for anything that draws or lights them.
 
+## Light outside
+`ExteriorRenderer` (with `setLighting`) lays a box2dlights light map over the hull art each frame, from:
+
+| Source | Light |
+|---|---|
+| A hull's own emissive lights that reach past their glow (navigation lights, glazing, reactor glow) | As the art says, at the hull's pose; on with the system or the craft's power |
+| Each engine burning (`ExteriorArt.burningNozzles`), where its plume is drawn | Orange-white, pushed a little down the exhaust, reach 8x the nozzle's width (6 m at least), growing with the throttle |
+| A burning missile's plume | Orange-white, 8 m |
+| A gun firing: each round the first frame it is seen, where it left the gun | A flash, 9 m (4 m for point defense), gone in 0.15 s (0.08 s) |
+| Both ends of a firing beam | Pale blue, 5 m at the gun and 8 m where it lands |
+| A decoy flare | White, 10 m |
+| A warhead going off or a missile shot down (`ExteriorRenderer.explode`) | A flash, 45 m, fading over 0.9 s |
+| RCS thrusters (`ExteriorLighting.nozzle` with `THRUSTER`) | Blue-white, per nozzle and how hard it fires; wired in once the RCS work lands |
+
+Nothing casts shadows outside: every light is x-ray (see open questions), so the light map only colors and brightens the hulls near a light, and lifts space itself a little around a blast. The order is hull art, then the light map, then everything that is its own light or a marker (outlines, rounds, beams, explosions, the glow pass), so the light map never darkens those. Up to `ExteriorLighting.MAX_LIGHTS` lights a frame, hull and engine lights first, then flashes; at most `MAX_FLASHES` flashes fade at once, the oldest dropped first. Flashes age with the frame's delta, so they hold still while the game is paused.
+
 ## Code
 All in `core`, package `com.hawkwing.RingsOfIron.lighting`:
 
@@ -48,6 +65,7 @@ All in `core`, package `com.hawkwing.RingsOfIron.lighting`:
 | `HullArt` | Which chassis (and so which hull art) a craft wears. |
 | `LightBarriers` | The deck edges that stop light, as merged segments. |
 | `SceneLighting` | Owns the shadow world and the `RayHandler`; each frame takes the decks and hulls in view, draws the light map, then the glow pass. |
+| `ExteriorLighting` | The light map outside: its own `RayHandler` of x-ray lights over a starlight ambient, from hull lights, nozzles and fading flashes. |
 
 Shadows use a Box2D world of their own in world meters, apart from the crew's interior worlds (tile units, one per deck) and the flight world (10 m units): one static body per deck in view, its barrier edges as fixtures, moved to the craft's pose each frame and rebuilt when a door or wall changes, and one small circle per crew member in view, moved onto them each frame. Mounted systems cast no shadows, since their lights sit inside them.
 
