@@ -55,6 +55,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | 6 | Autopilot: fly the transfer to the navigation target under time warp and dock on arrival (again to go on after a hold, or to stop it) |
 | F5 / F9 | Quick save and quick load |
 | Esc | Pause menu: resume, save to a named slot, load, settings, quit to the main menu |
+| ~ | Developer console: Groovy against the running world. Click to select a crew member, tile or ship (again to cycle what is under the cursor), then `kill()`, `heal()`, `wound 95`, `shoot 'railgun_mk1'` ...; Esc deselects. Every `.groovy` in `scripts/` runs by name. See `documentation/dev-console/Design.md` |
 
 Keys can be rebound in Settings, which also has the volumes, HRTF, the window and the gamepad. A gamepad flies and walks with the left stick and fires with A or the right trigger; the full mapping is in `documentation/ui-hud/Design.md`. Saves and `settings.json` are kept in `assets/saves/`.
 

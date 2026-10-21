@@ -149,9 +149,6 @@ class DevConsoleTest {
         assertTrue(g.getTile(floor[0], floor[1]).isBurning(), last());
         dev.console.submit("extinguish()");
         assertFalse(g.getTile(floor[0], floor[1]).isBurning());
-        dev.console.submit("breach()");
-        assertTrue(last().contains("isn't hull"), last());
-
         dev.picker.select(DebugTarget.tile(game.player, hull[0], hull[1]));
         dev.console.submit("breach()");
         assertTrue(g.getTile(hull[0], hull[1]).isHullBreach());
@@ -159,6 +156,41 @@ class DevConsoleTest {
         assertFalse(g.getTile(hull[0], hull[1]).isHullBreach());
         dev.console.submit("damage 50");
         assertEquals(0.5f, g.getTile(hull[0], hull[1]).getIntegrity(), 1e-3);
+    }
+
+    @Test
+    void weaponsBlastsRamsAndShortsGoThroughTheDemosTools() {
+        Entity bea = crewNamed("Bea");
+        dev.picker.select(DebugTarget.crew(bea, game.player));
+        dev.console.submit("weapons()");
+        dev.console.submit("shoot 'railgun_mk1'");
+        assertTrue(last().contains("fired") || last().contains("launched") || last().contains("burning"), last());
+        dev.console.submit("blast()");
+        assertTrue(last().contains("went off"), last());
+        dev.console.submit("ram 0.5");
+        assertTrue(last().contains("bounce"), last());
+        dev.console.submit("ram 3, 1");
+        assertTrue(last().contains("3.0 km/s"), last());
+        dev.console.submit("shortOut()");
+        assertTrue(dev.console.lines().stream().noneMatch(l -> l.kind == ScriptConsole.Kind.ERROR),
+                dev.console.lines().stream().map(l -> l.text).collect(java.util.stream.Collectors.joining("\n")));
+        // A few seconds of the world: the round, the rock and the blast land on the deck
+        for (int i = 0; i < 180; i++) world.update(1f / 60f);
+    }
+
+    @Test
+    void boardersAreHostileAndRemoveTakesThemAway() {
+        dev.picker.select(DebugTarget.craft(game.player, false));
+        dev.console.submit("boarder()");
+        DebugTarget b = dev.selected();
+        assertTrue(b.isCrew(), last());
+        CrewMemberComponent them = b.entity.getComponent(CrewMemberComponent.class);
+        CrewMemberComponent ada = crewNamed("Ada").getComponent(CrewMemberComponent.class);
+        assertTrue(world.crew.hostile(them, ada));
+        int before = dev.actions.crewAboard(game.player).size();
+        dev.console.submit("remove()");
+        assertEquals(before - 1, dev.actions.crewAboard(game.player).size());
+        assertNull(dev.selected());
     }
 
     @Test

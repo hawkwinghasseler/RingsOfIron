@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.debug;
 import com.badlogic.ashley.core.Entity;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
+import com.hawkwing.RingsOfIron.game.WorldDebug;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -61,17 +62,32 @@ public final class DevConsole {
      * @param historyFile where the history is kept between runs, or null to keep none
      */
     public DevConsole(GameWorld world, GameScenario game, Path scriptDir, Path historyFile) {
+        this(world, game, scriptDir, historyFile, null);
+    }
+
+    /** @param tools the world's {@link WorldDebug}, when a demo already has one; null makes one */
+    public DevConsole(GameWorld world, GameScenario game, Path scriptDir, Path historyFile, WorldDebug tools) {
+        this(world, game, scriptDir, historyFile, tools, null);
+    }
+
+    /**
+     * @param reuse the console of an earlier world to carry on in, its scrollback, history and
+     *              variables kept and its commands pointed at this world (a demo that starts a new
+     *              world for each hull); null starts a new one
+     */
+    public DevConsole(GameWorld world, GameScenario game, Path scriptDir, Path historyFile, WorldDebug tools,
+                      ScriptConsole reuse) {
         this.world = world;
         this.game = game;
         this.picker = new DebugPicker(world);
-        this.actions = new DebugActions(world);
-        this.console = new ScriptConsole(DevConsole.class.getClassLoader());
+        this.actions = new DebugActions(world, tools != null ? tools : new WorldDebug(world));
+        this.console = reuse != null ? reuse : new ScriptConsole(DevConsole.class.getClassLoader());
         console.addStarImports("com.badlogic.ashley.core", "com.hawkwing.RingsOfIron.game", "com.hawkwing.RingsOfIron.debug",
                 "com.ringsofiron.aicrew", "com.ringsofiron.interiorgrid");
         console.addImports("com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause");
         console.setFormatter(DevConsole::format);
         console.setScriptDir(scriptDir != null ? scriptDir : defaultScriptDir());
-        console.setHistoryFile(historyFile);
+        if (reuse == null) console.setHistoryFile(historyFile);
         console.set("world", world, "the GameWorld: world.crew, world.engine, world.notices ...");
         console.set("game", game, "the GameScenario: game.player, game.contacts ...");
         console.set("actions", actions, "DebugActions, what the commands below call");
@@ -80,6 +96,7 @@ public final class DevConsole {
         console.live("player", world::getPlayer, "the player's ship");
         console.live("avatar", () -> game == null ? null : game.avatar, "the player's own crew member");
         register();
+        if (reuse != null) return;
         console.info("Developer console. Click to select (again to cycle what is under the cursor), Esc deselects,"
                 + " help() lists the commands.");
         console.runIfPresent("autoexec");
@@ -206,9 +223,30 @@ public final class DevConsole {
             DebugTarget at = picker.selected();
             Entity ship = at != null && at.ship != null ? at.ship : world.getPlayer();
             boolean onTile = at != null && at.isTile() && at.getTile() != null && at.getTile().isOpen();
-            Entity e = actions.spawnCrew(ship, role, name, onTile ? at.tileX : -1, onTile ? at.tileY : -1);
+            Entity e = actions.spawnCrew(ship, role, name, -1, onTile ? at.tileX : -1, onTile ? at.tileY : -1);
             picker.select(DebugTarget.crew(e, ship));
             return picker.selected();
+        });
+        console.define("boarder", "boarder([role], [name])", "spawn(), but hostile to the ship's crew (a marine unless"
+                + " told otherwise); selects them", crew, args -> {
+            String role = args.length > 0 ? String.valueOf(args[0]) : "marine";
+            String name = args.length > 1 ? String.valueOf(args[1]) : null;
+            DebugTarget at = picker.selected();
+            Entity ship = at != null && at.ship != null ? at.ship : world.getPlayer();
+            boolean onTile = at != null && at.isTile() && at.getTile() != null && at.getTile().isOpen();
+            Entity e = actions.spawnCrew(ship, role, name, actions.boarderFaction(ship), onTile ? at.tileX : -1, onTile ? at.tileY : -1);
+            picker.select(DebugTarget.crew(e, ship));
+            return picker.selected();
+        });
+        console.define("remove", "remove([target])", "takes a crew member, round, missile or decoy out of the world", crew, args -> {
+            DebugTarget t = target(args, 0);
+            if (t.isCrew()) {
+                if (t.equals(picker.selected())) picker.clear();
+                return actions.removeCrew(t.entity);
+            }
+            if (t.isTile() || t.isCraft()) throw new ConsoleException("remove() takes a crew member or something in flight");
+            if (t.equals(picker.selected())) picker.clear();
+            return actions.remove(t.entity);
         });
         console.define("teleport", "teleport(x, y, [target])", "puts a crew member on another tile of the ship they are on", crew, args -> {
             if (args.length < 2) throw new ConsoleException("teleport(x, y): which tile?");
@@ -240,10 +278,9 @@ public final class DevConsole {
             if (t.isTile()) return actions.damageTile(t.ship, t.tileX, t.tileY, amount > 1f ? amount / 100f : amount);
             throw new ConsoleException("damage() takes a tile or crew member; click again to cycle to the tile");
         });
-        console.define("breach", "breach([target])", "blows a hole in a hull tile", decks, args -> {
-            DebugTarget t = target(args, 0);
-            if (!t.isTile()) throw new ConsoleException("breach() takes a hull tile");
-            return actions.breach(t.ship, t.tileX, t.tileY);
+        console.define("breach", "breach([target])", "knocks the tile out: a hull breach if it faces space, else a hole", decks, args -> {
+            int[] t = tileTarget(args, 0);
+            return actions.breach(tileShip, t[0], t[1]);
         });
         console.define("repair", "repair([target])", "mends a tile and its system; a ship or crew member's ship, all of it", decks, args -> {
             DebugTarget t = target(args, 0);
@@ -258,6 +295,38 @@ public final class DevConsole {
             if (t == null) throw new ConsoleException("Select a tile first");
             return t;
         });
+
+        String hits = "Hits";
+        console.define("shoot", "shoot([weapon], [target])", "fires a weapon once at the tile (or the crew member's) from"
+                + " straight outboard: a real round, missile or beam. weapons() lists them", hits, args -> {
+            String weapon = args.length > 0 && args[0] instanceof CharSequence ? String.valueOf(args[0]) : null;
+            int[] t = tileTarget(args, weapon != null ? 1 : 0);
+            return actions.shoot(tileShip, t[0], t[1], weapon);
+        });
+        console.define("blast", "blast([warhead], [target])", "sets off a warhead inside the hull at the tile. warheads() lists them", hits, args -> {
+            String warhead = args.length > 0 && args[0] instanceof CharSequence ? String.valueOf(args[0]) : null;
+            int[] t = tileTarget(args, warhead != null ? 1 : 0);
+            return actions.blast(tileShip, t[0], t[1], warhead);
+        });
+        console.define("ram", "ram([km/s], [tonnes], [target])", "a rock through the tile from straight outboard (2 km/s, 2 t;"
+                + " under 1 km/s bounces off)", hits, args -> {
+            int numbers = 0;
+            while (numbers < args.length && numbers < 2 && args[numbers] instanceof Number) numbers++;
+            float speed = numbers > 0 ? number(args[0]) * 1000f : WorldDebug.RAM_SPEED;
+            float mass = numbers > 1 ? number(args[1]) * 1000f : WorldDebug.RAM_MASS;
+            int[] t = tileTarget(args, numbers);
+            return actions.ram(tileShip, t[0], t[1], mass, speed);
+        });
+        console.define("shortOut", "shortOut([target])", "shorts the system or conduit on the tile; it may light a fire", hits, args -> {
+            int[] t = tileTarget(args, 0);
+            return actions.shortOut(tileShip, t[0], t[1]);
+        });
+        console.define("weapons", "weapons()", "the weapon ids shoot() takes", hits, args -> actions.tools.weapons());
+        console.define("warheads", "warheads()", "the warhead ids blast() takes", hits, args -> actions.tools.warheads());
+        console.define("reactors", "reactors([ship])", "switches the ship's reactors off, or back on", decks, args ->
+                actions.tools.toggleReactors(shipTarget(args, 0)) ? "Reactors on" : "Reactors off");
+        console.define("doors", "doors([ship])", "seals every door aboard, or opens them all", decks, args ->
+                actions.tools.toggleDoors(shipTarget(args, 0)) ? "Doors sealed" : "Doors open");
 
         String ships = "Ships";
         console.define("ships", "ships()", "the ship ids spawnShip() takes", ships, args ->
@@ -287,6 +356,24 @@ public final class DevConsole {
         DebugTarget t = target(args, index);
         if (!t.isCrew()) throw new ConsoleException("Select a crew member first (" + t + " is selected)");
         return t.entity;
+    }
+
+    /** The ship of the last {@link #tileTarget}. */
+    private Entity tileShip;
+
+    /** The tile in {@code args[index]} or the selection: a tile as itself, a crew member as the tile they stand on. */
+    private int[] tileTarget(Object[] args, int index) {
+        DebugTarget t = target(args, index);
+        if (t.isTile()) {
+            tileShip = t.ship;
+            return new int[]{t.tileX, t.tileY};
+        }
+        if (t.isCrew()) {
+            GridPositionComponent p = t.entity.getComponent(GridPositionComponent.class);
+            tileShip = p.ship;
+            return new int[]{p.tileX(), p.tileY()};
+        }
+        throw new ConsoleException("Select a tile or crew member first (" + t + " is selected)");
     }
 
     private Entity shipTarget(Object[] args, int index) {

@@ -6,6 +6,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.hawkwing.RingsOfIron.game.GameWorld;
 import com.hawkwing.RingsOfIron.game.ShipConsoles;
+import com.hawkwing.RingsOfIron.game.WorldDebug;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
@@ -28,21 +29,25 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Things a developer does to the world by hand: kill, heal or wound a crew member, set a tile
- * alight, breach the hull, repair a ship, spawn crew and ships. The developer console's commands
- * call these, and a demo's debug keys can call the same ones. Each goes through the game's own
- * systems where there is one (a wound through {@link CrewService#applyDamage}, so a hit on someone
- * critical halves their time as a real hit does), and returns a line saying what it did. A target
- * it can't act on is refused with an {@link IllegalArgumentException} saying why.
+ * What the developer console does to the world, as one line each saying what happened: kill, heal
+ * or wound a crew member, fire a weapon at a tile, set off a warhead, ram, set a tile alight,
+ * breach or short it, repair a ship, spawn crew and ships. Where the interior demo's
+ * {@link WorldDebug} has the tool (wounds through the crew's damage sink, weapons, blasts, rams,
+ * fires, breaches, shorts), this calls it, so the demo's keys and the console's commands do the
+ * same thing; what is here is what the console adds (killing and reviving, repairs, ships). A
+ * target it can't act on is refused with an {@link IllegalArgumentException} saying why.
  */
 public final class DebugActions {
     /** How far ahead of the player {@link #spawnShip} puts a new ship, meters. */
     public static final float SPAWN_DISTANCE = 300f;
 
     private final GameWorld world;
+    /** The interior demo's tools, which most of these go through. */
+    public final WorldDebug tools;
 
-    public DebugActions(GameWorld world) {
+    public DebugActions(GameWorld world, WorldDebug tools) {
         this.world = world;
+        this.tools = tools;
     }
 
     // --- Crew ------------------------------------------------------------------------
@@ -60,10 +65,9 @@ public final class DebugActions {
     public String heal(Entity crew) {
         CrewMemberComponent c = crewOf(crew);
         if (!c.isAlive()) return c.name + " is dead; revive() brings them back";
-        clearWound(c);
-        c.health = c.def.maxHealth;
+        tools.heal(crew);
+        c.bleedOut = 0f;
         c.suitAir = c.def.suitAir;
-        world.crew.updateState(crew);
         return c.name + " is healed (" + c.state.name().toLowerCase(Locale.ROOT) + ")";
     }
 
@@ -99,7 +103,7 @@ public final class DebugActions {
         Wound was = c.wound;
         CrewState wasState = c.state;
         float bleed = c.bleedOut;
-        world.crew.applyDamage(crew, points, cause(cause));
+        tools.hurt(crew, points, cause(cause));
         StringBuilder sb = new StringBuilder(c.name).append(": ");
         if (!c.isAlive()) return sb.append("killed").toString();
         if (CrewService.wounds(cause(cause))) {
@@ -145,53 +149,53 @@ public final class DebugActions {
 
     /**
      * A new crew member aboard {@code ship}, on the tile given or on a free deck tile when
-     * {@code x} is negative, working for the ship's own faction.
+     * {@code x} is negative. They work for the ship's own crew, or for {@code faction} when it
+     * is not negative: a boarder.
      */
-    public Entity spawnCrew(Entity ship, String role, String name, int x, int y) {
-        ShipGridComponent g = gridOf(ship);
-        CrewRole r = role == null ? CrewRole.CREWMAN : CrewRole.valueOf(role.toUpperCase(Locale.ROOT));
+    public Entity spawnCrew(Entity ship, String role, String name, int faction, int x, int y) {
+        gridOf(ship);
+        CrewRole r;
+        try {
+            r = role == null ? CrewRole.CREWMAN : CrewRole.valueOf(role.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("No role " + role + "; one of " + java.util.Arrays.toString(CrewRole.values()));
+        }
         if (x < 0) {
-            int[] free = freeTile(ship, g);
+            int[] free = tools.freeTile(ship);
             if (free == null) throw new IllegalArgumentException(DebugNames.name(ship) + " has no free deck");
             x = free[0];
             y = free[1];
-        } else if (g.getTile(x, y) == null || !g.getTile(x, y).isOpen()) {
-            throw new IllegalArgumentException("Tile " + x + "," + y + " isn't open deck");
         }
-        int faction = CrewFactory.ensureBoard(ship).faction;
-        if (name == null) name = r.name().charAt(0) + r.name().substring(1).toLowerCase(Locale.ROOT) + " " + (crewAboard(ship).size() + 1);
-        return CrewFactory.spawn(world.crew, ship, name, r, faction, x, y);
+        Entity e = faction < 0 ? tools.spawnCrew(ship, r, x, y) : tools.spawnCrew(ship, r, faction, x, y);
+        if (e == null) throw new IllegalArgumentException("Tile " + x + "," + y + " isn't open deck");
+        if (name != null) e.getComponent(CrewMemberComponent.class).name = name;
+        return e;
+    }
+
+    /**
+     * A faction aboard {@code ship} hostile to its crew, for a boarder: the first faction whose
+     * crew the ship's own count as enemies, else one past every faction in use.
+     */
+    public int boarderFaction(Entity ship) {
+        int own = CrewFactory.ensureBoard(ship).faction;
+        int highest = own;
+        for (Entity e : world.crew.crewEntities()) highest = Math.max(highest, world.crew.crew(e).faction);
+        for (int f = 0; f <= highest; f++) {
+            if (f != own && world.crew.hostility.hostile(own, f)) return f;
+        }
+        return highest + 1;
+    }
+
+    /** Takes the crew member out of the world altogether. */
+    public String removeCrew(Entity crew) {
+        String name = crewOf(crew).name;
+        tools.removeCrew(crew);
+        return name + " removed";
     }
 
     /** Everyone aboard {@code ship}, alive or not. */
     public List<Entity> crewAboard(Entity ship) {
-        List<Entity> out = new ArrayList<>();
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
-            if (e.getComponent(GridPositionComponent.class).ship == ship) out.add(e);
-        }
-        return out;
-    }
-
-    /** An open deck tile nobody stands on, or null. */
-    private int[] freeTile(Entity ship, ShipGridComponent g) {
-        List<int[]> open = new ArrayList<>();
-        for (int y = 0; y < g.height; y++) {
-            for (int x = 0; x < g.width; x++) {
-                Tile t = g.getTile(x, y);
-                if (t.isOpen() && t.mount == null) open.add(new int[]{x, y});
-            }
-        }
-        List<Entity> aboard = crewAboard(ship);
-        for (int i = 0; i < open.size(); i++) {
-            int[] t = open.get((i * 7) % open.size());
-            boolean taken = false;
-            for (Entity e : aboard) {
-                GridPositionComponent p = e.getComponent(GridPositionComponent.class);
-                if (p.tileX() == t[0] && p.tileY() == t[1]) taken = true;
-            }
-            if (!taken) return t;
-        }
-        return open.isEmpty() ? null : open.get(0);
+        return tools.crewAboard(ship);
     }
 
     // --- Decks -----------------------------------------------------------------------
@@ -205,8 +209,7 @@ public final class DebugActions {
         Tile t = tileOf(g, x, y);
         if (!t.holdsAir()) throw new IllegalArgumentException("Tile " + x + "," + y + " holds no air to burn in");
         if (t.fuel <= 0f) t.fuel = FloorCovering.CARPET.fuelPerArea * g.tileSize * g.tileSize;
-        if (!t.ignite()) return "Tile " + x + "," + y + " is already burning";
-        return "Fire at " + x + "," + y + " aboard " + DebugNames.name(ship);
+        return tools.ignite(ship, x, y) + " at " + x + "," + y + " aboard " + DebugNames.name(ship);
     }
 
     /** Sets a random tile of the ship alight, one that holds air. */
@@ -238,32 +241,47 @@ public final class DebugActions {
         return out == 0 ? "Nothing burning" : out + (out == 1 ? " fire" : " fires") + " out";
     }
 
-    /**
-     * Takes {@code share} (0 to 1) of full condition off the tile and the system on it, as a hit
-     * would; at nothing a hull tile is breached and a wall falls.
-     */
+    /** Takes {@code share} (0 to 1) off the system on the tile, or else off the tile. */
     public String damageTile(Entity ship, int x, int y, float share) {
-        ShipGridComponent g = gridOf(ship);
-        Tile t = tileOf(g, x, y);
-        t.setIntegrity(t.getIntegrity() - share);
-        SubsystemComponent s = systemOn(t);
-        if (s != null) s.health = Math.max(0f, s.health - share);
-        g.gridDirty = true;
-        return "Tile " + x + "," + y + " at " + Math.round(t.getIntegrity() * 100f) + "%"
-                + (s != null ? ", " + DebugNames.lower(s.type.name()) + " at " + Math.round(s.health * 100f) + "%" : "")
-                + (t.isHullBreach() ? ", breached" : "");
+        tileOf(gridOf(ship), x, y);
+        return tools.damage(ship, x, y, share);
     }
 
-    /** Blows a hole in a hull tile: its condition to nothing, open to space. */
+    /** Knocks the tile out: a wall or hull piece gone (a breach, if it faced space), or a hole in the deck. */
     public String breach(Entity ship, int x, int y) {
-        ShipGridComponent g = gridOf(ship);
-        Tile t = tileOf(g, x, y);
-        if (t.wallType != Tile.WallType.HULL) throw new IllegalArgumentException("Tile " + x + "," + y + " isn't hull; pick a hull tile");
-        t.setIntegrity(0f);
-        t.bulkheadSealed = false;
-        t.clearPatch();
-        g.gridDirty = true;
-        return "Hull breached at " + x + "," + y;
+        tileOf(gridOf(ship), x, y);
+        return tools.breach(ship, x, y) + " at " + x + "," + y;
+    }
+
+    /** Shorts out the system on the tile, or the power conduit there; it may light a fire, as a hit's short does. */
+    public String shortOut(Entity ship, int x, int y) {
+        tileOf(gridOf(ship), x, y);
+        return tools.shortOut(ship, x, y);
+    }
+
+    /** Fires {@code weapon} once at the tile from straight outboard: a real round, missile or beam. */
+    public String shoot(Entity ship, int x, int y, String weapon) {
+        tileOf(gridOf(ship), x, y);
+        if (weapon == null) weapon = tools.weapons().isEmpty() ? "" : tools.weapons().get(0);
+        return tools.fire(ship, weapon, x, y);
+    }
+
+    /** Sets off {@code warhead} inside the hull at the tile. */
+    public String blast(Entity ship, int x, int y, String warhead) {
+        tileOf(gridOf(ship), x, y);
+        if (warhead == null) warhead = tools.warheads().isEmpty() ? "" : tools.warheads().get(0);
+        return tools.blast(ship, warhead, x, y);
+    }
+
+    /** Rams a rock of {@code mass} kg at {@code speed} m/s through the tile, from straight outboard. */
+    public String ram(Entity ship, int x, int y, float mass, float speed) {
+        tileOf(gridOf(ship), x, y);
+        Vector2 at = tools.tileWorld(ship, x, y, new Vector2());
+        Vector2 center = PhysicsManager.getPosition(world.docking.bodyOf(ship), new Vector2());
+        Vector2 out = at.cpy().sub(center);
+        if (out.isZero(1e-3f)) out.set(1f, 0f);
+        out.nor();
+        return tools.ram(ship, x, y, at.x + out.x, at.y + out.y, mass, speed);
     }
 
     /** Mends the tile and the system on it: full condition, no patch, no fire, no short. */
@@ -311,14 +329,8 @@ public final class DebugActions {
     /** Every room of the ship filled with fresh air at room temperature, and the smoke cleared. */
     public String freshAir(Entity ship) {
         ShipGridComponent g = gridOf(ship);
-        for (int y = 0; y < g.height; y++) {
-            for (int x = 0; x < g.width; x++) g.getTile(x, y).temperature = Compartment.AMBIENT_TEMPERATURE;
-        }
-        for (Compartment c : g.compartments) {
-            c.temperature = Compartment.AMBIENT_TEMPERATURE;
-            c.fillStandardAir();
-            c.smoke = 0;
-        }
+        tools.freshAir(ship);
+        for (Compartment c : g.compartments) c.smoke = 0;
         return "Fresh air throughout " + DebugNames.name(ship);
     }
 
