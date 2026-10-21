@@ -58,13 +58,17 @@ to_weapons() {
   done
   # Missiles striking the hull shove the figure about, and a measured step can be wrong: walk one
   # axis at a time towards the console instead (on #151's frigate W raises the offset's y, D its x)
+  local prev="" other=0
   for _ in $(seq 1 60); do
     set -- $(offset)
+    # Against a wall the long axis doesn't move: take the other one for a while
+    [ "$1 $2" = "$prev" ] && other=4; prev="$1 $2"
     if awk -v x="$1" -v y="$2" 'BEGIN { exit !(x * x + y * y < 0.09) }'; then
       key v; pause 0.5; case "$(seat_state)" in *"seat WEAPONS"*) return 0;; *"seat HELM"*) key v; pause 0.5;; esac
     fi
-    if awk -v x="$1" -v y="$2" 'BEGIN { exit !((x < 0 ? -x : x) > (y < 0 ? -y : y)) }'; then walk a d "$(awk -v x="$1" 'BEGIN { print x * 0.4 }')"
-    else walk s w "$(awk -v y="$2" 'BEGIN { print y * 0.4 }')"; fi
+    if awk -v x="$1" -v y="$2" -v o="$other" 'BEGIN { l = (x < 0 ? -x : x) > (y < 0 ? -y : y); exit !(o > 0 ? !l : l) }'; then walk a d "$(awk -v x="$1" 'BEGIN { n = x * 0.4; print (n < 0 ? (n > -0.15 ? -0.15 : n) : (n < 0.15 ? 0.15 : n)) }')"
+    else walk s w "$(awk -v y="$2" 'BEGIN { n = y * 0.4; print (n < 0 ? (n > -0.15 ? -0.15 : n) : (n < 0.15 ? 0.15 : n)) }')"; fi
+    [ "$other" -gt 0 ] && other=$((other - 1))
   done
   echo "never reached the weapons console: $(seat_state)"; return 1
 }
