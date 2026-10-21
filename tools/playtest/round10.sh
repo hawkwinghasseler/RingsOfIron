@@ -86,11 +86,14 @@ if want captain; then
     pause "${ACE_WAIT:-14}"
   fi
   echo "captain: start: $(last_line career), sim $(now) (saved at $(sed -n 's/.*"gameSeconds": *\([0-9.]*\).*/\1/p' "$SAVES/First_ace_fight.meta.json"))"
-  for i in $(seq 1 16); do
+  for i in $(seq 1 40); do
     case "$(first "$(raid_state)")" in *"we are beaten"*) break;; esac
+    [ "${ACE_IDLE:-0}" != 1 ] && [ "$i" -gt 16 ] && break
     # Tab until the gun has the ace (round 9's script pressed Tab once a round, blind, which could
     # move the gun off it)
     ace=$(hostiles | grep ' IN_BUBBLE target=@player ' | head -1 | sed 's/^  \(.*\) IN_BUBBLE .*/\1/')
+    # ACE_IDLE=1 leaves the ace unanswered, so the fight is lost (the berth and abandon cases)
+    if [ "${ACE_IDLE:-0}" = 1 ]; then pause 4; continue; fi
     for _ in 1 2 3 4 5 6; do [ -n "$ace" ] && case "$(gun_target)" in "$ace"*) true;; *) false;; esac && break; key Tab; done
     key r; hold space 4
     [ "$i" = 1 ] && shot c-01-first-ace-fight
@@ -129,9 +132,12 @@ fi
 # whether the pods launch, read every 5 s for two minutes
 if want abandon; then
   cmd load First ace fight; pause 14
-  for i in $(seq 1 16); do
+  for i in $(seq 1 40); do
     case "$(first "$(raid_state)")" in *"we are beaten"*) break;; esac
+    [ "${ACE_IDLE:-0}" != 1 ] && [ "$i" -gt 16 ] && break
     ace=$(hostiles | grep ' IN_BUBBLE target=@player ' | head -1 | sed 's/^  \(.*\) IN_BUBBLE .*/\1/')
+    # ACE_IDLE=1 leaves the ace unanswered, so the fight is lost (the berth and abandon cases)
+    if [ "${ACE_IDLE:-0}" = 1 ]; then pause 4; continue; fi
     for _ in 1 2 3 4 5 6; do [ -n "$ace" ] && case "$(gun_target)" in "$ace"*) true;; *) false;; esac && break; key Tab; done
     key r; hold space 4
   done
