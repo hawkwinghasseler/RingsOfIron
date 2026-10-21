@@ -1,5 +1,8 @@
 package com.hawkwing.RingsOfIron.art;
 
+import com.ringsofiron.aicrew.CrewMemberComponent;
+import com.ringsofiron.aicrew.CrewState;
+import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.MaterialTable;
@@ -329,9 +332,39 @@ public final class ArtNames {
     /** Whose look a crew member has. */
     public enum Crew { SHIP, STATION, PLAYER }
 
+    /**
+     * How a crew member looks for their wound and state: on their feet unhurt or with a light
+     * wound, down with a serious or critical wound, down without one (air, heat, a knock), or dead.
+     */
+    public enum CrewPose {
+        STANDING(""), INJURED("_injured"), WOUNDED("_wounded"), UNCONSCIOUS("_unconscious"), DEAD("_dead");
+
+        private final String suffix;
+
+        CrewPose(String suffix) {
+            this.suffix = suffix;
+        }
+
+        /** True for the poses drawn lying on the deck, which carry nothing. */
+        public boolean lying() {
+            return this == WOUNDED || this == UNCONSCIOUS || this == DEAD;
+        }
+
+        public static CrewPose of(CrewMemberComponent c) {
+            if (c.state == CrewState.DEAD) return DEAD;
+            if (c.state == CrewState.UNCONSCIOUS) return c.wound.disabling() ? WOUNDED : UNCONSCIOUS;
+            return c.wound == Wound.NONE ? STANDING : INJURED;
+        }
+    }
+
     /** A crew member, holding a crate while they carry a load. */
     public static String crew(Crew who, boolean carrying) {
-        return "crew/crew_" + who.name().toLowerCase(Locale.ROOT) + (carrying ? "_carrying" : "");
+        return crew(who, CrewPose.STANDING, carrying);
+    }
+
+    /** A crew member in {@code pose}, holding a crate while they carry a load on their feet. */
+    public static String crew(Crew who, CrewPose pose, boolean carrying) {
+        return "crew/crew_" + who.name().toLowerCase(Locale.ROOT) + pose.suffix + (carrying && !pose.lying() ? "_carrying" : "");
     }
 
     /** A light on a wall, dark without power. */

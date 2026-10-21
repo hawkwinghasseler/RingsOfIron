@@ -229,6 +229,10 @@ class ArtNamesTest {
         for (ArtNames.Crew who : ArtNames.Crew.values()) {
             assertArt(ArtNames.crew(who, false));
             assertArt(ArtNames.crew(who, true));
+            for (ArtNames.CrewPose pose : ArtNames.CrewPose.values()) {
+                assertArt(ArtNames.crew(who, pose, false));
+                assertArt(ArtNames.crew(who, pose, true));
+            }
         }
         // Each round and missile in data finds its art, through its art key or its id
         String weapons = new String(Files.readAllBytes(ASSETS.resolve("data/weapons.toml")), java.nio.charset.StandardCharsets.UTF_8);

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="60" height="64" viewBox="-30 -32 60 64">
+  <title>crew_station_wounded: station dock hand down on their back with a serious wound, bleeding, head toward +y</title>
+  <g id="base">
+    <polygon points="24.77,0 25.92,6.38 20.22,11.01 13.64,15.92 5.57,11.77 -1.82,10.61 -9.99,7.16 -10.37,0 -9.28,-6.89 -4.05,-12.81 5.36,-12.49 12.67,-12.58 20.97,-11.75 24.25,-5.75" fill="#8e1414" opacity="0.8"/>
+    <circle cx="24.3" cy="9.35" r="3.06" fill="#8e1414" opacity="0.8"/>
+    <rect x="-9.5" y="6" width="8" height="20" rx="4" fill="#954914" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="-10" y="23" width="9" height="7" rx="3" fill="#22262c" stroke="#10141a" stroke-width="1.2"/>
+    <rect x="1.5" y="6" width="8" height="20" rx="4" fill="#954914" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="1" y="23" width="9" height="7" rx="3" fill="#22262c" stroke="#10141a" stroke-width="1.2"/>
+    <rect x="-17.5" y="-8" width="7" height="17" rx="3.5" fill="#954914" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="-14" cy="9.5" r="3" fill="#c99a78" stroke="#10141a" stroke-width="1"/>
+    <path d="M11,-7 L8,1 L-2,2" fill="none" stroke="#10141a" stroke-width="8.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M11,-7 L8,1 L-2,2" fill="none" stroke="#954914" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="-11.5" y="-12" width="23" height="21" rx="6" fill="#c8641e" stroke="#10141a" stroke-width="2"/>
+    <path d="M-8,-10 C-4,-11.5 2,-11.5 6,-10.5" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.22"/>
+    <rect x="-11" y="-9" width="5" height="3" rx="1" fill="#f2c230"/>
+    <rect x="6" y="-9" width="5" height="3" rx="1" fill="#f2c230"/>
+    <rect x="-11.5" y="4" width="23" height="3" fill="#954914" stroke="#10141a" stroke-width="1"/>
+    <circle cx="-2" cy="2" r="3" fill="#c99a78" stroke="#10141a" stroke-width="1"/>
+    <circle cx="0" cy="-19" r="7.5" fill="#c99a78" stroke="#10141a" stroke-width="1.8"/>
+    <path d="M-7.4,-17.5 C-7.8,-24 -4,-26.8 0,-26.8 C4,-26.8 7.8,-24 7.4,-17.5 C5.5,-22 3,-23.5 0,-23.5 C-3,-23.5 -5.5,-22 -7.4,-17.5 Z" fill="#e8e2d0" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="-4.5" y1="-18.5" x2="-1.8" y2="-18" stroke="#10141a" stroke-width="1.1" stroke-linecap="round"/>
+    <line x1="1.8" y1="-18" x2="4.5" y2="-18.5" stroke="#10141a" stroke-width="1.1" stroke-linecap="round"/>
+    <line x1="-1.8" y1="-14.5" x2="1.8" y2="-14.5" stroke="#10141a" stroke-width="1" stroke-linecap="round"/>
+    <path d="M-3,-3 C0,-5 4,-4 5,-1 C5,2 1,3 -2,1 Z" fill="#8e1414" opacity="0.9"/>
+  </g>
+  <g id="meta">
+    <circle id="collider" cx="0" cy="0" r="19.2" fill="none" stroke="none"/>
+  </g>
+</svg>

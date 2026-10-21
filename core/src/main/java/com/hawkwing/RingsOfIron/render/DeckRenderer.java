@@ -39,8 +39,10 @@ import java.util.function.Supplier;
  * The deck view, for the game and every demo that shows a deck: each craft's deck plan at its
  * pose (the art pack's when it is built, else the minimap's shades), its smoke and flames, its
  * cargo, everyone aboard, and with {@link SceneLighting} the light map and the glow of what gives
- * off light. Crew show their state as the game does whatever the style: the down greyed, the dead
- * as a body where they fell, and a wound disc under the hurt. A {@link Style} says how crew are
+ * off light. Crew show their state as the game does whatever the style: hurt, down or dead by their
+ * art ({@link ArtNames.CrewPose}), and a wound disc under the critically wounded, or without that
+ * art the down greyed, the dead a cross where they fell and a disc under everyone hurt. A
+ * {@link Style} says how crew are
  * drawn and lets a screen add to the deck and to each crew member, so a demo shows what it needs on
  * top without drawing a deck of its own.
  */
@@ -78,7 +80,7 @@ public final class DeckRenderer {
     private static final Matrix4 IDENTITY = new Matrix4();
     /** The tint of a down crew member's figure, and what their dot is scaled by. */
     private static final Color GREYED = new Color(0.55f, 0.55f, 0.6f, 1f);
-    /** A body's cross until there is art for one. */
+    /** A body's cross without the art for one. */
     private static final Color BODY = new Color(0.55f, 0.55f, 0.55f, 1f);
     /** How long a bleeding wound's disc takes to blink. */
     private static final float BLINK = 0.6f;
@@ -260,13 +262,14 @@ public final class DeckRenderer {
                 if (pos.ship != ship) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                 Vector2 l = pos.toShipLocal(g, local);
+                boolean posed = figures && deckArt.hasCrew(ArtNames.CrewPose.of(c));
                 if (c.state == CrewState.DEAD) {
-                    body(shapes, l.x, l.y, s);
+                    if (!posed) body(shapes, l.x, l.y, s);
                     continue;
                 }
                 style.underCrew(shapes, e, c, l.x, l.y, s, figures);
-                if (c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS) {
-                    // The figure has no art of its own for being hurt or down
+                if (posed ? c.wound == Wound.CRITICAL : c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS) {
+                    // The art shows hurt and down, not how near death; without it, the disc shows both
                     Color w = woundColor(c, clock, crewColor);
                     shapes.setColor(w.r, w.g, w.b, w.a * 0.7f);
                     shapes.circle(l.x, l.y, WOUND_DISC * s, 20);
@@ -284,10 +287,12 @@ public final class DeckRenderer {
                     GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
                     if (pos.ship != ship) continue;
                     CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-                    if (c.state == CrewState.DEAD) continue;
+                    ArtNames.CrewPose pose = ArtNames.CrewPose.of(c);
+                    boolean posed = deckArt.hasCrew(pose);
+                    if (!posed && c.state == CrewState.DEAD) continue;
                     Vector2 l = pos.toShipLocal(g, local);
-                    batch.setColor(c.state == CrewState.UNCONSCIOUS ? GREYED : Color.WHITE);
-                    deckArt.crew(batch, e, style.figure(e, c), c.load == null ? null : c.load.task.job.commodity(), l.x, l.y, s);
+                    batch.setColor(!posed && c.state == CrewState.UNCONSCIOUS ? GREYED : Color.WHITE);
+                    deckArt.crew(batch, e, style.figure(e, c), pose, c.load == null ? null : c.load.task.job.commodity(), l.x, l.y, s);
                 }
                 batch.setColor(Color.WHITE);
                 batch.end();
@@ -338,7 +343,7 @@ public final class DeckRenderer {
         return out;
     }
 
-    /** A dead crew member's body at ({@code x}, {@code y}): a grey cross until there is art for one. */
+    /** A dead crew member's body at ({@code x}, {@code y}) without the art for one: a grey cross. */
     private static void body(ShapeRenderer shapes, float x, float y, float tileSize) {
         float r = 0.32f * tileSize, width = 0.08f * tileSize;
         shapes.setColor(BODY);
