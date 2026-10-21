@@ -166,7 +166,7 @@ class HostileTrafficGameTest {
         String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
         HostileComponent h = hostiles.get(id);
         h.targetUuid = HostileComponent.PLAYER;
-        Entity ship = bringIn(id, 3_000, 0);
+        Entity ship = bringIn(id, 6_000, 0); // out of its guns' reach: in it, it holds to fire first (round 10)
         run(2);
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
         for (int y = 0; y < grid.height; y++) {
@@ -183,6 +183,41 @@ class HostileTrafficGameTest {
         assertNotNull(pilot, "and flies off");
         assertTrue(pilot.burns.isEmpty() && pilot.seekTarget == null);
         assertTrue(world.hostiles.notices.stream().anyMatch(n -> n.contains("breaking off")));
+    }
+
+    @Test
+    void aRaiderWornToItsLineAsItReachesItsGunsFiresBeforeItBreaksOff() {
+        // Round 10: survey seed 1's raider reached 0.65 of its hull just as it crossed its chaingun's 3 km
+        // from the frigate, and turned away without a shot
+        String id = pirate(HostileTraffic.RAIDER);
+        HostileComponent h = hostiles.get(id);
+        h.targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 3_000, 0);
+        float reach = Tactics.arms(ship).reach;
+        int[] fired = new int[1];
+        double[] firstShot = {Double.NaN};
+        world.combatEvents.shots.add((sig, shot) -> {
+            if (shot.shooter != ship) return;
+            fired[0]++;
+            if (Double.isNaN(firstShot[0])) firstShot[0] = world.engine.getSimSeconds();
+        });
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile t = grid.getTile(x, y);
+                if (t != null && t.isWall()) t.setIntegrity(0.6f);
+            }
+        }
+        double brokeOffAt = Double.NaN;
+        for (int i = 0; i < 60 * 30 && Double.isNaN(brokeOffAt); i++) {
+            world.update(FRAME);
+            if (h.brokeOff) brokeOffAt = world.engine.getSimSeconds();
+        }
+        assertTrue(h.hull < HostileTraffic.BREAK_OFF_HULL, "below its line from the start: " + h.hull);
+        assertTrue(reach >= 3_000f, "in its guns' reach: " + reach);
+        assertFalse(Double.isNaN(brokeOffAt), "it breaks off in the end");
+        assertTrue(fired[0] > 0 && firstShot[0] < brokeOffAt, "it fired first: " + fired[0] + " rounds, the first at "
+                + firstShot[0] + ", off at " + brokeOffAt);
     }
 
     @Test
