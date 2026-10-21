@@ -722,12 +722,13 @@ public class ScriptConsole {
         if (order.remove("General")) order.add(0, "General");
         for (String g : order) {
             sb.append("\n").append(g).append(":");
-            for (CommandInfo c : groups.get(g)) sb.append("\n  ").append(pad(c.usage, 30)).append(c.help);
+            // The window's font isn't monospaced, so a dash rather than columns
+            for (CommandInfo c : groups.get(g)) sb.append("\n  ").append(c.usage).append("  -  ").append(c.help);
         }
         if (!variableHelp.isEmpty()) {
             sb.append("\nVariables:");
             for (Map.Entry<String, String> v : variableHelp.entrySet()) {
-                sb.append("\n  ").append(pad(v.getKey(), 30)).append(v.getValue());
+                sb.append("\n  ").append(v.getKey()).append("  -  ").append(v.getValue());
             }
         }
         return sb.toString();
@@ -736,19 +737,12 @@ public class ScriptConsole {
     /** One command's or variable's help. */
     public String help(String name) {
         CommandInfo c = commands.get(name);
-        if (c != null) return c.usage + "  " + c.help;
+        if (c != null) return c.usage + "  -  " + c.help;
         String v = variableHelp.get(name);
-        if (v != null) return name + "  " + v;
+        if (v != null) return name + "  -  " + v;
         if (binding.hasVariable(name)) return name + " = " + format(binding.getVariable(name));
         String near = closest(name, names());
         return "Nothing called " + name + (near != null ? "; did you mean " + near + "?" : "");
-    }
-
-    private static String pad(String s, int width) {
-        StringBuilder sb = new StringBuilder(s);
-        while (sb.length() < width) sb.append(' ');
-        if (sb.length() == s.length()) sb.append("  ");
-        return sb.toString();
     }
 
     private void builtins() {

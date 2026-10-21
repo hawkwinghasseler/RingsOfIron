@@ -60,6 +60,8 @@ public class DevConsoleWindow extends Window {
         styles[ScriptConsole.Kind.INFO.ordinal()] = new Label.LabelStyle(base.font, HudSkin.HUD_DIM);
         styles[ScriptConsole.Kind.ERROR.ordinal()] = new Label.LabelStyle(base.font, HudSkin.HUD_ALERT);
 
+        // Nearly opaque: the HUD's panels under it would otherwise read through the scrollback
+        setBackground(skin.newDrawable("white", new Color(0.02f, 0.05f, 0.09f, 0.97f)));
         setMovable(true);
         setResizable(true);
         setResizeBorder(8);
