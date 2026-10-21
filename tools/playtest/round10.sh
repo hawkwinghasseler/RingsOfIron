@@ -105,8 +105,16 @@ if want captain; then
     echo "captain: at the berth: $(last_line captain)"
     echo "captain: crew at the berth: $(cmd crew; pause 0.5; awk '/^PLAYTEST crew:/ { block = $0; on = 1; next } on && /^  / { block = block "|" $0; next } { on = 0 } END { print block }' "$OUT/game.log")"
     key i; pause 1; shot c-06-crew-at-the-berth; key i; pause 1
-    key period; key period; key period; key period; pause 60; key comma; key comma; key comma; key comma; pause 2
-    echo "captain: a minute of warp later: $(last_line captain)"
+    # Warp x4 in 20 s steps until the captain is out of suit air, dead, aboard the station or after
+    # five minutes; part 4 drops the warp while the figure is walked out of thin air
+    for i in $(seq 1 15); do
+      key period; key period; key period; key period; pause 20
+      c=$(last_line captain); echo "captain: warp step $i: $c"
+      case "$c" in *dead*|*"in Highport"*|*"(0 s of air)"*) break;; esac
+      [ "$i" = 3 ] && shot c-07-warp-at-the-berth
+    done
+    key comma; key comma; key comma; key comma; pause 20
+    echo "captain: after the warp: $(last_line captain)"
     echo "captain: $(last_line career)"
     shot c-07-after-warp
     key i; pause 1; shot c-08-crew-after-warp; key i; pause 1
