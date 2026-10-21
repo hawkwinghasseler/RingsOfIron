@@ -76,11 +76,22 @@ fi
 
 # Part 4: the first ace fight by hand; lost, the tow and the berth, and the captain there
 if want captain; then
-  cmd load First ace fight; pause 14; shot c-01-first-ace-fight
-  echo "captain: start: $(last_line career)"
+  # ACE_WAIT=0 fires as soon as the game answers after the load, as the career does; round 9 waited 14 s
+  cmd load First ace fight
+  if [ "${ACE_WAIT:-14}" = 0 ]; then
+    for _ in $(seq 1 60); do pause 0.5; case "$(last_line career)" in day*) break;; esac; done
+  else
+    pause "${ACE_WAIT:-14}"
+  fi
+  echo "captain: start: $(last_line career), sim $(now) (saved at $(sed -n 's/.*"gameSeconds": *\([0-9.]*\).*/\1/p' "$SAVES/First_ace_fight.meta.json"))"
   for i in $(seq 1 16); do
     case "$(first "$(raid_state)")" in *"we are beaten"*) break;; esac
-    key Tab; key r; hold space 4
+    # Tab until the gun has the ace (round 9's script pressed Tab once a round, blind, which could
+    # move the gun off it)
+    ace=$(hostiles | grep ' IN_BUBBLE target=@player ' | head -1 | sed 's/^  \(.*\) IN_BUBBLE .*/\1/')
+    for _ in 1 2 3 4 5 6; do [ -n "$ace" ] && [ "$(gun_target)" = "$ace" ] && break; key Tab; done
+    key r; hold space 4
+    [ "$i" = 1 ] && shot c-01-first-ace-fight
     [ "$i" = 4 ] && shot c-02-first-ace-fight-on
   done
   echo "captain: fight: $(first "$(raid_state)")"
