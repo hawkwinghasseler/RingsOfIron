@@ -73,6 +73,12 @@ class PirateCrewOrderTest {
         assertEquals(12, board.best(CrewRole.ENGINEER, 3, 2, null).x, "the reactor ahead of a nearer conduit");
         board.claim(board.best(CrewRole.ENGINEER, 3, 2, null), new Entity());
         assertEquals(5, board.best(CrewRole.CREWMAN, 3, 2, null).x, "then the conduit, ahead of first aid");
+        Entity turret = new Entity();
+        turret.add(new SubsystemComponent(new MountFootprint(SubsystemComponent.SubsystemType.TURRET_MOUNT.mountKind,
+                MountFootprint.MountSize.S, 8, 2, 0), SubsystemComponent.SubsystemType.TURRET_MOUNT));
+        board.claim(board.best(CrewRole.CREWMAN, 3, 2, null), new Entity());
+        board.post(new ResetShortTask(turret, 8, 2));
+        assertEquals(8, board.best(CrewRole.CREWMAN, 3, 2, null).x, "and a gun's short, ahead of first aid");
         board.post(new EvacuateTask(null, 1, 1));
         assertEquals(CrewTask.Kind.EVACUATE, board.best(CrewRole.CREWMAN, 3, 2, null).kind, "abandoning ship comes first all the same");
     }

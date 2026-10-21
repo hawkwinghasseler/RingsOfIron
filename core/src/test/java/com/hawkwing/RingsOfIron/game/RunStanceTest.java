@@ -70,7 +70,8 @@ class RunStanceTest {
                 HostileTraffic.firepower(ship) * 0.75 / HostileTraffic.firepower(game.player), 0.75, true, false),
                 "hit, and outgunned by the corvette");
         world.hostiles.onShotAt(ship, game.player);
-        run(2);
+        // In reach it holds to fire first (round 10), then runs
+        run(HostileTraffic.BREAK_OFF_HOLD + 2);
         assertTrue(h.hull < Tactics.RUN_HULL && h.hull > HostileTraffic.BREAK_OFF_HULL, "running, not breaking off: " + h.hull);
         assertTrue(h.brokeOff);
         assertNull(ship.getComponent(NpcCombatComponent.class), "done fighting");
@@ -79,6 +80,12 @@ class RunStanceTest {
         assertTrue(world.notices.history().stream().anyMatch(n -> n.text.equals(was + " is running")));
 
         world.timeWarp.setWarp(10);
+        // It held in reach closing at speed: first it turns about
+        for (int i = 0; i < 30; i++) {
+            double before = range(ship);
+            run(1);
+            if (range(ship) > before) break;
+        }
         double start = range(ship), last = start;
         int steps = 0;
         while (world.macroSim.bubble().inBubble().contains(id) && steps < 300) {

@@ -44,11 +44,11 @@ public class ShipTaskBoardComponent implements Component {
      */
     public boolean keepsClearOfFire = true;
     /**
-     * Whether the crew get the power back before anything else ({@link #powerReset}): a shorted reactor,
-     * or a shorted conduit, is taken ahead of first aid, breaches and every other job but abandoning
-     * ship. Off by default; set from their faction's data when the ship is crewed ({@code
+     * Whether the crew get the power back before anything else ({@link #powerReset}): a short, the
+     * reactor's first, is reset ahead of first aid, breaches and every other job but abandoning ship. Off by default; set from their faction's data when the ship is crewed ({@code
      * crews_reset_power_first}, round 10: a pirate raider left dark under a frigate's railguns at 4 km
-     * stopped bleeds and sealed breaches until it struck, and never fired).
+     * stopped bleeds and sealed breaches until it struck, and never fired; one whose turret mount
+     * shorted struck in reach for silenced guns).
      */
     public boolean resetsPowerFirst;
     /** True while the ship is in a fight: set each tick by the game, so not saved. */
@@ -163,8 +163,8 @@ public class ShipTaskBoardComponent implements Component {
     }
 
     /**
-     * On a board that {@link #resetsPowerFirst}, the open reset of a shorted reactor or conduit that
-     * {@code role} does at all, the nearest reactor first; else null. The guard where a crewman picks a
+     * On a board that {@link #resetsPowerFirst}, the open short reset that {@code role} does at all: the
+     * reactor's first, then the nearest of the rest; else null. The guard where a crewman picks a
      * task: {@link #best} returns it ahead of the rest, and a crewman holding any other job puts it down for
      * it ({@link #yieldsToPower}).
      */
@@ -175,8 +175,6 @@ public class ShipTaskBoardComponent implements Component {
         float bestScore = Float.NEGATIVE_INFINITY;
         for (CrewTask t : tasks) {
             if (t.status != CrewTask.Status.OPEN || !(t instanceof ResetShortTask)) continue;
-            ResetShortTask r = (ResetShortTask) t;
-            if (r.subsystem != null && r.priority < ResetShortTask.REACTOR_PRIORITY) continue;
             if (role.affinity(t) <= 0f || (filter != null && !filter.accept(t))) continue;
             float score = t.priority - DISTANCE_WEIGHT * (Math.abs(t.x - x) + Math.abs(t.y - y));
             if (score > bestScore) {
@@ -195,8 +193,7 @@ public class ShipTaskBoardComponent implements Component {
      */
     public boolean yieldsToPower(CrewTask held, CrewRole role, int x, int y, TaskFilter filter) {
         if (!resetsPowerFirst || held == null || held.kind == CrewTask.Kind.EVACUATE) return false;
-        if (held instanceof ResetShortTask && (((ResetShortTask) held).subsystem == null
-                || held.priority >= ResetShortTask.REACTOR_PRIORITY)) return false;
+        if (held instanceof ResetShortTask) return false;
         return powerReset(role, x, y, filter) != null;
     }
 
