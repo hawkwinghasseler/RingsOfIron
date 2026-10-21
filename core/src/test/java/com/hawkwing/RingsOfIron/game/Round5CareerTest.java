@@ -32,6 +32,17 @@ class Round5CareerTest extends CareerScript {
     static final int MOST_JOBS = 40;
     /** Most tries at the raid, each after the yard (round 7: 2). */
     static final int RAID_TRIES = 3;
+    /**
+     * Round 10: while the money is what holds the frigate back, {@link #buyTheFrigate} takes the bounty
+     * that pays most, as a player saving for a ship would; otherwise the one with the most standing,
+     * as before. Seed 9 took two plain raiders for 14,322 and 22,185 cr with a week docked after each.
+     */
+    static final boolean PAY_FIRST_WHEN_SHORT = true;
+    /**
+     * Round 10: bounties {@link #buyTheFrigate} takes in a day, from either board, before a week docked
+     * while the money is short (round 9: 1). Seed 9's Highport board offered one bounty a week.
+     */
+    static final int FRIGATE_BOUNTIES_A_DAY = 2;
 
     final List<String> rows = new ArrayList<>();
     int jobs, operationsDone, bountiesDone, raidsFought;
@@ -219,15 +230,28 @@ class Round5CareerTest extends CareerScript {
 
     /** A bounty the boards at Highport or Anvil Yards offer, fought for. False if none could be taken. */
     boolean takeABounty() {
+        return takeABounty(false);
+    }
+
+    /**
+     * A bounty the boards at Highport or Anvil Yards offer, fought for: the one with the most standing,
+     * or with {@code payFirst} the one that pays most (round 10). The offers it chose from go in the
+     * journal. False if none could be taken.
+     */
+    boolean takeABounty(boolean payFirst) {
         for (String station : new String[]{game.highport, game.shipyard}) {
             dockAtStation(station);
             Contract best = null;
+            List<String> offers = new ArrayList<>();
             for (Contract c : world.contracts.offers(station)) {
                 if (c.type != Contract.Type.BOUNTY || world.contracts.locked(c) != null) continue;
                 HostileComponent h = world.macroSim.hostiles().get(c.targetUuid);
                 if (h == null || !h.isPirate()) continue;
-                if (best == null || c.standing > best.standing) best = c;
+                offers.add(String.format(java.util.Locale.ROOT, "%s %.0f cr %+.0f", c.targetName, c.reward, c.standing));
+                if (best == null || (payFirst ? c.reward > best.reward : c.standing > best.standing)) best = c;
             }
+            if (!offers.isEmpty()) log("  bounties at %s (%s): %s", PlayerDocking.name(world.engine.getEntity(station)),
+                    payFirst ? "pay first" : "standing first", String.join("; ", offers));
             if (best == null || world.contracts.accept(best.id) != null) continue;
             log("Took %s: %.0f cr, %+.0f standing.", best.heading(), best.reward, best.standing);
             flyStep(best);
@@ -272,7 +296,15 @@ class Round5CareerTest extends CareerScript {
         // Round 7: a new Commander waits their days in rank for the first frigate too
         while ((credits() < cost || world.standing.newChassisWait(frigate.shipId) > 0) && weeks < 12) {
             // A Commander's pay, with the contracts a week brings
-            if (!takeABounty() || credits() < cost) {
+            boolean took = takeABounty(PAY_FIRST_WHEN_SHORT && credits() < cost);
+            // Round 10: still short, another bounty offered today before the week docked
+            for (int more = 1; took && more < FRIGATE_BOUNTIES_A_DAY && credits() < cost
+                    && world.standing.newChassisWait(frigate.shipId) <= 0; more++) {
+                dockAtStation(game.shipyard);
+                cost = world.shipyard.cost(frigate, game.player);
+                if (credits() >= cost || !takeABounty(PAY_FIRST_WHEN_SHORT)) break;
+            }
+            if (!took || credits() < cost) {
                 weeksPass(1);
                 docked++;
             }
@@ -448,6 +480,23 @@ class Round5CareerTest extends CareerScript {
             dockAtStation(game.highport);
             hireUpTo(game.highport, crewWanted());
         }
+        // Round 10: crew who sheltered ashore while the ship vented walk back aboard once the yard has
+        // mended it, as a player would wait for them (seed 11 flew its second raid with them still at
+        // Highport: "Nobody aboard to take the helm")
+        double ashore = world.engine.getSimSeconds();
+        if (!runUntil(CREW_ABOARD_WAIT, this::crewAboard)) log("  the crew still not all aboard after %.0f s.", CREW_ABOARD_WAIT);
+        else if (world.engine.getSimSeconds() - ashore > 1) log("  the crew came back aboard in %.0f s.", world.engine.getSimSeconds() - ashore);
+    }
+
+    /** Longest the career waits for its crew to come back aboard after the yard, seconds. */
+    static final float CREW_ABOARD_WAIT = 180f;
+
+    /** True once every conscious hand of the ship's own is aboard it. */
+    private boolean crewAboard() {
+        for (Entity e : ownCrew()) {
+            if (world.crew.crew(e).isConscious() && world.crew.position(e).ship != game.player) return false;
+        }
+        return true;
     }
 
     /**

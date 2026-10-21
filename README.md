@@ -81,6 +81,10 @@ The scripted career saves the game at the moments each round's changes show best
 | Frigate | Day 44, the frigate at Anvil Yards | The yard (Y) and refits |
 | Before the raid | Day 44, the frigate 8 km from Rustwake, the pirates' base | The raid: Tab picks a defender, Space and R fight; the base strikes once its defenders are beaten |
 
+Other seeds write the same saves: `./gradlew :core:test --tests '*CareerSweepTest' -PcareerSweep=<n>` puts seed n's in `core/build/playtest-saves/seed-<n>`, loaded with `-PcareerSaves=core/build/playtest-saves/seed-<n>`. Every seed's saves share names, so loading one seed's replaces the last seed's. Two are worth a look in round 10:
+- **Seed 4:** "Before the raid" draws a railgun raider and a railgun battery, the raid that marks the frigate. The scripted career lost its first two tries there at about hull 0.45.
+- **Seed 9:** the late frigate. On round 9 its "Frigate" save is on day 55, past the day-52 aim, after a lost fight with the ace Iron Dagny.
+
 Each round's pull request names the save that shows its change, under "Try it in the game".
 
 ## Building and testing

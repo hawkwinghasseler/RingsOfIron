@@ -235,6 +235,51 @@ public final class TaskRules {
      */
     public static final int SUIT_CARE_FACTION = 0;
 
+    /**
+     * What resetting a short on a system the ship fights with ({@link #vital}) is worth to the player's
+     * crews at battle stations ({@link #priority}): above sealing a breach, below a shorted reactor
+     * and rescues. Round 10: seed 9's career lost Iron Dagny with its helm and two gun mounts shorted
+     * at 16 s and still dark 45 s later, while all four crew sealed breaches (80) ahead of the resets (50).
+     */
+    public static final float VITAL_RESET_PRIORITY = 84f;
+
+    /**
+     * The priority {@code task} is chosen by on {@code board}: its own, except a reset of a short on a
+     * system the ship fights with, while the player's crews are at battle stations
+     * ({@link #VITAL_RESET_PRIORITY}).
+     */
+    public static float priority(ShipTaskBoardComponent board, CrewTask task) {
+        if (task instanceof ResetShortTask && board.battleStations && board.faction == SUIT_CARE_FACTION
+                && task.priority < VITAL_RESET_PRIORITY && vital(task)) return VITAL_RESET_PRIORITY;
+        if (task instanceof RepairTask && board.faction == SUIT_CARE_FACTION && task.priority < ResetShortTask.REACTOR_PRIORITY
+                && reactorOut(((RepairTask) task).subsystem)) return ResetShortTask.REACTOR_PRIORITY;
+        if (task instanceof StabiliseTask && board.faction == SUIT_CARE_FACTION && task.priority < URGENT_STABILISE_PRIORITY) {
+            CrewMemberComponent c = ((StabiliseTask) task).patient.getComponent(CrewMemberComponent.class);
+            if (c != null && c.wound == Wound.CRITICAL && !c.stabilised && c.bleedOut <= LAST_CHANCE) return URGENT_STABILISE_PRIORITY;
+        }
+        return task.priority;
+    }
+
+    /**
+     * What stopping the bleeding of one of the player's crews with no more than {@link #LAST_CHANCE}
+     * to live is worth ({@link #priority}): before anything else, an engineer's breach (80 at 1.5) or
+     * shorted reactor (85 at 1.5) and a medic's rescue (90 at 1.5) included. Round 10: in the frigate's
+     * raids on seeds 10 and 12 three crew went critical, were hit again where they lay (each hit halves what is left, and opens a
+     * wound stopped before), and bled out with 34 to 66 s left, one of them after the fight.
+     */
+    public static final float URGENT_STABILISE_PRIORITY = 110f;
+
+    /**
+     * True if {@code subsystem} is a reactor damaged past working ({@link SubsystemComponent#isDisabled}):
+     * the player's crews mend it as they would reset its short ({@link #priority}). Round 10: with the
+     * guns' shorts reset first, seed 9's corvette sat with its reactor wrecked and the crew on the turret,
+     * and was towed in after a fight it had won (25,500 cr, and 22,202 cr short for the gunship).
+     */
+    static boolean reactorOut(Entity subsystem) {
+        SubsystemComponent s = subsystem == null ? null : subsystem.getComponent(SubsystemComponent.class);
+        return s != null && s.type == SubsystemComponent.SubsystemType.REACTOR && s.isDisabled();
+    }
+
     /** True if {@code board}'s crew suit up at their posts and fill a casualty's suit (round 9). */
     public static boolean suitCare(ShipTaskBoardComponent board) {
         return board != null && board.faction == SUIT_CARE_FACTION;

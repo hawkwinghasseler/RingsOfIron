@@ -585,10 +585,48 @@ public class GameScenario {
         }
     }
 
+    /**
+     * Round 10: Tab passes over struck ships ({@link Struck}) while any hostile contact still fights,
+     * so it no longer locks a prize mid-fight (round 9's trace: Tab onto raider 20, struck 138 s
+     * before, and a harpoon brought it back). With nothing left fighting it cycles them too, so the
+     * player can still choose to fire on a prize. False cycles every contact, as round 9 did.
+     */
+    public static final boolean TAB_SKIPS_STRUCK = true;
+
+    /**
+     * The contact after {@code current} for Tab, in the order they came into the bubble, wrapping
+     * round; the first when {@code current} is null or gone. Struck ships are passed over while any
+     * contact still fights ({@link #TAB_SKIPS_STRUCK}).
+     */
     public Entity nextContact(Entity current) {
         if (contacts.size == 0) return null;
+        boolean skip = TAB_SKIPS_STRUCK && anyFighting();
         int i = current == null ? -1 : contacts.indexOf(current, true);
-        return contacts.get((i + 1) % contacts.size);
+        for (int n = 1; n <= contacts.size; n++) {
+            Entity next = contacts.get((i + n + contacts.size) % contacts.size);
+            if (!skip || !Struck.struck(world, next)) return next;
+        }
+        return null;
+    }
+
+    /**
+     * The lock a new fight starts with (the game's start, a rescue, a load without one): the first
+     * contact that has not struck, or null if every one has. Never a prize, whose lock under the
+     * trigger would be aimed fire.
+     */
+    public Entity firstTarget() {
+        for (Entity e : contacts) if (!Struck.struck(world, e)) return e;
+        return null;
+    }
+
+    /** True while some hostile contact can still fight: not struck, and not beaten. */
+    private boolean anyFighting() {
+        for (Entity e : contacts) {
+            HudMarkerComponent m = e.getComponent(HudMarkerComponent.class);
+            if (m == null || m.kind != HudMarkerComponent.Kind.HOSTILE) continue;
+            if (!Struck.struck(world, e) && !FirstPlay.beaten(world, e)) return true;
+        }
+        return false;
     }
 
     /** The station type with this id from the economy data, or the n-th one if the data has no such type. */

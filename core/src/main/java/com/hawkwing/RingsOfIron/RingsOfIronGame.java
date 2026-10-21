@@ -176,6 +176,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     private GameWorld world;
     private GameScenario game;
+    /** Round 10: a fallen base's batteries greyed on the HUD. */
+    private com.hawkwing.RingsOfIron.game.SilencedMarkers silencedMarkers;
     private GameHud gameHud;
     private UiHud hud;
     private ViewportManager viewports;
@@ -282,11 +284,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
         deckArt = new DeckArt(art);
         exteriorArt = new ExteriorArt(art);
         gameHud = new GameHud(world, hud);
+        silencedMarkers = new com.hawkwing.RingsOfIron.game.SilencedMarkers(world);
         lighting = new SceneLighting(EmissiveLights.load(assetsDir));
         hullArt = new HullArt(game.content.defs);
 
         gun = new PlayerGunnery(world, game.player);
-        gun.setTarget(game.nextContact(null));
+        gun.setTarget(game.firstTarget());
         hud.setTargeting(new CombatTargetingProvider(gun));
         docking = new PlayerDocking(world, () -> game.player, this::show);
         navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world, docking);
@@ -329,7 +332,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.rescue.rescues.add((signal, rescue) -> {
             // The new ship's own weapons
             gun = new PlayerGunnery(world, game.player);
-            gun.setTarget(game.nextContact(null));
+            gun.setTarget(game.firstTarget());
             hud.setTargeting(new CombatTargetingProvider(gun));
             matchViewToSeat();
             show(rescueNotice(rescue));
@@ -397,6 +400,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             handleInput(delta);
             if (world.getCrash() == null) gun.update(delta);
             world.update(delta);
+            silencedMarkers.update();
             String why = autosaves.due(world, game.player);
             if (why != null) autosave(why);
         }
@@ -771,7 +775,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             world.clearCrash();
             // The loaded ship's own weapons; its sensor lock comes back with the save.
             gun = new PlayerGunnery(world, game.player);
-            if (gun.getTarget() == null) gun.setTarget(game.nextContact(null));
+            if (gun.getTarget() == null) gun.setTarget(game.firstTarget());
             hud.setTargeting(new CombatTargetingProvider(gun));
             matchViewToSeat();
             // A save made in First Play carries on there; any other leaves it

@@ -52,6 +52,10 @@ hostile_to_all = true
 # Round 9: pirate crews stay at their shorts, breaches and guns under fire, with no yard to limp home
 # to. Every other faction's crews keep clear of where the fire fell till the fight ends (true if left out).
 crews_keep_clear_of_fire = false
+# Round 10: and they get the power back first. A short, the reactor's first, is reset ahead of first aid,
+# breaches and every job but abandoning ship: a raider left dark under fire dies anyway. An ace's crew keep
+# the usual order (PirateAces.promote). False if left out.
+crews_reset_power_first = true
 # Their hidden base, on an eccentric high orbit
 stations = ["Rustwake"]
 

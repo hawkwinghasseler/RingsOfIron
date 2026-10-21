@@ -94,6 +94,8 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
     private final Vector2 zem = new Vector2();
     private final Vector2 cmd = new Vector2();
     private final boolean[] blocked = new boolean[1];
+    /** Ships a launcher's seekers leave alone unless the missile was fired at them; null spares none. */
+    private WeaponControlSystem.HoldFire spared;
 
     public MissileGuidanceSystem(PhysicsManager physics, CombatEvents events, CombatDefs defs,
                                  BallisticsSystem ballistics, SensorTrackingSystem sensors) {
@@ -102,6 +104,15 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         this.defs = defs;
         this.ballistics = ballistics;
         this.sensors = sensors;
+    }
+
+    /**
+     * Ships whose seekers pass over: a missile from {@code shooter} never locks a ship this spares
+     * unless it was fired at that ship (round 10: a heavy missile fired at a raider locked a fallen
+     * base's battery instead and burst on it). The game wires the same rule as the player's guns.
+     */
+    public void setSpared(WeaponControlSystem.HoldFire spared) {
+        this.spared = spared;
     }
 
     @Override
@@ -290,9 +301,15 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         float halfFov = 0.5f * seeker.fovDeg * MathUtils.degreesToRadians;
         Entity best = null;
         float bestScore = 0f;
+        // A lock on a ship it spares is let go, so the proximity fuse never fires on it
+        if (m.seekerLock != null && m.seekerLock != m.target && spares(m, m.seekerLock)) {
+            m.seekerLock = null;
+            m.seekerTrack.reset();
+        }
         for (int i = 0; i < contacts.size(); i++) {
             Entity c = contacts.get(i);
             if (c == self || c == m.launcher || c.isScheduledForRemoval() || missileMapper.has(c)) continue;
+            if (c != m.target && spares(m, c)) continue;
             DecoyComponent decoy = decoyMapper.get(c);
             if (decoy != null && decoy.owner == m.launcher) continue;
             if (!ContactState.read(c, pos, vel)) continue;
@@ -319,6 +336,10 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         estVel.set(m.seekerTrack.v);
         estAcc.set(m.seekerTrack.a);
         return true;
+    }
+
+    private boolean spares(MissileComponent m, Entity c) {
+        return spared != null && m.launcher != null && spared.holds(m.launcher, c);
     }
 
     /** Asteroids block seekers; ships do not (the seeker would lock them instead). */

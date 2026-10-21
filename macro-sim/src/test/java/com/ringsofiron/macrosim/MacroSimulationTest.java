@@ -72,6 +72,58 @@ class MacroSimulationTest {
     }
 
     @Test
+    void aFreighterNearItsStationWhenRailsWarpCollapsesTheBubbleArrives() {
+        // Round 10, seed 17: rails warp collapsed the bubble with an Ore Barge flying in to Selene
+        // Forge; it coasted on through the warp and was re-planned round a 28-day phasing loop
+        MacroSimulation sim = MacroSimDemo.build(new GameEngine());
+        String ship = null;
+        FreighterComponent f = null;
+        double t = 0;
+        for (; t <= 10 * 86400 && ship == null; t += 60) {
+            sim.advanceTo(t);
+            for (var e : sim.freighters().all().entrySet()) {
+                FreighterComponent c = e.getValue();
+                if (c.state == FreighterComponent.State.TO_DELIVERY && c.transitBodyUuid == null && !Double.isNaN(c.arrivalTime)
+                        && c.arrivalTime - t < 120 && c.arrivalTime > t) {
+                    ship = e.getKey();
+                    f = c;
+                }
+            }
+        }
+        assertNotNull(ship, "a freighter about to deliver");
+        String to = f.destinationUuid;
+        int trips = f.tripsCompleted;
+        sim.freighters().onEnterBubble(ship);
+        sim.freighters().arriveFromBubble(ship, t);
+        assertEquals(to, f.dockedAtUuid, "it berths where it was going");
+        assertEquals(trips + 1, f.tripsCompleted, "and delivers");
+        assertEquals(FreighterComponent.State.IDLE, f.state);
+    }
+
+    @Test
+    void aFreighterFarFromItsStationWhenRailsWarpCollapsesTheBubbleFliesOn() {
+        MacroSimulation sim = MacroSimDemo.build(new GameEngine());
+        String ship = null;
+        FreighterComponent f = null;
+        for (double t = 0; t <= 10 * 86400 && ship == null; t += 600) {
+            sim.advanceTo(t);
+            for (var e : sim.freighters().all().entrySet()) {
+                FreighterComponent c = e.getValue();
+                if (c.state == FreighterComponent.State.TO_DELIVERY && c.arrivalTime - t > 86400) {
+                    ship = e.getKey();
+                    f = c;
+                }
+            }
+        }
+        assertNotNull(ship, "a freighter a day out from delivering");
+        int trips = f.tripsCompleted;
+        sim.freighters().onEnterBubble(ship);
+        sim.freighters().arriveFromBubble(ship, sim.now());
+        assertEquals(FreighterComponent.State.IN_BUBBLE, f.state, "still out in the bubble");
+        assertEquals(trips, f.tripsCompleted);
+    }
+
+    @Test
     void oneBigWarpJumpMatchesManySmallSteps() {
         MacroSimulation coarse = MacroSimDemo.build(new GameEngine());
         MacroSimulation fine = MacroSimDemo.build(new GameEngine());

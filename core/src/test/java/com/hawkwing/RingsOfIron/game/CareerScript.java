@@ -61,6 +61,8 @@ abstract class CareerScript {
     int fightsLost;
     /** Range, m, past which a hostile breaking off has got away: since round 5 a wounded crew can still run. */
     static final double GOT_AWAY = 40_000;
+    /** Seconds out of the bubble on end after which a hostile has got away ({@link #gone}). */
+    static final double OUT_OF_BUBBLE_GONE = 120;
     /** A fight looks at the range this often, seconds, and chases a pirate farther off than {@link #CHASE_RANGE}. */
     static final double CHASE_EVERY = 20;
     static final double CHASE_RANGE = 2_500;
@@ -69,6 +71,15 @@ abstract class CareerScript {
     final java.util.Set<String> warpBlocks = new java.util.HashSet<>();
     /** Times the yard work is ordered again after the ship came loose of the latch. */
     int yardTries = 3;
+
+    /**
+     * Round 10: {@code -PcareerFightTrace=<text>} traces each fight whose journal name holds the text
+     * (say "Iron Dagny"), second by second, to {@code build/fight-trace-<seed>.txt} ({@link FightTrace}).
+     */
+    static final String FIGHT_TRACE = System.getProperty("career.fightTrace");
+
+    /** Round 10: fastest a prize may spin, rad/s, for the script to latch on and board it. */
+    static final float PRIZE_SPIN_LIMIT = 0.5f;
 
     /** The journal's file name in {@code build/}, without the extension. */
     abstract String journalName();
@@ -347,6 +358,14 @@ abstract class CareerScript {
             log("  the prize drifted out of reach before it could be boarded.");
             return;
         }
+        // Round 10, seed 19: the beaten raider tumbled at 10.8 rad/s, and latching on tore both docking
+        // collars off the frame it was made. A player can't latch onto a ship spinning like that, and
+        // leaves the prize where it is
+        float spin = Math.abs(body(ship).getAngularVelocity());
+        if (spin > PRIZE_SPIN_LIMIT) {
+            log("  the prize tumbles at %.1f rad/s: too fast to latch onto, so it isn't boarded.", spin);
+            return;
+        }
         flyTo(ship, 40f);
         world.docking.dockInPlace(game.player, 0, ship, 0);
         assertTrue(runUntil(10f, () -> world.boarding.target(game.player) == ship && world.docking.isRigid(game.player)),
@@ -373,6 +392,22 @@ abstract class CareerScript {
     /** The aces {@link #fight} has beaten, by uuid: no contract may name one again (round 7). */
     final java.util.Set<String> acesBeaten = new java.util.HashSet<>();
 
+    /**
+     * True once {@code ship} has been out of the bubble for {@link #OUT_OF_BUBBLE_GONE} on end, timed in
+     * {@code since}: it can't be chased there, though the rails may put it nearer than {@link #GOT_AWAY}.
+     * Round 10, seed 2026 on the integration: Cold Teodor at hull 0.49 ran past 25 km and stayed out,
+     * and the fight never ended. Seed 7's Red Kestrel leaves the bubble and comes back to be beaten.
+     */
+    boolean gone(Entity ship, double[] since) {
+        if (inBubble(ship)) {
+            since[0] = Double.NaN;
+            return false;
+        }
+        double now = world.engine.getSimSeconds();
+        if (Double.isNaN(since[0])) since[0] = now;
+        return now - since[0] >= OUT_OF_BUBBLE_GONE;
+    }
+
     /** Fights {@code ship} with every gun and missile until one side is beaten; true if it was. */
     boolean fight(Entity ship, HostileComponent h, String what) {
         PlayerGunnery gun = new PlayerGunnery(world, game.player);
@@ -381,6 +416,7 @@ abstract class CareerScript {
         world.combatEvents.shots.add((sig, shot) -> { if (shot.shooter == ship) fired[0]++; });
         world.combatEvents.impacts.add((sig, hit) -> { if (hit.owner == ship && hit.target == game.player) hits[0]++; });
         world.combatEvents.impacts.add((sig, hit) -> { if (hit.owner == game.player && hit.target == ship) landed[0]++; });
+        FightTrace trace = FIGHT_TRACE != null && what.contains(FIGHT_TRACE) ? new FightTrace(this, game.player, ship, what) : null;
         double t0 = world.engine.getSimSeconds();
         float hull0 = hull(game.player);
         int crew0 = ownCrew().size();
@@ -395,6 +431,7 @@ abstract class CareerScript {
         // itself (round 7: an ace held off 3 to 6 km for the whole fight). One that broke off runs.
         int[] closed = new int[1];
         double[] nextLook = {t0 + CHASE_EVERY};
+        double[] outSince = {Double.NaN};
         boolean over = runUntil(400f, () -> {
             if (carried[0]) return true;
             if (world.engine.getSimSeconds() >= nextLook[0]) {
@@ -416,15 +453,16 @@ abstract class CareerScript {
                     || ShipDisablement.isDisabled(game.player) && (ShipDisablement.reason(game.player) != DisabledComponent.Reason.NO_POWER
                             || !com.ringsofiron.combatsys.damage.IonStun.anyStunned(game.player))
                     && world.disablement.judge(game.player) != null
-                    || world.getCrash() != null || range(game.player, ship) > GOT_AWAY;
+                    || world.getCrash() != null || range(game.player, ship) > GOT_AWAY || gone(ship, outSince);
         });
         world.carriedHome.remove(home);
+        if (trace != null) trace.closeAfter(600);
         // One that broke off and was never chased, still running when time is up, got away too
         boolean ran = !over && h != null && h.brokeOff && !FirstPlay.beaten(world, ship);
         boolean won = !carried[0] && FirstPlay.beaten(world, ship);
         if (won && h != null && h.ace) acesBeaten.add(ship.getComponent(com.ringsofiron.coreengine.components.UuidComponent.class).id);
         if (!won && ShipDisablement.isDisabled(game.player)) log("  we are disabled: %s.", ShipDisablement.reason(game.player));
-        boolean away = !won && !carried[0] && (ran || range(game.player, ship) > GOT_AWAY);
+        boolean away = !won && !carried[0] && (ran || range(game.player, ship) > GOT_AWAY || gone(ship, outSince));
         String result = won ? "beaten" : carried[0] ? "we lost (carried home)" : away ? "it got away"
                 : over ? "we lost" : "neither side beaten";
         double seconds = world.engine.getSimSeconds() - t0;
@@ -778,11 +816,15 @@ abstract class CareerScript {
                         + world.engine.getRailsWarpBlockedReason() + "; career over: " + world.getCareerOver());
                 last = world.engine.getSimSeconds();
             }
-            if (world.timeWarp.getWarp() == 1 && world.getCrash() == null) {
+            // Round 10: a warp held low (seeds 15 and 18 sat at ×10 for the weeks after a docking at
+            // Crisium held rails warp) is raised again once a second, as a player would
+            if ((world.timeWarp.getWarp() == 1 || frames % 60 == 0 && world.timeWarp.getWarp() < 100_000) && world.getCrash() == null) {
                 double left = until - world.engine.getSimSeconds();
                 String blocked = world.engine.getRailsWarpBlockedReason();
                 if (blocked != null && warpBlocks.add(blocked)) log("  (rails warp refused: %s)", blocked);
+                int now = world.timeWarp.getWarp();
                 for (int level : new int[]{100_000, 10_000, 1_000, 100, 10}) {
+                    if (level <= now && now > 1) break;
                     if (level * FRAME <= left * 2 && world.timeWarp.setWarp(level)) break;
                 }
             }

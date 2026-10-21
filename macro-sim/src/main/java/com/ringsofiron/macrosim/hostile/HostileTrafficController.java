@@ -567,8 +567,18 @@ public class HostileTrafficController {
     private void holdAt(String uuid, HostileComponent h, String station, double offset, double now) {
         if (station == null || !rails.isOnRails(station)) return;
         rails.cancelBurns(uuid);
-        StateVector s = behind(rails.stateAt(station, now, b), offset);
+        // Round 10: a gun platform moors on the station's own orbit, back along its path, where a ship
+        // coming up behind the station holds (Rescue's jump); stepping back round the body, as a lurker
+        // does, put the base's guns off that line by the orbit's flight-path angle, out of their reach
+        StateVector s = h.moored() ? alongTrack(rails.stateAt(station, now, b), offset) : behind(rails.stateAt(station, now, b), offset);
         rails.attach(uuid, rails.parentOf(station), s, now);
+    }
+
+    /** {@code meters} back along {@code s}'s velocity, at the same velocity. */
+    static StateVector alongTrack(StateVector s, double meters) {
+        double v = Math.hypot(s.vx, s.vy);
+        if (v <= 0) return s;
+        return s.set(s.x - s.vx / v * meters, s.y - s.vy / v * meters, s.vx, s.vy);
     }
 
     private TransferPlanner.Plan planTo(String uuid, String station, double offset, double now, double minStart) {
