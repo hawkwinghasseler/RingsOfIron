@@ -251,6 +251,8 @@ public final class TaskRules {
     public static float priority(ShipTaskBoardComponent board, CrewTask task) {
         if (task instanceof ResetShortTask && board.battleStations && board.faction == SUIT_CARE_FACTION
                 && task.priority < VITAL_RESET_PRIORITY && vital(task)) return VITAL_RESET_PRIORITY;
+        if (task instanceof RepairTask && board.faction == SUIT_CARE_FACTION && task.priority < ResetShortTask.REACTOR_PRIORITY
+                && reactorOut(((RepairTask) task).subsystem)) return ResetShortTask.REACTOR_PRIORITY;
         if (task instanceof StabiliseTask && board.faction == SUIT_CARE_FACTION && task.priority < URGENT_STABILISE_PRIORITY) {
             CrewMemberComponent c = ((StabiliseTask) task).patient.getComponent(CrewMemberComponent.class);
             if (c != null && c.wound == Wound.CRITICAL && !c.stabilised && c.bleedOut <= LAST_CHANCE) return URGENT_STABILISE_PRIORITY;
@@ -266,6 +268,17 @@ public final class TaskRules {
      * wound stopped before), and bled out with 34 to 66 s left, one of them after the fight.
      */
     public static final float URGENT_STABILISE_PRIORITY = 110f;
+
+    /**
+     * True if {@code subsystem} is a reactor damaged past working ({@link SubsystemComponent#isDisabled}):
+     * the player's crews mend it as they would reset its short ({@link #priority}). Round 10: with the
+     * guns' shorts reset first, seed 9's corvette sat with its reactor wrecked and the crew on the turret,
+     * and was towed in after a fight it had won (25,500 cr, and 22,202 cr short for the gunship).
+     */
+    static boolean reactorOut(Entity subsystem) {
+        SubsystemComponent s = subsystem == null ? null : subsystem.getComponent(SubsystemComponent.class);
+        return s != null && s.type == SubsystemComponent.SubsystemType.REACTOR && s.isDisabled();
+    }
 
     /** True if {@code board}'s crew suit up at their posts and fill a casualty's suit (round 9). */
     public static boolean suitCare(ShipTaskBoardComponent board) {
