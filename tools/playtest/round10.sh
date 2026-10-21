@@ -59,9 +59,17 @@ if want lone; then
   key u; pause 3; hold w 6; pause 20
   echo "lone: undocked: $(last_line career)"
   # RAIDER_FIT picks its loadout (raider_chaingun, raider_railgun...); by default the difficulty does
-  said=$(last_line "raider 4 ${RAIDER_FIT:-}"); echo "lone: $said"
+  # RAIDER_KM sets how far out it starts (default 4): past the bubble's edge it comes in off the rails
+  said=$(last_line "raider ${RAIDER_KM:-4} ${RAIDER_FIT:-}"); echo "lone: $said"
   raider=$(echo "$said" | sed -n 's/^\(.*\) (.*/\1/p')
-  pause 8; shot l-01-raider-coming
+  pause 8
+  for _ in $(seq 1 60); do
+    r=$(hostiles | grep -F "  $raider ")
+    case "$r" in *" IN_BUBBLE "*" m") [ "$(echo "$r" | awk '{print $(NF - 1)}')" -lt 8000 ] && break;; esac
+    pause 5
+  done
+  echo "lone: coming in: $(hostiles | grep -F "  $raider ")"
+  shot l-01-raider-coming
   t0=$(now)
   for i in $(seq 1 24); do
     for _ in 1 2 3 4 5 6; do [ "$(gun_target)" = "$raider" ] && break; key Tab; done
