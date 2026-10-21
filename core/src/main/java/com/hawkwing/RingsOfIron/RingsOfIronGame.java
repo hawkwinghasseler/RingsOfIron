@@ -55,6 +55,7 @@ import com.hawkwing.RingsOfIron.lighting.EmissiveLights;
 import com.hawkwing.RingsOfIron.lighting.HullArt;
 import com.hawkwing.RingsOfIron.lighting.SceneLighting;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
+import com.hawkwing.RingsOfIron.render.DeckWear;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
@@ -601,6 +602,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 devStep += seconds;
             }
         });
+        dev.addOverlay(DeckWear.NAME, DeckWear.DESCRIPTION,
+                deckRenderer::wearShown, deckRenderer::setWearShown);
         devWindow = new com.ringsofiron.uihud.widgets.DevConsoleWindow(hud.getSkin(), dev.console,
                 () -> (devFrozen ? "[stopped] " : "") + com.hawkwing.RingsOfIron.debug.DebugNames.describe(dev.selected()));
         // ~ opens and closes it; with it open, Esc lets go of the selection, then closes it

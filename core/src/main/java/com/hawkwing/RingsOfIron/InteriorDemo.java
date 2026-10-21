@@ -28,6 +28,7 @@ import com.hawkwing.RingsOfIron.game.InteriorLab;
 import com.hawkwing.RingsOfIron.game.WorldDebug;
 import com.hawkwing.RingsOfIron.game.WoundWatch;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
+import com.hawkwing.RingsOfIron.render.DeckWear;
 import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
@@ -36,7 +37,6 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
-import com.ringsofiron.interiorgrid.GridHazardSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
@@ -45,7 +45,6 @@ import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.uihud.HudSkin;
-import com.ringsofiron.uihud.minimap.TileShade;
 import com.ringsofiron.uihud.widgets.DevConsoleWindow;
 
 import java.nio.file.Path;
@@ -162,6 +161,8 @@ public class InteriorDemo extends ApplicationAdapter {
         deckArt = new DeckArt(art);
         deckRenderer = new DeckRenderer(() -> lab.world, shapes, batch, deckArt, null, () -> null)
                 .inShipFrame().setStyle(crewStyle());
+        // Heat, thin air and worn walls show here unless the console hides them
+        deckRenderer.setWearShown(true);
         camera = new OrthographicCamera();
         ui = new OrthographicCamera();
         lab = new InteriorLab(assetsDir);
@@ -246,6 +247,7 @@ public class InteriorDemo extends ApplicationAdapter {
                 devStep += seconds;
             }
         });
+        dev.addOverlay(DeckWear.NAME, DeckWear.DESCRIPTION, deckRenderer::wearShown, deckRenderer::setWearShown);
         selected = null;
         ShipGridComponent g = grid();
         float w = Gdx.graphics.getWidth() - PANEL_WIDTH - 60f, h = Gdx.graphics.getHeight() - LOG_HEIGHT - TOP - 40f;
@@ -530,38 +532,6 @@ public class InteriorDemo extends ApplicationAdapter {
     // Drawing
     // -----------------------------------------------------------------------
 
-    /**
-     * Over the deck: heat, dull red from 350 K to bright at the ignition point; thin air as a blue
-     * wash, open to space as near black; and walls marked as they are worn down.
-     */
-    private void drawWear(ShapeRenderer shapes, ShipGridComponent g) {
-        float s = g.tileSize;
-        for (int y = 0; y < g.height; y++) {
-            for (int x = 0; x < g.width; x++) {
-                Tile t = g.getTile(x, y);
-                if (t.isVoid()) continue;
-                Vector2 p = g.tileToLocal(x, y);
-                float heat = (t.temperature - 350f) / (GridHazardSystem.IGNITION_TEMPERATURE - 350f);
-                if (heat > 0f) {
-                    shapes.setColor(1f, 0.25f, 0.05f, Math.min(0.6f, heat * 0.6f));
-                    shapes.rect(p.x - s / 2f, p.y - s / 2f, s, s);
-                }
-                if (t.holdsAir()) {
-                    float air = Math.min(1f, g.oxygenRatioAt(x, y));
-                    if (air < 0.9f) {
-                        shapes.setColor(0.1f, 0.15f, 0.55f, 0.55f * (1f - air));
-                        shapes.rect(p.x - s / 2f, p.y - s / 2f, s, s);
-                    }
-                }
-                if (t.isWall() && t.getIntegrity() < 1f) {
-                    shapes.setColor(t.getIntegrity() <= 0f ? TileShade.BREACH : TileShade.wall(t.getIntegrity(), color));
-                    float m = s * 0.35f;
-                    shapes.rect(p.x - s / 2f + m, p.y - s / 2f + m, s - 2 * m, s - 2 * m);
-                }
-            }
-        }
-    }
-
     /** Rounds, missiles, rocks and beams in flight, and the attacker's bearing. */
     private void drawFlight() {
         Body body = body();
@@ -627,11 +597,6 @@ public class InteriorDemo extends ApplicationAdapter {
             public boolean shown(Entity crew) {
                 CrewMemberComponent c = lab.world.crew.crew(crew);
                 return c == null || c.state != CrewState.DEAD;
-            }
-
-            @Override
-            public void overDeck(ShapeRenderer shapes, Entity ship, ShipGridComponent g) {
-                drawWear(shapes, g);
             }
 
             @Override

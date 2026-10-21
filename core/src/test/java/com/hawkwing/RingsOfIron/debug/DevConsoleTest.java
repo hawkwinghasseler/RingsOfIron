@@ -265,4 +265,18 @@ class DevConsoleTest {
         dev.console.submit("selected = null");
         assertTrue(last().contains("can't be assigned"), last());
     }
+
+    @Test
+    void overlayTogglesWhatTheHostDraws() {
+        boolean[] shown = {false};
+        dev.addOverlay("wear", "heat and thin air", () -> shown[0], on -> shown[0] = on);
+        assertEquals("wear (hidden): heat and thin air", dev.console.execute("overlay()"));
+        assertEquals("wear shown", dev.console.execute("overlay('wear')"));
+        assertTrue(dev.overlayShown("wear"));
+        assertEquals("wear hidden", dev.console.execute("overlay('wear')"));
+        assertEquals("wear hidden", dev.console.execute("overlay('wear', false)"));
+        assertEquals("wear shown", dev.console.execute("overlay('wear', true)"));
+        assertNull(dev.console.execute("overlay('smoke')"));
+        assertTrue(dev.overlayShown("wear"));
+    }
 }

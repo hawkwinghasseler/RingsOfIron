@@ -90,6 +90,7 @@ public final class DeckRenderer {
     private Style style;
     private Pose pose;
     private boolean lightsOn = true;
+    private boolean wearShown;
 
     /** Smoke, wind and flames of each deck on show; a craft's go when it is no longer drawn. */
     private final Map<ShipGridComponent, HazardParticles> hazards = new IdentityHashMap<>();
@@ -143,6 +144,15 @@ public final class DeckRenderer {
 
     public boolean lightsOn() {
         return lightsOn;
+    }
+
+    /** Whether the {@link DeckWear} overlay is drawn over the decks: off unless a developer asks. */
+    public void setWearShown(boolean shown) {
+        wearShown = shown;
+    }
+
+    public boolean wearShown() {
+        return wearShown;
     }
 
     /**
@@ -248,6 +258,7 @@ public final class DeckRenderer {
             particles.draw(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, s);
             Gdx.gl.glEnable(GL20.GL_BLEND);
             shapes.begin(ShapeRenderer.ShapeType.Filled);
+            if (wearShown) DeckWear.draw(shapes, g, color);
             style.overDeck(shapes, ship, g);
             boolean figures = withArt && deckArt.hasCrew();
             for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
