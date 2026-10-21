@@ -214,6 +214,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private int logScroll;
     /** The controls panel (F1). */
     private boolean helpOpen;
+    /** The developer console (~): Groovy against the world, acting on what was clicked. */
+    private com.hawkwing.RingsOfIron.debug.DevConsole dev;
+    private com.ringsofiron.uihud.widgets.DevConsoleWindow devWindow;
+    /** The console has stopped the world ({@code pause()}); {@link #devStep} seconds are still to run. */
+    private boolean devFrozen;
+    private float devStep;
     /** When to autosave: docking, and every ten minutes of flight outside warp. */
     private final com.hawkwing.RingsOfIron.game.AutosaveClock autosaves = new com.hawkwing.RingsOfIron.game.AutosaveClock();
     /** Whether there is an autosave to offer when the ship is lost. */
@@ -363,7 +369,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         });
 
         world.hints.registerKey(HintRegistry.Context.ANY, "Esc", hosted ? "menu" : "quit", 90);
-        Gdx.input.setInputProcessor(new InputMultiplexer(hud.getInputProcessor(), new InputAdapter() {
+        createDevConsole();
+        Gdx.input.setInputProcessor(new InputMultiplexer(devKeys, hud.getInputProcessor(), devClicks, new InputAdapter() {
             @Override
             public boolean scrolled(float amountX, float amountY) {
                 if (logOpen) logScroll = Math.max(0, logScroll + Math.round(amountY));
@@ -396,7 +403,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         if (refitEditor != null) closeRefit();
         float delta = paused ? 0f : Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
-        if (!paused) {
+        // Stopped from the console, the world runs only the seconds step() asks for
+        if (devFrozen && !paused) {
+            delta = Math.min(devStep, delta);
+            devStep -= delta;
+        }
+        if (!paused && (!devFrozen || delta > 0f)) {
             handleInput(delta);
             if (world.getCrash() == null) gun.update(delta);
             world.update(delta);
@@ -430,6 +442,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         // The status column first, so an open HUD window (the crew roster, the yard) covers it rather
         // than having the helm's order written across its rows (round 9, real window)
+        drawDevSelection();
         drawStatus();
         gameHud.draw(delta);
         if (world.getCrash() != null || world.getCareerOver() != null) drawCrash();
@@ -447,6 +460,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
     }
 
     private void handleInput(float delta) {
+        if (devWindow.isTyping()) {
+            // Keys typed into the developer console fly nothing and fire nothing
+            FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
+            if (controls != null) controls.forward = controls.turn = controls.strafe = 0f;
+            PlayerAvatarComponent walker = game.avatar == null ? null : game.avatar.getComponent(PlayerAvatarComponent.class);
+            if (walker != null) walker.moveX = walker.moveY = 0f;
+            NoticeFeeds.collect(world);
+            return;
+        }
         boolean consoleOpen = hud.getConsoleWindow().isOpen();
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && (logOpen || helpOpen)) {
             logOpen = false;
@@ -563,7 +585,110 @@ public class RingsOfIronGame extends ApplicationAdapter {
     /** True while one of the HUD's windows or the traffic map is open; Esc closes it first. */
     private boolean hudWindowOpen() {
         return hud.getTrafficMap().isVisible() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
-                || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getConsoleWindow().isOpen();
+                || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getConsoleWindow().isOpen()
+                || isDevConsoleOpen();
+    }
+
+    // --- The developer console ---------------------------------------------------------
+
+    private InputProcessor devKeys, devClicks;
+
+    private void createDevConsole() {
+        java.nio.file.Path history = Paths.get("saves", "console-history.txt").toAbsolutePath();
+        dev = new com.hawkwing.RingsOfIron.debug.DevConsole(world, game, null, history);
+        dev.setHost(new com.hawkwing.RingsOfIron.debug.DevConsole.Host() {
+            @Override
+            public void setFrozen(boolean frozen) {
+                devFrozen = frozen;
+                devStep = 0f;
+            }
+
+            @Override
+            public boolean isFrozen() {
+                return devFrozen;
+            }
+
+            @Override
+            public void step(float seconds) {
+                devStep += seconds;
+            }
+        });
+        devWindow = new com.ringsofiron.uihud.widgets.DevConsoleWindow(hud.getSkin(), dev.console,
+                () -> (devFrozen ? "[stopped] " : "") + com.hawkwing.RingsOfIron.debug.DebugNames.describe(dev.selected()));
+        // ~ opens and closes it; with it open, Esc lets go of the selection, then closes it
+        devKeys = new InputAdapter() {
+            @Override
+            public boolean keyDown(int keycode) {
+                if (keycode == Input.Keys.GRAVE && refitEditor == null) {
+                    devWindow.toggle(hud.getStage());
+                    return true;
+                }
+                if (keycode == Input.Keys.ESCAPE && devWindow.isOpen()) {
+                    if (!dev.deselect()) devWindow.setOpen(false, hud.getStage());
+                    return true;
+                }
+                return false;
+            }
+        };
+        // A click on the game (not on a window) selects what is under it, again for the next thing there
+        devClicks = new InputAdapter() {
+            @Override
+            public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+                if (!devWindow.isOpen() || button != Input.Buttons.LEFT) return false;
+                Vector2 at = viewports.getWorldViewport().unproject(tmp.set(screenX, screenY));
+                boolean deck = hud.getViewMode().getMode() == ViewMode.INTERIOR;
+                List<Entity> drawn = new java.util.ArrayList<>();
+                for (Entity e : decks) drawn.add(e);
+                dev.click(at.x, at.y, deck, viewports.metersPerPixel(), deck ? drawn : null);
+                return true;
+            }
+        };
+    }
+
+    /** The developer console is open over the game. */
+    public boolean isDevConsoleOpen() {
+        return devWindow != null && devWindow.isOpen();
+    }
+
+    /** The developer console has the keyboard: keys are text, not the player's bindings. */
+    public boolean isDevConsoleTyping() {
+        return devWindow != null && devWindow.isTyping();
+    }
+
+    public com.hawkwing.RingsOfIron.debug.DevConsole getDevConsole() {
+        return dev;
+    }
+
+    /** A ring round what the developer console has selected, at least a few pixels across. */
+    private void drawDevSelection() {
+        if (dev == null || dev.selected() == null) return;
+        float r = dev.picker.locate(dev.selected(), tmp);
+        if (r < 0f) return;
+        float px = viewports.metersPerPixel();
+        r = Math.max(r, 6f * px);
+        viewports.applyWorld();
+        shapes.setProjectionMatrix(viewports.getWorldCamera().combined);
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        shapes.setColor(1f, 0.3f, 1f, devWindow.isOpen() ? 1f : 0.5f);
+        if (dev.selected().isTile()) {
+            ShipGridComponent g = dev.selected().grid();
+            Body body = world.docking.bodyOf(dev.selected().ship);
+            float s = g.tileSize * 0.5f, a = body.getAngle();
+            float cos = MathUtils.cos(a), sin = MathUtils.sin(a);
+            // The tile's square, turned with its ship
+            for (int i = 0; i < 4; i++) {
+                float x0 = i == 0 || i == 3 ? -s : s, y0 = i < 2 ? -s : s;
+                float x1 = i == 2 || i == 3 ? -s : s, y1 = i == 0 || i == 3 ? -s : s;
+                shapes.line(tmp.x + cos * x0 - sin * y0, tmp.y + sin * x0 + cos * y0,
+                        tmp.x + cos * x1 - sin * y1, tmp.y + sin * x1 + cos * y1);
+            }
+        } else {
+            shapes.circle(tmp.x, tmp.y, r * 1.3f, 32);
+            shapes.circle(tmp.x, tmp.y, r * 1.3f + 2f * px, 32);
+        }
+        shapes.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     /** True while the notice log or the controls panel is open; Esc closes it rather than pausing. */
