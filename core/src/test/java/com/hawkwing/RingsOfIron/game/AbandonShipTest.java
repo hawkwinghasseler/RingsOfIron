@@ -132,6 +132,19 @@ class AbandonShipTest {
     }
 
     @Test
+    void inAWindowThatClearsTheWalkEachFrameThePlayerStillReachesThePod() {
+        // Round 10: the screen clears the figure's walk from the keys before each world update
+        PlayerAvatarComponent walk = game.avatar.getComponent(PlayerAvatarComponent.class);
+        assertNull(world.abandon.order(game.player));
+        for (int i = 0; i < 60f / FRAME && launches.isEmpty(); i++) {
+            walk.moveX = walk.moveY = 0f;
+            world.update(FRAME);
+        }
+        assertEquals(1, launches.size(), "the pod went");
+        assertTrue(launches.get(0).player, "with the player aboard");
+    }
+
+    @Test
     void crewWhoAreDownAreLeftBehind() {
         Entity oldShip = game.player;
         Entity down = null;

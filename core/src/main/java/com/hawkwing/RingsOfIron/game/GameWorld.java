@@ -479,6 +479,14 @@ public class GameWorld implements Disposable {
         // ... and their crews take to the pods; the player's pod ends in a rescue
         abandon = new AbandonShip(crew, disablement, engine::getSimSeconds, docking::dockedTo);
         engine.addSystem(abandon);
+        // ... walking the player to a pod each tick before the crew move, as the screen clears the walk
+        engine.addSystem(new com.ringsofiron.coreengine.systems.FixedLogicSystem(CaptainSafety.KEEP_WALKING_PRIORITY,
+                (float) com.ringsofiron.coreengine.SimClock.TICK_SECONDS) {
+            @Override
+            protected void updateFixed(float deltaTime) {
+                abandon.keepWalking();
+            }
+        });
         rescue = new Rescue(this, bubble);
         // Beaten ships are boarded, taken and stripped
         boarding = new Boarding(docking, crew, forcing, standing, disablement, engine.getUuidRegistry(), engine::getSimSeconds);
