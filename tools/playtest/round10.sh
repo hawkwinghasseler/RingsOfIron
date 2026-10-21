@@ -63,11 +63,16 @@ if want lone; then
   said=$(last_line "raider ${RAIDER_KM:-4}${RAIDER_FIT:+ $RAIDER_FIT}"); echo "lone: $said"
   raider=$(echo "$said" | sed -n 's/^\(.*\) (.*/\1/p')
   pause 8
-  for _ in $(seq 1 60); do
+  # Off the rails it may take hours of sim: warp (period) while it is out of the bubble, and come
+  # back to x1 (comma) once it is in
+  for _ in $(seq 1 90); do
     r=$(hostiles | grep -F "  $raider ")
-    case "$r" in *" IN_BUBBLE "*" m") [ "$(echo "$r" | awk '{print $(NF - 1)}')" -lt 8000 ] && break;; esac
+    case "$r" in *" IN_BUBBLE "*" m") key comma; key comma; key comma; key comma; key comma
+      [ "$(echo "$r" | awk '{print $(NF - 1)}')" -lt 8000 ] && break;; esac
+    case "$r" in *" rails") key period; key period;; esac
     pause 5
   done
+  key comma; key comma; key comma; key comma; key comma
   echo "lone: coming in: $(hostiles | grep -F "  $raider ")"
   shot l-01-raider-coming
   t0=$(now)
