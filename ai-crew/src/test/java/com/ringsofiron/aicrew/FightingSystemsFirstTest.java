@@ -51,4 +51,20 @@ class FightingSystemsFirstTest {
         theirs.post(new ResetShortTask(system(SubsystemComponent.SubsystemType.TURRET_MOUNT, 6, 2), 6, 2));
         assertEquals(CrewTask.Kind.SEAL_BREACH, theirs.best(CrewRole.CREWMAN, 3, 2, null).kind, "another crew's order is theirs");
     }
+
+    @Test
+    void aWreckedReactorIsMendedBeforeTheGunsAreReset() {
+        // Round 10: seed 9's corvette won Red Kestrel's fight with its reactor wrecked, and its crew
+        // reset the turret first; ten minutes on it was dark and towed in
+        ShipTaskBoardComponent board = new ShipTaskBoardComponent();
+        board.faction = TaskRules.SUIT_CARE_FACTION;
+        board.battleStations = true;
+        Entity reactor = system(SubsystemComponent.SubsystemType.REACTOR, 6, 2);
+        reactor.getComponent(SubsystemComponent.class).health = 0.1f;
+        board.post(new com.ringsofiron.interiorgrid.crew.RepairTask(reactor, 6, 2));
+        board.post(new ResetShortTask(system(SubsystemComponent.SubsystemType.TURRET_MOUNT, 6, 3), 6, 3));
+        assertEquals(CrewTask.Kind.REPAIR, board.best(CrewRole.ENGINEER, 6, 2, null).kind, "the reactor first");
+        reactor.getComponent(SubsystemComponent.class).health = 0.5f;
+        assertEquals(CrewTask.Kind.RESET_SHORT, board.best(CrewRole.ENGINEER, 6, 2, null).kind, "a working reactor's repair waits");
+    }
 }

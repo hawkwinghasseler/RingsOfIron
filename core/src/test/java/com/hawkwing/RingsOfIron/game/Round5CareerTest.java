@@ -448,6 +448,23 @@ class Round5CareerTest extends CareerScript {
             dockAtStation(game.highport);
             hireUpTo(game.highport, crewWanted());
         }
+        // Round 10: crew who sheltered ashore while the ship vented walk back aboard once the yard has
+        // mended it, as a player would wait for them (seed 11 flew its second raid with them still at
+        // Highport: "Nobody aboard to take the helm")
+        double ashore = world.engine.getSimSeconds();
+        if (!runUntil(CREW_ABOARD_WAIT, this::crewAboard)) log("  the crew still not all aboard after %.0f s.", CREW_ABOARD_WAIT);
+        else if (world.engine.getSimSeconds() - ashore > 1) log("  the crew came back aboard in %.0f s.", world.engine.getSimSeconds() - ashore);
+    }
+
+    /** Longest the career waits for its crew to come back aboard after the yard, seconds. */
+    static final float CREW_ABOARD_WAIT = 180f;
+
+    /** True once every conscious hand of the ship's own is aboard it. */
+    private boolean crewAboard() {
+        for (Entity e : ownCrew()) {
+            if (world.crew.crew(e).isConscious() && world.crew.position(e).ship != game.player) return false;
+        }
+        return true;
     }
 
     /**
