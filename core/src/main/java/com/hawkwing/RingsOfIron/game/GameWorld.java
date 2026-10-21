@@ -458,9 +458,9 @@ public class GameWorld implements Disposable {
         // Round 7: other ships' gunners hold fire with a ship in the way (a pirate emptied its
         // magazine into a surrendered wingmate); the player's guns fire as the player sets them
         weaponControl.setHoldFire((shooter, blocker) -> shooter != getPlayer());
-        // Round 9: the player's guns firing at will (point defense, crewed guns) never take a struck ship
-        weaponControl.setSpared((shooter, target) -> shooter == getPlayer()
-                && ShipDisablement.reason(target) == DisabledComponent.Reason.SURRENDERED);
+        // Round 9: the player's guns firing at will (point defense, crewed guns) never take a struck ship;
+        // round 10: nor a fallen base's silenced battery (they went on hitting Den batteries 23 and 24)
+        weaponControl.setSpared((shooter, target) -> shooter == getPlayer() && Struck.struck(this, target));
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
