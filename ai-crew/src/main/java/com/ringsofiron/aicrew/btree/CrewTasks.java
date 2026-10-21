@@ -322,10 +322,23 @@ public final class CrewTasks {
             CrewTask t = a.crew.task;
             ShipGridComponent grid = a.grid();
             if (t == null) return Status.FAILED;
-            if (!TaskRules.isStillNeeded(t, grid, a.service)) {
+            Entity home = a.service.homeOf(a.entity);
+            ShipGridComponent homeGrid = a.service.grid(home);
+            if (!TaskRules.isStillNeeded(t, a.pos.ship == home ? grid : homeGrid, a.service)) {
                 a.board().cancel(t);
                 a.crew.task = null;
                 return Status.FAILED;
+            }
+            if (a.pos.ship != home || a.pos.crossing != null) {
+                // Sheltering aboard a docked craft: back aboard their own for a casualty (TaskRules#goesBackAboard)
+                if (homeGrid == null) return Status.FAILED;
+                a.crew.activity = "going back aboard for " + describe(t);
+                CrewAgent.Travel go = a.travel(home, TaskRules.workSpots(t, homeGrid, a.service.pathfinder(homeGrid).graph, a.service));
+                if (go == CrewAgent.Travel.UNREACHABLE) {
+                    a.abandonUnreachable();
+                    return Status.FAILED;
+                }
+                return Status.RUNNING;
             }
             GridPathfinder pf = a.pathfinder();
             a.crew.activity = "going to " + describe(t);
@@ -365,6 +378,8 @@ public final class CrewTasks {
             if (a.crew.suited || a.crew.def.suitAir <= 0f) return Status.SUCCEEDED;
             // The spot may be on another craft: a ship latched alongside being stripped, say
             Entity site = TaskRules.siteOf(t);
+            // Or back aboard their own ship, from a docked craft they shelter on
+            if (site == null && t.kind != CrewTask.Kind.CARRY && a.pos.ship != a.service.homeOf(a.entity)) site = a.service.homeOf(a.entity);
             ShipGridComponent grid = site == null ? null : a.service.grid(site);
             if (grid == null) grid = a.grid();
             ShipTaskBoardComponent board = a.board();

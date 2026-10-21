@@ -168,6 +168,6 @@ public class CrewAgent {
         if (task instanceof BoardTask && !((BoardTask) task).isFor(entity)) return false;
         if (TaskRules.waitsOutFire(task, board(), service)) return false;
         return pos.ship == service.homeOf(entity) || task.kind == CrewTask.Kind.CARRY || task.kind == CrewTask.Kind.YARD
-                || task.kind == CrewTask.Kind.BOARD;
+                || task.kind == CrewTask.Kind.BOARD || TaskRules.goesBackAboard(crew, task, board());
     }
 }
