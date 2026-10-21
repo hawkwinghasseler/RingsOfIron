@@ -188,7 +188,7 @@ public class GameShell implements ApplicationListener {
         return hud.getTrafficMap().isVisible() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
                 || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getCrewWindow().isOpen()
                 || hud.getShipyardWindow().isOpen()
-                || hud.getConsoleWindow().isOpen() || game.isOverlayOpen();
+                || hud.getConsoleWindow().isOpen() || game.isOverlayOpen() || game.isDevConsoleOpen();
     }
 
     @Override
@@ -196,7 +196,8 @@ public class GameShell implements ApplicationListener {
         // The backend puts its own input back before every frame
         input.setReal(Gdx.input);
         Gdx.input = input;
-        input.setRemapping(game != null && !paused && !game.isRefitOpen());
+        // Typing into the developer console is text, not the player's bindings
+        input.setRemapping(game != null && !paused && !game.isRefitOpen() && !game.isDevConsoleTyping());
         // A menu or window takes the pad for moving between its buttons; the map does not
         pad.setMenuMode(menuShown() || (game != null && (game.getHud().openWindow() != null || game.isOverlayOpen())));
         input.update();
