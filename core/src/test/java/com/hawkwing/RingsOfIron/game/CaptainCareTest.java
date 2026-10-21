@@ -128,6 +128,29 @@ class CaptainCareTest {
     }
 
     @Test
+    void upAgainInVacuumAtTheBerthTheCaptainIsWalkedAshoreThoughTheCrewKeepTheSuitFilled() {
+        // Part 6's real window on 9725213: up again at 33 s of air in a vented ship at the berth,
+        // the crew topped the suit up again and again and the captain stayed aboard in vacuum
+        holeTheCabin();
+        assertTrue(runUntil(120f, this::vented), "the cabin vented");
+        Entity highport = world.docking.dockedTo(game.player);
+        world.bridge.stand();
+        you().setSuited(true);
+        you().suitAir = 33f;
+        com.ringsofiron.aicrew.PlayerAvatarComponent walker = game.avatar.getComponent(com.ringsofiron.aicrew.PlayerAvatarComponent.class);
+        boolean ashore = false;
+        for (int i = 0; i < 180f / FRAME && !ashore && you().isAlive(); i++) {
+            walker.moveX = walker.moveY = 0f;
+            // A crewman fills the suit a few seconds into the walk
+            if (i == (int) (3f / FRAME)) you().suitAir = 407f;
+            world.update(FRAME);
+            ashore = where().ship == highport && where().walkway == null;
+        }
+        assertTrue(ashore, () -> "walked aboard Highport: on " + PlayerDocking.name(where().ship) + ", suit " + you().suitAir);
+        assertTrue(you().isAlive());
+    }
+
+    @Test
     void withTheCrewAshoreTheCaptainKilledAboardIsBroughtHome() {
         holeTheCabin();
         assertTrue(runUntil(120f, this::vented), "the cabin vented");
