@@ -49,6 +49,8 @@ test {
   if (project.hasProperty('woundRefits')) systemProperty 'wound.survey.refits', project.property('woundRefits')
   // ./gradlew :core:slowTest --tests '*CareerAirTraceTest' -PcareerSeed=1 -PcareerAirTrace traces the crew's air through round 5's career (build/career-air-1.txt)
   if (project.hasProperty('careerAirTrace')) systemProperty 'career.airTrace', 'true'
+  // -PcareerFightTrace='Iron Dagny' traces each career fight whose name holds the text, second by second (build/fight-trace-<seed>.txt)
+  if (project.hasProperty('careerFightTrace')) systemProperty 'career.fightTrace', project.property('careerFightTrace')
   // ./gradlew :core:test --tests '*EnemySurveyTest' -PenemySurvey runs the round 5 enemy survey (core/build/enemy-survey.txt)
   if (project.hasProperty('enemySurvey')) systemProperty 'enemy.survey', 'true'
   if (project.hasProperty('surveyTrials')) systemProperty 'enemy.survey.trials', project.property('surveyTrials')

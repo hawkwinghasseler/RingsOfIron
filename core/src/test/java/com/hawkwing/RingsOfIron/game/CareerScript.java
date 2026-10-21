@@ -70,6 +70,12 @@ abstract class CareerScript {
     /** Times the yard work is ordered again after the ship came loose of the latch. */
     int yardTries = 3;
 
+    /**
+     * Round 10: {@code -PcareerFightTrace=<text>} traces each fight whose journal name holds the text
+     * (say "Iron Dagny"), second by second, to {@code build/fight-trace-<seed>.txt} ({@link FightTrace}).
+     */
+    static final String FIGHT_TRACE = System.getProperty("career.fightTrace");
+
     /** The journal's file name in {@code build/}, without the extension. */
     abstract String journalName();
 
@@ -381,6 +387,7 @@ abstract class CareerScript {
         world.combatEvents.shots.add((sig, shot) -> { if (shot.shooter == ship) fired[0]++; });
         world.combatEvents.impacts.add((sig, hit) -> { if (hit.owner == ship && hit.target == game.player) hits[0]++; });
         world.combatEvents.impacts.add((sig, hit) -> { if (hit.owner == game.player && hit.target == ship) landed[0]++; });
+        FightTrace trace = FIGHT_TRACE != null && what.contains(FIGHT_TRACE) ? new FightTrace(this, game.player, ship, what) : null;
         double t0 = world.engine.getSimSeconds();
         float hull0 = hull(game.player);
         int crew0 = ownCrew().size();
@@ -419,6 +426,7 @@ abstract class CareerScript {
                     || world.getCrash() != null || range(game.player, ship) > GOT_AWAY;
         });
         world.carriedHome.remove(home);
+        if (trace != null) trace.closeAfter(600);
         // One that broke off and was never chased, still running when time is up, got away too
         boolean ran = !over && h != null && h.brokeOff && !FirstPlay.beaten(world, ship);
         boolean won = !carried[0] && FirstPlay.beaten(world, ship);
