@@ -176,6 +176,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     private GameWorld world;
     private GameScenario game;
+    /** Round 10: a fallen base's batteries greyed on the HUD. */
+    private com.hawkwing.RingsOfIron.game.SilencedMarkers silencedMarkers;
     private GameHud gameHud;
     private UiHud hud;
     private ViewportManager viewports;
@@ -282,6 +284,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         deckArt = new DeckArt(art);
         exteriorArt = new ExteriorArt(art);
         gameHud = new GameHud(world, hud);
+        silencedMarkers = new com.hawkwing.RingsOfIron.game.SilencedMarkers(world);
         lighting = new SceneLighting(EmissiveLights.load(assetsDir));
         hullArt = new HullArt(game.content.defs);
 
@@ -397,6 +400,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             handleInput(delta);
             if (world.getCrash() == null) gun.update(delta);
             world.update(delta);
+            silencedMarkers.update();
             String why = autosaves.due(world, game.player);
             if (why != null) autosave(why);
         }

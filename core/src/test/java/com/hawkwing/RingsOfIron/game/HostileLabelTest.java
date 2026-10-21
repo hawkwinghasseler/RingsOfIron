@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -60,8 +61,26 @@ class HostileLabelTest {
         List<String> guns = world.pirateBase.guns();
         assertFalse(guns.isEmpty(), "the base manned its guns");
         for (String name : guns) assertEquals(HostileLabel.FIT, HostileLabel.of(world, ship(name)), name + " while the base stands");
+        SilencedMarkers markers = new SilencedMarkers(world);
+        markers.update();
+        String label = ship(guns.get(0)).getComponent(HudMarkerComponent.class).label;
+        assertFalse(label.endsWith(SilencedMarkers.SUFFIX), "red and unmarked while the base stands");
         world.pirateBase.fall("a test");
         for (String name : guns) assertEquals(HostileLabel.SILENCED, HostileLabel.of(world, ship(name)), name + " once it has struck");
+        // The HUD greys them as it does a struck ship, and gives them back if the base rises
+        markers.update();
+        markers.update();
+        for (String name : guns) {
+            HudMarkerComponent marker = ship(name).getComponent(HudMarkerComponent.class);
+            assertTrue(marker.label.endsWith(SilencedMarkers.SUFFIX), marker.label);
+            assertFalse(marker.label.endsWith(SilencedMarkers.SUFFIX + SilencedMarkers.SUFFIX), marker.label);
+            assertEquals(ShipDisablement.DISABLED_COLOR, marker.color);
+        }
+        world.pirateBase.rise();
+        markers.update();
+        HudMarkerComponent first = ship(guns.get(0)).getComponent(HudMarkerComponent.class);
+        assertEquals(label, first.label);
+        assertEquals(first.kind.defaultColor, first.color);
     }
 
     @Test
