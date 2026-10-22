@@ -39,6 +39,7 @@ public class CrewDamageAdapter implements CrewDamageBridge {
             case FRAGMENT: return CrewDamageSink.DamageCause.FRAGMENT;
             case BLAST: return CrewDamageSink.DamageCause.BLAST;
             case FIRE: return CrewDamageSink.DamageCause.BURN;
+            case IMPACT: return CrewDamageSink.DamageCause.IMPACT;
             default: return CrewDamageSink.DamageCause.OTHER;
         }
     }

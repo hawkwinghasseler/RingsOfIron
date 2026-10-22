@@ -196,6 +196,7 @@ public final class ShipRefit {
         c.station = def.station;
         c.ports.addAll(def.ports);
         c.lights = def.lights == null ? null : new java.util.ArrayList<>(def.lights);
+        c.rcs.addAll(def.rcs);
         return c;
     }
 

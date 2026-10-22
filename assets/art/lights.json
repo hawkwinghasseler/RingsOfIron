@@ -7388,6 +7388,63 @@
    }
   ]
  },
+ "engines/rcs_linear": {
+  "canvas": [
+   -17.28,
+   -17.28,
+   20.48,
+   34.56
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 3.2,
+    "light": "glow",
+    "w": 3.2,
+    "x": -4.16,
+    "y": 7.04
+   }
+  ]
+ },
+ "engines/rcs_puff": {
+  "canvas": [
+   -57.6,
+   -7.68,
+   57.6,
+   15.36
+  ],
+  "lights": [
+   {
+    "alpha": 0.85,
+    "color": "#9fd8ff",
+    "h": 14.08,
+    "light": "glow",
+    "w": 57.6,
+    "x": -28.8,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/rcs_quad": {
+  "canvas": [
+   -17.28,
+   -17.28,
+   20.48,
+   34.56
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 3.2,
+    "light": "glow",
+    "w": 3.2,
+    "x": -4.16,
+    "y": 8.32
+   }
+  ]
+ },
  "hulls/audio_demo": {
   "canvas": [
    -896.0,

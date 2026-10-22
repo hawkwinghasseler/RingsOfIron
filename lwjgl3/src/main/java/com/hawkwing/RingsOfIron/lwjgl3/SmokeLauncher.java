@@ -7,7 +7,6 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.hawkwing.RingsOfIron.CrewDemo;
 import com.hawkwing.RingsOfIron.DockingDemo;
 import com.hawkwing.RingsOfIron.FlightDemo;
-import com.hawkwing.RingsOfIron.HudDemo;
 import com.hawkwing.RingsOfIron.InteriorDemo;
 import com.hawkwing.RingsOfIron.OrbitDemo;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
@@ -31,13 +30,17 @@ public class SmokeLauncher {
                 java.nio.file.Paths.get("mods").toAbsolutePath(), true));
         APPS.put("interior", InteriorScript::new);
         APPS.put("flight", FlightDemo::new);
-        APPS.put("hud", HudDemo::new);
-        APPS.put("audio", AudioScript::new);
+        APPS.put("audio", () -> new ScenarioScript("audio", 10, "Fire", 20, "Vent", 40, "Door", 50, "Reactor",
+                60, "Laser outside", 70, "Hull hit", 80, "Reactor", 90, "Vent", 100, "Fire", 160, "Next hull",
+                220, "Previous hull", 220, "Previous hull"));
         APPS.put("orbit", OrbitDemo::new);
         APPS.put("crew", CrewDemo::new);
         APPS.put("docking", DockingDemo::new);
         APPS.put("editor", ShipEditor::new);
         APPS.put("shell", ShellScript::new);
+        APPS.put("scenario-crew", () -> new ScenarioScript("crew", 150, "Tool: Start fire", 250, "Restart drill"));
+        APPS.put("scenario-interior", () -> new ScenarioScript("interior", 60, "Attacker", 120, "Next hull",
+                200, "Next hull", 240, "Attacker"));
     }
 
     public static void main(String[] args) {
@@ -182,6 +185,15 @@ public class SmokeLauncher {
                 case 35: lab.debug.hurt(lab.debug.crewAboard(ship).get(2), 80f,
                         com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.FRAGMENT); break;
                 case 40: lab.debug.spawnCrew(ship, com.ringsofiron.aicrew.CrewRole.MEDIC); break;
+                case 45: {
+                    // Someone in each state the deck draws: a light wound on their feet, dead, out cold
+                    java.util.List<com.badlogic.ashley.core.Entity> aboard = lab.debug.crewAboard(ship);
+                    lab.debug.hurt(aboard.get(0), 30f, com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.PENETRATOR);
+                    lab.debug.hurt(aboard.get(1), 250f, com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.BLAST);
+                    if (aboard.size() > 3) lab.debug.hurt(aboard.get(3), 0.85f * lab.world.crew.crew(aboard.get(3)).def.maxHealth,
+                            com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.ASPHYXIATION);
+                    break;
+                }
                 case 200: lab.cycle(1); break;
                 default: break;
             }
@@ -194,44 +206,36 @@ public class SmokeLauncher {
     }
 
     /**
-     * The game started as its audio scenario, with each of its buttons pressed: a fire, the lab vented
-     * and patched, the reactor off and on, a door, a laser and a hull hit, then the next hulls (a ship,
-     * and on to a station). Any button that throws fails the run. With -Dsmoke.shots=<dir> it saves a
-     * screenshot aboard the demo hull and one aboard the next.
+     * The game loaded straight into a debug menu scenario, with its menu buttons pressed at the frames
+     * given ({@code frame, "button", frame, "button" ...}). A button that is not there, or one that
+     * throws, fails the run. With -Dsmoke.shots=<dir> it saves a screenshot every hundred frames.
      */
-    private static final class AudioScript implements ApplicationListener {
+    private static final class ScenarioScript implements ApplicationListener {
         private final RingsOfIronGame game = new RingsOfIronGame();
+        private final String id;
+        private final Object[] presses;
         private int frame;
 
-        AudioScript() {
-            game.setScenario(com.hawkwing.RingsOfIron.debug.DebugScenarios.find("audio"));
-        }
-
-        private void press(String name) {
-            com.hawkwing.RingsOfIron.debug.DebugMenuActions.Action a = game.getDevConsole().menuActions.find(name);
-            if (a == null) throw new IllegalStateException("No audio scenario button " + name);
-            a.run.run();
+        ScenarioScript(String id, Object... presses) {
+            this.id = id;
+            this.presses = presses;
+            com.hawkwing.RingsOfIron.debug.DebugScenarios.Entry entry = com.hawkwing.RingsOfIron.debug.DebugScenarios.find(id);
+            if (entry == null) throw new IllegalStateException("No scenario " + id);
+            game.setScenario(entry);
         }
 
         @Override public void create() { game.create(); }
         @Override public void resize(int width, int height) { game.resize(width, height); }
         @Override public void render() {
-            switch (frame++) {
-                case 10: press("Fire"); break;
-                case 20: press("Vent"); break;
-                case 40: press("Door"); break;
-                case 50: press("Reactor"); break;
-                case 60: press("Laser outside"); break;
-                case 70: press("Hull hit"); break;
-                case 80: press("Reactor"); break;
-                case 90: press("Vent"); break;
-                case 100: press("Fire"); break;
-                case 160: press("Next hull"); break;
-                case 220: press("Previous hull"); press("Previous hull"); break;
-                default: break;
+            frame++;
+            for (int i = 0; i + 1 < presses.length; i += 2) {
+                if ((Integer) presses[i] != frame) continue;
+                com.hawkwing.RingsOfIron.debug.DebugMenuActions.Action a = game.getDevConsole().menuActions.find((String) presses[i + 1]);
+                if (a == null) throw new IllegalStateException("Scenario " + id + " has no button " + presses[i + 1]);
+                a.run.run();
             }
             game.render();
-            if (frame == 120 || frame == 200) shot("audio-" + frame);
+            if (frame % 100 == 0) shot("scenario-" + id + "-" + frame);
         }
         @Override public void pause() { game.pause(); }
         @Override public void resume() { game.resume(); }

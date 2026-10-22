@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
@@ -20,12 +21,13 @@ public final class BuiltInOverlays implements Disposable {
     public static final String GRID = "grid", VELOCITY = "velocity", BODIES = "bodies", STATS = "stats";
 
     private final Array<Body> bodies = new Array<>();
-    private final Vector2 tmp = new Vector2();
+    private final Vector2 p = new Vector2(), vel = new Vector2();
+    private final Matrix4 box2dMatrix = new Matrix4();
     private Box2DDebugRenderer box2d;
 
     /** Adds them to {@code overlays}, all off. */
     public void install(DebugOverlays overlays) {
-        overlays.add(GRID, "the physics bubble's own frame: Box2D meters, which moves with the bubble's origin",
+        overlays.add(GRID, "the physics bubble's own frame in meters, its origin the bubble's, which moves with each rebase",
                 new DebugOverlay() {
                     @Override
                     public void drawWorld(OverlayView v) {
@@ -43,7 +45,9 @@ public final class BuiltInOverlays implements Disposable {
             @Override
             public void drawWorld(OverlayView v) {
                 if (box2d == null) box2d = new Box2DDebugRenderer(true, true, false, true, false, true);
-                box2d.render(v.world.physics.getWorld(), v.worldMatrix);
+                // Box2D works in units of PhysicsManager.METERS_PER_UNIT; the camera in meters
+                box2dMatrix.set(v.worldMatrix).scale(PhysicsManager.METERS_PER_UNIT, PhysicsManager.METERS_PER_UNIT, 1f);
+                box2d.render(v.world.physics.getWorld(), box2dMatrix);
             }
         }, false);
         overlays.add(STATS, "frame rate, entities, bodies, the clock and the bubble's origin", new DebugOverlay() {
@@ -88,7 +92,9 @@ public final class BuiltInOverlays implements Disposable {
         v.shapes.begin(ShapeRenderer.ShapeType.Line);
         for (Body b : bodies) {
             if (b.getType() == BodyDef.BodyType.StaticBody) continue;
-            Vector2 p = b.getPosition(), vel = b.getLinearVelocity();
+            // Box2D's units are PhysicsManager.METERS_PER_UNIT; the camera's are meters
+            p.set(b.getPosition()).scl(PhysicsManager.METERS_PER_UNIT);
+            vel.set(b.getLinearVelocity()).scl(PhysicsManager.METERS_PER_UNIT);
             float speed = vel.len();
             if (speed < 0.01f) continue;
             // Green when slow, red from 100 m/s
@@ -122,8 +128,9 @@ public final class BuiltInOverlays implements Disposable {
         if (parent != null) s.append("   around ").append(parent);
         s.append('\n');
         if (pb != null) {
-            s.append(String.format("player at %.1f, %.1f m   %.2f m/s   %.1f deg/s", pb.getPosition().x, pb.getPosition().y,
-                    pb.getLinearVelocity().len(), pb.getAngularVelocity() * MathUtils.radiansToDegrees)).append('\n');
+            float m = PhysicsManager.METERS_PER_UNIT;
+            s.append(String.format("player at %.1f, %.1f m   %.2f m/s   %.1f deg/s", pb.getPosition().x * m, pb.getPosition().y * m,
+                    pb.getLinearVelocity().len() * m, pb.getAngularVelocity() * MathUtils.radiansToDegrees)).append('\n');
         }
         if (lastGridStep > 0f) s.append(String.format("grid %s m", trim(lastGridStep))).append('\n');
         v.batch.begin();

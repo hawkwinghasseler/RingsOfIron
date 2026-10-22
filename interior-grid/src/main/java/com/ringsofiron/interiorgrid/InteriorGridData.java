@@ -136,6 +136,9 @@ public final class InteriorGridData {
         for (ChassisDef.Covering c : def.coverings) {
             bp.covering(FloorCovering.valueOf(c.covering), c.x, c.y, c.width, c.height);
         }
+        for (ChassisDef.Rcs r : def.rcs) {
+            bp.rcsThrusters.add(new RcsThruster(r.x, r.y, Side.valueOf(r.side), RcsThruster.Kind.valueOf(r.kind), r.thrust));
+        }
         if (def.lights != null) {
             bp.wallLights = new Array<>();
             for (ChassisDef.Light l : def.lights) bp.wallLights.add(new WallLight(l.x, l.y, Side.valueOf(l.side)));

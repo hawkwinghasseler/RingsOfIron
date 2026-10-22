@@ -25,6 +25,7 @@ import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
+import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.LinearTrajectory;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
@@ -37,7 +38,8 @@ import java.util.List;
  * Debug tools for a running {@link GameWorld}: putting crew aboard a ship, taking them off, and
  * hurting them and the ship in the ways the game does. Nothing here models damage of its own. A
  * shot is a real round put in flight at the hull, which ballistics and impact resolution take from
- * there; a ram is a fast pass swept through the ship; a blast inside is the warhead path impact
+ * there; a ram is a fast pass swept through the ship, or under 1 km/s a Box2D body that crashes
+ * into it ({@code CollisionDamageSystem}); a blast inside is the warhead path impact
  * resolution takes when a round goes off inside; a fire is the deck's own; a wound goes through the
  * crew's damage sink. So whatever those systems become, these tools hurt the ship the same way.
  *
@@ -57,14 +59,20 @@ public final class WorldDebug implements PhysicsManager.StepListener {
     public static final float RAM_RADIUS = 0.5f;
     /** Seconds a ram's rock stays in the world, long past the ship. */
     static final float RAM_LIFETIME = 2f;
-    /** Below this a ram is swept as a Box2D body rather than a fast pass, m/s. */
+    /**
+     * At or below this a ram's rock is a Box2D body that crashes into the hull, as ships do;
+     * above it, a fast pass swept through it. m/s.
+     */
     public static final float FAST_PASS_SPEED = 1_000f;
+    /** How far outside the grid a slow ram's rock starts, meters. */
+    static final float SLOW_RAM_STANDOFF = 2f;
 
     private final GameWorld world;
     /** Beams burning now. */
     private final Array<Beam> beams = new Array<>();
     /** Rocks flying through, removed once past. */
     private final Array<Rock> rocks = new Array<>();
+    private final Array<Body> crashRocks = new Array<>();
     private final Vector2 tmp = new Vector2(), tmp2 = new Vector2();
     private final DamageReport report = new DamageReport();
     private int spawned;
@@ -306,12 +314,13 @@ public final class WorldDebug implements PhysicsManager.StepListener {
 
     /**
      * Sends a rock of {@code mass} kg at {@code speed} m/s through tile (x, y) of {@code ship}, from
-     * the direction of world point ({@code fromX}, {@code fromY}): a fast pass, swept through the
-     * hull by physics and resolved as a ram. At {@link #FAST_PASS_SPEED} or below it would be a
-     * Box2D body, which bumps and does no damage, so slower rams are refused.
+     * the direction of world point ({@code fromX}, {@code fromY}). Over {@link #FAST_PASS_SPEED} it
+     * is a fast pass, swept through the hull by physics and resolved as a ram; at or below, a Box2D
+     * body flown at the hull, which crashes into it as another ship would (nothing under 25 m/s).
      */
     public String ram(Entity ship, int x, int y, float fromX, float fromY, float mass, float speed) {
-        if (speed <= FAST_PASS_SPEED) return "Rams under 1 km/s bounce off without damage";
+        if (!(speed > 0f) || !(mass > 0f)) return "A ram needs a speed and a mass";
+        if (speed <= FAST_PASS_SPEED) return crashRock(ship, x, y, fromX, fromY, mass, speed);
         Body body = body(ship);
         if (body == null || grid(ship) == null) return "No ship there";
         Vector2 at = tileWorld(ship, x, y, new Vector2());
@@ -334,6 +343,42 @@ public final class WorldDebug implements PhysicsManager.StepListener {
         world.engine.addEntity(rock);
         rocks.add(new Rock(rock, now + RAM_LIFETIME));
         return String.format("%.0f kg at %.1f km/s", mass, speed / 1000f);
+    }
+
+    /**
+     * A rock flown at tile (x, y) from the direction of world point ({@code fromX}, {@code fromY}),
+     * starting just outside the grid: a Box2D body, so the crash is the one ships have.
+     */
+    private String crashRock(Entity ship, int x, int y, float fromX, float fromY, float mass, float speed) {
+        Body body = body(ship);
+        if (body == null || grid(ship) == null) return "No ship there";
+        Vector2 at = tileWorld(ship, x, y, new Vector2());
+        Vector2 dir = new Vector2(at).sub(fromX, fromY);
+        if (dir.isZero(1e-3f)) dir.set(-1f, 0f);
+        dir.nor();
+        Vector2 start = entry(ship, x, y, dir.x, dir.y, new Vector2()).mulAdd(dir, -SLOW_RAM_STANDOFF);
+        Vector2 v = PhysicsManager.getVelocity(body, new Vector2()).mulAdd(dir, speed);
+        Entity rock = new Entity();
+        rock.add(new TransformComponent());
+        Body b = world.physics.createCircleBody(rock, start.x, start.y, RAM_RADIUS, 1f,
+                CollisionCategories.CATEGORY_ASTEROID, CollisionCategories.MASK_ALL);
+        PhysicsManager.setMassData(b, mass, 0f, 0f, 0.5f * mass * RAM_RADIUS * RAM_RADIUS);
+        PhysicsManager.setVelocity(b, v.x, v.y);
+        rock.add(new PhysicsBodyComponent(b));
+        world.engine.addEntity(rock);
+        float flight = start.dst(at) / speed;
+        rocks.add(new Rock(rock, world.engine.getSimSeconds() + flight + RAM_LIFETIME));
+        return String.format("%.0f kg at %.0f m/s", mass, speed);
+    }
+
+    /** The bodies of slow rams' rocks still in the world, for drawing. */
+    public Array<Body> crashRocks() {
+        crashRocks.clear();
+        for (Rock r : rocks) {
+            PhysicsBodyComponent pb = r.entity.getComponent(PhysicsBodyComponent.class);
+            if (pb != null && pb.body != null) crashRocks.add(pb.body);
+        }
+        return crashRocks;
     }
 
     /** Beams burning now, for drawing. */

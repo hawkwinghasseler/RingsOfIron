@@ -35,7 +35,7 @@ public final class Defs {
 
     /** Every key a chassis section can have, so a rewrite drops the ones no longer used. */
     public static final Set<String> CHASSIS_KEYS = new HashSet<>(Arrays.asList("name", "station", "tile_size",
-            "origin_x", "origin_y", "rows", "mounts", "edge_walls", "edge_conduits", "pipes", "hull_pieces", "coverings", "ports", "lights"));
+            "origin_x", "origin_y", "rows", "mounts", "edge_walls", "edge_conduits", "pipes", "hull_pieces", "coverings", "ports", "lights", "rcs"));
     public static final Set<String> TILE_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "base",
             "weight_class", "material", "covering", "art", "color"));
     public static final Set<String> COMPONENT_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "behavior",
@@ -128,6 +128,16 @@ public final class Defs {
                 lights.add(table("x", Integer.toString(l.x), "y", Integer.toString(l.y), "side", str(l.side)));
             }
             out.add(new Entry("lights", lights.isEmpty() ? "[]" : multiLineArray(lights)));
+        }
+        if (!d.rcs.isEmpty()) {
+            List<String> rcs = new ArrayList<>();
+            for (ChassisDef.Rcs r : d.rcs) {
+                List<String> kv = new ArrayList<>(Arrays.asList("x", Integer.toString(r.x), "y", Integer.toString(r.y),
+                        "side", str(r.side), "kind", str(r.kind)));
+                if (r.thrust > 0) kv.addAll(Arrays.asList("thrust", num(r.thrust)));
+                rcs.add(table(kv.toArray(new String[0])));
+            }
+            out.add(new Entry("rcs", multiLineArray(rcs)));
         }
         return out;
     }
