@@ -48,7 +48,9 @@ import com.hawkwing.RingsOfIron.lighting.EmissiveLights;
 import com.hawkwing.RingsOfIron.lighting.HullArt;
 import com.hawkwing.RingsOfIron.lighting.SceneLighting;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
+import com.hawkwing.RingsOfIron.render.BubbleGrid;
 import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
+import com.hawkwing.RingsOfIron.render.SpaceSnow;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
@@ -165,6 +167,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private DeckArt deckArt;
     private DeckRenderer deckRenderer;
     private ExteriorRenderer exterior;
+    /** Speed shown against a circular orbit at the player's altitude; the bubble's grid is a developer overlay. */
+    private SpaceSnow snow;
+    private BubbleGrid bubbleGrid;
     private BitmapFont font;
     /** Deck lights and shadows, and the glow of every lamp and screen, from the art's emissive layers. */
     private SceneLighting lighting;
@@ -257,6 +262,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         deckRenderer = new DeckRenderer(() -> world, shapes, batch, deckArt, lighting, () -> game.avatar);
         hullArt = new HullArt(game.content.defs);
         exterior = new ExteriorRenderer(() -> world, shapes, batch, art, lighting, hullArt, () -> game.player);
+        snow = new SpaceSnow(() -> world, () -> game.player);
+        bubbleGrid = new BubbleGrid(() -> world);
 
         gun = new PlayerGunnery(world, game.player);
         gun.setTarget(game.firstTarget());
@@ -578,6 +585,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 devStep += seconds;
             }
         });
+        dev.console.define("grid", "grid([on])", "shows or hides the physics bubble's grid", "Overlays", args -> {
+            bubbleGrid.setShown(overlayArg(args, bubbleGrid.isShown()));
+            return bubbleGrid.isShown() ? "Grid shown" : "Grid hidden";
+        });
+        dev.console.define("snow", "snow([on])", "shows or hides the space snow that shows speed", "Overlays", args -> {
+            snow.setShown(overlayArg(args, snow.isShown()));
+            return snow.isShown() ? "Snow shown" : "Snow hidden";
+        });
         devWindow = new com.ringsofiron.uihud.widgets.DevConsoleWindow(hud.getSkin(), dev.console,
                 () -> (devFrozen ? "[stopped] " : "") + com.hawkwing.RingsOfIron.debug.DebugNames.describe(dev.selected()));
         // ~ opens and closes it; with it open, Esc lets go of the selection, then closes it
@@ -608,6 +623,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 return true;
             }
         };
+    }
+
+    /** A console toggle's argument: true, false, "on" or "off", or with none the opposite of {@code shown}. */
+    private static boolean overlayArg(Object[] args, boolean shown) {
+        if (args.length == 0 || args[0] == null) return !shown;
+        return Boolean.TRUE.equals(args[0]) || "on".equals(String.valueOf(args[0]));
     }
 
     /** The developer console is open over the game. */
@@ -1087,6 +1108,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     // -----------------------------------------------------------------------
     private void drawBodies() {
         float px = viewports.getViewMeters() / 400f;
+        bubbleGrid.draw(shapes, viewports.getWorldCamera());
+        snow.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
         exterior.drawBodies(viewports.getWorldCamera());
         exterior.drawFlight(viewports.getWorldCamera(), px, Gdx.graphics.getDeltaTime());
         // Every planned burn's direction, and the corridor into a docking port

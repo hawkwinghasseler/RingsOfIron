@@ -35,6 +35,7 @@ a command acts on the selection; a crew member, ship or target can be passed ins
 | Decks | `fire`, `extinguish`, `damage(amount)`, `breach`, `repair`, `air`, `reactors`, `doors`, `tile()` |
 | Hits | `shoot([weapon])` (a real round, missile or beam from straight outboard), `blast([warhead])` (inside the hull), `ram([km/s], [tonnes])`, `shortOut`, `weapons`, `warheads` |
 | Ships | `ships`, `spawnShip(id)` |
+| Overlays | `grid([on])` (the physics bubble's grid, off by default), `snow([on])` (the space snow, on by default); with no argument each flips |
 
 A command typed on its own runs (`heal`), and Groovy's command syntax works (`wound 95, 'SPALL'`).
 `selected`, `player` and `avatar` are read fresh each time a line uses them. `world` and `game` are
