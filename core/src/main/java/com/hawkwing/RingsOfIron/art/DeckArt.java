@@ -482,19 +482,24 @@ public final class DeckArt {
         return hasCrew(ArtNames.CrewPose.STANDING);
     }
 
-    /** Whether there is crew art for {@code pose}; without it, draw the standing figure and mark the pose. */
+    /**
+     * Whether there is crew art for {@code pose}, wounds over it included; without it, draw the
+     * standing figure and mark the pose and wound.
+     */
     public boolean hasCrew(ArtNames.CrewPose pose) {
-        return art.region(ArtNames.crew(ArtNames.Crew.SHIP, pose, false)) != null;
+        return art.region(ArtNames.crew(ArtNames.Crew.SHIP, pose, false)) != null
+                && art.region(ArtNames.WOUND_ART + (pose.lying() ? "_down" : "")) != null;
     }
 
     /**
      * A crew member at ({@code x}, {@code y}) in the grid's local meters, turned the way they last
-     * walked, in {@code pose} (standing, when there is no art for it), with the crate they carry on
-     * their feet tinted to its commodity ({@code commodity}, or null). {@code key} is the crew
-     * member, to remember their facing.
+     * walked, in {@code pose} (standing, when there is no art for it), with {@code wound} (a region,
+     * or null) over the figure at {@code woundAlpha}, and the crate they carry on their feet tinted
+     * to its commodity ({@code commodity}, or null). {@code key} is the crew member, to remember
+     * their facing.
      */
-    public void crew(Batch batch, Object key, ArtNames.Crew who, ArtNames.CrewPose pose, String commodity,
-                     float x, float y, float tileSize) {
+    public void crew(Batch batch, Object key, ArtNames.Crew who, ArtNames.CrewPose pose, String wound, float woundAlpha,
+                     String commodity, float x, float y, float tileSize) {
         if (pose.lying()) commodity = null;
         TextureRegion r = art.first(ArtNames.crew(who, pose, commodity != null), ArtNames.crew(who, pose, false),
                 ArtNames.crew(who, commodity != null), ArtNames.crew(who, false));
@@ -515,6 +520,17 @@ public final class DeckArt {
         float w = (info == null ? r.getRegionWidth() : info.w) * u, h = (info == null ? r.getRegionHeight() : info.h) * u;
         float bottom = info == null ? -h / 2f : -(info.y + info.h) * u;
         batch.draw(r, x + left, y + bottom, -left, -bottom, w, h, 1f, 1f, f[2]);
+        AtlasRegion over = wound == null ? null : art.region(wound);
+        if (over != null) {
+            ArtLibrary.Info o = art.info(over);
+            float ol = o == null ? -over.getRegionWidth() / 2f * u : o.x * u;
+            float ow = (o == null ? over.getRegionWidth() : o.w) * u, oh = (o == null ? over.getRegionHeight() : o.h) * u;
+            float ob = o == null ? -oh / 2f : -(o.y + o.h) * u;
+            Color was = batch.getColor().cpy();
+            batch.setColor(was.r, was.g, was.b, was.a * woundAlpha);
+            batch.draw(over, x + ol, y + ob, -ol, -ob, ow, oh, 1f, 1f, f[2]);
+            batch.setColor(was);
+        }
         if (commodity == null || info == null || info.h <= info.w) return;
         // The crate is held out ahead (+y): the top of the canvas, down to its lower edge at SVG y = -15.5
         TextureRegion crate = crates.get(r);
