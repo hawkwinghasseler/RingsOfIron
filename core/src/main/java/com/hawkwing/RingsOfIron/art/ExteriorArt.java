@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.hawkwing.RingsOfIron.render.RcsNozzles;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -16,12 +17,14 @@ import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 
 /**
  * Draws craft from outside with the art pack: the hull of the chassis a craft was built from, a
- * engine for each engine system (sized to its slot) with its plume while the main engine burns, and each weapon's turret on its hardpoint,
+ * engine for each engine system (sized to its slot) with its plume while the main engine burns,
+ * each RCS block with the jets of the nozzles that fire, and each weapon's turret on its hardpoint,
  * turned to where it aims. Exterior art is in the body frame (64 SVG units to the meter), so it
  * is drawn straight at the body's pose, in world meters.
  */
 public final class ExteriorArt {
     private final ArtLibrary art;
+    private final RcsNozzles nozzles = new RcsNozzles();
     private final Vector2 at = new Vector2();
     private final Vector2 local = new Vector2();
     final Vector2 socket = new Vector2();
@@ -48,9 +51,26 @@ public final class ExteriorArt {
         float px = p.x, py = p.y, angle = body.getAngle();
         plumes(batch, craft, body, px, py, angle);
         pivoted(batch, hull, px, py, angle * MathUtils.radiansToDegrees, 1f, 1f);
+        rcs(batch, craft, body);
         engines(batch, craft, body, angle);
         turrets(batch, craft, body);
         return true;
+    }
+
+    /**
+     * The craft's RCS blocks on its hull, each with the jet of every nozzle that fires, as long as
+     * it fires hard, flickering a little; a block whose hull tile is gone is drawn wrecked.
+     */
+    private void rcs(Batch batch, Entity craft, Body body) {
+        AtlasRegion puff = art.region(ArtNames.RCS_PUFF);
+        if (puff != null) {
+            nozzles.jets(craft, body, (x, y, degrees, throttle) ->
+                    pivoted(batch, puff, x, y, degrees - 180f, throttle * MathUtils.random(0.85f, 1.1f), 1f));
+        }
+        nozzles.blocks(craft, body, (r, works, x, y, degrees) -> {
+            AtlasRegion block = art.first(ArtNames.rcs(r.kind.name(), works), ArtNames.rcs(r.kind.name(), true));
+            if (block != null) pivoted(batch, block, x, y, degrees - 180f, 1f, 1f);
+        });
     }
 
     private void plumes(Batch batch, Entity craft, Body body, float px, float py, float angle) {

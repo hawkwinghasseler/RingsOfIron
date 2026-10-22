@@ -87,6 +87,20 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
         }
         json.writeArrayEnd();
 
+        if (grid.rcsThrusters.size > 0) {
+            json.writeArrayStart("rcs");
+            for (RcsThruster r : grid.rcsThrusters) {
+                json.writeObjectStart();
+                json.writeValue("x", r.x);
+                json.writeValue("y", r.y);
+                json.writeValue("side", r.side.name());
+                json.writeValue("kind", r.kind.name());
+                if (r.thrust > 0) json.writeValue("thrust", r.thrust);
+                json.writeObjectEnd();
+            }
+            json.writeArrayEnd();
+        }
+
         if (grid.wallLights != null) {
             json.writeArrayStart("wallLights");
             for (WallLight l : grid.wallLights) {
@@ -206,6 +220,13 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 }
             }
             grid.mounts.add(mount);
+        }
+
+        // Saves from before RCS blocks have none
+        JsonValue rcs = data.get("rcs");
+        for (JsonValue r = rcs == null ? null : rcs.child; r != null; r = r.next) {
+            grid.rcsThrusters.add(new RcsThruster(r.getInt("x"), r.getInt("y"), Side.valueOf(r.getString("side")),
+                    RcsThruster.Kind.valueOf(r.getString("kind")), r.getDouble("thrust", 0)));
         }
 
         // Saves from before lights were placed have none, and the game works them out

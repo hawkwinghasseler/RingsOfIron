@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="57.6" height="15.36" viewBox="-57.6 -7.68 57.6 15.36">
+  <title>rcs_puff: an RCS nozzle's jet, pivot on the nozzle's mouth, toward -x; scale along x with how hard it fires</title>
+  <defs><linearGradient id="rcs_puff_g" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#cfe9ff"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></linearGradient></defs>
+  <g id="base">
+  </g>
+  <g id="emissive">
+    <g data-light="glow">
+    <path d="M0,-3.84 C-19.2,-7.04 -44.8,-5.76 -57.6,0 C-44.8,5.76 -19.2,7.04 0,3.84 Z" fill="url(#rcs_puff_g)" opacity="0.85"/>
+    <path d="M0,-2.24 C-9.6,-3.2 -19.2,-1.28 -25.6,0 C-19.2,1.28 -9.6,3.2 0,2.24 Z" fill="#ffffff" opacity="0.8"/>
+    </g>
+  </g>
+</svg>

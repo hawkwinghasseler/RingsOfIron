@@ -8,6 +8,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipPartCatalog;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.interiorgrid.RcsThruster;
 import com.ringsofiron.interiorgrid.WallLight;
 import com.ringsofiron.interiorgrid.WallLightLayout;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
@@ -80,6 +81,8 @@ public class ChassisModel {
     public final List<ChassisDef.Covering> coverings = new ArrayList<>();
     /** Lights hung on walls; null until the layout places any, and the game works them out. */
     public List<ChassisDef.Light> lights;
+    /** RCS thruster blocks on the outside of the hull. */
+    public final List<ChassisDef.Rcs> rcs = new ArrayList<>();
     /** Listed mounts and port settings that name nothing the editor knows; written back as they were. */
     public final List<ChassisDef.Mount> unresolvedMounts = new ArrayList<>();
     public final List<ChassisDef.Port> unresolvedPorts = new ArrayList<>();
@@ -153,6 +156,7 @@ public class ChassisModel {
         m.hullPieces.addAll(def.hullPieces);
         m.coverings.addAll(def.coverings);
         m.lights = copyLights(def.lights);
+        for (ChassisDef.Rcs r : def.rcs) m.rcs.add(Defs.copy(r, ChassisDef.Rcs.class));
         return m;
     }
 
@@ -221,6 +225,7 @@ public class ChassisModel {
         def.hullPieces.addAll(hullPieces);
         def.coverings.addAll(coverings);
         def.lights = copyLights(lights);
+        for (ChassisDef.Rcs r : rcs) def.rcs.add(Defs.copy(r, ChassisDef.Rcs.class));
         return def;
     }
 
@@ -259,6 +264,14 @@ public class ChassisModel {
         if (lights == null) return null;
         for (ChassisDef.Light l : lights) {
             if (l.x == x && l.y == y && side.name().equals(l.side)) return l;
+        }
+        return null;
+    }
+
+    /** The RCS block on that side of tile (x, y), or null. */
+    public ChassisDef.Rcs rcsAt(int x, int y, Side side) {
+        for (ChassisDef.Rcs r : rcs) {
+            if (r.x == x && r.y == y && side.name().equals(r.side)) return r;
         }
         return null;
     }
@@ -525,6 +538,35 @@ public class ChassisModel {
     }
 
     /**
+     * Bolts an RCS block of {@code kind} (LINEAR or QUAD) onto that side of tile (x, y), or takes
+     * off the one already there; one of another kind there is swapped for it. Null when done, or
+     * why it can't go there: it needs a hull tile whose side faces space.
+     */
+    public String toggleRcs(int x, int y, Side side, String kind, ShipPartCatalog catalog) {
+        if (!inBounds(x, y)) return "Off the grid";
+        ChassisDef.Rcs existing = rcsAt(x, y, side);
+        if (existing != null) {
+            rcs.remove(existing);
+            if (existing.kind.equals(kind)) return null;
+        }
+        ShipGridComponent grid;
+        try {
+            grid = ChassisBlueprintLoader.load(InteriorGridData.toBlueprint(toDef(catalog), catalog)).grid;
+        } catch (RuntimeException e) {
+            return e.getMessage();
+        }
+        String why = RcsThruster.placement(grid, x, y, side);
+        if (why != null) return why;
+        ChassisDef.Rcs r = new ChassisDef.Rcs();
+        r.x = x;
+        r.y = y;
+        r.side = side.name();
+        r.kind = kind;
+        rcs.add(r);
+        return null;
+    }
+
+    /**
      * Replaces the lights with ones placed along the walls of every room ({@link WallLightLayout}),
      * worked out from the layout as the game would load it. Null, or why the layout can't be loaded.
      */
@@ -665,6 +707,12 @@ public class ChassisModel {
                 if (!inBounds(l.x, l.y)) lights.remove(i);
             }
         }
+        for (int i = rcs.size() - 1; i >= 0; i--) {
+            ChassisDef.Rcs r = rcs.get(i);
+            r.x += dx;
+            r.y += dy;
+            if (!inBounds(r.x, r.y)) rcs.remove(i);
+        }
         for (int i = coverings.size() - 1; i >= 0; i--) {
             ChassisDef.Covering c = coverings.get(i);
             c.x += dx;
@@ -712,6 +760,7 @@ public class ChassisModel {
         for (ChassisDef.Mount u : unresolvedMounts) m.unresolvedMounts.add(Defs.copy(u, ChassisDef.Mount.class));
         for (ChassisDef.Port u : unresolvedPorts) m.unresolvedPorts.add(Defs.copy(u, ChassisDef.Port.class));
         m.lights = copyLights(lights);
+        for (ChassisDef.Rcs r : rcs) m.rcs.add(Defs.copy(r, ChassisDef.Rcs.class));
         return m;
     }
 

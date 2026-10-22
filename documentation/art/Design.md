@@ -128,6 +128,9 @@ The engine is a component (`E`, behavior `ENGINE`) in the rectangular auxiliary 
 
 The game draws the outside engine of each engine system on the hull's outer edge past the end of its slot that the nozzle faces, looking out through the walls behind it, turned to face the same way. An engine whose nozzle faces into the ship has no outside art. A craft with no engine systems keeps a small engine (`engine_s`) in each engine mount its hull art draws, with `exhaust_s` in place of `hulls/thruster_plume`.
 
+### RCS thrusters
+RCS blocks are bolted onto hull edges that face space (`rcs` in `chassis.toml`), so they are outside art only. `engines/rcs_linear.svg` is a single-nozzle block and `engines/rcs_quad.svg` one with three nozzles: its main one and one each way along the hull. Both point their main nozzle -x with the origin at the middle of the hull edge they sit on, standing a fifth of a tile proud of it; `_destroyed` is the scorched stub left when its hull tile is gone. `engines/rcs_puff.svg` is the small cold-gas jet a nozzle shows while it fires, all emissive and tagged `data-light="glow"`, pointing +x from its mouth and scaled with how hard it fires. The game draws the blocks over the hull and under the engines, and each firing nozzle also lights the scene around it.
+
 ## Style
 Top-down, orthographic, flat-shaded vector art with dark outlines. Light comes from the top-left: a lighter line along the top and left inside edges of a raised part, a darker one along the bottom and right. No perspective, no drop shadows outside a footprint, so tiles butt together cleanly.
 
@@ -177,7 +180,7 @@ File names are lowercase `snake_case` and start with the id in data, so code can
 | `interactive/` | the object; levels as a number suffix | `fire_extinguisher`, `cargo_stack_2` |
 | `turrets/` | the weapon id in `weapons.toml` | `railgun_mk1`, `harpoon_launcher` |
 | `hulls/` | the chassis id in `chassis.toml` | `corvette`, `station_hub`, `thruster_plume` |
-| `engines/` | `engine_<size>`, `exhaust_<size>`, size `s`, `m`, `l` or `xl` (the engine component's slot size) | `engine_m`, `engine_xl_unpowered`, `exhaust_s` |
+| `engines/` | `engine_<size>`, `exhaust_<size>`, size `s`, `m`, `l` or `xl` (the engine component's slot size); `rcs_<kind>`, kind `linear` or `quad`; `rcs_puff` | `engine_m`, `engine_xl_unpowered`, `exhaust_s`, `rcs_quad_destroyed` |
 | `crew/` | `crew_<who>`, hurt or down as `_injured`, `_wounded`, `_unconscious` or `_dead`, holding a crate as `_carrying` (standing only) | `crew_ship`, `crew_station_carrying`, `crew_player_injured_carrying`, `crew_ship_dead` |
 | `projectiles/` | the projectile | `railgun_slug`, `autocannon_round`, `missile`, `decoy_flare`, `harpoon` |
 

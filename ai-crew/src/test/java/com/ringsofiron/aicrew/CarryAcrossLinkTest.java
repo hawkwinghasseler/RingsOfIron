@@ -131,6 +131,56 @@ class CarryAcrossLinkTest {
     }
 
     @Test
+    void aTechnicianShovedOverTheDockEdgeIsPutBackAboard() {
+        Entity ship = craft(
+                "######",
+                "#.....",
+                "#....#",
+                "######");
+        Entity station = craft(
+                "#######",
+                "......#",
+                "#.....#",
+                "#######");
+        ShipGridComponent sg = ship.getComponent(ShipGridComponent.class), tg = station.getComponent(ShipGridComponent.class);
+        int[] a = edgeTile(sg, Side.RIGHT), b = edgeTile(tg, Side.LEFT);
+        GridLink.join(ship, sg, a[0], a[1], Side.RIGHT, station, tg, b[0], b[1], Side.LEFT).setGap(1f);
+        Entity tech = CrewFactory.spawn(crew, ship, "Tech", CrewRole.TECHNICIAN, 2, 2, a[1]);
+        ShipTaskBoardComponent board = crew.board(ship);
+        board.faction = 2;
+        float[] worked = {0};
+        // Work on the hull beside the port that never ends, so the technician stays at the port
+        board.post(new YardTask(ship, a[0], a[1] + 1, new YardTask.Job() {
+            public boolean work(float amount) {
+                worked[0] += amount;
+                return false;
+            }
+
+            public boolean isOpen() {
+                return true;
+            }
+
+            public String what() {
+                return "repairing hull";
+            }
+        }));
+        boolean out = false;
+        for (int i = 0; i < 30 * 20; i++) {
+            CrewBody body = crew.physics.body(tech);
+            // From 5 s on, the crowd at the port shoves its body out over the edge; an AI crew member
+            // never walks out on a body, so it is put back aboard
+            if (body != null && i > 30 * 5 && i < 30 * 10) body.anchor(a[0] + 1.4f, a[1] + 0.5f);
+            engine.update(1f / 30f);
+            out |= crew.position(tech).walkway != null;
+        }
+        assertFalse(out, "never left standing out on the walkway");
+        assertSame(ship, crew.position(tech).ship);
+        float before = worked[0];
+        for (int i = 0; i < 30 * 5; i++) engine.update(1f / 30f);
+        assertTrue(worked[0] > before, "and it keeps working");
+    }
+
+    @Test
     void stationHandsAreNotShotAtWhenFactionsAreAtPeace() {
         Entity ship = craft(
                 "#######",
