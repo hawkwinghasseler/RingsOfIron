@@ -232,13 +232,13 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
 
     /**
      * Whether {@code cause} wounds ({@link Wound}) rather than takes health: rounds, spall,
-     * fragments, blasts and weapon burns. Small arms take health, so boarding fights go as they
+     * fragments, blasts, weapon burns and collisions. Small arms take health, so boarding fights go as they
      * did: a crew member shot down falls unconscious and comes round.
      */
     public static boolean wounds(DamageCause cause) {
         if (cause == null) return false;
         switch (cause) {
-            case PENETRATOR: case SPALL: case FRAGMENT: case BLAST: case BURN: return true;
+            case PENETRATOR: case SPALL: case FRAGMENT: case BLAST: case BURN: case IMPACT: return true;
             default: return false;
         }
     }
