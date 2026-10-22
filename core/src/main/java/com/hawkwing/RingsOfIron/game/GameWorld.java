@@ -357,6 +357,8 @@ public class GameWorld implements Disposable {
         engine.addSystem(new PropellantFeed());
         // ...and the engines themselves set how hard the ship can push, less as they take damage
         engine.addSystem(new EngineThrust(this::getContent));
+        // ...and the RCS blocks on the hull how hard it turns, strafes and backs up
+        engine.addSystem(new RcsThrust());
         orbitalEvents.burnBudget = (ship, dv) -> {
             ShipGridComponent.MassProperties m = shipMass(ship);
             return m == null ? dv : PropellantFeed.payForBurn(ship, m.mass, dv);

@@ -136,6 +136,7 @@ GDD section 3's short circuits, and tank bursts. `DamageStates` holds the rules;
 - hull pieces
 - explicitly placed mounts
 - floor coverings, as rectangles: `covering(FloorCovering.CARPET, x, y, w, h)` lays carpet on every floor tile inside
+- RCS thruster blocks (`rcsThrusters`), each an `RcsThruster` on one side of a hull tile, a side that faces space: `LINEAR` with one nozzle out through that side, `QUAD` with one each way along the hull too, at its kind's standard thrust a nozzle unless it gives its own. `RcsThruster.placement` says where one can go; a block takes no room on its tile, works while that tile's wall stands, and is saved with the grid. Core's `RcsThrust` turns them into the ship's turning, strafing and retro thrust
 
 Character map:
 

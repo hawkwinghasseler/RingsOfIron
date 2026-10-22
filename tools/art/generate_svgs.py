@@ -2338,6 +2338,64 @@ def engines():
               viewbox=f"{f(right - length + 0.05 * u)} {f(-0.45 * u)} {f(length)} {f(0.9 * u)}")
 
 
+def rcs():
+    """RCS thruster blocks seen from outside, bolted to a hull edge that faces space. Pivot at
+    the SVG origin, which goes on the middle of that edge; the block stands out toward -x (into
+    space) and its main nozzle fires -x. `rcs_linear` has that one nozzle; `rcs_quad` adds one
+    each way along the hull (+y and -y), halfway out, at the block's ends. `_destroyed` is the
+    block with its hull tile shot away. `rcs_puff` is a nozzle's jet, pivot on the nozzle's
+    mouth, toward -x, scaled along x with how hard it fires."""
+    u = T
+    out, mouth, half = 0.13 * u, 0.2 * u, 0.25 * u   # block face, main nozzle mouth, side mouths
+    for kind in ("linear", "quad"):
+        for destroyed in (False, True):
+            a = Art()
+            hl = 0.17 * u if kind == "linear" else 0.19 * u
+            # the mounting plate on the hull, then the block on it
+            a.b += rect(-0.03 * u, -hl - 0.04 * u, 0.06 * u, 2 * hl + 0.08 * u, STEEL_DARK, stroke=INK, sw=1.5)
+            a.b += rect(-out, -hl, out, 2 * hl, HOUSING if not destroyed else "#1b1f25", rx=2, stroke=INK, sw=2)
+            a.b += line(-out + 2, -hl + 3, -out + 2, hl - 3, HOUSING_HI if not destroyed else STEEL_DARK, sw=1.2)
+            for yy in (-hl + 4, hl - 4):
+                a.b += rivet(-0.035 * u, yy, 1.2)
+            nozzles = [(-1, 0)] + ([(0, 1), (0, -1)] if kind == "quad" else [])
+            for (dx, dy) in nozzles:
+                if dx:  # the main nozzle, out of the block's face
+                    bell = [(-out, -0.045 * u), (-mouth, -0.075 * u), (-mouth, 0.075 * u), (-out, 0.045 * u)]
+                else:   # a side nozzle at the block's end, halfway out
+                    cx, y0, y1 = -out / 2 - 0.0 * u, dy * hl, dy * half
+                    bell = [(cx - 0.035 * u, y0), (cx - 0.06 * u, y1), (cx + 0.06 * u, y1), (cx + 0.035 * u, y0)]
+                if destroyed:
+                    bell = [(px * 0.9, py * 0.9) for (px, py) in bell]
+                a.b += poly(bell, STEEL_DARK if not destroyed else "#14181e", stroke=INK, sw=1.5)
+            if destroyed:
+                a.b += circle(-out / 2, 0, 0.1 * u, "#05070a", extra=' opacity="0.7"')
+                a.b += line(-out, -hl * 0.6, -out * 0.3, hl * 0.3, STEEL_HI, sw=1)
+            else:
+                # a status lamp on the block's face
+                a.e = lit(circle(-out * 0.5, -hl + 0.06 * u, 1.6, "#9fd8ff"), "glow")
+            name = f"engines/rcs_{kind}" + ("_destroyed" if destroyed else "")
+            left, top = -0.27 * u, -0.27 * u
+            write(name + ".svg", 0.32 * u, 0.54 * u, a,
+                  f"rcs_{kind}{' destroyed' if destroyed else ''}: pivot on the middle of the hull edge it is bolted to, "
+                  f"block and main nozzle toward -x (space)" + ("; side nozzles toward +y and -y" if kind == "quad" else ""),
+                  viewbox=f"{f(left)} {f(top)} {f(0.32 * u)} {f(0.54 * u)}")
+    a = Art()
+    pid = "rcs_puff_g"
+    a.defs = ('<linearGradient id="' + pid + '" x1="1" y1="0" x2="0" y2="0">'
+              '<stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#cfe9ff"/>'
+              '<stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></linearGradient>')
+    length, w0 = 0.9 * u, 0.06 * u
+    a.e = lit(path(f"M0,{f(-w0)} C{f(-0.3 * u)},{f(-0.11 * u)} {f(-0.7 * u)},{f(-0.09 * u)} {f(-length)},0 "
+                   f"C{f(-0.7 * u)},{f(0.09 * u)} {f(-0.3 * u)},{f(0.11 * u)} 0,{f(w0)} Z", fill=f"url(#{pid})",
+                   extra=' opacity="0.85"')
+              + path(f"M0,{f(-0.035 * u)} C{f(-0.15 * u)},{f(-0.05 * u)} {f(-0.3 * u)},{f(-0.02 * u)} {f(-0.4 * u)},0 "
+                     f"C{f(-0.3 * u)},{f(0.02 * u)} {f(-0.15 * u)},{f(0.05 * u)} 0,{f(0.035 * u)} Z", fill="#ffffff",
+                     extra=' opacity="0.8"'), "glow")
+    write("engines/rcs_puff.svg", length, 0.24 * u, a,
+          "rcs_puff: an RCS nozzle's jet, pivot on the nozzle's mouth, toward -x; scale along x with how hard it fires",
+          viewbox=f"{f(-length)} {f(-0.12 * u)} {f(length)} {f(0.24 * u)}")
+
+
 def turrets():
     """Weapon turrets seen from above, barrel toward +x, pivot at the SVG origin. The
     pivot goes on the center of the turret mount the weapon is wired to."""
@@ -2895,6 +2953,7 @@ def main():
     hulls()
     turrets()
     engines()
+    rcs()
     crew()
     crew_states()
     projectiles()

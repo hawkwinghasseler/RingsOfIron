@@ -162,7 +162,10 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             // Over the edge: out through a docked port onto the walkway, or put back
             Side side = tx < cx ? Side.LEFT : tx > cx ? Side.RIGHT : ty < cy ? Side.BOTTOM : Side.TOP;
             GridLink link = crossing(grid, cx, cy, side);
-            if (link == null) {
+            // Only the player walks out on a body; AI crew cross bodiless when they mean to, so one
+            // shoved over the edge by the crowd at a port is put back (a yard technician pushed out
+            // there stepped back in, was pushed out again, and never reached the tile it was sent to)
+            if (link == null || avatarM.get(e) == null) {
                 b.teleport(p.x, p.y);
                 return;
             }
