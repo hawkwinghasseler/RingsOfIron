@@ -181,11 +181,13 @@ construo {
   }
 }
 
-// Runs the Newtonian flight demo instead of the main game.
+// The flight demo is the game's "flight" debug scenario (F3): the game starts straight into it, the corvette
+// adrift among asteroids. The same as runGame -Pscenario=flight.
 tasks.register('runFlightDemo', JavaExec) {
   group = 'application'
-  description = 'Runs the physics-exterior flight demo.'
-  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.FlightDemoLauncher'
+  description = 'Runs the game straight into its flight scenario (adrift among asteroids, fast passes from F3).'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.GameLauncher'
+  args = ['--scenario', 'flight']
   classpath = sourceSets.main.runtimeClasspath
   workingDir = rootProject.file('assets').path
   jvmArgs += "--enable-native-access=ALL-UNNAMED"

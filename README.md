@@ -12,7 +12,7 @@ You need a JDK 17 or newer to start the Gradle wrapper, which is included. The b
 |---|---|---|
 | `Play Rings of Iron.bat` | `./gradlew :lwjgl3:runGame` | The game, from its main menu: flight, combat, crew, docking, trading and time warp together |
 | | `./gradlew :lwjgl3:runFirstPlay` | The guided first play, straight in with no menu (also on the main menu) |
-| `demos/Flight demo.bat` | `./gradlew :lwjgl3:runFlightDemo` | Newtonian flight, the floating origin, orbit around a planet and fast passes |
+| `demos/Flight demo.bat` | `./gradlew :lwjgl3:runGame -Pscenario=flight` | The game's Flight scenario (F3 debug menu): Newtonian flight among asteroids, the floating origin and fast passes |
 | `demos/Orbit demo.bat` | `./gradlew :lwjgl3:runGame -Pscenario=orbit` | The game's Orbit scenario (F3 debug menu): rails orbits at real scale, sphere-of-influence changes and time warp |
 | `demos/Interior demo.bat` | `./gradlew :lwjgl3:run` | Any of the game's hulls with its crew, in the game's own world: hurt crew and ship with weapon fire, rams, blasts, fire, breaches and an attacking ship, spawn more crew, and watch wounds, bleed-out clocks and medics at work |
 | `demos/Crew demo.bat` | `./gradlew :lwjgl3:runCrewDemo` | AI crew fighting fires, repairing, rescuing and repelling boarders |
