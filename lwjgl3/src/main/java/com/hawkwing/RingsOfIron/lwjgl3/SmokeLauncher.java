@@ -6,7 +6,6 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.hawkwing.RingsOfIron.CrewDemo;
 import com.hawkwing.RingsOfIron.DockingDemo;
-import com.hawkwing.RingsOfIron.FlightDemo;
 import com.hawkwing.RingsOfIron.InteriorDemo;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
 import com.hawkwing.RingsOfIron.ShipEditor;
@@ -28,7 +27,8 @@ public class SmokeLauncher {
         APPS.put("firstplay", () -> new RingsOfIronGame(java.nio.file.Paths.get("").toAbsolutePath(),
                 java.nio.file.Paths.get("mods").toAbsolutePath(), true));
         APPS.put("interior", InteriorScript::new);
-        APPS.put("flight", FlightDemo::new);
+        APPS.put("flight", () -> new ScenarioScript("flight", 30, "Fast pass", 60, "Fast pass", 120, "Scatter rocks",
+                150, "Fast pass"));
         APPS.put("audio", () -> new ScenarioScript("audio", 10, "Fire", 20, "Vent", 40, "Door", 50, "Reactor",
                 60, "Laser outside", 70, "Hull hit", 80, "Reactor", 90, "Vent", 100, "Fire", 160, "Next hull",
                 220, "Previous hull", 220, "Previous hull"));
