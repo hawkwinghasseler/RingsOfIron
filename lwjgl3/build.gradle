@@ -326,7 +326,7 @@ tasks.register('runPhysicsTest', JavaExec) {
 
 // Smoke test: boots the game and each demo for a few hundred frames and fails on any exception.
 // Needs a display; on a headless machine run it under Xvfb: xvfb-run -a ./gradlew :lwjgl3:smokeTest
-def smokeApps = ['game', 'firstplay', 'shell', 'interior', 'flight', 'hud', 'audio', 'orbit', 'crew', 'docking', 'editor']
+def smokeApps = ['game', 'firstplay', 'shell', 'interior', 'flight', 'hud', 'audio', 'orbit', 'crew', 'docking', 'editor', 'scenario-crew', 'scenario-interior']
 def smokeTasks = smokeApps.collect { app ->
   tasks.register("smokeTest${app.capitalize()}", JavaExec) {
     group = 'verification'

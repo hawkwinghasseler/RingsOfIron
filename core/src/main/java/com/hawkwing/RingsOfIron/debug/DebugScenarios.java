@@ -40,7 +40,11 @@ public final class DebugScenarios {
 
     private static final List<Entry> BUILT_IN = List.of(
             new Entry("free-flight", "Free flight", "The career's start without the career: undocked in orbit by"
-                    + " Highport, no walkthrough", FreeFlightScenario::new)
+                    + " Highport, no walkthrough", FreeFlightScenario::new),
+            new Entry("crew", "Crew", "On deck as a fire, a reactor hit, a hull breach and boarders come one after"
+                    + " another, to watch the crew answer", CrewScenario::new),
+            new Entry("interior", "Interior", "The ship alone and pinned, every hull in turn, to hurt with the deck"
+                    + " tools and an attacker and watch the wounds", InteriorScenario::new)
     );
 
     private static final List<Entry> ADDED = new ArrayList<>();
