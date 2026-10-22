@@ -8,7 +8,6 @@ import com.hawkwing.RingsOfIron.AudioDemo;
 import com.hawkwing.RingsOfIron.CrewDemo;
 import com.hawkwing.RingsOfIron.DockingDemo;
 import com.hawkwing.RingsOfIron.FlightDemo;
-import com.hawkwing.RingsOfIron.HudDemo;
 import com.hawkwing.RingsOfIron.Main;
 import com.hawkwing.RingsOfIron.OrbitDemo;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
@@ -32,7 +31,6 @@ public class SmokeLauncher {
                 java.nio.file.Paths.get("mods").toAbsolutePath(), true));
         APPS.put("interior", Main::new);
         APPS.put("flight", FlightDemo::new);
-        APPS.put("hud", HudDemo::new);
         APPS.put("audio", AudioDemo::new);
         APPS.put("orbit", OrbitDemo::new);
         APPS.put("crew", CrewDemo::new);
