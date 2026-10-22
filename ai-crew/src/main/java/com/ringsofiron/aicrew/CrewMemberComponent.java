@@ -78,6 +78,13 @@ public class CrewMemberComponent implements Component {
     public boolean suited;
     /** Seconds of air left in their suit; topped up when it is taken off. */
     public float suitAir;
+    /**
+     * Seconds spent so far taking their suit off at work ({@code CrewTasks.DoWork}), so a save
+     * part way through doesn't start it again (round 9).
+     */
+    public float unsuiting;
+    /** Seconds spent so far putting their suit on at a post ({@code CrewTasks.DoWork}); saved, as {@link #unsuiting}. */
+    public float suiting;
 
     /** Seconds until this crew member can fire again. */
     public float fireCooldown = 0f;
@@ -113,6 +120,8 @@ public class CrewMemberComponent implements Component {
     /** Puts their suit on, or takes it off (topping its air up). */
     public void setSuited(boolean on) {
         suited = on;
+        unsuiting = 0f;
+        suiting = 0f;
         if (!on) suitAir = def.suitAir;
         equippedItem = on ? "space suit" : "";
     }
@@ -158,8 +167,16 @@ public class CrewMemberComponent implements Component {
      * {@link CrewDef#UNTRAINED_CARE}. Skill, morale and their own wound scale it.
      */
     public float careRate() {
+        return careRate(Wound.SERIOUS);
+    }
+
+    /**
+     * {@link #careRate()} for a wound of level {@code wound}: a light wound is first aid, which
+     * anyone gives at a medic's rate for their skill (round 8).
+     */
+    public float careRate(Wound wound) {
         CrewRecord r = record();
-        float base = role == CrewRole.MEDIC ? 1f : CrewDef.UNTRAINED_CARE;
+        float base = role == CrewRole.MEDIC || wound == Wound.LIGHT ? 1f : CrewDef.UNTRAINED_CARE;
         return base * CrewRecord.factor(r.medicine) * r.workFactor() * workPace();
     }
 

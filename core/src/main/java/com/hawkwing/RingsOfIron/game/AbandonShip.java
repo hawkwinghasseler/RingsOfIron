@@ -242,7 +242,7 @@ public class AbandonShip extends EntitySystem {
                 player = true;
                 e.getComponent(GridPositionComponent.class).stop();
                 PlayerAvatarComponent a = e.getComponent(PlayerAvatarComponent.class);
-                a.moveX = a.moveY = 0f;
+                a.moveX = a.moveY = steerX = steerY = 0f;
                 continue;
             }
             Survivor survivor = new Survivor(c.name, c.role);
@@ -311,6 +311,28 @@ public class AbandonShip extends EntitySystem {
         List<EvacuateTask> tasks = posted.remove(ship);
         if (tasks != null) for (EvacuateTask t : tasks) t.open = false;
         avatarPath.clear();
+    }
+
+    /**
+     * Each tick before the crew move: the walk to the pod, again, if the screen cleared it. The game
+     * clears the figure's walk from the keys each frame before the world updates, and this system
+     * updates after the sim ticks, so in a real window the walk to the pod never moved the figure
+     * (round 10, as with {@link CaptainSafety#keepWalking()}). The player's own keys still win.
+     */
+    public void keepWalking() {
+        if (steerX == 0f && steerY == 0f) return;
+        Entity avatar = null;
+        for (Entity e : crew.crewEntities()) if (e.getComponent(PlayerAvatarComponent.class) != null) avatar = e;
+        if (avatar == null) return;
+        GridPositionComponent p = avatar.getComponent(GridPositionComponent.class);
+        PlayerAvatarComponent walk = avatar.getComponent(PlayerAvatarComponent.class);
+        if (!abandoning(p.ship) || !avatar.getComponent(CrewMemberComponent.class).isConscious() || p.walkway != null) {
+            steerX = steerY = 0f;
+            return;
+        }
+        if (walk.moveX != 0f || walk.moveY != 0f) return;
+        walk.moveX = steerX;
+        walk.moveY = steerY;
     }
 
     /**

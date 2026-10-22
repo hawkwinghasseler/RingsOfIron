@@ -66,13 +66,15 @@ public class CrewDef {
     public float woundedWorkFactor = 0.7f;
     /** Work speed multiplier while suited. */
     public float suitWorkFactor = 0.8f;
-    /** Care rate of a crew member who isn't a medic, before skill. */
+    /** Care rate of a crew member who isn't a medic, before skill; a light wound is first aid, which anyone gives at a medic's rate. */
     public static final float UNTRAINED_CARE = 0.4f;
     /** Care rate when the ship has no medical stores left. */
     public static final float NO_STORES_CARE = 0.25f;
     /**
-     * Share of the care rate a light wound is treated at (round 7): half the pace, and it uses no
-     * medical stores, so a crew with nothing else to do patches up its grazes between fights.
+     * Share of the care rate a light wound is treated at while anyone aboard is seriously or
+     * critically wounded with nobody treating them (round 7 had it always; round 8 treats it at
+     * the full rate otherwise). It uses no medical stores, so a crew with nothing else to do
+     * patches up its grazes between fights.
      */
     public static final float LIGHT_CARE = 0.5f;
     /** Care rate multiplier for a patient lying in a medbay (round 7). */

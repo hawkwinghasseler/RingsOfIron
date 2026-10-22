@@ -140,8 +140,9 @@ public class Shipyard extends EntitySystem {
 
     Shipyard(GameWorld world) {
         this.world = world;
-        // Once taken, a prize's collars are rigged for towing: the weld holds under the engines' full thrust
-        world.docking.towLocked = (a, b) -> tows(a, b) || tows(b, a);
+        // Once taken, a prize's collars are rigged for towing: the weld holds under the engines' full
+        // thrust. A yard's berth clamps hold a ship it is working on the same way (StationYard.holds)
+        world.docking.towLocked = (a, b) -> tows(a, b) || tows(b, a) || world.yard.holds(a, b) || world.yard.holds(b, a);
         world.hints.register(HintRegistry.Context.LATCHED, "hand over the prize", 3, Action.YARD)
                 .onlyWhen(() -> prize() != null && prizeStation() != null);
     }

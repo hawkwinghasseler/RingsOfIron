@@ -59,6 +59,8 @@ class CrewWoundSurveyTest {
         int deadInFight, hitsAfter;
         /** Round 7: our crew still wounded after the ten minutes for the medics. */
         int woundedAfter;
+        /** Round 8: of them, by wound. */
+        final Map<Wound, Integer> woundsAfter = new EnumMap<>(Wound.class);
         /** Round 7: what the ace's boarders took, or "" if it didn't board. */
         String boarded = "";
         final Map<Wound, Integer> wounds = new EnumMap<>(Wound.class);
@@ -74,17 +76,20 @@ class CrewWoundSurveyTest {
         List<Trial> all = new ArrayList<>();
         // -PwoundRefits=raider_ace_railgun surveys one refit only
         String[] refits = System.getProperty("wound.survey.refits", String.join(",", REFITS)).split(",");
-        for (String refit : refits) for (int i = 0; i < n; i++) all.add(trial(refit, 2026 + i));
-        StringBuilder out = new StringBuilder("| Ace refit | Seed | Result | Our hull | Our crew wounded (light/serious/critical) | Our crew dead (in the fight) | Of | Hits after | Ace crew alive | Still wounded 10 min on | Boarded, took |\n|---|---|---|---|---|---|---|---|---|---|---|\n");
+        // -PwoundSeed=2036 starts the seeds there instead (round 9: a second sample of the same fights)
+        long first = Long.getLong("wound.survey.seed", 2026);
+        for (String refit : refits) for (int i = 0; i < n; i++) all.add(trial(refit, first + i));
+        StringBuilder out = new StringBuilder("| Ace refit | Seed | Result | Our hull | Our crew wounded (light/serious/critical) | Our crew dead (in the fight) | Of | Hits after | Ace crew alive | Still wounded 10 min on (light/serious/critical) | Boarded, took |\n|---|---|---|---|---|---|---|---|---|---|---|\n");
         for (Trial t : all) {
-            out.append(String.format(Locale.ROOT, "| %s | %d | %s in %.0f s | %.2f | %d/%d/%d | %d of %d (%d) | %s | %d | %d of %d | %d | %s |%n",
+            out.append(String.format(Locale.ROOT, "| %s | %d | %s in %.0f s | %.2f | %d/%d/%d | %d of %d (%d) | %s | %d | %d of %d | %d (%d/%d/%d) | %s |%n",
                     t.refit, t.seed, t.beaten ? "beaten" : t.lost ? "we lost" : "neither", t.seconds, t.hull,
                     t.wounds.getOrDefault(Wound.LIGHT, 0), t.wounds.getOrDefault(Wound.SERIOUS, 0),
                     t.wounds.getOrDefault(Wound.CRITICAL, 0), t.dead, t.crew, t.deadInFight, String.join(", ", t.causes),
-                    t.hitsAfter, t.aceAlive, t.aceCrew, t.woundedAfter, t.boarded));
+                    t.hitsAfter, t.aceAlive, t.aceCrew, t.woundedAfter, t.woundsAfter.getOrDefault(Wound.LIGHT, 0),
+                    t.woundsAfter.getOrDefault(Wound.SERIOUS, 0), t.woundsAfter.getOrDefault(Wound.CRITICAL, 0), t.boarded));
         }
         for (String refit : refits) {
-            int fights = 0, dead = 0, crew = 0, beaten = 0, wounded = 0, aceAlive = 0, aceCrew = 0, woundedAfter = 0, boarded = 0;
+            int fights = 0, dead = 0, crew = 0, beaten = 0, wounded = 0, aceAlive = 0, aceCrew = 0, woundedAfter = 0, boarded = 0, lightAfterWins = 0;
             for (Trial t : all) {
                 if (!t.refit.equals(refit)) continue;
                 fights++;
@@ -96,10 +101,11 @@ class CrewWoundSurveyTest {
                 aceCrew += t.aceCrew;
                 woundedAfter += t.woundedAfter;
                 if (!t.boarded.isEmpty()) boarded++;
+                if (t.beaten) lightAfterWins += t.woundsAfter.getOrDefault(Wound.LIGHT, 0);
             }
             out.append(String.format(Locale.ROOT, "%n%s: %d fights, beaten %d; our crew wounded %d and dead %d of %d; the ace's crew alive %d of %d;"
-                            + " still wounded ten minutes on %d; boarded %d.",
-                    refit, fights, beaten, wounded, dead, crew, aceAlive, aceCrew, woundedAfter, boarded));
+                            + " still wounded ten minutes on %d, light wounds open ten minutes after a win %d; boarded %d.",
+                    refit, fights, beaten, wounded, dead, crew, aceAlive, aceCrew, woundedAfter, lightAfterWins, boarded));
         }
         System.out.println(out);
         Files.writeString(Paths.get(System.getProperty("user.dir")).resolve("build/wound-survey.txt"), out.toString());
@@ -148,7 +154,9 @@ class CrewWoundSurveyTest {
             HostileComponent ace = h;
             boolean trace = Boolean.getBoolean("wound.survey.trace");
             Map<Entity, Float> injury = new java.util.IdentityHashMap<>();
+            AirTracer air = trace ? new AirTracer(world, game.player, ours, refit, seed, t0) : null;
             runUntil(world, 300f, () -> {
+                if (air != null) air.tick();
                 if (trace) {
                     for (Entity e : ours) {
                         CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
@@ -202,6 +210,8 @@ class CrewWoundSurveyTest {
                                 c.stabilised ? "+stab" : "", c.health, c.bleedOut, c.suited, c.suitAir,
                                 com.ringsofiron.aicrew.TaskRules.isBreathable(g, p.tileX(), p.tileY()), c.activity));
                     }
+                    com.ringsofiron.aicrew.ShipTaskBoardComponent board = game.player.getComponent(com.ringsofiron.aicrew.ShipTaskBoardComponent.class);
+                    line.append(" battle ").append(board.battleStations).append(" helm wanted ").append(board.helmWanted);
                     line.append(" stores ").append(g.medicalStores).append(" kits ").append(g.patchKits)
                             .append(" disabled ").append(ShipDisablement.reason(game.player));
                     int floor = 0, breathable = 0, breaches = 0;
@@ -226,14 +236,20 @@ class CrewWoundSurveyTest {
                         }
                     }
                     TRACE.append(line).append('\n');
-                    run(world, 600);
+                    for (int f = 0; f < 600; f++) {
+                        world.update(FRAME);
+                        air.tick();
+                    }
                 }
             } else {
                 run(world, 60 * 60 * 10);
             }
             for (Entity e : ours) {
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-                if (c.isAlive() && c.wound != Wound.NONE) t.woundedAfter++;
+                if (c.isAlive() && c.wound != Wound.NONE) {
+                    t.woundedAfter++;
+                    t.woundsAfter.merge(c.wound, 1, Integer::sum);
+                }
                 if (c.isAlive()) continue;
                 t.dead++;
                 t.causes.add(String.valueOf(c.lastDamageCause).toLowerCase(Locale.ROOT));
@@ -242,6 +258,95 @@ class CrewWoundSurveyTest {
             return t;
         } finally {
             world.dispose();
+        }
+    }
+
+    /**
+     * Round 9: with -PwoundTrace, each of our crew's air through the fight and after, to the trace as
+     * AIR lines: when they first stood in air not fit to breathe, suited or not, when their suit ran
+     * dry, and when they went down and died of it, with their room, task, suit air, the room's
+     * pressure, the reactor, life support and the oxygen left, and whether their tile was raked.
+     */
+    static final class AirTracer {
+        final GameWorld world;
+        final Entity ship;
+        final List<Entity> ours;
+        final String refit;
+        final long seed;
+        final double t0;
+        final Map<Entity, Double> badAirSince = new java.util.IdentityHashMap<>(), dryAt = new java.util.IdentityHashMap<>();
+        final Map<Entity, com.ringsofiron.aicrew.CrewState> was = new java.util.IdentityHashMap<>();
+
+        AirTracer(GameWorld world, Entity ship, List<Entity> ours, String refit, long seed, double t0) {
+            this.world = world;
+            this.ship = ship;
+            this.ours = ours;
+            this.refit = refit;
+            this.seed = seed;
+            this.t0 = t0;
+        }
+
+        void tick() {
+            double now = world.engine.getSimSeconds() - t0;
+            for (Entity e : ours) {
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                GridPositionComponent p = e.getComponent(GridPositionComponent.class);
+                ShipGridComponent g = world.crew.grid(p.ship);
+                if (g == null) continue;
+                com.ringsofiron.aicrew.CrewState before = was.put(e, c.state);
+                if (before == com.ringsofiron.aicrew.CrewState.DEAD) continue;
+                boolean bad = !com.ringsofiron.aicrew.TaskRules.isBreathable(g, p.tileX(), p.tileY());
+                if (bad && !badAirSince.containsKey(e)) {
+                    badAirSince.put(e, now);
+                    log(e, "into bad air", now);
+                } else if (!bad && badAirSince.containsKey(e)) {
+                    log(e, "back in good air after " + Math.round(now - badAirSince.remove(e)) + " s", now);
+                }
+                if (c.suited && c.suitAir <= 0f && !dryAt.containsKey(e)) {
+                    dryAt.put(e, now);
+                    log(e, "suit dry", now);
+                } else if (c.suitAir > 0f) {
+                    dryAt.remove(e);
+                }
+                if (before != null && before != c.state && c.lastDamageCause == com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.ASPHYXIATION) {
+                    log(e, c.state == com.ringsofiron.aicrew.CrewState.DEAD ? "DIED of asphyxiation" : "now " + c.state, now);
+                }
+            }
+        }
+
+        void log(Entity e, String what, double now) {
+            CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+            GridPositionComponent p = e.getComponent(GridPositionComponent.class);
+            ShipGridComponent g = world.crew.grid(p.ship);
+            com.ringsofiron.interiorgrid.Compartment room = g.compartmentAt(p.tileX(), p.tileY());
+            com.ringsofiron.aicrew.ShipTaskBoardComponent board = world.crew.board(p.ship);
+            StringBuilder line = new StringBuilder(String.format(Locale.ROOT,
+                    "AIR %s %d t=%.0f %s (%s) %s at %d,%d room %s p%.2f o%.2f; %s; suited %s air %.0f; task %s; %s%s%s",
+                    refit, seed, now, c.name, c.role, what, p.tileX(), p.tileY(), room == null ? "-" : String.valueOf(room.id),
+                    g.pressureRatioAt(p.tileX(), p.tileY()), g.oxygenRatioAt(p.tileX(), p.tileY()), c.state, c.suited, c.suitAir,
+                    c.task == null ? "none" : c.task.kind, c.activity,
+                    board != null && board.battleStations ? "; battle stations" : "",
+                    board != null && board.underFire(p.tileX(), p.tileY()) ? "; RAKED" : ""));
+            double tanks = 0;
+            for (Entity sub : p.ship.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent.class).subsystems) {
+                com.ringsofiron.interiorgrid.SubsystemComponent ss = sub.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class);
+                if (ss.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.TANK && ss.fluid == com.ringsofiron.interiorgrid.Fluid.OXYGEN) {
+                    tanks += ss.canSupply() ? ss.contents : 0;
+                } else if (ss.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.REACTOR) {
+                    line.append(String.format(Locale.ROOT, "; reactor %.2f%s", ss.health, ss.isOperational ? "" : " down"));
+                } else if (ss.type == com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.LIFE_SUPPORT) {
+                    line.append(String.format(Locale.ROOT, "; life support %.2f%s reserve %.0f kg", ss.health, ss.isOperational ? "" : " down",
+                            com.ringsofiron.interiorgrid.TankSupply.reserve(ss)));
+                }
+            }
+            line.append(String.format(Locale.ROOT, "; O2 tanks %.0f kg; breaches %d", tanks, breaches(g)));
+            TRACE.append(line).append('\n');
+        }
+
+        static int breaches(ShipGridComponent g) {
+            int n = 0;
+            for (int y = 0; y < g.height; y++) for (int x = 0; x < g.width; x++) if (g.getTile(x, y) != null && g.getTile(x, y).isHullBreach()) n++;
+            return n;
         }
     }
 

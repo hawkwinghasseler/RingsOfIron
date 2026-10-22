@@ -13,6 +13,7 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.combatsys.CombatPhysics;
 import com.ringsofiron.combatsys.WeaponPower;
 import com.ringsofiron.combatsys.components.MissileComponent;
+import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.SignatureComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
@@ -92,6 +93,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     private final FiringSolutionSolver solver = new FiringSolutionSolver();
     private WeaponPower power;
     private HoldFire holdFire;
+    private HoldFire spared;
     private ImmutableArray<Entity> ships;
     private final Entity[] blocker = new Entity[1];
 
@@ -133,6 +135,14 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     /** Who holds fire for a ship in the way; null (the default) fires through anything. */
     public void setHoldFire(HoldFire holdFire) {
         this.holdFire = holdFire;
+    }
+
+    /**
+     * Who a mount firing at will never takes as its target (asked as {@code holds(shooter, target)}),
+     * though its trigger still fires on it; null (the default) spares nobody.
+     */
+    public void setSpared(HoldFire spared) {
+        this.spared = spared;
     }
 
     /**
@@ -206,6 +216,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
 
         Entity target = def.pointDefense ? pickMissileThreat(ship, body, sensor, def)
                 : (mount.target != null ? mount.target : sensor == null ? null : sensor.lockedTarget);
+        if (target != null && !mount.trigger && spared != null && spared.holds(ship, target)) target = null;
         if (target != mount.lastTarget) {
             mount.engagedFor = 0f;
             mount.lastTarget = target;
@@ -394,6 +405,11 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         shot.round = round;
         shot.weaponDefId = mount.def.id;
         shot.target = mount.engaged;
+        ProjectileComponent p = round == null ? null : round.getComponent(ProjectileComponent.class);
+        if (p != null) {
+            p.aimedAt = mount.engaged;
+            p.pointDefense = mount.def.pointDefense;
+        }
         shot.muzzlePoint.set(x, y);
         shot.direction.set(dir);
         events.shots.dispatch(shot);

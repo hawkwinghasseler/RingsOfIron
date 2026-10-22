@@ -579,11 +579,13 @@ public class PhysicsManager implements Disposable {
 
     /** Casts a ray between two local points in meters. See {@link RayHitCallback} for the return value. */
     public void rayCast(float x1, float y1, float x2, float y2, RayHitCallback callback) {
-        if (x1 == x2 && y1 == y2) return; // Box2D asserts on zero-length rays
+        float ux1 = x1 * UNITS_PER_METER, uy1 = y1 * UNITS_PER_METER, ux2 = x2 * UNITS_PER_METER, uy2 = y2 * UNITS_PER_METER;
+        // Box2D asserts on zero-length rays, and two points a float apart far out (a fast pass
+        // 178,000 km off, round 10) can scale to one point in its units
+        if (ux1 == ux2 && uy1 == uy2) return;
         rayCastAdapter.target = callback;
         rayCastAdapter.ray(x2 - x1, y2 - y1);
-        world.rayCast(rayCastAdapter, x1 * UNITS_PER_METER, y1 * UNITS_PER_METER,
-                x2 * UNITS_PER_METER, y2 * UNITS_PER_METER);
+        world.rayCast(rayCastAdapter, ux1, uy1, ux2, uy2);
         rayCastAdapter.target = null;
     }
 

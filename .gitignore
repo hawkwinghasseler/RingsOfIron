@@ -36,3 +36,6 @@ hs_err_pid*
 
 # Quick saves written by the running game
 assets/saves/
+
+# Each developer's own console start-up script (scripts/README.md)
+scripts/autoexec.groovy

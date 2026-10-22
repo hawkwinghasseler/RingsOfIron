@@ -3,11 +3,13 @@ package com.hawkwing.RingsOfIron.game;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.Family;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
@@ -146,6 +148,34 @@ class PirateSaveGapsTest {
         }
         fail("no reactor");
         return null;
+    }
+
+    @Test
+    void pirateCrewsStayAtTheirPostsUnderFireThroughASave(@TempDir Path dir) {
+        int pirates = world.standing.factions().index(HostileTraffic.PIRATES);
+        assertEquals(pirates, boardOf(world, pirate(HostileTraffic.RAIDER)).faction);
+        assertFalse(boardOf(world, pirate(HostileTraffic.RAIDER)).keepsClearOfFire, "crews_keep_clear_of_fire = false");
+        assertTrue(world.crew.board(game.player).keepsClearOfFire, "our crew keep clear");
+        int pirateBoards = boardsKeepTheirFaction(world, pirates);
+        assertTrue(pirateBoards > 1, "the raiders and the base: " + pirateBoards);
+
+        saveAndLoad(dir);
+        assertEquals(pirateBoards, boardsKeepTheirFaction(loaded, pirates));
+    }
+
+    private static ShipTaskBoardComponent boardOf(GameWorld w, String uuid) {
+        return w.crew.board(w.engine.getEntity(uuid));
+    }
+
+    /** Checks every crewed board keeps clear of fire unless the pirates work it; returns how many they do. */
+    private static int boardsKeepTheirFaction(GameWorld w, int pirates) {
+        int n = 0;
+        for (Entity e : w.engine.getEcsEngine().getEntitiesFor(Family.all(ShipTaskBoardComponent.class).get())) {
+            ShipTaskBoardComponent b = e.getComponent(ShipTaskBoardComponent.class);
+            assertEquals(b.faction != pirates, b.keepsClearOfFire, "faction " + b.faction);
+            if (b.faction == pirates) n++;
+        }
+        return n;
     }
 
     private String pirate(String shipId) {

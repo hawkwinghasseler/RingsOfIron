@@ -26,6 +26,11 @@ public class FreighterController {
     public static final double FUEL_COST_PER_DV = 0.0005;
     /** Orders whose two legs take longer than this are ignored. */
     public static final double MAX_TRIP_SECONDS = 30 * 86400.0;
+    /**
+     * Within this of its destination when rails warp collapses the bubble, m, a freighter there
+     * arrives ({@link #arriveFromBubble}): the bubble's exit radius, so any that came in to berth.
+     */
+    public static final double ARRIVE_ON_COLLAPSE = 25_000;
     /** Seconds after the predicted SOI crossing to check it happened, and between later checks. */
     static final double CROSSING_CHECK = 1;
     static final double CROSSING_RETRY = 60;
@@ -435,6 +440,24 @@ public class FreighterController {
             if (f.cargoQuantity > 0) sellLeftover(f, stations.apply(stationUuid));
             f.resumeState = FreighterComponent.State.IDLE;
         }
+    }
+
+    /**
+     * Rails warp has collapsed the bubble: a freighter in it within {@link #ARRIVE_ON_COLLAPSE} of
+     * its destination arrives there, as on the rails, since the rest of its approach passes in the
+     * warp. Otherwise it coasts on through the warp, leaves the bubble when it is rebuilt and is
+     * re-planned from wherever it got to. Round 10: seed 17's escorted Ore Barge dropped warp coming
+     * in to Selene Forge, warp went back up a frame later, and it was re-planned 28 days out.
+     */
+    public void arriveFromBubble(String uuid, double now) {
+        FreighterComponent f = freighters.get(uuid);
+        if (f == null || f.state != FreighterComponent.State.IN_BUBBLE || f.destinationUuid == null) return;
+        if (!rails.isOnRails(uuid)) return;
+        rails.stateAt(uuid, now, a);
+        rails.stateAt(f.destinationUuid, now, b);
+        if (Math.hypot(a.x - b.x, a.y - b.y) > ARRIVE_ON_COLLAPSE) return;
+        f.state = f.resumeState;
+        arrive(uuid, f, f.destinationUuid, now);
     }
 
     /** A freighter in the bubble has undocked from its station to fly on. */

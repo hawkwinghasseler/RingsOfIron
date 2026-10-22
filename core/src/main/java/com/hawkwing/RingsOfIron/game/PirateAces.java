@@ -90,6 +90,9 @@ public final class PirateAces {
         LoadoutDef refit = Loadouts.pick(world.combatDefs, h.shipId, difficulty, true, rng);
         if (refit != null && Loadouts.apply(ship, refit, world.combatDefs) > 0) h.loadout = refit.id;
         h.firepower = HostileTraffic.firepower(ship);
+        // An ace's crew keep everyone's order: resetting first made the aces harder (round 10)
+        com.ringsofiron.aicrew.ShipTaskBoardComponent board = ship.getComponent(com.ringsofiron.aicrew.ShipTaskBoardComponent.class);
+        if (board != null) board.resetsPowerFirst = false;
         for (CrewMemberComponent c : crewOf(world, ship)) {
             // Into the crew's record too, which the crew career turns back into the def
             CrewRecord r = c.record();

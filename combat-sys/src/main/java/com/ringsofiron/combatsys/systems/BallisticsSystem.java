@@ -268,6 +268,8 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
         ImpactEvent hit = new ImpactEvent();
         hit.target = bestBody.getUserData() instanceof Entity ? (Entity) bestBody.getUserData() : null;
         hit.owner = p.owner;
+        hit.aimedAt = p.aimedAt;
+        hit.pointDefense = p.pointDefense;
         hit.worldPoint.set(worldHit);
         hit.worldNormal.set(bestNormal).rotateRad(bestBody.getAngle());
         hit.velocity.set(p.vel);

@@ -30,7 +30,10 @@ import java.util.List;
  * The helm's autopilot: orders the player gives the helmsman, flown whenever the player is not at
  * the helm and a crew member mans it ({@link Bridge}). With nobody at the helm nothing is flown, and
  * an order nobody comes to fly for {@link #UNMANNED_LIMIT} is dropped. Orders never fire weapons, and
- * any threat (the ship shot at or hit, a missile launched at it) drops them.
+ * a threat (the ship shot at or hit, a missile launched at it) drops the ones that fly the ship
+ * somewhere: burns, approach and dock. Round 8: holding position and matching velocity
+ * ({@link #survivesThreat}) carry on under fire, since keeping station is what a ship in a fight
+ * wants (the raid's hold on the pirate base was dropped by the first dart, and every one after).
  *
  * <ul>
  *   <li><b>Fly the planned burns</b>: the helmsman turns the ship along the next burn, and fires the main
@@ -391,7 +394,12 @@ public class HelmOrders {
     private void threat(String why) {
         Entity ship = world.getPlayer();
         HelmOrderComponent o = ship == null ? null : ship.getComponent(HelmOrderComponent.class);
-        if (o != null && o.mode != HelmOrderComponent.Mode.NONE) drop(o, why);
+        if (o != null && o.mode != HelmOrderComponent.Mode.NONE && !survivesThreat(o.mode)) drop(o, why);
+    }
+
+    /** True for the orders a threat leaves standing: holding position and matching velocity. */
+    static boolean survivesThreat(HelmOrderComponent.Mode mode) {
+        return mode == HelmOrderComponent.Mode.HOLD_POSITION || mode == HelmOrderComponent.Mode.MATCH_VELOCITY;
     }
 
     private void drop(HelmOrderComponent o, String why) {

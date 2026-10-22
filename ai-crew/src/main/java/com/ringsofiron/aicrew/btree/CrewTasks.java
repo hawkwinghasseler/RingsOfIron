@@ -24,6 +24,7 @@ import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.DamageStates;
+import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
@@ -117,14 +118,7 @@ public final class CrewTasks {
             a.crew.activity = "filling their suit";
             filled += a.dt;
             if (filled < a.crew.def.suitRefillTime) return Status.RUNNING;
-            SubsystemComponent at = beside(grid, supplies, a.pos.tileX(), a.pos.tileY());
-            if (at != null) {
-                if (at.type == SubsystemComponent.SubsystemType.TANK) {
-                    at.contents = Math.max(0, at.contents - CrewDef.SUIT_OXYGEN_KG);
-                } else {
-                    TankSupply.draw(at, Fluid.OXYGEN, CrewDef.SUIT_OXYGEN_KG);
-                }
-            }
+            drawSuitOxygen(beside(grid, supplies, a.pos.tileX(), a.pos.tileY()));
             a.crew.suitAir = a.crew.def.suitAir;
             a.refilling = false;
             return Status.SUCCEEDED;
@@ -137,7 +131,7 @@ public final class CrewTasks {
         }
 
         /** The supply in {@code supplies} that (x, y) stands beside, open to it, or null. */
-        private static SubsystemComponent beside(ShipGridComponent grid, Array<SubsystemComponent> supplies, int x, int y) {
+        static SubsystemComponent beside(ShipGridComponent grid, Array<SubsystemComponent> supplies, int x, int y) {
             for (SubsystemComponent s : supplies) {
                 for (Side side : Side.values()) {
                     int nx = x + side.dx, ny = y + side.dy;
@@ -149,12 +143,38 @@ public final class CrewTasks {
     }
 
     /**
+     * The oxygen tank or working life support aboard {@code ship} that (x, y) stands beside, open to
+     * it, with a suit's fill to give; null if none. For the player's figure, which has no tree to
+     * run {@link RefillSuit} (round 10).
+     */
+    public static SubsystemComponent suitOxygenBeside(Entity ship, ShipGridComponent grid, int x, int y) {
+        Array<SubsystemComponent> supplies = new Array<>();
+        if (grid == null || !oxygenSupplies(ship, supplies)) return null;
+        return RefillSuit.beside(grid, supplies, x, y);
+    }
+
+    /** Takes a suit's fill of oxygen ({@link CrewDef#SUIT_OXYGEN_KG}) from {@code at}, a tank or life support; nothing if null. */
+    public static void drawSuitOxygen(SubsystemComponent at) {
+        if (at == null) return;
+        if (at.type == SubsystemComponent.SubsystemType.TANK) {
+            at.contents = Math.max(0, at.contents - CrewDef.SUIT_OXYGEN_KG);
+        } else {
+            TankSupply.draw(at, Fluid.OXYGEN, CrewDef.SUIT_OXYGEN_KG);
+        }
+    }
+
+    /**
      * Whether the agent's ship has oxygen to fill a suit from: an oxygen tank holding some, or a
      * working life support with oxygen piped to it (or with no oxygen tanks aboard at all, a layout
      * from before tanks). Adds each to {@code out} when given.
      */
     static boolean oxygenSupplies(CrewAgent a, Array<SubsystemComponent> out) {
-        ShipSubsystemRegistryComponent registry = a.pos.ship == null ? null : a.pos.ship.getComponent(ShipSubsystemRegistryComponent.class);
+        return oxygenSupplies(a.pos.ship, out);
+    }
+
+    /** {@link #oxygenSupplies(CrewAgent, Array)} aboard {@code ship}. */
+    static boolean oxygenSupplies(Entity ship, Array<SubsystemComponent> out) {
+        ShipSubsystemRegistryComponent registry = ship == null ? null : ship.getComponent(ShipSubsystemRegistryComponent.class);
         if (registry == null) return false;
         boolean tanks = TankSupply.hasTanks(registry, Fluid.OXYGEN), any = false;
         for (Entity e : registry.subsystems) {
@@ -178,6 +198,9 @@ public final class CrewTasks {
         public Status execute() {
             CrewAgent a = agent();
             boolean holding = a.crew.task != null && a.crew.task.isActive() && a.crew.task.claimedBy == a.entity;
+            // Pirate crews put down what they hold for the power (round 10): the task goes back, the best is claimed anew
+            if (holding && a.crew.carrying == null && a.board() != null
+                    && a.board().yieldsToPower(a.crew.task, a.crew.role, a.pos.tileX(), a.pos.tileY(), a::mayTake)) return Status.FAILED;
             return holding || a.hasAvailableTask() ? Status.SUCCEEDED : Status.FAILED;
         }
     }
@@ -275,9 +298,14 @@ public final class CrewTasks {
         public Status execute() {
             CrewAgent a = agent();
             CrewTask held = a.crew.task;
-            if (held != null && held.isActive() && held.claimedBy == a.entity) return Status.SUCCEEDED;
-            a.crew.task = null;
             ShipTaskBoardComponent board = a.board();
+            if (held != null && held.isActive() && held.claimedBy == a.entity) {
+                // Fire falling where the job is: put it down until the fight is over, unless already
+                // carrying someone out
+                if (a.crew.carrying == null && TaskRules.waitsOutFire(held, board, a.service)) board.release(held);
+                else return Status.SUCCEEDED;
+            }
+            a.crew.task = null;
             if (board == null || board.faction != a.crew.faction) return Status.FAILED;
             CrewTask t = board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(), a::mayTake);
             if (t == null || !board.claim(t, a.entity)) return Status.FAILED;
@@ -442,6 +470,15 @@ public final class CrewTasks {
                     }
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
                     p.treatedBy = a.entity;
+                    // Off battle stations and in good air, the carer slips their suit off to work (round 8):
+                    // it slowed the care of the wounded long after the fight
+                    if (a.crew.suited && (board == null || !board.battleSuits()) && !TaskRules.needsSuit(grid, a.pos.tileX(), a.pos.tileY())
+                            && !TaskRules.needsSuit(grid, t.x, t.y)) {
+                        // On the crew member, so it is saved (round 9)
+                        a.crew.unsuiting += a.dt;
+                        a.crew.activity = "taking off a suit";
+                        if (a.crew.unsuiting >= a.crew.def.suitTime * 0.5f) a.crew.setSuited(false);
+                    }
                     return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes or the wound heals
                 }
                 case STABILISE: {
@@ -454,9 +491,17 @@ public final class CrewTasks {
                     return Status.SUCCEEDED;
                 }
                 case MAN_CONSOLE: {
+                    ShipTaskBoardComponent board = a.board();
+                    // The suit goes on where they sit, the post still held, for battle stations or as
+                    // their room's air goes (round 9)
+                    if (!a.crew.suited && a.crew.def.suitAir > 0f && TaskRules.suitsUpAtPost(grid, board, a.pos.tileX(), a.pos.tileY())) {
+                        a.crew.activity = "putting on a suit at their post";
+                        a.crew.suiting += a.dt;
+                        if (a.crew.suiting >= a.crew.def.suitTime) a.crew.setSuited(true);
+                        return Status.RUNNING;
+                    }
                     // At it until anything else on the board wants them: then the console goes back up.
                     // The helm the ship needs isn't left to sit with a patient
-                    ShipTaskBoardComponent board = a.board();
                     boolean wanted = board != null && board.helmWanted && ((ManConsoleTask) t).type() == SubsystemComponent.SubsystemType.HELM;
                     if (board != null && board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(),
                             o -> o.kind != CrewTask.Kind.MAN_CONSOLE && !(wanted && o.kind == CrewTask.Kind.TREAT)
@@ -524,14 +569,18 @@ public final class CrewTasks {
      * Carries the casualty to the nearest safe tile, or for a {@link MedbayCarryTask} to the nearest
      * free medbay bed. With nowhere aboard to carry them to (the whole
      * ship holed), the rescuer puts the casualty's suit on them where they are instead, taking their
-     * own suit time, and leaves them for the next try.
+     * own suit time, and leaves them for the next try. Round 9: once that suit runs low
+     * ({@link CrewDef#suitRefillShare}), they carry the casualty to the ship's oxygen and fill it
+     * there, as they would their own ({@link RefillSuit}). The wound survey lost six crew who lay
+     * down in a holed ship, suited, until their suits ran dry beside full oxygen tanks.
      */
     public static class CarryToSafety extends CrewLeaf {
-        private float suiting;
+        private float suiting, filling;
 
         @Override
         public void start() {
             suiting = 0f;
+            filling = 0f;
         }
 
         @Override
@@ -553,6 +602,16 @@ public final class CrewTasks {
             boolean destValid = dest != null && a.pos.isMoving() && !a.pos.pathBlocked && there.test(dest.x, dest.y);
             if (!destValid) {
                 if (!a.nearest(x, y, there, a.pathScratch)) {
+                    // Nowhere aboard is safe: aboard the craft it is docked to, a station's berth say
+                    Entity shelter = medbay ? null : shelter(a);
+                    if (shelter != null) {
+                        ShipGridComponent ashore = a.service.grid(shelter);
+                        CrewAgent.Travel go = a.travel(shelter, (tx, ty) -> TaskRules.isSafe(ashore, tx, ty));
+                        if (go != CrewAgent.Travel.UNREACHABLE) {
+                            a.crew.activity = "carrying " + c.name + " aboard " + SHELTER;
+                            return Status.RUNNING;
+                        }
+                    }
                     // No bed to be reached: they are put down where they are, on safe deck
                     if (!medbay && !c.suited && c.def.suitAir > 0f) {
                         a.pos.stop();
@@ -561,12 +620,36 @@ public final class CrewTasks {
                         if (suiting < a.crew.def.suitTime) return Status.RUNNING;
                         c.setSuited(true);
                     }
+                    if (!medbay && c.suited && c.suitAir < c.def.suitAir * c.def.suitRefillShare && TaskRules.suitCare(a.board())) {
+                        Status fill = fillSuit(a, c, grid);
+                        if (fill != null) return fill;
+                    }
                     a.abandonUnreachable();
                     return Status.FAILED;
                 }
                 a.pos.setPath(a.pathScratch);
             }
             return Status.RUNNING;
+        }
+
+        /** Takes the casualty to the ship's oxygen and fills their suit; null if there is none to be reached. */
+        private Status fillSuit(CrewAgent a, CrewMemberComponent c, ShipGridComponent grid) {
+            Array<SubsystemComponent> supplies = new Array<>();
+            if (!oxygenSupplies(a, supplies)) return null;
+            GridNavGraph nav = a.pathfinder().graph;
+            CrewAgent.Travel go = a.travel(a.pos.ship, (x, y) -> nav.isWalkable(x, y) && RefillSuit.beside(grid, supplies, x, y) != null);
+            if (go == CrewAgent.Travel.UNREACHABLE) return null;
+            if (go == CrewAgent.Travel.GOING) {
+                a.crew.activity = "carrying " + c.name + " to fill their suit";
+                return Status.RUNNING;
+            }
+            a.crew.activity = "filling " + c.name + "'s suit";
+            filling += a.dt;
+            if (filling < c.def.suitRefillTime) return Status.RUNNING;
+            drawSuitOxygen(RefillSuit.beside(grid, supplies, a.pos.tileX(), a.pos.tileY()));
+            c.suitAir = c.def.suitAir;
+            filling = 0f;
+            return Status.SUCCEEDED;
         }
     }
 
@@ -870,7 +953,10 @@ public final class CrewTasks {
             CrewAgent a = agent();
             ShipGridComponent grid = a.grid();
             Entity home = a.service.homeOf(a.entity);
-            if (home != a.pos.ship || a.pos.crossing != null) {
+            // Sheltering aboard a docked craft while nowhere aboard their own is safe: they stay
+            boolean sheltering = home != a.pos.ship && a.pos.crossing == null
+                    && TaskRules.isSafe(grid, a.pos.tileX(), a.pos.tileY()) && !anywhereSafe(a.service.grid(home));
+            if ((home != a.pos.ship || a.pos.crossing != null) && !sheltering) {
                 ShipGridComponent homeGrid = a.service.grid(home);
                 GridNavGraph nav = homeGrid == null ? null : a.service.pathfinder(homeGrid).graph;
                 if (nav != null && a.travel(home, nav::isWalkable) == CrewAgent.Travel.GOING) {
@@ -923,6 +1009,23 @@ public final class CrewTasks {
                 if (a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
                     a.pos.setPath(a.pathScratch);
                     a.crew.activity = "leaving hazard";
+                    return Status.RUNNING;
+                }
+                // Nowhere aboard is safe (the ship holed past holding, its air gone): they suit up, and
+                // go aboard the craft it is docked to, a station's berth say, until it is
+                if (!a.crew.suited && a.crew.def.suitAir > 0f) {
+                    a.pos.stop();
+                    a.crew.activity = "putting on a suit";
+                    suiting += a.dt;
+                    if (suiting < a.crew.def.suitTime) return Status.RUNNING;
+                    a.crew.setSuited(true);
+                    suiting = 0f;
+                }
+                Entity shelter = shelter(a);
+                if (shelter == null) return Status.RUNNING;
+                ShipGridComponent there = a.service.grid(shelter);
+                if (a.travel(shelter, (tx, ty) -> TaskRules.isSafe(there, tx, ty)) == CrewAgent.Travel.GOING) {
+                    a.crew.activity = "going aboard " + SHELTER;
                 }
             }
             return Status.RUNNING;
@@ -932,6 +1035,35 @@ public final class CrewTasks {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /** What crew call the docked craft they shelter aboard. */
+    static final String SHELTER = "the docked craft";
+
+    /** True if a crew member could stand somewhere on {@code grid} and breathe. */
+    public static boolean anywhereSafe(ShipGridComponent grid) {
+        if (grid == null) return false;
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                if (grid.getTile(x, y).holdsAir() && TaskRules.isSafe(grid, x, y)) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A craft docked straight to the one the agent is aboard, through an open port, whose own crew
+     * are no enemies of theirs and with somewhere aboard safe to breathe: where to go when nowhere
+     * aboard is. Null if there is none.
+     */
+    static Entity shelter(CrewAgent a) {
+        ShipGridComponent grid = a.grid();
+        if (grid == null) return null;
+        for (int i = 0; i < grid.links.size; i++) {
+            GridLink l = grid.links.get(i);
+            if (l.canCross() && a.service.friendlyTo(a.crew.faction, l.otherShip) && anywhereSafe(l.other)) return l.otherShip;
+        }
+        return null;
+    }
 
     /** True if (x, y) is the opening of a port docked to another craft. */
     static boolean onLink(ShipGridComponent grid, int x, int y) {

@@ -148,7 +148,7 @@ public class HudRenderSystem extends EntitySystem {
             String range = player != null ? formatRange(Vector2.dst(player.x, player.y, t.x, t.y)) : "";
             float half = Math.max(MIN_BRACKET, m.radius * pixelsPerMeter * 1.2f);
             widget.set(m.label, range, m.color, half, !onScreen, angle, e == locked);
-            if (!onScreen) unstack(widget, screen.y < h / 2f ? 1f : -1f, w);
+            if (!onScreen) unstack(widget, screen.y < h / 2f ? 1f : -1f, w, h);
         }
 
         // Drop widgets whose entity lost its marker or left the engine.
@@ -167,8 +167,9 @@ public class HudRenderSystem extends EntitySystem {
      * Two contacts the same way off screen put their names on top of each other at the edge: moves
      * this one's text inward ({@code dir} up or down) until it clears the ones already placed. A
      * long name by the left or right edge is first slid back inside the screen ({@code width} wide).
+     * A panel reaching the top or bottom of the screen ({@code height} high) is gone round the other way.
      */
-    private void unstack(MarkerWidget widget, float dir, float width) {
+    private void unstack(MarkerWidget widget, float dir, float width, float height) {
         Rectangle box = widget.textBounds(new Rectangle());
         float dx = box.x < 2f ? 2f - box.x : box.x + box.width > width - 2f ? width - 2f - box.x - box.width : 0f;
         if (dx != 0f) {
@@ -180,6 +181,10 @@ public class HudRenderSystem extends EntitySystem {
             for (Rectangle r : edgeText) if (r.overlaps(box)) hit = r;
             if (hit == null) break;
             float dy = dir > 0 ? hit.y + hit.height + 2f - box.y : hit.y - 2f - (box.y + box.height);
+            if (box.y + dy < 0f || box.y + box.height + dy > height) {
+                dir = -dir;
+                dy = dir > 0 ? hit.y + hit.height + 2f - box.y : hit.y - 2f - (box.y + box.height);
+            }
             widget.nudgeText(0f, dy);
             box.y += dy;
         }

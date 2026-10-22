@@ -131,20 +131,26 @@ min_difficulty = 3.0
 
 # The pirate base's gun platforms (round 6, PirateBase): drawn like a spawn's, by the career's seed.
 # Its stock fit is two chainguns, a dart rack and flak; the heavier fits come with the difficulty.
-# battery_railgun is off (weight 0): round 7 hit the raid's targets without it. Give it a weight
-# (2 was tried) and, once the player flies a frigate, one platform may carry a railgun that reaches
+# battery_railgun: once the player flies a frigate, one platform may carry a railgun that reaches
 # a ship standing off out of its chainguns' range; HostileTraffic.moorGuns keeps it to one, since a
-# second would kill whole crews from out there.
+# second would kill whole crews from out there. Round 7 left it at weight 0; round 8 gives it 5
+# (about half the frigate's raids meet one) to make the raid hurt with three defenders, not four.
+# Round 10: every fit without a railgun swaps one Mk1 chaingun for the 40 mm Mk2, the one gun short of
+# a railgun that marks a frigate's hull (the 30 mm grazes off it), and battery_heavy comes from 2.2 like
+# the railgun's. With the platforms now moored where they reach a frigate holding off the base
+# (PirateBase.BATTERY_SPACING), round 9's raids without a railgun went from 0.00-0.04 of hull taken off
+# to 0.07-0.21. To ease the raid, undo these in reverse: battery_darts' Mk2, battery_stock's Mk2,
+# BATTERY_SPACING, battery_heavy's min_difficulty.
 [loadout.battery_stock]
 name = "Den battery"
 ship = "den_battery"
-weapons = []
+weapons = ["chaingun_mk2"]
 weight = 3
 
 [loadout.battery_darts]
 name = "Dart battery"
 ship = "den_battery"
-weapons = ["", "", "dart_rack", "dart_rack"]
+weapons = ["chaingun_mk2", "", "dart_rack", "dart_rack"]
 weight = 1
 
 [loadout.battery_heavy]
@@ -152,11 +158,11 @@ name = "Heavy battery"
 ship = "den_battery"
 weapons = ["chaingun_mk2", "chaingun_mk2", "dart_rack", "flak_mk1"]
 weight = 2
-min_difficulty = 2.5
+min_difficulty = 2.2
 
 [loadout.battery_railgun]
 name = "Railgun battery"
 ship = "den_battery"
 weapons = ["railgun_mk1", "", "", ""]
-weight = 0
+weight = 5
 min_difficulty = 2.2

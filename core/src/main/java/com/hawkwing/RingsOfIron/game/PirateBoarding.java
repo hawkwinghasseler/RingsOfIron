@@ -7,6 +7,8 @@ import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
+import com.ringsofiron.combatsys.components.WeaponMountComponent;
+import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
@@ -15,8 +17,10 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Pirates who board a beaten player (round 7 part 4). Kept small: a pirate that has beaten the
@@ -30,6 +34,11 @@ import java.util.Locale;
  * beaten; while it answers true the pirate is this class's to fly. The goods go into the pirate's
  * own hold as far as they fit, so taking it later gets them back. A boarding in progress (who, and
  * how long latched) is saved under {@link #SAVE_KEY}.
+ *
+ * <p>Round 8 part 4: a boarder the player's ship hits {@link #BREAK_OFF_HITS} times before the take
+ * breaks off with nothing and doesn't board again while the player stays beaten; and nobody boards a
+ * ship at a berth or in tow (seed 2026's boarding finished at Highport's berth and tore it loose).
+ * Round 9: only hits within {@link #BREAK_OFF_RANGE} of the player count, so a boarding begins close in.
  */
 public class PirateBoarding implements SaveParticipant {
     /** Key of this state in the save's modules section. */
@@ -46,6 +55,14 @@ public class PirateBoarding implements SaveParticipant {
     public static final double CREDIT_CAP = 5_000;
     /** A boarding nobody has flown for this long is over, sim seconds: a few of HostileTraffic's looks. */
     static final double STALE_SECONDS = 3 * HostileTraffic.CHECK_SECONDS;
+    /** Hits from the player's ship on the boarder, before the take, that make it break off. */
+    public static final int BREAK_OFF_HITS = 1;
+    /**
+     * Hits count towards breaking off only within this range of the player's ship, m; further out a
+     * hit works as in any fight. Round 9: in round 8's window the frigate's guns hit the boarder about
+     * 4.5 km out, so a player whose ship still had power and a gun never saw a boarding latch on.
+     */
+    public static final float BREAK_OFF_RANGE = 1_000f;
 
     /** What a boarding took. */
     public static final class Take {
@@ -87,9 +104,21 @@ public class PirateBoarding implements SaveParticipant {
     private boolean aboard;
     /** Sim time {@link #board} last flew the boarder; NaN until the first frame after a load. */
     private double asked = Double.NaN;
+    /** Hits the player's ship has put on the boarder in this boarding. */
+    private int hits;
+    /** Sim time this boarding began: rounds fired before it, still in flight, don't count. */
+    private double began;
+    /** Uuids of pirates driven off under fire: none boards again while the player stays beaten. */
+    private final Set<String> drivenOff = new LinkedHashSet<>();
 
     PirateBoarding(GameWorld world) {
         this.world = world;
+        world.combatEvents.impacts.add((signal, hit) -> hit(hit.owner, hit.target, hit.sinceFired));
+        world.combatEvents.detonations.add((signal, d) -> hit(d.owner, d.target, d.sinceFired));
+        // The tug takes the player away from whoever was alongside
+        world.rescue.tows.add((signal, tow) -> {
+            if (tow.ship == world.getPlayer()) castOff("casts off as you are taken in tow");
+        });
     }
 
     /**
@@ -99,6 +128,12 @@ public class PirateBoarding implements SaveParticipant {
      */
     public boolean board(String id, Entity pirate, HostileComponent h, Entity player, double seconds) {
         if (boarder != null && !boarder.equals(id)) return false;
+        if (drivenOff.contains(id)) return false;
+        if (atBerth(player)) {
+            // Nobody boards a ship at a station's berth or in tow: one alongside casts off
+            if (id.equals(boarder)) castOff("casts off: you are at a berth");
+            return false;
+        }
         if (h.hull < BOARD_HULL) {
             // Hurt too badly to board, or hurt since it began: it leaves
             if (boarder != null) reset();
@@ -108,6 +143,8 @@ public class PirateBoarding implements SaveParticipant {
             boarder = id;
             latched = 0;
             aboard = false;
+            hits = 0;
+            began = world.engine.getSimSeconds();
             world.notices.post(h.displayName + " is coming alongside to board you", NoticeLog.Kind.WARNING);
         }
         asked = world.engine.getSimSeconds();
@@ -122,14 +159,14 @@ public class PirateBoarding implements SaveParticipant {
         if (range(pirate, player) > LATCH_RANGE) return true;
         if (!aboard) {
             aboard = true;
-            world.notices.post(h.displayName + " has latched on: pirates are aboard", NoticeLog.Kind.IMPORTANT);
+            world.notices.post(h.displayName + " has latched on: pirates are aboard", NoticeLog.Kind.WARNING);
         }
         latched += seconds;
         if (latched < BOARD_SECONDS) return true;
         Take take = take(pirate, h.displayName, player);
         reset();
         world.notices.post("The boarders from " + take.pirateName + " took " + take.describe() + ", and cast off",
-                NoticeLog.Kind.IMPORTANT);
+                NoticeLog.Kind.WARNING);
         robbed.dispatch(take);
         return false;
     }
@@ -140,6 +177,56 @@ public class PirateBoarding implements SaveParticipant {
         boarder = null;
         latched = 0;
         aboard = false;
+        hits = 0;
+    }
+
+    /** True once {@code id} has broken off a boarding under fire, until the player is no longer beaten. */
+    public boolean drivenOff(String id) {
+        return drivenOff.contains(id);
+    }
+
+    /** At a berth, or being brought in by a tug: no place for a boarding. */
+    boolean atBerth(Entity player) {
+        return world.docking.dockedTo(player) != null || world.rescue.bringingIn();
+    }
+
+    /**
+     * A round or warhead from {@code owner}, fired {@code sinceFired} seconds ago, struck {@code target}:
+     * the player's on the boarder, fired since it came to board, drives it off once it is within
+     * {@link #BREAK_OFF_RANGE}.
+     */
+    private void hit(Entity owner, Entity target, float sinceFired) {
+        if (boarder == null || owner == null || owner != world.getPlayer() || target == null || target != boarder()) return;
+        if (world.engine.getSimSeconds() - sinceFired < began) return;
+        if (range(target, owner) > BREAK_OFF_RANGE) return;
+        if (++hits < BREAK_OFF_HITS) return;
+        HostileComponent h = target.getComponent(HostileComponent.class);
+        drivenOff.add(boarder);
+        reset();
+        world.notices.post((h == null ? "The pirate" : h.displayName) + " breaks off its boarding under fire", NoticeLog.Kind.IMPORTANT);
+    }
+
+    /** Ends a boarding in progress with nothing taken, saying {@code why} after the pirate's name. */
+    private void castOff(String why) {
+        if (boarder == null) return;
+        Entity pirate = boarder();
+        HostileComponent h = pirate == null ? null : pirate.getComponent(HostileComponent.class);
+        reset();
+        world.notices.post((h == null ? "The pirate" : h.displayName) + " " + why, NoticeLog.Kind.INFO);
+        if (pirate != null) standDown(world.getPlayer(), pirate);
+    }
+
+    /**
+     * The player's guns let go of {@code pirate}: docked with it alongside, a gun still locked on it
+     * opens up once the power is back, and its recoil tears the ship off the berth (seed 2026, round
+     * 7: torn loose seven times at Highport, the yard's work called off each time).
+     */
+    static void standDown(Entity player, Entity pirate) {
+        if (player == null) return;
+        SensorComponent sensor = player.getComponent(SensorComponent.class);
+        if (sensor != null && sensor.lockedTarget == pirate) sensor.lockedTarget = null;
+        WeaponsComponent weapons = player.getComponent(WeaponsComponent.class);
+        if (weapons != null) for (WeaponMountComponent m : weapons.mounts) if (m.target == pirate) m.target = null;
     }
 
     /** The pirate boarding the player now, or null. */
@@ -152,7 +239,14 @@ public class PirateBoarding implements SaveParticipant {
      * beaten, or the pirate is beaten itself or gone from the bubble).
      */
     public void update() {
+        Entity player = world.getPlayer();
+        // A fight over: a pirate driven off may board another day
+        if (!drivenOff.isEmpty() && (player == null || !ShipDisablement.isDisabled(player))) drivenOff.clear();
         if (boarder == null) return;
+        if (player != null && atBerth(player)) {
+            castOff("casts off: you are at a berth");
+            return;
+        }
         double now = world.engine.getSimSeconds();
         if (Double.isNaN(asked)) asked = now;
         Entity pirate = boarder();
@@ -207,10 +301,13 @@ public class PirateBoarding implements SaveParticipant {
 
     @Override
     public void write(Json json) {
+        if (!drivenOff.isEmpty()) json.writeValue("drivenOff", new ArrayList<>(drivenOff), ArrayList.class, String.class);
         if (boarder == null) return;
         json.writeValue("boarder", boarder);
         json.writeValue("latched", latched);
         json.writeValue("aboard", aboard);
+        json.writeValue("hits", hits);
+        json.writeValue("began", began);
     }
 
     @Override
@@ -219,5 +316,10 @@ public class PirateBoarding implements SaveParticipant {
         boarder = data.getString("boarder", null);
         latched = data.getDouble("latched", 0);
         aboard = data.getBoolean("aboard", false);
+        hits = data.getInt("hits", 0);
+        began = data.getDouble("began", 0);
+        drivenOff.clear();
+        JsonValue off = data.get("drivenOff");
+        if (off != null) for (JsonValue v = off.child; v != null; v = v.next) drivenOff.add(v.asString());
     }
 }

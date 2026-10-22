@@ -13,7 +13,10 @@
 name = "Patrol Corvette"
 chassis = "corvette"
 texture = "tex_corvette"
-mass = 120000.0
+# What it weighs in the bubble with full tanks: its layout's 96 tiles at 2 t each (materials.toml's medium
+# steel, floors included), and about 3.1 t in its tanks. A ship with a layout weighs its layout, so this
+# figure only stands in for it (round 9: it said 120 t)
+mass = 195100.0
 max_thrust = 2.4e6
 max_torque = 8.0e5
 exhaust_velocity = 700000.0
@@ -39,7 +42,10 @@ hardpoints = [
 name = "Pirate Corvette"
 chassis = "corvette"
 texture = "tex_corvette"
-mass = 120000.0
+# What it weighs in the bubble with full tanks: its layout's 96 tiles at 2 t each, as the patrol
+# corvette's, and about 3.1 t in its tanks. A ship with a layout weighs its layout, so this figure only
+# stands in for it (round 9: it said 120 t)
+mass = 195100.0
 max_thrust = 2.4e6
 max_torque = 8.0e5
 exhaust_velocity = 700000.0
@@ -56,7 +62,10 @@ hardpoints = [
 name = "Hauler"
 chassis = "freighter"
 texture = "tex_freighter"
-mass = 300000.0
+# What it weighs in the bubble with full tanks: its layout's 260 tiles at 2 t each, and about 6.1 t in its
+# tanks. A ship with a layout weighs its layout, so this figure only stands in for it (round 9: it said
+# 300 t)
+mass = 526100.0
 max_thrust = 3.0e6
 max_torque = 1.5e6
 crew = 3
@@ -66,7 +75,10 @@ crew = 3
 name = "Light Raider"
 chassis = "raider"
 texture = "tex_raider"
-mass = 60000.0
+# What it weighs in the bubble with full tanks: its layout's 75 tiles at 2 t each (materials.toml's medium
+# steel, floors included) and about 2.6 t in its tanks. A ship with a layout weighs its layout, so this
+# figure only stands in for it (round 8: it said 60 t, but the raider has always flown at 153 t)
+mass = 153000.0
 max_thrust = 2.8e6
 max_torque = 6.0e5
 exhaust_velocity = 700000.0
@@ -80,7 +92,10 @@ hardpoints = [
 name = "Gunship"
 chassis = "gunship"
 texture = "tex_gunship"
-mass = 240000.0
+# What it weighs in the bubble with full tanks: its layout's 160 tiles at 2 t each, and about 5.1 t in its
+# tanks. A ship with a layout weighs its layout, so this figure only stands in for it (round 9: it said
+# 240 t)
+mass = 325100.0
 max_thrust = 3.4e6
 max_torque = 2.0e6
 exhaust_velocity = 700000.0
@@ -101,7 +116,10 @@ hardpoints = [
 name = "Den Battery"
 chassis = "battery"
 texture = "tex_raider"
-mass = 150000.0
+# What it weighs in the bubble with full tanks: its layout's 63 tiles at 2 t each, and nothing in tanks
+# (it has none). A ship with a layout weighs its layout, so this figure only stands in for it (round 9: it
+# said 150 t)
+mass = 126000.0
 max_thrust = 2.0e4
 max_torque = 2.0e5
 exhaust_velocity = 700000.0
@@ -122,7 +140,10 @@ hardpoints = [
 name = "Pirate Gunship"
 chassis = "gunship"
 texture = "tex_gunship"
-mass = 220000.0
+# What it weighs in the bubble with full tanks: its layout's 160 tiles at 2 t each, as the patrols'
+# gunship's, and about 5.1 t in its tanks. A ship with a layout weighs its layout, so this figure only
+# stands in for it (round 9: it said 220 t)
+mass = 325100.0
 max_thrust = 3.4e6
 max_torque = 2.0e6
 exhaust_velocity = 700000.0
@@ -142,7 +163,10 @@ hardpoints = [
 name = "Frigate"
 chassis = "frigate"
 texture = "tex_frigate"
-mass = 380000.0
+# What it weighs in the bubble with full tanks: its layout's 240 tiles at 2 t each, and about 5.1 t in its
+# tanks. A ship with a layout weighs its layout, so this figure only stands in for it (round 9: it said
+# 380 t)
+mass = 485100.0
 max_thrust = 3.4e6
 max_torque = 3.2e6
 exhaust_velocity = 700000.0

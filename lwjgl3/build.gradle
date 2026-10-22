@@ -246,6 +246,10 @@ tasks.register('runGame', JavaExec) {
   description = 'Runs Rings of Iron with every module wired together.'
   // -PviewAnywhere: V switches the view anywhere and the ship flies from the deck, as before seats
   if (project.hasProperty('viewAnywhere')) systemProperty 'view.anywhere', 'true'
+  // -PcareerSaves=<folder>: copies that folder's saves (core/build/playtest-saves/seed-2026, say) into
+  // assets/saves first, so Load lists them. assets/saves/career-saves.txt lists what it copied; a later run
+  // replaces those files and only those, never a save you made or saved over
+  if (project.hasProperty('careerSaves')) args = ['--career-saves', rootProject.file(project.property('careerSaves').toString()).path]
   mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.GameLauncher'
   classpath = sourceSets.main.runtimeClasspath
   workingDir = rootProject.file('assets').path

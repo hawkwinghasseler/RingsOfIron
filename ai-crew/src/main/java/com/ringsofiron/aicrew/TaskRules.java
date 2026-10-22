@@ -4,6 +4,8 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
+import com.ringsofiron.interiorgrid.AirflowEdge;
+import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.LeakPatches;
@@ -222,6 +224,94 @@ public final class TaskRules {
         return false;
     }
 
+    /**
+     * Room pressure, kPa, below which a hand at a console whose room is losing air puts their suit on
+     * where they sit off battle stations ({@link #suitsUpAtPost}). Round 9.
+     */
+    public static final float SUIT_AT_POST_KPA = 50f;
+    /**
+     * The faction whose crews get round 9's suit care ({@link #suitCare}): the player's. Given to the
+     * aces' crews too, it kept them alive and won the railgun ace four more of twenty fights.
+     */
+    public static final int SUIT_CARE_FACTION = 0;
+
+    /**
+     * What resetting a short on a system the ship fights with ({@link #vital}) is worth to the player's
+     * crews at battle stations ({@link #priority}): above sealing a breach, below a shorted reactor
+     * and rescues. Round 10: seed 9's career lost Iron Dagny with its helm and two gun mounts shorted
+     * at 16 s and still dark 45 s later, while all four crew sealed breaches (80) ahead of the resets (50).
+     */
+    public static final float VITAL_RESET_PRIORITY = 84f;
+
+    /**
+     * The priority {@code task} is chosen by on {@code board}: its own, except a reset of a short on a
+     * system the ship fights with, while the player's crews are at battle stations
+     * ({@link #VITAL_RESET_PRIORITY}).
+     */
+    public static float priority(ShipTaskBoardComponent board, CrewTask task) {
+        if (task instanceof ResetShortTask && board.battleStations && board.faction == SUIT_CARE_FACTION
+                && task.priority < VITAL_RESET_PRIORITY && vital(task)) return VITAL_RESET_PRIORITY;
+        if (task instanceof RepairTask && board.faction == SUIT_CARE_FACTION && task.priority < ResetShortTask.REACTOR_PRIORITY
+                && reactorOut(((RepairTask) task).subsystem)) return ResetShortTask.REACTOR_PRIORITY;
+        if (task instanceof StabiliseTask && board.faction == SUIT_CARE_FACTION && task.priority < URGENT_STABILISE_PRIORITY) {
+            CrewMemberComponent c = ((StabiliseTask) task).patient.getComponent(CrewMemberComponent.class);
+            if (c != null && c.wound == Wound.CRITICAL && !c.stabilised && c.bleedOut <= LAST_CHANCE) return URGENT_STABILISE_PRIORITY;
+        }
+        return task.priority;
+    }
+
+    /**
+     * What stopping the bleeding of one of the player's crews with no more than {@link #LAST_CHANCE}
+     * to live is worth ({@link #priority}): before anything else, an engineer's breach (80 at 1.5) or
+     * shorted reactor (85 at 1.5) and a medic's rescue (90 at 1.5) included. Round 10: in the frigate's
+     * raids on seeds 10 and 12 three crew went critical, were hit again where they lay (each hit halves what is left, and opens a
+     * wound stopped before), and bled out with 34 to 66 s left, one of them after the fight.
+     */
+    public static final float URGENT_STABILISE_PRIORITY = 110f;
+
+    /**
+     * True if {@code subsystem} is a reactor damaged past working ({@link SubsystemComponent#isDisabled}):
+     * the player's crews mend it as they would reset its short ({@link #priority}). Round 10: with the
+     * guns' shorts reset first, seed 9's corvette sat with its reactor wrecked and the crew on the turret,
+     * and was towed in after a fight it had won (25,500 cr, and 22,202 cr short for the gunship).
+     */
+    static boolean reactorOut(Entity subsystem) {
+        SubsystemComponent s = subsystem == null ? null : subsystem.getComponent(SubsystemComponent.class);
+        return s != null && s.type == SubsystemComponent.SubsystemType.REACTOR && s.isDisabled();
+    }
+
+    /** True if {@code board}'s crew suit up at their posts and fill a casualty's suit (round 9). */
+    public static boolean suitCare(ShipTaskBoardComponent board) {
+        return board != null && board.faction == SUIT_CARE_FACTION;
+    }
+
+    /**
+     * True if an unsuited hand at a post on (x, y) should put their suit on there, still holding the
+     * post (round 9): at battle stations with suits ordered ({@link ShipTaskBoardComponent#battleSuits}),
+     * as everyone else aboard already has, or with their room losing air ({@link #losingAir}) and below
+     * {@link #SUIT_AT_POST_KPA}. Round 8's wound survey: a gunner sat at the weapons from before the
+     * fight began, so never suited up for it ({@code SuitUp} runs only as a task is taken), and
+     * suffocated there as the cabin vented. A steady cabin, however thin, never empties a console.
+     */
+    public static boolean suitsUpAtPost(ShipGridComponent grid, ShipTaskBoardComponent board, int x, int y) {
+        if (!suitCare(board)) return false;
+        if (board.battleSuits()) return true;
+        Compartment room = grid.compartmentAt(x, y);
+        if (room == null) return needsSuit(grid, x, y);
+        return room.pressure() < SUIT_AT_POST_KPA && losingAir(grid, room);
+    }
+
+    /** True while more air leaves {@code room} than comes in, by more than {@link ShipGridComponent#VENTING_HAZARD_FLOW}, as of the last hazard tick. */
+    public static boolean losingAir(ShipGridComponent grid, Compartment room) {
+        float out = 0f;
+        for (int i = 0; i < grid.airflow.size; i++) {
+            AirflowEdge e = grid.airflow.get(i);
+            // Each opening is listed from both its sides, so its own side's flow is enough
+            if (e.room == room) out += e.flow;
+        }
+        return out > ShipGridComponent.VENTING_HAZARD_FLOW;
+    }
+
     /** True if a crew member can breathe safely on (x, y): pressurized, oxygenated, not burning or hot. */
     public static boolean isSafe(ShipGridComponent grid, int x, int y) {
         Tile t = grid.getTile(x, y);
@@ -261,6 +351,61 @@ public final class TaskRules {
             }
         }
         return false;
+    }
+
+    /**
+     * A casualty bleeding out or suffocating with this long or less left is gone in after under fire all the same
+     * ({@link #waitsOutFire}), seconds.
+     */
+    public static final float LAST_CHANCE = 120f;
+
+    /**
+     * True if {@code task} lies where the fire is falling on its ship ({@link
+     * ShipTaskBoardComponent#underFire}) and waits for the fight to end: damage control, repairs and
+     * casualties alike, except a casualty with no more than {@link #LAST_CHANCE} to live, bleeding out
+     * or down in bad air with that much suit air or none. Manning a
+     * console, orders, work away from the ship and damage control on what the ship fights with
+     * ({@link #vital}) never wait.
+     */
+    public static boolean waitsOutFire(CrewTask task, ShipTaskBoardComponent board, CrewService crew) {
+        if (board != null && !board.keepsClearOfFire) return false;
+        if (board == null || !board.battleStations || board.hitTiles.size == 0) return false;
+        switch (task.kind) {
+            case MAN_CONSOLE: case CARRY: case YARD: case FORCE_DOOR: case EVACUATE: case BOARD: return false;
+            default: break;
+        }
+        if (vital(task)) return false;
+        if (!board.underFire(targetX(task, crew), targetY(task, crew))) return false;
+        Entity casualty = mobileTarget(task);
+        CrewMemberComponent c = crew.crew(casualty);
+        if (c == null) return true;
+        boolean bleeding = c.wound == Wound.CRITICAL && !c.stabilised && c.treatedBy == null && c.bleedOut <= LAST_CHANCE;
+        // Down on air not fit to breathe, with little or no suit air: suffocating
+        GridPositionComponent p = crew.position(casualty);
+        ShipGridComponent grid = p == null ? null : crew.grid(p.ship);
+        boolean suffocating = grid != null && !c.isConscious() && !isBreathable(grid, p.tileX(), p.tileY())
+                && (!c.breathesFromSuit() || c.suitAir <= LAST_CHANCE);
+        return !bleeding && !suffocating;
+    }
+
+    /**
+     * Resetting a short or repairing a system the ship fights with: its reactor and power conduits,
+     * shields, guns, helm, weapons console and engines. Round 8: kept out of the fire too, the crew
+     * left the corvette's shorted power dark and Red Kestrel, beaten in 36 s before, won in 69 s.
+     */
+    static boolean vital(CrewTask task) {
+        Entity subsystem;
+        if (task instanceof ResetShortTask) subsystem = ((ResetShortTask) task).subsystem;
+        else if (task instanceof RepairTask) subsystem = ((RepairTask) task).subsystem;
+        else return false;
+        // A shorted conduit carries the power to all of them
+        if (subsystem == null) return task instanceof ResetShortTask;
+        SubsystemComponent s = subsystem.getComponent(SubsystemComponent.class);
+        if (s == null) return false;
+        switch (s.type) {
+            case REACTOR: case SHIELD_EMITTER: case TURRET_MOUNT: case HELM: case WEAPONS: case ENGINE: return true;
+            default: return false;
+        }
     }
 
     /** True while {@code e}'s ship is at battle stations. */

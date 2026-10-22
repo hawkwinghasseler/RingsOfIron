@@ -68,8 +68,11 @@ public class ShipGauges extends Table {
         set(structureText, percent(s.structure));
         power.level = s.power;
         set(powerText, powerText(s));
-        // With no oxygen tanks the bar shows the air in the worst room instead
-        oxygen.level = Float.isNaN(s.oxygen) ? s.cabinPressure : s.oxygen;
+        // With no oxygen tanks the bar shows the air in the worst room instead; with them dry, what
+        // life support has left of its own, in red whatever its level
+        boolean emergency = !Float.isNaN(s.emergencyOxygen);
+        oxygen.level = emergency ? s.emergencyOxygen : Float.isNaN(s.oxygen) ? s.cabinPressure : s.oxygen;
+        oxygen.alert = emergency;
         set(oxygenText, oxygenText(s));
     }
 
@@ -86,10 +89,15 @@ public class ShipGauges extends Table {
     /**
      * The tank's share with its own tag ("LOW O2"), then the cabin air's, marked as the cabin's so a
      * full tank beside thin air doesn't read "100% LOW AIR". With no tanks the bar is the cabin air.
+     * With the tanks dry it is life support's emergency oxygen, in kilograms (round 8: the gauge read
+     * 0% while the crew breathed on it).
      */
     static String oxygenText(ShipStatus s) {
         String air = s.cabinPressure < 0.1f ? "VACUUM" : s.cabinPressure < 0.7f ? "LOW AIR" : "";
         if (Float.isNaN(s.oxygen)) return "air " + percent(s.cabinPressure) + (air.isEmpty() ? "" : "  " + air);
+        if (!Float.isNaN(s.emergencyOxygen)) {
+            return String.format(Locale.ROOT, "EMERGENCY %.0f kg", s.emergencyOxygenKg) + (air.isEmpty() ? "" : "  cabin " + air);
+        }
         return percent(s.oxygen) + (s.oxygen < LOW ? "  LOW O2" : "") + (air.isEmpty() ? "" : "  cabin " + air);
     }
 
@@ -119,6 +127,8 @@ public class ShipGauges extends Table {
     static final class Bar extends Widget {
         private final TextureRegion white;
         float level = Float.NaN;
+        /** Drawn red whatever its level. */
+        boolean alert;
 
         Bar(TextureRegion white) {
             this.white = white;
@@ -131,7 +141,7 @@ public class ShipGauges extends Table {
             batch.setColor(0.1f, 0.2f, 0.3f, 0.9f * parentAlpha);
             batch.draw(white, x, y, w, h);
             if (!Float.isNaN(level)) {
-                Color c = levelColor(level);
+                Color c = alert ? HudSkin.HUD_ALERT : levelColor(level);
                 batch.setColor(c.r, c.g, c.b, parentAlpha);
                 batch.draw(white, x + 1f, y + 1f, Math.max(0f, Math.min(1f, level)) * (w - 2f), h - 2f);
             }

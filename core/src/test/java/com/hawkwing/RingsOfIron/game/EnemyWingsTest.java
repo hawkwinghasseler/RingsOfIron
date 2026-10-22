@@ -90,7 +90,8 @@ class EnemyWingsTest {
             assertEquals(NpcCombatComponent.Stance.FLANK, w.getComponent(NpcCombatComponent.class).stance);
         }
         wallsAt(leader, 0.6f);
-        run(3);
+        // In reach the leader holds to fire first (round 10), then goes
+        run(HostileTraffic.BREAK_OFF_HOLD + 3);
         assertTrue(lead.brokeOff, "the leader breaks off");
         for (int i = 1; i < 3; i++) {
             HostileComponent h = hostiles.get(ids.get(i));

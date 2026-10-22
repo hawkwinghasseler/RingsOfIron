@@ -65,10 +65,12 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     /** How far from the base the defenders launch, m, each a little further round. */
     static final double LAUNCH_OFFSET = 4_000;
     /**
-     * Difficulty for each defender past the first two: the knob to tune the raid by. Round 7 lowers
-     * round 5's 1 so a Commander's gunship meets three and a Captain's frigate four.
+     * Difficulty for each defender past the first two: the knob to tune the raid by. Round 7 lowered
+     * round 5's 1 to 0.6, so a Commander's gunship met three and a Captain's frigate four. Round 8
+     * raises it to 0.8: a Commander's gunship still meets three, a Captain's frigate (about 2.5) three
+     * now, since with the helm holding on the base under fire four left the frigate 5 wins in 10.
      */
-    public static final double DIFFICULTY_PER_DEFENDER = 0.6;
+    public static final double DIFFICULTY_PER_DEFENDER = 0.8;
     /** Most defenders the base scrambles. */
     public static final int MAX_DEFENDERS = 4;
     /** Tension eased between every pair of lawful factions when the base falls. */
@@ -77,8 +79,19 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     public static final double SECOND_WAVE_SECONDS = 45;
     /** Gun platforms the base mans. */
     public static final int BATTERIES = 2;
-    /** How far behind the base, along its orbit, the first gun platform is moored, and each next one further, m. */
-    public static final double BATTERY_SPACING = 1_500;
+    /**
+     * How far behind the base, back along its path, the first gun platform is moored, and each next one
+     * further, m. Round 10 widens round 6's 1.5 km so the far platform stands about 3.3 km from where a
+     * raid holds (8 km behind the base, {@code RaidRoutine.JUMP_IN}), inside a 40 mm chaingun's reach;
+     * a railgun platform takes the mooring nearest the base ({@link HostileTraffic#moorGuns}).
+     */
+    public static final double BATTERY_SPACING = 2_350;
+    /**
+     * Round 10: when the base falls, its defenders still in the bubble strike with it, running or
+     * fighting ({@link #strikeDefenders}). False leaves them as round 9 did: a running defender kept
+     * firing on the player after the fall.
+     */
+    public static final boolean DEFENDERS_STRIKE_AT_FALL = true;
 
     private final GameWorld world;
     private String uuid;
@@ -148,6 +161,11 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         return uuid != null && !fallen;
     }
 
+    /** True for one of the base's gun platforms ({@code displayName}) once the base has struck: it fires no more. */
+    public boolean silenced(String displayName) {
+        return uuid != null && fallen && guns.contains(displayName);
+    }
+
     /** True if {@code stationUuid} is the base and the player has not found it yet: keep it off the map. */
     public boolean hidden(String stationUuid) {
         return uuid != null && !found && uuid.equals(stationUuid);
@@ -169,6 +187,11 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         if (!standing()) return;
         fallen = true;
         found = true;
+        // Round 8: its darts in flight go ballistic, so the missile warning clears with the fall
+        // (round 7's window: the warning stayed up about a minute after it struck)
+        for (String name : defenders) world.missiles.goBallistic(shipNamed(name));
+        for (String name : guns) world.missiles.goBallistic(shipNamed(name));
+        if (DEFENDERS_STRIKE_AT_FALL) strikeDefenders();
         defenders.clear();
         scrambleDue = false;
         strainedSeconds = 0;
@@ -182,6 +205,32 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         world.tension.easeAll(FALL_RELIEF);
         // The boards offer what its fall opens (a Captain's operation) at once
         world.contracts.worldChanged();
+    }
+
+    /**
+     * At the fall, the base's defenders still in the bubble strike with it, running or fighting: each
+     * not already struck or wrecked surrenders and lets go of the player. One already gone stays gone.
+     * Round 9's window on 502e8e2: raiders 20 and 22 were running, not struck, at the fall, and a
+     * running pirate keeps its guns on the ship it fought, so raider 22 hit us 85 times in 24 s.
+     */
+    private void strikeDefenders() {
+        for (String name : defenders) {
+            String id = uuidOf(name);
+            // Struck earlier, the base's call to arms set it on the player again (part 6's window:
+            // `hostiles` read struck raiders 20 and 21 as hunting the player): it lets go
+            HostileComponent h = id == null ? null : world.macroSim.hostiles().get(id);
+            if (h != null && h.surrendered && h.huntingPlayer()) h.targetUuid = null;
+            Entity e = id == null ? null : world.engine.getEntity(id);
+            if (e == null || e.getComponent(PhysicsBodyComponent.class) == null
+                    || !world.macroSim.bubble().inBubble().contains(id)) continue;
+            DisabledComponent.Reason why = ShipDisablement.reason(e);
+            if (why != null && why.sticky()) continue;
+            world.disablement.set(e, DisabledComponent.Reason.SURRENDERED);
+            // Guns cold at once, not at traffic's next look: it is a prize now
+            var sensor = e.getComponent(com.ringsofiron.combatsys.components.SensorComponent.class);
+            if (sensor != null) sensor.lockedTarget = null;
+            e.remove(com.ringsofiron.aicrew.pilot.NpcCombatComponent.class);
+        }
     }
 
     /**
@@ -200,6 +249,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         Entity station = world.engine.getEntity(uuid);
         int pirates = world.standing.factions().index(HostileTraffic.PIRATES);
         if (station != null && pirates >= 0 && !anyPirateAboard()) StationCrew.spawnCrew(world.crew, station, pirates);
+        if (station != null) world.standing.factions().crewHabits(world.crew.board(station));
         world.notices.post("Raiders have moved back into " + name() + ": the pirates have a base again", NoticeLog.Kind.IMPORTANT);
     }
 
@@ -291,6 +341,12 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     private HostileComponent hostileNamed(String name) {
         String id = uuidOf(name);
         return id == null ? null : world.macroSim.hostiles().get(id);
+    }
+
+    /** The ship of the hostile named {@code name}, or null if none flies now. */
+    private Entity shipNamed(String name) {
+        String id = uuidOf(name);
+        return id == null ? null : world.engine.getEntity(id);
     }
 
     /** The uuid of the hostile named {@code name}, or null if none flies now. */

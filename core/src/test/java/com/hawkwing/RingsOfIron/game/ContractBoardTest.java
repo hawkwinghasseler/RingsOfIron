@@ -241,6 +241,33 @@ class ContractBoardTest {
     }
 
     @Test
+    void anEscortsDeadlineLeavesTimeForAFreighterStillFlyingInToLoad() {
+        String kestrel = null;
+        for (Map.Entry<String, FreighterComponent> e : world.macroSim.freighters().all().entrySet()) {
+            if ("Hauler Kestrel".equals(e.getValue().displayName)) kestrel = e.getKey();
+        }
+        List<TradeOrder> orders = new ArrayList<>(world.macroSim.economy().orders());
+        TradeOrder run = new TradeOrder(9_100, "water", game.highport, game.depot, 50, 1, 2);
+        run.claimedBy = kestrel;
+        orders.add(run);
+        world.macroSim.economy().restoreOrders(orders, 9_101);
+        // Round 9, seed 12: on its way in from another body's sphere, a week from loading at Highport,
+        // its arrival time only the crossing a few hours off
+        FreighterComponent f = world.macroSim.freighters().get(kestrel);
+        double now = world.engine.getSimSeconds();
+        f.state = FreighterComponent.State.TO_PICKUP;
+        f.destinationUuid = game.highport;
+        f.transitBodyUuid = "the moon";
+        f.arrivalTime = now + 3 * 3_600;
+        Contract c = offer(game.highport, Contract.Type.ESCORT);
+        assertNotNull(c);
+        assertEquals(kestrel, c.targetUuid);
+        double days = (c.deadline - f.arrivalTime) / ContractBoard.DAY;
+        assertTrue(days >= ContractBoard.FAR_DAYS + 2 * ContractBoard.NEAR_DAYS,
+                "the crossing, then loading, then the haul: " + days + " days");
+    }
+
+    @Test
     void anEscortWhoseFreighterIsLostFails() {
         String kestrel = null;
         for (Map.Entry<String, FreighterComponent> e : world.macroSim.freighters().all().entrySet()) {

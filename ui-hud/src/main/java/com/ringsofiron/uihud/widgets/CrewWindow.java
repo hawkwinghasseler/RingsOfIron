@@ -137,6 +137,13 @@ public class CrewWindow extends Window {
         for (int i = 0; i < prisonerConditions.size && i < sheet.prisoners.size; i++) {
             prisonerConditions.get(i).setText(sheet.prisoners.get(i).condition);
         }
+        // A condition that grows ("OK 100%" to "Critical wound, 4:39 to live") widens its row: grow
+        // the window about its centre, or the rows run out past its left edge (round 9, real window)
+        if (isVisible() && (getPrefWidth() > getWidth() + 0.5f || getPrefHeight() > getHeight() + 0.5f)) {
+            float cx = getX() + getWidth() / 2f, cy = getY() + getHeight() / 2f;
+            pack();
+            setPosition(cx - getWidth() / 2f, cy - getHeight() / 2f);
+        }
     }
 
     private void rebuild() {
