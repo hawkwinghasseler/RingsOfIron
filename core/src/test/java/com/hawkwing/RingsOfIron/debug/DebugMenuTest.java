@@ -74,7 +74,9 @@ class DebugMenuTest {
         assertEquals(DebugScenarios.find("free-flight"), loaded.get(0));
         assertNull(loaded.get(1), "career is a new career, not a scenario");
         assertTrue(run("scenario('nope')").contains("No scenario"));
-        assertTrue(run("scenarios()").contains("free-flight: "));
+        // One line per scenario: look through them all, not just the last
+        dev.console.submit("scenarios()");
+        assertTrue(dev.console.lines().stream().anyMatch(l -> l.text.startsWith("free-flight: ")));
     }
 
     @Test
