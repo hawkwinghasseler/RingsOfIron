@@ -397,6 +397,13 @@ public class GameScenario {
         return false;
     }
 
+    /** The player flies {@code ship} from now on, seated at its helm: a debug scenario's swap of hulls. */
+    public void takeShip(Entity ship) {
+        contacts.removeValue(ship, true);
+        player = ship;
+        seatAtHelm();
+    }
+
     /** Gives the player's (new) ship a helm and sits the avatar at it, as at the start of a game. */
     private void seatAtHelm() {
         Bridge.install(player);
