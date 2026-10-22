@@ -22,6 +22,7 @@ import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.debug.DebugNames;
 import com.hawkwing.RingsOfIron.debug.DebugTarget;
 import com.hawkwing.RingsOfIron.debug.DevConsole;
+import com.hawkwing.RingsOfIron.game.DeckTools;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.InteriorLab;
@@ -32,14 +33,12 @@ import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
 import com.hawkwing.RingsOfIron.render.HeatOverlay;
 import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
-import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
-import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.uihud.HudSkin;
@@ -77,32 +76,8 @@ public class InteriorDemo extends ApplicationAdapter {
     /** Tint of a crew figure who is down. */
     /** Height of the help lines at the top of the deck view, pixels. */
     private static final float TOP = 7 * LINE;
-    /** How far the cursor must drag, tiles, to aim a shot from where it started. */
-    private static final float DRAG_TILES = 1.5f;
-    private static final float[] WOUND_AMOUNTS = {10f, 30f, 50f, 70f, 80f, 90f, 100f, 150f, 200f};
-    private static final DamageCause[] CAUSES = {DamageCause.SPALL, DamageCause.PENETRATOR, DamageCause.FRAGMENT,
-            DamageCause.BLAST, DamageCause.BURN, DamageCause.FIRE, DamageCause.ASPHYXIATION, DamageCause.SMALL_ARMS};
-    /** Under 1 km/s a ram is a Box2D rock that crashes into the hull, as ships do (nothing under 25 m/s). */
-    private static final float[] RAM_SPEEDS = {25f, 50f, 100f, 200f, 500f, 1_500f, 2_000f, 4_000f, 8_000f};
-    /** The last is the starter corvette's mass, so a ram hits as one would. */
-    private static final float[] RAM_MASSES = {200f, 2_000f, 20_000f, 195_100f};
-    private static final CrewRole[] ROLES = {CrewRole.MEDIC, CrewRole.ENGINEER, CrewRole.CREWMAN, CrewRole.MARINE};
-    private static final float[] DAMAGE_AMOUNTS = {0.1f, 0.25f, 0.5f, 1f};
     /** Who the attacker comes from, and where: the bearing from the bow, degrees. */
     private static final float ATTACK_BEARING = 90f;
-    /** The ai-crew faction boarders spawn in: anyone but the ship's own is hostile to it. */
-    private static final int BOARDERS = 1;
-
-    enum Tool {
-        WOUND("Wound crew"), WEAPON("Fire weapon"), BLAST("Blast inside"), RAM("Ram"), FIRE("Start fire"),
-        BREACH("Breach"), SHORT("Short out"), DAMAGE("Damage tile/system"), SPAWN("Spawn crew"), REMOVE("Remove crew");
-
-        final String title;
-
-        Tool(String title) {
-            this.title = title;
-        }
-    }
 
     private final Path assetsDir;
     private InteriorLab lab;
@@ -118,9 +93,8 @@ public class InteriorDemo extends ApplicationAdapter {
     /** Meters per screen pixel. */
     private float zoom = 0.05f;
 
-    private Tool tool = Tool.WOUND;
-    private int woundAmount = 4, cause, weapon, warhead, ramSpeed = 1, ramMass = 1, role, damageAmount = 1;
-    private boolean boarder;
+    /** The damage sources and crew tools a click uses, made again for each hull's world. */
+    private DeckTools tools;
     private int attackerHull;
     private Entity selected;
     /** The ship the screen was last set up for. */
@@ -245,6 +219,9 @@ public class InteriorDemo extends ApplicationAdapter {
                 devStep += seconds;
             }
         });
+        DeckTools.Tool was = tools == null ? DeckTools.Tool.WOUND : tools.tool;
+        tools = new DeckTools(lab.world, lab.debug);
+        tools.tool = was;
         // Where a warhead went off or a missile was shot down, a flash as in the game
         lab.world.combatEvents.detonations.add((signal, boom) -> exterior.explode(boom.worldPoint.x, boom.worldPoint.y));
         lab.world.combatEvents.intercepts.add((signal, hit) -> {
@@ -397,27 +374,13 @@ public class InteriorDemo extends ApplicationAdapter {
                         ATTACK_BEARING);
             }
         }
-        for (Tool t : Tool.values()) {
+        for (DeckTools.Tool t : DeckTools.Tool.values()) {
             int key = t.ordinal() == 9 ? Input.Keys.NUM_0 : Input.Keys.NUM_1 + t.ordinal();
-            if (Gdx.input.isKeyJustPressed(key)) tool = t;
+            if (Gdx.input.isKeyJustPressed(key)) tools.tool = t;
         }
         int step = Gdx.input.isKeyJustPressed(Input.Keys.E) ? 1 : Gdx.input.isKeyJustPressed(Input.Keys.Q) ? -1 : 0;
-        if (step != 0) {
-            switch (tool) {
-                case WOUND: woundAmount = Math.floorMod(woundAmount + step, WOUND_AMOUNTS.length); break;
-                case WEAPON: weapon = Math.floorMod(weapon + step, lab.debug.weapons().size()); break;
-                case BLAST: warhead = Math.floorMod(warhead + step, lab.debug.warheads().size()); break;
-                case RAM: ramSpeed = Math.floorMod(ramSpeed + step, RAM_SPEEDS.length); break;
-                case SPAWN: role = Math.floorMod(role + step, ROLES.length); break;
-                case DAMAGE: damageAmount = Math.floorMod(damageAmount + step, DAMAGE_AMOUNTS.length); break;
-                default: break;
-            }
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.C)) {
-            if (tool == Tool.WOUND) cause = (cause + 1) % CAUSES.length;
-            if (tool == Tool.RAM) ramMass = (ramMass + 1) % RAM_MASSES.length;
-            if (tool == Tool.SPAWN) boarder = !boarder;
-        }
+        if (step != 0) tools.step(step);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.C)) tools.alternate();
     }
 
     private boolean onDeck(int screenX) {
@@ -443,91 +406,15 @@ public class InteriorDemo extends ApplicationAdapter {
 
     /** Uses the tool at {@code at}, ship-local meters; {@code from} is where the drag started. */
     private void apply(Vector2 at, Vector2 from) {
-        Vector2 t = tileCoords(at, new Vector2());
-        int x = MathUtils.floor(t.x), y = MathUtils.floor(t.y);
-        ShipGridComponent g = grid();
-        boolean dragged = from.dst(at) > DRAG_TILES * g.tileSize;
-        Vector2 fromWorld = WorldDebug.toWorld(body(), from.x, from.y, new Vector2());
-        String result;
-        Entity crew = lab.debug.crewAt(lab.ship, t.x, t.y, 0.8f);
-        if (!g.inBounds(x, y) && tool != Tool.WOUND && tool != Tool.REMOVE) {
-            message = "Off the deck";
-            return;
-        }
-        switch (tool) {
-            case WOUND:
-                if (crew == null) {
-                    result = "Click a crew member";
-                    break;
-                }
-                lab.debug.hurt(crew, WOUND_AMOUNTS[woundAmount], CAUSES[cause]);
-                selected = crew;
-                result = String.format("%s: %.0f %s", lab.world.crew.crew(crew).name, WOUND_AMOUNTS[woundAmount],
-                        cause(CAUSES[cause]));
-                break;
-            case WEAPON: {
-                String id = lab.debug.weapons().get(weapon);
-                result = dragged ? lab.debug.fire(lab.ship, id, x, y, fromWorld.x, fromWorld.y) : lab.debug.fire(lab.ship, id, x, y);
-                break;
-            }
-            case BLAST:
-                result = lab.debug.blast(lab.ship, lab.debug.warheads().get(warhead), x, y);
-                break;
-            case RAM:
-                if (dragged) {
-                    result = lab.debug.ram(lab.ship, x, y, fromWorld.x, fromWorld.y, RAM_MASSES[ramMass], RAM_SPEEDS[ramSpeed]);
-                } else {
-                    Vector2 c = WorldDebug.toWorld(body(), g.gridOriginLocal.x + g.width * g.tileSize / 2f,
-                            g.gridOriginLocal.y + g.height * g.tileSize / 2f, new Vector2());
-                    Vector2 a = lab.debug.tileWorld(lab.ship, x, y, new Vector2());
-                    Vector2 out = a.cpy().sub(c);
-                    if (out.isZero(1e-3f)) out.set(0f, 1f);
-                    out.nor().add(a);
-                    result = lab.debug.ram(lab.ship, x, y, out.x, out.y, RAM_MASSES[ramMass], RAM_SPEEDS[ramSpeed]);
-                }
-                break;
-            case FIRE:
-                result = lab.debug.ignite(lab.ship, x, y);
-                break;
-            case BREACH:
-                result = lab.debug.breach(lab.ship, x, y);
-                break;
-            case SHORT:
-                result = lab.debug.shortOut(lab.ship, x, y);
-                break;
-            case DAMAGE:
-                result = lab.debug.damage(lab.ship, x, y, DAMAGE_AMOUNTS[damageAmount]);
-                break;
-            case SPAWN: {
-                Entity e = boarder ? lab.debug.spawnCrew(lab.ship, ROLES[role], BOARDERS, x, y)
-                        : lab.debug.spawnCrew(lab.ship, ROLES[role], x, y);
-                result = e == null ? "Spawn on open deck" : lab.world.crew.crew(e).name + (boarder ? " boards" : " comes aboard");
-                if (e != null) selected = e;
-                break;
-            }
-            case REMOVE:
-                if (crew == null) {
-                    result = "Click a crew member";
-                    break;
-                }
-                result = lab.world.crew.crew(crew).name + " taken off";
-                lab.debug.removeCrew(crew);
-                if (crew == selected) selected = null;
-                break;
-            default:
-                result = "";
-        }
-        note(tool.title + " at " + x + "," + y + ": " + result);
+        String result = tools.apply(lab.ship, at, from);
+        if (tools.touched != null) selected = tools.touched;
+        note(result);
     }
 
     /** Shows {@code text} on the status line and puts it in the account. */
     private void note(String text) {
         message = text;
         lab.watch.note(text);
-    }
-
-    private static String cause(DamageCause c) {
-        return c.name().toLowerCase().replace('_', ' ');
     }
 
     // -----------------------------------------------------------------------
@@ -561,7 +448,7 @@ public class InteriorDemo extends ApplicationAdapter {
         // A drag in progress: the line the shot will come in along
         if (pressedAt != null) {
             Vector2 now = local(Gdx.input.getX(), Gdx.input.getY(), tmp);
-            if (pressedAt.dst(now) > DRAG_TILES * grid().tileSize) {
+            if (pressedAt.dst(now) > DeckTools.DRAG_TILES * grid().tileSize) {
                 shapes.setColor(1f, 1f, 1f, 0.5f);
                 shapes.rectLine(pressedAt.x, pressedAt.y, now.x, now.y, 2f * zoom);
             }
@@ -657,7 +544,7 @@ public class InteriorDemo extends ApplicationAdapter {
         font.draw(batch, "N pin   H heal all   F fires out   V fresh air   D doors   O reactors   wheel zoom   right click: follow", 10f, y - 2 * LINE);
         font.draw(batch, "1 wound  2 weapon  3 blast  4 ram  5 fire  6 breach  7 short  8 damage  9 spawn  0 remove", 10f, y - 3 * LINE);
         font.setColor(Color.GOLD);
-        font.draw(batch, "> " + tool.title + toolSetting() + toolKeys(), 10f, y - 4 * LINE);
+        font.draw(batch, "> " + tools.tool.title + tools.setting() + tools.keys(), 10f, y - 4 * LINE);
         font.setColor(Color.WHITE);
         font.draw(batch, message, 10f, y - 5 * LINE);
         font.setColor(Color.LIGHT_GRAY);
@@ -679,33 +566,6 @@ public class InteriorDemo extends ApplicationAdapter {
 
     private String speed() {
         return lab.speed >= 1f ? String.format("%.0f", lab.speed) : String.format("%.2f", lab.speed);
-    }
-
-    private String toolSetting() {
-        switch (tool) {
-            case WOUND: return String.format(": %.0f %s", WOUND_AMOUNTS[woundAmount], cause(CAUSES[cause]));
-            case WEAPON: return ": " + lab.debug.weapons().get(weapon);
-            case BLAST: return ": " + lab.debug.warheads().get(warhead);
-            case RAM: return RAM_SPEEDS[ramSpeed] < 1000f
-                    ? String.format(": %.0f kg at %.0f m/s", RAM_MASSES[ramMass], RAM_SPEEDS[ramSpeed])
-                    : String.format(": %.0f kg at %.1f km/s", RAM_MASSES[ramMass], RAM_SPEEDS[ramSpeed] / 1000f);
-            case SPAWN: return ": " + ROLES[role].name().toLowerCase() + (boarder ? ", boarder" : "");
-            case DAMAGE: return String.format(": %.0f%%", DAMAGE_AMOUNTS[damageAmount] * 100f);
-            default: return "";
-        }
-    }
-
-    /** The keys that change the tool's settings, and how to aim it. */
-    private String toolKeys() {
-        switch (tool) {
-            case WOUND: return "   (Q/E amount, C cause; click someone)";
-            case WEAPON: return "   (Q/E weapon; drag in from outside to aim)";
-            case BLAST: return "   (Q/E warhead)";
-            case RAM: return "   (Q/E speed, C mass; drag in from outside to aim)";
-            case SPAWN: return "   (Q/E role, C crew or boarder)";
-            case DAMAGE: return "   (Q/E amount)";
-            default: return "";
-        }
     }
 
     /** What is on the tile under the cursor. */
