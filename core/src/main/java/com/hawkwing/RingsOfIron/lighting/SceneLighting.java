@@ -60,7 +60,7 @@ public final class SceneLighting implements Disposable {
      */
     static final float CREW_SHADOW_SCALE = 0.5f;
     /** A firing RCS nozzle's light: its color, how strong and how far at full throttle, meters, and its spread each side, radians. */
-    static final Color THRUSTER = new Color(0.75f, 0.88f, 1f, 1f);
+    static final Color THRUSTER = ExteriorLighting.THRUSTER;
     static final float THRUSTER_STRENGTH = 0.9f, THRUSTER_REACH = 3f, THRUSTER_GLOW = 0.35f;
     static final float THRUSTER_CONE = 40f * MathUtils.degreesToRadians;
     /** The glow drawn around a glowing part, as many times its size. */
@@ -156,6 +156,14 @@ public final class SceneLighting implements Disposable {
      * the deck around it (its hull shadows the inside), and its glow, inside and out.
      */
     public void addThruster(float x, float y, float degrees, float throttle) {
+        addThruster(x, y, degrees, throttle, true);
+    }
+
+    /**
+     * {@link #addThruster}, flickering of its own or not: a jet whose {@code throttle} already
+     * wavers with its flame ({@code ThrusterFlames}) is kept steady here, so the two agree.
+     */
+    public void addThruster(float x, float y, float degrees, float throttle, boolean flickers) {
         for (LightSpots to : new LightSpots[]{deckSpots, glowSpots}) {
             LightSpot s = to.add();
             s.x = x;
@@ -167,7 +175,7 @@ public final class SceneLighting implements Disposable {
             s.isCone = true;
             s.direction = degrees * MathUtils.degreesToRadians;
             s.cone = THRUSTER_CONE;
-            s.flicker = x * 7.31f + y * 3.17f;
+            s.flicker = flickers ? x * 7.31f + y * 3.17f : -1f;
         }
     }
 

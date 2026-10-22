@@ -39,10 +39,12 @@ public final class ExteriorLighting implements Disposable {
     /** X-ray lights cast no shadows, so a few rays draw them round enough. */
     static final int RAYS = 32;
 
-    /** Engine exhaust: hot orange-white. */
+    /** A missile's rocket exhaust: hot orange-white. */
     public static final Color ENGINE = new Color(1f, 0.62f, 0.3f, 1f);
-    /** Thruster puffs (RCS): a cold blue-white. */
-    public static final Color THRUSTER = new Color(0.75f, 0.85f, 1f, 1f);
+    /** A craft's main drive: the blue-white of its plume art ({@code engines/exhaust_<size>}). */
+    public static final Color DRIVE = new Color(0.62f, 0.8f, 1f, 1f);
+    /** Thruster jets (RCS): the cold blue-white of their art ({@code engines/rcs_puff}). */
+    public static final Color THRUSTER = new Color(0.78f, 0.9f, 1f, 1f);
     /** A gun's muzzle flash. */
     public static final Color MUZZLE = new Color(1f, 0.8f, 0.5f, 1f);
     /** A warhead going off, or a missile shot down. */

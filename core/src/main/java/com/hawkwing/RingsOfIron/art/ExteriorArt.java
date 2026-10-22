@@ -14,12 +14,13 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
+import com.ringsofiron.physicsexterior.components.ThrusterComponent;
 
 /**
  * Draws craft from outside with the art pack: the hull of the chassis a craft was built from, a
- * engine for each engine system (sized to its slot) with its plume while the main engine burns,
- * each RCS block with the jets of the nozzles that fire, and each weapon's turret on its hardpoint,
- * turned to where it aims. Exterior art is in the body frame (64 SVG units to the meter), so it
+ * engine for each engine system (sized to its slot), each RCS block, and each weapon's turret on
+ * its hardpoint, turned to where it aims; and the flames of the engines and RCS nozzles that fire,
+ * which {@code ThrusterFlames} draws in a pass of their own. Exterior art is in the body frame (64 SVG units to the meter), so it
  * is drawn straight at the body's pose, in world meters.
  */
 public final class ExteriorArt {
@@ -41,15 +42,16 @@ public final class ExteriorArt {
     }
 
     /**
-     * Engine plumes, the hull and its turrets, in a batch already begun in world meters. False
-     * when the craft has no hull art, so the caller draws its outline instead.
+     * The hull, its RCS blocks, engines and turrets, in a batch already begun in world meters.
+     * False when the craft has no hull art, so the caller draws its outline instead. The flames
+     * of its engines and thrusters are not drawn here but by {@link #flame}, after the light map,
+     * since they give off their own light.
      */
     public boolean draw(Batch batch, Entity craft, Body body) {
         AtlasRegion hull = hullOf(craft);
         if (hull == null) return false;
         Vector2 p = PhysicsManager.getPosition(body, at);
         float px = p.x, py = p.y, angle = body.getAngle();
-        plumes(batch, craft, body, px, py, angle);
         pivoted(batch, hull, px, py, angle * MathUtils.radiansToDegrees, 1f, 1f);
         rcs(batch, craft, body);
         engines(batch, craft, body, angle);
@@ -57,79 +59,73 @@ public final class ExteriorArt {
         return true;
     }
 
-    /**
-     * The craft's RCS blocks on its hull, each with the jet of every nozzle that fires, as long as
-     * it fires hard, flickering a little; a block whose hull tile is gone is drawn wrecked.
-     */
+    /** The craft's RCS blocks on its hull; a block whose hull tile is gone is drawn wrecked. */
     private void rcs(Batch batch, Entity craft, Body body) {
-        AtlasRegion puff = art.region(ArtNames.RCS_PUFF);
-        if (puff != null) {
-            nozzles.jets(craft, body, (x, y, degrees, throttle) ->
-                    pivoted(batch, puff, x, y, degrees - 180f, throttle * MathUtils.random(0.85f, 1.1f), 1f));
-        }
         nozzles.blocks(craft, body, (r, works, x, y, degrees) -> {
             AtlasRegion block = art.first(ArtNames.rcs(r.kind.name(), works), ArtNames.rcs(r.kind.name(), true));
             if (block != null) pivoted(batch, block, x, y, degrees - 180f, 1f, 1f);
         });
     }
 
-    private void plumes(Batch batch, Entity craft, Body body, float px, float py, float angle) {
-        FlightControlComponent controls = craft.getComponent(FlightControlComponent.class);
-        ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
-        if (controls == null || grid == null || controls.forward <= 0f) return;
-        float throttle = Math.min(1f, controls.forward);
-        if (hasEngines(grid)) {
-            for (MountFootprint m : grid.mounts) {
-                SubsystemComponent sub = engineIn(m);
-                if (sub == null || !sub.isOperational || !socket(grid, m)) continue;
-                AtlasRegion plume = art.region(ArtNames.exhaust(ArtNames.engineSize(m.size)));
-                if (plume == null) continue;
-                Vector2 w = world(body, socket.x, socket.y);
-                pivoted(batch, plume, w.x, w.y, (angle * MathUtils.radiansToDegrees) + socketDegrees, throttle, 1f);
-            }
-            return;
-        }
-        AtlasRegion plume = art.first(ArtNames.exhaust(ArtNames.ENGINE_SIZE), "hulls/thruster_plume");
-        if (plume == null) return;
-        for (int k = 0; k < engineCount(grid); k++) {
-            Vector2 w = engineMount(body, grid, k);
-            pivoted(batch, plume, w.x, w.y, angle * MathUtils.radiansToDegrees, throttle, 1f);
-        }
-    }
-
-    /** Where a burning engine's exhaust leaves the craft. */
-    public interface NozzleSink {
-        /**
-         * A nozzle at ({@code x}, {@code y}) world meters, its exhaust going toward
-         * {@code exhaust} radians, {@code width} meters across, burning at {@code throttle} (0-1).
-         */
-        void nozzle(float x, float y, float exhaust, float width, float throttle);
+    /**
+     * The art of a main engine's plume of {@code size} ({@link ArtNames#engineSize}), or of an RCS
+     * nozzle's jet when {@code size} is null; null when the art pack has none.
+     */
+    public AtlasRegion flameArt(String size) {
+        if (size == null) return art.region(ArtNames.RCS_PUFF);
+        if (ArtNames.ENGINE_SIZE.equals(size)) return art.first(ArtNames.exhaust(size), "hulls/thruster_plume");
+        return art.region(ArtNames.exhaust(size));
     }
 
     /**
-     * Each engine of {@code craft} burning now, where its plume is drawn: one for each running
-     * engine system, or on a craft with no engine systems one for each engine mount its hull art
-     * draws. Nothing for a craft without hull art, or with its main engine off.
+     * A flame's art (a plume or a jet, pivot on the nozzle, exhaust toward its -x) with its
+     * nozzle at ({@code x}, {@code y}) world meters and its exhaust going toward {@code exhaust}
+     * radians, stretched {@code length} times along the exhaust and {@code width} times across it.
      */
-    public void burningNozzles(Entity craft, Body body, NozzleSink out) {
+    public void flame(Batch batch, AtlasRegion r, float x, float y, float exhaust, float length, float width) {
+        pivoted(batch, r, x, y, exhaust * MathUtils.radiansToDegrees - 180f, length, width);
+    }
+
+    /** Where each of a craft's main engines lets its exhaust out. */
+    public interface NozzleSink {
+        /**
+         * An engine of {@code size} ({@link ArtNames#engineSize}) whose nozzle is at ({@code x},
+         * {@code y}) world meters, its exhaust going toward {@code exhaust} radians,
+         * {@code width} meters across, burning at {@code throttle} (0-1; 0 when it is not).
+         */
+        void nozzle(String size, float x, float y, float exhaust, float width, float throttle);
+    }
+
+    /**
+     * Each main engine of {@code craft} that can burn, where its plume is drawn, and how hard it
+     * burns now: one for each engine system that is running, switched on and not disabled, at
+     * the throttle scaled by its health, as {@code EngineThrust} gives it thrust; or, on a craft
+     * with no engine systems, one for each engine mount its hull art draws. All of them at 0 with
+     * the main engine off or the tanks dry. Nothing for a craft without hull art.
+     */
+    public void engineNozzles(Entity craft, Body body, NozzleSink out) {
         if (hullOf(craft) == null) return;
         FlightControlComponent controls = craft.getComponent(FlightControlComponent.class);
         ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
-        if (controls == null || grid == null || controls.forward <= 0f) return;
-        float throttle = Math.min(1f, controls.forward), angle = body.getAngle();
+        if (controls == null || grid == null) return;
+        ThrusterComponent thruster = craft.getComponent(ThrusterComponent.class);
+        boolean dry = thruster != null && thruster.isOutOfFuel();
+        float throttle = dry ? 0f : MathUtils.clamp(controls.forward, 0f, 1f), angle = body.getAngle();
         if (hasEngines(grid)) {
             for (MountFootprint m : grid.mounts) {
                 SubsystemComponent sub = engineIn(m);
-                if (sub == null || !sub.isOperational || !socket(grid, m)) continue;
+                if (sub == null || !socket(grid, m)) continue;
+                boolean works = sub.isOperational && sub.switchedOn && !sub.isDisabled();
+                float burn = works ? throttle * MathUtils.clamp(sub.health, 0f, 1f) : 0f;
                 Vector2 w = world(body, socket.x, socket.y);
                 float exhaust = angle + (socketDegrees + 180f) * MathUtils.degreesToRadians;
-                out.nozzle(w.x, w.y, exhaust, Math.min(m.width(), m.height()) * grid.tileSize, throttle);
+                out.nozzle(ArtNames.engineSize(m.size), w.x, w.y, exhaust, Math.min(m.width(), m.height()) * grid.tileSize, burn);
             }
             return;
         }
         for (int k = 0; k < engineCount(grid); k++) {
             Vector2 w = engineMount(body, grid, k);
-            out.nozzle(w.x, w.y, angle + MathUtils.PI, grid.tileSize, throttle);
+            out.nozzle(ArtNames.ENGINE_SIZE, w.x, w.y, angle + MathUtils.PI, grid.tileSize, throttle);
         }
     }
 

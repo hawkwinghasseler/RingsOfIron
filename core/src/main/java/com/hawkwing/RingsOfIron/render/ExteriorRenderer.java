@@ -79,9 +79,6 @@ public final class ExteriorRenderer {
     private static final Family DECOYS = Family.all(DecoyComponent.class).get();
     private static final Family ARMED = Family.all(WeaponsComponent.class).get();
     private static final Family FAST_PASSES = Family.all(KinematicTransientComponent.class).get();
-    private static final Family CRAFT = Family.all(ShipGridComponent.class).get();
-    /** How long a firing RCS nozzle's line is on a craft drawn as its outline, meters at full throttle. */
-    private static final float JET_LINE = 1.2f;
 
     private final Supplier<GameWorld> world;
     private final ShapeRenderer shapes;
@@ -109,7 +106,9 @@ public final class ExteriorRenderer {
     private final Vector2 tmp = new Vector2();
     private final Vector2 tmp2 = new Vector2();
     private final float[] polygon = new float[16];
-    private final RcsNozzles nozzles = new RcsNozzles();
+    private final ThrusterFlames flames;
+    /** Craft drawn with their hull art this frame, whose flames are drawn with art too. */
+    private final ObjectSet<Entity> withArt = new ObjectSet<>();
 
     /**
      * Draws the world {@code world} gives (a demo may load a new one) with {@code shapes} and
@@ -124,6 +123,7 @@ public final class ExteriorRenderer {
         this.batch = batch;
         this.art = art;
         this.exteriorArt = new ExteriorArt(art);
+        this.flames = new ThrusterFlames(exteriorArt);
         this.lighting = lighting;
         this.hullArt = hullArt;
         this.player = player;
@@ -190,22 +190,29 @@ public final class ExteriorRenderer {
      * small stays visible zoomed out; {@code delta} ages the explosions.
      */
     public void draw(OrthographicCamera camera, float px, float delta) {
-        drawBodies(camera);
+        drawBodies(camera, delta);
         drawFlight(camera, px, delta);
         // Navigation lights and the glow of running systems, a few pixels across at least
         if (lighting != null) lighting.renderGlow(batch, camera, 2.5f * px);
     }
 
-    /**
-     * Craft with hull art drawn with it, lit when there is lighting; every other body as its
-     * outline, over the light map.
-     */
+    /** {@link #drawBodies(OrthographicCamera, float)} a frame's time after the last. */
     public void drawBodies(OrthographicCamera camera) {
+        drawBodies(camera, Gdx.graphics.getDeltaTime());
+    }
+
+    /**
+     * Craft with hull art drawn with it, lit when there is lighting, then the flames of their
+     * engines and RCS ({@link ThrusterFlames}) over the light map; every other body as its
+     * outline. {@code delta} (seconds since the last frame, 0 while paused) spools the flames.
+     */
+    public void drawBodies(OrthographicCamera camera, float delta) {
         GameWorld w = world.get();
         Matrix4 view = view(camera);
         w.physics.getWorld().getBodies(bodies);
         boolean lit = exteriorLighting != null && lightsOn;
         if (lit) exteriorLighting.begin();
+        flames.begin(delta);
         // Every hull's own lights, drawn with art or not: only the hull's own body, since a port's
         // collar carriage and head carry the craft as owner too
         for (Body body : bodies) {
@@ -215,12 +222,12 @@ public final class ExteriorRenderer {
             Vector2 at = PhysicsManager.getPosition(body, tmp2);
             String chassis = hullArt == null ? null : hullArt.chassisOf(e);
             if (lighting != null && chassis != null) lighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
-            if (lit) {
-                if (chassis != null) exteriorLighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
-                exteriorArt.burningNozzles(e, body, (x, y, exhaust, width, throttle) -> exteriorLighting.nozzle(
-                        x, y, exhaust, throttle, ExteriorLighting.ENGINE, Math.max(6f, 8f * width)));
-            }
+            if (lit && chassis != null) exteriorLighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
+            flames.collect(e, body);
         }
+        flames.end();
+        // Every flame lights the hulls and glows, as strong as it is long
+        flames.light(lit ? exteriorLighting : null, lighting);
         if (lit) lightsInFlight();
         if (hullArtOn) {
             batch.setProjectionMatrix(view);
@@ -228,11 +235,17 @@ public final class ExteriorRenderer {
             for (int i = bodies.size - 1; i >= 0; i--) {
                 Body body = bodies.get(i);
                 Entity e = owner(body);
-                if (e != null && w.docking.bodyOf(e) == body && exteriorArt.draw(batch, e, body)) bodies.removeIndex(i);
+                if (e != null && w.docking.bodyOf(e) == body && exteriorArt.draw(batch, e, body)) {
+                    withArt.add(e);
+                    bodies.removeIndex(i);
+                }
             }
             batch.end();
         }
         if (lit) renderLightMap(camera, view);
+        // The flames give off their own light: over the light map, not darkened by it
+        batch.setProjectionMatrix(view);
+        flames.draw(batch, withArt);
         shapes.setProjectionMatrix(view);
         shapes.begin(ShapeRenderer.ShapeType.Line);
         for (Body body : bodies) {
@@ -243,21 +256,12 @@ public final class ExteriorRenderer {
                 shapes.setColor(c);
                 drawFixture(body, fixture.getShape());
             }
-            // A craft without hull art shows its firing RCS as short lines
-            if (hull != null && w.docking.bodyOf(e) == body) {
-                shapes.setColor(Color.ORANGE);
-                nozzles.jets(e, body, (x, y, degrees, throttle) -> shapes.line(x, y,
-                        x + MathUtils.cosDeg(degrees) * JET_LINE * throttle, y + MathUtils.sinDeg(degrees) * JET_LINE * throttle));
-            }
         }
+        // A craft without hull art shows its firing RCS as short lines
+        flames.drawLines(shapes, withArt);
         shapes.end();
         bodies.clear();
-        // Every firing RCS nozzle lights its surroundings and glows
-        if (lighting != null) {
-            for (Entity e : w.engine.getEcsEngine().getEntitiesFor(CRAFT)) {
-                nozzles.jets(e, w.docking.bodyOf(e), lighting::addThruster);
-            }
-        }
+        withArt.clear();
     }
 
     /**
