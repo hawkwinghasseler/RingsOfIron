@@ -42,7 +42,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | P | Abandon ship (P again within 3 s to confirm; P while abandoning launches the pods at once) |
 | I | Crew roster: your crew, the station's hires and any prisoners |
 | L | Notice log: the last 50 notices |
-| O | Deck lights |
+| O | Lighting, inside and out |
 | B (twice) | Call a tow from your sponsor when disabled or low on propellant (at the helm) |
 | F1 | Every control for where you are |
 | G / H / U | Arm docking, pick the next port, undock |
