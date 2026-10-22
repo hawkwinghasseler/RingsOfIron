@@ -244,7 +244,7 @@ public final class ExteriorRenderer {
                 drawFixture(body, fixture.getShape());
             }
             // A craft without hull art shows its firing RCS as short lines
-            if (hull != null && w.docking.bodyOf(e) == body) {
+            if (e != null && e.getComponent(ShipGridComponent.class) != null && w.docking.bodyOf(e) == body) {
                 shapes.setColor(Color.ORANGE);
                 nozzles.jets(e, body, (x, y, degrees, throttle) -> shapes.line(x, y,
                         x + MathUtils.cosDeg(degrees) * JET_LINE * throttle, y + MathUtils.sinDeg(degrees) * JET_LINE * throttle));
