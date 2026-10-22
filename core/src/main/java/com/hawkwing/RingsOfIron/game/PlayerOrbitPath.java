@@ -50,6 +50,11 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         this.clock = universe::now;
     }
 
+    /** The body the last {@link #getPlayerPath} drew around, or null. */
+    public Entity frame() {
+        return orbits.parent();
+    }
+
     @Override
     public boolean getPlayerPath(OrbitPath out) {
         KeplerOrbit k = orbits.currentConic();
@@ -187,7 +192,13 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         return b;
     }
 
-    private void sample(KeplerOrbit k, double t, CelestialBodyComponent body, FloatArray out) {
+    /**
+     * Samples {@code k} as the map draws it, x,y pairs in meters from {@code body}'s centre: the
+     * whole ellipse, or an open orbit from {@code t} until it leaves the body (at most
+     * {@link #OPEN_SPAN} on, or {@link #OPEN_RADII} radii out).
+     */
+    public static void sample(KeplerOrbit k, double t, CelestialBodyComponent body, FloatArray out) {
+        StateVector s = new StateVector();
         double from, to;
         if (k.isElliptic()) {
             from = 0;

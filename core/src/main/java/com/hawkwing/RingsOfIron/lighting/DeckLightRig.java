@@ -17,7 +17,7 @@ import java.util.Locale;
  * light its rooms while the craft has power (as the layout hangs them, or worked out by
  * {@link WallLightLayout} for a layout that does not say), each mounted system's
  * lamps, screens and glow (lit while the system runs, dark when it loses power or is switched
- * off or wrecked), live conduits, fires, and the lamps of bulkhead doors (red shut, green open,
+ * off or wrecked), live conduits, fires, tiles hot enough to glow ({@link BlackBody}), and the lamps of bulkhead doors (red shut, green open,
  * while the craft has power), which light a little of the floor each side. Placed in the grid's local meters, which are its
  * craft's body frame.
  *
@@ -44,6 +44,13 @@ public final class DeckLightRig {
     static final float DOOR_LAMP_STRENGTH = 0.35f;
     /** How far off the door's line its light is placed on each side, tiles, so a shut door lights both. */
     static final float DOOR_LAMP_OFFSET = 0.2f;
+
+    /** How far a tile glowing at full {@link BlackBody#brightness} lights the deck around it, tiles. */
+    static final float HEAT_REACH = 2.5f;
+    /** How strong that light is, at full brightness, 0-1. */
+    static final float HEAT_STRENGTH = 0.7f;
+    /** Below this brightness a hot tile only glows: dull red heat lights nothing much around it. */
+    static final float HEAT_CASTS = 0.15f;
 
     /** Art of the light hung on deck walls. */
     public static final String WALL_LIGHT = "decor/wall_light";
@@ -88,8 +95,36 @@ public final class DeckLightRig {
                 }
             }
         }
+        heat(grid, out);
         // Last, so they are the first left out when a scene has more lights than it can cast
         doors(grid, out);
+    }
+
+    /**
+     * Every tile above the Draper point glows as a black body does, power or not: dull red where
+     * steel is barely glowing, brightening through orange as it nears a fire's heat. The brighter
+     * ones light the deck around them too.
+     */
+    private void heat(ShipGridComponent grid, LightSpots out) {
+        float ts = grid.tileSize;
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile t = grid.getTile(x, y);
+                if (t == null || t.isVoid()) continue;
+                float b = BlackBody.brightness(t.temperature);
+                if (b <= 0f) continue;
+                LightSpot s = out.add();
+                s.x = grid.gridOriginLocal.x + (x + 0.5f) * ts;
+                s.y = grid.gridOriginLocal.y + (y + 0.5f) * ts;
+                s.reach = b < HEAT_CASTS ? 0f : HEAT_REACH * b * ts;
+                s.strength = HEAT_STRENGTH * b;
+                // The glow reads by eye, so it rises faster than the light it casts
+                float seen = (float) Math.sqrt(b);
+                s.glow = ts * (0.5f + 0.5f * seen);
+                BlackBody.color(t.temperature, s.color);
+                s.color.a = seen;
+            }
+        }
     }
 
     /**

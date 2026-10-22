@@ -765,6 +765,11 @@ public class StationYard extends EntitySystem {
         float rose = d.restore(points);
         charge(trader, orders, rose * price);
         if (d.kind == Damage.Kind.HULL && d.condition() >= 1f - EPS && d.tile != null) d.tile.bulkheadSealed = false;
+        // A crushed tile mended whole stands again, and collides again
+        if (d.kind == Damage.Kind.HULL && d.condition() >= 1f - EPS) {
+            ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+            if (grid != null) grid.uncrush(d.x, d.y);
+        }
         return rose * d.workPerPoint();
     }
 

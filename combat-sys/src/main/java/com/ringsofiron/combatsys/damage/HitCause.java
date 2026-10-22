@@ -11,5 +11,7 @@ public enum HitCause {
     /** Interior overpressure. */
     BLAST,
     /** Burns: a beam burning through. */
-    FIRE
+    FIRE,
+    /** A collision: the hull crushing in, or the jolt throwing the crew about. */
+    IMPACT
 }

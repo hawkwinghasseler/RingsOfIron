@@ -126,6 +126,24 @@ public class GameScenario {
     /** The world's own dice, from the seed: station phases, traffic and stock. */
     private final java.util.Random dice;
 
+    /**
+     * Earth, and the Moon on its orbit round it, into {@code world}'s rails and macro-sim: the game's
+     * bodies, for a new game and for any scene that wants the same sky.
+     */
+    public static void addEarthAndMoon(GameWorld world) {
+        Entity earth = world.engine.createEntity();
+        earth.add(new UuidComponent(EARTH));
+        earth.add(new CelestialBodyComponent("Earth", MU_EARTH, R_EARTH, Double.POSITIVE_INFINITY));
+        world.engine.addEntity(earth);
+        world.macroSim.registerMassiveBody(EARTH);
+        Entity moon = world.engine.createEntity();
+        moon.add(new UuidComponent(MOON));
+        moon.add(new CelestialBodyComponent("Moon", MU_MOON, R_MOON, OrbitMath.soiRadius(MOON_DISTANCE, MU_MOON, MU_EARTH)));
+        moon.add(new OrbitComponent(EARTH, KeplerOrbit.circular(MU_EARTH, MOON_DISTANCE, MOON_ANGLE, 0, 1)));
+        world.engine.addEntity(moon);
+        world.macroSim.registerMassiveBody(MOON);
+    }
+
     private GameScenario(GameWorld world, Path assetsDir, Path modsDir, NewGame newGame) {
         this.world = world;
         this.newGame = newGame;
@@ -143,17 +161,7 @@ public class GameScenario {
         if (newGame.seeded) world.events.seed = newGame.stream(6);
         world.engine.getSerializationService().addParticipant(new SeedRecord());
 
-        Entity earth = world.engine.createEntity();
-        earth.add(new UuidComponent(EARTH));
-        earth.add(new CelestialBodyComponent("Earth", MU_EARTH, R_EARTH, Double.POSITIVE_INFINITY));
-        world.engine.addEntity(earth);
-        world.macroSim.registerMassiveBody(EARTH);
-        Entity moon = world.engine.createEntity();
-        moon.add(new UuidComponent(MOON));
-        moon.add(new CelestialBodyComponent("Moon", MU_MOON, R_MOON, OrbitMath.soiRadius(MOON_DISTANCE, MU_MOON, MU_EARTH)));
-        moon.add(new OrbitComponent(EARTH, KeplerOrbit.circular(MU_EARTH, MOON_DISTANCE, MOON_ANGLE, 0, 1)));
-        world.engine.addEntity(moon);
-        world.macroSim.registerMassiveBody(MOON);
+        addEarthAndMoon(world);
         // The career serves the sponsor the new game chose, and starts beside that sponsor's home
         world.standing.serve(newGame.sponsor);
         var sponsor = world.standing.factions().def(world.standing.sponsor());
@@ -395,6 +403,13 @@ public class GameScenario {
             }
         }
         return false;
+    }
+
+    /** The player flies {@code ship} from now on, seated at its helm: a debug scenario's swap of hulls. */
+    public void takeShip(Entity ship) {
+        contacts.removeValue(ship, true);
+        player = ship;
+        seatAtHelm();
     }
 
     /** Gives the player's (new) ship a helm and sits the avatar at it, as at the start of a game. */

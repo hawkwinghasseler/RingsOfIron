@@ -10,8 +10,10 @@ import com.badlogic.gdx.utils.IntArray;
  */
 public class DamageReport {
     public Entity ship;
-    /** Hull tiles this impact breached. */
+    /** Hull tiles this impact breached, and tiles a collision crushed open to space. */
     public final IntArray breaches = new IntArray();
+    /** Tiles a collision crushed flat (see interior-grid's {@code Tile#crushed}); each is in {@link #breaches} too. */
+    public final IntArray crushed = new IntArray();
     /** Tiles this impact set on fire. */
     public final IntArray fires = new IntArray();
     /** Systems and conduit tiles this impact shorted out, by tile. */
@@ -30,6 +32,7 @@ public class DamageReport {
     public void clear() {
         ship = null;
         breaches.clear();
+        crushed.clear();
         fires.clear();
         shorts.clear();
         bursts.clear();

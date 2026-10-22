@@ -27,6 +27,7 @@ import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.modding.ShipWeaponsAssembler;
 import com.ringsofiron.combatsys.systems.BallisticsSystem;
 import com.ringsofiron.combatsys.systems.BeamSystem;
+import com.ringsofiron.combatsys.systems.CollisionDamageSystem;
 import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
 import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
@@ -37,6 +38,7 @@ import com.ringsofiron.coreengine.TickProfiler;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
+import com.ringsofiron.interiorgrid.HullShape;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.InteriorGridSaveParticipant;
 import com.ringsofiron.interiorgrid.InteriorHazardWarpGuard;
@@ -149,6 +151,8 @@ public class GameWorld implements Disposable {
     public final MissileGuidanceSystem missiles;
     /** Resolves hits; damage uses the loaded material data once {@link #loadContent} has run. */
     public final ImpactResolutionSystem impacts;
+    /** Hulls meeting faster than 25 m/s crush each other (combat-sys/Design.md 5.12). */
+    public final CollisionDamageSystem collisionDamage;
     /** Finds what each burning beam touches and burns it. */
     public final BeamSystem beams;
     public final AudioManager audio;
@@ -475,6 +479,11 @@ public class GameWorld implements Disposable {
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
         impacts.setEntityIds(engine.getEntityIds());
         engine.addSystem(impacts);
+        // Hulls that meet too fast crush each other, and collide on what is left (ShipHulls)
+        collisionDamage = new CollisionDamageSystem(physics, combatEvents, impacts);
+        collisionDamage.setHullSource(ship -> hulls != null ? hulls.hullFor(ship, null)
+                : ship.getComponent(ShipGridComponent.class) == null ? null : HullShape.pieces(ship.getComponent(ShipGridComponent.class)));
+        engine.addSystem(collisionDamage);
         // Hits beside a docking port wear its collar
         CollarWear.install(combatEvents);
         beams = new BeamSystem(physics, impacts);

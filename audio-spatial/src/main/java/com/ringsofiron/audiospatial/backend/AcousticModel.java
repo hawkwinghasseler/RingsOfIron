@@ -13,6 +13,12 @@ public final class AcousticModel {
     public static final float OPEN_CUTOFF_HZ = 20000f;
     /** Low-pass cutoff at full occlusion: a dull thud through the bulkheads. */
     public static final float MUFFLED_CUTOFF_HZ = 350f;
+    /**
+     * Low-pass cutoff in near vacuum: only the lowest thump of a sound gets through. Thin air
+     * absorbs high frequencies first, so as the pressure falls a sound loses its top before it
+     * fades: see {@link #pressureCutoffHz}.
+     */
+    public static final float VACUUM_CUTOFF_HZ = 150f;
     /** The frequency OpenAL's EFX low-pass filter sets its high-frequency gain at. */
     public static final float EFX_LOWPASS_REFERENCE_HZ = 5000f;
     /** Share of a sound's maximum distance over which it fades to silence. */
@@ -55,6 +61,16 @@ public final class AcousticModel {
         return MathUtils.clamp((float) (1.0 / Math.sqrt(1.0 + r * r * r * r)), 0f, 1f);
     }
 
+    /**
+     * Low-pass cutoff for air at {@code pressure} (0 vacuum to 1 standard). Thin air absorbs high
+     * frequencies far more than low ones, so the cutoff falls fast as the air thins: about 4.5 kHz
+     * at half pressure, 600 Hz at a tenth and {@link #VACUUM_CUTOFF_HZ} in vacuum.
+     */
+    public static float pressureCutoffHz(float pressure) {
+        float thin = 1f - (float) Math.sqrt(MathUtils.clamp(pressure, 0f, 1f));
+        return OPEN_CUTOFF_HZ * (float) Math.pow(VACUUM_CUTOFF_HZ / OPEN_CUTOFF_HZ, thin);
+    }
+
     /** Sound needs air: volume falls with the square root of pressure and is gone in vacuum. */
     public static float pressureGain(float pressure) {
         return (float) Math.sqrt(MathUtils.clamp(pressure, 0f, 1f));
@@ -63,7 +79,7 @@ public final class AcousticModel {
     /**
      * Mixes one voice at (dx, dy) meters from the listener. {@code transmission} scales the
      * volume for walls and rooms in the way (see {@code SoundPropagation}); {@code occlusion}
-     * sets the muffling.
+     * and {@code pressure} set the muffling, whichever muffles more.
      */
     public static Mix mix(float dx, float dy, SoundEventDef def, float occlusion, float transmission, float pressure, Mix out) {
         float d = (float) Math.sqrt(dx * dx + dy * dy);
@@ -72,7 +88,7 @@ public final class AcousticModel {
                 * Math.max(transmission, 0f) * pressureGain(pressure);
         // Sounds right on top of the listener sit in the middle; pan widens with distance.
         out.pan = MathUtils.clamp(dx / (Math.abs(dx) + def.minDistance), -1f, 1f);
-        out.cutoffHz = cutoffHz(occlusion);
+        out.cutoffHz = Math.min(cutoffHz(occlusion), pressureCutoffHz(pressure));
         return out;
     }
 }
