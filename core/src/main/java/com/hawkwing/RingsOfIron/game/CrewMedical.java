@@ -76,7 +76,7 @@ public final class CrewMedical {
         return target != null && ShipDisablement.isDisabled(target);
     }
 
-    private void shot(Entity ship) {
+    void shot(Entity ship) {
         if (ship != null) lastShot.put(ship, world.engine.getSimSeconds());
     }
 
