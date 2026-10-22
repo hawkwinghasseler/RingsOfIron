@@ -81,6 +81,41 @@ runs whenever a console is made. The game finds the folder as `../scripts` from 
 - **`DevConsoleWindow`** (ui-hud, `widgets`): the scene2d window. The host decides which keys open
   it and what Esc does, because those keys have to reach it before the stage does.
 
+## The debug menu (F3)
+A window by the right edge of the game, beside the console and working through the same
+`DevConsole`, so anything it does the console can do by name.
+- **Scenarios**: each loads into a new game. The game running is thrown away (the shell starts a new
+  `RingsOfIronGame`), `GameScenario.start` builds the world as for a new career, and the scenario's
+  `setUp` runs instead of `beginCareer`. There is no walkthrough and no autosaving in a scenario.
+  "New career" goes back to a normal game. In the console: `scenarios()`, `scenario("id")`,
+  `scenario("career")`. At launch: `gradlew :lwjgl3:runGame -Pscenario=<id>`.
+- **Overlays**: a check box each, the same toggles as `overlay("id")`. Built in (`BuiltInOverlays`):
+  `grid` (the physics bubble's frame in meters, lines every 10^n m), `velocity` (every moving body's
+  velocity as an arrow, 5 s long), `bodies` (Box2D's debug renderer) and `stats` (frame rate,
+  entities, bodies, clock, bubble origin, the player's local motion).
+- **This scenario**: the loaded scenario's own buttons (`action("name")` in the console).
+- **World**: stop, and step 1/60 s or 1 s, as `pause()` and `step()`.
+
+### Writing a scenario
+Implement `DebugScenario` and add one line to `DebugScenarios.BUILT_IN`:
+
+```java
+new Entry("flight", "Flight", "The corvette adrift among asteroids", FlightScenario::new),
+```
+
+A new instance is made for each load. `setUp(ScenarioSetup)` gets the world, the career
+(`game.player`, `game.avatar` ...), the console and `tools()` (the `WorldDebug`), and adds to the menu:
+`action(name, description, Runnable)` for a button, `overlay(id, description, DebugOverlay, on)` for
+a check box (`drawWorld` in meters under the world camera, `drawScreen` in UI pixels), and
+`console().define(...)` for a command. `deckView()` / `exteriorView()` pick the starting view,
+`pointer(ScenarioPointer)` takes clicks on the game while the console is closed (world meters), and
+`playerShipChanged()` re-arms the guns and the view after giving the player another ship. `update`
+runs after each frame of the world; `dispose` when the game is thrown away. `FreeFlightScenario` is
+the smallest one.
+
+Box2D bodies are in units of `PhysicsManager.METERS_PER_UNIT` (10 m), the cameras in meters: an
+overlay reading a body directly scales by it.
+
 ## Testing
 - `ScriptConsoleTest` (modding-data) covers commands with and without brackets, variables, print
   output, errors, history and its file, completion, script files run by name with arguments,
@@ -90,3 +125,7 @@ runs whenever a console is made. The game finds the folder as `../scripts` from 
   repairs, spawns and boarders, weapons, blasts and rams, and the checked-in scripts.
 - `tools/playtest/dev-console.sh` plays it in a real window under Xvfb, taking a screenshot at each
   step.
+- `DebugMenuTest` (core) covers the scenario list, loading from the console, overlay toggles drawn
+  here or lent by the screen, and a scenario's buttons, overlays and commands.
+- `tools/playtest/debug-menu.sh` opens the menu in a real window, turns each overlay on, loads a
+  scenario from the console and goes back to a career from the menu's button.

@@ -720,3 +720,4 @@ data/shipyard.toml
 data/tiles.toml
 data/weapons.toml
 libgdx.png
+saves/console-history.txt

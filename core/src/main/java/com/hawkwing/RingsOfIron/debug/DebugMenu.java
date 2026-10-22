@@ -122,6 +122,7 @@ public final class DebugMenu extends Window {
         if (dev.overlays.all().isEmpty()) body.add(new Label("None here", skin, "dim")).row();
         for (DebugOverlays.Toggle t : dev.overlays.all()) {
             CheckBox box = new CheckBox(" " + t.id, skin);
+            box.left();
             box.setChecked(t.isShown());
             box.addListener(new ChangeListener() {
                 @Override
@@ -147,6 +148,7 @@ public final class DebugMenu extends Window {
 
         heading("World");
         Table row = new Table();
+        row.left();
         row.defaults().padRight(6f);
         TextButton pause = button("Stop", () -> dev.console.submit("pause()"));
         syncs.add(() -> pause.setText(dev.isFrozen() ? "Run" : "Stop"));
