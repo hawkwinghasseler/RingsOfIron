@@ -57,6 +57,21 @@ public final class RcsNozzles {
      * somewhere other than its body.
      */
     public void jets(Entity ship, Body body, float x, float y, float radians, Jets out) {
+        each(ship, body, x, y, radians, false, out);
+    }
+
+    /**
+     * Every nozzle of {@code ship}'s RCS blocks at {@code body}'s pose, always in the same order,
+     * with how hard it fires this frame, 0 for one that does not: for what follows each nozzle
+     * from frame to frame, as a flame dying down after it stops.
+     */
+    public void nozzles(Entity ship, Body body, Jets out) {
+        if (body == null) return;
+        Vector2 p = PhysicsManager.getPosition(body, local);
+        each(ship, body, p.x, p.y, body.getAngle(), true, out);
+    }
+
+    private void each(Entity ship, Body body, float x, float y, float radians, boolean all, Jets out) {
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
         if (grid == null || body == null || grid.rcsThrusters.size == 0) return;
         center.set(body.getLocalCenter()).scl(PhysicsManager.METERS_PER_UNIT);
@@ -64,7 +79,7 @@ public final class RcsNozzles {
         for (RcsThruster r : grid.rcsThrusters) {
             for (Side exhaust : r.nozzles()) {
                 float throttle = RcsThrust.firing(ship, r, exhaust, center);
-                if (throttle <= 0f) continue;
+                if (throttle <= 0f && !all) continue;
                 Vector2 w = world(grid, r.nozzleX(exhaust), r.nozzleY(exhaust));
                 out.jet(w.x, w.y, degrees + degrees(exhaust), throttle);
             }

@@ -47,15 +47,20 @@ lights = [
 | Source | Light |
 |---|---|
 | A hull's own emissive lights that reach past their glow (navigation lights, glazing, reactor glow) | As the art says, at the hull's pose; on with the system or the craft's power |
-| Each engine burning (`ExteriorArt.burningNozzles`), where its plume is drawn | Orange-white, pushed a little down the exhaust, reach 8x the nozzle's width (6 m at least), growing with the throttle |
-| A burning missile's plume | Orange-white, 8 m |
+| Each main engine's plume (`ThrusterFlames`, from `ExteriorArt.engineNozzles`) | `DRIVE`, the blue-white of the plume art, pushed a little down the exhaust, reach 8x the nozzle's width (6 m at least), as strong as the plume is long |
+| A burning missile's plume | `ENGINE`, orange-white (a chemical rocket), 8 m |
 | A gun firing: each round the first frame it is seen, where it left the gun | A flash, 9 m (4 m for point defense), gone in 0.15 s (0.08 s) |
 | Both ends of a firing beam | Pale blue, 5 m at the gun and 8 m where it lands |
 | A decoy flare | White, 10 m |
 | A warhead going off or a missile shot down (`ExteriorRenderer.explode`) | A flash, 45 m, fading over 0.9 s |
-| RCS thrusters (`ExteriorLighting.nozzle` with `THRUSTER`) | Blue-white, per nozzle and how hard it fires; wired in once the RCS work lands |
+| Each RCS jet (`ThrusterFlames`, from `RcsNozzles.nozzles`) | `THRUSTER`, the cold blue-white of `rcs_puff`, 4 m, as strong as the jet is long; it also glows in the glow pass |
 
-Nothing casts shadows outside: every light is x-ray (see open questions), so the light map only colors and brightens the hulls near a light, and lifts space itself a little around a blast. The order is hull art, then the light map, then everything that is its own light or a marker (outlines, rounds, beams, explosions, the glow pass), so the light map never darkens those. Up to `ExteriorLighting.MAX_LIGHTS` lights a frame, hull and engine lights first, then flashes; at most `MAX_FLASHES` flashes fade at once, the oldest dropped first. Flashes age with the frame's delta, so they hold still while the game is paused.
+### Flames
+`render/ThrusterFlames` gives every main engine and RCS nozzle one figure a frame, its level, and both its flame and its light come from it, so they always agree. The level follows how hard the nozzle fires, but not at once: a main drive spools up from cold to full in 0.35 s and dies down in 0.2 s; an RCS jet opens in 0.04 s and shuts in 0.07 s, and a jet opening from cold kicks 35% past full for 0.09 s, as a valve popping does. A main engine's plume follows the thrust `EngineThrust` gives it: none while it is switched off, unpowered or disabled, shorter as it is damaged, and none with the tanks dry. On top, each flame flickers by its own seed (6% either way for a drive, 12% for a jet), the same flicker for its length and its light. A barely firing flame is drawn narrower and fainter. Nothing moves while no time passes.
+
+Flames are drawn after the light map, additively, so the light map does not darken them and they glow over what is behind them. A craft drawn as its outline shows its firing RCS as short orange lines instead.
+
+Nothing casts shadows outside: every light is x-ray (see open questions), so the light map only colors and brightens the hulls near a light, and lifts space itself a little around a blast. The order is hull art, then the light map, then the flames, then everything that is its own light or a marker (outlines, rounds, beams, explosions, the glow pass), so the light map never darkens those. Up to `ExteriorLighting.MAX_LIGHTS` lights a frame, hull and engine lights first, then flashes; at most `MAX_FLASHES` flashes fade at once, the oldest dropped first. Flashes age with the frame's delta, so they hold still while the game is paused.
 
 ## Code
 All in `core`, package `com.hawkwing.RingsOfIron.lighting`:
