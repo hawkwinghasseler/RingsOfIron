@@ -9,21 +9,23 @@ import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.uihud.minimap.TileShade;
 
 /**
- * A developer overlay over a deck, not part of the normal view: heat, dull red from 350 K to
- * bright at the ignition point; thin air as a blue wash, open to space as near black; and walls
- * marked as they are worn down. {@link DeckRenderer} draws it when it is shown, which the
- * developer console's {@code overlay("wear")} toggles.
+ * A developer overlay over a deck, not part of the normal view: each tile's heat as a red wash,
+ * dull from 350 K to bright at the ignition point, and walls marked as they are worn down. The
+ * game shows heat as light instead (hot tiles glow as black bodies, see
+ * {@code lighting.BlackBody}); this shows it where it is still too cool to glow. {@link
+ * DeckRenderer} draws it when it is shown, which the developer console's {@code overlay("heat")}
+ * toggles.
  */
-public final class DeckWear {
+public final class HeatOverlay {
     /** The overlay's name in the developer console. */
-    public static final String NAME = "wear";
+    public static final String NAME = "heat";
     /** What it draws, for the console's list. */
-    public static final String DESCRIPTION = "heat, thin air and worn walls on the decks";
+    public static final String DESCRIPTION = "tile heat and worn walls on the decks";
 
     /** Where heat starts to show, kelvin. */
     private static final float WARM = 350f;
 
-    private DeckWear() {
+    private HeatOverlay() {
     }
 
     /** Draws it in the grid's local meters, inside a filled batch already moved to the craft's pose. */
@@ -38,13 +40,6 @@ public final class DeckWear {
                 if (heat > 0f) {
                     shapes.setColor(1f, 0.25f, 0.05f, Math.min(0.6f, heat * 0.6f));
                     shapes.rect(p.x - s / 2f, p.y - s / 2f, s, s);
-                }
-                if (t.holdsAir()) {
-                    float air = Math.min(1f, g.oxygenRatioAt(x, y));
-                    if (air < 0.9f) {
-                        shapes.setColor(0.1f, 0.15f, 0.55f, 0.55f * (1f - air));
-                        shapes.rect(p.x - s / 2f, p.y - s / 2f, s, s);
-                    }
                 }
                 if (t.isWall() && t.getIntegrity() < 1f) {
                     shapes.setColor(t.getIntegrity() <= 0f ? TileShade.BREACH : TileShade.wall(t.getIntegrity(), tmp));

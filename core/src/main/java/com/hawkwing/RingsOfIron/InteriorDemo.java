@@ -28,7 +28,7 @@ import com.hawkwing.RingsOfIron.game.InteriorLab;
 import com.hawkwing.RingsOfIron.game.WorldDebug;
 import com.hawkwing.RingsOfIron.game.WoundWatch;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
-import com.hawkwing.RingsOfIron.render.DeckWear;
+import com.hawkwing.RingsOfIron.render.HeatOverlay;
 import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
@@ -161,8 +161,8 @@ public class InteriorDemo extends ApplicationAdapter {
         deckArt = new DeckArt(art);
         deckRenderer = new DeckRenderer(() -> lab.world, shapes, batch, deckArt, null, () -> null)
                 .inShipFrame().setStyle(crewStyle());
-        // Heat, thin air and worn walls show here unless the console hides them
-        deckRenderer.setWearShown(true);
+        // Heat and worn walls show here unless the console hides them: this deck has no light map for hot tiles to glow in
+        deckRenderer.setHeatShown(true);
         camera = new OrthographicCamera();
         ui = new OrthographicCamera();
         lab = new InteriorLab(assetsDir);
@@ -247,7 +247,7 @@ public class InteriorDemo extends ApplicationAdapter {
                 devStep += seconds;
             }
         });
-        dev.addOverlay(DeckWear.NAME, DeckWear.DESCRIPTION, deckRenderer::wearShown, deckRenderer::setWearShown);
+        dev.addOverlay(HeatOverlay.NAME, HeatOverlay.DESCRIPTION, deckRenderer::heatShown, deckRenderer::setHeatShown);
         selected = null;
         ShipGridComponent g = grid();
         float w = Gdx.graphics.getWidth() - PANEL_WIDTH - 60f, h = Gdx.graphics.getHeight() - LOG_HEIGHT - TOP - 40f;
