@@ -234,6 +234,19 @@ class ArtNamesTest {
                 assertArt(ArtNames.crew(who, pose, true));
             }
         }
+        // Each wound, over a standing figure and one down
+        com.ringsofiron.aicrew.CrewMemberComponent c = new com.ringsofiron.aicrew.CrewMemberComponent();
+        for (com.ringsofiron.aicrew.Wound wound : com.ringsofiron.aicrew.Wound.values()) {
+            for (boolean stabilised : new boolean[]{false, true}) {
+                c.wound = wound;
+                c.stabilised = stabilised;
+                for (ArtNames.CrewPose pose : ArtNames.CrewPose.values()) {
+                    String name = ArtNames.crewWound(c, pose);
+                    if (wound == com.ringsofiron.aicrew.Wound.NONE || pose == ArtNames.CrewPose.DEAD) assertNull(name);
+                    else assertArt(name);
+                }
+            }
+        }
         // Each round and missile in data finds its art, through its art key or its id
         String weapons = new String(Files.readAllBytes(ASSETS.resolve("data/weapons.toml")), java.nio.charset.StandardCharsets.UTF_8);
         Matcher m = Pattern.compile("^\\[(projectile|missile)\\.([a-z0-9_]+)]\\s*\\n(?:art = \"([a-z0-9_]+)\")?", Pattern.MULTILINE)
