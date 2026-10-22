@@ -23,6 +23,7 @@ import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.debug.DebugNames;
 import com.hawkwing.RingsOfIron.debug.DebugTarget;
 import com.hawkwing.RingsOfIron.debug.DevConsole;
+import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.InteriorLab;
 import com.hawkwing.RingsOfIron.game.WorldDebug;
@@ -78,7 +79,6 @@ public class InteriorDemo extends ApplicationAdapter {
     private static final float LOG_HEIGHT = 190f;
     private static final float LINE = 17f;
     /** Tint of a crew figure who is down. */
-    private static final Color GREYED = new Color(0.55f, 0.55f, 0.6f, 1f);
     /** Height of the help lines at the top of the deck view, pixels. */
     private static final float TOP = 7 * LINE;
     /** How far the cursor must drag, tiles, to aim a shot from where it started. */
@@ -132,7 +132,6 @@ public class InteriorDemo extends ApplicationAdapter {
     /** Where a left-button drag started, ship-local meters, or null while not dragging. */
     private Vector2 pressedAt;
     private int hoverX = -1, hoverY = -1;
-    private float blink;
 
     private final Vector2 tmp = new Vector2(), tmp2 = new Vector2();
     private final Color color = new Color();
@@ -285,7 +284,6 @@ public class InteriorDemo extends ApplicationAdapter {
     @Override
     public void render() {
         float delta = Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
-        blink += delta;
         if (!devWindow.isTyping()) handleKeys();
         if (lab.paused && devStep > 0f) {
             // step(): the paused world runs on for what is left of the seconds asked for
@@ -602,9 +600,8 @@ public class InteriorDemo extends ApplicationAdapter {
     }
 
     /**
-     * The game's crew figures, greyed while they are down, with what this demo adds beneath: a
-     * cross for the dead, a white ring round the one followed, a red ring round boarders, and the
-     * wound as a disc (as the dot itself without the crew art).
+     * The game's crew, hurt, down and dead as the game draws them, with what this demo adds beneath:
+     * a white ring round the one followed and a red ring round boarders.
      */
     private DeckRenderer.Style crewStyle() {
         return new DeckRenderer.Style() {
@@ -615,18 +612,7 @@ public class InteriorDemo extends ApplicationAdapter {
 
             @Override
             public Color dot(Entity crew, CrewMemberComponent c) {
-                return woundColor(c);
-            }
-
-            @Override
-            public Color tint(Entity crew, CrewMemberComponent c) {
-                return c.state == CrewState.UNCONSCIOUS ? GREYED : Color.WHITE;
-            }
-
-            @Override
-            public boolean shown(Entity crew) {
-                CrewMemberComponent c = lab.world.crew.crew(crew);
-                return c == null || c.state != CrewState.DEAD;
+                return c.faction != 0 ? DeckView.STATION_CREW : Color.GOLD;
             }
 
             @Override
@@ -638,12 +624,6 @@ public class InteriorDemo extends ApplicationAdapter {
             public void underCrew(ShapeRenderer shapes, Entity e, CrewMemberComponent c, float x, float y,
                                   float tileSize, boolean figures) {
                 float r = 0.32f * tileSize;
-                if (c.state == CrewState.DEAD) {
-                    shapes.setColor(0.55f, 0.55f, 0.55f, 1f);
-                    shapes.rectLine(x - r, y - r, x + r, y + r, 0.08f);
-                    shapes.rectLine(x - r, y + r, x + r, y - r, 0.08f);
-                    return;
-                }
                 if (e == selected) {
                     shapes.setColor(Color.WHITE);
                     shapes.circle(x, y, r * 1.45f, 20);
@@ -651,12 +631,6 @@ public class InteriorDemo extends ApplicationAdapter {
                 if (c.faction != 0) {
                     shapes.setColor(Color.RED);
                     shapes.circle(x, y, r * 1.2f, 20);
-                }
-                if (figures && (c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS)) {
-                    // The figure has no art of its own for being hurt or down
-                    Color w = woundColor(c);
-                    shapes.setColor(w.r, w.g, w.b, w.a * 0.7f);
-                    shapes.circle(x, y, r * 1.05f, 20);
                 }
             }
         };
@@ -682,24 +656,6 @@ public class InteriorDemo extends ApplicationAdapter {
         }
         batch.end();
         batch.setProjectionMatrix(camera.combined);
-    }
-
-    /**
-     * White unhurt, yellow light, orange serious, red critical (blinking while it bleeds), cyan stabilised:
-     * the dot itself without the crew art, else a disc under the figure.
-     */
-    private Color woundColor(CrewMemberComponent c) {
-        switch (c.wound) {
-            case LIGHT: color.set(1f, 0.9f, 0.3f, 1f); break;
-            case SERIOUS: color.set(1f, 0.55f, 0.15f, 1f); break;
-            case CRITICAL:
-                if (c.stabilised) color.set(0.3f, 0.9f, 1f, 1f);
-                else color.set(1f, 0.15f, 0.15f, (blink % 0.6f) < 0.3f ? 1f : 0.45f);
-                break;
-            default: color.set(0.85f, 0.9f, 1f, 1f);
-        }
-        if (c.state == CrewState.UNCONSCIOUS) color.mul(0.75f, 0.75f, 0.75f, 1f);
-        return color;
     }
 
     private void drawCursor() {

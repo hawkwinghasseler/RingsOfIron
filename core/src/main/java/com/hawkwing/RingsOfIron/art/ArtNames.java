@@ -1,5 +1,7 @@
 package com.hawkwing.RingsOfIron.art;
 
+import com.ringsofiron.aicrew.CrewMemberComponent;
+import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.MaterialTable;
@@ -329,9 +331,56 @@ public final class ArtNames {
     /** Whose look a crew member has. */
     public enum Crew { SHIP, STATION, PLAYER }
 
+    /**
+     * How a crew member lies or stands: on their feet, down (unconscious, or with a wound that puts
+     * them down) or dead. A wound is drawn over the figure ({@link #crewWound}).
+     */
+    public enum CrewPose {
+        STANDING(""), DOWN("_down"), DEAD("_dead");
+
+        private final String suffix;
+
+        CrewPose(String suffix) {
+            this.suffix = suffix;
+        }
+
+        /** True for the poses drawn lying on the deck, which carry nothing. */
+        public boolean lying() {
+            return this != STANDING;
+        }
+
+        public static CrewPose of(CrewMemberComponent c) {
+            return c.state == CrewState.DEAD ? DEAD : c.state == CrewState.UNCONSCIOUS ? DOWN : STANDING;
+        }
+    }
+
+    /** A wound's art for a standing figure, whose presence says the pack has wounds. */
+    public static final String WOUND_ART = "crew/wound_light";
+
+    /**
+     * The wound drawn over a crew member's figure in {@code pose}, by how bad it is (a critical one
+     * dressed once stabilised), or null when they are unhurt or dead.
+     */
+    public static String crewWound(CrewMemberComponent c, CrewPose pose) {
+        if (pose == CrewPose.DEAD) return null;
+        String level;
+        switch (c.wound) {
+            case LIGHT: level = "light"; break;
+            case SERIOUS: level = "serious"; break;
+            case CRITICAL: level = c.stabilised ? "stabilised" : "critical"; break;
+            default: return null;
+        }
+        return "crew/wound_" + level + (pose.lying() ? "_down" : "");
+    }
+
     /** A crew member, holding a crate while they carry a load. */
     public static String crew(Crew who, boolean carrying) {
-        return "crew/crew_" + who.name().toLowerCase(Locale.ROOT) + (carrying ? "_carrying" : "");
+        return crew(who, CrewPose.STANDING, carrying);
+    }
+
+    /** A crew member in {@code pose}, holding a crate while they carry a load on their feet. */
+    public static String crew(Crew who, CrewPose pose, boolean carrying) {
+        return "crew/crew_" + who.name().toLowerCase(Locale.ROOT) + pose.suffix + (carrying && !pose.lying() ? "_carrying" : "");
     }
 
     /** A light on a wall, dark without power. */

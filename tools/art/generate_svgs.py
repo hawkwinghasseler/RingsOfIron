@@ -2535,9 +2535,165 @@ def crew():
               viewbox="-24 -36 48 60")
 
 
-# ---------------------------------------------------------------------------
-# Projectiles (pivot at the origin, nose toward +x, 64 units per meter)
-# ---------------------------------------------------------------------------
+SKIN, SKIN_PALE = "#c99a78", "#a99a92"
+BLOOD, BLOOD_OLD = "#8e1414", "#5a0d0d"
+BANDAGE = "#ece8de"
+
+
+def grey(c, t):
+    """`c` (#rrggbb) washed toward a cold grey by `t` (0 to 1): the pallor of the dead."""
+    r, g, b = (int(c[i:i + 2], 16) for i in (1, 3, 5))
+    r, g, b = (round(v + (122 - v) * t) for v in (r, g, b))
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def blood_pool(a, cx, cy, r, color, opacity):
+    """An uneven pool of blood on the deck, centered on (cx, cy), about r across."""
+    rng = random.Random(f"{cx},{cy},{r}")
+    pts = []
+    for i in range(14):
+        ang = i / 14 * math.tau
+        rr = r * (0.75 + 0.35 * rng.random())
+        pts.append((cx + math.cos(ang) * rr * 1.15, cy + math.sin(ang) * rr * 0.9))
+    a.b += poly(pts, color, extra=f' opacity="{f(opacity)}"')
+    a.b += circle(cx + r * 0.9, cy + r * 0.55, r * 0.18, color, extra=f' opacity="{f(opacity)}"')
+
+
+def crew_lying(a, suit, shade, trim, hair, skin, arms):
+    """A crew member down on their back, head toward +y (SVG up), body behind it toward -y:
+    about 0.95 tile long, centered on the chest so the figure lies where the crew member fell.
+    `arms` is "sides" (laid down) or "flung" (limp, thrown out)."""
+    # legs and boots, splayed when limp
+    for sx in (-1, 1):
+        turn = f' transform="rotate({f(-sx * 16)} {f(sx * 5.5)} 6)"' if arms == "flung" else ""
+        a.b += rect(sx * 5.5 - 4, 6, 8, 20, shade, rx=4, stroke=INK, sw=1.5, extra=turn)
+        a.b += rect(sx * 5.5 - 4.5, 23, 9, 7, "#22262c", rx=3, stroke=INK, sw=1.2, extra=turn)
+    # arms under the torso's outline
+    if arms == "flung":
+        for sx, (ex, ey) in ((-1, (-26, 2)), (1, (24, -14))):
+            d = f"M{f(sx*11)},{f(-6)} L{f(ex)},{f(ey)}"
+            a.b += path(d, stroke=INK, sw=8.5) + path(d, stroke=shade, sw=5.5)
+            a.b += circle(ex, ey, 3, skin, stroke=INK, sw=1)
+    else:
+        a.b += rect(-17.5, -8, 7, 17, shade, rx=3.5, stroke=INK, sw=1.5)
+        a.b += circle(-14, 9.5, 3, skin, stroke=INK, sw=1)
+        a.b += rect(10.5, -8, 7, 17, shade, rx=3.5, stroke=INK, sw=1.5)
+        a.b += circle(14, 9.5, 3, skin, stroke=INK, sw=1)
+    # torso, seen from the front, with its shoulder flashes and a belt
+    a.b += rect(-11.5, -12, 23, 21, suit, rx=6, stroke=INK, sw=2)
+    a.b += path("M-8,-10 C-4,-11.5 2,-11.5 6,-10.5", stroke="#ffffff", sw=1.5, extra=' opacity="0.22"')
+    a.b += rect(-11, -9, 5, 3, trim, rx=1) + rect(6, -9, 5, 3, trim, rx=1)
+    a.b += rect(-11.5, 4, 23, 3, shade, stroke=INK, sw=1)
+    # head on the deck, face up: hair round the crown, eyes closed
+    a.b += circle(0, -19, 7.5, skin, stroke=INK, sw=1.8)
+    a.b += path("M-7.4,-17.5 C-7.8,-24 -4,-26.8 0,-26.8 C4,-26.8 7.8,-24 7.4,-17.5 "
+                "C5.5,-22 3,-23.5 0,-23.5 C-3,-23.5 -5.5,-22 -7.4,-17.5 Z", fill=hair, stroke=INK, sw=1.2)
+    a.b += line(-4.5, -18.5, -1.8, -18, INK, sw=1.1) + line(1.8, -18, 4.5, -18.5, INK, sw=1.1)
+    a.b += line(-1.8, -14.5, 1.8, -14.5, INK, sw=1)
+
+
+def blood(a, d, opacity=0.9, color=BLOOD):
+    a.b += path(d, fill=color, extra=f' opacity="{f(opacity)}"')
+
+
+def wound_overlays():
+    """Wounds drawn over a crew figure at its origin and turned with it, by `Wound`: light, serious
+    and critical (bleeding), and a critical wound once stabilised, dressed. `wound_<level>` fits the
+    standing figure (seen from above: marks on the shoulders, back and left arm, clear of the head)
+    and `wound_<level>_down` the figures lying on their back (marks on the chest and left arm)."""
+    meta = collider_circle(0, 0, 19.2)
+
+    def emit(level, down, a, title):
+        a.m = meta
+        name = f"wound_{level}" + ("_down" if down else "")
+        write(f"crew/{name}.svg", 48, 48, a, f"{name}: {title}, drawn over a crew figure"
+              + (" lying on their back" if down else " on their feet"), viewbox="-24 -24 48 48")
+
+    def light(a):
+        # a field dressing round the left arm, a graze on the right shoulder
+        a.b += rect(-18.5, 0, 7, 4, BANDAGE, rx=1, stroke=INK, sw=1)
+        a.b += line(-17.5, 2, -12.5, 2, "#c9c2b2", sw=0.8)
+        blood(a, "M8,-8 C11,-9 14,-7 13,-4 C12,-2 9,-3 8,-5 Z", 0.85)
+        a.b += circle(15, -2, 1.2, BLOOD, extra=' opacity="0.85"')
+
+    def serious(a, down):
+        if down:
+            # a wound in the chest soaking the suit round it
+            blood(a, "M-7,-4 C-4,-9 3,-9 6,-5 C9,-1 7,5 2,6 C-2,7 -5,5 -6,3 C-9,1 -9,-2 -7,-4 Z", 0.75)
+            blood(a, "M-3,-3 C-1,-5 2,-4 2,-2 C3,0 1,2 -1,1 C-3,1 -4,-1 -3,-3 Z", 1.0, BLOOD_OLD)
+        else:
+            # through the right shoulder, soaking across the back
+            blood(a, "M8,-7 C12,-9 16,-6 16,-1 C16,4 13,8 9,9 C5,10 3,7 5,3 C6,0 5,-4 8,-7 Z", 0.75)
+            blood(a, "M10,-4 C12,-5 14,-3 13,-1 C12,1 10,1 9,-1 Z", 1.0, BLOOD_OLD)
+            blood(a, "M-6,8 C-2,9 4,9 7,8 C6,11 2,12 -2,12 C-5,12 -7,10 -6,8 Z", 0.7)
+        # blood down the left arm
+        blood(a, "M-17,-4 C-15,-6 -13,-5 -13,-2 L-13.5,6 C-14,8 -16,8 -16.5,6 Z", 0.8)
+
+    def soaked(a, down, color, opacity):
+        if down:
+            blood(a, "M-13,-8 C-8,-12 6,-12 12,-7 C16,-2 15,7 9,10 C4,12 -6,12 -10,9 "
+                     "C-15,5 -16,-3 -13,-8 Z", opacity, color)
+        else:
+            # the suit round the head soaked: shoulders and back, a ring clear of the head
+            blood(a, "M-16,0 C-16,-7 -10,-9 -4,-9 L-3,-6 C-6,-5 -9,-3 -9,1 C-9,5 -6,8 0,8 C6,8 9,5 9,1 "
+                     "C9,-3 6,-5 3,-6 L4,-9 C10,-9 16,-7 16,0 C16,8 10,12 0,12 C-10,12 -16,8 -16,0 Z",
+                  opacity, color)
+
+    for down in (False, True):
+        a = Art()
+        light(a)
+        emit("light", down, a, "a light wound")
+
+        a = Art()
+        serious(a, down)
+        emit("serious", down, a, "a serious wound")
+
+        # critical: the wound soaking the whole suit and running off it onto the deck
+        a = Art()
+        soaked(a, down, BLOOD, 0.6)
+        serious(a, down)
+        blood(a, "M10,6 C14,7 19,9 21,13 C19,15 15,14 13,12 C11,10 10,8 10,6 Z", 0.85)
+        blood(a, "M-12,7 C-15,10 -19,13 -18,16 C-16,17 -13,14 -12,11 Z", 0.85)
+        for cx, cy, r in ((19, -6, 1.6), (-20, -10, 1.2), (20, 3, 1.0), (-21, 4, 1.4)):
+            a.b += circle(cx, cy, r, BLOOD, extra=' opacity="0.85"')
+        emit("critical", down, a, "a critical wound bleeding out (blinked in code)")
+
+        # stabilised: the wound packed and bound, the blood round it drying
+        a = Art()
+        soaked(a, down, BLOOD_OLD, 0.45)
+        if down:
+            a.b += rect(-12, -5, 24, 7, BANDAGE, rx=2, stroke=INK, sw=1.2)
+            a.b += line(-11, -1.5, 11, -1.5, "#c9c2b2", sw=0.8)
+            a.b += rect(-4, -7, 8, 11, BANDAGE, rx=1.5, stroke=INK, sw=1.2)
+            blood(a, "M-2,-3 C0,-4 2,-3 2,-1 C2,1 0,1 -1,0 Z", 0.7)
+        else:
+            # a dressing strapped over the right shoulder and across the back
+            a.b += path("M7,-8 L15,-4 L4,11 L-4,10 Z", fill=BANDAGE, stroke=INK, sw=1.2)
+            a.b += line(10, -4, 1, 9, "#c9c2b2", sw=0.8)
+            blood(a, "M9,-3 C11,-4 12,-2 11,0 C10,1 8,0 9,-3 Z", 0.7)
+        a.b += rect(-18.5, 0, 7, 4, BANDAGE, rx=1, stroke=INK, sw=1)
+        emit("stabilised", down, a, "a critical wound dressed and stabilised")
+
+
+def crew_states():
+    """A crew member down (unconscious, or with a disabling wound) and dead, for each look; a
+    wound is drawn over the figure by `wound_overlays`."""
+    for name, (suit, shade, trim, hair, title) in CREW.items():
+        a = Art()
+        crew_lying(a, suit, shade, trim, hair, SKIN, "sides")
+        a.m = collider_circle(0, 0, 19.2)
+        write(f"crew/{name}_down.svg", 60, 64, a,
+              f"{name}_down: {title} down on their back, head toward +y", viewbox="-30 -32 60 64")
+
+        a = Art()
+        blood_pool(a, -8, 6, 21, BLOOD_OLD, 0.85)
+        crew_lying(a, grey(suit, 0.45), grey(shade, 0.45), grey(trim, 0.6), grey(hair, 0.3), SKIN_PALE, "flung")
+        a.m = collider_circle(0, 0, 19.2)
+        write(f"crew/{name}_dead.svg", 60, 64, a,
+              f"{name}_dead: {title}'s body where they fell, limbs thrown out, head toward +y",
+              viewbox="-30 -32 60 64")
+    wound_overlays()
+
 
 def streak(a, gid, x0, x1, half, color):
     a.defs += (f'<linearGradient id="{gid}" x1="0" x2="1" y1="0" y2="0">'
@@ -2740,6 +2896,7 @@ def main():
     turrets()
     engines()
     crew()
+    crew_states()
     projectiles()
     blasts()
     dock_walkway()
