@@ -6,6 +6,7 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
+import com.hawkwing.RingsOfIron.debug.DebugScenarios;
 import com.hawkwing.RingsOfIron.shell.GameSettings;
 import com.hawkwing.RingsOfIron.shell.GameShell;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
@@ -19,6 +20,8 @@ import com.hawkwing.RingsOfIron.shell.SaveSlots;
  * lists them. The ones copied are listed in {@code saves/career-saves.txt}, and a later run replaces those, and
  * only those, so a new round's saves take the place of the last round's; a save the player made, or saved
  * over since, is never touched.
+ * With {@code --scenario <id>} ({@code gradlew :lwjgl3:runGame -Pscenario=<id>}) it skips the menu and starts
+ * that debug menu scenario ({@link DebugScenarios}); an unknown id lists the ones there are and shows the menu.
  */
 public class GameLauncher {
     public static void main(String[] args) {
@@ -26,7 +29,13 @@ public class GameLauncher {
         java.util.List<String> list = java.util.Arrays.asList(args);
         int at = list.indexOf("--career-saves");
         if (at >= 0 && at + 1 < list.size()) importCareerSaves(list.get(at + 1));
-        createApplication(list.contains("--first-play"));
+        DebugScenarios.Entry scenario = null;
+        int s = list.indexOf("--scenario");
+        if (s >= 0 && s + 1 < list.size()) {
+            scenario = DebugScenarios.find(list.get(s + 1));
+            if (scenario == null) System.out.println("No scenario \"" + list.get(s + 1) + "\"; there are " + DebugScenarios.all());
+        }
+        createApplication(list.contains("--first-play"), scenario);
     }
 
     /** Copies a folder of career saves into the game's saves folder and says what it did. */
@@ -48,11 +57,13 @@ public class GameLauncher {
         return names.size + (names.size == 0 ? "" : " (" + names.toString(", ") + ")");
     }
 
-    private static Lwjgl3Application createApplication(boolean firstPlay) {
+    private static Lwjgl3Application createApplication(boolean firstPlay, DebugScenarios.Entry scenario) {
+        GameShell shell = firstPlay ? null : new GameShell();
+        if (shell != null) shell.setLaunchScenario(scenario);
         ApplicationListener app = firstPlay
                 ? new RingsOfIronGame(java.nio.file.Paths.get("").toAbsolutePath(),
                         java.nio.file.Paths.get("mods").toAbsolutePath(), true)
-                : new GameShell();
+                : shell;
         return new Lwjgl3Application(app, getDefaultConfiguration());
     }
 

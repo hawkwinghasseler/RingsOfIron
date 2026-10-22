@@ -249,7 +249,11 @@ tasks.register('runGame', JavaExec) {
   // -PcareerSaves=<folder>: copies that folder's saves (core/build/playtest-saves/seed-2026, say) into
   // assets/saves first, so Load lists them. assets/saves/career-saves.txt lists what it copied; a later run
   // replaces those files and only those, never a save you made or saved over
-  if (project.hasProperty('careerSaves')) args = ['--career-saves', rootProject.file(project.property('careerSaves').toString()).path]
+  def gameArgs = []
+  if (project.hasProperty('careerSaves')) gameArgs += ['--career-saves', rootProject.file(project.property('careerSaves').toString()).path]
+  // -Pscenario=<id>: straight into a debug menu scenario (F3 lists them) rather than the main menu
+  if (project.hasProperty('scenario')) gameArgs += ['--scenario', project.property('scenario').toString()]
+  args = gameArgs
   mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.GameLauncher'
   classpath = sourceSets.main.runtimeClasspath
   workingDir = rootProject.file('assets').path
