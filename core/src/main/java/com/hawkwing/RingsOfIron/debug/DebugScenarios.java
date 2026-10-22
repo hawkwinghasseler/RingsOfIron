@@ -40,7 +40,9 @@ public final class DebugScenarios {
 
     private static final List<Entry> BUILT_IN = List.of(
             new Entry("free-flight", "Free flight", "The career's start without the career: undocked in orbit by"
-                    + " Highport, no walkthrough", FreeFlightScenario::new)
+                    + " Highport, no walkthrough", FreeFlightScenario::new),
+            new Entry("orbit", "Orbit", "The rails at real scale: the orbit map full screen, craft on the rails,"
+                    + " instant burns and a Moon flyby", OrbitScenario::new)
     );
 
     private static final List<Entry> ADDED = new ArrayList<>();

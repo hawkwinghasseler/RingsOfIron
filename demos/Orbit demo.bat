@@ -1,5 +1,5 @@
 @echo off
-echo Starting Orbit Demo...
+echo Starting the Orbit scenario...
 cd /d "%~dp0.."
-gradlew.bat :lwjgl3:runOrbitDemo
+gradlew.bat :lwjgl3:runGame -Pscenario=orbit
 pause

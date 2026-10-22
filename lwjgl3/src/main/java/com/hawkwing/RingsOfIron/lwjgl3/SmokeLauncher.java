@@ -10,7 +10,6 @@ import com.hawkwing.RingsOfIron.DockingDemo;
 import com.hawkwing.RingsOfIron.FlightDemo;
 import com.hawkwing.RingsOfIron.HudDemo;
 import com.hawkwing.RingsOfIron.InteriorDemo;
-import com.hawkwing.RingsOfIron.OrbitDemo;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
 import com.hawkwing.RingsOfIron.ShipEditor;
 import com.hawkwing.RingsOfIron.shell.GameShell;
@@ -34,7 +33,11 @@ public class SmokeLauncher {
         APPS.put("flight", FlightDemo::new);
         APPS.put("hud", HudDemo::new);
         APPS.put("audio", AudioDemo::new);
-        APPS.put("orbit", OrbitDemo::new);
+        APPS.put("orbit", () -> {
+            RingsOfIronGame game = new RingsOfIronGame();
+            game.setScenario(com.hawkwing.RingsOfIron.debug.DebugScenarios.find("orbit"));
+            return game;
+        });
         APPS.put("crew", CrewDemo::new);
         APPS.put("docking", DockingDemo::new);
         APPS.put("editor", ShipEditor::new);

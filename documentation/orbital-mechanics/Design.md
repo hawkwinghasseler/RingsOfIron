@@ -194,7 +194,7 @@ In `orbital-mechanics/src/main/java/com/ringsofiron/orbital` unless noted.
 - `EncounterPredictionTask` (macro-sim, background thread): culls and predicts bubble entries and warp drop-out points. `EncounterPredictor` here does the same search on the main thread for `TimeWarpController`'s own drop-out check.
 - `TimeWarpController`: owns warp level, collapses and rebuilds the bubble for rails warp (through `BubbleHandoff`, which physics-exterior's `RailsBubbleHandoff` implements), enforces drop-out.
 
-`Orbit demo.bat` (`gradlew :lwjgl3:runOrbitDemo`) shows rails orbits, SOI changes and time warp in the game's own `GameWorld` (`OrbitDemoScene`), drawn with the game's orbit map (`PlayerOrbitPath` into ui-hud's `OrbitMap`, full screen); only the other craft's orbits and the spheres of influence are drawn by the demo itself; `gradlew :orbital-mechanics:test` runs the Kepler and rails tests.
+The game's Orbit scenario (debug menu, F3; `Orbit demo.bat` or `gradlew :lwjgl3:runGame -Pscenario=orbit`) shows rails orbits, SOI changes and time warp in a career's world, drawn with the game's orbit map (`PlayerOrbitPath` into ui-hud's `OrbitMap`, full screen); only the other craft's orbits and the spheres of influence are drawn by the scenario itself (`OrbitScenario`); `gradlew :orbital-mechanics:test` runs the Kepler and rails tests.
 
 ## Build Order (done)
 Every step below is built; the list is kept for the reasoning behind the order.
