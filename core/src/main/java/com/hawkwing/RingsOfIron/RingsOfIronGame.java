@@ -52,6 +52,7 @@ import com.hawkwing.RingsOfIron.lighting.SceneLighting;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
 import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
 import com.hawkwing.RingsOfIron.render.HeatOverlay;
+import com.hawkwing.RingsOfIron.render.SpaceSnow;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
@@ -168,6 +169,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private DeckArt deckArt;
     private DeckRenderer deckRenderer;
     private ExteriorRenderer exterior;
+    /** Speed shown against a circular orbit at the player's altitude. */
+    private SpaceSnow snow;
     private BitmapFont font;
     /** Deck lights and shadows, and the glow of every lamp and screen, from the art's emissive layers. */
     private SceneLighting lighting;
@@ -275,6 +278,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         hullArt = new HullArt(game.content.defs);
         exterior = new ExteriorRenderer(() -> world, shapes, batch, art, lighting, hullArt, () -> game.player)
                 .setLighting(exteriorLighting);
+        snow = new SpaceSnow(() -> world, () -> game.player);
 
         gun = new PlayerGunnery(world, game.player);
         gun.setTarget(game.firstTarget());
@@ -596,6 +600,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         dev.addOverlay(HeatOverlay.NAME, HeatOverlay.DESCRIPTION,
                 deckRenderer::heatShown, deckRenderer::setHeatShown);
         builtInOverlays.install(dev.overlays);
+        dev.addOverlay(SpaceSnow.NAME, SpaceSnow.DESCRIPTION, snow::isShown, snow::setShown);
         dev.setScenarioLoader(this::loadScenario);
         debugMenu = new com.hawkwing.RingsOfIron.debug.DebugMenu(hud.getSkin(), dev,
                 () -> scenarioEntry == null ? null : scenarioEntry.name);
@@ -1231,6 +1236,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     // -----------------------------------------------------------------------
     private void drawBodies() {
         float px = viewports.getViewMeters() / 400f;
+        snow.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
         exterior.drawBodies(viewports.getWorldCamera());
         exterior.drawFlight(viewports.getWorldCamera(), px, Gdx.graphics.getDeltaTime());
         // Every planned burn's direction, and the corridor into a docking port

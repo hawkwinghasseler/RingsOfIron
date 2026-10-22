@@ -40,12 +40,14 @@ a command acts on the selection; a crew member, ship or target can be passed ins
 ### Overlays
 Overlays are developer views drawn over the game, not part of its normal look. The screen hosting
 the console lends them with `addOverlay(name, description, shown, show)`, so the game and every
-demo toggle the same drawing the same way. There is one so far:
+demo toggle the same drawing the same way. Besides the built-in ones (`grid`, `velocity`, `bodies`, `stats`):
 
 - **`heat`** (`render.HeatOverlay`, drawn by `DeckRenderer`): each tile's heat as a red wash from
   350 K to the ignition point, and walls marked as they are worn down. The game itself shows heat
   as light (tiles hot enough glow as black bodies, see `documentation/lighting/Design.md`); this
   shows it before it glows. Hidden in the game; shown in the interior demo, which has no light map.
+- **`snow`** (`render.SpaceSnow`): the space snow the game draws behind the exterior view to show
+  speed (see `documentation/art/Design.md`). Shown by default; this hides it.
 
 A command typed on its own runs (`heal`), and Groovy's command syntax works (`wound 95, 'SPALL'`).
 `selected`, `player` and `avatar` are read fresh each time a line uses them. `world` and `game` are
