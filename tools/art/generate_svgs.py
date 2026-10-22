@@ -2338,6 +2338,64 @@ def engines():
               viewbox=f"{f(right - length + 0.05 * u)} {f(-0.45 * u)} {f(length)} {f(0.9 * u)}")
 
 
+def rcs():
+    """RCS thruster blocks seen from outside, bolted to a hull edge that faces space. Pivot at
+    the SVG origin, which goes on the middle of that edge; the block stands out toward -x (into
+    space) and its main nozzle fires -x. `rcs_linear` has that one nozzle; `rcs_quad` adds one
+    each way along the hull (+y and -y), halfway out, at the block's ends. `_destroyed` is the
+    block with its hull tile shot away. `rcs_puff` is a nozzle's jet, pivot on the nozzle's
+    mouth, toward -x, scaled along x with how hard it fires."""
+    u = T
+    out, mouth, half = 0.13 * u, 0.2 * u, 0.25 * u   # block face, main nozzle mouth, side mouths
+    for kind in ("linear", "quad"):
+        for destroyed in (False, True):
+            a = Art()
+            hl = 0.17 * u if kind == "linear" else 0.19 * u
+            # the mounting plate on the hull, then the block on it
+            a.b += rect(-0.03 * u, -hl - 0.04 * u, 0.06 * u, 2 * hl + 0.08 * u, STEEL_DARK, stroke=INK, sw=1.5)
+            a.b += rect(-out, -hl, out, 2 * hl, HOUSING if not destroyed else "#1b1f25", rx=2, stroke=INK, sw=2)
+            a.b += line(-out + 2, -hl + 3, -out + 2, hl - 3, HOUSING_HI if not destroyed else STEEL_DARK, sw=1.2)
+            for yy in (-hl + 4, hl - 4):
+                a.b += rivet(-0.035 * u, yy, 1.2)
+            nozzles = [(-1, 0)] + ([(0, 1), (0, -1)] if kind == "quad" else [])
+            for (dx, dy) in nozzles:
+                if dx:  # the main nozzle, out of the block's face
+                    bell = [(-out, -0.045 * u), (-mouth, -0.075 * u), (-mouth, 0.075 * u), (-out, 0.045 * u)]
+                else:   # a side nozzle at the block's end, halfway out
+                    cx, y0, y1 = -out / 2 - 0.0 * u, dy * hl, dy * half
+                    bell = [(cx - 0.035 * u, y0), (cx - 0.06 * u, y1), (cx + 0.06 * u, y1), (cx + 0.035 * u, y0)]
+                if destroyed:
+                    bell = [(px * 0.9, py * 0.9) for (px, py) in bell]
+                a.b += poly(bell, STEEL_DARK if not destroyed else "#14181e", stroke=INK, sw=1.5)
+            if destroyed:
+                a.b += circle(-out / 2, 0, 0.1 * u, "#05070a", extra=' opacity="0.7"')
+                a.b += line(-out, -hl * 0.6, -out * 0.3, hl * 0.3, STEEL_HI, sw=1)
+            else:
+                # a status lamp on the block's face
+                a.e = lit(circle(-out * 0.5, -hl + 0.06 * u, 1.6, "#9fd8ff"), "glow")
+            name = f"engines/rcs_{kind}" + ("_destroyed" if destroyed else "")
+            left, top = -0.27 * u, -0.27 * u
+            write(name + ".svg", 0.32 * u, 0.54 * u, a,
+                  f"rcs_{kind}{' destroyed' if destroyed else ''}: pivot on the middle of the hull edge it is bolted to, "
+                  f"block and main nozzle toward -x (space)" + ("; side nozzles toward +y and -y" if kind == "quad" else ""),
+                  viewbox=f"{f(left)} {f(top)} {f(0.32 * u)} {f(0.54 * u)}")
+    a = Art()
+    pid = "rcs_puff_g"
+    a.defs = ('<linearGradient id="' + pid + '" x1="1" y1="0" x2="0" y2="0">'
+              '<stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#cfe9ff"/>'
+              '<stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></linearGradient>')
+    length, w0 = 0.9 * u, 0.06 * u
+    a.e = lit(path(f"M0,{f(-w0)} C{f(-0.3 * u)},{f(-0.11 * u)} {f(-0.7 * u)},{f(-0.09 * u)} {f(-length)},0 "
+                   f"C{f(-0.7 * u)},{f(0.09 * u)} {f(-0.3 * u)},{f(0.11 * u)} 0,{f(w0)} Z", fill=f"url(#{pid})",
+                   extra=' opacity="0.85"')
+              + path(f"M0,{f(-0.035 * u)} C{f(-0.15 * u)},{f(-0.05 * u)} {f(-0.3 * u)},{f(-0.02 * u)} {f(-0.4 * u)},0 "
+                     f"C{f(-0.3 * u)},{f(0.02 * u)} {f(-0.15 * u)},{f(0.05 * u)} 0,{f(0.035 * u)} Z", fill="#ffffff",
+                     extra=' opacity="0.8"'), "glow")
+    write("engines/rcs_puff.svg", length, 0.24 * u, a,
+          "rcs_puff: an RCS nozzle's jet, pivot on the nozzle's mouth, toward -x; scale along x with how hard it fires",
+          viewbox=f"{f(-length)} {f(-0.12 * u)} {f(length)} {f(0.24 * u)}")
+
+
 def turrets():
     """Weapon turrets seen from above, barrel toward +x, pivot at the SVG origin. The
     pivot goes on the center of the turret mount the weapon is wired to."""
@@ -2562,7 +2620,7 @@ def blood_pool(a, cx, cy, r, color, opacity):
 def crew_lying(a, suit, shade, trim, hair, skin, arms):
     """A crew member down on their back, head toward +y (SVG up), body behind it toward -y:
     about 0.95 tile long, centered on the chest so the figure lies where the crew member fell.
-    `arms` is "sides" (laid down), "chest" (one hand pressed to a wound) or "flung" (limp, thrown out)."""
+    `arms` is "sides" (laid down) or "flung" (limp, thrown out)."""
     # legs and boots, splayed when limp
     for sx in (-1, 1):
         turn = f' transform="rotate({f(-sx * 16)} {f(sx * 5.5)} 6)"' if arms == "flung" else ""
@@ -2577,19 +2635,13 @@ def crew_lying(a, suit, shade, trim, hair, skin, arms):
     else:
         a.b += rect(-17.5, -8, 7, 17, shade, rx=3.5, stroke=INK, sw=1.5)
         a.b += circle(-14, 9.5, 3, skin, stroke=INK, sw=1)
-        if arms == "chest":
-            d = "M11,-7 L8,1 L-2,2"
-            a.b += path(d, stroke=INK, sw=8.5) + path(d, stroke=shade, sw=5.5)
-        else:
-            a.b += rect(10.5, -8, 7, 17, shade, rx=3.5, stroke=INK, sw=1.5)
-            a.b += circle(14, 9.5, 3, skin, stroke=INK, sw=1)
+        a.b += rect(10.5, -8, 7, 17, shade, rx=3.5, stroke=INK, sw=1.5)
+        a.b += circle(14, 9.5, 3, skin, stroke=INK, sw=1)
     # torso, seen from the front, with its shoulder flashes and a belt
     a.b += rect(-11.5, -12, 23, 21, suit, rx=6, stroke=INK, sw=2)
     a.b += path("M-8,-10 C-4,-11.5 2,-11.5 6,-10.5", stroke="#ffffff", sw=1.5, extra=' opacity="0.22"')
     a.b += rect(-11, -9, 5, 3, trim, rx=1) + rect(6, -9, 5, 3, trim, rx=1)
     a.b += rect(-11.5, 4, 23, 3, shade, stroke=INK, sw=1)
-    if arms == "chest":
-        a.b += circle(-2, 2, 3, skin, stroke=INK, sw=1)
     # head on the deck, face up: hair round the crown, eyes closed
     a.b += circle(0, -19, 7.5, skin, stroke=INK, sw=1.8)
     a.b += path("M-7.4,-17.5 C-7.8,-24 -4,-26.8 0,-26.8 C4,-26.8 7.8,-24 7.4,-17.5 "
@@ -2598,54 +2650,98 @@ def crew_lying(a, suit, shade, trim, hair, skin, arms):
     a.b += line(-1.8, -14.5, 1.8, -14.5, INK, sw=1)
 
 
-def crew_injured_marks(a):
-    """A light wound on a standing figure: a field dressing round the left arm, blood on the shoulder."""
-    a.b += rect(-18.5, 0, 7, 4, BANDAGE, rx=1, stroke=INK, sw=1)
-    a.b += line(-17.5, 2, -12.5, 2, "#c9c2b2", sw=0.8)
-    a.b += path("M6,-8 C9,-9 12,-7 11,-4 C10,-2 7,-3 6,-5 Z", fill=BLOOD, extra=' opacity="0.85"')
-    a.b += circle(13, -2, 1.2, BLOOD, extra=' opacity="0.85"')
+def blood(a, d, opacity=0.9, color=BLOOD):
+    a.b += path(d, fill=color, extra=f' opacity="{f(opacity)}"')
+
+
+def wound_overlays():
+    """Wounds drawn over a crew figure at its origin and turned with it, by `Wound`: light, serious
+    and critical (bleeding), and a critical wound once stabilised, dressed. `wound_<level>` fits the
+    standing figure (seen from above: marks on the shoulders, back and left arm, clear of the head)
+    and `wound_<level>_down` the figures lying on their back (marks on the chest and left arm)."""
+    meta = collider_circle(0, 0, 19.2)
+
+    def emit(level, down, a, title):
+        a.m = meta
+        name = f"wound_{level}" + ("_down" if down else "")
+        write(f"crew/{name}.svg", 48, 48, a, f"{name}: {title}, drawn over a crew figure"
+              + (" lying on their back" if down else " on their feet"), viewbox="-24 -24 48 48")
+
+    def light(a):
+        # a field dressing round the left arm, a graze on the right shoulder
+        a.b += rect(-18.5, 0, 7, 4, BANDAGE, rx=1, stroke=INK, sw=1)
+        a.b += line(-17.5, 2, -12.5, 2, "#c9c2b2", sw=0.8)
+        blood(a, "M8,-8 C11,-9 14,-7 13,-4 C12,-2 9,-3 8,-5 Z", 0.85)
+        a.b += circle(15, -2, 1.2, BLOOD, extra=' opacity="0.85"')
+
+    def serious(a, down):
+        if down:
+            # a wound in the chest soaking the suit round it
+            blood(a, "M-7,-4 C-4,-9 3,-9 6,-5 C9,-1 7,5 2,6 C-2,7 -5,5 -6,3 C-9,1 -9,-2 -7,-4 Z", 0.75)
+            blood(a, "M-3,-3 C-1,-5 2,-4 2,-2 C3,0 1,2 -1,1 C-3,1 -4,-1 -3,-3 Z", 1.0, BLOOD_OLD)
+        else:
+            # through the right shoulder, soaking across the back
+            blood(a, "M8,-7 C12,-9 16,-6 16,-1 C16,4 13,8 9,9 C5,10 3,7 5,3 C6,0 5,-4 8,-7 Z", 0.75)
+            blood(a, "M10,-4 C12,-5 14,-3 13,-1 C12,1 10,1 9,-1 Z", 1.0, BLOOD_OLD)
+            blood(a, "M-6,8 C-2,9 4,9 7,8 C6,11 2,12 -2,12 C-5,12 -7,10 -6,8 Z", 0.7)
+        # blood down the left arm
+        blood(a, "M-17,-4 C-15,-6 -13,-5 -13,-2 L-13.5,6 C-14,8 -16,8 -16.5,6 Z", 0.8)
+
+    def soaked(a, down, color, opacity):
+        if down:
+            blood(a, "M-13,-8 C-8,-12 6,-12 12,-7 C16,-2 15,7 9,10 C4,12 -6,12 -10,9 "
+                     "C-15,5 -16,-3 -13,-8 Z", opacity, color)
+        else:
+            # the suit round the head soaked: shoulders and back, a ring clear of the head
+            blood(a, "M-16,0 C-16,-7 -10,-9 -4,-9 L-3,-6 C-6,-5 -9,-3 -9,1 C-9,5 -6,8 0,8 C6,8 9,5 9,1 "
+                     "C9,-3 6,-5 3,-6 L4,-9 C10,-9 16,-7 16,0 C16,8 10,12 0,12 C-10,12 -16,8 -16,0 Z",
+                  opacity, color)
+
+    for down in (False, True):
+        a = Art()
+        light(a)
+        emit("light", down, a, "a light wound")
+
+        a = Art()
+        serious(a, down)
+        emit("serious", down, a, "a serious wound")
+
+        # critical: the wound soaking the whole suit and running off it onto the deck
+        a = Art()
+        soaked(a, down, BLOOD, 0.6)
+        serious(a, down)
+        blood(a, "M10,6 C14,7 19,9 21,13 C19,15 15,14 13,12 C11,10 10,8 10,6 Z", 0.85)
+        blood(a, "M-12,7 C-15,10 -19,13 -18,16 C-16,17 -13,14 -12,11 Z", 0.85)
+        for cx, cy, r in ((19, -6, 1.6), (-20, -10, 1.2), (20, 3, 1.0), (-21, 4, 1.4)):
+            a.b += circle(cx, cy, r, BLOOD, extra=' opacity="0.85"')
+        emit("critical", down, a, "a critical wound bleeding out (blinked in code)")
+
+        # stabilised: the wound packed and bound, the blood round it drying
+        a = Art()
+        soaked(a, down, BLOOD_OLD, 0.45)
+        if down:
+            a.b += rect(-12, -5, 24, 7, BANDAGE, rx=2, stroke=INK, sw=1.2)
+            a.b += line(-11, -1.5, 11, -1.5, "#c9c2b2", sw=0.8)
+            a.b += rect(-4, -7, 8, 11, BANDAGE, rx=1.5, stroke=INK, sw=1.2)
+            blood(a, "M-2,-3 C0,-4 2,-3 2,-1 C2,1 0,1 -1,0 Z", 0.7)
+        else:
+            # a dressing strapped over the right shoulder and across the back
+            a.b += path("M7,-8 L15,-4 L4,11 L-4,10 Z", fill=BANDAGE, stroke=INK, sw=1.2)
+            a.b += line(10, -4, 1, 9, "#c9c2b2", sw=0.8)
+            blood(a, "M9,-3 C11,-4 12,-2 11,0 C10,1 8,0 9,-3 Z", 0.7)
+        a.b += rect(-18.5, 0, 7, 4, BANDAGE, rx=1, stroke=INK, sw=1)
+        emit("stabilised", down, a, "a critical wound dressed and stabilised")
 
 
 def crew_states():
-    """How a crew member looks hurt: injured (a light wound, still on their feet, carrying or
-    not), wounded (down with a serious or critical wound, bleeding), unconscious (down without a
-    disabling wound: air, heat or a knock) and dead (where they fell)."""
+    """A crew member down (unconscious, or with a disabling wound) and dead, for each look; a
+    wound is drawn over the figure by `wound_overlays`."""
     for name, (suit, shade, trim, hair, title) in CREW.items():
-        a = Art()
-        crew_body(a, suit, shade, trim, hair, False)
-        crew_injured_marks(a)
-        a.m = collider_circle(0, 0, 19.2)
-        write(f"crew/{name}_injured.svg", 48, 48, a,
-              f"{name}_injured: {title} with a light wound, on their feet, facing +y", viewbox="-24 -24 48 48")
-
-        a = Art()
-        crew_body(a, suit, shade, trim, hair, True)
-        a.b += rect(-11, -34, 22, 18, "#c4c7cc", rx=2, stroke=INK, sw=2)
-        a.b += bevel(-10, -33, 20, 16, "#eef0f2", "#8a8e94")
-        a.b += line(-11, -25, 11, -25, "#8a8e94", sw=1.5)
-        a.b += line(-4, -34, -4, -16, "#a6aab0", sw=1.2) + line(4, -34, 4, -16, "#a6aab0", sw=1.2)
-        a.b += path("M6,-6 C9,-7 12,-5 11,-2 C10,0 7,-1 6,-3 Z", fill=BLOOD, extra=' opacity="0.85"')
-        a.b += rect(-8, 6, 5, 3, BANDAGE, rx=1, stroke=INK, sw=0.8)
-        a.m = collider_circle(0, 0, 19.2)
-        write(f"crew/{name}_injured_carrying.svg", 48, 60, a,
-              f"{name}_injured_carrying: {title} with a light wound, holding a crate (tint in code)",
-              viewbox="-24 -36 48 60")
-
-        a = Art()
-        blood_pool(a, 9, 0, 17, BLOOD, 0.8)
-        crew_lying(a, suit, shade, trim, hair, SKIN, "chest")
-        a.b += path("M-3,-3 C0,-5 4,-4 5,-1 C5,2 1,3 -2,1 Z", fill=BLOOD, extra=' opacity="0.9"')
-        a.m = collider_circle(0, 0, 19.2)
-        write(f"crew/{name}_wounded.svg", 60, 64, a,
-              f"{name}_wounded: {title} down on their back with a serious wound, bleeding, head toward +y",
-              viewbox="-30 -32 60 64")
-
         a = Art()
         crew_lying(a, suit, shade, trim, hair, SKIN, "sides")
         a.m = collider_circle(0, 0, 19.2)
-        write(f"crew/{name}_unconscious.svg", 60, 64, a,
-              f"{name}_unconscious: {title} out cold on their back, unhurt, head toward +y",
-              viewbox="-30 -32 60 64")
+        write(f"crew/{name}_down.svg", 60, 64, a,
+              f"{name}_down: {title} down on their back, head toward +y", viewbox="-30 -32 60 64")
 
         a = Art()
         blood_pool(a, -8, 6, 21, BLOOD_OLD, 0.85)
@@ -2654,11 +2750,8 @@ def crew_states():
         write(f"crew/{name}_dead.svg", 60, 64, a,
               f"{name}_dead: {title}'s body where they fell, limbs thrown out, head toward +y",
               viewbox="-30 -32 60 64")
+    wound_overlays()
 
-
-# ---------------------------------------------------------------------------
-# Projectiles (pivot at the origin, nose toward +x, 64 units per meter)
-# ---------------------------------------------------------------------------
 
 def streak(a, gid, x0, x1, half, color):
     a.defs += (f'<linearGradient id="{gid}" x1="0" x2="1" y1="0" y2="0">'
@@ -2860,6 +2953,7 @@ def main():
     hulls()
     turrets()
     engines()
+    rcs()
     crew()
     crew_states()
     projectiles()

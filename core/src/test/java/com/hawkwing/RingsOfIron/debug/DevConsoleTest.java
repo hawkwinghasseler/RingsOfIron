@@ -167,8 +167,8 @@ class DevConsoleTest {
         assertTrue(last().contains("fired") || last().contains("launched") || last().contains("burning"), last());
         dev.console.submit("blast()");
         assertTrue(last().contains("went off"), last());
-        dev.console.submit("ram 0.5");
-        assertTrue(last().contains("bounce"), last());
+        dev.console.submit("ram 0.1, 195");
+        assertTrue(last().contains("195000 kg at 100 m/s"), "a slow ram crashes a real rock into the hull: " + last());
         dev.console.submit("ram 3, 1");
         assertTrue(last().contains("3.0 km/s"), last());
         dev.console.submit("shortOut()");
@@ -264,5 +264,19 @@ class DevConsoleTest {
         assertEquals("true", last());
         dev.console.submit("selected = null");
         assertTrue(last().contains("can't be assigned"), last());
+    }
+
+    @Test
+    void overlayTogglesWhatTheHostDraws() {
+        boolean[] shown = {false};
+        dev.addOverlay("heat", "tile heat", () -> shown[0], on -> shown[0] = on);
+        assertEquals("heat (hidden): tile heat", dev.console.execute("overlay()"));
+        assertEquals("heat shown", dev.console.execute("overlay('heat')"));
+        assertTrue(dev.overlayShown("heat"));
+        assertEquals("heat hidden", dev.console.execute("overlay('heat')"));
+        assertEquals("heat hidden", dev.console.execute("overlay('heat', false)"));
+        assertEquals("heat shown", dev.console.execute("overlay('heat', true)"));
+        assertNull(dev.console.execute("overlay('smoke')"));
+        assertTrue(dev.overlayShown("heat"));
     }
 }

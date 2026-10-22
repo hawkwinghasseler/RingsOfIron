@@ -39,11 +39,10 @@ import java.util.function.Supplier;
  * The deck view, for the game and every demo that shows a deck: each craft's deck plan at its
  * pose (the art pack's when it is built, else the minimap's shades), its smoke and flames, its
  * cargo, everyone aboard, and with {@link SceneLighting} the light map and the glow of what gives
- * off light. Crew show their state as the game does whatever the style: hurt, down or dead by their
- * art ({@link ArtNames.CrewPose}), and a wound disc under the critically wounded, or without that
- * art the down greyed, the dead a cross where they fell and a disc under everyone hurt. A
- * {@link Style} says how crew are
- * drawn and lets a screen add to the deck and to each crew member, so a demo shows what it needs on
+ * off light. Crew show their state as the game does whatever the style: standing, down or dead
+ * by their art ({@link ArtNames.CrewPose}) with their wound drawn over the figure, a bleeding one
+ * blinking; or without that art the down greyed, the dead a cross where they fell and a disc in
+ * the wound's color under the hurt. A {@link Style} says how crew are drawn and lets a screen add to the deck and to each crew member, so a demo shows what it needs on
  * top without drawing a deck of its own.
  */
 public final class DeckRenderer {
@@ -93,6 +92,7 @@ public final class DeckRenderer {
     private Style style;
     private Pose pose;
     private boolean lightsOn = true;
+    private boolean heatShown;
 
     /** Smoke, wind and flames of each deck on show; a craft's go when it is no longer drawn. */
     private final Map<ShipGridComponent, HazardParticles> hazards = new IdentityHashMap<>();
@@ -102,6 +102,7 @@ public final class DeckRenderer {
     private final Vector2 local = new Vector2();
     private final float[] angle = new float[1];
     private final Color color = new Color();
+    private final RcsNozzles nozzles = new RcsNozzles();
     private final Color crewColor = new Color();
     /** Time the decks have been drawn for, which blinks the bleeding. */
     private float clock;
@@ -149,6 +150,15 @@ public final class DeckRenderer {
 
     public boolean lightsOn() {
         return lightsOn;
+    }
+
+    /** Whether the {@link HeatOverlay} overlay is drawn over the decks: off unless a developer asks. */
+    public void setHeatShown(boolean shown) {
+        heatShown = shown;
+    }
+
+    public boolean heatShown() {
+        return heatShown;
     }
 
     /**
@@ -221,6 +231,8 @@ public final class DeckRenderer {
             shapes.rotate(0f, 0f, 1f, degrees);
             if (lit) {
                 lighting.addDeck(g, x, y, radians);
+                // The firing RCS light the hull outside and glow; the walls keep it out of the rooms
+                nozzles.jets(ship, world.get().docking.bodyOf(ship), x, y, radians, lighting::addThruster);
                 float cos = MathUtils.cos(radians), sin = MathUtils.sin(radians);
                 for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                     GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
@@ -255,6 +267,7 @@ public final class DeckRenderer {
             particles.draw(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, s);
             Gdx.gl.glEnable(GL20.GL_BLEND);
             shapes.begin(ShapeRenderer.ShapeType.Filled);
+            if (heatShown) HeatOverlay.draw(shapes, g, color);
             style.overDeck(shapes, ship, g);
             boolean figures = withArt && deckArt.hasCrew();
             for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
@@ -268,8 +281,8 @@ public final class DeckRenderer {
                     continue;
                 }
                 style.underCrew(shapes, e, c, l.x, l.y, s, figures);
-                if (posed ? c.wound == Wound.CRITICAL : c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS) {
-                    // The art shows hurt and down, not how near death; without it, the disc shows both
+                if (!posed && (c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS)) {
+                    // Without the art, the disc shows the wound and that they are down
                     Color w = woundColor(c, clock, crewColor);
                     shapes.setColor(w.r, w.g, w.b, w.a * 0.7f);
                     shapes.circle(l.x, l.y, WOUND_DISC * s, 20);
@@ -292,7 +305,9 @@ public final class DeckRenderer {
                     if (!posed && c.state == CrewState.DEAD) continue;
                     Vector2 l = pos.toShipLocal(g, local);
                     batch.setColor(!posed && c.state == CrewState.UNCONSCIOUS ? GREYED : Color.WHITE);
-                    deckArt.crew(batch, e, style.figure(e, c), pose, c.load == null ? null : c.load.task.job.commodity(), l.x, l.y, s);
+                    String wound = posed ? ArtNames.crewWound(c, pose) : null;
+                    deckArt.crew(batch, e, style.figure(e, c), pose, wound, bleeding(c) ? 0.55f : 1f,
+                            c.load == null ? null : c.load.task.job.commodity(), l.x, l.y, s);
                 }
                 batch.setColor(Color.WHITE);
                 batch.end();
@@ -335,12 +350,21 @@ public final class DeckRenderer {
             case SERIOUS: out.set(1f, 0.55f, 0.15f, 1f); break;
             case CRITICAL:
                 if (c.stabilised) out.set(0.3f, 0.9f, 1f, 1f);
-                else out.set(1f, 0.15f, 0.15f, (clock % BLINK) < BLINK / 2f ? 1f : 0.45f);
+                else out.set(1f, 0.15f, 0.15f, bleeding(c, clock) ? 0.45f : 1f);
                 break;
             default: out.set(0.85f, 0.9f, 1f, 1f);
         }
         if (c.state == CrewState.UNCONSCIOUS) out.mul(0.75f, 0.75f, 0.75f, 1f);
         return out;
+    }
+
+    /** Whether {@code c}'s wound is in the dim half of its blink: a critical one, bleeding out. */
+    private boolean bleeding(CrewMemberComponent c) {
+        return bleeding(c, clock);
+    }
+
+    private static boolean bleeding(CrewMemberComponent c, float clock) {
+        return c.wound == Wound.CRITICAL && !c.stabilised && clock % BLINK >= BLINK / 2f;
     }
 
     /** A dead crew member's body at ({@code x}, {@code y}) without the art for one: a grey cross. */

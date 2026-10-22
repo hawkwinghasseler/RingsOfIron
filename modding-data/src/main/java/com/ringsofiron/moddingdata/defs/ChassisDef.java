@@ -28,6 +28,7 @@ import java.util.List;
  * coverings   = [ { covering = "CARPET", x = 2, y = 1, width = 4, height = 1 } ]
  * ports       = [ { x = 4, y = 5, active = true } ]
  * lights      = [ { x = 2, y = 1, side = "BOTTOM" } ]
+ * rcs         = [ { x = 0, y = 4, side = "TOP", kind = "QUAD" }, { x = 7, y = 0, side = "BOTTOM", thrust = 2.0e5 } ]
  * </pre>
  * Grid coordinates have (0, 0) at the bottom-left tile and +y up; {@code rows} is written
  * top row first, as it reads.
@@ -58,6 +59,8 @@ public class ChassisDef {
      * them out from the layout; an empty list means none.
      */
     public List<Light> lights;
+    /** RCS thrusters on the outside of the hull; a craft with none keeps its ship's turning and strafing figures. */
+    public List<Rcs> rcs = new ArrayList<>();
 
     public static class EdgeWall {
         public int x, y;
@@ -118,6 +121,21 @@ public class ChassisDef {
         public int x, y;
         /** BOTTOM, TOP, LEFT or RIGHT: the wall it hangs on. */
         public String side;
+    }
+
+    /**
+     * An RCS thruster block on the {@code side} edge of hull tile (x, y), on the outside: that edge
+     * must face space. A {@code LINEAR} block has one nozzle, firing out through that edge, so it
+     * pushes the ship the other way; a {@code QUAD} block adds a nozzle each way along the hull.
+     */
+    public static class Rcs {
+        public int x, y;
+        /** BOTTOM, TOP, LEFT or RIGHT: the hull edge it sits on, which faces space. */
+        public String side;
+        /** LINEAR or QUAD. */
+        public String kind = "LINEAR";
+        /** Newtons from each nozzle; 0 for the standard thrust of the kind. */
+        public double thrust;
     }
 
     public static class Covering {

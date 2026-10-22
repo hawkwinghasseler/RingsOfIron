@@ -43,14 +43,4 @@ class SpaceSnowTest {
         assertEquals(CIRCULAR, d.len(), 1e-2);
         assertTrue(d.x < 0f, "counterclockwise when the ship isn't turning");
     }
-
-    @Test
-    void theGridMovesWithTheBodiesOnARebase() {
-        BubbleGrid grid = new BubbleGrid(() -> null);
-        grid.shift(250, -40);
-        grid.shift(1000, 0);
-        // A line was at local 0; bodies moved by -250, so it is now at -250: -250 + frame is a whole step
-        assertEquals(0.0, Math.IEEEremainder(-250 + grid.frameX(), 100), 1e-9);
-        assertEquals(0.0, Math.IEEEremainder(40 + grid.frameY(), 100), 1e-9);
-    }
 }

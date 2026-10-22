@@ -81,6 +81,13 @@ public class Tile {
     public float shortedFor = 0f;
     /** Whether this tile is connected to a powered reactor via power conduits. */
     public boolean isPowered = false;
+    /**
+     * Crushed flat by a collision (combat-sys's {@code CollisionDamageSystem}) for a tile that is
+     * not part of a {@link HullPiece}: its structure folded into the tiles behind it, so the hull no
+     * longer collides there and it is open to space like a breach until a seal or a yard closes it.
+     * Read and write through {@link #isCrushed()} and {@link #setCrushed(boolean)} so pieces share it.
+     */
+    public boolean crushed = false;
 
     /** The compartment whose air fills this tile, or null. Set by {@link CompartmentBuilder}. */
     public Compartment compartment;
@@ -100,6 +107,16 @@ public class Tile {
         float clamped = Math.max(0f, Math.min(1f, value));
         if (piece != null) piece.integrity = clamped;
         else integrity = clamped;
+    }
+
+    /** Whether this tile, or its whole hull piece, has been crushed flat. */
+    public boolean isCrushed() {
+        return piece != null ? piece.crushed : crushed;
+    }
+
+    public void setCrushed(boolean value) {
+        if (piece != null) piece.crushed = value;
+        else crushed = value;
     }
 
     public boolean isWall() {
@@ -123,9 +140,12 @@ public class Tile {
         return floorType == FloorType.POWER_CONDUIT;
     }
 
-    /** A hull tile (or piece) at integrity 0 that has not been patched with a bulkhead seal. */
+    /**
+     * A hull tile (or piece) at integrity 0, or any crushed tile still at 0, that has not been
+     * patched with a bulkhead seal.
+     */
     public boolean isHullBreach() {
-        return wallType == WallType.HULL && getIntegrity() <= 0f && !bulkheadSealed;
+        return (wallType == WallType.HULL || isCrushed()) && getIntegrity() <= 0f && !bulkheadSealed;
     }
 
     public boolean isSpaceExposed() {
@@ -134,10 +154,10 @@ public class Tile {
 
     /**
      * True for tiles that crew, fire and gas can move through: floors, and internal walls
-     * that have been destroyed.
+     * that have been destroyed. Never a crushed tile.
      */
     public boolean isOpen() {
-        if (isSpaceExposed()) return false;
+        if (isSpaceExposed() || isCrushed()) return false;
         if (isWall()) return wallType == WallType.INTERNAL && getIntegrity() <= 0f;
         return isFloor();
     }

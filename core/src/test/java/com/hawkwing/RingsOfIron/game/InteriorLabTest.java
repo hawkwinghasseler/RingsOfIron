@@ -172,7 +172,54 @@ class InteriorLabTest {
         assertFalse(rammed.startsWith("Rams under"), rammed);
         run(3f);
         assertTrue(structure() < before - 0.05f, "structure " + before + " -> " + structure());
-        assertTrue(lab.debug.ram(lab.ship, hull[0], hull[1], 0f, 100f, 1000f, 500f).startsWith("Rams under"));
+    }
+
+    /** Rams {@code tonnes} at {@code speed} square into the port hull, through the engine's crash path. */
+    private String slowRam(float tonnes, float speed) {
+        int[] hull = portHull();
+        com.badlogic.gdx.math.Vector2 at = lab.debug.tileWorld(lab.ship, hull[0], hull[1], new com.badlogic.gdx.math.Vector2());
+        float angle = lab.ship.getComponent(com.ringsofiron.physicsexterior.components.PhysicsBodyComponent.class).body.getAngle();
+        // Port is the ship's +y
+        com.badlogic.gdx.math.Vector2 out = new com.badlogic.gdx.math.Vector2(0f, 5f).rotateRad(angle).add(at);
+        return lab.debug.ram(lab.ship, hull[0], hull[1], out.x, out.y, tonnes * 1000f, speed);
+    }
+
+    private int crushedTiles() {
+        ShipGridComponent g = grid();
+        int n = 0;
+        for (int y = 0; y < g.height; y++) for (int x = 0; x < g.width; x++) if (g.getTile(x, y).isCrushed()) n++;
+        return n;
+    }
+
+    @Test
+    void aSlowRamUnderTwentyFiveMetresASecondJustBumps() {
+        float before = structure();
+        String rammed = slowRam(195.1f, 20f);
+        assertTrue(rammed.contains("20 m/s"), rammed);
+        run(3f);
+        assertEquals(before, structure(), 1e-4f, "no damage");
+        assertTrue(grid().dents == null);
+    }
+
+    @Test
+    void aCorvetteWeightRamAtFiftyDentsSeveralTilesWithoutABreach() {
+        float before = structure();
+        slowRam(195.1f, 50f);
+        run(3f);
+        assertTrue(structure() < before - 0.1f, "structure " + before + " -> " + structure());
+        assertEquals(0, crushedTiles());
+        assertTrue(lab.world.collisionDamage.last.damagedB + lab.world.collisionDamage.last.damagedA >= 5,
+                "spread over several tiles");
+        ShipGridComponent g = grid();
+        for (int y = 0; y < g.height; y++) for (int x = 0; x < g.width; x++) assertFalse(g.getTile(x, y).isHullBreach());
+    }
+
+    @Test
+    void aCorvetteWeightRamAtAHundredCrushesTheHullIn() {
+        slowRam(195.1f, 100f);
+        run(3f);
+        assertTrue(crushedTiles() >= 1, "crushed " + crushedTiles());
+        assertFalse(grid().hullShapeDirty, "the hull was reshaped round it");
     }
 
     @Test

@@ -2,7 +2,6 @@ package com.hawkwing.RingsOfIron.art;
 
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewState;
-import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.MaterialTable;
@@ -296,6 +295,14 @@ public final class ArtNames {
         return "engines/exhaust_" + size;
     }
 
+    /** An RCS thruster block of {@code kind} (LINEAR or QUAD) seen from outside, or its wreck once its hull tile is gone. */
+    public static String rcs(String kind, boolean works) {
+        return "engines/rcs_" + kind.toLowerCase(java.util.Locale.ROOT) + (works ? "" : "_destroyed");
+    }
+
+    /** An RCS nozzle's jet. */
+    public static final String RCS_PUFF = "engines/rcs_puff";
+
     /** A weapon's turret, by its id in weapons.toml. */
     public static String[] turret(String weaponId, boolean powered) {
         String base = "turrets/" + weaponId;
@@ -317,6 +324,8 @@ public final class ArtNames {
     public static final String DECOY = "projectiles/decoy_flare";
     /** The laser strip, stretched along a beam. */
     public static final String BEAM = "effects/beam";
+    /** A tile a collision crushed flat (interior-grid's {@code Tile#crushed}). */
+    public static final String CRUSHED = "effects/crushed";
     /** The gangway across two latched collars, stretched along the crossing. */
     public static final String WALKWAY = "tiles/dock_walkway";
 
@@ -333,11 +342,11 @@ public final class ArtNames {
     public enum Crew { SHIP, STATION, PLAYER }
 
     /**
-     * How a crew member looks for their wound and state: on their feet unhurt or with a light
-     * wound, down with a serious or critical wound, down without one (air, heat, a knock), or dead.
+     * How a crew member lies or stands: on their feet, down (unconscious, or with a wound that puts
+     * them down) or dead. A wound is drawn over the figure ({@link #crewWound}).
      */
     public enum CrewPose {
-        STANDING(""), INJURED("_injured"), WOUNDED("_wounded"), UNCONSCIOUS("_unconscious"), DEAD("_dead");
+        STANDING(""), DOWN("_down"), DEAD("_dead");
 
         private final String suffix;
 
@@ -347,14 +356,31 @@ public final class ArtNames {
 
         /** True for the poses drawn lying on the deck, which carry nothing. */
         public boolean lying() {
-            return this == WOUNDED || this == UNCONSCIOUS || this == DEAD;
+            return this != STANDING;
         }
 
         public static CrewPose of(CrewMemberComponent c) {
-            if (c.state == CrewState.DEAD) return DEAD;
-            if (c.state == CrewState.UNCONSCIOUS) return c.wound.disabling() ? WOUNDED : UNCONSCIOUS;
-            return c.wound == Wound.NONE ? STANDING : INJURED;
+            return c.state == CrewState.DEAD ? DEAD : c.state == CrewState.UNCONSCIOUS ? DOWN : STANDING;
         }
+    }
+
+    /** A wound's art for a standing figure, whose presence says the pack has wounds. */
+    public static final String WOUND_ART = "crew/wound_light";
+
+    /**
+     * The wound drawn over a crew member's figure in {@code pose}, by how bad it is (a critical one
+     * dressed once stabilised), or null when they are unhurt or dead.
+     */
+    public static String crewWound(CrewMemberComponent c, CrewPose pose) {
+        if (pose == CrewPose.DEAD) return null;
+        String level;
+        switch (c.wound) {
+            case LIGHT: level = "light"; break;
+            case SERIOUS: level = "serious"; break;
+            case CRITICAL: level = c.stabilised ? "stabilised" : "critical"; break;
+            default: return null;
+        }
+        return "crew/wound_" + level + (pose.lying() ? "_down" : "");
     }
 
     /** A crew member, holding a crate while they carry a load. */

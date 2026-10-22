@@ -62,6 +62,8 @@ public class GameShell implements ApplicationListener {
     private boolean paused;
     /** Work for the start of the next frame, such as starting a game from a button. */
     private Runnable pending;
+    /** The debug scenario to start at launch rather than showing the main menu, or null. */
+    private com.hawkwing.RingsOfIron.debug.DebugScenarios.Entry launchScenario;
     /** The settings window waiting for a key to bind, or null. */
     private KeyCapture capture;
 
@@ -175,6 +177,12 @@ public class GameShell implements ApplicationListener {
         input.setFront(front);
         Gdx.input.setInputProcessor(new InputMultiplexer(front, input.processor()));
         showMain();
+        if (launchScenario != null) startScenario(launchScenario);
+    }
+
+    /** {@code --scenario id}: skip the main menu and start straight into that debug scenario. Before {@link #create}. */
+    public void setLaunchScenario(com.hawkwing.RingsOfIron.debug.DebugScenarios.Entry scenario) {
+        this.launchScenario = scenario;
     }
 
     /** True while a menu is up: the main menu, or the pause menu over a game. */
@@ -188,7 +196,8 @@ public class GameShell implements ApplicationListener {
         return hud.getTrafficMap().isVisible() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
                 || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getCrewWindow().isOpen()
                 || hud.getShipyardWindow().isOpen()
-                || hud.getConsoleWindow().isOpen() || game.isOverlayOpen() || game.isDevConsoleOpen();
+                || hud.getConsoleWindow().isOpen() || game.isOverlayOpen() || game.isDevConsoleOpen()
+                || game.isDebugMenuOpen();
     }
 
     @Override
@@ -292,6 +301,14 @@ public class GameShell implements ApplicationListener {
         pending = () -> start(firstPlay, null, NewGame.designed());
     }
 
+    /**
+     * Throws away the game running, if any, for a new one set up as a debug menu scenario; a new career for null.
+     * The debug menu (F3) and {@code scenario("id")} in the console come here.
+     */
+    public void startScenario(com.hawkwing.RingsOfIron.debug.DebugScenarios.Entry scenario) {
+        pending = () -> start(false, null, NewGame.designed(), scenario);
+    }
+
     /** Starts a new career with the seed and sponsor {@code newGame} asks for. */
     public void newGame(NewGame newGame) {
         pending = () -> start(false, null, newGame);
@@ -318,8 +335,15 @@ public class GameShell implements ApplicationListener {
     }
 
     private void start(boolean firstPlay, FileHandle save, NewGame newGame) {
+        start(firstPlay, save, newGame, null);
+    }
+
+    private void start(boolean firstPlay, FileHandle save, NewGame newGame,
+                       com.hawkwing.RingsOfIron.debug.DebugScenarios.Entry scenario) {
         if (game != null) disposeGame();
         game = new RingsOfIronGame(assetsDir, modsDir, firstPlay, newGame);
+        game.setScenario(scenario);
+        game.setScenarioLoader(this::startScenario);
         game.setHosted(true);
         game.setSaveSlots(slots);
         game.setBindings(bindings);

@@ -322,10 +322,24 @@ public final class CrewTasks {
             CrewTask t = a.crew.task;
             ShipGridComponent grid = a.grid();
             if (t == null) return Status.FAILED;
-            if (!TaskRules.isStillNeeded(t, grid, a.service)) {
+            Entity home = a.service.homeOf(a.entity);
+            // Sheltering aboard a docked craft: back aboard their own for a casualty (TaskRules#goesBackAboard)
+            boolean back = (a.pos.ship != home || a.pos.crossing != null) && TaskRules.goesBackAboard(a.crew, t, a.board());
+            ShipGridComponent homeGrid = back ? a.service.grid(home) : null;
+            if (back && homeGrid == null) return Status.FAILED;
+            if (!TaskRules.isStillNeeded(t, back ? homeGrid : grid, a.service)) {
                 a.board().cancel(t);
                 a.crew.task = null;
                 return Status.FAILED;
+            }
+            if (back) {
+                a.crew.activity = "going back aboard for " + describe(t);
+                CrewAgent.Travel go = a.travel(home, TaskRules.workSpots(t, homeGrid, a.service.pathfinder(homeGrid).graph, a.service));
+                if (go == CrewAgent.Travel.UNREACHABLE) {
+                    a.abandonUnreachable();
+                    return Status.FAILED;
+                }
+                return Status.RUNNING;
             }
             GridPathfinder pf = a.pathfinder();
             a.crew.activity = "going to " + describe(t);
@@ -365,6 +379,8 @@ public final class CrewTasks {
             if (a.crew.suited || a.crew.def.suitAir <= 0f) return Status.SUCCEEDED;
             // The spot may be on another craft: a ship latched alongside being stripped, say
             Entity site = TaskRules.siteOf(t);
+            // Or back aboard their own ship, from a docked craft they shelter on
+            if (site == null && a.pos.ship != a.service.homeOf(a.entity) && TaskRules.goesBackAboard(a.crew, t, a.board())) site = a.service.homeOf(a.entity);
             ShipGridComponent grid = site == null ? null : a.service.grid(site);
             if (grid == null) grid = a.grid();
             ShipTaskBoardComponent board = a.board();

@@ -29,6 +29,9 @@ import java.util.function.Supplier;
  * followed (at time warp).
  */
 public final class SpaceSnow {
+    /** As a developer overlay ({@code overlay("snow")} and the debug menu); shown by default. */
+    public static final String NAME = "snow";
+    public static final String DESCRIPTION = "the space snow that shows speed against a circular orbit at the ship's altitude (on in play)";
     /** Each layer's motion as a fraction of the true drift; the last is the true drift. */
     private static final float[] PARALLAX = {0.4f, 0.65f, 1f};
     /** Each layer's spacing, pixels: one cell holds at most one mote. */
