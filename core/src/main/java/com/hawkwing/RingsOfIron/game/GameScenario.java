@@ -126,6 +126,24 @@ public class GameScenario {
     /** The world's own dice, from the seed: station phases, traffic and stock. */
     private final java.util.Random dice;
 
+    /**
+     * Earth, and the Moon on its orbit round it, into {@code world}'s rails and macro-sim: the game's
+     * bodies, for a new game and for any scene that wants the same sky.
+     */
+    public static void addEarthAndMoon(GameWorld world) {
+        Entity earth = world.engine.createEntity();
+        earth.add(new UuidComponent(EARTH));
+        earth.add(new CelestialBodyComponent("Earth", MU_EARTH, R_EARTH, Double.POSITIVE_INFINITY));
+        world.engine.addEntity(earth);
+        world.macroSim.registerMassiveBody(EARTH);
+        Entity moon = world.engine.createEntity();
+        moon.add(new UuidComponent(MOON));
+        moon.add(new CelestialBodyComponent("Moon", MU_MOON, R_MOON, OrbitMath.soiRadius(MOON_DISTANCE, MU_MOON, MU_EARTH)));
+        moon.add(new OrbitComponent(EARTH, KeplerOrbit.circular(MU_EARTH, MOON_DISTANCE, MOON_ANGLE, 0, 1)));
+        world.engine.addEntity(moon);
+        world.macroSim.registerMassiveBody(MOON);
+    }
+
     private GameScenario(GameWorld world, Path assetsDir, Path modsDir, NewGame newGame) {
         this.world = world;
         this.newGame = newGame;
@@ -143,17 +161,7 @@ public class GameScenario {
         if (newGame.seeded) world.events.seed = newGame.stream(6);
         world.engine.getSerializationService().addParticipant(new SeedRecord());
 
-        Entity earth = world.engine.createEntity();
-        earth.add(new UuidComponent(EARTH));
-        earth.add(new CelestialBodyComponent("Earth", MU_EARTH, R_EARTH, Double.POSITIVE_INFINITY));
-        world.engine.addEntity(earth);
-        world.macroSim.registerMassiveBody(EARTH);
-        Entity moon = world.engine.createEntity();
-        moon.add(new UuidComponent(MOON));
-        moon.add(new CelestialBodyComponent("Moon", MU_MOON, R_MOON, OrbitMath.soiRadius(MOON_DISTANCE, MU_MOON, MU_EARTH)));
-        moon.add(new OrbitComponent(EARTH, KeplerOrbit.circular(MU_EARTH, MOON_DISTANCE, MOON_ANGLE, 0, 1)));
-        world.engine.addEntity(moon);
-        world.macroSim.registerMassiveBody(MOON);
+        addEarthAndMoon(world);
         // The career serves the sponsor the new game chose, and starts beside that sponsor's home
         world.standing.serve(newGame.sponsor);
         var sponsor = world.standing.factions().def(world.standing.sponsor());
@@ -199,16 +207,29 @@ public class GameScenario {
         // Flies for the pirates, if the data has them, so beating it counts with the factions
         int pirates = world.standing.factions().index(PIRATES);
         if (pirates >= 0) CrewFactory.ensureBoard(raider).faction = pirates;
+        world.standing.factions().crewHabits(world.crew.board(raider));
         raider.add(new HudMarkerComponent("Raider", HudMarkerComponent.Kind.HOSTILE).radius(10f));
         PhysicsBodyComponent rb = raider.getComponent(PhysicsBodyComponent.class);
         if (rb != null) PhysicsManager.setVelocity(rb.body, -12f, -3f);
         contacts.add(raider);
         // The raider's point defense is always up; it opens fire once the player shoots at it.
         world.combatEvents.shots.add((signal, shot) -> {
-            if (shot.shooter == player && shot.target == raider) provokeRaider();
+            if (shot.shooter == player && shot.target != null && shot.target == raider) provokeRaider();
         });
         world.combatEvents.impacts.add((signal, hit) -> {
-            if (hit.owner == player && hit.target == raider) provokeRaider();
+            if (hit.owner == player && hit.target != null && hit.target == raider) provokeRaider();
+        });
+        // Gone, the raider is forgotten: the engine pools its entities, and a later ship given the
+        // same one was provoked by the player's first shot as if it were the raider (round 9: seed
+        // 12's Black Sal flew at the player a frame early, or not, as the pool handed it out)
+        world.engine.getEcsEngine().addEntityListener(new EntityListener() {
+            @Override
+            public void entityAdded(Entity entity) {}
+
+            @Override
+            public void entityRemoved(Entity entity) {
+                if (entity == raider) raider = null;
+            }
         });
 
         // Traffic: shown and lockable while it is in the bubble.
@@ -337,6 +358,7 @@ public class GameScenario {
                 world.engine, name, typeId);
         station.angle = angle;
         StationCrew.spawnCrew(world.crew, world.engine.getEntity(uuid), world.standing.factions().ofStation(name));
+        world.standing.factions().crewHabits(world.crew.board(world.engine.getEntity(uuid)));
         return uuid;
     }
 
@@ -381,6 +403,13 @@ public class GameScenario {
             }
         }
         return false;
+    }
+
+    /** The player flies {@code ship} from now on, seated at its helm: a debug scenario's swap of hulls. */
+    public void takeShip(Entity ship) {
+        contacts.removeValue(ship, true);
+        player = ship;
+        seatAtHelm();
     }
 
     /** Gives the player's (new) ship a helm and sits the avatar at it, as at the start of a game. */
@@ -438,7 +467,9 @@ public class GameScenario {
      * raider stays out of it.
      */
     public void provokeRaider() {
-        if (ShipDisablement.isDisabled(raider)) return;
+        // A save from after the first raider was dealt with has none (round 9, real window: a shot
+        // down the barrel, target null, matched the null raider and crashed the game)
+        if (raider == null || ShipDisablement.isDisabled(raider)) return;
         SensorComponent sensor = raider.getComponent(SensorComponent.class);
         if (sensor != null && sensor.lockedTarget == null) sensor.lockedTarget = player;
         if (raider.getComponent(NpcCombatComponent.class) == null) raider.add(new NpcCombatComponent(player));
@@ -569,10 +600,48 @@ public class GameScenario {
         }
     }
 
+    /**
+     * Round 10: Tab passes over struck ships ({@link Struck}) while any hostile contact still fights,
+     * so it no longer locks a prize mid-fight (round 9's trace: Tab onto raider 20, struck 138 s
+     * before, and a harpoon brought it back). With nothing left fighting it cycles them too, so the
+     * player can still choose to fire on a prize. False cycles every contact, as round 9 did.
+     */
+    public static final boolean TAB_SKIPS_STRUCK = true;
+
+    /**
+     * The contact after {@code current} for Tab, in the order they came into the bubble, wrapping
+     * round; the first when {@code current} is null or gone. Struck ships are passed over while any
+     * contact still fights ({@link #TAB_SKIPS_STRUCK}).
+     */
     public Entity nextContact(Entity current) {
         if (contacts.size == 0) return null;
+        boolean skip = TAB_SKIPS_STRUCK && anyFighting();
         int i = current == null ? -1 : contacts.indexOf(current, true);
-        return contacts.get((i + 1) % contacts.size);
+        for (int n = 1; n <= contacts.size; n++) {
+            Entity next = contacts.get((i + n + contacts.size) % contacts.size);
+            if (!skip || !Struck.struck(world, next)) return next;
+        }
+        return null;
+    }
+
+    /**
+     * The lock a new fight starts with (the game's start, a rescue, a load without one): the first
+     * contact that has not struck, or null if every one has. Never a prize, whose lock under the
+     * trigger would be aimed fire.
+     */
+    public Entity firstTarget() {
+        for (Entity e : contacts) if (!Struck.struck(world, e)) return e;
+        return null;
+    }
+
+    /** True while some hostile contact can still fight: not struck, and not beaten. */
+    private boolean anyFighting() {
+        for (Entity e : contacts) {
+            HudMarkerComponent m = e.getComponent(HudMarkerComponent.class);
+            if (m == null || m.kind != HudMarkerComponent.Kind.HOSTILE) continue;
+            if (!Struck.struck(world, e) && !FirstPlay.beaten(world, e)) return true;
+        }
+        return false;
     }
 
     /** The station type with this id from the economy data, or the n-th one if the data has no such type. */

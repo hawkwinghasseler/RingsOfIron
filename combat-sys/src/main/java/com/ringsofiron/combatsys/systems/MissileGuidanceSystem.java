@@ -94,6 +94,8 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
     private final Vector2 zem = new Vector2();
     private final Vector2 cmd = new Vector2();
     private final boolean[] blocked = new boolean[1];
+    /** Ships a launcher's seekers leave alone unless the missile was fired at them; null spares none. */
+    private WeaponControlSystem.HoldFire spared;
 
     public MissileGuidanceSystem(PhysicsManager physics, CombatEvents events, CombatDefs defs,
                                  BallisticsSystem ballistics, SensorTrackingSystem sensors) {
@@ -102,6 +104,15 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         this.defs = defs;
         this.ballistics = ballistics;
         this.sensors = sensors;
+    }
+
+    /**
+     * Ships whose seekers pass over: a missile from {@code shooter} never locks a ship this spares
+     * unless it was fired at that ship (round 10: a heavy missile fired at a raider locked a fallen
+     * base's battery instead and burst on it). The game wires the same rule as the player's guns.
+     */
+    public void setSpared(WeaponControlSystem.HoldFire spared) {
+        this.spared = spared;
     }
 
     @Override
@@ -154,6 +165,28 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         e.add(m);
         e.add(new SignatureComponent(MISSILE_RADAR, MISSILE_THERMAL, def.hitRadius));
         return e;
+    }
+
+    /**
+     * Cuts the guidance of every missile {@code launcher} has in flight: each forgets its target,
+     * its motor goes dark and it coasts on as a ballistic slug, so it no longer homes on anyone or
+     * counts as inbound. Returns how many.
+     */
+    public int goBallistic(Entity launcher) {
+        if (launcher == null || missiles == null) return 0;
+        int n = 0;
+        for (int i = 0; i < missiles.size(); i++) {
+            MissileComponent m = missileMapper.get(missiles.get(i));
+            if (m.launcher != launcher || m.guidanceCut) continue;
+            m.guidanceCut = true;
+            m.target = null;
+            m.seekerLock = null;
+            m.propellant = 0f;
+            m.throttle = 0f;
+            m.phase = MissileComponent.Phase.COAST;
+            n++;
+        }
+        return n;
     }
 
     /** Drops a decoy at a point with a velocity; it shines for {@code lifetime} seconds. */
@@ -219,8 +252,13 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         MissileDef def = m.def;
         m.throttle = 0f;
         p.mass = m.mass();
-        if (p.age < def.armingDelay) {
+        if (p.age < def.armingDelay && !m.guidanceCut) {
             m.phase = MissileComponent.Phase.LAUNCH;
+            return false;
+        }
+        if (m.guidanceCut) {
+            m.phase = MissileComponent.Phase.COAST;
+            updateSignature(e, m);
             return false;
         }
 
@@ -263,9 +301,15 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         float halfFov = 0.5f * seeker.fovDeg * MathUtils.degreesToRadians;
         Entity best = null;
         float bestScore = 0f;
+        // A lock on a ship it spares is let go, so the proximity fuse never fires on it
+        if (m.seekerLock != null && m.seekerLock != m.target && spares(m, m.seekerLock)) {
+            m.seekerLock = null;
+            m.seekerTrack.reset();
+        }
         for (int i = 0; i < contacts.size(); i++) {
             Entity c = contacts.get(i);
             if (c == self || c == m.launcher || c.isScheduledForRemoval() || missileMapper.has(c)) continue;
+            if (c != m.target && spares(m, c)) continue;
             DecoyComponent decoy = decoyMapper.get(c);
             if (decoy != null && decoy.owner == m.launcher) continue;
             if (!ContactState.read(c, pos, vel)) continue;
@@ -292,6 +336,10 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         estVel.set(m.seekerTrack.v);
         estAcc.set(m.seekerTrack.a);
         return true;
+    }
+
+    private boolean spares(MissileComponent m, Entity c) {
+        return spared != null && m.launcher != null && spared.holds(m.launcher, c);
     }
 
     /** Asteroids block seekers; ships do not (the seeker would lock them instead). */
@@ -343,6 +391,8 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
         boom.warhead = defs.warhead(m.def.warhead);
         boom.owner = m.launcher;
         boom.target = victim;
+        boom.aimedAt = p.aimedAt;
+        boom.pointDefense = p.pointDefense;
         boom.tick = events.tick;
         boom.sinceFired = ballistics.getClock() - p.firedAt;
         events.pendingDetonations.add(boom);

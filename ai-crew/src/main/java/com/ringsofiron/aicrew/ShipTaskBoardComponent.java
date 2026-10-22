@@ -3,8 +3,10 @@ package com.ringsofiron.aicrew;
 import com.badlogic.ashley.core.Component;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.IntArray;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
+import com.ringsofiron.interiorgrid.crew.ResetShortTask;
 
 /**
  * The job blackboard of one ship, attached to the ship entity next to its
@@ -35,6 +37,20 @@ public class ShipTaskBoardComponent implements Component {
      * default; the player toggles it for their own ship.
      */
     public boolean suitsAtBattleStations = true;
+    /**
+     * Whether the crew keep clear of where the fire fell at battle stations ({@link
+     * TaskRules#waitsOutFire}). On by default; set from their faction's data when the ship is crewed
+     * ({@code crews_keep_clear_of_fire}, round 9: the pirates stay at their posts).
+     */
+    public boolean keepsClearOfFire = true;
+    /**
+     * Whether the crew get the power back before anything else ({@link #powerReset}): a short, the
+     * reactor's first, is reset ahead of first aid, breaches and every other job but abandoning ship. Off by default; set from their faction's data when the ship is crewed ({@code
+     * crews_reset_power_first}, round 10: a pirate raider left dark under a frigate's railguns at 4 km
+     * stopped bleeds and sealed breaches until it struck, and never fired; one whose turret mount
+     * shorted struck in reach for silenced guns).
+     */
+    public boolean resetsPowerFirst;
     /** True while the ship is in a fight: set each tick by the game, so not saved. */
     public transient boolean battleStations;
     /**
@@ -44,6 +60,44 @@ public class ShipTaskBoardComponent implements Component {
      * days, and the player standing up from the helm found nobody to hand it to.
      */
     public transient boolean helmWanted;
+
+    /**
+     * Tiles within this many (in x or y) of where a crew member was hit by weapon fire are under fire
+     * for the rest of the fight ({@link #underFire}).
+     */
+    public static final int FIRE_ZONE_RADIUS = 2;
+    /**
+     * Where crew were hit by weapon fire in this fight, as x, y pairs: set by their wounds
+     * ({@link CrewService#applyDamage}), cleared by {@link #standDown} once the ship is off battle
+     * stations. Saved (round 9), so a fight loaded part way through still keeps clear of them.
+     */
+    public final IntArray hitTiles = new IntArray();
+
+    /** Notes a crew member hit by weapon fire at (x, y). */
+    public void hitAt(int x, int y) {
+        for (int i = 0; i < hitTiles.size; i += 2) if (hitTiles.get(i) == x && hitTiles.get(i + 1) == y) return;
+        hitTiles.add(x);
+        hitTiles.add(y);
+    }
+
+    /**
+     * True while at battle stations if (x, y) is within {@link #FIRE_ZONE_RADIUS} of where a crew
+     * member was hit in this fight (round 8). Seed 7's ace raked one hull section: a hand went to patch
+     * the leak there and was cut down, and the rest went in one by one, to stop her bleeding, seal the
+     * breach and mend the turret, until all four were down and bled out.
+     */
+    public boolean underFire(int x, int y) {
+        if (!battleStations) return false;
+        for (int i = 0; i < hitTiles.size; i += 2) {
+            if (Math.abs(hitTiles.get(i) - x) <= FIRE_ZONE_RADIUS && Math.abs(hitTiles.get(i + 1) - y) <= FIRE_ZONE_RADIUS) return true;
+        }
+        return false;
+    }
+
+    /** Forgets where the fire fell: the game calls it while the ship is off battle stations. */
+    public void standDown() {
+        hitTiles.clear();
+    }
 
     /** True while the crew should keep their suits on for battle stations. */
     public boolean battleSuits() {
@@ -88,6 +142,10 @@ public class ShipTaskBoardComponent implements Component {
     }
 
     private CrewTask best(CrewRole role, int x, int y, TaskFilter filter, boolean consoles) {
+        if (resetsPowerFirst && !consoles) {
+            CrewTask power = powerReset(role, x, y, filter);
+            if (power != null) return power;
+        }
         CrewTask best = null;
         float bestScore = Float.NEGATIVE_INFINITY;
         for (CrewTask t : tasks) {
@@ -95,13 +153,48 @@ public class ShipTaskBoardComponent implements Component {
             float affinity = role.affinity(t);
             if (affinity <= 0f) continue;
             if (filter != null && !filter.accept(t)) continue;
-            float score = t.priority * affinity - DISTANCE_WEIGHT * (Math.abs(t.x - x) + Math.abs(t.y - y));
+            float score = TaskRules.priority(this, t) * affinity - DISTANCE_WEIGHT * (Math.abs(t.x - x) + Math.abs(t.y - y));
             if (score > bestScore) {
                 bestScore = score;
                 best = t;
             }
         }
         return best;
+    }
+
+    /**
+     * On a board that {@link #resetsPowerFirst}, the open short reset that {@code role} does at all: the
+     * reactor's first, then the nearest of the rest; else null. The guard where a crewman picks a
+     * task: {@link #best} returns it ahead of the rest, and a crewman holding any other job puts it down for
+     * it ({@link #yieldsToPower}).
+     */
+    public CrewTask powerReset(CrewRole role, int x, int y, TaskFilter filter) {
+        if (!resetsPowerFirst) return null;
+        for (CrewTask t : tasks) if (t.isActive() && t.kind == CrewTask.Kind.EVACUATE) return null; // abandoning ship
+        CrewTask best = null;
+        float bestScore = Float.NEGATIVE_INFINITY;
+        for (CrewTask t : tasks) {
+            if (t.status != CrewTask.Status.OPEN || !(t instanceof ResetShortTask)) continue;
+            if (role.affinity(t) <= 0f || (filter != null && !filter.accept(t))) continue;
+            float score = t.priority - DISTANCE_WEIGHT * (Math.abs(t.x - x) + Math.abs(t.y - y));
+            if (score > bestScore) {
+                bestScore = score;
+                best = t;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * True if a crewman of {@code role} at (x, y) holding {@code held} should put it down for the power
+     * ({@link #powerReset}): on a board that {@link #resetsPowerFirst}, unless what they hold is a power
+     * reset already or abandoning ship. A short found while they were at first aid or a breach otherwise
+     * waited for it to be done.
+     */
+    public boolean yieldsToPower(CrewTask held, CrewRole role, int x, int y, TaskFilter filter) {
+        if (!resetsPowerFirst || held == null || held.kind == CrewTask.Kind.EVACUATE) return false;
+        if (held instanceof ResetShortTask) return false;
+        return powerReset(role, x, y, filter) != null;
     }
 
     public boolean claim(CrewTask task, Entity crew) {

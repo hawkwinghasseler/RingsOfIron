@@ -177,6 +177,10 @@ public final class FirstPlay {
         if (ship == null || world.engine.getEcsEngine().getEntities().indexOf(ship, true) < 0) return true;
         DisabledComponent.Reason why = ShipDisablement.reason(ship);
         if (why != null && why.sticky()) return true;
+        // A stun passes, so a ship dark only for it isn't beaten; a broken hull or a downed crew is,
+        // stunned or not (round 8: the frigate broken at the raid wasn't, so the base's ion raider kept
+        // it in the fight and the base shot it to a wreck)
+        if (why != null && why != DisabledComponent.Reason.NO_POWER) return true;
         if (IonStun.anyStunned(ship)) return false;
         if (why != null) return true;
         ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);

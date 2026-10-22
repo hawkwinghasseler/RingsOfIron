@@ -33,7 +33,7 @@ public final class KeyBindings {
         WARP_DOWN("Time warp down", Input.Keys.COMMA),
         VIEW("Deck / outside view", Input.Keys.V),
         USE("Use console", Input.Keys.E),
-        LIGHTS("Deck lights", Input.Keys.O),
+        LIGHTS("Lighting", Input.Keys.O),
         MAP("Traffic map", Input.Keys.M),
         TRADE("Station market", Input.Keys.T),
         YARD("Station yard", Input.Keys.Y),

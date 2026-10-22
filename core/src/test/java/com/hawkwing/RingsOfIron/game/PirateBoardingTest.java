@@ -84,6 +84,8 @@ class PirateBoardingTest {
         CargoHoldComponent theirs = ship.getComponent(CargoHoldComponent.class);
         if (theirs != null) assertTrue(theirs.amount("ore") > 0, "what fits goes in the pirate's hold");
         assertTrue(said.stream().anyMatch(n -> n.contains("took 10 ore and 2,000 cr")));
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.contains("took 10 ore") && n.kind == NoticeLog.Kind.WARNING),
+                "a loss is a warning, not a promotion's green");
         run(3);
         assertTrue(h.brokeOff, "and it leaves");
         assertNull(world.pirateBoarding.boarder());
@@ -166,9 +168,185 @@ class PirateBoardingTest {
         assertTrue(world.hostiles.notices.stream().noneMatch(n -> n.equals(wing.displayName + " is breaking off with its leader")));
     }
 
+    @Test
+    void aBoarderThatIsHitBreaksOffAndTakesNothing() {
+        // Round 8: the railgun ace took hits while latched and carried on (wound survey, "Hits after")
+        credits(20_000);
+        String id = huntingPirate();
+        Entity ship = world.engine.getEntity(id);
+        HostileComponent h = hostiles.get(id);
+        beatThePlayer();
+        assertTrue(runUntil(600, () -> said.stream().anyMatch(n -> n.contains("has latched on"))), "latched on");
+        // Round 9: boarded is a warning, not a promotion's green
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.contains("has latched on") && n.kind == NoticeLog.Kind.WARNING));
+        world.combatEvents.impacts.dispatch(hitFrom(game.player, ship));
+        assertNull(world.pirateBoarding.boarder(), "one hit ends it");
+        assertTrue(said.contains(h.displayName + " breaks off its boarding under fire"));
+        assertTrue(world.pirateBoarding.drivenOff(id));
+        assertTrue(runUntil(5, () -> h.brokeOff), "it leaves");
+        assertTrue(world.hostiles.notices.stream().anyMatch(n -> n.contains("leaves you drifting")), "the player left drifting");
+        run(PirateBoarding.BOARD_SECONDS + 60);
+        assertTrue(takes.isEmpty(), "it took nothing");
+        assertNull(world.pirateBoarding.boarder(), "nor came back to board again");
+        assertEquals(20_000, account().credits, 1e-9);
+    }
+
+    @Test
+    void aBoarderHitFarOutKeepsComing() {
+        // Round 9: in round 8's window the frigate's guns hit the boarder about 4.5 km out and it broke
+        // off, so a player whose ship still had a gun never saw a boarding latch on
+        credits(20_000);
+        String id = huntingPirate(4_500);
+        Entity ship = world.engine.getEntity(id);
+        HostileComponent h = hostiles.get(id);
+        beatThePlayer();
+        assertTrue(runUntil(60, () -> world.pirateBoarding.boarder() == ship), "it comes to board");
+        double range = range(ship);
+        assertTrue(range > 3_500, "still far out: " + range);
+        world.combatEvents.impacts.dispatch(hitFrom(game.player, ship));
+        assertSame(ship, world.pirateBoarding.boarder(), "a hit " + Math.round(range) + " m out doesn't drive it off");
+        assertFalse(world.pirateBoarding.drivenOff(id));
+        assertFalse(said.contains(h.displayName + " breaks off its boarding under fire"));
+        assertTrue(runUntil(600, () -> said.stream().anyMatch(n -> n.contains("has latched on"))), "it latches on");
+    }
+
+    @Test
+    void aBoarderHitWithinBreakOffRangeBreaksOff() {
+        credits(20_000);
+        String id = huntingPirate(4_500);
+        Entity ship = world.engine.getEntity(id);
+        HostileComponent h = hostiles.get(id);
+        beatThePlayer();
+        assertTrue(runUntil(60, () -> world.pirateBoarding.boarder() == ship));
+        assertTrue(runUntil(600, () -> range(ship) < PirateBoarding.BREAK_OFF_RANGE - 50), "it closes in");
+        assertFalse(said.stream().anyMatch(n -> n.contains("has latched on")), "not yet latched on");
+        world.combatEvents.impacts.dispatch(hitFrom(game.player, ship));
+        assertNull(world.pirateBoarding.boarder(), "hit within " + PirateBoarding.BREAK_OFF_RANGE + " m, it breaks off");
+        assertTrue(said.contains(h.displayName + " breaks off its boarding under fire"));
+        assertTrue(world.pirateBoarding.drivenOff(id), "and doesn't board again while we are beaten");
+        run(PirateBoarding.BOARD_SECONDS + 60);
+        assertTrue(takes.isEmpty());
+        assertNull(world.pirateBoarding.boarder());
+    }
+
+    @Test
+    void aHitFromSomeoneElseDoesNotDriveTheBoarderOff() {
+        credits(20_000);
+        String id = huntingPirate();
+        Entity ship = world.engine.getEntity(id);
+        beatThePlayer();
+        assertTrue(runUntil(60, () -> world.pirateBoarding.boarder() == ship));
+        world.combatEvents.impacts.dispatch(hitFrom(null, ship));
+        assertSame(ship, world.pirateBoarding.boarder());
+        assertFalse(world.pirateBoarding.drivenOff(id));
+    }
+
+    @Test
+    void beingDrivenOffComesBackFromASaveAndEndsWithTheFight(@TempDir Path dir) {
+        credits(20_000);
+        String id = huntingPirate();
+        Entity ship = world.engine.getEntity(id);
+        beatThePlayer();
+        assertTrue(runUntil(60, () -> world.pirateBoarding.boarder() == ship));
+        assertTrue(runUntil(600, () -> range(ship) < PirateBoarding.BREAK_OFF_RANGE), "it closes in");
+        world.combatEvents.impacts.dispatch(hitFrom(game.player, ship));
+        FileHandle file = new FileHandle(dir.resolve("quicksave.json").toFile());
+        assertNull(game.quickSave(file));
+        game.quickLoad(file);
+        assertTrue(world.pirateBoarding.drivenOff(id), "kept in the save");
+        // The reactor back on: the fight is over, and the pirate may board another day
+        for (Entity e : game.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s.type == SubsystemComponent.SubsystemType.REACTOR) s.switchedOn = true;
+        }
+        assertTrue(runUntil(10, () -> !world.pirateBoarding.drivenOff(id)));
+    }
+
+    @Test
+    void aDockedPlayerIsNeverBoarded() {
+        credits(20_000);
+        assertTrue(game.dockAtHighport());
+        run(5);
+        Entity highport = world.engine.getEntity(game.highport);
+        assertSame(highport, world.docking.dockedTo(game.player));
+        huntingPirate();
+        beatThePlayer();
+        run(PirateBoarding.BOARD_SECONDS + 120);
+        assertTrue(said.stream().noneMatch(n -> n.contains("coming alongside to board")), String.join("\n", said));
+        assertNull(world.pirateBoarding.boarder());
+        assertTrue(takes.isEmpty());
+        assertEquals(20_000, account().credits, 1e-9);
+        assertSame(highport, world.docking.dockedTo(game.player), "still at the berth");
+    }
+
+    @Test
+    void aBoardingInProgressEndsOnDocking() {
+        credits(20_000);
+        String id = huntingPirate();
+        Entity ship = world.engine.getEntity(id);
+        HostileComponent h = hostiles.get(id);
+        beatThePlayer();
+        assertTrue(runUntil(600, () -> said.stream().anyMatch(n -> n.contains("has latched on"))), "latched on");
+        SensorComponent ours = game.player.getComponent(SensorComponent.class);
+        ours.lockedTarget = ship;
+        assertTrue(game.dockAtHighport());
+        run(2);
+        assertNull(world.pirateBoarding.boarder(), "docked, the boarding is over");
+        assertTrue(said.contains(h.displayName + " casts off: you are at a berth"));
+        // A gun left locked on it would open up from the berth once the power is back, and tear the latch
+        assertNotSame(ship, ours.lockedTarget, "our guns let it go");
+        assertTrue(runUntil(5, () -> h.brokeOff));
+        run(PirateBoarding.BOARD_SECONDS + 60);
+        assertTrue(takes.isEmpty());
+        assertNotSame(ship, world.pirateBoarding.boarder());
+        assertEquals(20_000, account().credits, 1e-9);
+    }
+
+    @Test
+    void aBoardingInProgressEndsWhenThePlayerIsTakenInTow() {
+        credits(20_000);
+        String id = huntingPirate();
+        HostileComponent h = hostiles.get(id);
+        beatThePlayer();
+        assertTrue(runUntil(600, () -> said.stream().anyMatch(n -> n.contains("has latched on"))), "latched on");
+        assertNull(world.rescue.tow(game.player));
+        assertNull(world.pirateBoarding.boarder());
+        assertTrue(said.contains(h.displayName + " casts off as you are taken in tow"));
+        run(PirateBoarding.BOARD_SECONDS + 60);
+        assertTrue(takes.isEmpty());
+    }
+
+    @Test
+    void aLatchedBoarderNeverMovesADockedShip() {
+        // Seed 2026 (round 7): the boarding finished at Highport's berth and the ship ended docked at nothing
+        credits(20_000);
+        String id = huntingPirate();
+        Entity ship = world.engine.getEntity(id);
+        beatThePlayer();
+        assertTrue(runUntil(600, () -> said.stream().anyMatch(n -> n.contains("has latched on"))), "latched on");
+        assertTrue(game.dockAtHighport());
+        run(5);
+        Entity highport = world.engine.getEntity(game.highport);
+        assertSame(highport, world.docking.dockedTo(game.player));
+        com.badlogic.gdx.math.Vector2 at = offset(game.player, highport);
+        // However the boarder flies now, the berth holds the ship where it is
+        for (int i = 0; i < 120 / FRAME; i++) {
+            world.update(FRAME);
+            assertSame(highport, world.docking.dockedTo(game.player), "pulled off the berth after " + i * FRAME + " s");
+        }
+        assertEquals(0, at.dst(offset(game.player, highport)), 1f, "the ship hasn't moved on its berth");
+        assertTrue(takes.isEmpty());
+        assertNotSame(ship, world.pirateBoarding.boarder());
+    }
+
     // ---------------------------------------------------------------------------------------------
 
     private String huntingPirate() {
+        return huntingPirate(3_000);
+    }
+
+    /** A pirate gunship hunting the player, brought in {@code dx} m off. */
+    private String huntingPirate(float dx) {
         String id = null;
         for (Map.Entry<String, HostileComponent> e : hostiles.all().entrySet()) {
             if (e.getValue().isPirate() && HostileTraffic.PIRATE_GUNSHIP.equals(e.getValue().shipId)) id = e.getKey();
@@ -177,7 +355,7 @@ class PirateBoardingTest {
         hostiles.get(id).targetUuid = HostileComponent.PLAYER;
         double now = world.macroSim.now();
         StateVector s = world.macroSim.gateway().anchorStateAt(now, new StateVector());
-        world.macroSim.rails().attach(id, GameScenario.EARTH, s.set(s.x + 3_000, s.y, s.vx, s.vy), now);
+        world.macroSim.rails().attach(id, GameScenario.EARTH, s.set(s.x + dx, s.y, s.vx, s.vy), now);
         Entity ship = world.engine.getEntity(id);
         for (int i = 0; i < 120 && ship.getComponent(PhysicsBodyComponent.class) == null; i++) world.update(FRAME);
         assertNotNull(ship.getComponent(PhysicsBodyComponent.class), "came into the bubble");
@@ -202,6 +380,30 @@ class PirateBoardingTest {
             SubsystemComponent s = e.getComponent(SubsystemComponent.class);
             if (s.type == SubsystemComponent.SubsystemType.REACTOR) s.switchedOn = false;
         }
+    }
+
+    private com.ringsofiron.combatsys.events.ImpactEvent hitFrom(Entity owner, Entity target) {
+        var hit = new com.ringsofiron.combatsys.events.ImpactEvent();
+        hit.target = target;
+        hit.owner = owner;
+        return hit;
+    }
+
+    /** How far {@code ship} is from ours, m. */
+    private double range(Entity ship) {
+        var a = ship.getComponent(PhysicsBodyComponent.class);
+        var b = game.player.getComponent(PhysicsBodyComponent.class);
+        return com.ringsofiron.physicsexterior.PhysicsManager.getPosition(a.body, new com.badlogic.gdx.math.Vector2())
+                .dst(com.ringsofiron.physicsexterior.PhysicsManager.getPosition(b.body, new com.badlogic.gdx.math.Vector2()));
+    }
+
+    /** Where {@code ship} sits in {@code station}'s frame, m. */
+    private com.badlogic.gdx.math.Vector2 offset(Entity ship, Entity station) {
+        var a = world.docking.bodyOf(ship);
+        var b = world.docking.bodyOf(station);
+        var d = com.ringsofiron.physicsexterior.PhysicsManager.getPosition(a, new com.badlogic.gdx.math.Vector2())
+                .sub(com.ringsofiron.physicsexterior.PhysicsManager.getPosition(b, new com.badlogic.gdx.math.Vector2()));
+        return d.rotateRad(-b.getAngle());
     }
 
     private TraderComponent account() {

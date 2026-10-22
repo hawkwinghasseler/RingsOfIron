@@ -18,6 +18,12 @@
 #     into the tile; it takes no room there. The ship editor's Light tool places them
 #     (and auto-places them along every room's walls). With no lights key the game
 #     works them out the same way.
+#   rcs = [ { x, y, side, kind, thrust } ] bolts an RCS thruster block onto that side of
+#     hull tile (x, y), a side that faces space. kind LINEAR has one nozzle, out through
+#     that side; QUAD has that one and one each way along the hull. thrust is newtons a
+#     nozzle (left out, the kind's standard). A ship with blocks turns, strafes and backs
+#     up on what they give it rather than its max_torque and the engines' share; a
+#     block stops when its hull tile is destroyed. The ship editor's RCS tool places them.
 # Rows read top to bottom; listed coordinates have (0, 0) at the bottom-left tile.
 # A chassis marked station = true is a station layout, named by a station type's
 # blueprint in economy.json.
@@ -70,6 +76,20 @@ coverings = [ { covering = "CARPET", x = 7, y = 1, width = 6, height = 4 } ]
 lights = [
   { x = 10, y = 1, side = "BOTTOM" },
 ]
+# RCS: a quad block at each corner turns the ship, a linear pair amidships (over the centre of
+# mass) strafes it, and a linear pair on the bow either side of the centreline backs it up.
+# Thrusts are set so it turns, strafes and backs up as hard as it did on its ship's figures.
+rcs = [
+  { x = 1, y = 5, side = "TOP", kind = "QUAD", thrust = 1.0e4 },
+  { x = 1, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 1.0e4 },
+  { x = 14, y = 5, side = "TOP", kind = "QUAD", thrust = 1.0e4 },
+  { x = 14, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 1.0e4 },
+  { x = 8, y = 5, side = "TOP", kind = "LINEAR", thrust = 5.8e5 },
+  { x = 8, y = 0, side = "BOTTOM", kind = "LINEAR", thrust = 5.8e5 },
+  { x = 15, y = 2, side = "RIGHT", kind = "LINEAR", thrust = 4.6e5 },
+  { x = 15, y = 3, side = "RIGHT", kind = "LINEAR", thrust = 4.6e5 },
+]
+
 
 [chassis.freighter]
 name = "Light Freighter"
@@ -115,23 +135,40 @@ lights = [
   { x = 17, y = 8, side = "RIGHT" },
   { x = 16, y = 11, side = "TOP" },
 ]
+# RCS: corner quads, and linear pairs amidships and on the bow either side of the docking port.
+# It turns and strafes as hard as before; the bow pair sits too far off the centreline to give
+# the old retro thrust without turning it harder, so it backs up at about 40% of what it did.
+rcs = [
+  { x = 1, y = 12, side = "TOP", kind = "QUAD", thrust = 1.0e4 },
+  { x = 1, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 1.0e4 },
+  { x = 18, y = 12, side = "TOP", kind = "QUAD", thrust = 1.0e4 },
+  { x = 18, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 1.0e4 },
+  { x = 10, y = 12, side = "TOP", kind = "LINEAR", thrust = 7.3e5 },
+  { x = 10, y = 0, side = "BOTTOM", kind = "LINEAR", thrust = 7.3e5 },
+  { x = 19, y = 3, side = "RIGHT", kind = "LINEAR", thrust = 2.25e5 },
+  { x = 19, y = 9, side = "RIGHT", kind = "LINEAR", thrust = 2.25e5 },
+]
+
 
 [chassis.raider]
 name = "Light Raider"
 tile_size = 1.0
 origin_x = -7.5
 origin_y = -2.5
-# A pirate's fast boat: a Medium reactor forward, one turret mount in the nose (6, 0), and two
-# Small engines in the stern either side of the nitrogen tank. One pipe run joins the engines,
-# the nitrogen and oxygen tanks, the propellant tank and life support. A two-tile hold for loot,
-# and a Small passive docking port on top, so it can be boarded once beaten.
-# A Small escape pod (4 seats) stands at x 12 forward of the hold, its hatch out through the top
-# hull, so the raider can be flown as a player ship.
+# A pirate's fast boat: one turret mount in the nose (6, 0), and two Small engines in the stern
+# either side of the nitrogen tank. One pipe run joins the engines, the nitrogen and oxygen tanks,
+# the propellant tank and life support. A Small passive docking port on top, so it can be boarded
+# once beaten. A Small escape pod (4 seats) stands at x 12 behind the turret, its hatch out
+# through the top hull, so the raider can be flown as a player ship.
+# Round 9: the Medium reactor sits amidships, just forward of life support, behind the helm and
+# weapons consoles, the two-tile hold for loot (now standing across the ship at x 11) and the pod.
+# A railgun slug from ahead meets those first: round 8 found slugs at 3 to 4 km shorting the
+# reactor when it stood right behind the turret, so the raider went dark before it was in reach.
 rows = [
   "###DDD#########",
-  "#EE..L.HH.RR..#",
-  "#...PL.WW.RR.T#",
-  "#EE.P..CC.....#",
+  "#EE..LRR.HHC..#",
+  "#...PLRR.WWC.T#",
+  "#EE.P.........#",
   "###############",
 ]
 mounts = [
@@ -152,6 +189,18 @@ lights = [
   { x = 10, y = 1, side = "BOTTOM" },
   { x = 13, y = 1, side = "BOTTOM" },
 ]
+# RCS: corner quads, and linear pairs amidships and on the bow by the centreline, as on the corvette
+rcs = [
+  { x = 1, y = 4, side = "TOP", kind = "QUAD", thrust = 3.9e3 },
+  { x = 1, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 3.9e3 },
+  { x = 13, y = 4, side = "TOP", kind = "QUAD", thrust = 3.9e3 },
+  { x = 13, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 3.9e3 },
+  { x = 7, y = 4, side = "TOP", kind = "LINEAR", thrust = 5.9e5 },
+  { x = 7, y = 0, side = "BOTTOM", kind = "LINEAR", thrust = 5.9e5 },
+  { x = 14, y = 1, side = "RIGHT", kind = "LINEAR", thrust = 4.7e5 },
+  { x = 14, y = 3, side = "RIGHT", kind = "LINEAR", thrust = 4.7e5 },
+]
+
 
 [chassis.battery]
 name = "Gun Platform"
@@ -176,6 +225,14 @@ lights = [
   { x = 7, y = 2, side = "RIGHT" },
   { x = 4, y = 5, side = "TOP" },
 ]
+# RCS: a quad block at each corner, enough to turn the platform on its guns
+rcs = [
+  { x = 1, y = 6, side = "TOP", kind = "QUAD", thrust = 9.8e3 },
+  { x = 7, y = 6, side = "TOP", kind = "QUAD", thrust = 9.8e3 },
+  { x = 1, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 9.8e3 },
+  { x = 7, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 9.8e3 },
+]
+
 
 [chassis.gunship]
 name = "Gunship"
@@ -236,6 +293,18 @@ lights = [
   { x = 10, y = 6, side = "TOP" },
   { x = 14, y = 6, side = "TOP" },
 ]
+# RCS: corner quads, and linear pairs amidships and on the bow by the centreline, as on the corvette
+rcs = [
+  { x = 1, y = 7, side = "TOP", kind = "QUAD", thrust = 3.75e4 },
+  { x = 1, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 3.75e4 },
+  { x = 18, y = 7, side = "TOP", kind = "QUAD", thrust = 3.75e4 },
+  { x = 18, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 3.75e4 },
+  { x = 10, y = 7, side = "TOP", kind = "LINEAR", thrust = 7.75e5 },
+  { x = 10, y = 0, side = "BOTTOM", kind = "LINEAR", thrust = 7.75e5 },
+  { x = 19, y = 3, side = "RIGHT", kind = "LINEAR", thrust = 6.05e5 },
+  { x = 19, y = 4, side = "RIGHT", kind = "LINEAR", thrust = 6.05e5 },
+]
+
 
 [chassis.frigate]
 name = "Frigate"
@@ -294,9 +363,127 @@ lights = [
   { x = 19, y = 8, side = "TOP" },
 ]
 
+# RCS: corner quads, and linear pairs amidships and on the bow by the centreline, as on the corvette
+rcs = [
+  { x = 1, y = 9, side = "TOP", kind = "QUAD", thrust = 6.05e4 },
+  { x = 1, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 6.05e4 },
+  { x = 22, y = 9, side = "TOP", kind = "QUAD", thrust = 6.05e4 },
+  { x = 22, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 6.05e4 },
+  { x = 12, y = 9, side = "TOP", kind = "LINEAR", thrust = 7.3e5 },
+  { x = 12, y = 0, side = "BOTTOM", kind = "LINEAR", thrust = 7.3e5 },
+  { x = 23, y = 4, side = "RIGHT", kind = "LINEAR", thrust = 5.6e5 },
+  { x = 23, y = 5, side = "RIGHT", kind = "LINEAR", thrust = 5.6e5 },
+]
+
+# The audio demo's ship (the audio demo and its scenario load it): a hull laid out to show everything
+# that changes how a sound is heard aboard. Never sold or flown by anyone else.
+#   - Engineering aft (x 1-7): engines, reactor, life support, tanks, behind a thick full-tile wall (x 8)
+#     with one doorway and a door in it, so a sound through it can be heard against one through a thin wall.
+#   - A corridor (y 5-6) runs forward with a door into each room off it.
+#   - Above it, crew quarters (carpeted, so a fire there has fuel) and the bridge, with a thin wall
+#     between them and no door: heard through the wall, or round by the corridor.
+#   - Below it, the hold and the vacuum lab, whose door starts shut: vent the lab to hear its sounds
+#     lose their high end and fade as the air goes.
+#   - Forward (x 21-24), the turret room under a Small docking port, behind a bulkhead with a door.
+[chassis.audio_demo]
+name = "Audio Demo"
+tile_size = 1.0
+origin_x = -13.0
+origin_y = -6.0
+rows = [
+  "#####################DDD##",
+  "#EE.....I.......HH.WW....#",
+  "#.....L.I................#",
+  "#.....L.I................#",
+  "#.......I................#",
+  "#...RR++I+++++++++++++...#",
+  "#...RR.................T.#",
+  "#.......I................#",
+  "#...P...I.CC.............#",
+  "#...P...I................#",
+  "#EE.....I................#",
+  "##########################",
+]
+mounts = [
+  { component = "oxygen_tank", size = "S", x = 1, y = 3, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 1, y = 4, rotation = 1 },
+]
+# Oxygen and nitrogen up to life support
+pipes = [
+  { x = 3, y = 3 }, { x = 3, y = 4 }, { x = 3, y = 5 }, { x = 3, y = 6 }, { x = 3, y = 7 }, { x = 4, y = 7 }, { x = 5, y = 7 }, { x = 6, y = 7 },
+]
+coverings = [ { covering = "CARPET", x = 9, y = 7, width = 6, height = 4 } ]
+lights = [
+  { x = 4, y = 1, side = "BOTTOM" },
+  { x = 11, y = 1, side = "BOTTOM" },
+  { x = 14, y = 1, side = "BOTTOM" },
+  { x = 17, y = 1, side = "BOTTOM" },
+  { x = 22, y = 1, side = "BOTTOM" },
+  { x = 1, y = 2, side = "LEFT" },
+  { x = 9, y = 3, side = "LEFT" },
+  { x = 21, y = 4, side = "LEFT" },
+  { x = 15, y = 5, side = "BOTTOM" },
+  { x = 7, y = 6, side = "RIGHT" },
+  { x = 1, y = 7, side = "LEFT" },
+  { x = 12, y = 7, side = "BOTTOM" },
+  { x = 18, y = 7, side = "BOTTOM" },
+  { x = 24, y = 8, side = "RIGHT" },
+  { x = 4, y = 10, side = "TOP" },
+  { x = 11, y = 10, side = "TOP" },
+  { x = 18, y = 10, side = "TOP" },
+  { x = 21, y = 10, side = "TOP" },
+]
+# The thin walls and doors. The lab door (x 17, y 4, top) starts shut; the demo seals it.
+edge_walls = [
+  { x = 9, y = 5, side = "LEFT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 9, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 10, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 11, y = 7, side = "BOTTOM", weight_class = "MEDIUM", bulkhead = true },
+  { x = 12, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 13, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 14, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 15, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 16, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 17, y = 7, side = "BOTTOM", weight_class = "MEDIUM", bulkhead = true },
+  { x = 18, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 19, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 20, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 9, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 10, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 11, y = 4, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
+  { x = 12, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 13, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 14, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 15, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 16, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 17, y = 4, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
+  { x = 18, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 19, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 20, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 15, y = 7, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 8, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 9, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 10, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 1, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 2, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 3, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 4, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 1, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 2, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 3, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 4, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 5, side = "LEFT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 21, y = 6, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 7, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 8, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 9, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 10, side = "LEFT", weight_class = "MEDIUM" },
+]
+
 # Stations. Every station type carries docking ports of all three sizes, so any ship
 # can berth: an outpost one of each, a hub two of each. Station ports are active, so
 # a station that grants docking clearance reaches out with its collar.
+
 
 [chassis.station_outpost]
 name = "Outpost"

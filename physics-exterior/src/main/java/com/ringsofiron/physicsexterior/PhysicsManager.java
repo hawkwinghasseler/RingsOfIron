@@ -29,6 +29,7 @@ import com.ringsofiron.physicsexterior.anchor.AnchorModel;
 import com.ringsofiron.physicsexterior.anchor.InertialAnchor;
 import com.ringsofiron.physicsexterior.events.AnchorChangeEvent;
 import com.ringsofiron.physicsexterior.events.CollisionEvent;
+import com.ringsofiron.physicsexterior.events.CrashEvent;
 import com.ringsofiron.physicsexterior.events.FastPassImpactEvent;
 import com.ringsofiron.physicsexterior.events.WorldShiftEvent;
 
@@ -96,8 +97,26 @@ public class PhysicsManager implements Disposable {
         float hit(Fixture fixture, float pointX, float pointY, float normalX, float normalY, float fraction);
     }
 
+    /** Which pairs of bodies can crash; see {@link #setCrashHandling}. */
+    public interface CrashFilter {
+        /** Called during the step, with the world locked: look, don't change anything. */
+        boolean canCrash(Body a, Body b);
+    }
+
+    /**
+     * Ticks a pair of bodies that just crashed meets as Box2D would, without crashing again, so
+     * the slower contact the crash leaves them in (what is left of the hulls touching) is an
+     * ordinary one.
+     */
+    public static final int CRASH_COOLDOWN_TICKS = 15;
+
     /** New contacts, dispatched after the step so listeners may safely create or destroy bodies. */
     public final Signal<CollisionEvent> collisions = new Signal<>();
+    /**
+     * Contacts faster than the crash speed, which Box2D let pass ({@link #setCrashHandling}),
+     * dispatched after the step and before {@link #collisions}.
+     */
+    public final Signal<CrashEvent> crashes = new Signal<>();
     /** Floating origin rebases, dispatched after every body has been shifted. */
     public final Signal<WorldShiftEvent> worldShifts = new Signal<>();
     /** Kinematic transients sweeping through bodies, dispatched after the step. */
@@ -108,6 +127,14 @@ public class PhysicsManager implements Disposable {
     private final World world;
     private final Array<StepListener> stepListeners = new Array<>();
     private final Array<CollisionEvent> pendingCollisions = new Array<>();
+    /** This step's crashes, one per pair of bodies; the events are kept for reuse. */
+    private final Array<CrashEvent> pendingCrashes = new Array<>();
+    private final Array<CrashEvent> crashPool = new Array<>();
+    /** Pairs that crashed lately, {bodyA, bodyB} with the tick they may crash again. */
+    private final Array<Body[]> crashedPairs = new Array<>();
+    private final Array<Long> crashedUntil = new Array<>();
+    private float crashSpeed = Float.POSITIVE_INFINITY;
+    private CrashFilter crashFilter;
     private final Array<Body> bodyBuffer = new Array<>();
     private final WorldShiftEvent shiftEvent = new WorldShiftEvent();
     private final AnchorChangeEvent anchorEvent = new AnchorChangeEvent();
@@ -152,6 +179,7 @@ public class PhysicsManager implements Disposable {
         for (int i = 0; i < stepListeners.size; i++) {
             stepListeners.get(i).afterStep(deltaTime);
         }
+        dispatchCrashes();
         for (int i = 0; i < pendingCollisions.size; i++) {
             collisions.dispatch(pendingCollisions.get(i));
         }
@@ -180,11 +208,68 @@ public class PhysicsManager implements Disposable {
             profiler.record("step/" + listener.getClass().getSimpleName() + ".after", System.nanoTime() - start);
         }
         start = System.nanoTime();
+        dispatchCrashes();
         for (int i = 0; i < pendingCollisions.size; i++) {
             collisions.dispatch(pendingCollisions.get(i));
         }
         pendingCollisions.clear();
         profiler.record("step/collisions", System.nanoTime() - start);
+    }
+
+    /**
+     * Turns crashes on: from now, a new contact closing faster than {@code speed} m/s between two
+     * bodies {@code filter} allows is not pushed apart by Box2D. For the tick they met in the
+     * bodies pass into each other, then {@link #crashes} reports it and its listener crushes what
+     * they hit and trades their momentum. Contacts on sensors, docking collars and projectiles
+     * never crash, and a pair that just crashed meets as Box2D would for
+     * {@link #CRASH_COOLDOWN_TICKS}. An infinite speed (the default) turns crashes off.
+     */
+    public void setCrashHandling(float speed, CrashFilter filter) {
+        crashSpeed = speed;
+        crashFilter = filter;
+    }
+
+    private void dispatchCrashes() {
+        long now = getTick();
+        for (int i = crashedPairs.size - 1; i >= 0; i--) {
+            if (crashedUntil.get(i) <= now) {
+                crashedPairs.removeIndex(i);
+                crashedUntil.removeIndex(i);
+            }
+        }
+        for (int i = 0; i < pendingCrashes.size; i++) {
+            CrashEvent c = pendingCrashes.get(i);
+            crashedPairs.add(new Body[]{c.bodyA, c.bodyB});
+            crashedUntil.add(now + CRASH_COOLDOWN_TICKS);
+        }
+        for (int i = 0; i < pendingCrashes.size; i++) crashes.dispatch(pendingCrashes.get(i));
+        crashPool.addAll(pendingCrashes);
+        pendingCrashes.clear();
+    }
+
+    private static boolean samePair(Body a, Body b, Body c, Body d) {
+        return (a == c && b == d) || (a == d && b == c);
+    }
+
+    private CrashEvent pendingCrash(Body a, Body b) {
+        for (int i = 0; i < pendingCrashes.size; i++) {
+            CrashEvent c = pendingCrashes.get(i);
+            if (samePair(a, b, c.bodyA, c.bodyB)) return c;
+        }
+        return null;
+    }
+
+    private boolean crashedLately(Body a, Body b) {
+        for (int i = 0; i < crashedPairs.size; i++) {
+            Body[] pair = crashedPairs.get(i);
+            if (samePair(a, b, pair[0], pair[1])) return true;
+        }
+        return false;
+    }
+
+    private static boolean canCrash(Fixture f) {
+        short category = f.getFilterData().categoryBits;
+        return !f.isSensor() && (category & (CollisionCategories.CATEGORY_COLLAR | CollisionCategories.CATEGORY_PROJECTILE)) == 0;
     }
 
     /** Times the parts of each {@link #step} from now on, or stops timing with null. */
@@ -570,6 +655,13 @@ public class PhysicsManager implements Disposable {
 
     public void destroyBody(Body body) {
         previousPoses.remove(body);
+        for (int i = crashedPairs.size - 1; i >= 0; i--) {
+            Body[] pair = crashedPairs.get(i);
+            if (pair[0] == body || pair[1] == body) {
+                crashedPairs.removeIndex(i);
+                crashedUntil.removeIndex(i);
+            }
+        }
         world.destroyBody(body);
     }
 
@@ -579,11 +671,13 @@ public class PhysicsManager implements Disposable {
 
     /** Casts a ray between two local points in meters. See {@link RayHitCallback} for the return value. */
     public void rayCast(float x1, float y1, float x2, float y2, RayHitCallback callback) {
-        if (x1 == x2 && y1 == y2) return; // Box2D asserts on zero-length rays
+        float ux1 = x1 * UNITS_PER_METER, uy1 = y1 * UNITS_PER_METER, ux2 = x2 * UNITS_PER_METER, uy2 = y2 * UNITS_PER_METER;
+        // Box2D asserts on zero-length rays, and two points a float apart far out (a fast pass
+        // 178,000 km off, round 10) can scale to one point in its units
+        if (ux1 == ux2 && uy1 == uy2) return;
         rayCastAdapter.target = callback;
         rayCastAdapter.ray(x2 - x1, y2 - y1);
-        world.rayCast(rayCastAdapter, x1 * UNITS_PER_METER, y1 * UNITS_PER_METER,
-                x2 * UNITS_PER_METER, y2 * UNITS_PER_METER);
+        world.rayCast(rayCastAdapter, ux1, uy1, ux2, uy2);
         rayCastAdapter.target = null;
     }
 
@@ -699,14 +793,19 @@ public class PhysicsManager implements Disposable {
         }
     }
 
-    /** Records new contacts during the step; they are dispatched once the world is unlocked. */
+    /**
+     * Records new contacts during the step; they are dispatched once the world is unlocked. A new
+     * contact faster than the crash speed is recorded as a crash instead of being solved.
+     */
     private class CollisionCollector implements ContactListener {
         private final Vector2 velocityA = new Vector2();
+        private final Vector2 crashPoint = new Vector2();
 
         @Override
         public void beginContact(Contact contact) {
-            Body bodyA = contact.getFixtureA().getBody();
-            Body bodyB = contact.getFixtureB().getBody();
+            Fixture fixtureA = contact.getFixtureA(), fixtureB = contact.getFixtureB();
+            Body bodyA = fixtureA.getBody();
+            Body bodyB = fixtureB.getBody();
 
             CollisionEvent event = new CollisionEvent();
             event.entityA = bodyA.getUserData() instanceof Entity ? (Entity) bodyA.getUserData() : null;
@@ -723,9 +822,37 @@ public class PhysicsManager implements Disposable {
                 velocityA.set(bodyA.getLinearVelocityFromWorldPoint(point));
                 Vector2 velocityB = bodyB.getLinearVelocityFromWorldPoint(point);
                 // The manifold normal points from A to B, so closing speed is (vA - vB) . n
-                event.approachSpeed = velocityA.sub(velocityB).dot(manifold.getNormal()) * METERS_PER_UNIT;
+                velocityA.sub(velocityB);
+                event.approachSpeed = velocityA.dot(manifold.getNormal()) * METERS_PER_UNIT;
+                if (event.approachSpeed > crashSpeed && canCrash(fixtureA) && canCrash(fixtureB)
+                        && crashFilter != null && crashFilter.canCrash(bodyA, bodyB) && !crashedLately(bodyA, bodyB)) {
+                    // Hulls meeting face to face touch along an edge: crash at its middle
+                    crashPoint.setZero();
+                    for (int i = 0; i < manifold.getNumberOfContactPoints(); i++) crashPoint.add(manifold.getPoints()[i]);
+                    crashPoint.scl(1f / manifold.getNumberOfContactPoints());
+                    recordCrash(bodyA, bodyB, event, crashPoint, manifold.getNormal(), velocityA);
+                }
             }
             pendingCollisions.add(event);
+        }
+
+        /** Keeps the fastest of this step's new contacts between a pair as its crash. */
+        private void recordCrash(Body bodyA, Body bodyB, CollisionEvent event, Vector2 point, Vector2 normal, Vector2 relative) {
+            CrashEvent crash = pendingCrash(bodyA, bodyB);
+            if (crash != null && crash.approachSpeed >= event.approachSpeed) return;
+            if (crash == null) {
+                crash = crashPool.size > 0 ? crashPool.pop() : new CrashEvent();
+                pendingCrashes.add(crash);
+            }
+            crash.bodyA = bodyA;
+            crash.bodyB = bodyB;
+            crash.entityA = event.entityA;
+            crash.entityB = event.entityB;
+            crash.localPointA.set(bodyA.getLocalPoint(point)).scl(METERS_PER_UNIT);
+            crash.localPointB.set(bodyB.getLocalPoint(point)).scl(METERS_PER_UNIT);
+            crash.normal.set(normal);
+            crash.relativeVelocity.set(relative).scl(METERS_PER_UNIT);
+            crash.approachSpeed = event.approachSpeed;
         }
 
         @Override
@@ -734,6 +861,10 @@ public class PhysicsManager implements Disposable {
 
         @Override
         public void preSolve(Contact contact, Manifold oldManifold) {
+            // A crashing pair passes into each other this tick; the crash's listener settles it
+            if (pendingCrashes.size > 0 && pendingCrash(contact.getFixtureA().getBody(), contact.getFixtureB().getBody()) != null) {
+                contact.setEnabled(false);
+            }
         }
 
         @Override

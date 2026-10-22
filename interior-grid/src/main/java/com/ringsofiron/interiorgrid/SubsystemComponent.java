@@ -63,6 +63,12 @@ public class SubsystemComponent implements Component {
     public double ratedOutput;
     /** LIFE_SUPPORT: multiplier on scrubbing, air and oxygen supply, set from its component. */
     public float throughput = 1f;
+    /**
+     * LIFE_SUPPORT: kilograms of its own emergency oxygen ({@link LifeSupportSystem#EMERGENCY_OXYGEN_KG})
+     * used up since a station last made it good. It is drawn only once the oxygen tanks piped to it
+     * are dry ({@link TankSupply#draw(SubsystemComponent, Fluid, double)}).
+     */
+    public double reserveUsed;
     /** TANK: what it holds, set from its component. Null for every other system. */
     public Fluid fluid;
     /** TANK: kilograms it holds when full, set from its component. */

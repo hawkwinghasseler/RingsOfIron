@@ -140,8 +140,9 @@ public class Shipyard extends EntitySystem {
 
     Shipyard(GameWorld world) {
         this.world = world;
-        // Once taken, a prize's collars are rigged for towing: the weld holds under the engines' full thrust
-        world.docking.towLocked = (a, b) -> tows(a, b) || tows(b, a);
+        // Once taken, a prize's collars are rigged for towing: the weld holds under the engines' full
+        // thrust. A yard's berth clamps hold a ship it is working on the same way (StationYard.holds)
+        world.docking.towLocked = (a, b) -> tows(a, b) || tows(b, a) || world.yard.holds(a, b) || world.yard.holds(b, a);
         world.hints.register(HintRegistry.Context.LATCHED, "hand over the prize", 3, Action.YARD)
                 .onlyWhen(() -> prize() != null && prizeStation() != null);
     }
@@ -299,32 +300,9 @@ public class Shipyard extends EntitySystem {
             }
         }
 
-        // The new ship, where the old one is
-        float x = 0f, y = 0f, angle = 0f;
-        PhysicsBodyComponent body = old.getComponent(PhysicsBodyComponent.class);
-        if (body != null && body.body != null) {
-            x = body.body.getPosition().x;
-            y = body.body.getPosition().y;
-            angle = (float) Math.toDegrees(body.body.getAngle());
-        }
-        Entity ship = world.getContent().factory.spawnShip(listing.shipId, x, y, angle);
+        Entity ship = exchange(old, listing.shipId, credits(old) - cost);
 
-        // Off the old ship: the player's controls, credits, cargo and crew
-        old.remove(PlayerControllerComponent.class);
-        ship.add(new PlayerControllerComponent());
-        ShipConsoles.install(ship);
-        TraderComponent oldAccount = old.getComponent(TraderComponent.class);
-        ship.add(new TraderComponent(credits(old) - cost, 0));
-        if (oldAccount != null) oldAccount.credits = 0;
-        ShipCargo.attach(ship);
-        moveCargo(old, ship);
-        FlightControlComponent controls = ship.getComponent(FlightControlComponent.class);
-        if (controls != null) controls.rotationAssist = true;
-        moveCrew(old, ship);
-
-        // The old ship goes to the yard; the new one takes a free port of its size
-        world.docking.undock(old);
-        retire(old);
+        // The new one takes a free port of its size
         if (station != null) dockAt(ship, station, stationPort);
 
         String deal = cost >= 0 ? String.format(Locale.ROOT, "paid %,.0f cr", cost)
@@ -334,6 +312,40 @@ public class Shipyard extends EntitySystem {
         world.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.BOUGHT, old, ship, station, cost, 0f));
         return message;
+    }
+
+    /**
+     * A new {@code shipId} where {@code old} is, made the player's: their controls, {@code credits},
+     * cargo and crew go across (the avatar to the first open tile), and the old ship is undocked and
+     * taken out of the world. A purchase does this; so does a debug scenario that changes the player's
+     * hull. The caller seats the avatar and docks the new ship as it needs.
+     */
+    public Entity exchange(Entity old, String shipId, double credits) {
+        float x = 0f, y = 0f, angle = 0f;
+        PhysicsBodyComponent body = old.getComponent(PhysicsBodyComponent.class);
+        if (body != null && body.body != null) {
+            x = body.body.getPosition().x;
+            y = body.body.getPosition().y;
+            angle = (float) Math.toDegrees(body.body.getAngle());
+        }
+        Entity ship = world.getContent().factory.spawnShip(shipId, x, y, angle);
+
+        // Off the old ship: the player's controls, credits, cargo and crew
+        old.remove(PlayerControllerComponent.class);
+        ship.add(new PlayerControllerComponent());
+        ShipConsoles.install(ship);
+        TraderComponent oldAccount = old.getComponent(TraderComponent.class);
+        ship.add(new TraderComponent(credits, 0));
+        if (oldAccount != null) oldAccount.credits = 0;
+        ShipCargo.attach(ship);
+        moveCargo(old, ship);
+        FlightControlComponent controls = ship.getComponent(FlightControlComponent.class);
+        if (controls != null) controls.rotationAssist = true;
+        moveCrew(old, ship);
+
+        world.docking.undock(old);
+        retire(old);
+        return ship;
     }
 
     /** Latches {@code ship}'s first port onto {@code station}: at {@code preferred} if it fits and is free, else any free port of its size. */
@@ -365,7 +377,7 @@ public class Shipyard extends EntitySystem {
     }
 
     /** Everyone who calls {@code from} home, and everyone aboard it, goes aboard {@code to} and calls it home. */
-    private void moveCrew(Entity from, Entity to) {
+    void moveCrew(Entity from, Entity to) {
         Array<Entity> crew = crewOf(from);
         List<int[]> floor = GameScenario.floorTiles(to.getComponent(ShipGridComponent.class));
         CrewFactory.ensureBoard(to);

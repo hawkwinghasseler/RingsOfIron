@@ -13,12 +13,11 @@ You need a JDK 17 or newer to start the Gradle wrapper, which is included. The b
 | `Play Rings of Iron.bat` | `./gradlew :lwjgl3:runGame` | The game, from its main menu: flight, combat, crew, docking, trading and time warp together |
 | | `./gradlew :lwjgl3:runFirstPlay` | The guided first play, straight in with no menu (also on the main menu) |
 | `demos/Flight demo.bat` | `./gradlew :lwjgl3:runFlightDemo` | Newtonian flight, the floating origin, orbit around a planet and fast passes |
-| `demos/Orbit demo.bat` | `./gradlew :lwjgl3:runOrbitDemo` | Rails orbits, sphere-of-influence changes and time warp |
-| `demos/Interior Grid Demo.bat` | `./gradlew :lwjgl3:run` | One ship's deck: air, fire, breaches, doors and power routing |
+| `demos/Orbit demo.bat` | `./gradlew :lwjgl3:runGame -Pscenario=orbit` | The game's Orbit scenario (F3 debug menu): rails orbits at real scale, sphere-of-influence changes and time warp |
+| `demos/Interior demo.bat` | `./gradlew :lwjgl3:run` | Any of the game's hulls with its crew, in the game's own world: hurt crew and ship with weapon fire, rams, blasts, fire, breaches and an attacking ship, spawn more crew, and watch wounds, bleed-out clocks and medics at work |
 | `demos/Crew demo.bat` | `./gradlew :lwjgl3:runCrewDemo` | AI crew fighting fires, repairing, rescuing and repelling boarders |
 | `demos/Docking demo.bat` | `./gradlew :lwjgl3:runDockingDemo` | Docking at a station, walking across the dock and carrying cargo |
-| `demos/HUD demo.bat` | `./gradlew :lwjgl3:runHudDemo` | Target brackets, lead reticle, minimap, consoles and the traffic map |
-| `demos/Audio demo.bat` | `./gradlew :lwjgl3:runAudioDemo` | Sound muffled by walls and doors, and interior versus exterior listening |
+| `demos/Audio demo.bat` | `./gradlew :lwjgl3:runAudioDemo` | The game's audio scenario (F3 menu): the audio demo ship, where walls, doors and thin air muffle each sound |
 | `demos/Ship editor.bat` | `./gradlew :lwjgl3:runShipEditor` | The ship editor, which edits the game's own layout, tile and component data |
 
 Some modules also have headless demos that print to the console: `./gradlew :ai-crew:runCrewConsoleDemo`, `./gradlew :macro-sim:runMacroDemo` (add `-Pdays=60` for a longer run) and `./gradlew :modding-data:runModdingDemo`.
@@ -42,7 +41,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | P | Abandon ship (P again within 3 s to confirm; P while abandoning launches the pods at once) |
 | I | Crew roster: your crew, the station's hires and any prisoners |
 | L | Notice log: the last 50 notices |
-| O | Deck lights |
+| O | Lighting, inside and out |
 | B (twice) | Call a tow from your sponsor when disabled or low on propellant (at the helm) |
 | F1 | Every control for where you are |
 | G / H / U | Arm docking, pick the next port, undock |
@@ -55,10 +54,38 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | 6 | Autopilot: fly the transfer to the navigation target under time warp and dock on arrival (again to go on after a hold, or to stop it) |
 | F5 / F9 | Quick save and quick load |
 | Esc | Pause menu: resume, save to a named slot, load, settings, quit to the main menu |
+| ~ | Developer console: Groovy against the running world. Click to select a crew member, tile or ship (again to cycle what is under the cursor), then `kill()`, `heal()`, `wound 95`, `shoot 'railgun_mk1'` ...; Esc deselects. Every `.groovy` in `scripts/` runs by name. See `documentation/dev-console/Design.md` |
 
 Keys can be rebound in Settings, which also has the volumes, HRTF, the window and the gamepad. A gamepad flies and walks with the left stick and fires with A or the right trigger; the full mapping is in `documentation/ui-hud/Design.md`. Saves and `settings.json` are kept in `assets/saves/`.
 
 Each demo lists its own controls on screen.
+
+### Trying a round's changes
+
+The scripted career saves the game at the moments each round's changes show best. To play from them in your own game:
+
+1. Write the saves (a few minutes): `./gradlew :core:slowTest --tests '*Round5CareerTest'`. They go to `core/build/playtest-saves/seed-2026`.
+2. Run the game with them: `./gradlew :lwjgl3:runGame -PcareerSaves=core/build/playtest-saves/seed-2026`. The saves are copied into `assets/saves/`, so Load lists them beside your own, and they stay there for later runs. A relative folder is read from the repository root.
+   - The copy lists what it put there in `assets/saves/career-saves.txt`. The next run with `-PcareerSaves` replaces those saves, and only those, so a new round's saves take the place of the last round's. The console says what it copied, replaced and kept.
+   - A save you made is never touched, and neither is a career save you have saved over since (a save under the same name): it is yours now, and kept. To take the new copy instead, delete it from Load (or from `assets/saves/`) and run again.
+   - Saves copied before round 9 aren't on the list, so the first run keeps them. Delete them from Load once, and later runs replace them for you.
+3. Pick one from Load. Continue loads the newest save, which after a fresh copy is usually the career's last.
+
+| Save | Where it starts | What it shows |
+|---|---|---|
+| First ace fight | Day 1, the corvette 3 km from the ace Red Kestrel, its bounty taken | The corvette's first ace fight: Tab, Space, R. Lost, the tug (B twice) brings you to Highport, and the crew panel (I) shows how the wounded fare at the berth |
+| Before the Moon trip | Day 1, the corvette docked at Highport, the captain at the helm | Undocking (U) and the transfer autopilot (6) to the Moon; the cabin's air |
+| Gunship | Day 26, the gunship just bought | The helm's dock order (5); the crew panel (I) |
+| Gunship bounty fight | Day 30, the gunship in a bounty fight | A fight: Tab, Space, R; wounds on the crew panel (I) |
+| Commander | Day 30, just promoted | The mission board (J) and what a Commander is offered |
+| Frigate | Day 44, the frigate at Anvil Yards | The yard (Y) and refits |
+| Before the raid | Day 44, the frigate 8 km from Rustwake, the pirates' base | The raid: Tab picks a defender, Space and R fight; the base strikes once its defenders are beaten |
+
+Other seeds write the same saves: `./gradlew :core:test --tests '*CareerSweepTest' -PcareerSweep=<n>` puts seed n's in `core/build/playtest-saves/seed-<n>`, loaded with `-PcareerSaves=core/build/playtest-saves/seed-<n>`. Every seed's saves share names, so loading one seed's replaces the last seed's. Two are worth a look in round 10:
+- **Seed 4:** "Before the raid" draws a railgun raider and a railgun battery, the raid that marks the frigate. The scripted career lost its first two tries there at about hull 0.45.
+- **Seed 9:** the late frigate. On round 9 its "Frigate" save is on day 55, past the day-52 aim, after a lost fight with the ace Iron Dagny.
+
+Each round's pull request names the save that shows its change, under "Try it in the game".
 
 ## Building and testing
 

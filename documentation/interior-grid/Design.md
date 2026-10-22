@@ -8,7 +8,7 @@ The construction rules here are the ones combat's damage model reads (`combat-sy
 ## Implementation Dependencies
 - **`core-engine`**: Requires Ashley ECS to attach grid components to ship entities.
 - **`physics-exterior`**: (Soft Dependency) When rendering the grid in world space, the interior tiles must be offset and rotated by the parent ship's Box2D transform. The grid logic itself runs purely in local coordinates. The grid's structural mass properties feed the ship body's mass and inertia.
-- **`modding-data`**: (Hard Dependency) Chassis blueprints and the material table come from data. `InteriorGridData.toBlueprint(ChassisDef)` and `toMaterialTable(DefRegistry)` adapt the definitions. `InteriorGridData.install(ctx)`, run from `ModdingBootstrap.beforeScripts`, registers the "ship" assembler, which gives every ship spawned from data its grid, subsystem registry and one entity per installed system. `MaterialTable.createDefault()` remains for tests and the demo.
+- **`modding-data`**: (Hard Dependency) Chassis blueprints and the material table come from data. `InteriorGridData.toBlueprint(ChassisDef)` and `toMaterialTable(DefRegistry)` adapt the definitions. `InteriorGridData.install(ctx)`, run from `ModdingBootstrap.beforeScripts`, registers the "ship" assembler, which gives every ship spawned from data its grid, subsystem registry and one entity per installed system. `MaterialTable.createDefault()` remains for tests.
 
 ## Coordinate System
 The grid uses **Box2D's orientation**. Tile [0][0] is the **bottom-left**, +x is the ship body's local +x and **+y points up**. Grid coordinates are body-local coordinates offset by `gridOriginLocal` and divided by `tileSize`, with no axis flip anywhere:
@@ -109,6 +109,10 @@ Hull, wall and floor tiles, hull pieces and edge walls all take damage to their 
 - An **edge wall** at 0 blocks nothing, whatever the state of its door.
 - A **floor or conduit** at 0 is a hole to space and stops carrying power; `PowerRoutingSystem` routes around it.
 
+**Crushed tiles** (collisions, combat-sys 5.12). A collision can crush a tile flat (`Tile.crushed`, or `HullPiece.crushed` for every tile of a piece; read through `isCrushed()`). A crushed tile at 0 is a breach whatever it was (`isHullBreach()` is true for it, so it vents and the crew can seal it like a hull breach), it is never open to crew (`isOpen()` false, sealed or not), and it is no longer part of the hull's outside: `HullShape` leaves crushed tiles and wedges out, and the game collides a hull with any crushed tile on its layout rather than its art's collision layer. Crushing a tile sets `ShipGridComponent.hullShapeDirty` (not saved) so the body is reshaped before the next physics step. A yard repair that takes a crushed tile back to whole rebuilds it (`uncrush`): it collides again and its corners go back where they were built.
+
+**Dents.** `ShipGridComponent.dents` holds how far collisions have pushed each tile corner, in tiles, `{x, y}` for each of the `(width + 1) x (height + 1)` corners (null while undented; at most `MAX_DENT`, 4 tiles, from where it was built). The game draws the exterior hull art warped through it. `crushed` (per tile and piece) and `dents` are saved.
+
 `Tile.isOpen()` is the single test for "crew and fire can be here" (floors and destroyed internal walls), and `Tile.holdsAir()` adds "and not sealed off by a bulkhead". `ShipGridComponent.canPass(x, y, nx, ny)` is the test for walking between two adjacent tiles (both open, no closed edge wall between them) and `canFlow(x, y, nx, ny)` the test for air, smoke and fire (both hold air, no closed edge wall). Hazards, power and crew pathfinding all use these.
 
 ## Damage states (round 5)
@@ -136,6 +140,7 @@ GDD section 3's short circuits, and tank bursts. `DamageStates` holds the rules;
 - hull pieces
 - explicitly placed mounts
 - floor coverings, as rectangles: `covering(FloorCovering.CARPET, x, y, w, h)` lays carpet on every floor tile inside
+- RCS thruster blocks (`rcsThrusters`), each an `RcsThruster` on one side of a hull tile, a side that faces space: `LINEAR` with one nozzle out through that side, `QUAD` with one each way along the hull too, at its kind's standard thrust a nozzle unless it gives its own. `RcsThruster.placement` says where one can go; a block takes no room on its tile, works while that tile's wall stands, and is saved with the grid. Core's `RcsThrust` turns them into the ship's turning, strafing and retro thrust
 
 Character map:
 

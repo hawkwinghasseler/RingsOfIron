@@ -36,6 +36,8 @@ import java.util.List;
  *   <li>{@code away <m>}: puts the ship that far out from Highport, moving with it</li>
  *   <li>{@code disable raider} / {@code disable player}: knocks out that ship's reactor</li>
  *   <li>{@code damage}: holes the first deck tile, as battle damage</li>
+ *   <li>{@code hull <x>}: wears every hull wall down to {@code x}, so the ship is beaten on its hull
+ *       with its reactor and guns still up</li>
  *   <li>{@code latch}: latches the ship onto the raider's port</li>
  *   <li>{@code dock}: docks at Highport</li>
  *   <li>{@code strand}: empties the propellant tanks, so the ship can't fly home and the tug can be called</li>
@@ -47,6 +49,10 @@ import java.util.List;
  *       to finish an approach without a guessed pause</li>
  *   <li>{@code target <name>}: makes the first station or craft whose name holds {@code <name>} the
  *       navigation target, where how many Q presses it takes changes from game to game</li>
+ *   <li>{@code raid}: only reads how the raid stands (the base, the hull, the gun's and the navigation
+ *       target, the helm's order, and each defender's range), so a script can fly it by keys</li>
+ *   <li>{@code seat}: only reads the console the avatar sits at and where the weapons console is from it</li>
+ *   <li>{@code boarding}: only reads who is boarding the player, how close, and what the last boarder took</li>
  * </ul>
  * Run with {@code gradlew :lwjgl3:runPlaytest -Pcommands=<file> [-Psaves=<folder>]}. Saves go to a
  * temporary folder, into which the saves in {@code <folder>} (the career test's
@@ -103,6 +109,8 @@ public class PlaytestLauncher {
         }
 
         private GameWorld watched;
+        /** The player's rounds fired since the load, by weapon. */
+        private final java.util.Map<String, Integer> playerShots = new java.util.TreeMap<>();
 
         /** Logs every docking event, and at a tear whatever the two craft are touching. */
         private void watchDocking() {
@@ -110,6 +118,11 @@ public class PlaytestLauncher {
             GameWorld world = game == null ? null : game.getWorld();
             if (world == null || world == watched) return;
             watched = world;
+            // Round 10: the player's rounds fired, by weapon, for the `shots` command
+            playerShots.clear();
+            world.combatEvents.shots.add((sig, shot) -> {
+                if (shot.shooter == game.getScenario().player) playerShots.merge(shot.weaponDefId, 1, Integer::sum);
+            });
             world.combatEvents.impacts.add((sig, e) -> System.out.println("PLAYTEST impact on " + label(e.target) + " from " + label(e.owner)
                     + (e.ram ? " (ram)" : "") + " mass " + e.mass + " at " + world.engine.getSimSeconds()));
             world.docking.events.add((sig, e) -> {
@@ -123,6 +136,18 @@ public class PlaytestLauncher {
                     System.out.println("PLAYTEST   touching " + label(a) + " / " + label(b));
                 }
             });
+        }
+
+        /** How many of a ship's systems are shorted out, 0 for none or no ship. */
+        private static int shorted(Entity ship) {
+            ShipSubsystemRegistryComponent r = ship == null ? null : ship.getComponent(ShipSubsystemRegistryComponent.class);
+            if (r == null) return 0;
+            int n = 0;
+            for (Entity e : r.subsystems) {
+                SubsystemComponent sub = e.getComponent(SubsystemComponent.class);
+                if (sub != null && sub.shorted) n++;
+            }
+            return n;
         }
 
         private static String label(Object o) {
@@ -181,6 +206,20 @@ public class PlaytestLauncher {
                     grid.gridDirty = true;
                     return "holed";
                 }
+                case "hull": {
+                    // Every hull wall at this integrity: beaten on the hull with the reactor and guns
+                    // still up, where losing a fight that way by hand isn't repeatable
+                    ShipGridComponent grid = s.player.getComponent(ShipGridComponent.class);
+                    float to = Float.parseFloat(cmd[1]);
+                    for (int y = 0; y < grid.height; y++) {
+                        for (int x = 0; x < grid.width; x++) {
+                            com.ringsofiron.interiorgrid.Tile t = grid.getTile(x, y);
+                            if (t != null && t.wallType == com.ringsofiron.interiorgrid.Tile.WallType.HULL) t.setIntegrity(Math.min(t.getIntegrity(), to));
+                        }
+                    }
+                    grid.gridDirty = true;
+                    return String.format(java.util.Locale.ROOT, "hull %.2f", com.hawkwing.RingsOfIron.game.ShipDisablement.hullIntegrity(grid));
+                }
                 case "latch":
                     world.docking.dockInPlace(s.player, 0, s.raider, 0);
                     return "latched";
@@ -198,13 +237,12 @@ public class PlaytestLauncher {
                     for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.badlogic.ashley.core.Family.all(
                             com.ringsofiron.macrosim.hostile.HostileComponent.class).get())) {
                         com.ringsofiron.macrosim.hostile.HostileComponent h = e.getComponent(com.ringsofiron.macrosim.hostile.HostileComponent.class);
-                        com.hawkwing.RingsOfIron.game.DisabledComponent d = e.getComponent(com.hawkwing.RingsOfIron.game.DisabledComponent.class);
                         PhysicsBodyComponent pb = e.getComponent(PhysicsBodyComponent.class);
                         String range = pb == null || pb.body == null || ship == null ? "rails"
                                 : String.format(java.util.Locale.ROOT, "%.0f m", PhysicsManager.getPosition(pb.body, new Vector2())
                                         .dst(PhysicsManager.getPosition(ship, new Vector2())));
                         out.append(String.format("%n  %s %s target=%s %s %s", h.displayName, h.state, h.targetUuid,
-                                d == null ? "fit" : d.reason, range));
+                                com.hawkwing.RingsOfIron.game.HostileLabel.of(world, e), range));
                     }
                     return out.toString();
                 }
@@ -238,7 +276,35 @@ public class PlaytestLauncher {
                     Body ours = s.player.getComponent(PhysicsBodyComponent.class).body;
                     if (bb != null && bb.body != null && ours != null) out.append(String.format(java.util.Locale.ROOT, ", base at %.1f km",
                             PhysicsManager.getPosition(bb.body, new Vector2()).dst(PhysicsManager.getPosition(ours, new Vector2())) / 1000f));
-                    for (String name : world.pirateBase.defenders()) out.append("\n  defender ").append(name);
+                    out.append(", helm ").append(world.nav.helm.mode()).append(", nav ")
+                            .append(world.nav.target.uuid() == null ? "none" : world.nav.target.name());
+                    // Missiles aimed at us, and how many still steer (the rest coast as slugs)
+                    int darts = 0, homing = 0;
+                    for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.badlogic.ashley.core.Family.all(
+                            com.ringsofiron.combatsys.components.MissileComponent.class).get())) {
+                        com.ringsofiron.combatsys.components.MissileComponent m = e.getComponent(com.ringsofiron.combatsys.components.MissileComponent.class);
+                        if (m.target != s.player && m.seekerLock != s.player) continue;
+                        darts++;
+                        if (m.phase != com.ringsofiron.combatsys.components.MissileComponent.Phase.COAST) homing++;
+                    }
+                    out.append(", darts at us ").append(darts).append(" (").append(homing).append(" homing)");
+                    out.append(String.format(java.util.Locale.ROOT, ", sim %.1f s", world.engine.getSimSeconds()));
+                    // Each defender's range and whether it is beaten, so a script can Tab to the nearest
+                    for (String name : world.pirateBase.defenders()) {
+                        out.append("\n  defender ").append(name);
+                        for (var h : world.macroSim.hostiles().all().entrySet()) {
+                            if (!name.equals(h.getValue().displayName)) continue;
+                            Entity e = world.engine.getEntity(h.getKey());
+                            PhysicsBodyComponent pb = e == null ? null : e.getComponent(PhysicsBodyComponent.class);
+                            if (pb != null && pb.body != null && ours != null) out.append(String.format(java.util.Locale.ROOT, " at %.1f km",
+                                    PhysicsManager.getPosition(pb.body, new Vector2()).dst(PhysicsManager.getPosition(ours, new Vector2())) / 1000f));
+                            if (e != null && com.hawkwing.RingsOfIron.game.FirstPlay.beaten(world, e)) out.append(" beaten");
+                            // Its systems shorted out by our hits (round 9: do its crew still fire after one?)
+                            int shorted = shorted(e);
+                            if (shorted > 0) out.append(" shorted ").append(shorted);
+                            if (e != null && e == target) out.append(" (target)");
+                        }
+                    }
                     return out.toString();
                 }
                 case "boarding": {
@@ -256,8 +322,75 @@ public class PlaytestLauncher {
                     return (boarder == null ? "no boarder" : "boarder " + PlayerDocking.name(boarder) + at)
                             + (robbed == null ? "" : ", " + robbed);
                 }
+                case "crew": {
+                    // Only reads: each of the player's crew aboard, living or dead, with their wound and suit
+                    StringBuilder out = new StringBuilder();
+                    com.badlogic.ashley.utils.ImmutableArray<Entity> all = world.crew.crewEntities();
+                    for (int i = 0; i < all.size(); i++) {
+                        Entity e = all.get(i);
+                        com.ringsofiron.aicrew.CrewMemberComponent c = world.crew.crew(e);
+                        if (c == null || world.crew.homeOf(e) != s.player) continue;
+                        out.append(String.format(java.util.Locale.ROOT, "%n  %s: %s, %s", c.name,
+                                com.hawkwing.RingsOfIron.game.CrewMedical.condition(c),
+                                c.suited ? String.format(java.util.Locale.ROOT, "suited (%.0f s of air)", c.suitAir) : "unsuited"));
+                    }
+                    return out.length() == 0 ? "no crew" : out.toString();
+                }
+                case "shots":
+                    // Only reads: the rounds the player's ship has fired since the load, by weapon
+                    return playerShots.isEmpty() ? "none" : playerShots.toString();
                 case "docked":
                     return world.docking.dockedTo(s.player) != null ? "yes" : "no";
+                case "career":
+                    // Only reads: the day, money, rank and ship, as the career script's snapshot gives them
+                    return String.format(java.util.Locale.ROOT, "day %.2f, credits %.0f, rank %s, ship %s, hull %.2f",
+                            world.engine.getSimSeconds() / 86_400,
+                            s.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class).credits,
+                            world.standing.describeRank(), PlayerDocking.name(s.player),
+                            com.hawkwing.RingsOfIron.game.ShipDisablement.hullIntegrity(s.player.getComponent(ShipGridComponent.class)));
+                case "captain": {
+                    // Only reads: the captain's wound, suit and air, and which craft the figure stands in
+                    Entity avatar = world.avatar.getAvatar();
+                    com.ringsofiron.aicrew.CrewMemberComponent c = avatar == null ? null : world.crew.crew(avatar);
+                    if (c == null) return "no captain";
+                    com.ringsofiron.aicrew.GridPositionComponent pos = world.crew.position(avatar);
+                    ShipGridComponent grid = pos == null ? null : world.crew.grid(pos.ship);
+                    return String.format(java.util.Locale.ROOT, "%s, %s, %s, in %s (%s) at %s", com.hawkwing.RingsOfIron.game.CrewMedical.condition(c),
+                            c.isAlive() ? (c.isConscious() ? "conscious" : "down") : "dead",
+                            c.suited ? String.format(java.util.Locale.ROOT, "suited (%.0f s of air)", c.suitAir) : "unsuited",
+                            pos == null ? "nowhere" : pos.ship == s.player ? "our ship" : PlayerDocking.name(pos.ship),
+                            grid == null ? "?" : com.ringsofiron.aicrew.TaskRules.isBreathable(grid, pos.tileX(), pos.tileY()) ? "air" : "no air",
+                            pos == null ? "-" : String.format(java.util.Locale.ROOT, "(%.1f, %.1f)", pos.x, pos.y));
+                }
+                case "raider": {
+                    // A stand-in, like `hull`: one lone pirate raider brought in at rest <km> km out, hunting
+                    // the player, armed with [fit] or as the difficulty picks (round 10: a lone raider v the frigate)
+                    float km = cmd.length > 1 ? Float.parseFloat(cmd[1]) : 4f;
+                    String fit = cmd.length > 2 ? cmd[2] : null;
+                    List<String> ids = world.hostiles.spawnWing(com.hawkwing.RingsOfIron.game.HostileTraffic.RAIDER, 1, s.highport, fit);
+                    if (ids.isEmpty()) return "no raider";
+                    String uuid = ids.get(0);
+                    com.ringsofiron.macrosim.hostile.HostileComponent h = world.macroSim.hostiles().get(uuid);
+                    h.targetUuid = com.ringsofiron.macrosim.hostile.HostileComponent.PLAYER;
+                    double now = world.macroSim.now();
+                    com.ringsofiron.macrosim.rails.StateVector at = world.macroSim.gateway().anchorStateAt(now,
+                            new com.ringsofiron.macrosim.rails.StateVector());
+                    world.macroSim.rails().attach(uuid, world.macroSim.gateway().anchorParentUuid(),
+                            at.set(at.x + km * 1000f, at.y, at.vx, at.vy), now);
+                    return h.displayName + " (" + h.loadout + ") at " + km + " km";
+                }
+                case "seat": {
+                    // Only reads: the console the avatar sits at, and the weapons console's offset from where
+                    // it stands, in deck tiles, so a script can walk there by keys
+                    Entity avatar = world.avatar.getAvatar();
+                    com.ringsofiron.aicrew.GridPositionComponent pos = avatar == null ? null
+                            : avatar.getComponent(com.ringsofiron.aicrew.GridPositionComponent.class);
+                    SubsystemComponent w = com.hawkwing.RingsOfIron.game.Bridge.console(s.player, SubsystemComponent.SubsystemType.WEAPONS);
+                    if (pos == null || w == null) return "seat " + world.bridge.seat() + ", no avatar or no weapons console";
+                    float cx = w.footprint.originX + w.footprint.width() / 2f, cy = w.footprint.originY + w.footprint.height() / 2f;
+                    return String.format(java.util.Locale.ROOT, "seat %s, weapons %.2f %.2f off", world.bridge.seat(),
+                            cx - pos.x, cy - pos.y);
+                }
                 case "target": {
                     String want = String.join(" ", java.util.Arrays.copyOfRange(cmd, 1, cmd.length)).toLowerCase(java.util.Locale.ROOT);
                     for (String uuid : world.nav.target.candidates()) {

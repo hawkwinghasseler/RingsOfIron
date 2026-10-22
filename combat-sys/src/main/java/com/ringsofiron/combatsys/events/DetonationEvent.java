@@ -13,6 +13,10 @@ public class DetonationEvent {
     public Entity owner;
     /** The entity the fuse detected, if any; fragments are thrown toward it. */
     public Entity target;
+    /** What the missile was launched at, or null. */
+    public Entity aimedAt;
+    /** Launched by a point-defense mount. */
+    public boolean pointDefense;
     public long tick;
     /** Seconds since the missile was launched. */
     public float sinceFired;

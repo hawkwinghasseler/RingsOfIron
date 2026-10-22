@@ -61,7 +61,7 @@ A fast-pass ship is a full combat participant with no Box2D body. Combat treats 
 - **Hit tests.** A fast-pass ship is not in the Box2D world, so `World.QueryAABB` will not find it. The swept tests in 2.3 must also check every kinematic transient in the bubble against the same relative-motion segment, using its fixture shapes from the chassis def. The same goes for missile proximity fuses.
 - **Being hit.** Impacts on it resolve into its interior grid exactly as for any ship (section 5), with `relVelocity` taken from its rails velocity. Momentum transfer (5.7) cannot go to a Box2D body. Instead it becomes a Δv on its orbit, handed to the orbital plan's collision handling, which already recomputes rails orbits after a collision.
 - **Firing from it.** A fast-pass ship can still fire. Projectiles spawn with its rails velocity as `v_ship`, and recoil becomes a small Δv on its orbit, the same as for momentum transfer.
-- **Ramming.** When `KinematicTransientSystem` finds a fast pass hitting a ship or asteroid, it emits a normal `ImpactEvent` whose `mass` is the smaller body's mass. At km/s, ramming is resolved by section 5 like a very large slug and will usually gut both ships along the contact line.
+- **Ramming.** When `KinematicTransientSystem` finds a fast pass hitting a ship or asteroid, it emits a normal `ImpactEvent` whose `mass` is the smaller body's mass. At km/s, ramming is resolved by section 5 like a very large slug and will usually gut both ships along the contact line. Hulls meeting below 1 km/s are Box2D bodies, and crash as section 5.12 describes.
 
 ---
 
@@ -185,6 +185,7 @@ a_cmd      = a_lateral + a_closing
 - **Decoys** are short-lived entities with a `SignatureComponent` (radar/thermal strength). In terminal, a seeker locks the strongest signature in its FOV, weighted by a per-seeker `discrimination` value. Decoys that outshine the ship steal the lock.
 - **Point defense** is ordinary gunfire on a missile track. The solver handles accelerating targets via `a_t`, which is why the tracker's gamma term matters. A missile dies when hits reduce `hitPoints` to 0.
 - **Burnout is a weakness.** A coasting missile flies a predictable ballistic path, so PD solutions on it are near-perfect.
+- **Who a mount firing at will leaves alone** (round 9, `WeaponControlSystem.setSpared`): a mount that isn't on the trigger never takes a spared ship as its target, though the trigger still fires on it. The game spares a ship that has struck, for the player's guns, so their point defense and crewed guns never pick a prize. Round 10: a fallen pirate base's silenced batteries count as struck too (`Struck` in core), since they never surrender; before, our guns firing at will went on hitting them after the fall. `MissileGuidanceSystem.setSpared` does the same for seekers: a missile never locks a ship its launcher spares unless it was fired at it. The game wires it for the fallen base's batteries only, so a heavy missile fired at a raider no longer bursts on a battery beside it. Point defense only ever takes missiles; its rounds that fly on past a dart and hit a ship behind it are stray fire (`ImpactEvent.pointDefense`).
 
 ### 4.5 Detonation
 On contact or proximity fuse, the missile emits an `ImpactEvent` (contact) or a `DetonationEvent` (proximity, a point in space) carrying its warhead def. Section 5 resolves both.
@@ -205,6 +206,7 @@ This section expands the original "Penetration Raycasting" algorithm into a full
 | `relVelocity` | `v_proj − (v_ship + ω × r_hit)`: projectile velocity relative to the hull surface it hit |
 | `mass`, `defId` | Projectile or missile mass and its def (damage type, penetration factor, warhead) |
 | `tick` | For deterministic ordering |
+| `aimedAt`, `pointDefense` | What the weapon was engaging when it fired (null for a shot down the barrel) and whether it was a point-defense mount. Kept by a missile's fragments, by its `DetonationEvent` and by ricochets, so the game can tell a stray hit from an aimed one (round 9) |
 
 ### 5.2 World to grid
 1. Transform `worldPoint` and `relVelocity` into the ship's local frame using the ship body's transform (inverse rotation for the velocity).
@@ -280,7 +282,7 @@ Momentum is conserved. On every impact, apply `m · (v_in − v_out)` as a linea
 Some interior rules need small changes in `interior-grid` for damage to read correctly. They are listed here so the owning module can pick them up:
 - An `INTERNAL` wall at integrity 0 must stop blocking fire, vacuum and walking. Today the code checks `wallType` only.
 - `PowerRoutingSystem` floods through `POWER_CONDUIT` and `FLOOR` tiles. It should skip tiles with integrity 0.
-- `ShipGridComponent`'s comment says tile [0][0] is the top-left. It should say bottom-left with +y up, to match Box2D (5.2). Grid rendering and the `Main.java` demo should follow.
+- `ShipGridComponent`'s comment says tile [0][0] is the top-left. It should say bottom-left with +y up, to match Box2D (5.2). Grid rendering and the interior demo should follow.
 - Combat sets a `gridDirty` flag so power can reroute immediately after heavy damage, without waiting for the 1 s tick (optional).
 
 **Shorts and bursts (round 5).** Every hit on a system, by a round, spall, a blast or a beam, rolls for a short circuit (`DamageStates.maybeShort`), and every hit on a powered conduit tile that leaves it standing rolls too (`maybeShortConduit`). Every hit that leaves a tank below its burst threshold rolls for a burst instead. Bursts go off once the round and its secondaries are done: the tank vents (`DamageStates.burst`), and a large one (500 kg or more) sets off a small blast of its own, `min(1 MJ, 500 J/kg)` at its tile out to 1 tile, through the same overpressure flood as a warhead, so it can hurt crew (`HitCause.BLAST`) and burst another tank (up to 8 in a chain). A burst's blast is the tank's energy, not the round's, so `Result.absorbed` leaves it out. `DamageReport.shorts` and `bursts` list the tiles.
@@ -309,8 +311,39 @@ Penetrating hits, spall, fragments and interior blast all damage crew. Combat on
 
 ### 5.11 Ion hits and shields (round 3)
 - **Ion** (`damage_type = "ion"`, the `ion_bolt` of `ion_mk1`): an ion hit breaks nothing. It stuns every subsystem within `stun.radius_tiles` (2) of where it struck for a random 10 to 30 s (`stun.min_seconds`, `max_seconds`), longer of what is left and the new roll (`IonStun`). Cargo, tanks and docking ports are not stunned. A stunned system is not operational, a stunned reactor feeds no circuit, and `PowerRoutingSystem` counts stuns down and reroutes when one ends. An ion hit is a hull hit with `ion = true` and no severity, and starts no fire.
-- **What a stun means:** a ship whose reactor is stunned goes dark (`NO_POWER`) and can be boarded in that window, but a stun is never a surrender or a beaten ship. `FirstPlay.beaten` is false while anything aboard is stunned (unless the ship is wrecked, surrendered or abandoned), and `ShipDisablement.gunsSilenced` ignores stunned guns, so a bounty is never paid for an ion hit.
+- **What a stun means:** a ship whose reactor is stunned goes dark (`NO_POWER`) and can be boarded in that window, but a stun is never a surrender or a beaten ship. `FirstPlay.beaten` is false while anything aboard is stunned unless the ship is wrecked, surrendered or abandoned, or disabled for its hull or its crew (round 8: a frigate broken at the raid was kept in the fight by the defence's ion raider and shot to a wreck; only `NO_POWER` waits out a stun), and `ShipDisablement.gunsSilenced` ignores stunned guns, so a bounty is never paid for an ion hit.
 - **Shields** (`Shields`): each operational `SHIELD_EMITTER` absorbs `ABSORB_SHARE` (0.5) of a hit's energy, scaled by its health, up to `MAX_SHARE` (0.75) for several. It pays `JOULES_PER_ABSORBED` (0.01 J per joule) from its circuit's store, so a drained reactor store stops absorbing. Shields act on rounds, missiles and beams, not on rams. An ion bolt soaked by a shield stuns only with the chance of what got through. `HullHitEvent.shielded` carries the absorbed share for the shimmer sound. The gunship carries one small emitter.
+
+### 5.12 Hull on hull: collisions
+Ships are small and slow next to orbital speeds, but two hulls meeting at tens of m/s carry a lot of energy: two 195 t starter corvettes closing at 50 m/s have 122 MJ of relative kinetic energy, about 24 medium hull tiles' worth of hit points. Before this, Box2D bounced every contact under 1 km/s off without damage. Now (`CollisionDamageSystem`, with physics-exterior's crash handling):
+
+**When it is a crash.** A new contact whose closing speed along the contact normal, `v`, is over `NO_DAMAGE_SPEED` (25 m/s), between two bodies at least one of which has an interior grid, is a crash. Contacts on sensors, docking collars and projectiles never are, and a pair that just crashed meets as plain Box2D for a quarter second after. At 25 m/s and under the hulls bump as before.
+
+**The pass-through.** For the tick they meet in, Box2D does not solve the contact: the hulls move on into each other. After the step, `physics.crashes` reports the contact (each body's contact point, the normal, the closing speed), and the system settles it in one go.
+
+**Impulse.** The crash is plastic down to the floor: one impulse `J = mu (v - v0)` along the normal at the contact, with `v0` = 25 m/s and `mu = 1 / (1/mA + 1/mB + (rA x n)^2/IA + (rB x n)^2/IB)` the pair's effective mass there, spin included. A kinematic body (a station) counts as infinitely heavy. Momentum is conserved. What is left of the hulls then meets at 25 m/s as an ordinary Box2D contact and bounces off a little (restitution 0.2).
+
+**Energy.** That impulse takes `E = mu (v^2 - v0^2) / 2` out of the pair's motion. `DAMAGE_SHARE` (0.2) of it goes into the hulls' structure; the rest is the frames flexing, heat, noise and spin, which a tile grid has no way to hold. The hulls split the damage by how hard each is where they met (the hit points of the first solid tile in from the contact): ship A takes `hpB / (hpA + hpB)`, so an armored bow does more to a freighter's flank than the other way round. A body with no grid (a rock) counts as medium hull steel and takes its share into nothing.
+
+**Crush** (`PenetrationResolver.crush`). Each ship's share spreads from the contact over the solid tiles joined to the one first struck, out to three spreads, weighted by a Gaussian `SPREAD_TILES` (1.25 tiles) wide. Each tile takes its share out of its hit points (`hitPoints`, no armor strip: armor is for rounds; a conduit's 0.4 MJ), and a share bigger than what is left pushes on into the tile behind it along the inward normal, so a hard hit crushes a column in rather than wrecking the ring around it. Machinery on a tile takes the same energy out of its hardness, crew on it are wounded by `100 * E / 5 MJ` (`HitCause.IMPACT`, which wounds), and it can catch fire like any kinetic hit. Tanks can burst.
+
+A tile at integrity 0 that the crush reached and that has a side on the void, the grid's edge or a crushed tile, is **crushed** (`Tile.crushed`, see interior-grid): folded flat into the structure behind it. Crushing spreads inward along a column. A crushed tile is open to space, is in `DamageReport.breaches` (so the crew seal it) and `crushed`, kills whoever stands in it (250 injury, past the lethal wound), and leaves the hull's collision shape: `hullShapeDirty` is set and the system reshapes the body (`HullShape` less crushed tiles, mass kept) before the next step. The hulls end up inside each other's old outlines, and the next contact is on what is left.
+
+The tile corners round every tile the crush took integrity from are pushed inward (`ShipGridComponent.dents`): 1.5 tiles per point of integrity lost round a corner, averaged over its four tiles, and a crushed column folds up to 0.2 of a tile per crushed tile against the structure behind. The exterior hull art is drawn warped by it (see the game's `ExteriorArt`).
+
+**Jolt.** Each ship's speed changes by `J / m` in an instant. Everyone aboard takes `JOLT_WOUND_PER_MPS` (1.5) injury for each m/s of it past `JOLT_SAFE_SPEED` (10 m/s), as `IMPACT`.
+
+**What it comes to**, two starter corvettes nose to nose (`CollisionDamageTest`):
+
+| Closing speed | Energy taken | Into each hull | Each hull | Crew (jolt) |
+|---|---|---|---|---|
+| 25 m/s and under | 0 | 0 | a bump | unhurt |
+| 30 m/s | 13 MJ | 1.3 MJ | 22 tiles scuffed, worst 4% | unhurt |
+| 50 m/s | 91 MJ | 9.1 MJ | 22 tiles dented, worst 30%, no breach | a scratch (12.5 m/s) |
+| 100 m/s | 457 MJ | 46 MJ | 3 tiles crushed, the bow wrecked round them, 9 tiles' worth lost | light wounds (37.5 m/s) |
+| 200 m/s | 1.9 GJ | 192 MJ | a third of the ship crushed (33 tiles) | critical (87.5 m/s) |
+
+Shields don't act on crashes. A crash publishes a `HullHitEvent` per struck ship with `ram = true` (audio plays its own collision sound from physics), and a `DamageReport`. `CollisionDamageSystem.last` keeps the last crash's numbers for tests, demos and the console. The game's debug ram (`WorldDebug.ram`) under 1 km/s flies a Box2D rock at the hull, so it crashes the same way.
 
 ### 5.10 Ordering and determinism
 Per 60 Hz tick:
@@ -319,6 +352,7 @@ Per 60 Hz tick:
 2. Box2D step (`PhysicsUpdateSystem`)
 3. `BallisticsSystem` / `MissileGuidanceSystem`
 4. `ImpactResolutionSystem` drains that tick's events in `tick, then shipUuid` order
+5. Crashes found in the step are settled after it (`CollisionDamageSystem`, 5.12), in the order Box2D found them; hulls they crushed are reshaped before the next step
 
 Hazards then evolve on their own tick (0.25 s). All random draws (fire, spall, gunnery jitter) come from a per-ship seeded RNG, so replays and unit tests are reproducible. The RNG's position is not saved: after a load each ship's stream starts again from its seed, so a loaded game rolls the same as itself but not as the run it was saved from. The RNG (`ImpactResolutionSystem.rngFor`) is seeded from the game's combat seed and the ship's UUID while the engine's UUIDs are seeded (a seeded career, and since round 6 the designed start), and from the combat seed and the ship's spawn index otherwise (a world on random UUIDs), so every game rolls the same shorts and bursts each run.
 
@@ -397,7 +431,7 @@ All in `combat-sys/src/main/java/com/ringsofiron/combatsys` (`components` packag
 - `MissileGuidanceSystem`: phases, ZEM guidance, burn and mass flow, seeker lock, fusing, and decoy flight.
 - `ImpactResolutionSystem`: ricochet, DDA penetration, explosive and beam damage, momentum transfer, and knock-on events.
 
-- **In the game** (round 2, core): `ShipDisablement` reads what combat leaves of a ship and marks it disabled (hull below 0.45, no reactor running, or no crew conscious) or wrecked (hull below 0.25). It also makes an NPC surrender when it is losing: hull below 0.55, fewer than half its crew conscious, or every gun silenced. Round 7: a pirate still further from its enemy than its shortest gun reaches (`closingToReach`) presses on past the crew line; the hull line still holds. A disabled ship stops fighting but stays in the world as a target for boarding and salvage. `HostileTraffic.firepower` rates a ship by its weapons' prices, with point defense at half; pirates compare it before picking a fight. A pirate or patrol shot at fights back. The details are in `documentation/progression/Design.md`.
+- **In the game** (round 2, core): `ShipDisablement` reads what combat leaves of a ship and marks it disabled (hull below 0.45, no reactor running, or no crew conscious) or wrecked (hull below 0.25). It also makes an NPC surrender when it is losing: hull below 0.55, fewer than half its crew conscious, or every gun silenced. Round 7: a pirate still further from its enemy than its shortest gun reaches (`closingToReach`) presses on past the crew line; the hull line still holds. Round 8: while closing to reach, a gun that a short has only cut off doesn't count as silenced (the short resets within 45 s), and a hostile is "dry" only once its propellant tanks are empty (`ShipDisablement.dry`), not because its engines have no power. Round 10: in reach too, a plain pirate whose crew have a reset in hand waits for it before striking for silenced guns (`ShipDisablement.resettingInReach`). A disabled ship stops fighting but stays in the world as a target for boarding and salvage. `HostileTraffic.firepower` rates a ship by its weapons' prices, with point defense at half; pirates compare it before picking a fight. A pirate or patrol shot at fights back. The details are in `documentation/progression/Design.md`.
 - **New weapon** (round 2): `chaingun_mk1`, the light raider's turret: 30 mm autocannon rounds every 0.15 s, 270° arc, 3 km range, 18,000 cr.
 - **New weapons** (round 3), each with turret art, a round's art and a synth patch:
 

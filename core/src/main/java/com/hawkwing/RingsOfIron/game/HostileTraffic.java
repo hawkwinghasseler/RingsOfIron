@@ -53,7 +53,8 @@ import java.util.function.DoubleSupplier;
  *   <li>A patrol engages pirates of another side in the bubble, and the player if they shot at it.</li>
  *   <li>Either fights to {@link Tactics}: standing off with missiles, rushing in with short guns,
  *       going round for the engines when it clearly outguns its enemy, or (a pirate that is losing)
- *       running. It breaks off below {@link #BREAK_OFF_HULL} of its hull, {@link #CROSSFIRE_BREAK_OFF_HULL}
+ *       running. It breaks off below {@link #BREAK_OFF_HULL} of its hull (a plain pirate in reach only after
+ *       {@link #BREAK_OFF_HOLD}), {@link #CROSSFIRE_BREAK_OFF_HULL}
  *       when it is under fire from several sides ({@link #CROSSFIRE_ANGLE}), and leaves when it has had
  *       nothing to do for {@link #IDLE_LIMIT}.</li>
  *   <li>Pirates are armed from {@code [loadout.*]} by hull and {@link #difficulty}; raiders fly in pairs,
@@ -79,6 +80,16 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
      * so a ship that is losing tries to get away first, and surrenders only if it is caught and hit again.
      */
     public static final double BREAK_OFF_HULL = 0.65;
+    /**
+     * A plain pirate in its guns' reach, or closing to it ({@link #BREAK_OFF_HOLD_CLOSING}), holds past
+     * {@link #BREAK_OFF_HULL}, and doesn't run on the odds ({@link Tactics.Plan#RUN}), for this long after it
+     * would first have turned away there, sim seconds (round 10: a lone raider worn
+     * to the line by a frigate's railguns just as it reached its chaingun's 3 km turned away unfired).
+     * Not under crossfire, and not an ace, which has its own line.
+     */
+    public static final double BREAK_OFF_HOLD = 10;
+    /** Within this share of its shortest gun's reach a pirate is closing to it, for {@link #BREAK_OFF_HOLD}. */
+    public static final double BREAK_OFF_HOLD_CLOSING = 1.25;
     /** Under fire from several sides, a hostile breaks off sooner: below this share of its hull. */
     public static final double CROSSFIRE_BREAK_OFF_HULL = 0.8;
     /** Two attackers this far apart in bearing, degrees, put a ship in a crossfire. */
@@ -115,6 +126,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     private final GameWorld world;
     private final HostileTrafficController controller;
+    /** Pirates' refuelling on the rails (round 8). */
+    private final PirateUpkeep upkeep;
     /**
      * How hard the game is: 1 is the default. Scales the pirate population; the loop merge points it
      * at the game's difficulty setting.
@@ -149,6 +162,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     private final List<String> drifting = new ArrayList<>();
     /** Sim second each hostile in the bubble last had something to do. */
     private final Map<String, Double> busySince = new HashMap<>();
+    /** When each plain pirate first held past its break-off line in reach of its enemy ({@link #BREAK_OFF_HOLD}). */
+    private final Map<String, Double> inReachSince = new HashMap<>();
     /** Sim seconds a pirate has held alongside its prey. */
     private final Map<String, Double> alongside = new HashMap<>();
     /** Each hostile's attackers in the bubble, and the sim second each last fired at it. */
@@ -160,19 +175,28 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     private HostileTraffic(GameWorld world) {
         this.world = world;
         controller = world.macroSim.hostiles();
+        upkeep = new PirateUpkeep(world);
         controller.addListener(this);
         controller.playerFirepower = () -> firepower(world.getPlayer());
         world.macroSim.bubble().addListener(this);
         world.timeWarp.addDropOutSource(this);
         world.timeWarp.changes.add((signal, change) -> alertAt = Double.NaN);
         world.combatEvents.shots.add((signal, shot) -> onShotAt(shot.target, shot.shooter));
-        world.combatEvents.impacts.add((signal, hit) -> onShotAt(hit.target, hit.owner, world.engine.getSimSeconds() - hit.sinceFired));
+        world.combatEvents.impacts.add((signal, hit) -> onShotAt(hit.target, hit.owner, world.engine.getSimSeconds() - hit.sinceFired,
+                !hit.pointDefense && hit.aimedAt == hit.target));
         world.disablement.changes.add((signal, change) -> surrendering(change));
         world.engine.getSerializationService().addParticipant(this);
     }
 
     /** Seconds after a surrender in which the player's fire doesn't yet count as firing on it again. */
     static final double SURRENDER_GRACE = 10;
+    /**
+     * Whether stray fire brings a prize back into the fight: a point-defense round, or a round or
+     * missile aimed at another ship, that hits it after the grace. Round 9: false, so only fire aimed
+     * at the prize itself does (in round 8's window the point defense, firing at the base's darts, hit
+     * the struck raiders behind them).
+     */
+    static final boolean STRAY_FIRE_REVIVES = false;
 
     /**
      * A hostile that surrenders is a prize (round 6): it lets go of the player, and stays passive
@@ -186,6 +210,9 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             h.surrendered = true;
             if (h.huntingPlayer()) h.targetUuid = null;
             provoked.remove(change.ship);
+            // The player's guns let go of it: a lock left on it made the trigger aimed fire after the
+            // grace (round 9, part 6's window: Space held after the fall brought Pirate raider 22 back)
+            PirateBoarding.standDown(world.getPlayer(), change.ship);
         } else if (change.was == DisabledComponent.Reason.SURRENDERED && change.now == null) {
             h.surrendered = false;
         }
@@ -235,7 +262,14 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         provoked.clear();
         sentPatrols.clear();
         busySince.clear();
+        inReachSince.clear();
         alongside.clear();
+        upkeep.last = Double.NaN;
+    }
+
+    /** Rails time pirates' refuelling last ran at ({@link PirateUpkeep}); NaN before it first runs. */
+    double upkeepClock() {
+        return upkeep.last;
     }
 
     /** The number a hostile's name ends with ("Pirate raider 3"), or 0. */
@@ -338,6 +372,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             topUpDue = true;
             nextTopUp = now + TOP_UP_INTERVAL;
         }
+        // Every frame, not on the checks: the checks' phase isn't saved (PirateUpkeep keeps its own steps)
+        upkeep.update(controller.all(), now);
         since += deltaTime;
         if (since < CHECK_SECONDS) return;
         since = 0f;
@@ -377,7 +413,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             return;
         }
         boolean crossfire = crossfire(e, now);
-        if (!h.brokeOff && h.hull < breakOffHull(h, crossfire)) {
+        if (!h.brokeOff && h.hull < breakOffHull(h, crossfire) && !holdsToFire(id, e, h, crossfire, now)) {
             breakOff(id, h, now);
             notices.add(h.displayName + " is breaking off");
         }
@@ -415,7 +451,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
                 return;
             }
             breakOff(id, h, now);
-            drifting.add(h.displayName);
+            // At a berth the player isn't left drifting: it just goes (round 8)
+            if (!world.pirateBoarding.atBerth(enemy)) drifting.add(h.displayName);
             disengage(e);
             leave(e);
             return;
@@ -425,8 +462,13 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             // An ace never runs on the odds: it fights to its break-off line
             Tactics.Arms arms = Tactics.arms(e);
             boolean wingman = besideLeader(h, enemy);
-            Tactics.Plan plan = Tactics.choose(arms, odds(id, e, h, enemy), h.hull, h.isPirate() && !aceAtLarge(h),
+            double odds = odds(id, e, h, enemy);
+            Tactics.Plan plan = Tactics.choose(arms, odds, h.hull, h.isPirate() && !aceAtLarge(h),
                     crossfire, aceAtLarge(h), wingman, range(e, enemy) > arms.reach);
+            // Nor does it run before it has had its hold in reach to fire (round 10)
+            if (plan == Tactics.Plan.RUN && holdsToFire(id, e, h, crossfire, now)) {
+                plan = Tactics.choose(arms, odds, h.hull, false, crossfire, false, wingman, false);
+            }
             if (plan == Tactics.Plan.RUN) {
                 breakOff(id, h, now);
                 world.notices.post(h.displayName + " is running", NoticeLog.Kind.INFO);
@@ -467,8 +509,24 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         // darts at a frigate dead in space after its raiders had left it)
         if (enemy != null && enemy == world.getPlayer() && ShipDisablement.isDisabled(enemy)
                 && FirstPlay.beaten(world, enemy)) enemy = null;
+        // A struck base's guns strike with it, provoked or not (round 8, real window: two of Rustwake's
+        // batteries went on launching darts for a minute after it fell)
+        if (world.pirateBase.silenced(h.displayName)) enemy = null;
         SensorComponent sensor = e.getComponent(SensorComponent.class);
         if (sensor != null) sensor.lockedTarget = enemy;
+    }
+
+    /**
+     * True while a plain pirate that would break off or run holds to fire instead ({@link #BREAK_OFF_HOLD}): in
+     * or closing to its guns' reach of its enemy, not under crossfire, for the hold's time from the first such check.
+     */
+    private boolean holdsToFire(String id, Entity e, HostileComponent h, boolean crossfire, double now) {
+        if (!h.isPirate() || aceAtLarge(h) || crossfire) return false;
+        Entity enemy = enemyOf(e, h);
+        if (enemy == null || !(range(e, enemy) <= Tactics.arms(e).reach * BREAK_OFF_HOLD_CLOSING)) return false;
+        Double since = inReachSince.get(id);
+        if (since == null) inReachSince.put(id, since = now);
+        return now - since < BREAK_OFF_HOLD;
     }
 
     /**
@@ -714,6 +772,14 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     /** As {@link #onShotAt(Entity, Entity)}, for a shot fired at sim second {@code firedAt}. */
     void onShotAt(Entity victim, Entity attacker, double firedAt) {
+        onShotAt(victim, attacker, firedAt, true);
+    }
+
+    /**
+     * As {@link #onShotAt(Entity, Entity, double)}; {@code aimed} is false for stray fire (a
+     * point-defense round, or one aimed at another ship), which doesn't bring a prize back.
+     */
+    void onShotAt(Entity victim, Entity attacker, double firedAt, boolean aimed) {
         if (victim == null || attacker == null || victim == attacker) return;
         HostileComponent h = victim.getComponent(HostileComponent.class);
         if (h == null) return;
@@ -728,11 +794,16 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             if (side < 0 || !world.standing.hostile(FactionStanding.PLAYER, side)) return;
         }
         if (h.surrendered) {
+            // A beaten ace whose bounty paid stays struck, fired on or not (round 8: in the window Black
+            // Sal surrendered, the bounty paid, and the gunship's guns, still firing, brought it back
+            // into the fight and set it running)
+            if (h.partDropped) return;
             // A prize stays one unless the player fires on it again. A round or missile fired before
             // it gave up doesn't count, however long it flew: a heavy missile's fragments landing
             // 15 s after a surrender lifted it on seed 12, and the prize then tore the boarding latch
             DisabledComponent d = victim.getComponent(DisabledComponent.class);
             if (attacker != world.getPlayer() || d != null && firedAt - d.since < SURRENDER_GRACE) return;
+            if (!aimed && !STRAY_FIRE_REVIVES) return;
             h.surrendered = false;
             if (d != null && d.reason == DisabledComponent.Reason.SURRENDERED) world.disablement.set(victim, null);
         }
@@ -776,6 +847,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         provoked.remove(e);
         attackers.remove(e);
         busySince.remove(uuid);
+        inReachSince.remove(uuid);
         alongside.remove(uuid);
     }
 
@@ -791,6 +863,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     public void plundered(String hostile, String freighter, String commodity, double quantity, double t) {
         HostileComponent h = controller.get(hostile);
         Entity e = world.engine.getEntity(hostile);
+        // Round 8: it fills up from its prey's reaction mass before anything else
+        if (e != null) PirateUpkeep.robbed(e, world.engine.getEntity(freighter));
         if (h == null || e == null || h.ace || h.plunders < PirateAces.PLUNDERS_TO_ACE) return;
         String was = h.displayName;
         if (PirateAces.promote(world, e, h, controller.all().values(), difficulty.getAsDouble(), false)) {
@@ -837,6 +911,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         json.writeValue("playerGraceUntil", controller.playerGraceUntil);
         writeTimes(json, "busySince", busySince);
         writeTimes(json, "alongside", alongside);
+        writeTimes(json, "inReachSince", inReachSince);
+        if (!Double.isNaN(upkeep.last)) json.writeValue("upkeepAt", upkeep.last);
     }
 
     @Override
@@ -849,6 +925,8 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         controller.playerGraceUntil = data.getDouble("playerGraceUntil", 0);
         readTimes(data.get("busySince"), busySince);
         readTimes(data.get("alongside"), alongside);
+        readTimes(data.get("inReachSince"), inReachSince);
+        upkeep.last = data.getDouble("upkeepAt", Double.NaN);
     }
 
     private static void writeTimes(Json json, String name, Map<String, Double> times) {
@@ -863,6 +941,11 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     }
 
     // ---------------------------------------------------------------------------------------------
+
+    /** When {@code id} began to hold to fire ({@link #BREAK_OFF_HOLD}), or null; for tests. */
+    Double holdingSince(String id) {
+        return inReachSince.get(id);
+    }
 
     /** Tops the population up now, out of the player's sight, as the hourly top-up does; for tests. */
     void topUpNow() {
@@ -1005,6 +1088,19 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
             world.macroSim.addPirate(uuid, h, station);
             out.add(uuid);
         }
+        // Round 10: a railgun platform takes the mooring nearest the station, and the others guard the
+        // approach, where their chainguns reach a ship holding off the base
+        for (int i = 1; i < out.size(); i++) {
+            HostileComponent h = world.macroSim.hostiles().get(out.get(i)), first = world.macroSim.hostiles().get(out.get(0));
+            LoadoutDef fit = h == null || h.loadout == null ? null : world.combatDefs.loadouts.get(h.loadout);
+            if (first == null || fit == null || !railgun(fit)) continue;
+            double near = first.mooring;
+            first.mooring = h.mooring;
+            h.mooring = near;
+            world.macroSim.addPirate(out.get(0), first, station);
+            world.macroSim.addPirate(out.get(i), h, station);
+            break;
+        }
         return out;
     }
 
@@ -1102,6 +1198,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         ship.remove(PhysicsBodyComponent.class);
         ShipConsoles.install(ship);
         CrewFactory.ensureBoard(ship).faction = crewFaction;
+        world.standing.factions().crewHabits(CrewFactory.ensureBoard(ship));
         ShipDef def = content.defs.get("ship", shipId, ShipDef.class);
         List<int[]> floor = GameScenario.floorTiles(ship.getComponent(ShipGridComponent.class));
         int crew = def == null ? 0 : Math.min(def.crew, floor.size());

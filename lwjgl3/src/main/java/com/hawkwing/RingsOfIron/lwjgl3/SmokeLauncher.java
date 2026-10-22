@@ -4,13 +4,10 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
-import com.hawkwing.RingsOfIron.AudioDemo;
 import com.hawkwing.RingsOfIron.CrewDemo;
 import com.hawkwing.RingsOfIron.DockingDemo;
 import com.hawkwing.RingsOfIron.FlightDemo;
-import com.hawkwing.RingsOfIron.HudDemo;
-import com.hawkwing.RingsOfIron.Main;
-import com.hawkwing.RingsOfIron.OrbitDemo;
+import com.hawkwing.RingsOfIron.InteriorDemo;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
 import com.hawkwing.RingsOfIron.ShipEditor;
 import com.hawkwing.RingsOfIron.shell.GameShell;
@@ -30,15 +27,23 @@ public class SmokeLauncher {
         APPS.put("game", RingsOfIronGame::new);
         APPS.put("firstplay", () -> new RingsOfIronGame(java.nio.file.Paths.get("").toAbsolutePath(),
                 java.nio.file.Paths.get("mods").toAbsolutePath(), true));
-        APPS.put("interior", Main::new);
+        APPS.put("interior", InteriorScript::new);
         APPS.put("flight", FlightDemo::new);
-        APPS.put("hud", HudDemo::new);
-        APPS.put("audio", AudioDemo::new);
-        APPS.put("orbit", OrbitDemo::new);
+        APPS.put("audio", () -> new ScenarioScript("audio", 10, "Fire", 20, "Vent", 40, "Door", 50, "Reactor",
+                60, "Laser outside", 70, "Hull hit", 80, "Reactor", 90, "Vent", 100, "Fire", 160, "Next hull",
+                220, "Previous hull", 220, "Previous hull"));
+        APPS.put("orbit", () -> {
+            RingsOfIronGame game = new RingsOfIronGame();
+            game.setScenario(com.hawkwing.RingsOfIron.debug.DebugScenarios.find("orbit"));
+            return game;
+        });
         APPS.put("crew", CrewDemo::new);
         APPS.put("docking", DockingDemo::new);
         APPS.put("editor", ShipEditor::new);
         APPS.put("shell", ShellScript::new);
+        APPS.put("scenario-crew", () -> new ScenarioScript("crew", 150, "Tool: Start fire", 250, "Restart drill"));
+        APPS.put("scenario-interior", () -> new ScenarioScript("interior", 60, "Attacker", 120, "Next hull",
+                200, "Next hull", 240, "Attacker"));
     }
 
     public static void main(String[] args) {
@@ -149,6 +154,109 @@ public class SmokeLauncher {
         private static void check(boolean ok, String what) {
             if (!ok) throw new IllegalStateException("Shell smoke step failed: " + what);
         }
+    }
+
+    /**
+     * The interior demo with its tools at work: an attacker set on the ship, a crew member critically
+     * wounded and hit again, a railgun round, a ram, a blast and a laser, a medic spawned, then the next
+     * hull. Any tool that throws fails the run. With -Dsmoke.shots=<dir> it saves a screenshot after the
+     * first hits and one on the next hull.
+     */
+    private static final class InteriorScript implements ApplicationListener {
+        private final InteriorDemo demo = new InteriorDemo();
+        private int frame;
+
+        @Override public void create() { demo.create(); }
+        @Override public void resize(int width, int height) { demo.resize(width, height); }
+        @Override public void render() {
+            com.hawkwing.RingsOfIron.game.InteriorLab lab = demo.lab();
+            com.badlogic.ashley.core.Entity ship = lab.ship;
+            com.ringsofiron.interiorgrid.ShipGridComponent grid = ship.getComponent(com.ringsofiron.interiorgrid.ShipGridComponent.class);
+            int mid = grid.width / 2;
+            switch (frame++) {
+                case 5: lab.attack("corvette_raider", 90f); break;
+                case 10: {
+                    com.badlogic.ashley.core.Entity hurt = lab.debug.crewAboard(ship).get(2);
+                    lab.debug.hurt(hurt, 100f, com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.SPALL);
+                    demo.select(hurt);
+                    break;
+                }
+                case 15: lab.debug.fire(ship, "railgun_mk1", mid, grid.height - 1); break;
+                case 20: lab.debug.ram(ship, mid - 2, 0); break;
+                case 25: lab.debug.blast(ship, "frag_light", mid + 1, grid.height / 2); break;
+                case 30: lab.debug.fire(ship, "laser_mk1", mid + 3, grid.height - 1); break;
+                case 35: lab.debug.hurt(lab.debug.crewAboard(ship).get(2), 80f,
+                        com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.FRAGMENT); break;
+                case 40: lab.debug.spawnCrew(ship, com.ringsofiron.aicrew.CrewRole.MEDIC); break;
+                case 45: {
+                    // Someone in each state the deck draws: a light wound on their feet, dead, out cold
+                    java.util.List<com.badlogic.ashley.core.Entity> aboard = lab.debug.crewAboard(ship);
+                    lab.debug.hurt(aboard.get(0), 30f, com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.PENETRATOR);
+                    lab.debug.hurt(aboard.get(1), 250f, com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.BLAST);
+                    if (aboard.size() > 3) lab.debug.hurt(aboard.get(3), 0.85f * lab.world.crew.crew(aboard.get(3)).def.maxHealth,
+                            com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.ASPHYXIATION);
+                    break;
+                }
+                case 200: lab.cycle(1); break;
+                default: break;
+            }
+            demo.render();
+            if (frame == 150 || frame == 260) shot("interior-" + frame);
+        }
+        @Override public void pause() { demo.pause(); }
+        @Override public void resume() { demo.resume(); }
+        @Override public void dispose() { demo.dispose(); }
+    }
+
+    /**
+     * The game loaded straight into a debug menu scenario, with its menu buttons pressed at the frames
+     * given ({@code frame, "button", frame, "button" ...}). A button that is not there, or one that
+     * throws, fails the run. With -Dsmoke.shots=<dir> it saves a screenshot every hundred frames.
+     */
+    private static final class ScenarioScript implements ApplicationListener {
+        private final RingsOfIronGame game = new RingsOfIronGame();
+        private final String id;
+        private final Object[] presses;
+        private int frame;
+
+        ScenarioScript(String id, Object... presses) {
+            this.id = id;
+            this.presses = presses;
+            com.hawkwing.RingsOfIron.debug.DebugScenarios.Entry entry = com.hawkwing.RingsOfIron.debug.DebugScenarios.find(id);
+            if (entry == null) throw new IllegalStateException("No scenario " + id);
+            game.setScenario(entry);
+        }
+
+        @Override public void create() { game.create(); }
+        @Override public void resize(int width, int height) { game.resize(width, height); }
+        @Override public void render() {
+            frame++;
+            for (int i = 0; i + 1 < presses.length; i += 2) {
+                if ((Integer) presses[i] != frame) continue;
+                com.hawkwing.RingsOfIron.debug.DebugMenuActions.Action a = game.getDevConsole().menuActions.find((String) presses[i + 1]);
+                if (a == null) throw new IllegalStateException("Scenario " + id + " has no button " + presses[i + 1]);
+                a.run.run();
+            }
+            game.render();
+            if (frame % 100 == 0) shot("scenario-" + id + "-" + frame);
+        }
+        @Override public void pause() { game.pause(); }
+        @Override public void resume() { game.resume(); }
+        @Override public void dispose() { game.dispose(); }
+    }
+
+    /** With -Dsmoke.shots=<dir>, saves what is on screen there as {@code name}.png. */
+    private static void shot(String name) {
+        String shots = System.getProperty("smoke.shots");
+        if (shots == null) return;
+        int w = Gdx.graphics.getBackBufferWidth(), h = Gdx.graphics.getBackBufferHeight();
+        // Flipped to top-down rows, and opaque: what is on screen, whatever alpha the frame buffer kept
+        byte[] pixels = com.badlogic.gdx.utils.ScreenUtils.getFrameBufferPixels(0, 0, w, h, true);
+        for (int i = 3; i < pixels.length; i += 4) pixels[i] = (byte) 255;
+        com.badlogic.gdx.graphics.Pixmap p = new com.badlogic.gdx.graphics.Pixmap(w, h, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+        com.badlogic.gdx.utils.BufferUtils.copy(pixels, 0, p.getPixels(), pixels.length);
+        com.badlogic.gdx.graphics.PixmapIO.writePNG(Gdx.files.absolute(shots + "/" + name + ".png"), p);
+        p.dispose();
     }
 
     /** Passes every call through to the app and exits once enough frames have rendered. */

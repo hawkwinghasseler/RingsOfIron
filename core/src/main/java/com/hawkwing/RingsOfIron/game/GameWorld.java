@@ -27,6 +27,7 @@ import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.modding.ShipWeaponsAssembler;
 import com.ringsofiron.combatsys.systems.BallisticsSystem;
 import com.ringsofiron.combatsys.systems.BeamSystem;
+import com.ringsofiron.combatsys.systems.CollisionDamageSystem;
 import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
 import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
@@ -37,6 +38,7 @@ import com.ringsofiron.coreengine.TickProfiler;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
+import com.ringsofiron.interiorgrid.HullShape;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.InteriorGridSaveParticipant;
 import com.ringsofiron.interiorgrid.InteriorHazardWarpGuard;
@@ -149,6 +151,8 @@ public class GameWorld implements Disposable {
     public final MissileGuidanceSystem missiles;
     /** Resolves hits; damage uses the loaded material data once {@link #loadContent} has run. */
     public final ImpactResolutionSystem impacts;
+    /** Hulls meeting faster than 25 m/s crush each other (combat-sys/Design.md 5.12). */
+    public final CollisionDamageSystem collisionDamage;
     /** Finds what each burning beam touches and burns it. */
     public final BeamSystem beams;
     public final AudioManager audio;
@@ -237,6 +241,10 @@ public class GameWorld implements Disposable {
     public final BerthVenting berthVenting;
     /** The player's figure suiting up at battle stations and in thin air. */
     public final CaptainSafety captain;
+    /** Warnings before the player's people run out of air. */
+    public final AirWatch air;
+    /** A station's infirmary, treating the player's wounded at its berth (round 8). */
+    public final StationInfirmary infirmary;
     /** The distress beacon: a stranded ship towed home. */
     public final DistressBeacon beacon = new DistressBeacon(this);
     /** First Play's and the opening walkthrough's progress, saved with the game. */
@@ -305,6 +313,8 @@ public class GameWorld implements Disposable {
         // Craft that fly themselves in to dock and away again, on their own thrusters
         berthing = new BerthingSystem(docking, engine.getUuidRegistry());
         engine.addSystem(berthing);
+        // ... and ships crossing the bubble on their rails plan keep out of the stations and berths
+        engine.addSystem(new TransitClearance(docking));
 
         // orbital-mechanics
         universe = new RailsUniverse(engine);
@@ -351,6 +361,8 @@ public class GameWorld implements Disposable {
         engine.addSystem(new PropellantFeed());
         // ...and the engines themselves set how hard the ship can push, less as they take damage
         engine.addSystem(new EngineThrust(this::getContent));
+        // ...and the RCS blocks on the hull how hard it turns, strafes and backs up
+        engine.addSystem(new RcsThrust());
         orbitalEvents.burnBudget = (ship, dv) -> {
             ShipGridComponent.MassProperties m = shipMass(ship);
             return m == null ? dv : PropellantFeed.payForBurn(ship, m.mass, dv);
@@ -452,6 +464,13 @@ public class GameWorld implements Disposable {
         // Round 7: other ships' gunners hold fire with a ship in the way (a pirate emptied its
         // magazine into a surrendered wingmate); the player's guns fire as the player sets them
         weaponControl.setHoldFire((shooter, blocker) -> shooter != getPlayer());
+        // Round 9: the player's guns firing at will (point defense, crewed guns) never take a struck ship;
+        // round 10: nor a fallen base's silenced battery (they went on hitting Den batteries 23 and 24)
+        weaponControl.setSpared((shooter, target) -> shooter == getPlayer() && Struck.struck(this, target));
+        // Round 10: nor do its missiles' seekers lock a fallen base's battery they weren't fired at
+        // (part 6's window: a heavy missile fired at a raider burst on Den battery 23). Only the
+        // batteries: sparing surrendered ships too moved fights before the frigate (seed 2026's ace)
+        missiles.setSpared((shooter, target) -> shooter == getPlayer() && Struck.silencedBattery(this, target));
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
@@ -460,6 +479,11 @@ public class GameWorld implements Disposable {
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
         impacts.setEntityIds(engine.getEntityIds());
         engine.addSystem(impacts);
+        // Hulls that meet too fast crush each other, and collide on what is left (ShipHulls)
+        collisionDamage = new CollisionDamageSystem(physics, combatEvents, impacts);
+        collisionDamage.setHullSource(ship -> hulls != null ? hulls.hullFor(ship, null)
+                : ship.getComponent(ShipGridComponent.class) == null ? null : HullShape.pieces(ship.getComponent(ShipGridComponent.class)));
+        engine.addSystem(collisionDamage);
         // Hits beside a docking port wear its collar
         CollarWear.install(combatEvents);
         beams = new BeamSystem(physics, impacts);
@@ -470,6 +494,14 @@ public class GameWorld implements Disposable {
         // ... and their crews take to the pods; the player's pod ends in a rescue
         abandon = new AbandonShip(crew, disablement, engine::getSimSeconds, docking::dockedTo);
         engine.addSystem(abandon);
+        // ... walking the player to a pod each tick before the crew move, as the screen clears the walk
+        engine.addSystem(new com.ringsofiron.coreengine.systems.FixedLogicSystem(CaptainSafety.KEEP_WALKING_PRIORITY,
+                (float) com.ringsofiron.coreengine.SimClock.TICK_SECONDS) {
+            @Override
+            protected void updateFixed(float deltaTime) {
+                abandon.keepWalking();
+            }
+        });
         rescue = new Rescue(this, bubble);
         // Beaten ships are boarded, taken and stripped
         boarding = new Boarding(docking, crew, forcing, standing, disablement, engine.getUuidRegistry(), engine::getSimSeconds);
@@ -529,6 +561,8 @@ public class GameWorld implements Disposable {
         medical = new CrewMedical(this);
         berthVenting = new BerthVenting(this);
         captain = new CaptainSafety(this);
+        air = new AirWatch(this);
+        infirmary = new StationInfirmary(this);
     }
 
     /**
@@ -641,6 +675,8 @@ public class GameWorld implements Disposable {
         medical.update();
         berthVenting.update();
         captain.update();
+        air.update();
+        infirmary.update();
         // Warp changes only between updates: the autopilot raises it again after a burn
         nav.autopilot.afterUpdate();
     }
@@ -653,6 +689,7 @@ public class GameWorld implements Disposable {
     /** A save was just loaded: rails warp waits until its bodies and the player's latch are back. */
     void loaded() {
         loadSettling = LOAD_SETTLE_FRAMES;
+        captain.loaded();
     }
 
     /** How the player's ship was lost, or null while it still flies. */

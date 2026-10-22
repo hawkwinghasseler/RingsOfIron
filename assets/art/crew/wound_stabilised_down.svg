@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="-24 -24 48 48">
+  <title>wound_stabilised_down: a critical wound dressed and stabilised, drawn over a crew figure lying on their back</title>
+  <g id="base">
+    <path d="M-13,-8 C-8,-12 6,-12 12,-7 C16,-2 15,7 9,10 C4,12 -6,12 -10,9 C-15,5 -16,-3 -13,-8 Z" fill="#5a0d0d" opacity="0.45"/>
+    <rect x="-12" y="-5" width="24" height="7" rx="2" fill="#ece8de" stroke="#10141a" stroke-width="1.2"/>
+    <line x1="-11" y1="-1.5" x2="11" y2="-1.5" stroke="#c9c2b2" stroke-width="0.8" stroke-linecap="round"/>
+    <rect x="-4" y="-7" width="8" height="11" rx="1.5" fill="#ece8de" stroke="#10141a" stroke-width="1.2"/>
+    <path d="M-2,-3 C0,-4 2,-3 2,-1 C2,1 0,1 -1,0 Z" fill="#8e1414" opacity="0.7"/>
+    <rect x="-18.5" y="0" width="7" height="4" rx="1" fill="#ece8de" stroke="#10141a" stroke-width="1"/>
+  </g>
+  <g id="meta">
+    <circle id="collider" cx="0" cy="0" r="19.2" fill="none" stroke="none"/>
+  </g>
+</svg>

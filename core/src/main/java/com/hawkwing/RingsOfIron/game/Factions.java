@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.moddingdata.DefRegistry;
 import com.ringsofiron.moddingdata.defs.FactionDef;
 
@@ -91,6 +92,18 @@ public final class Factions {
         FactionDef f = def(index);
         if (f != null) return f.name;
         return index == FactionStanding.PLAYER ? "Your crew" : "Unaligned";
+    }
+
+    /**
+     * Gives {@code board} its crew's habits from the data of the faction that works it ({@link
+     * FactionDef#crewsKeepClearOfFire}, {@link FactionDef#crewsResetPowerFirst}); a faction that is none of the
+     * data's keeps clear and keeps the usual order. Null is ignored.
+     */
+    public void crewHabits(ShipTaskBoardComponent board) {
+        if (board == null) return;
+        FactionDef f = def(board.faction);
+        board.keepsClearOfFire = f == null || f.crewsKeepClearOfFire;
+        board.resetsPowerFirst = f != null && f.crewsResetPowerFirst;
     }
 
     /** Whether {@code index} is one of the data's factions. */

@@ -39,19 +39,31 @@ test {
   if (project.hasProperty('careerSeed')) systemProperty 'career.seed', project.property('careerSeed')
   // ./gradlew :core:test --tests '*CareerSeedsTest' -PcareerSeeds=2026,7,12 plays each seed's career twice (CI's career seed jobs)
   if (project.hasProperty('careerSeeds')) systemProperty 'career.seeds', project.property('careerSeeds')
+  // ./gradlew :core:test --tests '*CareerSweepTest' -PcareerSweep=1-10,2026,7,12 plays both careers once on each seed, -PsweepForks=n at once (core/build/career-sweep.txt)
+  if (project.hasProperty('careerSweep')) systemProperty 'career.sweep', project.property('careerSweep')
+  if (project.hasProperty('sweepForks')) systemProperty 'career.sweep.forks', project.property('sweepForks')
   // ./gradlew :core:test --tests '*CrewWoundSurveyTest' -PwoundSurvey=10 fights round 4's ace survey again with wounds
   if (project.hasProperty('woundSurvey')) systemProperty 'wound.survey', project.property('woundSurvey')
   if (project.hasProperty('woundTrace')) systemProperty 'wound.survey.trace', 'true'
+  if (project.hasProperty('woundSeed')) systemProperty 'wound.survey.seed', project.property('woundSeed')
   if (project.hasProperty('woundRefits')) systemProperty 'wound.survey.refits', project.property('woundRefits')
+  // ./gradlew :core:slowTest --tests '*CareerAirTraceTest' -PcareerSeed=1 -PcareerAirTrace traces the crew's air through round 5's career (build/career-air-1.txt)
+  if (project.hasProperty('careerAirTrace')) systemProperty 'career.airTrace', 'true'
+  // ./gradlew :core:test --tests '*CaptainAshoreProbe' -PcaptainProbe traces round 9's captain left aboard a venting berth under warp (build/captain-ashore.txt)
+  if (project.hasProperty('captainProbe')) systemProperty 'captain.probe', 'true'
+  // -PcareerFightTrace='Iron Dagny' traces each career fight whose name holds the text, second by second (build/fight-trace-<seed>.txt)
+  if (project.hasProperty('careerFightTrace')) systemProperty 'career.fightTrace', project.property('careerFightTrace')
   // ./gradlew :core:test --tests '*EnemySurveyTest' -PenemySurvey runs the round 5 enemy survey (core/build/enemy-survey.txt)
   if (project.hasProperty('enemySurvey')) systemProperty 'enemy.survey', 'true'
   if (project.hasProperty('surveyTrials')) systemProperty 'enemy.survey.trials', project.property('surveyTrials')
   if (project.hasProperty('surveyRows')) systemProperty 'enemy.survey.rows', project.property('surveyRows')
+  // -PsurveyStart=intercept: the lone and wing rows hunt the player from the rails, as in the game, instead of starting at rest 4 km out
+  if (project.hasProperty('surveyStart')) systemProperty 'enemy.survey.start', project.property('surveyStart')
   if (project.hasProperty('enemyDebug')) systemProperty 'enemy.debug', 'true'
   if (project.hasProperty('enemyProbe')) systemProperty 'enemy.probe', project.property('enemyProbe')
   // A failing test says why in the CI log, not only in the report (the build logs at quiet, see gradle.properties)
   testLogging {
-    showStandardStreams = project.hasProperty('enemySurvey') || project.hasProperty('enemyDebug')
+    showStandardStreams = project.hasProperty('enemySurvey') || project.hasProperty('enemyDebug') || project.hasProperty('enemyProbe')
     quiet {
       events 'failed'
       exceptionFormat 'full'

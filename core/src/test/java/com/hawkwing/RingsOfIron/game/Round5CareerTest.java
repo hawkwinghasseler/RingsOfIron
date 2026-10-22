@@ -30,6 +30,19 @@ class Round5CareerTest extends CareerScript {
     static final double LAST_DAY = 140;
     /** Most operation steps or bounties the script flies, so a stuck world cannot spin forever. */
     static final int MOST_JOBS = 40;
+    /** Most tries at the raid, each after the yard (round 7: 2). */
+    static final int RAID_TRIES = 3;
+    /**
+     * Round 10: while the money is what holds the frigate back, {@link #buyTheFrigate} takes the bounty
+     * that pays most, as a player saving for a ship would; otherwise the one with the most standing,
+     * as before. Seed 9 took two plain raiders for 14,322 and 22,185 cr with a week docked after each.
+     */
+    static final boolean PAY_FIRST_WHEN_SHORT = true;
+    /**
+     * Round 10: bounties {@link #buyTheFrigate} takes in a day, from either board, before a week docked
+     * while the money is short (round 9: 1). Seed 9's Highport board offered one bounty a week.
+     */
+    static final int FRIGATE_BOUNTIES_A_DAY = 2;
 
     final List<String> rows = new ArrayList<>();
     int jobs, operationsDone, bountiesDone, raidsFought;
@@ -184,8 +197,9 @@ class Round5CareerTest extends CareerScript {
             case RAID:
                 raidTheBase(c);
                 // Round 7: the frigate wins about 7 raids in 10, so a raid lost is flown again after
-                // the yard, as a player would (seed 2026 lost its reactor to the batteries' darts)
-                if (c.isActive() && world.pirateBase.standing()) {
+                // the yard, as a player would (seed 2026 lost its reactor to the batteries' darts).
+                // Round 8: up to RAID_TRIES in all, since the career now flies the survey's raid
+                for (int tries = 1; tries < RAID_TRIES && c.isActive() && world.pirateBase.standing(); tries++) {
                     log("  the raid is lost: home for repairs, and once more.");
                     repairIfNeeded();
                     raidTheBase(c);
@@ -216,15 +230,28 @@ class Round5CareerTest extends CareerScript {
 
     /** A bounty the boards at Highport or Anvil Yards offer, fought for. False if none could be taken. */
     boolean takeABounty() {
+        return takeABounty(false);
+    }
+
+    /**
+     * A bounty the boards at Highport or Anvil Yards offer, fought for: the one with the most standing,
+     * or with {@code payFirst} the one that pays most (round 10). The offers it chose from go in the
+     * journal. False if none could be taken.
+     */
+    boolean takeABounty(boolean payFirst) {
         for (String station : new String[]{game.highport, game.shipyard}) {
             dockAtStation(station);
             Contract best = null;
+            List<String> offers = new ArrayList<>();
             for (Contract c : world.contracts.offers(station)) {
                 if (c.type != Contract.Type.BOUNTY || world.contracts.locked(c) != null) continue;
                 HostileComponent h = world.macroSim.hostiles().get(c.targetUuid);
                 if (h == null || !h.isPirate()) continue;
-                if (best == null || c.standing > best.standing) best = c;
+                offers.add(String.format(java.util.Locale.ROOT, "%s %.0f cr %+.0f", c.targetName, c.reward, c.standing));
+                if (best == null || (payFirst ? c.reward > best.reward : c.standing > best.standing)) best = c;
             }
+            if (!offers.isEmpty()) log("  bounties at %s (%s): %s", PlayerDocking.name(world.engine.getEntity(station)),
+                    payFirst ? "pay first" : "standing first", String.join("; ", offers));
             if (best == null || world.contracts.accept(best.id) != null) continue;
             log("Took %s: %.0f cr, %+.0f standing.", best.heading(), best.reward, best.standing);
             flyStep(best);
@@ -245,7 +272,10 @@ class Round5CareerTest extends CareerScript {
         }
         HostileComponent h = target.getComponent(HostileComponent.class);
         undockForAFight();
-        if (target.getComponent(PhysicsBodyComponent.class) == null) bringIn(c.targetUuid, 3_000, 0);
+        boolean onRails = target.getComponent(PhysicsBodyComponent.class) == null;
+        if (h != null) log("  found it %s.", onRails ? "on the rails (" + h.state + "), brought in at 3 km"
+                : String.format(java.util.Locale.ROOT, "in the bubble (%s), %.0f m off", h.state, range(game.player, target)));
+        if (onRails) bringIn(c.targetUuid, 3_000, 0);
         else flyTo(target, 3_000f);
         if (h != null) h.targetUuid = HostileComponent.PLAYER;
         if (!savedAFight && "gunship_heavy".equals(game.player.getComponent(DefRefComponent.class).defId)) {
@@ -262,22 +292,32 @@ class Round5CareerTest extends CareerScript {
         dockAtStation(game.shipyard);
         Shipyard.Listing frigate = world.shipyard.listing("patrol_frigate");
         double cost = world.shipyard.cost(frigate, game.player);
-        int weeks = 0;
+        int weeks = 0, docked = 0;
         // Round 7: a new Commander waits their days in rank for the first frigate too
         while ((credits() < cost || world.standing.newChassisWait(frigate.shipId) > 0) && weeks < 12) {
             // A Commander's pay, with the contracts a week brings
-            if (!takeABounty()) weeksPass(1);
-            else if (credits() < cost) weeksPass(1);
+            boolean took = takeABounty(PAY_FIRST_WHEN_SHORT && credits() < cost);
+            // Round 10: still short, another bounty offered today before the week docked
+            for (int more = 1; took && more < FRIGATE_BOUNTIES_A_DAY && credits() < cost
+                    && world.standing.newChassisWait(frigate.shipId) <= 0; more++) {
+                dockAtStation(game.shipyard);
+                cost = world.shipyard.cost(frigate, game.player);
+                if (credits() >= cost || !takeABounty(PAY_FIRST_WHEN_SHORT)) break;
+            }
+            if (!took || credits() < cost) {
+                weeksPass(1);
+                docked++;
+            }
             weeks++;
             dockAtStation(game.shipyard);
             cost = world.shipyard.cost(frigate, game.player);
         }
-        log("Frigate at Anvil Yards: price %.0f, trade-in %.0f, cost %.0f; we have %.0f after %d week(s). Refusal: %s.",
-                frigate.price, Shipyard.tradeIn(game.player), cost, credits(), weeks, world.shipyard.refusal(frigate));
+        // Round 9: the loop's rounds, and the weeks of them spent docked, which are what move the day
+        log("Frigate at Anvil Yards: price %.0f, trade-in %.0f, cost %.0f; we have %.0f after %d round(s), %d of them a week docked. Refusal: %s.",
+                frigate.price, Shipyard.tradeIn(game.player), cost, credits(), weeks, docked, world.shipyard.refusal(frigate));
         if (credits() < cost) {
             log("  short by %.0f cr: the script makes up the difference.", cost - credits());
-            grantedCredits += cost + 1 - credits();
-            account().credits = cost + 1;
+            makeUp(cost + 1, "the frigate");
         }
         log("  %s", world.shipyard.buy("patrol_frigate"));
         assertEquals("frigate_patrol", game.player.getComponent(DefRefComponent.class).defId);
@@ -357,47 +397,23 @@ class Round5CareerTest extends CareerScript {
         snapshot("after the raid");
     }
 
-    /** Flies to the base: its wing scrambles, and each defender is fought in turn until it strikes. */
+    /**
+     * Flies the raid the survey's way ({@link RaidRoutine}, round 8): in 8 km from the base, the helm
+     * holding on it, each defender fought as the base launches it, until it strikes or we are beaten.
+     */
     private void raidTheBase(Contract c) {
         raidsFought++;
-        Entity base = world.engine.getEntity(world.pirateBase.uuid());
         undockForAFight();
-        world.rescue.jumpBeside(game.player, base, 8_000);
-        if (raidsFought == 1) saveForPlaytest("Before the raid");
         double t0 = world.engine.getSimSeconds();
-        runUntil(10f, () -> !world.pirateBase.defenders().isEmpty());
-        List<String> wing = new ArrayList<>(world.pirateBase.defenders());
-        scrambled += wing.size();
-        log("  at %s: it scrambles %s.", world.pirateBase.name(), wing);
         float hull0 = hull(game.player);
         int crew0 = ownCrew().size();
-        boolean lost = false;
-        for (String name : wing) {
-            Entity ship = hostile(name);
-            if (ship == null || FirstPlay.beaten(world, ship)) continue;
-            HostileComponent h = ship.getComponent(HostileComponent.class);
-            log("  defender %s: %s, loadout %s.", name, h.shipId, h.loadout);
-            if (ship.getComponent(PhysicsBodyComponent.class) == null) bringIn(world.universe.uuidOf(ship), 3_000, 0);
-            if (!fight(ship, h, "Defender " + name)) {
-                lost = true;
-                break;
-            }
-        }
-        runUntil(2 * PirateBase.CHECK_SECONDS + 1, () -> !world.pirateBase.standing());
-        // Round 7: the defence no longer leaves with a beaten leader, so a defender out only for a
-        // moment (its shorts reset) is back in the fight, and keeps the base standing: fight it again
-        for (int pass = 0; pass < 2 && !lost && world.pirateBase.standing() && world.pirateBase.defended(); pass++) {
-            for (String name : wing) {
-                Entity ship = hostile(name);
-                HostileComponent h = ship == null ? null : ship.getComponent(HostileComponent.class);
-                if (h == null || h.brokeOff || FirstPlay.beaten(world, ship) || ship.getComponent(PhysicsBodyComponent.class) == null) continue;
-                if (!fight(ship, h, "Defender " + name + ", back in the fight")) {
-                    lost = true;
-                    break;
-                }
-            }
-            runUntil(2 * PirateBase.CHECK_SECONDS + 1, () -> !world.pirateBase.standing());
-        }
+        EnemySurveyTest.Result r = RaidRoutine.fly(world, game, () -> {
+            if (raidsFought == 1) saveForPlaytest("Before the raid");
+        });
+        scrambled += r.wing.size();
+        log("  at %s: it scrambles %s (%s).", world.pirateBase.name(), r.wing, r.loadouts);
+        log("  try %d: %s", raidsFought, r);
+        if (!"won".equals(r.outcome)) fightsLost++;
         log("Raid on %s: %.0f s, base %s; our hull %.2f -> %.2f, crew %d -> %d.", world.pirateBase.name(),
                 world.engine.getSimSeconds() - t0, world.pirateBase.standing() ? "still standing" : "fallen", hull0,
                 hull(game.player), crew0, ownCrew().size());
@@ -442,8 +458,19 @@ class Round5CareerTest extends CareerScript {
         }
     }
 
+    /** Longest the script waits out a boarding before it goes home anyway, sim seconds: the trip in and the time aboard. */
+    static final float BOARDING_WAIT = (float) PirateBoarding.BOARD_SECONDS + 600f;
+
     /** Repairs at Highport if the last job left any damage. */
     private void repairIfNeeded() {
+        // Round 8: beaten with pirates coming aboard, the ship waits out the boarding before it goes
+        // home, as a beaten player would (seed 2026 went home mid-boarding and was boarded at the berth)
+        if (world.pirateBoarding.boarder() != null) runUntil(BOARDING_WAIT, () -> world.pirateBoarding.boarder() == null);
+        // Hands down after the fight get help before the yard's hour, or bleed out during it
+        if (ownCrew().size() < crewWanted() || fitCrew() == 0) {
+            dockAtStation(game.highport);
+            hireReplacements(crewWanted());
+        }
         if (world.yard.repairCost(game.player) > 0.5) {
             dockAtStation(game.highport);
             yardRepair(world.engine.getEntity(game.highport));
@@ -453,6 +480,23 @@ class Round5CareerTest extends CareerScript {
             dockAtStation(game.highport);
             hireUpTo(game.highport, crewWanted());
         }
+        // Round 10: crew who sheltered ashore while the ship vented walk back aboard once the yard has
+        // mended it, as a player would wait for them (seed 11 flew its second raid with them still at
+        // Highport: "Nobody aboard to take the helm")
+        double ashore = world.engine.getSimSeconds();
+        if (!runUntil(CREW_ABOARD_WAIT, this::crewAboard)) log("  the crew still not all aboard after %.0f s.", CREW_ABOARD_WAIT);
+        else if (world.engine.getSimSeconds() - ashore > 1) log("  the crew came back aboard in %.0f s.", world.engine.getSimSeconds() - ashore);
+    }
+
+    /** Longest the career waits for its crew to come back aboard after the yard, seconds. */
+    static final float CREW_ABOARD_WAIT = 180f;
+
+    /** True once every conscious hand of the ship's own is aboard it. */
+    private boolean crewAboard() {
+        for (Entity e : ownCrew()) {
+            if (world.crew.crew(e).isConscious() && world.crew.position(e).ship != game.player) return false;
+        }
+        return true;
     }
 
     /**
@@ -505,13 +549,6 @@ class Round5CareerTest extends CareerScript {
     private int crewWanted() {
         String defId = game.player.getComponent(DefRefComponent.class).defId;
         return Math.min(world.getContent().defs.get("ship", defId, ShipDef.class).crew, CrewHiring.berths(game.player));
-    }
-
-    private Entity hostile(String name) {
-        for (var e : world.macroSim.hostiles().all().entrySet()) {
-            if (name.equals(e.getValue().displayName)) return world.engine.getEntity(e.getKey());
-        }
-        return null;
     }
 
     private int rank() {

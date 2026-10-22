@@ -21,9 +21,12 @@ public final class NoticeLog {
     /** How much a notice matters: important ones get their own colour, a sound and a longer hold. */
     public enum Kind {
         INFO(5f),
-        /** Promotions, contracts done or failed, the ship disabled. */
+        /** Promotions, contracts done or failed. */
         IMPORTANT(8f),
-        /** Danger: a hostile intercepting, propellant running low, a missile inbound. */
+        /**
+         * Danger: a hostile intercepting, propellant running low, a missile inbound, and loss: a crew
+         * member dead or critically wounded, the ship disabled or boarded (round 9: not in a promotion's green).
+         */
         WARNING(8f);
 
         public final float seconds;
@@ -60,6 +63,9 @@ public final class NoticeLog {
         }
     }
 
+    /** The missile key pressed while the launcher reloads, told once per reload ({@link #postOnce}). */
+    public static final String RELOADING = "Launcher reloading";
+
     /** Notices kept for the log. */
     public static final int KEEP = 50;
     /** Notices on screen at once; the oldest goes when another comes. */
@@ -73,6 +79,8 @@ public final class NoticeLog {
     private final ArrayDeque<Notice> history = new ArrayDeque<>();
     /** Newest first. */
     private final List<Notice> showing = new ArrayList<>();
+    /** Texts {@link #postOnce} has told, until {@link #allowAgain}. */
+    private final java.util.Set<String> told = new java.util.HashSet<>();
 
     /** @param clock sim seconds, for the log's timestamps */
     public NoticeLog(DoubleSupplier clock) {
@@ -126,10 +134,18 @@ public final class NoticeLog {
      * Posts it afresh if {@code old} has left the log. Returns the notice now holding it.
      */
     public Notice revise(Notice old, String text) {
+        return revise(old, text, old == null ? Kind.INFO : old.kind);
+    }
+
+    /**
+     * {@link #revise(Notice, String)} as another kind: a wound that worsens in the same moment ("lightly",
+     * then "critically wounded") is one line, in the worse one's colour.
+     */
+    public Notice revise(Notice old, String text, Kind kind) {
         if (text == null || text.isEmpty()) return old;
-        if (old == null || !history.contains(old)) return post(text, old == null ? Kind.INFO : old.kind);
-        Notice n = new Notice(text, old.kind, old.time);
-        n.left = Math.max(old.left, old.kind.seconds);
+        if (old == null || !history.contains(old)) return post(text, kind);
+        Notice n = new Notice(text, kind, old.time);
+        n.left = Math.max(old.left, kind.seconds);
         List<Notice> kept = new ArrayList<>(history);
         kept.set(kept.indexOf(old), n);
         history.clear();
@@ -141,6 +157,21 @@ public final class NoticeLog {
             while (showing.size() > STACK) showing.remove(showing.size() - 1);
         }
         return n;
+    }
+
+    /**
+     * Posts {@code text} once, then not again until {@link #allowAgain} (or {@link #clear}), for a
+     * refusal the player may press into many times over one wait: "Launcher reloading" once per
+     * reload, not once per press (round 8's window: 6 of 25 lines in the log). Returns null when held back.
+     */
+    public Notice postOnce(String text, Kind kind) {
+        if (text == null || text.isEmpty() || !told.add(text)) return null;
+        return post(text, kind);
+    }
+
+    /** The wait {@link #postOnce} told of is over (the launcher fired): the next one is told again. */
+    public void allowAgain(String text) {
+        told.remove(text);
     }
 
     private Notice find(String text) {
@@ -174,6 +205,7 @@ public final class NoticeLog {
 
     /** Forgets everything, on screen and in the log: another game was loaded. */
     public void clear() {
+        told.clear();
         showing.clear();
         history.clear();
     }

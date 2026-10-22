@@ -216,7 +216,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         events.pendingDetonations.clear();
         for (int i = 0; i < detonationBatch.size; i++) {
             DetonationEvent d = detonationBatch.get(i);
-            throwFragments(d.warhead, d.worldPoint, d.velocity, d.target, d.owner, null, d.sinceFired);
+            throwFragments(d.warhead, d.worldPoint, d.velocity, d.target, d.owner, null, d.sinceFired, d.aimedAt, d.pointDefense);
             events.detonations.dispatch(d);
         }
         detonationBatch.clear();
@@ -377,7 +377,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
             if (result.outcome == PenetrationResolver.Result.Outcome.STOPPED) {
                 // Went off on the outer hull: vacuum, so fragments only, thrown into the hull.
                 tmp.set(hit.worldNormal).scl(EXIT_CLEARANCE).add(hit.worldPoint);
-                throwFragments(warhead, tmp, surfaceVel, ship, hit.owner, hit.worldNormal, hit.sinceFired);
+                throwFragments(warhead, tmp, surfaceVel, ship, hit.owner, hit.worldNormal, hit.sinceFired, hit.aimedAt, hit.pointDefense);
             } else {
                 absorbed += resolver.detonateInside(grid, ship, result.detonationX, result.detonationY,
                         warhead, rng, report);
@@ -432,6 +432,8 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         ProjectileComponent p = e.getComponent(ProjectileComponent.class);
         p.ignore = hit.target;
         p.ignoreUntil = EXIT_IGNORE_TIME;
+        p.aimedAt = hit.aimedAt;
+        p.pointDefense = hit.pointDefense;
         // Already flew; let it hit its own ship again (it may be a ricochet off a friendly hull).
         p.age = 0f;
     }
@@ -443,7 +445,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
      * outside a hull does.
      */
     private void throwFragments(WarheadDef warhead, Vector2 point, Vector2 baseVel, Entity target, Entity owner,
-                                Vector2 outwardNormal, float sinceFired) {
+                                Vector2 outwardNormal, float sinceFired, Entity aimedAt, boolean pointDefense) {
         if (warhead == null || warhead.fragmentCount <= 0) return;
         float aim;
         if (outwardNormal != null) {
@@ -462,7 +464,10 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
             float vx = baseVel.x + MathUtils.cos(a) * warhead.fragmentSpeed;
             float vy = baseVel.y + MathUtils.sin(a) * warhead.fragmentSpeed;
             Entity f = ballistics.spawn(fragment, warhead.fragmentMass, point.x, point.y, vx, vy, owner);
-            f.getComponent(ProjectileComponent.class).firedAt = ballistics.getClock() - sinceFired;
+            ProjectileComponent fp = f.getComponent(ProjectileComponent.class);
+            fp.firedAt = ballistics.getClock() - sinceFired;
+            fp.aimedAt = aimedAt;
+            fp.pointDefense = pointDefense;
         }
     }
 

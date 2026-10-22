@@ -30,3 +30,6 @@ The technical decisions that supplement the First Draft Game Design Document for
 
 ## 8. Audio Engine
 - **OpenAL Soft, no proprietary middleware:** libGDX's own sound API cannot filter or place sounds, so the game drives **OpenAL Soft** (LGPL) directly through LWJGL, on the same OpenAL context libGDX's desktop backend already opens. Its EFX extension supplies the low-pass filters for interior "muffling" and its HRTF the headphone spatialization for the "Spacer Ears" mechanic. FMOD and Wwise were considered and dropped to keep the project's dependencies free and open source. The mix curves live in the game's own code (`AcousticModel`), not in an authoring tool, and a procedural synth fallback plays where OpenAL is not available. See `documentation/audio-spatial/Design.md`.
+
+## 9. Demos
+- **Demos run on the game's code:** A demo uses the game's own world (`GameWorld`) and the game's own renderers, and keeps only what is specific to it: its scenes, its tools and the debug markings it draws on top. It never carries its own copy of game logic or drawing, so the demos cannot drift from the game. A feature a demo needs that the game should have goes into the game. Shared drawing lives in core's `render` package; `DeckRenderer` draws the deck view and `ExteriorRenderer` the view from outside for the game and the docking and interior demos (decided 2026-10-21).

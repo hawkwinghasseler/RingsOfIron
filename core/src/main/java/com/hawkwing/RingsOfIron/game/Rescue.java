@@ -261,15 +261,25 @@ public class Rescue {
         return null;
     }
 
+    /** Why the career ends when the player's avatar is killed with none of the crew left to bring them home. */
+    public static final String NOBODY_LEFT = "nobody was left to bring you home";
+    /**
+     * Whether the ship's own crew sheltering aboard the station or craft it is docked to can bring
+     * the player home (round 10). Round 9's captain died aboard at Highport's berth with four crew
+     * alive ashore, and the career ended as if nobody was left.
+     */
+    static final boolean CREW_ASHORE_COUNT = true;
+
     /**
      * The player's avatar was killed: if any of the ship's own crew are alive to bring the player
-     * home, they call the tug, and the player wakes at the station, hurt, aboard the ship; null
-     * then. Otherwise nothing happens and this says why: the career is over.
+     * home, aboard or ashore where it is docked ({@link #CREW_ASHORE_COUNT}), they call the tug, and
+     * the player wakes at the station, hurt, aboard the ship; null then. Otherwise nothing happens
+     * and this says why: the career is over.
      */
     public String carryHome(Entity ship) {
         Entity avatar = avatar();
         if (avatar == null || ship == null) return "you are gone";
-        if (crewAboard(ship) == 0) return "nobody was left to bring you home";
+        if (crewAboard(ship) == 0 && (!CREW_ASHORE_COUNT || crewAshore(ship) == 0)) return NOBODY_LEFT;
         CrewMemberComponent c = avatar.getComponent(CrewMemberComponent.class);
         c.state = com.ringsofiron.aicrew.CrewState.CONSCIOUS;
         c.health = c.def.maxHealth * 0.5f;
@@ -294,14 +304,24 @@ public class Rescue {
                     break;
                 }
             }
+            // Nowhere aboard: laid where the crew shelter, aboard the craft it is docked to, and
+            // walked home once the ship can be breathed again (round 10)
+            Entity shelter = to == null ? world.docking.dockedTo(ship) : null;
+            int[] ashore = shelter == null ? null : safeTile(shelter);
             if (to == null && !floor.isEmpty()) to = floor.get(0);
             p.stop();
             p.crossing = null;
-            p.setShip(ship);
-            if (to != null) p.setTile(to[0], to[1]);
-            if (to == null || !TaskRules.isSafe(grid, to[0], to[1])) {
-                c.setSuited(false);
-                c.setSuited(true);
+            if (ashore != null) {
+                p.setShip(shelter);
+                p.setTile(ashore[0], ashore[1]);
+                world.captain.ashore(ship);
+            } else {
+                p.setShip(ship);
+                if (to != null) p.setTile(to[0], to[1]);
+                if (to == null || !TaskRules.isSafe(grid, to[0], to[1])) {
+                    c.setSuited(false);
+                    c.setSuited(true);
+                }
             }
         }
         // Already in at a station: the crew carry you to its doctor, and the ship stays latched (and the yard's work on it goes on)
@@ -312,6 +332,18 @@ public class Rescue {
             return null;
         }
         return tow(ship);
+    }
+
+    /** A deck tile aboard {@code craft} safe to breathe on, off its docked ports' openings; null if none. */
+    private int[] safeTile(Entity craft) {
+        ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
+        if (grid == null) return null;
+        for (int[] t : GameScenario.floorTiles(grid)) {
+            boolean port = false;
+            for (com.ringsofiron.interiorgrid.GridLink l : grid.links) port |= l.x == t[0] && l.y == t[1];
+            if (!port && TaskRules.isSafe(grid, t[0], t[1])) return t;
+        }
+        return null;
     }
 
     /** Puts the avatar and the survivors aboard {@code ship}, on its open deck tiles. */
@@ -455,6 +487,19 @@ public class Rescue {
     private Entity avatar() {
         for (Entity e : world.crew.crewEntities()) if (e.getComponent(PlayerAvatarComponent.class) != null) return e;
         return null;
+    }
+
+    /** The ship's own crew alive and free aboard the craft it is docked to (a station's berth, say). */
+    private int crewAshore(Entity ship) {
+        Entity docked = world.docking.dockedTo(ship);
+        if (docked == null) return 0;
+        int n = 0;
+        for (Entity e : world.crew.crewEntities()) {
+            GridPositionComponent p = e.getComponent(GridPositionComponent.class);
+            CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+            if (p.ship == docked && c.home == ship && c.isAlive() && !c.held && e.getComponent(PlayerAvatarComponent.class) == null) n++;
+        }
+        return n;
     }
 
     private int crewAboard(Entity ship) {

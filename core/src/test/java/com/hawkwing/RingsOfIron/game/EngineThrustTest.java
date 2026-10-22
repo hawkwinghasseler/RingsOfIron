@@ -10,7 +10,7 @@ import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
-import com.ringsofiron.physicsexterior.modding.ShipPhysicsAssembler;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
@@ -68,14 +68,14 @@ class EngineThrustTest {
             assertEquals(MountFootprint.MountSize.S, e.footprint.size);
             assertEquals(EngineThrust.THRUST_S, EngineThrust.ratedThrust(e, world.getContent().defs), 1.0);
         }
+        float retro = t.reverseThrust;
         engines.get(0).health = 0.5f;
         world.update(FRAME);
         assertEquals(1.2e6 + 0.6e6, t.forwardThrust, 1.0);
         engines.get(0).health = 0f;
         world.update(FRAME);
         assertEquals(1.2e6, t.forwardThrust, 1.0, "one engine left");
-        assertEquals(2.4e6 * ShipPhysicsAssembler.REVERSE_THRUST_FRACTION, t.reverseThrust, 1.0,
-                "the RCS is not the main engine");
+        assertEquals(retro, t.reverseThrust, 1.0, "the RCS is not the main engine");
         engines.get(1).switchedOn = false;
         world.update(FRAME);
         assertEquals(0f, t.forwardThrust, 1e-3f, "both out");
@@ -97,8 +97,8 @@ class EngineThrustTest {
         ThrusterComponent t = ship.getComponent(ThrusterComponent.class);
         // Within 10% of max_thrust, which it flew on before (in fact exactly)
         assertEquals(def.maxThrust, t.forwardThrust, def.maxThrust * 0.001f, shipId);
-        assertEquals(def.maxThrust * ShipPhysicsAssembler.REVERSE_THRUST_FRACTION, t.reverseThrust, def.maxThrust * 0.001f);
-        assertEquals(def.maxThrust * ShipPhysicsAssembler.LATERAL_THRUST_FRACTION, t.lateralThrust, def.maxThrust * 0.001f);
+        // Its retro and strafing thrust are its RCS blocks' (RcsThrustTest)
+        assertTrue(ship.getComponent(ShipGridComponent.class).rcsThrusters.size > 0, shipId);
     }
 
     private static Array<SubsystemComponent> engines(Entity ship) {

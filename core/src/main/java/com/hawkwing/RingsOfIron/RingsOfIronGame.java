@@ -2,7 +2,6 @@ package com.hawkwing.RingsOfIron;
 
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
-import com.badlogic.ashley.core.Family;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
@@ -17,24 +16,18 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
-import com.badlogic.gdx.physics.box2d.CircleShape;
-import com.badlogic.gdx.physics.box2d.Fixture;
-import com.badlogic.gdx.physics.box2d.PolygonShape;
-import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
-import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
-import com.hawkwing.RingsOfIron.art.ExteriorArt;
 import com.hawkwing.RingsOfIron.game.AbandonShip;
 import com.hawkwing.RingsOfIron.game.NewGame;
 import com.hawkwing.RingsOfIron.game.Bridge;
 import com.hawkwing.RingsOfIron.game.OpeningGuide;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.Rescue;
+import com.hawkwing.RingsOfIron.game.WarpNotices;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.FirstPlay;
@@ -52,43 +45,34 @@ import com.hawkwing.RingsOfIron.game.NoticeFeeds;
 import com.hawkwing.RingsOfIron.game.NoticeLog;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
 import com.hawkwing.RingsOfIron.game.PlayerGunnery;
-import com.hawkwing.RingsOfIron.lighting.DeckLightRig;
 import com.hawkwing.RingsOfIron.lighting.EmissiveLights;
+import com.hawkwing.RingsOfIron.lighting.ExteriorLighting;
 import com.hawkwing.RingsOfIron.lighting.HullArt;
 import com.hawkwing.RingsOfIron.lighting.SceneLighting;
+import com.hawkwing.RingsOfIron.render.DeckRenderer;
+import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
+import com.hawkwing.RingsOfIron.render.HeatOverlay;
+import com.hawkwing.RingsOfIron.render.SpaceSnow;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
 import com.hawkwing.RingsOfIron.shell.SaveSummary;
-import com.ringsofiron.aicrew.CrewBody;
-import com.ringsofiron.aicrew.CrewMemberComponent;
-import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
-import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
-import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.stationsdocking.ForceMethod;
-import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.orbital.warp.TimeWarpController;
 import com.ringsofiron.physicsexterior.PhysicsManager;
-import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.uihud.UiHud;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
-import com.ringsofiron.uihud.minimap.TileShade;
-import com.ringsofiron.combatsys.components.DecoyComponent;
-import com.ringsofiron.combatsys.components.MissileComponent;
-import com.ringsofiron.combatsys.components.WeaponMountComponent;
-import com.ringsofiron.combatsys.components.WeaponsComponent;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.EnumSet;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -109,8 +93,8 @@ import java.util.Map;
  * helmsman, holds the heading you left it on, and with nobody at the helm the ship drifts. Run with
  * {@code -Dview.anywhere=true} to switch views anywhere and fly from the deck, as before. In the deck
  * view E uses the console you stand at, and F or B
- * forces the shut door across a dock (pry or hack, or cut), and O turns the deck lighting off and
- * back on. P twice abandons ship: the crew make for the escape pods (your character walks there
+ * forces the shut door across a dock (pry or hack, or cut). O turns the lighting off and back
+ * on, inside and out. P twice abandons ship: the crew make for the escape pods (your character walks there
  * by itself unless you steer it), and P again launches them; you wake days later at a station in a
  * requisitioned ship. F5
  * quick-saves, F9 loads the quick save. L opens the notice log, F1 the controls. Esc quits, or opens
@@ -147,13 +131,6 @@ import java.util.Map;
 public class RingsOfIronGame extends ApplicationAdapter {
     private static final ComponentMapper<TransformComponent> TRANSFORMS = ComponentMapper.getFor(TransformComponent.class);
     private static final ComponentMapper<HudMarkerComponent> MARKERS = ComponentMapper.getFor(HudMarkerComponent.class);
-    private static final ComponentMapper<ProjectileComponent> PROJECTILES = ComponentMapper.getFor(ProjectileComponent.class);
-    private static final ComponentMapper<MissileComponent> MISSILES = ComponentMapper.getFor(MissileComponent.class);
-    private static final Family COMBAT_ROUNDS = Family.all(ProjectileComponent.class).get();
-    private static final Family DECOYS = Family.all(DecoyComponent.class).get();
-    private static final Family ARMED = Family.all(WeaponsComponent.class).get();
-    private static final com.badlogic.ashley.utils.ImmutableArray<Entity> NO_ENTITIES =
-            new com.badlogic.ashley.utils.ImmutableArray<>(new Array<Entity>());
     private static final float INTERIOR_VIEW = 40f;
     private static final float START_VIEW = 160f;
     private static final float STATUS_WIDTH = 420f;
@@ -176,28 +153,29 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     private GameWorld world;
     private GameScenario game;
+    /** Round 10: a fallen base's batteries greyed on the HUD. */
+    private com.hawkwing.RingsOfIron.game.SilencedMarkers silencedMarkers;
     private GameHud gameHud;
     private UiHud hud;
     private ViewportManager viewports;
     private PlayerGunnery gun;
     private PlayerDocking docking;
     private com.hawkwing.RingsOfIron.game.NavOverlay navOverlay;
-    /** Flashes for warheads and missiles shot down: {x, y, age}. */
-    private final Array<float[]> explosions = new Array<>();
 
     private ShapeRenderer shapes;
     private SpriteBatch batch;
     /** The art pack's atlas; empty when it was not built, and then everything is drawn in shapes. */
     private ArtLibrary art;
     private DeckArt deckArt;
-    private ExteriorArt exteriorArt;
-    private final Matrix4 pose = new Matrix4();
-    private final Matrix4 identity = new Matrix4();
-    /** Combat entities drawn with art this frame, which the shapes then skip. */
-    private final Array<Entity> drawnWithArt = new Array<>();
+    private DeckRenderer deckRenderer;
+    private ExteriorRenderer exterior;
+    /** Speed shown against a circular orbit at the player's altitude. */
+    private SpaceSnow snow;
     private BitmapFont font;
     /** Deck lights and shadows, and the glow of every lamp and screen, from the art's emissive layers. */
     private SceneLighting lighting;
+    /** Light over the hulls outside: starlight, the hulls' own lights, engines, guns and blasts. */
+    private ExteriorLighting exteriorLighting;
     private HullArt hullArt;
     private boolean lightsOn = true;
     private float exteriorViewMeters = START_VIEW;
@@ -212,6 +190,21 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private int logScroll;
     /** The controls panel (F1). */
     private boolean helpOpen;
+    /** The developer console (~): Groovy against the world, acting on what was clicked. */
+    private com.hawkwing.RingsOfIron.debug.DevConsole dev;
+    private com.ringsofiron.uihud.widgets.DevConsoleWindow devWindow;
+    /** The console has stopped the world ({@code pause()}); {@link #devStep} seconds are still to run. */
+    private boolean devFrozen;
+    private float devStep;
+    /** The debug menu (F3): scenarios to load, overlays to toggle. */
+    private com.hawkwing.RingsOfIron.debug.DebugMenu debugMenu;
+    private final com.hawkwing.RingsOfIron.debug.BuiltInOverlays builtInOverlays = new com.hawkwing.RingsOfIron.debug.BuiltInOverlays();
+    private final com.hawkwing.RingsOfIron.debug.OverlayView overlayView = new com.hawkwing.RingsOfIron.debug.OverlayView();
+    /** The scenario this game was started as, and the one made from it; both null in a career. */
+    private com.hawkwing.RingsOfIron.debug.DebugScenarios.Entry scenarioEntry;
+    private com.hawkwing.RingsOfIron.debug.DebugScenario scenario;
+    /** Starts a new game with a scenario (null: a new career); the shell sets it. */
+    private java.util.function.Consumer<com.hawkwing.RingsOfIron.debug.DebugScenarios.Entry> scenarioLoader;
     /** When to autosave: docking, and every ten minutes of flight outside warp. */
     private final com.hawkwing.RingsOfIron.game.AutosaveClock autosaves = new com.hawkwing.RingsOfIron.game.AutosaveClock();
     /** Whether there is an autosave to offer when the ship is lost. */
@@ -223,17 +216,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
     /** Where F5 and F9 keep the quick save; the shell points it at its own saves folder. */
     private SaveSlots slots;
 
-    private final Array<Body> bodies = new Array<>();
     /** The craft whose decks the interior view draws. */
     private final Array<Entity> decks = new Array<>();
-    /** Smoke, wind and flames of each deck on show; a craft's go when it is no longer drawn. */
-    private final Map<ShipGridComponent, HazardParticles> hazards = new IdentityHashMap<>();
-    private final Map<ShipGridComponent, Boolean> hazardsDrawn = new IdentityHashMap<>();
     private final Vector2 followAt = new Vector2();
     private final Vector2 tmp = new Vector2();
     private final Vector2 tmp2 = new Vector2();
     private final Color color = new Color();
-    private final float[] polygon = new float[16];
 
     /** Base data from {@code assets/data} under the working directory, mods from {@code mods}. */
     public RingsOfIronGame() {
@@ -277,16 +265,23 @@ public class RingsOfIronGame extends ApplicationAdapter {
                     if (allowed && world != null && world.getContent() != null) world.getContent().runDeferredScripts();
                 });
         world = new GameWorld(modules);
-        game = GameScenario.start(world, assetsDir, modsDir, newGame);
+        scenario = scenarioEntry == null ? null : scenarioEntry.create();
+        game = GameScenario.start(world, assetsDir, modsDir, scenario != null ? scenario.newGame() : newGame);
         art = ArtLibrary.load(game.content.assets);
         deckArt = new DeckArt(art);
-        exteriorArt = new ExteriorArt(art);
         gameHud = new GameHud(world, hud);
-        lighting = new SceneLighting(EmissiveLights.load(assetsDir));
+        silencedMarkers = new com.hawkwing.RingsOfIron.game.SilencedMarkers(world);
+        EmissiveLights emissive = EmissiveLights.load(assetsDir);
+        lighting = new SceneLighting(emissive);
+        exteriorLighting = new ExteriorLighting(emissive);
+        deckRenderer = new DeckRenderer(() -> world, shapes, batch, deckArt, lighting, () -> game.avatar);
         hullArt = new HullArt(game.content.defs);
+        exterior = new ExteriorRenderer(() -> world, shapes, batch, art, lighting, hullArt, () -> game.player)
+                .setLighting(exteriorLighting);
+        snow = new SpaceSnow(() -> world, () -> game.player);
 
         gun = new PlayerGunnery(world, game.player);
-        gun.setTarget(game.nextContact(null));
+        gun.setTarget(game.firstTarget());
         hud.setTargeting(new CombatTargetingProvider(gun));
         docking = new PlayerDocking(world, () -> game.player, this::show);
         navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world, docking);
@@ -300,10 +295,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
         hud.getTrafficMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
         gameHud.yard.setLayoutEditor(this::openRefit);
         world.combatEvents.intercepts.add((signal, hit) -> {
-            if (hit.destroyed && hit.missile != null) explosions.add(new float[]{hit.point.x, hit.point.y, 0f});
+            if (hit.destroyed && hit.missile != null) exterior.explode(hit.point.x, hit.point.y);
         });
         world.combatEvents.detonations.add((signal, boom) ->
-                explosions.add(new float[]{boom.worldPoint.x, boom.worldPoint.y, 0f}));
+                exterior.explode(boom.worldPoint.x, boom.worldPoint.y));
 
         world.bridge.playerAlwaysAtHelm = VIEW_ANYWHERE;
         if (!VIEW_ANYWHERE) {
@@ -327,11 +322,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             }
         });
         world.rescue.rescues.add((signal, rescue) -> {
-            // The new ship's own weapons
-            gun = new PlayerGunnery(world, game.player);
-            gun.setTarget(game.nextContact(null));
-            hud.setTargeting(new CombatTargetingProvider(gun));
-            matchViewToSeat();
+            rearm();
             show(rescueNotice(rescue));
         });
         world.rescue.tows.add((signal, tow) -> {
@@ -349,18 +340,16 @@ public class RingsOfIronGame extends ApplicationAdapter {
             // The player's own ship: the newest state replaces the last, so "back in action" doesn't
             // sit above a "disabled" it has just undone
             if (change.ship == game.player) {
-                world.notices.replace("Your ship is", news, change.now != null ? NoticeLog.Kind.IMPORTANT : NoticeLog.Kind.INFO);
+                world.notices.replace("Your ship is", news, change.now != null ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
             } else {
                 show(news);
             }
         });
-        world.timeWarp.changes.add((signal, change) -> {
-            if (change.blockedReason != null) show("Time warp refused: " + change.blockedReason);
-            else if (change.reason != null && change.reason != TimeWarpController.DropReason.REQUESTED) show(dropNotice(change));
-        });
+        WarpNotices.attach(world);
 
         world.hints.registerKey(HintRegistry.Context.ANY, "Esc", hosted ? "menu" : "quit", 90);
-        Gdx.input.setInputProcessor(new InputMultiplexer(hud.getInputProcessor(), new InputAdapter() {
+        createDevConsole();
+        Gdx.input.setInputProcessor(new InputMultiplexer(devKeys, hud.getInputProcessor(), devClicks, scenarioClicks, new InputAdapter() {
             @Override
             public boolean scrolled(float amountX, float amountY) {
                 if (logOpen) logScroll = Math.max(0, logScroll + Math.round(amountY));
@@ -368,16 +357,19 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 return true;
             }
         }));
-        // A new career: docked at Highport with the board's first job on offer (First Play scripts the same start)
-        if (firstPlayMode) firstPlay = FirstPlay.start(world, game);
+        // A new career: docked at Highport with the board's first job on offer (First Play scripts the same start).
+        // A scenario from the debug menu sets the world up its own way instead.
+        if (scenario != null) setUpScenario();
+        else if (firstPlayMode) firstPlay = FirstPlay.start(world, game);
         else game.beginCareer();
-        if (!firstPlayMode && openingWanted) {
+        if (scenario == null && !firstPlayMode && openingWanted) {
             opening = new OpeningGuide(world, () -> hud.getMissionWindow().isOpen(),
                     OpeningGuide.Step.OPEN_BOARD);
         }
-        matchViewToSeat();
+        if (scenario == null) matchViewToSeat();
         haveAutosave = slots().latestAutosave() != null;
         show(game.content.report.hasErrors() ? "Content loaded with errors; see the log"
+                : scenario != null ? "Scenario: " + scenarioEntry.name + ". F3 for the debug menu"
                 : "Welcome aboard, " + world.standing.describeRank() + "." + (opening != null || firstPlay != null ? ""
                         : " " + key(Action.MISSIONS) + " opens " + game.homeName() + "'s mission board"), NoticeLog.Kind.IMPORTANT);
         if (opening != null) show(opening.text(this::key));
@@ -393,11 +385,19 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         if (refitEditor != null) closeRefit();
         float delta = paused ? 0f : Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
-        if (!paused) {
+        // Stopped from the console, the world runs only the seconds step() asks for
+        if (devFrozen && !paused) {
+            delta = Math.min(devStep, delta);
+            devStep -= delta;
+        }
+        if (!paused && (!devFrozen || delta > 0f)) {
             handleInput(delta);
             if (world.getCrash() == null) gun.update(delta);
             world.update(delta);
-            String why = autosaves.due(world, game.player);
+            if (scenario != null) scenario.update(delta);
+            silencedMarkers.update();
+            // A scenario is a test bench, not a career: its autosaves would push the career's out
+            String why = scenario != null ? null : autosaves.due(world, game.player);
             if (why != null) autosave(why);
         }
         world.notices.update(delta);
@@ -424,8 +424,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
         } else {
             drawBodies();
         }
-        gameHud.draw(delta);
+        drawOverlays(delta, true);
+        // The status column first, so an open HUD window (the crew roster, the yard) covers it rather
+        // than having the helm's order written across its rows (round 9, real window)
+        drawDevSelection();
         drawStatus();
+        gameHud.draw(delta);
+        drawOverlays(delta, false);
         if (world.getCrash() != null || world.getCareerOver() != null) drawCrash();
         else if (logOpen) drawLog();
         else if (helpOpen) drawHelp();
@@ -441,6 +446,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
     }
 
     private void handleInput(float delta) {
+        if (devWindow.isTyping()) {
+            // Keys typed into the developer console fly nothing and fire nothing
+            FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
+            if (controls != null) controls.forward = controls.turn = controls.strafe = 0f;
+            PlayerAvatarComponent walker = game.avatar == null ? null : game.avatar.getComponent(PlayerAvatarComponent.class);
+            if (walker != null) walker.moveX = walker.moveY = 0f;
+            NoticeFeeds.collect(world);
+            return;
+        }
         boolean consoleOpen = hud.getConsoleWindow().isOpen();
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && (logOpen || helpOpen)) {
             logOpen = false;
@@ -507,10 +521,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (just(Action.UNDOCK) && world.docking.dockedTo(game.player) != null) {
                 show("Take the helm to undock: " + key(Action.VIEW) + " at the helm, then " + key(Action.UNDOCK));
             }
-            if (just(Action.LIGHTS)) {
-                lightsOn = !lightsOn;
-                show(lightsOn ? "Deck lighting on" : "Deck lighting off");
-            }
+            if (just(Action.LIGHTS)) toggleLights();
             // Up the screen is W whichever way the craft the avatar is aboard is turned
             float sx = 0f, sy = 0f;
             if (held(Action.THRUST)) sy += 1f;
@@ -532,9 +543,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (held(Action.STRAFE_LEFT)) controls.strafe += 1f;
             if (held(Action.STRAFE_RIGHT)) controls.strafe -= 1f;
         }
+        if (just(Action.LIGHTS)) toggleLights();
         if (held(Action.FIRE)) gun.fireGuns();
-        if (just(Action.MISSILE) && !gun.launchMissile()) {
-            show(gun.getTarget() == null ? "No target for the missile" : "Launcher reloading");
+        if (just(Action.MISSILE)) {
+            // "Launcher reloading" once per reload, not once per press
+            if (gun.launchMissile()) world.notices.allowAgain(NoticeLog.RELOADING);
+            else if (gun.getTarget() == null) show("No target for the missile");
+            else world.notices.postOnce(NoticeLog.RELOADING, NoticeLog.Kind.INFO);
         }
         if (just(Action.DECOY) && gun.dropDecoy()) show("Decoy away");
         if (just(Action.NEXT_TARGET)) gun.setTarget(game.nextContact(gun.getTarget()));
@@ -554,7 +569,265 @@ public class RingsOfIronGame extends ApplicationAdapter {
     /** True while one of the HUD's windows or the traffic map is open; Esc closes it first. */
     private boolean hudWindowOpen() {
         return hud.getTrafficMap().isVisible() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
-                || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getConsoleWindow().isOpen();
+                || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getConsoleWindow().isOpen()
+                || isDevConsoleOpen() || isDebugMenuOpen();
+    }
+
+    // --- The developer console ---------------------------------------------------------
+
+    private InputProcessor devKeys, devClicks;
+
+    private void createDevConsole() {
+        java.nio.file.Path history = Paths.get("saves", "console-history.txt").toAbsolutePath();
+        dev = new com.hawkwing.RingsOfIron.debug.DevConsole(world, game, null, history);
+        dev.setHost(new com.hawkwing.RingsOfIron.debug.DevConsole.Host() {
+            @Override
+            public void setFrozen(boolean frozen) {
+                devFrozen = frozen;
+                devStep = 0f;
+            }
+
+            @Override
+            public boolean isFrozen() {
+                return devFrozen;
+            }
+
+            @Override
+            public void step(float seconds) {
+                devStep += seconds;
+            }
+        });
+        dev.addOverlay(HeatOverlay.NAME, HeatOverlay.DESCRIPTION,
+                deckRenderer::heatShown, deckRenderer::setHeatShown);
+        builtInOverlays.install(dev.overlays);
+        dev.addOverlay(SpaceSnow.NAME, SpaceSnow.DESCRIPTION, snow::isShown, snow::setShown);
+        dev.setScenarioLoader(this::loadScenario);
+        debugMenu = new com.hawkwing.RingsOfIron.debug.DebugMenu(hud.getSkin(), dev,
+                () -> scenarioEntry == null ? null : scenarioEntry.name);
+        dev.setMenuToggle(() -> debugMenu.toggle(hud.getStage()));
+        devWindow = new com.ringsofiron.uihud.widgets.DevConsoleWindow(hud.getSkin(), dev.console,
+                () -> (devFrozen ? "[stopped] " : "") + com.hawkwing.RingsOfIron.debug.DebugNames.describe(dev.selected()));
+        // ~ opens and closes it; with it open, Esc lets go of the selection, then closes it
+        devKeys = new InputAdapter() {
+            @Override
+            public boolean keyDown(int keycode) {
+                if (keycode == Input.Keys.GRAVE && refitEditor == null) {
+                    devWindow.toggle(hud.getStage());
+                    return true;
+                }
+                if (keycode == Input.Keys.ESCAPE && devWindow.isOpen()) {
+                    if (!dev.deselect()) devWindow.setOpen(false, hud.getStage());
+                    return true;
+                }
+                if (keycode == Input.Keys.F3 && refitEditor == null) {
+                    debugMenu.toggle(hud.getStage());
+                    return true;
+                }
+                if (keycode == Input.Keys.ESCAPE && debugMenu.isOpen()) {
+                    debugMenu.setOpen(false, hud.getStage());
+                    return true;
+                }
+                return false;
+            }
+        };
+        // A click on the game (not on a window) selects what is under it, again for the next thing there
+        devClicks = new InputAdapter() {
+            @Override
+            public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+                if (!devWindow.isOpen() || button != Input.Buttons.LEFT) return false;
+                Vector2 at = viewports.getWorldViewport().unproject(tmp.set(screenX, screenY));
+                boolean deck = hud.getViewMode().getMode() == ViewMode.INTERIOR;
+                List<Entity> drawn = new java.util.ArrayList<>();
+                for (Entity e : decks) drawn.add(e);
+                dev.click(at.x, at.y, deck, viewports.metersPerPixel(), deck ? drawn : null);
+                return true;
+            }
+        };
+    }
+
+    /** The developer console is open over the game. */
+    public boolean isDevConsoleOpen() {
+        return devWindow != null && devWindow.isOpen();
+    }
+
+    /** The developer console has the keyboard: keys are text, not the player's bindings. */
+    public boolean isDevConsoleTyping() {
+        return devWindow != null && devWindow.isTyping();
+    }
+
+    public com.hawkwing.RingsOfIron.debug.DevConsole getDevConsole() {
+        return dev;
+    }
+
+    // --- The debug menu and its scenarios ------------------------------------------------
+
+    /** The debug menu (F3) is open over the game. */
+    public boolean isDebugMenuOpen() {
+        return debugMenu != null && debugMenu.isOpen();
+    }
+
+    public com.hawkwing.RingsOfIron.debug.DebugMenu getDebugMenu() {
+        return debugMenu;
+    }
+
+    /** Starts the game as {@code entry} rather than a career; before {@link #create}. */
+    public void setScenario(com.hawkwing.RingsOfIron.debug.DebugScenarios.Entry entry) {
+        this.scenarioEntry = entry;
+    }
+
+    /** The scenario this game is, or null in a career. */
+    public com.hawkwing.RingsOfIron.debug.DebugScenario getLoadedScenario() {
+        return scenario;
+    }
+
+    /** How the debug menu's scenarios load: the shell throws this game away and starts another. */
+    public void setScenarioLoader(java.util.function.Consumer<com.hawkwing.RingsOfIron.debug.DebugScenarios.Entry> loader) {
+        this.scenarioLoader = loader;
+    }
+
+    /** Throws this game away for a new one set up as {@code entry}, or a new career for null. */
+    public void loadScenario(com.hawkwing.RingsOfIron.debug.DebugScenarios.Entry entry) {
+        if (scenarioLoader == null) {
+            show("Scenarios load from the main menu's game (gradlew :lwjgl3:runGame)");
+            return;
+        }
+        scenarioLoader.accept(entry);
+    }
+
+    /** The player's (new) ship's own weapons, and the view for where the avatar sits on it. */
+    private void rearm() {
+        gun = new PlayerGunnery(world, game.player);
+        gun.setTarget(game.firstTarget());
+        hud.setTargeting(new CombatTargetingProvider(gun));
+        matchViewToSeat();
+    }
+
+    /** The loaded scenario's use of the mouse, or null; {@link #scenarioPressed} after a press it took. */
+    private com.hawkwing.RingsOfIron.debug.ScenarioPointer scenarioPointer;
+    private boolean scenarioPressed;
+
+    private void setUpScenario() {
+        com.hawkwing.RingsOfIron.debug.ScenarioSetup setup = new com.hawkwing.RingsOfIron.debug.ScenarioSetup(
+                scenarioEntry, world, game, assetsDir, dev, dev.overlays, dev.menuActions,
+                new com.hawkwing.RingsOfIron.debug.ScenarioSetup.Screen() {
+                    @Override
+                    public void setDeckView(boolean deck) {
+                        hud.getViewMode().setMode(deck ? ViewMode.INTERIOR : ViewMode.EXTERIOR);
+                    }
+
+                    @Override
+                    public void playerShipChanged() {
+                        rearm();
+                    }
+
+                    @Override
+                    public void setPointer(com.hawkwing.RingsOfIron.debug.ScenarioPointer pointer) {
+                        scenarioPointer = pointer;
+                        scenarioPressed = false;
+                    }
+                });
+        matchViewToSeat();
+        scenario.setUp(setup);
+    }
+
+    /** Clicks on the game (not a window) for the scenario's pointer, while the developer console is closed. */
+    private final InputProcessor scenarioClicks = new InputAdapter() {
+        @Override
+        public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+            if (scenarioPointer == null || isDevConsoleOpen()) return false;
+            Vector2 at = viewports.getWorldViewport().unproject(tmp.set(screenX, screenY));
+            scenarioPressed = scenarioPointer.down(at.x, at.y, button, hud.getViewMode().getMode() == ViewMode.INTERIOR);
+            return scenarioPressed;
+        }
+
+        @Override
+        public boolean touchDragged(int screenX, int screenY, int pointer) {
+            if (!scenarioPressed || scenarioPointer == null) return false;
+            Vector2 at = viewports.getWorldViewport().unproject(tmp.set(screenX, screenY));
+            scenarioPointer.dragged(at.x, at.y);
+            return true;
+        }
+
+        @Override
+        public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+            if (!scenarioPressed || scenarioPointer == null) return false;
+            scenarioPressed = false;
+            Vector2 at = viewports.getWorldViewport().unproject(tmp.set(screenX, screenY));
+            scenarioPointer.up(at.x, at.y, button);
+            return true;
+        }
+    };
+
+    /** The overlays toggled on: their world half over the world ({@code world}), else their screen half over the HUD. */
+    private void drawOverlays(float delta, boolean inWorld) {
+        com.hawkwing.RingsOfIron.debug.OverlayView v = overlayView;
+        v.world = world;
+        v.game = game;
+        v.shapes = shapes;
+        v.batch = batch;
+        v.font = font;
+        v.delta = delta;
+        v.deckView = hud.getViewMode().getMode() == ViewMode.INTERIOR;
+        v.metersPerPixel = viewports.metersPerPixel();
+        v.decks = deckList();
+        v.uiWidth = viewports.getUiViewport().getWorldWidth();
+        v.uiHeight = viewports.getUiViewport().getWorldHeight();
+        if (v.projection == null) v.projection = viewports::worldToUi;
+        if (inWorld) {
+            viewports.applyWorld();
+            com.badlogic.gdx.graphics.OrthographicCamera cam = viewports.getWorldCamera();
+            float w = cam.viewportWidth * cam.zoom, h = cam.viewportHeight * cam.zoom;
+            v.worldBounds.set(cam.position.x - w / 2f, cam.position.y - h / 2f, w, h);
+            v.worldMatrix.set(cam.combined);
+            shapes.setProjectionMatrix(cam.combined);
+            batch.setProjectionMatrix(cam.combined);
+            dev.overlays.drawWorld(v);
+        } else {
+            viewports.applyUi();
+            shapes.setProjectionMatrix(viewports.getUiCamera().combined);
+            batch.setProjectionMatrix(viewports.getUiCamera().combined);
+            dev.overlays.drawScreen(v);
+        }
+    }
+
+    private final List<Entity> deckList = new java.util.ArrayList<>();
+
+    private List<Entity> deckList() {
+        deckList.clear();
+        for (Entity e : decks) deckList.add(e);
+        return deckList;
+    }
+
+    /** A ring round what the developer console has selected, at least a few pixels across. */
+    private void drawDevSelection() {
+        if (dev == null || dev.selected() == null) return;
+        float r = dev.picker.locate(dev.selected(), tmp);
+        if (r < 0f) return;
+        float px = viewports.metersPerPixel();
+        r = Math.max(r, 6f * px);
+        viewports.applyWorld();
+        shapes.setProjectionMatrix(viewports.getWorldCamera().combined);
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        shapes.setColor(1f, 0.3f, 1f, devWindow.isOpen() ? 1f : 0.5f);
+        if (dev.selected().isTile()) {
+            ShipGridComponent g = dev.selected().grid();
+            Body body = world.docking.bodyOf(dev.selected().ship);
+            float s = g.tileSize * 0.5f, a = body.getAngle();
+            float cos = MathUtils.cos(a), sin = MathUtils.sin(a);
+            // The tile's square, turned with its ship
+            for (int i = 0; i < 4; i++) {
+                float x0 = i == 0 || i == 3 ? -s : s, y0 = i < 2 ? -s : s;
+                float x1 = i == 2 || i == 3 ? -s : s, y1 = i == 0 || i == 3 ? -s : s;
+                shapes.line(tmp.x + cos * x0 - sin * y0, tmp.y + sin * x0 + cos * y0,
+                        tmp.x + cos * x1 - sin * y1, tmp.y + sin * x1 + cos * y1);
+            }
+        } else {
+            shapes.circle(tmp.x, tmp.y, r * 1.3f, 32);
+            shapes.circle(tmp.x, tmp.y, r * 1.3f + 2f * px, 32);
+        }
+        shapes.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     /** True while the notice log or the controls panel is open; Esc closes it rather than pausing. */
@@ -605,36 +878,6 @@ public class RingsOfIronGame extends ApplicationAdapter {
         layout.setText(font, text, font.getColor(), STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
         font.draw(batch, layout, x, y);
         return y - Math.max(20f, layout.height + 6f);
-    }
-
-    /** Why warp stopped, in words ("Dropped out of warp: a planned burn is due"), not the reason's enum name. */
-    private String dropNotice(TimeWarpController.WarpChange change) {
-        String why = null;
-        switch (change.reason) {
-            case PLAYER_EVENT:
-                if (change.event == null) break;
-                switch (change.event.type) {
-                    case MANEUVER: why = "a planned burn is due"; break;
-                    case SOI_ENTRY: why = "entering " + bodyName(change.event.targetUuid) + "'s sphere of influence"; break;
-                    case SOI_EXIT: why = "leaving this body's sphere of influence"; break;
-                    case IMPACT: why = "on course to hit the surface"; break;
-                    default: break;
-                }
-                break;
-            case ENCOUNTER:
-                why = (change.encounter == null ? "a craft" : PlayerDocking.name(change.encounter)) + " is coming within 20 km";
-                break;
-            default:
-                break;
-        }
-        return why == null ? "Dropped out of warp" : "Dropped out of warp: " + why;
-    }
-
-    private String bodyName(String uuid) {
-        Entity e = uuid == null ? null : world.universe.entity(uuid);
-        com.ringsofiron.orbital.components.CelestialBodyComponent body = e == null ? null
-                : e.getComponent(com.ringsofiron.orbital.components.CelestialBodyComponent.class);
-        return body != null && body.name != null ? body.name : world.nav.target.name(uuid);
     }
 
     private void planBurns() {
@@ -699,10 +942,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     }
 
     private void warp(int direction) {
-        if (!world.timeWarp.step(direction)) {
-            String reason = world.engine.getRailsWarpBlockedReason();
-            show("Time warp refused" + (reason == null ? "" : ": " + reason));
-        }
+        WarpNotices.step(world, direction);
     }
 
     private SaveSlots slots() {
@@ -766,7 +1006,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             world.clearCrash();
             // The loaded ship's own weapons; its sensor lock comes back with the save.
             gun = new PlayerGunnery(world, game.player);
-            if (gun.getTarget() == null) gun.setTarget(game.nextContact(null));
+            if (gun.getTarget() == null) gun.setTarget(game.firstTarget());
             hud.setTargeting(new CombatTargetingProvider(gun));
             matchViewToSeat();
             // A save made in First Play carries on there; any other leaves it
@@ -939,6 +1179,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
         return world.beacon.call();
     }
 
+    /** O: the lighting off or back on, inside and out. */
+    private void toggleLights() {
+        lightsOn = !lightsOn;
+        deckRenderer.setLightsOn(lightsOn);
+        exterior.setLightsOn(lightsOn);
+        show(lightsOn ? "Lighting on" : "Lighting off");
+    }
+
     /**
      * P: the first press asks, a second within {@link #ABANDON_CONFIRM} seconds orders the crew to
      * the escape pods, and once they are going it launches the pods with whoever is aboard.
@@ -987,159 +1235,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     // -----------------------------------------------------------------------
     private void drawBodies() {
-        world.physics.getWorld().getBodies(bodies);
-        // Craft with hull art are drawn with it; everything else as its outline
-        batch.setProjectionMatrix(viewports.getWorldCamera().combined);
-        batch.begin();
-        for (int i = bodies.size - 1; i >= 0; i--) {
-            Body body = bodies.get(i);
-            Object owner = body.getUserData();
-            Entity e = owner instanceof Entity ? (Entity) owner : null;
-            if (e != null && world.docking.bodyOf(e) == body && exteriorArt.draw(batch, e, body)) bodies.removeIndex(i);
-        }
-        batch.end();
-        shapes.begin(ShapeRenderer.ShapeType.Line);
-        for (Body body : bodies) {
-            Object owner = body.getUserData();
-            Entity e = owner instanceof Entity ? (Entity) owner : null;
-            HudMarkerComponent marker = e == null ? null : MARKERS.get(e);
-            ShipGridComponent hull = e == null ? null : e.getComponent(ShipGridComponent.class);
-            // Only the hull's own body: a port's collar carriage and head carry the craft as owner too
-            if (hull != null && world.docking.bodyOf(e) == body) {
-                Vector2 at = PhysicsManager.getPosition(body, tmp2);
-                lighting.addHull(hullArt.chassisOf(e), hull, at.x, at.y, body.getAngle());
-            }
-            if (e == game.player) shapes.setColor(Color.CYAN);
-            else if (e != null && PROJECTILES.has(e)) shapes.setColor(Color.ORANGE);
-            else if (marker != null) shapes.setColor(marker.color);
-            else shapes.setColor(Color.LIGHT_GRAY);
-            for (Fixture fixture : body.getFixtureList()) drawFixture(body, fixture.getShape());
-        }
-        shapes.end();
-        bodies.clear();
-        drawCombat(Gdx.graphics.getDeltaTime());
-        // Every planned burn's direction, and the corridor into a docking port
-        navOverlay.draw(shapes, viewports.getViewMeters() / 400f);
-        // Navigation lights and the glow of running systems, a few pixels across at least
-        lighting.renderGlow(batch, viewports.getWorldCamera(), 2.5f * viewports.getViewMeters() / 400f);
-    }
-
-    /**
-     * Rounds as streaks along their last tick's flight, missiles as a nose line with a plume
-     * while they burn, beams as lines from the gun to what they touch, decoys as small flares,
-     * and a fading ring where a warhead went off or a missile was shot down. Sizes scale with
-     * the zoom so they stay visible.
-     */
-    private void drawCombat(float delta) {
         float px = viewports.getViewMeters() / 400f;
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        boolean beamArt = drawCombatArt(px);
-        shapes.begin(ShapeRenderer.ShapeType.Line);
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(COMBAT_ROUNDS)) {
-            if (drawnWithArt.contains(e, true)) continue;
-            ProjectileComponent p = PROJECTILES.get(e);
-            MissileComponent m = MISSILES.get(e);
-            if (m == null) {
-                shapes.setColor(p.owner == game.player ? Color.YELLOW : Color.ORANGE);
-                // A streak at least a few pixels long, behind the round.
-                tmp.set(p.pos).sub(p.prevPos);
-                float len = tmp.len();
-                if (len < 3f * px) tmp.setLength(3f * px);
-                shapes.line(p.pos.x - tmp.x, p.pos.y - tmp.y, p.pos.x, p.pos.y);
-                continue;
-            }
-            float size = Math.max(m.def.hitRadius * 3f, 6f * px);
-            float cos = (float) Math.cos(m.heading), sin = (float) Math.sin(m.heading);
-            shapes.setColor(m.launcher == game.player ? Color.CYAN : Color.RED);
-            shapes.line(p.pos.x - cos * size, p.pos.y - sin * size, p.pos.x + cos * size, p.pos.y + sin * size);
-            if (m.throttle > 0f) {
-                shapes.setColor(Color.ORANGE);
-                float plume = size * (1f + 2f * m.throttle);
-                shapes.line(p.pos.x - cos * size, p.pos.y - sin * size, p.pos.x - cos * plume, p.pos.y - sin * plume);
-            }
-        }
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(ARMED)) {
-            WeaponsComponent weapons = e.getComponent(WeaponsComponent.class);
-            for (WeaponMountComponent m : weapons.mounts) {
-                if (!m.beamOn || beamArt) continue;
-                shapes.setColor(e == game.player ? Color.SKY : Color.MAGENTA);
-                shapes.line(m.muzzle.x, m.muzzle.y, m.beamEnd.x, m.beamEnd.y);
-            }
-        }
-        shapes.setColor(Color.WHITE);
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(DECOYS)) {
-            if (drawnWithArt.contains(e, true)) continue;
-            DecoyComponent d = e.getComponent(DecoyComponent.class);
-            shapes.circle(d.pos.x, d.pos.y, Math.max(1f, 3f * px), 8);
-        }
-        for (int i = explosions.size - 1; i >= 0; i--) {
-            float[] x = explosions.get(i);
-            x[2] += delta;
-            if (x[2] > 1f) {
-                explosions.removeIndex(i);
-                continue;
-            }
-            if (art.region(ArtNames.explosion(0f)) != null) continue;
-            shapes.setColor(1f, 0.6f, 0.2f, 1f - x[2]);
-            shapes.circle(x[0], x[1], Math.max(5f, 20f * px) * (0.3f + x[2]), 20);
-        }
-        shapes.end();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
-    }
-
-    /**
-     * Rounds, missiles, decoys, beams and explosions that have art, in one batch; the rest are
-     * left to the shapes. Each is drawn at least a few pixels long, as the shapes are. True when
-     * the beams were drawn.
-     */
-    private boolean drawCombatArt(float px) {
-        drawnWithArt.clear();
-        batch.setProjectionMatrix(viewports.getWorldCamera().combined);
-        batch.begin();
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(COMBAT_ROUNDS)) {
-            ProjectileComponent p = PROJECTILES.get(e);
-            MissileComponent m = MISSILES.get(e);
-            boolean drawn;
-            if (m != null) {
-                drawn = exteriorArt.projectile(batch, ArtNames.projectile(
-                        m.def.art, m.def.id, true), p.pos.x, p.pos.y, m.heading, Math.max(m.def.hitRadius * 6f, 12f * px));
-            } else {
-                drawn = p.def != null && exteriorArt.projectile(batch, ArtNames.projectile(
-                        p.def.art, p.def.id, false), p.pos.x, p.pos.y, MathUtils.atan2(p.vel.y, p.vel.x), 10f * px);
-            }
-            if (drawn) drawnWithArt.add(e);
-        }
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(DECOYS)) {
-            DecoyComponent d = e.getComponent(DecoyComponent.class);
-            if (exteriorArt.decoy(batch, d.pos.x, d.pos.y, d.vel.x, d.vel.y, 8f * px)) drawnWithArt.add(e);
-        }
-        boolean beams = art.region(ArtNames.BEAM) != null;
-        if (beams) {
-            // Beams glow: add their light to what is under them
-            batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
-            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(ARMED)) {
-                for (WeaponMountComponent m : e.getComponent(WeaponsComponent.class).mounts) {
-                    if (m.beamOn) exteriorArt.beam(batch, m.muzzle.x, m.muzzle.y, m.beamEnd.x, m.beamEnd.y, Math.max(0.25f, 3f * px));
-                }
-            }
-            batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-        }
-        for (float[] x : explosions) {
-            exteriorArt.explosion(batch, x[0], x[1], 2f * Math.max(5f, 20f * px) * (0.3f + x[2]), x[2]);
-        }
-        batch.end();
-        return beams;
-    }
-
-    private void drawFixture(Body body, Shape shape) {
-        if (shape instanceof CircleShape) {
-            Vector2 c = PhysicsManager.getPosition(body, tmp);
-            shapes.circle(c.x, c.y, Math.max(0.5f, shape.getRadius() * PhysicsManager.METERS_PER_UNIT), 16);
-        } else if (shape instanceof PolygonShape) {
-            PolygonShape poly = (PolygonShape) shape;
-            int n = PolygonSkin.outline(body, poly, polygon);
-            shapes.polygon(polygon, 0, n * 2);
-        }
+        snow.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
+        exterior.drawBodies(viewports.getWorldCamera());
+        exterior.drawFlight(viewports.getWorldCamera(), px, Gdx.graphics.getDeltaTime());
+        // Every planned burn's direction, and the corridor into a docking port
+        navOverlay.draw(shapes, px);
+        // Navigation lights and the glow of running systems, a few pixels across at least
+        lighting.renderGlow(batch, viewports.getWorldCamera(), 2.5f * px);
     }
 
     /**
@@ -1149,123 +1252,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
      */
     private void drawInterior(float delta) {
         Entity aboard = world.avatar.getAvatarShip();
-        if (aboard == null) aboard = game.player;
-        ShipGridComponent grid = aboard.getComponent(ShipGridComponent.class);
-        if (grid == null) return;
-        decks.clear();
-        decks.add(aboard);
-        for (GridLink link : grid.links) {
-            if (!decks.contains(link.otherShip, true)) decks.add(link.otherShip);
-        }
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        boolean withArt = deckArt.available();
-        hazardsDrawn.clear();
-        for (Entity ship : decks) {
-            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
-            Body body = world.docking.bodyOf(ship);
-            if (g == null || body == null) continue;
-            Vector2 at = PhysicsManager.getPosition(body, tmp);
-            float degrees = body.getAngle() * MathUtils.radiansToDegrees;
-            CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
-            if (withArt) {
-                batch.setProjectionMatrix(viewports.getWorldCamera().combined);
-                batch.setTransformMatrix(pose.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, degrees));
-                batch.begin();
-                deckArt.draw(batch, g, hold);
-                batch.end();
-                batch.setTransformMatrix(identity);
-            }
-            // The batch's end turned blending off; the walkways drawn below are translucent
-            Gdx.gl.glEnable(GL20.GL_BLEND);
-            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-            shapes.begin(ShapeRenderer.ShapeType.Filled);
-            shapes.identity();
-            shapes.translate(at.x, at.y, 0f);
-            shapes.rotate(0f, 0f, 1f, degrees);
-            if (lightsOn) {
-                lighting.addDeck(g, at.x, at.y, body.getAngle());
-                float cos = MathUtils.cos(body.getAngle()), sin = MathUtils.sin(body.getAngle());
-                for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
-                    GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                    if (pos.ship != ship) continue;
-                    Vector2 local = pos.toShipLocal(g, tmp2);
-                    lighting.addCrew(at.x + cos * local.x - sin * local.y, at.y + sin * local.x + cos * local.y,
-                            CrewBody.RADIUS * g.tileSize);
-                }
-            }
-            float s = g.tileSize;
-            if (withArt) {
-                if (!deckArt.hasWalkways()) DeckView.walkways(shapes, g, color, 0.6f);
-            } else {
-                for (int y = 0; y < g.height; y++) {
-                    for (int x = 0; x < g.width; x++) {
-                        TileShade.deck(g.getTile(x, y), color);
-                        if (color.a <= 0f) continue;
-                        shapes.setColor(color);
-                        Vector2 p = g.tileToLocal(x, y);
-                        shapes.rect(p.x - s / 2f + 0.03f, p.y - s / 2f + 0.03f, s - 0.06f, s - 0.06f);
-                    }
-                }
-                DeckView.walkways(shapes, g, color, 1f);
-                DeckView.walls(shapes, g, color);
-                DeckView.cargo(shapes, g, hold, color);
-            }
-            // Smoke and flames over the deck, under everyone aboard; they open their own batches
-            shapes.end();
-            HazardParticles particles = hazards.get(g);
-            if (particles == null) hazards.put(g, particles = new HazardParticles());
-            hazardsDrawn.put(g, Boolean.TRUE);
-            particles.update(g, delta);
-            particles.draw(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, s);
-            shapes.begin(ShapeRenderer.ShapeType.Filled);
-            boolean crewArt = withArt && deckArt.hasCrew();
-            for (Entity e : crewArt ? NO_ENTITIES : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
-                GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                if (pos.ship != ship) continue;
-                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-                Color mark = e == game.avatar ? Color.WHITE : world.standing.factions().known(c.faction) ? DeckView.STATION_CREW : Color.GOLD;
-                Vector2 local = pos.toShipLocal(g, tmp2);
-                DeckView.crew(shapes, c, local.x, local.y, s, mark, color);
-            }
-            shapes.end();
-            if (crewArt) {
-                batch.setTransformMatrix(pose);
-                batch.begin();
-                for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
-                    GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                    if (pos.ship != ship) continue;
-                    CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-                    ArtNames.Crew who = e == game.avatar ? ArtNames.Crew.PLAYER
-                            : world.standing.factions().known(c.faction) ? ArtNames.Crew.STATION : ArtNames.Crew.SHIP;
-                    Vector2 local = pos.toShipLocal(g, tmp2);
-                    deckArt.crew(batch, e, who, c.load == null ? null : c.load.task.job.commodity(), local.x, local.y, s);
-                }
-                batch.end();
-                batch.setTransformMatrix(identity);
-            }
-        }
-        hazards.keySet().retainAll(hazardsDrawn.keySet());
-        shapes.identity();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
-        if (!lightsOn) return;
-        // The light map over the decks, dark when the craft aboard has no power; then the glow on top
-        lighting.renderLights(viewports.getWorldCamera(), DeckLightRig.hasPower(grid));
-        if (withArt) {
-            // What gives off light shows lit whatever light falls on it
-            batch.setProjectionMatrix(viewports.getWorldCamera().combined);
-            for (Entity ship : decks) {
-                ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
-                Body body = world.docking.bodyOf(ship);
-                if (g == null || body == null) continue;
-                Vector2 at = PhysicsManager.getPosition(body, tmp);
-                batch.setTransformMatrix(pose.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, body.getAngle() * MathUtils.radiansToDegrees));
-                batch.begin();
-                deckArt.glow(batch, g);
-                batch.end();
-            }
-            batch.setTransformMatrix(identity);
-        }
-        lighting.renderGlow(batch, viewports.getWorldCamera(), 0f);
+        deckRenderer.draw(DeckRenderer.decksAround(aboard == null ? game.player : aboard, decks),
+                viewports.getWorldCamera(), delta);
     }
 
     /** Where the avatar stands, world meters, or null when it is aboard nothing in the bubble. */
@@ -1311,14 +1299,17 @@ public class RingsOfIronGame extends ApplicationAdapter {
         font.draw(batch, world.hints.line(hintContexts(), this::key), hintX, 24f);
         // Rank, sponsor and the weekly budget
         font.draw(batch, world.budget.describe(), left, top - 60f);
-        // On deck there is no threat overlay: the missile warning goes up here
+        // On deck there is no threat overlay: the missile warning goes up here, between the flight
+        // readout and this column, wrapping rather than running under either
         if (hud.getViewMode().getMode() == ViewMode.INTERIOR && world.warnings.inbound() > 0) {
             float impact = world.warnings.soonestImpact();
+            Actor flight = hud.getFlightPanel();
+            float from = flight.localToStageCoordinates(tmp.set(flight.getWidth(), 0f)).x + 12f;
             font.setColor(Color.RED);
             font.getData().setScale(1.5f);
             font.draw(batch, String.format(java.util.Locale.ROOT, "MISSILE WARNING   %d inbound%s", world.warnings.inbound(),
                     Float.isNaN(impact) ? "" : String.format(java.util.Locale.ROOT, "   impact %.1f s", impact)),
-                    0f, top - 30f, viewports.getUiViewport().getWorldWidth(), com.badlogic.gdx.utils.Align.center, false);
+                    from, top - 30f, Math.max(left - 12f - from, 200f), com.badlogic.gdx.utils.Align.center, true);
             font.getData().setScale(1f);
             font.setColor(Color.LIGHT_GRAY);
         }
@@ -1331,9 +1322,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
             y -= 20f;
         } else if (disabled != null) {
             font.setColor(Color.RED);
-            font.draw(batch, "SHIP DISABLED: " + disabled.label + "   " + key(Action.ABANDON) + " twice abandons ship"
-                    + (world.beacon.refusal() == null ? ", " + key(Action.CUT) + " twice calls a tow" : ""), left, y);
-            y -= 20f;
+            // Wrapped to the column, as the notices are: with the tow offered it ran off the window's edge
+            layout.setText(font, "SHIP DISABLED: " + disabled.label + "   " + key(Action.ABANDON) + " twice abandons ship"
+                    + (world.beacon.refusal() == null ? ", " + key(Action.CUT) + " twice calls a tow" : ""),
+                    font.getColor(), STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+            font.draw(batch, layout, left, y);
+            y -= layout.height + 6f;
         }
         for (NoticeLog.Notice n : world.notices.showing()) {
             font.setColor(noticeColor(n.kind, Math.min(1f, n.secondsLeft())));
@@ -1541,9 +1535,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     @Override
     public void dispose() {
+        if (scenario != null) scenario.dispose();
+        builtInOverlays.dispose();
         if (refitEditor != null) refitEditor.dispose();
         gameHud.dispose();
         lighting.dispose();
+        exteriorLighting.dispose();
         docking.dispose();
         world.dispose();
         shapes.dispose();

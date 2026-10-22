@@ -166,7 +166,7 @@ class HostileTrafficGameTest {
         String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
         HostileComponent h = hostiles.get(id);
         h.targetUuid = HostileComponent.PLAYER;
-        Entity ship = bringIn(id, 3_000, 0);
+        Entity ship = bringIn(id, 6_000, 0); // out of its guns' reach: in it, it holds to fire first (round 10)
         run(2);
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
         for (int y = 0; y < grid.height; y++) {
@@ -183,6 +183,109 @@ class HostileTrafficGameTest {
         assertNotNull(pilot, "and flies off");
         assertTrue(pilot.burns.isEmpty() && pilot.seekTarget == null);
         assertTrue(world.hostiles.notices.stream().anyMatch(n -> n.contains("breaking off")));
+    }
+
+    @Test
+    void aRaiderWornToItsLineAsItReachesItsGunsFiresBeforeItBreaksOff() {
+        // Round 10: survey seed 1's raider reached 0.65 of its hull just as it crossed its chaingun's 3 km
+        // from the frigate, and turned away without a shot
+        String id = pirate(HostileTraffic.RAIDER);
+        HostileComponent h = hostiles.get(id);
+        h.targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 3_000, 0);
+        float reach = Tactics.arms(ship).reach;
+        int[] fired = new int[1];
+        double[] firstShot = {Double.NaN};
+        world.combatEvents.shots.add((sig, shot) -> {
+            if (shot.shooter != ship) return;
+            fired[0]++;
+            if (Double.isNaN(firstShot[0])) firstShot[0] = world.engine.getSimSeconds();
+        });
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile t = grid.getTile(x, y);
+                if (t != null && t.isWall()) t.setIntegrity(0.6f);
+            }
+        }
+        double brokeOffAt = Double.NaN;
+        for (int i = 0; i < 60 * 30 && Double.isNaN(brokeOffAt); i++) {
+            world.update(FRAME);
+            if (h.brokeOff) brokeOffAt = world.engine.getSimSeconds();
+        }
+        assertTrue(h.hull < HostileTraffic.BREAK_OFF_HULL, "below its line from the start: " + h.hull);
+        assertTrue(reach >= 3_000f, "in its guns' reach: " + reach);
+        assertFalse(Double.isNaN(brokeOffAt), "it breaks off in the end");
+        assertTrue(fired[0] > 0 && firstShot[0] < brokeOffAt, "it fired first: " + fired[0] + " rounds, the first at "
+                + firstShot[0] + ", off at " + brokeOffAt);
+    }
+
+    @Test
+    void aPirateInReachWaitsForTheResetItsCrewHaveInHandBeforeItStrikes() {
+        // Round 10: survey seed 1's raider struck for silenced guns as it crossed its chaingun's 3 km from
+        // the frigate, its engineer a moment from resetting the turret mount
+        String id = pirate(HostileTraffic.RAIDER);
+        hostiles.get(id).targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 2_000, 0);
+        run(2);
+        ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
+        assertTrue(board.resetsPowerFirst, "a pirate crew");
+        java.util.List<Entity> guns = new java.util.ArrayList<>();
+        for (com.ringsofiron.combatsys.components.WeaponMountComponent m
+                : ship.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class).mounts) {
+            if (!m.def.pointDefense && m.subsystem != null) guns.add(m.subsystem);
+        }
+        assertFalse(guns.isEmpty());
+        com.ringsofiron.interiorgrid.crew.ResetShortTask reset = new com.ringsofiron.interiorgrid.crew.ResetShortTask(guns.get(0), 0, 0);
+        board.post(reset);
+        board.claim(reset, new Entity());
+        for (int i = 0; i < 120; i++) {
+            for (Entity g : guns) {
+                SubsystemComponent s = g.getComponent(SubsystemComponent.class);
+                s.shorted = true;
+                s.isOperational = false;
+            }
+            world.update(FRAME);
+        }
+        assertNotEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship),
+                "its crew are at the reset");
+        board.resetsPowerFirst = false; // as any crew but the pirates'
+        for (int i = 0; i < 120 && ShipDisablement.reason(ship) == null; i++) {
+            for (Entity g : guns) {
+                SubsystemComponent s = g.getComponent(SubsystemComponent.class);
+                s.shorted = true;
+                s.isOperational = false;
+            }
+            world.update(FRAME);
+        }
+        assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
+    }
+
+    @Test
+    void theHoldToFireComesThroughASave() {
+        String id = pirate(HostileTraffic.RAIDER);
+        HostileComponent h = hostiles.get(id);
+        h.targetUuid = HostileComponent.PLAYER;
+        Entity ship = bringIn(id, 3_000, 0);
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile t = grid.getTile(x, y);
+                if (t != null && t.isWall()) t.setIntegrity(0.6f);
+            }
+        }
+        run(3);
+        assertFalse(h.brokeOff, "holding to fire");
+        Double since = world.hostiles.holdingSince(id);
+        assertNotNull(since);
+        com.badlogic.gdx.utils.Json json = new com.badlogic.gdx.utils.Json();
+        java.io.StringWriter out = new java.io.StringWriter();
+        json.setWriter(out);
+        json.writeObjectStart();
+        world.hostiles.write(json);
+        json.writeObjectEnd();
+        world.hostiles.read(json, new com.badlogic.gdx.utils.JsonReader().parse(out.toString()));
+        assertEquals(since, world.hostiles.holdingSince(id), "the hold's start, not a fresh hold");
     }
 
     @Test
@@ -254,12 +357,31 @@ class HostileTrafficGameTest {
         run(2);
         assertNotNull(raider.getComponent(NpcCombatComponent.class), "it fights");
         assertFalse(ShipDisablement.isDisabled(raider));
-        var tanks = raider.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class);
-        for (int i = 0; i < 6 / FRAME && !ShipDisablement.isDisabled(raider); i++) {
-            tanks.fuel = 0f;
-            world.update(FRAME);
+        for (SubsystemComponent tank : com.ringsofiron.interiorgrid.TankSupply.tanks(
+                raider.getComponent(ShipSubsystemRegistryComponent.class), com.ringsofiron.interiorgrid.Fluid.PROPELLANT)) {
+            tank.contents = 0;
         }
+        for (int i = 0; i < 6 / FRAME && !ShipDisablement.isDisabled(raider); i++) world.update(FRAME);
         assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(raider));
+    }
+
+    @Test
+    void aPirateWhoseEnginesLosePowerIsNotDry() {
+        // Round 8: a slug that shorts a raider's reactor leaves its engines unfed, which read as out of
+        // fuel; raiders struck for dry tanks at 4 km with full ones, their chaingun never fired
+        String pirate = pirate(HostileTraffic.RAIDER);
+        hostiles.get(pirate).targetUuid = HostileComponent.PLAYER;
+        Entity raider = bringIn(pirate, 3_000, 0);
+        run(2);
+        for (Entity e : raider.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s != null && s.type == SubsystemComponent.SubsystemType.ENGINE) s.switchedOn = false;
+        }
+        run(1);
+        assertTrue(raider.getComponent(com.ringsofiron.physicsexterior.components.ThrusterComponent.class).isOutOfFuel(),
+                "its engines draw nothing");
+        run(5);
+        assertFalse(ShipDisablement.isDisabled(raider), "its tanks are full: " + ShipDisablement.reason(raider));
     }
 
     @Test

@@ -193,34 +193,13 @@ tasks.register('runFlightDemo', JavaExec) {
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
-// Runs the HUD demo (ui-hud): the flight demo with the piloting HUD, minimap and console prompts.
-tasks.register('runHudDemo', JavaExec) {
-  group = 'application'
-  description = 'Runs the ui-hud piloting HUD demo.'
-  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.HudDemoLauncher'
-  classpath = sourceSets.main.runtimeClasspath
-  workingDir = rootProject.file('assets').path
-  jvmArgs += "--enable-native-access=ALL-UNNAMED"
-  jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
-  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
-}
-
-// Runs the spatial audio demo (walk a ship and hear walls muffle sound) instead of the main game.
+// The audio demo is the game's "audio" debug scenario (F3): the game starts straight into it, aboard the
+// audio demo ship. The same as runGame -Pscenario=audio.
 tasks.register('runAudioDemo', JavaExec) {
   group = 'application'
-  description = 'Runs the audio-spatial muffling demo.'
-  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.AudioDemoLauncher'
-  classpath = sourceSets.main.runtimeClasspath
-  workingDir = rootProject.file('assets').path
-  jvmArgs += "--enable-native-access=ALL-UNNAMED"
-  jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
-  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
-}
-
-tasks.register('runOrbitDemo', JavaExec) {
-  group = 'application'
-  description = 'Runs the orbital-mechanics rails demo.'
-  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.OrbitDemoLauncher'
+  description = 'Runs the game straight into its audio scenario (walls, doors and thin air muffling sound).'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.GameLauncher'
+  args = ['--scenario', 'audio']
   classpath = sourceSets.main.runtimeClasspath
   workingDir = rootProject.file('assets').path
   jvmArgs += "--enable-native-access=ALL-UNNAMED"
@@ -246,6 +225,14 @@ tasks.register('runGame', JavaExec) {
   description = 'Runs Rings of Iron with every module wired together.'
   // -PviewAnywhere: V switches the view anywhere and the ship flies from the deck, as before seats
   if (project.hasProperty('viewAnywhere')) systemProperty 'view.anywhere', 'true'
+  // -PcareerSaves=<folder>: copies that folder's saves (core/build/playtest-saves/seed-2026, say) into
+  // assets/saves first, so Load lists them. assets/saves/career-saves.txt lists what it copied; a later run
+  // replaces those files and only those, never a save you made or saved over
+  def gameArgs = []
+  if (project.hasProperty('careerSaves')) gameArgs += ['--career-saves', rootProject.file(project.property('careerSaves').toString()).path]
+  // -Pscenario=<id>: straight into a debug menu scenario (F3 lists them) rather than the main menu
+  if (project.hasProperty('scenario')) gameArgs += ['--scenario', project.property('scenario').toString()]
+  args = gameArgs
   mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.GameLauncher'
   classpath = sourceSets.main.runtimeClasspath
   workingDir = rootProject.file('assets').path
@@ -318,7 +305,7 @@ tasks.register('runPhysicsTest', JavaExec) {
 
 // Smoke test: boots the game and each demo for a few hundred frames and fails on any exception.
 // Needs a display; on a headless machine run it under Xvfb: xvfb-run -a ./gradlew :lwjgl3:smokeTest
-def smokeApps = ['game', 'firstplay', 'shell', 'interior', 'flight', 'hud', 'audio', 'orbit', 'crew', 'docking', 'editor']
+def smokeApps = ['game', 'firstplay', 'shell', 'interior', 'flight', 'audio', 'orbit', 'crew', 'docking', 'editor', 'scenario-crew', 'scenario-interior']
 def smokeTasks = smokeApps.collect { app ->
   tasks.register("smokeTest${app.capitalize()}", JavaExec) {
     group = 'verification'
