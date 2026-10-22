@@ -366,7 +366,7 @@ public class Shipyard extends EntitySystem {
     }
 
     /** Everyone who calls {@code from} home, and everyone aboard it, goes aboard {@code to} and calls it home. */
-    private void moveCrew(Entity from, Entity to) {
+    void moveCrew(Entity from, Entity to) {
         Array<Entity> crew = crewOf(from);
         List<int[]> floor = GameScenario.floorTiles(to.getComponent(ShipGridComponent.class));
         CrewFactory.ensureBoard(to);

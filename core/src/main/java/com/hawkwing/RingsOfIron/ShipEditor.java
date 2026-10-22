@@ -70,7 +70,7 @@ public class ShipEditor extends ApplicationAdapter {
 
     private enum Tool {
         PAINT("Paint"), COMPONENT("Component"), EDGE("Edge wall"), HULL("Hull piece"), COVERING("Covering"),
-        ERASE("Erase"), PORT("Port"), LIGHT("Light"), CONDUIT("Conduit"), PIPE("Pipe");
+        ERASE("Erase"), PORT("Port"), LIGHT("Light"), CONDUIT("Conduit"), PIPE("Pipe"), RCS("RCS");
 
         final String label;
 
@@ -159,6 +159,8 @@ public class ShipEditor extends ApplicationAdapter {
 
     private Tab tab = Tab.LAYOUT;
     private Tool tool = Tool.PAINT;
+    /** The kind of RCS block the RCS tool bolts on. */
+    private String rcsKind = "QUAD";
     private String chassisId;
     private String tileId = "hull";
     private String componentId = "reactor";
@@ -533,6 +535,15 @@ public class ShipEditor extends ApplicationAdapter {
             shapes.setColor(1f, 0.95f, 0.6f, 0.5f);
             lightRect(hoverX, hoverY, nearestSide());
         }
+        // RCS blocks: a block standing out from the hull edge, a tick for each nozzle
+        for (ChassisDef.Rcs r : m.rcs) {
+            shapes.setColor(0.62f, 0.85f, 1f, 1f);
+            rcsRect(r.x, r.y, Side.valueOf(r.side), r.kind);
+        }
+        if (tab == Tab.LAYOUT && tool == Tool.RCS && m.inBounds(hoverX, hoverY)) {
+            shapes.setColor(0.62f, 0.85f, 1f, 0.5f);
+            rcsRect(hoverX, hoverY, nearestSide(), rcsKind);
+        }
         // Conduits along edges: a thin amber line, over any wall they run in
         float wire = Math.max(2f, scale * 0.08f);
         for (ChassisDef.EdgeConduit run : withArt ? java.util.Collections.<ChassisDef.EdgeConduit>emptyList() : m.edgeConduits) {
@@ -867,6 +878,30 @@ public class ShipEditor extends ApplicationAdapter {
     }
 
     /** A wall light on the {@code s} edge of tile (x, y): half the edge long, a little way into the tile. */
+    /** An RCS block of {@code kind} on the {@code s} edge of tile (x, y), out past it, with its nozzles. */
+    private void rcsRect(int x, int y, Side s, String kind) {
+        float len = scale * 0.4f, depth = Math.max(3f, scale * 0.15f), tick = Math.max(2f, scale * 0.1f);
+        float cx = sx(x + 0.5f + s.dx * 0.5f), cy = sy(y + 0.5f + s.dy * 0.5f);
+        boolean quad = "QUAD".equals(kind);
+        if (s.dy != 0) {
+            float y0 = s.dy > 0 ? cy : cy - depth;
+            shapes.rect(cx - len / 2f, y0, len, depth);
+            shapes.rect(cx - tick / 2f, s.dy > 0 ? y0 + depth : y0 - tick, tick, tick);
+            if (quad) {
+                shapes.rect(cx - len / 2f - tick, y0 + depth / 2f - tick / 2f, tick, tick);
+                shapes.rect(cx + len / 2f, y0 + depth / 2f - tick / 2f, tick, tick);
+            }
+        } else {
+            float x0 = s.dx > 0 ? cx : cx - depth;
+            shapes.rect(x0, cy - len / 2f, depth, len);
+            shapes.rect(s.dx > 0 ? x0 + depth : x0 - tick, cy - tick / 2f, tick, tick);
+            if (quad) {
+                shapes.rect(x0 + depth / 2f - tick / 2f, cy - len / 2f - tick, tick, tick);
+                shapes.rect(x0 + depth / 2f - tick / 2f, cy + len / 2f, tick, tick);
+            }
+        }
+    }
+
     private void lightRect(int x, int y, Side s) {
         float len = scale * 0.5f, depth = Math.max(3f, scale * 0.15f);
         float cx = sx(x + 0.5f + s.dx * 0.5f), cy = sy(y + 0.5f + s.dy * 0.5f);
@@ -1101,8 +1136,16 @@ public class ShipEditor extends ApplicationAdapter {
                 strokeTo(m, cat);
                 break;
             case ERASE: {
-                // A light comes down first, leaving whatever stands on its tile
+                // An RCS block or a light comes off first, leaving whatever stands on its tile
                 Side side = nearestSide();
+                ChassisDef.Rcs block = m.rcsAt(hoverX, hoverY, side);
+                if (block != null) {
+                    beginEdit();
+                    m.rcs.remove(block);
+                    changed();
+                    say("Took off the RCS block at " + hoverX + "," + hoverY + " " + side);
+                    break;
+                }
                 if (m.lightAt(hoverX, hoverY, side) != null) {
                     beginEdit();
                     m.toggleLight(hoverX, hoverY, side);
@@ -1184,6 +1227,22 @@ public class ShipEditor extends ApplicationAdapter {
                 m.toggleLight(hoverX, hoverY, side);
                 changed();
                 say(had ? "Took down the light" : "Hung a light on the " + side.name().toLowerCase() + " wall of " + hoverX + "," + hoverY);
+                break;
+            }
+            case RCS: {
+                Side side = nearestSide();
+                ChassisDef.Rcs had = m.rcsAt(hoverX, hoverY, side);
+                beginEdit();
+                String why = m.toggleRcs(hoverX, hoverY, side, rcsKind, cat);
+                if (why != null) {
+                    undo.pop();
+                    say("Can't place RCS: " + why);
+                    break;
+                }
+                changed();
+                say(had != null && had.kind.equals(rcsKind) ? "Took off the RCS block"
+                        : "Bolted " + rcsLabel(rcsKind) + " RCS onto the " + side.name().toLowerCase(Locale.ROOT)
+                        + " edge of " + hoverX + "," + hoverY);
                 break;
             }
             case CONDUIT:
@@ -1684,6 +1743,23 @@ public class ShipEditor extends ApplicationAdapter {
                 text(x, y, "Click a docking port: active ports extend a collar", Color.GRAY);
                 y -= LINE;
                 break;
+            case RCS: {
+                text(x, y, "Click near a hull edge that faces space to bolt on an RCS block", Color.GRAY);
+                y -= LINE;
+                text(x, y, "Its nozzles push the ship the other way: place them in pairs to turn and strafe", Color.GRAY);
+                y -= LINE;
+                float bx = x;
+                for (String kind : new String[]{"LINEAR", "QUAD"}) {
+                    bx += button(bx, y, rcsLabel(kind), kind.equals(rcsKind), () -> rcsKind = kind);
+                }
+                y -= LINE;
+                int quads = 0;
+                for (ChassisDef.Rcs r : m.rcs) if ("QUAD".equals(r.kind)) quads++;
+                text(x, y, m.rcs.isEmpty() ? "No RCS: the ship turns and strafes on its ship's figures"
+                        : (m.rcs.size() - quads) + " linear, " + quads + " quad", Color.WHITE);
+                y -= LINE;
+                break;
+            }
             case LIGHT: {
                 text(x, y, "Click near a wall to hang or take down a light", Color.GRAY);
                 y -= LINE;
@@ -1708,6 +1784,10 @@ public class ShipEditor extends ApplicationAdapter {
                 break;
         }
         return y;
+    }
+
+    private static String rcsLabel(String kind) {
+        return "QUAD".equals(kind) ? "Quad (3 nozzles)" : "Linear (1 nozzle)";
     }
 
     /** Replaces the chassis's lights with ones along the walls of every room. */

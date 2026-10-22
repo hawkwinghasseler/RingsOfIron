@@ -153,6 +153,25 @@ class AudioSystemsTest {
     }
 
     @Test
+    void thinAirMufflesTheSoundBeforeItGoesSilent() {
+        CompartmentBuilder.rebuild(grid);
+        AudioEmitterComponent fire = addInterior(AudioEventCatalog.FIRE, 15.5f, 2f);
+        walkTo(12.5f, 2f); // same room, nothing in the way
+        engine.update(DT);
+        assertEquals(AcousticModel.OPEN_CUTOFF_HZ, instanceOf(fire).mix.cutoffHz, 1f);
+
+        // A tenth of the air left: still heard, but only its low end
+        Compartment room = grid.compartmentAt(15, 2);
+        room.oxygen *= 0.1;
+        room.nitrogen *= 0.1;
+        room.carbonDioxide *= 0.1;
+        engine.update(DT);
+        assertEquals(0.1f, fire.pressure, 0.02f);
+        assertTrue(instanceOf(fire).mix.gain > 0f);
+        assertTrue(instanceOf(fire).mix.cutoffHz < 1000f, "thin air muffles: " + instanceOf(fire).mix.cutoffHz);
+    }
+
+    @Test
     void removingTheEntityStopsAndFreesTheSound() {
         AudioEmitterComponent hum = addInterior(AudioEventCatalog.REACTOR_HUM, 5f, 2f);
         engine.update(DT);

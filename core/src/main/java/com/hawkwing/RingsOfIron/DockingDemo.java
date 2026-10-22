@@ -15,21 +15,16 @@ import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
-import com.badlogic.gdx.physics.box2d.CircleShape;
-import com.badlogic.gdx.physics.box2d.Fixture;
-import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.ashley.core.Family;
 import com.hawkwing.RingsOfIron.game.DeckView;
+import com.hawkwing.RingsOfIron.render.DeckRenderer;
+import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
 import com.hawkwing.RingsOfIron.game.DockingDemoScene;
 import com.hawkwing.RingsOfIron.game.DoorForcing;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
 import com.hawkwing.RingsOfIron.game.StationCrew;
-import com.ringsofiron.aicrew.CrewMemberComponent;
-import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
-import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -37,13 +32,10 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
-import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.ForceMethod;
-import com.ringsofiron.uihud.components.HudMarkerComponent;
-import com.ringsofiron.uihud.minimap.TileShade;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -64,19 +56,17 @@ import java.nio.file.Paths;
  * flies off. In the yard scene J orders repairs, N refits the nose hardpoint
  * with a new weapon and M with a used one. Mouse wheel zooms, Esc quits.
  *
- * <p>Drawn: hulls and deck plans, docking collars (yellow), port faces (green while armed, cyan
- * latched, red torn off), the collar head of an active port while it is out (orange), port doors
- * (green open, red shut), mounted systems (grey blocks: crew walk over them), cargo (a crate
- * per bay tile, colored by commodity) and crew (white, station hands orange, you in yellow; a
- * crate on anyone carrying a load).
+ * <p>Drawn: decks, cargo and crew as the game draws them ({@link DeckRenderer}), and over them the
+ * hulls and rounds in flight as the game draws them ({@link ExteriorRenderer}: with their art in
+ * flight, as outlines in deck view), docking collars (yellow), port faces (green while armed, cyan
+ * latched, red torn off), the collar head of an active port while it is out (orange) and port
+ * doors (green open, red shut).
  */
 public class DockingDemo extends ApplicationAdapter {
     private static final float PANEL_WIDTH = 430f;
     /** Walking pace in deck view, tiles per second (as in the game). */
     private static final float WALK_SPEED = 1f;
     private static final float DECK_ZOOM = 0.3f;
-
-    private static final Family CREW = Family.all(CrewMemberComponent.class, GridPositionComponent.class).get();
 
     private final Path assetsDir;
     private DockingDemoScene demo;
@@ -86,14 +76,14 @@ public class DockingDemo extends ApplicationAdapter {
     private SpriteBatch batch;
     private ArtLibrary art;
     private DeckArt deckArt;
-    private final com.badlogic.gdx.math.Matrix4 pose = new com.badlogic.gdx.math.Matrix4();
+    private DeckRenderer deckRenderer;
+    private ExteriorRenderer exterior;
+    private final Array<Entity> decks = new Array<>();
     private BitmapFont font;
     private float viewMeters = 90f;
 
     private final Array<Body> bodies = new Array<>();
     private final Vector2 tmp = new Vector2();
-    private final Color color = new Color();
-    private final float[] polygon = new float[16];
     private final DoorForcing.Target target = new DoorForcing.Target();
 
     public DockingDemo() {
@@ -116,6 +106,9 @@ public class DockingDemo extends ApplicationAdapter {
         resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         demo = new DockingDemoScene(assetsDir);
         demo.load(DockingDemoScene.Scene.PASSIVE);
+        deckRenderer = new DeckRenderer(() -> demo.world, shapes, batch, deckArt, null, () -> demo.avatar);
+        exterior = new ExteriorRenderer(() -> demo.world, shapes, batch, art, null, null, () -> demo.player)
+                .setStyle(outlines());
         Gdx.input.setInputProcessor(new InputAdapter() {
             @Override
             public boolean scrolled(float amountX, float amountY) {
@@ -149,7 +142,7 @@ public class DockingDemo extends ApplicationAdapter {
         drawDecks();
         drawBodies();
         drawPorts();
-        drawDoorsAndCrew();
+        drawDoors();
         drawPanel();
     }
 
@@ -217,84 +210,41 @@ public class DockingDemo extends ApplicationAdapter {
         }
     }
 
-    /**
-     * Each grid's deck plan under its hull: the art pack's deck when it is built, else the
-     * minimap's colors, faintly.
-     */
+    /** Each craft's deck under its hull, drawn as the game draws it, with everyone aboard. */
     private void drawDecks() {
-        Gdx.gl.glEnable(GL20.GL_BLEND);
+        decks.clear();
         demo.world.physics.getWorld().getBodies(bodies);
-        if (deckArt.available()) {
-            batch.setProjectionMatrix(camera.combined);
-            for (Body body : bodies) {
-                Entity e = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
-                ShipGridComponent grid = e == null ? null : e.getComponent(ShipGridComponent.class);
-                if (grid == null || demo.world.docking.bodyOf(e) != body) continue;
-                Vector2 at = PhysicsManager.getPosition(body, new Vector2());
-                batch.setTransformMatrix(pose.idt().translate(at.x, at.y, 0f)
-                        .rotate(0f, 0f, 1f, body.getAngle() * com.badlogic.gdx.math.MathUtils.radiansToDegrees));
-                batch.begin();
-                deckArt.draw(batch, grid, e.getComponent(CargoHoldComponent.class));
-                batch.end();
-            }
-            batch.setTransformMatrix(pose.idt());
-        }
-        // The batch's end turned blending off; the walkways drawn below are translucent
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (Body body : bodies) {
             Entity e = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
-            ShipGridComponent grid = e == null ? null : e.getComponent(ShipGridComponent.class);
-            if (grid == null || demo.world.docking.bodyOf(e) != body) continue;
-            Vector2 at = PhysicsManager.getPosition(body, new Vector2());
-            shapes.identity();
-            shapes.translate(at.x, at.y, 0f);
-            shapes.rotate(0f, 0f, 1f, body.getAngle() * com.badlogic.gdx.math.MathUtils.radiansToDegrees);
-            if (deckArt.available()) {
-                if (!deckArt.hasWalkways()) DeckView.walkways(shapes, grid, color, 0.6f);
-                continue;
-            }
-            float s = grid.tileSize;
-            for (int y = 0; y < grid.height; y++) {
-                for (int x = 0; x < grid.width; x++) {
-                    TileShade.deck(grid.getTile(x, y), color);
-                    if (color.a <= 0f) continue;
-                    color.a *= 0.45f;
-                    shapes.setColor(color);
-                    Vector2 p = grid.tileToLocal(x, y);
-                    shapes.rect(p.x - s / 2f + 0.05f, p.y - s / 2f + 0.05f, s - 0.1f, s - 0.1f);
-                }
-            }
-            DeckView.walkways(shapes, grid, color, 0.45f);
-            DeckView.walls(shapes, grid, color);
-            DeckView.cargo(shapes, grid, e.getComponent(CargoHoldComponent.class), color);
+            if (e == null || e.getComponent(ShipGridComponent.class) == null || demo.world.docking.bodyOf(e) != body) continue;
+            if (e == demo.player) decks.insert(0, e);
+            else decks.add(e);
         }
         bodies.clear();
-        shapes.end();
-        shapes.identity();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        deckRenderer.draw(decks, camera, Math.min(Gdx.graphics.getDeltaTime(), 0.25f));
     }
 
+    /**
+     * Hulls and everything in flight as the game draws them; on deck, every hull as its outline
+     * over the decks instead of its art.
+     */
     private void drawBodies() {
-        demo.world.physics.getWorld().getBodies(bodies);
-        shapes.begin(ShapeRenderer.ShapeType.Line);
-        for (Body body : bodies) {
-            Entity e = body.getUserData() instanceof Entity ? (Entity) body.getUserData() : null;
-            boolean head = e != null && demo.world.docking.bodyOf(e) != body;
-            HudMarkerComponent marker = e == null ? null : e.getComponent(HudMarkerComponent.class);
-            for (Fixture f : body.getFixtureList()) {
-                boolean collar = (f.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0;
-                if (head) shapes.setColor(Color.ORANGE);
-                else if (collar) shapes.setColor(Color.YELLOW);
-                else if (e == demo.player) shapes.setColor(Color.SKY);
-                else if (marker != null) shapes.setColor(marker.color);
-                else shapes.setColor(Color.LIGHT_GRAY);
-                drawFixture(body, f);
-            }
-        }
-        bodies.clear();
-        shapes.end();
+        exterior.setHullArt(!demo.deckView);
+        exterior.draw(camera, viewMeters * camera.zoom / 400f, Math.min(Gdx.graphics.getDeltaTime(), 0.25f));
+    }
+
+    /**
+     * The game's outline colors, with the docking gear picked out: an active port's collar head
+     * orange, collars yellow, and the player's hull sky blue.
+     */
+    private ExteriorRenderer.Style outlines() {
+        ExteriorRenderer.Style game = ExteriorRenderer.gameStyle(() -> demo.player);
+        return (e, body, f) -> {
+            if (e != null && demo.world.docking.bodyOf(e) != body) return Color.ORANGE;
+            if ((f.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0) return Color.YELLOW;
+            if (e == demo.player) return Color.SKY;
+            return game.outline(e, body, f);
+        };
     }
 
     /** A tick on each port face: green while armed, cyan latched, red torn off, grey otherwise. */
@@ -320,8 +270,8 @@ public class DockingDemo extends ApplicationAdapter {
         shapes.end();
     }
 
-    /** Every port door (green open, red shut) and every crew member (white, station hands orange, you in yellow). */
-    private void drawDoorsAndCrew() {
+    /** Every port door: green open, red shut. */
+    private void drawDoors() {
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         demo.world.physics.getWorld().getBodies(bodies);
         for (Body body : bodies) {
@@ -347,34 +297,12 @@ public class DockingDemo extends ApplicationAdapter {
             }
         }
         bodies.clear();
-        for (Entity crew : demo.world.engine.getEcsEngine().getEntitiesFor(CREW)) {
-            GridPositionComponent pos = crew.getComponent(GridPositionComponent.class);
-            ShipGridComponent grid = pos.ship == null ? null : pos.ship.getComponent(ShipGridComponent.class);
-            Body body = pos.ship == null ? null : demo.world.docking.bodyOf(pos.ship);
-            if (grid == null || body == null) continue;
-            Vector2 local = pos.toShipLocal(grid, new Vector2());
-            Vector2 at = world(body, local.x, local.y, local);
-            CrewMemberComponent c = crew.getComponent(CrewMemberComponent.class);
-            Color mark = crew == demo.avatar ? Color.YELLOW : c.faction == StationCrew.FACTION ? DeckView.STATION_CREW : Color.WHITE;
-            DeckView.crew(shapes, c, at.x, at.y, grid.tileSize, mark, color);
-        }
         shapes.end();
     }
 
     private static Vector2 world(Body body, float x, float y, Vector2 out) {
         Vector2 w = body.getWorldPoint(out.set(x * PhysicsManager.UNITS_PER_METER, y * PhysicsManager.UNITS_PER_METER));
         return out.set(w.x * PhysicsManager.METERS_PER_UNIT, w.y * PhysicsManager.METERS_PER_UNIT);
-    }
-
-    private void drawFixture(Body body, Fixture fixture) {
-        if (fixture.getShape() instanceof CircleShape) {
-            Vector2 c = PhysicsManager.getPosition(body, tmp);
-            shapes.circle(c.x, c.y, Math.max(0.3f, fixture.getShape().getRadius() * PhysicsManager.METERS_PER_UNIT), 16);
-        } else if (fixture.getShape() instanceof PolygonShape) {
-            PolygonShape poly = (PolygonShape) fixture.getShape();
-            int n = PolygonSkin.outline(body, poly, polygon);
-            shapes.polygon(polygon, 0, n * 2);
-        }
     }
 
     private void drawPanel() {

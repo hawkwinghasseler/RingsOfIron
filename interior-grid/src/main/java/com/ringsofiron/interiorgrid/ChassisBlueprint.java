@@ -103,6 +103,8 @@ public class ChassisBlueprint {
     public final Array<CoveringDef> coverings = new Array<>();
     /** Lights hung on walls; null when the layout does not place any (see {@link ShipGridComponent#wallLights}). */
     public Array<WallLight> wallLights;
+    /** RCS thruster blocks on the outside of the hull. */
+    public final Array<RcsThruster> rcsThrusters = new Array<>();
     /** The tile types and components the map's characters stand for. */
     public ShipPartCatalog catalog = ShipPartCatalog.builtIn();
 

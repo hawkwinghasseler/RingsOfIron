@@ -1,11 +1,14 @@
 package com.hawkwing.RingsOfIron.art;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.hawkwing.RingsOfIron.render.RcsNozzles;
+import com.badlogic.gdx.utils.FloatArray;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -15,13 +18,16 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 
 /**
- * Draws craft from outside with the art pack: the hull of the chassis a craft was built from, a
- * engine for each engine system (sized to its slot) with its plume while the main engine burns, and each weapon's turret on its hardpoint,
+ * Draws craft from outside with the art pack: the hull of the chassis a craft was built from
+ * (warped where collisions have dented and crushed it), a engine for each engine system (sized to
+ * its slot) with its plume while the main engine burns, each RCS block with the jets of the nozzles
+ * that fire, and each weapon's turret on its hardpoint,
  * turned to where it aims. Exterior art is in the body frame (64 SVG units to the meter), so it
  * is drawn straight at the body's pose, in world meters.
  */
 public final class ExteriorArt {
     private final ArtLibrary art;
+    private final RcsNozzles nozzles = new RcsNozzles();
     private final Vector2 at = new Vector2();
     private final Vector2 local = new Vector2();
     final Vector2 socket = new Vector2();
@@ -47,10 +53,30 @@ public final class ExteriorArt {
         Vector2 p = PhysicsManager.getPosition(body, at);
         float px = p.x, py = p.y, angle = body.getAngle();
         plumes(batch, craft, body, px, py, angle);
-        pivoted(batch, hull, px, py, angle * MathUtils.radiansToDegrees, 1f, 1f);
+        ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
+        if (grid.dents == null || hull.rotate || !dented(batch, hull, grid, px, py, angle)) {
+            pivoted(batch, hull, px, py, angle * MathUtils.radiansToDegrees, 1f, 1f);
+        }
+        rcs(batch, craft, body);
         engines(batch, craft, body, angle);
         turrets(batch, craft, body);
         return true;
+    }
+
+    /**
+     * The craft's RCS blocks on its hull, each with the jet of every nozzle that fires, as long as
+     * it fires hard, flickering a little; a block whose hull tile is gone is drawn wrecked.
+     */
+    private void rcs(Batch batch, Entity craft, Body body) {
+        AtlasRegion puff = art.region(ArtNames.RCS_PUFF);
+        if (puff != null) {
+            nozzles.jets(craft, body, (x, y, degrees, throttle) ->
+                    pivoted(batch, puff, x, y, degrees - 180f, throttle * MathUtils.random(0.85f, 1.1f), 1f));
+        }
+        nozzles.blocks(craft, body, (r, works, x, y, degrees) -> {
+            AtlasRegion block = art.first(ArtNames.rcs(r.kind.name(), works), ArtNames.rcs(r.kind.name(), true));
+            if (block != null) pivoted(batch, block, x, y, degrees - 180f, 1f, 1f);
+        });
     }
 
     private void plumes(Batch batch, Entity craft, Body body, float px, float py, float angle) {
@@ -74,6 +100,42 @@ public final class ExteriorArt {
         for (int k = 0; k < engineCount(grid); k++) {
             Vector2 w = engineMount(body, grid, k);
             pivoted(batch, plume, w.x, w.y, angle * MathUtils.radiansToDegrees, throttle, 1f);
+        }
+    }
+
+    /** Where a burning engine's exhaust leaves the craft. */
+    public interface NozzleSink {
+        /**
+         * A nozzle at ({@code x}, {@code y}) world meters, its exhaust going toward
+         * {@code exhaust} radians, {@code width} meters across, burning at {@code throttle} (0-1).
+         */
+        void nozzle(float x, float y, float exhaust, float width, float throttle);
+    }
+
+    /**
+     * Each engine of {@code craft} burning now, where its plume is drawn: one for each running
+     * engine system, or on a craft with no engine systems one for each engine mount its hull art
+     * draws. Nothing for a craft without hull art, or with its main engine off.
+     */
+    public void burningNozzles(Entity craft, Body body, NozzleSink out) {
+        if (hullOf(craft) == null) return;
+        FlightControlComponent controls = craft.getComponent(FlightControlComponent.class);
+        ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
+        if (controls == null || grid == null || controls.forward <= 0f) return;
+        float throttle = Math.min(1f, controls.forward), angle = body.getAngle();
+        if (hasEngines(grid)) {
+            for (MountFootprint m : grid.mounts) {
+                SubsystemComponent sub = engineIn(m);
+                if (sub == null || !sub.isOperational || !socket(grid, m)) continue;
+                Vector2 w = world(body, socket.x, socket.y);
+                float exhaust = angle + (socketDegrees + 180f) * MathUtils.degreesToRadians;
+                out.nozzle(w.x, w.y, exhaust, Math.min(m.width(), m.height()) * grid.tileSize, throttle);
+            }
+            return;
+        }
+        for (int k = 0; k < engineCount(grid); k++) {
+            Vector2 w = engineMount(body, grid, k);
+            out.nozzle(w.x, w.y, angle + MathUtils.PI, grid.tileSize, throttle);
         }
     }
 
@@ -190,6 +252,68 @@ public final class ExteriorArt {
         // SVG y runs down, so the region's bottom edge is at body y = -(viewBox y + height)
         float bottom = top - h;
         batch.draw(r, x + left, y + bottom, -left, -bottom, w, h, length, width, degrees);
+    }
+
+    /** Tile corners this far out of place, in tiles, are drawn at their darkest. */
+    private static final float DARKEST_DENT = 1.5f;
+    /** How dark the most crumpled metal is drawn: this share of the art's own color. */
+    private static final float DENT_SHADE = 0.55f;
+    private float[] mesh = new float[0];
+    private final FloatArray breaksX = new FloatArray();
+    private final FloatArray breaksY = new FloatArray();
+
+    /**
+     * The hull art warped by the collisions it has taken ({@link ShipGridComponent#dents}): cut
+     * along the grid's tile lines into a mesh whose corners are pushed where the dents put them,
+     * and darkened where they are pushed furthest. Art past the grid's edge moves with the
+     * nearest edge corner. False if the art has no viewBox to place it by.
+     */
+    private boolean dented(Batch batch, AtlasRegion r, ShipGridComponent grid, float px, float py, float angle) {
+        ArtLibrary.Info info = art.info(r);
+        if (info == null) return false;
+        float u = 1f / ArtLibrary.UNITS_PER_TILE;
+        float left = info.x * u, top = -info.y * u, w = info.w * u, h = info.h * u;
+        float right = left + w, bottom = top - h;
+        float s = grid.tileSize, ox = grid.gridOriginLocal.x, oy = grid.gridOriginLocal.y;
+        breaks(breaksX, left, right, ox, s, grid.width);
+        breaks(breaksY, bottom, top, oy, s, grid.height);
+        int quads = (breaksX.size - 1) * (breaksY.size - 1);
+        if (mesh.length < quads * 20) mesh = new float[quads * 20];
+        float cos = MathUtils.cos(angle), sin = MathUtils.sin(angle);
+        float u0 = r.getU(), v0 = r.getV(), du = r.getU2() - u0, dv = r.getV2() - v0;
+        Color tint = batch.getColor();
+        int k = 0;
+        for (int j = 0; j < breaksY.size - 1; j++) {
+            for (int i = 0; i < breaksX.size - 1; i++) {
+                // Round the cell: bottom-left, top-left, top-right, bottom-right
+                for (int c = 0; c < 4; c++) {
+                    float lx = breaksX.get(c >= 2 ? i + 1 : i), ly = breaksY.get(c == 1 || c == 2 ? j + 1 : j);
+                    int cx = MathUtils.clamp(Math.round((lx - ox) / s), 0, grid.width);
+                    int cy = MathUtils.clamp(Math.round((ly - oy) / s), 0, grid.height);
+                    float dx = grid.dentX(cx, cy), dy = grid.dentY(cx, cy);
+                    float bx = lx + dx * s, by = ly + dy * s;
+                    float shade = 1f - (1f - DENT_SHADE) * Math.min(1f, (float) Math.sqrt(dx * dx + dy * dy) / DARKEST_DENT);
+                    mesh[k++] = px + bx * cos - by * sin;
+                    mesh[k++] = py + bx * sin + by * cos;
+                    mesh[k++] = Color.toFloatBits(tint.r * shade, tint.g * shade, tint.b * shade, tint.a);
+                    mesh[k++] = u0 + (lx - left) / w * du;
+                    mesh[k++] = v0 + (top - ly) / h * dv;
+                }
+            }
+        }
+        batch.draw(r.getTexture(), mesh, 0, k);
+        return true;
+    }
+
+    /** {@code from}, every tile line of the grid strictly between, and {@code to}, in body meters. */
+    private static void breaks(FloatArray out, float from, float to, float origin, float tile, int tiles) {
+        out.clear();
+        out.add(from);
+        for (int i = 0; i <= tiles; i++) {
+            float at = origin + i * tile;
+            if (at > from + 1e-4f && at < to - 1e-4f) out.add(at);
+        }
+        out.add(to);
     }
 
     // ---- Combat: rounds, missiles, decoys, beams and explosions, in world meters ----
