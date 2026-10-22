@@ -4,7 +4,6 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
-import com.hawkwing.RingsOfIron.AudioDemo;
 import com.hawkwing.RingsOfIron.CrewDemo;
 import com.hawkwing.RingsOfIron.DockingDemo;
 import com.hawkwing.RingsOfIron.FlightDemo;
@@ -33,7 +32,7 @@ public class SmokeLauncher {
         APPS.put("interior", InteriorScript::new);
         APPS.put("flight", FlightDemo::new);
         APPS.put("hud", HudDemo::new);
-        APPS.put("audio", AudioDemo::new);
+        APPS.put("audio", AudioScript::new);
         APPS.put("orbit", OrbitDemo::new);
         APPS.put("crew", CrewDemo::new);
         APPS.put("docking", DockingDemo::new);
@@ -192,6 +191,51 @@ public class SmokeLauncher {
         @Override public void pause() { demo.pause(); }
         @Override public void resume() { demo.resume(); }
         @Override public void dispose() { demo.dispose(); }
+    }
+
+    /**
+     * The game started as its audio scenario, with each of its buttons pressed: a fire, the lab vented
+     * and patched, the reactor off and on, a door, a laser and a hull hit, then the next hulls (a ship,
+     * and on to a station). Any button that throws fails the run. With -Dsmoke.shots=<dir> it saves a
+     * screenshot aboard the demo hull and one aboard the next.
+     */
+    private static final class AudioScript implements ApplicationListener {
+        private final RingsOfIronGame game = new RingsOfIronGame();
+        private int frame;
+
+        AudioScript() {
+            game.setScenario(com.hawkwing.RingsOfIron.debug.DebugScenarios.find("audio"));
+        }
+
+        private void press(String name) {
+            com.hawkwing.RingsOfIron.debug.DebugMenuActions.Action a = game.getDevConsole().menuActions.find(name);
+            if (a == null) throw new IllegalStateException("No audio scenario button " + name);
+            a.run.run();
+        }
+
+        @Override public void create() { game.create(); }
+        @Override public void resize(int width, int height) { game.resize(width, height); }
+        @Override public void render() {
+            switch (frame++) {
+                case 10: press("Fire"); break;
+                case 20: press("Vent"); break;
+                case 40: press("Door"); break;
+                case 50: press("Reactor"); break;
+                case 60: press("Laser outside"); break;
+                case 70: press("Hull hit"); break;
+                case 80: press("Reactor"); break;
+                case 90: press("Vent"); break;
+                case 100: press("Fire"); break;
+                case 160: press("Next hull"); break;
+                case 220: press("Previous hull"); press("Previous hull"); break;
+                default: break;
+            }
+            game.render();
+            if (frame == 120 || frame == 200) shot("audio-" + frame);
+        }
+        @Override public void pause() { game.pause(); }
+        @Override public void resume() { game.resume(); }
+        @Override public void dispose() { game.dispose(); }
     }
 
     /** With -Dsmoke.shots=<dir>, saves what is on screen there as {@code name}.png. */

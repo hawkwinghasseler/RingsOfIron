@@ -479,6 +479,7 @@ art/engines/exhaust_l.svg
 art/engines/exhaust_m.svg
 art/engines/exhaust_s.svg
 art/engines/exhaust_xl.svg
+art/hulls/audio_demo.svg
 art/hulls/battery.svg
 art/hulls/corvette.svg
 art/hulls/freighter.svg

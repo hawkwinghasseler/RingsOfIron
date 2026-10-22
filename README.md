@@ -18,7 +18,7 @@ You need a JDK 17 or newer to start the Gradle wrapper, which is included. The b
 | `demos/Crew demo.bat` | `./gradlew :lwjgl3:runCrewDemo` | AI crew fighting fires, repairing, rescuing and repelling boarders |
 | `demos/Docking demo.bat` | `./gradlew :lwjgl3:runDockingDemo` | Docking at a station, walking across the dock and carrying cargo |
 | `demos/HUD demo.bat` | `./gradlew :lwjgl3:runHudDemo` | Target brackets, lead reticle, minimap, consoles and the traffic map |
-| `demos/Audio demo.bat` | `./gradlew :lwjgl3:runAudioDemo` | Sound muffled by walls and doors, and interior versus exterior listening |
+| `demos/Audio demo.bat` | `./gradlew :lwjgl3:runAudioDemo` | The game's audio scenario (F3 menu): the audio demo ship, where walls, doors and thin air muffle each sound |
 | `demos/Ship editor.bat` | `./gradlew :lwjgl3:runShipEditor` | The ship editor, which edits the game's own layout, tile and component data |
 
 Some modules also have headless demos that print to the console: `./gradlew :ai-crew:runCrewConsoleDemo`, `./gradlew :macro-sim:runMacroDemo` (add `-Pdays=60` for a longer run) and `./gradlew :modding-data:runModdingDemo`.

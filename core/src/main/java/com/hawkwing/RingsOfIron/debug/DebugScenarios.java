@@ -40,7 +40,9 @@ public final class DebugScenarios {
 
     private static final List<Entry> BUILT_IN = List.of(
             new Entry("free-flight", "Free flight", "The career's start without the career: undocked in orbit by"
-                    + " Highport, no walkthrough", FreeFlightScenario::new)
+                    + " Highport, no walkthrough", FreeFlightScenario::new),
+            new Entry("audio", "Audio", "Aboard the audio demo ship: hear walls, doors, distance and thin air change"
+                    + " each sound; fire, vent, reactor and hull buttons", AudioScenario::new)
     );
 
     private static final List<Entry> ADDED = new ArrayList<>();
