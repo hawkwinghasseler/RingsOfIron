@@ -193,11 +193,13 @@ tasks.register('runFlightDemo', JavaExec) {
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
-// Runs the spatial audio demo (walk a ship and hear walls muffle sound) instead of the main game.
+// The audio demo is the game's "audio" debug scenario (F3): the game starts straight into it, aboard the
+// audio demo ship. The same as runGame -Pscenario=audio.
 tasks.register('runAudioDemo', JavaExec) {
   group = 'application'
-  description = 'Runs the audio-spatial muffling demo.'
-  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.AudioDemoLauncher'
+  description = 'Runs the game straight into its audio scenario (walls, doors and thin air muffling sound).'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.GameLauncher'
+  args = ['--scenario', 'audio']
   classpath = sourceSets.main.runtimeClasspath
   workingDir = rootProject.file('assets').path
   jvmArgs += "--enable-native-access=ALL-UNNAMED"

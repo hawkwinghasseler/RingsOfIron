@@ -46,7 +46,9 @@ public final class DebugScenarios {
             new Entry("interior", "Interior", "The ship alone and pinned, every hull in turn, to hurt with the deck"
                     + " tools and an attacker and watch the wounds", InteriorScenario::new),
             new Entry("orbit", "Orbit", "The rails at real scale: the orbit map full screen, craft on the rails,"
-                    + " instant burns and a Moon flyby", OrbitScenario::new)
+                    + " instant burns and a Moon flyby", OrbitScenario::new),
+            new Entry("audio", "Audio", "Aboard the audio demo ship: hear walls, doors, distance and thin air change"
+                    + " each sound; fire, vent, reactor and hull buttons", AudioScenario::new)
     );
 
     private static final List<Entry> ADDED = new ArrayList<>();

@@ -363,9 +363,6 @@ lights = [
   { x = 19, y = 8, side = "TOP" },
 ]
 
-# Stations. Every station type carries docking ports of all three sizes, so any ship
-# can berth: an outpost one of each, a hub two of each. Station ports are active, so
-# a station that grants docking clearance reaches out with its collar.
 # RCS: corner quads, and linear pairs amidships and on the bow by the centreline, as on the corvette
 rcs = [
   { x = 1, y = 9, side = "TOP", kind = "QUAD", thrust = 6.05e4 },
@@ -377,6 +374,115 @@ rcs = [
   { x = 23, y = 4, side = "RIGHT", kind = "LINEAR", thrust = 5.6e5 },
   { x = 23, y = 5, side = "RIGHT", kind = "LINEAR", thrust = 5.6e5 },
 ]
+
+# The audio demo's ship (the audio demo and its scenario load it): a hull laid out to show everything
+# that changes how a sound is heard aboard. Never sold or flown by anyone else.
+#   - Engineering aft (x 1-7): engines, reactor, life support, tanks, behind a thick full-tile wall (x 8)
+#     with one doorway and a door in it, so a sound through it can be heard against one through a thin wall.
+#   - A corridor (y 5-6) runs forward with a door into each room off it.
+#   - Above it, crew quarters (carpeted, so a fire there has fuel) and the bridge, with a thin wall
+#     between them and no door: heard through the wall, or round by the corridor.
+#   - Below it, the hold and the vacuum lab, whose door starts shut: vent the lab to hear its sounds
+#     lose their high end and fade as the air goes.
+#   - Forward (x 21-24), the turret room under a Small docking port, behind a bulkhead with a door.
+[chassis.audio_demo]
+name = "Audio Demo"
+tile_size = 1.0
+origin_x = -13.0
+origin_y = -6.0
+rows = [
+  "#####################DDD##",
+  "#EE.....I.......HH.WW....#",
+  "#.....L.I................#",
+  "#.....L.I................#",
+  "#.......I................#",
+  "#...RR++I+++++++++++++...#",
+  "#...RR.................T.#",
+  "#.......I................#",
+  "#...P...I.CC.............#",
+  "#...P...I................#",
+  "#EE.....I................#",
+  "##########################",
+]
+mounts = [
+  { component = "oxygen_tank", size = "S", x = 1, y = 3, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 1, y = 4, rotation = 1 },
+]
+# Oxygen and nitrogen up to life support
+pipes = [
+  { x = 3, y = 3 }, { x = 3, y = 4 }, { x = 3, y = 5 }, { x = 3, y = 6 }, { x = 3, y = 7 }, { x = 4, y = 7 }, { x = 5, y = 7 }, { x = 6, y = 7 },
+]
+coverings = [ { covering = "CARPET", x = 9, y = 7, width = 6, height = 4 } ]
+lights = [
+  { x = 4, y = 1, side = "BOTTOM" },
+  { x = 11, y = 1, side = "BOTTOM" },
+  { x = 14, y = 1, side = "BOTTOM" },
+  { x = 17, y = 1, side = "BOTTOM" },
+  { x = 22, y = 1, side = "BOTTOM" },
+  { x = 1, y = 2, side = "LEFT" },
+  { x = 9, y = 3, side = "LEFT" },
+  { x = 21, y = 4, side = "LEFT" },
+  { x = 15, y = 5, side = "BOTTOM" },
+  { x = 7, y = 6, side = "RIGHT" },
+  { x = 1, y = 7, side = "LEFT" },
+  { x = 12, y = 7, side = "BOTTOM" },
+  { x = 18, y = 7, side = "BOTTOM" },
+  { x = 24, y = 8, side = "RIGHT" },
+  { x = 4, y = 10, side = "TOP" },
+  { x = 11, y = 10, side = "TOP" },
+  { x = 18, y = 10, side = "TOP" },
+  { x = 21, y = 10, side = "TOP" },
+]
+# The thin walls and doors. The lab door (x 17, y 4, top) starts shut; the demo seals it.
+edge_walls = [
+  { x = 9, y = 5, side = "LEFT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 9, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 10, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 11, y = 7, side = "BOTTOM", weight_class = "MEDIUM", bulkhead = true },
+  { x = 12, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 13, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 14, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 15, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 16, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 17, y = 7, side = "BOTTOM", weight_class = "MEDIUM", bulkhead = true },
+  { x = 18, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 19, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 20, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 9, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 10, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 11, y = 4, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
+  { x = 12, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 13, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 14, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 15, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 16, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 17, y = 4, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
+  { x = 18, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 19, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 20, y = 4, side = "TOP", weight_class = "MEDIUM" },
+  { x = 15, y = 7, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 8, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 9, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 10, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 1, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 2, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 3, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 15, y = 4, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 1, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 2, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 3, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 4, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 5, side = "LEFT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 21, y = 6, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 7, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 8, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 9, side = "LEFT", weight_class = "MEDIUM" },
+  { x = 21, y = 10, side = "LEFT", weight_class = "MEDIUM" },
+]
+
+# Stations. Every station type carries docking ports of all three sizes, so any ship
+# can berth: an outpost one of each, a hub two of each. Station ports are active, so
+# a station that grants docking clearance reaches out with its collar.
 
 
 [chassis.station_outpost]

@@ -499,6 +499,7 @@ art/engines/rcs_linear_destroyed.svg
 art/engines/rcs_puff.svg
 art/engines/rcs_quad.svg
 art/engines/rcs_quad_destroyed.svg
+art/hulls/audio_demo.svg
 art/hulls/battery.svg
 art/hulls/corvette.svg
 art/hulls/freighter.svg
@@ -720,4 +721,3 @@ data/shipyard.toml
 data/tiles.toml
 data/weapons.toml
 libgdx.png
-saves/console-history.txt

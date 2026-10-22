@@ -179,3 +179,14 @@ hardpoints = [
   { weapon = "autocannon_mk1", x = 6.5, y = 3.5, rotation = 90.0 },
   { weapon = "autocannon_mk1", x = 6.5, y = -3.5, rotation = -90.0 },
 ]
+
+# The audio demo's ship (chassis.toml's audio_demo): its rooms show off how walls, doors, distance and
+# thin air change what is heard. Only the audio demo spawns it; no yard sells it.
+[ship.audio_demo]
+name = "Audio Demo"
+chassis = "audio_demo"
+mass = 648600.0
+max_thrust = 2.4e6
+max_torque = 1.5e6
+exhaust_velocity = 700000.0
+crew = 3
