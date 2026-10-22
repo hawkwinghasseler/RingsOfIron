@@ -27,6 +27,9 @@ The art says, with attributes on any shape of the light or on a `<g>` around its
 
 A system lights the room from at most 3 of its parts, those marked `point` or `cone` first, then the biggest; the rest only glow. So a designer tunes a light where it is drawn (in `tools/art/generate_svgs.py` for the base art), and the extractor copies the settings into `lights.json`. The wall light, for one, is a cone 90° each side, so a half circle against its wall, reaching 6 tiles at 0.7. The game turns the settings into a light the same way everywhere, and the room's ambient light (`SceneLighting`) sets how dark the unlit corners are.
 
+## Heat
+Hot steel gives off light as a black body (`BlackBody`). A deck tile above the Draper point (798 K) glows, power or not: a dull red at first, brightening with the fourth power of its temperature through orange to about a fully involved fire's 1500 K, where it is at full strength. The color follows the Planckian locus (Tanner Helland's fit). Every glowing tile is a glow spot over itself, its size and opacity rising with the square root of the brightness so faint heat still reads; once it is at 15% brightness or more it also lights the deck around it, up to 2.5 tiles at 0.7. Heat lights come after the fires and before the door lamps, so in a big fire the door lamps are the first left out. Heat too cool to glow, and its spread, is the developer console's `heat` overlay (see `documentation/dev-console/Design.md`); thin air is told by sound, not drawn.
+
 ## Wall lights
 A wall light hangs on one edge of a floor tile, shining into that tile; it takes no room, so the tile stays free for a system, a door or anything else. Its art's top edge sits against the wall, and the art turns with the wall it hangs on.
 
@@ -60,7 +63,8 @@ All in `core`, package `com.hawkwing.RingsOfIron.lighting`:
 | Class | Does |
 |---|---|
 | `EmissiveLights` | Loads `lights.json`. |
-| `DeckLightRig` | Places a deck's lights in its body frame: wall lights at their wall, systems at their mount and rotation, conduits, fires (which flicker). |
+| `DeckLightRig` | Places a deck's lights in its body frame: wall lights at their wall, systems at their mount and rotation, conduits, fires (which flicker), hot tiles. |
+| `BlackBody` | The color and brightness of a body at a temperature, for hot tiles. |
 | `HullLightRig` | Places a hull's lights in its body frame. |
 | `HullArt` | Which chassis (and so which hull art) a craft wears. |
 | `LightBarriers` | The deck edges that stop light, as merged segments. |

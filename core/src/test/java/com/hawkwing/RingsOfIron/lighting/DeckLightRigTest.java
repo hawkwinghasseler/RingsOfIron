@@ -248,4 +248,45 @@ class DeckLightRigTest {
         new DeckLightRig(ART).collect(g, spots);
         assertTrue(doorLights(g, spots).isEmpty());
     }
+
+    /** The steady spot over tile (x, y), the heat's (fires flicker), or null. */
+    static LightSpot heatAt(ShipGridComponent g, LightSpots spots, int x, int y) {
+        for (int i = 0; i < spots.size(); i++) {
+            LightSpot s = spots.get(i);
+            float tx = (s.x - g.gridOriginLocal.x) / g.tileSize, ty = (s.y - g.gridOriginLocal.y) / g.tileSize;
+            if (s.flicker < 0f && Math.abs(tx - (x + 0.5f)) < 1e-3f && Math.abs(ty - (y + 0.5f)) < 1e-3f) return s;
+        }
+        return null;
+    }
+
+    @Test
+    void hotTilesGlowAsBlackBodiesWithOrWithoutPower() {
+        ShipGridComponent g = room();
+        for (MountFootprint m : g.mounts) m.installed.getComponent(SubsystemComponent.class).isOperational = false;
+        g.getTile(6, 3).temperature = 700f;
+        g.getTile(6, 4).temperature = 900f;
+        g.getTile(7, 4).temperature = 1500f;
+        LightSpots spots = new LightSpots();
+        new DeckLightRig(ART).collect(g, spots);
+        assertNull(heatAt(g, spots, 6, 3), "under the Draper point nothing glows");
+        LightSpot dull = heatAt(g, spots, 6, 4), bright = heatAt(g, spots, 7, 4);
+        assertNotNull(dull);
+        assertNotNull(bright);
+        assertTrue(dull.on && bright.on, "heat glows without power");
+        assertFalse(dull.casts(), "barely glowing steel lights nothing around it");
+        assertTrue(bright.casts());
+        assertTrue(bright.color.a > dull.color.a && bright.glow > dull.glow);
+        assertTrue(dull.color.r > dull.color.g && dull.color.g > dull.color.b, "dull heat is red");
+        assertTrue(bright.color.g / bright.color.r > dull.color.g / dull.color.r, "hotter is yellower");
+    }
+
+    @Test
+    void blackBodyBrightnessRisesFromTheDraperPoint() {
+        assertEquals(0f, BlackBody.brightness(BlackBody.DRAPER_POINT));
+        assertEquals(1f, BlackBody.brightness(BlackBody.BRIGHT), 1e-5f);
+        assertEquals(1f, BlackBody.brightness(3000f));
+        assertTrue(BlackBody.brightness(1000f) < BlackBody.brightness(1200f));
+        com.badlogic.gdx.graphics.Color c = BlackBody.color(6600f, new com.badlogic.gdx.graphics.Color());
+        assertTrue(c.r > 0.95f && c.g > 0.95f && c.b > 0.95f, "6600 K is about white");
+    }
 }

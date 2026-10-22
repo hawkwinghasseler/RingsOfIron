@@ -35,6 +35,17 @@ a command acts on the selection; a crew member, ship or target can be passed ins
 | Decks | `fire`, `extinguish`, `damage(amount)`, `breach`, `repair`, `air`, `reactors`, `doors`, `tile()` |
 | Hits | `shoot([weapon])` (a real round, missile or beam from straight outboard), `blast([warhead])` (inside the hull), `ram([km/s], [tonnes])`, `shortOut`, `weapons`, `warheads` |
 | Ships | `ships`, `spawnShip(id)` |
+| View | `overlay([name], [on])`: shows or hides a developer overlay; `overlay()` lists them |
+
+### Overlays
+Overlays are developer views drawn over the game, not part of its normal look. The screen hosting
+the console lends them with `addOverlay(name, description, shown, show)`, so the game and every
+demo toggle the same drawing the same way. There is one so far:
+
+- **`heat`** (`render.HeatOverlay`, drawn by `DeckRenderer`): each tile's heat as a red wash from
+  350 K to the ignition point, and walls marked as they are worn down. The game itself shows heat
+  as light (tiles hot enough glow as black bodies, see `documentation/lighting/Design.md`); this
+  shows it before it glows. Hidden in the game; shown in the interior demo, which has no light map.
 
 A command typed on its own runs (`heal`), and Groovy's command syntax works (`wound 95, 'SPALL'`).
 `selected`, `player` and `avatar` are read fresh each time a line uses them. `world` and `game` are
@@ -56,7 +67,8 @@ runs whenever a console is made. The game finds the folder as `../scripts` from 
   and help), live variables, the scrollback (2,000 lines), the history (300 lines), Tab completion,
   script files, and one-line errors that suggest the nearest command name.
 - **`DevConsole`** (core, `debug`): a `ScriptConsole` for a `GameWorld`. It registers the commands
-  above and turns clicks into selections. Through `Host`, the game lends it pause and step.
+  above and turns clicks into selections. Through `Host`, the game lends it pause and step, and
+  through `addOverlay` the overlays it can toggle.
   A demo that makes a new world for each hull passes the old `ScriptConsole` on, so the
   scrollback, history and variables carry over.
 - **`DebugPicker`**: what is under a world point, in deck or outside view, and the click-to-cycle
