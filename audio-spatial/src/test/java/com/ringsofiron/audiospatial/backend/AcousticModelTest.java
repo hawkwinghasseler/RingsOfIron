@@ -20,4 +20,31 @@ class AcousticModelTest {
             last = g;
         }
     }
+
+    @Test
+    void thinAirMufflesBeforeItSilences() {
+        assertEquals(AcousticModel.OPEN_CUTOFF_HZ, AcousticModel.pressureCutoffHz(1f), 1f);
+        assertEquals(AcousticModel.VACUUM_CUTOFF_HZ, AcousticModel.pressureCutoffHz(0f), 1f);
+        // Half an atmosphere already takes the top off; a tenth leaves a dull thud
+        assertTrue(AcousticModel.pressureCutoffHz(0.5f) < 6000f);
+        assertTrue(AcousticModel.pressureCutoffHz(0.1f) < 1000f);
+        float last = Float.MAX_VALUE;
+        for (float p = 1f; p >= 0f; p -= 0.1f) {
+            float c = AcousticModel.pressureCutoffHz(p);
+            assertTrue(c < last, "falls as the air thins");
+            last = c;
+        }
+    }
+
+    @Test
+    void theMixTakesWhicheverMufflesMore() {
+        SoundEventDef def = SoundEventDef.loop("event:/test", 1f, 50f, 1f);
+        AcousticModel.Mix m = AcousticModel.mix(1f, 0f, def, 0f, 1f, 0.1f, new AcousticModel.Mix());
+        assertEquals(AcousticModel.pressureCutoffHz(0.1f), m.cutoffHz, 1f);
+        assertTrue(m.gain > 0f, "thin air still carries a muffled sound");
+        AcousticModel.mix(1f, 0f, def, 1f, 1f, 1f, m);
+        assertEquals(AcousticModel.MUFFLED_CUTOFF_HZ, m.cutoffHz, 1f);
+        AcousticModel.mix(1f, 0f, def, 0f, 1f, 0f, m);
+        assertEquals(0f, m.gain, 1e-6f);
+    }
 }

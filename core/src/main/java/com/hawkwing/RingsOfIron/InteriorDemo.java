@@ -1,7 +1,6 @@
 package com.hawkwing.RingsOfIron;
 
 import com.badlogic.ashley.core.Entity;
-import com.badlogic.ashley.core.Family;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -24,27 +23,25 @@ import com.hawkwing.RingsOfIron.debug.DebugNames;
 import com.hawkwing.RingsOfIron.debug.DebugTarget;
 import com.hawkwing.RingsOfIron.debug.DevConsole;
 import com.hawkwing.RingsOfIron.game.DeckTools;
+import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.InteriorLab;
 import com.hawkwing.RingsOfIron.game.WorldDebug;
 import com.hawkwing.RingsOfIron.game.WoundWatch;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
+import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
+import com.hawkwing.RingsOfIron.render.HeatOverlay;
 import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.Wound;
-import com.ringsofiron.combatsys.components.MissileComponent;
-import com.ringsofiron.combatsys.components.ProjectileComponent;
-import com.ringsofiron.interiorgrid.GridHazardSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
-import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.uihud.HudSkin;
-import com.ringsofiron.uihud.minimap.TileShade;
 import com.ringsofiron.uihud.widgets.DevConsoleWindow;
 
 import java.nio.file.Path;
@@ -77,11 +74,8 @@ public class InteriorDemo extends ApplicationAdapter {
     private static final float LOG_HEIGHT = 190f;
     private static final float LINE = 17f;
     /** Tint of a crew figure who is down. */
-    private static final Color GREYED = new Color(0.55f, 0.55f, 0.6f, 1f);
     /** Height of the help lines at the top of the deck view, pixels. */
     private static final float TOP = 7 * LINE;
-    private static final Family PROJECTILES = Family.all(ProjectileComponent.class).get();
-    private static final Family ROCKS = Family.all(KinematicTransientComponent.class).get();
     /** Who the attacker comes from, and where: the bearing from the bow, degrees. */
     private static final float ATTACK_BEARING = 90f;
 
@@ -94,6 +88,7 @@ public class InteriorDemo extends ApplicationAdapter {
     private ArtLibrary art;
     private DeckArt deckArt;
     private DeckRenderer deckRenderer;
+    private ExteriorRenderer exterior;
     private final Array<Entity> decks = new Array<>();
     /** Meters per screen pixel. */
     private float zoom = 0.05f;
@@ -108,7 +103,6 @@ public class InteriorDemo extends ApplicationAdapter {
     /** Where a left-button drag started, ship-local meters, or null while not dragging. */
     private Vector2 pressedAt;
     private int hoverX = -1, hoverY = -1;
-    private float blink;
 
     private final Vector2 tmp = new Vector2(), tmp2 = new Vector2();
     private final Color color = new Color();
@@ -138,6 +132,9 @@ public class InteriorDemo extends ApplicationAdapter {
         deckArt = new DeckArt(art);
         deckRenderer = new DeckRenderer(() -> lab.world, shapes, batch, deckArt, null, () -> null)
                 .inShipFrame().setStyle(crewStyle());
+        exterior = new ExteriorRenderer(() -> lab.world, shapes, batch, art, null, null, () -> null).inFrameOf(this::body);
+        // Heat and worn walls show here unless the console hides them: this deck has no light map for hot tiles to glow in
+        deckRenderer.setHeatShown(true);
         camera = new OrthographicCamera();
         ui = new OrthographicCamera();
         lab = new InteriorLab(assetsDir);
@@ -225,6 +222,12 @@ public class InteriorDemo extends ApplicationAdapter {
         DeckTools.Tool was = tools == null ? DeckTools.Tool.WOUND : tools.tool;
         tools = new DeckTools(lab.world, lab.debug);
         tools.tool = was;
+        // Where a warhead went off or a missile was shot down, a flash as in the game
+        lab.world.combatEvents.detonations.add((signal, boom) -> exterior.explode(boom.worldPoint.x, boom.worldPoint.y));
+        lab.world.combatEvents.intercepts.add((signal, hit) -> {
+            if (hit.destroyed && hit.missile != null) exterior.explode(hit.point.x, hit.point.y);
+        });
+        dev.addOverlay(HeatOverlay.NAME, HeatOverlay.DESCRIPTION, deckRenderer::heatShown, deckRenderer::setHeatShown);
         selected = null;
         ShipGridComponent g = grid();
         float w = Gdx.graphics.getWidth() - PANEL_WIDTH - 60f, h = Gdx.graphics.getHeight() - LOG_HEIGHT - TOP - 40f;
@@ -264,7 +267,6 @@ public class InteriorDemo extends ApplicationAdapter {
     @Override
     public void render() {
         float delta = Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
-        blink += delta;
         if (!devWindow.isTyping()) handleKeys();
         if (lab.paused && devStep > 0f) {
             // step(): the paused world runs on for what is left of the seconds asked for
@@ -287,7 +289,7 @@ public class InteriorDemo extends ApplicationAdapter {
         decks.clear();
         decks.add(lab.ship);
         deckRenderer.draw(decks, camera, lab.paused ? 0f : delta * lab.speed);
-        drawFlight();
+        drawFlight(lab.paused ? 0f : delta * lab.speed);
         drawCrewLabels();
         drawCursor();
         drawDevSelection();
@@ -420,56 +422,20 @@ public class InteriorDemo extends ApplicationAdapter {
     // -----------------------------------------------------------------------
 
     /**
-     * Over the deck: heat, dull red from 350 K to bright at the ignition point; thin air as a blue
-     * wash, open to space as near black; and walls marked as they are worn down.
+     * Rounds, missiles, fast passes and explosions as the game draws them ({@link ExteriorRenderer},
+     * in the ship's frame), then the beams the tools fire, and the attacker's bearing.
      */
-    private void drawWear(ShapeRenderer shapes, ShipGridComponent g) {
-        float s = g.tileSize;
-        for (int y = 0; y < g.height; y++) {
-            for (int x = 0; x < g.width; x++) {
-                Tile t = g.getTile(x, y);
-                if (t.isVoid()) continue;
-                Vector2 p = g.tileToLocal(x, y);
-                float heat = (t.temperature - 350f) / (GridHazardSystem.IGNITION_TEMPERATURE - 350f);
-                if (heat > 0f) {
-                    shapes.setColor(1f, 0.25f, 0.05f, Math.min(0.6f, heat * 0.6f));
-                    shapes.rect(p.x - s / 2f, p.y - s / 2f, s, s);
-                }
-                if (t.holdsAir()) {
-                    float air = Math.min(1f, g.oxygenRatioAt(x, y));
-                    if (air < 0.9f) {
-                        shapes.setColor(0.1f, 0.15f, 0.55f, 0.55f * (1f - air));
-                        shapes.rect(p.x - s / 2f, p.y - s / 2f, s, s);
-                    }
-                }
-                if (t.isWall() && t.getIntegrity() < 1f) {
-                    shapes.setColor(t.getIntegrity() <= 0f ? TileShade.BREACH : TileShade.wall(t.getIntegrity(), color));
-                    float m = s * 0.35f;
-                    shapes.rect(p.x - s / 2f + m, p.y - s / 2f + m, s - 2 * m, s - 2 * m);
-                }
-            }
-        }
-    }
-
-    /** Rounds, missiles, rocks and beams in flight, and the attacker's bearing. */
-    private void drawFlight() {
+    private void drawFlight(float delta) {
+        exterior.drawFlight(camera, zoom, delta);
         Body body = body();
         Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        for (Entity e : lab.world.engine.getEcsEngine().getEntitiesFor(PROJECTILES)) {
-            ProjectileComponent p = e.getComponent(ProjectileComponent.class);
-            boolean missile = e.getComponent(MissileComponent.class) != null;
-            Vector2 a = WorldDebug.toLocal(body, p.pos.x, p.pos.y, tmp);
-            float ax = a.x, ay = a.y;
-            Vector2 b = WorldDebug.toLocal(body, p.pos.x - p.vel.x * 0.01f, p.pos.y - p.vel.y * 0.01f, tmp2);
-            shapes.setColor(missile ? Color.ORANGE : Color.YELLOW);
-            shapes.rectLine(ax, ay, b.x, b.y, missile ? 0.5f : 0.15f);
-        }
-        for (Entity e : lab.world.engine.getEcsEngine().getEntitiesFor(ROCKS)) {
-            KinematicTransientComponent k = e.getComponent(KinematicTransientComponent.class);
-            Vector2 a = WorldDebug.toLocal(body, k.x, k.y, tmp);
+        for (Body rock : lab.debug.crashRocks()) {
+            Vector2 at = PhysicsManager.getPosition(rock, tmp2);
+            Vector2 a = WorldDebug.toLocal(body, at.x, at.y, tmp);
             shapes.setColor(Color.LIGHT_GRAY);
-            shapes.circle(a.x, a.y, Math.max(k.radius, 0.4f), 12);
+            shapes.circle(a.x, a.y, Math.max(WorldDebug.RAM_RADIUS, 0.4f), 12);
         }
         for (WorldDebug.Beam beam : lab.debug.beams()) {
             Vector2 to = lab.debug.tileWorld(beam.ship, beam.tileX, beam.tileY, new Vector2());
@@ -491,9 +457,8 @@ public class InteriorDemo extends ApplicationAdapter {
     }
 
     /**
-     * The game's crew figures, greyed while they are down, with what this demo adds beneath: a
-     * cross for the dead, a white ring round the one followed, a red ring round boarders, and the
-     * wound as a disc (as the dot itself without the crew art).
+     * The game's crew, hurt, down and dead as the game draws them, with what this demo adds beneath:
+     * a white ring round the one followed and a red ring round boarders.
      */
     private DeckRenderer.Style crewStyle() {
         return new DeckRenderer.Style() {
@@ -504,35 +469,13 @@ public class InteriorDemo extends ApplicationAdapter {
 
             @Override
             public Color dot(Entity crew, CrewMemberComponent c) {
-                return woundColor(c);
-            }
-
-            @Override
-            public Color tint(Entity crew, CrewMemberComponent c) {
-                return c.state == CrewState.UNCONSCIOUS ? GREYED : Color.WHITE;
-            }
-
-            @Override
-            public boolean shown(Entity crew) {
-                CrewMemberComponent c = lab.world.crew.crew(crew);
-                return c == null || c.state != CrewState.DEAD;
-            }
-
-            @Override
-            public void overDeck(ShapeRenderer shapes, Entity ship, ShipGridComponent g) {
-                drawWear(shapes, g);
+                return c.faction != 0 ? DeckView.STATION_CREW : Color.GOLD;
             }
 
             @Override
             public void underCrew(ShapeRenderer shapes, Entity e, CrewMemberComponent c, float x, float y,
                                   float tileSize, boolean figures) {
                 float r = 0.32f * tileSize;
-                if (c.state == CrewState.DEAD) {
-                    shapes.setColor(0.55f, 0.55f, 0.55f, 1f);
-                    shapes.rectLine(x - r, y - r, x + r, y + r, 0.08f);
-                    shapes.rectLine(x - r, y + r, x + r, y - r, 0.08f);
-                    return;
-                }
                 if (e == selected) {
                     shapes.setColor(Color.WHITE);
                     shapes.circle(x, y, r * 1.45f, 20);
@@ -540,12 +483,6 @@ public class InteriorDemo extends ApplicationAdapter {
                 if (c.faction != 0) {
                     shapes.setColor(Color.RED);
                     shapes.circle(x, y, r * 1.2f, 20);
-                }
-                if (figures && (c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS)) {
-                    // The figure has no art of its own for being hurt or down
-                    Color w = woundColor(c);
-                    shapes.setColor(w.r, w.g, w.b, w.a * 0.7f);
-                    shapes.circle(x, y, r * 1.05f, 20);
                 }
             }
         };
@@ -571,24 +508,6 @@ public class InteriorDemo extends ApplicationAdapter {
         }
         batch.end();
         batch.setProjectionMatrix(camera.combined);
-    }
-
-    /**
-     * White unhurt, yellow light, orange serious, red critical (blinking while it bleeds), cyan stabilised:
-     * the dot itself without the crew art, else a disc under the figure.
-     */
-    private Color woundColor(CrewMemberComponent c) {
-        switch (c.wound) {
-            case LIGHT: color.set(1f, 0.9f, 0.3f, 1f); break;
-            case SERIOUS: color.set(1f, 0.55f, 0.15f, 1f); break;
-            case CRITICAL:
-                if (c.stabilised) color.set(0.3f, 0.9f, 1f, 1f);
-                else color.set(1f, 0.15f, 0.15f, (blink % 0.6f) < 0.3f ? 1f : 0.45f);
-                break;
-            default: color.set(0.85f, 0.9f, 1f, 1f);
-        }
-        if (c.state == CrewState.UNCONSCIOUS) color.mul(0.75f, 0.75f, 0.75f, 1f);
-        return color;
     }
 
     private void drawCursor() {

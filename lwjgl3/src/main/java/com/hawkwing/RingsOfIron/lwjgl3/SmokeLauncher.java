@@ -8,7 +8,6 @@ import com.hawkwing.RingsOfIron.AudioDemo;
 import com.hawkwing.RingsOfIron.CrewDemo;
 import com.hawkwing.RingsOfIron.DockingDemo;
 import com.hawkwing.RingsOfIron.FlightDemo;
-import com.hawkwing.RingsOfIron.HudDemo;
 import com.hawkwing.RingsOfIron.InteriorDemo;
 import com.hawkwing.RingsOfIron.OrbitDemo;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
@@ -32,7 +31,6 @@ public class SmokeLauncher {
                 java.nio.file.Paths.get("mods").toAbsolutePath(), true));
         APPS.put("interior", InteriorScript::new);
         APPS.put("flight", FlightDemo::new);
-        APPS.put("hud", HudDemo::new);
         APPS.put("audio", AudioDemo::new);
         APPS.put("orbit", OrbitDemo::new);
         APPS.put("crew", CrewDemo::new);
@@ -186,6 +184,15 @@ public class SmokeLauncher {
                 case 35: lab.debug.hurt(lab.debug.crewAboard(ship).get(2), 80f,
                         com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.FRAGMENT); break;
                 case 40: lab.debug.spawnCrew(ship, com.ringsofiron.aicrew.CrewRole.MEDIC); break;
+                case 45: {
+                    // Someone in each state the deck draws: a light wound on their feet, dead, out cold
+                    java.util.List<com.badlogic.ashley.core.Entity> aboard = lab.debug.crewAboard(ship);
+                    lab.debug.hurt(aboard.get(0), 30f, com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.PENETRATOR);
+                    lab.debug.hurt(aboard.get(1), 250f, com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.BLAST);
+                    if (aboard.size() > 3) lab.debug.hurt(aboard.get(3), 0.85f * lab.world.crew.crew(aboard.get(3)).def.maxHealth,
+                            com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause.ASPHYXIATION);
+                    break;
+                }
                 case 200: lab.cycle(1); break;
                 default: break;
             }

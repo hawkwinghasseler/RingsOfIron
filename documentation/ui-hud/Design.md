@@ -50,15 +50,13 @@ To implement this module independently (mocking data providers):
 
 ## Prototype Status
 
-![HUD demo](hud-demo.png)
-
 ![Traffic map in the game](traffic-map.png)
 
 ![Station market in the game](trade-window.png)
 
 ![Incoming missile and a point-defense kill](missile-warning.png)
 
-Run it with `gradlew :lwjgl3:runHudDemo` (or `HUD demo.bat`). Fly with W/S, A/D, Z/C; Tab cycles the target lock; V toggles exterior/interior view; I/J/K/L walk the avatar; E uses a console; M opens the traffic map; O shows the mod-script prompt; F/B/H start a fire, breach the hull or take a hit so the minimap has something to show.
+The HUD runs in the game (`gradlew :lwjgl3:runGame` or `Play Rings of Iron.bat`); the standalone HUD demo has been retired.
 
 Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. Call `addTo(engine)`, forward input to `getInputProcessor()`, and call `draw(delta)` after drawing the world.
 

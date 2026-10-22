@@ -251,6 +251,11 @@ final class InteriorControls implements ScenarioPointer {
                 view.shapes.setColor(Color.LIGHT_GRAY);
                 view.shapes.circle(k.x, k.y, Math.max(k.radius, 3f * px), 12);
             }
+            for (Body rock : scene.debug.crashRocks()) {
+                Vector2 at = com.ringsofiron.physicsexterior.PhysicsManager.getPosition(rock, tmp);
+                view.shapes.setColor(Color.LIGHT_GRAY);
+                view.shapes.circle(at.x, at.y, Math.max(WorldDebug.RAM_RADIUS, 3f * px), 12);
+            }
             for (WorldDebug.Beam beam : scene.debug.beams()) {
                 Vector2 to = scene.debug.tileWorld(beam.ship, beam.tileX, beam.tileY, tmp);
                 view.shapes.setColor(1f, 0.2f, 0.2f, 0.8f);

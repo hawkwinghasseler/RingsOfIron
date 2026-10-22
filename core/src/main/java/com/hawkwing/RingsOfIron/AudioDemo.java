@@ -1,6 +1,5 @@
 package com.hawkwing.RingsOfIron;
 
-import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
@@ -16,32 +15,30 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
-import com.ringsofiron.audiospatial.AudioEmitters;
-import com.ringsofiron.audiospatial.AudioManager;
-import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
-import com.ringsofiron.audiospatial.backend.SimulatedInstance;
+import com.hawkwing.RingsOfIron.art.ArtLibrary;
+import com.hawkwing.RingsOfIron.art.DeckArt;
+import com.hawkwing.RingsOfIron.game.AudioDemoScene;
+import com.hawkwing.RingsOfIron.render.DeckRenderer;
 import com.ringsofiron.audiospatial.backend.AudioBackend;
 import com.ringsofiron.audiospatial.backend.OpenAlAudioBackend;
+import com.ringsofiron.audiospatial.backend.SimulatedInstance;
 import com.ringsofiron.audiospatial.backend.SynthAudioBackend;
 import com.ringsofiron.audiospatial.components.AudioEmitterComponent;
-import com.ringsofiron.audiospatial.components.AudioListenerComponent;
-import com.ringsofiron.audiospatial.systems.AcousticOcclusionSystem;
-import com.ringsofiron.audiospatial.systems.AudioUpdateSystem;
-import com.ringsofiron.coreengine.components.TransformComponent;
-import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
-import com.ringsofiron.interiorgrid.Side;
-import com.ringsofiron.interiorgrid.Tile;
-import com.ringsofiron.interiorgrid.WeightClass;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Locale;
 
 /**
- * Interactive demo for the audio-spatial module: walk a small ship and hear sounds muffle as
- * walls and doors come between you and them.
+ * Interactive demo for the audio-spatial module: walk the game's corvette as your crew avatar and
+ * hear sounds muffle as walls and doors come between you and them.
  *
- * Sounds are procedural placeholders (reactor hum, alarm, fire, breach hiss) played with real
- * distance attenuation, stereo panning and a low-pass filter driven by the wall count. Use
+ * <p>The world is the game's ({@link AudioDemoScene}): its hull, crew and audio systems, so the
+ * crew's footsteps and voices and the doors' sounds are the game's own, and the deck and crew are
+ * drawn as the game draws them ({@link DeckRenderer}). On top, four sounds placed by hand (reactor
+ * hum, alarm, fire, breach hiss) can be switched on and off, each marked green when heard clear
+ * through amber to red when muffled, with its wall count, cutoff and volume beside it. Use
  * headphones to hear the panning.
  *
  * Controls:
@@ -54,19 +51,11 @@ import java.util.Locale;
  *   ESC          - Exit
  */
 public class AudioDemo extends ApplicationAdapter {
+    /** Meters of margin round the deck. */
+    private static final float MARGIN = 3f;
 
-    private static final int GRID_W = 26, GRID_H = 15;
-    private static final float WALK_SPEED = 4f; // m/s
-
-    private Engine engine;
-    private AudioManager audio;
-    private Entity ship;
-    private ShipGridComponent grid;
-    private AudioListenerComponent listener;
-    private final Array<AudioEmitterComponent> sounds = new Array<>();
-    private final Array<String> soundNames = new Array<>();
-    private final Array<EdgeWall> doors = new Array<>();
-    private final Array<Vector2> doorCenters = new Array<>();
+    private final Path assetsDir;
+    private AudioDemoScene demo;
 
     private OrthographicCamera camera;
     private ExtendViewport viewport;
@@ -74,281 +63,142 @@ public class AudioDemo extends ApplicationAdapter {
     private ShapeRenderer shapes;
     private SpriteBatch batch;
     private BitmapFont font;
+    private ArtLibrary art;
+    private DeckArt deckArt;
+    private DeckRenderer deckRenderer;
+    private final Array<Entity> decks = new Array<>();
+    private String message = "";
     private final Vector2 tmp = new Vector2();
     private final Vector3 tmp3 = new Vector3();
 
+    public AudioDemo() {
+        this(Paths.get("").toAbsolutePath());
+    }
+
+    public AudioDemo(Path assetsDir) {
+        this.assetsDir = assetsDir;
+    }
+
     @Override
     public void create() {
-        camera = new OrthographicCamera();
-        viewport = new ExtendViewport(GRID_W + 4, GRID_H + 8, camera);
-        hudCamera = new OrthographicCamera();
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
         font = new BitmapFont();
+        art = ArtLibrary.load(ArtLibrary.DEFAULT_PATH);
+        deckArt = new DeckArt(art);
+        demo = new AudioDemoScene(assetsDir);
+        demo.load();
+        deckRenderer = new DeckRenderer(() -> demo.world, shapes, batch, deckArt, null, () -> demo.avatar).inShipFrame();
 
-        audio = AudioManager.createDefault();
-        engine = new Engine();
-        engine.addSystem(new AcousticOcclusionSystem(audio.getCatalog()));
-        engine.addSystem(new AudioUpdateSystem(audio));
-
-        buildShip();
-
-        listener = new AudioListenerComponent();
-        listener.ship = ship;
-        listener.mode = AudioListenerComponent.Mode.INTERIOR;
-        tileCenter(12, 4, tmp);
-        listener.localX = tmp.x;
-        listener.localY = tmp.y;
-        ship.add(listener); // in exterior mode the listener is the ship's center
-
-        addSound("Reactor hum", AudioEventCatalog.REACTOR_HUM, 4, 7);
-        addSound("Alarm", AudioEventCatalog.ALARM, 21, 11);
-        addSound("Fire", AudioEventCatalog.FIRE, 12, 11);
-        addSound("Breach hiss", AudioEventCatalog.BREACH_HISS, 21, 3);
-    }
-
-    /**
-     * A hull around three rooms side by side; the middle one is split in two. Every internal
-     * wall has a door, all open to start with.
-     */
-    private void buildShip() {
-        grid = new ShipGridComponent(GRID_W, GRID_H, 1f, -GRID_W / 2f, -GRID_H / 2f);
-        for (int y = 0; y < GRID_H; y++) {
-            for (int x = 0; x < GRID_W; x++) {
-                Tile t = grid.getTile(x, y);
-                if (x == 0 || y == 0 || x == GRID_W - 1 || y == GRID_H - 1) {
-                    t.wallType = Tile.WallType.HULL;
-                } else {
-                    t.floorType = Tile.FloorType.FLOOR;
-                }
-            }
-        }
-        // Engine room | middle | bridge: walls on the right edge of columns 8 and 16
-        for (int col : new int[]{8, 16}) {
-            for (int y = 1; y < GRID_H - 1; y++) {
-                boolean door = y == GRID_H / 2;
-                EdgeWall w = new EdgeWall(WeightClass.MEDIUM, "steel", door);
-                grid.setEdge(col, y, Side.RIGHT, w);
-                if (door) addDoor(w, col + 1f, y + 0.5f);
-            }
-        }
-        // The middle room split into upper and lower halves
-        for (int x = 9; x <= 16; x++) {
-            boolean door = x == 12;
-            EdgeWall w = new EdgeWall(WeightClass.MEDIUM, "steel", door);
-            grid.setEdge(x, 7, Side.TOP, w);
-            if (door) addDoor(w, x + 0.5f, 8f);
-        }
-        ship = new Entity();
-        ship.add(new TransformComponent(0f, 0f, 0f));
-        ship.add(grid);
-        engine.addEntity(ship);
-    }
-
-    private void addDoor(EdgeWall wall, float gridX, float gridY) {
-        doors.add(wall);
-        doorCenters.add(new Vector2(grid.gridOriginLocal.x + gridX, grid.gridOriginLocal.y + gridY));
-    }
-
-    private Vector2 tileCenter(int x, int y, Vector2 out) {
-        return out.set(grid.tileToLocal(x, y));
-    }
-
-    private void addSound(String name, String path, int tx, int ty) {
-        tileCenter(tx, ty, tmp);
-        Entity e = engine.createEntity();
-        AudioEmitterComponent em = AudioEmitterComponent.interior(path, ship, tmp.x, tmp.y);
-        e.add(em);
-        engine.addEntity(e);
-        sounds.add(em);
-        soundNames.add(name);
+        ShipGridComponent grid = demo.grid();
+        camera = new OrthographicCamera();
+        // The deck a little low in the window, the help above it
+        viewport = new ExtendViewport(grid.width * grid.tileSize + 2 * MARGIN, grid.height * grid.tileSize + 2 * MARGIN + 2f, camera);
+        hudCamera = new OrthographicCamera();
     }
 
     @Override
     public void render() {
         float dt = Math.min(Gdx.graphics.getDeltaTime(), 0.1f);
-        handleInput(dt);
-        engine.update(dt);
+        handleInput();
+        demo.update(dt);
 
         Gdx.gl.glClearColor(0.02f, 0.02f, 0.05f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         viewport.apply();
-        camera.position.set(0f, 2f, 0f); // ship low, HUD text above it
+        ShipGridComponent grid = demo.grid();
+        float cx = grid.gridOriginLocal.x + grid.width * grid.tileSize / 2f;
+        float cy = grid.gridOriginLocal.y + grid.height * grid.tileSize / 2f;
+        camera.position.set(cx, cy + 1f, 0f);
         camera.update();
-        shapes.setProjectionMatrix(camera.combined);
-        drawShip();
+        decks.clear();
+        decks.add(demo.ship);
+        deckRenderer.draw(decks, camera, dt);
         drawSounds();
         drawLabels();
         drawHud();
     }
 
-    private void handleInput(float dt) {
+    private void handleInput() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) Gdx.app.exit();
-        if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) {
-            listener.mode = listener.mode == AudioListenerComponent.Mode.INTERIOR
-                    ? AudioListenerComponent.Mode.EXTERIOR : AudioListenerComponent.Mode.INTERIOR;
+        if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) demo.toggleListening();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) demo.laser();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.H)) demo.hullHit();
+        for (int i = 0; i < demo.sources.size(); i++) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i)) demo.toggleSource(i);
         }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
-            audio.playOneShot(AudioEventCatalog.LASER, GRID_W / 2f + 2f, 0f);
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.H)) {
-            float a = MathUtils.random(MathUtils.PI2);
-            audio.playOneShot(AudioEventCatalog.HULL_IMPACT, MathUtils.cos(a) * GRID_W / 2f, MathUtils.sin(a) * GRID_H / 2f,
-                    MathUtils.random(0.4f, 1f));
-        }
-        for (int i = 0; i < sounds.size; i++) {
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i)) toggleSound(sounds.get(i));
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.E)) toggleNearestDoor();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.E)) message = demo.toggleNearestDoor();
 
-        if (listener.mode != AudioListenerComponent.Mode.INTERIOR) return;
-        float mx = 0f, my = 0f;
-        if (Gdx.input.isKeyPressed(Input.Keys.W)) my += 1f;
-        if (Gdx.input.isKeyPressed(Input.Keys.S)) my -= 1f;
-        if (Gdx.input.isKeyPressed(Input.Keys.A)) mx -= 1f;
-        if (Gdx.input.isKeyPressed(Input.Keys.D)) mx += 1f;
-        float len = (float) Math.sqrt(mx * mx + my * my);
-        if (len == 0f) return;
-        float step = WALK_SPEED * dt / len;
-        tryMove(mx * step, 0f);
-        tryMove(0f, my * step);
+        float sx = 0f, sy = 0f;
+        if (Gdx.input.isKeyPressed(Input.Keys.W)) sy += 1f;
+        if (Gdx.input.isKeyPressed(Input.Keys.S)) sy -= 1f;
+        if (Gdx.input.isKeyPressed(Input.Keys.A)) sx -= 1f;
+        if (Gdx.input.isKeyPressed(Input.Keys.D)) sx += 1f;
+        demo.walk(sx, sy);
     }
 
-    /** Moves the player unless it would cross a wall or a sealed door. */
-    private void tryMove(float dx, float dy) {
-        int[] from = grid.localToTile(listener.localX, listener.localY);
-        float nx = listener.localX + dx, ny = listener.localY + dy;
-        // Keep a little clearance from the tile edge in the direction of travel
-        int[] to = grid.localToTile(nx + Math.signum(dx) * 0.3f, ny + Math.signum(dy) * 0.3f);
-        if (to[0] < 0) return;
-        if ((to[0] != from[0] || to[1] != from[1]) && !grid.canPass(from[0], from[1], to[0], to[1])) return;
-        listener.localX = nx;
-        listener.localY = ny;
-    }
-
-    private void toggleSound(AudioEmitterComponent em) {
-        if (em.instance != null && em.instance.isPlaying()) {
-            em.instance.stop();
-            em.autoStart = false;
-        } else {
-            em.play();
-        }
-    }
-
-    private void toggleNearestDoor() {
-        int best = -1;
-        float bestDist = 2f;
-        for (int i = 0; i < doors.size; i++) {
-            float d = doorCenters.get(i).dst(listener.localX, listener.localY);
-            if (d < bestDist) {
-                bestDist = d;
-                best = i;
-            }
-        }
-        if (best < 0) return;
-        EdgeWall door = doors.get(best);
-        door.bulkheadSealed = !door.bulkheadSealed;
-        Vector2 c = doorCenters.get(best);
-        AudioEmitters.spawnInteriorOneShot(engine, AudioEventCatalog.DOOR, ship, c.x, c.y, 1f);
-    }
-
-    private void drawShip() {
-        float ox = grid.gridOriginLocal.x, oy = grid.gridOriginLocal.y;
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
-        for (int y = 0; y < GRID_H; y++) {
-            for (int x = 0; x < GRID_W; x++) {
-                Tile t = grid.getTile(x, y);
-                if (t.isWall()) shapes.setColor(0.35f, 0.38f, 0.45f, 1f);
-                else if (t.isFloor()) shapes.setColor(0.10f, 0.11f, 0.14f, 1f);
-                else continue;
-                shapes.rect(ox + x, oy + y, 0.96f, 0.96f);
-            }
-        }
-        // Edge walls: grey wall, green open door, red sealed door
-        for (int y = 0; y <= GRID_H; y++) {
-            for (int x = 0; x < GRID_W; x++) {
-                EdgeWall e = grid.edgeH[y][x];
-                if (e != null) {
-                    setEdgeColor(e);
-                    shapes.rectLine(ox + x, oy + y, ox + x + 1f, oy + y, 0.18f);
-                }
-            }
-        }
-        for (int y = 0; y < GRID_H; y++) {
-            for (int x = 0; x <= GRID_W; x++) {
-                EdgeWall e = grid.edgeV[y][x];
-                if (e != null) {
-                    setEdgeColor(e);
-                    shapes.rectLine(ox + x, oy + y, ox + x, oy + y + 1f, 0.18f);
-                }
-            }
-        }
-        shapes.end();
-    }
-
-    private void setEdgeColor(EdgeWall e) {
-        if (!e.hasBulkhead) shapes.setColor(0.55f, 0.58f, 0.65f, 1f);
-        else if (e.bulkheadSealed) shapes.setColor(0.9f, 0.25f, 0.2f, 1f);
-        else shapes.setColor(0.3f, 0.85f, 0.4f, 1f);
-    }
-
+    /** Each sound's disc, and in interior listening a line from it to the avatar, colored by how muffled it is. */
     private void drawSounds() {
-        boolean inside = listener.mode == AudioListenerComponent.Mode.INTERIOR;
+        boolean inside = demo.listeningInside();
+        Vector2 you = demo.avatarLocal(tmp);
+        float r = demo.grid().tileSize;
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Line);
-        for (AudioEmitterComponent em : sounds) {
-            if (!playing(em) || !inside) continue;
-            soundColor(em);
-            shapes.line(em.localX, em.localY, listener.localX, listener.localY);
+        for (AudioDemoScene.Source s : demo.sources) {
+            if (!s.playing() || !inside || you == null) continue;
+            soundColor(s.emitter, 0.8f);
+            shapes.line(s.emitter.localX, s.emitter.localY, you.x, you.y);
         }
         shapes.end();
 
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        for (AudioEmitterComponent em : sounds) {
-            if (playing(em)) soundColor(em);
-            else shapes.setColor(Color.DARK_GRAY);
-            float pulse = playing(em) ? 0.15f * MathUtils.sin(Gdx.graphics.getFrameId() * 0.2f) : 0f;
-            shapes.circle(em.localX, em.localY, 0.45f + pulse, 20);
+        for (AudioDemoScene.Source s : demo.sources) {
+            if (s.playing()) soundColor(s.emitter, 0.55f);
+            else shapes.setColor(0.4f, 0.4f, 0.4f, 0.55f);
+            float pulse = s.playing() ? 0.15f * MathUtils.sin(Gdx.graphics.getFrameId() * 0.2f) : 0f;
+            shapes.circle(s.emitter.localX, s.emitter.localY, (0.45f + pulse) * r, 20);
         }
-        // The listener: the player on the deck, or the ship's center when piloting
-        shapes.setColor(Color.WHITE);
-        if (inside) shapes.circle(listener.localX, listener.localY, 0.35f, 20);
-        else shapes.circle(0f, 0f, 0.6f, 4);
+        // Piloting, the listener is the ship's middle
+        if (!inside) {
+            shapes.setColor(Color.WHITE);
+            ShipGridComponent g = demo.grid();
+            shapes.circle(g.gridOriginLocal.x + g.width * g.tileSize / 2f, g.gridOriginLocal.y + g.height * g.tileSize / 2f, 0.6f * r, 4);
+        }
         shapes.end();
-    }
-
-    private static boolean playing(AudioEmitterComponent em) {
-        return em.instance != null && em.instance.isPlaying();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     /** Green when clear, through amber, to red when fully muffled. */
-    private void soundColor(AudioEmitterComponent em) {
+    private void soundColor(AudioEmitterComponent em, float alpha) {
         float o = em.occlusion;
-        shapes.setColor(Math.min(1f, 0.2f + 1.6f * o), Math.min(1f, 1.6f * (1f - o)), 0.2f, 1f);
+        shapes.setColor(Math.min(1f, 0.2f + 1.6f * o), Math.min(1f, 1.6f * (1f - o)), 0.2f, alpha);
     }
 
     private void drawLabels() {
         batch.setProjectionMatrix(hudCamera.combined);
         batch.begin();
-        for (int i = 0; i < sounds.size; i++) {
-            AudioEmitterComponent em = sounds.get(i);
-            tmp3.set(em.localX, em.localY + 0.9f, 0f);
+        for (int i = 0; i < demo.sources.size(); i++) {
+            AudioDemoScene.Source s = demo.sources.get(i);
+            tmp3.set(s.emitter.localX, s.emitter.localY + 0.3f * demo.grid().tileSize, 0f);
             viewport.project(tmp3);
             font.setColor(Color.WHITE);
-            font.draw(batch, (i + 1) + " " + soundNames.get(i), tmp3.x - 30f, tmp3.y + 30f);
+            font.draw(batch, (i + 1) + " " + s.name, tmp3.x - 30f, tmp3.y + 46f);
             font.setColor(Color.LIGHT_GRAY);
-            font.draw(batch, describe(em), tmp3.x - 30f, tmp3.y + 14f);
+            font.draw(batch, describe(s), tmp3.x - 30f, tmp3.y + 30f);
         }
         batch.end();
     }
 
-    private String describe(AudioEmitterComponent em) {
-        if (!playing(em)) return "off";
+    private String describe(AudioDemoScene.Source s) {
+        if (!s.playing()) return "off";
+        AudioEmitterComponent em = s.emitter;
         String walls = em.wallCount == 1 ? "1 wall" : em.wallCount + " walls";
-        if (listener.mode != AudioListenerComponent.Mode.INTERIOR) walls = "outside";
-        else if (em.roomLossDb > 0f && !Float.isInfinite(em.roomLossDb)) walls += String.format(Locale.ROOT, ", rooms -%.0f dB", em.roomLossDb);
+        if (!demo.listeningInside()) walls = "outside";
+        else if (em.roomLossDb > 0f && !Float.isInfinite(em.roomLossDb)) walls += String.format(Locale.ROOT, ", -%.0f dB", em.roomLossDb);
         if (!(em.instance instanceof SimulatedInstance)) return walls;
-        SimulatedInstance s = (SimulatedInstance) em.instance;
-        return String.format(Locale.ROOT, "%s  %5.0f Hz  vol %4.1f%%", walls, s.mix.cutoffHz, 100f * s.mix.gain);
+        SimulatedInstance sim = (SimulatedInstance) em.instance;
+        return String.format(Locale.ROOT, "%s\n%.0f Hz  vol %.1f%%", walls, sim.mix.cutoffHz, 100f * sim.mix.gain);
     }
 
     private void drawHud() {
@@ -359,12 +209,12 @@ public class AudioDemo extends ApplicationAdapter {
         font.setColor(Color.WHITE);
         font.draw(batch, "=== Spatial Audio Demo ===", x, y);
         y -= line * 1.5f;
-        boolean inside = listener.mode == AudioListenerComponent.Mode.INTERIOR;
+        boolean inside = demo.listeningInside();
         font.setColor(inside ? Color.LIME : Color.ORANGE);
         font.draw(batch, inside ? "Listening: INTERIOR (on the deck)" : "Listening: EXTERIOR (piloting, interior sounds clamped)", x, y);
         y -= line;
         font.setColor(Color.LIGHT_GRAY);
-        AudioBackend backend = audio.getBackend();
+        AudioBackend backend = demo.world.audio.getBackend();
         font.draw(batch, backend instanceof OpenAlAudioBackend ? "Backend: OpenAL Soft"
                 : backend instanceof SynthAudioBackend ? "Backend: procedural synth"
                 : "Backend: headless (no sound device found)", x, y);
@@ -372,6 +222,11 @@ public class AudioDemo extends ApplicationAdapter {
         font.draw(batch, "WASD walk   E open/seal door   TAB interior/exterior", x, y);
         y -= line;
         font.draw(batch, "SPACE laser   H hull impact   1-4 sounds on/off   ESC exit", x, y);
+        if (!message.isEmpty()) {
+            y -= line * 1.5f;
+            font.setColor(Color.WHITE);
+            font.draw(batch, message, x, y);
+        }
         batch.end();
     }
 
@@ -383,10 +238,10 @@ public class AudioDemo extends ApplicationAdapter {
 
     @Override
     public void dispose() {
-        engine.removeAllEntities();
-        audio.dispose();
+        demo.dispose();
         shapes.dispose();
         batch.dispose();
         font.dispose();
+        if (art != null) art.dispose();
     }
 }

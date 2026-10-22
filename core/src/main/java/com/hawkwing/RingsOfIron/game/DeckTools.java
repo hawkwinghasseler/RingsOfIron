@@ -23,8 +23,10 @@ public final class DeckTools {
     static final float[] WOUND_AMOUNTS = {10f, 30f, 50f, 70f, 80f, 90f, 100f, 150f, 200f};
     static final DamageCause[] CAUSES = {DamageCause.SPALL, DamageCause.PENETRATOR, DamageCause.FRAGMENT,
             DamageCause.BLAST, DamageCause.BURN, DamageCause.FIRE, DamageCause.ASPHYXIATION, DamageCause.SMALL_ARMS};
-    static final float[] RAM_SPEEDS = {1_500f, 2_000f, 4_000f, 8_000f};
-    static final float[] RAM_MASSES = {200f, 2_000f, 20_000f};
+    /** Under 1 km/s a ram is a Box2D rock that crashes into the hull, as ships do (nothing under 25 m/s). */
+    static final float[] RAM_SPEEDS = {25f, 50f, 100f, 200f, 500f, 1_500f, 2_000f, 4_000f, 8_000f};
+    /** The last is the starter corvette's mass, so a ram hits as one would. */
+    static final float[] RAM_MASSES = {200f, 2_000f, 20_000f, 195_100f};
     static final CrewRole[] ROLES = {CrewRole.MEDIC, CrewRole.ENGINEER, CrewRole.CREWMAN, CrewRole.MARINE};
     static final float[] DAMAGE_AMOUNTS = {0.1f, 0.25f, 0.5f, 1f};
     /** The ai-crew faction boarders spawn in, when the ship's own is not it: anyone but the ship's own is hostile to it. */
@@ -89,7 +91,9 @@ public final class DeckTools {
             case WOUND: return String.format(": %.0f %s", WOUND_AMOUNTS[woundAmount], cause(CAUSES[cause]));
             case WEAPON: return ": " + debug.weapons().get(weapon);
             case BLAST: return ": " + debug.warheads().get(warhead);
-            case RAM: return String.format(": %.0f kg at %.1f km/s", RAM_MASSES[ramMass], RAM_SPEEDS[ramSpeed] / 1000f);
+            case RAM: return RAM_SPEEDS[ramSpeed] < 1000f
+                    ? String.format(": %.0f kg at %.0f m/s", RAM_MASSES[ramMass], RAM_SPEEDS[ramSpeed])
+                    : String.format(": %.0f kg at %.1f km/s", RAM_MASSES[ramMass], RAM_SPEEDS[ramSpeed] / 1000f);
             case SPAWN: return ": " + ROLES[role].name().toLowerCase() + (boarder ? ", boarder" : "");
             case DAMAGE: return String.format(": %.0f%%", DAMAGE_AMOUNTS[damageAmount] * 100f);
             default: return "";

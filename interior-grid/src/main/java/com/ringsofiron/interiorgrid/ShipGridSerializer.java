@@ -45,6 +45,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 json.writeValue("sealed", t.bulkheadSealed);
                 if (t.patchedAt > 0f) json.writeValue("patch", t.patchedAt);
                 if (t.shorted) json.writeValue("short", true);
+                if (t.crushed) json.writeValue("crushed", true);
                 json.writeObjectEnd();
             }
         }
@@ -71,9 +72,11 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             json.writeValue("material", p.material);
             json.writeValue("integrity", p.integrity);
             if (p.patchedAt > 0f) json.writeValue("patch", p.patchedAt);
+            if (p.crushed) json.writeValue("crushed", true);
             json.writeObjectEnd();
         }
         json.writeArrayEnd();
+        if (grid.dents != null) json.writeValue("dents", grid.dents);
 
         json.writeArrayStart("mounts");
         for (MountFootprint m : grid.mounts) {
@@ -86,6 +89,20 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             json.writeObjectEnd();
         }
         json.writeArrayEnd();
+
+        if (grid.rcsThrusters.size > 0) {
+            json.writeArrayStart("rcs");
+            for (RcsThruster r : grid.rcsThrusters) {
+                json.writeObjectStart();
+                json.writeValue("x", r.x);
+                json.writeValue("y", r.y);
+                json.writeValue("side", r.side.name());
+                json.writeValue("kind", r.kind.name());
+                if (r.thrust > 0) json.writeValue("thrust", r.thrust);
+                json.writeObjectEnd();
+            }
+            json.writeArrayEnd();
+        }
 
         if (grid.wallLights != null) {
             json.writeArrayStart("wallLights");
@@ -166,6 +183,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             grid.placeHullPiece(piece);
             piece.integrity = p.getFloat("integrity");
             piece.patchedAt = p.getFloat("patch", 0f);
+            piece.crushed = p.getBoolean("crushed", false);
         }
 
         int i = 0;
@@ -183,7 +201,11 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             t.bulkheadSealed = v.getBoolean("sealed");
             t.patchedAt = v.getFloat("patch", 0f);
             t.shorted = v.getBoolean("short", false);
+            t.crushed = v.getBoolean("crushed", false);
         }
+        // Saves from before collision dents have none
+        JsonValue dents = data.get("dents");
+        if (dents != null && dents.size == 2 * (w + 1) * (h + 1)) grid.dents = dents.asFloatArray();
 
         readEdges(data.get("edgeH"), grid.edgeH);
         readEdges(data.get("edgeV"), grid.edgeV);
@@ -206,6 +228,13 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 }
             }
             grid.mounts.add(mount);
+        }
+
+        // Saves from before RCS blocks have none
+        JsonValue rcs = data.get("rcs");
+        for (JsonValue r = rcs == null ? null : rcs.child; r != null; r = r.next) {
+            grid.rcsThrusters.add(new RcsThruster(r.getInt("x"), r.getInt("y"), Side.valueOf(r.getString("side")),
+                    RcsThruster.Kind.valueOf(r.getString("kind")), r.getDouble("thrust", 0)));
         }
 
         // Saves from before lights were placed have none, and the game works them out

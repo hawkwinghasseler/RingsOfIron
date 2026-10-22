@@ -23,6 +23,9 @@ import com.ringsofiron.uihud.providers.OrbitPathProvider;
  * larger magenta one with its orbit, and the closest approach to it along the planned path as a
  * line between where each will be. A transfer proposed to the target but not accepted yet is drawn
  * in green.
+ *
+ * <p>{@link #setView} fixes the scale and centre instead of fitting the orbit, for a map that fills a
+ * screen and zooms; {@link #screenX} and {@link #screenY} then place anything else in the same frame.
  */
 public class OrbitMap extends Widget {
     private static final Color BODY = new Color(0.12f, 0.25f, 0.42f, 1f);
@@ -48,6 +51,10 @@ public class OrbitMap extends Widget {
     private BitmapFont font;
     private boolean hasPath;
     private float prefSize = 220f;
+    /** Meters per pixel and the point at the map's centre, meters from the body; 0 fits the orbit instead. */
+    private double viewScale, viewX, viewY;
+    /** Where the body's centre was drawn last frame, and pixels per meter. */
+    private double originX, originY, drawScale;
 
     public OrbitMap(TextureRegion white) {
         this.white = white;
@@ -70,6 +77,31 @@ public class OrbitMap extends Widget {
     public void setPrefSize(float size) {
         prefSize = size;
         invalidateHierarchy();
+    }
+
+    /**
+     * Draws at {@code metersPerPixel} with the point ({@code x}, {@code y}), meters from the body's
+     * centre, in the middle of the map; {@code metersPerPixel} 0 goes back to fitting the orbit.
+     */
+    public void setView(double metersPerPixel, double x, double y) {
+        viewScale = metersPerPixel;
+        viewX = x;
+        viewY = y;
+    }
+
+    /** Where a point {@code x} meters from the body's centre was drawn last frame. */
+    public float screenX(double x) {
+        return (float) (originX + x * drawScale);
+    }
+
+    /** Where a point {@code y} meters from the body's centre was drawn last frame. */
+    public float screenY(double y) {
+        return (float) (originY + y * drawScale);
+    }
+
+    /** Pixels per meter last frame. */
+    public double getDrawScale() {
+        return drawScale;
     }
 
     /** What was drawn last frame; for tests. */
@@ -96,23 +128,38 @@ public class OrbitMap extends Widget {
         Color old = batch.getColor().cpy();
         float a = parentAlpha * getColor().a;
 
-        float cx = getX() + getWidth() / 2f;
-        float cy = getY() + getHeight() / 2f;
-        float extent = Math.max(Math.max(extent(path.current), extent(path.planned)), extent(path.proposed));
-        extent = Math.max((float) path.bodyRadius * 1.1f, Math.min(extent, (float) path.bodyRadius * MAX_BODY_RADII));
+        // vx, vy: the map's middle; cx, cy: the body's centre, the same unless a view is set
+        float vx = getX() + getWidth() / 2f;
+        float vy = getY() + getHeight() / 2f;
         float half = Math.min(getWidth(), getHeight()) / 2f;
-        float scale = (half - 4f) / extent;
+        float scale;
+        if (viewScale > 0) {
+            drawScale = 1.0 / viewScale;
+            originX = vx - viewX * drawScale;
+            originY = vy - viewY * drawScale;
+            scale = (float) drawScale;
+        } else {
+            float extent = Math.max(Math.max(extent(path.current), extent(path.planned)), extent(path.proposed));
+            extent = Math.max((float) path.bodyRadius * 1.1f, Math.min(extent, (float) path.bodyRadius * MAX_BODY_RADII));
+            scale = (half - 4f) / extent;
+            drawScale = scale;
+            originX = vx;
+            originY = vy;
+        }
+        float cx = (float) originX, cy = (float) originY;
         batch.flush();
         if (!clipBegin()) return;
 
         for (OrbitPathProvider.MapBody b : path.bodies) polyline(batch, b.orbit, cx, cy, scale, OTHER_ORBIT, a);
 
-        // The body as a disc of thin horizontal slices.
+        // The body as a disc of thin horizontal slices, only those on the map (zoomed in it is huge).
         float r = (float) path.bodyRadius * scale;
         batch.setColor(BODY.r, BODY.g, BODY.b, BODY.a * a);
-        for (float y = -r; y < r; y += 1f) {
+        float left = getX(), right = getX() + getWidth();
+        for (float y = Math.max(-r, (float) Math.floor(getY() - cy)); y < Math.min(r, getY() + getHeight() - cy); y += 1f) {
             float w = (float) Math.sqrt(Math.max(0f, r * r - (y + 0.5f) * (y + 0.5f)));
-            batch.draw(white, cx - w, cy + y, 2f * w, 1f);
+            float x0 = Math.max(left, cx - w), x1 = Math.min(right, cx + w);
+            if (x1 > x0) batch.draw(white, x0, cy + y, x1 - x0, 1f);
         }
 
         polyline(batch, path.targetOrbit, cx, cy, scale, TARGET_ORBIT, a);
@@ -131,7 +178,7 @@ public class OrbitMap extends Widget {
             dot(batch, x1, y1, 4f, TARGET, a);
         }
         placed.clear();
-        for (OrbitPathProvider.MapMarker m : path.markers) marker(batch, m, cx, cy, half, scale, a);
+        for (OrbitPathProvider.MapMarker m : path.markers) marker(batch, m, cx, cy, vx, vy, half, scale, a);
         for (int i = 0; i + 1 < path.nodes.size; i += 2) {
             boolean selected = i / 2 == path.selectedNode;
             float nx = cx + path.nodes.get(i) * scale, ny = cy + path.nodes.get(i + 1) * scale;
@@ -144,14 +191,16 @@ public class OrbitMap extends Widget {
             }
         }
         dot(batch, cx + (float) path.shipX * scale, cy + (float) path.shipY * scale, 5f, Color.WHITE, a);
-        for (OrbitPathProvider.MapBody b : path.bodies) otherBody(batch, b, cx, cy, half, scale, a);
+        for (OrbitPathProvider.MapBody b : path.bodies) otherBody(batch, b, cx, cy, vx, vy, half, scale, a);
         batch.flush();
         clipEnd();
         batch.setColor(old);
     }
 
-    private void otherBody(Batch batch, OrbitPathProvider.MapBody b, float cx, float cy, float half, float scale, float alpha) {
-        float x = (float) b.x * scale, y = (float) b.y * scale;
+    private void otherBody(Batch batch, OrbitPathProvider.MapBody b, float cx, float cy, float vx, float vy, float half,
+                           float scale, float alpha) {
+        // From the map's middle, which is where it is pulled in towards
+        float x = cx - vx + (float) b.x * scale, y = cy - vy + (float) b.y * scale;
         float reach = half - EDGE;
         float far = Math.max(Math.abs(x), Math.abs(y));
         boolean inside = far <= reach;
@@ -161,13 +210,13 @@ public class OrbitMap extends Widget {
             y *= reach / far;
         }
         float size = inside ? Math.max(5f, 2f * (float) b.radius * scale) : 5f;
-        dot(batch, cx + x, cy + y, size, OTHER_BODY, alpha);
+        dot(batch, vx + x, vy + y, size, OTHER_BODY, alpha);
         if (font == null || b.name.isEmpty()) return;
         font.setColor(OTHER_BODY.r, OTHER_BODY.g, OTHER_BODY.b, alpha);
         // Label toward the map's middle so it stays on the map.
-        float lx = x > 0 ? cx + x - size / 2f - 4f - LABEL_WIDTH : cx + x + size / 2f + 4f;
+        float lx = x > 0 ? vx + x - size / 2f - 4f - LABEL_WIDTH : vx + x + size / 2f + 4f;
         int align = x > 0 ? com.badlogic.gdx.utils.Align.right : com.badlogic.gdx.utils.Align.left;
-        label(batch, inside ? b.name : b.name + " (off map)", lx, cy + y + (y > 0 ? -6f : 14f), align, y > 0 ? -1f : 1f);
+        label(batch, inside ? b.name : b.name + " (off map)", lx, vy + y + (y > 0 ? -6f : 14f), align, y > 0 ? -1f : 1f);
     }
 
     /**
@@ -191,8 +240,9 @@ public class OrbitMap extends Widget {
     }
 
     /** A station or the target as a square outline, pulled to the map's edge when off it. */
-    private void marker(Batch batch, OrbitPathProvider.MapMarker m, float cx, float cy, float half, float scale, float alpha) {
-        float x = (float) m.x * scale, y = (float) m.y * scale;
+    private void marker(Batch batch, OrbitPathProvider.MapMarker m, float cx, float cy, float vx, float vy, float half,
+                        float scale, float alpha) {
+        float x = cx - vx + (float) m.x * scale, y = cy - vy + (float) m.y * scale;
         float reach = half - EDGE;
         float far = Math.max(Math.abs(x), Math.abs(y));
         if (far > reach) {
@@ -203,16 +253,16 @@ public class OrbitMap extends Widget {
         Color c = m.target ? TARGET : STATION;
         float size = m.target ? 9f : 5f;
         batch.setColor(c.r, c.g, c.b, c.a * alpha);
-        float x0 = cx + x - size / 2f, y0 = cy + y - size / 2f;
+        float x0 = vx + x - size / 2f, y0 = vy + y - size / 2f;
         batch.draw(white, x0, y0, size, 1.5f);
         batch.draw(white, x0, y0 + size - 1.5f, size, 1.5f);
         batch.draw(white, x0, y0, 1.5f, size);
         batch.draw(white, x0 + size - 1.5f, y0, 1.5f, size);
         if (!m.target || font == null || m.name.isEmpty()) return;
         font.setColor(c.r, c.g, c.b, alpha);
-        float lx = x > 0 ? cx + x - size / 2f - 4f - LABEL_WIDTH : cx + x + size / 2f + 4f;
+        float lx = x > 0 ? vx + x - size / 2f - 4f - LABEL_WIDTH : vx + x + size / 2f + 4f;
         int align = x > 0 ? com.badlogic.gdx.utils.Align.right : com.badlogic.gdx.utils.Align.left;
-        label(batch, m.name, lx, cy + y + (y > 0 ? -6f : 14f), align, y > 0 ? -1f : 1f);
+        label(batch, m.name, lx, vy + y + (y > 0 ? -6f : 14f), align, y > 0 ? -1f : 1f);
     }
 
     private static float extent(FloatArray points) {
@@ -223,13 +273,14 @@ public class OrbitMap extends Widget {
 
     private void polyline(Batch batch, FloatArray points, float cx, float cy, float scale, Color c, float alpha) {
         batch.setColor(c.r, c.g, c.b, c.a * alpha);
-        float limit = Math.max(getWidth(), getHeight());
+        float left = getX() - 2f, right = getX() + getWidth() + 2f, bottom = getY() - 2f, top = getY() + getHeight() + 2f;
         for (int i = 2; i + 1 < points.size; i += 2) {
-            float x0 = points.get(i - 2) * scale, y0 = points.get(i - 1) * scale;
-            float x1 = points.get(i) * scale, y1 = points.get(i + 1) * scale;
-            // Far-off paths: drop segments that are wholly off the map; clipping trims the rest.
-            if (Math.max(Math.abs(x0), Math.abs(y0)) > limit && Math.max(Math.abs(x1), Math.abs(y1)) > limit) continue;
-            line(batch, cx + x0, cy + y0, cx + x1, cy + y1);
+            float x0 = cx + points.get(i - 2) * scale, y0 = cy + points.get(i - 1) * scale;
+            float x1 = cx + points.get(i) * scale, y1 = cy + points.get(i + 1) * scale;
+            // Far-off paths: drop segments wholly to one side of the map; clipping trims the rest.
+            if ((x0 < left && x1 < left) || (x0 > right && x1 > right)
+                    || (y0 < bottom && y1 < bottom) || (y0 > top && y1 > top)) continue;
+            line(batch, x0, y0, x1, y1);
         }
     }
 
