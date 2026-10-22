@@ -17,9 +17,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
@@ -53,9 +51,15 @@ public final class DevConsole {
     public final ScriptConsole console;
     public final DebugPicker picker;
     public final DebugActions actions;
+    /** What the screen hosting the console can draw over the game for a developer: the debug menu's check boxes. */
+    public final DebugOverlays overlays = new DebugOverlays();
+    /** The loaded scenario's buttons in the debug menu. */
+    public final DebugMenuActions menuActions = new DebugMenuActions();
     private Host host;
-    /** What the screen hosting the console can draw over the game for a developer, by name. */
-    private final Map<String, Overlay> overlays = new LinkedHashMap<>();
+    /** Loads a scenario into a new game (null: a new career); null when the screen can't. */
+    private Consumer<DebugScenarios.Entry> scenarioLoader;
+    /** Opens or closes the debug menu; null when the screen has none. */
+    private Runnable menuToggle;
     /** What the last click found under the cursor, in the order clicks cycle through it. */
     private List<DebugTarget> lastUnder = List.of();
 
@@ -126,30 +130,45 @@ public final class DevConsole {
         this.host = host;
     }
 
+    /** True while the host has the world stopped ({@code pause()}). */
+    public boolean isFrozen() {
+        return host != null && host.isFrozen();
+    }
+
+    /** How {@code scenario("id")} loads one: the game screen starts a new game with it. */
+    public void setScenarioLoader(Consumer<DebugScenarios.Entry> loader) {
+        this.scenarioLoader = loader;
+    }
+
+    /** What {@code menu()} does: opens or closes the debug menu. */
+    public void setMenuToggle(Runnable toggle) {
+        this.menuToggle = toggle;
+    }
+
     /**
-     * Lets {@code overlay(name)} show or hide something the hosting screen draws over the game for
-     * a developer: {@code shown} says whether it is drawn, {@code show} turns it on or off.
+     * Loads {@code entry} into a new game, or a new career for null. False when this screen can't load scenarios
+     * (a demo hosting the console), and says so in the scrollback.
+     */
+    public boolean loadScenario(DebugScenarios.Entry entry) {
+        if (scenarioLoader == null) {
+            console.error("Scenarios load in the game (gradlew :lwjgl3:runGame), not here");
+            return false;
+        }
+        scenarioLoader.accept(entry);
+        return true;
+    }
+
+    /**
+     * Lets {@code overlay(name)} and the debug menu show or hide something the hosting screen draws over the game
+     * for a developer: {@code shown} says whether it is drawn, {@code show} turns it on or off.
      */
     public void addOverlay(String name, String description, BooleanSupplier shown, Consumer<Boolean> show) {
-        overlays.put(name, new Overlay(description, shown, show));
+        overlays.add(name, description, shown, show);
     }
 
     /** Whether the overlay {@code name} is drawn; false when there is none by that name. */
     public boolean overlayShown(String name) {
-        Overlay o = overlays.get(name);
-        return o != null && o.shown.getAsBoolean();
-    }
-
-    private static final class Overlay {
-        final String description;
-        final BooleanSupplier shown;
-        final Consumer<Boolean> show;
-
-        Overlay(String description, BooleanSupplier shown, Consumer<Boolean> show) {
-            this.description = description;
-            this.shown = shown;
-            this.show = show;
-        }
+        return overlays.isShown(name);
     }
 
     // --- Selecting -------------------------------------------------------------------
@@ -206,18 +225,57 @@ public final class DevConsole {
             h.step(s);
             return "Ran " + s + " s";
         });
-        console.define("overlay", "overlay([name], [on])", "shows or hides a developer overlay; overlay() lists them", args -> {
+        console.define("overlay", "overlay([name], [on])", "shows or hides a developer overlay (F3 has them too);"
+                + " overlay() lists them", args -> {
             if (args.length == 0 || args[0] == null) return overlayList();
             String name = String.valueOf(args[0]);
-            Overlay o = overlays.get(name);
+            DebugOverlays.Toggle o = overlays.get(name);
             if (o == null) {
-                throw new ConsoleException(overlays.isEmpty() ? "No overlays here"
-                        : "No overlay \"" + name + "\"; there is " + String.join(", ", overlays.keySet()));
+                throw new ConsoleException(overlays.all().isEmpty() ? "No overlays here"
+                        : "No overlay \"" + name + "\"; there is " + String.join(", ", overlays.ids()));
             }
             boolean on = args.length > 1 && args[1] != null ? Boolean.TRUE.equals(args[1]) || "on".equals(String.valueOf(args[1]))
-                    : !o.shown.getAsBoolean();
-            o.show.accept(on);
-            return name + (o.shown.getAsBoolean() ? " shown" : " hidden");
+                    : !o.isShown();
+            o.setShown(on);
+            return name + (o.isShown() ? " shown" : " hidden");
+        });
+        console.define("scenarios", "scenarios()", "the scenarios scenario() loads", args -> {
+            StringBuilder out = new StringBuilder();
+            for (DebugScenarios.Entry e : DebugScenarios.all()) {
+                if (out.length() > 0) out.append('\n');
+                out.append(e);
+            }
+            return out.length() == 0 ? "No scenarios" : out.toString();
+        });
+        console.define("scenario", "scenario(id)", "throws this game away and loads the scenario; scenario(\"career\")"
+                + " starts a new career", args -> {
+            if (args.length == 0 || args[0] == null) throw new ConsoleException("scenario(id): which? scenarios() lists them");
+            String id = String.valueOf(args[0]);
+            DebugScenarios.Entry e = DebugScenarios.find(id);
+            if (e == null && !"career".equalsIgnoreCase(id)) {
+                throw new ConsoleException("No scenario \"" + id + "\"; scenarios() lists them");
+            }
+            return loadScenario(e) ? "Loading " + (e == null ? "a new career" : e.name) : null;
+        });
+        console.define("action", "action([name])", "presses one of the scenario's debug menu buttons; action() lists them", args -> {
+            if (args.length == 0 || args[0] == null) {
+                if (menuActions.all().isEmpty()) return "No scenario buttons here";
+                StringBuilder out = new StringBuilder();
+                for (DebugMenuActions.Action a : menuActions.all()) {
+                    if (out.length() > 0) out.append('\n');
+                    out.append(a);
+                }
+                return out.toString();
+            }
+            DebugMenuActions.Action a = menuActions.find(String.valueOf(args[0]));
+            if (a == null) throw new ConsoleException("No button \"" + args[0] + "\"; action() lists them");
+            a.run.run();
+            return null;
+        });
+        console.define("menu", "menu()", "opens or closes the debug menu (F3)", args -> {
+            if (menuToggle == null) throw new ConsoleException("No debug menu here");
+            menuToggle.run();
+            return null;
         });
         console.define("notice", "notice(text)", "posts a notice, as the game does", args -> {
             world.notices.post(String.valueOf(args.length > 0 ? args[0] : ""));
@@ -386,12 +444,11 @@ public final class DevConsole {
 
     /** Each overlay, whether it is shown, and what it draws. */
     private String overlayList() {
-        if (overlays.isEmpty()) return "No overlays here";
+        if (overlays.all().isEmpty()) return "No overlays here";
         StringBuilder out = new StringBuilder();
-        for (Map.Entry<String, Overlay> e : overlays.entrySet()) {
+        for (DebugOverlays.Toggle t : overlays.all()) {
             if (out.length() > 0) out.append('\n');
-            out.append(e.getKey()).append(e.getValue().shown.getAsBoolean() ? " (shown): " : " (hidden): ")
-                    .append(e.getValue().description);
+            out.append(t);
         }
         return out.toString();
     }
