@@ -300,11 +300,11 @@ hardpoints = [
 name = "Ore Barge"
 chassis = "ore_barge"
 texture = "tex_ore_barge"
-# What it weighs in the bubble with full tanks: its layout's 199 tiles at 2 t each, 19 thin walls at
+# What it weighs in the bubble with full tanks: its layout's 213 tiles at 2 t each, 17 thin walls at
 # 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 405600.0
+mass = 432600.0
 max_thrust = 3.0e6
-max_torque = 2.96e6
+max_torque = 2.63e6
 exhaust_velocity = 700000.0
 crew = 4
 hardpoints = [
@@ -318,16 +318,16 @@ hardpoints = [
 name = "Propellant Tanker"
 chassis = "tanker"
 texture = "tex_tanker"
-# What it weighs in the bubble with full tanks: its layout's 356 tiles at 2 t each, 10 thin walls at
+# What it weighs in the bubble with full tanks: its layout's 362 tiles at 2 t each, 10 thin walls at
 # 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 743600.0
+mass = 763100.0
 max_thrust = 3.0e6
-max_torque = 4.18e6
+max_torque = 4.51e6
 exhaust_velocity = 700000.0
 crew = 4
 hardpoints = [
-  { weapon = "autocannon_mk1", x = 16.5, y = 1.0, rotation = 30.0 },
-  { weapon = "autocannon_mk1", x = 16.5, y = -1.0, rotation = -30.0 },
+  { weapon = "autocannon_mk1", x = 15.5, y = 2.0, rotation = 30.0 },
+  { weapon = "autocannon_mk1", x = 15.5, y = -2.0, rotation = -30.0 },
 ]
 
 # Selene's hospital ship: two medbay wards in the arms of a cross and escape pods in their tips.
@@ -432,7 +432,7 @@ hardpoints = [
   { weapon = "autocannon_mk1", x = -0.5, y = -8.0, rotation = -45.0 },
   { weapon = "railgun_heavy", x = 13.5, y = 0.0, rotation = 0.0 },
   { weapon = "chaingun_mk1", x = 17.5, y = 0.0, rotation = 0.0 },
-  { weapon = "autocannon_mk1", x = 6.5, y = 4.0, rotation = 90.0 },
+  { weapon = "autocannon_mk1", x = 3.5, y = 4.0, rotation = 90.0 },
   { weapon = "autocannon_mk1", x = 6.5, y = -4.0, rotation = -90.0 },
 ]
 
@@ -460,11 +460,11 @@ hardpoints = [
 name = "Reaver"
 chassis = "reaver"
 texture = "tex_reaver"
-# What it weighs in the bubble with full tanks: its layout's 548 tiles at 2 t each, 27 thin walls at
+# What it weighs in the bubble with full tanks: its layout's 550 tiles at 2 t each, 27 thin walls at
 # 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 1140100.0
+mass = 1149900.0
 max_thrust = 7.0e6
-max_torque = 1.72e7
+max_torque = 1.77e7
 exhaust_velocity = 700000.0
 crew = 10
 hardpoints = [
@@ -473,7 +473,7 @@ hardpoints = [
   { weapon = "railgun_heavy", x = 8.5, y = 6.5, rotation = 30.0 },
   { weapon = "chaingun_mk1", x = -7.5, y = -6.5, rotation = -60.0 },
   { weapon = "harpoon_launcher", x = 0.5, y = -6.5, rotation = -45.0 },
-  { weapon = "chaingun_mk1", x = 21.0, y = 0.0, rotation = 0.0 },
+  { weapon = "chaingun_mk1", x = 19.0, y = 0.0, rotation = 0.0 },
 ]
 
 # The Patrol's carrier, its largest hull: a hangar above and below the spine, each with two Large

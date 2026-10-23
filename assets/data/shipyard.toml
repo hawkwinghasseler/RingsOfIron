@@ -86,5 +86,5 @@ standing = 10.0
 [ship_sale.selene_ore_barge]
 ship = "barge_ore"
 seller = "selene"
-price = 235000.0
+price = 245000.0
 standing = 10.0

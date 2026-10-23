@@ -58,12 +58,12 @@
     <polygon points="-672,352 -608,352 -672,416" fill="none" stroke="#373f4b" stroke-width="1" stroke-linejoin="round" opacity="0.7"/>
     <line x1="-608" y1="352" x2="-672" y2="416" stroke="#10141a" stroke-width="3" stroke-linecap="round"/>
     <rect x="800" y="480" width="64" height="64" fill="#5b6675"/>
-    <rect x="288" y="224" width="64" height="64" fill="#5b6675"/>
+    <rect x="288" y="224" width="64" height="64" fill="#4b5563"/>
     <rect x="544" y="-544" width="64" height="64" fill="#4b5563"/>
     <rect x="-416" y="160" width="64" height="64" fill="#5b6675"/>
     <rect x="-928" y="-96" width="64" height="64" fill="#5b6675"/>
     <rect x="544" y="32" width="64" height="64" fill="#5b6675"/>
-    <rect x="352" y="224" width="64" height="64" fill="#5b6675"/>
+    <rect x="352" y="224" width="64" height="64" fill="#4b5563"/>
     <rect x="-864" y="-32" width="64" height="64" fill="#5b6675"/>
     <rect x="-160" y="-32" width="64" height="64" fill="#5b6675"/>
     <rect x="608" y="-544" width="64" height="64" fill="#5b6675"/>
@@ -142,7 +142,7 @@
     <rect x="-224" y="160" width="64" height="64" fill="#5b6675"/>
     <rect x="480" y="160" width="64" height="64" fill="#5b6675"/>
     <rect x="-32" y="-96" width="64" height="64" fill="#5b6675"/>
-    <rect x="736" y="-608" width="64" height="64" fill="#4b5563"/>
+    <rect x="736" y="-608" width="64" height="64" fill="#5b6675"/>
     <rect x="-736" y="-160" width="64" height="64" fill="#5b6675"/>
     <rect x="32" y="-32" width="64" height="64" fill="#5b6675"/>
     <rect x="736" y="-32" width="64" height="64" fill="#5b6675"/>
@@ -347,7 +347,7 @@
     <rect x="-736" y="352" width="64" height="64" fill="#4b5563"/>
     <rect x="736" y="480" width="64" height="64" fill="#5b6675"/>
     <rect x="-480" y="224" width="64" height="64" fill="#4b5563"/>
-    <rect x="800" y="-608" width="64" height="64" fill="#4b5563"/>
+    <rect x="800" y="-608" width="64" height="64" fill="#5b6675"/>
     <rect x="-672" y="-160" width="64" height="64" fill="#5b6675"/>
     <rect x="800" y="-32" width="64" height="64" fill="#5b6675"/>
     <rect x="288" y="-288" width="64" height="64" fill="#4b5563"/>
@@ -391,7 +391,7 @@
     <rect x="928" y="-96" width="64" height="64" fill="#5b6675"/>
     <rect x="928" y="480" width="64" height="64" fill="#4b5563"/>
     <rect x="-288" y="224" width="64" height="64" fill="#4b5563"/>
-    <rect x="416" y="224" width="64" height="64" fill="#5b6675"/>
+    <rect x="416" y="224" width="64" height="64" fill="#4b5563"/>
     <rect x="992" y="-32" width="64" height="64" fill="#4b5563"/>
     <rect x="-992" y="-416" width="64" height="64" fill="#5b6675"/>
     <rect x="-224" y="-288" width="64" height="64" fill="#5b6675"/>
@@ -468,7 +468,7 @@
     <rect x="608" y="480" width="64" height="64" fill="#5b6675"/>
     <rect x="-608" y="224" width="64" height="64" fill="#4b5563"/>
     <rect x="96" y="224" width="64" height="64" fill="#5b6675"/>
-    <rect x="672" y="-608" width="64" height="64" fill="#4b5563"/>
+    <rect x="672" y="-608" width="64" height="64" fill="#5b6675"/>
     <rect x="672" y="-32" width="64" height="64" fill="#5b6675"/>
     <rect x="-544" y="-288" width="64" height="64" fill="#4b5563"/>
     <rect x="160" y="-288" width="64" height="64" fill="#4b5563"/>
@@ -585,9 +585,9 @@
     <circle cx="736" cy="64" r="20.48" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
     <line x1="736" y1="64" x2="755.2" y2="44.8" stroke="#10141a" stroke-width="2" stroke-linecap="round"/>
     <circle cx="736" cy="64" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
-    <rect x="288" y="224" width="192" height="64" rx="3" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
-    <rect x="298" y="234" width="172" height="44" fill="none" stroke="#f2c230" stroke-width="4" stroke-dasharray="12 8"/>
-    <rect x="320" y="288" width="128" height="32" rx="3" fill="#4b5563" stroke="#10141a" stroke-width="2"/>
+    <rect x="672" y="-608" width="192" height="64" rx="3" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <rect x="682" y="-598" width="172" height="44" fill="none" stroke="#f2c230" stroke-width="4" stroke-dasharray="12 8"/>
+    <rect x="704" y="-640" width="128" height="32" rx="3" fill="#4b5563" stroke="#10141a" stroke-width="2"/>
     <rect x="-984" y="-344" width="112" height="48" rx="24" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="-928" cy="-320" r="14.08" fill="#465060" stroke="#10141a" stroke-width="2"/>
     <circle cx="-928" cy="-320" r="7.68" fill="#e0a040" stroke="#10141a" stroke-width="1"/>
