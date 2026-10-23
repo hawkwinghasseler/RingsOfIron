@@ -528,12 +528,27 @@ public class ShipGridComponent implements Component {
     }
 
     /**
+     * Checks a mount for the system that installs into it: systems mounted through the hull have
+     * their own rules (an escape pod, see {@link EscapePodLayout}); the rest use
+     * {@link #validateMount(MountFootprint)}.
+     */
+    public String validateMount(MountFootprint m, SubsystemComponent.SubsystemType type) {
+        if (type == SubsystemComponent.SubsystemType.ESCAPE_POD) return EscapePodLayout.validate(this, m);
+        return validateMount(m);
+    }
+
+    /**
      * Places a mount. A docking port also builds its frame, opening and door into the tiles.
      *
      * @throws IllegalArgumentException if {@link #validateMount} rejects the footprint.
      */
     public void placeMount(MountFootprint m) {
-        String problem = validateMount(m);
+        placeMount(m, null);
+    }
+
+    /** Places a mount for that type of system, checked by {@link #validateMount(MountFootprint, SubsystemComponent.SubsystemType)}. */
+    public void placeMount(MountFootprint m, SubsystemComponent.SubsystemType type) {
+        String problem = validateMount(m, type);
         if (problem != null) throw new IllegalArgumentException("Illegal " + m.kind + " " + m.size + " mount: " + problem);
         if (m.kind == MountFootprint.MountKind.PORT) DockingPortLayout.build(this, m);
         for (int y = m.originY; y < m.originY + m.height(); y++) {

@@ -2,6 +2,8 @@ package com.ringsofiron.interiorgrid.editor;
 
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
+import com.ringsofiron.interiorgrid.EscapePodLayout;
+import com.ringsofiron.interiorgrid.HullMounts;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -131,7 +133,7 @@ public class ChassisModel {
             Mount mount = new Mount(p.component.id, p.footprint.size, p.footprint.originX, p.footprint.originY,
                     p.footprint.rotation);
             m.mounts.add(mount);
-            m.fillUnder(p.footprint, catalog);
+            m.fillUnder(p.footprint, p.component.id, catalog);
         }
         for (ChassisDef.Mount d : def.mounts) {
             ShipPartCatalog.ComponentType type = d.component != null ? catalog.component(d.component)
@@ -175,7 +177,9 @@ public class ChassisModel {
 
         List<Mount> drawn = new ArrayList<>();
         for (Mount m : mounts) {
-            if (!m.listed && catalog.component(m.component) != null && m.footprint(catalog) != null) drawn.add(m);
+            // An escape pod is always listed: drawn, its letters would cover the hull under its hatch end
+            if (!m.listed && catalog.component(m.component) != null && m.footprint(catalog) != null
+                    && !isEscapePod(m.component, catalog)) drawn.add(m);
         }
         char[][] chars;
         while (true) {
@@ -291,6 +295,12 @@ public class ChassisModel {
         return m != null && isPort(m, catalog) ? m : null;
     }
 
+    /** True if the component is an escape pod, which sits through the hull (see {@link EscapePodLayout}). */
+    public static boolean isEscapePod(String componentId, ShipPartCatalog catalog) {
+        ShipPartCatalog.ComponentType t = catalog.component(componentId);
+        return t != null && t.behavior == SubsystemComponent.SubsystemType.ESCAPE_POD;
+    }
+
     public static boolean isPort(Mount m, ShipPartCatalog catalog) {
         ShipPartCatalog.ComponentType t = catalog.component(m.component);
         return t != null && t.mountKind() == MountFootprint.MountKind.PORT;
@@ -375,7 +385,8 @@ public class ChassisModel {
 
     /**
      * Installs a component with its bottom-left tile at (x, y), replacing any mount it overlaps.
-     * The tiles under it become steel floor (hull, for a docking port, which is drawn over the hull).
+     * The tiles under it become steel floor (hull, for a docking port, which is drawn over the hull;
+     * an escape pod's hatch end keeps the hull it overlaps).
      */
     public Mount place(String componentId, MountFootprint.MountSize size, int x, int y, int rotation,
                        ShipPartCatalog catalog) {
@@ -386,20 +397,21 @@ public class ChassisModel {
             MountFootprint o = mounts.get(i).footprint(catalog);
             if (o != null && overlaps(f, o)) mounts.remove(i);
         }
-        fillUnder(f, catalog);
+        fillUnder(f, componentId, catalog);
         mounts.add(mount);
         return mount;
     }
 
     /**
      * Turns an installed component a quarter turn counter-clockwise about its middle. Returns null
-     * when it turned, else why it cannot: a docking port faces out of the hull it sits in, and a
-     * turned slot must stay on the grid and clear of other mounts.
+     * when it turned, else why it cannot: a docking port or escape pod faces out of the hull it sits
+     * in, and a turned slot must stay on the grid and clear of other mounts.
      */
     public String rotate(Mount mount, ShipPartCatalog catalog) {
         MountFootprint f = mount.footprint(catalog);
         if (f == null) return "Unknown component";
         if (f.kind == MountFootprint.MountKind.PORT) return "A docking port faces out of the hull it sits in";
+        if (isEscapePod(mount.component, catalog)) return "An escape pod faces out of the hull it sits in; place it again to turn it";
         // Truncating division keeps the middle in place both ways, so four turns end where they began
         int x = f.originX + (f.width() - f.height()) / 2, y = f.originY + (f.height() - f.width()) / 2;
         MountFootprint turned = new MountFootprint(f.kind, f.size, x, y, f.rotation + 1);
@@ -413,7 +425,7 @@ public class ChassisModel {
         mount.x = x;
         mount.y = y;
         mount.rotation = turned.rotation;
-        fillUnder(turned, catalog);
+        fillUnder(turned, mount.component, catalog);
         return null;
     }
 
@@ -422,13 +434,23 @@ public class ChassisModel {
                 && a.originY < b.originY + b.height() && b.originY < a.originY + a.height();
     }
 
-    private void fillUnder(MountFootprint f, ShipPartCatalog catalog) {
-        char base = f.kind == MountFootprint.MountKind.PORT
-                ? symbolFor(catalog, ShipPartCatalog.TileBase.HULL, '#')
-                : symbolFor(catalog, ShipPartCatalog.TileBase.FLOOR, '.');
+    /**
+     * The tiles under a mount become steel floor, or hull under a docking port. An escape pod's
+     * hatch end keeps the hull it overlaps (a letter left there from the rows becomes hull).
+     */
+    private void fillUnder(MountFootprint f, String componentId, ShipPartCatalog catalog) {
+        char hull = symbolFor(catalog, ShipPartCatalog.TileBase.HULL, '#');
+        char base = f.kind == MountFootprint.MountKind.PORT ? hull : symbolFor(catalog, ShipPartCatalog.TileBase.FLOOR, '.');
+        boolean pod = isEscapePod(componentId, catalog);
+        Side hatch = pod ? HullMounts.facing(f) : null;
         for (int y = f.originY; y < f.originY + f.height(); y++) {
             for (int x = f.originX; x < f.originX + f.width(); x++) {
-                if (inBounds(x, y)) tiles[y][x] = base;
+                if (!inBounds(x, y)) continue;
+                if (pod && HullMounts.onEdge(f, x, y, hatch)) {
+                    if (catalog.tileFor(tiles[y][x]) == null) tiles[y][x] = hull;
+                } else {
+                    tiles[y][x] = base;
+                }
             }
         }
     }

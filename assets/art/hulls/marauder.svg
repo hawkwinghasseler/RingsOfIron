@@ -246,15 +246,15 @@
     <path d="M256 -192L320 -192M-320 -384L-256 -384M-320 256L-256 256M-832 -64L-832 0M384 256L448 256M-704 384L-640 384M-832 64L-832 128M320 -192L384 -192M-128 -384L-64 -384M-832 192L-832 256M-128 256L-64 256M128 -384L192 -384M192 -384L192 -320M128 256L192 256M256 256L320 256M-768 -192L-704 -192M704 -64L768 -64M-640 -192L-576 -192M-576 384L-512 384M-448 -320L-448 -256M-384 -384L-320 -384M832 0L832 64M704 128L768 128M-384 256L-320 256M320 256L384 256M448 -192L512 -192M-256 -384L-192 -384M-256 256L-192 256M0 -384L64 -384M0 256L64 256M576 -128L640 -128M64 -384L128 -384M64 256L128 256M-832 -128L-832 -64M-768 384L-704 384M192 256L256 256M448 256L512 256M-640 384L-576 384M-832 0L-832 64M-704 -192L-640 -192M576 192L640 192M-576 -192L-512 -192M-192 -384L-128 -384M384 -192L448 -192M-192 256L-128 256M-832 128L-832 192M-64 -384L0 -384M-64 256L0 256M-832 256L-832 320M192 -320L192 -256" fill="none" stroke="#10141a" stroke-width="3" stroke-linecap="round"/>
     <path d="M256 -192h64v7.68h-64zM-320 -384h64v7.68h-64zM320 -192h64v7.68h-64zM-128 -384h64v7.68h-64zM128 -384h64v7.68h-64zM-768 -192h64v7.68h-64zM704 -64h64v7.68h-64zM-640 -192h64v7.68h-64zM-384 -384h64v7.68h-64zM448 -192h64v7.68h-64zM-256 -384h64v7.68h-64zM0 -384h64v7.68h-64zM576 -128h64v7.68h-64zM64 -384h64v7.68h-64zM-704 -192h64v7.68h-64zM-576 -192h64v7.68h-64zM-192 -384h64v7.68h-64zM384 -192h64v7.68h-64zM-64 -384h64v7.68h-64z" fill="#ffffff" opacity="0.1"/>
     <path d="M-320 248.32h64v7.68h-64zM384 248.32h64v7.68h-64zM-704 376.32h64v7.68h-64zM-128 248.32h64v7.68h-64zM128 248.32h64v7.68h-64zM256 248.32h64v7.68h-64zM-576 376.32h64v7.68h-64zM704 120.32h64v7.68h-64zM-384 248.32h64v7.68h-64zM320 248.32h64v7.68h-64zM-256 248.32h64v7.68h-64zM0 248.32h64v7.68h-64zM64 248.32h64v7.68h-64zM-768 376.32h64v7.68h-64zM192 248.32h64v7.68h-64zM448 248.32h64v7.68h-64zM-640 376.32h64v7.68h-64zM576 184.32h64v7.68h-64zM-192 248.32h64v7.68h-64zM-64 248.32h64v7.68h-64z" fill="#000000" opacity="0.2"/>
-    <circle cx="-32" cy="128" r="25.6" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-32" cy="128" r="19.97" fill="none" stroke="#ff7a2a" stroke-width="4"/>
-    <circle cx="-32" cy="128" r="11.52" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <circle cx="-8.45" cy="128" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <circle cx="-20.22" cy="148.4" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <circle cx="-43.78" cy="148.4" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <circle cx="-55.55" cy="128" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <circle cx="-43.78" cy="107.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <circle cx="-20.22" cy="107.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="-32" cy="192" r="25.6" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <circle cx="-32" cy="192" r="19.97" fill="none" stroke="#ff7a2a" stroke-width="4"/>
+    <circle cx="-32" cy="192" r="11.52" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="-8.45" cy="192" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="-20.22" cy="212.4" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="-43.78" cy="212.4" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="-55.55" cy="192" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="-43.78" cy="171.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="-20.22" cy="171.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
     <rect x="-506" y="-122" width="116" height="116" rx="4" fill="#3f4855" stroke="#10141a" stroke-width="2"/>
     <line x1="-500" y1="-118" x2="-500" y2="-10" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
     <line x1="-493" y1="-118" x2="-493" y2="-10" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>

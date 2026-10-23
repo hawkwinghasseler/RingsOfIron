@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.debug;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.Family;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
@@ -107,9 +108,13 @@ class FlightScenarioTest {
         KinematicTransientComponent kt = rock.getComponent(KinematicTransientComponent.class);
         assertTrue(kt.hasPrevious, "swept through the bubble");
         assertTrue(kt.relativeSpeed > FlightField.FAST_PASS_SPEED * 0.9f);
+        Object path = kt.trajectory;
         run(4f);
         assertEquals(0, flight.field.fastPasses.size);
-        assertFalse(world.engine.getEcsEngine().getEntities().contains(rock, true));
+        // The engine pools entities and components, so look for the rock's path, not its entity
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(Family.all(KinematicTransientComponent.class).get())) {
+            assertNotSame(path, e.getComponent(KinematicTransientComponent.class).trajectory, "the rock is gone");
+        }
     }
 
     @Test

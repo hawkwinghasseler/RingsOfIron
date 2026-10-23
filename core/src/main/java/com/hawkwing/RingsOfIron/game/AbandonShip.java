@@ -18,6 +18,7 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.nav.GridNode;
+import com.ringsofiron.interiorgrid.EscapePodLayout;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
@@ -291,8 +292,10 @@ public class AbandonShip extends EntitySystem {
         if (board == null) return;
         for (Entity pod : usablePods(ship)) {
             SubsystemComponent s = pod.getComponent(SubsystemComponent.class);
+            // Its hatch end is in the hull: the crew make for the bay behind it
+            int[] bay = EscapePodLayout.bayTile(s.footprint);
             for (int i = 0; i < seats(s.footprint.size); i++) {
-                EvacuateTask t = new EvacuateTask(pod, s.footprint.originX, s.footprint.originY);
+                EvacuateTask t = new EvacuateTask(pod, bay[0], bay[1]);
                 board.post(t);
                 tasks.add(t);
             }

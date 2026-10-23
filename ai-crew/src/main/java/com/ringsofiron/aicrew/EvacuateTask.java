@@ -8,7 +8,7 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
  * A seat in an escape pod, posted when the ship is abandoned: the crew member who takes it walks
  * into the pod's bay and waits there until the pod launches (whoever posted the order decides
  * when, and takes them off the ship). One task per seat. Above every other job: abandoning ship
- * comes first. (x, y) is the pod's footprint origin; any tile of the bay will do.
+ * comes first. (x, y) is a tile of the pod's bay inside the hull; any tile of the bay will do.
  */
 public class EvacuateTask extends CrewTask {
 
