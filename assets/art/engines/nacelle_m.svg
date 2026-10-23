@@ -90,10 +90,6 @@
   </g>
   <g id="emissive">
     <g data-light="glow">
-    <rect x="4" y="2.5" width="120" height="3.88" rx="2.44" fill="#9fd8ff" opacity="0.85"/>
-    <circle cx="64" cy="108.57" r="10.98" fill="url(#nacelle_bell_m_throat)"/>
-    </g>
-    <g data-light="glow">
     <circle cx="64" cy="134.41" r="9.6" fill="#9fd8ff" opacity="0.18"/>
     <circle cx="64" cy="134.41" r="3.2" fill="#9fd8ff"/>
     </g>

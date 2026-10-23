@@ -155,8 +155,6 @@ def nozzle(a, cx, y_exit, re, rt, length, gid, rc=None, conv=None, hoops=3):
     a.b += rect(cx - rt - 2, yt - 2, 2 * rt + 4, 4, STEEL_MID, rx=2, stroke=INK, sw=1.2)
     rim = max(3, re * 0.08)
     a.b += rect(cx - re - 1, y_exit, 2 * re + 2, rim, SOOT, rx=rim / 2, stroke=INK, sw=1.5)
-    a.e += lit(rect(cx - re + 1, y_exit + 0.5, 2 * re - 2, rim - 1, GLOW, rx=rim / 2, extra=' opacity="0.85"')
-               + circle(cx, yt, rt * 1.8, f"url(#{gid})"), "glow")
     return yt, yt + conv, rc
 
 
@@ -306,39 +304,43 @@ def style_nacelle(a, w, h, size, gid):
 def style_aerospike(a, w, h, size, gid):
     """A linear aerospike: a row of thrust cells firing along both faces of a plug that tapers on a
     parabola, steep at the cells and running out parallel at its truncated end, the cells' manifold
-    and pumps behind on a thrust frame."""
+    and pumps close behind on a short thrust frame. The whole engine sits back against the frame,
+    so its truncated end may stand short of the slot's nozzle end."""
     cx = w / 2
     y_fl = flange(a, w, h, f"spike_{size}")
     bw = w - 8
     room = y_fl - 2 - T * 0.3
     spike = min(bw * 1.3, room * 0.75)
     tip = bw * 0.2
-    base = 2 + spike
+    ch = max(10, min(T * 0.35, spike * 0.18))
+    mh = max(10, spike * 0.35)
+    # back against the frame
+    top = max(2, y_fl - FRAME - (spike + ch - 4 + mh))
+    base = top + spike
     n = 24
     # the plug's half width from the cells (s = 0) to the truncated end (s = 1)
     pts = [(tip / 2 + (bw / 2 - tip / 2) * (1 - k / n) ** 2, spike * k / n) for k in range(n + 1)]
     a.b += path(mirror(cx, base, pts), fill=STEEL_DARK, stroke=INK, sw=2)
     # the near face lit, the far face shaded, the ridge down the middle
     a.b += path("M" + " L".join(f"{f(round(cx - r + 2, 2))},{f(round(base - d, 2))}" for r, d in pts)
-                + " L" + f"{f(cx)},{f(2)} L{f(cx)},{f(base)} Z", fill=STEEL_MID, extra=' opacity="0.55"')
-    a.b += line(cx, base - 2, cx, 3, INK, sw=1.2)
+                + " L" + f"{f(cx)},{f(top)} L{f(cx)},{f(base)} Z", fill=STEEL_MID, extra=' opacity="0.55"')
+    a.b += line(cx, base - 2, cx, top + 1, INK, sw=1.2)
     # cooling channels following the taper
     for q in (0.3, 0.6, 0.85):
         for s in (-1, 1):
             a.b += path(side(cx, base, pts, s, q), stroke=BELL_DARK, sw=1.4)
     # the truncated base: a sooty end plate
-    a.b += rect(cx - tip / 2 - 1, 2, tip + 2, 4, SOOT, rx=1.5, stroke=INK, sw=1.2)
+    a.b += rect(cx - tip / 2 - 1, top, tip + 2, 4, SOOT, rx=1.5, stroke=INK, sw=1.2)
     # the row of thrust cells along the plug's foot
     cells = max(3, int(bw // 14))
     cw = bw / cells
-    ch = max(10, min(T * 0.35, spike * 0.18))
     for i in range(cells):
         x = cx - bw / 2 + i * cw
         a.b += rect(x + 1, base - 3, cw - 2, ch, STEEL, rx=2, stroke=INK, sw=1)
         a.b += line(x + cw / 2, base - 1, x + cw / 2, base + ch - 4, STEEL_MID, sw=1.2)
     # the manifold feeding them and its pumps
     my = base + ch - 4
-    mh = max(10, min(spike * 0.35, y_fl - FRAME - my))
+    mh = max(10, min(mh, y_fl - FRAME - my))
     a.b += plate(cx - bw * 0.45, my, bw * 0.9, mh, HOUSING, HOUSING_HI, INK, rx=4)
     for k in range(1, max(2, int(mh // (T * 0.3)))):
         y = my + mh * k / max(2, int(mh // (T * 0.3)))
@@ -346,12 +348,6 @@ def style_aerospike(a, w, h, size, gid):
     turbopumps(a, cx, my + mh * 0.5, bw * 0.4, w, size)
     thrust_frame(a, cx, my + mh, bw * 0.3, y_fl, w)
     feed_lines(a, cx, my + mh - 2, y_fl, w, size, bw * 0.2)
-    # the exhaust sheets running down both faces
-    sheet_w = max(3, bw * 0.05)
-    a.e += lit(path(side(cx, base, pts, -1, 1, -1.5) + " " + side(cx, base, pts, 1, 1, -1.5), stroke=GLOW,
-                    sw=sheet_w, extra=' opacity="0.75" stroke-linecap="round"')
-               + rect(cx - bw / 2, base - 4, bw, 3, "#ffffff", extra=' opacity="0.7"')
-               + circle(cx, 6, tip * 1.4, f"url(#{gid})"), "glow")
     light(a, cx, my + mh * 0.5, 3 if size == "s" else 4, GLOW)
     return (mirror(cx, base, [(bw / 2 + 3, -(my + mh - base))] + [(r + 3, d) for r, d in pts])
             + f" M2,{f(my + mh - 4)} H{f(w - 2)} V{f(h - 2)} H2 Z")

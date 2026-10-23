@@ -218,10 +218,6 @@
   <g id="emissive">
     <g opacity="0.55">
     <g data-light="glow">
-    <rect x="4" y="2.5" width="312" height="11.56" rx="6.28" fill="#9fd8ff" opacity="0.85"/>
-    <circle cx="160" cy="476.6" r="28.26" fill="url(#engine_bell_xl_throat)"/>
-    </g>
-    <g data-light="glow">
     <circle cx="160" cy="594.98" r="9.6" fill="#9fd8ff" opacity="0.18"/>
     <circle cx="160" cy="594.98" r="3.2" fill="#9fd8ff"/>
     </g>
