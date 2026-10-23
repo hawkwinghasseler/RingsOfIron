@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="128" viewBox="0 0 64 128">
+  <title>nacelle_s: an engine filling its 1x2 slot outside the hull, nozzle toward +y, mounting flange at the bottom, burning</title>
+  <defs><radialGradient id="nacelle_bell_s_throat"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#9fd8ff" stop-opacity="0.9"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></radialGradient></defs>
+  <g id="base">
+    <rect x="2" y="107.52" width="60" height="18.48" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <path d="M3.75,124.25 L3.75,109.27 L60.25,109.27" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M60.25,109.27 L60.25,124.25 L3.75,124.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <clipPath id="hz_bell_s_6_110"><rect x="6" y="110.52" width="52" height="4.51"/></clipPath>
+    <rect x="6" y="110.52" width="52" height="4.51" fill="#f2c230"/>
+    <g clip-path="url(#hz_bell_s_6_110)">
+    <polygon points="-6,115.03 2,115.03 6.51,110.52 -1.49,110.52" fill="#10141a"/>
+    <polygon points="10,115.03 18,115.03 22.51,110.52 14.51,110.52" fill="#10141a"/>
+    <polygon points="26,115.03 34,115.03 38.51,110.52 30.51,110.52" fill="#10141a"/>
+    <polygon points="42,115.03 50,115.03 54.51,110.52 46.51,110.52" fill="#10141a"/>
+    <polygon points="58,115.03 66,115.03 70.51,110.52 62.51,110.52" fill="#10141a"/>
+    </g>
+    <rect x="6" y="110.52" width="52" height="4.51" fill="none" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="7" cy="121.45" r="1.8" fill="#7d8898" opacity="0.9"/>
+    <circle cx="57" cy="121.45" r="1.8" fill="#7d8898" opacity="0.9"/>
+    <rect x="17.76" y="115.3" width="8" height="10.24" rx="2" fill="#b07a2a" stroke="#10141a" stroke-width="1.2"/>
+    <rect x="38.24" y="115.3" width="8" height="10.24" rx="2" fill="#3f6f9a" stroke="#10141a" stroke-width="1.2"/>
+    <line x1="6" y1="107.52" x2="16" y2="87.38" stroke="#10141a" stroke-width="5" stroke-linecap="round"/>
+    <line x1="6" y1="107.52" x2="16" y2="87.38" stroke="#4b5563" stroke-width="3" stroke-linecap="round"/>
+    <line x1="58" y1="107.52" x2="48" y2="87.38" stroke="#10141a" stroke-width="5" stroke-linecap="round"/>
+    <line x1="58" y1="107.52" x2="48" y2="87.38" stroke="#4b5563" stroke-width="3" stroke-linecap="round"/>
+    <line x1="24" y1="87.38" x2="21.76" y2="107.52" stroke="#10141a" stroke-width="7" stroke-linecap="round"/>
+    <line x1="24" y1="87.38" x2="21.76" y2="107.52" stroke="#b07a2a" stroke-width="4" stroke-linecap="round"/>
+    <line x1="24" y1="87.38" x2="21.76" y2="107.52" stroke="#7d8898" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+    <line x1="40" y1="87.38" x2="42.24" y2="107.52" stroke="#10141a" stroke-width="7" stroke-linecap="round"/>
+    <line x1="40" y1="87.38" x2="42.24" y2="107.52" stroke="#3f6f9a" stroke-width="4" stroke-linecap="round"/>
+    <line x1="40" y1="87.38" x2="42.24" y2="107.52" stroke="#7d8898" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+    <rect x="16" y="64.34" width="32" height="23.04" rx="6.4" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
+    <path d="M17.75,85.63 L17.75,66.09 L46.25,66.09" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M46.25,66.09 L46.25,85.63 L17.75,85.63" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="19" y1="70.1" x2="45" y2="70.1" stroke="#4b5563" stroke-width="2" stroke-linecap="round"/>
+    <line x1="19" y1="75.86" x2="45" y2="75.86" stroke="#4b5563" stroke-width="2" stroke-linecap="round"/>
+    <line x1="19" y1="81.62" x2="45" y2="81.62" stroke="#4b5563" stroke-width="2" stroke-linecap="round"/>
+    <path d="M23.68,62.88 C23.68,35.48 2,17.22 2,2 L62,2 C62,17.22 40.32,35.48 40.32,62.88 Z" fill="#373f4b" stroke="#10141a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="24.32" y1="47.66" x2="39.68" y2="47.66" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="19.53" y1="32.44" x2="44.47" y2="32.44" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="13" y1="17.22" x2="51" y2="17.22" stroke="#2a3039" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M25.68,60.88 C25.68,35.48 5,17.22 5,5" fill="none" stroke="#7d8898" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+    <rect x="2" y="2" width="60" height="3.65" rx="1.83" fill="#14181e" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="32" cy="75.86" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+  </g>
+  <g id="emissive">
+    <g data-light="glow">
+    <rect x="4" y="2.5" width="56" height="2.65" rx="1.83" fill="#9fd8ff" opacity="0.85"/>
+    <circle cx="32" cy="62.88" r="14.98" fill="url(#nacelle_bell_s_throat)"/>
+    </g>
+    <g data-light="glow">
+    <circle cx="32" cy="75.86" r="7.2" fill="#9fd8ff" opacity="0.18"/>
+    <circle cx="32" cy="75.86" r="2.4" fill="#9fd8ff"/>
+    </g>
+  </g>
+</svg>

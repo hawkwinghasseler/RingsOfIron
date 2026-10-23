@@ -222,7 +222,7 @@ class PlayableLoopTest {
         assertNotSame(oldShip, game.player);
         assertEquals(world.standing.sponsor(), world.standing.factionOf(r.station), "a sponsor station: " + r.stationName);
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
-        assertEquals(20, grid.width, "the gunship's layout");
+        assertEquals(22, grid.width, "the gunship's layout");
         assertEquals(0, r.price, "the service issues it");
         assertNotNull(game.player.getComponent(HelmComponent.class));
         assertTrue(world.bridge.playerAtHelm(), "seated at the new ship's helm");

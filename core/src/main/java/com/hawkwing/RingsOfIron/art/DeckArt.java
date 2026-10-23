@@ -9,6 +9,7 @@ import com.hawkwing.RingsOfIron.game.DeckView;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.EdgeConduit;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.GridLink;
@@ -304,12 +305,14 @@ public final class DeckArt {
                 Tile t = grid.getTile(x, y);
                 if (t == null || !t.isWall() || t.isOpen()) continue;
                 if (t.piece != null && t.piece.shape == HullPiece.Shape.WEDGE) continue;
+                // An engine's casing outside the hull is the engine's own art, with space round it
+                if (EngineLayout.isCasing(grid, x, y)) continue;
                 String id = ArtNames.wallId(t);
                 int mask = 0;
-                if (id.equals(ArtNames.wallId(grid.getTile(x, y + 1)))) mask |= ArtNames.N;
-                if (id.equals(ArtNames.wallId(grid.getTile(x + 1, y)))) mask |= ArtNames.E;
-                if (id.equals(ArtNames.wallId(grid.getTile(x, y - 1)))) mask |= ArtNames.S;
-                if (id.equals(ArtNames.wallId(grid.getTile(x - 1, y)))) mask |= ArtNames.W;
+                if (joins(grid, id, x, y + 1)) mask |= ArtNames.N;
+                if (joins(grid, id, x + 1, y)) mask |= ArtNames.E;
+                if (joins(grid, id, x, y - 1)) mask |= ArtNames.S;
+                if (joins(grid, id, x - 1, y)) mask |= ArtNames.W;
                 draw(batch, art.first(ArtNames.wall(t, mask)), grid.gridOriginLocal.x + x * s, grid.gridOriginLocal.y + y * s, s, s);
             }
         }
@@ -321,6 +324,11 @@ public final class DeckArt {
                     grid.gridOriginLocal.y + (p.originY + p.height() / 2f) * s, s, p.baseWidth, p.baseHeight, p.rotation,
                     ArtNames.wedgeMirrored(r.name, p.baseWidth, p.baseHeight));
         }
+    }
+
+    /** True if the wall at (x, y) is of kind {@code id} and so joins a wall of that kind beside it. */
+    private static boolean joins(ShipGridComponent grid, String id, int x, int y) {
+        return id.equals(ArtNames.wallId(grid.getTile(x, y))) && !EngineLayout.isCasing(grid, x, y);
     }
 
     private void systems(Batch batch, ShipGridComponent grid, boolean power) {
@@ -454,7 +462,8 @@ public final class DeckArt {
                 // A tile a collision crushed flat: folded plates, open to space until sealed or rebuilt
                 if (t.isCrushed()) {
                     tile(batch, art.region(ArtNames.CRUSHED) != null ? ArtNames.CRUSHED : "effects/breach", x0, y0, s);
-                } else if (t.isWall() && !t.isOpen()) {
+                } else if (t.isWall() && !t.isOpen() && !EngineLayout.isCasing(grid, x, y)) {
+                    // (an engine's casing shows its damage in the engine's own art)
                     if (t.isHullBreach()) tile(batch, "effects/breach", x0, y0, s);
                     else {
                         String damage = ArtNames.damage(t.getIntegrity());

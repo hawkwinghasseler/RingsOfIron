@@ -41,9 +41,9 @@ public class AudioLab {
     /** How near the avatar must stand to a door to seal or open it, meters. */
     public static final float DOOR_REACH = 2f;
     /** On the demo hull: where the fire is lit (the carpeted quarters) and the hull tile holed (under the lab). */
-    static final int[] DEMO_FIRE = {11, 9}, DEMO_VENT = {17, 0};
+    static final int[] DEMO_FIRE = {12, 9}, DEMO_VENT = {18, 0};
     /** On the demo hull: the lab's door onto the corridor (the top edge of this tile), shut at the start. */
-    static final int[] DEMO_LAB_DOOR = {17, 4};
+    static final int[] DEMO_LAB_DOOR = {18, 4};
 
     private static final Family EMITTERS = Family.all(AudioEmitterComponent.class).get();
     private static final Family STATIONS = Family.all(StationComponent.class, ShipGridComponent.class).get();

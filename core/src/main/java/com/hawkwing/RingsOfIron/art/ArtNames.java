@@ -290,6 +290,12 @@ public final class ArtNames {
         return burning ? new String[]{base} : new String[]{base + "_unpowered", base};
     }
 
+    /** An engine system seen from outside, drawn over its slot (nozzle up the art), its throat hot while it burns. */
+    public static String[] nacelle(String size, boolean burning) {
+        String base = "engines/nacelle_" + size;
+        return burning ? new String[]{base, base + "_unpowered"} : new String[]{base + "_unpowered", base};
+    }
+
     /** The plume behind an engine of that size, pivoting on the same mount socket. */
     public static String exhaust(String size) {
         return "engines/exhaust_" + size;
