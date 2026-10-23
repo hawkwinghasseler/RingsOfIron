@@ -41,10 +41,14 @@ public final class ArtNames {
         return (w == null ? WeightClass.MEDIUM : w).name().toLowerCase(Locale.ROOT);
     }
 
-    /** The floor art of an open tile: steel deck, or a conduit (dark without power). */
+    /** The floor art of an open tile: the steel deck, under any covering and conduit. */
     public static String floor(Tile t) {
-        if (t.isPowerConduit()) return t.isPowered ? "tiles/conduit" : "tiles/conduit_unpowered";
         return "tiles/floor";
+    }
+
+    /** A tile conduit's junction box (dark without power), drawn over the floor and its covering. */
+    public static String conduit(boolean powered) {
+        return powered ? "tiles/conduit" : "tiles/conduit_unpowered";
     }
 
     /** One arm of a conduit, drawn toward each neighboring conduit. */

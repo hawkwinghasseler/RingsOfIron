@@ -12,6 +12,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
@@ -22,6 +23,7 @@ import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipPartCatalog;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.interiorgrid.WallLight;
 import com.ringsofiron.interiorgrid.WeightClass;
 import com.ringsofiron.interiorgrid.editor.ChassisModel;
 import com.ringsofiron.interiorgrid.editor.Defs;
@@ -526,21 +528,23 @@ public class ShipEditor extends ApplicationAdapter {
             shapes.setColor(0.4f, 1f, 0.4f, 0.6f);
             edgeRect(hoverX, hoverY, nearestSide(), 4f);
         }
-        // Wall lights: a bright strip on the wall, inside the tile it lights
-        if (m.lights != null) {
+        // Wall lights: a bright strip on the wall, inside the tile it lights (their art when it is drawn)
+        boolean lightArt = wallLightArt() != null;
+        if (m.lights != null && !lightArt) {
             shapes.setColor(1f, 0.95f, 0.6f, 1f);
             for (ChassisDef.Light l : m.lights) lightRect(l.x, l.y, Side.valueOf(l.side));
         }
-        if (tab == Tab.LAYOUT && tool == Tool.LIGHT && m.inBounds(hoverX, hoverY)) {
+        if (tab == Tab.LAYOUT && tool == Tool.LIGHT && m.inBounds(hoverX, hoverY) && !lightArt) {
             shapes.setColor(1f, 0.95f, 0.6f, 0.5f);
             lightRect(hoverX, hoverY, nearestSide());
         }
-        // RCS blocks: a block standing out from the hull edge, a tick for each nozzle
+        // RCS blocks: a block standing out from the hull edge, a tick for each nozzle (their art when it is drawn)
         for (ChassisDef.Rcs r : m.rcs) {
+            if (rcsArt(r.kind) != null) continue;
             shapes.setColor(0.62f, 0.85f, 1f, 1f);
             rcsRect(r.x, r.y, Side.valueOf(r.side), r.kind);
         }
-        if (tab == Tab.LAYOUT && tool == Tool.RCS && m.inBounds(hoverX, hoverY)) {
+        if (tab == Tab.LAYOUT && tool == Tool.RCS && m.inBounds(hoverX, hoverY) && rcsArt(rcsKind) == null) {
             shapes.setColor(0.62f, 0.85f, 1f, 0.5f);
             rcsRect(hoverX, hoverY, nearestSide(), rcsKind);
         }
@@ -635,13 +639,15 @@ public class ShipEditor extends ApplicationAdapter {
                 float x0 = sx(x), y0 = sy(y);
                 switch (t.base) {
                     case FLOOR:
-                        artTile(tileArt(t, "tiles/floor"), x0, y0, 0);
+                    case CONDUIT:
+                        // A conduit's junction sits on the steel floor and any covering laid over it
+                        boolean conduit = t.base == ShipPartCatalog.TileBase.CONDUIT;
+                        artTile(conduit ? art.region("tiles/floor") : tileArt(t, "tiles/floor"), x0, y0, 0);
                         ChassisDef.Covering cov = m.coveringAt(x, y);
                         String covering = cov == null ? null : ArtNames.covering(FloorCovering.valueOf(cov.covering));
                         if (covering != null) artTile(art.region(covering), x0, y0, 0);
-                        break;
-                    case CONDUIT:
-                        artTile(tileArt(t, "tiles/conduit"), x0, y0, 0);
+                        if (!conduit) break;
+                        artTile(tileArt(t, ArtNames.conduit(true)), x0, y0, 0);
                         TextureRegion arm = art.region(ArtNames.conduitArm(true));
                         if (conduitToward(m, cat, x, y, Side.TOP)) artTile(arm, x0, y0, 0);
                         if (conduitToward(m, cat, x, y, Side.LEFT)) artTile(arm, x0, y0, 1);
@@ -675,6 +681,14 @@ public class ShipEditor extends ApplicationAdapter {
             if (f == null || type == null) continue;
             int bw = f.size.baseWidth(f.kind), bh = f.size.baseHeight(f.kind);
             float cx = sx(f.originX + f.width() / 2f), cy = sy(f.originY + f.height() / 2f);
+            if (f.kind == MountFootprint.MountKind.PORT) {
+                // The opening is steel floor in the game, whatever the map has under it, and shows through the port
+                for (int py = f.originY; py < f.originY + f.height(); py++) {
+                    for (int px = f.originX; px < f.originX + f.width(); px++) {
+                        if (DockingPortLayout.isOpening(f, px, py)) artTile(art.region("tiles/floor"), sx(px), sy(py), 0);
+                    }
+                }
+            }
             artCentered(art.first(ArtNames.component(type.id, type.behavior, f.size, null, true)), cx, cy,
                     bw * scale, bh * scale, f.rotation);
             if (f.kind != MountFootprint.MountKind.PORT) continue;
@@ -732,7 +746,73 @@ public class ShipEditor extends ApplicationAdapter {
         }
         drawEdgeConduitArt(m, cat, t);
         DeckArt.drawPipes(batch, art, pipeLayout(m), sx(0), sy(0), scale);
+        drawFittingArt(m);
         batch.end();
+    }
+
+    /**
+     * Wall lights on their walls and RCS blocks on the hull, drawn as the deck and the exterior
+     * draw them, and the one the Light or RCS tool would place, faded.
+     */
+    private void drawFittingArt(ChassisModel m) {
+        boolean hovering = tab == Tab.LAYOUT && m.inBounds(hoverX, hoverY);
+        AtlasRegion light = wallLightArt();
+        if (light != null) {
+            if (m.lights != null) {
+                for (ChassisDef.Light l : m.lights) wallLight(light, new WallLight(l.x, l.y, Side.valueOf(l.side)));
+            }
+            if (hovering && tool == Tool.LIGHT) {
+                batch.setColor(1f, 1f, 1f, 0.5f);
+                wallLight(light, new WallLight(hoverX, hoverY, nearestSide()));
+                batch.setColor(Color.WHITE);
+            }
+        }
+        for (ChassisDef.Rcs r : m.rcs) {
+            AtlasRegion block = rcsArt(r.kind);
+            if (block != null) rcsBlock(block, r.x, r.y, Side.valueOf(r.side));
+        }
+        AtlasRegion ghost = hovering && tool == Tool.RCS ? rcsArt(rcsKind) : null;
+        if (ghost != null) {
+            batch.setColor(1f, 1f, 1f, 0.5f);
+            rcsBlock(ghost, hoverX, hoverY, nearestSide());
+            batch.setColor(Color.WHITE);
+        }
+    }
+
+    /** The wall light's art, or null when the art isn't being drawn or the pack has none. */
+    private AtlasRegion wallLightArt() {
+        return drawingArt() ? art.region(ArtNames.wallLight(true)) : null;
+    }
+
+    /** An RCS block's art, or null when the art isn't being drawn or the pack has none for {@code kind}. */
+    private AtlasRegion rcsArt(String kind) {
+        return drawingArt() ? art.region(ArtNames.rcs(kind, true)) : null;
+    }
+
+    /** A wall light's art with its wall against the edge it hangs on, as {@code DeckArt} draws it. */
+    private void wallLight(AtlasRegion r, WallLight p) {
+        ArtLibrary.Info info = art.info(r);
+        float u = scale / ArtLibrary.UNITS_PER_TILE;
+        float w = (info == null ? r.getRegionWidth() : info.w) * u, h = (info == null ? r.getRegionHeight() : info.h) * u;
+        float ex = sx(p.edgeX()), ey = sy(p.edgeY());
+        batch.draw(r, ex - w / 2f, ey - h, w / 2f, h, w, h, 1f, 1f, p.rotation() * 90f);
+    }
+
+    /**
+     * An RCS block's art pivoted on the middle of the {@code s} edge of tile (x, y), its main nozzle
+     * out toward {@code s}, as the exterior draws it.
+     */
+    private void rcsBlock(AtlasRegion r, int x, int y, Side s) {
+        ArtLibrary.Info info = art.info(r);
+        float u = scale / ArtLibrary.UNITS_PER_TILE;
+        float left = info == null ? -r.originalWidth / 2f * u : info.x * u;
+        float top = info == null ? r.originalHeight / 2f * u : -info.y * u;
+        float w = (info == null ? r.originalWidth : info.w) * u, h = (info == null ? r.originalHeight : info.h) * u;
+        // SVG y runs down, so the region's bottom edge is at -(viewBox y + height)
+        float bottom = top - h;
+        float degrees = MathUtils.atan2(s.dy, s.dx) * MathUtils.radiansToDegrees - 180f;
+        float px = sx(x + 0.5f + s.dx * 0.5f), py = sy(y + 0.5f + s.dy * 0.5f);
+        batch.draw(r, px + left, py + bottom, -left, -bottom, w, h, 1f, 1f, degrees);
     }
 
     /**
