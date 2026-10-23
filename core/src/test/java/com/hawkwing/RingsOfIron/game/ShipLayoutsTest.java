@@ -7,6 +7,7 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.interiorgrid.CrewObstacles;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.Fluid;
+import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.Side;
@@ -28,13 +29,15 @@ import org.junit.jupiter.api.Test;
 /**
  * Every ship type in ships.toml is built with the interior systems a ship is expected to have: conduits
  * carrying power, thin walls with doors dividing it into rooms, pipes joining its tanks to the systems
- * that draw on them, and RCS thruster blocks on its hull. The audio demo's hull is laid out to show off
+ * that draw on them, RCS thruster blocks on its hull, and docking ports a ship can come alongside. The audio demo's hull is laid out to show off
  * sound, not to fly, and is left out.
  */
 class ShipLayoutsTest {
     /** Ship types not held to this: the audio demo's purpose-built hull. */
     static final Set<String> EXEMPT = Set.of("audio_demo");
     /** Systems that do nothing without power. */
+    /** Tiles either side of a docking port that must be clear of hull ahead of it: a docking ship is wider than its port. */
+    static final int APPROACH = 3;
     static final EnumSet<SubsystemType> NEED_POWER = EnumSet.complementOf(
             EnumSet.of(SubsystemType.CARGO, SubsystemType.TANK, SubsystemType.ESCAPE_POD));
 
@@ -146,6 +149,20 @@ class ShipLayoutsTest {
                     if (walkable(grid, tx, y) && !reached[y][tx]) problems.add(id + ": crew cannot walk to " + tx + "," + y);
         }
 
+        // Every docking port faces open space a docking ship can come in through: nothing of the hull
+        // lies ahead of it, out to the edge of the grid, within APPROACH tiles either side of it
+        for (SubsystemComponent s : systems) {
+            if (s.type != SubsystemType.DOCKING_PORT) continue;
+            MountFootprint f = s.footprint;
+            int x0 = f.originX, y0 = f.originY, x1 = x0 + f.width() - 1, y1 = y0 + f.height() - 1;
+            for (Side side : Side.values()) {
+                if (!facesSpace(grid, x0, y0, x1, y1, side)) continue;
+                String blocked = approachBlocked(grid, x0, y0, x1, y1, side);
+                if (blocked != null) problems.add(id + ": the docking port at " + x0 + "," + y0 + " facing " + side
+                        + " is recessed: hull at " + blocked + " lies in the way of a ship docking there");
+            }
+        }
+
         // With every door shut, the conduits still carry power to every system that needs it
         for (int y = 0; y < grid.height; y++)
             for (int tx = 0; tx < grid.width; tx++)
@@ -160,6 +177,34 @@ class ShipLayoutsTest {
                 problems.add(id + ": " + s.type + " at " + s.footprint.originX + "," + s.footprint.originY + " unpowered with the doors shut");
             }
         }
+    }
+
+    /** Whether every tile just past the {@code side} edge of the rectangle is void. */
+    private static boolean facesSpace(ShipGridComponent grid, int x0, int y0, int x1, int y1, Side side) {
+        for (int x = x0; x <= x1; x++)
+            for (int y = y0; y <= y1; y++) {
+                boolean edge = side == Side.TOP ? y == y1 : side == Side.BOTTOM ? y == y0 : side == Side.LEFT ? x == x0 : x == x1;
+                if (edge && !isVoid(grid, x + side.dx, y + side.dy)) return false;
+            }
+        return true;
+    }
+
+    /** The first tile that is not void in the band ahead of a port's {@code side}, or null if it is clear. */
+    private static String approachBlocked(ShipGridComponent grid, int x0, int y0, int x1, int y1, Side side) {
+        boolean vertical = side.dx == 0;
+        int from = (vertical ? x0 : y0) - APPROACH, to = (vertical ? x1 : y1) + APPROACH;
+        int start = side == Side.TOP ? y1 + 1 : side == Side.BOTTOM ? y0 - 1 : side == Side.RIGHT ? x1 + 1 : x0 - 1;
+        for (int d = start; vertical ? d >= 0 && d < grid.height : d >= 0 && d < grid.width; d += vertical ? side.dy : side.dx) {
+            for (int a = from; a <= to; a++) {
+                int x = vertical ? a : d, y = vertical ? d : a;
+                if (!isVoid(grid, x, y)) return x + "," + y;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isVoid(ShipGridComponent grid, int x, int y) {
+        return !grid.inBounds(x, y) || grid.getTile(x, y).isVoid();
     }
 
     private static boolean piped(SubsystemComponent system, Fluid fluid) {
