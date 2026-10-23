@@ -108,13 +108,15 @@ class ShipyardTest {
         List<String> sold = new ArrayList<>();
         for (Shipyard.Listing l : world.shipyard.listings(yard)) sold.add(l.shipId);
         assertTrue(world.shipyard.listings(world.engine.getEntity(game.highport)).isEmpty(), "Highport only repairs and refits");
-        assertEquals(List.of("corvette_patrol", "gunship_heavy", "frigate_patrol"), sold);
+        assertEquals(List.of("corvette_patrol", "gunship_heavy", "frigate_patrol", "picket_patrol"), sold);
         assertTrue(world.shipyard.listings(world.engine.getEntity(game.depot)).isEmpty(), "the depot is no yard");
-        // The Selene Combine sells its raider hull at its own station
+        // The Selene Combine sells its raider hull and its salvage tug at its own station
         List<Shipyard.Listing> selene = world.shipyard.listings(world.engine.getEntity(game.lunarMine));
-        assertEquals(1, selene.size());
+        assertEquals(2, selene.size());
         assertEquals("raider_light", selene.get(0).shipId);
         assertEquals(10f, selene.get(0).standing);
+        assertEquals("tug_salvage", selene.get(1).shipId);
+        assertEquals(10f, selene.get(1).standing);
     }
 
     @Test
@@ -123,7 +125,7 @@ class ShipyardTest {
         new ShipyardWork(world).collect(yard);
         assertEquals("Anvil Yards", yard.stationName);
         assertTrue(yard.current.startsWith("Your Patrol Corvette: trade-in "), yard.current);
-        assertEquals(3, yard.ships.size);
+        assertEquals(4, yard.ships.size);
         assertEquals("Gunship", yard.ships.get(1).name);
         assertEquals("Terran Patrol Authority", yard.ships.get(1).seller);
         assertTrue(yard.ships.get(1).terms.startsWith("310,000 cr, "), yard.ships.get(1).terms);

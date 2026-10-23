@@ -501,11 +501,14 @@ art/engines/rcs_quad.svg
 art/engines/rcs_quad_destroyed.svg
 art/hulls/audio_demo.svg
 art/hulls/battery.svg
+art/hulls/corsair.svg
 art/hulls/corvette.svg
 art/hulls/freighter.svg
 art/hulls/frigate.svg
 art/hulls/gunship.svg
+art/hulls/picket.svg
 art/hulls/raider.svg
+art/hulls/salvage_tug.svg
 art/hulls/station_hub.svg
 art/hulls/station_outpost.svg
 art/hulls/thruster_plume.svg

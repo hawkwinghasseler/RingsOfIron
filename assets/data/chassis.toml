@@ -1,6 +1,7 @@
 # Interior layouts. Same character map as interior-grid's ChassisBlueprintLoader:
 #   '#' hull (medium)  '1'/'2'/'3' hull light/medium/heavy  'I' internal wall
 #   '.' floor  '+' power conduit  ' ' void
+#   A conduit tile carries power through a thin wall to a conduit tile on its other side.
 #   R reactor, S shield, T turret (square mounts); L life support, H helm,
 #   W weapons console, C cargo, A airlock, E engine (an engine's nozzle faces aft
 #   (-x) when it lies along x, and +y when it stands along y), P propellant tank,
@@ -11,6 +12,12 @@
 #     The end tiles are frame, the rest the opening, with the port door on its
 #     outer edge. It faces the side with only space beyond it. Ports are passive
 #     unless listed under ports = [ { x, y, active = true } ] (any tile of the port).
+#   edge_walls = [ { x, y, side, weight_class, bulkhead } ] puts a thin wall on that side of
+#     tile (x, y), dividing two rooms without spending a tile on the wall; bulkhead = true puts
+#     a door in it (open at the start). A shut door stops crew, air, fire and power alike.
+#   edge_conduits = [ { x, y, side } ] runs a power conduit along that side of tile (x, y), inside
+#     whatever wall stands there, and feeds the rooms on both sides. Every ship but the audio demo
+#     runs one along each thin wall it has, so a room stays powered with its door shut.
 #   pipes = [ { x, y }, { x, y, side } ] lays a pipe across tile (x, y), or along that
 #     side of it (inside any wall). Pipes join tanks to the systems that draw on them:
 #     life support takes oxygen and nitrogen, the engines take propellant.
@@ -75,6 +82,21 @@ pipes = [
 coverings = [ { covering = "CARPET", x = 7, y = 1, width = 6, height = 4 } ]
 lights = [
   { x = 10, y = 1, side = "BOTTOM" },
+  { x = 6, y = 4, side = "LEFT" },
+]
+# A thin wall closes the hold and engineering off from the walkway (x 5 | 6), with a door at y 3. A
+# conduit runs in it, so the engines stay powered with the door shut. The bridge stays open to the
+# reactor room forward: a wall there (x 8 | 9) slowed the crew to a shorted reactor so much that the
+# First Play raider gave up in half the time (BalancePacingTest).
+edge_walls = [
+  { x = 5, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 5, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 5, y = 3, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 5, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+]
+edge_conduits = [
+  { x = 5, y = 1, side = "RIGHT" }, { x = 5, y = 2, side = "RIGHT" }, { x = 5, y = 3, side = "RIGHT" },
+  { x = 5, y = 4, side = "RIGHT" },
 ]
 # RCS: a quad block at each corner turns the ship, a linear pair amidships (over the centre of
 # mass) strafes it, and a linear pair on the bow either side of the centreline backs it up.
@@ -131,9 +153,47 @@ pipes = [
 ]
 lights = [
   { x = 16, y = 1, side = "BOTTOM" },
-  { x = 17, y = 4, side = "RIGHT" },
-  { x = 17, y = 8, side = "RIGHT" },
-  { x = 16, y = 11, side = "TOP" },
+  { x = 3, y = 5, side = "RIGHT" },
+  { x = 16, y = 5, side = "LEFT" },
+  { x = 3, y = 9, side = "RIGHT" },
+  { x = 16, y = 9, side = "LEFT" },
+]
+# Thin walls: engineering aft (x 3 | 4) and the bridge forward (x 15 | 16) are closed off from the
+# holds, each with a door onto the conduit spine at y 6, which runs through both walls. A conduit
+# runs in each wall as well.
+edge_walls = [
+  { x = 3, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 3, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 3, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 3, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 3, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 3, y = 6, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 3, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 3, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 3, y = 9, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 3, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 3, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 6, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 15, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 9, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
+]
+edge_conduits = [
+  { x = 3, y = 1, side = "RIGHT" }, { x = 3, y = 2, side = "RIGHT" }, { x = 3, y = 3, side = "RIGHT" },
+  { x = 3, y = 4, side = "RIGHT" }, { x = 3, y = 5, side = "RIGHT" }, { x = 3, y = 6, side = "RIGHT" },
+  { x = 3, y = 7, side = "RIGHT" }, { x = 3, y = 8, side = "RIGHT" }, { x = 3, y = 9, side = "RIGHT" },
+  { x = 3, y = 10, side = "RIGHT" }, { x = 3, y = 11, side = "RIGHT" }, { x = 15, y = 1, side = "RIGHT" },
+  { x = 15, y = 2, side = "RIGHT" }, { x = 15, y = 3, side = "RIGHT" }, { x = 15, y = 4, side = "RIGHT" },
+  { x = 15, y = 5, side = "RIGHT" }, { x = 15, y = 6, side = "RIGHT" }, { x = 15, y = 7, side = "RIGHT" },
+  { x = 15, y = 8, side = "RIGHT" }, { x = 15, y = 9, side = "RIGHT" }, { x = 15, y = 10, side = "RIGHT" },
+  { x = 15, y = 11, side = "RIGHT" },
 ]
 # RCS: corner quads, and linear pairs amidships and on the bow either side of the docking port.
 # It turns and strafes as hard as before; the bow pair sits too far off the centreline to give
@@ -168,7 +228,7 @@ rows = [
   "###DDD#########",
   "#EE..LRR.HHC..#",
   "#...PLRR.WWC.T#",
-  "#EE.P.........#",
+  "#EE.P.+++++...#",
   "###############",
 ]
 mounts = [
@@ -186,15 +246,25 @@ pipes = [
 ]
 lights = [
   { x = 5, y = 1, side = "BOTTOM" },
-  { x = 10, y = 1, side = "BOTTOM" },
-  { x = 13, y = 1, side = "BOTTOM" },
+  { x = 8, y = 1, side = "BOTTOM" },
+  { x = 11, y = 1, side = "BOTTOM" },
+]
+# A conduit run along y 1 (x 6-10) through a thin wall (x 8 | 9) that closes the bridge off from
+# engineering, with a door at y 1; a conduit runs in the wall as well.
+edge_walls = [
+  { x = 8, y = 1, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 8, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 8, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
+]
+edge_conduits = [
+  { x = 8, y = 1, side = "RIGHT" }, { x = 8, y = 2, side = "RIGHT" }, { x = 8, y = 3, side = "RIGHT" },
 ]
 # RCS: corner quads, and linear pairs amidships and on the bow by the centreline, as on the corvette
 rcs = [
-  { x = 1, y = 4, side = "TOP", kind = "QUAD", thrust = 3.9e3 },
-  { x = 1, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 3.9e3 },
-  { x = 13, y = 4, side = "TOP", kind = "QUAD", thrust = 3.9e3 },
-  { x = 13, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 3.9e3 },
+  { x = 1, y = 4, side = "TOP", kind = "QUAD", thrust = 4.5e3 },
+  { x = 1, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 4.5e3 },
+  { x = 13, y = 4, side = "TOP", kind = "QUAD", thrust = 4.5e3 },
+  { x = 13, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 4.5e3 },
   { x = 7, y = 4, side = "TOP", kind = "LINEAR", thrust = 5.9e5 },
   { x = 7, y = 0, side = "BOTTOM", kind = "LINEAR", thrust = 5.9e5 },
   { x = 14, y = 1, side = "RIGHT", kind = "LINEAR", thrust = 4.7e5 },
@@ -208,22 +278,40 @@ tile_size = 1.0
 origin_x = -4.5
 origin_y = -3.5
 # The pirate base's guns (round 6): a squat armoured platform moored beside the base, with no engines.
-# Four Small turret mounts on the corners, a Medium reactor, life support and a weapons console. Its
-# crew man the guns; it is silenced by knocking out its reactor or every turret.
+# Four Small turret mounts on the corners, a Medium reactor, life support with its tanks and a weapons
+# console. Its crew man the guns; it is silenced by knocking out its reactor or every turret.
 rows = [
   "#########",
   "#T.....T#",
-  "#..RR.L.#",
-  "#..RR.L.#",
-  "#..WW...#",
+  "#..RRNLO#",
+  "#..RRNLO#",
+  "#..WW++.#",
   "#T.....T#",
   "#########",
 ]
 lights = [
   { x = 4, y = 1, side = "BOTTOM" },
-  { x = 1, y = 2, side = "LEFT" },
-  { x = 7, y = 2, side = "RIGHT" },
+  { x = 1, y = 3, side = "BOTTOM" },
   { x = 4, y = 5, side = "TOP" },
+]
+# Oxygen (x 7) and nitrogen (x 5) tanks either side of life support, piped to it across y 3.
+pipes = [ { x = 5, y = 3 }, { x = 6, y = 3 }, { x = 7, y = 3 } ]
+# A thin wall splits the upper deck (reactor, life support, the top guns) from the lower one (the
+# console and the bottom guns), with doors at x 2 and x 7 (the oxygen tank is reached from below). A
+# conduit runs in it, and conduit tiles under it.
+edge_walls = [
+  { x = 1, y = 2, side = "TOP", weight_class = "MEDIUM" },
+  { x = 2, y = 2, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
+  { x = 3, y = 2, side = "TOP", weight_class = "MEDIUM" },
+  { x = 4, y = 2, side = "TOP", weight_class = "MEDIUM" },
+  { x = 5, y = 2, side = "TOP", weight_class = "MEDIUM" },
+  { x = 6, y = 2, side = "TOP", weight_class = "MEDIUM" },
+  { x = 7, y = 2, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
+]
+edge_conduits = [
+  { x = 1, y = 2, side = "TOP" }, { x = 2, y = 2, side = "TOP" }, { x = 3, y = 2, side = "TOP" },
+  { x = 4, y = 2, side = "TOP" }, { x = 5, y = 2, side = "TOP" }, { x = 6, y = 2, side = "TOP" },
+  { x = 7, y = 2, side = "TOP" },
 ]
 # RCS: a quad block at each corner, enough to turn the platform on its guns
 rcs = [
@@ -255,7 +343,7 @@ rows = [
   "#GGG.P..RRRSmm.....#",
   "#.....L.RRR.C.HH.TT#",
   "#.....L.RRR.C.WW.TT#",
-  "#GGG.P.............#",
+  "#GGG.P+++++++++....#",
   "#GGG.P.....T...T...#",
   "####################",
 ]
@@ -284,14 +372,37 @@ pipes = [
 ]
 lights = [
   { x = 4, y = 1, side = "BOTTOM" },
-  { x = 7, y = 1, side = "BOTTOM" },
-  { x = 12, y = 1, side = "BOTTOM" },
-  { x = 18, y = 2, side = "RIGHT" },
-  { x = 18, y = 5, side = "RIGHT" },
+  { x = 10, y = 1, side = "BOTTOM" },
+  { x = 13, y = 1, side = "BOTTOM" },
+  { x = 17, y = 1, side = "BOTTOM" },
+  { x = 7, y = 4, side = "LEFT" },
+  { x = 14, y = 5, side = "LEFT" },
   { x = 4, y = 6, side = "TOP" },
-  { x = 7, y = 6, side = "TOP" },
   { x = 10, y = 6, side = "TOP" },
-  { x = 14, y = 6, side = "TOP" },
+  { x = 17, y = 6, side = "TOP" },
+]
+# A conduit run along y 2 (x 6-14) through two thin walls: one closes engineering off aft (x 6 | 7),
+# the other the bridge and the bow forward (x 13 | 14), each with a door at y 2. A conduit runs in
+# each wall as well.
+edge_walls = [
+  { x = 6, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 2, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 6, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 13, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 13, y = 2, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 13, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 13, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 13, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 13, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
+]
+edge_conduits = [
+  { x = 6, y = 1, side = "RIGHT" }, { x = 6, y = 2, side = "RIGHT" }, { x = 6, y = 3, side = "RIGHT" },
+  { x = 6, y = 4, side = "RIGHT" }, { x = 6, y = 5, side = "RIGHT" }, { x = 6, y = 6, side = "RIGHT" },
+  { x = 13, y = 1, side = "RIGHT" }, { x = 13, y = 2, side = "RIGHT" }, { x = 13, y = 3, side = "RIGHT" },
+  { x = 13, y = 4, side = "RIGHT" }, { x = 13, y = 5, side = "RIGHT" }, { x = 13, y = 6, side = "RIGHT" },
 ]
 # RCS: corner quads, and linear pairs amidships and on the bow by the centreline, as on the corvette
 rcs = [
@@ -326,7 +437,7 @@ rows = [
   "##########DDD###########",
   "#GGG.P..T.........T.TT.#",
   "#GGG.P..............TT.#",
-  "#......................#",
+  "#.....+++++++++++......#",
   "#.....L..RRR.C...HH....#",
   "#.....L..RRR.C...WW....#",
   "#........RRR..mm.......#",
@@ -351,18 +462,47 @@ pipes = [
 ]
 lights = [
   { x = 4, y = 1, side = "BOTTOM" },
-  { x = 11, y = 1, side = "BOTTOM" },
-  { x = 14, y = 1, side = "BOTTOM" },
+  { x = 10, y = 1, side = "BOTTOM" },
   { x = 19, y = 1, side = "BOTTOM" },
+  { x = 16, y = 2, side = "LEFT" },
   { x = 1, y = 3, side = "LEFT" },
+  { x = 7, y = 3, side = "LEFT" },
   { x = 22, y = 3, side = "RIGHT" },
+  { x = 15, y = 5, side = "RIGHT" },
   { x = 4, y = 8, side = "TOP" },
-  { x = 9, y = 8, side = "TOP" },
-  { x = 12, y = 8, side = "TOP" },
-  { x = 15, y = 8, side = "TOP" },
+  { x = 10, y = 8, side = "TOP" },
+  { x = 16, y = 8, side = "TOP" },
   { x = 19, y = 8, side = "TOP" },
 ]
-
+# A conduit run along y 6 (x 6-16) through two thin walls: one closes engineering off aft (x 6 | 7),
+# the other the bridge and the bow guns forward (x 15 | 16), each with a door at y 6. A conduit runs
+# in each wall as well.
+edge_walls = [
+  { x = 6, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 6, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 6, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 6, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 15, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 15, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
+]
+edge_conduits = [
+  { x = 6, y = 1, side = "RIGHT" }, { x = 6, y = 2, side = "RIGHT" }, { x = 6, y = 3, side = "RIGHT" },
+  { x = 6, y = 4, side = "RIGHT" }, { x = 6, y = 5, side = "RIGHT" }, { x = 6, y = 6, side = "RIGHT" },
+  { x = 6, y = 7, side = "RIGHT" }, { x = 6, y = 8, side = "RIGHT" }, { x = 15, y = 1, side = "RIGHT" },
+  { x = 15, y = 2, side = "RIGHT" }, { x = 15, y = 3, side = "RIGHT" }, { x = 15, y = 4, side = "RIGHT" },
+  { x = 15, y = 5, side = "RIGHT" }, { x = 15, y = 6, side = "RIGHT" }, { x = 15, y = 7, side = "RIGHT" },
+  { x = 15, y = 8, side = "RIGHT" },
+]
 # RCS: corner quads, and linear pairs amidships and on the bow by the centreline, as on the corvette
 rcs = [
   { x = 1, y = 9, side = "TOP", kind = "QUAD", thrust = 6.05e4 },
@@ -373,6 +513,221 @@ rcs = [
   { x = 12, y = 0, side = "BOTTOM", kind = "LINEAR", thrust = 7.3e5 },
   { x = 23, y = 4, side = "RIGHT", kind = "LINEAR", thrust = 5.6e5 },
   { x = 23, y = 5, side = "RIGHT", kind = "LINEAR", thrust = 5.6e5 },
+]
+
+# A Patrol picket boat: the service's lightest hull, smaller than the corvette, for Ensigns who want
+# speed over guns. Engineering aft behind a thin wall (x 5 | 6, door at y 2): two Small engines in the
+# stern corners with the oxygen and nitrogen tanks between them, a propellant tank and life support.
+# One pipe run up x 2 and along y 3 joins them all. Forward, the helm and weapons consoles, a Medium
+# reactor and two Small turret mounts on the bow (13, 4) and (13, 1). A conduit run along y 2 takes
+# power through the wall's door, and a conduit in the wall keeps engineering powered with it shut.
+# A Small passive docking port on top opens beside the bridge, and a Small escape pod (4 seats) at
+# x 12 launches through the bottom hull.
+[chassis.picket]
+name = "Picket"
+tile_size = 1.0
+origin_x = -7.5
+origin_y = -3.0
+rows = [
+  "#####DDD#######",
+  "#EE.PL..HH...T#",
+  "#...PL..WWRR..#",
+  "#....++++.RR..#",
+  "#EE..........T#",
+  "###############",
+]
+mounts = [
+  { component = "oxygen_tank", size = "S", x = 1, y = 2, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 1, y = 3, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 12, y = 1, rotation = 2 },
+]
+pipes = [
+  { x = 2, y = 1 }, { x = 2, y = 2 }, { x = 2, y = 3 }, { x = 2, y = 4 },
+  { x = 3, y = 3 }, { x = 4, y = 3 }, { x = 5, y = 3 },
+]
+edge_walls = [
+  { x = 5, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 5, y = 2, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 5, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 5, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+]
+edge_conduits = [
+  { x = 5, y = 1, side = "RIGHT" }, { x = 5, y = 2, side = "RIGHT" }, { x = 5, y = 3, side = "RIGHT" },
+  { x = 5, y = 4, side = "RIGHT" },
+]
+lights = [
+  { x = 3, y = 1, side = "BOTTOM" },
+  { x = 6, y = 1, side = "BOTTOM" },
+  { x = 9, y = 1, side = "BOTTOM" },
+  { x = 13, y = 2, side = "RIGHT" },
+  { x = 3, y = 4, side = "TOP" },
+  { x = 10, y = 4, side = "TOP" },
+]
+# RCS: corner quads, a linear pair amidships over the centre of mass and a pair on the bow, as on
+# the corvette, sized so it turns, strafes and backs up as its ship's figures say
+rcs = [
+  { x = 1, y = 5, side = "TOP", kind = "QUAD", thrust = 8.0e3 },
+  { x = 1, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 8.0e3 },
+  { x = 13, y = 5, side = "TOP", kind = "QUAD", thrust = 8.0e3 },
+  { x = 13, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 8.0e3 },
+  { x = 8, y = 5, side = "TOP", kind = "LINEAR", thrust = 5.84e5 },
+  { x = 8, y = 0, side = "BOTTOM", kind = "LINEAR", thrust = 5.84e5 },
+  { x = 14, y = 2, side = "RIGHT", kind = "LINEAR", thrust = 4.64e5 },
+  { x = 14, y = 3, side = "RIGHT", kind = "LINEAR", thrust = 4.64e5 },
+]
+
+
+# Selene's salvage tug (GDD: boarding and salvage): a working hull that latches onto a wreck with
+# the active Medium docking port in its bow (x 16-17) and brings home what its crew carry across.
+# Two Medium freight drives in the stern corners; a Medium reactor, two propellant tanks and the
+# oxygen and nitrogen between them, with life support at x 6. One pipe run joins the engines, every
+# tank and life support. Engineering is behind a thin wall (x 6 | 7, door at y 2) with a conduit in it.
+# A Large cargo bay (7 x 3, 52.5 m3) is walled off from the conduit spine along y 3 with a door at
+# x 10; the spine feeds the bay, the bridge and the port. A Small turret mount (10, 2) carries point
+# defense, and a Small escape pod (4 seats) at x 11 launches through the bottom hull.
+[chassis.salvage_tug]
+name = "Salvage Tug"
+tile_size = 1.0
+origin_x = -9.0
+origin_y = -4.0
+rows = [
+  "##################",
+  "#QQQON.CCCCCCC..DD",
+  "#QQQON.CCCCCCC..DD",
+  "#RR...LCCCCCCC..DD",
+  "#RR..PL+++++++++DD",
+  "#QQQ.P....T..HH.DD",
+  "#QQQ.........WW..#",
+  "##################",
+]
+ports = [ { x = 16, y = 4, active = true } ]
+mounts = [
+  { component = "tank", size = "S", x = 3, y = 3, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 11, y = 1, rotation = 2 },
+]
+pipes = [
+  { x = 4, y = 1 }, { x = 4, y = 2 }, { x = 4, y = 3 }, { x = 4, y = 4 }, { x = 4, y = 5 },
+  { x = 3, y = 1 }, { x = 3, y = 3 }, { x = 3, y = 5 }, { x = 5, y = 2 }, { x = 5, y = 3 }, { x = 5, y = 4 },
+  { x = 5, y = 5 }, { x = 6, y = 3 },
+]
+edge_walls = [
+  { x = 6, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 2, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 6, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 6, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 7, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 8, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 9, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 10, y = 4, side = "BOTTOM", weight_class = "MEDIUM", bulkhead = true },
+  { x = 11, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 12, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 13, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
+  { x = 13, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 13, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 13, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
+]
+edge_conduits = [
+  { x = 6, y = 1, side = "RIGHT" }, { x = 6, y = 2, side = "RIGHT" }, { x = 6, y = 3, side = "RIGHT" },
+  { x = 6, y = 4, side = "RIGHT" }, { x = 6, y = 5, side = "RIGHT" }, { x = 6, y = 6, side = "RIGHT" },
+  { x = 7, y = 4, side = "BOTTOM" }, { x = 8, y = 4, side = "BOTTOM" }, { x = 9, y = 4, side = "BOTTOM" },
+  { x = 10, y = 4, side = "BOTTOM" }, { x = 11, y = 4, side = "BOTTOM" }, { x = 12, y = 4, side = "BOTTOM" },
+  { x = 13, y = 4, side = "BOTTOM" }, { x = 13, y = 4, side = "RIGHT" }, { x = 13, y = 5, side = "RIGHT" },
+  { x = 13, y = 6, side = "RIGHT" },
+]
+lights = [
+  { x = 4, y = 1, side = "BOTTOM" },
+  { x = 7, y = 1, side = "BOTTOM" },
+  { x = 10, y = 1, side = "BOTTOM" },
+  { x = 15, y = 1, side = "BOTTOM" },
+  { x = 14, y = 4, side = "LEFT" },
+  { x = 6, y = 6, side = "TOP" },
+]
+# RCS: corner quads, a linear pair amidships, and a pair on the bow either side of the port, sized so
+# it turns, strafes and backs up as its ship's figures say. The bow pair sits well off the centreline,
+# so it turns the tug harder than the corner quads do.
+rcs = [
+  { x = 1, y = 7, side = "TOP", kind = "QUAD", thrust = 1.0e4 },
+  { x = 1, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 1.0e4 },
+  { x = 15, y = 7, side = "TOP", kind = "QUAD", thrust = 1.0e4 },
+  { x = 15, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 1.0e4 },
+  { x = 9, y = 7, side = "TOP", kind = "LINEAR", thrust = 7.21e5 },
+  { x = 9, y = 0, side = "BOTTOM", kind = "LINEAR", thrust = 7.21e5 },
+  { x = 17, y = 1, side = "RIGHT", kind = "LINEAR", thrust = 5.8e5 },
+  { x = 17, y = 7, side = "RIGHT", kind = "LINEAR", thrust = 5.8e5 },
+]
+
+
+# The Void Raiders' corsair: a boarding boat between the light raider and the gunship. A Medium
+# turret mount in the nose (15-16, 2-3) and two Small ones, at (16, 5) and (13, 1); an active Small
+# docking port on top over an open deck where the boarders wait. Engineering aft behind a thin wall
+# (x 5 | 6, door at y 3) holds two Small engines, the oxygen and nitrogen tanks between them, a
+# propellant tank and life support, joined by one pipe run. A second thin wall (x 12 | 13, door at
+# y 2) closes off the bridge. A conduit run along y 3 crosses it, and each wall has a conduit in it.
+# A Small escape pod (4 seats) at x 11 launches through the bottom hull.
+[chassis.corsair]
+name = "Corsair"
+tile_size = 1.0
+origin_x = -9.0
+origin_y = -3.5
+rows = [
+  "######DDD#########",
+  "#EE.PL.......HH.T#",
+  "#...PL..RR...WW..#",
+  "#.....++RR++++.TT#",
+  "#..............TT#",
+  "#EE..........T...#",
+  "##################",
+]
+ports = [ { x = 7, y = 6, active = true } ]
+mounts = [
+  { component = "oxygen_tank", size = "S", x = 1, y = 3, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 1, y = 2, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 11, y = 1, rotation = 2 },
+]
+pipes = [
+  { x = 2, y = 1 }, { x = 2, y = 2 }, { x = 2, y = 3 }, { x = 2, y = 4 }, { x = 2, y = 5 },
+  { x = 3, y = 4 }, { x = 4, y = 4 }, { x = 5, y = 4 },
+]
+edge_walls = [
+  { x = 5, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 5, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 5, y = 3, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 5, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 5, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 12, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 12, y = 2, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+  { x = 12, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 12, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
+  { x = 12, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
+]
+edge_conduits = [
+  { x = 5, y = 1, side = "RIGHT" }, { x = 5, y = 2, side = "RIGHT" }, { x = 5, y = 3, side = "RIGHT" },
+  { x = 5, y = 4, side = "RIGHT" }, { x = 5, y = 5, side = "RIGHT" }, { x = 12, y = 1, side = "RIGHT" },
+  { x = 12, y = 2, side = "RIGHT" }, { x = 12, y = 3, side = "RIGHT" }, { x = 12, y = 4, side = "RIGHT" },
+  { x = 12, y = 5, side = "RIGHT" },
+]
+lights = [
+  { x = 3, y = 1, side = "BOTTOM" },
+  { x = 6, y = 1, side = "BOTTOM" },
+  { x = 9, y = 1, side = "BOTTOM" },
+  { x = 13, y = 3, side = "LEFT" },
+  { x = 16, y = 4, side = "RIGHT" },
+  { x = 3, y = 5, side = "TOP" },
+  { x = 9, y = 5, side = "TOP" },
+]
+# RCS: corner quads, a linear pair amidships and a pair on the bow either side of the centreline,
+# sized so it turns, strafes and backs up as its ship's figures say
+rcs = [
+  { x = 1, y = 6, side = "TOP", kind = "QUAD", thrust = 8.0e3 },
+  { x = 1, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 8.0e3 },
+  { x = 16, y = 6, side = "TOP", kind = "QUAD", thrust = 8.0e3 },
+  { x = 16, y = 0, side = "BOTTOM", kind = "QUAD", thrust = 8.0e3 },
+  { x = 10, y = 6, side = "TOP", kind = "LINEAR", thrust = 5.76e5 },
+  { x = 10, y = 0, side = "BOTTOM", kind = "LINEAR", thrust = 5.76e5 },
+  { x = 17, y = 2, side = "RIGHT", kind = "LINEAR", thrust = 4.64e5 },
+  { x = 17, y = 4, side = "RIGHT", kind = "LINEAR", thrust = 4.64e5 },
 ]
 
 # The audio demo's ship (the audio demo and its scenario load it): a hull laid out to show everything

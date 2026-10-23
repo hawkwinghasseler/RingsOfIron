@@ -48,3 +48,16 @@ ship = "raider_light"
 seller = "selene"
 price = 110000.0
 standing = 10.0
+
+# The picket boat, a little over its 162,000 value: an Ensign's alternative to the corvette
+[ship_sale.patrol_picket]
+ship = "picket_patrol"
+seller = "patrol"
+price = 170000.0
+
+# The Combine sells its salvage tugs to captains it trusts, a little over their 156,000 value
+[ship_sale.selene_tug]
+ship = "tug_salvage"
+seller = "selene"
+price = 165000.0
+standing = 10.0

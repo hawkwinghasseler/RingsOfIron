@@ -14,9 +14,9 @@ name = "Patrol Corvette"
 chassis = "corvette"
 texture = "tex_corvette"
 # What it weighs in the bubble with full tanks: its layout's 96 tiles at 2 t each (materials.toml's medium
-# steel, floors included), and about 3.1 t in its tanks. A ship with a layout weighs its layout, so this
-# figure only stands in for it (round 9: it said 120 t)
-mass = 195100.0
+# steel, floors included), its 4 thin walls at 0.5 t, and about 3.1 t in its tanks. A ship with a layout
+# weighs its layout, so this figure only stands in for it (round 9: it said 120 t)
+mass = 197100.0
 max_thrust = 2.4e6
 max_torque = 8.0e5
 exhaust_velocity = 700000.0
@@ -42,10 +42,10 @@ hardpoints = [
 name = "Pirate Corvette"
 chassis = "corvette"
 texture = "tex_corvette"
-# What it weighs in the bubble with full tanks: its layout's 96 tiles at 2 t each, as the patrol
-# corvette's, and about 3.1 t in its tanks. A ship with a layout weighs its layout, so this figure only
-# stands in for it (round 9: it said 120 t)
-mass = 195100.0
+# What it weighs in the bubble with full tanks: its layout's 96 tiles at 2 t each and 4 thin walls at
+# 0.5 t, as the patrol corvette's, and about 3.1 t in its tanks. A ship with a layout weighs its layout, so
+# this figure only stands in for it (round 9: it said 120 t)
+mass = 197100.0
 max_thrust = 2.4e6
 max_torque = 8.0e5
 exhaust_velocity = 700000.0
@@ -62,10 +62,10 @@ hardpoints = [
 name = "Hauler"
 chassis = "freighter"
 texture = "tex_freighter"
-# What it weighs in the bubble with full tanks: its layout's 260 tiles at 2 t each, and about 6.1 t in its
-# tanks. A ship with a layout weighs its layout, so this figure only stands in for it (round 9: it said
-# 300 t)
-mass = 526100.0
+# What it weighs in the bubble with full tanks: its layout's 260 tiles at 2 t each, 22 thin walls at
+# 0.5 t, and about 6.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands
+# in for it (round 9: it said 300 t)
+mass = 537100.0
 max_thrust = 3.0e6
 max_torque = 1.5e6
 crew = 3
@@ -76,9 +76,10 @@ name = "Light Raider"
 chassis = "raider"
 texture = "tex_raider"
 # What it weighs in the bubble with full tanks: its layout's 75 tiles at 2 t each (materials.toml's medium
-# steel, floors included) and about 2.6 t in its tanks. A ship with a layout weighs its layout, so this
-# figure only stands in for it (round 8: it said 60 t, but the raider has always flown at 153 t)
-mass = 153000.0
+# steel, floors included), 3 thin walls at 0.5 t and about 2.6 t in its tanks. A ship with a layout weighs
+# its layout, so this figure only stands in for it (round 8: it said 60 t, but the raider has always flown
+# at 153 t)
+mass = 154600.0
 max_thrust = 2.8e6
 max_torque = 6.0e5
 exhaust_velocity = 700000.0
@@ -92,10 +93,10 @@ hardpoints = [
 name = "Gunship"
 chassis = "gunship"
 texture = "tex_gunship"
-# What it weighs in the bubble with full tanks: its layout's 160 tiles at 2 t each, and about 5.1 t in its
-# tanks. A ship with a layout weighs its layout, so this figure only stands in for it (round 9: it said
-# 240 t)
-mass = 325100.0
+# What it weighs in the bubble with full tanks: its layout's 160 tiles at 2 t each, 12 thin walls at
+# 0.5 t, and about 5.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands
+# in for it (round 9: it said 240 t)
+mass = 331100.0
 max_thrust = 3.4e6
 max_torque = 2.0e6
 exhaust_velocity = 700000.0
@@ -116,10 +117,10 @@ hardpoints = [
 name = "Den Battery"
 chassis = "battery"
 texture = "tex_raider"
-# What it weighs in the bubble with full tanks: its layout's 63 tiles at 2 t each, and nothing in tanks
-# (it has none). A ship with a layout weighs its layout, so this figure only stands in for it (round 9: it
-# said 150 t)
-mass = 126000.0
+# What it weighs in the bubble with full tanks: its layout's 63 tiles at 2 t each, 7 thin walls at 0.5 t,
+# and about 0.6 t of oxygen and nitrogen for life support. A ship with a layout weighs its layout, so this
+# figure only stands in for it (round 9: it said 150 t)
+mass = 130100.0
 max_thrust = 2.0e4
 max_torque = 2.0e5
 exhaust_velocity = 700000.0
@@ -141,9 +142,9 @@ name = "Pirate Gunship"
 chassis = "gunship"
 texture = "tex_gunship"
 # What it weighs in the bubble with full tanks: its layout's 160 tiles at 2 t each, as the patrols'
-# gunship's, and about 5.1 t in its tanks. A ship with a layout weighs its layout, so this figure only
-# stands in for it (round 9: it said 220 t)
-mass = 325100.0
+# gunship's, 12 thin walls at 0.5 t, and about 5.1 t in its tanks. A ship with a layout weighs its layout,
+# so this figure only stands in for it (round 9: it said 220 t)
+mass = 331100.0
 max_thrust = 3.4e6
 max_torque = 2.0e6
 exhaust_velocity = 700000.0
@@ -163,10 +164,10 @@ hardpoints = [
 name = "Frigate"
 chassis = "frigate"
 texture = "tex_frigate"
-# What it weighs in the bubble with full tanks: its layout's 240 tiles at 2 t each, and about 5.1 t in its
-# tanks. A ship with a layout weighs its layout, so this figure only stands in for it (round 9: it said
-# 380 t)
-mass = 485100.0
+# What it weighs in the bubble with full tanks: its layout's 240 tiles at 2 t each, 16 thin walls at
+# 0.5 t, and about 5.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands
+# in for it (round 9: it said 380 t)
+mass = 493100.0
 max_thrust = 3.4e6
 max_torque = 3.2e6
 exhaust_velocity = 700000.0
@@ -178,6 +179,66 @@ hardpoints = [
   { weapon = "harpoon_launcher", x = -3.5, y = -3.5, rotation = -90.0 },
   { weapon = "autocannon_mk1", x = 6.5, y = 3.5, rotation = 90.0 },
   { weapon = "autocannon_mk1", x = 6.5, y = -3.5, rotation = -90.0 },
+]
+
+# The Patrol's picket boat: its lightest hull, a little smaller than the corvette, so an Ensign can
+# fly it. Two Small turrets on the bow and no missiles; it out-turns the corvette but carries less.
+[ship.picket_patrol]
+name = "Picket"
+chassis = "picket"
+texture = "tex_picket"
+# What it weighs in the bubble with full tanks: its layout's 90 tiles at 2 t each, 4 thin walls at 0.5 t,
+# and about 3.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
+mass = 185100.0
+max_thrust = 2.4e6
+max_torque = 1.04e6
+exhaust_velocity = 700000.0
+crew = 3
+# A railgun on the upper bow turret, point defense on the lower
+hardpoints = [
+  { weapon = "railgun_mk1", x = 6.0, y = 1.5, rotation = 0.0 },
+  { weapon = "autocannon_mk1", x = 6.0, y = -1.5, rotation = -45.0 },
+]
+
+# Selene's salvage tug (GDD: boarding and salvage): latches onto a wreck with its active Medium bow
+# port, and its crew carry what they strip from it back to the hold. Two freight drives, point
+# defense on one turret, and a hold a sixth of the hauler's.
+[ship.tug_salvage]
+name = "Salvage Tug"
+chassis = "salvage_tug"
+texture = "tex_salvage_tug"
+# What it weighs in the bubble with full tanks: its layout's 144 tiles at 2 t each, 16 thin walls at
+# 0.5 t, and about 6.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands
+# in for it
+mass = 302100.0
+max_thrust = 3.0e6
+max_torque = 2.13e6
+exhaust_velocity = 700000.0
+crew = 4
+hardpoints = [
+  { weapon = "autocannon_mk1", x = 1.5, y = -1.5, rotation = -90.0 },
+]
+
+# The Void Raiders' corsair: a boarding boat heavier than the light raider and lighter than the
+# gunship, with an active dorsal port to latch onto a prize. A chaingun in the Medium nose turret and
+# point defense on the two Small ones; its fit comes from [loadout.corsair_*]. Spawned by name (the
+# dev console's spawnShip()); pirate traffic does not send it out yet.
+[ship.corsair_pirate]
+name = "Corsair"
+chassis = "corsair"
+texture = "tex_corsair"
+# What it weighs in the bubble with full tanks: its layout's 126 tiles at 2 t each, 10 thin walls at
+# 0.5 t, and about 3.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands
+# in for it
+mass = 260100.0
+max_thrust = 2.4e6
+max_torque = 1.58e6
+exhaust_velocity = 700000.0
+crew = 4
+hardpoints = [
+  { weapon = "chaingun_mk1", x = 7.0, y = -0.5, rotation = 0.0 },
+  { weapon = "autocannon_mk1", x = 7.5, y = 2.0, rotation = 45.0 },
+  { weapon = "autocannon_mk1", x = 4.5, y = -2.0, rotation = -90.0 },
 ]
 
 # The audio demo's ship (chassis.toml's audio_demo): its rooms show off how walls, doors, distance and

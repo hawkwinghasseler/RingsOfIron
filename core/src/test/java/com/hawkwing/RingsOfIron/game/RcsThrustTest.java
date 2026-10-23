@@ -23,7 +23,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** The RCS blocks on a ship's hull set how hard it turns, strafes and backs up, and which of them fire. */
 class RcsThrustTest {
-    static final String[] SHIPS = {"corvette_patrol", "freighter_hauler", "raider_light", "gunship_heavy", "frigate_patrol"};
+    static final String[] SHIPS = {"corvette_patrol", "freighter_hauler", "raider_light", "gunship_heavy", "frigate_patrol",
+            "picket_patrol", "tug_salvage", "corsair_pirate"};
 
     GameWorld world;
 
