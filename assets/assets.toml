@@ -14,6 +14,22 @@ tex_freighter = "libgdx.png"      # placeholder
 tex_raider = "libgdx.png"         # placeholder
 tex_gunship = "libgdx.png"        # placeholder
 tex_frigate = "libgdx.png"        # placeholder
+tex_picket = "libgdx.png"         # placeholder
+tex_salvage_tug = "libgdx.png"    # placeholder
+tex_corsair = "libgdx.png"        # placeholder
+tex_interceptor = "libgdx.png"    # placeholder
+tex_courier = "libgdx.png"        # placeholder
+tex_surveyor = "libgdx.png"       # placeholder
+tex_ore_barge = "libgdx.png"      # placeholder
+tex_tanker = "libgdx.png"         # placeholder
+tex_hospital_ship = "libgdx.png"  # placeholder
+tex_marauder = "libgdx.png"       # placeholder
+tex_destroyer = "libgdx.png"      # placeholder
+tex_bulk_carrier = "libgdx.png"   # placeholder
+tex_heavy_cruiser = "libgdx.png"  # placeholder
+tex_liner = "libgdx.png"          # placeholder
+tex_reaver = "libgdx.png"         # placeholder
+tex_carrier = "libgdx.png"        # placeholder
 
 # Audio middleware event paths (audio-spatial); looked up with assets.getString(key).
 [audio_event]

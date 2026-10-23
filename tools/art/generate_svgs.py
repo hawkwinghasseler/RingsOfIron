@@ -2099,6 +2099,16 @@ def hull_svg(ch, overhang=None, engines=False):
 
     a = Art()
     solid = {(c, r) for r, row in enumerate(rows) for c, chh in enumerate(row) if chh != " "}
+    rectangular = len(solid) == W * H
+    # Wedge hull pieces, by map cell: the corners of the cell the triangle keeps, its right angle
+    # first (SVG corners: 0 top-left, 1 top-right, 2 bottom-right, 3 bottom-left). At rotation 0 its
+    # legs run along the cell's left and bottom edges; each quarter turn is counter-clockwise.
+    wedges = {}
+    for p in ch.get("hull_pieces", []):
+        if p.get("shape", "BLOCK") != "WEDGE" or p.get("width", 1) != 1 or p.get("height", 1) != 1:
+            continue
+        keep = {0: (3, 2, 0), 1: (2, 3, 1), 2: (1, 2, 0), 3: (0, 1, 3)}[p.get("rotation", 0) % 4]
+        wedges[(p["x"], H - 1 - p["y"])] = keep
     x0, y0 = cell(0, 0)
     gw, gh = W * T, H * T
     if overhang:
@@ -2114,25 +2124,66 @@ def hull_svg(ch, overhang=None, engines=False):
             a.b += circle(x0 - T * 0.25, cy, T * 0.28, "#14181e", stroke=INK, sw=1.5)
             for dy in (-0.62, 0.62):
                 a.b += circle(x0 - T * 0.25, cy + dy * T, 3, STEEL_HI, stroke=INK, sw=1)
+    panels = []
     for (c, r) in solid:
         x, y = cell(c, r)
         wall = rows[r][c] in WALL_CHARS or rows[r][c] == "I"
+        if (c, r) in wedges:
+            corners = [(x, y), (x + T, y), (x + T, y + T), (x, y + T)]
+            pts = [corners[k] for k in wedges[(c, r)]]
+            a.b += poly(pts, STEEL_MID)
+            a.b += poly(pts, "none", stroke=STEEL_DARK, sw=1, extra=' opacity="0.7"')
+            # the sloped face is the outline here
+            (ax, ay), (bx, by) = pts[1], pts[2]
+            a.b += line(ax, ay, bx, by, INK, sw=3)
+            continue
         a.b += rect(x, y, T, T, STEEL_MID if wall and rows[r][c] != "I" else STEEL)
-        a.b += rect(x + 0.5, y + 0.5, T - 1, T - 1, "none", stroke=STEEL_DARK, sw=1, extra=' opacity="0.7"')
+        if rectangular:
+            a.b += rect(x + 0.5, y + 0.5, T - 1, T - 1, "none", stroke=STEEL_DARK, sw=1, extra=' opacity="0.7"')
+        else:
+            # a shaped hull can run to a thousand tiles: its panel lines go in one path, to stay
+            # within the art packer's element limit
+            panels.append(f"M{f(x + 0.5)} {f(y + 0.5)}h{f(T - 1)}v{f(T - 1)}h{f(1 - T)}z")
+    if panels:
+        a.b += f'    <path d="{"".join(panels)}" fill="none" stroke="{STEEL_DARK}" stroke-width="1" opacity="0.7"/>\n'
     # outline around the grid's footprint
+    edges = []
     for (c, r) in solid:
         x, y = cell(c, r)
+        if (c, r) in wedges:
+            continue
         if (c, r - 1) not in solid:
-            a.b += line(x, y, x + T, y, INK, sw=3)
+            edges.append((x, y, x + T, y))
         if (c, r + 1) not in solid:
-            a.b += line(x, y + T, x + T, y + T, INK, sw=3)
+            edges.append((x, y + T, x + T, y + T))
         if (c - 1, r) not in solid:
-            a.b += line(x, y, x, y + T, INK, sw=3)
+            edges.append((x, y, x, y + T))
         if (c + 1, r) not in solid:
-            a.b += line(x + T, y, x + T, y + T, INK, sw=3)
+            edges.append((x + T, y, x + T, y + T))
+    if rectangular:
+        for e in edges:
+            a.b += line(*e, INK, sw=3)
+    elif edges:
+        d = "".join(f"M{f(x1)} {f(y1)}L{f(x2)} {f(y2)}" for x1, y1, x2, y2 in edges)
+        a.b += f'    <path d="{d}" fill="none" stroke="{INK}" stroke-width="3" stroke-linecap="round"/>\n'
     # a highlight along the top and a shade along the bottom of the footprint
-    a.b += rect(x0, y0, gw, T * 0.12, "#ffffff", extra=' opacity="0.1"')
-    a.b += rect(x0, y0 + gh - T * 0.12, gw, T * 0.12, "#000000", extra=' opacity="0.2"')
+    if rectangular:
+        a.b += rect(x0, y0, gw, T * 0.12, "#ffffff", extra=' opacity="0.1"')
+        a.b += rect(x0, y0 + gh - T * 0.12, gw, T * 0.12, "#000000", extra=' opacity="0.2"')
+    else:
+        lit, shaded = [], []
+        for (c, r) in solid:
+            if (c, r) in wedges:
+                continue
+            x, y = cell(c, r)
+            if (c, r - 1) not in solid:
+                lit.append(f"M{f(x)} {f(y)}h{f(T)}v{f(T * 0.12)}h{f(-T)}z")
+            if (c, r + 1) not in solid:
+                shaded.append(f"M{f(x)} {f(y + T - T * 0.12)}h{f(T)}v{f(T * 0.12)}h{f(-T)}z")
+        if lit:
+            a.b += f'    <path d="{"".join(lit)}" fill="#ffffff" opacity="0.1"/>\n'
+        if shaded:
+            a.b += f'    <path d="{"".join(shaded)}" fill="#000000" opacity="0.2"/>\n'
 
     for (name, col, row, w, h) in chassis_mounts(ch):
         x, y = cell(col, row)
@@ -2209,20 +2260,41 @@ def hull_svg(ch, overhang=None, engines=False):
             a.b += rect(x, y, pw, ph, STEEL_DARK, rx=3, stroke=INK, sw=2)
             a.b += rect(x + 10, y + 10, pw - 20, ph - 20, "none", stroke=HAZARD, sw=4,
                         extra=' stroke-dasharray="12 8"')
-            # collar half a tile out on the open side
-            if row == 0:
+            # collar half a tile out on the open side: the one with only space beyond the port
+            if rectangular:
+                side = "top" if row == 0 else "bottom" if row + h == H else "left" if col == 0 else "right"
+            else:
+                def open_(cells):
+                    return all(cl not in solid for cl in cells)
+                side = ("top" if w > h and open_([(col + i, row - 1) for i in range(w)]) else
+                        "bottom" if w > h and open_([(col + i, row + h) for i in range(w)]) else
+                        "left" if open_([(col - 1, row + j) for j in range(h)]) else "right")
+            if side == "top":
                 a.b += rect(x + T * 0.5, y - T * 0.5, pw - T, T * 0.5, STEEL_MID, rx=3, stroke=INK, sw=2)
-            elif row + h == H:
+            elif side == "bottom":
                 a.b += rect(x + T * 0.5, y + ph, pw - T, T * 0.5, STEEL_MID, rx=3, stroke=INK, sw=2)
-            elif col == 0:
+            elif side == "left":
                 a.b += rect(x - T * 0.5, y + T * 0.5, T * 0.5, ph - T, STEEL_MID, rx=3, stroke=INK, sw=2)
             else:
                 a.b += rect(x + pw, y + T * 0.5, T * 0.5, ph - T, STEEL_MID, rx=3, stroke=INK, sw=2)
     # navigation lights at the grid corners: red to port (+y), green to starboard
-    light(a, x0 + gw - 12, y0 + 12, 4, RED)
-    light(a, x0 + gw - 12, y0 + gh - 12, 4, GREEN)
-    light(a, x0 + 12, y0 + 12, 4, "#ffffff")
-    light(a, x0 + 12, y0 + gh - 12, 4, "#ffffff")
+    if rectangular:
+        light(a, x0 + gw - 12, y0 + 12, 4, RED)
+        light(a, x0 + gw - 12, y0 + gh - 12, 4, GREEN)
+        light(a, x0 + 12, y0 + 12, 4, "#ffffff")
+        light(a, x0 + 12, y0 + gh - 12, 4, "#ffffff")
+    else:
+        # on a shaped hull, at the outermost square tiles: the foremost of the top and bottom rows
+        # that reach furthest out, and the aftmost
+        squares = [cl for cl in solid if cl not in wedges]
+        top = min(r for _, r in squares)
+        bottom = max(r for _, r in squares)
+        for r_, colour, dy in ((top, RED, 12), (bottom, GREEN, T - 12)):
+            cols = [c for c, r in squares if r == r_]
+            fx, fy = cell(max(cols), r_)
+            light(a, fx + T - 12, fy + dy, 4, colour)
+            ax_, ay_ = cell(min(cols), r_)
+            light(a, ax_ + 12, ay_ + dy, 4, "#ffffff")
     return a, (x0, y0, gw, gh)
 
 
@@ -2234,6 +2306,8 @@ OVERHANG = {
     "freighter": [(-10.0, -6.5), (10.0, -6.5), (10.0, 6.5), (-10.0, 6.5)],
     "raider": [(-7.5, -2.5), (7.5, -2.5), (9.5, 0.0), (7.5, 2.5), (-7.5, 2.5)],  # a sharp bow
     "gunship": [(-10.0, -4.0), (10.0, -4.0), (12.0, -1.5), (12.0, 1.5), (10.0, 4.0), (-10.0, 4.0)],  # a blunt ram bow
+    "picket": [(-7.5, -3.0), (7.5, -3.0), (9.0, 0.0), (7.5, 3.0), (-7.5, 3.0)],  # a short sharp bow
+    "corsair": [(-9.0, -3.5), (9.0, -3.5), (11.0, -1.0), (11.0, 1.0), (9.0, 3.5), (-9.0, 3.5)],  # a raked bow
 }
 
 

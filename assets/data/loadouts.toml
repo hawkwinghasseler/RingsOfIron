@@ -166,3 +166,31 @@ ship = "den_battery"
 weapons = ["railgun_mk1", "", "", ""]
 weight = 5
 min_difficulty = 2.2
+
+# Corsair: a Medium turret mount in the nose, Small ones above and below.
+[loadout.corsair_stock]
+name = "Corsair"
+ship = "corsair_pirate"
+weapons = ["chaingun_mk1"]
+weight = 3
+
+[loadout.corsair_darts]
+name = "Dart corsair"
+ship = "corsair_pirate"
+weapons = ["chaingun_mk1", "dart_rack", "dart_rack"]
+weight = 2
+
+# A prize taker's fit: an ion gun in the nose stuns a ship's systems before the boarders cross
+[loadout.corsair_ion]
+name = "Prize corsair"
+ship = "corsair_pirate"
+weapons = ["ion_mk1"]
+weight = 1
+min_difficulty = 1.0
+
+[loadout.corsair_ace]
+name = "Ace's corsair"
+ship = "corsair_pirate"
+weapons = ["chaingun_mk2", "flak_mk1", "flak_mk1"]
+ace = true
+weight = 1
