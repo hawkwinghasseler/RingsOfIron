@@ -1,5 +1,7 @@
 package com.ringsofiron.interiorgrid;
 
+import com.badlogic.gdx.utils.Array;
+
 /**
  * Represents a single tile in a ship's interior grid.
  * All state is stored here as plain data (no ECS components needed per tile).
@@ -10,8 +12,8 @@ package com.ringsofiron.interiorgrid;
  * {@link MountFootprint}.
  *
  * Every floor is a steel deck plate. A {@link FloorCovering} such as carpet can be laid
- * on top of it; that covering is the fuel a fire burns. Air does not live on tiles: it
- * belongs to the tile's {@link Compartment}.
+ * on top of it; that covering is the fuel a fire burns, along with any {@link Furnishing}s set
+ * down on the tile. Air does not live on tiles: it belongs to the tile's {@link Compartment}.
  */
 public class Tile {
 
@@ -46,6 +48,11 @@ public class Tile {
     public FloorCovering covering = FloorCovering.NONE;
     /** Combustible mass left in the covering, kg. Fire consumes it. */
     public float fuel = 0f;
+    /**
+     * Furniture and decor whose middle is over this tile, each at its own offset and angle (see
+     * {@link Furnishing}). A fire here burns them with the covering.
+     */
+    public final Array<Furnishing> furnishings = new Array<>(0);
     /**
      * Fire on this tile: 0 is no fire, a new fire starts at {@link #IGNITION_INTENSITY}
      * and grows toward 1 (fully involved) while it has fuel and oxygen.
@@ -169,7 +176,14 @@ public class Tile {
 
     /** True if there is something here a fire can burn. */
     public boolean isFlammable() {
-        return fuel > 0f && holdsAir();
+        return fuel + furnishingFuel() > 0f && holdsAir();
+    }
+
+    /** Combustible mass of the furnishings on this tile, kg. */
+    public float furnishingFuel() {
+        float kg = 0f;
+        for (int i = 0; i < furnishings.size; i++) kg += furnishings.get(i).fuel;
+        return kg;
     }
 
     public boolean isBurning() {

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="64" viewBox="0 0 32 64">
+  <title>exercise_bike: exercise bike, rider faces -y</title>
+  <g id="base">
+    <rect x="8" y="4" width="16" height="56" rx="4" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <ellipse cx="16" cy="16" rx="7" ry="9" fill="#1e2227" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="16" cy="36" r="8" fill="#5b6675" stroke="#10141a" stroke-width="1.5"/>
+    <path d="M6,36 L26,36" stroke="#10141a" stroke-width="2.5" stroke-linecap="round"/>
+    <rect x="4" y="50" width="24" height="5" rx="2.5" fill="#7d8898" stroke="#10141a" stroke-width="1.2"/>
+    <rect x="12" y="54" width="8" height="5" rx="1" fill="#0c1a26" stroke="#10141a" stroke-width="0.6"/>
+  </g>
+  <g id="emissive">
+    <g data-light="glow"><rect x="13" y="55" width="6" height="3" fill="#6af0a0"/></g>
+  </g>
+  <g id="meta">
+    <rect id="collider" x="1" y="1" width="30" height="62" fill="none" stroke="none"/>
+  </g>
+</svg>

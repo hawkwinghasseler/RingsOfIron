@@ -37,6 +37,29 @@ public interface YardProvider {
         return "This yard doesn't fit salvaged parts";
     }
 
+    /**
+     * Starts putting a new {@code furnishingId} on the ship's deck: the game shows it on the deck under
+     * the pointer, to turn and click down where it should go. Returns null once placing has begun, or
+     * what the yard says instead.
+     */
+    default String placeFurnishing(String furnishingId) {
+        return "This yard doesn't sell furnishings";
+    }
+
+    /** Starts moving the furnishings aboard about, or handing them back to the yard. Null once begun, or what the yard says. */
+    default String arrangeFurnishings() {
+        return "This yard doesn't move furnishings";
+    }
+
+    /** A piece of furniture or decor on sale. */
+    final class Furnishing {
+        public String id = "";
+        public String name = "";
+        /** What the crew do with it: "lounge", "game", "decor"... */
+        public String use = "";
+        public double price;
+    }
+
     final class Offer {
         public String weaponId = "";
         public String name = "";
@@ -72,6 +95,16 @@ public interface YardProvider {
         public double usedPrice = 0.5;
         public final Array<Hardpoint> hardpoints = new Array<>();
         public final Array<Offer> offers = new Array<>();
+        /** Furniture and decor on sale. */
+        public final Array<Furnishing> furnishings = new Array<>();
+        /** Furnishings aboard and on their way, e.g. "4 aboard, 1 on its way"; empty when none. */
+        public String furnished = "";
+
+        public Furnishing addFurnishing() {
+            Furnishing f = new Furnishing();
+            furnishings.add(f);
+            return f;
+        }
 
         public Hardpoint addHardpoint() {
             Hardpoint h = new Hardpoint();
@@ -93,6 +126,8 @@ public interface YardProvider {
             damaged = 0;
             hardpoints.clear();
             offers.clear();
+            furnishings.clear();
+            furnished = "";
         }
 
         public boolean isOpen() {

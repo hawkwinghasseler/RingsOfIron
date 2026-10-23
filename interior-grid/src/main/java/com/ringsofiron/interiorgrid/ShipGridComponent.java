@@ -117,6 +117,11 @@ public class ShipGridComponent implements Component {
      * {@link DamageStates}). The game drains them into notices for the player's ship. Not saved.
      */
     public final transient Array<DamageStates.Incident> incidents = new Array<>();
+    /**
+     * Furnishings a fire has burned away since the game last looked, oldest first (see
+     * {@link GridHazardSystem}). The game drains them into notices for the player's ship. Not saved.
+     */
+    public final transient Array<Furnishing> burntFurnishings = new Array<>();
     /** Short circuits and tank bursts aboard since the grid was built or loaded, for surveys. Not saved. */
     public transient int shortCount, burstCount;
 

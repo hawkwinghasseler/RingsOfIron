@@ -31,6 +31,7 @@ import com.hawkwing.RingsOfIron.game.WarpNotices;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
 import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.FirstPlay;
+import com.hawkwing.RingsOfIron.game.FurnishingPlacement;
 import com.hawkwing.RingsOfIron.game.ShipDisablement;
 import com.hawkwing.RingsOfIron.game.ShipRefit;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
@@ -220,6 +221,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private final Array<Entity> decks = new Array<>();
     private final Vector2 followAt = new Vector2();
     private final Vector2 tmp = new Vector2();
+    /** Furniture being put down on the deck from the yard window, or null. */
+    private FurnishingPlacement placing;
     private final Vector2 tmp2 = new Vector2();
     private final Color color = new Color();
 
@@ -294,6 +297,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 viewports.getUiViewport().getWorldHeight() - statusBottom + 4f));
         hud.getTrafficMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
         gameHud.yard.setLayoutEditor(this::openRefit);
+        gameHud.yard.setFurnisher(this::startFurnishing);
         world.combatEvents.intercepts.add((signal, hit) -> {
             if (hit.destroyed && hit.missile != null) exterior.explode(hit.point.x, hit.point.y);
         });
@@ -349,7 +353,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
         world.hints.registerKey(HintRegistry.Context.ANY, "Esc", hosted ? "menu" : "quit", 90);
         createDevConsole();
-        Gdx.input.setInputProcessor(new InputMultiplexer(devKeys, hud.getInputProcessor(), devClicks, scenarioClicks, new InputAdapter() {
+        Gdx.input.setInputProcessor(new InputMultiplexer(devKeys, placingKeys, hud.getInputProcessor(), placingClicks, devClicks,
+                scenarioClicks, new InputAdapter() {
             @Override
             public boolean scrolled(float amountX, float amountY) {
                 if (logOpen) logScroll = Math.max(0, logScroll + Math.round(amountY));
@@ -392,6 +397,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         if (!paused && (!devFrozen || delta > 0f)) {
             handleInput(delta);
+            updatePlacing();
             if (world.getCrash() == null) gun.update(delta);
             world.update(delta);
             if (scenario != null) scenario.update(delta);
@@ -730,6 +736,94 @@ public class RingsOfIronGame extends ApplicationAdapter {
         scenario.setUp(setup);
     }
 
+    // --- Furnishings put down on the deck from the yard window ----------------------------
+
+    /** Starts placing a new {@code furnishingId} on the player's deck, or with null arranging what is aboard. */
+    private void startFurnishing(String furnishingId) {
+        Entity station = world.docking.dockedTo(game.player);
+        placing = furnishingId == null ? FurnishingPlacement.arrange(world, game.player, station)
+                : FurnishingPlacement.buy(world, game.player, station, world.furnishings.catalog().get(furnishingId));
+        // It goes down on the deck: stand up from the console to see it
+        if (hud.getViewMode().getMode() == ViewMode.EXTERIOR) sitOrStand();
+    }
+
+    private void stopPlacing() {
+        placing = null;
+        deckRenderer.setGhost(null, null, false);
+    }
+
+    /** Each frame: the piece in hand follows the pointer over the deck, or placing ends once the ship leaves the yard. */
+    private void updatePlacing() {
+        if (placing == null) return;
+        if (placing.isDone() || !placing.stillDocked() || hud.getViewMode().getMode() != ViewMode.INTERIOR) {
+            stopPlacing();
+            return;
+        }
+        ShipGridComponent grid = placing.ship().getComponent(ShipGridComponent.class);
+        Body body = world.docking.bodyOf(placing.ship());
+        if (grid == null || body == null) {
+            stopPlacing();
+            return;
+        }
+        Vector2 at = viewports.getWorldViewport().unproject(tmp.set(Gdx.input.getX(), Gdx.input.getY()));
+        float[] p = FurnishingPlacement.deckPoint(grid, body, at.x, at.y);
+        placing.point(p[0], p[1]);
+        deckRenderer.setGhost(placing.ship(), placing.ghost(), placing.refusal() == null);
+    }
+
+    private float turnStep() {
+        return Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT)
+                ? FurnishingPlacement.FINE_STEP : FurnishingPlacement.TURN_STEP;
+    }
+
+    /** While placing: Q and E turn the piece, X hands one back to the yard. Ahead of the HUD, whose E uses consoles. */
+    private final InputProcessor placingKeys = new InputAdapter() {
+        @Override
+        public boolean keyDown(int keycode) {
+            if (placing == null) return false;
+            switch (keycode) {
+                case Input.Keys.Q:
+                    placing.turn(turnStep());
+                    return true;
+                case Input.Keys.E:
+                    placing.turn(-turnStep());
+                    return true;
+                case Input.Keys.X:
+                case Input.Keys.FORWARD_DEL:
+                    String said = placing.sell();
+                    if (said != null) show(said);
+                    return true;
+                default:
+                    return false;
+            }
+        }
+    };
+
+    /** While placing, clicks on the deck (not on a window): left puts down or picks up, right lets go; the wheel turns. */
+    private final InputProcessor placingClicks = new InputAdapter() {
+        @Override
+        public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+            if (placing == null) return false;
+            updatePlacing();
+            if (placing == null) return false;
+            if (button == Input.Buttons.RIGHT) {
+                backOut();
+                return true;
+            }
+            if (button != Input.Buttons.LEFT) return false;
+            String said = placing.click();
+            if (said != null) show(said);
+            return true;
+        }
+
+        @Override
+        public boolean scrolled(float amountX, float amountY) {
+            if (placing == null || amountY == 0f) return false;
+            placing.turn(-Math.signum(amountY) * turnStep());
+            return true;
+        }
+    };
+
     /** Clicks on the game (not a window) for the scenario's pointer, while the developer console is closed. */
     private final InputProcessor scenarioClicks = new InputAdapter() {
         @Override
@@ -836,6 +930,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
      * player backing out of the planner expects. True when Esc was used up here.
      */
     public boolean backOut() {
+        if (placing != null) {
+            placing.back();
+            if (placing.isDone()) stopPlacing();
+            return true;
+        }
         if (world.nav.transfer.proposal() == null) return false;
         show(world.nav.transfer.discard());
         return true;
@@ -1296,7 +1395,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Actor shipPanel = hud.getMinimapPanel();
         float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, world.hints.line(hintContexts(), this::key), hintX, 24f);
+        font.draw(batch, placing != null ? placing.hint() : world.hints.line(hintContexts(), this::key), hintX, 24f);
         // Rank, sponsor and the weekly budget
         font.draw(batch, world.budget.describe(), left, top - 60f);
         // On deck there is no threat overlay: the missile warning goes up here, between the flight

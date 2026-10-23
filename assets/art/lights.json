@@ -6535,6 +6535,179 @@
    }
   ]
  },
+ "decor/aquarium": {
+  "canvas": [
+   0.0,
+   -32.0,
+   64.0,
+   32.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.7,
+    "color": "#6ad0f0",
+    "h": 3.0,
+    "intensity": 0.3,
+    "light": "point",
+    "reach": 2.0,
+    "w": 52.0,
+    "x": 32.0,
+    "y": -7.5
+   },
+   {
+    "alpha": 1.0,
+    "color": "#f0a040",
+    "h": 4.0,
+    "intensity": 0.3,
+    "light": "point",
+    "reach": 2.0,
+    "w": 5.0,
+    "x": 28.5,
+    "y": -14.0
+   },
+   {
+    "alpha": 1.0,
+    "color": "#f04a8a",
+    "h": 3.2,
+    "intensity": 0.3,
+    "light": "point",
+    "reach": 2.0,
+    "w": 4.0,
+    "x": 38.0,
+    "y": -19.0
+   }
+  ]
+ },
+ "decor/arcade_cabinet": {
+  "canvas": [
+   0.0,
+   -32.0,
+   48.0,
+   32.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#2ad0e0",
+    "h": 12.0,
+    "intensity": 0.35,
+    "light": "point",
+    "reach": 2.0,
+    "w": 34.0,
+    "x": 24.0,
+    "y": -11.0
+   },
+   {
+    "alpha": 1.0,
+    "color": "#f04a4a",
+    "h": 3.6,
+    "light": "glow",
+    "w": 3.6,
+    "x": 24.0,
+    "y": -24.0
+   },
+   {
+    "alpha": 1.0,
+    "color": "#4af06a",
+    "h": 3.6,
+    "light": "glow",
+    "w": 3.6,
+    "x": 30.0,
+    "y": -24.0
+   },
+   {
+    "alpha": 1.0,
+    "color": "#4a8af0",
+    "h": 3.6,
+    "light": "glow",
+    "w": 3.6,
+    "x": 36.0,
+    "y": -24.0
+   }
+  ]
+ },
+ "decor/exercise_bike": {
+  "canvas": [
+   0.0,
+   -64.0,
+   32.0,
+   64.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#6af0a0",
+    "h": 3.0,
+    "light": "glow",
+    "w": 6.0,
+    "x": 16.0,
+    "y": -56.5
+   }
+  ]
+ },
+ "decor/jukebox": {
+  "canvas": [
+   0.0,
+   -32.0,
+   48.0,
+   32.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#f0a040",
+    "h": 10.75,
+    "intensity": 0.3,
+    "light": "point",
+    "reach": 2.0,
+    "w": 32.0,
+    "x": 24.0,
+    "y": -12.38
+   }
+  ]
+ },
+ "decor/keyboard": {
+  "canvas": [
+   0.0,
+   -32.0,
+   64.0,
+   32.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#6af0a0",
+    "h": 3.0,
+    "light": "glow",
+    "w": 18.0,
+    "x": 16.0,
+    "y": -9.5
+   }
+  ]
+ },
+ "decor/media_screen": {
+  "canvas": [
+   0.0,
+   -16.0,
+   96.0,
+   16.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#7ac8ff",
+    "cone": 70.0,
+    "direction": -90.0,
+    "h": 7.0,
+    "intensity": 0.4,
+    "light": "cone",
+    "reach": 3.0,
+    "w": 96.0,
+    "x": 48.0,
+    "y": -12.5
+   }
+  ]
+ },
  "decor/wall_light": {
   "canvas": [
    0.0,

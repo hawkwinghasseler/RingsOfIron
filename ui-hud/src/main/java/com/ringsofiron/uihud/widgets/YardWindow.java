@@ -22,7 +22,9 @@ import java.util.function.BooleanSupplier;
  * weapon to fit instead (click to pick the next), and buttons to order it new or used, or fitted
  * from a salvaged one in the ship's hold. Rebuild
  * decks opens the ship editor for the yard to rebuild the ship to a new layout, and Ships for sale
- * opens the shipyard window where the station sells ships. Refreshes
+ * opens the shipyard window where the station sells ships. Furnish picks a piece of furniture or
+ * decor (click to pick the next) to buy and place on the deck, and Arrange moves what is aboard;
+ * both close the window for the deck, where the piece is put down. Refreshes
  * from the {@link YardProvider} a few times a second; closes itself when the ship leaves the yard.
  */
 public class YardWindow extends Window {
@@ -39,6 +41,9 @@ public class YardWindow extends Window {
     private final TextButton ships;
     private Runnable openShipyard;
     private BooleanSupplier sellsShips = () -> false;
+    private final TextButton furnishing, place, arrange;
+    private final Label furnished;
+    private int furnishingChoice;
     private final Table rows = new Table();
     private final Array<Row> rowWidgets = new Array<>();
     private YardProvider provider;
@@ -118,6 +123,27 @@ public class YardWindow extends Window {
         fuel.add(refill);
         add(fuel).left().padTop(4f).row();
         add(rows).left().padTop(8f).row();
+        furnishing = button("", () -> furnishingChoice = board.furnishings.size == 0 ? 0 : (furnishingChoice + 1) % board.furnishings.size);
+        place = button("", () -> {
+            if (provider == null || board.furnishings.size == 0) return;
+            String said = provider.placeFurnishing(board.furnishings.get(Math.min(furnishingChoice, board.furnishings.size - 1)).id);
+            if (said == null) setOpen(false);
+            else say(said);
+        });
+        arrange = button("Arrange aboard...", () -> {
+            if (provider == null) return;
+            String said = provider.arrangeFurnishings();
+            if (said == null) setOpen(false);
+            else say(said);
+        });
+        furnished = new Label("", skin, "dim");
+        Table furnish = new Table();
+        furnish.add(new Label("Furnish", skin)).left().padRight(14f);
+        furnish.add(furnishing).padRight(6f);
+        furnish.add(place).padRight(10f);
+        furnish.add(arrange).padRight(10f);
+        furnish.add(furnished).left();
+        add(furnish).left().padTop(8f).row();
         add(status).left().padTop(8f).row();
         Table bottom = new Table();
         bottom.add(button("Rebuild decks...", () -> {
@@ -197,6 +223,13 @@ public class YardWindow extends Window {
         refill.setText(board.refillCost < 0.5 ? "Tanks full" : "Refill tanks " + formatCredits(board.refillCost));
         refill.setDisabled(board.refillCost < 0.5 || board.credits < 1);
         ships.setDisabled(!sellsShips.getAsBoolean());
+        YardProvider.Furnishing f = board.furnishings.size == 0 ? null
+                : board.furnishings.get(Math.min(furnishingChoice, board.furnishings.size - 1));
+        furnishing.setText(f == null ? "-" : f.name + (f.use.isEmpty() ? "" : " (" + f.use + ")") + " >");
+        furnishing.setDisabled(f == null);
+        place.setText(f == null ? "Buy and place" : "Buy and place " + formatCredits(f.price));
+        place.setDisabled(f == null || board.credits < f.price);
+        furnished.setText(board.furnished);
         if (rowWidgets.size != board.hardpoints.size) rebuildRows();
         for (int i = 0; i < rowWidgets.size; i++) rowWidgets.get(i).update(board.hardpoints.get(i));
     }

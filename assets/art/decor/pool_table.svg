@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="64" viewBox="0 0 128 64">
+  <title>pool_table: pool table, racked</title>
+  <g id="base">
+    <rect x="2" y="2" width="124" height="60" rx="6" fill="#5a3a22" stroke="#10141a" stroke-width="2"/>
+    <rect x="10" y="10" width="108" height="44" rx="2" fill="#1f6a4a" stroke="#10141a" stroke-width="1.2"/>
+    <circle cx="10" cy="10" r="3.5" fill="#0c0f12"/>
+    <circle cx="64" cy="9" r="3.5" fill="#0c0f12"/>
+    <circle cx="118" cy="10" r="3.5" fill="#0c0f12"/>
+    <circle cx="10" cy="54" r="3.5" fill="#0c0f12"/>
+    <circle cx="64" cy="55" r="3.5" fill="#0c0f12"/>
+    <circle cx="118" cy="54" r="3.5" fill="#0c0f12"/>
+    <path d="M36,12 L36,52" stroke="#2c805c" stroke-width="1" stroke-dasharray="2 2"/>
+    <circle cx="84" cy="32" r="2.6" fill="#e8c040" stroke="#10141a" stroke-width="0.6"/>
+    <circle cx="89" cy="29" r="2.6" fill="#2a5ad0" stroke="#10141a" stroke-width="0.6"/>
+    <circle cx="89" cy="35" r="2.6" fill="#c83030" stroke="#10141a" stroke-width="0.6"/>
+    <circle cx="94" cy="26" r="2.6" fill="#6a2a9a" stroke="#10141a" stroke-width="0.6"/>
+    <circle cx="94" cy="32" r="2.6" fill="#e07020" stroke="#10141a" stroke-width="0.6"/>
+    <circle cx="94" cy="38" r="2.6" fill="#1c1c1c" stroke="#10141a" stroke-width="0.6"/>
+    <circle cx="99" cy="29" r="2.6" fill="#2a8a3a" stroke="#10141a" stroke-width="0.6"/>
+    <circle cx="99" cy="35" r="2.6" fill="#8a2a2a" stroke="#10141a" stroke-width="0.6"/>
+    <circle cx="30" cy="32" r="2.6" fill="#f4f0e4" stroke="#10141a" stroke-width="0.6"/>
+    <path d="M4,60 L22,34" stroke="#c8a070" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <g id="meta">
+    <rect id="collider" x="1" y="1" width="126" height="62" fill="none" stroke="none"/>
+  </g>
+</svg>

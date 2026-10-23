@@ -951,17 +951,25 @@ public final class CrewTasks {
      * Stands by. Heads home if aboard another craft, and moves off a tile that is not safe to
      * breathe on. At battle stations ({@link ShipTaskBoardComponent#battleSuits}) they suit up and
      * keep the suit on; otherwise a suited crew member takes the suit off after
-     * {@link #SUIT_OFF_DELAY} seconds standing by on a safe tile. Never finishes.
+     * {@link #SUIT_OFF_DELAY} seconds standing by on a safe tile. Aboard their own ship, out of
+     * their suit and with nothing to do, they use its furnishings ({@link Downtime}). Never finishes.
      */
     public static class Idle extends CrewLeaf {
         /** Seconds on a safe tile with nothing to do before a suit comes off. */
         public static final float SUIT_OFF_DELAY = 5f;
         private float calm, suiting;
+        private final Downtime downtime = new Downtime();
 
         @Override
         public void start() {
             calm = 0f;
             suiting = 0f;
+            downtime.reset(getObject());
+        }
+
+        @Override
+        public void end() {
+            if (getObject() != null) downtime.stop(getObject());
         }
 
         @Override
@@ -991,9 +999,16 @@ public final class CrewTasks {
                 return Status.RUNNING;
             }
             if (TaskRules.isSafe(grid, x, y)) {
-                if (!a.pos.isMoving()) a.crew.activity = "idle";
                 ShipTaskBoardComponent board = a.board();
-                if (board != null && board.battleSuits() && a.crew.def.suitAir > 0f) {
+                boolean battle = board != null && board.battleSuits() && a.crew.def.suitAir > 0f;
+                // Downtime: aboard their own ship, out of their suit, with nothing else to do (never a prisoner)
+                if (!battle && !a.crew.suited && !a.crew.held && home == a.pos.ship && a.pos.crossing == null) {
+                    if (downtime.step(a)) return Status.RUNNING;
+                } else if (downtime.using() != null) {
+                    downtime.stop(a);
+                }
+                if (!a.pos.isMoving()) a.crew.activity = "idle";
+                if (battle) {
                     // Battle stations: suit up and keep it on
                     calm = 0f;
                     if (!a.crew.suited) {
@@ -1021,6 +1036,7 @@ public final class CrewTasks {
                 return Status.RUNNING;
             }
             calm = 0f;
+            if (downtime.using() != null) downtime.stop(a);
             if (!a.pos.isMoving() || a.pos.pathBlocked) {
                 if (a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
                     a.pos.setPath(a.pathScratch);

@@ -6,6 +6,9 @@ import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.Fluid;
+import com.ringsofiron.interiorgrid.FurnishingType;
+import com.ringsofiron.interiorgrid.Furnishings;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.TankSupply;
@@ -17,12 +20,15 @@ import java.util.Locale;
 
 /**
  * ui-hud's yard window from the {@link StationYard}: the station the player's ship is docked at,
- * if its yard can work on the ship, what is damaged, the ship's hardpoints and the weapons on sale.
+ * if its yard can work on the ship, what is damaged, the ship's hardpoints and the weapons on sale,
+ * and the furnishings on sale ({@link FurnishingStore}).
  */
 public class YardWork implements YardProvider {
     private final GameWorld world;
     /** Opens the ship editor for a refit; set by the game screen. */
     private Runnable layoutEditor;
+    /** Starts placing furnishings on the deck; set by the game screen. */
+    private java.util.function.Consumer<String> furnisher;
 
     public YardWork(GameWorld world) {
         this.world = world;
@@ -54,6 +60,14 @@ public class YardWork implements YardProvider {
                 if (r != null) h.progress = r.aboard ? "fitting: " + r.tilesDone + " tiles done" : "part on its way";
             }
         }
+        for (FurnishingType t : world.furnishings.offers()) {
+            YardProvider.Furnishing f = out.addFurnishing();
+            f.id = t.id;
+            f.name = t.name;
+            f.use = t.use.name().toLowerCase(Locale.ROOT);
+            f.price = world.furnishings.price(t, station);
+        }
+        out.furnished = furnished(ship);
         CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
         for (WeaponDef d : world.yard.offers()) {
             Offer o = out.addOffer();
@@ -94,6 +108,40 @@ public class YardWork implements YardProvider {
                     .append(String.format(Locale.ROOT, " %.0f%%", 100 * have / full));
         }
         return sb.toString();
+    }
+
+    /** "4 furnishings aboard, 1 on its way", or empty with none. */
+    private String furnished(Entity ship) {
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        int aboard = grid == null ? 0 : Furnishings.all(grid).size, coming = world.furnishings.pending(ship).size();
+        if (aboard == 0 && coming == 0) return "";
+        String s = aboard + (aboard == 1 ? " furnishing" : " furnishings") + " aboard";
+        return coming == 0 ? s : s + ", " + coming + " on " + (coming == 1 ? "its" : "their") + " way";
+    }
+
+    /** What starts placing furnishings on the deck: a type's id to buy one, or null to arrange those aboard. */
+    public void setFurnisher(java.util.function.Consumer<String> furnisher) {
+        this.furnisher = furnisher;
+    }
+
+    @Override
+    public String placeFurnishing(String furnishingId) {
+        if (station() == null) return "No yard here";
+        FurnishingType type = world.furnishings.catalog().get(furnishingId);
+        if (type == null) return "The yard doesn't sell that";
+        if (furnisher == null) return YardProvider.super.placeFurnishing(furnishingId);
+        furnisher.accept(furnishingId);
+        return null;
+    }
+
+    @Override
+    public String arrangeFurnishings() {
+        if (station() == null) return "No yard here";
+        if (furnisher == null) return YardProvider.super.arrangeFurnishings();
+        ShipGridComponent grid = world.getPlayer().getComponent(ShipGridComponent.class);
+        if (grid == null || Furnishings.all(grid).size == 0) return "Nothing aboard to arrange";
+        furnisher.accept(null);
+        return null;
     }
 
     /** What opens the ship editor for the yard's deck rebuild ({@link ShipRefit}). */

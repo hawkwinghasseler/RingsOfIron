@@ -3023,6 +3023,9 @@ def main():
     components()
     effects()
     decor()
+    # The furnishings yards sell, drawn by their own script
+    from furnishing_svgs import furnishings
+    furnishings(os.path.join(OUT, "decor"))
     interactive()
     hulls()
     turrets()

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16" viewBox="0 0 32 16">
+  <title>dartboard: dartboard hung on a wall at the top, facing -y</title>
+  <g id="base">
+    <rect x="2" y="1" width="28" height="4" fill="#3a2a20" stroke="#10141a" stroke-width="1"/>
+    <rect x="4" y="5" width="24" height="5" rx="1" fill="#1c1c1c" stroke="#10141a" stroke-width="1"/>
+    <rect x="6" y="6" width="5" height="3" fill="#c83030"/>
+    <rect x="13" y="6" width="6" height="3" fill="#2a8a3a"/>
+    <rect x="21" y="6" width="5" height="3" fill="#c83030"/>
+    <path d="M11,10 L10,14 M16,10 L16,15 M22,10 L23,14" stroke="#c8a070" stroke-width="1" stroke-linecap="round"/>
+  </g>
+  <g id="meta">
+    <rect id="collider" x="1" y="1" width="30" height="14" fill="none" stroke="none"/>
+  </g>
+</svg>

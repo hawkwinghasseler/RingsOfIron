@@ -1,0 +1,229 @@
+# Furnishings: furniture and decor a station's yard sells from the yard window (Y, Furnish) and its
+# loaders carry aboard and set down exactly where the player puts it: anywhere on open floor, at any
+# angle, clear of walls, systems and other furnishings. Each one belongs to the tile its middle is
+# over, and burns with that tile's covering when a fire takes the tile; burned past a tenth of its
+# fuel, it is gone. The crew use them in their downtime: an idle crew member at home goes to one
+# with room and uses it, and their morale rises by relax an hour (up to the steady morale's
+# ceiling; see CrewCareer).
+#
+#   name    shown in the yard and in notices
+#   art     the region it draws with; drawn at rotation 0 with its back toward +y (the top of
+#           the SVG) and its front toward -y
+#   width   size across, tiles (x at rotation 0)
+#   depth   size front to back, tiles (y at rotation 0)
+#   fuel    combustible mass, kg: what a fire on its tile burns (a tile of carpet is 1.5 kg, and burns
+#           out in a few minutes)
+#   price   credits new
+#   use     LOUNGE, GAME, MUSIC, SCREEN, EXERCISE, READING, or DECOR (the crew don't use it)
+#   seats   how many crew can use it at once
+#   relax   morale an hour of use gives, 0 to 1
+#   verb    what a crew member using it is doing (the crew window shows it)
+#   flat    lies flat on the floor (a rug): other furnishings can stand on it
+
+[furnishing.couch]
+name = "Couch"
+art = "decor/couch"
+width = 1.5
+depth = 0.75
+fuel = 6.0
+price = 900.0
+use = "LOUNGE"
+seats = 3
+relax = 0.04
+verb = "lounging on the couch"
+
+[furnishing.armchair]
+name = "Armchair"
+art = "decor/armchair"
+width = 0.75
+depth = 0.75
+fuel = 3.0
+price = 450.0
+use = "LOUNGE"
+seats = 1
+relax = 0.035
+verb = "sitting back in the armchair"
+
+[furnishing.beanbag]
+name = "Beanbag"
+art = "decor/beanbag"
+width = 0.75
+depth = 0.75
+fuel = 2.0
+price = 150.0
+use = "LOUNGE"
+seats = 1
+relax = 0.03
+verb = "sprawled on the beanbag"
+
+[furnishing.card_table]
+name = "Card table"
+art = "decor/card_table"
+width = 1.0
+depth = 1.0
+fuel = 3.0
+price = 600.0
+use = "GAME"
+seats = 4
+relax = 0.05
+verb = "playing cards"
+
+[furnishing.chess_table]
+name = "Chess table"
+art = "decor/chess_table"
+width = 0.75
+depth = 0.75
+fuel = 2.0
+price = 500.0
+use = "GAME"
+seats = 2
+relax = 0.04
+verb = "playing chess"
+
+[furnishing.pool_table]
+name = "Pool table"
+art = "decor/pool_table"
+width = 2.0
+depth = 1.0
+fuel = 8.0
+price = 2500.0
+use = "GAME"
+seats = 2
+relax = 0.05
+verb = "shooting pool"
+
+[furnishing.arcade_cabinet]
+name = "Arcade cabinet"
+art = "decor/arcade_cabinet"
+width = 0.75
+depth = 0.5
+fuel = 3.0
+price = 1800.0
+use = "GAME"
+seats = 1
+relax = 0.05
+verb = "playing the arcade cabinet"
+
+[furnishing.dartboard]
+name = "Dartboard"
+art = "decor/dartboard"
+width = 0.5
+depth = 0.25
+fuel = 0.5
+price = 120.0
+use = "GAME"
+seats = 2
+relax = 0.03
+verb = "throwing darts"
+
+[furnishing.media_screen]
+name = "Media screen"
+art = "decor/media_screen"
+width = 1.5
+depth = 0.25
+fuel = 2.0
+price = 1500.0
+use = "SCREEN"
+seats = 4
+relax = 0.04
+verb = "watching a vid"
+
+[furnishing.aquarium]
+name = "Aquarium"
+art = "decor/aquarium"
+width = 1.0
+depth = 0.5
+fuel = 1.0
+price = 1600.0
+use = "SCREEN"
+seats = 2
+relax = 0.03
+verb = "watching the fish"
+
+[furnishing.jukebox]
+name = "Jukebox"
+art = "decor/jukebox"
+width = 0.75
+depth = 0.5
+fuel = 3.0
+price = 1200.0
+use = "MUSIC"
+seats = 2
+relax = 0.03
+verb = "listening to the jukebox"
+
+[furnishing.keyboard]
+name = "Keyboard"
+art = "decor/keyboard"
+width = 1.0
+depth = 0.5
+fuel = 2.5
+price = 1400.0
+use = "MUSIC"
+seats = 1
+relax = 0.05
+verb = "playing the keyboard"
+
+[furnishing.bookshelf]
+name = "Bookshelf"
+art = "decor/bookshelf"
+width = 1.0
+depth = 0.375
+fuel = 5.0
+price = 400.0
+use = "READING"
+seats = 1
+relax = 0.03
+verb = "reading"
+
+[furnishing.exercise_bike]
+name = "Exercise bike"
+art = "decor/exercise_bike"
+width = 0.5
+depth = 1.0
+fuel = 1.5
+price = 800.0
+use = "EXERCISE"
+seats = 1
+relax = 0.04
+verb = "on the exercise bike"
+
+[furnishing.weight_bench]
+name = "Weight bench"
+art = "decor/weight_bench"
+width = 0.5
+depth = 1.25
+fuel = 1.5
+price = 700.0
+use = "EXERCISE"
+seats = 1
+relax = 0.04
+verb = "lifting weights"
+
+[furnishing.coffee_table]
+name = "Coffee table"
+art = "decor/coffee_table"
+width = 0.75
+depth = 0.5
+fuel = 2.0
+price = 200.0
+use = "DECOR"
+
+[furnishing.planter]
+name = "Planter"
+art = "decor/planter"
+width = 0.5
+depth = 0.5
+fuel = 1.0
+price = 150.0
+use = "DECOR"
+
+[furnishing.rug]
+name = "Rug"
+art = "decor/rug"
+width = 1.5
+depth = 1.0
+fuel = 2.0
+price = 300.0
+use = "DECOR"
+flat = true

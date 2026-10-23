@@ -11,11 +11,14 @@ import com.ringsofiron.combatsys.modding.ShipWeaponsAssembler;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
 import com.ringsofiron.interiorgrid.Fluid;
+import com.ringsofiron.interiorgrid.Furnishing;
+import com.ringsofiron.interiorgrid.Furnishings;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.TankSupply;
+import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -33,7 +36,8 @@ import java.util.Map;
  * the new layout's shape. The crew
  * aboard are put on the nearest open deck of the new layout, the tanks keep what they held (as far
  * as the new tanks take it), the hardpoints are wired to the nearest weapon systems again, and
- * the ship latches back onto the port it was docked at. The layout is kept on the ship
+ * the ship latches back onto the port it was docked at; the furnishings aboard stay where they stood
+ * where the new decks have room for them, and the yard buys back the rest. The layout is kept on the ship
  * ({@link ShipLayoutComponent}), so a save reloads it and the editor opens it next time.
  *
  * <p>The yard does it at once and for free; it refuses while cargo is aboard or other yard work is
@@ -153,6 +157,7 @@ public final class ShipRefit {
         if (body != null && body.body != null && mass != null && mass.mass > 0f) {
             PhysicsManager.setMassData(body.body, mass.mass, mass.center.x, mass.center.y, mass.inertia);
         }
+        refurnish(world, ship, oldGrid, grid);
         world.crew.clearPathfinders();
         List<int[]> floor = GameScenario.floorTiles(grid);
         for (Entity e : crew) {
@@ -164,6 +169,29 @@ public final class ShipRefit {
         // Back onto the station, at the port that fits best
         world.docking.dockInPlace(ship, portToRelatch(ports, docked), station, stationPort);
         return null;
+    }
+
+    /**
+     * The furnishings aboard go back where they stood, as far as the new layout leaves room for them;
+     * the yard takes the rest, at what it would pay for them ({@link FurnishingStore#buyBack}).
+     */
+    static void refurnish(GameWorld world, Entity ship, ShipGridComponent from, ShipGridComponent to) {
+        double paid = 0;
+        int sold = 0;
+        for (Furnishing f : Furnishings.all(from)) {
+            float lx = from.gridOriginLocal.x + f.x() * from.tileSize, ly = from.gridOriginLocal.y + f.y() * from.tileSize;
+            Furnishing back = Furnishing.at(f.type, (lx - to.gridOriginLocal.x) / to.tileSize, (ly - to.gridOriginLocal.y) / to.tileSize,
+                    f.rotation);
+            back.fuel = f.fuel;
+            if (Furnishings.place(to, back) == null) continue;
+            paid += FurnishingStore.buyBack(f);
+            sold++;
+        }
+        if (sold == 0) return;
+        TraderComponent trader = ship.getComponent(TraderComponent.class);
+        if (trader != null) trader.credits += paid;
+        world.notices.post(String.format(java.util.Locale.ROOT, "The new decks had no room for %d %s; the yard took %s for %,.0f cr",
+                sold, sold == 1 ? "furnishing" : "furnishings", sold == 1 ? "it" : "them", paid));
     }
 
     /** The port of the new layout to latch with: the one where the old one was, else any of its size. */

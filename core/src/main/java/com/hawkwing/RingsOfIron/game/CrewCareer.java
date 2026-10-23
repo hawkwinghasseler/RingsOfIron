@@ -32,7 +32,8 @@ import java.util.Map;
  *   <li><b>Morale.</b> Drifts back toward {@link CrewRecord#STEADY_MORALE} by {@link #MORALE_DRIFT}
  *       a day. Unpaid wages cost {@link #UNPAID_MORALE}, a shipmate killed {@link #DEATH_MORALE}
  *       and crew lost in a rescue {@link #LOST_MORALE} each; a ship beaten or taken lifts it. Below
- *       {@link CrewRecord#LOW_MORALE} work slows.</li>
+ *       {@link CrewRecord#LOW_MORALE} work slows. Downtime on the ship's furnishings (a couch, a card
+ *       table; see {@code Downtime} in ai-crew) lifts it, as far as {@link #LEISURE_CEILING}.</li>
  *   <li><b>Wages.</b> Each payday, with the budget ({@link ServiceBudget#paydays}), every hired crew
  *       member's wage comes out of the ship's credits, as far as they go. Crew the service put
  *       aboard (the starting crew, and those requisitioned with a ship) draw no wage from the
@@ -59,6 +60,8 @@ public class CrewCareer extends FixedLogicSystem {
     public static final float UNPAID_MORALE = -0.25f, PAID_MORALE = 0.02f;
     public static final float DEATH_MORALE = -0.1f, LOST_MORALE = -0.05f;
     public static final float WIN_MORALE = 0.05f;
+    /** Highest morale downtime alone lifts a crew member to; a win or a payday can take it further. */
+    public static final float LEISURE_CEILING = 0.9f;
     static final double DAY = 86_400;
 
     private final GameWorld world;
@@ -130,6 +133,10 @@ public class CrewCareer extends FixedLogicSystem {
             r.gain(CrewRecord.Skill.MEDICINE, r.pendingCare * MEDICINE_XP_PER_SECOND);
             r.pendingCare = 0f;
             any = true;
+        }
+        if (r.pendingLeisure > 0f) {
+            if (r.morale < LEISURE_CEILING) r.changeMorale(Math.min(r.pendingLeisure, LEISURE_CEILING - r.morale));
+            r.pendingLeisure = 0f;
         }
         if (r.pendingHits > 0 || r.pendingDowns > 0) {
             r.downed += r.pendingDowns;
