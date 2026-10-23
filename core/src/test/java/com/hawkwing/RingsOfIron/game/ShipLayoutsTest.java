@@ -74,7 +74,7 @@ class ShipLayoutsTest {
             check(def.id, ship, grid, registry, problems);
             checked++;
         }
-        assertTrue(checked >= 11, "checked every ship type with a layout, found " + checked);
+        assertTrue(checked >= 24, "checked every ship type with a layout, found " + checked);
         assertTrue(problems.isEmpty(), String.join("\n", problems));
     }
 

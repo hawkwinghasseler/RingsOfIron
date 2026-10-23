@@ -61,3 +61,30 @@ ship = "tug_salvage"
 seller = "selene"
 price = 165000.0
 standing = 10.0
+
+# The interceptor, a little over its 163,000 value: the Patrol's fastest hull, and an Ensign's
+[ship_sale.patrol_interceptor]
+ship = "interceptor_patrol"
+seller = "patrol"
+price = 175000.0
+
+# The Combine's working hulls, each a little over its value, for captains it trusts. The rank ladder
+# still holds them to its sizes: the courier wants a Lieutenant Commander, the surveyor and the ore
+# barge a Commander
+[ship_sale.selene_courier]
+ship = "courier_selene"
+seller = "selene"
+price = 125000.0
+standing = 10.0
+
+[ship_sale.selene_surveyor]
+ship = "surveyor_selene"
+seller = "selene"
+price = 190000.0
+standing = 10.0
+
+[ship_sale.selene_ore_barge]
+ship = "barge_ore"
+seller = "selene"
+price = 235000.0
+standing = 10.0
