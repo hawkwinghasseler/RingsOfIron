@@ -135,6 +135,8 @@ def chassis_plan(cid, ch):
                                if 0 <= r + dr < H and 0 <= c + dc < len(rows[r + dr]) and rows[r + dr][c + dc] == chh)
                 parts.append(img(f"walls/{art}_{mask or '0'}.svg", c * px, r * px, px, px))
             elif art:
+                if art == "conduit":  # the junction is drawn over the floor, not in place of it
+                    parts.append(img("tiles/floor.svg", c * px, r * px, px, px))
                 parts.append(img(f"tiles/{art}.svg", c * px, r * px, px, px))
             if chh == "+":
                 # one arm toward each conduit neighbor: up, left, down, right = 0-3 quarter turns

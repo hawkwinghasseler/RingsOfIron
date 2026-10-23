@@ -293,29 +293,21 @@ def deck(x=0, y=0):
     return s
 
 
-def floor_area(w, h, x0=0, y0=0):
-    s = ""
-    for ty in range(int(h // T)):
-        for tx in range(int(w // T)):
-            s += deck(x0 + tx * T, y0 + ty * T)
-    return s
-
-
 def floors():
     a = Art()
     a.b = deck()
     write("tiles/floor.svg", T, T, a, "floor: steel deck plate")
 
-    # Power conduit: a deck plate with a junction box; arms are overlays drawn toward
-    # each conduit neighbor. The junction's lamp shows whether the circuit is live.
+    # Power conduit: a junction box drawn over the tile's own floor (and any covering on it), so
+    # it has no deck of its own; arms are overlays drawn toward each conduit neighbor. The
+    # junction's lamp shows whether the circuit is live.
     a = Art()
-    a.b = deck()
-    a.b += rect(20, 20, 24, 24, HOUSING, rx=3, stroke=INK)
+    a.b = rect(20, 20, 24, 24, HOUSING, rx=3, stroke=INK)
     a.b += bevel(21, 21, 22, 22, HOUSING_HI, INK)
     a.b += circle(32, 32, 6, "#6b5a2e", stroke=INK, sw=1.5)
     a.e += lit(circle(32, 32, 9, POWER, extra=' opacity="0.2"') + circle(32, 32, 5, POWER)
                + circle(32, 32, 2.5, "#fff3c4"), "glow")
-    write("tiles/conduit.svg", T, T, a, "conduit: deck plate with a power junction", unpowered=unp("tiles/conduit.svg"))
+    write("tiles/conduit.svg", T, T, a, "conduit: power junction overlay, drawn over the tile's floor", unpowered=unp("tiles/conduit.svg"))
 
     a = Art()
     a.b = rect(26, 0, 12, 22, "#20262e", stroke=INK, sw=1.5)
@@ -1045,8 +1037,7 @@ def crew_room(kind, size):
     w, h = tw * T, th * T
     c = ACCENT[kind]
     a = Art()
-    a.b = floor_area(w, h)
-    a.b += rect(0, 0, w, h, "none", stroke=INK, sw=2)
+    a.b = rect(0, 0, w, h, "none", stroke=INK, sw=2)
 
     def holo(cx, cy, r):
         a.b += circle(cx, cy, r, HOUSING, stroke=INK, sw=2)
@@ -1272,7 +1263,6 @@ def cargo(size):
     w, h = tw * T, th * T
     c = ACCENT["cargo"]
     a = Art()
-    a.b = floor_area(w, h)
 
     def tiedowns(x0, y0, x1, y1):
         for ty in range(int((y1 - y0) // T)):
@@ -1378,7 +1368,6 @@ def airlock(size):
             a.b += line(14, 16 + k * 70, w - 14, 16 + k * 70, STEEL_MID, sw=3)
         a.b += rect(6, 440, w - 12, 14, STEEL_MID, stroke=INK, sw=1.5)
         a.b += hazard_band(20, 442, w - 40, 10, "al_xl_mid")
-        a.b += floor_area(192, 256, 8, 460)
         a.b += rect(200, 460, 112, 256, HOUSING, stroke=INK, sw=2)  # suit room
         for y in range(472, 700, 34):
             suit(212, y)
@@ -1397,12 +1386,11 @@ POD_SEATS = {"s": (2, 2), "m": (2, 4), "l": (4, 5), "xl": (6, 8)}  # columns, ro
 def escape_pod(size):
     """A lifeboat in its bay, hatch toward +y (the top of the canvas) at rotation 0, where it
     launches through the hull: an orange-banded capsule with rows of crash couches facing
-    the hatch and a status panel on its own battery. The bay is walkable deck around it."""
+    the hatch and a status panel on its own battery. The bay is walkable: its own floor shows around it."""
     tw, th = AUX[size]
     w, h = tw * T, th * T
     c = ACCENT["escape_pod"]
     a = Art()
-    a.b += floor_area(w, h)
     inset = 5
     rx = min(w, h) * 0.22
     # the capsule shell
@@ -1444,7 +1432,6 @@ def docking_port(size, state):
             a.b += rect(side, ty * T, T, T, "#3d4552")
             a.b += plate(side + 5, ty * T + 5, T - 10, T - 10, "#5b6675", STEEL_HI, INK, rx=3)
         a.b += hazard_band(side + 10, 10, T - 20, 8, f"dp_{size}_{state}_{side}")
-    a.b += floor_area(w - 2 * T, h, T, 0)
     ow = w - 2 * T
     for ty in range(td):
         cy = ty * T + 40
@@ -1492,8 +1479,7 @@ def storage_tank(component, size):
     w, h = tw * T, th * T
     label, band = FLUIDS[component]
     a = Art()
-    a.b = floor_area(w, h)
-    a.b += rect(3, 3, w - 6, h - 6, STEEL_DARK, rx=6, stroke=INK, sw=2)  # cradle
+    a.b = rect(3, 3, w - 6, h - 6, STEEL_DARK, rx=6, stroke=INK, sw=2)  # cradle
 
     def vessel(x, y, vw, vh):
         r = min(vw, vh) / 2
