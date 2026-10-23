@@ -104,21 +104,34 @@ class EngineLayoutTest {
     }
 
     @Test
-    void anEngineNeedsFiveClearTilesPastItsNozzle() {
-        // A strut of hull four tiles aft of the nozzle, across its path
+    void anEngineNeedsFiveClearTilesPastItsNozzleForEachTileOfItsWidth() {
+        // A Small engine, one tile wide: a strut of hull three tiles past its nozzle is in the way, six is not
         assertNotNull(refusal(
-                "      #####",
-                "    EEE...#",
-                "#   EEE...#",
-                "      #...#",
-                "      #####"));
-        // Five tiles clear, and the grid's edge counts as space
+                "    #####",
+                "#  EE...#",
+                "    #...#",
+                "    #####"));
         assertNull(refusal(
-                "        #####",
-                "      EEE...#",
-                "#     EEE...#",
-                "        #...#",
-                "        #####"));
+                "       #####",
+                "#     EE...#",
+                "       #...#",
+                "       #####"));
+        // A Medium engine, two tiles wide, needs ten: nine is too few, eleven enough
+        String medium = refusal(
+                "           #####",
+                "         EEE...#",
+                "#        EEE...#",
+                "           #...#",
+                "           #####");
+        assertNotNull(medium);
+        assertTrue(medium.contains("needs 10 clear tiles"), medium);
+        assertNull(refusal(
+                "             #####",
+                "           EEE...#",
+                "#          EEE...#",
+                "             #...#",
+                "             #####"));
+        // The grid's edge counts as space
         assertNull(refusal(
                 "  #####",
                 "EEE...#",

@@ -10,7 +10,7 @@ import com.badlogic.gdx.utils.IntArray;
  * {@link Side#TOP} (+y), 1 {@link Side#LEFT}, 2 {@link Side#BOTTOM}, 3 {@link Side#RIGHT}. The row
  * at the other end is the flange. Either the flange sits just outside the hull, against an outer
  * wall, or it takes the place of one tile of that wall (the engine reaches one tile into the wall,
- * and no further). Everything else lies out in space, and the {@link #CLEARANCE} tiles past the
+ * and no further). Everything else lies out in space, and the {@link #clearance} tiles past the
  * nozzle, as wide as the engine, stay clear for its exhaust.
  *
  * <p>Built, an engine's tiles are hull: its casing ({@link #isCasing}) is light hull outside the
@@ -22,7 +22,7 @@ public final class EngineLayout {
 
     private EngineLayout() {}
 
-    /** Tiles past the nozzle, as wide as the engine, that must be open space. */
+    /** Tiles past the nozzle that must be open space, for each tile of the engine's width. */
     public static final int CLEARANCE = 5;
     /** The casing outside the hull: light hull. */
     public static final WeightClass CASING = WeightClass.LIGHT;
@@ -46,6 +46,20 @@ public final class EngineLayout {
     public static int length(MountFootprint m) {
         Side n = nozzle(m);
         return n.dx != 0 ? m.width() : m.height();
+    }
+
+    /** Tiles across the nozzle end: the slot's short side. */
+    public static int breadth(MountFootprint m) {
+        Side n = nozzle(m);
+        return n.dx != 0 ? m.height() : m.width();
+    }
+
+    /**
+     * Tiles past the nozzle, as wide as the engine, that must be open space: {@link #CLEARANCE} for
+     * each tile of its breadth, so 5 for a Small engine and 25 for an Extra Large one.
+     */
+    public static int clearance(MountFootprint m) {
+        return CLEARANCE * breadth(m);
     }
 
     /** True if footprint tile (x, y) is in the flange row, the end away from the nozzle. */
@@ -88,7 +102,7 @@ public final class EngineLayout {
      * Checks an engine's footprint on a grid it is not built into yet: in bounds and clear of other
      * mounts, hull pieces and thin walls; every tile but the flange's out in space, and no deck beside
      * any of them but behind a flange in the wall; the flange either wholly outside against the outer
-     * hull or wholly set into it; and nothing but space for {@link #CLEARANCE} tiles past the nozzle.
+     * hull or wholly set into it; and nothing but space for {@link #clearance} tiles past the nozzle.
      *
      * @return null if legal, otherwise a description of the problem
      */
@@ -144,12 +158,13 @@ public final class EngineLayout {
     }
 
     /**
-     * The first tile, as "x,y", within {@link #CLEARANCE} tiles past the nozzle (as wide as the
+     * The first tile, as "x,y", within {@link #clearance} tiles past the nozzle (as wide as the
      * engine) that is not open space, or null when the exhaust is clear. Off the grid is space.
      */
     public static String exhaustBlocked(ShipGridComponent grid, MountFootprint m) {
         Side out = nozzle(m);
-        for (int d = 1; d <= CLEARANCE; d++) {
+        int clear = clearance(m);
+        for (int d = 1; d <= clear; d++) {
             for (int y = m.originY; y < m.originY + m.height(); y++) {
                 for (int x = m.originX; x < m.originX + m.width(); x++) {
                     // Only the nozzle row's tiles look out past the footprint
@@ -157,7 +172,7 @@ public final class EngineLayout {
                     int bx = x + out.dx * d, by = y + out.dy * d;
                     Tile t = grid.getTile(bx, by);
                     if (t != null && (!t.isVoid() || t.mount != null)) {
-                        return "an engine needs " + CLEARANCE + " clear tiles past its nozzle; blocked at " + bx + "," + by;
+                        return "an engine needs " + clear + " clear tiles past its nozzle; blocked at " + bx + "," + by;
                     }
                 }
             }

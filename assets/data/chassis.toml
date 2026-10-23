@@ -10,8 +10,9 @@
 #   Engines mount on the outside of the hull: drawn out in the void, with the nozzle at the end
 #     that has only space beyond it and the flange at the other end, either against the outer
 #     hull or in place of one tile of it (the engine reaches one tile into the wall, no more).
-#     The 5 tiles past the nozzle, as wide as the engine, stay clear for the exhaust. The crew,
-#     power and pipes reach it from the deck just inside the wall behind its flange.
+#     Past the nozzle, as wide as the engine, 5 tiles for each tile of its width stay clear for
+#     the exhaust (5 Small, 10 Medium, 15 Large, 25 Extra Large). The crew, power and pipes
+#     reach it from the deck just inside the wall behind its flange.
 #   D docking port, drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium, 7 x 3 Large.
 #     The end tiles are frame, the rest the opening, with the port door on its
 #     outer edge. It faces the side with only space beyond it. Ports are passive
