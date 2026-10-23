@@ -166,10 +166,31 @@ class ArtNamesTest {
         for (boolean powered : new boolean[]{true, false}) {
             t.isPowered = powered;
             assertArt(ArtNames.floor(t));
+            assertArt(ArtNames.conduit(powered));
             assertArt(ArtNames.conduitArm(powered));
         }
         assertNull(ArtNames.covering(FloorCovering.NONE));
         for (FloorCovering c : FloorCovering.values()) if (c != FloorCovering.NONE) assertArt(ArtNames.covering(c));
+    }
+
+    /**
+     * What is drawn over a tile's floor (a conduit's junction, every system) has no steel deck plate
+     * of its own, so carpet or any other covering under it stays in sight.
+     */
+    @Test
+    void artOverTheFloorLeavesTheFloorInSight() throws IOException {
+        // The plate in the middle of tiles/floor.svg: one per deck tile drawn
+        String plate = "rx=\"2\" fill=\"#444e5b\"";
+        assertTrue(new String(Files.readAllBytes(ART.resolve("tiles/floor.svg"))).contains(plate));
+        try (java.util.stream.Stream<Path> files = Files.list(ART.resolve("components"))) {
+            for (Path f : (Iterable<Path>) files::iterator) {
+                assertTrue(!new String(Files.readAllBytes(f)).contains(plate), f.getFileName() + " draws its own deck");
+            }
+        }
+        for (boolean powered : new boolean[]{true, false}) {
+            Path f = ART.resolve(ArtNames.conduit(powered) + ".svg");
+            assertTrue(!new String(Files.readAllBytes(f)).contains(plate), f.getFileName() + " draws its own deck");
+        }
     }
 
     @Test
