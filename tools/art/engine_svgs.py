@@ -174,17 +174,33 @@ def chamber(a, cx, y0, rc, ln):
 
 
 def thrust_frame(a, cx, y_top, half_top, y_fl, w):
-    """Struts from the flange's ends in to the engine, and a gimbal block where they meet."""
+    """A short frame of struts from the flange in to the engine, round a gimbal at its middle."""
+    foot = min(w / 2 - 7, half_top + max(6, (y_fl - y_top) * 0.6))
+    sw = 4 if w > T * 2 else 3
     for sx in (-1, 1):
-        x0, x1 = cx + sx * (w / 2 - 7), cx + sx * half_top
-        a.b += line(x0, y_fl, x1, y_top, INK, sw=6)
-        a.b += line(x0, y_fl, x1, y_top, STEEL_MID, sw=3.5)
-        a.b += line(x0, y_fl, cx, y_top + (y_fl - y_top) * 0.35, INK, sw=4)
-        a.b += line(x0, y_fl, cx, y_top + (y_fl - y_top) * 0.35, STEEL_MID, sw=2)
-    g = max(5, min(w * 0.06, 14))
-    gy = y_top + (y_fl - y_top) * 0.35
+        x0, x1 = cx + sx * foot, cx + sx * half_top * 0.8
+        a.b += line(x0, y_fl, x1, y_top, INK, sw=sw + 1.5)
+        a.b += line(x0, y_fl, x1, y_top, STEEL_MID, sw=sw - 1)
+    g = max(3.5, min(w * 0.035, 9))
+    gy = (y_top + y_fl) / 2
+    a.b += line(cx, y_top, cx, y_fl, INK, sw=sw + 1.5)
+    a.b += line(cx, y_top, cx, y_fl, STEEL_MID, sw=sw - 1)
     a.b += circle(cx, gy, g, HOUSING, stroke=INK, sw=1.5)
     a.b += circle(cx, gy, g * 0.45, STEEL_HI)
+
+
+# What the frame between the engine and its flange takes at the least
+FRAME = T * 0.22
+
+
+def chamber_dims(rt, yt, y_fl, w):
+    """The combustion chamber behind a throat of radius `rt` at `yt`: (radius, converging length,
+    barrel length), as big as the slot leaves room for ahead of the frame."""
+    rc = min(rt * 3.6, w * 0.32)
+    conv = (rc - rt) * 1.1
+    dome = rc * 0.55
+    ln = min(rc * 2.6, y_fl - FRAME - yt - conv - dome)
+    return rc, conv, max(rc * 0.5, ln)
 
 
 def feed_lines(a, cx, y_from, y_fl, w, size, xs):
@@ -198,7 +214,7 @@ def turbopumps(a, cx, y, half, w, size):
         return
     r = max(7, min(w * 0.08, 22))
     for sx in (-1, 1):
-        pump(a, cx + sx * (half + r + 2), y, r)
+        pump(a, cx + sx * min(half + r, w / 2 - r - 3), y, r)
 
 
 # --- The three styles -------------------------------------------------------------
@@ -226,15 +242,15 @@ def style_bell(a, w, h, size, gid):
     re = w / 2 - 3
     length, rt = bell_layout(w, h, y_fl, re, 6.5)
     yt = 2 + length
-    ch_len = rt * 2.4
+    rc, conv, ch_len = chamber_dims(rt, yt, y_fl, w)
     # the chamber is drawn first so the converging section sits over its front edge
-    y_end = chamber(a, cx, yt + rt * 1.6 - 1, rt * 1.9, ch_len)
-    nozzle(a, cx, 2, re, rt, length, gid, hoops=2 if size == "s" else 3)
-    turbopumps(a, cx, yt + rt * 1.6 + ch_len * 0.5, rt * 1.9, w, size)
-    thrust_frame(a, cx, y_end, rt * 1.9, y_fl, w)
-    feed_lines(a, cx, y_end - 2, y_fl, w, size, rt * 0.9)
-    light(a, cx, yt + rt * 1.6 + ch_len * 0.5, 3 if size == "s" else 4, GLOW)
-    return (mirror(cx, yt, [(rt * 1.9 + 2, -(y_end - yt))] + chamber_profile(rt, rt * 1.9, rt * 1.6)[:-1]
+    y_end = chamber(a, cx, yt + conv - 1, rc, ch_len)
+    nozzle(a, cx, 2, re, rt, length, gid, rc=rc, conv=conv, hoops=2 if size == "s" else 3)
+    turbopumps(a, cx, yt + conv + ch_len * 0.5, rc * 0.85, w, size)
+    thrust_frame(a, cx, y_end, rc * 0.6, y_fl, w)
+    feed_lines(a, cx, y_end - 2, y_fl, w, size, rc * 0.5)
+    light(a, cx, yt + conv + ch_len * 0.5, 3 if size == "s" else 4, GLOW)
+    return (mirror(cx, yt, [(rc + 2, -(y_end - yt))] + chamber_profile(rt, rc, conv)[:-1]
                    + bell_profile(re + 2, rt, length))
             + f" M2,{f(y_end - 4)} H{f(w - 2)} V{f(h - 2)} H2 Z")
 
@@ -252,9 +268,10 @@ def style_nacelle(a, w, h, size, gid):
     bell = bell_profile(re, rt, length)
     lip_d = length * 0.1
     lip_r = radius_at(bell, lip_d) + 3
-    cw = min(w / 2 - 5, max(rt * 3.4, lip_r + 6))
+    rc, conv, ch_len = chamber_dims(rt, yt, y_fl, w)
+    cw = min(w / 2 - 5, max(rc + 6, lip_r + 6))
     top = yt - lip_d
-    ln = rt * (5.5 if size == "s" else 6.5)
+    ln = min(lip_d + conv + ch_len + rc * 0.55 + 4, y_fl - FRAME - top)
     bot = top + ln
     r = min(cw * 0.6, ln * 0.3)
     d = (f"M{f(cx - lip_r)},{f(top)} H{f(cx + lip_r)} C{f(cx + cw)},{f(top)} {f(cx + cw)},{f(top + r * 0.4)} "
@@ -314,16 +331,19 @@ def style_aerospike(a, w, h, size, gid):
     # the row of thrust cells along the plug's foot
     cells = max(3, int(bw // 14))
     cw = bw / cells
-    ch = max(8, min(T * 0.22, spike * 0.12))
+    ch = max(10, min(T * 0.35, spike * 0.18))
     for i in range(cells):
         x = cx - bw / 2 + i * cw
         a.b += rect(x + 1, base - 3, cw - 2, ch, STEEL, rx=2, stroke=INK, sw=1)
         a.b += line(x + cw / 2, base - 1, x + cw / 2, base + ch - 4, STEEL_MID, sw=1.2)
     # the manifold feeding them and its pumps
-    mh = max(10, min(T * 0.4, spike * 0.22))
     my = base + ch - 4
-    a.b += plate(cx - bw * 0.36, my, bw * 0.72, mh, HOUSING, HOUSING_HI, INK, rx=4)
-    turbopumps(a, cx, my + mh * 0.5, bw * 0.36, w, size)
+    mh = max(10, min(spike * 0.35, y_fl - FRAME - my))
+    a.b += plate(cx - bw * 0.45, my, bw * 0.9, mh, HOUSING, HOUSING_HI, INK, rx=4)
+    for k in range(1, max(2, int(mh // (T * 0.3)))):
+        y = my + mh * k / max(2, int(mh // (T * 0.3)))
+        a.b += line(cx - bw * 0.45 + 3, y, cx + bw * 0.45 - 3, y, INK, sw=1.2, extra=' opacity="0.7"')
+    turbopumps(a, cx, my + mh * 0.5, bw * 0.4, w, size)
     thrust_frame(a, cx, my + mh, bw * 0.3, y_fl, w)
     feed_lines(a, cx, my + mh - 2, y_fl, w, size, bw * 0.2)
     # the exhaust sheets running down both faces
