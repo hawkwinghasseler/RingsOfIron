@@ -206,6 +206,8 @@ public class GameWorld implements Disposable {
     public final Salvage salvage;
     /** Ship markets at faction yards, and prizes towed home (round 3). */
     public final Shipyard shipyard;
+    /** Furniture and decor yards sell, carried aboard and set down where the player puts it. */
+    public final FurnishingStore furnishings;
     /** How carried cargo is settled: the market's, plus salvage's between ships and parts sold. */
     public final SalvageSettlement cargoSettlement;
     /** The player's crew: experience, morale and wages. */
@@ -511,6 +513,9 @@ public class GameWorld implements Disposable {
         // Ships bought at faction yards, and taken ships towed home as prizes
         shipyard = new Shipyard(this);
         engine.addSystem(shipyard);
+        // ... and furnishings for the crew's downtime, carried aboard by the yards' loaders
+        furnishings = new FurnishingStore(this, this::getContent);
+        engine.addSystem(furnishings);
 
         // audio-spatial
         audio = modules.audio != null ? modules.audio : AudioManager.createDefault();

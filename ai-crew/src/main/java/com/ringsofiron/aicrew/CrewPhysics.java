@@ -27,6 +27,15 @@ public final class CrewPhysics implements Disposable {
     }
 
     /**
+     * Has {@code crew}, standing still, keep to (x, y), tiles, rather than the middle of their tile:
+     * a seat on a couch. Their next path ends at a tile's middle again.
+     */
+    public void standAt(Entity crew, float x, float y) {
+        CrewBody b = bodies.get(crew);
+        if (b != null) b.anchor(x, y);
+    }
+
+    /**
      * The body of {@code crew} on {@code nav}'s deck at (x, y), tiles: made there if they had none
      * or had one on another deck, and moved there if something else moved them since the last tick.
      */

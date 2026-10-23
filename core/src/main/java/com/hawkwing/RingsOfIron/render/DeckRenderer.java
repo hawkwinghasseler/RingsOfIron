@@ -26,6 +26,7 @@ import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -94,6 +95,16 @@ public final class DeckRenderer {
     private boolean lightsOn = true;
     private boolean heatShown;
 
+    /** Furnishings without art. */
+    private static final Color FURNISHING = new Color(0.55f, 0.42f, 0.3f, 1f);
+    /** A piece being placed where it fits, and where it doesn't. */
+    private static final Color GHOST_FITS = new Color(0.55f, 1f, 0.6f, 0.75f), GHOST_BLOCKED = new Color(1f, 0.4f, 0.35f, 0.75f);
+    /** A furnishing being placed, shown on {@link #ghostShip}'s deck; null for none. */
+    private Entity ghostShip;
+    private Furnishing ghost;
+    private boolean ghostFits;
+    private final float[] corners = new float[8];
+
     /** Smoke, wind and flames of each deck on show; a craft's go when it is no longer drawn. */
     private final Map<ShipGridComponent, HazardParticles> hazards = new IdentityHashMap<>();
     private final Map<ShipGridComponent, Boolean> hazardsDrawn = new IdentityHashMap<>();
@@ -141,6 +152,35 @@ public final class DeckRenderer {
             a[0] = 0f;
             return true;
         });
+    }
+
+    /**
+     * Shows {@code ghost}, a furnishing being placed, on {@code ship}'s deck: green where it
+     * {@code fits}, red where it doesn't. A null ghost shows none.
+     */
+    public void setGhost(Entity ship, Furnishing ghost, boolean fits) {
+        this.ghostShip = ship;
+        this.ghost = ghost;
+        this.ghostFits = fits;
+    }
+
+    /** A furnishing as a filled block at its spot and angle, in the deck's local meters. */
+    private void furnishingBlock(ShipGridComponent g, Furnishing f, Color c) {
+        float s = g.tileSize, w = f.type.width * s, h = f.type.depth * s;
+        float cx = g.gridOriginLocal.x + f.x() * s, cy = g.gridOriginLocal.y + f.y() * s;
+        shapes.setColor(c);
+        shapes.rect(cx - w / 2f, cy - h / 2f, w / 2f, h / 2f, w, h, 1f, 1f, f.rotation);
+    }
+
+    /** The edge of a furnishing's footprint. */
+    private void outline(ShipGridComponent g, Furnishing f, Color c) {
+        f.corners(0f, corners);
+        float s = g.tileSize, ox = g.gridOriginLocal.x, oy = g.gridOriginLocal.y;
+        shapes.setColor(c);
+        for (int i = 0; i < 4; i++) {
+            int j = (i + 1) % 4;
+            shapes.rectLine(ox + corners[2 * i] * s, oy + corners[2 * i + 1] * s, ox + corners[2 * j] * s, oy + corners[2 * j + 1] * s, 0.03f * s);
+        }
     }
 
     /** Whether the light map and glow are drawn (when there is lighting). */
@@ -218,6 +258,7 @@ public final class DeckRenderer {
                 batch.setTransformMatrix(transform.idt().translate(x, y, 0f).rotate(0f, 0f, 1f, degrees));
                 batch.begin();
                 deckArt.draw(batch, g, hold);
+                if (ship == ghostShip && ghost != null) deckArt.furnishing(batch, g, ghost, ghostFits ? GHOST_FITS : GHOST_BLOCKED);
                 batch.end();
                 batch.setTransformMatrix(IDENTITY);
             }
@@ -258,6 +299,16 @@ public final class DeckRenderer {
                 DeckView.walls(shapes, g, color);
                 DeckView.cargo(shapes, g, hold, color);
             }
+            // Furnishings with no art to draw them: a plain block at their spot and angle
+            for (int ty = 0; ty < g.height; ty++) {
+                for (int tx = 0; tx < g.width; tx++) {
+                    for (Furnishing f : g.tiles[ty][tx].furnishings) {
+                        if (withArt && deckArt.hasArt(f)) continue;
+                        float k = 0.4f + 0.6f * f.condition();
+                        furnishingBlock(g, f, color.set(FURNISHING.r * k, FURNISHING.g * k, FURNISHING.b * k, 1f));
+                    }
+                }
+            }
             // Smoke and flames over the deck, under everyone aboard; they open their own batches
             shapes.end();
             HazardParticles particles = hazards.get(g);
@@ -269,6 +320,10 @@ public final class DeckRenderer {
             shapes.begin(ShapeRenderer.ShapeType.Filled);
             if (heatShown) HeatOverlay.draw(shapes, g, color);
             style.overDeck(shapes, ship, g);
+            if (ship == ghostShip && ghost != null) {
+                if (!withArt || !deckArt.hasArt(ghost)) furnishingBlock(g, ghost, color.set(ghostFits ? GHOST_FITS : GHOST_BLOCKED));
+                outline(g, ghost, ghostFits ? GHOST_FITS : GHOST_BLOCKED);
+            }
             boolean figures = withArt && deckArt.hasCrew();
             for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <title>beanbag: beanbag, slumped toward +y</title>
+  <g id="base">
+    <path d="M24,3 C38,3 45,12 45,25 C45,38 36,45 24,45 C12,45 3,38 3,25 C3,12 10,3 24,3 Z" fill="#c27a2c" stroke="#10141a" stroke-width="2"/>
+    <ellipse cx="24" cy="29" rx="13" ry="10" fill="#9a5e1e" stroke="#10141a" stroke-width="1"/>
+    <path d="M11,13 Q24,5 37,13" stroke="#e4a052" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  </g>
+  <g id="meta">
+    <circle id="collider" cx="24" cy="24" r="21" fill="none" stroke="none"/>
+  </g>
+</svg>

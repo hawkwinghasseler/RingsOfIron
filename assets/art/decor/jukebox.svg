@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="32" viewBox="0 0 48 32">
+  <title>jukebox: jukebox, front toward -y</title>
+  <g id="base">
+    <path d="M3,30 L3,14 Q3,2 24,2 Q45,2 45,14 L45,30 Z" fill="#7a2a2a" stroke="#10141a" stroke-width="2"/>
+    <path d="M8,28 L8,15 Q8,7 24,7 Q40,7 40,15 L40,28 Z" fill="#3a1414" stroke="#10141a" stroke-width="1"/>
+    <rect x="12" y="20" width="24" height="6" rx="1" fill="#c8b070" stroke="#10141a" stroke-width="0.8"/>
+  </g>
+  <g id="emissive">
+    <g data-light="point" data-reach="2" data-intensity="0.3">
+    <path d="M9,15 Q9,8 24,8 Q39,8 39,15" fill="none" stroke="#f0a040" stroke-width="2"/>
+    <path d="M12,16 Q12,11 24,11 Q36,11 36,16" fill="none" stroke="#f04a8a" stroke-width="1.5"/>
+    <path d="M15,17 Q15,14 24,14 Q33,14 33,17" fill="none" stroke="#4ad0f0" stroke-width="1.5"/>
+    </g>
+  </g>
+  <g id="meta">
+    <rect id="collider" x="1" y="1" width="46" height="30" fill="none" stroke="none"/>
+  </g>
+</svg>

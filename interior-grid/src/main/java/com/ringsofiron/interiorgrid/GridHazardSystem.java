@@ -31,7 +31,8 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
  *
  * <h2>Fire</h2>
  * A fire burns the combustible covering on a tile (carpet; the steel floor itself does
- * not burn). It starts small and grows toward fully involved while its compartment has
+ * not burn) and the furnishings set down on it, each its share of the fuel; a furnishing burned
+ * past {@link Furnishing#BURNT} is gone ({@link ShipGridComponent#burntFurnishings}). It starts small and grows toward fully involved while its compartment has
  * oxygen, and shrinks when the oxygen runs low or the fuel runs out. While it burns it
  * uses up fuel and oxygen and gives off heat, smoke and CO2 into its compartment, so a
  * fire in a sealed room starves itself. Fire jumps to a neighbouring flammable tile it
@@ -598,26 +599,31 @@ public class GridHazardSystem extends FixedLogicSystem {
                 if (o < 0f) t.fireIntensity += FIRE_SMOTHER_RATE * o * dt;
                 else t.fireIntensity += FIRE_GROWTH_RATE * o * dt;
                 // As the last of the fuel goes, the fire dies down with it
-                t.fireIntensity = Math.min(t.fireIntensity, Math.min(1f, t.fuel / (FUEL_TAPER * area)));
+                float furnished = t.furnishingFuel(), fuel = t.fuel + furnished;
+                t.fireIntensity = Math.min(t.fireIntensity, Math.min(1f, fuel / (FUEL_TAPER * area)));
                 if (t.fireIntensity <= 0f) {
                     t.extinguish();
                     continue;
                 }
 
-                // Burn fuel and oxygen into heat, smoke and CO2
+                // Burn fuel and oxygen into heat, smoke and CO2: the covering and the furnishings
+                // on the tile alike, each its share
                 float wanted = BURN_RATE * area * t.fireIntensity * dt;
-                float burned = Math.min(t.fuel, wanted);
+                float burned = Math.min(fuel, wanted);
                 burned = (float) Math.min(burned, c.oxygen / OXYGEN_PER_FUEL);
-                t.fuel -= burned;
+                float share = fuel > 0f ? burned / fuel : 0f;
+                t.fuel -= t.fuel * share;
+                if (furnished > 0f) burnFurnishings(grid, t, share);
                 c.oxygen = Math.max(0.0, c.oxygen - burned * OXYGEN_PER_FUEL);
                 c.carbonDioxide += burned * CO2_PER_FUEL;
                 c.smoke += burned * SMOKE_PER_FUEL;
                 // Heat follows the share of the wanted burn that fuel and oxygen allowed
                 t.temperature += FIRE_HEAT_OUTPUT * area * t.fireIntensity * dt * (burned / wanted) / TILE_HEAT_CAPACITY;
-                if (t.fuel <= BURNT_OUT * FUEL_TAPER * area) {
-                    // The carpet is gone; the steel floor stays
+                if (t.fuel + t.furnishingFuel() <= BURNT_OUT * FUEL_TAPER * area) {
+                    // The carpet is gone, and whatever stood on it; the steel floor stays
                     t.fuel = 0f;
                     if (t.covering.fuelPerArea > 0f) t.covering = FloorCovering.NONE;
+                    while (t.furnishings.size > 0) burnAway(grid, t, t.furnishings.peek());
                     t.extinguish();
                     continue;
                 }
@@ -632,6 +638,24 @@ public class GridHazardSystem extends FixedLogicSystem {
             }
         }
         for (Tile t : ignitions) t.ignite();
+    }
+
+    /** Takes {@code share} of each furnishing's fuel on {@code t}; one burned past {@link Furnishing#BURNT} is gone. */
+    private static void burnFurnishings(ShipGridComponent grid, Tile t, float share) {
+        for (int i = t.furnishings.size - 1; i >= 0; i--) {
+            Furnishing f = t.furnishings.get(i);
+            f.fuel -= f.fuel * share;
+            if (f.isBurnt()) burnAway(grid, t, f);
+        }
+    }
+
+    private static void burnAway(ShipGridComponent grid, Tile t, Furnishing f) {
+        t.furnishings.removeValue(f, true);
+        f.fuel = 0f;
+        f.users.clear();
+        // Kept for the game to report; a grid nobody reads keeps only the latest few
+        if (grid.burntFurnishings.size >= 16) grid.burntFurnishings.removeIndex(0);
+        grid.burntFurnishings.add(f);
     }
 
     /**

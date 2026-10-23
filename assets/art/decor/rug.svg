@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64" viewBox="0 0 96 64">
+  <title>rug: patterned rug</title>
+  <g id="base">
+    <rect x="2" y="2" width="92" height="60" rx="2" fill="#8a3a2a" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="7" y="7" width="82" height="50" fill="none" stroke="#d8a050" stroke-width="2"/>
+    <rect x="12" y="12" width="72" height="40" fill="#6a2a20"/>
+    <path d="M48,16 L76,32 L48,48 L20,32 Z" fill="#c87a3a" stroke="#d8a050" stroke-width="1.5"/>
+    <path d="M48,24 L62,32 L48,40 L34,32 Z" fill="#2a4a6a"/>
+    <path d="M6,2 L6,0 M6,62 L6,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M12,2 L12,0 M12,62 L12,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M18,2 L18,0 M18,62 L18,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M24,2 L24,0 M24,62 L24,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M30,2 L30,0 M30,62 L30,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M36,2 L36,0 M36,62 L36,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M42,2 L42,0 M42,62 L42,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M48,2 L48,0 M48,62 L48,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M54,2 L54,0 M54,62 L54,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M60,2 L60,0 M60,62 L60,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M66,2 L66,0 M66,62 L66,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M72,2 L72,0 M72,62 L72,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M78,2 L78,0 M78,62 L78,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M84,2 L84,0 M84,62 L84,64" stroke="#d8c8a0" stroke-width="1"/>
+    <path d="M90,2 L90,0 M90,62 L90,64" stroke="#d8c8a0" stroke-width="1"/>
+  </g>
+  <g id="meta">
+  </g>
+</svg>

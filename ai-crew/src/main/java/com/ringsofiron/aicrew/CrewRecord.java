@@ -67,6 +67,8 @@ public class CrewRecord {
     public transient int pendingHits;
     /** Enemies downed since the game last drained them. */
     public transient int pendingDowns;
+    /** Morale earned in downtime on the ship's furnishings since the game last drained it. */
+    public transient float pendingLeisure;
 
     public CrewRecord() {}
 

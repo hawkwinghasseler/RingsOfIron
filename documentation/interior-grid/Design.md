@@ -29,6 +29,13 @@ Every floor (including power conduits) is a **steel deck plate**. Steel does not
 
 The deck is also the pressure boundary under the room: in this top-down model the space beneath a deck is open space, so a damaged deck plate leaks to space like damaged hull.
 
+### Furnishings
+Furniture and decor (`Furnishing`, a kind of `FurnishingType` from `[furnishing.*]` in `assets/data/furnishings.toml`) stand anywhere on open floor, not on the tile grid: each belongs to the tile its middle is over (`Tile.furnishings`) but sits at an offset from that tile's middle (`offsetX`, `offsetY`, each in [-0.5, 0.5) tiles) and is turned by any angle (`rotation`, degrees counter-clockwise; at 0 its front faces -y). `Furnishing.at(type, x, y, rotation)` makes one with its middle at an exact deck point; `Furnishings.place` sets it down if its whole footprint is over floor (no wall, void or system mount under any of it), no thin wall or door runs across it, and it is clear of every other furnishing, except that anything can stand on a `flat` one (a rug). `Furnishings.at` finds the one under a point, `Furnishings.all` lists a deck's.
+
+Each kind has a size (`width` across, `depth` front to back), a combustible mass (`fuel`), a price, and a `use` saying what the crew do with it in their downtime (`LOUNGE`, `GAME`, `MUSIC`, `SCREEN`, `EXERCISE`, `READING`, or `DECOR` for nothing), with `seats` and the morale an hour of use gives (`relax`). The game sells eighteen, from couches and beanbags to a pool table, an arcade cabinet and an aquarium (see ai-crew's downtime and stations-docking's yard).
+
+A furnishing is fuel for a fire on its tile, alongside the covering (see Fire). A save writes each one with its kind's numbers, so it loads the same whatever the data says later.
+
 ### Two kinds of wall
 - **Full-tile walls** fill a whole tile: `HULL` for the outer hull and `INTERNAL` for interior walls.
 - **Edge walls** are thin walls on the boundary *between* two tiles, so a room can be divided without spending a tile on the wall. They are stored per edge on `ShipGridComponent`:
@@ -200,7 +207,7 @@ Heat therefore spreads out from a fire to the tiles around it, also through wall
 
 ## Fire
 A fire is an **intensity** on a tile: 0 is no fire, a new fire starts at 0.05 (`Tile.ignite()`) and grows toward 1, fully involved. `Tile.fireSize()` reports SMALL, MEDIUM or LARGE.
-- **Fuel.** Only a floor covering burns. A tile without one cannot be lit.
+- **Fuel.** A floor covering burns, and so do the furnishings on the tile. A tile with neither cannot be lit; a couch on bare steel can. The fire burns the covering and each furnishing its share of the tile's fuel. A furnishing burned to `Furnishing.BURNT` (a tenth of its fuel) is gone: it leaves its tile and is listed in `ShipGridComponent.burntFurnishings` for the game to report. One a fire only scorched stays, drawn darker, and below `Furnishing.USABLE` (half) the crew no longer use it.
 - **Growth.** With standard air a fire gains `FIRE_GROWTH_RATE` (1/60 per s), so a small fire takes about a minute to become a large one. Growth slows as the room's oxygen falls; below 60% of standard oxygen partial pressure (`FIRE_MIN_OXYGEN`, about 12.6% O2 at 1 atm) the fire shrinks instead, at up to `FIRE_SMOTHER_RATE` (0.25 per s, in vacuum). As the last of its fuel goes, the fire dies down with it.
 - **Burning.** A fire burns `BURN_RATE × intensity` (0.01 kg/s per m² at full size). Each kg of fuel uses 70 mol of oxygen and gives 55 mol of CO2 and 0.08 kg of smoke. Heat is set separately, so fires burn slowly but hot: a fully involved fire puts `FIRE_HEAT_OUTPUT` (1.2 MW per m²) into its tile, scaled down when fuel or oxygen limits the burn. A carpeted tile burns out in about two and a half minutes at full size, and the carpet is then gone. A fire in a sealed room uses up the room's oxygen and starves itself; an open door or a vent decides how long it can keep going.
 - **Spreading.** Each second, a burning tile has a chance to jump to each neighbouring flammable tile that air connects it to: `SPREAD_RATE × intensity × (0.15 + 0.85 × heat)`, with `SPREAD_RATE` 0.05, where `heat` runs from 0 at ambient to 1 at `IGNITION_TEMPERATURE` (600 K). Big fires spread to hot tiles quickly; a small fire barely reaches a cold one. A fire in a carpeted 9 × 6 room reaches a quarter of it in about two minutes and half of it in three to five.
@@ -278,7 +285,7 @@ A rails warp jump therefore only ever starts with no fire and no venting. Each s
 - `ShipSubsystemRegistryComponent`: the ship's list of subsystem entities.
 
 ### Saving
-Register `InteriorGridSaveParticipant` with the `SerializationService`. It installs `ShipGridSerializer`, which writes each grid as plain state: tiles, edge walls, hull pieces, mounts, pipes, and each compartment's air keyed by one of its tiles. On load it places the pieces and mounts again, rebuilds the compartments and pours the saved air back in.
+Register `InteriorGridSaveParticipant` with the `SerializationService`. It installs `ShipGridSerializer`, which writes each grid as plain state: tiles, edge walls, hull pieces, mounts, pipes, furnishings, and each compartment's air keyed by one of its tiles. On load it places the pieces and mounts again, rebuilds the compartments and pours the saved air back in.
 - `ShipSubsystemRegistryComponent` saves `EntityRef`s (`ownerRef`, `subsystemRefs`). Its live `ownerEntity` and `subsystems` are transient.
 - `MountFootprint.installed` is transient too, so a save never drags in a system entity.
 - After every entity is loaded, the participant calls `registry.relink(uuids)` and `grid.relinkMounts(registry.subsystems)` to restore both.

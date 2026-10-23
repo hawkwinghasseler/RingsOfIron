@@ -152,6 +152,7 @@ Hacking takes longer than cutting. All three count as hostile acts.
 - The player picks the install tile in the refit UI. Crew carry the part there and do the work tile by tile.
 - Repairs work the same way: crew work through damaged tiles.
 - Skipping forward in time completes refit and repair work in the background, in proportion to the time passed.
+- **Furnishings** (`FurnishingStore`, core): the yard window's Furnish row sells furniture and decor from `furnishings.toml`. Buy and place closes the window and puts the piece on the player's deck under the pointer: the wheel or Q and E turn it (15°, or 1° with Shift), it shows green where it fits and red where it doesn't, and a click orders it at that exact spot and angle (`FurnishingPlacement`). The order holds the spot; one of the station's loaders carries the piece across the dock (`CarryTask`, set down at the nearest tile reachable from the dock) and it is paid for and set down when it lands. On the rails it comes aboard after 30 s; if no loader comes for it in two minutes, the yard's hands bring it. Leaving first calls the order off, unpaid. Arrange aboard moves the pieces already aboard for free (click one, then where it goes) and X sells the one under the pointer back for 40% of its price times what a fire left of it. A deck rebuild keeps every piece the new layout has room for and sells the rest back. Orders on their way are not saved.
 
 ## NPC Freighters
 - Inside the bubble, freighters dock physically with ports, like the player.

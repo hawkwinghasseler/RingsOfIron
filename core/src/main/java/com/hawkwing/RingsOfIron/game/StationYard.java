@@ -920,7 +920,7 @@ public class StationYard extends EntitySystem {
         return n;
     }
 
-    private static boolean walkway(Entity ship, Entity station) {
+    static boolean walkway(Entity ship, Entity station) {
         ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
         if (g == null) return false;
         for (GridLink l : g.links) {

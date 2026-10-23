@@ -116,6 +116,35 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             json.writeArrayEnd();
         }
 
+        Array<Furnishing> furnishings = Furnishings.all(grid);
+        if (furnishings.size > 0) {
+            json.writeArrayStart("furnishings");
+            for (Furnishing f : furnishings) {
+                FurnishingType k = f.type;
+                json.writeObjectStart();
+                json.writeValue("type", k.id);
+                json.writeValue("name", k.name);
+                json.writeValue("art", k.art);
+                json.writeValue("width", k.width);
+                json.writeValue("depth", k.depth);
+                json.writeValue("fullFuel", k.fuel);
+                json.writeValue("price", k.price);
+                json.writeValue("use", k.use.name());
+                json.writeValue("seats", k.seats);
+                json.writeValue("relax", k.relax);
+                json.writeValue("verb", k.verb);
+                if (k.flat) json.writeValue("flat", true);
+                json.writeValue("x", f.tileX);
+                json.writeValue("y", f.tileY);
+                json.writeValue("ox", f.offsetX);
+                json.writeValue("oy", f.offsetY);
+                json.writeValue("rotation", f.rotation);
+                json.writeValue("fuel", f.fuel);
+                json.writeObjectEnd();
+            }
+            json.writeArrayEnd();
+        }
+
         json.writeArrayStart("compartments");
         for (Compartment c : grid.compartments) {
             if (c.tiles.size == 0) continue;
@@ -244,6 +273,26 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             for (JsonValue l = lights.child; l != null; l = l.next) {
                 grid.wallLights.add(new WallLight(l.getInt("x"), l.getInt("y"), Side.valueOf(l.getString("side"))));
             }
+        }
+
+        // Each furnishing keeps the kind it was bought as, so a save loads the same whatever the data says now.
+        // Saves from before furnishings have none
+        JsonValue furnishings = data.get("furnishings");
+        for (JsonValue f = furnishings == null ? null : furnishings.child; f != null; f = f.next) {
+            FurnishingType.Use use;
+            try {
+                use = FurnishingType.Use.valueOf(f.getString("use", "DECOR"));
+            } catch (IllegalArgumentException e) {
+                use = FurnishingType.Use.DECOR;
+            }
+            FurnishingType k = new FurnishingType(f.getString("type"), f.getString("name", null), f.getString("art", null),
+                    f.getFloat("width", 1f), f.getFloat("depth", 1f), f.getFloat("fullFuel", 0f), f.getDouble("price", 0),
+                    use, f.getInt("seats", 1), f.getFloat("relax", 0f), f.getString("verb", null));
+            k.flat = f.getBoolean("flat", false);
+            Furnishing placed = new Furnishing(k, f.getInt("x"), f.getInt("y"), f.getFloat("ox", 0f), f.getFloat("oy", 0f),
+                    f.getFloat("rotation", 0f));
+            placed.fuel = f.getFloat("fuel", k.fuel);
+            Furnishings.restore(grid, placed);
         }
 
         CompartmentBuilder.rebuild(grid);

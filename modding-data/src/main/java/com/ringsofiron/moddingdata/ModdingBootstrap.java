@@ -3,6 +3,7 @@ package com.ringsofiron.moddingdata;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.moddingdata.defs.FactionDef;
+import com.ringsofiron.moddingdata.defs.FurnishingDef;
 import com.ringsofiron.moddingdata.defs.OperationDef;
 import com.ringsofiron.moddingdata.defs.RankDef;
 import com.ringsofiron.moddingdata.defs.ShipSaleDef;
@@ -53,6 +54,7 @@ public class ModdingBootstrap {
         defs.registerType("tension", TensionDef.class);
         defs.registerType("shipyard", ShipyardDef.class);
         defs.registerType("ship_sale", ShipSaleDef.class);
+        defs.registerType("furnishing", FurnishingDef.class);
     }
 
     private final Path assetsDir;

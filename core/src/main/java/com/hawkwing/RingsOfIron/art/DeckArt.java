@@ -10,6 +10,7 @@ import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.EdgeConduit;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.FloorCovering;
+import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -26,8 +27,9 @@ import java.util.Map;
 /**
  * Draws a deck with the art pack: floors, coverings and conduits (on tiles and along edges), walls joined to their
  * neighbors, wedges, the systems in their mounts (dark when they have no power), docking ports
- * open or shut, thin walls and bulkhead doors, wall lights, damage, breaches, seals, fire and
- * cargo. {@link #glow} draws again just what is lit, for after the light map.
+ * open or shut, thin walls and bulkhead doors, wall lights, furnishings (each at its own spot and
+ * angle, darker as a fire takes it), damage, breaches, seals, fire and cargo. {@link #glow} draws
+ * again just what is lit, for after the light map.
  *
  * Everything is in the grid's local meters, so the batch's transform carries the craft's pose.
  * What has no art is left out, and the caller keeps its flat shapes for what this cannot draw
@@ -36,6 +38,8 @@ import java.util.Map;
 public final class DeckArt {
     private final ArtLibrary art;
     private final Color tint = new Color();
+    /** The batch's color before a furnishing is drawn shaded. */
+    private final Color before = new Color();
     /** Where each crew member was last drawn and which way they faced: {x, y, degrees}. */
     private final Map<Object, float[]> facing = new IdentityHashMap<>();
     /** The crate of each carrying crew region, for tinting it alone. */
@@ -69,6 +73,7 @@ public final class DeckArt {
         edgeConduits(batch, grid);
         drawPipes(batch, art, layout(grid), grid.gridOriginLocal.x, grid.gridOriginLocal.y, grid.tileSize);
         wallLights(batch, grid, power);
+        furnishings(batch, grid);
         effects(batch, grid);
         cargo(batch, grid, hold);
     }
@@ -87,6 +92,7 @@ public final class DeckArt {
             edges(batch, grid, power);
             edgeConduits(batch, grid);
             wallLights(batch, grid, power);
+            if (power) furnishings(batch, grid);
             effects(batch, grid);
         } finally {
             glowing = false;
@@ -397,6 +403,45 @@ public final class DeckArt {
             float ex = grid.gridOriginLocal.x + p.edgeX() * s, ey = grid.gridOriginLocal.y + p.edgeY() * s;
             batch.draw(r, ex - w / 2f, ey - h, w / 2f, h, w, h, 1f, 1f, p.rotation() * 90f);
         }
+    }
+
+    /** Every furnishing aboard, rugs and the like first so the rest stand on them. */
+    private void furnishings(Batch batch, ShipGridComponent grid) {
+        for (int pass = 0; pass < 2; pass++) {
+            boolean flat = pass == 0;
+            for (int y = 0; y < grid.height; y++) {
+                for (int x = 0; x < grid.width; x++) {
+                    for (Furnishing f : grid.tiles[y][x].furnishings) {
+                        if (f.type.flat == flat) furnishing(batch, grid, f, null);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Whether {@code f} has art to draw with. */
+    public boolean hasArt(Furnishing f) {
+        return art.region(f.type.art) != null;
+    }
+
+    /**
+     * One furnishing, its middle at its spot and turned by its angle, in a batch already begun and
+     * moved to the craft's pose: scorched darker as a fire burns it, or tinted {@code tint} (a piece
+     * being placed) when not null.
+     */
+    public void furnishing(Batch batch, ShipGridComponent grid, Furnishing f, Color tint) {
+        TextureRegion r = shown(art.region(f.type.art));
+        if (r == null) return;
+        float s = grid.tileSize, w = f.type.width * s, h = f.type.depth * s;
+        float cx = grid.gridOriginLocal.x + f.x() * s, cy = grid.gridOriginLocal.y + f.y() * s;
+        Color was = before.set(batch.getColor());
+        if (tint != null) batch.setColor(tint);
+        else if (!glowing && f.condition() < 1f) {
+            float shade = 0.3f + 0.7f * f.condition();
+            batch.setColor(shade, shade * 0.92f, shade * 0.85f, was.a);
+        }
+        batch.draw(r, cx - w / 2f, cy - h / 2f, w / 2f, h / 2f, w, h, 1f, 1f, f.rotation);
+        batch.setColor(was);
     }
 
     private void effects(Batch batch, ShipGridComponent grid) {
