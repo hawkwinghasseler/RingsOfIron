@@ -109,10 +109,13 @@ public final class DeckArt {
                 if (t == null || !t.isOpen()) continue;
                 float x0 = grid.gridOriginLocal.x + x * s, y0 = grid.gridOriginLocal.y + y * s;
                 tile(batch, ArtNames.floor(t), x0, y0, s);
-                // A covering stops at a conduit, so the conduit stays in sight
                 String covering = ArtNames.covering(t.covering);
-                if (covering != null && !t.isPowerConduit()) tile(batch, covering, x0, y0, s);
+                if (covering != null) tile(batch, covering, x0, y0, s);
                 if (!t.isPowerConduit()) continue;
+                // The junction sits on the floor and its covering; under a system, the system hides
+                // it, so it gives no glow there
+                if (glowing && t.mount != null) continue;
+                tile(batch, ArtNames.conduit(t.isPowered), x0, y0, s);
                 TextureRegion arm = art.region(ArtNames.conduitArm(t.isPowered));
                 if (arm == null) continue;
                 // 0 up, 1 left, 2 down, 3 right; an arm meets a conduit on the next tile or along the edge
