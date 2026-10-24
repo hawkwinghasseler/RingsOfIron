@@ -33,7 +33,7 @@ import java.util.function.Supplier;
  * (round 7: seed 7 made Commander and Captain on one day). A promotion held back for time is given
  * when the time is up ({@link #promoteDue}). Promotions are never taken back.
  */
-public class FactionStanding implements SaveParticipant {
+public class FactionStanding implements SaveParticipant, Resettable {
     public static final float MIN = -100f, MAX = 100f;
     /** Standing lost for forcing a door each way. */
     public static final float PRY_COST = 10f, HACK_COST = 10f, CUT_COST = 25f;
@@ -113,6 +113,7 @@ public class FactionStanding implements SaveParticipant {
     }
 
     /** Starts a new career: rank 0 with the sponsor, standing 0 with everyone. */
+    @Override
     public void reset() {
         record = fresh();
         grievances.clear();

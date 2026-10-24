@@ -34,7 +34,7 @@ import java.util.TreeSet;
  * {@link #MIN_BERTHS}. Everyone aboard counts, the player and prisoners too, so a crew larger than
  * the pods can carry is the player's choice to make. Who has been hired from today's pools is saved.
  */
-public class CrewHiring implements SaveParticipant {
+public class CrewHiring implements SaveParticipant, Resettable {
     /** Crew a station offers each day: at least {@link #MIN_POOL}, at most {@link #MAX_POOL}. */
     public static final int MIN_POOL = 3, MAX_POOL = 5;
     /** Fewest people any ship berths. */
@@ -76,6 +76,7 @@ public class CrewHiring implements SaveParticipant {
     }
 
     /** Forgets who has been hired, for a load: a save without hires has none. */
+    @Override
     public void reset() {
         hired.clear();
     }
