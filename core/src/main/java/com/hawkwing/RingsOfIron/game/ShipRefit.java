@@ -19,7 +19,9 @@ import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.moddingdata.DefRegistry;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
+import com.ringsofiron.moddingdata.defs.ShipComponentDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.stationsdocking.DockingData;
@@ -28,6 +30,7 @@ import com.ringsofiron.stationsdocking.DockingPortsComponent;
 
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -40,9 +43,11 @@ import java.util.Map;
  * where the new decks have room for them, and the yard buys back the rest. The layout is kept on the ship
  * ({@link ShipLayoutComponent}), so a save reloads it and the editor opens it next time.
  *
- * <p>The yard does it at once and for free; it refuses while cargo is aboard or other yard work is
- * under way, when the game can't build the layout, and when it has no port that fits the one the
- * ship is docked at.
+ * <p>The yard does it at once. The work is free, but the parts are not: a component with a
+ * {@code price} in {@code components.toml} (the engines) costs that for each one the new layout adds,
+ * and the yard buys back each one it takes out at half that ({@link #cost}). It refuses while cargo
+ * is aboard or other yard work is under way, when the game can't build the layout, when the ship
+ * can't pay for the parts, and when it has no port that fits the one the ship is docked at.
  */
 public final class ShipRefit {
     private ShipRefit() {}
@@ -98,6 +103,13 @@ public final class ShipRefit {
         }
         if (portToRelatch(DockingData.portsFor(plan.grid, built), docked) < 0) {
             return "The new layout needs a " + docked.size + " docking port to stay latched to the station";
+        }
+        DefRegistry defs = world.getContent() == null ? null : world.getContent().defs;
+        double cost = cost(defs, parts(ship), parts(plan));
+        TraderComponent payer = ship.getComponent(TraderComponent.class);
+        if (cost > 0 && (payer == null || payer.credits < cost)) {
+            return String.format(Locale.ROOT, "The new parts cost %,.0f cr; the ship has %,.0f cr", cost,
+                    payer == null ? 0.0 : payer.credits);
         }
 
         int stationPort = docked.partnerPort;
@@ -168,7 +180,84 @@ public final class ShipRefit {
 
         // Back onto the station, at the port that fits best
         world.docking.dockInPlace(ship, portToRelatch(ports, docked), station, stationPort);
+        if (payer != null && cost != 0) {
+            payer.credits -= cost;
+            world.notices.post(cost > 0
+                    ? String.format(Locale.ROOT, "The yard charged %,.0f cr for the new parts", cost)
+                    : String.format(Locale.ROOT, "The yard paid %,.0f cr for the parts it took out", -cost));
+        }
         return null;
+    }
+
+    /**
+     * What the yard would charge to rebuild {@code ship} to {@code layout}, as a line for the editor,
+     * or null when the parts cost nothing either way or the layout does not build.
+     */
+    public static String quote(GameWorld world, Entity ship, ChassisDef layout) {
+        if (ship == null || layout == null || ship.getComponent(ShipSubsystemRegistryComponent.class) == null) return null;
+        ChassisBlueprintLoader.LoadResult plan;
+        try {
+            plan = ChassisBlueprintLoader.load(InteriorGridData.toBlueprint(layout, InteriorGridData.catalog()));
+        } catch (RuntimeException e) {
+            return null;
+        }
+        DefRegistry defs = world.getContent() == null ? null : world.getContent().defs;
+        double cost = cost(defs, parts(ship), parts(plan));
+        if (cost == 0) return null;
+        TraderComponent payer = ship.getComponent(TraderComponent.class);
+        String have = payer == null ? "" : String.format(Locale.ROOT, " (the ship has %,.0f cr)", payer.credits);
+        return cost > 0 ? String.format(Locale.ROOT, "New parts: %,.0f cr%s", cost, have)
+                : String.format(Locale.ROOT, "The yard buys back the parts taken out: %,.0f cr", -cost);
+    }
+
+    /**
+     * Credits the parts of a refit cost: the {@link #price} of each part ("component:SIZE") in
+     * {@code after} beyond those {@code before} has, less half the price of each part {@code before}
+     * has beyond {@code after}. Below 0 the yard pays.
+     */
+    static double cost(DefRegistry defs, List<String> before, List<String> after) {
+        Map<String, Integer> left = new java.util.HashMap<>();
+        for (String p : before) left.merge(p, 1, Integer::sum);
+        double cost = 0;
+        for (String p : after) {
+            Integer n = left.get(p);
+            if (n != null && n > 0) left.put(p, n - 1);
+            else cost += price(defs, p);
+        }
+        for (Map.Entry<String, Integer> e : left.entrySet()) cost -= e.getValue() * price(defs, e.getKey()) * BUY_BACK;
+        return cost;
+    }
+
+    /** What the yard pays for a part it takes out, as a fraction of its price. */
+    static final double BUY_BACK = 0.5;
+
+    /** Credits one part ("component:SIZE") costs new: its component's price for the size, else 0. */
+    public static double price(DefRegistry defs, String part) {
+        int colon = part.lastIndexOf(':');
+        String id = part.substring(0, colon), size = part.substring(colon + 1);
+        if (defs == null || !defs.has("component", id)) return 0;
+        ShipComponentDef def = defs.get("component", id, ShipComponentDef.class);
+        Double p = def == null || def.price == null ? null : def.price.get(size);
+        return p != null && p > 0 ? p : 0;
+    }
+
+    /** The parts a ship has fitted, as "component:SIZE". */
+    static List<String> parts(Entity ship) {
+        List<String> out = new java.util.ArrayList<>();
+        ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (registry == null) return out;
+        for (Entity e : registry.subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s != null && s.component != null) out.add(s.component + ":" + s.footprint.size.name());
+        }
+        return out;
+    }
+
+    /** The parts a layout fits, as "component:SIZE". */
+    static List<String> parts(ChassisBlueprintLoader.LoadResult plan) {
+        List<String> out = new java.util.ArrayList<>();
+        for (ChassisBlueprintLoader.SubsystemPlacement p : plan.subsystems) out.add(p.component.id + ":" + p.footprint.size.name());
+        return out;
     }
 
     /**
