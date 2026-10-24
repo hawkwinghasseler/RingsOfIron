@@ -109,7 +109,7 @@ public class HudRenderSystem extends EntitySystem {
     public void update(float deltaTime) {
         float w = viewports.getUiWidth();
         float h = viewports.getUiHeight();
-        float pixelsPerMeter = 1f / Math.max(1e-6f, viewports.metersPerPixel());
+        float pixelsPerMeter = 1f / Math.max(1e-6f, viewports.metersPerUiUnit());
         TransformComponent player = players.size() > 0 ? TRANSFORMS.get(players.first()) : null;
         Entity locked = targeting != null ? targeting.getLockedTarget() : null;
 

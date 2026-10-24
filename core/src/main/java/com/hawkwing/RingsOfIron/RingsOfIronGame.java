@@ -22,6 +22,7 @@ import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.game.AbandonShip;
+import com.hawkwing.RingsOfIron.game.FlightWarnings;
 import com.hawkwing.RingsOfIron.game.NewGame;
 import com.hawkwing.RingsOfIron.game.Bridge;
 import com.hawkwing.RingsOfIron.game.OpeningGuide;
@@ -66,6 +67,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.orbital.warp.TimeWarpController;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
+import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.UiHud;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
@@ -134,7 +136,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private static final ComponentMapper<HudMarkerComponent> MARKERS = ComponentMapper.getFor(HudMarkerComponent.class);
     private static final float INTERIOR_VIEW = 40f;
     private static final float START_VIEW = 160f;
-    private static final float STATUS_WIDTH = 420f;
+    /** The status column's panel, top right: its width, and the text's inside it once padded. */
+    private static final float STATUS_WIDTH = 420f, STATUS_PAD = 8f, STATUS_TEXT = STATUS_WIDTH - 2f * STATUS_PAD;
     /** Where the status column's text ended last frame, UI y: off-screen marker names keep above or below it. */
     private float statusBottom = Float.MAX_VALUE;
     private static final float WALK_SPEED = 1f;
@@ -172,7 +175,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private ExteriorRenderer exterior;
     /** Speed shown against a circular orbit at the player's altitude. */
     private SpaceSnow snow;
-    private BitmapFont font;
+    /** The HUD skin's body, banner and display fonts, rasterised for the UI scale. */
+    private BitmapFont font, largeFont, displayFont;
     /** Deck lights and shadows, and the glow of every lamp and screen, from the art's emissive layers. */
     private SceneLighting lighting;
     /** Light over the hulls outside: starlight, the hulls' own lights, engines, guns and blasts. */
@@ -252,9 +256,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
     public void create() {
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
-        font = new BitmapFont();
-
         hud = new UiHud();
+        font = hud.getSkin().getFont("default-font");
+        largeFont = hud.getSkin().getFont("large-font");
+        displayFont = hud.getSkin().getFont("display-font");
         viewports = hud.getViewports();
         viewports.resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         viewports.setViewMeters(START_VIEW);
@@ -293,8 +298,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         // Off-screen marker names by the right edge keep clear of the status column, which is drawn
         // outside the stage: as far down as it reached last frame
         hud.getHudRenderSystem().keepClear(() -> new com.badlogic.gdx.math.Rectangle(
-                viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH, statusBottom - 4f, STATUS_WIDTH,
+                viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH - 10f, statusBottom - 4f, STATUS_WIDTH,
                 viewports.getUiViewport().getWorldHeight() - statusBottom + 4f));
+        hud.setBannerRight(() -> viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH - 10f);
         hud.getTrafficMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
         gameHud.yard.setLayoutEditor(this::openRefit);
         gameHud.yard.setFurnisher(this::startFurnishing);
@@ -974,7 +980,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     /** Draws one line of the status column in the font's color, wrapped to the column; returns the y below it. */
     private float statusLine(String text, float x, float y) {
-        layout.setText(font, text, font.getColor(), STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+        layout.setText(font, text, font.getColor(), STATUS_TEXT, com.badlogic.gdx.utils.Align.left, true);
         font.draw(batch, layout, x, y);
         return y - Math.max(20f, layout.height + 6f);
     }
@@ -1025,15 +1031,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
         batch.begin();
         float w = viewports.getUiViewport().getWorldWidth();
         float h = viewports.getUiViewport().getWorldHeight();
-        font.getData().setScale(3f);
-        font.setColor(Color.RED);
-        font.draw(batch, crash != null ? "SHIP LOST" : "CAREER OVER", 0f, h / 2f + 40f, w, com.badlogic.gdx.utils.Align.center, false);
-        font.getData().setScale(1.5f);
-        font.setColor(Color.WHITE);
-        font.draw(batch, crash != null ? "You crashed into " + crash.bodyName + " on day " + (long) (crash.time / 86400) + "."
+        displayFont.setColor(Color.RED);
+        displayFont.draw(batch, crash != null ? "SHIP LOST" : "CAREER OVER", 0f, h / 2f + 40f, w, com.badlogic.gdx.utils.Align.center, false);
+        largeFont.setColor(Color.WHITE);
+        largeFont.draw(batch, crash != null ? "You crashed into " + crash.bodyName + " on day " + (long) (crash.time / 86400) + "."
                         : "You were killed, and " + over + ".",
                 0f, h / 2f - 10f, w, com.badlogic.gdx.utils.Align.center, false);
-        font.getData().setScale(1f);
         font.setColor(Color.LIGHT_GRAY);
         font.draw(batch, key(Action.QUICK_LOAD) + " loads the quick save   " + (haveAutosave ? "Enter loads the latest autosave   " : "")
                         + "Esc " + (hosted ? "menu" : "quits"), 0f, h / 2f - 50f, w, com.badlogic.gdx.utils.Align.center, false);
@@ -1369,11 +1372,23 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     private void drawStatus() {
         viewports.applyUi();
+        // Top right: ui-hud's flight panel holds the top left. The column sits on a panel like the
+        // HUD's, 10 units in from the corner, as tall as its text reached last frame.
+        float panelX = viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH - 10f;
+        float panelTop = viewports.getUiViewport().getWorldHeight() - 10f;
+        if (statusBottom < panelTop) {
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            shapes.setProjectionMatrix(viewports.getUiCamera().combined);
+            shapes.begin(ShapeRenderer.ShapeType.Filled);
+            shapes.setColor(HudSkin.PANEL);
+            shapes.rect(panelX, statusBottom + 4f, STATUS_WIDTH, panelTop - statusBottom - 4f);
+            shapes.end();
+            Gdx.gl.glDisable(GL20.GL_BLEND);
+        }
         batch.setProjectionMatrix(viewports.getUiCamera().combined);
         batch.begin();
-        // Top right: ui-hud's flight panel holds the top left.
-        float left = viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH;
-        float top = viewports.getUiViewport().getWorldHeight() - 10f;
+        float left = panelX + STATUS_PAD;
+        float top = panelTop - STATUS_PAD;
         TimeWarpController warp = world.timeWarp;
         double t = world.engine.getSimSeconds();
         // Each planned burn's number and countdown, by its arrow on the outside view
@@ -1404,12 +1419,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
             float impact = world.warnings.soonestImpact();
             Actor flight = hud.getFlightPanel();
             float from = flight.localToStageCoordinates(tmp.set(flight.getWidth(), 0f)).x + 12f;
-            font.setColor(Color.RED);
-            font.getData().setScale(1.5f);
-            font.draw(batch, String.format(java.util.Locale.ROOT, "MISSILE WARNING   %d inbound%s", world.warnings.inbound(),
+            // The same red as the banner outside
+            largeFont.setColor(HudSkin.HUD_ALERT);
+            largeFont.draw(batch, String.format(java.util.Locale.ROOT, "MISSILE WARNING   %d inbound%s", world.warnings.inbound(),
                     Float.isNaN(impact) ? "" : String.format(java.util.Locale.ROOT, "   impact %.1f s", impact)),
                     from, top - 30f, Math.max(left - 12f - from, 200f), com.badlogic.gdx.utils.Align.center, true);
-            font.getData().setScale(1f);
             font.setColor(Color.LIGHT_GRAY);
         }
         float y = top - 80f;
@@ -1424,13 +1438,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
             // Wrapped to the column, as the notices are: with the tow offered it ran off the window's edge
             layout.setText(font, "SHIP DISABLED: " + disabled.label + "   " + key(Action.ABANDON) + " twice abandons ship"
                     + (world.beacon.refusal() == null ? ", " + key(Action.CUT) + " twice calls a tow" : ""),
-                    font.getColor(), STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+                    font.getColor(), STATUS_TEXT, com.badlogic.gdx.utils.Align.left, true);
             font.draw(batch, layout, left, y);
             y -= layout.height + 6f;
         }
         for (NoticeLog.Notice n : world.notices.showing()) {
+            if (FlightWarnings.isMissileWarning(n)) continue;
             font.setColor(noticeColor(n.kind, Math.min(1f, n.secondsLeft())));
-            layout.setText(font, n.label(), font.getColor(), STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+            layout.setText(font, n.label(), font.getColor(), STATUS_TEXT, com.badlogic.gdx.utils.Align.left, true);
             font.draw(batch, layout, left, y);
             y -= layout.height + 6f;
         }
@@ -1450,12 +1465,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (firstPlay != null) {
             String objective = firstPlay.objective(this::key);
             if (!noticeShowing(objective.substring(objective.indexOf(':') + 1).trim())) {
-                font.draw(batch, objective, left, below, STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+                font.draw(batch, objective, left, below, STATUS_TEXT, com.badlogic.gdx.utils.Align.left, true);
                 below -= 60f;
             }
         }
         if (opening != null && !noticeShowing(opening.text(this::key))) {
-            layout.setText(font, opening.text(this::key), Color.GOLD, STATUS_WIDTH - 10f, com.badlogic.gdx.utils.Align.left, true);
+            layout.setText(font, opening.text(this::key), Color.GOLD, STATUS_TEXT, com.badlogic.gdx.utils.Align.left, true);
             font.draw(batch, layout, left, below);
             below -= layout.height + 10f;
         }
@@ -1509,6 +1524,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         Gdx.gl.glEnable(GL20.GL_BLEND);
         shapes.setProjectionMatrix(viewports.getUiCamera().combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
+        // The HUD round it dimmed, so its titles don't read as part of the panel
+        shapes.setColor(0f, 0f, 0f, 0.5f);
+        shapes.rect(0f, 0f, w, h);
         // Dark enough that the HUD under it doesn't read through the text
         shapes.setColor(0f, 0f, 0f, 0.92f);
         shapes.rect(x, y, width, height);
@@ -1645,6 +1663,5 @@ public class RingsOfIronGame extends ApplicationAdapter {
         shapes.dispose();
         batch.dispose();
         art.dispose();
-        font.dispose();
     }
 }

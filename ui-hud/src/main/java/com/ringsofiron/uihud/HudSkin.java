@@ -19,10 +19,14 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 
 /**
  * Builds the HUD's Scene2D {@link Skin} in code: a 1x1 white texture tinted into panels and
- * borders, and the default LibGDX font. Swap for an atlas-based skin from modding-data later;
- * widgets only look styles up by the names defined here.
+ * borders, and the {@link HudFonts} rasterised for the {@link UiScale}. Swap for an atlas-based
+ * skin from modding-data later; widgets only look styles up by the names defined here.
  *
- * Style names: Label "default", "title", "dim", "alert", "warn", "prompt"; Window "default";
+ * Fonts: "default-font" (body), "title-font" (panel titles), "large-font" (banners and headings),
+ * "display-font" (the main menu's title). After the UI scale changes, {@link #rescale} draws them again.
+ *
+ * Style names: Label "default", "title", "dim", "alert", "warn", "prompt", "banner" (a large alert),
+ * "heading" (a large title), "display"; Window "default";
  * TextButton "default", "menu" (wide, for the game's menus), "toggle" (a menu button that stays down when picked); CheckBox "default"; Slider "default-horizontal";
  * TextField, SelectBox, List and ScrollPane "default"; drawables "white", "panel", "panel-border", "prompt-bg".
  */
@@ -36,6 +40,12 @@ public final class HudSkin {
     private HudSkin() {}
 
     public static Skin create() {
+        return create(com.badlogic.gdx.Gdx.graphics == null ? 1f
+                : UiScale.effective(com.badlogic.gdx.Gdx.graphics.getWidth(), com.badlogic.gdx.Gdx.graphics.getHeight()));
+    }
+
+    /** The skin with its fonts rasterised for {@code scale}. */
+    public static Skin create(float scale) {
         Skin skin = new Skin();
 
         Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
@@ -46,9 +56,15 @@ public final class HudSkin {
         skin.add("white-texture", white);
         skin.add("white", new TextureRegion(white));
 
-        BitmapFont font = new BitmapFont();
-        font.getData().markupEnabled = false;
+        BitmapFont font = HudFonts.create(HudFonts.REGULAR, HudFonts.BODY, scale);
+        BitmapFont titleFont = HudFonts.create(HudFonts.SEMIBOLD, HudFonts.TITLE, scale);
+        BitmapFont largeFont = HudFonts.create(HudFonts.SEMIBOLD, HudFonts.LARGE, scale);
+        BitmapFont displayFont = HudFonts.create(HudFonts.SEMIBOLD, HudFonts.DISPLAY, scale);
         skin.add("default-font", font);
+        skin.add("title-font", titleFont);
+        skin.add("large-font", largeFont);
+        skin.add("display-font", displayFont);
+        skin.add(SCALE, new float[]{scale});
 
         skin.add("panel", skin.newDrawable("white", PANEL), Drawable.class);
         skin.add("panel-border", skin.newDrawable("white", new Color(HUD_CYAN.r, HUD_CYAN.g, HUD_CYAN.b, 0.5f)), Drawable.class);
@@ -58,15 +74,18 @@ public final class HudSkin {
         skin.add("button-down", skin.newDrawable("white", new Color(0.25f, 0.45f, 0.6f, 0.9f)), Drawable.class);
 
         skin.add("default", new Label.LabelStyle(font, Color.WHITE));
-        skin.add("title", new Label.LabelStyle(font, HUD_CYAN));
+        skin.add("title", new Label.LabelStyle(titleFont, HUD_CYAN));
         skin.add("dim", new Label.LabelStyle(font, HUD_DIM));
         skin.add("alert", new Label.LabelStyle(font, HUD_ALERT));
         skin.add("warn", new Label.LabelStyle(font, HUD_WARN));
         Label.LabelStyle prompt = new Label.LabelStyle(font, Color.WHITE);
         prompt.background = skin.getDrawable("prompt-bg");
         skin.add("prompt", prompt);
+        skin.add("banner", new Label.LabelStyle(largeFont, HUD_ALERT));
+        skin.add("heading", new Label.LabelStyle(largeFont, HUD_CYAN));
+        skin.add("display", new Label.LabelStyle(displayFont, HUD_CYAN));
 
-        Window.WindowStyle window = new Window.WindowStyle(font, HUD_CYAN, skin.newDrawable("white", new Color(0.03f, 0.07f, 0.12f, 0.92f)));
+        Window.WindowStyle window = new Window.WindowStyle(titleFont, HUD_CYAN, skin.newDrawable("white", new Color(0.03f, 0.07f, 0.12f, 0.92f)));
         skin.add("default", window);
 
         TextButton.TextButtonStyle button = new TextButton.TextButtonStyle(
@@ -127,5 +146,27 @@ public final class HudSkin {
         skin.add("default", new SelectBox.SelectBoxStyle(font, Color.WHITE, box, scroll, list));
 
         return skin;
+    }
+
+    private static final String SCALE = "ui-scale";
+
+    /** The UI scale {@code skin}'s fonts were last rasterised for. */
+    public static float scaleOf(Skin skin) {
+        return skin.has(SCALE, float[].class) ? skin.get(SCALE, float[].class)[0] : 1f;
+    }
+
+    /**
+     * Rasterises the skin's fonts again for {@code scale}, in place, when it differs from theirs;
+     * returns whether it did. Lay the stage out again after ({@code root.invalidateHierarchy()}).
+     */
+    public static boolean rescale(Skin skin, float scale) {
+        float[] at = skin.get(SCALE, float[].class);
+        if (Math.abs(at[0] - scale) < 0.01f) return false;
+        at[0] = scale;
+        HudFonts.rescale(skin.getFont("default-font"), HudFonts.REGULAR, HudFonts.BODY, scale);
+        HudFonts.rescale(skin.getFont("title-font"), HudFonts.SEMIBOLD, HudFonts.TITLE, scale);
+        HudFonts.rescale(skin.getFont("large-font"), HudFonts.SEMIBOLD, HudFonts.LARGE, scale);
+        HudFonts.rescale(skin.getFont("display-font"), HudFonts.SEMIBOLD, HudFonts.DISPLAY, scale);
+        return true;
     }
 }

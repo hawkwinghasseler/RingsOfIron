@@ -763,4 +763,7 @@ data/ships.toml
 data/shipyard.toml
 data/tiles.toml
 data/weapons.toml
+fonts/Inter-Regular.otf
+fonts/Inter-SemiBold.otf
+fonts/OFL.txt
 libgdx.png

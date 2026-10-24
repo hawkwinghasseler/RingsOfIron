@@ -25,6 +25,9 @@ public final class FlightWarnings {
     /** Frames between fresh estimates of the trip home: each plans a route to every station. */
     static final int RETURN_REFRESH = 60;
 
+    /** What the missile warning's notice starts with. */
+    public static final String MISSILE_WARNING = "MISSILE WARNING";
+
     private final GameWorld world;
     private final PlayerShipStatus status;
     private final CombatThreats threats;
@@ -76,9 +79,9 @@ public final class FlightWarnings {
         }
         if (n > inbound && n > peak) {
             peak = n;
-            String text = String.format(Locale.ROOT, "MISSILE WARNING: %d inbound%s", n,
+            String text = String.format(Locale.ROOT, MISSILE_WARNING + ": %d inbound%s", n,
                     Float.isNaN(soonest) ? "" : String.format(Locale.ROOT, ", impact in %.0f s", soonest));
-            salvo = salvo == null ? world.notices.replace("MISSILE WARNING", text, NoticeLog.Kind.WARNING)
+            salvo = salvo == null ? world.notices.replace(MISSILE_WARNING, text, NoticeLog.Kind.WARNING)
                     : world.notices.revise(salvo, text);
         }
         inbound = n;
@@ -111,6 +114,15 @@ public final class FlightWarnings {
     private double returnKg() {
         double kg = returnPropellantKg == null ? Double.NaN : returnPropellantKg.getAsDouble();
         return Double.isFinite(kg) ? kg : Double.NaN;
+    }
+
+    /**
+     * True for a missile warning's notice. The status column leaves it out: the banner over the
+     * view already says it, larger and live, and the line under it said the same thing twice. It is
+     * still heard, and kept in the notice log.
+     */
+    public static boolean isMissileWarning(NoticeLog.Notice n) {
+        return n.text.startsWith(MISSILE_WARNING);
     }
 
     /** Missiles coming for the player's ship now. */

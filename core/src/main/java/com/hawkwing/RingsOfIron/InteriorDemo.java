@@ -127,7 +127,7 @@ public class InteriorDemo extends ApplicationAdapter {
     public void create() {
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
-        font = new BitmapFont();
+        font = com.ringsofiron.uihud.HudFonts.body();
         art = ArtLibrary.load(ArtLibrary.DEFAULT_PATH);
         deckArt = new DeckArt(art);
         deckRenderer = new DeckRenderer(() -> lab.world, shapes, batch, deckArt, null, () -> null)
