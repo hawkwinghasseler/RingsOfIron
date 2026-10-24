@@ -368,6 +368,11 @@ class Round5CareerTest extends CareerScript {
         while (world.contracts.operation() != null && "hunt_the_hunters".equals(world.contracts.operation().id) && jobs < MOST_JOBS) {
             Contract step = currentStep("hunt_the_hunters");
             if (step == null) break;
+            // Hurt by the hunt's bounty, the ship is patched up and its wounded seen to before the raid,
+            // as a player would (seed 12 flew in with its new hands bleeding out: "Nobody aboard to take the helm")
+            if (step.type == Contract.Type.RAID && (fitCrew() < ownCrew().size() || world.yard.repairCost(game.player) > 0.5)) {
+                repairIfNeeded();
+            }
             flyStep(step);
         }
         if (!world.pirateBase.standing()) operationsDone++;
