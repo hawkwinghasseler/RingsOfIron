@@ -96,7 +96,9 @@ class RcsThrustTest {
         int bow = 0;
         for (RcsThruster r : grid.rcsThrusters) bow = Math.max(bow, r.x);
         for (RcsThruster r : grid.rcsThrusters) if (r.x >= bow - 1) grid.getTile(r.x, r.y).setIntegrity(0f);
-        assertTrue(authority(ship).torque() < before * 0.6, "the stern blocks alone turn it slower");
+        // About 0.61 with the engines wholly outside the hull, which puts the centre of mass a little further
+        // aft and so the amidships pair a little further from it (it was under 0.6)
+        assertTrue(authority(ship).torque() < before * 0.65, "the stern blocks alone turn it slower");
     }
 
     @Test

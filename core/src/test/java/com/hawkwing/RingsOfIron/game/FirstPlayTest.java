@@ -163,7 +163,7 @@ class FirstPlayTest {
         // Battle damage aboard
         com.ringsofiron.interiorgrid.ShipGridComponent grid =
                 game.player.getComponent(com.ringsofiron.interiorgrid.ShipGridComponent.class);
-        grid.getTile(1, 0).setIntegrity(0.5f);
+        grid.getTile(2, 0).setIntegrity(0.5f);
         grid.gridDirty = true;
         redock();
         assertEquals(FirstPlay.Step.REPAIR, play.step());

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="241.54" height="370.16" viewBox="-172.8 -185.08 241.54 370.16">
+  <title>exhaust_aster_lyra_s: plume behind the aerospike engine, pivot on the middle of its slot's nozzle end, exhaust toward -x; scale along x with throttle</title>
+  <defs><linearGradient id="spike_s_fan" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#dfe6ff" stop-opacity="1"/><stop offset="0.35" stop-color="#a8b4ff" stop-opacity="0.6"/><stop offset="0.8" stop-color="#7a80ff" stop-opacity="0.12"/><stop offset="1" stop-color="#7a80ff" stop-opacity="0"/></linearGradient><radialGradient id="spike_s_core" cx="1" cy="0.5" r="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.5" stop-color="#dfe6ff" stop-opacity="0.6"/><stop offset="1" stop-color="#b0b8ff" stop-opacity="0"/></radialGradient><linearGradient id="spike_s_sheet" gradientUnits="userSpaceOnUse" x1="66.74" y1="0" x2="-32.56" y2="0"><stop offset="0" stop-color="#e8f2ff" stop-opacity="0.85"/><stop offset="0.65" stop-color="#c4d6ff" stop-opacity="0.5"/><stop offset="1" stop-color="#dfe6ff" stop-opacity="0"/></linearGradient></defs>
+  <g id="base">
+  </g>
+  <g id="emissive">
+    <g data-light="glow">
+    <path d="M66.74,-28 C49.46,-42.4 -57.6,-74.54 -115.2,-70.82 Q-132.48,0 -115.2,70.82 C-57.6,74.54 49.46,42.4 66.74,28 Z" fill="url(#spike_s_fan)" opacity="0.32"/>
+    <path d="M66.74,-28 C49.46,-42.4 -63.36,-101.16 -126.72,-96.1 Q-144,0 -126.72,96.1 C-63.36,101.16 49.46,42.4 66.74,28 Z" fill="url(#spike_s_fan)" opacity="0.2"/>
+    <path d="M66.74,-28 C49.46,-42.4 -69.12,-136 -138.24,-129.2 Q-155.52,0 -138.24,129.2 C-69.12,136 49.46,42.4 66.74,28 Z" fill="url(#spike_s_fan)" opacity="0.12"/>
+    <path d="M66.74,-28 C49.46,-42.4 -74.88,-183.08 -149.76,-173.93 Q-167.04,0 -149.76,173.93 C-74.88,183.08 49.46,42.4 66.74,28 Z" fill="url(#spike_s_fan)" opacity="0.07"/>
+    <path d="M66.74,-29 L61.34,-25.42 L55.95,-22.16 L50.55,-19.2 L45.16,-16.56 L39.77,-14.22 L34.37,-12.2 L28.97,-10.49 L23.58,-9.09 L18.19,-8 L12.79,-7.22 L7.4,-6.76 L2,-6.6 L-2.32,-6.36 L-6.64,-5.72 L-10.96,-4.82 L-15.28,-3.79 L-19.6,-2.77 L-23.92,-1.87 L-28.24,-1.23 L-32.56,-0.99 L-32.56,-4.55 L-28.24,-5.03 L-23.92,-6.27 L-19.6,-8.02 L-15.28,-10.03 L-10.96,-12.05 L-6.64,-13.8 L-2.32,-15.04 L2,-15.51 L7.4,-15.09 L12.79,-14.98 L18.19,-15.18 L23.58,-15.7 L28.97,-16.52 L34.37,-17.66 L39.77,-19.1 L45.16,-20.86 L50.55,-22.93 L55.95,-25.31 L61.34,-28 L66.74,-31 Z" fill="url(#spike_s_sheet)"/>
+    <path d="M66.74,29 L61.34,25.42 L55.95,22.16 L50.55,19.2 L45.16,16.56 L39.77,14.22 L34.37,12.2 L28.97,10.49 L23.58,9.09 L18.19,8 L12.79,7.22 L7.4,6.76 L2,6.6 L-2.32,6.36 L-6.64,5.72 L-10.96,4.82 L-15.28,3.79 L-19.6,2.77 L-23.92,1.87 L-28.24,1.23 L-32.56,0.99 L-32.56,4.55 L-28.24,5.03 L-23.92,6.27 L-19.6,8.02 L-15.28,10.03 L-10.96,12.05 L-6.64,13.8 L-2.32,15.04 L2,15.51 L7.4,15.09 L12.79,14.98 L18.19,15.18 L23.58,15.7 L28.97,16.52 L34.37,17.66 L39.77,19.1 L45.16,20.86 L50.55,22.93 L55.95,25.31 L61.34,28 L66.74,31 Z" fill="url(#spike_s_sheet)"/>
+    <path d="M4,-7.6 C-9.96,-10.55 -19.73,-12.51 -23.92,-12.51 Q-49.84,-4.38 -49.84,0 Q-49.84,4.38 -23.92,12.51 C-19.73,12.51 -9.96,10.55 4,7.6 Z" fill="url(#spike_s_core)"/>
+    </g>
+  </g>
+</svg>

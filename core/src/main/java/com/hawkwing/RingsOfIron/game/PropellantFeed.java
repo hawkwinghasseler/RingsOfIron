@@ -112,8 +112,10 @@ public class PropellantFeed extends EntitySystem {
         thruster.fuelCapacity = (float) capacity(registry);
     }
 
+    /** The drive's exhaust velocity: the ship's, else the standard, times its engines' efficiency. */
     private static float exhaustVelocity(ThrusterComponent thruster) {
-        return thruster.exhaustVelocity > 0f ? thruster.exhaustVelocity : ShipPhysicsAssembler.STANDARD_EXHAUST_VELOCITY;
+        float ve = thruster.exhaustVelocity > 0f ? thruster.exhaustVelocity : ShipPhysicsAssembler.STANDARD_EXHAUST_VELOCITY;
+        return ve * (thruster.efficiency > 0f ? thruster.efficiency : 1f);
     }
 
     /** True if the ship's layout has an engine, working or not: its thrust then burns propellant. */
