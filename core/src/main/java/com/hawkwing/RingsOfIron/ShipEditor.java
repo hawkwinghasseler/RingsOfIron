@@ -228,7 +228,7 @@ public class ShipEditor extends ApplicationAdapter {
     public void create() {
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
-        font = new BitmapFont();
+        font = com.ringsofiron.uihud.HudFonts.body();
         art = ArtLibrary.load(ArtLibrary.DEFAULT_PATH);
         ui = new OrthographicCamera();
         project = EditorProject.load(assetsDir, modsDir);

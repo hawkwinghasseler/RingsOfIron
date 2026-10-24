@@ -99,6 +99,11 @@ public class UiHud implements Disposable {
     private final RadarScope radar;
     private final Table radarPanel;
     private final NavMarkers navMarkers;
+    /** The missile warning's row and label: set between the flight panel and {@link #bannerRight}. */
+    private final Table bannerRow;
+    private final Label threatBanner;
+    /** Where the space for the banner ends on the right, UI x; null for the window's edge. */
+    private java.util.function.DoubleSupplier bannerRight;
 
     private final HudRenderSystem hudRenderSystem;
     private final WireframeSyncSystem wireframeSyncSystem;
@@ -189,12 +194,16 @@ public class UiHud implements Disposable {
         stage.addActor(promptRow);
 
         // Missile paths and point-defense hits over the world, with a warning banner at the top.
-        Label threatBanner = new Label("", skin, "alert");
+        Label threatBanner = new Label("", skin, "banner");
         Table bannerRow = new Table();
         bannerRow.setFillParent(true);
         bannerRow.setTouchable(Touchable.disabled);
-        bannerRow.top().padTop(70f);
+        bannerRow.top().left().padTop(60f);
         bannerRow.add(threatBanner);
+        threatBanner.setAlignment(com.badlogic.gdx.utils.Align.center);
+        threatBanner.setWrap(true);
+        this.bannerRow = bannerRow;
+        this.threatBanner = threatBanner;
         threatOverlay = new ThreatOverlay(viewports, skin, threatBanner);
         stage.addActor(threatOverlay);
         stage.addActor(bannerRow);
@@ -546,15 +555,44 @@ public class UiHud implements Disposable {
         minimap.flashTile(tileX, tileY);
     }
 
+    /**
+     * Keeps the missile warning left of {@code right} (UI x), as of a status column the game draws
+     * top right: centred in the space between that and the flight panel, wrapping when it is too
+     * narrow, rather than written across either.
+     */
+    public void setBannerRight(java.util.function.DoubleSupplier right) {
+        bannerRight = right;
+    }
+
+    private void placeBanner() {
+        float left = flightPanel.localToStageCoordinates(new com.badlogic.gdx.math.Vector2(flightPanel.getWidth(), 0f)).x + 12f;
+        float right = (bannerRight == null ? viewports.getUiWidth() : (float) bannerRight.getAsDouble()) - 12f;
+        float width = Math.max(200f, right - left);
+        com.badlogic.gdx.scenes.scene2d.ui.Cell<?> cell = bannerRow.getCell(threatBanner);
+        if (cell.getPrefWidthValue() == null || Math.abs(cell.getMinWidth() - width) > 0.5f || bannerRow.getPadLeft() != left) {
+            cell.width(width);
+            bannerRow.padLeft(left);
+            bannerRow.invalidate();
+        }
+    }
+
     /** Acts and draws the stage. Call after the world is drawn and the engine has updated. */
     public void draw(float delta) {
         viewports.applyUi();
+        placeBanner();
         stage.act(delta);
         stage.draw();
     }
 
     public void resize(int width, int height) {
         viewports.resize(width, height);
+        // A new UI scale: the text is drawn again for it, and everything laid out around the new sizes
+        if (HudSkin.rescale(skin, viewports.getUiScale())) relayout(stage.getRoot());
+    }
+
+    private static void relayout(com.badlogic.gdx.scenes.scene2d.Actor a) {
+        if (a instanceof com.badlogic.gdx.scenes.scene2d.utils.Layout) ((com.badlogic.gdx.scenes.scene2d.utils.Layout) a).invalidate();
+        if (a instanceof Group) for (com.badlogic.gdx.scenes.scene2d.Actor c : ((Group) a).getChildren()) relayout(c);
     }
 
     public InputProcessor getInputProcessor() {

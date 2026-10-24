@@ -71,7 +71,7 @@ public class CrewDemo extends ApplicationAdapter {
         viewport.apply(true);
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
-        font = new BitmapFont();
+        font = com.ringsofiron.uihud.HudFonts.body();
         restart();
     }
 
