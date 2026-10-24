@@ -433,8 +433,8 @@ def plume_aerospike(a, u, size):
     """Aster: an aerospike has no bell; its outer edge is open to space, and in vacuum the exhaust
     turns out round the cells' lips as soon as it leaves them. So the plume starts back on the plug:
     a bright sheet hugging each face of it down to the truncated end, a short hot core where the two
-    meet behind it, the sheets running on past the plug's end to fade into it, and a wide, faint fan
-    opening outward from the cell row."""
+    meet behind it (the two drawn as one shape), and a wide, faint fan opening outward from the cell
+    row."""
     from generate_svgs import AUX
     engine(size, "aerospike", key="plume")  # where the plug lies
     top, base, bw, tip = SPIKE[size]
@@ -445,8 +445,7 @@ def plume_aerospike(a, u, size):
     hb, ht = bw / 2, tip / 2
     k = f"spike_{size}"
     a.defs += (_grad(f"{k}_fan", [(0, "#dfe6ff", 1), (0.35, "#a8b4ff", 0.6), (0.8, "#7a80ff", 0.12), (1, "#7a80ff", 0)], x1=1, x2=0)
-               + f'<radialGradient id="{k}_core" cx="1" cy="0.5" r="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>'
-               + '<stop offset="0.5" stop-color="#dfe6ff" stop-opacity="0.6"/><stop offset="1" stop-color="#b0b8ff" stop-opacity="0"/></radialGradient>')
+)
     L = 2.5 * u
     # the fan: from the cell row's outer lips, turning outward, fading out before its front; drawn
     # in layers, each wider and fainter, so its edge is soft
@@ -462,34 +461,33 @@ def plume_aerospike(a, u, size):
     L = L * 1.04 + 0.3 * u
     # a sheet on each face of the plug, standing a little off it, from the cells to the truncated end
     n = 12
-    # past the truncated end each sheet carries on, turning in toward the axis, and fades into the
-    # hot core where the two meet (the recirculation behind the plug's base)
-    ext = 0.6 * u
-    a.defs += (f'<linearGradient id="{k}_sheet" gradientUnits="userSpaceOnUse" x1="{f(xb)}" y1="0" x2="{f(xt - ext)}" y2="0">'
-               f'<stop offset="0" stop-color="#e8f2ff" stop-opacity="0.85"/>'
-               f'<stop offset="{f((xb - xt) / (xb - xt + ext))}" stop-color="#c4d6ff" stop-opacity="0.5"/>'
+    # One shape for the sheets and the hot core, under one gradient, so nothing doubles up where they
+    # meet: its outer edge stands a little off each face of the plug from the cells to the truncated
+    # end, then closes on the axis behind it in a rounded nose (the recirculation behind the plug's
+    # base); the plug itself, cut out of it, stays clear
+    nose = 0.9 * u
+    a.defs += (f'<linearGradient id="{k}_sheet" gradientUnits="userSpaceOnUse" x1="{f(xb)}" y1="0" x2="{f(xt - nose)}" y2="0">'
+               f'<stop offset="0" stop-color="#c4d6ff" stop-opacity="0.55"/>'
+               f'<stop offset="{f((xb - xt) / (xb - xt + nose))}" stop-color="#eef3ff" stop-opacity="0.85"/>'
                f'<stop offset="1" stop-color="#dfe6ff" stop-opacity="0"/></linearGradient>')
-    m = 8
-    for sgn in (-1, 1):
-        inner, outer = [], []
-        for i in range(n + 1):
-            q = i / n
-            x = xb + (xt - xb) * q
-            r = ht + (hb - ht) * (1 - q) ** 2
-            inner.append((x, sgn * (r + 1)))
-            outer.append((x, sgn * (r + 3 + 0.12 * u * q)))
-        w_tip = 2 + 0.12 * u
-        for j in range(1, m + 1):
-            q = j / m
-            # eased in toward the axis, the sheet thinning as it closes
-            close = q * q * (3 - 2 * q)
-            r = (ht + 1) * (1 - 0.85 * close)
-            inner.append((xt - ext * q, sgn * r))
-            outer.append((xt - ext * q, sgn * (r + w_tip * (1 - 0.6 * close))))
-        pts = inner + outer[::-1]
-        a.e += path("M" + " L".join(f"{f(x)},{f(y)}" for x, y in pts) + " Z", fill=f"url(#{k}_sheet)")
-    # the hot core behind the truncated end, where the two sheets close
-    a.e += path(_lobe(xt + 2, ht + 2, xt - 0.45 * u, ht + 0.12 * u, xt - 0.9 * u, 0.5), fill=f"url(#{k}_core)")
+    m = 14
+    outer, inner = [], []
+    for i in range(n + 1):
+        q = i / n
+        x = xb + (xt - xb) * q
+        r = ht + (hb - ht) * (1 - q) ** 2
+        inner.append((x, r + 1))
+        outer.append((x, r + 3 + 0.12 * u * q))
+    r0 = outer[-1][1]
+    for j in range(1, m + 1):
+        q = j / m
+        outer.append((xt - nose * q, r0 * (1 - q ** 2) ** 0.55))
+    # around the outside: down one side, round the nose, back up the other
+    edge = outer + [(x, -y) for x, y in reversed(outer[:-1])]
+    hole = inner + [(x, -y) for x, y in reversed(inner)]
+    a.e += path("M" + " L".join(f"{f(x)},{f(y)}" for x, y in edge) + " Z "
+                + "M" + " L".join(f"{f(x)},{f(y)}" for x, y in hole) + " Z",
+                fill=f"url(#{k}_sheet)", extra=' fill-rule="evenodd"')
     right = xb + 2
     return right, right + L + 0.1 * u, far + 2
 
