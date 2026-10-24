@@ -325,9 +325,7 @@ def style_aerospike(a, w, h, size, gid):
     # the plug's half width from the cells (s = 0) to the truncated end (s = 1)
     pts = [(tip / 2 + (bw / 2 - tip / 2) * (1 - k / n) ** 2, spike * k / n) for k in range(n + 1)]
     a.b += path(mirror(cx, base, pts), fill=STEEL_DARK, stroke=INK, sw=2)
-    # the near face lit, the far face shaded, the ridge down the middle
-    a.b += path("M" + " L".join(f"{f(round(cx - r + 2, 2))},{f(round(base - d, 2))}" for r, d in pts)
-                + " L" + f"{f(cx)},{f(top)} L{f(cx)},{f(base)} Z", fill=STEEL_MID, extra=' opacity="0.55"')
+    # the ridge down the middle
     a.b += line(cx, base - 2, cx, top + 1, INK, sw=1.2)
     # cooling channels following the taper
     for q in (0.3, 0.6, 0.85):
