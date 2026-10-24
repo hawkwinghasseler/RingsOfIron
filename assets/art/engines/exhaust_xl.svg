@@ -1,15 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="936" height="259.2" viewBox="-930.24 -129.6 936 259.2">
-  <title>exhaust_xl: plume behind an engine of size xl, pivot on its nozzle's exit, exhaust toward -x; scale along x with throttle</title>
-  <defs><linearGradient id="exhaust_xl_g" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="0.25" stop-color="#9fd8ff"/><stop offset="1" stop-color="#4f8fff" stop-opacity="0"/></linearGradient></defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="979.2" height="506.88" viewBox="-984.96 -253.44 979.2 506.88">
+  <title>exhaust_xl: plume behind a bell-nozzle engine of size xl, pivot on its nozzle's exit, exhaust toward -x; scale along x with throttle</title>
+  <defs><linearGradient id="bell_xl_halo" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#9fd8ff" stop-opacity="0.55"/><stop offset="0.5" stop-color="#6fb0ff" stop-opacity="0.25"/><stop offset="1" stop-color="#4f8fff" stop-opacity="0"/></linearGradient><linearGradient id="bell_xl_core" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity="1"/><stop offset="0.3" stop-color="#cfeaff" stop-opacity="0.85"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></linearGradient><linearGradient id="bell_xl_hot" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient></defs>
   <g id="base">
   </g>
   <g id="emissive">
     <g data-light="glow">
-    <path d="M-8.64,-120.96 C-296.64,-103.68 -699.84,-34.56 -930.24,0 C-699.84,34.56 -296.64,103.68 -8.64,120.96 Z" fill="url(#exhaust_xl_g)" opacity="0.9"/>
-    <path d="M-8.64,-51.84 C-181.44,-40.32 -383.04,-14.4 -527.04,0 C-383.04,14.4 -181.44,40.32 -8.64,51.84 Z" fill="#ffffff" opacity="0.8"/>
-    <polygon points="-187.2,0 -152.64,-20.16 -118.08,0 -152.64,20.16" fill="#ffffff" opacity="0.55"/>
-    <polygon points="-316.8,0 -282.24,-20.16 -247.68,0 -282.24,20.16" fill="#ffffff" opacity="0.55"/>
-    <polygon points="-432,0 -397.44,-20.16 -362.88,0 -397.44,20.16" fill="#ffffff" opacity="0.55"/>
+    <path d="M-5.76,-120.96 C-348.48,-138.24 -588.38,-149.76 -691.2,-149.76 Q-892.8,-52.42 -892.8,0 Q-892.8,52.42 -691.2,149.76 C-588.38,149.76 -348.48,138.24 -5.76,120.96 Z" fill="url(#bell_xl_halo)" opacity="0.62"/>
+    <path d="M-5.76,-130.64 C-365.76,-161.88 -617.76,-182.71 -725.76,-182.71 Q-928.51,-63.95 -928.51,0 Q-928.51,63.95 -725.76,182.71 C-617.76,182.71 -365.76,161.88 -5.76,130.64 Z" fill="url(#bell_xl_halo)" opacity="0.34"/>
+    <path d="M-5.76,-140.31 C-383.04,-185.52 -647.14,-215.65 -760.32,-215.65 Q-964.22,-75.48 -964.22,0 Q-964.22,75.48 -760.32,215.65 C-647.14,215.65 -383.04,185.52 -5.76,140.31 Z" fill="url(#bell_xl_halo)" opacity="0.23"/>
+    <path d="M-5.76,-149.99 C-400.32,-209.16 -676.51,-248.6 -794.88,-248.6 Q-999.94,-87.01 -999.94,0 Q-999.94,87.01 -794.88,248.6 C-676.51,248.6 -400.32,209.16 -5.76,149.99 Z" fill="url(#bell_xl_halo)" opacity="0.18"/>
+    <path d="M-5.76,-103.68 C-278.78,-89.86 -392.54,-80.64 -460.8,-80.64 Q-691.2,-28.22 -691.2,0 Q-691.2,28.22 -460.8,80.64 C-392.54,80.64 -278.78,89.86 -5.76,103.68 Z" fill="url(#bell_xl_core)" opacity="0.62"/>
+    <path d="M-5.76,-111.97 C-292.61,-100.43 -412.13,-92.74 -483.84,-92.74 Q-718.85,-32.46 -718.85,0 Q-718.85,32.46 -483.84,92.74 C-412.13,92.74 -292.61,100.43 -5.76,111.97 Z" fill="url(#bell_xl_core)" opacity="0.34"/>
+    <path d="M-5.76,-120.27 C-306.43,-111.01 -431.71,-104.83 -506.88,-104.83 Q-746.5,-36.69 -746.5,0 Q-746.5,36.69 -506.88,104.83 C-431.71,104.83 -306.43,111.01 -5.76,120.27 Z" fill="url(#bell_xl_core)" opacity="0.23"/>
+    <path d="M-5.76,-46.08 C-123.26,-39.17 -172.22,-34.56 -201.6,-34.56 Q-345.6,-12.1 -345.6,0 Q-345.6,12.1 -201.6,34.56 C-172.22,34.56 -123.26,39.17 -5.76,46.08 Z" fill="url(#bell_xl_hot)"/>
     </g>
   </g>
 </svg>

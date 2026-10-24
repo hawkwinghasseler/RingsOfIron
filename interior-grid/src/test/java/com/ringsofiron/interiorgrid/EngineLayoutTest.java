@@ -30,24 +30,22 @@ class EngineLayoutTest {
     }
 
     @Test
-    void anEngineSetOneTileIntoTheAftHullPointsAftAndKeepsTheHullWhole() {
+    void anEngineAgainstTheAftHullPointsAftAndLiesWhollyOutsideIt() {
         ShipGridComponent g = load(
-                "  #####",
-                "EEER..#",
-                "EEE...#",
-                "  #...#",
-                "  #####").grid;
+                "   #####",
+                "EEE#R..#",
+                "EEE#...#",
+                "   #...#",
+                "   #####").grid;
         MountFootprint m = engine(g);
         assertEquals(Side.LEFT, EngineLayout.nozzle(m));
-        assertTrue(EngineLayout.flangeInWall(g, m));
         for (int y = 2; y <= 3; y++) {
-            assertEquals(Tile.WallType.HULL, g.getTile(2, y).wallType, "the flange is the hull wall");
-            assertEquals(WeightClass.MEDIUM, g.getTile(2, y).weightClass);
-            assertFalse(EngineLayout.isCasing(g, m, 2, y));
-            for (int x = 0; x <= 1; x++) {
-                assertEquals(Tile.WallType.HULL, g.getTile(x, y).wallType, "the casing outside is hull");
+            assertEquals(Tile.WallType.HULL, g.getTile(3, y).wallType, "the hull behind it is whole");
+            assertFalse(EngineLayout.isCasing(g, m, 3, y));
+            for (int x = 0; x <= 2; x++) {
+                assertEquals(Tile.WallType.HULL, g.getTile(x, y).wallType, "the casing is hull");
                 assertEquals(EngineLayout.CASING, g.getTile(x, y).weightClass);
-                assertTrue(EngineLayout.isCasing(g, m, x, y));
+                assertTrue(EngineLayout.isCasing(g, m, x, y), "the flange is outside too");
             }
         }
         CompartmentBuilder.rebuild(g);
@@ -65,13 +63,21 @@ class EngineLayoutTest {
                 " E   ").grid;
         MountFootprint m = engine(g);
         assertEquals(Side.BOTTOM, EngineLayout.nozzle(m));
-        assertFalse(EngineLayout.flangeInWall(g, m));
         assertTrue(EngineLayout.isCasing(g, m, 1, 1), "the flange is outside too");
         assertTrue(EngineLayout.isFeedTile(g, m, 1, 3), "fed from the deck behind the wall");
     }
 
     @Test
-    void anEngineMayNotReachMoreThanOneTileIntoTheShip() {
+    void anEngineMayNotOverlapTheHull() {
+        // Its flange in place of a tile of the aft hull
+        String inWall = refusal(
+                "  #####",
+                "EEE...#",
+                "EEE...#",
+                "  #...#",
+                "  #####");
+        assertNotNull(inWall);
+        assertTrue(inWall.contains("wholly outside the hull"), inWall);
         // Through the aft hull and a tile on into the room
         String deep = refusal(
                 " ######",
@@ -80,7 +86,7 @@ class EngineLayoutTest {
                 " #....#",
                 " ######");
         assertNotNull(deep);
-        assertTrue(deep.contains("at most one tile into it"), deep);
+        assertTrue(deep.contains("wholly outside the hull"), deep);
         // Standing in a room, with no end out in space
         String inside = refusal(
                 "######",
@@ -107,37 +113,37 @@ class EngineLayoutTest {
     void anEngineNeedsFiveClearTilesPastItsNozzleForEachTileOfItsWidth() {
         // A Small engine, one tile wide: a strut of hull three tiles past its nozzle is in the way, six is not
         assertNotNull(refusal(
-                "    #####",
-                "#  EE...#",
-                "    #...#",
-                "    #####"));
+                "     #####",
+                "#  EE#...#",
+                "     #...#",
+                "     #####"));
         assertNull(refusal(
-                "       #####",
-                "#     EE...#",
-                "       #...#",
-                "       #####"));
+                "        #####",
+                "#     EE#...#",
+                "        #...#",
+                "        #####"));
         // A Medium engine, two tiles wide, needs ten: nine is too few, eleven enough
         String medium = refusal(
-                "           #####",
-                "         EEE...#",
-                "#        EEE...#",
-                "           #...#",
-                "           #####");
+                "            #####",
+                "         EEE#...#",
+                "#        EEE#...#",
+                "            #...#",
+                "            #####");
         assertNotNull(medium);
         assertTrue(medium.contains("needs 10 clear tiles"), medium);
         assertNull(refusal(
-                "             #####",
-                "           EEE...#",
-                "#          EEE...#",
-                "             #...#",
-                "             #####"));
+                "              #####",
+                "           EEE#...#",
+                "#          EEE#...#",
+                "              #...#",
+                "              #####"));
         // The grid's edge counts as space
         assertNull(refusal(
-                "  #####",
-                "EEE...#",
-                "EEE...#",
-                "  #...#",
-                "  #####"));
+                "   #####",
+                "EEE#...#",
+                "EEE#...#",
+                "   #...#",
+                "   #####"));
     }
 
     @Test
@@ -146,7 +152,8 @@ class EngineLayoutTest {
         ChassisBlueprint bp = new ChassisBlueprint(
                 "#########",
                 "#.......#",
-                "####E##.#",
+                "#######.#",
+                "    E #.#",
                 "    E #.#",
                 "      #.#",
                 "      ###");
@@ -159,11 +166,11 @@ class EngineLayoutTest {
     @Test
     void theShipPowersAndPipesAnEngineFromTheDeckBehindItsFlange() {
         ChassisBlueprint bp = new ChassisBlueprint(
-                "  ######",
-                " EER..P#",
-                "  #...P#",
-                "  ######");
-        for (int x = 3; x <= 6; x++) bp.pipe(x, 2);
+                "   ######",
+                " EE#R..P#",
+                "   #...P#",
+                "   ######");
+        for (int x = 4; x <= 7; x++) bp.pipe(x, 2);
         ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(bp);
         Engine engine = new Engine();
         engine.addSystem(new PowerRoutingSystem());
@@ -186,9 +193,9 @@ class EngineLayoutTest {
         }
         r.grid.gridDirty = true;
         engine.update(0f);
-        assertTrue(drive.powered, "power reaches it through its flange");
+        assertTrue(drive.powered, "power reaches it through the hull behind its flange");
         assertTrue(drive.pipedTanks.contains(tank, true), "so does the propellant");
-        assertTrue(EngineLayout.isCasing(r.grid, 1, 2));
-        assertFalse(EngineLayout.isCasing(r.grid, 2, 2), "the flange is the wall");
+        assertTrue(EngineLayout.isCasing(r.grid, 2, 2), "the flange is outside the hull");
+        assertFalse(EngineLayout.isCasing(r.grid, 3, 2), "the hull behind it is not the engine's");
     }
 }

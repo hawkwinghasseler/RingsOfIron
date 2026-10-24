@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="167.04" height="115.2" viewBox="-168.19 -57.6 167.04 115.2">
+  <title>exhaust_imbrium_bulwark_s: plume behind the nacelle engine, pivot on the middle of its slot's nozzle end, exhaust toward -x; scale along x with throttle</title>
+  <defs><linearGradient id="imb_s_halo" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffd9a0" stop-opacity="0.6"/><stop offset="0.45" stop-color="#ffae5c" stop-opacity="0.3"/><stop offset="1" stop-color="#ff7a2a" stop-opacity="0"/></linearGradient><linearGradient id="imb_s_core" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity="1"/><stop offset="0.35" stop-color="#fff0c8" stop-opacity="0.9"/><stop offset="1" stop-color="#ffc070" stop-opacity="0"/></linearGradient><linearGradient id="imb_s_streak" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffe8c0" stop-opacity="0.7"/><stop offset="1" stop-color="#ffb060" stop-opacity="0"/></linearGradient></defs>
+  <g id="base">
+  </g>
+  <g id="emissive">
+    <g data-light="glow">
+    <path d="M-1.15,-25.92 C-55.3,-31.1 -93.2,-34.56 -109.44,-34.56 Q-149.76,-12.1 -149.76,0 Q-149.76,12.1 -109.44,34.56 C-93.2,34.56 -55.3,31.1 -1.15,25.92 Z" fill="url(#imb_s_halo)" opacity="0.62"/>
+    <path d="M-1.15,-27.99 C-58.03,-36.5 -97.85,-42.16 -114.91,-42.16 Q-155.75,-14.76 -155.75,0 Q-155.75,14.76 -114.91,42.16 C-97.85,42.16 -58.03,36.5 -1.15,27.99 Z" fill="url(#imb_s_halo)" opacity="0.34"/>
+    <path d="M-1.15,-30.07 C-60.77,-41.89 -102.5,-49.77 -120.38,-49.77 Q-161.74,-17.42 -161.74,0 Q-161.74,17.42 -120.38,49.77 C-102.5,49.77 -60.77,41.89 -1.15,30.07 Z" fill="url(#imb_s_halo)" opacity="0.23"/>
+    <path d="M-1.15,-32.14 C-63.5,-47.28 -107.15,-57.37 -125.86,-57.37 Q-167.73,-20.08 -167.73,0 Q-167.73,20.08 -125.86,57.37 C-107.15,57.37 -63.5,47.28 -1.15,32.14 Z" fill="url(#imb_s_halo)" opacity="0.18"/>
+    <path d="M-1.15,-23.04 C-48.84,-20.97 -68.72,-19.58 -80.64,-19.58 Q-120.96,-6.85 -120.96,0 Q-120.96,6.85 -80.64,19.58 C-68.72,19.58 -48.84,20.97 -1.15,23.04 Z" fill="url(#imb_s_core)" opacity="0.62"/>
+    <path d="M-1.15,-24.88 C-51.26,-23.47 -72.14,-22.52 -84.67,-22.52 Q-125.8,-7.88 -125.8,0 Q-125.8,7.88 -84.67,22.52 C-72.14,22.52 -51.26,23.47 -1.15,24.88 Z" fill="url(#imb_s_core)" opacity="0.34"/>
+    <path d="M-1.15,-26.73 C-53.68,-25.97 -75.57,-25.46 -88.7,-25.46 Q-130.64,-8.91 -130.64,0 Q-130.64,8.91 -88.7,25.46 C-75.57,25.46 -53.68,25.97 -1.15,26.73 Z" fill="url(#imb_s_core)" opacity="0.23"/>
+    <path d="M-1.15,-19.01 L-109.44,-25.92 L-1.15,-15.55 Z" fill="url(#imb_s_streak)"/>
+    <path d="M-1.15,15.55 L-109.44,25.92 L-1.15,19.01 Z" fill="url(#imb_s_streak)"/>
+    </g>
+  </g>
+</svg>

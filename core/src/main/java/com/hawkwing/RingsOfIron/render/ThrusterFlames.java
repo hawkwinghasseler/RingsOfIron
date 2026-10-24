@@ -54,6 +54,8 @@ public final class ThrusterFlames {
         Entity craft;
         /** The engine's size for a main drive's plume; null for an RCS jet. */
         String size;
+        /** The engine's component, whose plume it is; null for an RCS jet or a hull's own engine. */
+        String component;
         float x, y, exhaust, width, level, flicker;
 
         boolean isRcs() {
@@ -94,10 +96,10 @@ public final class ThrusterFlames {
         FloatArray nozzleState = s;
         int[] slot = {0};
         float seed = (System.identityHashCode(craft) & 0xffff) * 0.0137f;
-        art.engineNozzles(craft, body, (size, x, y, exhaust, width, throttle) ->
-                add(craft, nozzleState, slot[0]++, seed, size, x, y, exhaust, width, throttle));
+        art.engineNozzles(craft, body, (size, component, x, y, exhaust, width, throttle) ->
+                add(craft, nozzleState, slot[0]++, seed, size, component, x, y, exhaust, width, throttle));
         nozzles.nozzles(craft, body, (x, y, degrees, throttle) ->
-                add(craft, nozzleState, slot[0]++, seed, null, x, y, degrees * MathUtils.degreesToRadians, 0f, throttle));
+                add(craft, nozzleState, slot[0]++, seed, null, null, x, y, degrees * MathUtils.degreesToRadians, 0f, throttle));
         s.size = 2 * slot[0];
     }
 
@@ -108,7 +110,7 @@ public final class ThrusterFlames {
         }
     }
 
-    private void add(Entity craft, FloatArray s, int slot, float seed, String size,
+    private void add(Entity craft, FloatArray s, int slot, float seed, String size, String component,
                      float x, float y, float exhaust, float width, float throttle) {
         int i = 2 * slot;
         while (s.size < i + 2) s.add(0f);
@@ -126,6 +128,7 @@ public final class ThrusterFlames {
         Flame f = pool.size > 0 ? pool.pop() : new Flame();
         f.craft = craft;
         f.size = size;
+        f.component = component;
         f.x = x;
         f.y = y;
         f.exhaust = exhaust;
@@ -180,7 +183,7 @@ public final class ThrusterFlames {
         batch.begin();
         for (Flame f : flames) {
             if (!withArt.contains(f.craft)) continue;
-            AtlasRegion r = art.flameArt(f.size);
+            AtlasRegion r = art.flameArt(f.size, f.component);
             if (r == null) continue;
             float level = f.level * f.flicker;
             float across = 0.7f + 0.3f * Math.min(1f, f.level);

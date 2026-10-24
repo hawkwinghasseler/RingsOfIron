@@ -40,7 +40,7 @@ public final class Defs {
             "weight_class", "material", "covering", "art", "color"));
     public static final Set<String> COMPONENT_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "behavior",
             "sizes", "color", "power_output", "throughput", "fluid", "capacity", "thrust", "short_chance",
-            "burst_threshold", "burst_chance"));
+            "burst_threshold", "burst_chance", "efficiency", "casing", "maker", "description", "price"));
 
     public static List<Entry> chassis(ChassisDef d) {
         List<Entry> out = new ArrayList<>();
@@ -162,6 +162,8 @@ public final class Defs {
     public static List<Entry> component(ShipComponentDef d) {
         List<Entry> out = new ArrayList<>();
         if (d.name != null) out.add(new Entry("name", str(d.name)));
+        if (d.maker != null) out.add(new Entry("maker", str(d.maker)));
+        if (d.description != null) out.add(new Entry("description", str(d.description)));
         out.add(new Entry("symbol", str(d.symbol)));
         out.add(new Entry("behavior", str(d.behavior)));
         if (!d.sizes.isEmpty()) {
@@ -178,7 +180,12 @@ public final class Defs {
             out.add(new Entry("fluid", str(d.fluid == null ? "PROPELLANT" : d.fluid)));
             if (!d.capacity.isEmpty()) out.add(new Entry("capacity", sizeTable(d.capacity)));
         }
-        if ("ENGINE".equals(d.behavior) && !d.thrust.isEmpty()) out.add(new Entry("thrust", sizeTable(d.thrust)));
+        if ("ENGINE".equals(d.behavior)) {
+            if (!d.thrust.isEmpty()) out.add(new Entry("thrust", sizeTable(d.thrust)));
+            if (d.efficiency != null) out.add(new Entry("efficiency", num(d.efficiency)));
+            if (d.casing != null) out.add(new Entry("casing", str(d.casing)));
+        }
+        if (d.price != null && !d.price.isEmpty()) out.add(new Entry("price", sizeTable(d.price)));
         if (d.shortChance != null) out.add(new Entry("short_chance", num(d.shortChance)));
         if ("TANK".equals(d.behavior)) {
             if (d.burstThreshold != null) out.add(new Entry("burst_threshold", num(d.burstThreshold)));

@@ -1222,6 +1222,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
             }
 
             @Override
+            public String quote(ChassisDef rebuilt) {
+                return ShipRefit.quote(world, game.player, rebuilt);
+            }
+
+            @Override
             public void close() {
                 refitDone = true;
             }

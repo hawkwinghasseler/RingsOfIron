@@ -462,23 +462,12 @@ public class ChassisModel {
         }
     }
 
-    /**
-     * An engine hangs outside the hull: space under it, but for a flange set into the wall, which is
-     * hull where it backs onto the inside of the ship (see {@link EngineLayout}).
-     */
+    /** An engine hangs wholly outside the hull: space under it (see {@link EngineLayout}). */
     private void fillUnderEngine(MountFootprint f, ShipPartCatalog catalog) {
-        char hull = symbolFor(catalog, ShipPartCatalog.TileBase.HULL, '#');
         char space = symbolFor(catalog, ShipPartCatalog.TileBase.VOID, ' ');
-        Side back = EngineLayout.nozzle(f).opposite();
         for (int y = f.originY; y < f.originY + f.height(); y++) {
             for (int x = f.originX; x < f.originX + f.width(); x++) {
-                if (!inBounds(x, y)) continue;
-                tiles[y][x] = space;
-                if (!EngineLayout.inFlange(f, x, y) || !inBounds(x + back.dx, y + back.dy)) continue;
-                ShipPartCatalog.TileType behind = catalog.tileFor(tiles[y + back.dy][x + back.dx]);
-                boolean inside = behind == null || (behind.base != ShipPartCatalog.TileBase.VOID
-                        && behind.base != ShipPartCatalog.TileBase.HULL);
-                if (inside) tiles[y][x] = hull;
+                if (inBounds(x, y)) tiles[y][x] = space;
             }
         }
     }

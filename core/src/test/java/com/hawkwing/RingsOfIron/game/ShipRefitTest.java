@@ -87,12 +87,12 @@ class ShipRefitTest {
         return c;
     }
 
-    /** The layout with the turret mount under the laser (map row 4, column 10) taken out for deck. */
+    /** The layout with the turret mount under the laser (map row 4, column 11) taken out for deck. */
     private ChassisDef withoutLaserTurret() {
         ChassisDef c = copy();
         char[] row = c.rows[4].toCharArray();
-        assertEquals('T', row[10], "the corvette's laser turret mount");
-        row[10] = '.';
+        assertEquals('T', row[11], "the corvette's laser turret mount");
+        row[11] = '.';
         c.rows[4] = new String(row);
         return c;
     }
@@ -165,12 +165,12 @@ class ShipRefitTest {
     void aRebuiltShipCollidesOnItsNewLayout() {
         dock();
         ChassisDef layout = copy();
-        // Cut the hull's aft port corner tile (map row 0, column 1; the engines stand aft of it) out of the hull
+        // Cut the hull's aft port corner tile (map row 0, column 2; the engines stand aft of it) out of the hull
         char[] top = layout.rows[0].toCharArray();
-        assertEquals('#', top[1]);
-        top[1] = ' ';
+        assertEquals('#', top[2]);
+        top[2] = ' ';
         layout.rows[0] = new String(top);
-        float cornerX = layout.originX + 1.5f, cornerY = layout.originY + layout.rows.length - 0.5f;
+        float cornerX = layout.originX + 2.5f, cornerY = layout.originY + layout.rows.length - 0.5f;
         assertTrue(collidesAt(cornerX, cornerY), "the corner collides as built");
         float massBefore = com.ringsofiron.physicsexterior.PhysicsManager.getMass(game.player
                 .getComponent(com.ringsofiron.physicsexterior.components.PhysicsBodyComponent.class).body);
@@ -227,5 +227,44 @@ class ShipRefitTest {
         assertNotNull(ShipRefit.apply(world, game.player, broken));
         assertSame(before, game.player.getComponent(ShipGridComponent.class));
         assertSame(highport, world.docking.dockedTo(game.player));
+    }
+
+    /** The layout with its two Halvorsen engines swapped for the component drawn with {@code symbol}. */
+    private ChassisDef withEngines(char symbol) {
+        ChassisDef c = copy();
+        for (int i = 0; i < c.rows.length; i++) c.rows[i] = c.rows[i].replace('E', symbol);
+        return c;
+    }
+
+    @Test
+    void theYardSellsNewEnginesAndBuysBackTheOldOnesAtHalf() {
+        dock();
+        TraderComponent trader = game.player.getComponent(TraderComponent.class);
+        trader.credits = 100_000;
+        ChassisDef aster = withEngines('Y');
+        // Two Aster Lyra 7s at 22,000 cr, less half of two Halvorsen HR-40s at 12,000
+        assertNotNull(ShipRefit.quote(world, game.player, aster));
+        assertTrue(ShipRefit.quote(world, game.player, aster).contains("32,000"), ShipRefit.quote(world, game.player, aster));
+        assertNull(ShipRefit.apply(world, game.player, aster));
+        assertEquals(100_000 - 32_000, trader.credits, 1e-6);
+        int lyras = 0;
+        for (com.badlogic.ashley.core.Entity e : game.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            if ("aster_lyra".equals(e.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent.class).component)) lyras++;
+        }
+        assertEquals(2, lyras);
+        assertNull(ShipRefit.quote(world, game.player, ShipRefit.layoutOf(world, game.player)), "the same layout again costs nothing");
+    }
+
+    @Test
+    void aShipThatCannotPayForItsNewEnginesIsRefused() {
+        dock();
+        TraderComponent trader = game.player.getComponent(TraderComponent.class);
+        trader.credits = 1_000;
+        ShipGridComponent before = game.player.getComponent(ShipGridComponent.class);
+        String said = ShipRefit.apply(world, game.player, withEngines('K'));
+        assertNotNull(said);
+        assertTrue(said.contains("cost"), said);
+        assertSame(before, game.player.getComponent(ShipGridComponent.class), "nothing rebuilt");
+        assertEquals(1_000, trader.credits, 1e-9);
     }
 }

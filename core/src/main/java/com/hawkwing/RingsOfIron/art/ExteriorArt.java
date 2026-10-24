@@ -76,13 +76,15 @@ public final class ExteriorArt {
     }
 
     /**
-     * The art of a main engine's plume of {@code size} ({@link ArtNames#engineSize}), or of an RCS
-     * nozzle's jet when {@code size} is null; null when the art pack has none.
+     * The art of a main engine's plume of {@code size} ({@link ArtNames#engineSize}), its model's own
+     * for {@code component} when it has one, or of an RCS nozzle's jet when {@code size} is null;
+     * null when the art pack has none.
      */
-    public AtlasRegion flameArt(String size) {
+    public AtlasRegion flameArt(String size, String component) {
         if (size == null) return art.region(ArtNames.RCS_PUFF);
-        if (ArtNames.ENGINE_SIZE.equals(size)) return art.first(ArtNames.exhaust(size), "hulls/thruster_plume");
-        return art.region(ArtNames.exhaust(size));
+        AtlasRegion r = art.first(ArtNames.exhaust(component, size));
+        if (r == null && ArtNames.ENGINE_SIZE.equals(size)) return art.region("hulls/thruster_plume");
+        return r;
     }
 
     /**
@@ -97,11 +99,12 @@ public final class ExteriorArt {
     /** Where each of a craft's main engines lets its exhaust out. */
     public interface NozzleSink {
         /**
-         * An engine of {@code size} ({@link ArtNames#engineSize}) whose nozzle is at ({@code x},
+         * An engine of {@code size} ({@link ArtNames#engineSize}) and {@code component} (its id in
+         * components.toml; null for one the hull art draws) whose nozzle is at ({@code x},
          * {@code y}) world meters, its exhaust going toward {@code exhaust} radians,
          * {@code width} meters across, burning at {@code throttle} (0-1; 0 when it is not).
          */
-        void nozzle(String size, float x, float y, float exhaust, float width, float throttle);
+        void nozzle(String size, String component, float x, float y, float exhaust, float width, float throttle);
     }
 
     /**
@@ -128,13 +131,13 @@ public final class ExteriorArt {
                 float burn = works ? throttle * MathUtils.clamp(sub.health, 0f, 1f) : 0f;
                 Vector2 w = world(body, socket.x, socket.y);
                 float exhaust = angle + (socketDegrees + 180f) * MathUtils.degreesToRadians;
-                out.nozzle(ArtNames.engineSize(m.size), w.x, w.y, exhaust, Math.min(m.width(), m.height()) * grid.tileSize, burn);
+                out.nozzle(ArtNames.engineSize(m.size), sub.component, w.x, w.y, exhaust, Math.min(m.width(), m.height()) * grid.tileSize, burn);
             }
             return;
         }
         for (int k = 0; k < engineCount(grid); k++) {
             Vector2 w = engineMount(body, grid, k, LEGACY_EXIT);
-            out.nozzle(ArtNames.ENGINE_SIZE, w.x, w.y, angle + MathUtils.PI, grid.tileSize, throttle);
+            out.nozzle(ArtNames.ENGINE_SIZE, null, w.x, w.y, angle + MathUtils.PI, grid.tileSize, throttle);
         }
     }
 
@@ -154,7 +157,7 @@ public final class ExteriorArt {
                 SubsystemComponent sub = engineIn(m);
                 if (sub == null) continue;
                 String size = ArtNames.engineSize(m.size);
-                AtlasRegion engine = art.first(ArtNames.nacelle(size, burning && sub.isOperational));
+                AtlasRegion engine = art.first(ArtNames.nacelle(sub.component, size, burning && sub.isOperational));
                 if (engine == null) continue;
                 // The art is the slot unturned, nozzle up the canvas; turned with the slot about its middle
                 float bw = m.size.baseWidth(m.kind) * s, bh = m.size.baseHeight(m.kind) * s;
