@@ -21,6 +21,9 @@ import com.badlogic.gdx.utils.Array;
  *   Primary (square):        'R' reactor, 'S' shield emitter, 'T' turret mount
  *   Auxiliary (rectangular): 'L' life support, 'H' helm, 'W' weapons console,
  *                            'C' cargo, 'A' airlock, 'E' engine
+ *   Engines are drawn outside the hull (see {@link EngineLayout}): the nozzle at the end with
+ *                            only space beyond it, the flange against the hull or in place of
+ *                            one tile of it.
  *   Docking port:            'D', drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium,
  *                            7 x 3 Large. It faces the side where nothing but space lies
  *                            beyond it; a port that could face either way goes in
@@ -146,7 +149,15 @@ public class ChassisBlueprintLoader {
         if (blueprint.wallLights != null) grid.wallLights = new Array<>(blueprint.wallLights);
         grid.rcsThrusters.addAll(blueprint.rcsThrusters);
 
-        for (SubsystemPlacement drawn : drawnMounts(chars, catalog, true)) {
+        Array<SubsystemPlacement> drawnMounts = drawnMounts(chars, catalog, true);
+        // An engine's letters say nothing of what lies under them: shape its tiles from its surroundings
+        for (SubsystemPlacement drawn : drawnMounts) {
+            if (drawn.type == SubsystemComponent.SubsystemType.ENGINE) EngineLayout.shape(grid, drawn.footprint);
+        }
+        for (ChassisBlueprint.MountDef def : blueprint.mounts) {
+            if (def.type == SubsystemComponent.SubsystemType.ENGINE) EngineLayout.shape(grid, def.footprint);
+        }
+        for (SubsystemPlacement drawn : drawnMounts) {
             if (drawn.type == SubsystemComponent.SubsystemType.ESCAPE_POD) hullUnderHatch(grid, chars, catalog, drawn.footprint);
             grid.placeMount(drawn.footprint, drawn.type);
             subsystems.add(drawn);
@@ -165,11 +176,16 @@ public class ChassisBlueprintLoader {
             subsystems.add(new SubsystemPlacement(def.footprint, component));
         }
 
-        // Launch paths last, so a mount anywhere on the grid counts as in the way
+        // Every part is in place now: nothing may stand in an engine's exhaust or a pod's launch path
         for (SubsystemPlacement p : subsystems) {
-            if (p.type != SubsystemComponent.SubsystemType.ESCAPE_POD) continue;
-            String problem = EscapePodLayout.clearance(grid, p.footprint);
-            if (problem != null) throw new IllegalArgumentException("Illegal escape pod: " + problem);
+            if (p.type == SubsystemComponent.SubsystemType.ENGINE) {
+                String blocked = EngineLayout.exhaustBlocked(grid, p.footprint);
+                if (blocked != null) throw new IllegalArgumentException("Illegal engine at " + p.footprint.originX + ","
+                        + p.footprint.originY + ": " + blocked);
+            } else if (p.type == SubsystemComponent.SubsystemType.ESCAPE_POD) {
+                String problem = EscapePodLayout.clearance(grid, p.footprint);
+                if (problem != null) throw new IllegalArgumentException("Illegal escape pod: " + problem);
+            }
         }
 
         return new LoadResult(grid, subsystems);
@@ -261,6 +277,14 @@ public class ChassisBlueprintLoader {
                         continue;
                     }
                 }
+                if (type == SubsystemComponent.SubsystemType.ENGINE) {
+                    try {
+                        footprint = nozzleOut(space, footprint);
+                    } catch (IllegalArgumentException e) {
+                        // The editor keeps it, so the check can say what is wrong with it
+                        if (strict) throw e;
+                    }
+                }
                 out.add(new SubsystemPlacement(footprint, component));
             }
         }
@@ -287,6 +311,22 @@ public class ChassisBlueprintLoader {
                     + " has no side facing space");
         }
         return new MountFootprint(port.kind, port.size, port.originX, port.originY, DockingPortLayout.rotationFacing(found));
+    }
+
+    /**
+     * Points an engine drawn in the map out into space: its nozzle goes at the end of its long side
+     * with only space beyond it, and its flange at the other end, which must not.
+     */
+    private static MountFootprint nozzleOut(boolean[][] space, MountFootprint engine) {
+        Side[] ends = engine.rotation % 2 == 0 ? new Side[]{Side.TOP, Side.BOTTOM} : new Side[]{Side.LEFT, Side.RIGHT};
+        boolean first = spaceBeyond(space, engine, ends[0]), second = spaceBeyond(space, engine, ends[1]);
+        if (first == second) {
+            throw new IllegalArgumentException("Engine at " + engine.originX + "," + engine.originY
+                    + (first ? " is not mounted on the hull" : " has no end facing space")
+                    + ": it mounts on the outside of the hull, its nozzle out into space");
+        }
+        Side out = first ? ends[0] : ends[1];
+        return new MountFootprint(engine.kind, engine.size, engine.originX, engine.originY, EngineLayout.rotationFacing(out));
     }
 
     /** True if every tile just beyond one side of the footprint is void or off the map. */

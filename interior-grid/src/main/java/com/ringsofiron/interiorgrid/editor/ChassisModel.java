@@ -2,6 +2,7 @@ package com.ringsofiron.interiorgrid.editor;
 
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
+import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.EscapePodLayout;
 import com.ringsofiron.interiorgrid.HullMounts;
 import com.ringsofiron.interiorgrid.InteriorGridData;
@@ -133,7 +134,7 @@ public class ChassisModel {
             Mount mount = new Mount(p.component.id, p.footprint.size, p.footprint.originX, p.footprint.originY,
                     p.footprint.rotation);
             m.mounts.add(mount);
-            m.fillUnder(p.footprint, p.component.id, catalog);
+            m.fillUnder(p.footprint, p.type, catalog);
         }
         for (ChassisDef.Mount d : def.mounts) {
             ShipPartCatalog.ComponentType type = d.component != null ? catalog.component(d.component)
@@ -386,7 +387,8 @@ public class ChassisModel {
     /**
      * Installs a component with its bottom-left tile at (x, y), replacing any mount it overlaps.
      * The tiles under it become steel floor (hull, for a docking port, which is drawn over the hull;
-     * an escape pod's hatch end keeps the hull it overlaps).
+     * space, for an engine, which hangs outside it; an escape pod's hatch end keeps the hull it
+     * overlaps).
      */
     public Mount place(String componentId, MountFootprint.MountSize size, int x, int y, int rotation,
                        ShipPartCatalog catalog) {
@@ -397,7 +399,7 @@ public class ChassisModel {
             MountFootprint o = mounts.get(i).footprint(catalog);
             if (o != null && overlaps(f, o)) mounts.remove(i);
         }
-        fillUnder(f, componentId, catalog);
+        fillUnder(f, catalog.component(componentId).behavior, catalog);
         mounts.add(mount);
         return mount;
     }
@@ -425,7 +427,7 @@ public class ChassisModel {
         mount.x = x;
         mount.y = y;
         mount.rotation = turned.rotation;
-        fillUnder(turned, mount.component, catalog);
+        fillUnder(turned, catalog.component(mount.component).behavior, catalog);
         return null;
     }
 
@@ -435,13 +437,18 @@ public class ChassisModel {
     }
 
     /**
-     * The tiles under a mount become steel floor, or hull under a docking port. An escape pod's
-     * hatch end keeps the hull it overlaps (a letter left there from the rows becomes hull).
+     * The tiles under a mount become steel floor, or hull under a docking port. An engine hangs
+     * outside the hull ({@link #fillUnderEngine}). An escape pod's hatch end keeps the hull it
+     * overlaps (a letter left there from the rows becomes hull).
      */
-    private void fillUnder(MountFootprint f, String componentId, ShipPartCatalog catalog) {
+    private void fillUnder(MountFootprint f, SubsystemComponent.SubsystemType type, ShipPartCatalog catalog) {
+        if (type == SubsystemComponent.SubsystemType.ENGINE) {
+            fillUnderEngine(f, catalog);
+            return;
+        }
         char hull = symbolFor(catalog, ShipPartCatalog.TileBase.HULL, '#');
         char base = f.kind == MountFootprint.MountKind.PORT ? hull : symbolFor(catalog, ShipPartCatalog.TileBase.FLOOR, '.');
-        boolean pod = isEscapePod(componentId, catalog);
+        boolean pod = type == SubsystemComponent.SubsystemType.ESCAPE_POD;
         Side hatch = pod ? HullMounts.facing(f) : null;
         for (int y = f.originY; y < f.originY + f.height(); y++) {
             for (int x = f.originX; x < f.originX + f.width(); x++) {
@@ -451,6 +458,27 @@ public class ChassisModel {
                 } else {
                     tiles[y][x] = base;
                 }
+            }
+        }
+    }
+
+    /**
+     * An engine hangs outside the hull: space under it, but for a flange set into the wall, which is
+     * hull where it backs onto the inside of the ship (see {@link EngineLayout}).
+     */
+    private void fillUnderEngine(MountFootprint f, ShipPartCatalog catalog) {
+        char hull = symbolFor(catalog, ShipPartCatalog.TileBase.HULL, '#');
+        char space = symbolFor(catalog, ShipPartCatalog.TileBase.VOID, ' ');
+        Side back = EngineLayout.nozzle(f).opposite();
+        for (int y = f.originY; y < f.originY + f.height(); y++) {
+            for (int x = f.originX; x < f.originX + f.width(); x++) {
+                if (!inBounds(x, y)) continue;
+                tiles[y][x] = space;
+                if (!EngineLayout.inFlange(f, x, y) || !inBounds(x + back.dx, y + back.dy)) continue;
+                ShipPartCatalog.TileType behind = catalog.tileFor(tiles[y + back.dy][x + back.dx]);
+                boolean inside = behind == null || (behind.base != ShipPartCatalog.TileBase.VOID
+                        && behind.base != ShipPartCatalog.TileBase.HULL);
+                if (inside) tiles[y][x] = hull;
             }
         }
     }

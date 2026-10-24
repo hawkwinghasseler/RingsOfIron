@@ -529,16 +529,20 @@ public class ShipGridComponent implements Component {
 
     /**
      * Checks a mount for the system that installs into it: systems mounted through the hull have
-     * their own rules (an escape pod, see {@link EscapePodLayout}); the rest use
-     * {@link #validateMount(MountFootprint)}.
+     * their own rules (an engine outside it, see {@link EngineLayout}; an escape pod through it, see
+     * {@link EscapePodLayout}); the rest use {@link #validateMount(MountFootprint)}.
+     *
+     * @return null if legal, otherwise a description of the problem.
      */
     public String validateMount(MountFootprint m, SubsystemComponent.SubsystemType type) {
+        if (type == SubsystemComponent.SubsystemType.ENGINE) return EngineLayout.validate(this, m);
         if (type == SubsystemComponent.SubsystemType.ESCAPE_POD) return EscapePodLayout.validate(this, m);
         return validateMount(m);
     }
 
     /**
-     * Places a mount. A docking port also builds its frame, opening and door into the tiles.
+     * Places a mount. A docking port also builds its frame, opening and door into the tiles. An
+     * engine or escape pod goes through {@link #placeMount(MountFootprint, SubsystemComponent.SubsystemType)}.
      *
      * @throws IllegalArgumentException if {@link #validateMount} rejects the footprint.
      */
@@ -546,11 +550,22 @@ public class ShipGridComponent implements Component {
         placeMount(m, null);
     }
 
-    /** Places a mount for that type of system, checked by {@link #validateMount(MountFootprint, SubsystemComponent.SubsystemType)}. */
+    /**
+     * Places a mount for a system of {@code type}. A docking port also builds its frame, opening and
+     * door into the tiles, and an engine its casing.
+     *
+     * @throws IllegalArgumentException if {@link #validateMount(MountFootprint, SubsystemComponent.SubsystemType)}
+     *         rejects the footprint.
+     */
     public void placeMount(MountFootprint m, SubsystemComponent.SubsystemType type) {
         String problem = validateMount(m, type);
         if (problem != null) throw new IllegalArgumentException("Illegal " + m.kind + " " + m.size + " mount: " + problem);
-        if (m.kind == MountFootprint.MountKind.PORT) DockingPortLayout.build(this, m);
+        if (type == SubsystemComponent.SubsystemType.ENGINE) EngineLayout.build(this, m);
+        else if (m.kind == MountFootprint.MountKind.PORT) DockingPortLayout.build(this, m);
+        register(m);
+    }
+
+    private void register(MountFootprint m) {
         for (int y = m.originY; y < m.originY + m.height(); y++) {
             for (int x = m.originX; x < m.originX + m.width(); x++) {
                 getTile(x, y).mount = m;

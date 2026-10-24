@@ -17,7 +17,8 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
  * Power floods outward from every footprint tile of each REACTOR that is switched on and
  * not disabled by damage (see {@link SubsystemComponent#DISABLE_THRESHOLD}), across
  * connected POWER_CONDUIT and FLOOR tiles. A subsystem is powered when any tile of its
- * footprint is reachable.
+ * footprint is reachable; an engine outside the hull, when one of its feed tiles is
+ * ({@link EngineLayout#feedTiles}).
  *
  * Power does not pass through intact full-tile walls, through closed edge walls (except
  * where a conduit runs on both sides of the wall), or through tiles at integrity 0:
@@ -257,6 +258,14 @@ public class PowerRoutingSystem extends FixedLogicSystem {
                     break;
                 }
             }
+            if (sub.circuit == null && sub.type == SubsystemComponent.SubsystemType.ENGINE) {
+                // An engine outside the hull draws its power from its feed tiles inside
+                feed.clear();
+                EngineLayout.feedTiles(grid, sub.footprint, feed);
+                for (int i = 0; i < feed.size && sub.circuit == null; i++) {
+                    sub.circuit = tileCircuit[feed.get(i) / grid.width][feed.get(i) % grid.width];
+                }
+            }
             sub.powered = sub.circuit != null;
             sub.isOperational = sub.switchedOn && sub.powered && !sub.isDisabled() && !sub.isStunned() && !sub.shorted;
         }
@@ -264,6 +273,9 @@ public class PowerRoutingSystem extends FixedLogicSystem {
         // Pipes follow the same structural changes
         PipeRouting.route(grid, registry);
     }
+
+    /** Feed tiles of the engine being wired, reused. */
+    private final IntArray feed = new IntArray();
 
     /** Old circuits already taken by a new one during this reroute. */
     private final Array<PowerCircuit> reused = new Array<>();

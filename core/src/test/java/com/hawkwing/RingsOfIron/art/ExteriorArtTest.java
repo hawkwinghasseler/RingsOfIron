@@ -8,7 +8,7 @@ import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import org.junit.jupiter.api.Test;
 
-/** Where an engine system's exterior engine goes on the hull. */
+/** Where an engine system's exhaust leaves it, outside the hull. */
 class ExteriorArtTest {
 
     private final ExteriorArt exterior = new ExteriorArt(null);
@@ -18,31 +18,34 @@ class ExteriorArtTest {
     }
 
     @Test
-    void anEngineLyingAlongXSitsOnTheAftHullEdgeBehindIt() {
+    void anEngineAftOfTheHullLetsItsExhaustOutAtItsAftEnd() {
         ShipGridComponent grid = grid(
-                "######",
-                "#EEE.#",
-                "#EEE.#",
-                "#....#",
-                "######");
+                "  ######",
+                "EEE....#",
+                "EEE....#",
+                "  #....#",
+                "  ######");
         MountFootprint m = grid.mounts.first();
-        assertEquals(1, m.rotation);
-        assertTrue(exterior.socket(grid, m));
-        assertEquals(grid.gridOriginLocal.x, exterior.socket.x, 1e-5f, "on the outer face of the aft hull");
+        assertEquals(1, m.rotation, "nozzle aft");
+        exterior.socket(grid, m);
+        assertEquals(grid.gridOriginLocal.x, exterior.socket.x, 1e-5f, "at the slot's aft end");
         assertEquals(grid.gridOriginLocal.y + 3f * grid.tileSize, exterior.socket.y, 1e-5f, "on the slot's middle line");
-        assertEquals(0f, exterior.socketDegrees, 1e-3f, "the art's nozzle already points aft");
+        assertEquals(0f, exterior.socketDegrees, 1e-3f, "the plume's art already points aft");
     }
 
     @Test
-    void anEngineFacingIntoTheShipHasNoExteriorEngine() {
+    void anEngineUnderTheHullLetsItsExhaustOutBelowIt() {
         ShipGridComponent grid = grid(
                 "#####",
                 "#...#",
-                "#E..#",
-                "#E..#",
-                "#####");
+                "#...#",
+                "##E##",
+                "  E  ");
         MountFootprint m = grid.mounts.first();
-        assertEquals(0, m.rotation);
-        assertFalse(exterior.socket(grid, m));
+        assertEquals(2, m.rotation, "nozzle down");
+        exterior.socket(grid, m);
+        assertEquals(grid.gridOriginLocal.x + 2.5f * grid.tileSize, exterior.socket.x, 1e-5f);
+        assertEquals(grid.gridOriginLocal.y, exterior.socket.y, 1e-5f);
+        assertEquals(90f, ((exterior.socketDegrees % 360f) + 360f) % 360f, 1e-3f, "the plume turned from aft to down");
     }
 }

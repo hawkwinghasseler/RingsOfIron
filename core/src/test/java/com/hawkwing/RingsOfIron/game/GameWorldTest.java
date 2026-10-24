@@ -199,12 +199,14 @@ class GameWorldTest {
             ModContext ctx = withContent.loadContent(assets, assets.resolve("no-mods-here"));
             float u = com.ringsofiron.physicsexterior.PhysicsManager.UNITS_PER_METER;
 
-            // The freighter's art has no collision layer: its 20 x 13 tile layout, one box
+            // The freighter's art has no collision layer: its 20 x 13 tile hull and the engines outside its stern
             com.badlogic.gdx.physics.box2d.Body freighter = ctx.factory.spawnShip("freighter_hauler", 0, 0, 0)
                     .getComponent(PhysicsBodyComponent.class).body;
-            assertEquals(1, freighter.getFixtureList().size);
-            assertTrue(freighter.getFixtureList().first().testPoint(9.8f * u, 6.3f * u));
-            assertFalse(freighter.getFixtureList().first().testPoint(10.2f * u, 0f));
+            assertTrue(freighter.getFixtureList().size > 1);
+            assertTrue(collides(freighter, 9.8f * u, 6.3f * u));
+            assertFalse(collides(freighter, 10.2f * u, 0f));
+            assertTrue(collides(freighter, -11.5f * u, 5f * u), "an engine's casing collides");
+            assertFalse(collides(freighter, -11.5f * u, 0f), "nothing between the engines");
 
             // The corvette's layer adds the bow past the end of its layout, at x = 5
             com.badlogic.gdx.physics.box2d.Body corvette = ctx.factory.spawnShip("corvette_patrol", 100, 0, 0)
@@ -216,6 +218,13 @@ class GameWorldTest {
         } finally {
             withContent.dispose();
         }
+    }
+
+    private static boolean collides(com.badlogic.gdx.physics.box2d.Body body, float x, float y) {
+        for (com.badlogic.gdx.physics.box2d.Fixture f : body.getFixtureList()) {
+            if (f.testPoint(x, y)) return true;
+        }
+        return false;
     }
 
     @Test
