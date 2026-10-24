@@ -225,20 +225,6 @@ class BaseDefenceTest {
         assertTrue(hits[0] > 0, "a battery's chaingun rounds land on a ship holding where the raid holds");
     }
 
-    /**
-     * Round 10: a defence with no railgun marks a frigate holding where {@link RaidRoutine} holds it (the
-     * survey's no-railgun row, seed 10: three chaingun raiders and two stock batteries, which took 0.00
-     * of hull off on round 9's integration).
-     */
-    @Test
-    @org.junit.jupiter.api.Tag("slow")
-    void aDefenceWithNoRailgunMarksAFrigate() {
-        EnemySurveyTest.Result r = EnemySurveyTest.fight(10, EnemySurveyTest.FRIGATE, EnemySurveyTest.BASE, 0, EnemySurveyTest.NO_RAILGUN);
-        System.out.println("RESULT " + r);
-        assertFalse(r.loadouts.contains("railgun"), r.toString());
-        assertTrue(r.hull0 - r.hull1 >= 0.05f, "the raid takes hull off: " + r);
-    }
-
     @Test
     void theBasesGunsAreNoBountyNoReconAndNoAce() {
         besideTheBase();

@@ -29,9 +29,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The round-2 loop played by script on the real new game, headless: take a contract, undock, fight
- * the pirate raider until it gives up, board it, strip a gun, dock, get paid and gain standing, with
- * a promotion one more such fight away. The second test loses the ship and goes through abandon
- * ship, rescue and requisition.
+ * the pirate raider until it gives up, board it, strip a gun, dock, get paid and gain standing. The
+ * second test loses the ship and goes through abandon ship, rescue and requisition.
  *
  * <p>Flying is the one step done by hand: the ship is put near the raider rather than flown there
  * (flight and docking have their own tests). The fight is real: the player's guns and missiles
@@ -192,11 +191,7 @@ class PlayableLoopTest {
         double beforeSale = account.credits;
         assertEquals(1, world.cargoSettlement.sellParts(game.player, part, 1), 1e-9);
         assertTrue(account.credits > beforeSale, "the part sold");
-
-        // Not promoted by one fight (the bounty's 6 and the kill's 5), but within one more of it
-        float gained = world.standing.standing(world.standing.sponsor()) - standing;
-        assertEquals(0, world.standing.record().rank, "still an ensign: " + notices);
-        assertTrue(standing + 2 * gained >= world.standing.ranks().get(1).standing, "a second fight promotes: " + gained);
+        // How many such fights make a Lieutenant is a balance target: FirstHourBalanceBenchmark
     }
 
     @Test
