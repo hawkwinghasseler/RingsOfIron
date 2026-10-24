@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="829.16" height="1118.49" viewBox="-518.4 -559.24 829.16 1118.49">
+  <title>exhaust_aster_lyra_l: plume behind the aerospike engine, pivot on the middle of its slot's nozzle end, exhaust toward -x; scale along x with throttle</title>
+  <defs><linearGradient id="spike_l_fan" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#dfe6ff" stop-opacity="1"/><stop offset="0.35" stop-color="#a8b4ff" stop-opacity="0.6"/><stop offset="0.8" stop-color="#7a80ff" stop-opacity="0.12"/><stop offset="1" stop-color="#7a80ff" stop-opacity="0"/></linearGradient><linearGradient id="spike_l_sheet" gradientUnits="userSpaceOnUse" x1="308.76" y1="0" x2="-85.96" y2="0"><stop offset="0" stop-color="#c4d6ff" stop-opacity="0.55"/><stop offset="0.61" stop-color="#eef3ff" stop-opacity="0.85"/><stop offset="1" stop-color="#dfe6ff" stop-opacity="0"/></linearGradient></defs>
+  <g id="base">
+  </g>
+  <g id="emissive">
+    <g data-light="glow">
+    <path d="M308.76,-92 C256.92,-135.2 -172.8,-231.63 -345.6,-220.05 Q-397.44,0 -345.6,220.05 C-172.8,231.63 256.92,135.2 308.76,92 Z" fill="url(#spike_l_fan)" opacity="0.32"/>
+    <path d="M308.76,-92 C256.92,-135.2 -190.08,-311.49 -380.16,-295.91 Q-432,0 -380.16,295.91 C-190.08,311.49 256.92,135.2 308.76,92 Z" fill="url(#spike_l_fan)" opacity="0.2"/>
+    <path d="M308.76,-92 C256.92,-135.2 -207.36,-416.01 -414.72,-395.21 Q-466.56,0 -414.72,395.21 C-207.36,416.01 256.92,135.2 308.76,92 Z" fill="url(#spike_l_fan)" opacity="0.12"/>
+    <path d="M308.76,-92 C256.92,-135.2 -224.64,-557.24 -449.28,-529.38 Q-501.12,0 -449.28,529.38 C-224.64,557.24 256.92,135.2 308.76,92 Z" fill="url(#spike_l_fan)" opacity="0.07"/>
+    <path d="M308.76,95 L288.83,84.97 L268.89,75.97 L248.96,67.98 L229.03,61.02 L209.09,55.08 L189.16,50.17 L169.23,46.27 L149.29,43.4 L129.36,41.55 L109.43,40.72 L89.49,40.92 L69.56,42.14 L58.45,42.02 L47.34,41.66 L36.23,41.06 L25.13,40.21 L14.02,39.09 L2.91,37.69 L-8.2,35.97 L-19.31,33.9 L-30.42,31.43 L-41.53,28.46 L-52.63,24.84 L-63.74,20.31 L-74.85,14.16 L-85.96,0 L-74.85,-14.16 L-63.74,-20.31 L-52.63,-24.84 L-41.53,-28.46 L-30.42,-31.43 L-19.31,-33.9 L-8.2,-35.97 L2.91,-37.69 L14.02,-39.09 L25.13,-40.21 L36.23,-41.06 L47.34,-41.66 L58.45,-42.02 L69.56,-42.14 L89.49,-40.92 L109.43,-40.72 L129.36,-41.55 L149.29,-43.4 L169.23,-46.27 L189.16,-50.17 L209.09,-55.08 L229.03,-61.02 L248.96,-67.98 L268.89,-75.97 L288.83,-84.97 L308.76,-95 Z M308.76,93 L288.83,81.24 L268.89,70.51 L248.96,60.8 L229.03,52.11 L209.09,44.44 L189.16,37.8 L169.23,32.18 L149.29,27.58 L129.36,24 L109.43,21.44 L89.49,19.91 L69.56,19.4 L69.56,-19.4 L89.49,-19.91 L109.43,-21.44 L129.36,-24 L149.29,-27.58 L169.23,-32.18 L189.16,-37.8 L209.09,-44.44 L229.03,-52.11 L248.96,-60.8 L268.89,-70.51 L288.83,-81.24 L308.76,-93 Z" fill="url(#spike_l_sheet)" fill-rule="evenodd"/>
+    </g>
+  </g>
+</svg>

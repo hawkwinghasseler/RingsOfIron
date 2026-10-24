@@ -20,11 +20,11 @@ class ExteriorArtTest {
     @Test
     void anEngineAftOfTheHullLetsItsExhaustOutAtItsAftEnd() {
         ShipGridComponent grid = grid(
-                "  ######",
-                "EEE....#",
-                "EEE....#",
-                "  #....#",
-                "  ######");
+                "   ######",
+                "EEE#....#",
+                "EEE#....#",
+                "   #....#",
+                "   ######");
         MountFootprint m = grid.mounts.first();
         assertEquals(1, m.rotation, "nozzle aft");
         exterior.socket(grid, m);
@@ -39,7 +39,8 @@ class ExteriorArtTest {
                 "#####",
                 "#...#",
                 "#...#",
-                "##E##",
+                "#####",
+                "  E  ",
                 "  E  ");
         MountFootprint m = grid.mounts.first();
         assertEquals(2, m.rotation, "nozzle down");

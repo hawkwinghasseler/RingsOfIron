@@ -28,6 +28,11 @@ public class ThrusterComponent implements Component {
      * thrust in propellant (force / exhaust velocity). 0 means unknown.
      */
     public float exhaustVelocity;
+    /**
+     * How much further the main engines fitted get from their propellant than the standard drive:
+     * multiplies {@link #exhaustVelocity}. 1 for standard engines, or with none fitted.
+     */
+    public float efficiency = 1f;
 
     public ThrusterComponent() {
     }

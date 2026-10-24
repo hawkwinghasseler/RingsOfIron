@@ -132,7 +132,7 @@ class InteriorGridDataTest {
         assertEquals(20, result.subsystems.size,
                 "helm, reactor, life support, 4 cargo bays, weapons console, 5 turrets, docking port,"
                         + " 2 engines, propellant, oxygen and nitrogen tanks, escape pod");
-        assertEquals(17, result.grid.width);
+        assertEquals(18, result.grid.width);
         assertTrue(result.grid.getTile(11, 3).isFlammable(), "the crew spaces are carpeted");
         assertFalse(result.grid.getTile(7, 3).isFlammable(), "the hold's walkway is bare deck");
     }

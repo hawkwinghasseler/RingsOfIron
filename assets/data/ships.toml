@@ -81,7 +81,9 @@ texture = "tex_raider"
 # at 153 t)
 mass = 154600.0
 max_thrust = 2.8e6
-max_torque = 6.0e5
+# What its RCS blocks give it: 6.0e5 until its engines moved wholly outside the hull, which put its
+# centre of mass a little further aft of its amidships pair
+max_torque = 6.25e5
 exhaust_velocity = 700000.0
 crew = 3
 # One chaingun in the nose turret, no missiles
@@ -94,9 +96,9 @@ name = "Gunship"
 chassis = "gunship"
 texture = "tex_gunship"
 # What it weighs in the bubble with full tanks: its layout's 160 tiles at 2 t each, 12 thin walls at
-# 0.5 t, and about 5.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands
-# in for it (round 9: it said 240 t)
-mass = 331100.0
+# 0.5 t, and about 5.1 t in its tanks, its two Imbrium drives cased in medium hull. A ship with a layout
+# weighs its layout, so this figure only stands in for it (round 9: it said 240 t)
+mass = 355100.0
 max_thrust = 3.4e6
 max_torque = 2.0e6
 exhaust_velocity = 700000.0
@@ -144,7 +146,7 @@ texture = "tex_gunship"
 # What it weighs in the bubble with full tanks: its layout's 160 tiles at 2 t each, as the patrols'
 # gunship's, 12 thin walls at 0.5 t, and about 5.1 t in its tanks. A ship with a layout weighs its layout,
 # so this figure only stands in for it (round 9: it said 220 t)
-mass = 331100.0
+mass = 355100.0
 max_thrust = 3.4e6
 max_torque = 2.0e6
 exhaust_velocity = 700000.0
@@ -355,8 +357,9 @@ name = "Marauder"
 chassis = "marauder"
 texture = "tex_marauder"
 # What it weighs in the bubble with full tanks: its layout's 215 tiles at 2 t each, 20 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 425600.0
+# 0.5 t, and what is in its tanks, its Imbrium drives cased in medium hull. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 449600.0
 max_thrust = 3.4e6
 max_torque = 3.43e6
 exhaust_velocity = 700000.0

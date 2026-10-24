@@ -22,18 +22,18 @@ class PropellantFeedTest {
     private ThrusterComponent thruster;
     private Entity ship;
 
-    /** An engine on the stern at (0, 1)-(1, 1), its flange in the hull, and two propellant tanks at x = 6 and 8, with a reactor. */
+    /** An engine on the stern at (0, 1)-(1, 1), its flange against the hull, and two propellant tanks at x = 7 and 9, with a reactor. */
     private static ChassisBlueprint layout() {
         return new ChassisBlueprint(
-                " #########",
-                " #R......#",
-                " #....P.P#",
-                "EE....P.P#",
-                " #########");
+                "  #########",
+                "  #R......#",
+                "  #....P.P#",
+                "EE#....P.P#",
+                "  #########");
     }
 
     private static ChassisBlueprint piped(ChassisBlueprint bp) {
-        for (int x = 2; x <= 8; x++) bp.pipe(x, 1);
+        for (int x = 3; x <= 9; x++) bp.pipe(x, 1);
         return bp;
     }
 

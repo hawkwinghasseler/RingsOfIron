@@ -1593,6 +1593,14 @@ def components():
         component_states(f"components/engine_{size}.svg", w, h, a,
                          f"engine {size.upper()}: {w//T}x{h//T} auxiliary slot outside the hull, nozzle toward +y "
                          f"at rotation 0, mounting flange at the bottom", True, clip=sil)
+        from engine_svgs import MODELS
+        for model, style in MODELS.items():
+            if style == "bell":
+                continue
+            w, h, a, sil = engine(size, style, key=f"{model}_c")
+            component_states(f"components/{model}_{size}.svg", w, h, a,
+                             f"{model} {size.upper()}: the {style} engine, {w//T}x{h//T} auxiliary slot outside the hull, "
+                             f"nozzle toward +y at rotation 0, mounting flange at the bottom", True, clip=sil)
         w, h, a = cargo(size)
         component_states(f"components/cargo_{size}.svg", w, h, a,
                          f"cargo {size.upper()}: {w//T}x{h//T} auxiliary slot, unpowered", False)
@@ -2011,36 +2019,13 @@ def chassis_mounts(ch):
 
 
 def engine_cells(ch):
-    """The map cells of a chassis's engines that lie outside its hull, and those of the flanges
-    set into it, as two sets of (col, row): the loader's reading (EngineLayout), where the nozzle
-    is the end of the slot's long side with only space beyond it and a flange backing onto the
-    inside of the ship takes the place of a tile of its wall."""
-    rows = ch["rows"]
-    H = len(rows)
-
-    def char(c, r):
-        return rows[r][c] if 0 <= r < H and 0 <= c < len(rows[r]) else " "
-
-    outside, in_wall = set(), set()
+    """The map cells of a chassis's engines, as a set of (col, row): all of each lies outside the
+    hull (EngineLayout)."""
+    cells = set()
     for (name, col, row, w, h) in chassis_mounts(ch):
-        if name != "engine":
-            continue
-        cells = {(col + i, row + j) for i in range(w) for j in range(h)}
-        if h >= w:  # standing along the map's rows: the nozzle up or down
-            ends = {(0, -1): [(col + i, row) for i in range(w)], (0, 1): [(col + i, row + h - 1) for i in range(w)]}
-        else:
-            ends = {(-1, 0): [(col, row + j) for j in range(h)], (1, 0): [(col + w - 1, row + j) for j in range(h)]}
-        nozzle = next((d for d, end in ends.items() if all(char(c + d[0], r + d[1]) == " " for c, r in end)), None)
-        if nozzle is None:
-            continue
-        back = (-nozzle[0], -nozzle[1])
-        flange = ends[back]
-        inside = all(char(c + back[0], r + back[1]) not in WALL_CHARS and char(c + back[0], r + back[1]) != " "
-                     for c, r in flange)
-        if inside:
-            in_wall |= set(flange)
-        outside |= cells - (set(flange) if inside else set())
-    return outside, in_wall
+        if name == "engine":
+            cells |= {(col + i, row + j) for i in range(w) for j in range(h)}
+    return cells
 
 
 def hull_svg(ch, overhang=None, engines=False):
@@ -2057,8 +2042,7 @@ def hull_svg(ch, overhang=None, engines=False):
 
     a = Art()
     # An engine hangs outside the hull, drawn by the game over its slot: the hull has none of it
-    # but a flange set into the wall, which is wall
-    casing, flanges = engine_cells(ch)
+    casing = engine_cells(ch)
     solid = {(c, r) for r, row in enumerate(rows) for c, chh in enumerate(row) if chh != " "} - casing
     rectangular = len(solid) == W * H
     # Wedge hull pieces, by map cell: the corners of the cell the triangle keeps, its right angle
@@ -2088,7 +2072,7 @@ def hull_svg(ch, overhang=None, engines=False):
     panels = []
     for (c, r) in solid:
         x, y = cell(c, r)
-        wall = rows[r][c] in WALL_CHARS or rows[r][c] == "I" or (c, r) in flanges
+        wall = rows[r][c] in WALL_CHARS or rows[r][c] == "I"
         if (c, r) in wedges:
             corners = [(x, y), (x + T, y), (x + T, y + T), (x, y + T)]
             pts = [corners[k] for k in wedges[(c, r)]]
@@ -2310,7 +2294,8 @@ def engines():
     the engine mounts the hull art draws on a craft with no engine systems (the small size): pivot
     at the SVG origin, on the hull's outer edge, nozzle toward -x. `_unpowered` is an engine not
     burning (no hot throat), and exhaust_<size> is the plume drawn from a nozzle's exit while it
-    burns."""
+    burns. Those are the bell (Halvorsen) engines; an engine model in another maker's style
+    (engine_svgs.MODELS) has its own <model>_nacelle_<size> and exhaust_<model>_<size>."""
     from engine_svgs import engine
     for size in SIZES:
         # the engine as it hangs off the hull, drawn over its slot (ExteriorArt)
@@ -2348,27 +2333,24 @@ def engines():
               f"engine_{size}: pivot on the hull's engine mount socket, nozzle toward -x, burning",
               viewbox=f"{f(left)} {f(-half)} {f(1.45 * u)} {f(2 * half)}", unpowered=f"engines/engine_{size}_unpowered.svg")
 
-        a = Art()
-        pid = f"exhaust_{size}_g"
-        a.defs = ('<linearGradient id="' + pid + '" x1="1" y1="0" x2="0" y2="0">'
-                  '<stop offset="0" stop-color="#ffffff"/><stop offset="0.25" stop-color="#9fd8ff"/>'
-                  '<stop offset="1" stop-color="#4f8fff" stop-opacity="0"/></linearGradient>')
-        x0 = -0.03 * u  # the plume starts at the nozzle's exit, its pivot
-        a.e = lit(path(f"M{f(x0)},{f(-0.42 * u)} C{f(x0 - 1.0 * u)},{f(-0.36 * u)} {f(x0 - 2.4 * u)},{f(-0.12 * u)} "
-                       f"{f(x0 - 3.2 * u)},0 C{f(x0 - 2.4 * u)},{f(0.12 * u)} {f(x0 - 1.0 * u)},{f(0.36 * u)} "
-                       f"{f(x0)},{f(0.42 * u)} Z", fill=f"url(#{pid})", extra=' opacity="0.9"')
-                  + path(f"M{f(x0)},{f(-0.18 * u)} C{f(x0 - 0.6 * u)},{f(-0.14 * u)} {f(x0 - 1.3 * u)},{f(-0.05 * u)} "
-                         f"{f(x0 - 1.8 * u)},0 C{f(x0 - 1.3 * u)},{f(0.05 * u)} {f(x0 - 0.6 * u)},{f(0.14 * u)} "
-                         f"{f(x0)},{f(0.18 * u)} Z", fill="#ffffff", extra=' opacity="0.8"')
-                  # shock diamonds
-                  + "".join(poly([(x0 - d * u - 0.12 * u, 0), (x0 - d * u, -0.07 * u), (x0 - d * u + 0.12 * u, 0),
-                                  (x0 - d * u, 0.07 * u)], "#ffffff", extra=' opacity="0.55"') for d in (0.5, 0.95, 1.35)),
-                  "glow")
-        right, length = x0, 3.25 * u
-        write(f"engines/exhaust_{size}.svg", length, 0.9 * u, a,
-              f"exhaust_{size}: plume behind an engine of size {size}, pivot on its nozzle's exit, exhaust toward -x; "
-              "scale along x with throttle",
-              viewbox=f"{f(right - length + 0.05 * u)} {f(-0.45 * u)} {f(length)} {f(0.9 * u)}")
+    # each engine model's plume, and the art of the models not drawn in the plain (bell) style
+    from engine_svgs import MODELS, plume
+    for size in SIZES:
+        a, vb, length, height = plume(size, "bell")
+        write(f"engines/exhaust_{size}.svg", length, height, a,
+              f"exhaust_{size}: plume behind a bell-nozzle engine of size {size}, pivot on its nozzle's exit, "
+              "exhaust toward -x; scale along x with throttle", viewbox=vb)
+        for model, style in MODELS.items():
+            if style == "bell":
+                continue
+            w, h, a, _ = engine(size, style, key=model)
+            write(f"engines/{model}_nacelle_{size}.svg", w, h, a,
+                  f"{model}_nacelle_{size}: the {style} engine filling its {w // T}x{h // T} slot outside the hull, nozzle "
+                  "toward +y, mounting flange at the bottom, burning", unpowered=f"engines/{model}_nacelle_{size}_unpowered.svg")
+            a, vb, length, height = plume(size, style)
+            write(f"engines/exhaust_{model}_{size}.svg", length, height, a,
+                  f"exhaust_{model}_{size}: plume behind the {style} engine, pivot on the middle of its slot's nozzle "
+                  "end, exhaust toward -x; scale along x with throttle", viewbox=vb)
 
 
 def rcs():

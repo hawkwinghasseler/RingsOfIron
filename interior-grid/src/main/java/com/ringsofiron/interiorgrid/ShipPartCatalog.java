@@ -118,6 +118,8 @@ public class ShipPartCatalog {
         public float burstThreshold = -1f;
         /** TANK: chance each hit below the threshold bursts it; below 0, the standard for its fluid. */
         public float burstChance = -1f;
+        /** ENGINE: the hull its casing is built as; null for {@link EngineLayout#CASING}. */
+        public WeightClass casing;
 
         public ComponentType(String id, String name, char symbol, SubsystemComponent.SubsystemType behavior,
                              EnumSet<MountFootprint.MountSize> sizes, int color,
@@ -368,6 +370,7 @@ public class ShipPartCatalog {
         if (t.shortChance >= 0f) d.shortChance = t.shortChance;
         if (t.burstThreshold >= 0f) d.burstThreshold = t.burstThreshold;
         if (t.burstChance >= 0f) d.burstChance = t.burstChance;
+        if (t.casing != null) d.casing = t.casing.name();
         return d;
     }
 
@@ -414,6 +417,9 @@ public class ShipPartCatalog {
         if (d.shortChance != null) type.shortChance = chance(d.shortChance, who + " short_chance");
         if (d.burstThreshold != null) type.burstThreshold = chance(d.burstThreshold, who + " burst_threshold");
         if (d.burstChance != null) type.burstChance = chance(d.burstChance, who + " burst_chance");
+        if (d.casing != null && behavior == SubsystemComponent.SubsystemType.ENGINE) {
+            type.casing = parseEnum(WeightClass.class, d.casing, who + " casing");
+        }
         return type;
     }
 

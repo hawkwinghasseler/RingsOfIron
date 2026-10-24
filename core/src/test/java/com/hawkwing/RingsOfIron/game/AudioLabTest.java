@@ -133,8 +133,8 @@ class AudioLabTest {
         // The bridge door onto the corridor, from just inside the bridge
         GridPositionComponent pos = world.crew.position(game.avatar);
         pos.stop();
-        pos.setTile(18, 7);
-        EdgeWall door = lab.grid().edgeH[7][18];
+        pos.setTile(19, 7);
+        EdgeWall door = lab.grid().edgeH[7][19];
         assertTrue(door.hasBulkhead);
         boolean was = door.bulkheadSealed;
         assertEquals(was ? "Door open" : "Door sealed", lab.toggleNearestDoor());
