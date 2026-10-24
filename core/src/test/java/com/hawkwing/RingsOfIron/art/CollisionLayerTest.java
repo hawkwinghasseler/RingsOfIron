@@ -109,11 +109,21 @@ class CollisionLayerTest {
     }
 
     @Test
-    void theCorvettesLayerHasItsBow() {
+    void theCorvettesLayerHasItsShape() {
         List<float[]> pieces = CollisionLayer.read(ASSETS.resolve("art/hulls/corvette.svg"));
         assertNotNull(pieces);
-        assertEquals(1, pieces.size());
-        assertArrayEquals(new float[]{-11f, -3f, 5f, -3f, 6.5f, 0f, 5f, 3f, -11f, 3f}, pieces.get(0), EPS);
+        float minX = Float.MAX_VALUE, maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        for (float[] p : pieces) {
+            for (int i = 0; i < p.length; i += 2) {
+                minX = Math.min(minX, p[i]);
+                maxX = Math.max(maxX, p[i]);
+                maxY = Math.max(maxY, p[i + 1]);
+            }
+        }
+        assertEquals(9.2f, maxX, EPS, "the prow");
+        assertEquals(-12.2f, minX, EPS, "the fairing between the engines");
+        assertEquals(4.1f, maxY, EPS, "the fins");
+        assertEquals(114.31f, area(pieces), 1e-3f, "the whole outline, the grid's 16 by 6 tiles within it");
         assertNull(CollisionLayer.read(ASSETS.resolve("art/hulls/freighter.svg")), "the freighter collides on its tiles");
     }
 
