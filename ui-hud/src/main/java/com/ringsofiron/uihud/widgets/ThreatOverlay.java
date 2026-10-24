@@ -45,6 +45,7 @@ public class ThreatOverlay extends Actor {
     private final Vector2 a = new Vector2(), b = new Vector2();
     private ThreatProvider provider;
     private float clock;
+    private final com.badlogic.gdx.graphics.g2d.GlyphLayout fit = new com.badlogic.gdx.graphics.g2d.GlyphLayout();
 
     public ThreatOverlay(ViewportManager viewports, Skin skin, Label banner) {
         this.viewports = viewports;
@@ -80,6 +81,12 @@ public class ThreatOverlay extends Actor {
         frame.clear();
         if (provider != null && isVisible()) provider.collect(frame);
         String text = bannerText(frame);
+        // Too wide for the space it has: the impact time goes on a line of its own rather than
+        // the wrap leaving its unit behind
+        if (text != null && banner.getWidth() > 0f) {
+            fit.setText(banner.getStyle().font, text);
+            if (fit.width > banner.getWidth()) text = text.replace("   impact", "\nimpact");
+        }
         banner.setVisible(text != null && isVisible() && (!urgent(frame) || clock % 0.5f < 0.3f));
         banner.setText(text == null ? "" : text);
     }

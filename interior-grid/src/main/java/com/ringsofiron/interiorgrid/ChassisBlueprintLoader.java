@@ -160,6 +160,7 @@ public class ChassisBlueprintLoader {
         for (SubsystemPlacement drawn : drawnMounts) {
             if (drawn.type == SubsystemComponent.SubsystemType.ESCAPE_POD) hullUnderHatch(grid, chars, catalog, drawn.footprint);
             grid.placeMount(drawn.footprint, drawn.type);
+            encase(grid, drawn.footprint, drawn.component);
             subsystems.add(drawn);
         }
 
@@ -173,6 +174,7 @@ public class ChassisBlueprintLoader {
                 throw new IllegalArgumentException(component.name + " does not come in size " + def.footprint.size);
             }
             grid.placeMount(def.footprint, component.behavior);
+            encase(grid, def.footprint, component);
             subsystems.add(new SubsystemPlacement(def.footprint, component));
         }
 
@@ -189,6 +191,13 @@ public class ChassisBlueprintLoader {
         }
 
         return new LoadResult(grid, subsystems);
+    }
+
+    /** Rebuilds an engine's casing as the hull its component names, when it names one. */
+    private static void encase(ShipGridComponent grid, MountFootprint m, ShipPartCatalog.ComponentType component) {
+        if (component.behavior == SubsystemComponent.SubsystemType.ENGINE && component.casing != null) {
+            EngineLayout.build(grid, m, component.casing);
+        }
     }
 
     /**

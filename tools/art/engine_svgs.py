@@ -1,11 +1,14 @@
 """Main engines, drawn to fill their auxiliary slot. An engine mounts on the outside of the hull,
 so its art has no deck or housing behind it: what is not engine is clear, and space shows through.
 The canvas is the slot at 64 units a tile with the nozzle toward +y (the top of the canvas) at
-rotation 0; the bottom end is the mounting flange that bolts to the hull (and may sit one tile into
-it). The same drawing goes inside (components/engine_<size>) and outside (engines/nacelle_<size>).
+rotation 0; the bottom end is the mounting flange that bolts against the outside of the hull. The
+same drawing goes inside (components/<model>_<size>) and outside (engines/nacelle_<size>, or
+engines/<model>_nacelle_<size>).
 
-There are three styles; STYLE picks the one the game uses. generate_svgs.py draws them through
-`engine`; run this script alone to redraw a sheet of all three for comparing them:
+There are three styles, one for each maker's engines (MODELS): the bell (Halvorsen, the plain
+engine art; STYLE), the armoured nacelle (Imbrium) and the aerospike (Aster). Each has its own
+plume (`plume`). generate_svgs.py draws them through `engine` and `plume`; run this script alone to
+redraw a sheet of all three for comparing them:
 
     python3 tools/art/engine_svgs.py [out_dir]
 """
@@ -19,7 +22,7 @@ from generate_svgs import (T, AUX, SIZES, INK, STEEL, STEEL_MID, STEEL_DARK, STE
                            light, hazard_band)
 
 STYLES = ["bell", "nacelle", "aerospike"]
-# The style the game draws
+# The style of the plain engine art (nacelle_<size>, exhaust_<size>)
 STYLE = "bell"
 
 GLOW = "#9fd8ff"
@@ -317,13 +320,12 @@ def style_aerospike(a, w, h, size, gid):
     # back against the frame
     top = max(2, y_fl - FRAME - (spike + ch - 4 + mh))
     base = top + spike
+    SPIKE[size] = (top, base, bw, tip)
     n = 24
     # the plug's half width from the cells (s = 0) to the truncated end (s = 1)
     pts = [(tip / 2 + (bw / 2 - tip / 2) * (1 - k / n) ** 2, spike * k / n) for k in range(n + 1)]
     a.b += path(mirror(cx, base, pts), fill=STEEL_DARK, stroke=INK, sw=2)
-    # the near face lit, the far face shaded, the ridge down the middle
-    a.b += path("M" + " L".join(f"{f(round(cx - r + 2, 2))},{f(round(base - d, 2))}" for r, d in pts)
-                + " L" + f"{f(cx)},{f(top)} L{f(cx)},{f(base)} Z", fill=STEEL_MID, extra=' opacity="0.55"')
+    # the ridge down the middle
     a.b += line(cx, base - 2, cx, top + 1, INK, sw=1.2)
     # cooling channels following the taper
     for q in (0.3, 0.6, 0.85):
@@ -354,6 +356,156 @@ def style_aerospike(a, w, h, size, gid):
 
 
 DRAW = {"bell": style_bell, "nacelle": style_nacelle, "aerospike": style_aerospike}
+# Where each size's plug lies on its canvas, as style_aerospike drew it: (truncated end y, cells y,
+# width at the cells, width at the truncated end)
+SPIKE = {}
+
+# The maker's line each engine component belongs to, by its id in components.toml, and so the style
+# it is drawn in. The bell is the plain engine art (nacelle_<size>, exhaust_<size>); the others get
+# their own, under the component's id.
+MODELS = {
+    "engine": "bell",            # Halvorsen HR-40
+    "freight_drive": "bell",     # Halvorsen HR-25F
+    "gunship_drive": "nacelle",  # Imbrium Rampart
+    "imbrium_bulwark": "nacelle",
+    "aster_lyra": "aerospike",   # Aster Lyra 7
+}
+
+
+# --- Plumes --------------------------------------------------------------------------
+# A plume is drawn from the engine's nozzle end (the SVG origin, the slot's middle there) toward
+# -x, in emissive, and the game stretches it along x with the throttle. Out in vacuum nothing
+# hems the exhaust in: there are no shock diamonds, and each plume spreads as its nozzle lets it.
+
+def _grad(gid, stops, x1=1, x2=0):
+    s = "".join(f'<stop offset="{o}" stop-color="{c}" stop-opacity="{a_}"/>' for o, c, a_ in stops)
+    return f'<linearGradient id="{gid}" x1="{x1}" y1="0" x2="{x2}" y2="0">{s}</linearGradient>'
+
+
+def _lobe(x0, r0, x1, r1, tip, bulge=0.5):
+    """A plume lobe from half-width r0 at x0 to r1 at x1 (x1 < x0), closed in a rounded end to tip."""
+    mx = x0 + (x1 - x0) * bulge
+    return (f"M{f(x0)},{f(-r0)} C{f(mx)},{f(-r0 - (r1 - r0) * 0.6)} {f(x1 + (x0 - x1) * 0.15)},{f(-r1)} {f(x1)},{f(-r1)} "
+            f"Q{f(tip)},{f(-r1 * 0.35)} {f(tip)},0 Q{f(tip)},{f(r1 * 0.35)} {f(x1)},{f(r1)} "
+            f"C{f(x1 + (x0 - x1) * 0.15)},{f(r1)} {f(mx)},{f(r0 + (r1 - r0) * 0.6)} {f(x0)},{f(r0)} Z")
+
+
+def _soft(a, x0, r0, x1, r1, tip, fill, layers=4, grow=0.22, bulge=0.5):
+    """A lobe with a soft edge: `layers` copies, each wider and fainter than the last, so no hard
+    outline shows where the glow ends."""
+    for i in range(layers):
+        g = 1 + grow * i
+        a.e += path(_lobe(x0, r0 * (1 + 0.08 * i), x1 * (1 + 0.05 * i), r1 * g, tip * (1 + 0.04 * i), bulge),
+                    fill=fill, extra=f' opacity="{f(0.75 / (i + 1.2))}"')
+
+
+def plume_bell(a, u, size):
+    """Halvorsen: a high-expansion bell leaves a tight, nearly parallel jet in vacuum, blue-white,
+    its edge fraying out into a faint halo that spreads at a few degrees."""
+    k = f"bell_{size}"
+    a.defs += (_grad(f"{k}_halo", [(0, "#9fd8ff", 0.55), (0.5, "#6fb0ff", 0.25), (1, "#4f8fff", 0)])
+               + _grad(f"{k}_core", [(0, "#ffffff", 1), (0.3, "#cfeaff", 0.85), (1, "#9fd8ff", 0)])
+               + _grad(f"{k}_hot", [(0, "#ffffff", 0.95), (1, "#ffffff", 0)]))
+    x0 = -0.02 * u
+    _soft(a, x0, 0.42 * u, -2.4 * u, 0.52 * u, -3.1 * u, f"url(#{k}_halo)")
+    _soft(a, x0, 0.36 * u, -1.6 * u, 0.28 * u, -2.4 * u, f"url(#{k}_core)", layers=3, grow=0.15, bulge=0.6)
+    a.e += path(_lobe(x0, 0.16 * u, -0.7 * u, 0.12 * u, -1.2 * u, 0.6), fill=f"url(#{k}_hot)")
+    return x0, 3.4 * u, 0.88 * u
+
+
+def plume_nacelle(a, u, size):
+    """Imbrium: a hot, fuel-rich drive. A denser, warmer jet, white at the throat going to amber,
+    shorter and a little wider than a Halvorsen's, with streaks where the film cooling burns off."""
+    k = f"imb_{size}"
+    a.defs += (_grad(f"{k}_halo", [(0, "#ffd9a0", 0.6), (0.45, "#ffae5c", 0.3), (1, "#ff7a2a", 0)])
+               + _grad(f"{k}_core", [(0, "#ffffff", 1), (0.35, "#fff0c8", 0.9), (1, "#ffc070", 0)])
+               + _grad(f"{k}_streak", [(0, "#ffe8c0", 0.7), (1, "#ffb060", 0)]))
+    x0 = -0.02 * u
+    _soft(a, x0, 0.45 * u, -1.9 * u, 0.6 * u, -2.6 * u, f"url(#{k}_halo)")
+    _soft(a, x0, 0.4 * u, -1.4 * u, 0.34 * u, -2.1 * u, f"url(#{k}_core)", layers=3, grow=0.15, bulge=0.6)
+    for sy in (-0.3, 0.3):
+        a.e += path(f"M{f(x0)},{f(sy * u - 0.03 * u)} L{f(-1.9 * u)},{f(sy * 1.5 * u)} L{f(x0)},{f(sy * u + 0.03 * u)} Z",
+                    fill=f"url(#{k}_streak)")
+    return x0, 2.9 * u, 1.0 * u
+
+
+def plume_aerospike(a, u, size):
+    """Aster: an aerospike has no bell; its outer edge is open to space, and in vacuum the exhaust
+    turns out round the cells' lips as soon as it leaves them. So the plume starts back on the plug:
+    a bright sheet hugging each face of it down to the truncated end, a short hot core where the two
+    meet behind it (the two drawn as one shape), and a wide, faint fan opening outward from the cell
+    row."""
+    from generate_svgs import AUX
+    engine(size, "aerospike", key="plume")  # where the plug lies
+    top, base, bw, tip = SPIKE[size]
+    w = AUX[size][0] * T
+    # canvas y (down from the nozzle end) is +x here; canvas x about the middle is y
+    scale = 1.0
+    xb, xt = base * scale, top * scale
+    hb, ht = bw / 2, tip / 2
+    k = f"spike_{size}"
+    a.defs += (_grad(f"{k}_fan", [(0, "#dfe6ff", 1), (0.35, "#a8b4ff", 0.6), (0.8, "#7a80ff", 0.12), (1, "#7a80ff", 0)], x1=1, x2=0)
+)
+    L = 2.5 * u
+    # the fan: from the cell row's outer lips, turning outward, fading out before its front; drawn
+    # in layers, each wider and fainter, so its edge is soft
+    far = 0
+    for i, (spread, op) in enumerate(((22, 0.32), (30, 0.2), (38, 0.12), (46, 0.07))):
+        reach = L * (0.8 + 0.08 * i)
+        wide = hb + reach * math.tan(math.radians(spread))
+        far = max(far, wide)
+        a.e += path(f"M{f(xb)},{f(-hb)} C{f(xb - 0.3 * u)},{f(-hb - 0.25 * u)} {f(-reach * 0.5)},{f(-wide)} {f(-reach)},{f(-wide * 0.95)} "
+                    f"Q{f(-reach - 0.3 * u)},0 {f(-reach)},{f(wide * 0.95)} "
+                    f"C{f(-reach * 0.5)},{f(wide)} {f(xb - 0.3 * u)},{f(hb + 0.25 * u)} {f(xb)},{f(hb)} Z",
+                    fill=f"url(#{k}_fan)", extra=f' opacity="{f(op)}"')
+    L = L * 1.04 + 0.3 * u
+    # a sheet on each face of the plug, standing a little off it, from the cells to the truncated end
+    n = 12
+    # One shape for the sheets and the hot core, under one gradient, so nothing doubles up where they
+    # meet: its outer edge stands a little off each face of the plug from the cells to the truncated
+    # end, then closes on the axis behind it in a rounded nose (the recirculation behind the plug's
+    # base); the plug itself, cut out of it, stays clear
+    nose = 0.9 * u
+    a.defs += (f'<linearGradient id="{k}_sheet" gradientUnits="userSpaceOnUse" x1="{f(xb)}" y1="0" x2="{f(xt - nose)}" y2="0">'
+               f'<stop offset="0" stop-color="#c4d6ff" stop-opacity="0.55"/>'
+               f'<stop offset="{f((xb - xt) / (xb - xt + nose))}" stop-color="#eef3ff" stop-opacity="0.85"/>'
+               f'<stop offset="1" stop-color="#dfe6ff" stop-opacity="0"/></linearGradient>')
+    m = 14
+    outer, inner = [], []
+    for i in range(n + 1):
+        q = i / n
+        x = xb + (xt - xb) * q
+        r = ht + (hb - ht) * (1 - q) ** 2
+        inner.append((x, r + 1))
+        outer.append((x, r + 3 + 0.12 * u * q))
+    r0 = outer[-1][1]
+    for j in range(1, m + 1):
+        q = j / m
+        outer.append((xt - nose * q, r0 * (1 - q ** 2) ** 0.55))
+    # around the outside: down one side, round the nose, back up the other
+    edge = outer + [(x, -y) for x, y in reversed(outer[:-1])]
+    hole = inner + [(x, -y) for x, y in reversed(inner)]
+    a.e += path("M" + " L".join(f"{f(x)},{f(y)}" for x, y in edge) + " Z "
+                + "M" + " L".join(f"{f(x)},{f(y)}" for x, y in hole) + " Z",
+                fill=f"url(#{k}_sheet)", extra=' fill-rule="evenodd"')
+    right = xb + 2
+    return right, right + L + 0.1 * u, far + 2
+
+
+PLUME = {"bell": plume_bell, "nacelle": plume_nacelle, "aerospike": plume_aerospike}
+
+
+def plume(size, style):
+    """The plume of an engine of `size` in `style`: (art, viewBox, width, height). Its origin is the
+    middle of the slot's nozzle end, the exhaust toward -x."""
+    from generate_svgs import AUX
+    u = T * AUX[size][0] * 0.9
+    a = Art()
+    a.defs = ""
+    right, length, half = PLUME[style](a, u, size)
+    a.e = lit(a.e, "glow")
+    vb = f"{f(right - length)} {f(-half)} {f(length)} {f(2 * half)}"
+    return a, vb, length, 2 * half
 
 
 def engine(size, style=STYLE, key="engine"):

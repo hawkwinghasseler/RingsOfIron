@@ -687,6 +687,158 @@
    }
   ]
  },
+ "components/aster_lyra_l": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 96.0,
+    "y": -369.02
+   }
+  ]
+ },
+ "components/aster_lyra_l_damaged": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 96.0,
+    "y": -369.02
+   }
+  ]
+ },
+ "components/aster_lyra_m": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 64.0,
+    "y": -141.82
+   }
+  ]
+ },
+ "components/aster_lyra_m_damaged": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 64.0,
+    "y": -141.82
+   }
+  ]
+ },
+ "components/aster_lyra_s": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 32.0,
+    "y": -83.92
+   }
+  ]
+ },
+ "components/aster_lyra_s_damaged": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 32.0,
+    "y": -83.92
+   }
+  ]
+ },
+ "components/aster_lyra_xl": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 160.0,
+    "y": -659.9
+   }
+  ]
+ },
+ "components/aster_lyra_xl_damaged": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 160.0,
+    "y": -659.9
+   }
+  ]
+ },
  "components/docking_collar_l": {
   "canvas": [
    0.0,
@@ -1475,6 +1627,158 @@
    }
   ]
  },
+ "components/gunship_drive_l": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 96.0,
+    "y": -339.52
+   }
+  ]
+ },
+ "components/gunship_drive_l_damaged": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 96.0,
+    "y": -339.52
+   }
+  ]
+ },
+ "components/gunship_drive_m": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 64.0,
+    "y": -127.27
+   }
+  ]
+ },
+ "components/gunship_drive_m_damaged": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 64.0,
+    "y": -127.27
+   }
+  ]
+ },
+ "components/gunship_drive_s": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 32.0,
+    "y": -78.35
+   }
+  ]
+ },
+ "components/gunship_drive_s_damaged": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 32.0,
+    "y": -78.35
+   }
+  ]
+ },
+ "components/gunship_drive_xl": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 160.0,
+    "y": -576.4
+   }
+  ]
+ },
+ "components/gunship_drive_xl_damaged": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 160.0,
+    "y": -576.4
+   }
+  ]
+ },
  "components/helm_l": {
   "canvas": [
    0.0,
@@ -2168,6 +2472,158 @@
     "w": 58.0,
     "x": 260.0,
     "y": -757.0
+   }
+  ]
+ },
+ "components/imbrium_bulwark_l": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 96.0,
+    "y": -339.52
+   }
+  ]
+ },
+ "components/imbrium_bulwark_l_damaged": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 96.0,
+    "y": -339.52
+   }
+  ]
+ },
+ "components/imbrium_bulwark_m": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 64.0,
+    "y": -127.27
+   }
+  ]
+ },
+ "components/imbrium_bulwark_m_damaged": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 64.0,
+    "y": -127.27
+   }
+  ]
+ },
+ "components/imbrium_bulwark_s": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 32.0,
+    "y": -78.35
+   }
+  ]
+ },
+ "components/imbrium_bulwark_s_damaged": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 32.0,
+    "y": -78.35
+   }
+  ]
+ },
+ "components/imbrium_bulwark_xl": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 160.0,
+    "y": -576.4
+   }
+  ]
+ },
+ "components/imbrium_bulwark_xl_damaged": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 0.55,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 160.0,
+    "y": -576.4
    }
   ]
  },
@@ -7325,6 +7781,82 @@
    }
   ]
  },
+ "engines/aster_lyra_nacelle_l": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 96.0,
+    "y": -369.02
+   }
+  ]
+ },
+ "engines/aster_lyra_nacelle_m": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 64.0,
+    "y": -141.82
+   }
+  ]
+ },
+ "engines/aster_lyra_nacelle_s": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 32.0,
+    "y": -83.92
+   }
+  ]
+ },
+ "engines/aster_lyra_nacelle_xl": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 160.0,
+    "y": -659.9
+   }
+  ]
+ },
  "engines/engine_l": {
   "canvas": [
    -181.44,
@@ -7401,79 +7933,459 @@
    }
   ]
  },
- "engines/exhaust_l": {
+ "engines/exhaust_aster_lyra_l": {
   "canvas": [
-   -558.14,
-   -77.76,
-   561.6,
-   155.52
+   -518.4,
+   -559.25,
+   829.16,
+   1118.49
   ],
   "lights": [
    {
-    "alpha": 0.9,
-    "color": "#4f8fff",
-    "h": 145.16,
+    "alpha": 1.0,
+    "color": "#7a80ff",
+    "h": 1114.48,
     "light": "glow",
-    "w": 552.96,
-    "x": -281.66,
+    "w": 809.88,
+    "x": -96.18,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_aster_lyra_m": {
+  "canvas": [
+   -345.6,
+   -372.16,
+   460.42,
+   744.32
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#7a80ff",
+    "h": 740.32,
+    "light": "glow",
+    "w": 446.9,
+    "x": -110.63,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_aster_lyra_s": {
+  "canvas": [
+   -172.8,
+   -185.08,
+   241.54,
+   370.16
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#7a80ff",
+    "h": 366.16,
+    "light": "glow",
+    "w": 233.78,
+    "x": -50.15,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_aster_lyra_xl": {
+  "canvas": [
+   -864.0,
+   -933.4,
+   1436.52,
+   1866.81
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#7a80ff",
+    "h": 1862.82,
+    "light": "glow",
+    "w": 1405.72,
+    "x": -132.34,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_gunship_drive_l": {
+  "canvas": [
+   -504.58,
+   -172.8,
+   501.12,
+   345.6
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff7a2a",
+    "h": 344.22,
+    "light": "glow",
+    "w": 499.73,
+    "x": -253.32,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_gunship_drive_m": {
+  "canvas": [
+   -336.38,
+   -115.2,
+   334.08,
+   230.4
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff7a2a",
+    "h": 229.48,
+    "light": "glow",
+    "w": 333.16,
+    "x": -168.88,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_gunship_drive_s": {
+  "canvas": [
+   -168.19,
+   -57.6,
+   167.04,
+   115.2
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff7a2a",
+    "h": 114.74,
+    "light": "glow",
+    "w": 166.58,
+    "x": -84.44,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_gunship_drive_xl": {
+  "canvas": [
+   -840.96,
+   -288.0,
+   835.2,
+   576.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff7a2a",
+    "h": 573.7,
+    "light": "glow",
+    "w": 832.9,
+    "x": -422.21,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_imbrium_bulwark_l": {
+  "canvas": [
+   -504.58,
+   -172.8,
+   501.12,
+   345.6
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff7a2a",
+    "h": 344.22,
+    "light": "glow",
+    "w": 499.73,
+    "x": -253.32,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_imbrium_bulwark_m": {
+  "canvas": [
+   -336.38,
+   -115.2,
+   334.08,
+   230.4
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff7a2a",
+    "h": 229.48,
+    "light": "glow",
+    "w": 333.16,
+    "x": -168.88,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_imbrium_bulwark_s": {
+  "canvas": [
+   -168.19,
+   -57.6,
+   167.04,
+   115.2
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff7a2a",
+    "h": 114.74,
+    "light": "glow",
+    "w": 166.58,
+    "x": -84.44,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_imbrium_bulwark_xl": {
+  "canvas": [
+   -840.96,
+   -288.0,
+   835.2,
+   576.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#ff7a2a",
+    "h": 573.7,
+    "light": "glow",
+    "w": 832.9,
+    "x": -422.21,
+    "y": -0.0
+   }
+  ]
+ },
+ "engines/exhaust_l": {
+  "canvas": [
+   -590.98,
+   -152.07,
+   587.52,
+   304.13
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#4f8fff",
+    "h": 298.32,
+    "light": "glow",
+    "w": 596.5,
+    "x": -301.71,
     "y": -0.0
    }
   ]
  },
  "engines/exhaust_m": {
   "canvas": [
-   -372.1,
-   -51.84,
-   374.4,
-   103.68
+   -393.98,
+   -101.37,
+   391.68,
+   202.75
   ],
   "lights": [
    {
-    "alpha": 0.9,
+    "alpha": 1.0,
     "color": "#4f8fff",
-    "h": 96.76,
+    "h": 198.88,
     "light": "glow",
-    "w": 368.64,
-    "x": -187.78,
+    "w": 397.67,
+    "x": -201.14,
     "y": -0.0
    }
   ]
  },
  "engines/exhaust_s": {
   "canvas": [
-   -186.05,
-   -25.92,
-   187.2,
-   51.84
+   -196.99,
+   -50.69,
+   195.84,
+   101.38
   ],
   "lights": [
    {
-    "alpha": 0.9,
+    "alpha": 1.0,
     "color": "#4f8fff",
-    "h": 48.38,
+    "h": 99.44,
     "light": "glow",
-    "w": 184.32,
-    "x": -93.89,
+    "w": 198.84,
+    "x": -100.57,
     "y": -0.0
    }
   ]
  },
  "engines/exhaust_xl": {
   "canvas": [
-   -930.24,
-   -129.6,
-   936.0,
-   259.2
+   -984.96,
+   -253.44,
+   979.2,
+   506.88
   ],
   "lights": [
    {
-    "alpha": 0.9,
+    "alpha": 1.0,
     "color": "#4f8fff",
-    "h": 241.92,
+    "h": 497.2,
     "light": "glow",
-    "w": 921.6,
-    "x": -469.44,
+    "w": 994.18,
+    "x": -502.85,
     "y": -0.0
+   }
+  ]
+ },
+ "engines/gunship_drive_nacelle_l": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 96.0,
+    "y": -339.52
+   }
+  ]
+ },
+ "engines/gunship_drive_nacelle_m": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 64.0,
+    "y": -127.27
+   }
+  ]
+ },
+ "engines/gunship_drive_nacelle_s": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 32.0,
+    "y": -78.35
+   }
+  ]
+ },
+ "engines/gunship_drive_nacelle_xl": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 160.0,
+    "y": -576.4
+   }
+  ]
+ },
+ "engines/imbrium_bulwark_nacelle_l": {
+  "canvas": [
+   0.0,
+   -448.0,
+   192.0,
+   448.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 96.0,
+    "y": -339.52
+   }
+  ]
+ },
+ "engines/imbrium_bulwark_nacelle_m": {
+  "canvas": [
+   0.0,
+   -192.0,
+   128.0,
+   192.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 64.0,
+    "y": -127.27
+   }
+  ]
+ },
+ "engines/imbrium_bulwark_nacelle_s": {
+  "canvas": [
+   0.0,
+   -128.0,
+   64.0,
+   128.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 14.4,
+    "light": "glow",
+    "w": 14.4,
+    "x": 32.0,
+    "y": -78.35
+   }
+  ]
+ },
+ "engines/imbrium_bulwark_nacelle_xl": {
+  "canvas": [
+   0.0,
+   -768.0,
+   320.0,
+   768.0
+  ],
+  "lights": [
+   {
+    "alpha": 1.0,
+    "color": "#9fd8ff",
+    "h": 19.2,
+    "light": "glow",
+    "w": 19.2,
+    "x": 160.0,
+    "y": -576.4
    }
   ]
  },
@@ -7612,9 +8524,9 @@
  },
  "hulls/audio_demo": {
   "canvas": [
-   -960.0,
+   -1024.0,
    -448.0,
-   1856.0,
+   1920.0,
    896.0
   ],
   "lights": [
@@ -7748,9 +8660,9 @@
  },
  "hulls/bulk_carrier": {
   "canvas": [
-   -1664.0,
+   -1728.0,
    -544.0,
-   3200.0,
+   3264.0,
    1088.0
   ],
   "lights": [
@@ -7820,9 +8732,9 @@
  },
  "hulls/carrier": {
   "canvas": [
-   -2048.0,
+   -2112.0,
    -1120.0,
-   3712.0,
+   3776.0,
    2240.0
   ],
   "lights": [
@@ -7909,9 +8821,9 @@
  },
  "hulls/corsair": {
   "canvas": [
-   -704.0,
+   -768.0,
    -288.0,
-   1472.0,
+   1536.0,
    576.0
   ],
   "lights": [
@@ -7981,9 +8893,9 @@
  },
  "hulls/corvette": {
   "canvas": [
-   -832.0,
+   -896.0,
    -256.0,
-   1312.0,
+   1376.0,
    512.0
   ],
   "lights": [
@@ -8053,9 +8965,9 @@
  },
  "hulls/courier": {
   "canvas": [
-   -672.0,
+   -736.0,
    -352.0,
-   1280.0,
+   1344.0,
    704.0
   ],
   "lights": [
@@ -8125,9 +9037,9 @@
  },
  "hulls/destroyer": {
   "canvas": [
-   -1248.0,
+   -1312.0,
    -672.0,
-   2368.0,
+   2432.0,
    1344.0
   ],
   "lights": [
@@ -8205,9 +9117,9 @@
  },
  "hulls/freighter": {
   "canvas": [
-   -832.0,
+   -896.0,
    -480.0,
-   1536.0,
+   1600.0,
    960.0
   ],
   "lights": [
@@ -8268,9 +9180,9 @@
  },
  "hulls/frigate": {
   "canvas": [
-   -960.0,
+   -1024.0,
    -384.0,
-   1792.0,
+   1856.0,
    768.0
   ],
   "lights": [
@@ -8340,9 +9252,9 @@
  },
  "hulls/gunship": {
   "canvas": [
-   -832.0,
+   -896.0,
    -320.0,
-   1664.0,
+   1728.0,
    640.0
   ],
   "lights": [
@@ -8420,9 +9332,9 @@
  },
  "hulls/heavy_cruiser": {
   "canvas": [
-   -1536.0,
+   -1600.0,
    -800.0,
-   2944.0,
+   3008.0,
    1600.0
   ],
   "lights": [
@@ -8509,9 +9421,9 @@
  },
  "hulls/hospital_ship": {
   "canvas": [
-   -1024.0,
+   -1088.0,
    -672.0,
-   1920.0,
+   1984.0,
    1344.0
   ],
   "lights": [
@@ -8589,9 +9501,9 @@
  },
  "hulls/interceptor": {
   "canvas": [
-   -608.0,
+   -672.0,
    -288.0,
-   1152.0,
+   1216.0,
    576.0
   ],
   "lights": [
@@ -8661,9 +9573,9 @@
  },
  "hulls/liner": {
   "canvas": [
-   -1536.0,
+   -1600.0,
    -672.0,
-   2944.0,
+   3008.0,
    1344.0
   ],
   "lights": [
@@ -8742,9 +9654,9 @@
  },
  "hulls/marauder": {
   "canvas": [
-   -1024.0,
+   -1088.0,
    -448.0,
-   1920.0,
+   1984.0,
    896.0
   ],
   "lights": [
@@ -8814,9 +9726,9 @@
  },
  "hulls/ore_barge": {
   "canvas": [
-   -768.0,
+   -832.0,
    -480.0,
-   1408.0,
+   1472.0,
    960.0
   ],
   "lights": [
@@ -8886,9 +9798,9 @@
  },
  "hulls/picket": {
   "canvas": [
-   -608.0,
+   -672.0,
    -256.0,
-   1248.0,
+   1312.0,
    512.0
   ],
   "lights": [
@@ -8958,9 +9870,9 @@
  },
  "hulls/raider": {
   "canvas": [
-   -608.0,
+   -672.0,
    -224.0,
-   1280.0,
+   1344.0,
    448.0
   ],
   "lights": [
@@ -9030,9 +9942,9 @@
  },
  "hulls/reaver": {
   "canvas": [
-   -1632.0,
+   -1696.0,
    -608.0,
-   3136.0,
+   3200.0,
    1216.0
   ],
   "lights": [
@@ -9119,9 +10031,9 @@
  },
  "hulls/salvage_tug": {
   "canvas": [
-   -768.0,
+   -832.0,
    -320.0,
-   1408.0,
+   1472.0,
    640.0
   ],
   "lights": [
@@ -9301,9 +10213,9 @@
  },
  "hulls/surveyor": {
   "canvas": [
-   -896.0,
+   -960.0,
    -352.0,
-   1728.0,
+   1792.0,
    704.0
   ],
   "lights": [
@@ -9381,9 +10293,9 @@
  },
  "hulls/tanker": {
   "canvas": [
-   -1408.0,
+   -1472.0,
    -416.0,
-   2688.0,
+   2752.0,
    832.0
   ],
   "lights": [

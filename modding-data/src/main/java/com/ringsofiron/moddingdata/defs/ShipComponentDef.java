@@ -40,6 +40,16 @@ public class ShipComponentDef {
     public Map<String, Double> capacity = new LinkedHashMap<>();
     /** ENGINE: newtons of main-engine thrust at full health, by mount size. Sizes left out use the standard thrust. */
     public Map<String, Double> thrust = new LinkedHashMap<>();
+    /** ENGINE: multiplies the exhaust velocity the ship's entry gives, so the propellant a newton-second costs divides by it; left out, 1. */
+    public Float efficiency;
+    /** ENGINE: the weight class of hull its casing is built as (LIGHT, MEDIUM, HEAVY); left out, LIGHT. */
+    public String casing;
+    /** Who makes it, as the yard lists it; left out, nobody in particular. */
+    public String maker;
+    /** One line on it, for the yard and the editor. */
+    public String description;
+    /** Credits a station yard charges to fit one, by mount size. Sizes left out (or no table) come free. */
+    public Map<String, Double> price = new LinkedHashMap<>();
     /** Chance, 0 to 1, that a damaging hit shorts the system out; left out, the standard for its behavior. */
     public Float shortChance;
     /** TANK: health, 0 to 1, below which a hit can burst it; left out, the standard (0.25). */

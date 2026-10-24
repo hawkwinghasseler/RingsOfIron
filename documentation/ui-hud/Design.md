@@ -119,3 +119,9 @@ The game starts at a main menu (`com.hawkwing.RingsOfIron.shell.GameShell` in co
 Gamepad (standard mapping): left stick thrust and turn, or walk on deck; right stick left/right or the bumpers strafe; right stick click rotation assist; A or the right trigger fire (A also uses a console); B missile; X decoy or force a door; Y deck or outside view; left trigger next target; d-pad up/down time warp, left arm port and ask clearance, right undock; Start pause menu; Back traffic map. Sticks count past 40%.
 
 The `shell` smoke test (`gradlew :lwjgl3:smokeTestShell`) drives a session through the menu: new game, pause, save to a slot, quit to the menu, continue that save, settings, resume. With `-PsmokeShots=<dir>` it saves the screenshots above.
+
+## Type and UI scale
+
+The HUD and menus are set in Inter (`assets/fonts`, SIL Open Font License), rasterised by FreeType in `HudFonts`: body and panel titles at 15 units, banners and menu headings at 22, the main menu's title at 44. Every layout is written in UI units for a 1280x800 window, and `UiScale` makes one unit 1x to 3x screen pixels. Auto follows the window's height (1x at 1080 lines, 1.25x at 1440, 2x at 2160); Settings offers fixed scales too. A scale is held to what keeps 1280x800 units on screen, so the panels never crowd each other, and never goes under 1x. The fonts are drawn again for a new scale in place (`HudSkin.rescale`), so text stays sharp.
+
+The missile warning has one place on screen: the banner, set between the flight panel and the status column. Its notice is still heard and kept in the notice log (L), but the status column leaves it out. `tools/playtest/ui-tour.sh [out] [WxH] [scale]` screenshots the menus and HUD at any window size; `documentation/ui-hud/polish/` has the before and after from the change that brought this in.

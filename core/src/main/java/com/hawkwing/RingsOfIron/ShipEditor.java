@@ -16,6 +16,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
+import com.hawkwing.RingsOfIron.game.EngineThrust;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.Fluid;
@@ -131,6 +132,11 @@ public class ShipEditor extends ApplicationAdapter {
         /** Has the yard rebuild the ship to {@code layout}; returns null when done, or why not. */
         String apply(ChassisDef layout);
 
+        /** What the yard would charge for the parts of {@code layout}, as a line, or null when nothing. */
+        default String quote(ChassisDef layout) {
+            return null;
+        }
+
         /** Back to the game. */
         void close();
     }
@@ -194,6 +200,9 @@ public class ShipEditor extends ApplicationAdapter {
     private boolean quitArmed;
 
     private int revision;
+    /** The yard's price for the refit as drawn, and the revision it was worked out at. */
+    private String quote;
+    private int quotedRevision = -1;
     private int checkedRevision = -1;
     private EditorProject.Check check;
     private String ghostKey;
@@ -219,7 +228,7 @@ public class ShipEditor extends ApplicationAdapter {
     public void create() {
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
-        font = new BitmapFont();
+        font = com.ringsofiron.uihud.HudFonts.body();
         art = ArtLibrary.load(ArtLibrary.DEFAULT_PATH);
         ui = new OrthographicCamera();
         project = EditorProject.load(assetsDir, modsDir);
@@ -1606,6 +1615,16 @@ public class ShipEditor extends ApplicationAdapter {
         text(x, y, item.id + "  " + m.width() + " x " + m.height() + " tiles"
                 + (item.source != null ? "  (" + item.source + ")" : "  (new)"), Color.CYAN);
         y -= LINE;
+        if (refit != null) {
+            if (quotedRevision != revision) {
+                quote = refit.quote(m.toDef(cat));
+                quotedRevision = revision;
+            }
+            if (quote != null) {
+                text(x, y, quote, Color.GOLD);
+                y -= LINE;
+            }
+        }
         field(x, y, "name", "Name", m.name == null ? "" : m.name, ed, s -> {
             beginEdit();
             m.name = s;
@@ -1716,6 +1735,25 @@ public class ShipEditor extends ApplicationAdapter {
         return y;
     }
 
+    /** The maker, description, price and engine ratings of a component at the size chosen, as the data gives them. */
+    private List<String> partDetails(ShipPartCatalog.ComponentType type) {
+        List<String> out = new ArrayList<>();
+        EditorProject.Item<ShipComponentDef> item = project.components.get(type.id);
+        ShipComponentDef d = item == null ? null : item.value;
+        if (d == null) return out;
+        if (d.maker != null) out.add(d.maker);
+        if (d.description != null) out.add(d.description);
+        if (type.behavior == SubsystemComponent.SubsystemType.ENGINE) {
+            Double n = d.thrust == null ? null : d.thrust.get(size.name());
+            double thrust = n != null && n > 0 ? n : EngineThrust.standardThrust(size);
+            out.add(String.format(Locale.ROOT, "%.2f MN, efficiency %.2f, %s casing", thrust / 1e6,
+                    d.efficiency != null ? d.efficiency : 1f, d.casing != null ? d.casing.toLowerCase(Locale.ROOT) : "light"));
+        }
+        Double price = d.price == null ? null : d.price.get(size.name());
+        if (price != null && price > 0) out.add(String.format(Locale.ROOT, "%,.0f cr at a yard", price));
+        return out;
+    }
+
     private float toolOptions(float x, float y, ChassisModel m, ShipPartCatalog cat) {
         switch (tool) {
             case PAINT: {
@@ -1744,6 +1782,12 @@ public class ShipEditor extends ApplicationAdapter {
                     List<MountFootprint.MountSize> sizes = new ArrayList<>(type.sizes);
                     choice(x, y, "Size", size, sizes, true, s -> size = s);
                     y -= LINE;
+                    for (String line : partDetails(type)) {
+                        for (String w : wrap(line, PANEL_WIDTH - 2 * PAD)) {
+                            text(x, y, w, Color.LIGHT_GRAY);
+                            y -= LINE;
+                        }
+                    }
                 }
                 if (ghostReason != null && !ghostValid) {
                     for (String line : wrap("Here: " + ghostReason, PANEL_WIDTH - 2 * PAD)) {

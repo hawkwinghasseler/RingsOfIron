@@ -32,6 +32,8 @@ jobs:
   # Round 3's career on each seed, played twice: the journals must match and the career reach the
   # gunship, unless the seed is listed as stopping at a known place
   # (CareerSeedsTest.STOPS); a seed that stops anywhere else, or gets through while listed, fails.
+  # How it is paced (the gunship paid for in play) is the playtest benchmark CareerPacingBenchmark,
+  # which CI never runs (documentation/playtest/).
   career-seeds:
     name: Career seed ${{ matrix.seed }}
     runs-on: ubuntu-latest
@@ -59,8 +61,8 @@ jobs:
           path: core/build/career-seed-*.txt
 
   # Round 5's career on each seed, on from the gunship to the raid on the pirates' base, played twice:
-  # the journals must match and the base fall, unless the seed is listed as stopping at a known place
-  # (CareerSeedsTest.ROUND5_STOPS). Seed 2026 also plays once in the slow tests' Round5CareerTest.
+  # the journals must match and the raid be flown, unless the seed is listed as stopping at a known
+  # place (CareerSeedsTest.ROUND5_STOPS). Whether the base falls is CareerPacingBenchmark's. Seed 2026 also plays once in the slow tests' Round5CareerTest.
   round5-career-seeds:
     name: Round 5 career seed ${{ matrix.seed }}
     runs-on: ubuntu-latest

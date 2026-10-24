@@ -217,6 +217,13 @@ tasks.register('runPlaytest', JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
   workingDir = rootProject.file('assets').path
   args = [(project.findProperty('commands') ?: 'playtest-commands.txt').toString(), (project.findProperty('saves') ?: '').toString()]
+  // -PplaytestSize=2560x1440 opens a window that size, -PuiScale=1.5 sets the UI scale (0 is auto)
+  if (project.hasProperty('playtestSize')) {
+    def wh = project.property('playtestSize').toString().split('x')
+    systemProperty 'playtest.width', wh[0]
+    systemProperty 'playtest.height', wh[1]
+  }
+  if (project.hasProperty('uiScale')) systemProperty 'ui.scale', project.property('uiScale').toString()
   jvmArgs += "--enable-native-access=ALL-UNNAMED"
   jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"

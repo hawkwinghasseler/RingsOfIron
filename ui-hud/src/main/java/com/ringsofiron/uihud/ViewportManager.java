@@ -14,8 +14,9 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
  *   <li>The <b>world camera</b> looks at the physics bubble in meters (the same local coordinates
  *       as {@code TransformComponent}). It sits in an {@link ExtendViewport} so the shorter screen
  *       axis always shows at least {@link #getViewMeters()} meters.</li>
- *   <li>The <b>UI camera</b> sits in a {@link ScreenViewport}: one stage unit is one screen pixel,
- *       origin bottom-left, so HUD text and lines stay crisp at any window size.</li>
+ *   <li>The <b>UI camera</b> sits in a {@link ScreenViewport}: one stage unit is {@link #getUiScale()}
+ *       screen pixels ({@link UiScale}), origin bottom-left, so the HUD keeps its layout and grows
+ *       with the screen.</li>
  * </ul>
  */
 public class ViewportManager {
@@ -30,6 +31,7 @@ public class ViewportManager {
     private final Vector3 tmp = new Vector3();
     private float viewMeters;
     private int screenWidth = 1, screenHeight = 1;
+    private float uiScale = 1f;
 
     public ViewportManager() {
         this(DEFAULT_VIEW_METERS);
@@ -45,7 +47,14 @@ public class ViewportManager {
         screenWidth = Math.max(1, width);
         screenHeight = Math.max(1, height);
         worldViewport.update(screenWidth, screenHeight, false);
+        uiScale = UiScale.effective(screenWidth, screenHeight);
+        uiViewport.setUnitsPerPixel(1f / uiScale);
         uiViewport.update(screenWidth, screenHeight, true);
+    }
+
+    /** Screen pixels per UI unit, from {@link UiScale} at the last resize. */
+    public float getUiScale() {
+        return uiScale;
     }
 
     /** Centers the world camera on a point in bubble meters. */
@@ -89,23 +98,28 @@ public class ViewportManager {
         tmp.set(worldX, worldY, 0f);
         worldCamera.project(tmp, worldViewport.getScreenX(), worldViewport.getScreenY(),
                 worldViewport.getScreenWidth(), worldViewport.getScreenHeight());
-        // tmp is now in GL window pixels (y up). The UI viewport covers the whole window 1:1.
-        return out.set(tmp.x - uiViewport.getScreenX(), tmp.y - uiViewport.getScreenY());
+        // tmp is now in GL window pixels (y up). The UI viewport covers the whole window, uiScale pixels a unit.
+        return out.set((tmp.x - uiViewport.getScreenX()) / uiScale, (tmp.y - uiViewport.getScreenY()) / uiScale);
     }
 
     /** Converts a UI stage point back to world meters, for clicks on the HUD. */
     public Vector2 uiToWorld(float uiX, float uiY, Vector2 out) {
-        float glX = uiX + uiViewport.getScreenX();
-        float glY = uiY + uiViewport.getScreenY();
+        float glX = uiX * uiScale + uiViewport.getScreenX();
+        float glY = uiY * uiScale + uiViewport.getScreenY();
         float ndcX = 2f * (glX - worldViewport.getScreenX()) / worldViewport.getScreenWidth() - 1f;
         float ndcY = 2f * (glY - worldViewport.getScreenY()) / worldViewport.getScreenHeight() - 1f;
         tmp.set(ndcX, ndcY, -1f).prj(worldCamera.invProjectionView);
         return out.set(tmp.x, tmp.y);
     }
 
-    /** Meters represented by one UI pixel at the current zoom. */
+    /** Meters represented by one screen pixel at the current zoom. */
     public float metersPerPixel() {
         return worldViewport.getWorldWidth() / Math.max(1, worldViewport.getScreenWidth());
+    }
+
+    /** Meters represented by one UI unit at the current zoom. */
+    public float metersPerUiUnit() {
+        return metersPerPixel() * uiScale;
     }
 
     public OrthographicCamera getWorldCamera() {

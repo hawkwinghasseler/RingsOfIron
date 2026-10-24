@@ -266,6 +266,8 @@ public class GameWorld implements Disposable {
     private int loadSettling;
     private String careerOver;
     private final List<Entity> wrecks = new ArrayList<>();
+    /** What a load starts again from scratch before the save is read, in the order registered. */
+    private final List<Resettable> resettables = new ArrayList<>();
     private final double[] trueState = new double[4];
     /** Materials from the loaded data, for ships' mass. */
     private MaterialTable materials;
@@ -280,6 +282,8 @@ public class GameWorld implements Disposable {
         SaveTypes.register(engine.getSerializationService());
         players = engine.getEcsEngine().getEntitiesFor(PLAYER);
         notices = new NoticeLog(engine::getSimSeconds);
+        // The old game's notices are not this one's (the log is not saved)
+        addResettable(notices::clear);
         warnings = new FlightWarnings(this);
 
         physics = new PhysicsManager();
@@ -412,6 +416,8 @@ public class GameWorld implements Disposable {
         standing = new FactionStanding(this::getPlayer);
         standing.clock = engine::getSimSeconds;
         engine.getSerializationService().addParticipant(standing);
+        // A save from before the career was saved loads as a new one: rank 0 with the sponsor
+        addResettable(standing);
         budget = new ServiceBudget(standing, this::getPlayer, engine::getSimSeconds);
         engine.addSystem(budget);
         crew.hostility = standing::hostile;
@@ -448,9 +454,13 @@ public class GameWorld implements Disposable {
         contracts = new ContractBoard(this);
         engine.addSystem(contracts);
         engine.getSerializationService().addParticipant(contracts);
+        addResettable(contracts);
         engine.getSerializationService().addParticipant(guides);
+        // ...outside First Play and the opening walkthrough
+        addResettable(guides);
         // Pods and wrecks on the rails, for rescues and recoveries; saved with the game
         derelicts = new Derelicts(this);
+        addResettable(derelicts);
         // NPC freighters fill their tanks wherever they dock
         engine.addSystem(new FreighterRefueling(docking::dockedTo));
         // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
@@ -540,8 +550,11 @@ public class GameWorld implements Disposable {
         PhysicsSaveParticipant.install(physics, engine);
         // Pirates and faction patrols, on the rails and in the bubble
         hostiles = HostileTraffic.install(this);
+        // Hostile traffic's own state starts again from the load
+        addResettable(hostiles);
         pirateBoarding = new PirateBoarding(this);
         engine.getSerializationService().addParticipant(pirateBoarding);
+        addResettable(pirateBoarding);
         pirateBase = new PirateBase(this);
         engine.addSystem(pirateBase);
         engine.getSerializationService().addParticipant(pirateBase);
@@ -549,17 +562,28 @@ public class GameWorld implements Disposable {
         tension = new FactionTension(this);
         engine.addSystem(tension);
         engine.getSerializationService().addParticipant(tension);
+        // ...with no strain between the factions
+        addResettable(tension);
         yard.priceFactor = tension::priceFactor;
         nav = Navigation.install(this);
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);
         // Things that happen on their own, a day at a time, with jobs on the boards
         events = new WorldEvents(this);
+        // A save with no events has the default seed (a new game keeps its own, so reset() keeps it)
+        addResettable(() -> {
+            events.reset();
+            events.seed = WorldEvents.DEFAULT_SEED;
+        });
         // The player's crew: hired at stations, paid weekly, learning from what they do
         crewCareer = new CrewCareer(this);
         engine.addSystem(crewCareer);
+        // Crew morale drifts from the loaded time on
+        addResettable(crewCareer::restartClock);
         crewHiring = new CrewHiring(this);
         engine.getSerializationService().addParticipant(crewHiring);
+        // ...and nobody is hired from today's pools
+        addResettable(crewHiring);
         prisoners = new Prisoners(this);
         hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, KeyBindings.Action.CREW)
                 .onlyWhen(() -> prisoners.takenAlongside() != null);
@@ -569,6 +593,24 @@ public class GameWorld implements Disposable {
         captain = new CaptainSafety(this);
         air = new AirWatch(this);
         infirmary = new StationInfirmary(this);
+    }
+
+    /**
+     * Registers state a load starts again from scratch ({@link #resetForLoad()}). Systems built here
+     * register next to their {@code addParticipant}; one built elsewhere registers itself the same way.
+     */
+    public void addResettable(Resettable r) {
+        resettables.add(r);
+    }
+
+    /** Starts every registered {@link Resettable} again from scratch, before a save is read over them. */
+    public void resetForLoad() {
+        for (Resettable r : resettables) r.reset();
+    }
+
+    /** What {@link #resetForLoad()} resets, for tests. */
+    List<Resettable> resettablesForTest() {
+        return java.util.Collections.unmodifiableList(resettables);
     }
 
     /**

@@ -13,6 +13,7 @@ import com.ringsofiron.audiospatial.AudioEmitters;
 import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
 import com.ringsofiron.audiospatial.backend.AudioParameters;
 import com.ringsofiron.audiospatial.components.AudioEmitterComponent;
+import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.coreengine.components.TransientComponent;
 import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 import com.ringsofiron.interiorgrid.AirflowEdge;
@@ -60,6 +61,14 @@ public class InteriorHazardAudioSystem extends FixedLogicSystem {
     private final Array<Entity> gone = new Array<>();
     private ImmutableArray<Entity> entities;
     private Engine engine;
+    /**
+     * A ship that leaves takes its sounds with it at once: the engine hands its entity out again as
+     * a new ship, which the sweep below would take for the old one and give its loops.
+     */
+    private final EntityRemovalListener leaving = ship -> {
+        ShipSounds s = ships.remove(ship);
+        if (s != null) s.clear(engine);
+    };
 
     public InteriorHazardAudioSystem() {
         super(DEFAULT_PRIORITY, GridHazardSystem.HAZARD_TICK);
@@ -69,10 +78,12 @@ public class InteriorHazardAudioSystem extends FixedLogicSystem {
     public void addedToEngine(Engine engine) {
         this.engine = engine;
         entities = engine.getEntitiesFor(FAMILY);
+        engine.addEntityListener(FAMILY, leaving);
     }
 
     @Override
     public void removedFromEngine(Engine engine) {
+        engine.removeEntityListener(leaving);
         for (ShipSounds s : ships.values()) s.clear(engine);
         ships.clear();
         entities = null;

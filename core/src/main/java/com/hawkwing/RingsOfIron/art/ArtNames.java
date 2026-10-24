@@ -300,9 +300,28 @@ public final class ArtNames {
         return burning ? new String[]{base, base + "_unpowered"} : new String[]{base + "_unpowered", base};
     }
 
+    /**
+     * An engine system of {@code component} (its id in components.toml) seen from outside: the
+     * model's own art, {@code engines/<component>_nacelle_<size>}, when its maker's style has one, else the
+     * plain engine ({@link #nacelle(String, boolean)}).
+     */
+    public static String[] nacelle(String component, String size, boolean burning) {
+        String[] plain = nacelle(size, burning);
+        if (component == null) return plain;
+        String base = "engines/" + component + "_nacelle_" + size;
+        String[] own = burning ? new String[]{base, base + "_unpowered"} : new String[]{base + "_unpowered", base};
+        return new String[]{own[0], own[1], plain[0], plain[1]};
+    }
+
     /** The plume behind an engine of that size, pivoting on the same mount socket. */
     public static String exhaust(String size) {
         return "engines/exhaust_" + size;
+    }
+
+    /** The plume behind an engine of {@code component}: its own, else the plain one for the size. */
+    public static String[] exhaust(String component, String size) {
+        return component == null ? new String[]{exhaust(size)}
+                : new String[]{"engines/exhaust_" + component + "_" + size, exhaust(size)};
     }
 
     /** An RCS thruster block of {@code kind} (LINEAR or QUAD) seen from outside, or its wreck once its hull tile is gone. */
