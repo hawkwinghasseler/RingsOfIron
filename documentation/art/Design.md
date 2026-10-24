@@ -96,7 +96,7 @@ Each size of a component is its own design, not the small one repeated: a bigger
 
 The **turret mount** is the turret's base and its operator's station: a bearing ring with a traverse drive and the ammunition or power feed, and the gunner's console and seat (bigger mounts add a loader's station). The ring is centered on the mount, and so is the turret drawn on the exterior: a hardpoint in `ships.toml` sits on the center of the turret mount its weapon is wired to.
 
-**Escape pods** (`escape_pod`, S-XL) are lifeboats in their bays: a capsule with an orange band, crash couches facing the hatch (4, 8, 20 and 48 of them) and a status panel on the pod's own battery. The hatch is at the +y end, so a pod lies with that end against the hull it launches through. The bay around the capsule is walkable deck.
+**Escape pods** (`escape_pod`, S-XL) are lifeboats in their bays: a capsule with an orange band, crash couches facing the hatch (4, 8, 20 and 48 of them) and a status panel on the pod's own battery. The hatch is at the +y end, and that end overlaps the outer hull it launches through (the row under it stays hull); the rest of the pod lies inside. The bay around the capsule is walkable deck.
 
 **Tanks** (`tank`, `oxygen_tank`, `nitrogen_tank`, S-XL) are cylinders in cradles with a band in their fluid's color: amber for propellant, blue for oxygen, grey-blue for nitrogen. They are passive.
 

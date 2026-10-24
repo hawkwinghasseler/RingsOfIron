@@ -5,8 +5,10 @@
 #   R reactor, S shield, T turret (square mounts); L life support, H helm,
 #   W weapons console, C cargo, A airlock, E engine, P propellant tank,
 #   O oxygen tank, N nitrogen tank, Q freight drive and G gunship drive (engines), B escape pod
-#   (rectangular slots; a pod's hatch is the end that faces +y at rotation 0, so it
-#   lies against the hull it launches through)
+#   (rectangular slots; a pod's hatch is the end that faces +y at rotation 0. That end
+#   overlaps the outer hull, which stays hull under it, and the rest of the pod lies
+#   inside; beyond the hatch it needs 5 tiles of open space, with no RCS block on the
+#   hatch end, to launch into. List pods under mounts so the hull under the hatch is kept)
 #   Engines mount on the outside of the hull: drawn out in the void, with the nozzle at the end
 #     that has only space beyond it and the flange at the other end, either against the outer
 #     hull or in place of one tile of it (the engine reaches one tile into the wall, no more).
@@ -59,8 +61,8 @@ origin_y = -3.0
 # A Small docking port on the port (+y) side opens onto the walkway beside the hold.
 # It is active: its collar reaches out and takes hold of another ship's port, armed
 # or not, so the corvette can latch onto a ship as well as a station.
-# A Small escape pod (4 seats) stands at x 9 between the life support and the
-# turrets, its hatch out through the starboard (-y) hull; crew walk through its bay.
+# A Small escape pod (4 seats) stands at x 11 between the laser and the starboard
+# beam turret, its hatch end in the starboard (-y) hull clear of the RCS block at x 9.
 rows = [
   " #####DDD########",
   "EE......HHTCCTRR#",
@@ -75,7 +77,7 @@ mounts = [
   { type = "CARGO", size = "M", x = 4, y = 3, rotation = 1 },
   { component = "oxygen_tank", size = "S", x = 2, y = 2, rotation = 1 },
   { component = "nitrogen_tank", size = "S", x = 2, y = 3, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 9, y = 1, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 11, y = 0, rotation = 2 },
 ]
 pipes = [
   { x = 2, y = 4 }, { x = 2, y = 1 },
@@ -88,7 +90,7 @@ pipes = [
 coverings = [ { covering = "CARPET", x = 8, y = 1, width = 6, height = 4 } ]
 lights = [
   { x = 3, y = 1, side = "BOTTOM" },
-  { x = 11, y = 1, side = "BOTTOM" },
+  { x = 12, y = 1, side = "BOTTOM" },
   { x = 3, y = 4, side = "TOP" },
   { x = 7, y = 4, side = "LEFT" },
 ]
@@ -132,8 +134,8 @@ origin_y = -6.5
 # Above the lower engine, the oxygen, nitrogen and a propellant tank, and a second
 # propellant tank by the reactor; a pipe up x 5 joins both engines and the tanks,
 # and a branch takes the gases to life support.
-# Two Small escape pods (4 seats each) in the bow corners at x 20, hatches out
-# through the top and bottom hull.
+# Two Small escape pods (4 seats each) in the bow corners at x 19, hatch ends in the
+# top and bottom hull beside the RCS blocks at x 20.
 rows = [
   "  ####################",
   "QQQ...CCCCCCCCCCCC...#",
@@ -151,8 +153,8 @@ rows = [
 ]
 mounts = [
   { component = "tank", size = "S", x = 3, y = 7, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 20, y = 10, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 20, y = 1, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 19, y = 11, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 19, y = 0, rotation = 2 },
 ]
 pipes = [
   { x = 3, y = 10 }, { x = 4, y = 10 }, { x = 3, y = 2 }, { x = 4, y = 2 },
@@ -244,7 +246,7 @@ rows = [
 mounts = [
   { component = "nitrogen_tank", size = "S", x = 2, y = 2, rotation = 1 },
   { component = "oxygen_tank", size = "S", x = 4, y = 2 },
-  { component = "escape_pod", size = "S", x = 13, y = 2, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 13, y = 3, rotation = 0 },
 ]
 pipes = [
   { x = 2, y = 3 }, { x = 2, y = 1 },
@@ -362,8 +364,8 @@ rows = [
 mounts = [
   { component = "oxygen_tank", size = "S", x = 3, y = 4, rotation = 1 },
   { component = "nitrogen_tank", size = "S", x = 3, y = 3, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 18, y = 5, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 18, y = 1, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 18, y = 6, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 18, y = 0, rotation = 2 },
 ]
 pipes = [
   { x = 3, y = 6 }, { x = 3, y = 5 }, { x = 3, y = 2 }, { x = 3, y = 1 },
@@ -463,8 +465,8 @@ ports = [ { x = 13, y = 9, active = true } ]
 mounts = [
   { component = "oxygen_tank", size = "S", x = 3, y = 5, rotation = 1 },
   { component = "nitrogen_tank", size = "S", x = 3, y = 4, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 9, y = 7, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 9, y = 1, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 9, y = 8, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 9, y = 0, rotation = 2 },
 ]
 pipes = [
   { x = 3, y = 8 }, { x = 3, y = 7 }, { x = 3, y = 2 }, { x = 3, y = 1 },
@@ -484,6 +486,7 @@ lights = [
   { x = 8, y = 3, side = "RIGHT" },
   { x = 24, y = 3, side = "RIGHT" },
   { x = 17, y = 5, side = "RIGHT" },
+  { x = 9, y = 7, side = "LEFT" },
   { x = 5, y = 8, side = "TOP" },
   { x = 12, y = 8, side = "TOP" },
   { x = 18, y = 8, side = "TOP" },
@@ -554,7 +557,7 @@ rows = [
 mounts = [
   { component = "oxygen_tank", size = "S", x = 2, y = 2, rotation = 1 },
   { component = "nitrogen_tank", size = "S", x = 2, y = 3, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 13, y = 1, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 13, y = 0, rotation = 2 },
 ]
 pipes = [
   { x = 2, y = 4 }, { x = 2, y = 1 },
@@ -619,7 +622,7 @@ rows = [
 ports = [ { x = 18, y = 4, active = true } ]
 mounts = [
   { component = "tank", size = "S", x = 5, y = 3, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 13, y = 1, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 13, y = 0, rotation = 2 },
 ]
 pipes = [
   { x = 3, y = 5 }, { x = 4, y = 5 }, { x = 3, y = 1 }, { x = 4, y = 1 },
@@ -702,7 +705,7 @@ ports = [ { x = 8, y = 6, active = true } ]
 mounts = [
   { component = "oxygen_tank", size = "S", x = 2, y = 3, rotation = 1 },
   { component = "nitrogen_tank", size = "S", x = 2, y = 2, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 12, y = 1, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 12, y = 0, rotation = 2 },
 ]
 pipes = [
   { x = 2, y = 5 }, { x = 2, y = 1 },
@@ -769,7 +772,7 @@ rows = [
   " #########      ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 6, y = 1, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 6, y = 0, rotation = 2 },
 ]
 pipes = [
   { x = 2, y = 1 },
@@ -831,7 +834,7 @@ rows = [
   " ####             ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 9, y = 4, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 9, y = 5, rotation = 0 },
 ]
 pipes = [
   { x = 2, y = 1 },
@@ -892,7 +895,7 @@ rows = [
   " ############            ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 9, y = 6, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 9, y = 7, rotation = 0 },
 ]
 pipes = [
   { x = 2, y = 1 },
@@ -973,14 +976,14 @@ rows = [
 ]
 ports = [ { x = 13, y = 11, active = true } ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 6, y = 1, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 6, y = 0, rotation = 2 },
   { component = "cargo", size = "M", x = 9, y = 2, rotation = 1 },
   { component = "cargo", size = "M", x = 12, y = 2, rotation = 1 },
   { component = "cargo", size = "M", x = 15, y = 2, rotation = 1 },
   { component = "cargo", size = "M", x = 9, y = 9, rotation = 1 },
   { component = "cargo", size = "M", x = 12, y = 9, rotation = 1 },
   { component = "cargo", size = "M", x = 15, y = 9, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 6, y = 10, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 6, y = 11, rotation = 0 },
 ]
 pipes = [
   { x = 3, y = 2 },
@@ -1068,8 +1071,8 @@ rows = [
   "     ######  ######  ######  ######     ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 34, y = 3, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 34, y = 6, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 35, y = 2, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 35, y = 7, rotation = 0 },
 ]
 pipes = [
   { x = 6, y = 2 }, { x = 14, y = 2 }, { x = 22, y = 2 }, { x = 30, y = 2 }, { x = 6, y = 3 }, { x = 14, y = 3 },
@@ -1111,18 +1114,19 @@ hull_pieces = [
 ]
 lights = [
   { x = 9, y = 1, side = "BOTTOM" },
-  { x = 33, y = 2, side = "RIGHT" },
+  { x = 33, y = 1, side = "BOTTOM" },
   { x = 5, y = 3, side = "BOTTOM" },
   { x = 18, y = 3, side = "BOTTOM" },
   { x = 21, y = 3, side = "BOTTOM" },
   { x = 26, y = 3, side = "BOTTOM" },
   { x = 29, y = 3, side = "BOTTOM" },
-  { x = 37, y = 3, side = "BOTTOM" },
+  { x = 37, y = 3, side = "RIGHT" },
   { x = 10, y = 4, side = "RIGHT" },
+  { x = 34, y = 4, side = "RIGHT" },
   { x = 5, y = 7, side = "TOP" },
   { x = 13, y = 7, side = "TOP" },
   { x = 21, y = 7, side = "TOP" },
-  { x = 29, y = 7, side = "TOP" },
+  { x = 28, y = 7, side = "TOP" },
   { x = 37, y = 7, side = "TOP" },
   { x = 9, y = 9, side = "TOP" },
   { x = 17, y = 9, side = "TOP" },
@@ -1172,10 +1176,10 @@ rows = [
   "             ######         ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 14, y = 1, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 17, y = 1, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 14, y = 16, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 17, y = 16, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 14, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 17, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 14, y = 17, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 17, y = 17, rotation = 0 },
 ]
 pipes = [
   { x = 3, y = 6 }, { x = 3, y = 7 }, { x = 4, y = 7 }, { x = 5, y = 7 }, { x = 6, y = 7 }, { x = 7, y = 7 },
@@ -1291,7 +1295,7 @@ rows = [
 ]
 ports = [ { x = 14, y = 11, active = true } ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 14, y = 3, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 14, y = 2, rotation = 2 },
 ]
 pipes = [
   { x = 3, y = 1 }, { x = 4, y = 1 }, { x = 5, y = 1 }, { x = 3, y = 2 }, { x = 3, y = 3 }, { x = 3, y = 4 },
@@ -1396,8 +1400,8 @@ rows = [
   "                           ####### ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 13, y = 6, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 13, y = 11, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 13, y = 5, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 13, y = 12, rotation = 0 },
 ]
 pipes = [
   { x = 3, y = 3 }, { x = 3, y = 4 }, { x = 3, y = 5 }, { x = 4, y = 5 }, { x = 5, y = 5 }, { x = 6, y = 5 },
@@ -1534,8 +1538,8 @@ rows = [
   "  ########   #######  #######  #######          ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 7, y = 1, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 7, y = 12, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 7, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 7, y = 13, rotation = 0 },
 ]
 pipes = [
   { x = 3, y = 6 }, { x = 4, y = 6 }, { x = 3, y = 5 }, { x = 4, y = 5 }, { x = 3, y = 3 }, { x = 4, y = 3 },
@@ -1652,8 +1656,8 @@ rows = [
   "               ########                     ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 14, y = 3, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 14, y = 18, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 14, y = 2, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 14, y = 19, rotation = 0 },
 ]
 pipes = [
   { x = 3, y = 15 },
@@ -1807,20 +1811,20 @@ rows = [
   "              ##################            ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 16, y = 1, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 18, y = 1, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 20, y = 1, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 22, y = 1, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 24, y = 1, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 26, y = 1, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 28, y = 1, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 16, y = 16, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 18, y = 16, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 20, y = 16, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 22, y = 16, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 24, y = 16, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 26, y = 16, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 28, y = 16, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 16, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 18, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 20, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 23, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 24, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 26, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 28, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 16, y = 17, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 18, y = 17, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 20, y = 17, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 23, y = 17, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 24, y = 17, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 26, y = 17, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 28, y = 17, rotation = 0 },
 ]
 pipes = [
   { x = 3, y = 11 }, { x = 4, y = 11 }, { x = 3, y = 7 }, { x = 4, y = 7 },
@@ -2069,8 +2073,8 @@ lights = [
   { x = 30, y = 15, side = "TOP" },
   { x = 36, y = 15, side = "TOP" },
   { x = 11, y = 16, side = "BOTTOM" },
-  { x = 19, y = 16, side = "BOTTOM" },
-  { x = 27, y = 16, side = "BOTTOM" },
+  { x = 18, y = 16, side = "BOTTOM" },
+  { x = 25, y = 16, side = "BOTTOM" },
   { x = 33, y = 16, side = "BOTTOM" },
 ]
 rcs = [
@@ -2089,7 +2093,8 @@ rcs = [
 # door at y 8). Two active Small ports, one in the ram's nose and one on the belly, to board two prizes at
 # once; an ion cannon on the aft tooth to stop them first. Engineering (x 3-11, door at y 8) with two
 # gunship drives and a Medium engine; a plunder hold amidships behind a wall at x 23 | 24; the bridge
-# forward with a Medium shield emitter and a Small escape pod above and below.
+# forward with a Medium shield emitter and a Small escape pod below it; the other pod launches up
+# through the ram's dorsal armor at x 40.
 [chassis.reaver]
 name = "Reaver"
 tile_size = 1.0
@@ -2116,10 +2121,10 @@ rows = [
 ]
 ports = [ { x = 46, y = 7, active = true }, { x = 30, y = 3, active = true } ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 33, y = 4, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 33, y = 3, rotation = 2 },
   { component = "gunship_drive", size = "M", x = 0, y = 9, rotation = 1 },
   { component = "gunship_drive", size = "M", x = 0, y = 11, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 34, y = 11, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 40, y = 10, rotation = 0 },
 ]
 pipes = [
   { x = 3, y = 2 }, { x = 3, y = 3 }, { x = 3, y = 4 }, { x = 3, y = 5 }, { x = 4, y = 5 }, { x = 5, y = 5 },
@@ -2197,7 +2202,6 @@ lights = [
   { x = 43, y = 9, side = "TOP" },
   { x = 11, y = 10, side = "RIGHT" },
   { x = 36, y = 10, side = "TOP" },
-  { x = 40, y = 10, side = "TOP" },
   { x = 8, y = 12, side = "TOP" },
   { x = 16, y = 12, side = "TOP" },
   { x = 19, y = 12, side = "TOP" },
@@ -2266,14 +2270,14 @@ rows = [
   "                  ####DDDDDDD####DDDDDDD####            ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 30, y = 1, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 31, y = 1, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 32, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 31, y = 0, rotation = 2 },
   { component = "tank", size = "M", x = 7, y = 12, rotation = 0 },
   { component = "tank", size = "M", x = 9, y = 12, rotation = 0 },
   { component = "tank", size = "M", x = 7, y = 18, rotation = 0 },
   { component = "tank", size = "M", x = 9, y = 18, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 30, y = 30, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 31, y = 30, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 32, y = 31, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 31, y = 31, rotation = 0 },
 ]
 pipes = [
   { x = 11, y = 12 }, { x = 11, y = 13 }, { x = 7, y = 14 }, { x = 8, y = 14 }, { x = 9, y = 14 }, { x = 10, y = 14 },

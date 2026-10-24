@@ -139,15 +139,15 @@
     <rect x="-504" y="40" width="112" height="48" rx="24" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="-448" cy="64" r="14.08" fill="#465060" stroke="#10141a" stroke-width="2"/>
     <circle cx="-448" cy="64" r="7.68" fill="#a8b4c8" stroke="#10141a" stroke-width="1"/>
-    <circle cx="160" cy="96" r="25.6" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
-    <circle cx="160" cy="96" r="19.97" fill="none" stroke="#ff7a2a" stroke-width="4"/>
-    <circle cx="160" cy="96" r="11.52" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <circle cx="183.55" cy="96" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <circle cx="171.78" cy="116.4" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <circle cx="148.22" cy="116.4" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <circle cx="136.45" cy="96" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <circle cx="148.22" cy="75.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <circle cx="171.78" cy="75.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="160" cy="160" r="25.6" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <circle cx="160" cy="160" r="19.97" fill="none" stroke="#ff7a2a" stroke-width="4"/>
+    <circle cx="160" cy="160" r="11.52" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="183.55" cy="160" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="171.78" cy="180.4" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="148.22" cy="180.4" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="136.45" cy="160" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="148.22" cy="139.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
+    <circle cx="171.78" cy="139.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
     <rect x="-58" y="-90" width="116" height="116" rx="4" fill="#3f4855" stroke="#10141a" stroke-width="2"/>
     <line x1="-52" y1="-86" x2="-52" y2="22" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
     <line x1="-45" y1="-86" x2="-45" y2="22" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>

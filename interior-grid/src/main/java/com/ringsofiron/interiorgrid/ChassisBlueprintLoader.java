@@ -29,6 +29,11 @@ import com.badlogic.gdx.utils.Array;
  *                            beyond it; a port that could face either way goes in
  *                            {@link ChassisBlueprint#mounts} with its rotation. See
  *                            {@link DockingPortLayout} for its frame, opening and door.
+ *   Escape pod:              'B', a rectangular slot through the hull edge. Its hatch end faces
+ *                            the side with only space beyond it and is built as hull (as the
+ *                            hull beside it in that row, else '#'); list a pod under
+ *                            {@link ChassisBlueprint#mounts} to keep the hull under it as drawn.
+ *                            See {@link EscapePodLayout}.
  *
  * Floor coverings such as carpet are laid over the steel deck from
  * {@link ChassisBlueprint#coverings}, on every floor tile inside each listed rectangle.
@@ -153,6 +158,7 @@ public class ChassisBlueprintLoader {
             if (def.type == SubsystemComponent.SubsystemType.ENGINE) EngineLayout.shape(grid, def.footprint);
         }
         for (SubsystemPlacement drawn : drawnMounts) {
+            if (drawn.type == SubsystemComponent.SubsystemType.ESCAPE_POD) hullUnderHatch(grid, chars, catalog, drawn.footprint);
             grid.placeMount(drawn.footprint, drawn.type);
             subsystems.add(drawn);
         }
@@ -170,15 +176,42 @@ public class ChassisBlueprintLoader {
             subsystems.add(new SubsystemPlacement(def.footprint, component));
         }
 
-        // Every part is in place now: nothing may stand in an engine's exhaust
+        // Every part is in place now: nothing may stand in an engine's exhaust or a pod's launch path
         for (SubsystemPlacement p : subsystems) {
-            if (p.type != SubsystemComponent.SubsystemType.ENGINE) continue;
-            String blocked = EngineLayout.exhaustBlocked(grid, p.footprint);
-            if (blocked != null) throw new IllegalArgumentException("Illegal engine at " + p.footprint.originX + ","
-                    + p.footprint.originY + ": " + blocked);
+            if (p.type == SubsystemComponent.SubsystemType.ENGINE) {
+                String blocked = EngineLayout.exhaustBlocked(grid, p.footprint);
+                if (blocked != null) throw new IllegalArgumentException("Illegal engine at " + p.footprint.originX + ","
+                        + p.footprint.originY + ": " + blocked);
+            } else if (p.type == SubsystemComponent.SubsystemType.ESCAPE_POD) {
+                String problem = EscapePodLayout.clearance(grid, p.footprint);
+                if (problem != null) throw new IllegalArgumentException("Illegal escape pod: " + problem);
+            }
         }
 
         return new LoadResult(grid, subsystems);
+    }
+
+    /**
+     * Builds the hatch end of an escape pod drawn in the map as hull: the hull type beside it in
+     * that row, else the catalog's medium hull.
+     */
+    private static void hullUnderHatch(ShipGridComponent grid, char[][] chars, ShipPartCatalog catalog, MountFootprint pod) {
+        Side out = HullMounts.facing(pod);
+        boolean along = out.dx == 0;
+        int x0 = pod.originX, y0 = pod.originY, x1 = x0 + pod.width() - 1, y1 = y0 + pod.height() - 1;
+        int ex = out == Side.LEFT ? x0 : x1, ey = out == Side.BOTTOM ? y0 : y1;
+        ShipPartCatalog.TileType hull = null;
+        int[][] beside = along ? new int[][]{{x0 - 1, ey}, {x1 + 1, ey}} : new int[][]{{ex, y0 - 1}, {ex, y1 + 1}};
+        for (int[] b : beside) {
+            if (hull != null || b[1] < 0 || b[1] >= chars.length || b[0] < 0 || b[0] >= chars[b[1]].length) continue;
+            ShipPartCatalog.TileType t = catalog.tileFor(chars[b[1]][b[0]]);
+            if (t != null && t.base == ShipPartCatalog.TileBase.HULL) hull = t;
+        }
+        if (hull == null) hull = catalog.tile("hull");
+        if (hull == null) return;
+        for (int y = y0; y <= y1; y++)
+            for (int x = x0; x <= x1; x++)
+                if (HullMounts.onEdge(pod, x, y, out)) hull.apply(grid.getTile(x, y), grid.tileSize);
     }
 
     /**
@@ -236,9 +269,9 @@ public class ChassisBlueprintLoader {
                     throw new IllegalArgumentException("'" + c + "' at " + x + "," + y + " is " + w + "x" + h
                             + ", which is not a size " + component.name + " comes in");
                 }
-                if (type.mountKind == MountFootprint.MountKind.PORT) {
+                if (type.mountKind == MountFootprint.MountKind.PORT || type == SubsystemComponent.SubsystemType.ESCAPE_POD) {
                     try {
-                        footprint = facingSpace(space, footprint);
+                        footprint = facingSpace(space, footprint, component.name);
                     } catch (IllegalArgumentException e) {
                         if (strict) throw e;
                         continue;
@@ -259,22 +292,22 @@ public class ChassisBlueprintLoader {
     }
 
     /**
-     * Turns a port drawn in the map to face the side with only space beyond it: a horizontal port
-     * faces up or down, a vertical one left or right.
+     * Turns a port (or escape pod) drawn in the map to face the side with only space beyond it: a
+     * horizontal port faces up or down, a vertical one left or right; a pod faces along its length.
      */
-    private static MountFootprint facingSpace(boolean[][] space, MountFootprint port) {
+    private static MountFootprint facingSpace(boolean[][] space, MountFootprint port, String name) {
         Side[] sides = port.rotation % 2 == 0 ? new Side[]{Side.TOP, Side.BOTTOM} : new Side[]{Side.LEFT, Side.RIGHT};
         Side found = null;
         for (Side side : sides) {
             if (!spaceBeyond(space, port, side)) continue;
             if (found != null) {
-                throw new IllegalArgumentException("Docking port at " + port.originX + "," + port.originY
+                throw new IllegalArgumentException(name + " at " + port.originX + "," + port.originY
                         + " could face " + found + " or " + side + "; list it under mounts with a rotation");
             }
             found = side;
         }
         if (found == null) {
-            throw new IllegalArgumentException("Docking port at " + port.originX + "," + port.originY
+            throw new IllegalArgumentException(name + " at " + port.originX + "," + port.originY
                     + " has no side facing space");
         }
         return new MountFootprint(port.kind, port.size, port.originX, port.originY, DockingPortLayout.rotationFacing(found));
