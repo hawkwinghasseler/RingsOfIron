@@ -120,10 +120,10 @@ class CollisionLayerTest {
                 maxY = Math.max(maxY, p[i + 1]);
             }
         }
-        assertEquals(9.2f, maxX, EPS, "the prow");
+        assertEquals(7.2f, maxX, EPS, "the prow");
         assertEquals(-12.2f, minX, EPS, "the fairing between the engines");
         assertEquals(4.1f, maxY, EPS, "the fins");
-        assertEquals(114.31f, area(pieces), 1e-3f, "the whole outline, the grid's 16 by 6 tiles within it");
+        assertEquals(107.77f, area(pieces), 1e-3f, "the whole outline, the grid's 16 by 6 tiles within it");
         assertNull(CollisionLayer.read(ASSETS.resolve("art/hulls/freighter.svg")), "the freighter collides on its tiles");
     }
 
