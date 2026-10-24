@@ -503,28 +503,10 @@ public class GameScenario {
      * {@link #avatar}, {@link #raider} and {@link #contacts} at the loaded entities.
      */
     public void quickLoad(FileHandle file) {
-        // A save from before the career was saved loads as a new one: rank 0 with the sponsor
-        world.standing.reset();
-        // ...with no strain between the factions
-        world.tension.reset();
+        // Everything the save might not mention starts again as in a new game (GameWorld#addResettable)
+        world.resetForLoad();
         // ...from the designed start, unless the save knows its seed
         newGame = NewGame.designed();
-        // ...and with no contracts, derelicts or events
-        world.contracts.reset();
-        // ...and outside First Play and the opening walkthrough
-        world.guides.reset();
-        world.derelicts.reset();
-        world.events.reset();
-        // ...whose seed is the default one, if the save has no events
-        world.events.seed = WorldEvents.DEFAULT_SEED;
-        // ...and hostile traffic's own state starting again from the load
-        world.hostiles.reset();
-        world.pirateBoarding.reset();
-        // ...nobody hired from today's pools, and crew morale drifting from the loaded time on
-        world.crewHiring.reset();
-        world.crewCareer.restartClock();
-        // The old game's notices are not this one's (the log is not saved)
-        world.notices.clear();
         world.engine.getSerializationService().loadFromFile(file);
         world.loaded();
         // A seeded career's combat and crew dice come from its seed, as at its start

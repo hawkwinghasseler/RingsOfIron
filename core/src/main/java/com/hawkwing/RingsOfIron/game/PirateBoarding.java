@@ -40,7 +40,7 @@ import java.util.Set;
  * ship at a berth or in tow (seed 2026's boarding finished at Highport's berth and tore it loose).
  * Round 9: only hits within {@link #BREAK_OFF_RANGE} of the player count, so a boarding begins close in.
  */
-public class PirateBoarding implements SaveParticipant {
+public class PirateBoarding implements SaveParticipant, Resettable {
     /** Key of this state in the save's modules section. */
     public static final String SAVE_KEY = "pirate-boarding";
     /** A pirate with less of its hull than this leaves rather than board. */
@@ -172,6 +172,7 @@ public class PirateBoarding implements SaveParticipant {
     }
 
     /** Forgets any boarding, for a load: a save without one has none. */
+    @Override
     public void reset() {
         asked = Double.NaN;
         boarder = null;

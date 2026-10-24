@@ -31,7 +31,7 @@ import java.util.Random;
  * HUD marker, so it can be found by eye. A pod's air lasts {@link #POD_AIR}; a wreck is lost track
  * of after {@link #WRECK_LIFE}. Saved with the game.
  */
-public class Derelicts implements SaveParticipant {
+public class Derelicts implements SaveParticipant, Resettable {
     public static final double DAY = 86_400;
     /** How close, and how slowly, the player must pass to pick one up: m and m/s. */
     public static final double PICKUP_RANGE = 2_000, PICKUP_SPEED = 30;
@@ -145,6 +145,7 @@ public class Derelicts implements SaveParticipant {
     }
 
     /** Clears everything, for a new game. */
+    @Override
     public void reset() {
         for (Derelict d : all) dropMarker(d);
         all.clear();

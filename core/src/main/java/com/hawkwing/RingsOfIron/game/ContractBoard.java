@@ -70,7 +70,7 @@ import java.util.Set;
  *       <b>intel</b> step finds the base by following a pirate to it.</li>
  * </ul>
  */
-public class ContractBoard extends EntitySystem implements SaveParticipant {
+public class ContractBoard extends EntitySystem implements SaveParticipant, Resettable {
     public static final int OFFERS_PER_STATION = 5;
     /** Operations a board shows at most, the ones the highest rank opens first (round 5 has seven). */
     public static final int OPERATIONS_SHOWN = 2;
@@ -449,6 +449,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
     }
 
     /** Clears everything, for a new game or a save from before contracts. */
+    @Override
     public void reset() {
         boards.clear();
         active.clear();
