@@ -26,6 +26,10 @@ import java.util.function.Supplier;
  * none. Retro and lateral thrust are the usual fractions of the engines' rated sum, since they come
  * from the RCS rather than the main engines; turning ({@code max_torque}) is left alone.
  *
+ * <p>Each component's {@code efficiency} (1 if left out) multiplies the exhaust velocity: the
+ * ship's is the engines' together, weighted by their rated thrust as their propellant flows add
+ * up, so {@link PropellantFeed} prices a newton-second for the engines fitted.
+ *
  * <p>A ship with no engine in its layout keeps the {@code max_thrust} its {@code ships.toml} entry
  * gives it. Every engine counts whichever way its nozzle points.
  *
@@ -77,7 +81,7 @@ public class EngineThrust extends EntitySystem {
         ShipSubsystemRegistryComponent registry = REGISTRY.get(ship);
         ThrusterComponent thruster = THRUSTERS.get(ship);
         if (registry == null || thruster == null) return false;
-        double rated = 0, working = 0;
+        double rated = 0, working = 0, flow = 0;
         boolean any = false;
         for (Entity e : registry.subsystems) {
             SubsystemComponent s = SUBSYSTEMS.get(e);
@@ -85,10 +89,12 @@ public class EngineThrust extends EntitySystem {
             any = true;
             double full = ratedThrust(s, defs);
             rated += full;
+            flow += full / efficiency(s, defs);
             if (s.isOperational && s.switchedOn && !s.isDisabled()) working += full * Math.max(0f, Math.min(1f, s.health));
         }
         if (!any) return false;
         thruster.forwardThrust = (float) working;
+        thruster.efficiency = rated > 0 && flow > 0 ? (float) (rated / flow) : 1f;
         thruster.reverseThrust = (float) (rated * ShipPhysicsAssembler.REVERSE_THRUST_FRACTION);
         thruster.lateralThrust = (float) (rated * ShipPhysicsAssembler.LATERAL_THRUST_FRACTION);
         return true;
@@ -97,12 +103,21 @@ public class EngineThrust extends EntitySystem {
     /** Newtons an undamaged engine gives: its component's thrust for its size, else the standard thrust. */
     public static double ratedThrust(SubsystemComponent engine, DefRegistry defs) {
         MountFootprint.MountSize size = engine.footprint.size;
-        if (defs != null && engine.component != null && defs.has("component", engine.component)) {
-            ShipComponentDef def = defs.get("component", engine.component, ShipComponentDef.class);
-            Double n = def == null || def.thrust == null ? null : def.thrust.get(size.name());
-            if (n != null && n > 0) return n;
-        }
+        ShipComponentDef def = def(engine, defs);
+        Double n = def == null || def.thrust == null ? null : def.thrust.get(size.name());
+        if (n != null && n > 0) return n;
         return standardThrust(size);
+    }
+
+    /** How much an engine multiplies the exhaust velocity: its component's {@code efficiency}, else 1. */
+    public static double efficiency(SubsystemComponent engine, DefRegistry defs) {
+        ShipComponentDef def = def(engine, defs);
+        return def != null && def.efficiency != null && def.efficiency > 0f ? def.efficiency : 1.0;
+    }
+
+    private static ShipComponentDef def(SubsystemComponent engine, DefRegistry defs) {
+        if (defs == null || engine.component == null || !defs.has("component", engine.component)) return null;
+        return defs.get("component", engine.component, ShipComponentDef.class);
     }
 
     /** Newtons an undamaged standard engine in a mount of this size gives. */

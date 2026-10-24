@@ -16,6 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -125,6 +126,22 @@ class ArtNamesTest {
             assertArt(ArtNames.component(null, SubsystemComponent.SubsystemType.ENGINE, slot, null, false)[0]);
         }
         assertArt(ArtNames.exhaust(ArtNames.ENGINE_SIZE));
+    }
+
+    @Test
+    void theImbriumAndAsterEnginesHaveTheirOwnArtAndPlumes() {
+        for (String model : new String[]{"gunship_drive", "imbrium_bulwark", "aster_lyra"}) {
+            for (MountFootprint.MountSize slot : MountFootprint.MountSize.values()) {
+                String size = ArtNames.engineSize(slot);
+                for (boolean burning : new boolean[]{true, false}) assertArt(ArtNames.nacelle(model, size, burning)[0]);
+                assertArt(ArtNames.exhaust(model, size)[0]);
+                assertArt(ArtNames.component(model, SubsystemComponent.SubsystemType.ENGINE, slot, null, false)[0]);
+            }
+        }
+        // A Halvorsen is the plain engine: it falls back on it
+        assertArrayEquals(new String[]{"engines/exhaust_engine_m", "engines/exhaust_m"}, ArtNames.exhaust("engine", "m"));
+        assertFalse(java.util.Arrays.asList(ArtNames.nacelle("engine", "m", true)).contains("engines/engine_m"),
+                "not the older bolt-on engine, whose art is named for its size alone");
     }
 
     @Test

@@ -92,6 +92,44 @@ class EngineThrustTest {
         assertEquals(1.2e6, EngineThrust.standardThrust(MountFootprint.MountSize.S), 1.0);
     }
 
+    @Test
+    void eachMakersEnginesSpendPropellantAtTheirOwnEfficiency() {
+        world.update(FRAME);
+        assertEquals(1f, game.player.getComponent(ThrusterComponent.class).efficiency, 1e-6f, "Halvorsen HR-40s: the standard");
+        Entity hauler = world.getContent().factory.spawnShip(GameScenario.FREIGHTER_SHIP, 0f, -300f, 0f);
+        Entity gunship = world.getContent().factory.spawnShip("gunship_heavy", 0f, 300f, 0f);
+        world.update(FRAME);
+        assertEquals(1.15f, hauler.getComponent(ThrusterComponent.class).efficiency, 1e-5f, "HR-25F freight drives go further");
+        assertEquals(0.9f, gunship.getComponent(ThrusterComponent.class).efficiency, 1e-5f, "Imbrium Ramparts are thirsty");
+        // A propellant feed prices a newton-second at the exhaust velocity times that
+        ThrusterComponent t = hauler.getComponent(ThrusterComponent.class);
+        world.update(FRAME);
+        assertEquals(1.0 / (t.exhaustVelocity * 1.15), t.fuelPerNewtonSecond, 1e-6 / t.exhaustVelocity);
+    }
+
+    @Test
+    void anImbriumDriveIsCasedInMediumHull() {
+        Entity gunship = world.getContent().factory.spawnShip("gunship_heavy", 0f, 300f, 0f);
+        world.update(FRAME);
+        ShipGridComponent grid = gunship.getComponent(ShipGridComponent.class);
+        Array<SubsystemComponent> engines = engines(gunship);
+        assertFalse(engines.isEmpty());
+        for (SubsystemComponent e : engines) {
+            assertEquals("gunship_drive", e.component);
+            MountFootprint m = e.footprint;
+            for (int y = m.originY; y < m.originY + m.height(); y++) {
+                for (int x = m.originX; x < m.originX + m.width(); x++) {
+                    assertEquals(com.ringsofiron.interiorgrid.WeightClass.MEDIUM, grid.getTile(x, y).weightClass);
+                }
+            }
+        }
+        for (SubsystemComponent e : engines(game.player)) {
+            assertEquals(com.ringsofiron.interiorgrid.WeightClass.LIGHT,
+                    game.player.getComponent(ShipGridComponent.class).getTile(e.footprint.originX, e.footprint.originY).weightClass,
+                    "a Halvorsen's casing is light");
+        }
+    }
+
     private void assertThrust(Entity ship, String shipId) {
         ShipDef def = world.getContent().defs.get("ship", shipId, ShipDef.class);
         ThrusterComponent t = ship.getComponent(ThrusterComponent.class);
