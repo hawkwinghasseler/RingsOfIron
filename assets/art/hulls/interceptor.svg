@@ -12,9 +12,12 @@
     <path d="M-518.13 -260.2v80M-326.13 -260.2v80M-102.13 -260.2v80M-6.13 -260.2v80M217.87 -260.2v80M345.87 -260.2v80M473.87 -260.2v80M-608 -260.2H544M-550.89 -180.2v80M-326.89 -180.2v80M-230.89 -180.2v80M-102.89 -180.2v80M121.11 -180.2v80M281.11 -180.2v80M377.11 -180.2v80M-608 -180.2H544M-594.67 -100.2v80M-498.67 -100.2v80M-402.67 -100.2v80M-178.67 -100.2v80M13.33 -100.2v80M141.33 -100.2v80M269.33 -100.2v80M397.33 -100.2v80M-608 -100.2H544M-505.28 -20.2v80M-377.28 -20.2v80M-185.28 -20.2v80M-25.28 -20.2v80M102.72 -20.2v80M230.72 -20.2v80M454.72 -20.2v80M-608 -20.2H544M-595.3 59.8v80M-435.3 59.8v80M-339.3 59.8v80M-211.3 59.8v80M-115.3 59.8v80M108.7 59.8v80M236.7 59.8v80M396.7 59.8v80M-608 59.8H544M-481.14 139.8v80M-289.14 139.8v80M-193.14 139.8v80M-33.14 139.8v80M94.86 139.8v80M254.86 139.8v80M382.86 139.8v80M-608 139.8H544M-568.41 219.8v80M-344.41 219.8v80M-120.41 219.8v80M71.59 219.8v80M199.59 219.8v80M359.59 219.8v80M-608 219.8H544" fill="none" stroke="#373f4b" stroke-width="2"/>
     <path d="M-516.13 -258.2h188M-324.13 -258.2h220M-100.13 -258.2h92M-4.13 -258.2h220M219.87 -258.2h124M347.87 -258.2h124M475.87 -258.2h156M-548.89 -178.2h220M-324.89 -178.2h92M-228.89 -178.2h124M-100.89 -178.2h220M123.11 -178.2h156M283.11 -178.2h92M379.11 -178.2h156M-592.67 -98.2h92M-496.67 -98.2h92M-400.67 -98.2h220M-176.67 -98.2h188M15.33 -98.2h124M143.33 -98.2h124M271.33 -98.2h124M399.33 -98.2h124M-503.28 -18.2h124M-375.28 -18.2h188M-183.28 -18.2h156M-23.28 -18.2h124M104.72 -18.2h124M232.72 -18.2h220M456.72 -18.2h92M-593.3 61.8h156M-433.3 61.8h92M-337.3 61.8h124M-209.3 61.8h92M-113.3 61.8h220M110.7 61.8h124M238.7 61.8h156M398.7 61.8h124M-479.14 141.8h188M-287.14 141.8h92M-191.14 141.8h156M-31.14 141.8h124M96.86 141.8h156M256.86 141.8h124M384.86 141.8h124M-566.41 221.8h220M-342.41 221.8h220M-118.41 221.8h188M73.59 221.8h124M201.59 221.8h156M361.59 221.8h156" fill="none" stroke="#7d8898" stroke-width="1.5" opacity="0.35"/>
     <path d="M-352 -224L-288 -224M160 -160L224 -160M-352 224L-288 224M-96 -224L-32 -224M96 160L32 224M-480 -96L-480 -32M96 160L160 160M-96 224L-32 224M416 96L352 160M-416 -224L-352 -224M-288 224L-224 224M-416 224L-352 224M-480 32L-480 96M-480 -160L-480 -96M224 -160L288 -160M160 160L224 160M-224 -224L-160 -224M-480 -32L-480 32M480 -32L416 -96M-224 224L-160 224M288 -160L352 -160M32 -224L96 -224M96 -224L96 -160M-480 96L-480 160M224 160L288 160M480 32L416 96M-288 -224L-224 -224M96 -160L160 -160M480 -32L480 32M-160 -224L-96 -224M416 -96L352 -160M-160 224L-96 224M288 160L352 160M-32 -224L32 -224M-480 -160L-416 -224M-32 224L32 224M-416 224L-480 160" fill="none" stroke="#373f4b" stroke-width="16" stroke-linecap="square"/>
-    <path d="M-209.64 -84.17h37.24v27.53h-37.24zM-130.35 46.8h20.46v24.57h-20.46z" fill="#000000" opacity="0.3"/>
-    <path d="M-212.64 -88.17h37.24v27.53h-37.24zM-133.35 42.8h20.46v24.57h-20.46z" fill="#465060" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M-203.52 128a11.52 11.52 0 1 0 23.04 0a11.52 11.52 0 1 0 -23.04 0zM244.48 -64a11.52 11.52 0 1 0 23.04 0a11.52 11.52 0 1 0 -23.04 0z" fill="#373f4b" stroke="#10141a" stroke-width="1.5"/>
+    <path d="M-337.64 -20.17h37.24v27.53h-37.24zM-258.35 46.8h20.46v24.57h-20.46zM52.55 57.99h20.51v17.32h-20.51zM195.02 6.03h24.32v23.47h-24.32z" fill="#000000" opacity="0.3"/>
+    <path d="M232 64h48" fill="none" stroke="#10141a" stroke-width="7" stroke-linecap="round"/>
+    <path d="M232 64h48" fill="none" stroke="#4b5563" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-340.64 -24.17h37.24v27.53h-37.24zM-261.35 42.8h20.46v24.57h-20.46zM43.21 -3.14h32v17.92h-32zM49.55 53.99h20.51v17.32h-20.51zM192.02 2.03h24.32v23.47h-24.32z" fill="#465060" stroke="#10141a" stroke-width="1.5"/>
+    <path d="M47.21 -0.14h24M47.21 5.82h24M47.21 11.78h24" fill="none" stroke="#10141a" stroke-width="1.5"/>
+    <path d="M-267.52 -128a11.52 11.52 0 1 0 23.04 0a11.52 11.52 0 1 0 -23.04 0zM-75.52 64a11.52 11.52 0 1 0 23.04 0a11.52 11.52 0 1 0 -23.04 0z" fill="#373f4b" stroke="#10141a" stroke-width="1.5"/>
     <polygon points="-397.2,-5.44 -365.84,-36.8 377.84,-36.8 409.2,-5.44 409.2,21.44 377.84,52.8 -365.84,52.8 -397.2,21.44" fill="#000000" opacity="0.35"/>
     <polygon points="-403.2,-13.44 -371.84,-44.8 371.84,-44.8 403.2,-13.44 403.2,13.44 371.84,44.8 -371.84,44.8 -403.2,13.44" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
     <polygon points="-403.2,-13.44 -371.84,-44.8 371.84,-44.8 403.2,-13.44 403.2,13.44 371.84,44.8 -371.84,44.8 -403.2,13.44" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
@@ -30,23 +33,6 @@
     <circle cx="-151.55" cy="160" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
     <circle cx="-139.78" cy="139.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
     <circle cx="-116.22" cy="139.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <rect x="-88" y="40" width="112" height="112" rx="3" fill="#2c333d" stroke="#10141a" stroke-width="2"/>
-    <line x1="-83" y1="44" x2="-83" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-76" y1="44" x2="-76" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-69" y1="44" x2="-69" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-62" y1="44" x2="-62" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-55" y1="44" x2="-55" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-48" y1="44" x2="-48" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-41" y1="44" x2="-41" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-34" y1="44" x2="-34" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-27" y1="44" x2="-27" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-20" y1="44" x2="-20" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-13" y1="44" x2="-13" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-6" y1="44" x2="-6" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="1" y1="44" x2="1" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="8" y1="44" x2="8" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <line x1="15" y1="44" x2="15" y2="148" stroke="#6d7a8a" stroke-width="2" stroke-linecap="round"/>
-    <circle cx="18" cy="46" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
     <circle cx="323" cy="-60" r="29.44" fill="#000000" opacity="0.3"/>
     <circle cx="320" cy="-64" r="29.44" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="320" cy="-64" r="23.55" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-dasharray="4 4"/>
@@ -55,40 +41,15 @@
     <circle cx="320" cy="64" r="29.44" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="320" cy="64" r="23.55" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-dasharray="4 4"/>
     <circle cx="320" cy="64" r="8.83" fill="#10141a"/>
-    <rect x="-272" y="80" width="32" height="32" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <line x1="-268" y1="88" x2="-244" y2="88" stroke="#4b5563" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-268" y1="96" x2="-244" y2="96" stroke="#4b5563" stroke-width="2" stroke-linecap="round"/>
-    <line x1="-268" y1="104" x2="-244" y2="104" stroke="#4b5563" stroke-width="2" stroke-linecap="round"/>
-    <polygon points="119.04,-22.4 176.38,-22.4 200.96,-8.06 200.96,8.06 176.38,22.4 119.04,22.4" fill="#0c1a26" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
-    <line x1="176.38" y1="-22.4" x2="176.38" y2="22.4" stroke="#373f4b" stroke-width="2.5" stroke-linecap="round"/>
-    <line x1="147.71" y1="-22.4" x2="147.71" y2="22.4" stroke="#373f4b" stroke-width="2.5" stroke-linecap="round"/>
-    <circle cx="160" cy="-64" r="12.8" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
-    <line x1="160" y1="-64" x2="171.52" y2="-75.52" stroke="#10141a" stroke-width="2" stroke-linecap="round"/>
-    <circle cx="160" cy="-64" r="2.5" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
     <rect x="-160" y="-224" width="192" height="64" rx="3" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <rect x="-150" y="-214" width="172" height="44" fill="none" stroke="#f2c230" stroke-width="4" stroke-dasharray="12 8"/>
     <rect x="-128" y="-256" width="128" height="32" rx="3" fill="#4b5563" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-256" cy="-96" r="12.8" fill="#465060" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-256" cy="-96" r="7.04" fill="#e0a040" stroke="#10141a" stroke-width="1"/>
-    <circle cx="-352" cy="-64" r="12.8" fill="#465060" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-352" cy="-64" r="7.04" fill="#6ab8ff" stroke="#10141a" stroke-width="1"/>
-    <circle cx="-352" cy="64" r="12.8" fill="#465060" stroke="#10141a" stroke-width="2"/>
-    <circle cx="-352" cy="64" r="7.04" fill="#a8b4c8" stroke="#10141a" stroke-width="1"/>
     <circle cx="84" cy="-212" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
     <circle cx="-404" cy="-212" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
     <circle cx="20" cy="212" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
     <circle cx="-404" cy="212" r="4" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
   </g>
   <g id="emissive">
-    <g data-light="glow">
-    <circle cx="18" cy="46" r="7.2" fill="#ff9a3c" opacity="0.18"/>
-    <circle cx="18" cy="46" r="2.4" fill="#ff9a3c"/>
-    </g>
-    <polygon points="176.38,-19.4 197.96,-6.72 197.96,6.72 176.38,19.4" fill="#6aa8ff" opacity="0.4"/>
-    <g data-light="glow">
-    <circle cx="160" cy="-64" r="6" fill="#c58cff" opacity="0.18"/>
-    <circle cx="160" cy="-64" r="2" fill="#c58cff"/>
-    </g>
     <g data-light="glow">
     <circle cx="84" cy="-212" r="9.6" fill="#ff4d4d" opacity="0.18"/>
     <circle cx="84" cy="-212" r="3.2" fill="#ff4d4d"/>

@@ -1966,6 +1966,9 @@ LETTERS = {"R": "reactor", "S": "shield_emitter", "T": "turret_mount", "L": "lif
 KIND = {"reactor": "P", "shield_emitter": "P", "turret_mount": "P", "life_support": "A", "helm": "A",
         "weapons": "A", "cargo": "A", "airlock": "A", "docking_port": "D", "engine": "A", "tank": "A",
         "oxygen_tank": "A", "nitrogen_tank": "A", "escape_pod": "A"}
+# The systems that reach the outside of the hull and so show on its roof; the rest are inside the
+# decks, under plating like any other room
+EXTERIOR = {"turret_mount", "shield_emitter", "airlock", "escape_pod", "docking_port", "engine"}
 WALL_CHARS = set("#123")
 
 
@@ -2032,8 +2035,8 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
     """Exterior art for a chassis: the roof over its decks, seen from above. Plating in staggered
     courses over the whole footprint (the grid's tiles and any outline past it), not the tile
     grid; a rim along the edge; the raised superstructure the ship has (SUPERSTRUCTURE, else a
-    spine down its middle); small fittings (vents, boxes, hatches, conduit runs) where no system
-    is; each system's exterior fitting over its footprint; and, for ships with no engine
+    spine down its middle); small fittings (vents, boxes, hatches, conduit runs) where no exterior
+    system is; the fitting of each system that reaches outside (EXTERIOR) over its footprint; and, for ships with no engine
     systems, engine mounts on the aft (-x) edge. `overhang` and `superstructure` are in SVG units."""
     rows = ch["rows"]
     H, W = len(rows), max(len(r) for r in rows)
@@ -2060,7 +2063,7 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
         wedges[(p["x"], H - 1 - p["y"])] = keep
     x0, y0 = cell(0, 0)
     gw, gh = W * T, H * T
-    mounts = chassis_mounts(ch)
+    mounts = [m for m in chassis_mounts(ch) if m[0] in EXTERIOR]
 
     # The footprint, as one path of the tiles (a shaped hull can run to a thousand tiles: one path
     # stays within the art packer's element limit, and has no seams between tiles) and the outline
@@ -2239,55 +2242,9 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
             a.b += circle(cx, cy, r, STEEL_DARK, stroke=INK, sw=2)
             a.b += circle(cx, cy, r * 0.8, "none", stroke=STEEL_HI, sw=1.5, extra=' stroke-dasharray="4 4"')
             a.b += circle(cx, cy, r * 0.3, INK)
-        elif m == "reactor":
-            # a radiator panel over the reactor: a recessed grille of fins
-            a.b += rect(x + 8, y + 8, pw - 16, ph - 16, "#2c333d", rx=3, stroke=INK, sw=2)
-            k = x + 13
-            while k < x + pw - 12:
-                a.b += line(k, y + 12, k, y + ph - 12, "#6d7a8a", sw=2)
-                k += 7
-            light(a, x + pw - 14, y + 14, 3, ACCENT["reactor"])
         elif m == "shield_emitter":
             a.b += circle(cx, cy, s * 0.4, "#2f5664", stroke=INK, sw=2)
             a.e += circle(cx, cy, s * 0.25, ACCENT["shield_emitter"], extra=' opacity="0.6"')
-        elif m == "life_support":
-            # an intake: a small louvred box
-            v = s * 0.5
-            a.b += rect(cx - v / 2, cy - v / 2, v, v, HOUSING, rx=3, stroke=INK, sw=1.5)
-            for k in range(1, 4):
-                a.b += line(cx - v / 2 + 4, cy - v / 2 + k * v / 4, cx + v / 2 - 4, cy - v / 2 + k * v / 4, STEEL_MID, sw=2)
-        elif m == "helm":
-            # the bridge canopy: faceted glazing looking forward (+x)
-            cw, chh = min(pw, T * 1.6) * 0.8, min(ph, T * 1.6) * 0.7
-            canopy = [(cx - cw / 2, cy - chh / 2), (cx + cw * 0.2, cy - chh / 2), (cx + cw / 2, cy - chh * 0.18),
-                      (cx + cw / 2, cy + chh * 0.18), (cx + cw * 0.2, cy + chh / 2), (cx - cw / 2, cy + chh / 2)]
-            a.b += poly(canopy, GLASS, stroke=INK, sw=2.5)
-            a.b += line(cx + cw * 0.2, cy - chh / 2, cx + cw * 0.2, cy + chh / 2, STEEL_DARK, sw=2.5)
-            a.b += line(cx - cw * 0.15, cy - chh / 2, cx - cw * 0.15, cy + chh / 2, STEEL_DARK, sw=2.5)
-            a.e += poly([(cx + cw * 0.2, cy - chh / 2 + 3), (cx + cw / 2 - 3, cy - chh * 0.15),
-                         (cx + cw / 2 - 3, cy + chh * 0.15), (cx + cw * 0.2, cy + chh / 2 - 3)],
-                        ACCENT["helm"], extra=' opacity="0.4"')
-        elif m == "weapons":
-            # a sensor mast: a small dish on a post
-            r = s * 0.2
-            a.b += circle(cx, cy, r, STEEL, stroke=INK, sw=2)
-            a.b += line(cx, cy, cx + r * 0.9, cy - r * 0.9, INK, sw=2)
-            light(a, cx, cy, 2.5, ACCENT["weapons"])
-        elif m == "cargo":
-            a.b += rect(x + 5, y + 5, pw - 10, ph - 10, "#55606e", rx=5, stroke=INK, sw=2)
-            a.b += bevel(x + 6, y + 6, pw - 12, ph - 12, STEEL_HI, INK)
-            long_ = pw >= ph
-            for k in range(1, max(w, h)):
-                if long_:
-                    a.b += line(x + k * T, y + 8, x + k * T, y + ph - 8, INK, sw=1.5)
-                else:
-                    a.b += line(x + 8, y + k * T, x + pw - 8, y + k * T, INK, sw=1.5)
-            a.b += rect(x + 10, y + 10, pw - 20, ph - 20, "none", stroke=HAZARD, sw=2.5,
-                        extra=' stroke-dasharray="10 8" opacity="0.7"')
-        elif m in FLUIDS:
-            # a filler cap ringed in the fluid's band, where tankers connect
-            a.b += circle(cx, cy, s * 0.2, HOUSING_HI, stroke=INK, sw=2)
-            a.b += circle(cx, cy, s * 0.11, FLUIDS[m][1], stroke=INK, sw=1)
         elif m == "engine":
             pass  # outside the hull: the game draws the engine itself (engines/nacelle_<size>)
         elif m == "airlock":

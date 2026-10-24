@@ -101,17 +101,12 @@ The **turret mount** is the turret's base and its operator's station: a bearing 
 **Tanks** (`tank`, `oxygen_tank`, `nitrogen_tank`, S-XL) are cylinders in cradles with a band in their fluid's color: amber for propellant, blue for oxygen, grey-blue for nitrogen. They are passive.
 
 ## Exterior hulls
-A ship or station hull is the roof over its decks, seen from above, built on its chassis grid so the outside matches the inside without showing the deck plan. The whole footprint (the grid's tiles and any outline past it) is plated in staggered courses of plates a meter and a quarter wide and one and a half to three and a half long, each a shade lighter or darker than the next, with a rim of heavier plate along the edge and a sheen lighting it from the top-left; the tile grid itself is not drawn. Raised superstructure stands on the roof and casts a short shadow aft and down: each warship has its own (`SUPERSTRUCTURE` in `generate_svgs.py`: the corvette's spine and bridge, the gunship's armored citadel and ram plate, the frigate's keel, bridge and drive housing, the raider's canopy ridge, the corsair's off-center bridge and outrigger armor, the picket's sensor dome), and every other ship gets a spine down its middle. Small fittings (vents, boxes, hatches, conduit runs) are scattered over bare roof, seeded by the chassis id so the art is the same each run. Each system's exterior fitting sits over its footprint, small enough not to read as furniture:
+A ship or station hull is the roof over its decks, seen from above, built on its chassis grid so the outside matches the inside without showing the deck plan. The whole footprint (the grid's tiles and any outline past it) is plated in staggered courses of plates a meter and a quarter wide and one and a half to three and a half long, each a shade lighter or darker than the next, with a rim of heavier plate along the edge and a sheen lighting it from the top-left; the tile grid itself is not drawn. Raised superstructure stands on the roof and casts a short shadow aft and down: each warship has its own (`SUPERSTRUCTURE` in `generate_svgs.py`: the corvette's spine and bridge, the gunship's armored citadel and ram plate, the frigate's keel, bridge and drive housing, the raider's canopy ridge, the corsair's off-center bridge and outrigger armor, the picket's sensor dome), and every other ship gets a spine down its middle. Small fittings (vents, boxes, hatches, conduit runs) are scattered over bare roof, seeded by the chassis id so the art is the same each run. Only the systems that reach the outside of the hull show on it (`EXTERIOR` in `generate_svgs.py`); the helm, weapons console, reactor, life support, cargo bays and tanks are inside the decks and stay under the plating. Each exterior system's fitting sits over its footprint:
 
 | System | Exterior |
 |---|---|
 | Turret mount | Turret ring at the mount's center |
-| Reactor | Radiator grille |
 | Shield emitter | Emitter dome |
-| Life support | Intake vents |
-| Helm | Bridge glazing |
-| Weapons console | Sensor mast |
-| Cargo | Cargo hatches, one panel per tile |
 | Airlock | Hatch |
 | Escape pod | Round hull hatch ringed in orange, with its explosive bolts |
 | Docking port | Port frame, and the collar half a tile outside |
