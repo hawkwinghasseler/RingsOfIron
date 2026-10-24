@@ -11,8 +11,10 @@ import com.hawkwing.RingsOfIron.render.RcsNozzles;
 import com.badlogic.gdx.utils.FloatArray;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
@@ -20,8 +22,8 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
 
 /**
  * Draws craft from outside with the art pack: the hull of the chassis a craft was built from
- * (warped where collisions have dented and crushed it), a engine for each engine system (sized to
- * its slot), each RCS block, and each weapon's turret on its hardpoint, turned to where it aims;
+ * (warped where collisions have dented and crushed it), an engine for each engine system (over
+ * its slot, outside the hull), each RCS block, and each weapon's turret on its hardpoint, turned to where it aims;
  * and the flames of the engines and RCS nozzles that fire, which {@code ThrusterFlames} draws in a
  * pass of their own. Exterior art is in the body frame (64 SVG units to the meter), so it
  * is drawn straight at the body's pose, in world meters.
@@ -120,7 +122,8 @@ public final class ExteriorArt {
         if (hasEngines(grid)) {
             for (MountFootprint m : grid.mounts) {
                 SubsystemComponent sub = engineIn(m);
-                if (sub == null || !socket(grid, m)) continue;
+                if (sub == null) continue;
+                socket(grid, m);
                 boolean works = sub.isOperational && sub.switchedOn && !sub.isDisabled();
                 float burn = works ? throttle * MathUtils.clamp(sub.health, 0f, 1f) : 0f;
                 Vector2 w = world(body, socket.x, socket.y);
@@ -130,15 +133,15 @@ public final class ExteriorArt {
             return;
         }
         for (int k = 0; k < engineCount(grid); k++) {
-            Vector2 w = engineMount(body, grid, k);
+            Vector2 w = engineMount(body, grid, k, LEGACY_EXIT);
             out.nozzle(ArtNames.ENGINE_SIZE, w.x, w.y, angle + MathUtils.PI, grid.tileSize, throttle);
         }
     }
 
     /**
      * The craft's engines, their throats hot while the main engine burns: one for each engine
-     * system, sized to its slot, where its nozzle meets space; or, on a craft with no engine
-     * systems, a small one in each engine mount the hull art draws.
+     * system, drawn over its slot outside the hull; or, on a craft with no engine systems, a small
+     * one in each engine mount the hull art draws.
      */
     private void engines(Batch batch, Entity craft, Body body, float angle) {
         FlightControlComponent controls = craft.getComponent(FlightControlComponent.class);
@@ -146,20 +149,26 @@ public final class ExteriorArt {
         if (controls == null || grid == null) return;
         boolean burning = controls.forward > 0f;
         if (hasEngines(grid)) {
+            float s = grid.tileSize;
             for (MountFootprint m : grid.mounts) {
                 SubsystemComponent sub = engineIn(m);
-                if (sub == null || !socket(grid, m)) continue;
-                AtlasRegion engine = art.first(ArtNames.engine(ArtNames.engineSize(m.size), burning && sub.isOperational));
+                if (sub == null) continue;
+                String size = ArtNames.engineSize(m.size);
+                AtlasRegion engine = art.first(ArtNames.nacelle(size, burning && sub.isOperational));
                 if (engine == null) continue;
-                Vector2 w = world(body, socket.x, socket.y);
-                pivoted(batch, engine, w.x, w.y, (angle * MathUtils.radiansToDegrees) + socketDegrees, 1f, 1f);
+                // The art is the slot unturned, nozzle up the canvas; turned with the slot about its middle
+                float bw = m.size.baseWidth(m.kind) * s, bh = m.size.baseHeight(m.kind) * s;
+                Vector2 c = world(body, grid.gridOriginLocal.x + (m.originX + m.width() / 2f) * s,
+                        grid.gridOriginLocal.y + (m.originY + m.height() / 2f) * s);
+                batch.draw(engine, c.x - bw / 2f, c.y - bh / 2f, bw / 2f, bh / 2f, bw, bh, 1f, 1f,
+                        angle * MathUtils.radiansToDegrees + m.rotation * 90f);
             }
             return;
         }
         AtlasRegion engine = art.first(ArtNames.engine(ArtNames.ENGINE_SIZE, burning));
         if (engine == null) return;
         for (int k = 0; k < engineCount(grid); k++) {
-            Vector2 w = engineMount(body, grid, k);
+            Vector2 w = engineMount(body, grid, k, 0f);
             pivoted(batch, engine, w.x, w.y, angle * MathUtils.radiansToDegrees, 1f, 1f);
         }
     }
@@ -177,29 +186,18 @@ public final class ExteriorArt {
     }
 
     /**
-     * Finds where an engine's nozzle meets space: from the end of its slot the nozzle faces,
-     * out through the walls behind it to the first open space or the grid's edge. Sets
-     * {@link #socket} (grid local meters) and {@link #socketDegrees} (the art's turn from
-     * nozzle -x); false when the nozzle faces into the ship.
+     * Finds where an engine's exhaust leaves it: the middle of the end of its slot the nozzle faces
+     * ({@link EngineLayout#nozzle}), out in space. Sets {@link #socket} (grid local meters) and
+     * {@link #socketDegrees} (the plume art's turn from exhaust toward -x).
      */
-    boolean socket(ShipGridComponent grid, MountFootprint m) {
-        int r = m.rotation;
-        int dx = r == 1 ? -1 : r == 3 ? 1 : 0, dy = r == 0 ? 1 : r == 2 ? -1 : 0;
-        // the middle line of the slot, and the first tile past the end it faces
+    void socket(ShipGridComponent grid, MountFootprint m) {
+        Side out = EngineLayout.nozzle(m);
         float midX = m.originX + m.width() / 2f, midY = m.originY + m.height() / 2f;
-        int x = dx == 0 ? (int) Math.floor(midX - 0.5f) : dx < 0 ? m.originX - 1 : m.originX + m.width();
-        int y = dy == 0 ? (int) Math.floor(midY - 0.5f) : dy < 0 ? m.originY - 1 : m.originY + m.height();
-        while (grid.inBounds(x, y) && grid.getTile(x, y).isWall()) {
-            x += dx;
-            y += dy;
-        }
-        if (grid.inBounds(x, y) && !grid.getTile(x, y).isVoid()) return false;
+        float edgeX = out.dx == 0 ? midX : out.dx < 0 ? m.originX : m.originX + m.width();
+        float edgeY = out.dy == 0 ? midY : out.dy < 0 ? m.originY : m.originY + m.height();
         float s = grid.tileSize;
-        float edgeX = dx == 0 ? midX : dx < 0 ? x + 1 : x;
-        float edgeY = dy == 0 ? midY : dy < 0 ? y + 1 : y;
         socket.set(grid.gridOriginLocal.x + edgeX * s, grid.gridOriginLocal.y + edgeY * s);
-        socketDegrees = MathUtils.atan2(dy, dx) * MathUtils.radiansToDegrees - 180f;
-        return true;
+        socketDegrees = MathUtils.atan2(out.dy, out.dx) * MathUtils.radiansToDegrees - 180f;
     }
 
     /** An engine mount on the aft edge for every third row, as the hull art draws them. */
@@ -207,11 +205,14 @@ public final class ExteriorArt {
         return grid.height / 3;
     }
 
-    /** World position of engine mount {@code k}'s socket. */
-    private Vector2 engineMount(Body body, ShipGridComponent grid, int k) {
+    /** Tiles aft of a hull art engine mount's socket that its engine's nozzle ends, where the plume starts. */
+    private static final float LEGACY_EXIT = 0.86f;
+
+    /** World position of engine mount {@code k}'s socket, or {@code aft} tiles behind it. */
+    private Vector2 engineMount(Body body, ShipGridComponent grid, int k, float aft) {
         float s = grid.tileSize;
         float row = k * 3 + (grid.height % 3) / 2f + 1.5f;
-        return world(body, grid.gridOriginLocal.x - 0.25f * s, grid.gridOriginLocal.y + (grid.height - row) * s);
+        return world(body, grid.gridOriginLocal.x - (0.25f + aft) * s, grid.gridOriginLocal.y + (grid.height - row) * s);
     }
 
     private void turrets(Batch batch, Entity craft, Body body) {

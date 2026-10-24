@@ -87,12 +87,12 @@ class ShipRefitTest {
         return c;
     }
 
-    /** The layout with the turret mount under the laser (map row 4, column 9) taken out for deck. */
+    /** The layout with the turret mount under the laser (map row 4, column 10) taken out for deck. */
     private ChassisDef withoutLaserTurret() {
         ChassisDef c = copy();
         char[] row = c.rows[4].toCharArray();
-        assertEquals('T', row[9], "the corvette's laser turret mount");
-        row[9] = '.';
+        assertEquals('T', row[10], "the corvette's laser turret mount");
+        row[10] = '.';
         c.rows[4] = new String(row);
         return c;
     }
@@ -165,12 +165,12 @@ class ShipRefitTest {
     void aRebuiltShipCollidesOnItsNewLayout() {
         dock();
         ChassisDef layout = copy();
-        // Cut the aft port corner tile (map row 0, column 0) out of the hull
+        // Cut the hull's aft port corner tile (map row 0, column 1; the engines stand aft of it) out of the hull
         char[] top = layout.rows[0].toCharArray();
-        assertEquals('#', top[0]);
-        top[0] = ' ';
+        assertEquals('#', top[1]);
+        top[1] = ' ';
         layout.rows[0] = new String(top);
-        float cornerX = layout.originX + 0.5f, cornerY = layout.originY + layout.rows.length - 0.5f;
+        float cornerX = layout.originX + 1.5f, cornerY = layout.originY + layout.rows.length - 0.5f;
         assertTrue(collidesAt(cornerX, cornerY), "the corner collides as built");
         float massBefore = com.ringsofiron.physicsexterior.PhysicsManager.getMass(game.player
                 .getComponent(com.ringsofiron.physicsexterior.components.PhysicsBodyComponent.class).body);

@@ -7,6 +7,7 @@ import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.AirflowEdge;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.DamageStates;
+import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -185,7 +186,8 @@ public final class TaskRules {
                     int nx = x + side.dx, ny = y + side.dy;
                     if (s.covers(nx, ny) && !grid.isEdgeBlocked(x, y, nx, ny)) return true;
                 }
-                return false;
+                // An engine outside the hull is worked from inside, through the wall behind it
+                return s.type == SubsystemComponent.SubsystemType.ENGINE && EngineLayout.isFeedTile(grid, s.footprint, x, y);
             }
             case TREAT:
             case STABILISE:

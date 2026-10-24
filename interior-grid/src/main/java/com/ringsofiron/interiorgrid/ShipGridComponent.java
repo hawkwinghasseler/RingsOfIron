@@ -528,7 +528,36 @@ public class ShipGridComponent implements Component {
     }
 
     /**
-     * Places a mount. A docking port also builds its frame, opening and door into the tiles.
+     * Checks whether a mount for a system of {@code type} can be placed: as {@link #validateMount(MountFootprint)},
+     * except that an engine mounts on the outside of the hull (see {@link EngineLayout}).
+     *
+     * @return null if legal, otherwise a description of the problem.
+     */
+    public String validateMount(MountFootprint m, SubsystemComponent.SubsystemType type) {
+        if (type == SubsystemComponent.SubsystemType.ENGINE) return EngineLayout.validate(this, m);
+        return validateMount(m);
+    }
+
+    /**
+     * Places a mount for a system of {@code type}. An engine also builds its casing into the tiles.
+     *
+     * @throws IllegalArgumentException if {@link #validateMount(MountFootprint, SubsystemComponent.SubsystemType)}
+     *         rejects the footprint.
+     */
+    public void placeMount(MountFootprint m, SubsystemComponent.SubsystemType type) {
+        if (type != SubsystemComponent.SubsystemType.ENGINE) {
+            placeMount(m);
+            return;
+        }
+        String problem = validateMount(m, type);
+        if (problem != null) throw new IllegalArgumentException("Illegal " + m.kind + " " + m.size + " mount: " + problem);
+        EngineLayout.build(this, m);
+        register(m);
+    }
+
+    /**
+     * Places a mount. A docking port also builds its frame, opening and door into the tiles. An
+     * engine goes through {@link #placeMount(MountFootprint, SubsystemComponent.SubsystemType)}.
      *
      * @throws IllegalArgumentException if {@link #validateMount} rejects the footprint.
      */
@@ -536,6 +565,10 @@ public class ShipGridComponent implements Component {
         String problem = validateMount(m);
         if (problem != null) throw new IllegalArgumentException("Illegal " + m.kind + " " + m.size + " mount: " + problem);
         if (m.kind == MountFootprint.MountKind.PORT) DockingPortLayout.build(this, m);
+        register(m);
+    }
+
+    private void register(MountFootprint m) {
         for (int y = m.originY; y < m.originY + m.height(); y++) {
             for (int x = m.originX; x < m.originX + m.width(); x++) {
                 getTile(x, y).mount = m;

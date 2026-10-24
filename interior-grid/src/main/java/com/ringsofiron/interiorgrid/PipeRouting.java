@@ -63,11 +63,22 @@ public final class PipeRouting {
         // Each system joins the networks its footprint touches, then reaches every tank on them
         Array<SubsystemComponent> systems = new Array<>();
         Array<Array<PipeNetwork>> touched = new Array<>();
+        IntArray feed = new IntArray();
         for (Entity e : registry.subsystems) {
             SubsystemComponent sub = SUBSYSTEMS.get(e);
             if (sub == null) continue;
             Array<PipeNetwork> nets = new Array<>();
             touching(grid, sub.footprint, network, nets);
+            if (sub.type == SubsystemComponent.SubsystemType.ENGINE) {
+                // An engine outside the hull is piped from its feed tiles inside
+                feed.clear();
+                EngineLayout.feedTiles(grid, sub.footprint, feed);
+                for (int i = 0; i < feed.size; i++) {
+                    int x = feed.get(i) % grid.width, y = feed.get(i) / grid.width;
+                    add(nets, network[GridNodes.tileNode(grid, x, y)]);
+                    for (Side side : Side.values()) add(nets, network[GridNodes.edgeNode(grid, x, y, side)]);
+                }
+            }
             for (PipeNetwork net : nets) {
                 if (sub.type == SubsystemComponent.SubsystemType.TANK) net.tanks.add(sub);
                 else net.systems.add(sub);

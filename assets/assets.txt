@@ -512,6 +512,14 @@ art/engines/exhaust_l.svg
 art/engines/exhaust_m.svg
 art/engines/exhaust_s.svg
 art/engines/exhaust_xl.svg
+art/engines/nacelle_l.svg
+art/engines/nacelle_l_unpowered.svg
+art/engines/nacelle_m.svg
+art/engines/nacelle_m_unpowered.svg
+art/engines/nacelle_s.svg
+art/engines/nacelle_s_unpowered.svg
+art/engines/nacelle_xl.svg
+art/engines/nacelle_xl_unpowered.svg
 art/engines/rcs_linear.svg
 art/engines/rcs_linear_destroyed.svg
 art/engines/rcs_puff.svg
