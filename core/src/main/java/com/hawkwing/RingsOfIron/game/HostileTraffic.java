@@ -70,7 +70,7 @@ import java.util.function.DoubleSupplier;
  * at whom is not: a hostile that was provoked fights on from its locked target.
  */
 public class HostileTraffic extends EntitySystem implements BubbleTransitionListener, DropOutSource,
-        HostileTrafficController.Listener, SaveParticipant {
+        HostileTrafficController.Listener, SaveParticipant, Resettable {
     /** Key of this system's state in the save's modules section. */
     public static final String SAVE_KEY = "hostile-traffic";
     /** Seconds between looks at the bubble's hostiles. */
@@ -253,6 +253,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
     }
 
     /** Forgets this system's own state, before a save is loaded over it. */
+    @Override
     public void reset() {
         spawned = 0;
         nextTopUp = Double.POSITIVE_INFINITY;
