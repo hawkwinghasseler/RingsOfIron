@@ -265,6 +265,8 @@ public class GameWorld implements Disposable {
     /** Frames left of that wait: from a load until a frame has run and the player's latch is welded again. */
     private int loadSettling;
     private String careerOver;
+    /** After every other fixed system of the tick (they all run below 100): see {@link #tickManagers}. */
+    static final int MANAGERS_PRIORITY = 500;
     private final List<Entity> wrecks = new ArrayList<>();
     private final double[] trueState = new double[4];
     /** Materials from the loaded data, for ships' mass. */
@@ -568,6 +570,9 @@ public class GameWorld implements Disposable {
         captain = new CaptainSafety(this);
         air = new AirWatch(this);
         infirmary = new StationInfirmary(this);
+        // The managers that keep time or set what the crew act on run every sim tick, after the
+        // tick's other systems, not once a frame after however many ticks the frame ran
+        engine.addSystem(new TickManagers());
     }
 
     /**
@@ -664,26 +669,53 @@ public class GameWorld implements Disposable {
             boolean welding = player != null && docking.dockedTo(player) != null && !docking.isRigid(player);
             loadSettling = welding ? loadSettling - 1 : 0;
         }
+        // What follows changes the world between updates, with the engine idle: ships spawned and
+        // removed (wrecks, raids, the day's events), the bubble collapsed and rebuilt for a rescue,
+        // time warp set. The managers that keep time run on the tick instead (tickManagers)
         for (Entity wreck : wrecks) engine.removeEntity(wreck);
         wrecks.clear();
         rescue.update();
         hostiles.afterUpdate();
-        pirateBoarding.update();
         pirateBase.afterUpdate();
         derelicts.update();
         events.update();
         checkBubbleCrash();
         checkAvatar();
         if ((crash != null || careerOver != null) && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
+        // Notices on how things stand now: once a frame is soon enough
         warnings.update();
         damageControl.update();
+        air.update();
+        // Warp changes only between updates: the walk to air drops it, the autopilot raises it again after a burn
+        captain.giveWayToTheWalk();
+        nav.autopilot.afterUpdate();
+    }
+
+    /**
+     * Once a sim tick, after every other fixed system (the crew have moved, the air has spread):
+     * the managers whose timers count sim time or whose state the crew act on the next tick. Run
+     * once a frame they saw up to 150 ticks at once at 10x warp, and a frame's worth of battle
+     * stations or suit time depended on the frame rate.
+     */
+    private void tickManagers() {
+        if (crash != null || careerOver != null) return;
+        pirateBoarding.update();
         medical.update();
         berthVenting.update();
         captain.update();
-        air.update();
         infirmary.update();
-        // Warp changes only between updates: the autopilot raises it again after a burn
-        nav.autopilot.afterUpdate();
+    }
+
+    /** Runs {@link #tickManagers}; a named class so the tick profiler names it. */
+    private final class TickManagers extends com.ringsofiron.coreengine.systems.FixedLogicSystem {
+        TickManagers() {
+            super(MANAGERS_PRIORITY, (float) com.ringsofiron.coreengine.SimClock.TICK_SECONDS);
+        }
+
+        @Override
+        protected void updateFixed(float deltaTime) {
+            tickManagers();
+        }
     }
 
     /** Why rails warp waits after a load: until a frame has run and the player's ship is welded to its dock again. */

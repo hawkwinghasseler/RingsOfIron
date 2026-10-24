@@ -92,8 +92,8 @@ public final class CaptainSafety {
     public CaptainSafety(GameWorld world) {
         this.world = world;
         world.engine.addRailsWarpGuard(this::railsWarpBlockedReason);
-        // The walk is set after the engine's update, and the screen clears the figure's walk before
-        // the next one: so it is set again before the crew move, unless the player walks it
+        // The walk is set at the end of a tick, and the screen clears the figure's walk before
+        // the next frame's ticks: so it is set again before the crew move, unless the player walks it
         world.engine.addSystem(new com.ringsofiron.coreengine.systems.FixedLogicSystem(KEEP_WALKING_PRIORITY,
                 (float) com.ringsofiron.coreengine.SimClock.TICK_SECONDS) {
             @Override
@@ -192,7 +192,7 @@ public final class CaptainSafety {
         return fromThinAir;
     }
 
-    /** Once a frame. */
+    /** Once a sim tick ({@link GameWorld#tickManagers}). */
     public void update() {
         double now = world.engine.getSimSeconds();
         // A time skip (a tow home, a jump in warp) is not time spent putting a suit on or standing calm
@@ -211,7 +211,7 @@ public final class CaptainSafety {
         ShipGridComponent grid = world.crew.grid(p.ship);
         if (grid == null) return;
         steerAshore(e, c, p, now);
-        giveWayToTheWalk(p);
+        watchTheWalk(p);
         int x = p.tileX(), y = p.tileY();
         boolean thin = !TaskRules.isBreathable(grid, x, y);
         fillSuit(e, c, p, grid, thin, dt);
@@ -358,14 +358,15 @@ public final class CaptainSafety {
      * ({@link #WARP_GIVES_WAY}). Once it breathes, a step clear of the port it came in by isn't a
      * reason to hold warp back.
      */
-    private void giveWayToTheWalk(GridPositionComponent p) {
+    private void watchTheWalk(GridPositionComponent p) {
         ShipGridComponent grid = world.crew.grid(p.ship);
         fromThinAir = walking && (p.walkway != null || grid == null || !TaskRules.isBreathable(grid, p.tileX(), p.tileY()));
-        if (!fromThinAir) {
-            if (!walking) warpTold = false;
-            return;
-        }
-        if (!WARP_GIVES_WAY || world.timeWarp.getWarp() <= 1) return;
+        if (!fromThinAir && !walking) warpTold = false;
+    }
+
+    /** Drops warp for the walk to air. Once a frame, between engine updates: leaving rails warp rebuilds the bubble. */
+    void giveWayToTheWalk() {
+        if (!fromThinAir || !WARP_GIVES_WAY || world.timeWarp.getWarp() <= 1) return;
         world.timeWarp.setWarp(1);
         if (!warpTold) world.notices.post(WARP_DROPS, NoticeLog.Kind.WARNING);
         warpTold = true;

@@ -102,7 +102,7 @@ public class PirateBoarding implements SaveParticipant {
     private double latched;
     /** True once it has come within {@link #LATCH_RANGE} and said so. */
     private boolean aboard;
-    /** Sim time {@link #board} last flew the boarder; NaN until the first frame after a load. */
+    /** Sim time {@link #board} last flew the boarder; NaN until the first tick after a load. */
     private double asked = Double.NaN;
     /** Hits the player's ship has put on the boarder in this boarding. */
     private int hits;
@@ -235,7 +235,7 @@ public class PirateBoarding implements SaveParticipant {
     }
 
     /**
-     * Once a frame: a boarding ends once {@link HostileTraffic} stops asking (the player is no longer
+     * Once a sim tick: a boarding ends once {@link HostileTraffic} stops asking (the player is no longer
      * beaten, or the pirate is beaten itself or gone from the bubble).
      */
     public void update() {

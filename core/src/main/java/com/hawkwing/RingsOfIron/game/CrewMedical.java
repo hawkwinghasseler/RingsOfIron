@@ -30,12 +30,12 @@ import java.util.Map;
  *       prisoners need bringing aboard to be treated. Deaths are {@link CrewCareer}'s.</li>
  * </ul>
  * The wounds themselves are kept on the crew, so nothing here is saved; battle stations are worked
- * out afresh each frame.
+ * out afresh each sim tick.
  */
 public final class CrewMedical {
     /** Seconds a ship stays at battle stations after the last shot it fired or took. */
     public static final double BATTLE_HOLD = 60;
-    /** A critical casualty's clock falling below this share of what it was a frame ago was cut by a new hit (one halves it). */
+    /** A critical casualty's clock falling below this share of what it was a tick ago was cut by a new hit (one halves it). */
     static final float CLOCK_CUT = 0.75f;
 
     private static final Family BOARDS = Family.all(ShipTaskBoardComponent.class).get();
@@ -80,7 +80,7 @@ public final class CrewMedical {
         if (ship != null) lastShot.put(ship, world.engine.getSimSeconds());
     }
 
-    /** Once a frame. */
+    /** Once a sim tick ({@link GameWorld#tickManagers}). */
     public void update() {
         double now = world.engine.getSimSeconds();
         for (int i = 0; i < boards.size(); i++) {

@@ -49,7 +49,7 @@ public final class StationInfirmary {
         this.crew = world.crew;
     }
 
-    /** Once a frame. */
+    /** Once a sim tick ({@link GameWorld#tickManagers}). */
     public void update() {
         double now = world.engine.getSimSeconds();
         float dt = Double.isNaN(last) ? 0f : (float) Math.max(0, now - last);
