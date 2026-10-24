@@ -1098,28 +1098,47 @@ public class RingsOfIronGame extends ApplicationAdapter {
         load(file);
     }
 
-    /** Replaces the game with the one saved in {@code file}. True when it loaded. */
+    /**
+     * Replaces the game with the one saved in {@code file}. True when it loaded. A save that fails
+     * to load leaves the game as it was, and says why; one that loads with parts left out (a removed
+     * mod's ships, say) says how many, and lists them in the log.
+     */
     public boolean load(FileHandle file) {
         try {
-            game.quickLoad(file);
+            java.util.List<String> warnings = game.quickLoad(file);
             world.clearCrash();
-            // The loaded ship's own weapons; its sensor lock comes back with the save.
-            gun = new PlayerGunnery(world, game.player);
-            if (gun.getTarget() == null) gun.setTarget(game.firstTarget());
-            hud.setTargeting(new CombatTargetingProvider(gun));
-            matchViewToSeat();
-            // A save made in First Play carries on there; any other leaves it
-            firstPlay = FirstPlay.resume(world, game);
-            opening = firstPlay != null ? null
-                    : OpeningGuide.resume(world, () -> hud.getMissionWindow().isOpen(), openingWanted);
-            autosaves.restart(world.playerStation() != null, world.engine.getSimSeconds());
-            show("Game loaded");
+            rebindAfterLoad();
+            for (String warning : warnings) Gdx.app.error("RingsOfIron", "Load of " + file.name() + ": " + warning);
+            show(warnings.isEmpty() ? "Game loaded"
+                    : "Game loaded, but " + warnings.size() + (warnings.size() == 1 ? " part" : " parts")
+                    + " of the save couldn't be; see the log");
             return true;
+        } catch (GameScenario.LoadFailedException e) {
+            Gdx.app.error("RingsOfIron", "Load of " + file.name() + " failed", e);
+            // Put back from the snapshot, the entities are new ones: point everything at them
+            if (e.replaced) rebindAfterLoad();
+            show(e.restored ? "Load failed (" + e.getMessage() + "); the game is as it was"
+                    : "Load failed and the game couldn't be put back; load another save");
+            return false;
         } catch (RuntimeException e) {
             Gdx.app.error("RingsOfIron", "Load failed", e);
             show("Load failed; see the log");
             return false;
         }
+    }
+
+    /** Points the gunnery, HUD, view and guides at the game's entities, after they were replaced. */
+    private void rebindAfterLoad() {
+        // The loaded ship's own weapons; its sensor lock comes back with the save.
+        gun = new PlayerGunnery(world, game.player);
+        if (gun.getTarget() == null) gun.setTarget(game.firstTarget());
+        hud.setTargeting(new CombatTargetingProvider(gun));
+        matchViewToSeat();
+        // A save made in First Play carries on there; any other leaves it
+        firstPlay = FirstPlay.resume(world, game);
+        opening = firstPlay != null ? null
+                : OpeningGuide.resume(world, () -> hud.getMissionWindow().isOpen(), openingWanted);
+        autosaves.restart(world.playerStation() != null, world.engine.getSimSeconds());
     }
 
     /** Run by {@link com.hawkwing.RingsOfIron.shell.GameShell}: Esc no longer quits, and the shell pauses the game. */

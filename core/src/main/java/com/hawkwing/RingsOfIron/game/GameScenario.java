@@ -14,6 +14,7 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
+import com.ringsofiron.coreengine.SerializationService;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -498,11 +499,69 @@ public class GameScenario {
         return null;
     }
 
+    /** Why {@link #quickLoad} failed, and what state it left the game in. */
+    public static final class LoadFailedException extends RuntimeException {
+        /** True when the game was rebuilt (from the snapshot, or part loaded): its entities are new ones. */
+        public final boolean replaced;
+        /** True when the game is as it was before the load: never touched, or put back from the snapshot. */
+        public final boolean restored;
+
+        LoadFailedException(String message, Throwable cause, boolean replaced, boolean restored) {
+            super(message, cause);
+            this.replaced = replaced;
+            this.restored = restored;
+        }
+    }
+
     /**
      * Replaces the game with the one saved in {@code file}, then points {@link #player},
-     * {@link #avatar}, {@link #raider} and {@link #contacts} at the loaded entities.
+     * {@link #avatar}, {@link #raider} and {@link #contacts} at the loaded entities. Returns what the
+     * load had to leave out (component types or modules this game lacks, dangling references), for
+     * the player to see.
+     *
+     * <p>The save is read and decoded before the game is touched, so an unreadable, malformed or
+     * too-new save leaves the game as it was. If it fails after that (a module can't read its part),
+     * the game is put back from a snapshot taken just before. Either way it throws
+     * {@link LoadFailedException}.
      */
-    public void quickLoad(FileHandle file) {
+    public java.util.List<String> quickLoad(FileHandle file) {
+        SerializationService serializer = world.engine.getSerializationService();
+        SerializationService.PreparedLoad save;
+        try {
+            save = serializer.prepareLoad(file.readString("UTF-8"));
+        } catch (RuntimeException e) {
+            throw new LoadFailedException(reason(e), e, false, true);
+        }
+        String snapshot;
+        try {
+            snapshot = serializer.saveGame();
+        } catch (RuntimeException e) {
+            // Nothing to go back to, but the save itself read cleanly: go on without one
+            snapshot = null;
+        }
+        try {
+            replaceWith(save);
+            return serializer.getLastLoadWarnings();
+        } catch (RuntimeException e) {
+            if (snapshot == null) throw new LoadFailedException(reason(e), e, true, false);
+            try {
+                replaceWith(serializer.prepareLoad(snapshot));
+            } catch (RuntimeException again) {
+                e.addSuppressed(again);
+                throw new LoadFailedException(reason(e), e, true, false);
+            }
+            throw new LoadFailedException(reason(e), e, true, true);
+        }
+    }
+
+    /** What went wrong, in a line for the player. */
+    private static String reason(RuntimeException e) {
+        String message = e.getMessage();
+        return message == null || message.isEmpty() ? e.getClass().getSimpleName() : message;
+    }
+
+    /** Resets what a save may not carry, then loads {@code save} over the game. */
+    private void replaceWith(SerializationService.PreparedLoad save) {
         // A save from before the career was saved loads as a new one: rank 0 with the sponsor
         world.standing.reset();
         // ...with no strain between the factions
@@ -525,7 +584,7 @@ public class GameScenario {
         world.crewCareer.restartClock();
         // The old game's notices are not this one's (the log is not saved)
         world.notices.clear();
-        world.engine.getSerializationService().loadFromFile(file);
+        world.engine.getSerializationService().applyLoad(save);
         world.loaded();
         // A seeded career's combat and crew dice come from its seed, as at its start
         if (newGame.seeded) world.reseed(newGame.combatSeed(), newGame.crewSeed());

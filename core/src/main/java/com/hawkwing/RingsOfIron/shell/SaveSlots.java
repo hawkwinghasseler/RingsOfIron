@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.shell;
 
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.coreengine.AtomicFiles;
 
 /**
  * Named saves in one folder ({@code saves/} beside the game's working directory): each is
@@ -147,9 +148,10 @@ public class SaveSlots {
                 }
                 replacing = true;
             }
-            f.copyTo(to);
+            // Whole or not at all, like a save: a copy cut short would replace a good save with half of one
+            AtomicFiles.writeBytes(to, f.readBytes());
             FileHandle meta = SaveSummary.metaFor(f);
-            if (meta.exists()) meta.copyTo(SaveSummary.metaFor(to));
+            if (meta.exists()) AtomicFiles.writeBytes(SaveSummary.metaFor(to), meta.readBytes());
             else SaveSummary.metaFor(to).delete();
             ours.put(n, checksum(to));
             (replacing ? out.replaced : out.copied).add(f.nameWithoutExtension());
@@ -175,7 +177,7 @@ public class SaveSlots {
             // Gone from this folder (the player deleted it): nothing left to replace
             if (dir.child(e.getKey()).exists()) sb.append(e.getKey()).append(' ').append(e.getValue()).append('\n');
         }
-        dir.child(CAREER_LIST).writeString(sb.toString(), false, "UTF-8");
+        AtomicFiles.writeString(dir.child(CAREER_LIST), sb.toString());
     }
 
     private static String checksum(FileHandle f) {

@@ -277,6 +277,7 @@ public class GameWorld implements Disposable {
     public GameWorld(Modules modules) {
         this.modules = modules;
         engine = new GameEngine();
+        SaveTypes.register(engine.getSerializationService());
         players = engine.getEcsEngine().getEntitiesFor(PLAYER);
         notices = new NoticeLog(engine::getSimSeconds);
         warnings = new FlightWarnings(this);
