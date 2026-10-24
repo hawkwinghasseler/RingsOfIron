@@ -90,8 +90,11 @@ public final class ExteriorRenderer {
     private final Supplier<Entity> player;
     private ExteriorLighting exteriorLighting;
     private boolean lightsOn = true;
-    /** Rounds seen last frame and this one, so each muzzle flashes once. */
-    private ObjectSet<Entity> roundsSeen = new ObjectSet<>(), roundsNow = new ObjectSet<>();
+    /**
+     * Rounds seen last frame and this one, so each muzzle flashes once. By their projectile, not
+     * their entity: a round's entity comes back from the engine's pool as the next one fired.
+     */
+    private ObjectSet<ProjectileComponent> roundsSeen = new ObjectSet<>(), roundsNow = new ObjectSet<>();
     private Style style;
     private boolean hullArtOn = true;
     private Supplier<Body> frame;
@@ -275,19 +278,19 @@ public final class ExteriorRenderer {
         for (Entity e : w.engine.getEcsEngine().getEntitiesFor(COMBAT_ROUNDS)) {
             ProjectileComponent p = PROJECTILES.get(e);
             MissileComponent m = MISSILES.get(e);
-            roundsNow.add(e);
+            roundsNow.add(p);
             if (m != null) {
                 float cos = MathUtils.cos(m.heading), sin = MathUtils.sin(m.heading), back = m.def.hitRadius * 3f;
                 l.nozzle(p.pos.x - cos * back, p.pos.y - sin * back, m.heading + MathUtils.PI, m.throttle,
                         ExteriorLighting.ENGINE, 8f);
-            } else if (!roundsSeen.contains(e) && p.age < JUST_FIRED) {
+            } else if (!roundsSeen.contains(p) && p.age < JUST_FIRED) {
                 // Where it left the gun: back along its flight by its age
                 float x = p.pos.x - p.vel.x * p.age, y = p.pos.y - p.vel.y * p.age;
                 if (p.pointDefense) l.flash(x, y, ExteriorLighting.MUZZLE, 4f, 0.6f, 0.08f);
                 else l.flash(x, y, ExteriorLighting.MUZZLE, 9f, 0.9f, 0.15f);
             }
         }
-        ObjectSet<Entity> swap = roundsSeen;
+        ObjectSet<ProjectileComponent> swap = roundsSeen;
         roundsSeen = roundsNow;
         roundsNow = swap;
         for (Entity e : w.engine.getEcsEngine().getEntitiesFor(ARMED)) {

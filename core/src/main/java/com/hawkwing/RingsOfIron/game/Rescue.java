@@ -13,6 +13,7 @@ import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
@@ -146,6 +147,11 @@ public class Rescue {
         world.abandon.launches.add((signal, escape) -> {
             escaped.computeIfAbsent(escape.ship, k -> new ArrayList<>()).addAll(escape.crew);
             if (escape.player) playerEscapedFrom = escape.ship;
+        });
+        // A ship gone from the engine comes back from its pool as a new one, which must not bring
+        // the old one's survivors with it; the player's own wait for the rescue that runs next
+        world.engine.getEcsEngine().addEntityListener((EntityRemovalListener) ship -> {
+            if (ship != playerEscapedFrom) escaped.remove(ship);
         });
     }
 

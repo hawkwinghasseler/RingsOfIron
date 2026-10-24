@@ -10,6 +10,7 @@ import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
+import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 
 import java.util.IdentityHashMap;
@@ -70,6 +71,13 @@ public final class CrewMedical {
         world.boarding.taken.add((signal, ship) -> taken(ship));
         world.hints.register(HintRegistry.Context.ANY, "crew (wounded need a medic)", 4, Action.CREW)
                 .onlyWhen(this::criticalAboard);
+        // The engine hands a removed entity out again as a new one, which must not inherit its entries
+        world.engine.getEcsEngine().addEntityListener((EntityRemovalListener) e -> {
+            lastShot.remove(e);
+            seen.remove(e);
+            clocks.remove(e);
+            told.remove(e);
+        });
     }
 
     private static boolean beaten(Entity target) {

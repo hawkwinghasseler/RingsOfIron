@@ -49,6 +49,8 @@ public final class WoundWatch {
 
     /** What a crew member looked like at the last frame. */
     private static final class Seen {
+        /** Whose this is: a removed crew member's entity comes back from the engine's pool as a new one, with a new component. */
+        CrewMemberComponent member;
         Wound wound;
         float injury, bleedOut;
         boolean stabilised;
@@ -89,15 +91,16 @@ public final class WoundWatch {
         for (Entity e : crew.crewEntities()) {
             CrewMemberComponent c = crew.crew(e);
             Seen s = seen.get(e);
-            if (s == null) {
+            if (s == null || s.member != c) {
                 seen.put(e, s = new Seen());
+                s.member = c;
                 copy(c, s);
                 continue;
             }
             look(e, c, s);
             copy(c, s);
         }
-        seen.keySet().removeIf(e -> crew.crew(e) == null || e.isScheduledForRemoval());
+        seen.entrySet().removeIf(en -> crew.crew(en.getKey()) != en.getValue().member || en.getKey().isScheduledForRemoval());
     }
 
     private void look(Entity e, CrewMemberComponent c, Seen s) {

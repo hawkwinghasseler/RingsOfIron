@@ -16,6 +16,7 @@ import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.defs.LoadoutDef;
 import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.combatsys.modding.Loadouts;
+import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -185,6 +186,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         world.combatEvents.impacts.add((signal, hit) -> onShotAt(hit.target, hit.owner, world.engine.getSimSeconds() - hit.sinceFired,
                 !hit.pointDefense && hit.aimedAt == hit.target));
         world.disablement.changes.add((signal, change) -> surrendering(change));
+        world.engine.getEcsEngine().addEntityListener((EntityRemovalListener) this::forget);
         world.engine.getSerializationService().addParticipant(this);
     }
 
@@ -640,6 +642,17 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
 
     private static boolean sameWing(String a, HostileComponent ha, String b, HostileComponent hb) {
         return a.equals(hb.wingOf) || b.equals(ha.wingOf) || (ha.wingOf != null && ha.wingOf.equals(hb.wingOf));
+    }
+
+    /**
+     * Drops a ship gone from the engine as victim and as attacker. The engine hands its entity out
+     * again as a new one: left in, a hostile would go on fighting whatever came out of the pool.
+     */
+    private void forget(Entity e) {
+        provoked.remove(e);
+        provoked.values().removeIf(attacker -> attacker == e);
+        attackers.remove(e);
+        for (Map<Entity, Double> by : attackers.values()) by.remove(e);
     }
 
     /** True when attackers that fired at {@code e} lately are {@link #CROSSFIRE_ANGLE} apart in bearing from it. */

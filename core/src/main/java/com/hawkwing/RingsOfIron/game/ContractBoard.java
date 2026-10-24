@@ -7,6 +7,7 @@ import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.Wound;
+import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
@@ -170,6 +171,8 @@ public class ContractBoard extends EntitySystem implements SaveParticipant {
 
     public ContractBoard(GameWorld world) {
         this.world = world;
+        // A waypoint gone from the engine comes back from its pool as a new entity, whose marker isn't ours to unmark
+        world.engine.getEcsEngine().addEntityListener((EntityRemovalListener) e -> marked.remove(e));
     }
 
     // ------------------------------------------------------------------ boards
