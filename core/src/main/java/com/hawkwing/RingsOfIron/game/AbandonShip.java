@@ -18,6 +18,7 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.nav.GridNode;
+import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.interiorgrid.EscapePodLayout;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -108,6 +109,8 @@ public class AbandonShip extends EntitySystem {
     private ImmutableArray<Entity> ordered;
     /** Seats posted for each ship under orders; not saved, posted again after a load. */
     private final Map<Entity, List<EvacuateTask>> posted = new HashMap<>();
+    /** A ship gone from the engine comes back from its pool as a new one, which has no seats posted yet. */
+    private final EntityRemovalListener forget = posted::remove;
     private final Array<Entity> buffer = new Array<>();
     // Walking the player's avatar to a pod
     private final Array<GridNode> avatarPath = new Array<>();
@@ -127,10 +130,12 @@ public class AbandonShip extends EntitySystem {
     public void addedToEngine(Engine engine) {
         this.engine = engine;
         ordered = engine.getEntitiesFor(ORDERED);
+        engine.addEntityListener(forget);
     }
 
     @Override
     public void removedFromEngine(Engine engine) {
+        engine.removeEntityListener(forget);
         this.engine = null;
         ordered = null;
         posted.clear();

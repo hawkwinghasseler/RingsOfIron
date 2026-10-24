@@ -10,6 +10,7 @@ import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
@@ -90,6 +91,8 @@ public class CrewCareer extends FixedLogicSystem {
             if (r.lost <= 0) return;
             for (Entity e : ownCrew(r.newShip)) record(e).changeMorale(LOST_MORALE * r.lost);
         });
+        // A removed crew member's entity comes back from the engine's pool as someone new
+        world.engine.getEcsEngine().addEntityListener((EntityRemovalListener) alive::remove);
     }
 
     @Override
