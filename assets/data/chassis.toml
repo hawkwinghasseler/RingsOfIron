@@ -97,7 +97,7 @@ lights = [
 # A thin wall closes the hold and engineering off from the walkway (x 7 | 8), with a door at y 3. A
 # conduit runs in it, so the engines stay powered with the door shut. The bridge stays open to the
 # reactor room forward: a wall there (x 10 | 11) slowed the crew to a shorted reactor so much that the
-# First Play raider gave up in half the time (BalancePacingTest).
+# First Play raider gave up in half the time (FirstHourBalanceBenchmark).
 edge_walls = [
   { x = 7, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
   { x = 7, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
