@@ -10,11 +10,15 @@ import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.JsonWriter.OutputType;
+import com.badlogic.gdx.utils.ObjectMap;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.badlogic.gdx.utils.SerializationException;
 import com.badlogic.gdx.utils.reflect.ClassReflection;
 import com.badlogic.gdx.utils.reflect.ReflectionException;
+import com.ringsofiron.coreengine.components.PlayerControllerComponent;
+import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.TransientComponent;
+import com.ringsofiron.coreengine.components.UuidComponent;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -27,11 +31,11 @@ import java.util.List;
  *
  * <pre>
  * {
- *   "version": 1,
+ *   "version": 2,
  *   "tick": 123456,
  *   "entities": [
- *     { "com.ringsofiron.coreengine.components.UuidComponent": { "id": "..." },
- *       "com.ringsofiron.coreengine.components.TransformComponent": { "x": 1, "y": 2, "rotation": 0 } }
+ *     { "core.Uuid": { "id": "..." },
+ *       "core.Transform": { "x": 1, "y": 2, "rotation": 0 } }
  *   ],
  *   "modules": { "orbital.events": { ... } }
  * }
@@ -40,7 +44,11 @@ import java.util.List;
  * Rules for components:
  * <ul>
  *   <li>Entities tagged {@link TransientComponent} are skipped.</li>
- *   <li>Each component is written field by field, keyed by its class name, and needs a no-arg constructor.</li>
+ *   <li>Each component is written field by field and needs a no-arg constructor. It is keyed by the
+ *       stable type id given with {@link #registerType(String, Class)}, so a class can be renamed or
+ *       moved without breaking saves; a class with no id is keyed by its class name, as every
+ *       component was in format 1. Saves keyed by class names still load. A class that was renamed
+ *       before it had an id keeps its old saves with {@link #registerAlias(String, Class)}.</li>
  *   <li>References to other entities must be {@link EntityRef} fields (written as UUID strings);
  *       a raw {@link Entity} field is an error. After all entities load, refs are checked in a second
  *       pass and dangling ones are reported in {@link #getLastLoadWarnings()}.</li>
@@ -49,9 +57,14 @@ import java.util.List;
  *       {@link #registerSerializer(Class, Json.Serializer)}.</li>
  * </ul>
  * Module-global state is saved through {@link SaveParticipant}s.
+ *
+ * <p>A load reads and decodes the whole save before it touches the game ({@link #prepareLoad}), so a
+ * malformed or unreadable save is refused with the game as it was; only then are the entities
+ * replaced ({@link #applyLoad}).
  */
 public class SerializationService {
-    public static final int FORMAT_VERSION = 1;
+    /** 1: components keyed by class name. 2: keyed by stable type id where the class has one. */
+    public static final int FORMAT_VERSION = 2;
 
     private final GameEngine gameEngine;
     private final Engine engine;
@@ -62,6 +75,9 @@ public class SerializationService {
     private final Array<SaveParticipant> participants = new Array<>();
     private final Array<EntityRef> refsRead = new Array<>();
     private final List<String> lastLoadWarnings = new ArrayList<>();
+    /** Type id or old key (an alias, a class name) -> component class. */
+    private final ObjectMap<String, Class<? extends Component>> typesByKey = new ObjectMap<>();
+    private final ObjectMap<Class<?>, String> idsByType = new ObjectMap<>();
 
     public SerializationService(GameEngine gameEngine) {
         this.gameEngine = gameEngine;
@@ -71,6 +87,57 @@ public class SerializationService {
         this.json.setIgnoreUnknownFields(true);
         this.json.setSerializer(EntityRef.class, new EntityRefSerializer());
         skipped.add(TransientComponent.class);
+        registerType("core.Uuid", UuidComponent.class);
+        registerType("core.Transform", TransformComponent.class);
+        registerType("core.PlayerController", PlayerControllerComponent.class);
+    }
+
+    /**
+     * Gives {@code type} the stable id {@code id} in saves, in place of its class name. Once a save
+     * has been made with it the id must never change or be given to another class. Saves made before
+     * the class had an id (keyed by its class name) still load.
+     */
+    public void registerType(String id, Class<? extends Component> type) {
+        if (id == null || id.isEmpty()) throw new IllegalArgumentException("Empty type id for " + type.getName());
+        String had = idsByType.get(type);
+        if (had != null && !had.equals(id)) {
+            throw new IllegalArgumentException(type.getName() + " already has the type id " + had + ", not " + id);
+        }
+        Class<? extends Component> owner = typesByKey.get(id);
+        if (owner != null && owner != type) {
+            throw new IllegalArgumentException("Type id " + id + " is already " + owner.getName());
+        }
+        idsByType.put(type, id);
+        typesByKey.put(id, type);
+        typesByKey.put(type.getName(), type);
+    }
+
+    /**
+     * Reads components saved under {@code oldKey} (a class name from before a rename, say) as
+     * {@code type}.
+     */
+    public void registerAlias(String oldKey, Class<? extends Component> type) {
+        Class<? extends Component> owner = typesByKey.get(oldKey);
+        if (owner != null && owner != type) {
+            throw new IllegalArgumentException("Save key " + oldKey + " already reads as " + owner.getName());
+        }
+        typesByKey.put(oldKey, type);
+    }
+
+    /** The key {@code type} is saved under: its type id, or its class name when it has none. */
+    public String typeKey(Class<?> type) {
+        String id = idsByType.get(type);
+        return id != null ? id : type.getName();
+    }
+
+    /** Whether {@code type} has a stable type id. */
+    public boolean hasTypeId(Class<?> type) {
+        return idsByType.containsKey(type);
+    }
+
+    /** Whether this service never saves components of {@code type}. */
+    public boolean isSkipped(Class<? extends Component> type) {
+        return skipped.contains(type);
     }
 
     /** Never save components of this class; the owning module rebuilds them after load. */
@@ -115,7 +182,7 @@ public class SerializationService {
                     if (skipped.contains(component.getClass())) continue;
                     checkNoRawEntityFields(component.getClass());
                     checkNoNestedEntities(component, component.getClass().getName(), 0);
-                    json.writeValue(component.getClass().getName(), component, component.getClass());
+                    json.writeValue(typeKey(component.getClass()), component, component.getClass());
                 }
                 json.writeObjectEnd();
             }
@@ -137,81 +204,172 @@ public class SerializationService {
     }
 
     /**
-     * Replaces the current state with the one in {@code jsonString}: clears all entities, sets the
-     * tick, recreates entities, checks entity references, then loads participants.
+     * Replaces the current state with the one in {@code jsonString}: {@link #prepareLoad} then
+     * {@link #applyLoad}.
      *
-     * @throws SerializationException if the JSON is malformed or from a newer format version.
+     * @throws SerializationException if the JSON is malformed, from a newer format version, or a
+     *         component or module in it can't be read.
      */
     public void loadGame(String jsonString) {
-        JsonValue root = new JsonReader().parse(jsonString);
+        applyLoad(prepareLoad(jsonString));
+    }
+
+    /** A save read and decoded by {@link #prepareLoad}, ready for {@link #applyLoad}. */
+    public static final class PreparedLoad {
+        private final long tick;
+        private final List<List<Component>> entities = new ArrayList<>();
+        private final List<EntityRef> refs = new ArrayList<>();
+        private final JsonValue modules;
+        private final List<String> warnings = new ArrayList<>();
+        private boolean applied;
+
+        private PreparedLoad(long tick, JsonValue modules) {
+            this.tick = tick;
+            this.modules = modules;
+        }
+
+        /** What will be lost loading it (unknown component classes, modules this game lacks). */
+        public List<String> getWarnings() {
+            return Collections.unmodifiableList(warnings);
+        }
+    }
+
+    /**
+     * Parses {@code jsonString} and builds every component in it, without touching the game. If it
+     * throws, nothing has changed.
+     *
+     * @throws SerializationException if the JSON is malformed, from a newer format version, or a
+     *         component in it can't be read.
+     */
+    public PreparedLoad prepareLoad(String jsonString) {
+        JsonValue root;
+        try {
+            root = new JsonReader().parse(jsonString);
+        } catch (RuntimeException e) {
+            throw new SerializationException("Save is not valid JSON", e);
+        }
         if (root == null || !root.isObject()) throw new SerializationException("Save is not a JSON object");
         int version = root.getInt("version", 0);
         if (version > FORMAT_VERSION) {
             throw new SerializationException("Save format " + version + " is newer than supported " + FORMAT_VERSION);
         }
 
-        lastLoadWarnings.clear();
-        gameEngine.clear();
-        gameEngine.setTick(root.getLong("tick", 0L));
-
+        PreparedLoad load = new PreparedLoad(root.getLong("tick", 0L), root.get("modules"));
         refsRead.clear();
-        JsonValue entities = root.get("entities");
-        if (entities != null) {
-            for (JsonValue entityData = entities.child; entityData != null; entityData = entityData.next) {
-                Entity entity = engine.createEntity();
-                for (JsonValue componentData = entityData.child; componentData != null; componentData = componentData.next) {
-                    Component component = readComponent(componentData);
-                    if (component != null) entity.add(component);
+        try {
+            JsonValue entities = root.get("entities");
+            if (entities != null) {
+                for (JsonValue entityData = entities.child; entityData != null; entityData = entityData.next) {
+                    List<Component> components = new ArrayList<>();
+                    for (JsonValue componentData = entityData.child; componentData != null; componentData = componentData.next) {
+                        Component component = readComponent(componentData, load.warnings);
+                        if (component != null) components.add(component);
+                    }
+                    load.entities.add(components);
                 }
-                engine.addEntity(entity);
             }
+            for (EntityRef ref : refsRead) load.refs.add(ref);
+        } finally {
+            refsRead.clear();
+        }
+
+        if (load.modules != null) {
+            for (JsonValue module = load.modules.child; module != null; module = module.next) {
+                if (participantFor(module.name) == null) {
+                    load.warnings.add("Save has " + module.name + " data this game doesn't use (removed mod?), skipped");
+                }
+            }
+        }
+        return load;
+    }
+
+    /**
+     * Replaces the current state with {@code load}: clears all entities, sets the tick, adds the
+     * loaded entities, checks entity references, then loads participants. The game is replaced from
+     * the first step on, so a participant that throws leaves it part loaded; {@link #saveGame()}
+     * beforehand is the way back.
+     *
+     * @throws SerializationException if a participant can't read its data.
+     */
+    public void applyLoad(PreparedLoad load) {
+        if (load.applied) throw new IllegalStateException("This save has already been loaded");
+        load.applied = true;
+        lastLoadWarnings.clear();
+        lastLoadWarnings.addAll(load.warnings);
+        gameEngine.clear();
+        gameEngine.setTick(load.tick);
+
+        for (List<Component> components : load.entities) {
+            Entity entity = engine.createEntity();
+            for (Component component : components) entity.add(component);
+            engine.addEntity(entity);
         }
 
         // Second pass: every reference must point at an entity that now exists.
         UuidRegistry registry = gameEngine.getUuidRegistry();
-        for (EntityRef ref : refsRead) {
+        for (EntityRef ref : load.refs) {
             if (ref.getUuid() != null && ref.get(registry) == null) {
                 lastLoadWarnings.add("Dangling entity reference " + ref.getUuid());
             }
         }
-        refsRead.clear();
 
         // A save that does not say how its UUIDs were made goes on with random ones
         gameEngine.getEntityIds().unseed();
-        JsonValue modules = root.get("modules");
         for (SaveParticipant participant : participants) {
-            JsonValue data = modules == null ? null : modules.get(participant.saveKey());
-            if (data != null) participant.read(json, data);
+            JsonValue data = load.modules == null ? null : load.modules.get(participant.saveKey());
+            if (data == null) continue;
+            try {
+                participant.read(json, data);
+            } catch (RuntimeException e) {
+                throw new SerializationException("Couldn't load " + participant.saveKey() + ": " + e.getMessage(), e);
+            }
         }
     }
 
+    /** Writes the save through a temporary file, so a failed write leaves the old save whole. */
     public void saveToFile(FileHandle file) {
-        file.writeString(saveGame(), false, "UTF-8");
+        AtomicFiles.writeString(file, saveGame());
     }
 
     public void loadFromFile(FileHandle file) {
         loadGame(file.readString("UTF-8"));
     }
 
-    /** Problems found by the last {@link #loadGame(String)} that did not stop it (unknown classes, dangling refs). */
+    /**
+     * Problems found by the last {@link #loadGame(String)} or {@link #applyLoad} that did not stop it
+     * (unknown classes, modules this game lacks, dangling refs).
+     */
     public List<String> getLastLoadWarnings() {
         return Collections.unmodifiableList(lastLoadWarnings);
     }
 
     @SuppressWarnings("unchecked")
-    private Component readComponent(JsonValue data) {
-        Class<?> type;
-        try {
-            type = ClassReflection.forName(data.name);
-        } catch (ReflectionException e) {
-            lastLoadWarnings.add("Unknown component class " + data.name + " (removed mod?), skipped");
-            return null;
+    private Component readComponent(JsonValue data, List<String> warnings) {
+        Class<?> type = typesByKey.get(data.name);
+        if (type == null) {
+            try {
+                type = ClassReflection.forName(data.name);
+            } catch (ReflectionException e) {
+                warnings.add("Unknown component type " + data.name + " (removed mod?), skipped");
+                return null;
+            }
         }
         if (!Component.class.isAssignableFrom(type)) {
-            lastLoadWarnings.add(data.name + " is not a Component, skipped");
+            warnings.add(data.name + " is not a Component, skipped");
             return null;
         }
-        return json.readValue((Class<Component>) type, data);
+        try {
+            return json.readValue((Class<Component>) type, data);
+        } catch (RuntimeException e) {
+            throw new SerializationException("Couldn't read component " + data.name + ": " + e.getMessage(), e);
+        }
+    }
+
+    private SaveParticipant participantFor(String key) {
+        for (SaveParticipant participant : participants) {
+            if (participant.saveKey().equals(key)) return participant;
+        }
+        return null;
     }
 
     private class EntityRefSerializer implements Json.Serializer<EntityRef> {

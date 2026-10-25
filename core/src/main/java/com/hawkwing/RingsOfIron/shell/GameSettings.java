@@ -46,7 +46,7 @@ public class GameSettings {
     public void save(FileHandle file) {
         Json json = new Json(JsonWriter.OutputType.json);
         json.setUsePrototypes(false);
-        file.writeString(json.prettyPrint(this), false, "UTF-8");
+        com.ringsofiron.coreengine.AtomicFiles.writeString(file, json.prettyPrint(this));
     }
 
     public KeyBindings bindings() {
