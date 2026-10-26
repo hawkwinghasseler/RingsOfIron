@@ -54,6 +54,7 @@ import com.hawkwing.RingsOfIron.lighting.SceneLighting;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
 import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
 import com.hawkwing.RingsOfIron.render.HeatOverlay;
+import com.hawkwing.RingsOfIron.render.HullShading;
 import com.hawkwing.RingsOfIron.render.SpaceSnow;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
@@ -633,6 +634,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 }
                 if (keycode == Input.Keys.F3 && refitEditor == null) {
                     debugMenu.toggle(hud.getStage());
+                    return true;
+                }
+                if (keycode == Input.Keys.F7) {
+                    // Prototype: how the hulls are lit, to compare the baked art with the game's lighting
+                    HullShading.mode = HullShading.mode.next();
+                    show(HullShading.mode.label());
                     return true;
                 }
                 if (keycode == Input.Keys.ESCAPE && debugMenu.isOpen()) {

@@ -280,6 +280,14 @@ public final class ArtNames {
         return chassisId == null ? null : "hulls/" + chassisId;
     }
 
+    /** The art packer's lit twins of a hull: its flat art, its raised parts alone, and its normal map. */
+    public static final String FLAT = "flat/", RAISED = "raised/", NORMALS = "normal/";
+
+    /** The region of a hull's lit twin {@code kind} ({@link #FLAT}, {@link #RAISED}, {@link #NORMALS}) for its region {@code hull}. */
+    public static String litHull(String hull, String kind) {
+        return kind + hull;
+    }
+
     /** The engine drawn in the engine mounts of a hull with no engine systems. */
     public static final String ENGINE_SIZE = "s";
 

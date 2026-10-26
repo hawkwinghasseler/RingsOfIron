@@ -4,8 +4,8 @@
   <g id="base">
     <rect x="0" y="0" width="192" height="192" fill="#2a3039"/>
     <rect x="4" y="4" width="184" height="184" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <path d="M5.75,186.25 L5.75,5.75 L186.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M186.25,5.75 L186.25,186.25 L5.75,186.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M5.75,186.25 L5.75,5.75 L186.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M186.25,5.75 L186.25,186.25 L5.75,186.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <polygon points="96,28 42.31,59 42.31,121 96,152 149.69,121 149.69,59" fill="#373f4b" stroke="#10141a" stroke-width="2" stroke-linejoin="round"/>
     <circle cx="96" cy="28" r="6.82" fill="#1f4a5a" stroke="#10141a" stroke-width="1.2"/>
     <circle cx="42.31" cy="59" r="6.82" fill="#1f4a5a" stroke="#10141a" stroke-width="1.2"/>

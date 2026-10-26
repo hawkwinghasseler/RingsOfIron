@@ -7,8 +7,8 @@
     <circle cx="96" cy="180" r="52" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
     <circle cx="96" cy="180" r="41.6" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
     <rect x="8" y="60" width="22" height="56" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M9.5,114.5 L9.5,61.5 L28.5,61.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M28.5,61.5 L28.5,114.5 L9.5,114.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M9.5,114.5 L9.5,61.5 L28.5,61.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M28.5,61.5 L28.5,114.5 L9.5,114.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="11" y="64" width="12.1" height="48" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="25.1" y="64" width="1.9" height="48" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="39.2" y="80.35" width="13.6" height="15.3" rx="4.25" fill="#2b2f36" stroke="#10141a" stroke-width="1.5"/>
@@ -16,8 +16,8 @@
     <rect x="40.9" y="77.8" width="8.5" height="2.55" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="40.9" y="95.65" width="8.5" height="2.55" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="162" y="60" width="22" height="56" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M163.5,114.5 L163.5,61.5 L182.5,61.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M182.5,61.5 L182.5,114.5 L163.5,114.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M163.5,114.5 L163.5,61.5 L182.5,61.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M182.5,61.5 L182.5,114.5 L163.5,114.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="165" y="64" width="12.1" height="48" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="179.1" y="64" width="1.9" height="48" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="139.2" y="80.35" width="13.6" height="15.3" rx="4.25" fill="#2b2f36" stroke="#10141a" stroke-width="1.5"/>
@@ -25,8 +25,8 @@
     <rect x="140.9" y="77.8" width="8.5" height="2.55" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="140.9" y="95.65" width="8.5" height="2.55" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="8" y="250" width="22" height="56" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M9.5,304.5 L9.5,251.5 L28.5,251.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M28.5,251.5 L28.5,304.5 L9.5,304.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M9.5,304.5 L9.5,251.5 L28.5,251.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M28.5,251.5 L28.5,304.5 L9.5,304.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="11" y="254" width="12.1" height="48" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="25.1" y="254" width="1.9" height="48" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="39.2" y="270.35" width="13.6" height="15.3" rx="4.25" fill="#2b2f36" stroke="#10141a" stroke-width="1.5"/>
@@ -34,8 +34,8 @@
     <rect x="40.9" y="267.8" width="8.5" height="2.55" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="40.9" y="285.65" width="8.5" height="2.55" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="162" y="250" width="22" height="56" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M163.5,304.5 L163.5,251.5 L182.5,251.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M182.5,251.5 L182.5,304.5 L163.5,304.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M163.5,304.5 L163.5,251.5 L182.5,251.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M182.5,251.5 L182.5,304.5 L163.5,304.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="165" y="254" width="12.1" height="48" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="179.1" y="254" width="1.9" height="48" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="139.2" y="270.35" width="13.6" height="15.3" rx="4.25" fill="#2b2f36" stroke="#10141a" stroke-width="1.5"/>
@@ -43,8 +43,8 @@
     <rect x="140.9" y="267.8" width="8.5" height="2.55" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="140.9" y="285.65" width="8.5" height="2.55" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="8" y="330" width="22" height="56" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M9.5,384.5 L9.5,331.5 L28.5,331.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M28.5,331.5 L28.5,384.5 L9.5,384.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M9.5,384.5 L9.5,331.5 L28.5,331.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M28.5,331.5 L28.5,384.5 L9.5,384.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="11" y="334" width="12.1" height="48" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="25.1" y="334" width="1.9" height="48" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="39.2" y="350.35" width="13.6" height="15.3" rx="4.25" fill="#2b2f36" stroke="#10141a" stroke-width="1.5"/>
@@ -52,8 +52,8 @@
     <rect x="40.9" y="347.8" width="8.5" height="2.55" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="40.9" y="365.65" width="8.5" height="2.55" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="162" y="330" width="22" height="56" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M163.5,384.5 L163.5,331.5 L182.5,331.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M182.5,331.5 L182.5,384.5 L163.5,384.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M163.5,384.5 L163.5,331.5 L182.5,331.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M182.5,331.5 L182.5,384.5 L163.5,384.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="165" y="334" width="12.1" height="48" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="179.1" y="334" width="1.9" height="48" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="139.2" y="350.35" width="13.6" height="15.3" rx="4.25" fill="#2b2f36" stroke="#10141a" stroke-width="1.5"/>

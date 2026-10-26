@@ -19,7 +19,7 @@ Open `assets/art/preview.html` in a browser to see every asset, every chassis in
 - **Crew, projectiles and explosions are centered on the SVG origin.** Crew face +y (SVG up) and are 0.6 tile across, the size of `CrewBody` (radius 0.3 tile); the `_carrying` crate is neutral grey so code can tint it. Projectiles point their nose toward +x with any streak or exhaust trailing to -x. The laser `beam` is a 64x16 strip stretched along x to the beam's length, and `dock_walkway` is uniform along y, so it can be stretched or tiled across the gap between two collars.
 
 ## Layers
-Every SVG has up to three top-level groups, and an exterior hull may have a fourth:
+Every SVG has up to three top-level groups, and an exterior hull may have three more:
 
 | Group | Holds |
 |---|---|
@@ -27,6 +27,8 @@ Every SVG has up to three top-level groups, and an exterior hull may have a four
 | `<g id="emissive">` | Everything that gives off its own light: screens, status lamps, reactor and shield glow, live conduits, fire. Drawn over the base. |
 | `<g id="meta">` | Invisible shapes for code: `id="collider"` and `id="interact"` (see below). |
 | `<g id="collision">` | Exterior hulls only, and optional: what the craft collides on (see **Exterior hulls**). |
+| `<g id="relief">` | Exterior hulls only: the outline of each part that stands up off the roof, with its height in meters as `data-h`, which casts its shadow (see **Light and shadow**). Hidden (`display="none"`) and never drawn. |
+| `<g id="height">` | Exterior hulls only: a height map, gray for height (`data-base` is the bare roof, each step of 1 above it `data-scale` meters higher), which the packer turns into a normal map. Hidden (`display="none"`) and never drawn as art. |
 
 A lamp or screen keeps its unlit glass in the base layer, so with the emissive layer off it reads as dark, not missing. The game can draw the emissive layer additively, use it for a glow or bloom pass, or skip it to show a system without power.
 
@@ -101,7 +103,7 @@ The **turret mount** is the turret's base and its operator's station: a bearing 
 **Tanks** (`tank`, `oxygen_tank`, `nitrogen_tank`, S-XL) are cylinders in cradles with a band in their fluid's color: amber for propellant, blue for oxygen, grey-blue for nitrogen. They are passive.
 
 ## Exterior hulls
-A ship or station hull is the roof over its decks, seen from above, built on its chassis grid so the outside matches the inside without showing the deck plan. The whole footprint (the grid's tiles and any outline past it) is plated in staggered courses of plates a meter and a quarter wide and one and a half to three and a half long, each a shade lighter or darker than the next, with a rim of heavier plate along the edge and a sheen lighting it from the top-left; the tile grid itself is not drawn. Raised superstructure stands on the roof, with no shadow drawn under it: each warship has its own (`SUPERSTRUCTURE` in `generate_svgs.py`: the corvette's spine and bridge, the gunship's armored citadel and ram plate, the frigate's keel, bridge and drive housing, the raider's canopy ridge, the corsair's off-center bridge and outrigger armor, the picket's sensor dome), and every other ship gets a spine down its middle. Superstructure keeps a tenth of a meter clear of every exterior system's footprint, so no block sits under a turret, port or hatch: the automatic spine breaks around them, and the generator refuses a hand-drawn shape that covers one. Small fittings (vents, boxes, hatches, conduit runs) are scattered over bare roof, seeded by the chassis id so the art is the same each run. Only the systems that reach the outside of the hull show on it (`EXTERIOR` in `generate_svgs.py`); the helm, weapons console, reactor, life support, cargo bays and tanks are inside the decks and stay under the plating. Each exterior system's fitting sits over its footprint:
+A ship or station hull is the roof over its decks, seen from above, built on its chassis grid so the outside matches the inside without showing the deck plan. The whole footprint (the grid's tiles and any outline past it) is plated in staggered courses of plates a meter and a quarter wide and one and a half to three and a half long, each a shade lighter or darker than the next, with a rim of heavier plate along the edge and a sheen lighting it from the top-left (baked light, which the game's own lighting leaves out: see **Light and shadow**); the tile grid itself is not drawn. Raised superstructure stands on the roof, with no shadow drawn under it: each warship has its own (`SUPERSTRUCTURE` in `generate_svgs.py`: the corvette's spine and bridge, the gunship's armored citadel and ram plate, the frigate's keel, bridge and drive housing, the raider's canopy ridge, the corsair's off-center bridge and outrigger armor, the picket's sensor dome), and every other ship gets a spine down its middle. Superstructure keeps a tenth of a meter clear of every exterior system's footprint, so no block sits under a turret, port or hatch: the automatic spine breaks around them, and the generator refuses a hand-drawn shape that covers one. Small fittings (vents, boxes, hatches, conduit runs) are scattered over bare roof, seeded by the chassis id so the art is the same each run. Only the systems that reach the outside of the hull show on it (`EXTERIOR` in `generate_svgs.py`); the helm, weapons console, reactor, life support, cargo bays and tanks are inside the decks and stay under the plating. Each exterior system's fitting sits over its footprint:
 
 | System | Exterior |
 |---|---|
@@ -127,6 +129,16 @@ RCS blocks are bolted onto hull edges that face space (`rcs` in `chassis.toml`),
 
 ## Style
 Top-down, orthographic, flat-shaded vector art with dark outlines. Light comes from the top-left: a lighter line along the top and left inside edges of a raised part, a darker one along the bottom and right. No perspective and no drop shadows: tiles butt together cleanly, and a shadow cast by something raised is the lighting's to draw, not the art's.
+
+### Light and shadow
+A prototype, on the exterior hulls only: the game lights the hulls itself, from one key light at a fixed direction in the world (a far star), so the lit side swings round as a ship turns and every ship in view agrees. F7 in the game cycles the baked art, normal maps alone, and normal maps with roof shadows; `-Dhull.lighting=baked|normals|shadows` picks one at start, and `HullShading` (core, `render`) holds the light's bearing, elevation and the shadows' strength.
+
+- **Baked light is marked.** Every element that paints light or shade on (a `bevel()` edge, the roof sheen, the plates' lit lips, a superstructure block's highlight) carries `data-baked="1"`. The packer leaves those out of the hull's flat art, `flat/hulls/<id>`, which the lit shader draws; the baked art is still `hulls/<id>`. Deck art is marked the same way, but nothing draws it lit yet.
+- **Normal maps.** The packer blurs the `height` layer a little (so each edge is a bevel, not a cliff), takes its slopes and eases the steep ones, and writes `normal/hulls/<id>` with the same size as the art. The shader lights the flat art by it, as bright as the art was at plain roof, so the light map over the hulls works as before.
+- **Roof shadows.** Each part in the `relief` layer is swept away from the key light by its height over the tangent of the light's elevation, marked in the stencil buffer, and the roof drawn darkened there, so a shadow falls only on the hull and never on space. Then `raised/hulls/<id>`, only the elements marked `data-raised="1"` (and the emissive layer, which no shadow darkens), is drawn again over it, so a part's shadow falls past it and not on it. Heights: a spine 0.5 m, blocks 0.6 to 0.9 m (each in `SUPERSTRUCTURE`), the picket's dome 1.2 m, a turret ring 0.3 m, a shield emitter 0.2 m, a box 0.15 m, a vent 0.12 m, a conduit run 0.1 m, a hatch 0.04 m.
+![The corvette lit three ways: baked, normal maps, normal maps with roof shadows](hull-lighting.png)
+
+- **Stills.** `gradlew :lwjgl3:hullLightingShots -Phulls=corvette,frigate -Pangle=30` draws each hull lit all three ways side by side into `lwjgl3/build/hull-lighting`.
 
 - **Outlines:** `#10141a`, 2 units on tiles and components, 1-1.5 on small details, 3 on exterior hulls.
 - **Detail density:** read clearly at 32 px a tile (half size). Rivets, seams and screens are details; the silhouette and the accent color must carry the meaning.
@@ -199,7 +211,8 @@ Decor and interactive objects that block movement or can be used carry two invis
 libGDX does not draw SVG, so the `art-pipeline` module rasterizes these files at build time. `gradlew :art-pipeline:packArt` renders every SVG at 64 px a tile (with [JSVG](https://github.com/weisJ/jsvg)), packs them into `art/art.atlas` with libGDX's TexturePacker, and writes `art/art.json` beside it. The game's run tasks (`runGame`, the demos, the editor) run it first, and only when an SVG changed; its output lands in `art-pipeline/build/generated/art` and is on the game's classpath, so nothing generated is committed and the SVGs stay the only source.
 
 - **Regions.** One per file, named `<folder>/<name>`. The `meta` layer is left out. A file with an `emissive` layer also gets that layer alone as `glow/<folder>/<name>`, for a glow or bloom pass: the deck view draws them again over the light map, so what is lit shows lit in a dark room (see `documentation/lighting/Design.md`).
-- **`art.json`.** For each region, its SVG `viewBox` (`x`, `y`, `w`, `h`), so exterior art keeps its body origin and turrets their pivot, and the `collider` and `interact` shapes from its `meta` layer, in SVG units.
+- **`art.json`.** For each region, its SVG `viewBox` (`x`, `y`, `w`, `h`), so exterior art keeps its body origin and turrets their pivot, and the `collider` and `interact` shapes from its `meta` layer, in SVG units; for a hull, its `relief`, each raised part as `[height, x0, y0, x1, y1, ...]`.
+- **Lit twins.** A file with a `height` layer also gets `flat/<folder>/<name>`, `raised/<folder>/<name>` and `normal/<folder>/<name>` (see **Light and shadow**).
 - **In code.** `ArtLibrary` loads the atlas (or nothing, if it was never built, and then everything is drawn in the old flat shapes), `ArtNames` turns game state into region names, `DeckArt` draws a deck and `ExteriorArt` a craft from outside.
 
 What the game draws with the pack:
@@ -242,5 +255,6 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 - **Pipes and tanks** (2026-10-19): pipes are laid in tile centers or along tile edges like conduits, and tanks are placed in the grid, so both need art in this pack (see Life Support in `documentation/interior-grid/Design.md`).
 
 ## Open Questions
+- Hull lighting prototype (**Light and shadow**): keep it, and if so, light the turrets, engines and deck art the same way, let point lights (engines, muzzle flashes) light by the normal maps too, and drop the baked hulls from the atlas. Today it costs three more regions per hull. Not handled yet: turrets and engines cast no shadow, shadows are not warped with a dented hull, and a taller part's shadow is not drawn on a lower part it falls across.
 - Walls more than one tile thick show a small notch at inner corners; the 47-tile blob set would remove it if thick walls become common.
 - Hull steel and composite armor are the only materials with art. New materials need their own look decided before they get files.

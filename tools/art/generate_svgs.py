@@ -78,13 +78,17 @@ class Art:
     """One asset's drawing, in layers: base (everything that is lit by the scene),
     emissive (everything that gives off its own light, drawn on top), meta
     (invisible collider and interaction shapes) and, for exterior hulls, collision
-    (what the craft collides on, when that is not its layout's tiles)."""
+    (what the craft collides on, when that is not its layout's tiles), relief (the outline and
+    height of each raised part, which casts a shadow) and height (a height map, gray for height,
+    which the art packer turns into a normal map)."""
 
     def __init__(self):
         self.b = ""
         self.c = ""
         self.e = ""
         self.m = ""
+        self.r = ""
+        self.h = ""
         self.defs = ""
 
 
@@ -103,6 +107,12 @@ def write(path, w, h, art, title, viewbox=None, unpowered=None, transform=None):
         svg += f'  <g id="base"{tr}>\n{art.b}  </g>\n'
         if art.c:
             svg += f'  <g id="collision"{tr}>\n{art.c}  </g>\n'
+        # data only, hidden from a browser or editor: the art packer reads them
+        if art.r:
+            svg += f'  <g id="relief" display="none"{tr}>\n{art.r}  </g>\n'
+        if art.h:
+            svg += (f'  <g id="height" display="none" data-base="{f(HEIGHT_BASE)}" data-scale="{f(HEIGHT_SCALE)}"{tr}>\n'
+                    f'{art.h}  </g>\n')
         if with_emissive and art.e:
             svg += f'  <g id="emissive"{tr}>\n{art.e}  </g>\n'
         if art.m:
@@ -122,6 +132,47 @@ def unp(path):
 
 def uid(name):
     return name.replace("/", "_").replace(".svg", "")
+
+
+# Lighting the art leaves to the game (documentation/art/Design.md, "Light and shadow"): an
+# element marked BAKED is light or shade painted on (a sheen, a lit edge), which the art packer
+# leaves out of the flat art a lit shader draws; one marked RAISED stands up off the roof, drawn
+# again over the shadows the roof takes, so a part's own shadow falls past it and not on it.
+BAKED = ' data-baked="1"'
+RAISED = ' data-raised="1"'
+# The height layer's gray: HEIGHT_BASE is the bare roof, and each step of 1 above it is
+# HEIGHT_SCALE meters higher (a seam is a little below the roof, space is 0)
+HEIGHT_BASE, HEIGHT_SCALE = 0.25, 1.5
+
+
+def gray(h):
+    """The height layer's fill for `h` meters above the bare roof."""
+    v = round(max(0.0, min(1.0, HEIGHT_BASE + h / HEIGHT_SCALE)) * 255)
+    return f"#{v:02x}{v:02x}{v:02x}"
+
+
+def relief(a, shape_, h):
+    """A raised part of `h` meters: its outline in the relief layer (what casts its shadow) and
+    its top in the height layer. `shape_` is ("poly", points), ("circle", cx, cy, r) or
+    ("line", x1, y1, x2, y2, width), in SVG units."""
+    hh = f' data-h="{f(h)}"'
+    if shape_[0] == "circle":
+        _, cx, cy, r = shape_[:4]
+        a.r += circle(cx, cy, r, "#000", extra=hh)
+        a.h += circle(cx, cy, r, gray(h))
+    elif shape_[0] == "line":
+        _, x1, y1, x2, y2, w = shape_
+        # the outline of a round-capped run: its line, a capsule as wide as it is
+        dx, dy = x2 - x1, y2 - y1
+        n = math.hypot(dx, dy) or 1.0
+        ux, uy, hw = dx / n, dy / n, w / 2
+        pts = [(x1 - ux * hw - uy * hw, y1 - uy * hw + ux * hw), (x2 + ux * hw - uy * hw, y2 + uy * hw + ux * hw),
+               (x2 + ux * hw + uy * hw, y2 + uy * hw - ux * hw), (x1 - ux * hw + uy * hw, y1 - uy * hw - ux * hw)]
+        a.r += poly(pts, "#000", extra=hh)
+        a.h += line(x1, y1, x2, y2, gray(h), sw=w)
+    else:
+        a.r += poly(shape_[1], "#000", extra=hh)
+        a.h += poly(shape_[1], gray(h))
 
 
 # ---------------------------------------------------------------------------
@@ -157,10 +208,11 @@ def path(d, fill="none", stroke=None, sw=2, extra=""):
 
 
 def bevel(x, y, w, h, hi, lo, sw=1.5):
-    """Top-left highlight and bottom-right shadow just inside a rectangle (light from top-left)."""
+    """Top-left highlight and bottom-right shadow just inside a rectangle (light from top-left).
+    Baked light: a lit shader draws the edge from a normal map instead."""
     o = sw / 2
-    return (path(f"M{f(x+o)},{f(y+h-o)} L{f(x+o)},{f(y+o)} L{f(x+w-o)},{f(y+o)}", stroke=hi, sw=sw)
-            + path(f"M{f(x+w-o)},{f(y+o)} L{f(x+w-o)},{f(y+h-o)} L{f(x+o)},{f(y+h-o)}", stroke=lo, sw=sw))
+    return (path(f"M{f(x+o)},{f(y+h-o)} L{f(x+o)},{f(y+o)} L{f(x+w-o)},{f(y+o)}", stroke=hi, sw=sw, extra=BAKED)
+            + path(f"M{f(x+w-o)},{f(y+o)} L{f(x+w-o)},{f(y+h-o)} L{f(x+o)},{f(y+h-o)}", stroke=lo, sw=sw, extra=BAKED))
 
 
 def plate(x, y, w, h, fill, hi=STEEL_HI, lo=INK, rx=2, sw=2):
@@ -2073,7 +2125,7 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
         x, y = cell(c, r)
         if (c, r) in wedges:
             corners = [(x, y), (x + T, y), (x + T, y + T), (x, y + T)]
-            shape.append("M" + "L".join(f"{f(px)} {f(py)}" for px, py in (corners[k] for k in wedges[(c, r)])) + "Z")
+            shape.append(ring([corners[k] for k in wedges[(c, r)]]))
         else:
             shape.append(f"M{f(x)} {f(y)}h{f(T)}v{f(T)}h{f(-T)}z")
     shape = "".join(shape)
@@ -2096,8 +2148,9 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
         edges = [e for e in edges if not inside(overhang, (e[0] + e[2]) / 2, (e[1] + e[3]) / 2)]
     rim = "".join(f"M{f(x1)} {f(y1)}L{f(x2)} {f(y2)}" for x1, y1, x2, y2 in edges)
     cid = f"{name}_roof"
-    a.defs += (f'<clipPath id="{cid}">' + (f'<polygon points="{outline}"/>' if outline else "")
-               + f'<path d="{shape}"/></clipPath>'
+    # One path, every ring of it wound the same way so they add up: JSVG (the art packer) draws
+    # nothing through a clip path of more than one shape
+    a.defs += (f'<clipPath id="{cid}"><path d="{ring(overhang) if overhang else ""}{shape}"/></clipPath>'
                # light from the top-left over the whole roof
                f'<linearGradient id="{name}_sheen" x1="0" y1="0" x2="1" y2="1">'
                '<stop offset="0" stop-color="#ffffff" stop-opacity="0.12"/>'
@@ -2124,6 +2177,11 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
     if outline:
         a.b += f'    <polygon points="{outline}" fill="{STEEL}"/>\n'
     a.b += f'    <path d="{shape}" fill="{STEEL}"/>\n'
+    # The height layer: the bare roof over the footprint, then (clipped to it) what is below or above it
+    if outline:
+        a.h += f'    <polygon points="{outline}" fill="{gray(0)}"/>\n'
+    a.h += f'    <path d="{shape}" fill="{gray(0)}"/>\n'
+    a.h += f'    <g clip-path="url(#{cid})">\n'
 
     pts = [(x, y) for x, y in (overhang or [])]
     for (c, r) in solid:
@@ -2154,15 +2212,19 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
         if d:
             roof += f'    <path d="{"".join(d)}" fill="{tone}"/>\n'
     roof += f'    <path d="{"".join(seams)}" fill="none" stroke="{STEEL_DARK}" stroke-width="2"/>\n'
-    roof += f'    <path d="{"".join(lips)}" fill="none" stroke="{STEEL_HI}" stroke-width="1.5" opacity="0.35"/>\n'
-    # A rim of heavier plate along the edge
+    roof += f'    <path d="{"".join(lips)}" fill="none" stroke="{STEEL_HI}" stroke-width="1.5" opacity="0.35"{BAKED}/>\n'
+    # the seams are shallow grooves between the plates
+    a.h += f'    <path d="{"".join(seams)}" fill="none" stroke="{gray(-0.04)}" stroke-width="3"/>\n'
+    # A rim of heavier plate along the edge, standing a little proud of the roof
     if outline:
         roof += f'    <polygon points="{outline}" fill="none" stroke="{STEEL_DARK}" stroke-width="16" stroke-linejoin="round"/>\n'
+        a.h += f'    <polygon points="{outline}" fill="none" stroke="{gray(0.04)}" stroke-width="16" stroke-linejoin="round"/>\n'
     if rim:
         roof += f'    <path d="{rim}" fill="none" stroke="{STEEL_DARK}" stroke-width="16" stroke-linecap="square"/>\n'
+        a.h += f'    <path d="{rim}" fill="none" stroke="{gray(0.04)}" stroke-width="16" stroke-linecap="square"/>\n'
     if outline:
         roof += (f'    <polygon points="{outline}" fill="none" stroke="{STEEL_HI}" stroke-width="20" '
-                 f'stroke-linejoin="round" opacity="0.18" stroke-dasharray="3 9"/>\n')
+                 f'stroke-linejoin="round" opacity="0.18" stroke-dasharray="3 9"{BAKED}/>\n')
 
     # Small fittings on bare roof: tiles no system's footprint covers, not at the edge, not near a port
     taken = set()
@@ -2181,31 +2243,35 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
             w_, h_ = T * rng.choice((0.5, 0.65)), T * 0.28
             vx, vy = x + rng.uniform(6, T - 6 - w_), y + rng.uniform(6, T - 6 - h_)
             boxes.append(f"M{f(vx)} {f(vy)}h{f(w_)}v{f(h_)}h{f(-w_)}z")
+            relief(a, ("poly", [(vx, vy), (vx + w_, vy), (vx + w_, vy + h_), (vx, vy + h_)]), 0.12)
             for k in range(3):
                 slots.append(f"M{f(vx + 4)} {f(vy + 3 + k * (h_ - 6) / 2)}h{f(w_ - 8)}")
         elif kind == "box":
             w_, h_ = T * rng.uniform(0.3, 0.6), T * rng.uniform(0.25, 0.45)
             vx, vy = x + rng.uniform(6, T - 6 - w_), y + rng.uniform(6, T - 6 - h_)
             boxes.append(f"M{f(vx)} {f(vy)}h{f(w_)}v{f(h_)}h{f(-w_)}z")
+            relief(a, ("poly", [(vx, vy), (vx + w_, vy), (vx + w_, vy + h_), (vx, vy + h_)]), 0.15)
         elif kind == "hatch":
             rr = T * 0.18
             cx_, cy_ = x + T / 2, y + T / 2
             hatches.append(f"M{f(cx_ - rr)} {f(cy_)}a{f(rr)} {f(rr)} 0 1 0 {f(2 * rr)} 0a{f(rr)} {f(rr)} 0 1 0 {f(-2 * rr)} 0z")
+            relief(a, ("circle", cx_, cy_, rr), 0.04)
         else:
             n = 1
             while (c + n, r) in bare and n < 3:
                 n += 1
             ry = y + T * rng.choice((0.3, 0.5, 0.7))
             runs.append(f"M{f(x + 8)} {f(ry)}h{f(n * T - 16)}")
+            relief(a, ("line", x + 8, ry, x + n * T - 8, ry, 7), 0.1)
     if runs:
-        roof += f'    <path d="{"".join(runs)}" fill="none" stroke="{INK}" stroke-width="7" stroke-linecap="round"/>\n'
-        roof += f'    <path d="{"".join(runs)}" fill="none" stroke="{STEEL_MID}" stroke-width="4" stroke-linecap="round"/>\n'
+        roof += f'    <path d="{"".join(runs)}" fill="none" stroke="{INK}" stroke-width="7" stroke-linecap="round"{RAISED}/>\n'
+        roof += f'    <path d="{"".join(runs)}" fill="none" stroke="{STEEL_MID}" stroke-width="4" stroke-linecap="round"{RAISED}/>\n'
     if boxes:
-        roof += f'    <path d="{"".join(boxes)}" fill="{HOUSING_HI}" stroke="{INK}" stroke-width="1.5"/>\n'
+        roof += f'    <path d="{"".join(boxes)}" fill="{HOUSING_HI}" stroke="{INK}" stroke-width="1.5"{RAISED}/>\n'
     if slots:
-        roof += f'    <path d="{"".join(slots)}" fill="none" stroke="{INK}" stroke-width="1.5"/>\n'
+        roof += f'    <path d="{"".join(slots)}" fill="none" stroke="{INK}" stroke-width="1.5"{RAISED}/>\n'
     if hatches:
-        roof += f'    <path d="{"".join(hatches)}" fill="{STEEL_DARK}" stroke="{INK}" stroke-width="1.5"/>\n'
+        roof += f'    <path d="{"".join(hatches)}" fill="{STEEL_DARK}" stroke="{INK}" stroke-width="1.5"{RAISED}/>\n'
 
     # The superstructure: raised blocks on the roof (their shadows are the lighting's, not the art's)
     # what the superstructure keeps clear of: every exterior system's footprint, a little apart
@@ -2219,20 +2285,23 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
     for k, shape_ in enumerate(superstructure or []):
         if overlaps(shape_, keepout):
             raise ValueError(f"{name}: superstructure shape {k} covers an exterior system")
-    for shape_ in superstructure or []:
+    # lowest first, so a taller block's top stands over a lower one's in the height layer
+    for shape_ in sorted(superstructure or [], key=height_of):
         if shape_[0] == "circle":
-            _, cx_, cy_, rr = shape_
-            roof += circle(cx_, cy_, rr, "#66717f", stroke=INK, sw=2.5)
-            roof += circle(cx_, cy_, rr * 0.72, "none", stroke=STEEL_DARK, sw=2)
-            roof += circle(cx_, cy_, rr, f"url(#{name}_sheen)")
+            _, cx_, cy_, rr = shape_[:4]
+            roof += circle(cx_, cy_, rr, "#66717f", stroke=INK, sw=2.5, extra=RAISED)
+            roof += circle(cx_, cy_, rr * 0.72, "none", stroke=STEEL_DARK, sw=2, extra=RAISED)
+            roof += circle(cx_, cy_, rr, f"url(#{name}_sheen)", extra=BAKED)
         else:
             pts_ = shape_[1]
             p = " ".join(f"{f(x)},{f(y)}" for x, y in pts_)
-            roof += f'    <polygon points="{p}" fill="#66717f" stroke="{INK}" stroke-width="2.5" stroke-linejoin="round"/>\n'
-            roof += f'    <polygon points="{p}" fill="none" stroke="{STEEL_HI}" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>\n'
-            roof += f'    <polygon points="{p}" fill="url(#{name}_sheen)"/>\n'
-    roof += f'    <rect x="{f(bx0)}" y="{f(by0)}" width="{f(bx1 - bx0)}" height="{f(by1 - by0)}" fill="url(#{name}_sheen)"/>\n'
+            roof += f'    <polygon points="{p}" fill="#66717f" stroke="{INK}" stroke-width="2.5" stroke-linejoin="round"{RAISED}/>\n'
+            roof += f'    <polygon points="{p}" fill="none" stroke="{STEEL_HI}" stroke-width="5" stroke-linejoin="round" opacity="0.25"{BAKED}/>\n'
+            roof += f'    <polygon points="{p}" fill="url(#{name}_sheen)"{BAKED}/>\n'
+        relief(a, shape_, height_of(shape_))
+    roof += f'    <rect x="{f(bx0)}" y="{f(by0)}" width="{f(bx1 - bx0)}" height="{f(by1 - by0)}" fill="url(#{name}_sheen)"{BAKED}/>\n'
     a.b += f'    <g clip-path="url(#{cid})">\n{roof}    </g>\n'
+    a.h += '    </g>\n'
 
     for (m, col, row, w, h) in mounts:
         x, y = cell(col, row)
@@ -2242,11 +2311,13 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
         if m == "turret_mount":
             # the barbette the turret turns on
             r = s * 0.46
-            a.b += circle(cx, cy, r, STEEL_DARK, stroke=INK, sw=2)
-            a.b += circle(cx, cy, r * 0.8, "none", stroke=STEEL_HI, sw=1.5, extra=' stroke-dasharray="4 4"')
-            a.b += circle(cx, cy, r * 0.3, INK)
+            a.b += circle(cx, cy, r, STEEL_DARK, stroke=INK, sw=2, extra=RAISED)
+            a.b += circle(cx, cy, r * 0.8, "none", stroke=STEEL_HI, sw=1.5, extra=' stroke-dasharray="4 4"' + RAISED)
+            a.b += circle(cx, cy, r * 0.3, INK, extra=RAISED)
+            relief(a, ("circle", cx, cy, r), 0.3)
         elif m == "shield_emitter":
-            a.b += circle(cx, cy, s * 0.4, "#2f5664", stroke=INK, sw=2)
+            a.b += circle(cx, cy, s * 0.4, "#2f5664", stroke=INK, sw=2, extra=RAISED)
+            relief(a, ("circle", cx, cy, s * 0.4), 0.2)
             a.e += circle(cx, cy, s * 0.25, ACCENT["shield_emitter"], extra=' opacity="0.6"')
         elif m == "engine":
             pass  # outside the hull: the game draws the engine itself (engines/nacelle_<size>)
@@ -2305,6 +2376,14 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
     return a, (x0, y0, gw, gh)
 
 
+def ring(points):
+    """A closed subpath through `points`, wound clockwise on the page (as a tile's square is), so
+    rings that overlap in one path fill their union and not leave a hole."""
+    area = sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(points, points[1:] + points[:1]))
+    pts = points if area >= 0 else points[::-1]
+    return "M" + "L".join(f"{f(x)} {f(y)}" for x, y in pts) + "Z"
+
+
 def inside(poly_, x, y):
     """Whether (x, y) is strictly inside the polygon `poly_` (even-odd rule); a point on its edge is not."""
     n, hit = len(poly_), False
@@ -2323,7 +2402,7 @@ def overlaps(shape_, keepout):
     for (x0, y0, x1, y1) in keepout:
         pts = [(x0 + (x1 - x0) * i / 16, y0 + (y1 - y0) * j / 16) for i in range(17) for j in range(17)]
         if shape_[0] == "circle":
-            _, cx, cy, r = shape_
+            _, cx, cy, r = shape_[:4]
             if any(math.hypot(px - cx, py - cy) < r for px, py in pts):
                 return True
         elif (any(inside(shape_[1], px, py) for px, py in pts)
@@ -2363,8 +2442,20 @@ def spine(solid, wedges, cell, keepout=()):
         if y0 < hw and y1 > -hw:
             pieces = [q for (pa, pb) in pieces for q in ((pa, min(pb, x0)), (max(pa, x1), pb)) if q[1] > q[0]]
     return [("poly", [(pa, -hw + ch_), (pa + ch_, -hw), (pb - ch_, -hw), (pb, -hw + ch_),
-                      (pb, hw - ch_), (pb - ch_, hw), (pa + ch_, hw), (pa, hw - ch_)])
+                      (pb, hw - ch_), (pb - ch_, hw), (pa + ch_, hw), (pa, hw - ch_)], SPINE_HEIGHT)
             for (pa, pb) in pieces if pb - pa >= 2 * T]
+
+
+SPINE_HEIGHT = 0.5  # meters a spine stands off the roof
+
+
+def height_of(shape_):
+    """How tall a superstructure shape stands, in meters: its own height when it gives one, else
+    0.9 for a block and 1.2 for a dome."""
+    n = 4 if shape_[0] == "circle" else 2
+    if len(shape_) > n:
+        return shape_[n]
+    return 1.2 if shape_[0] == "circle" else 0.9
 
 
 # Each ship's hull outline in body meters, by chassis, drawn under the grid, so each has a shape
@@ -2402,25 +2493,26 @@ OVERHANG = {
                 (-7.0, 4.4), (-6.8, 3.5), (-9.0, 3.5)],
 }
 
-# Each ship's raised superstructure in body meters, by chassis: ("poly", points) or
-# ("circle", x, y, radius). A ship without one gets a spine down its middle (spine()).
+# Each ship's raised superstructure in body meters, by chassis: ("poly", points[, height]) or
+# ("circle", x, y, radius[, height]), height in meters off the roof (height_of()). A ship without
+# one gets a spine down its middle (spine()).
 SUPERSTRUCTURE = {
-    "corvette": [("poly", [(-10.4, -0.8), (1.6, -0.8), (2.8, -0.3), (2.8, 0.3), (1.6, 0.8), (-10.4, 0.8)]),
-                 ("poly", [(-6.0, -0.85), (-3.0, -0.85), (-2.3, -0.1), (-2.3, 1.1), (-3.0, 1.8), (-6.0, 1.8)])],
+    "corvette": [("poly", [(-10.4, -0.8), (1.6, -0.8), (2.8, -0.3), (2.8, 0.3), (1.6, 0.8), (-10.4, 0.8)], 0.5),
+                 ("poly", [(-6.0, -0.85), (-3.0, -0.85), (-2.3, -0.1), (-2.3, 1.1), (-3.0, 1.8), (-6.0, 1.8)], 0.9)],
     "gunship": [("poly", [(-8.5, -1.9), (0.0, -1.9), (0.8, -0.8), (6.0, -0.8), (6.6, 0.0), (6.0, 0.8),
-                          (0.8, 0.8), (0.0, 1.9), (-8.5, 1.9)]),
-                ("poly", [(10.2, -3.4), (12.2, -1.4), (12.2, 1.4), (10.2, 3.4)])],
-    "frigate": [("poly", [(-11.2, -1.1), (11.0, -1.1), (14.8, -0.3), (14.8, 0.3), (11.0, 1.1), (-11.2, 1.1)]),
-                ("poly", [(3.8, -1.8), (7.4, -1.8), (8.4, -0.8), (8.4, 0.8), (7.4, 1.8), (3.8, 1.8)]),
-                ("poly", [(-11.6, -3.6), (-8.2, -3.6), (-7.4, -2.4), (-7.4, 2.4), (-8.2, 3.6), (-11.6, 3.6)])],
-    "raider": [("poly", [(-6.8, -0.6), (3.6, -0.6), (4.3, 0.0), (3.6, 0.6), (-6.8, 0.6)]),
-               ("poly", [(1.0, -0.9), (3.6, -0.9), (4.3, 0.3), (3.6, 1.8), (1.0, 1.8)])],
-    "corsair": [("poly", [(-8.2, -1.6), (1.2, -1.6), (1.8, -1.0), (1.2, -0.4), (-8.2, -0.4)]),
-                ("poly", [(2.6, 0.4), (5.2, 0.4), (5.8, 1.2), (5.2, 2.9), (2.6, 2.9)]),
-                ("poly", [(-5.8, -4.4), (-0.2, -4.4), (0.3, -3.2), (-6.1, -3.2)])],
-    "picket": [("poly", [(-6.8, -0.5), (6.0, -0.5), (6.0, 0.5), (-6.8, 0.5)]),
-               ("poly", [(0.8, -0.4), (3.6, -0.4), (4.2, 0.8), (3.6, 2.4), (0.8, 2.4)]),
-               ("circle", 8.0, 0.0, 1.5)],
+                          (0.8, 0.8), (0.0, 1.9), (-8.5, 1.9)], 0.8),
+                ("poly", [(10.2, -3.4), (12.2, -1.4), (12.2, 1.4), (10.2, 3.4)], 0.6)],
+    "frigate": [("poly", [(-11.2, -1.1), (11.0, -1.1), (14.8, -0.3), (14.8, 0.3), (11.0, 1.1), (-11.2, 1.1)], 0.5),
+                ("poly", [(3.8, -1.8), (7.4, -1.8), (8.4, -0.8), (8.4, 0.8), (7.4, 1.8), (3.8, 1.8)], 0.9),
+                ("poly", [(-11.6, -3.6), (-8.2, -3.6), (-7.4, -2.4), (-7.4, 2.4), (-8.2, 3.6), (-11.6, 3.6)], 0.8)],
+    "raider": [("poly", [(-6.8, -0.6), (3.6, -0.6), (4.3, 0.0), (3.6, 0.6), (-6.8, 0.6)], 0.5),
+               ("poly", [(1.0, -0.9), (3.6, -0.9), (4.3, 0.3), (3.6, 1.8), (1.0, 1.8)], 0.8)],
+    "corsair": [("poly", [(-8.2, -1.6), (1.2, -1.6), (1.8, -1.0), (1.2, -0.4), (-8.2, -0.4)], 0.6),
+                ("poly", [(2.6, 0.4), (5.2, 0.4), (5.8, 1.2), (5.2, 2.9), (2.6, 2.9)], 0.9),
+                ("poly", [(-5.8, -4.4), (-0.2, -4.4), (0.3, -3.2), (-6.1, -3.2)], 0.5)],
+    "picket": [("poly", [(-6.8, -0.5), (6.0, -0.5), (6.0, 0.5), (-6.8, 0.5)], 0.5),
+               ("poly", [(0.8, -0.4), (3.6, -0.4), (4.2, 0.8), (3.6, 2.4), (0.8, 2.4)], 0.8),
+               ("circle", 8.0, 0.0, 1.5, 1.2)],
 }
 
 
@@ -2429,9 +2521,9 @@ def to_svg(shapes):
     out = []
     for s in shapes:
         if s[0] == "circle":
-            out.append(("circle", s[1] * T, -s[2] * T, s[3] * T))
+            out.append(("circle", s[1] * T, -s[2] * T, s[3] * T) + tuple(s[4:]))
         else:
-            out.append(("poly", [(x * T, -y * T) for x, y in s[1]]))
+            out.append(("poly", [(x * T, -y * T) for x, y in s[1]]) + tuple(s[2:]))
     return out
 
 
