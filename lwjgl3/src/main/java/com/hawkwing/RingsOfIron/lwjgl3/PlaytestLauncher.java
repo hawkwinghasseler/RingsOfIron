@@ -421,8 +421,13 @@ public class PlaytestLauncher {
                     return PlayerDocking.name(spawned) + " at " + m + " m";
                 }
                 case "shoot": {
-                    // shoot <weapon> <x> <y>: the dev console's shoot() at that tile of the spawned ship
-                    if (spawned == null || cmd.length < 4) return "spawnship first, then shoot <weapon> <x> <y>";
+                    // shoot <weapon> <x> <y> [m]: the dev console's shoot() at that tile of the spawned ship;
+                    // with m, a gun's round starts m meters out, so its shield sees it coming
+                    if (spawned == null || cmd.length < 4) return "spawnship first, then shoot <weapon> <x> <y> [m]";
+                    if (cmd.length > 4) {
+                        return debugActions(world).tools.fire(spawned, cmd[1], Integer.parseInt(cmd[2]), Integer.parseInt(cmd[3]),
+                                Float.parseFloat(cmd[4]));
+                    }
                     return debugActions(world).shoot(spawned, Integer.parseInt(cmd[2]), Integer.parseInt(cmd[3]), cmd[1]);
                 }
                 case "reactors": {

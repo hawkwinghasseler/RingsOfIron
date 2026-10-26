@@ -32,7 +32,6 @@ import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
-import com.ringsofiron.combatsys.events.HullHitEvent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.PolygonSkin;
@@ -112,7 +111,7 @@ public final class ExteriorRenderer implements Disposable {
     private final Vector2 tmp2 = new Vector2();
     private final float[] polygon = new float[16];
     private final ThrusterFlames flames;
-    private final ShieldBubbles shields = new ShieldBubbles();
+    private final ShieldParticles shields = new ShieldParticles();
     /** Craft drawn with their hull art this frame, whose flames are drawn with art too. */
     private final ObjectSet<Entity> withArt = new ObjectSet<>();
 
@@ -168,12 +167,6 @@ public final class ExteriorRenderer implements Disposable {
     public ExteriorRenderer inFrameOf(Supplier<Body> body) {
         frame = body;
         return this;
-    }
-
-    /** A ripple on the struck craft's shield bubble, for a hull hit its shields took part of. */
-    public void shieldHit(HullHitEvent hit) {
-        if (hit == null || hit.ship == null || !(hit.shielded > 0f)) return;
-        shields.hit(hit, world.get().docking.bodyOf(hit.ship), exteriorLighting != null && lightsOn ? exteriorLighting : null);
     }
 
     /** A flash where a warhead went off or a missile was shot down, at ({@code x}, {@code y}) world meters. */
@@ -237,16 +230,21 @@ public final class ExteriorRenderer implements Disposable {
             if (lighting != null && chassis != null) lighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
             if (lit && chassis != null) exteriorLighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
             flames.collect(e, body);
-            shields.collect(e, body);
+            shields.collect(e, body, lit ? exteriorLighting : null);
         }
         flames.end();
         shields.end();
         // Every flame lights the hulls and glows, as strong as it is long
         flames.light(lit ? exteriorLighting : null, lighting);
         if (lit) lightsInFlight();
-        if (hullArtOn) {
+        // The shield flecks under the light map, so it lights them: those beyond the hull's plane under its art
+        float mpp = metersPerPixel(camera);
+        if (hullArtOn || shields.any()) {
             batch.setProjectionMatrix(view);
             batch.begin();
+            shields.drawFlecks(batch, true, mpp);
+        }
+        if (hullArtOn) {
             for (int i = bodies.size - 1; i >= 0; i--) {
                 Body body = bodies.get(i);
                 Entity e = owner(body);
@@ -255,14 +253,17 @@ public final class ExteriorRenderer implements Disposable {
                     bodies.removeIndex(i);
                 }
             }
+        }
+        if (hullArtOn || shields.any()) {
+            shields.drawFlecks(batch, false, mpp);
             batch.end();
         }
         if (lit) renderLightMap(camera, view);
         // The flames give off their own light: over the light map, not darkened by it
         batch.setProjectionMatrix(view);
         flames.draw(batch, withArt);
-        // So do the shields, over hull art and outline alike
-        shields.draw(batch);
+        // So does the shield where it packs and where it is struck, over hull art and outline alike
+        shields.drawGlow(batch, mpp);
         shapes.setProjectionMatrix(view);
         shapes.begin(ShapeRenderer.ShapeType.Line);
         for (Body body : bodies) {
@@ -279,6 +280,12 @@ public final class ExteriorRenderer implements Disposable {
         shapes.end();
         bodies.clear();
         withArt.clear();
+    }
+
+    /** Meters one screen pixel spans under {@code camera}. */
+    private static float metersPerPixel(OrthographicCamera camera) {
+        int width = Gdx.graphics == null ? 0 : Gdx.graphics.getWidth();
+        return width > 0 ? camera.viewportWidth * camera.zoom / width : 0f;
     }
 
     /**

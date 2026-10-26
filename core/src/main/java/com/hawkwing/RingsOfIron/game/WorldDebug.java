@@ -222,12 +222,17 @@ public final class WorldDebug implements PhysicsManager.StepListener {
      * from the ship's center through the tile). See {@link #fire(Entity, String, int, int, float, float)}.
      */
     public String fire(Entity ship, String weaponId, int x, int y) {
+        return fire(ship, weaponId, x, y, STANDOFF);
+    }
+
+    /** As {@link #fire(Entity, String, int, int)}, a gun's round put in flight {@code standoff} meters out. */
+    public String fire(Entity ship, String weaponId, int x, int y, float standoff) {
         Vector2 at = tileWorld(ship, x, y, new Vector2());
         Vector2 center = PhysicsManager.getPosition(body(ship), new Vector2());
         Vector2 out = at.cpy().sub(center);
         if (out.isZero(1e-3f)) out.set(1f, 0f);
         out.nor();
-        return fire(ship, weaponId, x, y, at.x + out.x, at.y + out.y);
+        return fire(ship, weaponId, x, y, at.x + out.x, at.y + out.y, standoff);
     }
 
     /**
@@ -237,6 +242,11 @@ public final class WorldDebug implements PhysicsManager.StepListener {
      * out at the ship; a beam burns for its pulse at its power. Returns what happened, or why not.
      */
     public String fire(Entity ship, String weaponId, int x, int y, float fromX, float fromY) {
+        return fire(ship, weaponId, x, y, fromX, fromY, STANDOFF);
+    }
+
+    /** As {@link #fire(Entity, String, int, int, float, float)}, a gun's round put in flight {@code standoff} meters out. */
+    public String fire(Entity ship, String weaponId, int x, int y, float fromX, float fromY, float standoff) {
         WeaponDef weapon = world.combatDefs.weapons.get(weaponId);
         if (weapon == null) return "No weapon " + weaponId;
         Body body = body(ship);
@@ -261,7 +271,7 @@ public final class WorldDebug implements PhysicsManager.StepListener {
         }
         ProjectileDef round = weapon.projectile == null ? null : world.combatDefs.projectiles.get(weapon.projectile);
         if (round == null) return "No round for " + weaponId;
-        float sx = at.x - dir.x * STANDOFF, sy = at.y - dir.y * STANDOFF;
+        float sx = at.x - dir.x * standoff, sy = at.y - dir.y * standoff;
         Entity e = world.ballistics.spawn(round, round.mass, sx, sy,
                 shipVel.x + dir.x * round.muzzleSpeed, shipVel.y + dir.y * round.muzzleSpeed, null);
         e.getComponent(ProjectileComponent.class).aimedAt = ship;

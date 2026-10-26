@@ -10,6 +10,11 @@ public class ProjectileDef {
     public String art;
     /** kg */
     public float mass = 1f;
+    /**
+     * Diameter, m, for how hard it is for a shield cloud to stop (its sectional density); 0 to
+     * take a steel slug three calibers long of its mass.
+     */
+    public float caliber;
     /** m/s, relative to the firing hardpoint */
     public float muzzleSpeed = 1000f;
     public DamageType damageType = DamageType.KINETIC;

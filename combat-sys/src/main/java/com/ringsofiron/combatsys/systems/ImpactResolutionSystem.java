@@ -244,7 +244,8 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         if (body == null || grid == null) return null;
         CombatPhysics.toBodyLocal(body, worldX, worldY, localPoint);
         CombatPhysics.vectorToBodyLocal(body, dirX, dirY, localRel);
-        float shielded = Shields.absorb(ship, energy);
+        float shielded = Shields.absorbBeam(ship, body, energy, localPoint.x, localPoint.y, localRel.x, localRel.y,
+                PhysicsManager.TIME_STEP);
         energy -= shielded;
         report.clear();
         report.ship = ship;
@@ -327,7 +328,8 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         CombatPhysics.vectorToBodyLocal(body, hit.relVelocity.x, hit.relVelocity.y, localRel);
         float budget = hit.penetration >= 0f ? hit.penetration
                 : 0.5f * hit.mass * speed * speed * def.penetrationFactor;
-        float shielded = hit.ram ? 0f : Shields.absorb(ship, budget);
+        float shielded = hit.ram ? 0f : Shields.absorb(ship, body, def, hit.mass, budget,
+                localPoint.x, localPoint.y, localRel.x, localRel.y);
 
         RandomXS128 rng = rngFor(ship);
         if (def.damageType == DamageType.ION) {
