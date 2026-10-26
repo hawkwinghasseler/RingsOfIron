@@ -265,7 +265,11 @@ public class GameWorld implements Disposable {
     /** Frames left of that wait: from a load until a frame has run and the player's latch is welded again. */
     private int loadSettling;
     private String careerOver;
+    /** After every other fixed system of the tick (they all run below 100): see {@link #tickManagers}. */
+    static final int MANAGERS_PRIORITY = 500;
     private final List<Entity> wrecks = new ArrayList<>();
+    /** What a load starts again from scratch before the save is read, in the order registered. */
+    private final List<Resettable> resettables = new ArrayList<>();
     private final double[] trueState = new double[4];
     /** Materials from the loaded data, for ships' mass. */
     private MaterialTable materials;
@@ -277,8 +281,11 @@ public class GameWorld implements Disposable {
     public GameWorld(Modules modules) {
         this.modules = modules;
         engine = new GameEngine();
+        SaveTypes.register(engine.getSerializationService());
         players = engine.getEcsEngine().getEntitiesFor(PLAYER);
         notices = new NoticeLog(engine::getSimSeconds);
+        // The old game's notices are not this one's (the log is not saved)
+        addResettable(notices::clear);
         warnings = new FlightWarnings(this);
 
         physics = new PhysicsManager();
@@ -411,6 +418,8 @@ public class GameWorld implements Disposable {
         standing = new FactionStanding(this::getPlayer);
         standing.clock = engine::getSimSeconds;
         engine.getSerializationService().addParticipant(standing);
+        // A save from before the career was saved loads as a new one: rank 0 with the sponsor
+        addResettable(standing);
         budget = new ServiceBudget(standing, this::getPlayer, engine::getSimSeconds);
         engine.addSystem(budget);
         crew.hostility = standing::hostile;
@@ -447,9 +456,13 @@ public class GameWorld implements Disposable {
         contracts = new ContractBoard(this);
         engine.addSystem(contracts);
         engine.getSerializationService().addParticipant(contracts);
+        addResettable(contracts);
         engine.getSerializationService().addParticipant(guides);
+        // ...outside First Play and the opening walkthrough
+        addResettable(guides);
         // Pods and wrecks on the rails, for rescues and recoveries; saved with the game
         derelicts = new Derelicts(this);
+        addResettable(derelicts);
         // NPC freighters fill their tanks wherever they dock
         engine.addSystem(new FreighterRefueling(docking::dockedTo));
         // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
@@ -539,8 +552,11 @@ public class GameWorld implements Disposable {
         PhysicsSaveParticipant.install(physics, engine);
         // Pirates and faction patrols, on the rails and in the bubble
         hostiles = HostileTraffic.install(this);
+        // Hostile traffic's own state starts again from the load
+        addResettable(hostiles);
         pirateBoarding = new PirateBoarding(this);
         engine.getSerializationService().addParticipant(pirateBoarding);
+        addResettable(pirateBoarding);
         pirateBase = new PirateBase(this);
         engine.addSystem(pirateBase);
         engine.getSerializationService().addParticipant(pirateBase);
@@ -548,17 +564,28 @@ public class GameWorld implements Disposable {
         tension = new FactionTension(this);
         engine.addSystem(tension);
         engine.getSerializationService().addParticipant(tension);
+        // ...with no strain between the factions
+        addResettable(tension);
         yard.priceFactor = tension::priceFactor;
         nav = Navigation.install(this);
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);
         // Things that happen on their own, a day at a time, with jobs on the boards
         events = new WorldEvents(this);
+        // A save with no events has the default seed (a new game keeps its own, so reset() keeps it)
+        addResettable(() -> {
+            events.reset();
+            events.seed = WorldEvents.DEFAULT_SEED;
+        });
         // The player's crew: hired at stations, paid weekly, learning from what they do
         crewCareer = new CrewCareer(this);
         engine.addSystem(crewCareer);
+        // Crew morale drifts from the loaded time on
+        addResettable(crewCareer::restartClock);
         crewHiring = new CrewHiring(this);
         engine.getSerializationService().addParticipant(crewHiring);
+        // ...and nobody is hired from today's pools
+        addResettable(crewHiring);
         prisoners = new Prisoners(this);
         hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, KeyBindings.Action.CREW)
                 .onlyWhen(() -> prisoners.takenAlongside() != null);
@@ -568,6 +595,27 @@ public class GameWorld implements Disposable {
         captain = new CaptainSafety(this);
         air = new AirWatch(this);
         infirmary = new StationInfirmary(this);
+        // The managers that keep time or set what the crew act on run every sim tick, after the
+        // tick's other systems, not once a frame after however many ticks the frame ran
+        engine.addSystem(new TickManagers());
+    }
+
+    /**
+     * Registers state a load starts again from scratch ({@link #resetForLoad()}). Systems built here
+     * register next to their {@code addParticipant}; one built elsewhere registers itself the same way.
+     */
+    public void addResettable(Resettable r) {
+        resettables.add(r);
+    }
+
+    /** Starts every registered {@link Resettable} again from scratch, before a save is read over them. */
+    public void resetForLoad() {
+        for (Resettable r : resettables) r.reset();
+    }
+
+    /** What {@link #resetForLoad()} resets, for tests. */
+    List<Resettable> resettablesForTest() {
+        return java.util.Collections.unmodifiableList(resettables);
     }
 
     /**
@@ -664,26 +712,53 @@ public class GameWorld implements Disposable {
             boolean welding = player != null && docking.dockedTo(player) != null && !docking.isRigid(player);
             loadSettling = welding ? loadSettling - 1 : 0;
         }
+        // What follows changes the world between updates, with the engine idle: ships spawned and
+        // removed (wrecks, raids, the day's events), the bubble collapsed and rebuilt for a rescue,
+        // time warp set. The managers that keep time run on the tick instead (tickManagers)
         for (Entity wreck : wrecks) engine.removeEntity(wreck);
         wrecks.clear();
         rescue.update();
         hostiles.afterUpdate();
-        pirateBoarding.update();
         pirateBase.afterUpdate();
         derelicts.update();
         events.update();
         checkBubbleCrash();
         checkAvatar();
         if ((crash != null || careerOver != null) && timeWarp.getWarp() != 1) timeWarp.setWarp(1);
+        // Notices on how things stand now: once a frame is soon enough
         warnings.update();
         damageControl.update();
+        air.update();
+        // Warp changes only between updates: the walk to air drops it, the autopilot raises it again after a burn
+        captain.giveWayToTheWalk();
+        nav.autopilot.afterUpdate();
+    }
+
+    /**
+     * Once a sim tick, after every other fixed system (the crew have moved, the air has spread):
+     * the managers whose timers count sim time or whose state the crew act on the next tick. Run
+     * once a frame they saw up to 150 ticks at once at 10x warp, and a frame's worth of battle
+     * stations or suit time depended on the frame rate.
+     */
+    private void tickManagers() {
+        if (crash != null || careerOver != null) return;
+        pirateBoarding.update();
         medical.update();
         berthVenting.update();
         captain.update();
-        air.update();
         infirmary.update();
-        // Warp changes only between updates: the autopilot raises it again after a burn
-        nav.autopilot.afterUpdate();
+    }
+
+    /** Runs {@link #tickManagers}; a named class so the tick profiler names it. */
+    private final class TickManagers extends com.ringsofiron.coreengine.systems.FixedLogicSystem {
+        TickManagers() {
+            super(MANAGERS_PRIORITY, (float) com.ringsofiron.coreengine.SimClock.TICK_SECONDS);
+        }
+
+        @Override
+        protected void updateFixed(float deltaTime) {
+            tickManagers();
+        }
     }
 
     /** Why rails warp waits after a load: until a frame has run and the player's ship is welded to its dock again. */

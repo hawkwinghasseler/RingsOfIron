@@ -34,7 +34,7 @@ import java.util.TreeMap;
  *       zero; positive standing never decays.</li>
  * </ul>
  */
-public class FactionTension extends EntitySystem implements SaveParticipant {
+public class FactionTension extends EntitySystem implements SaveParticipant, Resettable {
     public static final float MAX = 100f;
     /** Tension at which patrols are reinforced and rival stations turn choosy. */
     public static final float HIGH = 50f;
@@ -316,6 +316,7 @@ public class FactionTension extends EntitySystem implements SaveParticipant {
     }
 
     /** Forgets every strain, for a new career or a save from before tension. */
+    @Override
     public void reset() {
         tension.clear();
         reinforced.clear();

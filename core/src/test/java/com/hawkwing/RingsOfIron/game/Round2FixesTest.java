@@ -19,7 +19,6 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Locale;
 import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -27,12 +26,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The round-2 playtest's balance fixes, each played headless on the real new game with the
- * numbers it now gives (round2-playtest.md had: a 7 s first fight the raider never answered, one
- * laser selling for over twice the bounty, a promotion after one fight, every faction pleased by a
- * pirate's death, and a ship latched to a holed one losing its air through the port).
+ * The round-2 playtest's fixes that are rules, not balance, played headless on the real new game:
+ * every faction was pleased by a pirate's death, and a ship latched to a holed one lost its air
+ * through the port. Its balance targets (the first fight's length, salvage against the bounty, fights
+ * to a promotion) are the playtest benchmark {@link FirstHourBalanceBenchmark}.
  */
-class BalancePacingTest {
+class Round2FixesTest {
     static final float FRAME = 1f / 60f;
 
     GameWorld world;
@@ -71,11 +70,6 @@ class BalancePacingTest {
         return e.getComponent(PhysicsBodyComponent.class).body;
     }
 
-    private float range() {
-        return PhysicsManager.getPosition(body(game.raider), new Vector2())
-                .dst(PhysicsManager.getPosition(body(game.player), new Vector2()));
-    }
-
     /** Puts the player {@code meters} off the raider's beam, moving with it: the flying, done by hand. */
     private void flyTo(float meters) {
         Vector2 at = PhysicsManager.getPosition(body(game.raider), new Vector2());
@@ -84,114 +78,11 @@ class BalancePacingTest {
         PhysicsManager.setVelocity(body(game.player), v.x, v.y);
     }
 
-    private Contract raiderBounty() {
-        for (Contract c : world.contracts.offers(game.highport)) {
-            if (c.type == Contract.Type.BOUNTY && world.universe.uuidOf(game.raider).equals(c.targetUuid)) return c;
-        }
-        return null;
-    }
-
     private void undocked() {
         game.beginCareer();
         run(2f);
         assertTrue(world.docking.undock(game.player));
         run(1f);
-    }
-
-    @Test
-    void theFirstRaiderComesInFiringAndTheFightLastsUnderFire() {
-        // Round 6: on the first start, with no retries (round 5 tried three starts a few hundredths of a
-        // second apart, since a raider that closed slowly was often beaten before its guns reached).
-        // Hits are counted on the hull: a chaingun round that only scars the armour sends no damage report
-        String said = firstFight(0);
-        assertNotNull(said, "the raider lands hits");
-        assertTrue(HostileTraffic.firepower(game.raider) < HostileTraffic.firepower(game.player), "and the raider is outgunned");
-    }
-
-    /** The first fight, undocking {@code start} twentieths of a second later; null if the raider landed no hits. */
-    private String firstFight(int start) {
-        game.beginCareer();
-        run(2f);
-        assertTrue(world.docking.undock(game.player));
-        run(1f + 0.05f * start);
-        // First Play wakes the raider once the player is clear of Highport, some way off from it
-        flyTo(6_000f);
-        run(0.05f);
-        int[] raiderShots = {0};
-        float[] firstRaiderShot = {-1f}, t = {0f};
-        world.combatEvents.shots.add((s, shot) -> {
-            if (shot.shooter == game.raider && shot.target == game.player) {
-                raiderShots[0]++;
-                if (firstRaiderShot[0] < 0f) firstRaiderShot[0] = t[0];
-            }
-        });
-        int[] playerHits = {0};
-        world.combatEvents.hullHits.add((s, h) -> {
-            if (h.ship == game.player) playerHits[0]++;
-        });
-        game.provokeRaider();
-        assertTrue(game.raiderHostile());
-
-        // The player locks it and holds the guns from 4 km in, with a missile whenever one is loaded
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
-        gun.setTarget(game.raider);
-        float openedFire = -1f;
-        for (; t[0] < 240f && !ShipDisablement.isDisabled(game.raider); t[0] += FRAME) {
-            if (openedFire < 0f && range() < 4_000f) openedFire = t[0];
-            if (openedFire >= 0f) {
-                gun.fireGuns();
-                gun.launchMissile();
-            }
-            gun.update(FRAME);
-            world.update(FRAME);
-            assertFalse(ShipDisablement.isDisabled(game.player), "the player's ship held out");
-        }
-        String said = String.format(Locale.ROOT, "raider fired %d times, first at %.1f s; the player opened fire at %.1f s;"
-                + " the raider was beaten at %.1f s; the player's ship was hit %d times, hull at %.2f", raiderShots[0],
-                firstRaiderShot[0], openedFire, t[0], playerHits[0], HostileTraffic.hull(game.player));
-        System.out.println("First fight (start " + start + "): " + said);
-        assertTrue(ShipDisablement.isDisabled(game.raider), "beaten: " + said);
-        assertTrue(raiderShots[0] > 0 && firstRaiderShot[0] < openedFire, "the raider shoots first: " + said);
-        // A start where the raider lands nothing is an unlucky one: how long the fight lasts is checked under fire
-        if (playerHits[0] == 0) return null;
-        // Was 7 s from the player's first shot, with the raider asleep and three slugs through its
-        // nose shutting its reactor down; now the player's guns take a good while, under fire
-        assertTrue(t[0] - openedFire >= 20f, "the fight lasts: " + said);
-        return said;
-    }
-
-    @Test
-    void oneStrippedGunPaysLessThanHalfTheBountyAndAWholeRaiderAboutTwo() {
-        game.beginCareer();
-        run(2f);
-        Contract bounty = raiderBounty();
-        assertNotNull(bounty);
-        // The raider's best gun, the laser: was 11,250 cr against a 5,000 cr bounty
-        double laser = world.salvage.salePrice(Salvage.PART + "laser_mk1");
-        assertEquals(2_250, laser, 1e-6);
-        assertTrue(laser < bounty.reward / 2, laser + " against " + bounty.reward);
-        double all = 0;
-        for (Salvage.Part p : world.salvage.parts(game.raider)) all += world.salvage.salePrice(p.part);
-        assertTrue(all > bounty.reward && all < 3 * bounty.reward, "stripping it all: " + all + " against " + bounty.reward);
-    }
-
-    @Test
-    void aBountyAndItsKillAreNotAPromotionButTwoAre() {
-        game.beginCareer();
-        run(2f);
-        Contract bounty = raiderBounty();
-        int sponsor = world.standing.sponsor();
-        // A first fight: the bounty's standing and the kill's (was 6 + 15 = 21, past Lieutenant's 15)
-        world.standing.reward(sponsor, bounty.standing, "bounty");
-        world.standing.onShipDestroyed(game.raider);
-        assertEquals(bounty.standing + 5f, world.standing.standing(sponsor), 1e-4);
-        assertEquals(0, world.standing.record().rank, "still an ensign after one fight");
-        // A second promotes
-        world.standing.reward(sponsor, bounty.standing, "bounty");
-        world.standing.onShipDestroyed(game.raider);
-        assertEquals(1, world.standing.record().rank, "Lieutenant after two");
-        assertTrue(world.standing.notices.contains("Promoted to Lieutenant of the Terran Patrol Authority: budget 7,500 cr a week", false),
-                "with a message: " + world.standing.notices);
     }
 
     @Test

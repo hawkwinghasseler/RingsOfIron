@@ -18,6 +18,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.hawkwing.RingsOfIron.BuildInfo;
+import com.ringsofiron.uihud.UiScale;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -66,8 +67,7 @@ class ShellMenus {
         t.setBackground(skin.getDrawable("panel"));
         t.pad(24f);
         t.defaults().pad(4f);
-        Label heading = new Label(title, skin, "title");
-        heading.setFontScale(p == Panel.MAIN ? 3f : 1.6f);
+        Label heading = new Label(title, skin, p == Panel.MAIN ? "display" : "heading");
         t.add(heading).colspan(3).padBottom(p == Panel.MAIN ? 4f : 14f).row();
         if (p == Panel.MAIN) {
             // The panel stays centred; the version sits in the bottom-right corner below it
@@ -79,6 +79,11 @@ class ShellMenus {
         }
         message = new Label("", skin, "warn");
         return t;
+    }
+
+    /** The window's height in UI units. */
+    private static float uiHeight() {
+        return Gdx.graphics.getHeight() / UiScale.effective(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
     }
 
     private TextButton button(String text, Runnable action) {
@@ -225,7 +230,7 @@ class ShellMenus {
         if (list.getCells().size == 0) list.add(new Label("No saves yet", skin, "dim"));
         ScrollPane scroll = wheelScrolls(new ScrollPane(list, skin));
         scroll.setFadeScrollBars(false);
-        t.add(scroll).width(560f).height(Math.min(420f, Gdx.graphics.getHeight() * 0.6f)).colspan(3).row();
+        t.add(scroll).width(560f).height(Math.min(420f, uiHeight() * 0.6f)).colspan(3).row();
         t.add(button("Back", shell::back)).colspan(3).padTop(10f).row();
         endFrame(t);
     }
@@ -269,7 +274,7 @@ class ShellMenus {
             form.add(new Label("Overwrite", skin, "dim")).left().top().padRight(8f);
             ScrollPane scroll = wheelScrolls(new ScrollPane(list, skin));
             scroll.setFadeScrollBars(false);
-            form.add(scroll).width(360f).height(Math.min(260f, Gdx.graphics.getHeight() * 0.4f)).row();
+            form.add(scroll).width(360f).height(Math.min(260f, uiHeight() * 0.4f)).row();
         }
         t.add(form).colspan(3).row();
         Table buttons = new Table();
@@ -343,6 +348,22 @@ class ShellMenus {
         });
         t.add(new Label("Window size", skin, "dim")).left();
         t.add(resolution).width(160f).left().colspan(2).row();
+        SelectBox<String> uiScale = new SelectBox<>(skin);
+        Array<String> scales = new Array<>();
+        for (float c : UiScale.CHOICES) scales.add(UiScale.label(c));
+        uiScale.setItems(scales);
+        uiScale.setSelected(UiScale.label(s.uiScale));
+        uiScale.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                s.uiScale = UiScale.CHOICES[uiScale.getSelectedIndex()];
+            }
+        });
+        // What auto picks here, and that a choice too big for the window is held to what fits
+        Label scaleNote = new Label("now " + UiScale.label(UiScale.effective(Gdx.graphics.getWidth(), Gdx.graphics.getHeight())), skin, "dim");
+        t.add(new Label("UI scale", skin, "dim")).left();
+        t.add(uiScale).width(160f).left();
+        t.add(scaleNote).left().row();
 
         t.add(new Label("Controls", skin, "title")).left().colspan(3).padTop(10f).row();
         CheckBox gamepad = new CheckBox(" Gamepad", skin);
@@ -381,7 +402,7 @@ class ShellMenus {
         }
         ScrollPane scroll = wheelScrolls(new ScrollPane(keys, skin));
         scroll.setFadeScrollBars(false);
-        t.add(scroll).width(520f).height(Math.min(240f, Gdx.graphics.getHeight() * 0.3f)).colspan(3).row();
+        t.add(scroll).width(520f).height(Math.min(240f, uiHeight() * 0.3f)).colspan(3).row();
 
         Table buttons = new Table();
         buttons.add(button("Reset keys", () -> {
@@ -502,6 +523,7 @@ class ShellMenus {
         c.fullscreen = s.fullscreen;
         c.windowWidth = s.windowWidth;
         c.windowHeight = s.windowHeight;
+        c.uiScale = s.uiScale;
         c.gamepad = s.gamepad;
         c.openingGuide = s.openingGuide;
         c.keys = new ObjectMap<>(s.keys);

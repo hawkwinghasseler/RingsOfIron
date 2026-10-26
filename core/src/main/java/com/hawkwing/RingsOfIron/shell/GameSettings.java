@@ -6,7 +6,7 @@ import com.badlogic.gdx.utils.JsonWriter;
 import com.badlogic.gdx.utils.ObjectMap;
 
 /**
- * The player's settings: volumes, HRTF, the window, the gamepad and the key bindings. One JSON file,
+ * The player's settings: volumes, HRTF, the window and UI scale, the gamepad and the key bindings. One JSON file,
  * {@link #FILE} in the saves folder, read by the launcher before the window opens and written when
  * the settings window applies.
  */
@@ -24,6 +24,8 @@ public class GameSettings {
     public boolean fullscreen;
     public int windowWidth = 1280;
     public int windowHeight = 800;
+    /** How large the HUD and menus are drawn, 1 to 3, or 0 for auto by the window's height (UiScale). */
+    public float uiScale = 0f;
     public boolean gamepad = true;
     /** New games open with a short walkthrough of the board, undocking and the map. */
     public boolean openingGuide = true;
@@ -44,7 +46,7 @@ public class GameSettings {
     public void save(FileHandle file) {
         Json json = new Json(JsonWriter.OutputType.json);
         json.setUsePrototypes(false);
-        file.writeString(json.prettyPrint(this), false, "UTF-8");
+        com.ringsofiron.coreengine.AtomicFiles.writeString(file, json.prettyPrint(this));
     }
 
     public KeyBindings bindings() {
@@ -68,6 +70,7 @@ public class GameSettings {
             windowWidth = 1280;
             windowHeight = 800;
         }
+        if (Float.isNaN(uiScale) || uiScale < 0f || uiScale > 3f) uiScale = 0f;
         if (keys == null) keys = new ObjectMap<>();
         return this;
     }

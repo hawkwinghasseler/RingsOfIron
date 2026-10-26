@@ -10,6 +10,7 @@ import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
+import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 
 import java.util.IdentityHashMap;
@@ -30,12 +31,12 @@ import java.util.Map;
  *       prisoners need bringing aboard to be treated. Deaths are {@link CrewCareer}'s.</li>
  * </ul>
  * The wounds themselves are kept on the crew, so nothing here is saved; battle stations are worked
- * out afresh each frame.
+ * out afresh each sim tick.
  */
 public final class CrewMedical {
     /** Seconds a ship stays at battle stations after the last shot it fired or took. */
     public static final double BATTLE_HOLD = 60;
-    /** A critical casualty's clock falling below this share of what it was a frame ago was cut by a new hit (one halves it). */
+    /** A critical casualty's clock falling below this share of what it was a tick ago was cut by a new hit (one halves it). */
     static final float CLOCK_CUT = 0.75f;
 
     private static final Family BOARDS = Family.all(ShipTaskBoardComponent.class).get();
@@ -70,6 +71,13 @@ public final class CrewMedical {
         world.boarding.taken.add((signal, ship) -> taken(ship));
         world.hints.register(HintRegistry.Context.ANY, "crew (wounded need a medic)", 4, Action.CREW)
                 .onlyWhen(this::criticalAboard);
+        // The engine hands a removed entity out again as a new one, which must not inherit its entries
+        world.engine.getEcsEngine().addEntityListener((EntityRemovalListener) e -> {
+            lastShot.remove(e);
+            seen.remove(e);
+            clocks.remove(e);
+            told.remove(e);
+        });
     }
 
     private static boolean beaten(Entity target) {
@@ -80,7 +88,7 @@ public final class CrewMedical {
         if (ship != null) lastShot.put(ship, world.engine.getSimSeconds());
     }
 
-    /** Once a frame. */
+    /** Once a sim tick ({@link GameWorld#tickManagers}). */
     public void update() {
         double now = world.engine.getSimSeconds();
         for (int i = 0; i < boards.size(); i++) {

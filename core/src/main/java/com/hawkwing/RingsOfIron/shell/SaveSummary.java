@@ -59,10 +59,10 @@ public class SaveSummary {
         return save.sibling(save.nameWithoutExtension() + META_SUFFIX);
     }
 
-    /** Writes this summary beside {@code save}. */
+    /** Writes this summary beside {@code save}, whole or not at all. */
     public void writeFor(FileHandle save) {
         Json json = new Json(JsonWriter.OutputType.json);
-        metaFor(save).writeString(json.prettyPrint(this), false, "UTF-8");
+        com.ringsofiron.coreengine.AtomicFiles.writeString(metaFor(save), json.prettyPrint(this));
     }
 
     /**

@@ -107,6 +107,31 @@ class EntityLifecycleTest {
         assertSame(replacement, game.getEntity("ship"), "the replacement is still registered");
     }
 
+    /**
+     * The engine hands a removed entity out again as the next new one, so a cache keyed by Entity
+     * must drop it on removal. A removal listener hears it while it still holds its components.
+     */
+    @Test
+    void aRemovedEntityComesBackAsTheNextNewOneAndRemovalListenersHearItFirst() {
+        GameEngine game = new GameEngine();
+        java.util.Map<Entity, String> cache = new java.util.IdentityHashMap<>();
+        String[] heardWith = new String[1];
+        game.getEcsEngine().addEntityListener((EntityRemovalListener) e -> {
+            UuidComponent id = e.getComponent(UuidComponent.class);
+            heardWith[0] = id == null ? null : id.id;
+            cache.remove(e);
+        });
+        Entity old = game.createEntityWithUuid();
+        game.addEntity(old);
+        cache.put(old, "old");
+        String oldId = old.getComponent(UuidComponent.class).id;
+        game.removeEntity(old);
+        assertEquals(oldId, heardWith[0], "heard before the pool reset it");
+        Entity next = game.createEntity();
+        assertSame(old, next, "the pool gives back the same object");
+        assertNull(cache.get(next), "the new entity does not inherit the old one's entry");
+    }
+
     @Test
     void clearEmptiesTheEngineAndTheRegistry() {
         GameEngine game = new GameEngine();

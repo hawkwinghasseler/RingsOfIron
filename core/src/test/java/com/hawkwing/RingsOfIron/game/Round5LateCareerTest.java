@@ -28,7 +28,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Round 5 part 5, the career past the gunship: the pirates' base fighting a raid off and falling,
  * world events straining the factions, Free Trader patrols where tension runs high, the tension
- * readout on the board, survivors carried home as people, the new operations, and the frigate's price.
+ * readout on the board, survivors carried home as people, and the new operations. The frigate's
+ * price is the playtest benchmark {@link MidCareerBalanceBenchmark}.
  */
 class Round5LateCareerTest {
     static final float FRAME = 1f / 60f;
@@ -464,19 +465,5 @@ class Round5LateCareerTest {
         List<String> out = new ArrayList<>();
         for (Contract c : board.offers(station)) if (c.type == Contract.Type.OPERATION) out.add(c.operationId);
         return out;
-    }
-
-    @Test
-    void theFrigateCostsALittleOverItsValueAsTheGunshipDoes() {
-        Shipyard.Listing frigate = null;
-        for (Shipyard.Listing l : world.shipyard.listings(world.engine.getEntity(game.shipyard))) {
-            if ("frigate_patrol".equals(l.shipId)) frigate = l;
-        }
-        assertNotNull(frigate);
-        Entity hull = game.content.factory.spawnShip("frigate_patrol", 0f, 0f, 0f);
-        double value = Difficulty.shipValue(hull);
-        world.engine.getEcsEngine().removeEntity(hull);
-        assertTrue(frigate.price > value && frigate.price < value * 1.05, frigate.price + " against " + value);
-        assertEquals(3, frigate.rank, "a Commander's ship");
     }
 }

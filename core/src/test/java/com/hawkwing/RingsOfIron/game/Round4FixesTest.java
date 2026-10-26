@@ -6,8 +6,6 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
-import com.ringsofiron.combatsys.defs.LoadoutDef;
-import com.ringsofiron.combatsys.modding.Loadouts;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
@@ -23,12 +21,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Round 4's balance pass (planning/round4-balance.md), each finding of the round 3 playtest checked
- * on the real new game: a prize paid ten bounties, the gunship was forty weeks of pay away, an ace
- * ran from the first hit, and seed 4 lost freighters day after day. {@link Round3CareerTest} plays
- * the whole career through on these numbers.
+ * Round 4's fixes that are rules, not balance (planning/round4-balance.md), checked on the real new
+ * game: an ace ran from the first hit, seed 4 lost freighters day after day, and the yard and the
+ * captain's death at the berth. Its balance targets (a prize against its bounty, the gunship in weeks
+ * of pay, the ace's chaingun) are the playtest benchmark {@link MidCareerBalanceBenchmark}.
  */
-class Round4BalanceTest {
+class Round4FixesTest {
     static final float FRAME = 1f / 60f;
 
     GameWorld world;
@@ -71,36 +69,6 @@ class Round4BalanceTest {
     }
 
     @Test
-    void aRaiderTakenAsAPrizePaysOneToTwoOfItsBounties() {
-        Contract bounty = null;
-        for (Contract c : world.contracts.offers(game.highport)) {
-            if (c.type == Contract.Type.BOUNTY && world.universe.uuidOf(game.raider).equals(c.targetUuid)) bounty = c;
-        }
-        assertNotNull(bounty);
-        double prize = Shipyard.prizeValue(game.raider);
-        assertTrue(prize >= bounty.reward && prize <= 2 * bounty.reward,
-                "prize " + prize + " against a bounty of " + bounty.reward);
-        // Stripping it first never pays more than taking it whole
-        assertTrue(Shipyard.STRIPPED_PRIZE_SHARE < Shipyard.PRIZE_SHARE);
-    }
-
-    @Test
-    void theGunshipIsAFewWeeksOfALieutenantCommandersPayAfterTheCorvettesTradeIn() {
-        assertTrue(world.docking.undock(game.player));
-        run(60);
-        assertTrue(game.dockAt(game.shipyard));
-        run(120);
-        Shipyard.Listing gunship = world.shipyard.listing("patrol_gunship");
-        assertNotNull(gunship);
-        double cost = world.shipyard.cost(gunship, game.player);
-        double pay = world.standing.ranks().get(2).budget;
-        double weeks = cost / pay;
-        // Round 3 had it at 207,587 net against 5,000 a week: about 40 weeks
-        assertTrue(weeks > 4 && weeks < 8, String.format("%.0f cr after the trade-in is %.1f weeks of %.0f", cost, weeks, pay));
-        assertTrue(gunship.price > 304_000, "still priced over the gunship's 304,000 value");
-    }
-
-    @Test
     void anAceFightsOnWhereAPlainPirateWouldRun() {
         HostileComponent plain = new HostileComponent("Pirate raider 1", HostileTraffic.RAIDER, HostileTraffic.PIRATES,
                 HostileComponent.Role.PIRATE, 18_000);
@@ -112,17 +80,6 @@ class Round4BalanceTest {
         assertTrue(HostileTraffic.breakOffHull(ace, false) > ShipDisablement.SURRENDER_HULL, "and still breaks off before it strikes");
         ace.partDropped = true;
         assertEquals(HostileTraffic.BREAK_OFF_HULL, HostileTraffic.breakOffHull(ace, false), 1e-9, "a beaten ace is a pirate again");
-    }
-
-    @Test
-    void anAcesChaingunHitsHarderThanTheGunItReplaces() {
-        LoadoutDef refit = Loadouts.pick(world.combatDefs, HostileTraffic.RAIDER, 1.0, true, new Random(1));
-        assertNotNull(refit);
-        assertEquals("raider_ace_chaingun", refit.id, "below difficulty 1.5 an ace raider is refitted with the chaingun");
-        var mk1 = world.combatDefs.projectiles.get(world.combatDefs.weapons.get("chaingun_mk1").projectile);
-        var mk2 = world.combatDefs.projectiles.get(world.combatDefs.weapons.get("chaingun_mk2").projectile);
-        double e1 = 0.5 * mk1.mass * mk1.muzzleSpeed * mk1.muzzleSpeed, e2 = 0.5 * mk2.mass * mk2.muzzleSpeed * mk2.muzzleSpeed;
-        assertTrue(e2 > 5 * e1, "the Mk2's rounds carry " + e2 / e1 + " times the Mk1's energy");
     }
 
     @Test

@@ -24,14 +24,14 @@ public final class BerthVenting {
 
     private final GameWorld world;
     /**
-     * Updates in a row a berth must vent before the station warns: just after a load or a latch
-     * the dock's opening counts as open to space for a few frames, until its link is rebuilt.
+     * Sim ticks in a row a berth must vent before the station warns: just after a load or a latch
+     * the dock's opening counts as open to space for a few ticks, until its link is rebuilt.
      */
-    static final int WARN_AFTER_FRAMES = 30;
+    static final int WARN_AFTER_TICKS = 30;
 
     /** Venting at a berth at the last update: warned once per spell. */
     private boolean warned;
-    private int ventingFrames;
+    private int ventingTicks;
 
     public BerthVenting(GameWorld world) {
         this.world = world;
@@ -59,16 +59,16 @@ public final class BerthVenting {
         return REFUSAL + ": order repairs at " + PlayerDocking.name(station) + "'s yard";
     }
 
-    /** Once a frame: the station's warning, once each time the ship starts venting at a berth. */
+    /** Once a sim tick: the station's warning, once each time the ship starts venting at a berth. */
     public void update() {
         bringShelteredHome();
         Entity station = station();
         if (station == null) {
             warned = false;
-            ventingFrames = 0;
+            ventingTicks = 0;
             return;
         }
-        if (warned || ++ventingFrames < WARN_AFTER_FRAMES) return;
+        if (warned || ++ventingTicks < WARN_AFTER_TICKS) return;
         warned = true;
         world.notices.post(PlayerDocking.name(station) + ": your ship is venting at the berth. "
                 + "Time warp waits until it is patched or repaired", NoticeLog.Kind.WARNING);

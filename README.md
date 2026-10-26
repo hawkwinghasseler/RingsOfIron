@@ -56,7 +56,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | Esc | Pause menu: resume, save to a named slot, load, settings, quit to the main menu |
 | ~ | Developer console: Groovy against the running world. Click to select a crew member, tile or ship (again to cycle what is under the cursor), then `kill()`, `heal()`, `wound 95`, `shoot 'railgun_mk1'` ...; Esc deselects. Every `.groovy` in `scripts/` runs by name. See `documentation/dev-console/Design.md` |
 
-Keys can be rebound in Settings, which also has the volumes, HRTF, the window and the gamepad. A gamepad flies and walks with the left stick and fires with A or the right trigger; the full mapping is in `documentation/ui-hud/Design.md`. Saves and `settings.json` are kept in `assets/saves/`.
+Keys can be rebound in Settings, which also has the volumes, HRTF, the window, the UI scale (auto follows the screen: 125% at 1440p, 200% at 4K) and the gamepad. A gamepad flies and walks with the left stick and fires with A or the right trigger; the full mapping is in `documentation/ui-hud/Design.md`. Saves and `settings.json` are kept in `assets/saves/`.
 
 Each demo lists its own controls on screen.
 
@@ -96,11 +96,14 @@ Each round's pull request names the save that shows its change, under "Try it in
 ./gradlew slowTest     # only the slow tests: whole careers, long autopilot and warp runs
 ./gradlew test -PallTests    # every test, slow ones included
 ./gradlew :core:test --tests '*CareerSeedsTest' -PcareerSeeds=2026,7,12   # the scripted career on each seed, twice
+./gradlew :core:playtestBenchmark   # the balance benchmarks, for a human tester (never part of the build)
 ```
 
 A test that takes more than a few seconds (a career played through, a replay played twice, a trip flown at every warp rate) is tagged `@Tag("slow")` so it stays out of `build` and `test`. CI runs `slowTest` in its own "Slow tests" job, so nothing goes untested.
 
 CI plays the scripted career on seeds 2026, 7 and 12, each twice, in its "Career seed" jobs: both runs must write the same journal, and the career must reach the gunship unless `CareerSeedsTest.STOPS` lists the seed as stopping at a known place.
+
+Balance targets (how long a fight lasts, what a prize pays, whether the career earns the gunship in play or wins the raid) are not checked by the build or CI, since they were tuned on the scripted career rather than on people. They are tagged `@Tag("playtest")` and run only with `./gradlew :core:playtestBenchmark` (or `tests/Balance benchmarks.bat`), which writes a table of each target against what the game gave to `core/build/playtest/`. `documentation/playtest/Balance benchmarks.md` has the checklist a tester works through when playing the same moments by hand.
 
 The art in `assets/art` is SVG. The `art-pipeline` module rasterizes it into a texture atlas when a run task needs it, so nothing generated is committed. See `documentation/art/Design.md`.
 

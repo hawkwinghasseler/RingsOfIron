@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.util.HashMap;
@@ -20,6 +21,8 @@ public final class SilencedMarkers {
 
     public SilencedMarkers(GameWorld world) {
         this.world = world;
+        // A battery gone from the engine comes back from its pool as a new entity, which would be skipped as greyed
+        world.engine.getEcsEngine().addEntityListener((EntityRemovalListener) greyed::remove);
     }
 
     /** Once a frame. */

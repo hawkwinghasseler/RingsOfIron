@@ -6,14 +6,15 @@ mkdir -p "$OUT"
 CMDS=$(mktemp)
 export DISPLAY=${DISPLAY:-:97}
 if ! xdpyinfo >/dev/null 2>&1; then
-  Xvfb "$DISPLAY" -screen 0 1920x1080x24 >/dev/null 2>&1 &
+  Xvfb "$DISPLAY" -screen 0 ${XVFB_SCREEN:-1920x1080}x24 >/dev/null 2>&1 &
   XVFB=$!
   sleep 2
 fi
 # A window left from the last run would be taken for this one's: wait for it to close
 for _ in $(seq 1 30); do xdotool search --name "^Rings of Iron$" >/dev/null 2>&1 || break; timeout 1 tail -0f /dev/null; done
 xdotool search --name "^Rings of Iron$" >/dev/null 2>&1 && { echo "another game's window is open on $DISPLAY: close it first"; exit 1; }
-./gradlew :lwjgl3:runPlaytest -Pcommands="$CMDS" -Psaves="${SAVES:-}" --console=plain -q > "$OUT/game.log" 2>&1 &
+# SIZE (2560x1440) and UI_SCALE (1.5, or 0 for auto) set the window and the UI scale
+./gradlew :lwjgl3:runPlaytest -Pcommands="$CMDS" -Psaves="${SAVES:-}" ${SIZE:+-PplaytestSize=$SIZE} ${UI_SCALE:+-PuiScale=$UI_SCALE} --console=plain -q > "$OUT/game.log" 2>&1 &
 GAME=$!
 
 pause() { timeout "$1" tail -0f /dev/null; }

@@ -21,6 +21,7 @@ import com.hawkwing.RingsOfIron.game.NewGame;
 import com.ringsofiron.audiospatial.AudioManager;
 import com.ringsofiron.audiospatial.backend.MixLevels;
 import com.ringsofiron.uihud.HudSkin;
+import com.ringsofiron.uihud.UiScale;
 import com.ringsofiron.uihud.UiHud;
 
 import java.nio.file.Path;
@@ -93,6 +94,9 @@ public class GameShell implements ApplicationListener {
         if (!"auto".equals(settings.hrtf) && System.getProperty("audio.hrtf") == null) {
             System.setProperty("audio.hrtf", settings.hrtf);
         }
+        // -Dui.scale (playtests) overrides the player's choice for the run
+        String scale = System.getProperty("ui.scale");
+        UiScale.setChosen(scale != null ? parseScale(scale, settings.uiScale) : settings.uiScale);
         bindings = settings.bindings();
         pad = new GamepadKeys();
         pad.setEnabled(settings.gamepad);
@@ -101,6 +105,7 @@ public class GameShell implements ApplicationListener {
         white = skin.getRegion("white");
         batch = new SpriteBatch();
         stage = new Stage(new ScreenViewport());
+        scaleStage(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         root = new Table();
         root.setFillParent(true);
         stage.addActor(root);
@@ -446,6 +451,25 @@ public class GameShell implements ApplicationListener {
         applyAudio();
         if (hrtfChanged && game != null) game.getWorld().audio.setHrtf(settings.hrtf);
         if (displayChanged) applyDisplay(settings);
+        if (UiScale.getChosen() != settings.uiScale) {
+            UiScale.setChosen(settings.uiScale);
+            resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        }
+    }
+
+    /** Sets the menus' UI units for this window, and draws the menus' text again when the scale changed. */
+    private void scaleStage(int width, int height) {
+        float scale = UiScale.effective(width, height);
+        ((ScreenViewport) stage.getViewport()).setUnitsPerPixel(1f / scale);
+        if (HudSkin.rescale(skin, scale) && root != null) root.invalidateHierarchy();
+    }
+
+    private static float parseScale(String text, float fallback) {
+        try {
+            return Float.parseFloat(text);
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
     }
 
     private void applyAudio() {
@@ -462,6 +486,7 @@ public class GameShell implements ApplicationListener {
 
     @Override
     public void resize(int width, int height) {
+        scaleStage(width, height);
         stage.getViewport().update(width, height, true);
         if (game != null) game.resize(width, height);
     }

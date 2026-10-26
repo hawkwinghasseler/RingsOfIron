@@ -40,7 +40,7 @@ import java.util.Set;
  * ship at a berth or in tow (seed 2026's boarding finished at Highport's berth and tore it loose).
  * Round 9: only hits within {@link #BREAK_OFF_RANGE} of the player count, so a boarding begins close in.
  */
-public class PirateBoarding implements SaveParticipant {
+public class PirateBoarding implements SaveParticipant, Resettable {
     /** Key of this state in the save's modules section. */
     public static final String SAVE_KEY = "pirate-boarding";
     /** A pirate with less of its hull than this leaves rather than board. */
@@ -102,7 +102,7 @@ public class PirateBoarding implements SaveParticipant {
     private double latched;
     /** True once it has come within {@link #LATCH_RANGE} and said so. */
     private boolean aboard;
-    /** Sim time {@link #board} last flew the boarder; NaN until the first frame after a load. */
+    /** Sim time {@link #board} last flew the boarder; NaN until the first tick after a load. */
     private double asked = Double.NaN;
     /** Hits the player's ship has put on the boarder in this boarding. */
     private int hits;
@@ -172,6 +172,7 @@ public class PirateBoarding implements SaveParticipant {
     }
 
     /** Forgets any boarding, for a load: a save without one has none. */
+    @Override
     public void reset() {
         asked = Double.NaN;
         boarder = null;
@@ -235,7 +236,7 @@ public class PirateBoarding implements SaveParticipant {
     }
 
     /**
-     * Once a frame: a boarding ends once {@link HostileTraffic} stops asking (the player is no longer
+     * Once a sim tick: a boarding ends once {@link HostileTraffic} stops asking (the player is no longer
      * beaten, or the pirate is beaten itself or gone from the bubble).
      */
     public void update() {

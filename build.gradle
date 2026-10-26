@@ -65,14 +65,31 @@ configure(subprojects) {
     classpath = sourceSets.test.runtimeClasspath
     shouldRunAfter 'test'
   }
+  // Tests tagged @Tag("playtest") are balance benchmarks: targets tuned on the scripted career, for
+  // a human tester to weigh against play by hand (documentation/playtest/). No build, test, slowTest
+  // or CI job runs them, not even with -PallTests. ./gradlew playtestBenchmark runs them, writing a
+  // table per benchmark to <module>/build/playtest/; one off target is reported, not a broken build.
+  def playtestBenchmark = tasks.register('playtestBenchmark', Test) {
+    group = 'verification'
+    description = 'Runs the balance benchmarks tagged playtest, for a human tester (documentation/playtest/).'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    ignoreFailures = true
+    // Every run measures afresh, even when nothing changed
+    outputs.upToDateWhen { false }
+  }
   // After the module's own test block, so its JUnit setup, properties and logging are in place
   afterEvaluate {
     def test = tasks.named('test').get()
     test.useJUnitPlatform {
       if (!project.hasProperty('allTests')) excludeTags 'slow'
+      excludeTags 'playtest'
     }
     slowTest.configure {
-      useJUnitPlatform { includeTags 'slow' }
+      useJUnitPlatform {
+        includeTags 'slow'
+        excludeTags 'playtest'
+      }
       systemProperties test.systemProperties
       jvmArgs test.jvmArgs
       environment test.environment
@@ -80,6 +97,17 @@ configure(subprojects) {
       testLogging.showStandardStreams = test.testLogging.showStandardStreams
       testLogging.quiet.events = test.testLogging.quiet.events
       testLogging.quiet.exceptionFormat = test.testLogging.quiet.exceptionFormat
+    }
+    playtestBenchmark.configure {
+      useJUnitPlatform { includeTags 'playtest' }
+      systemProperties test.systemProperties
+      jvmArgs test.jvmArgs
+      environment test.environment
+      maxHeapSize = test.maxHeapSize
+      // The tables print as each benchmark finishes
+      testLogging.showStandardStreams = true
+      testLogging.quiet.events 'failed'
+      testLogging.quiet.exceptionFormat 'full'
     }
   }
 }
