@@ -92,10 +92,10 @@ class BerthTest {
         // a few frames, until its link is rebuilt, and the station warned of venting that wasn't there
         grid.patchKits = 0;
         holeADeckPlate();
-        run(BerthVenting.WARN_AFTER_FRAMES / 2);
+        run(BerthVenting.WARN_AFTER_TICKS / 2);
         assertNotNull(world.berthVenting.station(), "venting");
         assertFalse(noticed("Highport: your ship is venting at the berth"), "not yet");
-        run(BerthVenting.WARN_AFTER_FRAMES);
+        run(BerthVenting.WARN_AFTER_TICKS);
         assertTrue(noticed("Highport: your ship is venting at the berth"), "once it lasts");
     }
 
