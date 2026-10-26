@@ -115,7 +115,7 @@ class PirateSaveGapsTest {
         HostileComponent h = hostiles.get(id);
         Entity ship = world.engine.getEntity(id);
         assertTrue(PirateAces.promote(world, ship, h, hostiles.all().values(), 1, true));
-        String rare = PirateAces.rareWeapon(ship);
+        String rare = PirateAces.bestWeapon(ship);
         assertNotNull(rare);
         String loadout = h.loadout;
 
@@ -124,7 +124,7 @@ class PirateSaveGapsTest {
         HostileComponent hb = loaded.macroSim.hostiles().get(id);
         assertTrue(hb.ace);
         assertEquals(loadout, hb.loadout, "the ace refit");
-        assertEquals(rare, PirateAces.rareWeapon(back), "still carrying its rare gun");
+        assertEquals(rare, PirateAces.bestWeapon(back), "still carrying its refit's guns");
         int crew = 0;
         for (Entity c : loaded.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
             if (c.getComponent(GridPositionComponent.class).ship != back) continue;

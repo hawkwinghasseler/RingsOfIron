@@ -224,6 +224,18 @@ public class PenetrationResolver {
                              Vector2 localRelVel, float budget, DamageType damageType, Fuse fuse, SpallDef spall,
                              float ricochetAngleDeg, float restitution, RandomXS128 rng, DamageReport report,
                              Result out) {
+        return resolveHit(grid, ship, localPoint, localNormal, localRelVel, budget, damageType, fuse, spall, 1f,
+                ricochetAngleDeg, restitution, rng, report, out);
+    }
+
+    /**
+     * {@link #resolveHit} for a round whose spall is scaled by {@code spallScale}, the
+     * {@link SpallDef#massScale} of its mass (1 throws all its def gives).
+     */
+    public Result resolveHit(ShipGridComponent grid, Entity ship, Vector2 localPoint, Vector2 localNormal,
+                             Vector2 localRelVel, float budget, DamageType damageType, Fuse fuse, SpallDef spall,
+                             float spallScale, float ricochetAngleDeg, float restitution, RandomXS128 rng,
+                             DamageReport report, Result out) {
         begin(grid, ship, rng, report);
         out.reset();
         out.startBudget = budget;
@@ -240,6 +252,7 @@ public class PenetrationResolver {
         ray.cause = HitCause.PENETRATOR;
         ray.fuse = fuse;
         ray.spall = spall;
+        ray.spallScale = spallScale;
         ray.fromOutside = true;
         ray.dirX = dirX;
         ray.dirY = dirY;
@@ -819,6 +832,8 @@ public class PenetrationResolver {
         HitCause cause;
         Fuse fuse;
         SpallDef spall;
+        /** {@link SpallDef#massScale} of the round. */
+        float spallScale = 1f;
         boolean fromOutside;
         float dirX, dirY;
         final Vector2 normal = new Vector2();
@@ -1002,17 +1017,18 @@ public class PenetrationResolver {
     private void penetratedHull(Ray ray, int x, int y) {
         ray.pastHull = true;
         SpallDef spall = ray.spall;
-        if (spall == null || spall.count <= 0 || spall.fraction <= 0f) return;
-        // Spall is driven by what the hull tile absorbed, paid for out of the round's budget.
-        float pool = Math.min(ray.budget, spall.fraction * lastAbsorbed);
+        if (spall == null || spall.count <= 0 || spall.fraction <= 0f || ray.spallScale <= 0f) return;
+        // Spall is a share of what the round still carries past the hull tile, less for a light round.
+        float pool = spall.fraction * ray.spallScale * ray.budget;
         if (pool <= 0f) return;
         ray.budget -= pool;
-        float each = pool / spall.count;
+        int count = Math.max(1, Math.round(spall.count * ray.spallScale));
+        float each = pool / count;
         float baseAngle = MathUtils.atan2(ray.dirY, ray.dirX);
         float half = spall.angleDeg * MathUtils.degreesToRadians;
         // Start from the tile the round is in, just past the point it entered.
         float sx = x + 0.5f, sy = y + 0.5f;
-        for (int i = 0; i < spall.count; i++) {
+        for (int i = 0; i < count; i++) {
             float a = baseAngle + (rng.nextFloat() * 2f - 1f) * half;
             queueSecondary(sx, sy, MathUtils.cos(a), MathUtils.sin(a), each, HitCause.SPALL);
         }

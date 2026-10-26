@@ -66,7 +66,7 @@ From round 4's balance pass (a prize paid ten bounties, the gunship was forty we
 | The gunship after the corvette's trade-in | 4 to 8 weeks of a Lieutenant Commander's pay |
 | The gunship's list price | over its 304,000 cr value |
 | An ace raider below difficulty 1.5 carries the chaingun Mk2 | yes |
-| The Mk2's round against the Mk1's | at least 5 times the energy |
+| The Mk2's aim spread and slew against the Mk1's (it fires the same round since Oct 2026) | at most 0.8 the spread, at least 1.25 the slew |
 | The frigate's list price against its value | 0 to 5% over |
 | A base with no railgun, against the frigate holding where the raid holds | takes at least 0.05 of hull |
 
@@ -74,7 +74,7 @@ Play the career from the start (or from **First ace fight**, then **Gunship**, *
 
 - [ ] Towing a prize home is worth the trouble against taking a bounty and leaving the wreck, without being the only sensible choice.
 - [ ] Saving for the gunship as a Lieutenant Commander takes a few weeks, and those weeks have things to do. Note the day you could afford it.
-- [ ] The ace's chaingun is frightening: its hits hurt the corvette in a way the plain raiders' do not.
+- [ ] The ace is frightening: its chaingun lands more of its rounds than a plain raider's, and its crew lead you better.
 - [ ] Buying the frigate as a Commander feels like a step up, priced about like the gunship was for its rank.
 - [ ] In the raid, the base's guns are a threat to the frigate even without a railgun: the hull drops, and you have to think about where you hold.
 - [ ] Note anything that felt off: money piling up with nothing to buy, a ship out of reach for too long, a fight that is a formality.

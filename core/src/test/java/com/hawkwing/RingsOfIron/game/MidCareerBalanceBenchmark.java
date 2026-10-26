@@ -89,16 +89,20 @@ class MidCareerBalanceBenchmark {
         report.finish();
     }
 
+    /**
+     * Since the speed rule (Oct 2026) a Mk2 fires its Mk1's round: an ace's chaingun is the better
+     * mount, holding tighter and slewing faster, not a heavier round.
+     */
     @Test
-    void anAcesChaingunHitsHarderThanTheGunItReplaces() {
+    void anAcesChaingunHoldsTighterThanTheGunItReplaces() {
         BalanceReport report = new BalanceReport("Ace chaingun");
         LoadoutDef refit = Loadouts.pick(world.combatDefs, HostileTraffic.RAIDER, 1.0, true, new Random(1));
         assertNotNull(refit);
         report.expect("Below difficulty 1.5 an ace raider is refitted with the chaingun", "raider_ace_chaingun".equals(refit.id), refit.id);
-        var mk1 = world.combatDefs.projectiles.get(world.combatDefs.weapons.get("chaingun_mk1").projectile);
-        var mk2 = world.combatDefs.projectiles.get(world.combatDefs.weapons.get("chaingun_mk2").projectile);
-        double e1 = 0.5 * mk1.mass * mk1.muzzleSpeed * mk1.muzzleSpeed, e2 = 0.5 * mk2.mass * mk2.muzzleSpeed * mk2.muzzleSpeed;
-        report.atLeast("Chaingun Mk2 round's energy in Mk1 rounds", e2 / e1, 5);
+        var mk1 = world.combatDefs.weapons.get("chaingun_mk1");
+        var mk2 = world.combatDefs.weapons.get("chaingun_mk2");
+        report.atMost("Chaingun Mk2's aim spread in the Mk1's", mk2.spreadRad / mk1.spreadRad, 0.8);
+        report.atLeast("Chaingun Mk2's slew in the Mk1's", mk2.slewRateDeg / mk1.slewRateDeg, 1.25);
         report.finish();
     }
 

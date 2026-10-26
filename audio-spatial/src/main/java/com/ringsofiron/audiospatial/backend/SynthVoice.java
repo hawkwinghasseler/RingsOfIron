@@ -12,7 +12,7 @@ import com.badlogic.gdx.math.MathUtils;
  */
 public class SynthVoice {
 
-    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, AUTOCANNON, LAUNCH, MISSILE, EXPLOSION, FOOTSTEP, VOICE, FLAK, ION, SHIELD, CHIME, WARNING, BEEP }
+    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, AUTOCANNON, LAUNCH, MISSILE, EXPLOSION, FOOTSTEP, VOICE, FLAK, ION, COILGUN, SHIELD, CHIME, WARNING, BEEP }
 
     final Patch patch;
     final boolean looping;
@@ -49,6 +49,7 @@ public class SynthVoice {
         // Weapon sounds first: their paths also contain "weapon"
         if (path.contains("autocannon")) return Patch.AUTOCANNON;
         if (path.contains("flak")) return Patch.FLAK;
+        if (path.contains("coilgun")) return Patch.COILGUN;
         // By folder: "ion" is in "explosion" too
         if (path.endsWith("weapons/ion") || path.endsWith("impacts/ion")) return Patch.ION;
         if (path.contains("shield")) return Patch.SHIELD;
@@ -261,6 +262,15 @@ public class SynthVoice {
                 float env = Math.min(1f, t * 300f) * (float) Math.exp(-t * 7f);
                 float spark = noise() > 0.6f ? noise() : 0f;
                 return env * (0.5f * buzz(phaseA, 6) + 0.45f * spark);
+            }
+            case COILGUN: {
+                // Four coils firing in turn, each a click a step higher, then the slug's whip crack
+                int stage = (int) (t / 0.018f);
+                float local = t - stage * 0.018f;
+                float click = stage < 4 ? sin(380f + 160f * stage, t) * (float) Math.exp(-local * 260f) : 0f;
+                float after = Math.max(0f, t - 0.072f);
+                float crack = t < 0.072f ? 0f : noise() * (float) Math.exp(-after * 45f);
+                return 0.55f * click + 0.7f * crack;
             }
             case SHIELD: {
                 // A glassy shimmer: two close high tones beating, fading fast

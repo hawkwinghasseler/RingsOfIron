@@ -23,6 +23,7 @@ import com.ringsofiron.combatsys.damage.Shields;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.defs.DamageType;
 import com.ringsofiron.combatsys.defs.ProjectileDef;
+import com.ringsofiron.combatsys.defs.SpallDef;
 import com.ringsofiron.combatsys.defs.WarheadDef;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.events.DamageReport;
@@ -338,7 +339,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         report.clear();
         report.ship = ship;
         resolver.resolveHit(grid, ship, localPoint, localNormal, localRel, budget, def.damageType, def.fuse,
-                def.spall, def.ricochetAngleDeg, def.ricochetRestitution, rng, report, result);
+                def.spall, SpallDef.massScale(hit.mass), def.ricochetAngleDeg, def.ricochetRestitution, rng, report, result);
 
         CombatPhysics.velocityAt(body, hit.worldPoint.x, hit.worldPoint.y, surfaceVel);
         HullHitEvent.Outcome outcome;

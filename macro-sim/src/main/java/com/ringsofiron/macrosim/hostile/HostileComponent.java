@@ -79,7 +79,7 @@ public class HostileComponent implements Component {
     public boolean grudge;
     /** Fights with the player it got away from. */
     public int escapes;
-    /** An ace's rare part has been left aboard it for whoever beat it. */
+    /** An ace's spare gun has been left aboard it for whoever beat it. */
     public boolean partDropped;
     /** It has fought the player in the bubble since it last came in: leaving the bubble whole, it got away. */
     public boolean foughtPlayer;

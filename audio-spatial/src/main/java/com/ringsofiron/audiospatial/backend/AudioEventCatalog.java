@@ -40,6 +40,8 @@ public class AudioEventCatalog {
     public static final String ION = "event:/weapons/ion";
     /** An ion bolt landing on a hull: a crackle, no clang. */
     public static final String ION_HIT = "event:/impacts/ion";
+    /** A coilgun's shot (key evt_coilgun_fire): its coils firing in turn, then the slug's crack. */
+    public static final String COILGUN = "event:/weapons/coilgun";
     /** A shield taking part of a hit. */
     public static final String SHIELD_HIT = "event:/impacts/shield";
 
@@ -67,6 +69,7 @@ public class AudioEventCatalog {
         c.register(SoundEventDef.oneShot(FLAK, 0.3f, 10f, 700f, 0.7f));
         c.register(SoundEventDef.oneShot(RAILGUN_HEAVY, 0.8f, 15f, 1200f, 1f));
         c.register(SoundEventDef.oneShot(ION, 0.5f, 10f, 600f, 0.65f));
+        c.register(SoundEventDef.oneShot(COILGUN, 0.35f, 10f, 800f, 0.75f));
         c.register(SoundEventDef.oneShot(ION_HIT, 0.6f, 10f, 800f, 0.7f));
         c.register(SoundEventDef.oneShot(SHIELD_HIT, 0.5f, 10f, 800f, 0.6f));
         c.register(SoundEventDef.oneShot(FOOTSTEP, 0.12f, 1f, 15f, 0.35f));
