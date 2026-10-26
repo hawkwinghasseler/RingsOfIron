@@ -142,19 +142,20 @@ min_difficulty = 3.0
 # to 0.07-0.21. To ease the raid, undo these in reverse: battery_darts' Mk2, battery_stock's Mk2,
 # BATTERY_SPACING, battery_heavy's min_difficulty.
 # Oct 2026 (speed against damage): a 40 mm cannon's slow rounds no longer land on a frigate holding
-# where the raid holds, 3 to 3.5 km off, so both guns of the fits without a railgun are coilguns now:
-# rounds twice as fast, half the damage a second (the stock platform's second gun is a Mk1 chaingun,
-# and on the nearer battery that is the gun facing the raid).
+# where the raid holds, 3 to 3.5 km off, so the second gun of the fits without a railgun is a coilgun
+# now: rounds twice as fast, half the damage a second. On the nearer battery the second gun is the one
+# facing the raid; the first keeps its stock Mk1 chaingun. (Coilguns on both ports won the frigate
+# 2 raids in 10 on the enemy survey.)
 [loadout.battery_stock]
 name = "Den battery"
 ship = "den_battery"
-weapons = ["coilgun_mk1", "coilgun_mk1"]
+weapons = ["", "coilgun_mk1"]
 weight = 3
 
 [loadout.battery_darts]
 name = "Dart battery"
 ship = "den_battery"
-weapons = ["coilgun_mk1", "coilgun_mk1", "dart_rack", "dart_rack"]
+weapons = ["", "coilgun_mk1", "dart_rack", "dart_rack"]
 weight = 1
 
 [loadout.battery_heavy]

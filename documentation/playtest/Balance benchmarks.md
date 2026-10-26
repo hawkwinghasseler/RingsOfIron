@@ -65,7 +65,7 @@ From round 4's balance pass (a prize paid ten bounties, the gunship was forty we
 | The first raider towed home as a prize | 1 to 2 of its bounties |
 | Stripping a prize first pays less than taking it whole | yes |
 | The gunship after the corvette's trade-in | 4 to 8 weeks of a Lieutenant Commander's pay |
-| The gunship's list price | over its 314,000 cr value (304,000 before its heavy railgun) |
+| The gunship's list price | over its 314,000 cr value (304,000 before its heavy cannon) |
 | An ace raider below difficulty 1.5 carries the chaingun Mk2 | yes |
 | The Mk2's aim spread and slew against the Mk1's (it fires the same round since Oct 2026) | at most 0.8 the spread, at least 1.25 the slew |
 | The frigate's list price against its value | 0 to 5% over |
@@ -121,6 +121,7 @@ Refit the corvette's nose at Highport with each gun in turn (or load a later sav
 - [ ] At range the railgun is the gun you want: its slugs land, and a cannon's rounds spray past.
 - [ ] Once a brawl closes in, you wish you had the cannon: the railgun's slow fire can't keep up.
 - [ ] The coilgun feels like the all-rounder it is meant to be, without being the obvious buy.
+- [ ] The gunship's and frigate's heavy cannons win a brawl with raiders and a base's platforms, but a raider standing off 4 km dodges their shells; swapping one for a heavy railgun feels like a real choice.
 - [ ] A Mk2 feels like a better mount for the same round: it gets onto a target faster and holds it tighter.
 - [ ] A heavy shell's hit shreds the room behind the hull; a railgun slug drills a neat line.
 - [ ] Note any weapon you never wanted to buy, or never wanted to sell.

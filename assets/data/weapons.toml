@@ -138,12 +138,12 @@ missile = "dart"
 max_range = 8000.0
 sound = "evt_missile_launch"
 
-# A gunship's or frigate's railgun, Medium: 3.5 kg at 5.5 km/s, 52 MJ every 4 s (13 MW). Each
+# Medium railgun: 3.5 kg at 5.5 km/s, 52 MJ every 4 s (13 MW). Each
 # slug carries four Small railguns' worth, enough to drill a heavy hull. It drinks power: 9 MJ a shot.
 [weapon.railgun_heavy]
 name = "Heavy Railgun"
-# 140,000 until Oct 2026. Since the speed rule the patrol gunship and frigate carry it, priced so their
-# values move as little as the rule lets them
+# 140,000 until Oct 2026: since the speed rule it does a quarter the heavy cannon's damage a second
+# and is priced as it
 price = 70000.0
 mount = "turret"
 min_mount_size = "M"
@@ -171,6 +171,23 @@ projectile = "ion_bolt"
 spread_rad = 0.001
 max_range = 3500.0
 sound = "evt_ion_fire"
+
+# Medium, the slow end: 12 kg at 1.5 km/s, 13.5 MJ every 0.4 s (34 MW; its budget allows 48, but at
+# that a frigate with two shrugged off the pirate base). Slow shells a raider
+# dodges from afar; up close nothing Medium does more. The patrol gunship and frigate carry it.
+[weapon.cannon_heavy]
+name = "Heavy Cannon"
+price = 70000.0
+mount = "turret"
+min_mount_size = "M"
+slew_rate_deg = 45
+firing_arc_deg = 270
+cooldown = 0.4
+power_draw = 1.2e5
+projectile = "cannon_shell_heavy"
+spread_rad = 0.0015
+max_range = 3500.0
+sound = "evt_cannon_heavy_fire"
 
 # Better mounts for the same rounds: an ace's refits, and a yard's dearest Small guns.
 [weapon.railgun_mk2]
@@ -247,6 +264,18 @@ ricochet_restitution = 0.6
 spall = { count = 10, angle_deg = 30, fraction = 0.35 }
 max_lifetime = 30.0
 
+# The heavy cannon's shell
+[projectile.cannon_shell_heavy]
+art = "autocannon_round"
+mass = 12.0
+muzzle_speed = 1500.0
+damage_type = "kinetic"
+penetration_factor = 0.85
+ricochet_angle_deg = 65
+ricochet_restitution = 0.4
+spall = { count = 6, angle_deg = 30, fraction = 0.5 }
+max_lifetime = 15.0
+
 [projectile.coil_slug_2kg]
 art = "coil_slug"
 mass = 2.0
@@ -321,3 +350,4 @@ fragment_speed = 2000.0
 fragment_cone_deg = 60
 blast_radius_tiles = 2
 blast_damage = 1.5e5
+

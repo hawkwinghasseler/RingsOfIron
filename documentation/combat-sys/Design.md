@@ -421,8 +421,11 @@ Every weapon has a size, its `min_mount_size` (S, M, L or XL), the smallest turr
 | Autocannon Mk1 (PD) | S | 0.45 kg at 2 km/s, 0.9 MJ | 0.1 s | 9 MW | 0.4 kg at 1.5 km/s (4.5 MW) |
 | Railgun Mk1, Mk2 | S | 0.67 kg at 6 km/s, 12 MJ | 4 s | 3 MW | 20 kg, every 1.5 s (Mk1) and 1 s (Mk2): 240 and 360 MW |
 | Heavy railgun | M | 3.45 kg at 5.5 km/s, 52 MJ | 4 s | 13 MW | 60 kg every 3 s (302 MW) |
+| Heavy cannon (new) | M | 12 kg at 1.5 km/s, 13.5 MJ | 0.4 s | 34 MW | |
 
 Damage is not linear in energy: a round that cannot get through a tile's armor only wears it (`ARMOR_WEAR`), so each gun's shot has to be heavy enough to punch the hulls it is for. The chaingun's first restatement, 1.6 kg rounds every 0.15 s, only scuffed a raider's medium hull and lost a brawl to the coilgun; 3.7 kg shells at the same 12 MW punch it. `WeaponDuelBenchmark` checks the order that comes out: from 4 km the railgun beats the First Play raider soonest and the chaingun never does, from 1.5 km the other way round, the coilgun between both times.
+
+The patrol gunship and frigate carried railguns, which had been the best gun at any range. Under the rule a heavy railgun does 13 MW, so on the enemy survey a frigate with two (or one and a heavy cannon) lost most raids on the pirate base, whose raiders and platforms brawl. Both carry heavy cannons now: the frigate wins 7 base raids in 10 (6 before the rule) and the gunship 9 (7). The heavy cannon runs at 34 MW, under the 48 its budget allows, because at 48 the frigate won every raid with hull to spare.
 
 A Mk2 keeps its Mk1's round and budget and is the better mount: it slews faster, holds tighter and draws less power. There are no rare weapons any more: every weapon with a price is sold at yards. A beaten ace leaves a spare of its most valuable gun crated in its hold (`PirateAces.dropPart`).
 

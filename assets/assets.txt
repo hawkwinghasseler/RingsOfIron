@@ -683,6 +683,7 @@ art/tiles/floor.svg
 art/tiles/pipe_arm.svg
 art/tiles/pipe_hub.svg
 art/turrets/autocannon_mk1.svg
+art/turrets/cannon_heavy.svg
 art/turrets/chaingun_mk1.svg
 art/turrets/chaingun_mk2.svg
 art/turrets/coilgun_mk1.svg

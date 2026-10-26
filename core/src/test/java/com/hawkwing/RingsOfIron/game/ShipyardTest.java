@@ -129,7 +129,7 @@ class ShipyardTest {
         assertEquals(5, yard.ships.size);
         assertEquals("Gunship", yard.ships.get(1).name);
         assertEquals("Terran Patrol Authority", yard.ships.get(1).seller);
-        assertTrue(yard.ships.get(1).terms.startsWith("310,000 cr, "), yard.ships.get(1).terms);
+        assertTrue(yard.ships.get(1).terms.startsWith("320,000 cr, "), yard.ships.get(1).terms);
         assertEquals("Needs rank Lieutenant Commander", yard.ships.get(1).locked);
         assertEquals("", yard.prize, "no prize in tow");
         // Undocked, there is nothing to show
