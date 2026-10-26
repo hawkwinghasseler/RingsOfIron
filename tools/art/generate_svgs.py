@@ -1966,6 +1966,10 @@ LETTERS = {"R": "reactor", "S": "shield_emitter", "T": "turret_mount", "L": "lif
 KIND = {"reactor": "P", "shield_emitter": "P", "turret_mount": "P", "life_support": "A", "helm": "A",
         "weapons": "A", "cargo": "A", "airlock": "A", "docking_port": "D", "engine": "A", "tank": "A",
         "oxygen_tank": "A", "nitrogen_tank": "A", "escape_pod": "A"}
+# The systems that reach the outside of the hull and so show on its roof; the rest are inside the
+# decks, under plating like any other room
+EXTERIOR = {"turret_mount", "shield_emitter", "airlock", "escape_pod", "docking_port", "engine"}
+CLEAR = 0.1 * T  # how far the superstructure keeps from an exterior system's footprint
 WALL_CHARS = set("#123")
 
 
@@ -2028,13 +2032,17 @@ def engine_cells(ch):
     return cells
 
 
-def hull_svg(ch, overhang=None, engines=False):
-    """Exterior art for a chassis: plating on every tile of the grid (tile edges as panel
-    lines), the wall ring as armor, each system's exterior fitting over its footprint,
-    and, for ships with no engine systems, engine mounts on the aft (-x) edge."""
+def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
+    """Exterior art for a chassis: the roof over its decks, seen from above. Plating in staggered
+    courses over the whole footprint (the grid's tiles and any outline past it), not the tile
+    grid; a rim along the edge; the raised superstructure the ship has (SUPERSTRUCTURE, else a
+    spine down its middle); small fittings (vents, boxes, hatches, conduit runs) where no exterior
+    system is; the fitting of each system that reaches outside (EXTERIOR) over its footprint; and, for ships with no engine
+    systems, engine mounts on the aft (-x) edge. `overhang` and `superstructure` are in SVG units."""
     rows = ch["rows"]
     H, W = len(rows), max(len(r) for r in rows)
     ox, oy = ch["origin_x"], ch["origin_y"]
+    rng = random.Random(name)
 
     def cell(col, row):
         """SVG top-left of a map cell (body frame x64, y flipped)."""
@@ -2056,10 +2064,47 @@ def hull_svg(ch, overhang=None, engines=False):
         wedges[(p["x"], H - 1 - p["y"])] = keep
     x0, y0 = cell(0, 0)
     gw, gh = W * T, H * T
+    mounts = [m for m in chassis_mounts(ch) if m[0] in EXTERIOR]
+
+    # The footprint, as one path of the tiles (a shaped hull can run to a thousand tiles: one path
+    # stays within the art packer's element limit, and has no seams between tiles) and the outline
+    shape = []
+    for (c, r) in sorted(solid):
+        x, y = cell(c, r)
+        if (c, r) in wedges:
+            corners = [(x, y), (x + T, y), (x + T, y + T), (x, y + T)]
+            shape.append("M" + "L".join(f"{f(px)} {f(py)}" for px, py in (corners[k] for k in wedges[(c, r)])) + "Z")
+        else:
+            shape.append(f"M{f(x)} {f(y)}h{f(T)}v{f(T)}h{f(-T)}z")
+    shape = "".join(shape)
+    outline = " ".join(f"{f(x)},{f(y)}" for x, y in overhang) if overhang else None
+    # The footprint's outer edges, leaving out those inside the outline past the grid: each tile
+    # side with no tile beyond it, and each wedge's sloped face
+    edges = []
+    for (c, r) in solid:
+        x, y = cell(c, r)
+        if (c, r) in wedges:
+            corners = [(x, y), (x + T, y), (x + T, y + T), (x, y + T)]
+            (ax, ay), (bx, by) = (corners[k] for k in wedges[(c, r)][1:])
+            edges.append((ax, ay, bx, by))
+            continue
+        for (n, e) in (((c, r - 1), (x, y, x + T, y)), ((c, r + 1), (x, y + T, x + T, y + T)),
+                       ((c - 1, r), (x, y, x, y + T)), ((c + 1, r), (x + T, y, x + T, y + T))):
+            if n not in solid:
+                edges.append(e)
     if overhang:
-        a.b += poly(overhang, STEEL, stroke=INK, sw=3)
-        a.b += poly(overhang, "#000000", extra=' opacity="0.12"')
-    if engines and not any(m[0] == "engine" for m in chassis_mounts(ch)):
+        edges = [e for e in edges if not inside(overhang, (e[0] + e[2]) / 2, (e[1] + e[3]) / 2)]
+    rim = "".join(f"M{f(x1)} {f(y1)}L{f(x2)} {f(y2)}" for x1, y1, x2, y2 in edges)
+    cid = f"{name}_roof"
+    a.defs += (f'<clipPath id="{cid}">' + (f'<polygon points="{outline}"/>' if outline else "")
+               + f'<path d="{shape}"/></clipPath>'
+               # light from the top-left over the whole roof
+               f'<linearGradient id="{name}_sheen" x1="0" y1="0" x2="1" y2="1">'
+               '<stop offset="0" stop-color="#ffffff" stop-opacity="0.12"/>'
+               '<stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>'
+               '<stop offset="1" stop-color="#000000" stop-opacity="0.22"/></linearGradient>')
+
+    if engines and not any(m[0] == "engine" for m in mounts):
         # engine mounts: a bracket and socket on the aft edge for every third row, centered
         for k in range(H // 3):
             r = k * 3 + (H % 3) / 2 + 1.5
@@ -2069,129 +2114,156 @@ def hull_svg(ch, overhang=None, engines=False):
             a.b += circle(x0 - T * 0.25, cy, T * 0.28, "#14181e", stroke=INK, sw=1.5)
             for dy in (-0.62, 0.62):
                 a.b += circle(x0 - T * 0.25, cy + dy * T, 3, STEEL_HI, stroke=INK, sw=1)
-    panels = []
-    for (c, r) in solid:
-        x, y = cell(c, r)
-        wall = rows[r][c] in WALL_CHARS or rows[r][c] == "I"
-        if (c, r) in wedges:
-            corners = [(x, y), (x + T, y), (x + T, y + T), (x, y + T)]
-            pts = [corners[k] for k in wedges[(c, r)]]
-            a.b += poly(pts, STEEL_MID)
-            a.b += poly(pts, "none", stroke=STEEL_DARK, sw=1, extra=' opacity="0.7"')
-            # the sloped face is the outline here
-            (ax, ay), (bx, by) = pts[1], pts[2]
-            a.b += line(ax, ay, bx, by, INK, sw=3)
-            continue
-        a.b += rect(x, y, T, T, STEEL_MID if wall and rows[r][c] != "I" else STEEL)
-        if rectangular:
-            a.b += rect(x + 0.5, y + 0.5, T - 1, T - 1, "none", stroke=STEEL_DARK, sw=1, extra=' opacity="0.7"')
-        else:
-            # a shaped hull can run to a thousand tiles: its panel lines go in one path, to stay
-            # within the art packer's element limit
-            panels.append(f"M{f(x + 0.5)} {f(y + 0.5)}h{f(T - 1)}v{f(T - 1)}h{f(1 - T)}z")
-    if panels:
-        a.b += f'    <path d="{"".join(panels)}" fill="none" stroke="{STEEL_DARK}" stroke-width="1" opacity="0.7"/>\n'
-    # outline around the grid's footprint
-    edges = []
-    for (c, r) in solid:
-        x, y = cell(c, r)
-        if (c, r) in wedges:
-            continue
-        if (c, r - 1) not in solid:
-            edges.append((x, y, x + T, y))
-        if (c, r + 1) not in solid:
-            edges.append((x, y + T, x + T, y + T))
-        if (c - 1, r) not in solid:
-            edges.append((x, y, x, y + T))
-        if (c + 1, r) not in solid:
-            edges.append((x + T, y, x + T, y + T))
-    if rectangular:
-        for e in edges:
-            a.b += line(*e, INK, sw=3)
-    elif edges:
-        d = "".join(f"M{f(x1)} {f(y1)}L{f(x2)} {f(y2)}" for x1, y1, x2, y2 in edges)
-        a.b += f'    <path d="{d}" fill="none" stroke="{INK}" stroke-width="3" stroke-linecap="round"/>\n'
-    # a highlight along the top and a shade along the bottom of the footprint
-    if rectangular:
-        a.b += rect(x0, y0, gw, T * 0.12, "#ffffff", extra=' opacity="0.1"')
-        a.b += rect(x0, y0 + gh - T * 0.12, gw, T * 0.12, "#000000", extra=' opacity="0.2"')
-    else:
-        lit, shaded = [], []
-        for (c, r) in solid:
-            if (c, r) in wedges:
-                continue
-            x, y = cell(c, r)
-            if (c, r - 1) not in solid:
-                lit.append(f"M{f(x)} {f(y)}h{f(T)}v{f(T * 0.12)}h{f(-T)}z")
-            if (c, r + 1) not in solid:
-                shaded.append(f"M{f(x)} {f(y + T - T * 0.12)}h{f(T)}v{f(T * 0.12)}h{f(-T)}z")
-        if lit:
-            a.b += f'    <path d="{"".join(lit)}" fill="#ffffff" opacity="0.1"/>\n'
-        if shaded:
-            a.b += f'    <path d="{"".join(shaded)}" fill="#000000" opacity="0.2"/>\n'
 
-    for (name, col, row, w, h) in chassis_mounts(ch):
+    # The outline: the footprint stroked, then filled over, so only the outer half of the stroke
+    # shows, along the true edge and not where the grid meets the outline past it
+    if outline:
+        a.b += f'    <polygon points="{outline}" fill="none" stroke="{INK}" stroke-width="6" stroke-linejoin="round"/>\n'
+    if rim:
+        a.b += f'    <path d="{rim}" fill="none" stroke="{INK}" stroke-width="6" stroke-linecap="square"/>\n'
+    if outline:
+        a.b += f'    <polygon points="{outline}" fill="{STEEL}"/>\n'
+    a.b += f'    <path d="{shape}" fill="{STEEL}"/>\n'
+
+    pts = [(x, y) for x, y in (overhang or [])]
+    for (c, r) in solid:
+        x, y = cell(c, r)
+        pts += [(x, y), (x + T, y + T)]
+    bx0, by0 = min(p[0] for p in pts), min(p[1] for p in pts)
+    bx1, by1 = max(p[0] for p in pts), max(p[1] for p in pts)
+
+    roof = ""
+    # Plating: courses of plates a meter and a quarter wide, staggered, each a shade lighter or
+    # darker than the next; seams in one path, a lit edge along the top of each plate in another
+    course = T * 1.25
+    tones = {"#56606e": [], "#616c7b": [], "#525c69": [], "#5e6977": []}
+    seams, lips = [], []
+    y = by0 - rng.uniform(0, course)
+    while y < by1:
+        x = bx0 - rng.uniform(0, 2 * T)
+        while x < bx1:
+            length = T * rng.choice((1.5, 2, 2, 2.5, 3, 3.5))
+            if rng.random() < 0.6:
+                tones[rng.choice(list(tones))].append(f"M{f(x)} {f(y)}h{f(length)}v{f(course)}h{f(-length)}z")
+            seams.append(f"M{f(x)} {f(y)}v{f(course)}")
+            lips.append(f"M{f(x + 2)} {f(y + 2)}h{f(length - 4)}")
+            x += length
+        seams.append(f"M{f(bx0 - 2 * T)} {f(y)}H{f(bx1 + T)}")
+        y += course
+    for tone, d in tones.items():
+        if d:
+            roof += f'    <path d="{"".join(d)}" fill="{tone}"/>\n'
+    roof += f'    <path d="{"".join(seams)}" fill="none" stroke="{STEEL_DARK}" stroke-width="2"/>\n'
+    roof += f'    <path d="{"".join(lips)}" fill="none" stroke="{STEEL_HI}" stroke-width="1.5" opacity="0.35"/>\n'
+    # A rim of heavier plate along the edge
+    if outline:
+        roof += f'    <polygon points="{outline}" fill="none" stroke="{STEEL_DARK}" stroke-width="16" stroke-linejoin="round"/>\n'
+    if rim:
+        roof += f'    <path d="{rim}" fill="none" stroke="{STEEL_DARK}" stroke-width="16" stroke-linecap="square"/>\n'
+    if outline:
+        roof += (f'    <polygon points="{outline}" fill="none" stroke="{STEEL_HI}" stroke-width="20" '
+                 f'stroke-linejoin="round" opacity="0.18" stroke-dasharray="3 9"/>\n')
+
+    # Small fittings on bare roof: tiles no system's footprint covers, not at the edge, not near a port
+    taken = set()
+    for (m, col, row, w, h) in mounts:
+        grow = 1 if m == "docking_port" else 0
+        taken |= {(col + i, row + j) for i in range(-grow, w + grow) for j in range(-grow, h + grow)}
+    bare = sorted((c, r) for (c, r) in solid if (c, r) not in taken and (c, r) not in wedges
+                  and all(n in solid for n in ((c - 1, r), (c + 1, r), (c, r - 1), (c, r + 1))))
+    boxes, slots, hatches, runs = [], [], [], []
+    for (c, r) in bare:
+        if rng.random() > 0.16:
+            continue
+        x, y = cell(c, r)
+        kind = rng.choice(("vent", "box", "box", "hatch", "run"))
+        if kind == "vent":
+            w_, h_ = T * rng.choice((0.5, 0.65)), T * 0.28
+            vx, vy = x + rng.uniform(6, T - 6 - w_), y + rng.uniform(6, T - 6 - h_)
+            boxes.append(f"M{f(vx)} {f(vy)}h{f(w_)}v{f(h_)}h{f(-w_)}z")
+            for k in range(3):
+                slots.append(f"M{f(vx + 4)} {f(vy + 3 + k * (h_ - 6) / 2)}h{f(w_ - 8)}")
+        elif kind == "box":
+            w_, h_ = T * rng.uniform(0.3, 0.6), T * rng.uniform(0.25, 0.45)
+            vx, vy = x + rng.uniform(6, T - 6 - w_), y + rng.uniform(6, T - 6 - h_)
+            boxes.append(f"M{f(vx)} {f(vy)}h{f(w_)}v{f(h_)}h{f(-w_)}z")
+        elif kind == "hatch":
+            rr = T * 0.18
+            cx_, cy_ = x + T / 2, y + T / 2
+            hatches.append(f"M{f(cx_ - rr)} {f(cy_)}a{f(rr)} {f(rr)} 0 1 0 {f(2 * rr)} 0a{f(rr)} {f(rr)} 0 1 0 {f(-2 * rr)} 0z")
+        else:
+            n = 1
+            while (c + n, r) in bare and n < 3:
+                n += 1
+            ry = y + T * rng.choice((0.3, 0.5, 0.7))
+            runs.append(f"M{f(x + 8)} {f(ry)}h{f(n * T - 16)}")
+    if runs:
+        roof += f'    <path d="{"".join(runs)}" fill="none" stroke="{INK}" stroke-width="7" stroke-linecap="round"/>\n'
+        roof += f'    <path d="{"".join(runs)}" fill="none" stroke="{STEEL_MID}" stroke-width="4" stroke-linecap="round"/>\n'
+    if boxes:
+        roof += f'    <path d="{"".join(boxes)}" fill="{HOUSING_HI}" stroke="{INK}" stroke-width="1.5"/>\n'
+    if slots:
+        roof += f'    <path d="{"".join(slots)}" fill="none" stroke="{INK}" stroke-width="1.5"/>\n'
+    if hatches:
+        roof += f'    <path d="{"".join(hatches)}" fill="{STEEL_DARK}" stroke="{INK}" stroke-width="1.5"/>\n'
+
+    # The superstructure: raised blocks on the roof (their shadows are the lighting's, not the art's)
+    # what the superstructure keeps clear of: every exterior system's footprint, a little apart
+    keepout = []
+    for (m, col, row, w, h) in mounts:
+        if m != "engine":
+            x, y = cell(col, row)
+            keepout.append((x - CLEAR, y - CLEAR, x + w * T + CLEAR, y + h * T + CLEAR))
+    if superstructure is None and not ch.get("station"):
+        superstructure = spine(solid, wedges, cell, keepout)
+    for k, shape_ in enumerate(superstructure or []):
+        if overlaps(shape_, keepout):
+            raise ValueError(f"{name}: superstructure shape {k} covers an exterior system")
+    for shape_ in superstructure or []:
+        if shape_[0] == "circle":
+            _, cx_, cy_, rr = shape_
+            roof += circle(cx_, cy_, rr, "#66717f", stroke=INK, sw=2.5)
+            roof += circle(cx_, cy_, rr * 0.72, "none", stroke=STEEL_DARK, sw=2)
+            roof += circle(cx_, cy_, rr, f"url(#{name}_sheen)")
+        else:
+            pts_ = shape_[1]
+            p = " ".join(f"{f(x)},{f(y)}" for x, y in pts_)
+            roof += f'    <polygon points="{p}" fill="#66717f" stroke="{INK}" stroke-width="2.5" stroke-linejoin="round"/>\n'
+            roof += f'    <polygon points="{p}" fill="none" stroke="{STEEL_HI}" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>\n'
+            roof += f'    <polygon points="{p}" fill="url(#{name}_sheen)"/>\n'
+    roof += f'    <rect x="{f(bx0)}" y="{f(by0)}" width="{f(bx1 - bx0)}" height="{f(by1 - by0)}" fill="url(#{name}_sheen)"/>\n'
+    a.b += f'    <g clip-path="url(#{cid})">\n{roof}    </g>\n'
+
+    for (m, col, row, w, h) in mounts:
         x, y = cell(col, row)
         pw, ph = w * T, h * T
         cx, cy = x + pw / 2, y + ph / 2
-        if name == "turret_mount":
-            r = min(pw, ph) * 0.46
+        s = min(pw, ph)
+        if m == "turret_mount":
+            # the barbette the turret turns on
+            r = s * 0.46
             a.b += circle(cx, cy, r, STEEL_DARK, stroke=INK, sw=2)
             a.b += circle(cx, cy, r * 0.8, "none", stroke=STEEL_HI, sw=1.5, extra=' stroke-dasharray="4 4"')
             a.b += circle(cx, cy, r * 0.3, INK)
-        elif name == "reactor":
-            a.b += rect(x + 6, y + 6, pw - 12, ph - 12, "#3f4855", rx=4, stroke=INK, sw=2)
-            k = x + 12
-            while k < x + pw - 10:
-                a.b += line(k, y + 10, k, y + ph - 10, "#6d7a8a", sw=2)
-                k += 7
-            light(a, x + pw - 12, y + 12, 3, ACCENT["reactor"])
-        elif name == "shield_emitter":
-            a.b += circle(cx, cy, min(pw, ph) * 0.4, "#2f5664", stroke=INK, sw=2)
-            a.e += circle(cx, cy, min(pw, ph) * 0.25, ACCENT["shield_emitter"], extra=' opacity="0.6"')
-        elif name == "life_support":
-            a.b += rect(x + 8, y + 8, pw - 16, ph - 16, HOUSING, rx=4, stroke=INK, sw=2)
-            for k in range(int((ph - 24) // 8)):
-                a.b += line(x + 14, y + 16 + k * 8, x + pw - 14, y + 16 + k * 8, STEEL_MID, sw=3)
-        elif name == "helm":
-            a.b += rect(x + 6, y + 6, pw - 12, ph - 12, GLASS, rx=10, stroke=INK, sw=2)
-            a.e += rect(x + 12, y + 12, (pw - 24) * 0.35, ph - 24, ACCENT["helm"], rx=6, extra=' opacity="0.45"')
-        elif name == "weapons":
-            a.b += circle(cx, cy, min(pw, ph) * 0.32, STEEL, stroke=INK, sw=2)
-            a.b += line(cx, cy, cx + min(pw, ph) * 0.3, cy - min(pw, ph) * 0.3, INK, sw=2)
-            light(a, cx, cy, 3, ACCENT["weapons"])
-        elif name == "cargo":
-            a.b += rect(x + 5, y + 5, pw - 10, ph - 10, "#55606e", rx=5, stroke=INK, sw=2)
-            a.b += bevel(x + 6, y + 6, pw - 12, ph - 12, STEEL_HI, INK)
-            long_ = pw >= ph
-            for k in range(1, max(w, h)):
-                if long_:
-                    a.b += line(x + k * T, y + 8, x + k * T, y + ph - 8, INK, sw=1.5)
-                else:
-                    a.b += line(x + 8, y + k * T, x + pw - 8, y + k * T, INK, sw=1.5)
-            a.b += rect(x + 10, y + 10, pw - 20, ph - 20, "none", stroke=HAZARD, sw=2.5,
-                        extra=' stroke-dasharray="10 8" opacity="0.7"')
-        elif name in FLUIDS:
-            # a filler cap and the fluid's band, where tankers connect
-            a.b += rect(x + 8, y + 8, pw - 16, ph - 16, STEEL_DARK, rx=min(pw, ph) / 2 - 8, stroke=INK, sw=2)
-            a.b += circle(cx, cy, min(pw, ph) * 0.22, HOUSING_HI, stroke=INK, sw=2)
-            a.b += circle(cx, cy, min(pw, ph) * 0.12, FLUIDS[name][1], stroke=INK, sw=1)
-        elif name == "engine":
+        elif m == "shield_emitter":
+            a.b += circle(cx, cy, s * 0.4, "#2f5664", stroke=INK, sw=2)
+            a.e += circle(cx, cy, s * 0.25, ACCENT["shield_emitter"], extra=' opacity="0.6"')
+        elif m == "engine":
             pass  # outside the hull: the game draws the engine itself (engines/nacelle_<size>)
-        elif name == "airlock":
+        elif m == "airlock":
             a.b += rect(x + 6, y + 6, pw - 12, ph - 12, STEEL_DARK, rx=6, stroke=INK, sw=2)
             a.b += hazard_band(x + 10, y + 10, pw - 20, 8, f"ext_al_{col}_{row}")
             light(a, cx, cy, 4, HAZARD)
-        elif name == "escape_pod":
+        elif m == "escape_pod":
             # the pod's hull hatch: a round cover ringed in its band color, with explosive bolts
-            r = min(pw, ph) * 0.4
+            r = s * 0.4
             a.b += circle(cx, cy, r, STEEL_DARK, stroke=INK, sw=2)
             a.b += circle(cx, cy, r * 0.78, "none", stroke=ACCENT["escape_pod"], sw=4)
             a.b += circle(cx, cy, r * 0.45, HOUSING, stroke=INK, sw=1.5)
             for k in range(6):
                 ang = k * math.pi / 3
                 a.b += circle(cx + math.cos(ang) * r * 0.92, cy + math.sin(ang) * r * 0.92, 2, HAZARD, stroke=INK, sw=0.8)
-        elif name == "docking_port":
+        elif m == "docking_port":
             a.b += rect(x, y, pw, ph, STEEL_DARK, rx=3, stroke=INK, sw=2)
             a.b += rect(x + 10, y + 10, pw - 20, ph - 20, "none", stroke=HAZARD, sw=4,
                         extra=' stroke-dasharray="12 8"')
@@ -2233,17 +2305,134 @@ def hull_svg(ch, overhang=None, engines=False):
     return a, (x0, y0, gw, gh)
 
 
-# Each ship's hull outline in body meters, by chassis, drawn under the grid. One that reaches
-# past the grid also becomes the hull's collision layer, since a ship otherwise collides on
-# its tiles alone.
+def inside(poly_, x, y):
+    """Whether (x, y) is strictly inside the polygon `poly_` (even-odd rule); a point on its edge is not."""
+    n, hit = len(poly_), False
+    for i in range(n):
+        (x1, y1), (x2, y2) = poly_[i], poly_[(i + 1) % n]
+        if (x1 - x) * (y2 - y) - (x2 - x) * (y1 - y) == 0 and min(x1, x2) <= x <= max(x1, x2) \
+                and min(y1, y2) <= y <= max(y1, y2):
+            return False
+        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+            hit = not hit
+    return hit
+
+
+def overlaps(shape_, keepout):
+    """Whether a superstructure shape (SVG units) reaches into any of the keepout rectangles."""
+    for (x0, y0, x1, y1) in keepout:
+        pts = [(x0 + (x1 - x0) * i / 16, y0 + (y1 - y0) * j / 16) for i in range(17) for j in range(17)]
+        if shape_[0] == "circle":
+            _, cx, cy, r = shape_
+            if any(math.hypot(px - cx, py - cy) < r for px, py in pts):
+                return True
+        elif (any(inside(shape_[1], px, py) for px, py in pts)
+              or any(x0 < px < x1 and y0 < py < y1 for px, py in shape_[1])):
+            return True
+    return False
+
+
+def spine(solid, wedges, cell, keepout=()):
+    """A ship's superstructure when it has none of its own: a raised spine down the middle, along
+    the longest run of square tiles on the row at the body's centerline, a tile and a bit short of
+    each end, a tenth of the ship's beam wide, with chamfered ends; broken where it would cover an
+    exterior system (`keepout`), keeping the pieces two meters long or more."""
+    rows = {}
+    for (c, r) in solid:
+        if (c, r) not in wedges:
+            rows.setdefault(r, set()).add(c)
+    # the row whose middle is nearest body y = 0 (SVG y = 0)
+    r0 = min(rows, key=lambda r: abs(cell(0, r)[1] + T / 2))
+    best, run = [], []
+    for c in range(min(rows[r0]), max(rows[r0]) + 2):
+        if c in rows[r0]:
+            run.append(c)
+        else:
+            best, run = max(best, run, key=len), []
+    if len(best) < 5:
+        return []
+    xa, _ = cell(best[0], r0)
+    xb, _ = cell(best[-1] + 1, r0)
+    xa, xb = xa + T * 1.2, xb - T * 1.2
+    # wider on a bigger ship: a tenth of its beam, a meter to three across
+    beam = max(rows) - min(rows) + 1
+    hw = min(max(beam * 0.1, 0.55), 1.5) * T
+    ch_ = hw * 0.7
+    pieces = [(xa, xb)]
+    for (x0, y0, x1, y1) in keepout:
+        if y0 < hw and y1 > -hw:
+            pieces = [q for (pa, pb) in pieces for q in ((pa, min(pb, x0)), (max(pa, x1), pb)) if q[1] > q[0]]
+    return [("poly", [(pa, -hw + ch_), (pa + ch_, -hw), (pb - ch_, -hw), (pb, -hw + ch_),
+                      (pb, hw - ch_), (pb - ch_, hw), (pa + ch_, hw), (pa, hw - ch_)])
+            for (pa, pb) in pieces if pb - pa >= 2 * T]
+
+
+# Each ship's hull outline in body meters, by chassis, drawn under the grid, so each has a shape
+# of its own and not the grid's box. One that reaches past the grid also becomes the hull's
+# collision layer, since a ship otherwise collides on its tiles alone. Outlines keep clear of the
+# docking ports and the engines.
 OVERHANG = {
-    "corvette": [(-11.0, -3.0), (5.0, -3.0), (6.5, 0.0), (5.0, 3.0), (-11.0, 3.0)],  # the bow
+    # a patrol ship: a two-stage prow, swept fins aft and a fairing between the engines
+    "corvette": [(-11.0, -3.0), (-11.4, -4.1), (-10.7, -4.1), (-8.8, -3.0), (5.0, -3.0), (6.0, -1.8), (6.9, -0.5), (7.2, 0.0),
+                 (6.9, 0.5), (6.0, 1.8), (5.0, 3.0), (-8.8, 3.0), (-10.7, 4.1), (-11.4, 4.1), (-11.0, 3.0),
+                 (-11.0, 0.8), (-12.2, 0.5), (-12.2, -0.5), (-11.0, -0.8)],
     "freighter": [(-10.0, -6.5), (10.0, -6.5), (10.0, 6.5), (-10.0, 6.5)],
-    "raider": [(-7.5, -2.5), (7.5, -2.5), (9.5, 0.0), (7.5, 2.5), (-7.5, 2.5)],  # a sharp bow
-    "gunship": [(-10.0, -4.0), (10.0, -4.0), (12.0, -1.5), (12.0, 1.5), (10.0, 4.0), (-10.0, 4.0)],  # a blunt ram bow
-    "picket": [(-7.5, -3.0), (7.5, -3.0), (9.0, 0.0), (7.5, 3.0), (-7.5, 3.0)],  # a short sharp bow
-    "corsair": [(-9.0, -3.5), (9.0, -3.5), (11.0, -1.0), (11.0, 1.0), (9.0, 3.5), (-9.0, 3.5)],  # a raked bow
+    # a fast attacker: forked mandibles at the bow and swept delta wings aft
+    "raider": [(-7.5, -2.5), (-8.7, -4.3), (-7.6, -4.3), (-4.8, -2.5), (7.5, -2.5), (10.4, -0.9),
+               (9.2, 0.0), (10.4, 0.9), (7.5, 2.5), (-4.8, 2.5), (-7.6, 4.3), (-8.7, 4.3), (-7.5, 2.5)],
+    # a brawler: a hammerhead ram, gun sponsons amidships and an armored skirt aft
+    "gunship": [(-10.0, -4.0), (1.6, -4.0), (2.1, -4.6), (4.6, -4.6), (5.1, -4.0), (10.0, -4.0),
+                (10.6, -4.7), (11.7, -4.5), (12.8, -2.0), (13.2, 0.0), (12.8, 2.0), (11.7, 4.5),
+                (10.6, 4.7), (10.0, 4.0), (5.1, 4.0), (4.6, 4.6), (2.1, 4.6), (1.6, 4.0), (-10.0, 4.0),
+                (-10.0, 0.9), (-11.0, 0.7), (-11.0, -0.7), (-10.0, -0.9)],
+    # a warship: a long tapering bow, gun sponsons forward and broad wings aft
+    "frigate": [(-12.0, -5.0), (-9.2, -5.0), (-9.4, -6.4), (-7.2, -6.4), (-6.0, -5.0), (2.5, -5.0),
+                (3.5, -5.7), (8.5, -5.7), (9.4, -5.0), (12.0, -5.0), (14.6, -2.6), (16.2, -0.8),
+                (16.6, 0.0), (16.2, 0.8), (14.6, 2.6), (12.0, 5.0), (9.4, 5.0), (8.5, 5.7), (3.5, 5.7),
+                (2.5, 5.0), (-6.0, 5.0), (-7.2, 6.4), (-9.4, 6.4), (-9.2, 5.0), (-12.0, 5.0),
+                (-12.0, 1.2), (-13.2, 0.9), (-13.2, -0.9), (-12.0, -1.2)],
+    # a sensor picket: a rounded sensor nose and a blister either side
+    "picket": [(-7.5, -3.0), (2.0, -3.0), (2.4, -3.8), (4.0, -3.8), (4.4, -3.0)]
+              + [(round(7.5 + 2.6 * math.cos(math.radians(d)), 3), round(3.0 * math.sin(math.radians(d)), 3))
+                 for d in range(-90, 91, 15)]
+              + [(4.4, 3.0), (4.0, 3.8), (2.4, 3.8), (2.0, 3.0), (-7.5, 3.0)],
+    # a pirate: lopsided, with a raked bow, an outrigger bolted on to starboard and one fin to port
+    "corsair": [(-9.0, -3.5), (-6.5, -3.5), (-6.1, -4.8), (0.2, -4.8), (0.8, -3.5), (9.0, -3.5),
+                (10.2, -2.6), (11.8, -0.4), (11.0, 1.6), (9.0, 3.5), (-4.2, 3.5), (-6.2, 4.4),
+                (-7.0, 4.4), (-6.8, 3.5), (-9.0, 3.5)],
 }
+
+# Each ship's raised superstructure in body meters, by chassis: ("poly", points) or
+# ("circle", x, y, radius). A ship without one gets a spine down its middle (spine()).
+SUPERSTRUCTURE = {
+    "corvette": [("poly", [(-10.4, -0.8), (1.6, -0.8), (2.8, -0.3), (2.8, 0.3), (1.6, 0.8), (-10.4, 0.8)]),
+                 ("poly", [(-6.0, -0.85), (-3.0, -0.85), (-2.3, -0.1), (-2.3, 1.1), (-3.0, 1.8), (-6.0, 1.8)])],
+    "gunship": [("poly", [(-8.5, -1.9), (0.0, -1.9), (0.8, -0.8), (6.0, -0.8), (6.6, 0.0), (6.0, 0.8),
+                          (0.8, 0.8), (0.0, 1.9), (-8.5, 1.9)]),
+                ("poly", [(10.2, -3.4), (12.2, -1.4), (12.2, 1.4), (10.2, 3.4)])],
+    "frigate": [("poly", [(-11.2, -1.1), (11.0, -1.1), (14.8, -0.3), (14.8, 0.3), (11.0, 1.1), (-11.2, 1.1)]),
+                ("poly", [(3.8, -1.8), (7.4, -1.8), (8.4, -0.8), (8.4, 0.8), (7.4, 1.8), (3.8, 1.8)]),
+                ("poly", [(-11.6, -3.6), (-8.2, -3.6), (-7.4, -2.4), (-7.4, 2.4), (-8.2, 3.6), (-11.6, 3.6)])],
+    "raider": [("poly", [(-6.8, -0.6), (3.6, -0.6), (4.3, 0.0), (3.6, 0.6), (-6.8, 0.6)]),
+               ("poly", [(1.0, -0.9), (3.6, -0.9), (4.3, 0.3), (3.6, 1.8), (1.0, 1.8)])],
+    "corsair": [("poly", [(-8.2, -1.6), (1.2, -1.6), (1.8, -1.0), (1.2, -0.4), (-8.2, -0.4)]),
+                ("poly", [(2.6, 0.4), (5.2, 0.4), (5.8, 1.2), (5.2, 2.9), (2.6, 2.9)]),
+                ("poly", [(-5.8, -4.4), (-0.2, -4.4), (0.3, -3.2), (-6.1, -3.2)])],
+    "picket": [("poly", [(-6.8, -0.5), (6.0, -0.5), (6.0, 0.5), (-6.8, 0.5)]),
+               ("poly", [(0.8, -0.4), (3.6, -0.4), (4.2, 0.8), (3.6, 2.4), (0.8, 2.4)]),
+               ("circle", 8.0, 0.0, 1.5)],
+}
+
+
+def to_svg(shapes):
+    """Superstructure shapes from body meters to SVG units (y flipped)."""
+    out = []
+    for s in shapes:
+        if s[0] == "circle":
+            out.append(("circle", s[1] * T, -s[2] * T, s[3] * T))
+        else:
+            out.append(("poly", [(x * T, -y * T) for x, y in s[1]]))
+    return out
 
 
 def hulls():
@@ -2256,21 +2445,22 @@ def hulls():
             continue
         done.add(name)
         pts = [(x * T, -y * T) for x, y in OVERHANG.get(name, [])]
-        a, (x0, y0, gw, gh) = hull_svg(chassis[name], overhang=pts, engines=True)
+        sup = to_svg(SUPERSTRUCTURE[name]) if name in SUPERSTRUCTURE else None
+        a, (x0, y0, gw, gh) = hull_svg(chassis[name], name, overhang=pts, engines=True, superstructure=sup)
         if any(x < x0 or x > x0 + gw or y < y0 or y > y0 + gh for x, y in pts):
             a.c += f'    <polygon points="{" ".join(f"{f(x)},{f(y)}" for x, y in pts)}"/>\n'
         xs, ys = [p[0] for p in pts] + [x0, x0 + gw], [p[1] for p in pts] + [y0, y0 + gh]
         vb = (min(xs) - T, min(ys) - T, max(xs) - min(xs) + 2 * T, max(ys) - min(ys) + 2 * T)
         write(f"hulls/{name}.svg", vb[2], vb[3], a,
-              f"{name} exterior hull: body frame, origin at the SVG origin, bow toward +x, tiles on the chassis grid",
+              f"{name} exterior hull: body frame, origin at the SVG origin, bow toward +x, the roof over the chassis grid",
               viewbox=" ".join(f(v) for v in vb))
     for name, ch in chassis.items():
         if not ch.get("station"):
             continue
-        a, (x0, y0, gw, gh) = hull_svg(ch)
+        a, (x0, y0, gw, gh) = hull_svg(ch, name)
         vb = (x0 - T, y0 - T, gw + 2 * T, gh + 2 * T)
         write(f"hulls/{name}.svg", vb[2], vb[3], a,
-              f"{name} exterior hull: body frame, origin at the SVG origin, tiles on the chassis grid",
+              f"{name} exterior hull: body frame, origin at the SVG origin, the roof over the chassis grid",
               viewbox=" ".join(f(v) for v in vb))
 
     # Engine plume, drawn behind an engine, pointing -x (exhaust), origin at the nozzle
