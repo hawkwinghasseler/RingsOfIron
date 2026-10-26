@@ -2171,7 +2171,7 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
         taken |= {(col + i, row + j) for i in range(-grow, w + grow) for j in range(-grow, h + grow)}
     bare = sorted((c, r) for (c, r) in solid if (c, r) not in taken and (c, r) not in wedges
                   and all(n in solid for n in ((c - 1, r), (c + 1, r), (c, r - 1), (c, r + 1))))
-    shadows, boxes, slots, hatches, runs = [], [], [], [], []
+    boxes, slots, hatches, runs = [], [], [], []
     for (c, r) in bare:
         if rng.random() > 0.16:
             continue
@@ -2186,7 +2186,6 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
         elif kind == "box":
             w_, h_ = T * rng.uniform(0.3, 0.6), T * rng.uniform(0.25, 0.45)
             vx, vy = x + rng.uniform(6, T - 6 - w_), y + rng.uniform(6, T - 6 - h_)
-            shadows.append(f"M{f(vx + 3)} {f(vy + 4)}h{f(w_)}v{f(h_)}h{f(-w_)}z")
             boxes.append(f"M{f(vx)} {f(vy)}h{f(w_)}v{f(h_)}h{f(-w_)}z")
         elif kind == "hatch":
             rr = T * 0.18
@@ -2198,8 +2197,6 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
                 n += 1
             ry = y + T * rng.choice((0.3, 0.5, 0.7))
             runs.append(f"M{f(x + 8)} {f(ry)}h{f(n * T - 16)}")
-    if shadows:
-        roof += f'    <path d="{"".join(shadows)}" fill="#000000" opacity="0.3"/>\n'
     if runs:
         roof += f'    <path d="{"".join(runs)}" fill="none" stroke="{INK}" stroke-width="7" stroke-linecap="round"/>\n'
         roof += f'    <path d="{"".join(runs)}" fill="none" stroke="{STEEL_MID}" stroke-width="4" stroke-linecap="round"/>\n'
@@ -2210,7 +2207,7 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
     if hatches:
         roof += f'    <path d="{"".join(hatches)}" fill="{STEEL_DARK}" stroke="{INK}" stroke-width="1.5"/>\n'
 
-    # The superstructure: raised blocks casting a shadow aft and down onto the roof
+    # The superstructure: raised blocks on the roof (their shadows are the lighting's, not the art's)
     # what the superstructure keeps clear of: every exterior system's footprint, a little apart
     keepout = []
     for (m, col, row, w, h) in mounts:
@@ -2225,15 +2222,12 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
     for shape_ in superstructure or []:
         if shape_[0] == "circle":
             _, cx_, cy_, rr = shape_
-            roof += circle(cx_ + 6, cy_ + 8, rr, "#000000", extra=' opacity="0.35"')
             roof += circle(cx_, cy_, rr, "#66717f", stroke=INK, sw=2.5)
             roof += circle(cx_, cy_, rr * 0.72, "none", stroke=STEEL_DARK, sw=2)
             roof += circle(cx_, cy_, rr, f"url(#{name}_sheen)")
         else:
             pts_ = shape_[1]
             p = " ".join(f"{f(x)},{f(y)}" for x, y in pts_)
-            sp = " ".join(f"{f(x + 6)},{f(y + 8)}" for x, y in pts_)
-            roof += f'    <polygon points="{sp}" fill="#000000" opacity="0.35"/>\n'
             roof += f'    <polygon points="{p}" fill="#66717f" stroke="{INK}" stroke-width="2.5" stroke-linejoin="round"/>\n'
             roof += f'    <polygon points="{p}" fill="none" stroke="{STEEL_HI}" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>\n'
             roof += f'    <polygon points="{p}" fill="url(#{name}_sheen)"/>\n'
@@ -2248,7 +2242,6 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
         if m == "turret_mount":
             # the barbette the turret turns on
             r = s * 0.46
-            a.b += circle(cx + 3, cy + 4, r, "#000000", extra=' opacity="0.3"')
             a.b += circle(cx, cy, r, STEEL_DARK, stroke=INK, sw=2)
             a.b += circle(cx, cy, r * 0.8, "none", stroke=STEEL_HI, sw=1.5, extra=' stroke-dasharray="4 4"')
             a.b += circle(cx, cy, r * 0.3, INK)

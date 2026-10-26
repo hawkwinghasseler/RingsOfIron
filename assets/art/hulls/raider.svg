@@ -16,16 +16,13 @@
     <polygon points="-480,160 -556.8,275.2 -486.4,275.2 -307.2,160 480,160 665.6,57.6 588.8,0 665.6,-57.6 480,-160 -307.2,-160 -486.4,-275.2 -556.8,-275.2 -480,-160" fill="none" stroke="#373f4b" stroke-width="16" stroke-linejoin="round"/>
     <path d="M160 160L224 160M-288 160L-224 160M-96 -160L-32 -160M-480 -32L-480 32M-160 160L-96 160M288 -160L352 -160M-480 96L-480 160M224 160L288 160M-480 -96L-480 -32M416 -160L480 -160M-224 160L-160 160M-224 -160L-160 -160M-96 160L-32 160M96 -160L160 -160M-480 32L-480 96M352 -160L416 -160M288 160L352 160M32 -160L96 -160M416 160L480 160M160 -160L224 -160M-288 -160L-224 -160M96 160L160 160M-32 160L32 160M352 160L416 160M-160 -160L-96 -160M-32 -160L32 -160M32 160L96 160M224 -160L288 -160M-480 -160L-480 -96" fill="none" stroke="#373f4b" stroke-width="16" stroke-linecap="square"/>
     <polygon points="-480,160 -556.8,275.2 -486.4,275.2 -307.2,160 480,160 665.6,57.6 588.8,0 665.6,-57.6 480,-160 -307.2,-160 -486.4,-275.2 -556.8,-275.2 -480,-160" fill="none" stroke="#7d8898" stroke-width="20" stroke-linejoin="round" opacity="0.18" stroke-dasharray="3 9"/>
-    <path d="M-401.89 -55.72h21.64v20.31h-21.64zM-260.96 -11.4h32.33v23.96h-32.33zM240.66 59.65h36.09v22.82h-36.09z" fill="#000000" opacity="0.3"/>
     <path d="M-344 51.2h176" fill="none" stroke="#10141a" stroke-width="7" stroke-linecap="round"/>
     <path d="M-344 51.2h176" fill="none" stroke="#4b5563" stroke-width="4" stroke-linecap="round"/>
     <path d="M-404.89 -59.72h21.64v20.31h-21.64zM-263.96 -15.4h32.33v23.96h-32.33zM-207.26 -2.85h32v17.92h-32zM46.38 1.12h32v17.92h-32zM237.66 55.65h36.09v22.82h-36.09z" fill="#465060" stroke="#10141a" stroke-width="1.5"/>
     <path d="M-203.26 0.15h24M-203.26 6.11h24M-203.26 12.07h24M50.38 4.12h24M50.38 10.08h24M50.38 16.04h24" fill="none" stroke="#10141a" stroke-width="1.5"/>
-    <polygon points="-429.2,46.4 236.4,46.4 281.2,8 236.4,-30.4 -429.2,-30.4" fill="#000000" opacity="0.35"/>
     <polygon points="-435.2,38.4 230.4,38.4 275.2,0 230.4,-38.4 -435.2,-38.4" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
     <polygon points="-435.2,38.4 230.4,38.4 275.2,0 230.4,-38.4 -435.2,-38.4" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
     <polygon points="-435.2,38.4 230.4,38.4 275.2,0 230.4,-38.4 -435.2,-38.4" fill="url(#raider_sheen)"/>
-    <polygon points="70,65.6 236.4,65.6 281.2,-11.2 236.4,-107.2 70,-107.2" fill="#000000" opacity="0.35"/>
     <polygon points="64,57.6 230.4,57.6 275.2,-19.2 230.4,-115.2 64,-115.2" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
     <polygon points="64,57.6 230.4,57.6 275.2,-19.2 230.4,-115.2 64,-115.2" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
     <polygon points="64,57.6 230.4,57.6 275.2,-19.2 230.4,-115.2 64,-115.2" fill="url(#raider_sheen)"/>
@@ -40,7 +37,6 @@
     <circle cx="296.45" cy="-96" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
     <circle cx="308.22" cy="-116.4" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
     <circle cx="331.78" cy="-116.4" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
-    <circle cx="387" cy="4" r="29.44" fill="#000000" opacity="0.3"/>
     <circle cx="384" cy="0" r="29.44" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="384" cy="0" r="23.55" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-dasharray="4 4"/>
     <circle cx="384" cy="0" r="8.83" fill="#10141a"/>

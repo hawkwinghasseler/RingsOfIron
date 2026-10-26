@@ -16,17 +16,14 @@
     <polygon points="-640,256 102.4,256 134.4,294.4 294.4,294.4 326.4,256 640,256 678.4,300.8 748.8,288 819.2,128 844.8,0 819.2,-128 748.8,-288 678.4,-300.8 640,-256 326.4,-256 294.4,-294.4 134.4,-294.4 102.4,-256 -640,-256 -640,-57.6 -704,-44.8 -704,44.8 -640,57.6" fill="none" stroke="#373f4b" stroke-width="16" stroke-linejoin="round"/>
     <path d="M-576 -256L-512 -256M-320 -256L-256 -256M384 -256L448 -256M512 -256L576 -256M-640 128L-640 192M-128 256L-64 256M-128 -256L-64 -256M-640 -192L-640 -128M-512 256L-448 256M-384 256L-320 256M320 256L384 256M576 256L640 256M-512 -256L-448 -256M-256 256L-192 256M-384 -256L-320 -256M320 -256L384 -256M0 256L64 256M576 -256L640 -256M-640 64L-640 128M-256 -256L-192 -256M0 -256L64 -256M-640 256L-576 256M-640 192L-640 256M64 256L128 256M448 256L512 256M-640 -256L-576 -256M-640 -256L-640 -192M64 -256L128 -256M448 -256L512 -256M-640 -128L-640 -64M-192 256L-128 256M-64 256L0 256M-192 -256L-128 -256M-64 -256L0 -256M-448 256L-384 256M-576 256L-512 256M-320 256L-256 256M384 256L448 256M-448 -256L-384 -256M512 256L576 256" fill="none" stroke="#373f4b" stroke-width="16" stroke-linecap="square"/>
     <polygon points="-640,256 102.4,256 134.4,294.4 294.4,294.4 326.4,256 640,256 678.4,300.8 748.8,288 819.2,128 844.8,0 819.2,-128 748.8,-288 678.4,-300.8 640,-256 326.4,-256 294.4,-294.4 134.4,-294.4 102.4,-256 -640,-256 -640,-57.6 -704,-44.8 -704,44.8 -640,57.6" fill="none" stroke="#7d8898" stroke-width="20" stroke-linejoin="round" opacity="0.18" stroke-dasharray="3 9"/>
-    <path d="M-563.22 -103.28h25.38v26.02h-25.38zM-371.41 -158.56h31.34v17.98h-31.34zM-309.89 -151.64h31.68v21.49h-31.68zM-182.56 171.73h21.79v17.45h-21.79zM-93.97 -94.65h21.96v22.38h-21.96zM-114.59 42.26h35.99v16.53h-35.99zM-115.56 75.3h27.06v20.19h-27.06zM157.96 -93.37h25.91v17.09h-25.91zM137.78 149.81h37.51v21.68h-37.51zM286.2 160.07h27.87v28.38h-27.87z" fill="#000000" opacity="0.3"/>
     <path d="M-56 160h112M264 -44.8h176" fill="none" stroke="#10141a" stroke-width="7" stroke-linecap="round"/>
     <path d="M-56 160h112M264 -44.8h176" fill="none" stroke="#4b5563" stroke-width="4" stroke-linecap="round"/>
     <path d="M-566.22 -107.28h25.38v26.02h-25.38zM-374.41 -162.56h31.34v17.98h-31.34zM-312.89 -155.64h31.68v21.49h-31.68zM-185.56 167.73h21.79v17.45h-21.79zM-96.97 -98.65h21.96v22.38h-21.96zM-117.59 38.26h35.99v16.53h-35.99zM-118.56 71.3h27.06v20.19h-27.06zM-117.69 167.6h41.6v17.92h-41.6zM73.52 -35.78h41.6v17.92h-41.6zM154.96 -97.37h25.91v17.09h-25.91zM134.78 145.81h37.51v21.68h-37.51zM283.2 156.07h27.87v28.38h-27.87zM338.63 -57.68h32v17.92h-32zM396.24 -114.39h32v17.92h-32zM397.94 28.09h32v17.92h-32z" fill="#465060" stroke="#10141a" stroke-width="1.5"/>
     <path d="M-113.69 170.6h33.6M-113.69 176.56h33.6M-113.69 182.52h33.6M77.52 -32.78h33.6M77.52 -26.82h33.6M77.52 -20.86h33.6M342.63 -54.68h24M342.63 -48.72h24M342.63 -42.76h24M400.24 -111.39h24M400.24 -105.43h24M400.24 -99.47h24M401.94 31.09h24M401.94 37.05h24M401.94 43.01h24" fill="none" stroke="#10141a" stroke-width="1.5"/>
     <path d="M468.48 -96a11.52 11.52 0 1 0 23.04 0a11.52 11.52 0 1 0 -23.04 0z" fill="#373f4b" stroke="#10141a" stroke-width="1.5"/>
-    <polygon points="-538,129.6 6,129.6 57.2,59.2 390,59.2 428.4,8 390,-43.2 57.2,-43.2 6,-113.6 -538,-113.6" fill="#000000" opacity="0.35"/>
     <polygon points="-544,121.6 0,121.6 51.2,51.2 384,51.2 422.4,0 384,-51.2 51.2,-51.2 0,-121.6 -544,-121.6" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
     <polygon points="-544,121.6 0,121.6 51.2,51.2 384,51.2 422.4,0 384,-51.2 51.2,-51.2 0,-121.6 -544,-121.6" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
     <polygon points="-544,121.6 0,121.6 51.2,51.2 384,51.2 422.4,0 384,-51.2 51.2,-51.2 0,-121.6 -544,-121.6" fill="url(#gunship_sheen)"/>
-    <polygon points="658.8,225.6 786.8,97.6 786.8,-81.6 658.8,-209.6" fill="#000000" opacity="0.35"/>
     <polygon points="652.8,217.6 780.8,89.6 780.8,-89.6 652.8,-217.6" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
     <polygon points="652.8,217.6 780.8,89.6 780.8,-89.6 652.8,-217.6" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
     <polygon points="652.8,217.6 780.8,89.6 780.8,-89.6 652.8,-217.6" fill="url(#gunship_sheen)"/>
@@ -51,23 +48,18 @@
     <circle cx="404.22" cy="171.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
     <circle cx="427.78" cy="171.6" r="2" fill="#f2c230" stroke="#10141a" stroke-width="0.8"/>
     <circle cx="96" cy="-96" r="25.6" fill="#2f5664" stroke="#10141a" stroke-width="2"/>
-    <circle cx="99" cy="-156" r="29.44" fill="#000000" opacity="0.3"/>
     <circle cx="96" cy="-160" r="29.44" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="96" cy="-160" r="23.55" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-dasharray="4 4"/>
     <circle cx="96" cy="-160" r="8.83" fill="#10141a"/>
-    <circle cx="355" cy="-156" r="29.44" fill="#000000" opacity="0.3"/>
     <circle cx="352" cy="-160" r="29.44" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="352" cy="-160" r="23.55" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-dasharray="4 4"/>
     <circle cx="352" cy="-160" r="8.83" fill="#10141a"/>
-    <circle cx="515" cy="4" r="58.88" fill="#000000" opacity="0.3"/>
     <circle cx="512" cy="0" r="58.88" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="512" cy="0" r="47.1" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-dasharray="4 4"/>
     <circle cx="512" cy="0" r="17.66" fill="#10141a"/>
-    <circle cx="99" cy="164" r="29.44" fill="#000000" opacity="0.3"/>
     <circle cx="96" cy="160" r="29.44" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="96" cy="160" r="23.55" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-dasharray="4 4"/>
     <circle cx="96" cy="160" r="8.83" fill="#10141a"/>
-    <circle cx="355" cy="164" r="29.44" fill="#000000" opacity="0.3"/>
     <circle cx="352" cy="160" r="29.44" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="352" cy="160" r="23.55" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-dasharray="4 4"/>
     <circle cx="352" cy="160" r="8.83" fill="#10141a"/>
