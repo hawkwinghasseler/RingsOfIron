@@ -309,6 +309,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         });
         world.combatEvents.detonations.add((signal, boom) ->
                 exterior.explode(boom.worldPoint.x, boom.worldPoint.y));
+        world.combatEvents.hullHits.add((signal, hit) -> exterior.shieldHit(hit));
 
         world.bridge.playerAlwaysAtHelm = VIEW_ANYWHERE;
         if (!VIEW_ANYWHERE) {
@@ -1682,6 +1683,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gameHud.dispose();
         lighting.dispose();
         exteriorLighting.dispose();
+        exterior.dispose();
         docking.dispose();
         world.dispose();
         shapes.dispose();

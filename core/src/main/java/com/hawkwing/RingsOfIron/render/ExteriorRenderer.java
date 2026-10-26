@@ -18,6 +18,7 @@ import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
@@ -31,6 +32,7 @@ import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
+import com.ringsofiron.combatsys.events.HullHitEvent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.PolygonSkin;
@@ -55,7 +57,7 @@ import java.util.function.Supplier;
  * <p>Everything is drawn in world meters; {@link #inFrameOf} draws it instead in one body's own
  * frame, for a view that turns with a craft.
  */
-public final class ExteriorRenderer {
+public final class ExteriorRenderer implements Disposable {
     /** How outlines are drawn. */
     public interface Style {
         /** The color of {@code fixture}'s outline on {@code body}, owned by {@code owner} (may be null); null skips it. */
@@ -110,6 +112,7 @@ public final class ExteriorRenderer {
     private final Vector2 tmp2 = new Vector2();
     private final float[] polygon = new float[16];
     private final ThrusterFlames flames;
+    private final ShieldBubbles shields = new ShieldBubbles();
     /** Craft drawn with their hull art this frame, whose flames are drawn with art too. */
     private final ObjectSet<Entity> withArt = new ObjectSet<>();
 
@@ -167,6 +170,12 @@ public final class ExteriorRenderer {
         return this;
     }
 
+    /** A ripple on the struck craft's shield bubble, for a hull hit its shields took part of. */
+    public void shieldHit(HullHitEvent hit) {
+        if (hit == null || hit.ship == null || !(hit.shielded > 0f)) return;
+        shields.hit(hit, world.get().docking.bodyOf(hit.ship), exteriorLighting != null && lightsOn ? exteriorLighting : null);
+    }
+
     /** A flash where a warhead went off or a missile was shot down, at ({@code x}, {@code y}) world meters. */
     public void explode(float x, float y) {
         explosions.add(new float[]{x, y, 0f});
@@ -216,6 +225,7 @@ public final class ExteriorRenderer {
         boolean lit = exteriorLighting != null && lightsOn;
         if (lit) exteriorLighting.begin();
         flames.begin(delta);
+        shields.begin(delta);
         // Every hull's own lights, drawn with art or not: only the hull's own body, since a port's
         // collar carriage and head carry the craft as owner too
         for (Body body : bodies) {
@@ -227,8 +237,10 @@ public final class ExteriorRenderer {
             if (lighting != null && chassis != null) lighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
             if (lit && chassis != null) exteriorLighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
             flames.collect(e, body);
+            shields.collect(e, body);
         }
         flames.end();
+        shields.end();
         // Every flame lights the hulls and glows, as strong as it is long
         flames.light(lit ? exteriorLighting : null, lighting);
         if (lit) lightsInFlight();
@@ -249,6 +261,8 @@ public final class ExteriorRenderer {
         // The flames give off their own light: over the light map, not darkened by it
         batch.setProjectionMatrix(view);
         flames.draw(batch, withArt);
+        // So do the shields, over hull art and outline alike
+        shields.draw(batch);
         shapes.setProjectionMatrix(view);
         shapes.begin(ShapeRenderer.ShapeType.Line);
         for (Body body : bodies) {
@@ -457,6 +471,11 @@ public final class ExteriorRenderer {
         }
         batch.end();
         return beams;
+    }
+
+    @Override
+    public void dispose() {
+        shields.dispose();
     }
 
     private void drawFixture(Body body, Shape shape) {
