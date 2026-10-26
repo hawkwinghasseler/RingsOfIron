@@ -94,7 +94,8 @@ sound = "evt_laser_fire"
 # than a cannon, more damage than a railgun; a medium hull stops a slug a tile or two in.
 [weapon.coilgun_mk1]
 name = "Coilgun Mk1"
-price = 38000.0
+# The starting corvette's nose gun, priced as the railgun it replaced so the corvette keeps its value
+price = 60000.0
 mount = "turret"
 min_mount_size = "S"
 slew_rate_deg = 80
@@ -141,7 +142,9 @@ sound = "evt_missile_launch"
 # slug carries four Small railguns' worth, enough to drill a heavy hull. It drinks power: 9 MJ a shot.
 [weapon.railgun_heavy]
 name = "Heavy Railgun"
-price = 140000.0
+# 140,000 until Oct 2026. Since the speed rule the patrol gunship and frigate carry it, priced so their
+# values move as little as the rule lets them
+price = 70000.0
 mount = "turret"
 min_mount_size = "M"
 slew_rate_deg = 20

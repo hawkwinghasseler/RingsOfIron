@@ -85,7 +85,7 @@ class MidCareerBalanceBenchmark {
         // Round 3 had it at 207,587 net against 5,000 a week: about 40 weeks
         report.note("Gunship after the corvette's trade-in, cr", String.format(Locale.ROOT, "%,.0f", cost));
         report.range("Weeks of a Lieutenant Commander's pay", cost / pay, 4, 8);
-        report.atLeast("List price, cr (over the gunship's 304,000 value)", gunship.price, 304_001);
+        report.atLeast("List price, cr (over the gunship's 314,000 value since its heavy railgun)", gunship.price, 314_001);
         report.finish();
     }
 

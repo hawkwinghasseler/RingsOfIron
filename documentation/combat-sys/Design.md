@@ -416,10 +416,13 @@ Every weapon has a size, its `min_mount_size` (S, M, L or XL), the smallest turr
 
 | Gun | Size | Round | Every | Sustained | Was |
 |---|---|---|---|---|---|
-| Chaingun Mk1, Mk2 | S | 1.6 kg at 1.5 km/s, 1.8 MJ | 0.15 s | 12 MW | Mk1 0.4 kg at 1.5 km/s (3 MW); Mk2 1.75 kg at 1.8 km/s every 0.12 s (24 MW) |
+| Chaingun Mk1, Mk2 | S | 3.7 kg at 1.5 km/s, 4.2 MJ | 0.35 s | 12 MW | Mk1 0.4 kg at 1.5 km/s every 0.15 s (3 MW); Mk2 1.75 kg at 1.8 km/s every 0.12 s (24 MW) |
+| Coilgun Mk1 (new) | S | 2 kg at 3 km/s, 9 MJ | 1.5 s | 6 MW | |
 | Autocannon Mk1 (PD) | S | 0.45 kg at 2 km/s, 0.9 MJ | 0.1 s | 9 MW | 0.4 kg at 1.5 km/s (4.5 MW) |
 | Railgun Mk1, Mk2 | S | 0.67 kg at 6 km/s, 12 MJ | 4 s | 3 MW | 20 kg, every 1.5 s (Mk1) and 1 s (Mk2): 240 and 360 MW |
 | Heavy railgun | M | 3.45 kg at 5.5 km/s, 52 MJ | 4 s | 13 MW | 60 kg every 3 s (302 MW) |
+
+Damage is not linear in energy: a round that cannot get through a tile's armor only wears it (`ARMOR_WEAR`), so each gun's shot has to be heavy enough to punch the hulls it is for. The chaingun's first restatement, 1.6 kg rounds every 0.15 s, only scuffed a raider's medium hull and lost a brawl to the coilgun; 3.7 kg shells at the same 12 MW punch it. `WeaponDuelBenchmark` checks the order that comes out: from 4 km the railgun beats the First Play raider soonest and the chaingun never does, from 1.5 km the other way round, the coilgun between both times.
 
 A Mk2 keeps its Mk1's round and budget and is the better mount: it slews faster, holds tighter and draws less power. There are no rare weapons any more: every weapon with a price is sold at yards. A beaten ace leaves a spare of its most valuable gun crated in its hold (`PirateAces.dropPart`).
 
