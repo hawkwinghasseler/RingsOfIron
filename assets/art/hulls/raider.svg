@@ -21,14 +21,14 @@
     <path d="M-344 51.2h176" fill="none" stroke="#4b5563" stroke-width="4" stroke-linecap="round"/>
     <path d="M-404.89 -59.72h21.64v20.31h-21.64zM-263.96 -15.4h32.33v23.96h-32.33zM-207.26 -2.85h32v17.92h-32zM46.38 1.12h32v17.92h-32zM237.66 55.65h36.09v22.82h-36.09z" fill="#465060" stroke="#10141a" stroke-width="1.5"/>
     <path d="M-203.26 0.15h24M-203.26 6.11h24M-203.26 12.07h24M50.38 4.12h24M50.38 10.08h24M50.38 16.04h24" fill="none" stroke="#10141a" stroke-width="1.5"/>
-    <polygon points="-429.2,46.4 358,46.4 556.4,8 358,-30.4 -429.2,-30.4" fill="#000000" opacity="0.35"/>
-    <polygon points="-435.2,38.4 352,38.4 550.4,0 352,-38.4 -435.2,-38.4" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
-    <polygon points="-435.2,38.4 352,38.4 550.4,0 352,-38.4 -435.2,-38.4" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
-    <polygon points="-435.2,38.4 352,38.4 550.4,0 352,-38.4 -435.2,-38.4" fill="url(#raider_sheen)"/>
-    <polygon points="70,65.6 249.2,65.6 300.4,-11.2 249.2,-107.2 70,-107.2" fill="#000000" opacity="0.35"/>
-    <polygon points="64,57.6 243.2,57.6 294.4,-19.2 243.2,-115.2 64,-115.2" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
-    <polygon points="64,57.6 243.2,57.6 294.4,-19.2 243.2,-115.2 64,-115.2" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
-    <polygon points="64,57.6 243.2,57.6 294.4,-19.2 243.2,-115.2 64,-115.2" fill="url(#raider_sheen)"/>
+    <polygon points="-429.2,46.4 236.4,46.4 281.2,8 236.4,-30.4 -429.2,-30.4" fill="#000000" opacity="0.35"/>
+    <polygon points="-435.2,38.4 230.4,38.4 275.2,0 230.4,-38.4 -435.2,-38.4" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
+    <polygon points="-435.2,38.4 230.4,38.4 275.2,0 230.4,-38.4 -435.2,-38.4" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
+    <polygon points="-435.2,38.4 230.4,38.4 275.2,0 230.4,-38.4 -435.2,-38.4" fill="url(#raider_sheen)"/>
+    <polygon points="70,65.6 236.4,65.6 281.2,-11.2 236.4,-107.2 70,-107.2" fill="#000000" opacity="0.35"/>
+    <polygon points="64,57.6 230.4,57.6 275.2,-19.2 230.4,-115.2 64,-115.2" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
+    <polygon points="64,57.6 230.4,57.6 275.2,-19.2 230.4,-115.2 64,-115.2" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
+    <polygon points="64,57.6 230.4,57.6 275.2,-19.2 230.4,-115.2 64,-115.2" fill="url(#raider_sheen)"/>
     <rect x="-556.8" y="-275.2" width="1222.4" height="550.4" fill="url(#raider_sheen)"/>
     </g>
     <circle cx="320" cy="-96" r="25.6" fill="#373f4b" stroke="#10141a" stroke-width="2"/>

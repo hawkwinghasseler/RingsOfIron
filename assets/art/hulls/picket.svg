@@ -23,10 +23,10 @@
     <polygon points="-435.2,32 384,32 384,-32 -435.2,-32" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
     <polygon points="-435.2,32 384,32 384,-32 -435.2,-32" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
     <polygon points="-435.2,32 384,32 384,-32 -435.2,-32" fill="url(#picket_sheen)"/>
-    <polygon points="6,33.6 198,33.6 236.4,-43.2 198,-145.6 6,-145.6" fill="#000000" opacity="0.35"/>
-    <polygon points="0,25.6 192,25.6 230.4,-51.2 192,-153.6 0,-153.6" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
-    <polygon points="0,25.6 192,25.6 230.4,-51.2 192,-153.6 0,-153.6" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
-    <polygon points="0,25.6 192,25.6 230.4,-51.2 192,-153.6 0,-153.6" fill="url(#picket_sheen)"/>
+    <polygon points="57.2,33.6 236.4,33.6 274.8,-43.2 236.4,-145.6 57.2,-145.6" fill="#000000" opacity="0.35"/>
+    <polygon points="51.2,25.6 230.4,25.6 268.8,-51.2 230.4,-153.6 51.2,-153.6" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
+    <polygon points="51.2,25.6 230.4,25.6 268.8,-51.2 230.4,-153.6 51.2,-153.6" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
+    <polygon points="51.2,25.6 230.4,25.6 268.8,-51.2 230.4,-153.6 51.2,-153.6" fill="url(#picket_sheen)"/>
     <circle cx="518" cy="8" r="96" fill="#000000" opacity="0.35"/>
     <circle cx="512" cy="0" r="96" fill="#66717f" stroke="#10141a" stroke-width="2.5"/>
     <circle cx="512" cy="0" r="69.12" fill="none" stroke="#373f4b" stroke-width="2"/>

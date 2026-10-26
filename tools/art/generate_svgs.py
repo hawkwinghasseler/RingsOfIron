@@ -1969,6 +1969,7 @@ KIND = {"reactor": "P", "shield_emitter": "P", "turret_mount": "P", "life_suppor
 # The systems that reach the outside of the hull and so show on its roof; the rest are inside the
 # decks, under plating like any other room
 EXTERIOR = {"turret_mount", "shield_emitter", "airlock", "escape_pod", "docking_port", "engine"}
+CLEAR = 0.1 * T  # how far the superstructure keeps from an exterior system's footprint
 WALL_CHARS = set("#123")
 
 
@@ -2210,8 +2211,17 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
         roof += f'    <path d="{"".join(hatches)}" fill="{STEEL_DARK}" stroke="{INK}" stroke-width="1.5"/>\n'
 
     # The superstructure: raised blocks casting a shadow aft and down onto the roof
+    # what the superstructure keeps clear of: every exterior system's footprint, a little apart
+    keepout = []
+    for (m, col, row, w, h) in mounts:
+        if m != "engine":
+            x, y = cell(col, row)
+            keepout.append((x - CLEAR, y - CLEAR, x + w * T + CLEAR, y + h * T + CLEAR))
     if superstructure is None and not ch.get("station"):
-        superstructure = spine(solid, wedges, cell)
+        superstructure = spine(solid, wedges, cell, keepout)
+    for k, shape_ in enumerate(superstructure or []):
+        if overlaps(shape_, keepout):
+            raise ValueError(f"{name}: superstructure shape {k} covers an exterior system")
     for shape_ in superstructure or []:
         if shape_[0] == "circle":
             _, cx_, cy_, rr = shape_
@@ -2315,10 +2325,25 @@ def inside(poly_, x, y):
     return hit
 
 
-def spine(solid, wedges, cell):
+def overlaps(shape_, keepout):
+    """Whether a superstructure shape (SVG units) reaches into any of the keepout rectangles."""
+    for (x0, y0, x1, y1) in keepout:
+        pts = [(x0 + (x1 - x0) * i / 16, y0 + (y1 - y0) * j / 16) for i in range(17) for j in range(17)]
+        if shape_[0] == "circle":
+            _, cx, cy, r = shape_
+            if any(math.hypot(px - cx, py - cy) < r for px, py in pts):
+                return True
+        elif (any(inside(shape_[1], px, py) for px, py in pts)
+              or any(x0 < px < x1 and y0 < py < y1 for px, py in shape_[1])):
+            return True
+    return False
+
+
+def spine(solid, wedges, cell, keepout=()):
     """A ship's superstructure when it has none of its own: a raised spine down the middle, along
     the longest run of square tiles on the row at the body's centerline, a tile and a bit short of
-    each end, a tenth of the ship's beam wide, with chamfered ends."""
+    each end, a tenth of the ship's beam wide, with chamfered ends; broken where it would cover an
+    exterior system (`keepout`), keeping the pieces two meters long or more."""
     rows = {}
     for (c, r) in solid:
         if (c, r) not in wedges:
@@ -2340,8 +2365,13 @@ def spine(solid, wedges, cell):
     beam = max(rows) - min(rows) + 1
     hw = min(max(beam * 0.1, 0.55), 1.5) * T
     ch_ = hw * 0.7
-    return [("poly", [(xa, -hw + ch_), (xa + ch_, -hw), (xb - ch_, -hw), (xb, -hw + ch_),
-                      (xb, hw - ch_), (xb - ch_, hw), (xa + ch_, hw), (xa, hw - ch_)])]
+    pieces = [(xa, xb)]
+    for (x0, y0, x1, y1) in keepout:
+        if y0 < hw and y1 > -hw:
+            pieces = [q for (pa, pb) in pieces for q in ((pa, min(pb, x0)), (max(pa, x1), pb)) if q[1] > q[0]]
+    return [("poly", [(pa, -hw + ch_), (pa + ch_, -hw), (pb - ch_, -hw), (pb, -hw + ch_),
+                      (pb, hw - ch_), (pb - ch_, hw), (pa + ch_, hw), (pa, hw - ch_)])
+            for (pa, pb) in pieces if pb - pa >= 2 * T]
 
 
 # Each ship's hull outline in body meters, by chassis, drawn under the grid, so each has a shape
@@ -2382,20 +2412,21 @@ OVERHANG = {
 # Each ship's raised superstructure in body meters, by chassis: ("poly", points) or
 # ("circle", x, y, radius). A ship without one gets a spine down its middle (spine()).
 SUPERSTRUCTURE = {
-    "corvette": [("poly", [(-10.4, -0.8), (2.0, -0.8), (6.4, -0.25), (6.4, 0.25), (2.0, 0.8), (-10.4, 0.8)]),
-                 ("poly", [(-4.5, -0.9), (-1.9, -0.9), (-1.2, -0.1), (-1.2, 1.7), (-1.9, 2.5), (-4.5, 2.5)])],
-    "gunship": [("poly", [(-8.5, -2.0), (6.5, -2.0), (9.0, -1.0), (9.0, 1.0), (6.5, 2.0), (-8.5, 2.0)]),
+    "corvette": [("poly", [(-10.4, -0.8), (1.6, -0.8), (2.8, -0.3), (2.8, 0.3), (1.6, 0.8), (-10.4, 0.8)]),
+                 ("poly", [(-6.0, -0.85), (-3.0, -0.85), (-2.3, -0.1), (-2.3, 1.1), (-3.0, 1.8), (-6.0, 1.8)])],
+    "gunship": [("poly", [(-8.5, -1.9), (0.0, -1.9), (0.8, -0.8), (6.0, -0.8), (6.6, 0.0), (6.0, 0.8),
+                          (0.8, 0.8), (0.0, 1.9), (-8.5, 1.9)]),
                 ("poly", [(10.2, -3.4), (12.2, -1.4), (12.2, 1.4), (10.2, 3.4)])],
     "frigate": [("poly", [(-11.2, -1.1), (11.0, -1.1), (14.8, -0.3), (14.8, 0.3), (11.0, 1.1), (-11.2, 1.1)]),
                 ("poly", [(3.8, -1.8), (7.4, -1.8), (8.4, -0.8), (8.4, 0.8), (7.4, 1.8), (3.8, 1.8)]),
                 ("poly", [(-11.6, -3.6), (-8.2, -3.6), (-7.4, -2.4), (-7.4, 2.4), (-8.2, 3.6), (-11.6, 3.6)])],
-    "raider": [("poly", [(-6.8, -0.6), (5.5, -0.6), (8.6, 0.0), (5.5, 0.6), (-6.8, 0.6)]),
-               ("poly", [(1.0, -0.9), (3.8, -0.9), (4.6, 0.3), (3.8, 1.8), (1.0, 1.8)])],
-    "corsair": [("poly", [(-8.2, -1.6), (2.0, -1.6), (2.6, -1.0), (2.0, -0.4), (-8.2, -0.4)]),
-                ("poly", [(3.4, 0.2), (6.6, 0.2), (7.2, 1.2), (6.6, 2.9), (3.4, 2.9)]),
+    "raider": [("poly", [(-6.8, -0.6), (3.6, -0.6), (4.3, 0.0), (3.6, 0.6), (-6.8, 0.6)]),
+               ("poly", [(1.0, -0.9), (3.6, -0.9), (4.3, 0.3), (3.6, 1.8), (1.0, 1.8)])],
+    "corsair": [("poly", [(-8.2, -1.6), (1.2, -1.6), (1.8, -1.0), (1.2, -0.4), (-8.2, -0.4)]),
+                ("poly", [(2.6, 0.4), (5.2, 0.4), (5.8, 1.2), (5.2, 2.9), (2.6, 2.9)]),
                 ("poly", [(-5.8, -4.4), (-0.2, -4.4), (0.3, -3.2), (-6.1, -3.2)])],
     "picket": [("poly", [(-6.8, -0.5), (6.0, -0.5), (6.0, 0.5), (-6.8, 0.5)]),
-               ("poly", [(0.0, -0.4), (3.0, -0.4), (3.6, 0.8), (3.0, 2.4), (0.0, 2.4)]),
+               ("poly", [(0.8, -0.4), (3.6, -0.4), (4.2, 0.8), (3.6, 2.4), (0.8, 2.4)]),
                ("circle", 8.0, 0.0, 1.5)],
 }
 

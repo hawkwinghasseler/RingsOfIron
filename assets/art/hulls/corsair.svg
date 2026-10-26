@@ -22,14 +22,14 @@
     <path d="M-492.24 125.93h19.92v21.14h-19.92zM-419.39 -139.24h27.37v23.22h-27.37zM-308.91 103.05h41.6v17.92h-41.6zM-226.43 -18.64h27.12v21.9h-27.12zM-55.78 -86.49h32v17.92h-32zM264.64 -16.62h28.01v19.95h-28.01zM329.31 -73.73h32.93v19.1h-32.93zM330.07 -13.75h32v17.92h-32zM390.64 -76.48h37.46v24.63h-37.46z" fill="#465060" stroke="#10141a" stroke-width="1.5"/>
     <path d="M-304.91 106.05h33.6M-304.91 112.01h33.6M-304.91 117.97h33.6M-51.78 -83.49h24M-51.78 -77.53h24M-51.78 -71.57h24M334.07 -10.75h24M334.07 -4.79h24M334.07 1.17h24" fill="none" stroke="#10141a" stroke-width="1.5"/>
     <path d="M-363.52 -64a11.52 11.52 0 1 0 23.04 0a11.52 11.52 0 1 0 -23.04 0zM212.48 -128a11.52 11.52 0 1 0 23.04 0a11.52 11.52 0 1 0 -23.04 0zM212.48 0a11.52 11.52 0 1 0 23.04 0a11.52 11.52 0 1 0 -23.04 0z" fill="#373f4b" stroke="#10141a" stroke-width="1.5"/>
-    <polygon points="-518.8,110.4 134,110.4 172.4,72 134,33.6 -518.8,33.6" fill="#000000" opacity="0.35"/>
-    <polygon points="-524.8,102.4 128,102.4 166.4,64 128,25.6 -524.8,25.6" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
-    <polygon points="-524.8,102.4 128,102.4 166.4,64 128,25.6 -524.8,25.6" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
-    <polygon points="-524.8,102.4 128,102.4 166.4,64 128,25.6 -524.8,25.6" fill="url(#corsair_sheen)"/>
-    <polygon points="223.6,-4.8 428.4,-4.8 466.8,-68.8 428.4,-177.6 223.6,-177.6" fill="#000000" opacity="0.35"/>
-    <polygon points="217.6,-12.8 422.4,-12.8 460.8,-76.8 422.4,-185.6 217.6,-185.6" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
-    <polygon points="217.6,-12.8 422.4,-12.8 460.8,-76.8 422.4,-185.6 217.6,-185.6" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
-    <polygon points="217.6,-12.8 422.4,-12.8 460.8,-76.8 422.4,-185.6 217.6,-185.6" fill="url(#corsair_sheen)"/>
+    <polygon points="-518.8,110.4 82.8,110.4 121.2,72 82.8,33.6 -518.8,33.6" fill="#000000" opacity="0.35"/>
+    <polygon points="-524.8,102.4 76.8,102.4 115.2,64 76.8,25.6 -524.8,25.6" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
+    <polygon points="-524.8,102.4 76.8,102.4 115.2,64 76.8,25.6 -524.8,25.6" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
+    <polygon points="-524.8,102.4 76.8,102.4 115.2,64 76.8,25.6 -524.8,25.6" fill="url(#corsair_sheen)"/>
+    <polygon points="172.4,-17.6 338.8,-17.6 377.2,-68.8 338.8,-177.6 172.4,-177.6" fill="#000000" opacity="0.35"/>
+    <polygon points="166.4,-25.6 332.8,-25.6 371.2,-76.8 332.8,-185.6 166.4,-185.6" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
+    <polygon points="166.4,-25.6 332.8,-25.6 371.2,-76.8 332.8,-185.6 166.4,-185.6" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
+    <polygon points="166.4,-25.6 332.8,-25.6 371.2,-76.8 332.8,-185.6 166.4,-185.6" fill="url(#corsair_sheen)"/>
     <polygon points="-365.2,289.6 -6.8,289.6 25.2,212.8 -384.4,212.8" fill="#000000" opacity="0.35"/>
     <polygon points="-371.2,281.6 -12.8,281.6 19.2,204.8 -390.4,204.8" fill="#66717f" stroke="#10141a" stroke-width="2.5" stroke-linejoin="round"/>
     <polygon points="-371.2,281.6 -12.8,281.6 19.2,204.8 -390.4,204.8" fill="none" stroke="#7d8898" stroke-width="5" stroke-linejoin="round" opacity="0.25"/>
