@@ -325,6 +325,7 @@ Penetrating hits, spall, fragments and interior blast all damage crew. Combat on
   - **Beams** can't be seen coming: the first touch meets only the base layer and calls up a region there, held 0.5 s after the beam leaves, that thickens while it burns. The cloud takes `1 - exp(-0.012 sigma)` of each tick, and burns off 2e-7 kg per joule taken.
   - **Power and heat.** Holding costs 1 kW per kg (each emitter its capacity's share of the pool), 0.5 kW more per kg in its regions, and recapturing scattered mass twice its kinetic energy at up to the retention speed. An emitter that can't pay drops its share. All of it is heat; each emitter sheds its `cooling` and trips at `heatTrip`, coming back at half.
   - Rounds, fragments, missiles, beams and ion bolts are softened; rams are not. An ion bolt soaked by a shield stuns only with the chance of what got through. `HullHitEvent.shielded` carries what the cloud took, for the shimmer sound; the cloud's own hit log (`ShieldCloudComponent.hits`) drives the particles (lighting's "Shield particles"). The gunship carries one small emitter.
+  - **Against each weapon** (`ShieldBenchmark`, Oct 2026: a 30 s volley at a pinned ship, shields up against down). A Small emitter (the gunship's 300 kg) takes 10 to 30% off the Small guns' hull damage and nothing off the Medium ones, and a heavy cannon's volley strips it to 5 kg. The reaver's four Medium emitters cut a chaingun's and a coilgun's hull damage to a third, a railgun's and a laser's to about 0.6, and the heavy guns' by 4 to 19%. Light fast rounds (low sectional density) lose the most energy per hit, but the light guns lose the most hull damage, since a round the cloud slows no longer gets through the armor. Ion bolts are almost wholly soaked: the reaver's cloud took the stuns from 4 systems to 0 (ion cannon) and 7 to 2 (disruptor). The disruptor's 3-tile stun can catch a Small emitter and drop the whole cloud. Missiles lose 5 to 30% to the cloud. The full review is the Claude Doc "Weapons against the particle shields".
   - **Not built yet:** buying and refilling media, the HUD gauge and coverage overlay, saving heat, heat spilling into the emitter's tile, and moving `EmitterSpec`'s figures into components.toml.
 
 ### 5.12 Hull on hull: collisions
@@ -441,6 +442,19 @@ Damage is not linear in energy: a round that cannot get through a tile's armor o
 The patrol gunship and frigate carried railguns, which had been the best gun at any range. Under the rule a heavy railgun does 13 MW, so on the enemy survey a frigate with two (or one and a heavy cannon) lost most raids on the pirate base, whose raiders and platforms brawl. Both carry heavy cannons now: the frigate wins 7 base raids in 10 (6 before the rule) and the gunship 9 (7). The heavy cannon runs at 34 MW, under the 48 its budget allows, because at 48 the frigate won every raid with hull to spare.
 
 A Mk2 keeps its Mk1's round and budget and is the better mount: it slews faster, holds tighter and draws less power. There are no rare weapons any more: every weapon with a price is sold at yards. A beaten ace leaves a spare of its most valuable gun crated in its hold (`PirateAces.dropPart`).
+
+### 6.2 The Oct 2026 weapons
+Five weapons from the rebalance proposal, each with turret art, a round's art and a synth patch. Pirates field them from difficulty 1.5 (`loadouts.toml`); the heavy laser is sold at yards only.
+
+| Weapon | What | Fits | Price |
+|---|---|---|---|
+| `breaching_cannon` | 20 kg `breach_shell` at 1.2 km/s every 2 s (7.2 MW, inside the Medium budget): a delayed fuse goes off one tile inside the hull, 12 fragments and a 1.5 MJ blast over 2 tiles, so its hits wound crew in a pressurized ship | M turret | 55,000 |
+| `laser_heavy` | An 8 MW beam for 2 s every 6 s, 4 km, drawing 10 MW: it needs a frigate's reactor | M beam | 110,000 |
+| `torpedo_tube` | Two `torpedo`es, 6 s apart: 425 kg, thermal seeker, 3e7 J of armor, a hardened nose (`penetration_factor` 1.0) and a delayed fuse two tiles in, `torpedo_charge` 3 MJ over 4 tiles | S launcher | 75,000 |
+| `lance_rack` | Four `lance` sprint missiles 0.8 s apart: radar, 200 m/s^2 closing burn, a light frag warhead on an 8 m proximity fuse | S launcher | 28,000 |
+| `ion_disruptor` | A heavier ion bolt every 2.5 s, 4 km: stuns within 3 tiles for 15 to 40 s | S turret | 70,000 |
+
+**Torpedoes punch in.** A missile body that strikes the hull no longer glances off (`MissileGuidanceSystem.bodyDef`: ricochet only past 89 degrees), and one with a delayed fuse goes through the hull on its own kinetic energy (`MissileDef.penetrationFactor`, 0.3 unless set) and detonates `depth_tiles` in. Everything else still goes off on contact. A torpedo needs its run-in: launched 600 m out it is still slow and its warhead goes off on the skin; from 4 km it goes in and puts about 50 MJ into the ship. Its 3e7 J of armor is about thirty flak hits, so a lone pair gets through a gunship's two flak mounts (`ShieldBenchmark`; at 3e6 both were shot down every time).
 
 ---
 

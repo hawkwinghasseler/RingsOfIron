@@ -199,3 +199,71 @@ ship = "corsair_pirate"
 weapons = ["chaingun_mk2", "flak_mk1", "flak_mk1"]
 ace = true
 weight = 1
+
+# Oct 2026's new weapons (combat-sys Design.md 6.1). Pirates only carry them from difficulty 1.5, so
+# the first hour never meets one; the heavy laser is yards only, since no pirate hull has the reactor.
+[loadout.raider_coilgun]
+name = "Coil runner"
+ship = "raider_light"
+weapons = ["coilgun_mk1"]
+weight = 2
+min_difficulty = 1.5
+
+[loadout.raider_lance]
+name = "Lancer"
+ship = "raider_light"
+weapons = ["lance_rack"]
+weight = 2
+min_difficulty = 1.5
+
+[loadout.raider_ace_disruptor]
+name = "Ace's disruptor"
+ship = "raider_light"
+weapons = ["ion_disruptor"]
+ace = true
+weight = 1
+min_difficulty = 1.5
+
+[loadout.corsair_coil]
+name = "Coil corsair"
+ship = "corsair_pirate"
+weapons = ["coilgun_mk1"]
+weight = 2
+min_difficulty = 1.5
+
+[loadout.corsair_lance]
+name = "Lance corsair"
+ship = "corsair_pirate"
+weapons = ["chaingun_mk1", "lance_rack", "lance_rack"]
+weight = 1
+min_difficulty = 1.5
+
+[loadout.corsair_ace_disruptor]
+name = "Ace's disruptor corsair"
+ship = "corsair_pirate"
+weapons = ["ion_disruptor", "flak_mk1", "flak_mk1"]
+ace = true
+weight = 1
+min_difficulty = 1.5
+
+# Pirates who want crews dead and ships whole
+[loadout.gunship_breacher]
+name = "Breacher"
+ship = "gunship_raider"
+weapons = ["breaching_cannon", "", "", "flak_mk1", "flak_mk1"]
+weight = 2
+min_difficulty = 1.5
+
+[loadout.gunship_coil]
+name = "Coil gunship"
+ship = "gunship_raider"
+weapons = ["coilgun_mk1"]
+weight = 1
+min_difficulty = 1.5
+
+[loadout.gunship_torpedo]
+name = "Torpedo gunship"
+ship = "gunship_raider"
+weapons = ["", "torpedo_tube", "torpedo_tube"]
+weight = 1
+min_difficulty = 2.0

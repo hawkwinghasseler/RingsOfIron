@@ -12,6 +12,7 @@ Nothing here runs in `./gradlew build`, `test`, `slowTest`, `-PallTests` or CI. 
 ./gradlew :core:playtestBenchmark --tests '*MidCareerBalanceBenchmark'
 ./gradlew :core:playtestBenchmark --tests '*CareerPacingBenchmark'         # seed 2026's careers, up to an hour
 ./gradlew :core:playtestBenchmark --tests '*WeaponDuelBenchmark'           # each Small gun against the raider, a few minutes
+./gradlew :core:playtestBenchmark --tests '*ShieldBenchmark'               # every weapon against shields up and down, about five minutes
 ./gradlew :core:playtestBenchmark --tests '*CareerPacingBenchmark.round3*' -PcareerSeeds=2026,7,12
 ```
 
@@ -125,4 +126,28 @@ Refit the corvette's nose at Highport with each gun in turn (or load a later sav
 - [ ] A Mk2 feels like a better mount for the same round: it gets onto a target faster and holds it tighter.
 - [ ] A heavy shell's hit shreds the room behind the hull; a railgun slug drills a neat line.
 - [ ] Note any weapon you never wanted to buy, or never wanted to sell.
+
+## Shields (`ShieldBenchmark`)
+
+How much the particle cloud (combat-sys Design.md 5.11) takes off each weapon. Each weapon fires a volley into a pinned, crewed gunship (one Small emitter) and reaver (four Medium ones), once with shields raised and once lowered, at the same random tiles: a gun for 30 s from 2 km, a beam at its cooldown, a launcher one magazine from 4 km with the target's turrets held down. Then each launcher's magazine goes at the gunship again with its flak live.
+
+| Target | Bot's target |
+|---|---|
+| Medium shields: chaingun and coilgun hull damage kept | at most half |
+| Medium shields: heavy cannon and heavy railgun hull damage kept | at least 0.85 |
+| Hull tiles per torpedo, Small shields up | at least 1 |
+| Torpedoes that get through the gunship's flak | at least half |
+| Lances shot down, over darts shot down | at most 1 |
+
+The table also lists every weapon on both hulls: hull and systems taken up and down, crew killed and wounded, systems stunned, the share of hit energy the cloud took and the cloud mass left.
+
+Fit the frigate (or a later save's gunship) with each weapon and fight a destroyer or reaver, then a corvette, which has no shields.
+
+- [ ] Against a shielded ship the chaingun and coilgun feel blunted, and you reach for a heavy gun.
+- [ ] Sustained heavy fire visibly strips a Small shield, and it stays down for a while.
+- [ ] Ion fire against a shielded ship does little until the cloud is down; note whether that feels fair or makes ion useless.
+- [ ] A torpedo that gets through feels like a big hit, and from up close it bounces off.
+- [ ] Lances get through point defense more often than darts.
+- [ ] The breaching cannon wounds more crew in a pressurized ship than in a vented one.
+- [ ] The heavy laser burns harder on a frigate's reactor than a gunship can feed it.
 

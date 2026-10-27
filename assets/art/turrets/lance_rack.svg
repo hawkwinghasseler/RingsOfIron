@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="68" height="56" viewBox="-28 -28 68 56">
+  <title>lance_rack: pivot at origin, four slim rails facing +x</title>
+  <g id="base">
+    <circle cx="0" cy="0" r="24" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
+    <circle cx="0" cy="0" r="16.8" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="-14" y="-16" width="30" height="32" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <rect x="-10" y="-14" width="46" height="5" rx="1.5" fill="#373f4b" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="-10" y="-5.5" width="46" height="5" rx="1.5" fill="#373f4b" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="-10" y="0.5" width="46" height="5" rx="1.5" fill="#373f4b" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="-10" y="9" width="46" height="5" rx="1.5" fill="#373f4b" stroke="#10141a" stroke-width="1.5"/>
+    <polygon points="30,-13.5 36,-11.5 30,-9.5" fill="#c9cfd8" stroke="#10141a" stroke-width="1"/>
+    <polygon points="30,-5 36,-3 30,-1" fill="#c9cfd8" stroke="#10141a" stroke-width="1"/>
+    <polygon points="30,1 36,3 30,5" fill="#c9cfd8" stroke="#10141a" stroke-width="1"/>
+    <polygon points="30,9.5 36,11.5 30,13.5" fill="#c9cfd8" stroke="#10141a" stroke-width="1"/>
+  </g>
+</svg>
