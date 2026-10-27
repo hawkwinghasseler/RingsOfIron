@@ -30,6 +30,7 @@ public class ViewportManager {
     private final ScreenViewport uiViewport = new ScreenViewport(uiCamera);
     private final Vector3 tmp = new Vector3();
     private float viewMeters;
+    private final ZoomEase ease = new ZoomEase();
     private int screenWidth = 1, screenHeight = 1;
     private float uiScale = 1f;
 
@@ -63,17 +64,45 @@ public class ViewportManager {
         worldCamera.update();
     }
 
-    /** Zooms so the shorter screen axis shows this many meters. */
+    /** Zooms so the shorter screen axis shows this many meters, at once (ending any eased zoom). */
     public void setViewMeters(float meters) {
+        ease.stop();
+        apply(meters);
+    }
+
+    private void apply(float meters) {
         viewMeters = MathUtils.clamp(meters, MIN_VIEW_METERS, MAX_VIEW_METERS);
         worldViewport.setMinWorldWidth(viewMeters);
         worldViewport.setMinWorldHeight(viewMeters);
         worldViewport.update(screenWidth, screenHeight, false);
     }
 
-    /** Multiplies the zoom, e.g. {@code zoom(1.15f)} per mouse-wheel notch. */
+    /** Zooms to {@code meters} over {@link ZoomEase#SECONDS}, easing in and out; {@link #update} moves it on. */
+    public void easeViewMeters(float meters) {
+        ease.start(viewMeters, MathUtils.clamp(meters, MIN_VIEW_METERS, MAX_VIEW_METERS));
+    }
+
+    /** Moves an eased zoom on by {@code delta} seconds of real time. */
+    public void update(float delta) {
+        if (!ease.isEasing()) return;
+        ease.update(delta);
+        apply(ease.meters());
+    }
+
+    /** How far along the eased zoom is, eased in and out: 0 at its start, 1 once settled. */
+    public float easeProgress() {
+        return ease.progress();
+    }
+
+    /** Multiplies the zoom, e.g. {@code zoom(1.15f)} per mouse-wheel notch; mid-ease, where it is easing to as well. */
     public void zoom(float factor) {
-        setViewMeters(viewMeters * factor);
+        if (ease.isEasing()) ease.scale(factor, MIN_VIEW_METERS, MAX_VIEW_METERS);
+        apply(viewMeters * factor);
+    }
+
+    /** The view an eased zoom is heading for, or the view itself once it has settled. */
+    public float getTargetViewMeters() {
+        return ease.isEasing() ? ease.target() : viewMeters;
     }
 
     public float getViewMeters() {

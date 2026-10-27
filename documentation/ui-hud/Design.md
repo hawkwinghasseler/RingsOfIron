@@ -62,7 +62,7 @@ Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. C
 
 | Class | Role |
 |---|---|
-| `ViewportManager` | World camera (ExtendViewport, meters) and UI camera (ScreenViewport, pixels); `worldToUi` / `uiToWorld` |
+| `ViewportManager` | World camera (ExtendViewport, meters) and UI camera (ScreenViewport, pixels); `worldToUi` / `uiToWorld`; `easeViewMeters` eases the zoom (`ZoomEase`: 0.3 s, eased in and out, even in ratio) |
 | `HudRenderSystem` | Brackets, nameplates and ranges for `HudMarkerComponent` entities; edge arrows off screen; lead reticle |
 | `WireframeMinimap`, `WireframeSyncSystem` | Live blueprint of the player ship's `ShipGridComponent` with an alert list (fire, breaches, venting, smoke, hull %) |
 | `InteractPromptSystem`, `ConsoleWindow` | "Press [E] for the ... panel" within `INTERACT_RADIUS` tiles of an `InteractableConsoleComponent`; per-console layouts via `registerConsoleLayout` |

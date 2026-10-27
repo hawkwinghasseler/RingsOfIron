@@ -325,11 +325,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         hud.getViewMode().addListener((previous, current) -> {
             if (previous == current) return;
+            // Eased, and the camera slides between the ship and the avatar as it goes (render)
             if (current == ViewMode.INTERIOR) {
-                exteriorViewMeters = viewports.getViewMeters();
-                viewports.setViewMeters(INTERIOR_VIEW);
+                exteriorViewMeters = viewports.getTargetViewMeters();
+                viewports.easeViewMeters(INTERIOR_VIEW);
             } else {
-                viewports.setViewMeters(exteriorViewMeters);
+                viewports.easeViewMeters(exteriorViewMeters);
             }
         });
         world.rescue.rescues.add((signal, rescue) -> {
@@ -422,10 +423,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         updateOpening();
 
-        TransformComponent pt = TRANSFORMS.get(game.player);
-        Vector2 walker = hud.getViewMode().getMode() == ViewMode.INTERIOR ? avatarWorld(followAt) : null;
-        if (walker != null) viewports.follow(walker.x, walker.y);
-        else if (pt != null) viewports.follow(pt.x, pt.y);
+        // Real time, so a change of view eases while paused too
+        viewports.update(Math.min(Gdx.graphics.getDeltaTime(), 0.25f));
+        follow();
 
         Gdx.gl.glClearColor(0.02f, 0.02f, 0.05f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -447,6 +447,24 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (world.getCrash() != null || world.getCareerOver() != null) drawCrash();
         else if (logOpen) drawLog();
         else if (helpOpen) drawHelp();
+    }
+
+    /**
+     * Centers the camera on the avatar on deck and on the ship outside; while the zoom eases from
+     * one view to the other, as far between the two as the zoom has come.
+     */
+    private void follow() {
+        TransformComponent pt = TRANSFORMS.get(game.player);
+        Vector2 walker = avatarWorld(followAt);
+        boolean inside = hud.getViewMode().getMode() == ViewMode.INTERIOR;
+        float toWalker = inside ? viewports.easeProgress() : 1f - viewports.easeProgress();
+        if (walker == null || (pt != null && toWalker <= 0f)) {
+            if (pt != null) viewports.follow(pt.x, pt.y);
+        } else if (pt == null || toWalker >= 1f) {
+            viewports.follow(walker.x, walker.y);
+        } else {
+            viewports.follow(pt.x + (walker.x - pt.x) * toWalker, pt.y + (walker.y - pt.y) * toWalker);
+        }
     }
 
     /** The action's key went down this frame. */
@@ -1390,13 +1408,18 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     /**
      * The deck plan of the craft the avatar is aboard, and of any craft docked to it, each at its
-     * own pose, with its smoke and flames, the cargo and everyone aboard. {@code delta} moves the
-     * smoke and flames on; nothing moves while paused.
+     * own pose, with its smoke and flames, the cargo and everyone aboard; every other craft in view
+     * as it looks outside. {@code delta} moves the smoke and flames on; nothing moves while paused.
      */
     private void drawInterior(float delta) {
         Entity aboard = world.avatar.getAvatarShip();
         deckRenderer.draw(DeckRenderer.decksAround(aboard == null ? game.player : aboard, decks),
                 viewports.getWorldCamera(), delta);
+        // Over the decks' light map, which would darken them to the dim deck ambient: drawn as the
+        // art is, without the outside light map, which would darken the decks in turn
+        exterior.setLightsOn(false);
+        exterior.drawBodies(viewports.getWorldCamera(), delta, decks);
+        exterior.setLightsOn(lightsOn);
     }
 
     /** Where the avatar stands, world meters, or null when it is aboard nothing in the bubble. */
