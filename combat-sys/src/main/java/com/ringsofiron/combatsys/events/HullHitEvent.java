@@ -2,6 +2,7 @@ package com.ringsofiron.combatsys.events;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.Vector2;
+import com.ringsofiron.combatsys.defs.DamageType;
 
 /**
  * One resolved hit on a ship, for ui-hud (flash the wireframe minimap) and audio-spatial
@@ -39,5 +40,17 @@ public class HullHitEvent {
     public boolean ion;
     /** Joules the ship's shields took off the hit before the hull felt it, 0 with none up. */
     public float shielded;
+    /** How the round did its damage; a ram is kinetic. */
+    public DamageType damageType = DamageType.KINETIC;
+    /**
+     * Where it struck, in the grid's tile space (tile (x, y) spans x..x+1, y..y+1), and which way it
+     * was travelling and the hull's outward normal there, unit, in the ship's frame. For the deck
+     * view's impact graphics.
+     */
+    public final Vector2 entry = new Vector2(), direction = new Vector2(), normal = new Vector2();
+    /** Where an over-penetrating round left, tile space; the entry point otherwise. */
+    public final Vector2 exit = new Vector2();
+    /** Tile where a warhead went off inside the hull, or -1; its overpressure reached {@link #blastRadius} tiles. */
+    public int detonationX = -1, detonationY = -1, blastRadius;
     public long tick;
 }

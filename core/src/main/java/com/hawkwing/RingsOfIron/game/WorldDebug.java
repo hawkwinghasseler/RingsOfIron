@@ -12,11 +12,14 @@ import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
+import com.ringsofiron.combatsys.defs.DamageType;
 import com.ringsofiron.combatsys.defs.MissileDef;
 import com.ringsofiron.combatsys.defs.ProjectileDef;
 import com.ringsofiron.combatsys.defs.WarheadDef;
 import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.combatsys.events.DamageReport;
+import com.ringsofiron.combatsys.events.HullHitEvent;
+import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.DamageStates;
@@ -352,6 +355,20 @@ public final class WorldDebug implements PhysicsManager.StepListener {
         float absorbed = world.impacts.getResolver().detonateInside(grid, ship, x, y, warhead,
                 world.impacts.rngFor(ship), report);
         if (report.structureChanged) grid.gridDirty = true;
+        // Seen and heard as a warhead that got inside: the deck view's fireball, the HUD's flash
+        HullHitEvent hit = new HullHitEvent();
+        hit.ship = ship;
+        hit.tileX = hit.detonationX = x;
+        hit.tileY = hit.detonationY = y;
+        hit.blastRadius = warhead.blastRadiusTiles;
+        hit.entry.set(x + 0.5f, y + 0.5f);
+        hit.exit.set(hit.entry);
+        tileWorld(ship, x, y, hit.worldPoint);
+        hit.outcome = HullHitEvent.Outcome.PENETRATED;
+        hit.damageType = DamageType.EXPLOSIVE;
+        hit.energyAbsorbed = absorbed;
+        hit.severity = MathUtils.clamp(absorbed / ImpactResolutionSystem.SEVERITY_SCALE, 0f, 1f);
+        world.combatEvents.hullHits.dispatch(hit);
         if (!report.isEmpty()) world.combatEvents.damage.dispatch(report);
         return String.format("%s went off: %.1f MJ into the ship", warheadId, absorbed / 1e6f);
     }

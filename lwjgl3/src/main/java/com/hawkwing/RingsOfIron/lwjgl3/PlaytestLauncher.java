@@ -53,6 +53,8 @@ import java.util.List;
  *       target, the helm's order, and each defender's range), so a script can fly it by keys</li>
  *   <li>{@code seat}: only reads the console the avatar sits at and where the weapons console is from it</li>
  *   <li>{@code boarding}: only reads who is boarding the player, how close, and what the last boarder took</li>
+ *   <li>{@code dev <line>}: runs the line in the developer console without opening it, so the screenshots
+ *       show the game: {@code dev shoot 'laser_mk1', player, 60, 90}, {@code dev pause()}, {@code dev step(0.05)}</li>
  * </ul>
  * Run with {@code gradlew :lwjgl3:runPlaytest -Pcommands=<file> [-Psaves=<folder>]}. Saves go to a
  * temporary folder, into which the saves in {@code <folder>} (the career test's
@@ -139,6 +141,9 @@ public class PlaytestLauncher {
             });
             world.combatEvents.impacts.add((sig, e) -> System.out.println("PLAYTEST impact on " + label(e.target) + " from " + label(e.owner)
                     + (e.ram ? " (ram)" : "") + " mass " + e.mass + " at " + world.engine.getSimSeconds()));
+            world.combatEvents.hullHits.add((sig, h) -> System.out.println(String.format(java.util.Locale.ROOT,
+                    "PLAYTEST hull hit on %s: %s %s at tile %d,%d, severity %.2f, shields took %.0f J", label(h.ship), h.damageType,
+                    h.outcome, h.tileX, h.tileY, h.severity, h.shielded)));
             world.docking.events.add((sig, e) -> {
                 System.out.println("PLAYTEST docking " + e.kind + " " + PlayerDocking.name(e.vessel) + " / " + PlayerDocking.name(e.other)
                         + " at " + world.engine.getSimSeconds());
@@ -450,6 +455,15 @@ public class PlaytestLauncher {
                 case "reactors": {
                     if (spawned == null) return "spawnship first";
                     return debugActions(world).tools.toggleReactors(spawned) ? "reactors on" : "reactors off";
+                }
+                case "dev": {
+                    com.hawkwing.RingsOfIron.debug.DevConsole dev = game.getDevConsole();
+                    if (dev == null) return "no console";
+                    try {
+                        return String.valueOf(dev.console.execute(String.join(" ", java.util.Arrays.copyOfRange(cmd, 1, cmd.length))));
+                    } catch (RuntimeException e) {
+                        return "failed: " + e.getMessage();
+                    }
                 }
                 case "target": {
                     String want = String.join(" ", java.util.Arrays.copyOfRange(cmd, 1, cmd.length)).toLowerCase(java.util.Locale.ROOT);
