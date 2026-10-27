@@ -32,6 +32,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | R | Launch a missile at the target |
 | F | Drop a decoy (on deck: force the door across a dock) |
 | Tab | Cycle the target |
+| Click (outside view) | Select a ship or station: a ship becomes the target, and either becomes the navigation target. Zoomed out, your ship and your targets show magnified in picture-in-picture bubbles; a click inside a bubble selects there too |
 | V | Stand up from your console into the deck view; on deck beside the helm or weapons console, sit there and look outside (`gradlew :lwjgl3:runGame -PviewAnywhere` switches anywhere) |
 | M | Traffic map |
 | T | Trade, when in range of a station |

@@ -37,6 +37,7 @@ import com.hawkwing.RingsOfIron.game.ShipDisablement;
 import com.hawkwing.RingsOfIron.game.ShipRefit;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.hawkwing.RingsOfIron.game.DoorForcing;
+import com.hawkwing.RingsOfIron.game.ExteriorPick;
 import com.hawkwing.RingsOfIron.game.FactionStanding;
 import com.hawkwing.RingsOfIron.game.DisabledComponent;
 import com.hawkwing.RingsOfIron.game.GameHud;
@@ -54,6 +55,7 @@ import com.hawkwing.RingsOfIron.lighting.SceneLighting;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
 import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
 import com.hawkwing.RingsOfIron.render.HeatOverlay;
+import com.hawkwing.RingsOfIron.render.PictureInPicture;
 import com.hawkwing.RingsOfIron.render.SpaceSnow;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
@@ -87,7 +89,10 @@ import java.util.Map;
  * <p>Controls, outside: W/S main engine, A/D turn, Z/C strafe, X rotation assist, Tab cycle
  * target, Space fire the guns and laser (the turrets lead the locked target themselves), R launch
  * a missile at it, F drop a decoy, comma/period time warp down/up, mouse wheel zoom. Point defense
- * shoots down incoming missiles by itself. The raider fights back once you shoot at it.
+ * shoots down incoming missiles by itself. The raider fights back once you shoot at it. A click on a
+ * ship or station selects it: a ship in the bubble becomes the locked target, and either becomes the
+ * navigation target. Zoomed out, the player's ship and its targets each show in a picture-in-picture
+ * bubble ({@link PictureInPicture}), magnified, and a target off screen shows at the edge.
  *
  * <p>The outside view is what you see seated at a console ({@link Bridge}): you start at the helm,
  * which flies the ship and fires it too. V stands you up into the deck view, where WASD walks your
@@ -181,6 +186,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private SceneLighting lighting;
     /** Light over the hulls outside: starlight, the hulls' own lights, engines, guns and blasts. */
     private ExteriorLighting exteriorLighting;
+    /** Bubbles magnifying the player's ship and its targets when the outside view shows them too small, and their own light. */
+    private PictureInPicture pip;
+    private ExteriorLighting pipLighting;
     private HullArt hullArt;
     private boolean lightsOn = true;
     private float exteriorViewMeters = START_VIEW;
@@ -286,6 +294,16 @@ public class RingsOfIronGame extends ApplicationAdapter {
         hullArt = new HullArt(game.content.defs);
         exterior = new ExteriorRenderer(() -> world, shapes, batch, art, lighting, hullArt, () -> game.player)
                 .setLighting(exteriorLighting);
+        pipLighting = new ExteriorLighting(emissive);
+        pip = new PictureInPicture(() -> world,
+                new ExteriorRenderer(() -> world, shapes, batch, art, null, hullArt, () -> game.player),
+                pipLighting, shapes, batch, font);
+        // The HUD's names of contacts off screen stack clear of the bubbles
+        for (int i = 0; i < PictureInPicture.MAX_BUBBLES; i++) {
+            int bubble = i;
+            com.badlogic.gdx.math.Rectangle area = new com.badlogic.gdx.math.Rectangle();
+            hud.getHudRenderSystem().keepClear(() -> pip.area(bubble, area));
+        }
         snow = new SpaceSnow(() -> world, () -> game.player);
 
         gun = new PlayerGunnery(world, game.player);
@@ -305,10 +323,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gameHud.yard.setLayoutEditor(this::openRefit);
         gameHud.yard.setFurnisher(this::startFurnishing);
         world.combatEvents.intercepts.add((signal, hit) -> {
-            if (hit.destroyed && hit.missile != null) exterior.explode(hit.point.x, hit.point.y);
+            if (hit.destroyed && hit.missile != null) {
+                exterior.explode(hit.point.x, hit.point.y);
+                pip.explode(hit.point.x, hit.point.y);
+            }
         });
-        world.combatEvents.detonations.add((signal, boom) ->
-                exterior.explode(boom.worldPoint.x, boom.worldPoint.y));
+        world.combatEvents.detonations.add((signal, boom) -> {
+            exterior.explode(boom.worldPoint.x, boom.worldPoint.y);
+            pip.explode(boom.worldPoint.x, boom.worldPoint.y);
+        });
 
         world.bridge.playerAlwaysAtHelm = VIEW_ANYWHERE;
         if (!VIEW_ANYWHERE) {
@@ -360,7 +383,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.hints.registerKey(HintRegistry.Context.ANY, "Esc", hosted ? "menu" : "quit", 90);
         createDevConsole();
         Gdx.input.setInputProcessor(new InputMultiplexer(devKeys, placingKeys, hud.getInputProcessor(), placingClicks, devClicks,
-                scenarioClicks, new InputAdapter() {
+                scenarioClicks, exteriorClicks, new InputAdapter() {
             @Override
             public boolean scrolled(float amountX, float amountY) {
                 if (logOpen) logScroll = Math.max(0, logScroll + Math.round(amountY));
@@ -440,6 +463,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         // The status column first, so an open HUD window (the crew roster, the yard) covers it rather
         // than having the helm's order written across its rows (round 9, real window)
         drawDevSelection();
+        if (hud.getViewMode().getMode() == ViewMode.EXTERIOR) drawPictureInPicture(delta);
         drawStatus();
         gameHud.draw(delta);
         drawOverlays(delta, false);
@@ -829,6 +853,75 @@ public class RingsOfIronGame extends ApplicationAdapter {
             return true;
         }
     };
+
+    /**
+     * Left clicks on the outside view (not on a window, and not taken by the developer console, the
+     * placing or a scenario): select the ship or station under the cursor, in the view or in a
+     * picture-in-picture bubble.
+     */
+    private final InputProcessor exteriorClicks = new InputAdapter() {
+        @Override
+        public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+            if (button != Input.Buttons.LEFT || hud.getViewMode().getMode() != ViewMode.EXTERIOR
+                    || placing != null || isOverlayOpen() || world.getCrash() != null) return false;
+            return selectAt(screenX, screenY);
+        }
+    };
+
+    /**
+     * Selects ({@link #selectContact}) the craft under window pixel ({@code screenX}, {@code screenY})
+     * (y down, as input has it), in the view or in a picture-in-picture bubble. False when nothing is there.
+     */
+    private boolean selectAt(int screenX, int screenY) {
+        Vector2 at = tmp;
+        float mpp = pip.unproject(screenX, Gdx.graphics.getHeight() - 1 - screenY, at);
+        if (mpp < 0f) {
+            viewports.getWorldViewport().unproject(at.set(screenX, screenY));
+            mpp = viewports.metersPerPixel();
+        }
+        Entity picked = new ExteriorPick(world).at(at.x, at.y, mpp, game.player);
+        if (picked == null) return false;
+        selectContact(picked);
+        return true;
+    }
+
+    /**
+     * Selects {@code picked}, a ship or station: a ship in the bubble becomes the locked target, as
+     * Tab would lock it, and either becomes the navigation target.
+     */
+    private void selectContact(Entity picked) {
+        boolean lock = game.contacts.contains(picked, true);
+        if (lock) gun.setTarget(picked);
+        String uuid = world.universe.uuidOf(picked);
+        String nav = uuid == null ? null : world.nav.target.select(uuid);
+        HudMarkerComponent marker = MARKERS.get(picked);
+        String name = marker != null && marker.label != null && !marker.label.isEmpty() ? marker.label : PlayerDocking.name(picked);
+        if (lock) world.notices.replace("Target locked", "Target locked: " + name);
+        else if (nav != null) world.notices.replace("Navigation target", nav);
+    }
+
+    /**
+     * The bubbles for the player's ship, the locked target and the navigation target, as they need
+     * them, clear of the HUD's panels and the status column.
+     */
+    private void drawPictureInPicture(float delta) {
+        if (world.getCrash() != null) return;
+        float uiW = viewports.getUiViewport().getWorldWidth(), uiH = viewports.getUiViewport().getWorldHeight();
+        pip.keepClear(panelRect.set(uiW - STATUS_WIDTH - 10f, statusBottom, STATUS_WIDTH + 10f, uiH - statusBottom));
+        keepClear(hud.getFlightPanel().getParent());
+        keepClear(hud.getMinimapPanel());
+        keepClear(hud.getOrbitMap().getParent());
+        pip.draw(viewports, game.player, gun.getTarget(), world.nav.target.entity(), delta);
+    }
+
+    private final com.badlogic.gdx.math.Rectangle panelRect = new com.badlogic.gdx.math.Rectangle();
+
+    /** Keeps the bubbles off {@code panel} while it shows. */
+    private void keepClear(Actor panel) {
+        if (panel == null || !panel.isVisible()) return;
+        Vector2 at = panel.localToStageCoordinates(tmp2.set(0f, 0f));
+        pip.keepClear(panelRect.set(at.x, at.y, panel.getWidth(), panel.getHeight()));
+    }
 
     /** Clicks on the game (not a window) for the scenario's pointer, while the developer console is closed. */
     private final InputProcessor scenarioClicks = new InputAdapter() {
@@ -1310,6 +1403,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         lightsOn = !lightsOn;
         deckRenderer.setLightsOn(lightsOn);
         exterior.setLightsOn(lightsOn);
+        pip.setLightsOn(lightsOn);
         show(lightsOn ? "Lighting on" : "Lighting off");
     }
 
@@ -1682,6 +1776,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gameHud.dispose();
         lighting.dispose();
         exteriorLighting.dispose();
+        pipLighting.dispose();
+        pip.dispose();
         docking.dispose();
         world.dispose();
         shapes.dispose();
