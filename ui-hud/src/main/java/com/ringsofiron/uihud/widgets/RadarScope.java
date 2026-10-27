@@ -22,9 +22,9 @@ import java.util.function.Consumer;
 /**
  * The proximity scanner (GDD section 2): contacts around the player's ship, north up like the
  * exterior view, with the ship's heading as a line from the middle. Contacts beyond the range sit
- * on the rim as hollow marks. The + and − buttons either side of the range step it through
- * {@link #RANGES}; a click anywhere else picks the contact under the cursor, if any, for the
- * {@link #setPickListener pick listener}.
+ * on the rim as smaller, faded dots; only the locked target is ringed. The + and − buttons either
+ * side of the range step it through {@link #RANGES}; a click anywhere else picks the contact under
+ * the cursor, if any, for the {@link #setPickListener pick listener}.
  *
  * <p>{@link com.ringsofiron.uihud.systems.RadarSystem} fills it each frame.
  */
@@ -180,10 +180,13 @@ public class RadarScope extends Widget {
         }
         for (int i = 0; i < colors.size; i++) {
             boolean inside = plot(offsets.get(2 * i), offsets.get(2 * i + 1), getRange(), r, p);
-            HudDraw.color(batch, colors.get(i), parentAlpha * (inside ? 1f : 0.6f));
-            if (inside) HudDraw.disc(batch, white, cx + p.x, cy + p.y, 5f);
-            else HudDraw.ring(batch, white, cx + p.x, cy + p.y, 2.5f, 1f);
-            if (locked.get(i) > 0f) HudDraw.ring(batch, white, cx + p.x, cy + p.y, 6f, 1.5f);
+            // Only the target is ringed; a contact beyond the range is a smaller, faded dot on the rim
+            HudDraw.color(batch, colors.get(i), parentAlpha * (inside ? 1f : 0.5f));
+            HudDraw.disc(batch, white, cx + p.x, cy + p.y, inside ? 5f : 3.5f);
+            if (locked.get(i) > 0f) {
+                HudDraw.color(batch, colors.get(i), parentAlpha);
+                HudDraw.ring(batch, white, cx + p.x, cy + p.y, 6f, 1.5f);
+            }
         }
         font.setColor(HudSkin.HUD_DIM.r, HudSkin.HUD_DIM.g, HudSkin.HUD_DIM.b, parentAlpha);
         font.draw(batch, HudRenderSystem.formatRange(getRange()), getX(), getY() + LABEL_HEIGHT - 2f, getWidth(),
