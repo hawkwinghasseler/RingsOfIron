@@ -136,21 +136,22 @@ public class UiHud implements Disposable {
         flightPanel = flight;
         flight.setBackground(skin.getDrawable("panel"));
         flight.pad(8f);
-        // Top left: the flight readout, the ship's gauges under it and the proximity scanner beside them,
-        // low enough that the top centre stays clear for the dock and threat banners at a 1280 window.
+        // Top left, in one column: the flight readout, the ship's gauges and a compact proximity scanner,
+        // so the scanner stays out of the middle of the view and the top centre stays clear for the dock
+        // and threat banners.
         gauges = new ShipGauges(skin);
         gauges.setBackground(skin.getDrawable("panel"));
         gauges.pad(8f);
         radar = new RadarScope(skin);
         radarPanel = new Table();
         radarPanel.setBackground(skin.getDrawable("panel"));
-        radarPanel.pad(8f);
+        radarPanel.pad(6f, 8f, 6f, 8f);
         radarPanel.add(new Label("RADAR", skin, "title")).left().row();
         radarPanel.add(radar);
         Table topLeft = new Table();
         topLeft.add(flight).left().top().fillX().row();
-        topLeft.add(gauges).left().top().fillX().padTop(6f);
-        topLeft.add(radarPanel).left().top().padTop(6f).padLeft(6f);
+        topLeft.add(gauges).left().top().fillX().padTop(6f).row();
+        topLeft.add(radarPanel).left().top().padTop(6f);
         root.add(topLeft).top().left().pad(10f).expand().colspan(2).row();
 
         minimap = new WireframeMinimap(skin.getRegion("white"));
@@ -248,11 +249,12 @@ public class UiHud implements Disposable {
         hudRenderSystem.keepClear(threatBanner, () -> threatOverlay.isVisible() && threatBanner.getText().length() > 0);
         hudRenderSystem.keepClear(dockHint, dockHint::isVisible);
         // Names by the bottom edge rise clear of the ship and orbit panels rather than writing over them,
-        // and names by the left edge clear the flight readout and the gauges
+        // and names by the left edge clear the flight readout, the gauges and the radar
         hudRenderSystem.keepClear(() -> stageBounds(minimapPanel));
         hudRenderSystem.keepClear(() -> stageBounds(orbitPanel));
         hudRenderSystem.keepClear(() -> stageBounds(flightPanel));
         hudRenderSystem.keepClear(() -> stageBounds(gauges));
+        hudRenderSystem.keepClear(() -> stageBounds(radarPanel));
         wireframeSyncSystem = new WireframeSyncSystem(minimap, alerts);
         interactPromptSystem = new InteractPromptSystem(prompt, this::openConsole);
         flightReadoutSystem = new FlightReadoutSystem(flight, skin, viewMode);
