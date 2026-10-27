@@ -109,6 +109,18 @@ public class PlaytestLauncher {
         }
 
         private GameWorld watched;
+        /** The ship of the last `spawnship`, and the debug tools for the world it is in. */
+        private Entity spawned;
+        private com.hawkwing.RingsOfIron.debug.DebugActions debugActions;
+        private GameWorld debugWorld;
+
+        private com.hawkwing.RingsOfIron.debug.DebugActions debugActions(GameWorld world) {
+            if (debugWorld != world) {
+                debugWorld = world;
+                debugActions = new com.hawkwing.RingsOfIron.debug.DebugActions(world, new com.hawkwing.RingsOfIron.game.WorldDebug(world));
+            }
+            return debugActions;
+        }
         /** The player's rounds fired since the load, by weapon. */
         private final java.util.Map<String, Integer> playerShots = new java.util.TreeMap<>();
 
@@ -390,6 +402,52 @@ public class PlaytestLauncher {
                     float cx = w.footprint.originX + w.footprint.width() / 2f, cy = w.footprint.originY + w.footprint.height() / 2f;
                     return String.format(java.util.Locale.ROOT, "seat %s, weapons %.2f %.2f off", world.bridge.seat(),
                             cx - pos.x, cy - pos.y);
+                }
+                case "spawnship": {
+                    // A ship from ships.toml <m> meters off the player's side (default 40), uncrewed, at
+                    // rest beside it; `shoot` and `reactors` then act on it (tools/playtest/shields.sh)
+                    if (cmd.length < 2) return "spawnship <id> [m]";
+                    float m = cmd.length > 2 ? Float.parseFloat(cmd[2]) : 40f;
+                    com.hawkwing.RingsOfIron.debug.DebugActions actions = debugActions(world);
+                    spawned = actions.spawnShip(cmd[1], s.player);
+                    com.badlogic.gdx.physics.box2d.Body near = world.docking.bodyOf(s.player);
+                    com.badlogic.gdx.physics.box2d.Body body = world.docking.bodyOf(spawned);
+                    if (near != null && body != null) {
+                        com.badlogic.gdx.math.Vector2 at = PhysicsManager.getPosition(near, new com.badlogic.gdx.math.Vector2());
+                        PhysicsManager.setPosition(body, at.x + m, at.y, 0f);
+                        body.setLinearVelocity(near.getLinearVelocity());
+                        body.setAngularVelocity(0f);
+                    }
+                    return PlayerDocking.name(spawned) + " at " + m + " m";
+                }
+                case "shoot": {
+                    // shoot <weapon> <x> <y> [m]: the dev console's shoot() at that tile of the spawned ship;
+                    // with m, a gun's round starts m meters out, so its shield sees it coming
+                    if (spawned == null || cmd.length < 4) return "spawnship first, then shoot <weapon> <x> <y> [m]";
+                    if (cmd.length > 4) {
+                        return debugActions(world).tools.fire(spawned, cmd[1], Integer.parseInt(cmd[2]), Integer.parseInt(cmd[3]),
+                                Float.parseFloat(cmd[4]));
+                    }
+                    return debugActions(world).shoot(spawned, Integer.parseInt(cmd[2]), Integer.parseInt(cmd[3]), cmd[1]);
+                }
+                case "shields": {
+                    // shields on|off: raises or lowers the spawned ship's shields
+                    if (spawned == null || cmd.length < 2) return "spawnship first, then shields on|off";
+                    return com.ringsofiron.combatsys.shields.ShieldModel.raise(spawned, cmd[1].equals("on")) == null
+                            ? "no shield" : "shields " + cmd[1];
+                }
+                case "push": {
+                    // push <dx> <dy>: adds that velocity, m/s, to the spawned ship
+                    if (spawned == null || cmd.length < 3) return "spawnship first, then push <dx> <dy>";
+                    com.badlogic.gdx.physics.box2d.Body body = world.docking.bodyOf(spawned);
+                    com.badlogic.gdx.math.Vector2 v = body.getLinearVelocity().cpy();
+                    v.add(Float.parseFloat(cmd[1]) * PhysicsManager.UNITS_PER_METER, Float.parseFloat(cmd[2]) * PhysicsManager.UNITS_PER_METER);
+                    body.setLinearVelocity(v);
+                    return "pushed";
+                }
+                case "reactors": {
+                    if (spawned == null) return "spawnship first";
+                    return debugActions(world).tools.toggleReactors(spawned) ? "reactors on" : "reactors off";
                 }
                 case "target": {
                     String want = String.join(" ", java.util.Arrays.copyOfRange(cmd, 1, cmd.length)).toLowerCase(java.util.Locale.ROOT);

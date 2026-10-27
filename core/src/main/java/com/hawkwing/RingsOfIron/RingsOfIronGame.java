@@ -564,6 +564,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             else world.notices.postOnce(NoticeLog.RELOADING, NoticeLog.Kind.INFO);
         }
         if (just(Action.DECOY) && gun.dropDecoy()) show("Decoy away");
+        if (just(Action.SHIELDS)) show(toggleShields());
         if (just(Action.NEXT_TARGET)) gun.setTarget(game.nextContact(gun.getTarget()));
         navigationKeys();
         if (!helm) return;
@@ -576,6 +577,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         // An open window has the arrow keys
         if (hud.openWindow() == null) planBurns();
+    }
+
+    /** Raises the player's shields, or lowers them safely into the emitters; what to tell the player. */
+    private String toggleShields() {
+        com.ringsofiron.combatsys.shields.ShieldCloudComponent cloud = com.ringsofiron.combatsys.shields.ShieldModel.ensure(game.player);
+        if (cloud == null) return "No shield emitters aboard";
+        if (!cloud.raised && world.docking.dockedTo(game.player) != null) return "Shields stay down while docked";
+        com.ringsofiron.combatsys.shields.ShieldModel.raise(game.player, !cloud.raised);
+        return cloud.raised ? "Raising shields" : "Lowering shields";
     }
 
     /** True while one of the HUD's windows or the traffic map is open; Esc closes it first. */
@@ -1682,6 +1692,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gameHud.dispose();
         lighting.dispose();
         exteriorLighting.dispose();
+        exterior.dispose();
         docking.dispose();
         world.dispose();
         shapes.dispose();

@@ -31,6 +31,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | Space | Fire guns |
 | R | Launch a missile at the target |
 | F | Drop a decoy (on deck: force the door across a dock) |
+| 9 | Raise or lower the shields (lowered, the cloud packs safely into the emitters; docking lowers them on its own) |
 | Tab | Cycle the target |
 | V | Stand up from your console into the deck view; on deck beside the helm or weapons console, sit there and look outside (`gradlew :lwjgl3:runGame -PviewAnywhere` switches anywhere) |
 | M | Traffic map |
