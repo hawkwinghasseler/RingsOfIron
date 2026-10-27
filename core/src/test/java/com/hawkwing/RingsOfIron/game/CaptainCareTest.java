@@ -121,13 +121,15 @@ class CaptainCareTest {
         assertTrue(you().suited, "the captain is suited");
         assertSame(game.player, where().ship, "the captain is aboard");
 
+        // Two minutes of air left: the walk ashore has to come before it runs dry
+        you().suitAir = 120f;
         // Warp at the berth, as round 9's real window did: four steps up, 10x
         for (int i = 0; i < 4; i++) world.timeWarp.step(1);
         assertEquals(10, world.timeWarp.getWarp());
         boolean ashore = false;
         double until = world.engine.getSimSeconds() + you().suitAir + 120;
         com.ringsofiron.aicrew.PlayerAvatarComponent walker = game.avatar.getComponent(com.ringsofiron.aicrew.PlayerAvatarComponent.class);
-        while (world.engine.getSimSeconds() < until && you().isAlive()) {
+        while (world.engine.getSimSeconds() < until && you().isAlive() && !ashore) {
             // The screen clears the figure's walk from the keys before each update: no key held
             walker.moveX = walker.moveY = 0f;
             world.update(FRAME);
