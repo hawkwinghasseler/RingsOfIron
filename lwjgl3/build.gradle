@@ -262,6 +262,10 @@ tasks.register('hullLightingShots', JavaExec) {
   args = [outDir.path] + (project.hasProperty('hulls') ? [project.property('hulls').toString()] : [])
   // -Pangle=<degrees>: how far each hull is turned under the key light (30 by default)
   if (project.hasProperty('angle')) systemProperty 'shots.angle', project.property('angle').toString()
+  // -Plights=x:y:reach:strength;...: point lights by each hull, body meters, shading it by its normal map
+  if (project.hasProperty('lights')) systemProperty 'shots.lights', project.property('lights').toString()
+  // -Pambient=<0-1>: how bright the scene is without them (0.48 by default, the game's starlight)
+  if (project.hasProperty('ambient')) systemProperty 'shots.ambient', project.property('ambient').toString()
   jvmArgs += "--enable-native-access=ALL-UNNAMED"
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }

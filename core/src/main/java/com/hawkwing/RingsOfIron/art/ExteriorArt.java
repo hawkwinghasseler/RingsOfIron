@@ -74,6 +74,15 @@ public final class ExteriorArt {
         }
     }
 
+    /**
+     * The lights for this frame that shade the lit hulls by their normal maps, world meters:
+     * {@code count} of them in {@code xyrs} as x, y, reach, strength; {@code ambient} is how
+     * bright the scene is without them. See {@link HullShading#setPointLights}.
+     */
+    public void setPointLights(float[] xyrs, int count, float ambient) {
+        shading.setPointLights(xyrs, count, ambient);
+    }
+
     /** The hull lit by the game ({@link HullShading}) when its mode asks for it; false to draw the baked art. */
     private boolean lit(Batch batch, AtlasRegion hull, ShipGridComponent grid, float px, float py, float angle) {
         ArtLibrary.Info info = art.info(hull);

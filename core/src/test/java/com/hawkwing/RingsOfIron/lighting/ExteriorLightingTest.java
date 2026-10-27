@@ -65,4 +65,20 @@ class ExteriorLightingTest {
         for (int i = 0; i < ExteriorLighting.MAX_FLASHES + 10; i++) l.flash(0f, 0f, ExteriorLighting.MUZZLE, 8f, 1f, 1f);
         assertEquals(ExteriorLighting.MAX_FLASHES, l.flashes());
     }
+
+    @Test
+    void theHullShaderGetsEveryLightThatCastsWithTheFlashesAsFadedAsTheLightMapDrawsThem() {
+        ExteriorLighting l = new ExteriorLighting(ART);
+        l.begin();
+        l.add(5f, 6f, ExteriorLighting.ENGINE, 7f, 0.8f);
+        l.flash(1f, 2f, ExteriorLighting.MUZZLE, 10f, 1f, 1f);
+        l.age(0.5f);
+        float[] out = new float[4 * 4];
+        assertEquals(2, l.pointLights(out));
+        assertArrayEquals(new float[]{5f, 6f, 7f, 0.8f}, java.util.Arrays.copyOfRange(out, 0, 4), 1e-6f);
+        assertEquals(10f * 0.8f, out[6], 1e-5f, "a flash half gone reaches less far");
+        assertEquals(0.25f, out[7], 1e-5f, "and is a quarter as strong");
+        assertEquals(1, l.pointLights(new float[4]), "no more than fit");
+        assertEquals((0.46f + 0.47f + 0.52f) / 3f, l.ambientBrightness(), 1e-5f);
+    }
 }
