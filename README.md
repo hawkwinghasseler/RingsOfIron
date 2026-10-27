@@ -100,9 +100,9 @@ Each round's pull request names the save that shows its change, under "Try it in
 ./gradlew :core:playtestBenchmark   # the balance benchmarks, for a human tester (never part of the build)
 ```
 
-A test that takes more than a few seconds (a career played through, a replay played twice, a trip flown at every warp rate) is tagged `@Tag("slow")` so it stays out of `build` and `test`. CI runs `slowTest` in its own "Slow tests" job, so nothing goes untested.
+CI runs only `./gradlew build test` and the smoke tests. A test there loads or builds the game state it needs and checks one thing in a few seconds; it never plays a long stretch of the sandbox to get somewhere, which is what human playtesting is for. A bug found in play gets a test of that one moment.
 
-CI plays the scripted career on seeds 2026, 7 and 12, each twice, in its "Career seed" jobs: both runs must write the same journal, and the career must reach the gunship unless `CareerSeedsTest.STOPS` lists the seed as stopping at a known place.
+Tests that play long stretches (a career played through, a replay played twice, a trip flown at every warp rate) are tagged `@Tag("slow")` and are tools for a person to run by hand, like the scripted career seeds (`-PcareerSeeds`): neither `build`, `test` nor CI runs them.
 
 Balance targets (how long a fight lasts, what a prize pays, whether the career earns the gunship in play or wins the raid) are not checked by the build or CI, since they were tuned on the scripted career rather than on people. They are tagged `@Tag("playtest")` and run only with `./gradlew :core:playtestBenchmark` (or `tests/Balance benchmarks.bat`), which writes a table of each target against what the game gave to `core/build/playtest/`. `documentation/playtest/Balance benchmarks.md` has the checklist a tester works through when playing the same moments by hand.
 

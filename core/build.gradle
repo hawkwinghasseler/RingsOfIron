@@ -37,7 +37,7 @@ test {
   useJUnitPlatform()
   // ./gradlew :core:slowTest --tests '*Round3CareerTest' -PcareerSeed=7 plays the scripted career on another seed
   if (project.hasProperty('careerSeed')) systemProperty 'career.seed', project.property('careerSeed')
-  // ./gradlew :core:test --tests '*CareerSeedsTest' -PcareerSeeds=2026,7,12 plays each seed's career twice (CI's career seed jobs)
+  // ./gradlew :core:test --tests '*CareerSeedsTest' -PcareerSeeds=2026,7,12 plays each seed's career twice, by hand (not in CI)
   if (project.hasProperty('careerSeeds')) systemProperty 'career.seeds', project.property('careerSeeds')
   // ./gradlew :core:test --tests '*CareerSweepTest' -PcareerSweep=1-10,2026,7,12 plays both careers once on each seed, -PsweepForks=n at once (core/build/career-sweep.txt)
   if (project.hasProperty('careerSweep')) systemProperty 'career.sweep', project.property('careerSweep')
