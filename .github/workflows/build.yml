@@ -58,7 +58,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: career-seed-${{ matrix.seed }}
-          path: core/build/career-seed-*.txt
+          path: |
+            core/build/career-seed-*.txt
+            core/build/career-seed-*.log
 
   # Round 5's career on each seed, on from the gunship to the raid on the pirates' base, played twice:
   # the journals must match and the raid be flown, unless the seed is listed as stopping at a known
@@ -87,7 +89,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: round5-career-seed-${{ matrix.seed }}
-          path: core/build/round5-career-seed-*.txt
+          path: |
+            core/build/round5-career-seed-*.txt
+            core/build/round5-career-seed-*.log
 
   # The tests tagged slow (whole careers, long autopilot and warp runs), which ./gradlew build skips
   slow-tests:
