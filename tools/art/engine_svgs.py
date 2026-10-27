@@ -33,10 +33,13 @@ SOOT = "#14181e"
 
 def flange(a, w, h, key):
     """The mounting flange across the bottom end: a bolted plate with the feed couplings that go
-    through the hull, fuel and oxidizer, and a hazard band where the engine meets the ship."""
+    through the hull, fuel and oxidizer, and a hazard band where the engine meets the ship. The
+    plate runs on past the bottom of the canvas, which clips it: its back face lies flat on the hull
+    along the slot's edge, over the hull's outline, with no rounded corners or edge stroke to leave a
+    gap of space between them."""
     d = min(T * 0.36, h * 0.16)
     y = h - d
-    a.b += plate(2, y, w - 4, d - 2, HOUSING, HOUSING_HI, INK, rx=3)
+    a.b += plate(2, y, w - 4, d + 6, HOUSING, HOUSING_HI, INK, rx=3)
     a.b += hazard_band(6, y + 3, w - 12, max(3, d * 0.22), key)
     for k in range(max(2, int(w // 24))):
         bx = 7 + (w - 14) * k / max(1, max(2, int(w // 24)) - 1)
