@@ -88,9 +88,9 @@ class GunCrewsTest {
         man();
         assertTrue(laser.weaponsFree);
         assertEquals(0.8f, laser.gunnerySkill, 1e-6f, "at the gun");
-        WeaponMountComponent railgun = mount("railgun_mk1");
-        assertTrue(railgun.weaponsFree);
-        assertEquals(0.8f * GunCrews.REMOTE_SKILL, railgun.gunnerySkill, 1e-6f, "from the console");
+        WeaponMountComponent coilgun = mount("coilgun_mk1");
+        assertTrue(coilgun.weaponsFree);
+        assertEquals(0.8f * GunCrews.REMOTE_SKILL, coilgun.gunnerySkill, 1e-6f, "from the console");
     }
 
     @Test
