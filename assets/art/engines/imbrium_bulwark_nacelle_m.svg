@@ -2,9 +2,9 @@
   <title>imbrium_bulwark_nacelle_m: the nacelle engine filling its 2x3 slot outside the hull, nozzle toward +y, mounting flange at the bottom, burning</title>
   <defs><radialGradient id="imbrium_bulwark_nacelle_m_throat"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#9fd8ff" stop-opacity="0.9"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></radialGradient></defs>
   <g id="base">
-    <rect x="2" y="168.96" width="124" height="21.04" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <path d="M3.75,188.25 L3.75,170.71 L124.25,170.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
-    <path d="M124.25,170.71 L124.25,188.25 L3.75,188.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <rect x="2" y="168.96" width="124" height="29.04" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <path d="M3.75,196.25 L3.75,170.71 L124.25,170.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M124.25,170.71 L124.25,196.25 L3.75,196.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <clipPath id="hz_nacelle_m_6_171"><rect x="6" y="171.96" width="116" height="5.07"/></clipPath>
     <rect x="6" y="171.96" width="116" height="5.07" fill="#f2c230"/>
     <g clip-path="url(#hz_nacelle_m_6_171)">

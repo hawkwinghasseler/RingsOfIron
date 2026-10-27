@@ -2,9 +2,9 @@
   <title>aster_lyra L: the aerospike engine, 3x7 auxiliary slot outside the hull, nozzle toward +y at rotation 0, mounting flange at the bottom</title>
   <defs><radialGradient id="aster_lyra_c_aerospike_l_throat"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#9fd8ff" stop-opacity="0.9"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></radialGradient></defs>
   <g id="base">
-    <rect x="2" y="424.96" width="188" height="21.04" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <path d="M3.75,444.25 L3.75,426.71 L188.25,426.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
-    <path d="M188.25,426.71 L188.25,444.25 L3.75,444.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <rect x="2" y="424.96" width="188" height="29.04" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <path d="M3.75,452.25 L3.75,426.71 L188.25,426.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M188.25,426.71 L188.25,452.25 L3.75,452.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <clipPath id="hz_spike_l_6_427"><rect x="6" y="427.96" width="180" height="5.07"/></clipPath>
     <rect x="6" y="427.96" width="180" height="5.07" fill="#f2c230"/>
     <g clip-path="url(#hz_spike_l_6_427)">
