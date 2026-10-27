@@ -7,9 +7,11 @@ import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.IntMap;
 import com.badlogic.gdx.utils.ObjectIntMap;
 import com.badlogic.gdx.utils.ObjectMap;
+import com.badlogic.gdx.utils.ObjectSet;
 import com.ringsofiron.audiospatial.SoundField;
 import com.ringsofiron.audiospatial.SoundPropagation;
 import com.ringsofiron.audiospatial.backend.AcousticModel;
@@ -35,8 +37,11 @@ import com.ringsofiron.interiorgrid.Tile;
  *       listener's craft. The best such route is the one heard, as a room path; there is no
  *       direct line between two craft. With no route (hull or vacuum between), it is as from
  *       outside.</li>
- *   <li>Listener outside, or aboard another ship: interior sounds are clamped to full occlusion
- *       and {@link #exteriorTransmission}.</li>
+ *   <li>Listener outside, or aboard another craft docked to it with no route through: interior
+ *       sounds are clamped to full occlusion and {@link #exteriorTransmission}.</li>
+ *   <li>Emitter aboard a craft that is neither the listener's nor docked to it (directly or
+ *       through other docked craft): silent. Nothing carries through vacuum from another ship's
+ *       insides, so its alarms and fires are not heard until the two are docked.</li>
  *   <li>Exterior emitters are never occluded: hull impacts and weapon fire carry through the
  *       ship's frame ("Spacer Ears").</li>
  * </ul>
@@ -61,6 +66,9 @@ public class AcousticOcclusionSystem extends EntitySystem {
     private final float[] beam = new float[2];
     /** Fields from the tiles where sound comes aboard across a dock, per grid. */
     private final ObjectMap<ShipGridComponent, IntMap<SoundField>> farFields = new ObjectMap<>();
+    /** The listener's craft and every craft docked to it, directly or through others, taken once per update. */
+    private final ObjectSet<ShipGridComponent> joined = new ObjectSet<>();
+    private final Array<ShipGridComponent> frontier = new Array<>();
 
     /** Volume of an interior sound heard from outside the ship, through the hull. */
     public float exteriorTransmission = 0.15f;
@@ -86,6 +94,7 @@ public class AcousticOcclusionSystem extends EntitySystem {
         signatures.clear();
         if (farFields.size > 16) farFields.clear(); // grids come and go with docking and loads
         AudioListenerComponent listener = listenerEntities.size() > 0 ? listeners.get(listenerEntities.first()) : null;
+        findJoined(listener);
         for (Entity e : emitterEntities) {
             compute(emitters.get(e), listener);
         }
@@ -111,6 +120,15 @@ public class AcousticOcclusionSystem extends EntitySystem {
         }
         int[] et = grid.localToTile(emitter.localX, emitter.localY);
         float pressure = emitterPressure(grid, et[0], et[1]);
+        if (listener != null && !joined.contains(grid)) {
+            // Inside another ship, not docked to ours: nothing carries across the vacuum
+            emitter.wallCount = SoundPropagation.FULL_MUFFLE_WALLS;
+            emitter.occlusion = 1f;
+            emitter.transmission = 0f;
+            emitter.roomLossDb = Float.POSITIVE_INFINITY;
+            emitter.pressure = pressure;
+            return;
+        }
 
         if (listener != null && listener.mode == AudioListenerComponent.Mode.INTERIOR
                 && listener.ship != emitter.ship && et[0] >= 0) {
@@ -146,6 +164,23 @@ public class AcousticOcclusionSystem extends EntitySystem {
         emitter.transmission = result.transmission;
         emitter.roomLossDb = field.reaches(lt[0], lt[1]) ? field.lossDb(lt[0], lt[1]) : Float.POSITIVE_INFINITY;
         emitter.pressure = Math.min(pressure, tilePressure(grid, lt[0], lt[1]));
+    }
+
+    /** Fills {@link #joined} with the listener's craft's grid and every grid docked to it, through any chain of links. */
+    private void findJoined(AudioListenerComponent listener) {
+        joined.clear();
+        ShipGridComponent start = listener != null && listener.ship != null ? grids.get(listener.ship) : null;
+        if (start == null) return;
+        joined.add(start);
+        frontier.clear();
+        frontier.add(start);
+        while (frontier.size > 0) {
+            ShipGridComponent g = frontier.pop();
+            for (int i = 0; i < g.links.size; i++) {
+                ShipGridComponent other = g.links.get(i).other;
+                if (other != null && joined.add(other)) frontier.add(other);
+            }
+        }
     }
 
     /**

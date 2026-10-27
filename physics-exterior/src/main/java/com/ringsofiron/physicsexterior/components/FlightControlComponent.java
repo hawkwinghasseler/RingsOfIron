@@ -25,6 +25,12 @@ public class FlightControlComponent implements Component {
      */
     public transient boolean assistHeld;
     /**
+     * How hard rotation assist is turning against the spin, 0 to 1 of the RCS torque, as of the
+     * last physics tick; 0 while the pilot turns or assist is off. Written by the flight control
+     * system so the RCS can be heard when it fires on its own. Runtime only.
+     */
+    public transient float assistTurn;
+    /**
      * A body welded to this ship that it tows, or null: the engines' thrust is put through the pair's
      * common centre of mass, as a towing rig is set up to, so the pair flies straight instead of
      * spinning about the weld, and rotation assist works against the pair's spin. Runtime only.

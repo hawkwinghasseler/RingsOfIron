@@ -450,7 +450,9 @@ class GameScenarioTest {
         assertEquals(EngineAudio.RCS_SHARE, world.engineAudio.getIntensity(), 1e-4f, "RCS is quieter");
 
         controls.turn = 0f;
-        for (int i = 0; i < 60; i++) world.update(FRAME);
+        for (int i = 0; i < 10; i++) world.update(FRAME);
+        assertTrue(world.engineAudio.getIntensity() > 0f, "rotation assist is heard stopping the turn");
+        for (int i = 0; i < 300; i++) world.update(FRAME);
         assertEquals(0f, world.engineAudio.getIntensity(), 1e-4f);
 
         // After a load the same loop carries on, not a second one.
@@ -462,6 +464,21 @@ class GameScenarioTest {
         AudioEmitterComponent loaded = world.getPlayer().getComponent(AudioEmitterComponent.class);
         assertEquals(AudioEventCatalog.THRUSTER, loaded.eventPath);
         assertEquals(1f, loaded.instance.getParameter(AudioParameters.INTENSITY, 0f), 1e-4f);
+    }
+
+    @Test
+    void rotationAssistIsHeardWhenItStopsASpin() {
+        FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
+        controls.rotationAssist = true;
+        for (int i = 0; i < 10; i++) world.update(FRAME);
+        game.player.getComponent(PhysicsBodyComponent.class).body.setAngularVelocity(0.3f);
+        world.update(FRAME);
+        assertTrue(controls.assistTurn > 0f, "assist fires against the spin: " + controls.assistTurn);
+        assertTrue(world.engineAudio.getIntensity() > 0f, "and the RCS is heard: " + world.engineAudio.getIntensity());
+
+        for (int i = 0; i < 600; i++) world.update(FRAME);
+        assertEquals(0f, controls.assistTurn, 1e-4f, "stopped, it falls quiet");
+        assertEquals(0f, world.engineAudio.getIntensity(), 1e-4f);
     }
 
     @Test
