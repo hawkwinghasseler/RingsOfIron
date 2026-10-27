@@ -65,6 +65,12 @@ public class MarkerWidget extends Group {
         return out.set(getX() + left, getY() + range.getY(), width, name.getY() + name.getHeight() - range.getY());
     }
 
+    /** Hides the name and range (the bracket or arrow still shows), or shows them again. */
+    public void setTextHidden(boolean hidden) {
+        name.setVisible(!hidden);
+        range.setVisible(!hidden);
+    }
+
     /** Moves the text by (dx, dy) from where {@link #set} put it, clear of another marker's. */
     public void nudgeText(float dx, float dy) {
         name.moveBy(dx, dy);

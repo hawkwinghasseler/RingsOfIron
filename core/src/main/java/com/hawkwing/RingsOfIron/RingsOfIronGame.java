@@ -308,6 +308,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
             com.badlogic.gdx.math.Rectangle area = new com.badlogic.gdx.math.Rectangle();
             hud.getHudRenderSystem().keepClear(() -> pip.area(bubble, area));
         }
+        // and hide the names under them, which a bubble lists instead
+        hud.getHudRenderSystem().setNameCover(pip);
         snow = new SpaceSnow(() -> world, () -> game.player);
 
         gun = new PlayerGunnery(world, game.player);
@@ -470,6 +472,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         // than having the helm's order written across its rows (round 9, real window)
         drawDevSelection();
         if (hud.getViewMode().getMode() == ViewMode.EXTERIOR) drawPictureInPicture(delta);
+        else pip.clear();
         drawStatus();
         gameHud.draw(delta);
         drawOverlays(delta, false);
@@ -897,6 +900,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
      */
     private boolean selectAt(int screenX, int screenY) {
         Vector2 at = tmp;
+        // The names listed under a bubble, and the "+3 others" that opens the list
+        viewports.getUiViewport().unproject(at.set(screenX, screenY));
+        if (pip.click(at.x, at.y, this::selectContact)) return true;
         float mpp = pip.unproject(screenX, Gdx.graphics.getHeight() - 1 - screenY, at);
         if (mpp < 0f) {
             viewports.getWorldViewport().unproject(at.set(screenX, screenY));
@@ -913,7 +919,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
      * Tab would lock it, and either becomes the navigation target.
      */
     private void selectContact(Entity picked) {
-        boolean lock = game.contacts.contains(picked, true);
+        // Sensors hold a lock only on what they can see; a freighter latched to a port they cannot
+        boolean lock = game.contacts.contains(picked, true)
+                && picked.getComponent(com.ringsofiron.combatsys.components.SignatureComponent.class) != null;
         if (lock) gun.setTarget(picked);
         String uuid = world.universe.uuidOf(picked);
         String nav = uuid == null ? null : world.nav.target.select(uuid);

@@ -61,6 +61,8 @@ public class HudRenderSystem extends EntitySystem {
     private ImmutableArray<Entity> marked;
     private ImmutableArray<Entity> players;
     private TargetingProvider targeting;
+    private NameCover cover;
+    private final Rectangle textBox = new Rectangle();
 
     /** @param layer the stage group markers are added to (normally full-screen, behind panels). */
     public HudRenderSystem(ViewportManager viewports, Group layer, Skin skin) {
@@ -85,6 +87,22 @@ public class HudRenderSystem extends EntitySystem {
     /** Off-screen markers' text moves out of the area {@code area} gives, in UI coordinates, each frame. */
     public void keepClear(java.util.function.Supplier<Rectangle> area) {
         keepClearAreas.add(area);
+    }
+
+    /**
+     * Something drawn over the markers (the game's picture-in-picture bubbles) that hides the names
+     * under it. Each frame {@link #begin} comes first, then {@link #covers} for every marker shown.
+     */
+    public interface NameCover {
+        void begin();
+
+        /** True when {@code marked}'s name and range, at {@code text} (UI units), are under it and so hidden. */
+        boolean covers(Entity marked, Rectangle text);
+    }
+
+    /** Hides the names {@code cover} lies over; null for none. */
+    public void setNameCover(NameCover cover) {
+        this.cover = cover;
     }
 
     public TargetingProvider getTargeting() {
@@ -123,6 +141,7 @@ public class HudRenderSystem extends EntitySystem {
             edgeText.add(new Rectangle(at.x - width / 2f, at.y, width, b.key.getPrefHeight()));
         }
         for (java.util.function.Supplier<Rectangle> area : keepClearAreas) edgeText.add(new Rectangle(area.get()));
+        if (cover != null) cover.begin();
         for (Entity e : marked) {
             HudMarkerComponent m = MARKERS.get(e);
             TransformComponent t = TRANSFORMS.get(e);
@@ -149,6 +168,7 @@ public class HudRenderSystem extends EntitySystem {
             float half = Math.max(MIN_BRACKET, m.radius * pixelsPerMeter * 1.2f);
             widget.set(m.label, range, m.color, half, !onScreen, angle, e == locked);
             if (!onScreen) unstack(widget, screen.y < h / 2f ? 1f : -1f, w, h);
+            widget.setTextHidden(cover != null && cover.covers(e, widget.textBounds(textBox)));
         }
 
         // Drop widgets whose entity lost its marker or left the engine.
