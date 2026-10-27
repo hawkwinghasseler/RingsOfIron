@@ -44,9 +44,10 @@ import java.util.function.Supplier;
  * Picture-in-picture bubbles over the outside view: a round window onto a craft the main view
  * draws too small to make out, or does not show at all, magnified so its hull fills the bubble.
  * The game asks for the player's ship, the locked target and the navigation target; each gets a
- * bubble only while it needs one. A bubble for something on screen sits beside it with a line to
- * it; one for something off screen sits at the edge of the view on the line towards it, with a
- * pointer that way and how far off it is.
+ * bubble only while it needs one. A bubble for something on screen sits over it, or beside it with
+ * a line to it; one for something off screen takes the place of the HUD's edge marker for it: at
+ * the edge of the view on the line from the middle of the screen towards it, with a pointer that
+ * way and how far off it is.
  *
  * <p>Each bubble is drawn by an {@link ExteriorRenderer} of its own (with its own lighting, so the
  * main view's light map and muzzle flashes are not drawn twice) into a frame buffer, which is then
@@ -67,14 +68,14 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
     private static final float MIN_MAGNIFICATION = 2f;
     /** From a bubble's edge to the edge of the screen, UI units. */
     private static final float MARGIN = 14f;
-    /** Bubbles for things off screen sit this much further in, clear of the HUD's edge markers. */
-    private static final float EDGE_INSET = 48f;
+    /** Bubbles for things off screen sit this much further in, room for the pointer on the rim. */
+    private static final float EDGE_INSET = 12f;
     private static final float GAP = 10f;
-    /** A bubble for something off screen sits this far along the edge from the HUD's marker for it, UI units. */
-    private static final float BESIDE_MARKER = RADIUS + 70f;
     private static final int SEGMENTS = 96;
     /** Room under a bubble for its name, UI units. */
     private static final float LABEL_ROOM = 22f;
+    /** How far the pointer on an off-screen craft's bubble stands out from the rim, UI units. */
+    private static final float POINTER = 12f;
     /** How far round a blocked place a bubble looks for a clear one: rings half a radius apart, so many places a ring. */
     private static final int SEARCH_RINGS = 14, SEARCH_ANGLES = 16;
     private static final Color BACKGROUND = new Color(0.02f, 0.02f, 0.05f, 1f);
@@ -100,6 +101,10 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
         int glX, glY, glSize;
         /** Under the bubble, UI units, as drawn: all its text, and the "+3 others" line. */
         final Rectangle text = new Rectangle(), toggle = new Rectangle();
+        /** Where the top of the text under it goes, UI units: below the pointer when that points down. */
+        float textTop;
+        /** Half the width the bubble and its name take, UI units. */
+        float halfWidth;
         /** The names listed under it while the list is open, and where each was drawn. */
         final Array<Entity> rows = new Array<>();
         final Array<Rectangle> rowBoxes = new Array<>();
@@ -211,6 +216,12 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
             }
             return true;
         }
+        return false;
+    }
+
+    @Override
+    public boolean replacesEdgeMarker(Entity marked) {
+        for (Bubble b : shown) if (b.entity == marked && !b.onScreen) return true;
         return false;
     }
 
@@ -378,6 +389,11 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
         b.color.set(color != null ? color : marker != null ? marker.color : Color.WHITE);
         TransformComponent own = player == null || e == player ? null : player.getComponent(TransformComponent.class);
         b.distance = own == null ? -1f : b.at.dst(own.x, own.y);
+        b.halfWidth = RADIUS;
+        if (!b.label.isEmpty()) {
+            layout.setText(font, b.distance < 0f ? b.label : b.label + "  " + distance(b.distance));
+            b.halfWidth = Math.max(RADIUS, layout.width * 0.5f + 4f);
+        }
         shown.add(b);
     }
 
@@ -429,17 +445,19 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
                 dir.nor();
                 b.center.set(b.anchor).mulAdd(dir, 1.8f * RADIUS);
             } else {
-                // By the edge towards it, beside (not over) the HUD's marker and name stacked there
-                float inX = cx - RADIUS - MARGIN - EDGE_INSET, inY = cy - RADIUS - MARGIN - EDGE_INSET;
-                float t = Math.min(dir.x == 0f ? Float.MAX_VALUE : inX / Math.abs(dir.x),
-                        dir.y == 0f ? Float.MAX_VALUE : inY / Math.abs(dir.y));
-                b.center.set(cx, cy).mulAdd(dir, Math.max(0f, t));
-                // Along the edge, towards the middle of it
-                boolean topOrBottom = Math.abs(dir.y) * inX > Math.abs(dir.x) * inY;
-                float along = topOrBottom ? cx - b.center.x : cy - b.center.y;
-                float side = along < 0f ? -1f : 1f;
-                if (topOrBottom) b.center.x += side * BESIDE_MARKER;
-                else b.center.y += side * BESIDE_MARKER;
+                // By the edge, on the line from the middle of the screen towards it, so the bubble
+                // points the way the craft is; where a panel is in the way, further in along that line
+                float inX = cx - RADIUS - MARGIN - EDGE_INSET, inY = cy - RADIUS - MARGIN - EDGE_INSET - LABEL_ROOM - POINTER;
+                dir.nor();
+                float t = Math.max(0f, Math.min(dir.x == 0f ? Float.MAX_VALUE : inX / Math.abs(dir.x),
+                        dir.y == 0f ? Float.MAX_VALUE : inY / Math.abs(dir.y)));
+                boolean found = false;
+                for (float in = t; in >= 2f * RADIUS && !found; in -= 0.5f * RADIUS) {
+                    b.center.set(cx, cy).mulAdd(dir, in);
+                    found = clear(b, i, b.center);
+                }
+                if (found) continue;
+                b.center.set(cx, cy).mulAdd(dir, t);
             }
             clamp(b.center, uiW, uiH);
             if (clear(b, i, b.center)) continue;
@@ -479,7 +497,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
     /** True when bubble {@code b} (the {@code i}th) at {@code at} is clear of the HUD's panels, the bubbles before it and its own craft. */
     private boolean clear(Bubble b, int i, Vector2 at) {
         // The bubble and its name under it
-        box.set(at.x - RADIUS, at.y - RADIUS - LABEL_ROOM, 2f * RADIUS, 2f * RADIUS + LABEL_ROOM);
+        box.set(at.x - b.halfWidth, at.y - RADIUS - LABEL_ROOM - POINTER, 2f * b.halfWidth, 2f * RADIUS + LABEL_ROOM + POINTER);
         for (Rectangle r : keepClear) if (r.overlaps(box)) return false;
         float apart = 2f * RADIUS + GAP;
         for (int j = 0; j < i; j++) if (shown.get(j).center.dst2(at) < apart * apart) return false;
@@ -543,7 +561,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
                 }
             } else {
                 // A pointer on the rim, towards the craft
-                float tipX = b.center.x + dir.x * (RADIUS + 12f), tipY = b.center.y + dir.y * (RADIUS + 12f);
+                float tipX = b.center.x + dir.x * (RADIUS + POINTER), tipY = b.center.y + dir.y * (RADIUS + POINTER);
                 float baseX = b.center.x + dir.x * (RADIUS + 2f), baseY = b.center.y + dir.y * (RADIUS + 2f);
                 shapes.triangle(tipX, tipY, baseX - dir.y * 7f, baseY + dir.x * 7f, baseX + dir.y * 7f, baseY - dir.x * 7f);
             }
@@ -571,7 +589,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
         batch.setProjectionMatrix(viewports.getUiCamera().combined);
         batch.begin();
         for (Bubble b : shown) {
-            float y = b.center.y - RADIUS - 6f;
+            float y = b.textTop;
             // The player's own ship goes unnamed
             if (!b.label.isEmpty()) {
                 y = line(b.distance < 0f ? b.label : b.label + "  " + distance(b.distance), b.color, b.center.x, y);
@@ -595,6 +613,11 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
     private void layOut(Bubble b) {
         float lineHeight = font.getLineHeight();
         float top = b.center.y - RADIUS, y = top - 6f;
+        if (!b.onScreen) {
+            float dy = b.anchor.y - b.center.y, len = b.anchor.dst(b.center);
+            if (len > 1f && dy / len < -0.5f) y -= POINTER;
+        }
+        b.textTop = y;
         float left = b.center.x - RADIUS, right = b.center.x + RADIUS;
         if (!b.label.isEmpty()) {
             layout.setText(font, b.distance < 0f ? b.label : b.label + "  " + distance(b.distance));

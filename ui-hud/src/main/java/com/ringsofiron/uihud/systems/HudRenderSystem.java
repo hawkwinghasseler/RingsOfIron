@@ -98,6 +98,11 @@ public class HudRenderSystem extends EntitySystem {
 
         /** True when {@code marked}'s name and range, at {@code text} (UI units), are under it and so hidden. */
         boolean covers(Entity marked, Rectangle text);
+
+        /** True when it shows {@code marked}, off screen, itself, so the edge marker for it is not drawn. */
+        default boolean replacesEdgeMarker(Entity marked) {
+            return false;
+        }
     }
 
     /** Hides the names {@code cover} lies over; null for none. */
@@ -155,7 +160,7 @@ public class HudRenderSystem extends EntitySystem {
 
             viewports.worldToUi(t.x, t.y, screen);
             boolean onScreen = ScreenEdge.isOnScreen(screen.x, screen.y, w, h);
-            if (!onScreen && !m.showOffscreen) {
+            if (!onScreen && (!m.showOffscreen || (cover != null && cover.replacesEdgeMarker(e)))) {
                 widget.setVisible(false);
                 continue;
             }
