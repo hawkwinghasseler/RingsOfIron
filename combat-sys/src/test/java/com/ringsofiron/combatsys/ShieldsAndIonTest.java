@@ -81,6 +81,7 @@ class ShieldsAndIonTest {
         engine.addSystem(new WeaponControlSystem(physics, events, defs, ballistics, missiles, sensors, 11L));
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
+        engine.addSystem(new com.ringsofiron.combatsys.shields.ShieldSystem(physics));
         engine.addSystem(new ImpactResolutionSystem(physics, events, defs, ballistics, MaterialTable.createDefault(), 42L));
         events.hullHits.add((signal, hit) -> {
             HullHitEvent copy = new HullHitEvent();
@@ -146,28 +147,23 @@ class ShieldsAndIonTest {
     }
 
     @Test
-    void aPoweredShieldTakesHalfAHitAndPaysForItFromTheStore() {
+    void aShieldIsUpOnlyWhileItsEmitterWorks() {
         Entity ship = spawnShip(0, 0);
-        SubsystemComponent emitter = install(ship, SubsystemComponent.SubsystemType.SHIELD_EMITTER, 3, 2, 1e7);
-        float taken = Shields.absorb(ship, 1e8f);
-        assertEquals(0.5e8f, taken, 1e3f, "half of it");
-        assertEquals(1e7 - 0.5e8 * Shields.JOULES_PER_ABSORBED, emitter.circuit.stored, 1.0, "paid from the store");
-
-        emitter.health = 0.5f;
-        assertEquals(0.25e8f, Shields.absorb(ship, 1e8f), 1e3f, "a damaged emitter takes less");
+        SubsystemComponent emitter = install(ship, SubsystemComponent.SubsystemType.SHIELD_EMITTER, 3, 2, 1e9);
+        run(0.1f);
+        assertTrue(Shields.up(ship), "a working emitter holds its cloud");
         emitter.isOperational = false;
-        assertEquals(0f, Shields.absorb(ship, 1e8f), "nothing when it is off");
+        run(0.1f);
+        assertFalse(Shields.up(ship), "switched off, its particles drift loose");
     }
 
     @Test
-    void anEmptyStoreTakesOnlyWhatItCanPayFor() {
+    void anEmitterThatCannotPayToHoldItsCloudDropsIt() {
         Entity ship = spawnShip(0, 0);
-        SubsystemComponent emitter = install(ship, SubsystemComponent.SubsystemType.SHIELD_EMITTER, 3, 2, 1e5);
-        float taken = Shields.absorb(ship, 1e8f);
-        assertEquals(1e5 / Shields.JOULES_PER_ABSORBED, taken, 1e3, "what 100 kJ pays for");
-        assertEquals(0, emitter.circuit.stored, 1e-6);
-        assertEquals(0f, Shields.absorb(ship, 1e8f), "and then nothing");
-        assertFalse(Shields.up(ship));
+        SubsystemComponent emitter = install(ship, SubsystemComponent.SubsystemType.SHIELD_EMITTER, 3, 2, 1e3);
+        emitter.circuit.capacity = 1e3;
+        run(0.2f);
+        assertFalse(Shields.up(ship), "1 kJ doesn't hold 300 kg for long");
     }
 
     @Test

@@ -242,6 +242,7 @@ public final class PictureInPicture implements Disposable {
         if (buffer != null) buffer.dispose();
         buffer = null;
         disc.dispose();
+        view.dispose();
     }
 
     /**

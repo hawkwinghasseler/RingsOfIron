@@ -489,6 +489,10 @@ public class GameWorld implements Disposable {
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
+        // Shield clouds gather where rounds in flight will cross them, before this tick's hits resolve
+        engine.addSystem(new com.ringsofiron.combatsys.shields.ShieldSystem(physics));
+        // Shields go down for docking, and back up after
+        engine.addSystem(new ShieldDocking(this));
         impacts = new ImpactResolutionSystem(physics, combatEvents, combatDefs, ballistics,
                 MaterialTable.createDefault(), modules.combatSeed);
         impacts.setCrew(new CrewDamageAdapter(crew, crew));

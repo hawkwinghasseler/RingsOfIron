@@ -455,11 +455,11 @@ public class StationYard extends EntitySystem {
         return def.price * (used ? USED_PRICE : 1);
     }
 
-    /** Weapons the yard sells, cheapest first; never a rare one. */
+    /** Weapons the yard sells, cheapest first. */
     public List<WeaponDef> offers() {
         List<WeaponDef> out = new ArrayList<>();
         for (WeaponDef d : weapons.weapons.values()) {
-            if (d.price > 0 && !d.rare) out.add(d);
+            if (d.price > 0) out.add(d);
         }
         out.sort((a, b) -> Double.compare(a.price, b.price));
         return out;
@@ -542,7 +542,7 @@ public class StationYard extends EntitySystem {
         WeaponsComponent mounts = ship.getComponent(WeaponsComponent.class);
         WeaponDef def = weapons.weapons.get(weaponId);
         if (mounts == null || hardpoint < 0 || hardpoint >= mounts.mounts.size) return "No such hardpoint";
-        if (def == null || def.price <= 0 || def.rare) return "The yard doesn't sell that";
+        if (def == null || def.price <= 0) return "The yard doesn't sell that";
         WeaponMountComponent mount = mounts.mounts.get(hardpoint);
         if (mount.subsystem == null || mount.subsystem.getComponent(SubsystemComponent.class) == null) {
             return "That hardpoint has no mount aboard to fit it to";

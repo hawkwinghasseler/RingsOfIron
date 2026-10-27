@@ -8,8 +8,8 @@
     <circle cx="160" cy="300" r="62.4" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
     <g transform="rotate(112.5 270.87 345.92)">
     <rect x="248.87" y="335.92" width="44" height="18" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M250.37,352.42 L250.37,337.42 L291.37,337.42" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M291.37,337.42 L291.37,352.42 L250.37,352.42" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M250.37,352.42 L250.37,337.42 L291.37,337.42" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M291.37,337.42 L291.37,352.42 L250.37,352.42" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="252.87" y="338.92" width="36" height="9.9" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="252.87" y="350.82" width="36" height="0.1" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     </g>
@@ -19,8 +19,8 @@
     <rect x="306.23" y="352.3" width="2.55" height="8.5" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <g transform="rotate(157.5 205.92 410.87)">
     <rect x="183.92" y="400.87" width="44" height="18" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M185.42,417.37 L185.42,402.37 L226.42,402.37" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M226.42,402.37 L226.42,417.37 L185.42,417.37" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M185.42,417.37 L185.42,402.37 L226.42,402.37" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M226.42,402.37 L226.42,417.37 L185.42,417.37" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="187.92" y="403.87" width="36" height="9.9" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="187.92" y="415.77" width="36" height="0.1" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     </g>
@@ -30,8 +30,8 @@
     <rect x="225.05" y="433.48" width="2.55" height="8.5" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <g transform="rotate(202.5 114.08 410.87)">
     <rect x="92.08" y="400.87" width="44" height="18" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M93.58,417.37 L93.58,402.37 L134.58,402.37" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M134.58,402.37 L134.58,417.37 L93.58,417.37" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M93.58,417.37 L93.58,402.37 L134.58,402.37" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M134.58,402.37 L134.58,417.37 L93.58,417.37" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="96.08" y="403.87" width="36" height="9.9" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="96.08" y="415.77" width="36" height="0.1" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     </g>
@@ -41,8 +41,8 @@
     <rect x="110.25" y="433.48" width="2.55" height="8.5" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <g transform="rotate(247.5 49.13 345.92)">
     <rect x="27.13" y="335.92" width="44" height="18" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M28.63,352.42 L28.63,337.42 L69.63,337.42" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M69.63,337.42 L69.63,352.42 L28.63,352.42" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M28.63,352.42 L28.63,337.42 L69.63,337.42" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M69.63,337.42 L69.63,352.42 L28.63,352.42" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="31.13" y="338.92" width="36" height="9.9" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="31.13" y="350.82" width="36" height="0.1" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     </g>
@@ -52,8 +52,8 @@
     <rect x="29.07" y="352.3" width="2.55" height="8.5" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <g transform="rotate(292.5 49.13 254.08)">
     <rect x="27.13" y="244.08" width="44" height="18" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M28.63,260.58 L28.63,245.58 L69.63,245.58" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M69.63,245.58 L69.63,260.58 L28.63,260.58" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M28.63,260.58 L28.63,245.58 L69.63,245.58" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M69.63,245.58 L69.63,260.58 L28.63,260.58" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="31.13" y="247.08" width="36" height="9.9" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="31.13" y="258.98" width="36" height="0.1" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     </g>
@@ -63,8 +63,8 @@
     <rect x="29.07" y="237.5" width="2.55" height="8.5" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <g transform="rotate(337.5 114.08 189.13)">
     <rect x="92.08" y="179.13" width="44" height="18" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M93.58,195.63 L93.58,180.63 L134.58,180.63" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M134.58,180.63 L134.58,195.63 L93.58,195.63" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M93.58,195.63 L93.58,180.63 L134.58,180.63" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M134.58,180.63 L134.58,195.63 L93.58,195.63" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="96.08" y="182.13" width="36" height="9.9" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="96.08" y="194.03" width="36" height="0.1" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     </g>
@@ -74,8 +74,8 @@
     <rect x="110.25" y="156.32" width="2.55" height="8.5" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <g transform="rotate(382.5 205.92 189.13)">
     <rect x="183.92" y="179.13" width="44" height="18" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M185.42,195.63 L185.42,180.63 L226.42,180.63" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M226.42,180.63 L226.42,195.63 L185.42,195.63" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M185.42,195.63 L185.42,180.63 L226.42,180.63" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M226.42,180.63 L226.42,195.63 L185.42,195.63" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="187.92" y="182.13" width="36" height="9.9" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="187.92" y="194.03" width="36" height="0.1" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     </g>
@@ -85,8 +85,8 @@
     <rect x="225.05" y="156.32" width="2.55" height="8.5" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <g transform="rotate(427.5 270.87 254.08)">
     <rect x="248.87" y="244.08" width="44" height="18" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M250.37,260.58 L250.37,245.58 L291.37,245.58" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M291.37,245.58 L291.37,260.58 L250.37,260.58" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M250.37,260.58 L250.37,245.58 L291.37,245.58" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M291.37,245.58 L291.37,260.58 L250.37,260.58" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="252.87" y="247.08" width="36" height="9.9" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="252.87" y="258.98" width="36" height="0.1" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     </g>
@@ -95,23 +95,23 @@
     <rect x="288.38" y="237.5" width="2.55" height="8.5" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="306.23" y="237.5" width="2.55" height="8.5" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="8" y="500" width="26" height="64" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M9.5,562.5 L9.5,501.5 L32.5,501.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M32.5,501.5 L32.5,562.5 L9.5,562.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M9.5,562.5 L9.5,501.5 L32.5,501.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M32.5,501.5 L32.5,562.5 L9.5,562.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="11" y="504" width="14.3" height="56" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="27.3" y="504" width="3.7" height="56" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="286" y="500" width="26" height="64" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M287.5,562.5 L287.5,501.5 L310.5,501.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M310.5,501.5 L310.5,562.5 L287.5,562.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M287.5,562.5 L287.5,501.5 L310.5,501.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M310.5,501.5 L310.5,562.5 L287.5,562.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="289" y="504" width="14.3" height="56" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="305.3" y="504" width="3.7" height="56" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="8" y="580" width="26" height="64" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M9.5,642.5 L9.5,581.5 L32.5,581.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M32.5,581.5 L32.5,642.5 L9.5,642.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M9.5,642.5 L9.5,581.5 L32.5,581.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M32.5,581.5 L32.5,642.5 L9.5,642.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="11" y="584" width="14.3" height="56" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="27.3" y="584" width="3.7" height="56" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="286" y="580" width="26" height="64" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M287.5,642.5 L287.5,581.5 L310.5,581.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M310.5,581.5 L310.5,642.5 L287.5,642.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M287.5,642.5 L287.5,581.5 L310.5,581.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M310.5,581.5 L310.5,642.5 L287.5,642.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="289" y="584" width="14.3" height="56" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="305.3" y="584" width="3.7" height="56" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="30" y="698" width="260" height="52" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>

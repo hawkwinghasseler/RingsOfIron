@@ -43,4 +43,26 @@ class SpaceSnowTest {
         assertEquals(CIRCULAR, d.len(), 1e-2);
         assertTrue(d.x < 0f, "counterclockwise when the ship isn't turning");
     }
+
+    @Test
+    void theSnowReachesFarBackAndMostOfItIsDeep() {
+        assertEquals(1f, SpaceSnow.depth(SpaceSnow.LAYERS - 1), 1e-4f);
+        assertTrue(SpaceSnow.depth(0) >= 30f, "the farthest layer is far deeper than the old 2.5");
+        float far = 0f;
+        for (int k = 0; k < SpaceSnow.LAYERS / 2; k++) far += SpaceSnow.share(k);
+        assertTrue(far > 0.7f, "most motes are in the deeper half: " + far);
+        for (int k = 1; k < SpaceSnow.LAYERS; k++) {
+            assertTrue(SpaceSnow.depth(k) < SpaceSnow.depth(k - 1));
+            assertTrue(SpaceSnow.share(k) < SpaceSnow.share(k - 1));
+        }
+    }
+
+    @Test
+    void deeperSnowSlidesSlowerAtAnyZoom() {
+        // The nearest layer moves as the true drift looks at the starting zoom; no zoom enters it
+        assertEquals(100f / SpaceSnow.REFERENCE_MPP, SpaceSnow.pixelsPerSecond(100f, SpaceSnow.LAYERS - 1), 1e-2f);
+        for (int k = 1; k < SpaceSnow.LAYERS; k++) {
+            assertTrue(SpaceSnow.pixelsPerSecond(100f, k - 1) < SpaceSnow.pixelsPerSecond(100f, k));
+        }
+    }
 }

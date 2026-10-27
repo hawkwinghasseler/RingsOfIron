@@ -3,8 +3,8 @@
   <g id="base">
     <rect x="0" y="0" width="64" height="64" fill="#727d8b"/>
     <rect x="25.5" y="25.5" width="13" height="13" rx="2" fill="#727d8b" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M27,37 L27,27 L37,27" fill="none" stroke="#98a3b1" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M37,27 L37,37 L27,37" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M27,37 L27,27 L37,27" fill="none" stroke="#98a3b1" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M37,27 L37,37 L27,37" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="0" y="0" width="64" height="5" fill="#4f5866"/>
     <rect x="0" y="0" width="64" height="5" fill="#ffffff" opacity="0.12"/>
     <rect x="59" y="0" width="5" height="64" fill="#4f5866"/>

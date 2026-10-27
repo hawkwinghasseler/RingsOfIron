@@ -7,8 +7,8 @@
     <rect x="29" y="32" width="6" height="32" fill="#3d4552"/>
     <line x1="29.8" y1="32" x2="29.8" y2="64" stroke="#7d8898" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
     <rect x="25" y="25" width="14" height="14" rx="2" fill="#5b6675" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M26.5,37.5 L26.5,26.5 L37.5,26.5" fill="none" stroke="#7d8898" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M37.5,26.5 L37.5,37.5 L26.5,37.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M26.5,37.5 L26.5,26.5 L37.5,26.5" fill="none" stroke="#7d8898" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M37.5,26.5 L37.5,37.5 L26.5,37.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="0" y="0" width="64" height="6" fill="#3d4552"/>
     <rect x="0" y="0" width="64" height="6" fill="#ffffff" opacity="0.12"/>
     <rect x="0" y="0" width="6" height="64" fill="#3d4552"/>

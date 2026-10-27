@@ -211,18 +211,18 @@ class BaseDefenceTest {
         for (String name : world.pirateBase.guns()) guns.add(ship(name));
         int[] hits = new int[1];
         world.combatEvents.impacts.add((sig, hit) -> {
-            if (hit.target == game.player && guns.contains(hit.owner) && hit.def != null && hit.def.id.startsWith("autocannon")) hits[0]++;
+            if (hit.target == game.player && guns.contains(hit.owner) && hit.def != null && hit.def.id.startsWith("coil_slug")) hits[0]++;
         });
-        float reach = world.combatDefs.weapons.get("chaingun_mk2").maxRange;
+        float reach = world.combatDefs.weapons.get("coilgun_mk1").maxRange;
         var at = game.player.getComponent(PhysicsBodyComponent.class).body.getPosition();
         float nearest = Float.MAX_VALUE;
         for (Entity gun : guns) {
             nearest = Math.min(nearest, gun.getComponent(PhysicsBodyComponent.class).body.getPosition().dst(at)
                     * com.ringsofiron.physicsexterior.PhysicsManager.METERS_PER_UNIT);
         }
-        assertTrue(nearest < reach, String.format("a battery within a 40 mm chaingun's %.0f m: the nearest is %.0f m off", reach, nearest));
+        assertTrue(nearest < reach, String.format("a battery within a coilgun's %.0f m: the nearest is %.0f m off", reach, nearest));
         run(20);
-        assertTrue(hits[0] > 0, "a battery's chaingun rounds land on a ship holding where the raid holds");
+        assertTrue(hits[0] > 0, "a battery's coilgun slugs land on a ship holding where the raid holds");
     }
 
     @Test

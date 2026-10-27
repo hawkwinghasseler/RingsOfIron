@@ -265,7 +265,7 @@ Stop when `P ≤ 0`, or apply the def's fuse first (`DELAYED(depthTiles)` detona
 - If the ray reaches void beyond the far hull with `P > 0`, the round **over-penetrates**. The exit hull tile is breached too, and the round respawns in space on the far side with `|v_exit| = |v_rel| · sqrt(P_left / P_start)` in the same direction, converted back to world velocity. It can hit something behind the ship.
 - **Along the skin** (round 2 playtest): the hull is a thin skin drawn a tile thick, so a ray that steps from one hull tile to the next along the hull (both facing open space on the same side, square to the step) is grazing the plating. It leaves the ship there with what it has left rather than boring down the row. Before this, a railgun slug fired down a corvette's length took out the whole top or bottom row of hull, and two such slugs made a ship surrender.
 - **How much machinery one ray wrecks** (`SUBSYSTEM_TILE_SHARE`): a ray crossing a system's tile takes at most a tenth of the system's hardness from it (scaled by its health), however much energy it carries: a slug drills through machinery rather than wrecking all of it. At a quarter, three railgun slugs through a corvette's nose shut its reactor down and fights ended in seconds; at a tenth a ship takes many hits, and its crew have fires, breaches and repairs to deal with meanwhile. Rounds too weak to reach the cap are unchanged.
-- **Spall (optional, per def):** when a hull tile is penetrated, spawn `spallCount` short secondary rays in a cone of `±spallAngle` around the shot line. They share `spallFraction × absorbed` and run the same traversal. This is how a "small" hit still shreds the compartment behind the armor.
+- **Spall (optional, per def):** when a hull tile is penetrated, spawn `spallCount` short secondary rays in a cone of `±spallAngle` around the shot line. They share `spallFraction × massScale × P_left`, where `P_left` is what the round still carries past that tile, and that energy comes out of the round. This is how a heavy, slow shell shreds the compartment behind the armor. A light round throws less: `massScale = m / (m + 5 kg)` (`SpallDef.massScale`) scales both the share and the ray count (at least one), so a 0.67 kg railgun slug keeps nearly all it has for the line it drills, and a missile's fragments throw almost none. (Before Joe's rule of Oct 2026, spall was a share of what the hull tile absorbed, whatever the round weighed.)
 
 ### 5.5 Explosive damage
 Blast behaves differently inside and outside the hull. This is a hard-sci-fi feature worth leaning into:
@@ -292,7 +292,7 @@ Crew-facing outputs, through `DamageTaskSink`:
 - `RepairTask` per subsystem below 1.0 health.
 - `ExtinguishTask` per new fire. `GridHazardSystem` will also post these as fire spreads.
 
-Outputs to `ui-hud` and `audio-spatial`: a `HullHitEvent` per impact (tile, severity), so the wireframe minimap flashes the hit and audio plays a located, muffled impact.
+Outputs to `ui-hud`, `audio-spatial` and the deck view: a `HullHitEvent` per impact (tile, severity, damage type, and where it struck, which way it was going and the hull's normal there, in the grid's tile space; where an over-penetrating round left; the tile a warhead went off in inside), so the wireframe minimap flashes the hit, audio plays a located, muffled impact, and the deck shows it struck (lighting's "Hits seen from the deck"). The console's `blast()` publishes one too.
 
 ### 5.9 Crew injury
 Penetrating hits, spall, fragments and interior blast all damage crew. Combat only applies the damage. The crew states below belong to `ai-crew`, and combat relies on them behaving this way:
@@ -309,10 +309,18 @@ Penetrating hits, spall, fragments and interior blast all damage crew. Combat on
 - Combat posts a `RescueTask` (move an unconscious crew member to a pressurized tile) alongside its other damage tasks. Whether and how unconscious crew recover is `ai-crew`'s call.
 - `CrewDamageSink.applyDamage(crewEntity, amount, cause)` is the third interface combat owns and `ai-crew` implements, next to `GridOccupantQuery` and `DamageTaskSink`.
 
-### 5.11 Ion hits and shields (round 3)
+### 5.11 Ion hits and shields
 - **Ion** (`damage_type = "ion"`, the `ion_bolt` of `ion_mk1`): an ion hit breaks nothing. It stuns every subsystem within `stun.radius_tiles` (2) of where it struck for a random 10 to 30 s (`stun.min_seconds`, `max_seconds`), longer of what is left and the new roll (`IonStun`). Cargo, tanks and docking ports are not stunned. A stunned system is not operational, a stunned reactor feeds no circuit, and `PowerRoutingSystem` counts stuns down and reroutes when one ends. An ion hit is a hull hit with `ion = true` and no severity, and starts no fire.
 - **What a stun means:** a ship whose reactor is stunned goes dark (`NO_POWER`) and can be boarded in that window, but a stun is never a surrender or a beaten ship. `FirstPlay.beaten` is false while anything aboard is stunned unless the ship is wrecked, surrendered or abandoned, or disabled for its hull or its crew (round 8: a frigate broken at the raid was kept in the fight by the defence's ion raider and shot to a wreck; only `NO_POWER` waits out a stun), and `ShipDisablement.gunsSilenced` ignores stunned guns, so a bounty is never paid for an ion hit.
-- **Shields** (`Shields`): each operational `SHIELD_EMITTER` absorbs `ABSORB_SHARE` (0.5) of a hit's energy, scaled by its health, up to `MAX_SHARE` (0.75) for several. It pays `JOULES_PER_ABSORBED` (0.01 J per joule) from its circuit's store, so a drained reactor store stops absorbing. Shields act on rounds, missiles and beams, not on rams. An ion bolt soaked by a shield stuns only with the chance of what got through. `HullHitEvent.shielded` carries the absorbed share for the shimmer sound. The gunship carries one small emitter.
+- **Shields: the particle cloud** (package `shields`, prototype). A ship's shield is one cloud of charged particles pooled between all its `SHIELD_EMITTER`s, held on a closed curve round the hull (`ShieldPerimeter`): halfway between the ellipse through the corners of the hull's box and a line 2 m off the hull itself, smoothed, and never nearer the hull than 1 m. The full design, worked numbers and Joe's decisions are in the Claude Doc "Shields: the particle cloud"; what the code does:
+  - **Mass.** Each emitter adds its `EmitterSpec.capacity` to the pool (S 300 kg, M 900, L 2,700, XL 8,000) and the stock starts full; shield media is bought at stations (not built yet). The stock is in four places: out round the hull (`cloud()`, what protects the ship), `scattered` by hits and being pulled back, `stowed` packed inside the emitters, and `adrift`. The working emitters (on, powered, not broken, stunned or tripped, and paid up) hold as much as their capacities add up to; whatever is out beyond that, the cloud first, goes adrift. Adrift mass is lost over 6 s (e-folding) and pulled back in over 1 s while working emitters have room, so an emitter back within a second or two saves most of it and one gone for good loses it all. A ship that comes into the world with no emitter working starts with its cloud stowed. The masses and the raised order are saved; emitters, regions and heat start afresh on load.
+  - **Raising and lowering.** `ShieldModel.raise(ship, up)` is the safe shutdown: lowered, the working emitters pack the cloud into themselves over `STOW_TIME` (3 s), scattered and recaptured mass goes in too, they gather no regions, and stowed mass costs nothing and can't be lost, power or no power. Raised, it comes back out as fast. Docking lowers a ship's shields and undocking raises them again (core's `ShieldDocking`), unless the crew lowered them themselves; a lowered ship can't raise them while docked. The player raises and lowers them with 9 at the helm or the weapons console, and the console's `shields([on], [ship])` does it for any ship and reports where its mass is.
+  - **Regions.** `ShieldSystem` (after ballistics, before impacts) looks 2 s ahead along each round's and missile's path relative to the ship and finds where it will cross the curve. The ship's own rounds are not threats and pass out through the cloud. Threats are taken heaviest (kinetic energy) first; each goes to the working emitter in reach (`radius`) closest in bearing from the center of mass with a region slot free (`regions`: S 1 to XL 4), else the next. The emitters may pull 60% of the cloud into regions, shared by weight and capped at `maxDensity` over the region's `width` and the 2 m depth; mass streams in at `2 x clusterSpeed x` the cloud's mass per meter. A region is a raised cosine one width either side of its center, and stands 0.1 s after its round passes inside the curve.
+  - **A round** meets the density where its path crossed the curve: the cloud takes `1 - exp(-23 sigma / s_p)` of its energy, `sigma` the areal density (kg/m^2) and `s_p` the round's sectional density (mass over frontal area, from `ProjectileDef.caliber` or a steel slug three calibers long). It plows a 1 m wide channel; that mass is thrown at `sqrt(E_absorbed / m)`, and `exp(-retention / v)` of it is lost for good (retention 400 m/s); the rest is scattered and rejoins over 5 s (e-folding; 20 s if recapture goes unpaid). An unseen round meets only the thin base layer: about 5% of an autocannon round. A gathered region takes most of one; a 20 kg slug gets mostly through and tears mass away.
+  - **Beams** can't be seen coming: the first touch meets only the base layer and calls up a region there, held 0.5 s after the beam leaves, that thickens while it burns. The cloud takes `1 - exp(-0.012 sigma)` of each tick, and burns off 2e-7 kg per joule taken.
+  - **Power and heat.** Holding costs 1 kW per kg (each emitter its capacity's share of the pool), 0.5 kW more per kg in its regions, and recapturing scattered mass twice its kinetic energy at up to the retention speed. An emitter that can't pay drops its share. All of it is heat; each emitter sheds its `cooling` and trips at `heatTrip`, coming back at half.
+  - Rounds, fragments, missiles, beams and ion bolts are softened; rams are not. An ion bolt soaked by a shield stuns only with the chance of what got through. `HullHitEvent.shielded` carries what the cloud took, for the shimmer sound; the cloud's own hit log (`ShieldCloudComponent.hits`) drives the particles (lighting's "Shield particles"). The gunship carries one small emitter.
+  - **Not built yet:** buying and refilling media, the HUD gauge and coverage overlay, saving heat, heat spilling into the emitter's tile, and moving `EmitterSpec`'s figures into components.toml.
 
 ### 5.12 Hull on hull: collisions
 Ships are small and slow next to orbital speeds, but two hulls meeting at tens of m/s carry a lot of energy: two 195 t starter corvettes closing at 50 m/s have 122 MJ of relative kinetic energy, about 24 medium hull tiles' worth of hit points. Before this, Box2D bounced every contact under 1 km/s off without damage. Now (`CollisionDamageSystem`, with physics-exterior's crash handling):
@@ -359,7 +367,7 @@ Hazards then evolve on their own tick (0.25 s). All random draws (fire, spall, g
 ---
 
 ## 6. Data Definitions (TOML)
-All tuning lives in data so modders can add weapons without code. These are illustrative shapes for `modding-data`'s `WeaponDef` family:
+All tuning lives in data so modders can add weapons without code. These are illustrative shapes for `modding-data`'s `WeaponDef` family (the shipped numbers in `weapons.toml` differ: see 6.1):
 
 ```toml
 [weapon.railgun_mk1]
@@ -411,6 +419,24 @@ heavy  = { mass = 5000.0, hit_points = 1.2e7, armor = 8.0e6 }
 
 Hardness values per tile (`HULL`, `INTERNAL`, `FLOOR`, conduit, each subsystem type, crew) come from `material.*` entries referenced by the chassis blueprint. Armor upgrades are a matter of pointing hull tiles at a harder material.
 
+### 6.1 Speed against damage (Joe's rule, Oct 2026)
+Every weapon has a size, its `min_mount_size` (S, M, L or XL), the smallest turret mount it fits. Within a size, a gun's sustained muzzle power (its round's `½ m v²` over its cooldown) times its muzzle speed is at most `WeaponDef.speedBudget(size)`: `SMALL_SPEED_BUDGET` (1.8e10 W·m/s) for Small, times the mount's tiles for the others (4 Medium, 9 Large, 25 Extra Large). So a fast round is easy to land at range, with a short flight that leaves the target little time to move off the lead, but its gun does less damage per second. A slow cannon is hard to land from afar and wins a close brawl. Fast guns also fire slowly, so each shot still carries enough to punch a hull. `DataDefsTest` holds every shipped gun to it. Flak (proximity-fused point defense) sits well inside its budget, and ion bolts do no kinetic damage.
+
+| Gun | Size | Round | Every | Sustained | Was |
+|---|---|---|---|---|---|
+| Chaingun Mk1, Mk2 | S | 3.7 kg at 1.5 km/s, 4.2 MJ | 0.35 s | 12 MW | Mk1 0.4 kg at 1.5 km/s every 0.15 s (3 MW); Mk2 1.75 kg at 1.8 km/s every 0.12 s (24 MW) |
+| Coilgun Mk1 (new) | S | 2 kg at 3 km/s, 9 MJ | 1.5 s | 6 MW | |
+| Autocannon Mk1 (PD) | S | 0.45 kg at 2 km/s, 0.9 MJ | 0.1 s | 9 MW | 0.4 kg at 1.5 km/s (4.5 MW) |
+| Railgun Mk1, Mk2 | S | 0.67 kg at 6 km/s, 12 MJ | 4 s | 3 MW | 20 kg, every 1.5 s (Mk1) and 1 s (Mk2): 240 and 360 MW |
+| Heavy railgun | M | 3.45 kg at 5.5 km/s, 52 MJ | 4 s | 13 MW | 60 kg every 3 s (302 MW) |
+| Heavy cannon (new) | M | 12 kg at 1.5 km/s, 13.5 MJ | 0.4 s | 34 MW | |
+
+Damage is not linear in energy: a round that cannot get through a tile's armor only wears it (`ARMOR_WEAR`), so each gun's shot has to be heavy enough to punch the hulls it is for. The chaingun's first restatement, 1.6 kg rounds every 0.15 s, only scuffed a raider's medium hull and lost a brawl to the coilgun; 3.7 kg shells at the same 12 MW punch it. `WeaponDuelBenchmark` checks the order that comes out: from 4 km the railgun beats the First Play raider soonest and the chaingun never does, from 1.5 km the other way round, the coilgun between both times.
+
+The patrol gunship and frigate carried railguns, which had been the best gun at any range. Under the rule a heavy railgun does 13 MW, so on the enemy survey a frigate with two (or one and a heavy cannon) lost most raids on the pirate base, whose raiders and platforms brawl. Both carry heavy cannons now: the frigate wins 7 base raids in 10 (6 before the rule) and the gunship 9 (7). The heavy cannon runs at 34 MW, under the 48 its budget allows, because at 48 the frigate won every raid with hull to spare.
+
+A Mk2 keeps its Mk1's round and budget and is the better mount: it slews faster, holds tighter and draws less power. There are no rare weapons any more: every weapon with a price is sold at yards. A beaten ace leaves a spare of its most valuable gun crated in its hold (`PirateAces.dropPart`).
+
 ---
 
 ## Implemented Components
@@ -441,9 +467,9 @@ All in `combat-sys/src/main/java/com/ringsofiron/combatsys` (`components` packag
 | `dart_rack` | Light missile rack: a 6e4 J `dart` with a light frag warhead every 4 s, 8 km | launcher | 15,000 |
 | `railgun_heavy` | 60 kg tungsten slugs every 3 s, 3 MW | `min_mount_size = "M"` | 140,000 |
 | `ion_mk1` | Ion bolts every 2 s, 3.5 km, 1.5 MW (5.11) | any | 40,000 |
-| `railgun_mk2`, `chaingun_mk2` | Faster-firing rare refits, carried only by pirate aces (`rare = true`: never sold, salvage only) | any | 95,000, 32,000 |
+| `railgun_mk2`, `chaingun_mk2` | Better mounts for the Mk1's rounds, an ace's refits (round 3 made them rare, salvage only; since Oct 2026 yards sell them, see 6.1) | any | 95,000, 32,000 |
 
-  `WeaponDef.fitsMount` ranks mount sizes S < M < L < XL; the yard refuses a weapon too big for a hardpoint's mount (`StationYard.tooSmall`) and never offers a rare one.
+  `WeaponDef.fitsMount` ranks mount sizes S < M < L < XL; the yard refuses a weapon too big for a hardpoint's mount (`StationYard.tooSmall`).
 - **Loadouts** (round 3, `loadouts.toml`, `[loadout.*]`): a weighted list of weapon sets per ship, each with a difficulty range and an `ace` flag. `Loadouts.pick` draws one by weight from those the difficulty allows, and `Loadouts.apply` fits it to the hardpoints in order, skipping empty entries and weapons too big for a mount.
 
 ## Utilities

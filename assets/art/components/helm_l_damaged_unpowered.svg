@@ -26,13 +26,13 @@
     <circle cx="96" cy="270" r="42" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
     <circle cx="96" cy="270" r="33.6" fill="#0c1a26" stroke="#10141a" stroke-width="1"/>
     <rect x="8" y="220" width="24" height="90" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M9.5,308.5 L9.5,221.5 L30.5,221.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M30.5,221.5 L30.5,308.5 L9.5,308.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M9.5,308.5 L9.5,221.5 L30.5,221.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M30.5,221.5 L30.5,308.5 L9.5,308.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="11" y="224" width="13.2" height="82" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="26.2" y="224" width="2.8" height="82" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="160" y="220" width="24" height="90" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M161.5,308.5 L161.5,221.5 L182.5,221.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M182.5,221.5 L182.5,308.5 L161.5,308.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M161.5,308.5 L161.5,221.5 L182.5,221.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M182.5,221.5 L182.5,308.5 L161.5,308.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="163" y="224" width="13.2" height="82" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="178.2" y="224" width="2.8" height="82" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="31.9" y="337.8" width="16.2" height="14.4" rx="4.5" fill="#2b2f36" stroke="#10141a" stroke-width="1.5"/>
@@ -44,13 +44,13 @@
     <rect x="141.2" y="339.6" width="2.7" height="9" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="160.1" y="339.6" width="2.7" height="9" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="20" y="360" width="40" height="20" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M21.5,378.5 L21.5,361.5 L58.5,361.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M58.5,361.5 L58.5,378.5 L21.5,378.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M21.5,378.5 L21.5,361.5 L58.5,361.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M58.5,361.5 L58.5,378.5 L21.5,378.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="24" y="363" width="32" height="11" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="24" y="376" width="32" height="1" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="132" y="360" width="40" height="20" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M133.5,378.5 L133.5,361.5 L170.5,361.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M170.5,361.5 L170.5,378.5 L133.5,378.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M133.5,378.5 L133.5,361.5 L170.5,361.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M170.5,361.5 L170.5,378.5 L133.5,378.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="136" y="363" width="32" height="11" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="136" y="376" width="32" height="1" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="70" y="436" width="52" height="5" rx="2.5" fill="#1b2028" stroke="#10141a" stroke-width="1"/>

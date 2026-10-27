@@ -266,6 +266,17 @@ public final class DebugActions {
         return tools.fire(ship, weapon, x, y);
     }
 
+    /**
+     * Fires {@code weapon} once at the tile from {@code bearing} degrees off the ship's bow,
+     * counterclockwise, {@code range} meters out; either NaN for the usual (straight outboard, the
+     * weapon's usual distance).
+     */
+    public String shoot(Entity ship, int x, int y, String weapon, float bearing, float range) {
+        tileOf(gridOf(ship), x, y);
+        if (weapon == null) weapon = tools.weapons().isEmpty() ? "" : tools.weapons().get(0);
+        return tools.fireFrom(ship, weapon, x, y, bearing, range);
+    }
+
     /** Sets off {@code warhead} inside the hull at the tile. */
     public String blast(Entity ship, int x, int y, String warhead) {
         tileOf(gridOf(ship), x, y);

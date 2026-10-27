@@ -15,8 +15,8 @@
     <rect x="76" y="64" width="3" height="10" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="97" y="64" width="3" height="10" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="30" y="140" width="68" height="26" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M31.5,164.5 L31.5,141.5 L96.5,141.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M96.5,141.5 L96.5,164.5 L31.5,164.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M31.5,164.5 L31.5,141.5 L96.5,141.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M96.5,141.5 L96.5,164.5 L31.5,164.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="34" y="143" width="60" height="14.3" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="34" y="159.3" width="60" height="3.7" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <circle cx="12" cy="180" r="2.5" fill="#1b2028" stroke="#10141a" stroke-width="1"/>

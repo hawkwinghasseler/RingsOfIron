@@ -30,16 +30,17 @@ price = 280000.0
 [ship_sale.patrol_gunship]
 ship = "gunship_heavy"
 seller = "patrol"
-# Round 4: a little over its 304,000 value (was 360,000), so the round 3 career buys it at Lieutenant Commander
-price = 310000.0
+# Round 4: a little over its 304,000 value (was 360,000), so the round 3 career buys it at Lieutenant Commander.
+# Oct 2026: its heavy cannon takes the value to 314,000
+price = 320000.0
 rank = "lieutenant_commander"
 
 [ship_sale.patrol_frigate]
 ship = "frigate_patrol"
 seller = "patrol"
 # Round 5: a little over its 456,000 value (was 720,000), as the gunship is, so a Commander can buy it
-# on pay and contracts
-price = 460000.0
+# on pay and contracts. Oct 2026: its two heavy cannons take the value to 476,000
+price = 480000.0
 rank = "commander"
 
 # The Combine sells the light raider's hull as a fast courier to captains it trusts

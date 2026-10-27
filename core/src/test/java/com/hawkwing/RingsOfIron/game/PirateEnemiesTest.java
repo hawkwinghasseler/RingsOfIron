@@ -105,8 +105,7 @@ class PirateEnemiesTest {
     }
 
     @Test
-    void yardsNeverSellRareGunsAndAHeavyRailgunNeedsAMediumMount() {
-        for (WeaponDef d : world.yard.offers()) assertFalse(d.rare, d.id);
+    void aHeavyRailgunNeedsAMediumMount() {
         WeaponMountComponent nose = game.player.getComponent(WeaponsComponent.class).mounts.get(0);
         assertNotNull(StationYard.tooSmall(nose, world.combatDefs.weapons.get("railgun_heavy")), "the corvette's nose is small");
         assertNull(StationYard.tooSmall(nose, world.combatDefs.weapons.get("railgun_mk1")));
@@ -194,7 +193,7 @@ class PirateEnemiesTest {
         assertEquals(1, h.escapes);
         assertTrue(Arrays.asList(PirateAces.CALLSIGNS).contains(h.displayName), h.displayName);
         assertTrue(world.combatDefs.loadouts.get(h.loadout).ace, "refitted: " + h.loadout);
-        assertNotNull(PirateAces.rareWeapon(ship), "with a gun no yard sells");
+        assertNotNull(PirateAces.bestWeapon(ship), "with its refit's guns");
         assertTrue(h.firepower > firepower, h.firepower + " over " + firepower);
         int crew = 0;
         for (Entity c : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
@@ -256,12 +255,12 @@ class PirateEnemiesTest {
     }
 
     @Test
-    void aBeatenAceLeavesItsRarePartCratedAboard() {
+    void aBeatenAceLeavesASpareOfItsBestGunCratedAboard() {
         String id = pirate(HostileTraffic.RAIDER);
         HostileComponent h = hostiles.get(id);
         Entity ship = world.engine.getEntity(id);
         assertTrue(PirateAces.promote(world, ship, h, hostiles.all().values(), 1, true));
-        String rare = PirateAces.rareWeapon(ship);
+        String rare = PirateAces.bestWeapon(ship);
         bringIn(id, 3_000, 0);
         reactors(ship, false);
         for (int i = 0; i < 10 / FRAME && !h.partDropped; i++) world.update(FRAME);
@@ -326,7 +325,7 @@ class PirateEnemiesTest {
         assertEquals(name, h.displayName);
         assertEquals(loadout, h.loadout);
         assertEquals(pair[0], hostiles.get(pair[1]).wingOf);
-        assertNotNull(PirateAces.rareWeapon(world.engine.getEntity(pair[0])), "still carrying its refit");
+        assertNotNull(PirateAces.bestWeapon(world.engine.getEntity(pair[0])), "still carrying its refit");
     }
 
     // ---------------------------------------------------------------------------------------------

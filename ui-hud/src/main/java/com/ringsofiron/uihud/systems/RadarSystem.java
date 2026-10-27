@@ -53,7 +53,7 @@ public class RadarSystem extends EntitySystem {
         for (Entity e : marked) {
             if (e == player) continue;
             TransformComponent t = TRANSFORMS.get(e);
-            scope.addContact(t.x - self.x, t.y - self.y, MARKERS.get(e).color, e == lock);
+            scope.addContact(e, t.x - self.x, t.y - self.y, MARKERS.get(e).color, e == lock);
         }
     }
 }

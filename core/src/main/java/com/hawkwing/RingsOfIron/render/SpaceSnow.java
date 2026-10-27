@@ -23,28 +23,49 @@ import java.util.function.Supplier;
  * in. A ship in a circular orbit sees it hang still; any eccentricity, burn or intercept shows as
  * drift, and the faster the drift the longer each mote's streak ({@link #drift}).
  *
- * <p>The snow lies in a few layers. The nearest moves at the true relative speed; the deeper ones
- * move slower and are dimmer, for parallax. Motes are laid out in screen pixels, so zooming never
- * makes them thicken or thin out, and they fade away when they move too far between frames to be
- * followed (at time warp).
+ * <p>The snow lies in {@link #LAYERS} layers at depths behind the play plane, from 1 to
+ * {@link #MAX_DEPTH} (log-spaced), most of it toward the far end: deeper layers are denser, dimmer
+ * and finer. It is a backdrop, so how fast it slides does not depend on zoom: a layer at depth
+ * {@code d} moves {@code drift / (REFERENCE_MPP * d)} pixels a second ({@link #pixelsPerSecond}),
+ * the nearest layer as the true drift looks at the game's starting zoom. Motes are laid out in
+ * screen pixels, so zooming never makes them thicken or thin out, and they fade away when they move
+ * too far between frames to be followed (at time warp).
  */
 public final class SpaceSnow {
     /** As a developer overlay ({@code overlay("snow")} and the debug menu); shown by default. */
     public static final String NAME = "snow";
     public static final String DESCRIPTION = "the space snow that shows speed against a circular orbit at the ship's altitude (on in play)";
-    /** Each layer's motion as a fraction of the true drift; the last is the true drift. */
-    private static final float[] PARALLAX = {0.4f, 0.65f, 1f};
-    /** Each layer's spacing, pixels: one cell holds at most one mote. */
-    private static final float[] CELL = {90f, 120f, 165f};
-    /** Each layer's brightest mote. */
-    private static final float[] ALPHA = {0.2f, 0.3f, 0.42f};
+    /** How many layers, and the depth of the farthest (the nearest is at depth 1). */
+    static final int LAYERS = 8;
+    static final float MAX_DEPTH = 40f;
+    /**
+     * Meters per pixel the nearest layer moves at, whatever the zoom: the game's starting view
+     * (160 m across a 1080-pixel screen).
+     */
+    static final float REFERENCE_MPP = 0.15f;
+    /** Each layer's depth, from the farthest (drawn first) to the nearest. */
+    private static final float[] DEPTH = new float[LAYERS];
+    /** Each layer's spacing, pixels: one cell holds at most one mote. Deeper layers are denser. */
+    private static final float[] CELL = new float[LAYERS];
+    /** Each layer's brightest mote, and its shortest length, pixels. */
+    private static final float[] ALPHA = new float[LAYERS];
+    private static final float[] MIN_MOTE = new float[LAYERS];
+
+    static {
+        for (int k = 0; k < LAYERS; k++) {
+            float d = (float) Math.pow(MAX_DEPTH, 1.0 - k / (double) (LAYERS - 1));
+            DEPTH[k] = d;
+            CELL[k] = 240f / (float) Math.pow(d, 0.4);
+            ALPHA[k] = 0.44f / (float) Math.pow(d, 0.24);
+            MIN_MOTE[k] = Math.max(1f, 1.8f / (float) Math.pow(d, 0.15));
+        }
+    }
+
     /** Of the cells, the share that hold a mote. */
     private static final float FILL = 0.65f;
     /** A mote's streak shows where it was this long ago, at most {@link #MAX_STREAK} of its cell. */
     private static final float STREAK_SECONDS = 0.08f;
     private static final float MAX_STREAK = 0.45f;
-    /** A mote is at least this many pixels long, so a still one still shows. */
-    private static final float MIN_MOTE = 1.5f;
     /** Moving more than FADE_START of its cell in one frame a mote dims, gone by FADE_END. */
     private static final float FADE_START = 0.2f;
     private static final float FADE_END = 0.4f;
@@ -59,10 +80,10 @@ public final class SpaceSnow {
     private boolean shown = true;
 
     /** Each layer's offset within one cell, pixels, and how many whole cells it has slid. */
-    private final float[] offsetX = new float[PARALLAX.length];
-    private final float[] offsetY = new float[PARALLAX.length];
-    private final int[] cellsX = new int[PARALLAX.length];
-    private final int[] cellsY = new int[PARALLAX.length];
+    private final float[] offsetX = new float[LAYERS];
+    private final float[] offsetY = new float[LAYERS];
+    private final int[] cellsX = new int[LAYERS];
+    private final int[] cellsY = new int[LAYERS];
     private double lastTime = Double.NaN;
     /** The reference orbit's velocity relative to the ship this frame, m/s, when {@link #haveDrift}. */
     private final Vector2 drift = new Vector2();
@@ -100,6 +121,26 @@ public final class SpaceSnow {
         double vx = -state.y / r * speed;
         double vy = state.x / r * speed;
         return out.set((float) (vx - state.vx), (float) (vy - state.vy));
+    }
+
+    /**
+     * How fast a mote of layer {@code k} (0 the farthest) slides across the screen, pixels a
+     * second, for a drift of {@code speed} m/s. The same at every zoom.
+     */
+    static float pixelsPerSecond(float speed, int k) {
+        return speed / (REFERENCE_MPP * DEPTH[k]);
+    }
+
+    /** The depth of layer {@code k}, 0 the farthest. */
+    static float depth(int k) {
+        return DEPTH[k];
+    }
+
+    /** Of a screen's motes, the share in layer {@code k}, 0 the farthest. */
+    static float share(int k) {
+        float total = 0f;
+        for (float c : CELL) total += 1f / (c * c);
+        return 1f / (CELL[k] * CELL[k]) / total;
     }
 
     /** The drift the last {@link #draw} used, m/s, or null when there was no body to orbit. */
@@ -140,24 +181,25 @@ public final class SpaceSnow {
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapes.begin(ShapeRenderer.ShapeType.Line);
-        for (int k = 0; k < PARALLAX.length; k++) {
+        for (int k = 0; k < LAYERS; k++) {
             float cell = CELL[k];
-            // Pixels this layer slides this frame, and per second for the streak
-            float moveX = (float) (drift.x * step / metersPerPixel) * PARALLAX[k];
-            float moveY = (float) (drift.y * step / metersPerPixel) * PARALLAX[k];
+            // Pixels this layer slides this frame, and per second for the streak: the same at any zoom
+            float scale = REFERENCE_MPP * DEPTH[k];
+            float moveX = (float) (drift.x * step / scale);
+            float moveY = (float) (drift.y * step / scale);
             slide(k, moveX, moveY);
             float frameMove = (float) Math.hypot(moveX, moveY) / cell;
             float fade = 1f - MathUtils.clamp((frameMove - FADE_START) / (FADE_END - FADE_START), 0f, 1f);
             if (fade <= 0f) continue;
-            float pxPerSecond = speed / metersPerPixel * PARALLAX[k];
+            float pxPerSecond = pixelsPerSecond(speed, k);
             float streak = Math.min(pxPerSecond * STREAK_SECONDS, MAX_STREAK * cell);
             float tailX, tailY;
             if (speed > 0f) {
-                float len = Math.max(streak, MIN_MOTE);
+                float len = Math.max(streak, MIN_MOTE[k]);
                 tailX = -drift.x / speed * len;
                 tailY = -drift.y / speed * len;
             } else {
-                tailX = -MIN_MOTE;
+                tailX = -MIN_MOTE[k];
                 tailY = 0f;
             }
             int i0 = MathUtils.floor((-halfW - offsetX[k]) / cell) - 1;

@@ -43,7 +43,7 @@ import java.util.function.Supplier;
  * off light. Crew show their state as the game does whatever the style: standing, down or dead
  * by their art ({@link ArtNames.CrewPose}) with their wound drawn over the figure, a bleeding one
  * blinking; or without that art the down greyed, the dead a cross where they fell and a disc in
- * the wound's color under the hurt. A {@link Style} says how crew are drawn and lets a screen add to the deck and to each crew member, so a demo shows what it needs on
+ * the wound's color under the hurt. Hits on a hull show where they struck ({@link DeckImpacts}). A {@link Style} says how crew are drawn and lets a screen add to the deck and to each crew member, so a demo shows what it needs on
  * top without drawing a deck of its own.
  */
 public final class DeckRenderer {
@@ -114,6 +114,8 @@ public final class DeckRenderer {
     private final float[] angle = new float[1];
     private final Color color = new Color();
     private final RcsNozzles nozzles = new RcsNozzles();
+    /** Every hull hit in the world on show, drawn on its craft's deck. */
+    private final DeckImpacts impacts = new DeckImpacts();
     private final Color crewColor = new Color();
     /** Time the decks have been drawn for, which blinks the bleeding. */
     private float clock;
@@ -242,6 +244,9 @@ public final class DeckRenderer {
      */
     public void draw(Array<Entity> decks, OrthographicCamera camera, float delta) {
         clock = (clock + delta) % BLINK;
+        GameWorld current = world.get();
+        impacts.listen(current == null ? null : current.combatEvents.hullHits);
+        impacts.update(delta);
         if (decks.size == 0) return;
         boolean withArt = deckArt.available();
         boolean lit = lighting != null && lightsOn;
@@ -281,6 +286,12 @@ public final class DeckRenderer {
                     Vector2 l = pos.toShipLocal(g, local);
                     lighting.addCrew(x + cos * l.x - sin * l.y, y + sin * l.x + cos * l.y, CrewBody.RADIUS * g.tileSize);
                 }
+                // Hits on the hull light the deck for a moment
+                impacts.flashes(g, (fx, fy, c, strength, reach, glow) -> {
+                    float lx = g.gridOriginLocal.x + fx * g.tileSize, ly = g.gridOriginLocal.y + fy * g.tileSize;
+                    lighting.addFlash(x + cos * lx - sin * ly, y + sin * lx + cos * ly, c, strength,
+                            reach * g.tileSize, glow * g.tileSize);
+                });
             }
             float s = g.tileSize;
             if (withArt) {
@@ -316,6 +327,7 @@ public final class DeckRenderer {
             hazardsDrawn.put(g, Boolean.TRUE);
             particles.update(g, delta);
             particles.draw(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, s);
+            impacts.drawDebris(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, s);
             Gdx.gl.glEnable(GL20.GL_BLEND);
             shapes.begin(ShapeRenderer.ShapeType.Filled);
             if (heatShown) HeatOverlay.draw(shapes, g, color);
@@ -372,10 +384,14 @@ public final class DeckRenderer {
         hazards.keySet().retainAll(hazardsDrawn.keySet());
         shapes.identity();
         Gdx.gl.glDisable(GL20.GL_BLEND);
-        if (!lit) return;
+        if (!lit) {
+            glowingImpacts(decks, camera);
+            return;
+        }
         // The light map over the decks, dark when the craft aboard has no power; then the glow on top
         ShipGridComponent aboard = decks.first().getComponent(ShipGridComponent.class);
         lighting.renderLights(camera, aboard != null && DeckLightRig.hasPower(aboard));
+        glowingImpacts(decks, camera);
         if (withArt) {
             // What gives off light shows lit whatever light falls on it
             batch.setProjectionMatrix(camera.combined);
@@ -390,6 +406,21 @@ public final class DeckRenderer {
             batch.setTransformMatrix(IDENTITY);
         }
         lighting.renderGlow(batch, camera, 0f);
+    }
+
+    /** The sparks, flashes and fire of hits on {@code decks}' hulls, over the light map so it does not dim them. */
+    private void glowingImpacts(Array<Entity> decks, OrthographicCamera camera) {
+        shapes.setProjectionMatrix(camera.combined);
+        for (Entity ship : decks) {
+            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+            if (g == null || !pose.of(ship, at, angle)) continue;
+            shapes.identity();
+            shapes.translate(at.x, at.y, 0f);
+            shapes.rotate(0f, 0f, 1f, angle[0] * MathUtils.radiansToDegrees);
+            impacts.drawGlowing(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, g.tileSize);
+        }
+        shapes.identity();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     /** The radius of the wound disc under a crew member, in tiles: a ring round the dot without the art. */

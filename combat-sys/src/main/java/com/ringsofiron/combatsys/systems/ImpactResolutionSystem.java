@@ -23,6 +23,7 @@ import com.ringsofiron.combatsys.damage.Shields;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.defs.DamageType;
 import com.ringsofiron.combatsys.defs.ProjectileDef;
+import com.ringsofiron.combatsys.defs.SpallDef;
 import com.ringsofiron.combatsys.defs.WarheadDef;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.events.DamageReport;
@@ -244,7 +245,8 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         if (body == null || grid == null) return null;
         CombatPhysics.toBodyLocal(body, worldX, worldY, localPoint);
         CombatPhysics.vectorToBodyLocal(body, dirX, dirY, localRel);
-        float shielded = Shields.absorb(ship, energy);
+        float shielded = Shields.absorbBeam(ship, body, energy, localPoint.x, localPoint.y, localRel.x, localRel.y,
+                PhysicsManager.TIME_STEP);
         energy -= shielded;
         report.clear();
         report.ship = ship;
@@ -262,6 +264,8 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
             hullHit.beam = true;
             hullHit.ion = false;
             hullHit.shielded = shielded;
+            hullHit.damageType = DamageType.ENERGY;
+            where(grid, localRel.x, localRel.y, -localRel.x, -localRel.y);
             hullHit.tick = physics.getTick();
             events.hullHits.dispatch(hullHit);
             hullHit.beam = false;
@@ -327,7 +331,8 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         CombatPhysics.vectorToBodyLocal(body, hit.relVelocity.x, hit.relVelocity.y, localRel);
         float budget = hit.penetration >= 0f ? hit.penetration
                 : 0.5f * hit.mass * speed * speed * def.penetrationFactor;
-        float shielded = hit.ram ? 0f : Shields.absorb(ship, budget);
+        float shielded = hit.ram ? 0f : Shields.absorb(ship, body, def, hit.mass, budget,
+                localPoint.x, localPoint.y, localRel.x, localRel.y);
 
         RandomXS128 rng = rngFor(ship);
         if (def.damageType == DamageType.ION) {
@@ -338,7 +343,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         report.clear();
         report.ship = ship;
         resolver.resolveHit(grid, ship, localPoint, localNormal, localRel, budget, def.damageType, def.fuse,
-                def.spall, def.ricochetAngleDeg, def.ricochetRestitution, rng, report, result);
+                def.spall, SpallDef.massScale(hit.mass), def.ricochetAngleDeg, def.ricochetRestitution, rng, report, result);
 
         CombatPhysics.velocityAt(body, hit.worldPoint.x, hit.worldPoint.y, surfaceVel);
         HullHitEvent.Outcome outcome;
@@ -396,6 +401,14 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         hullHit.ram = hit.ram;
         hullHit.ion = false;
         hullHit.shielded = shielded;
+        hullHit.damageType = def.damageType;
+        where(grid, localRel.x, localRel.y, localNormal.x, localNormal.y);
+        if (outcome == HullHitEvent.Outcome.OVER_PENETRATED) hullHit.exit.set(result.exitPoint);
+        if (warhead != null && result.detonationX >= 0 && result.outcome != PenetrationResolver.Result.Outcome.STOPPED) {
+            hullHit.detonationX = result.detonationX;
+            hullHit.detonationY = result.detonationY;
+            hullHit.blastRadius = warhead.blastRadiusTiles;
+        }
         hullHit.tick = hit.tick;
         if (result.outcome != PenetrationResolver.Result.Outcome.MISSED) events.hullHits.dispatch(hullHit);
         if (!report.isEmpty()) events.damage.dispatch(report);
@@ -421,8 +434,24 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         hullHit.beam = false;
         hullHit.ion = true;
         hullHit.shielded = shielded;
+        hullHit.damageType = DamageType.ION;
+        where(grid, localRel.x, localRel.y, localNormal.x, localNormal.y);
         hullHit.tick = hit.tick;
         events.hullHits.dispatch(hullHit);
+    }
+
+    /**
+     * The hit's geometry for the deck view: {@link #localPoint} in tile space as its entry (and exit,
+     * until an over-penetration says otherwise), the round's direction and the hull's normal, and no
+     * detonation inside.
+     */
+    private void where(ShipGridComponent grid, float dirX, float dirY, float normalX, float normalY) {
+        hullHit.entry.set(localPoint).sub(grid.gridOriginLocal).scl(1f / grid.tileSize);
+        hullHit.exit.set(hullHit.entry);
+        hullHit.direction.set(dirX, dirY).nor();
+        hullHit.normal.set(normalX, normalY).nor();
+        hullHit.detonationX = hullHit.detonationY = -1;
+        hullHit.blastRadius = 0;
     }
 
     /** Puts a ricocheting or exiting round back in flight with velocity surface + vOut. */
