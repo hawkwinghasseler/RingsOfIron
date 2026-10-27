@@ -208,12 +208,14 @@ class GameWorldTest {
             assertTrue(collides(freighter, -11.5f * u, 5f * u), "an engine's casing collides");
             assertFalse(collides(freighter, -11.5f * u, 0f), "nothing between the engines");
 
-            // The corvette's layer adds the bow past the end of its layout, at x = 5
+            // The corvette's layer adds its outline past the end of its layout, at x = 5: the prow to
+            // x = 7.2, and the fins aft beyond its sides
             com.badlogic.gdx.physics.box2d.Body corvette = ctx.factory.spawnShip("corvette_patrol", 100, 0, 0)
                     .getComponent(PhysicsBodyComponent.class).body;
-            assertEquals(1, corvette.getFixtureList().size);
-            assertTrue(corvette.getFixtureList().first().testPoint(106.2f * u, 0f));
-            assertFalse(corvette.getFixtureList().first().testPoint(106.2f * u, 1f * u));
+            assertTrue(collides(corvette, 106.8f * u, 0.1f * u), "the prow");
+            assertFalse(collides(corvette, 106.8f * u, 1f * u));
+            assertTrue(collides(corvette, 88.9f * u, 3.8f * u), "a fin");
+            assertFalse(collides(corvette, 92f * u, 3.8f * u));
             assertFalse(ctx.report.toString().contains("Collision layer"), ctx.report.toString());
         } finally {
             withContent.dispose();
