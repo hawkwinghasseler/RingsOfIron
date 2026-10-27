@@ -861,6 +861,8 @@ public class StationYard extends EntitySystem {
         mount.def = def;
         mount.cooldown = def.cooldown;
         mount.beamTime = 0f;
+        // A launcher comes aboard loaded
+        mount.ammo = -1;
         system.health = r.used ? Math.min(system.health, USED_CONDITION) : Math.max(system.health, 1f);
         double credit = old == null || old == def ? 0 : old.price * TRADE_IN;
         TraderComponent trader = ship.getComponent(TraderComponent.class);

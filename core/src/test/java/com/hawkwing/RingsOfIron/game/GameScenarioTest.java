@@ -212,9 +212,15 @@ class GameScenarioTest {
         assertTrue(weapons.mounts.size > 0);
         assertNotNull(sensor);
         float raiderGunnery = game.raider.getComponent(WeaponsComponent.class).mounts.first().gunnerySkill;
-        // Cole the marine walks to the weapons console and mans it
-        for (int i = 0; i < 60 * 20 && weapons.mounts.first().gunnerySkill < 0.75f; i++) world.update(FRAME);
-        for (WeaponMountComponent m : weapons.mounts) assertEquals(0.75f, m.gunnerySkill, 1e-6f, "Cole the marine on the guns");
+        // Cole the marine walks to the weapons console and mans it: point defense at his skill, the
+        // main guns, worked from the console with nobody at them, at half of it (round 11)
+        WeaponMountComponent pd = null;
+        for (WeaponMountComponent m : weapons.mounts) if (m.def.pointDefense) pd = m;
+        for (int i = 0; i < 60 * 20 && pd.gunnerySkill < 0.75f; i++) world.update(FRAME);
+        for (WeaponMountComponent m : weapons.mounts) {
+            assertEquals(m.def.pointDefense ? 0.75f : 0.75f * GunCrews.REMOTE_SKILL, m.gunnerySkill, 1e-6f,
+                    "Cole the marine on the guns: " + m.def.id);
+        }
         assertEquals(0.5f, sensor.trackingSkill, 1e-6f);
         assertEquals(raiderGunnery, game.raider.getComponent(WeaponsComponent.class).mounts.first().gunnerySkill,
                 "the raider's crew is not simulated, so it keeps its own");
@@ -316,13 +322,19 @@ class GameScenarioTest {
         world.combatEvents.shots.add((s, shot) -> {
             if (shot.shooter == game.player) shots.add(shot);
         });
-        for (int i = 0; i < 30 && shots.isEmpty(); i++) {
+        for (int i = 0; i < 30; i++) {
             gun.fireGuns();
             world.update(FRAME);
         }
-        assertFalse(shots.isEmpty(), "the railgun fired down the barrel with nothing locked");
-        assertFalse(game.raiderHostile(), "a shot at nothing does not start a fight");
-        for (int i = 0; i < 30; i++) world.update(FRAME);
+        // Round 11: a turret with nothing to aim at holds, rather than throwing its shot away to the side
+        assertTrue(shots.isEmpty(), "nothing locked, nothing fired");
+        assertFalse(game.raiderHostile());
+        gun.setTarget(game.raider);
+        for (int i = 0; i < 10 * 60 && shots.isEmpty(); i++) {
+            gun.fireGuns();
+            world.update(FRAME);
+        }
+        assertFalse(shots.isEmpty(), "on the lock, the trigger fires once a barrel is on it");
     }
 
     @Test
@@ -384,6 +396,8 @@ class GameScenarioTest {
 
     @Test
     void aProvokedRaiderManeuversToFightAndDodgesMissiles() {
+        // The player's crew hold fire, or their guns would end the fight before it is watched
+        world.gunCrews.holdFire = true;
         PlayerGunnery gun = new PlayerGunnery(world, game.player);
         gun.setTarget(game.raider);
         for (int i = 0; i < 60; i++) world.update(FRAME);
@@ -468,9 +482,10 @@ class GameScenarioTest {
     void crewConsolesAreOnTheShipAndSurviveALoad() {
         java.util.Map<String, int[]> consoles = consolesOn(game.player);
         // The corvette's chassis has a helm, a weapons console, a reactor and life support.
-        assertEquals(java.util.Set.of("helm", "weapons", "reactor", "life_support"), consoles.keySet());
+        // Round 11: and its guns' turret mounts, which crew and the player man
+        assertEquals(java.util.Set.of("helm", "weapons", "reactor", "life_support", "turret_mount"), consoles.keySet());
         assertArrayEquals(new int[]{9, 4}, consoles.get("helm"));
-        assertEquals(4, consolesOn(game.contacts.first()).size(), "the raider has its own");
+        assertEquals(5, consolesOn(game.contacts.first()).size(), "the raider has its own");
 
         String save = world.engine.getSerializationService().saveGame();
         world.engine.getSerializationService().loadGame(save);

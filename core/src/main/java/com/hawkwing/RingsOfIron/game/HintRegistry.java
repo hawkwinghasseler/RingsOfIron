@@ -29,7 +29,7 @@ public final class HintRegistry {
         DECK("On deck"),
         /** Seated at the helm, looking outside. */
         HELM("At the helm"),
-        /** Seated at the weapons console, looking outside. */
+        /** Seated at the weapons console or a gun, looking outside. */
         WEAPONS("At the weapons console"),
         /** Docked at a station. */
         DOCKED("Docked"),
@@ -215,6 +215,7 @@ public final class HintRegistry {
         r.register(Context.HELM, "time warp down / up", 57, Action.WARP_DOWN, Action.WARP_UP);
         r.registerKey(Context.HELM, "Wheel", "zoom", 59);
         // At the weapons console
+        r.registerKey(Context.WEAPONS, "Mouse", "aim", 9);
         r.register(Context.WEAPONS, "guns", 10, Action.FIRE);
         r.register(Context.WEAPONS, "missile", 11, Action.MISSILE);
         r.register(Context.WEAPONS, "next target", 12, Action.NEXT_TARGET);

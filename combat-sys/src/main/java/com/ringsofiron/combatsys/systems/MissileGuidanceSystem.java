@@ -46,6 +46,10 @@ import com.ringsofiron.physicsexterior.events.WorldShiftEvent;
  * turns its nose toward the commanded acceleration at its turn rate and burns only as well as the
  * nose is aligned. Mass falls as propellant burns. With no fuel or no estimate it coasts, armed.
  *
+ * A missile with an {@link MissileComponent#approachAngle} steers for a point off to the side of its
+ * estimate, as far as that angle puts it at the range it is at, merging onto the estimate itself
+ * inside {@link #APPROACH_MERGE}: a salvo spreads on the way and closes from several sides.
+ *
  * A proximity fuse fires when the missile will pass within its radius of what the seeker locked
  * during the coming tick; the warhead goes off as a {@link DetonationEvent}.
  *
@@ -61,6 +65,8 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
     private static final Family CONTACTS = Family.all(SignatureComponent.class).get();
     /** Base and full-burn thermal signature of a missile. */
     public static final float MISSILE_RADAR = 0.05f, MISSILE_THERMAL = 0.3f, PLUME_THERMAL = 3f;
+    /** Inside this range a missile flies straight for its target, whatever its approach angle, m; out to twice it, it turns in. */
+    public static final float APPROACH_MERGE = 1500f;
     /** Below this closing speed, time-to-go comes from how long the motor takes to get there, m/s. */
     private static final float MIN_CLOSING = 30f;
 
@@ -407,6 +413,14 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
 
         d.set(estPos).sub(p.pos);
         float dist = Math.max(d.len(), 1e-3f);
+        if (m.approachAngle != 0f && dist > APPROACH_MERGE) {
+            // Aim off to the side: the same bearing off the target at every range, easing in to it
+            float side = dist * (float) Math.tan(m.approachAngle)
+                    * MathUtils.clamp((dist - APPROACH_MERGE) / APPROACH_MERGE, 0f, 1f);
+            float lx = d.x / dist, ly = d.y / dist;
+            d.add(-ly * side, lx * side);
+            dist = Math.max(d.len(), 1e-3f);
+        }
         float ux = estVel.x - p.vel.x, uy = estVel.y - p.vel.y;
         float closing = -(d.x * ux + d.y * uy) / dist;
         float tGo = closing > MIN_CLOSING ? dist / closing : (float) Math.sqrt(2f * dist / Math.max(aMax, 1e-3f));

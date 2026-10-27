@@ -143,6 +143,10 @@ For long shots (`t` above roughly 10 s), an optional **shooting-method pass** fo
 
 A mount is only usable while its `WEAPONS` subsystem is operational and powered (`SubsystemComponent.isOperational && powered`). Interior damage directly blinds or silences guns.
 
+**The trigger and the hand** (round 11). A pulled trigger fires only once the barrel is on its solution. A turret out of reach of its target, or with no target, holds rather than firing down its resting barrel (the starter corvette's laser rests on its starboard beam, and burned its pulses off to the side whenever the raider was past 3 km). Only a spinal gun with no target fires straight ahead. A mount can also be aimed by hand (`WeaponMountComponent.manualAim`, `aimPoint`): it slews onto that point with no lead, and its trigger fires once the barrel is within `max(0.01 rad, 3 · spread)` of it.
+
+**Crewed guns** (round 11, core's `GunCrews`). On the player's ship a gun fires at will only while somebody works it: a crew member manning its own turret mount (crew now man turret mounts as they man consoles; marines and crewmen take them after the weapons console), at that gunner's skill, or else one at the weapons console, which works every gun at half skill (`GunCrews.REMOTE_SKILL`). It engages the locked target if that is fighting the player and in reach, else the nearest ship that is. The crew don't open a fight: a ship counts once its captain is after the player, or it is marked hostile and has them locked. Guns hold while docked. Seated at the weapons console the player has every gun and launcher in hand; seated at a gun (V beside its turret mount, or "Take the gun" in its console window), only that one. Guns in hand follow the pointer, leading a contact under it, and fire only on the trigger (Space or the left button). Launchers always wait for the player.
+
 ### 3.4 The HUD lead reticle
 `ui-hud` draws the reticle at the solver's `interceptPoint`, for the player's selected weapon, using the player's own track (which has the same sensor noise as anyone else's). The reticle jitters at long range, and it is wrong against a target that starts or stops burning after the estimate was made. Both are intended.
 
@@ -159,6 +163,7 @@ Missiles are self-propelled projectiles with a heading, a rocket and a seeker. A
 - **Guidance:** `seekerType` (`RADAR`, `THERMAL`, `COMMAND`), `seekerFov`, `seekerRange`, `navGain N` (3–5), `terminalReserve` (fraction of Δv held back for the endgame).
 - **Fusing:** `armingDelay`, `fuse` (`CONTACT` or `PROXIMITY(radius)`), `warheadDefId`, `hitRadius` (target size for point defense), `hitPoints`.
 - **State:** `LAUNCH → BOOST → MIDCOURSE → TERMINAL → (COAST | DEAD)`.
+- **Magazines and salvos** (round 11): a launcher holds `magazine` missiles (`harpoon_launcher` 4, a second apart; `dart_rack` 6, 0.6 s apart) and is silent once empty; a station restocks the player's launchers while docked, one missile every 2 s. The player's missile key launches a salvo of up to 4 from one launcher. Each missile a launcher throws gets its own `approachAngle` (0, +15°, −15°, +30°, −30°, round again): it steers for a point that far off its target's bearing, which closes onto the target inside 1.5–3 km, so a salvo spreads on the way and comes in from several sides.
 
 ### 4.2 Flight phases
 1. **Launch (cold).** The missile is ejected at `ejectSpeed` on top of the launcher's velocity, and its motor stays dark until `armingDelay`. This keeps it from torching or hitting its own ship. Ejection reaction is applied to the launcher as an impulse. As built (round 6), a missile also never strikes its own launcher at all: an aft launcher's missile turning onto a target ahead flew up its own ship's hull and blew the frigate's bow railguns off.
@@ -438,7 +443,7 @@ All in `combat-sys/src/main/java/com/ringsofiron/combatsys` (`components` packag
 | Weapon | What | Fits | Price |
 |---|---|---|---|
 | `flak_mk1` | Point defense: 1.5 kg shells with a 25 m proximity fuse every 0.35 s, 3 km. A proximity fuse widens the point-defense sweep by its radius, so flak kills missiles a gun would miss | any | 16,000 |
-| `dart_rack` | Light missile rack: a 6e4 J `dart` with a light frag warhead every 4 s, 8 km | launcher | 15,000 |
+| `dart_rack` | Light missile rack: a 6e4 J `dart` with a light frag warhead every 4 s, 8 km (round 11: six of them, 0.6 s apart) | launcher | 15,000 |
 | `railgun_heavy` | 60 kg tungsten slugs every 3 s, 3 MW | `min_mount_size = "M"` | 140,000 |
 | `ion_mk1` | Ion bolts every 2 s, 3.5 km, 1.5 MW (5.11) | any | 40,000 |
 | `railgun_mk2`, `chaingun_mk2` | Faster-firing rare refits, carried only by pirate aces (`rare = true`: never sold, salvage only) | any | 95,000, 32,000 |

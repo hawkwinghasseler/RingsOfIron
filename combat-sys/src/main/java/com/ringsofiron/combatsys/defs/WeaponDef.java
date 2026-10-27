@@ -61,6 +61,11 @@ public class WeaponDef {
     public String minMountSize;
     /** Rare: yards never sell it new; it only comes off a beaten ace. */
     public boolean rare;
+    /**
+     * Launcher: missiles it holds when full. Each launch takes one, and an empty launcher fires no
+     * more until a station restocks it. 0 means it never runs out.
+     */
+    public int magazine;
 
     /**
      * True if it fits a turret mount of {@code size} ({@code S} .. {@code XL}, the names of

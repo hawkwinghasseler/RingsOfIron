@@ -7,6 +7,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.Input;
+import com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.InputProcessor;
@@ -136,6 +137,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private static final ComponentMapper<HudMarkerComponent> MARKERS = ComponentMapper.getFor(HudMarkerComponent.class);
     private static final float INTERIOR_VIEW = 40f;
     private static final float START_VIEW = 160f;
+    /** A contact this far from the pointer, as a share of the view's width, is the one the guns in hand lead. */
+    private static final float HAND_PICK = 0.02f;
     /** The status column's panel, top right: its width, and the text's inside it once padded. */
     private static final float STATUS_WIDTH = 420f, STATUS_PAD = 8f, STATUS_TEXT = STATUS_WIDTH - 2f * STATUS_PAD;
     /** Where the status column's text ended last frame, UI y: off-screen marker names keep above or below it. */
@@ -313,9 +316,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.bridge.playerAlwaysAtHelm = VIEW_ANYWHERE;
         if (!VIEW_ANYWHERE) {
             hud.setViewKey(this::sitOrStand);
-            // E opens a console's power panel; the helm and weapons consoles are flown from their seat
-            hud.getInteractPromptSystem().setPromptExtra(c -> "helm".equals(c.consoleId) || "weapons".equals(c.consoleId)
-                    ? "   [" + key(Action.VIEW) + "] sit and " + ("helm".equals(c.consoleId) ? "fly" : "fight") : null);
+            // E opens a console's power panel; the helm, weapons console and guns are worked from their seat
+            hud.getInteractPromptSystem().setPromptExtra(c -> "helm".equals(c.consoleId) ? "   [" + key(Action.VIEW) + "] sit and fly"
+                    : "weapons".equals(c.consoleId) ? "   [" + key(Action.VIEW) + "] sit and fight"
+                    : "turret_mount".equals(c.consoleId) ? "   [" + key(Action.VIEW) + "] take the gun" : null);
+            // ... and their windows offer the same seat
+            hud.registerConsoleExtra("weapons", (body, skin, console, data) ->
+                    takeControlButton(body, skin, "Take fire control: every gun", SubsystemType.WEAPONS));
+            hud.registerConsoleExtra("turret_mount", (body, skin, console, data) ->
+                    takeControlButton(body, skin, "Take the gun", SubsystemType.TURRET_MOUNT));
             // Pushed off, knocked out or the console shot away: back on deck
             world.bridge.unseated.add((signal, why) -> {
                 show(why);
@@ -556,6 +565,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             if (held(Action.STRAFE_RIGHT)) controls.strafe -= 1f;
         }
         if (just(Action.LIGHTS)) toggleLights();
+        handAim();
         if (held(Action.FIRE)) gun.fireGuns();
         if (just(Action.MISSILE)) {
             // "Launcher reloading" once per reload, not once per press
@@ -953,15 +963,22 @@ public class RingsOfIronGame extends ApplicationAdapter {
     /** V: stand up from the console into the deck view, or sit at the console beside you and look outside. */
     private void sitOrStand() {
         if (hud.getViewMode().getMode() == ViewMode.EXTERIOR) {
-            boolean leftHelm = world.bridge.playerAtHelm();
+            boolean leftHelm = world.bridge.playerAtHelm(), leftGun = world.bridge.playerAtGun();
             world.bridge.stand();
+            gun.releaseAim();
             hud.getViewMode().setMode(ViewMode.INTERIOR);
-            if (!leftHelm) show("You leave the weapons console");
+            if (leftGun) show("You leave the gun");
+            else if (!leftHelm) show("You leave the weapons console");
             else if (world.bridge.helmsman(game.player) != null) show("You leave the helm; the helmsman holds your heading");
             else show("You leave the helm; nobody has it now");
             return;
         }
-        String refused = world.bridge.sit();
+        sitAt(null);
+    }
+
+    /** Sits at the console of {@code type} beside the avatar (null: the nearest) and looks outside. */
+    private void sitAt(SubsystemType type) {
+        String refused = world.bridge.sit(type);
         if (refused != null) {
             show(refused);
             return;
@@ -969,7 +986,39 @@ public class RingsOfIronGame extends ApplicationAdapter {
         hud.getViewMode().setMode(ViewMode.EXTERIOR);
         String fault = world.bridge.helmFault(game.player);
         show(world.bridge.playerAtHelm() ? (fault == null ? "You take the helm" : "You take the helm, but " + fault)
-                : "You take the weapons console");
+                : world.bridge.playerAtGun() ? "You take the gun: the pointer aims it, " + key(Action.FIRE) + " or a click fires"
+                : "You take the weapons console: the pointer aims every gun, " + key(Action.FIRE) + " or a click fires");
+    }
+
+    /** A console window's button that sits the player at it, guns in hand. */
+    private void takeControlButton(com.badlogic.gdx.scenes.scene2d.ui.Table body, com.badlogic.gdx.scenes.scene2d.ui.Skin skin,
+                                   String label, SubsystemType type) {
+        com.badlogic.gdx.scenes.scene2d.ui.TextButton take = new com.badlogic.gdx.scenes.scene2d.ui.TextButton(
+                label + " [" + key(Action.VIEW) + "]", skin);
+        take.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, com.badlogic.gdx.scenes.scene2d.Actor actor) {
+                hud.getConsoleWindow().close();
+                sitAt(type);
+            }
+        });
+        body.add(take).left().padTop(6f).row();
+    }
+
+    /**
+     * Seated at the guns, outside: the guns in hand follow the pointer, and the fire key or the left
+     * button (off the HUD's windows and panels) fires them. Anywhere else, the crew have them back.
+     */
+    private void handAim() {
+        if (!world.bridge.playerOnGuns() || hud.getViewMode().getMode() != ViewMode.EXTERIOR) {
+            gun.releaseAim();
+            return;
+        }
+        int sx = Gdx.input.getX(), sy = Gdx.input.getY();
+        Vector2 at = viewports.getWorldViewport().unproject(tmp.set(sx, sy));
+        gun.aim(at.x, at.y, viewports.getViewMeters() * HAND_PICK);
+        Vector2 ui = hud.getStage().screenToStageCoordinates(tmp2.set(sx, sy));
+        if (Gdx.input.isButtonPressed(Input.Buttons.LEFT) && hud.getStage().hit(ui.x, ui.y, true) == null) gun.fireGuns();
     }
 
     /** Outside while seated at a console, on deck otherwise. */
@@ -1426,8 +1475,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         font.draw(batch, "Target: " + (target == null ? "none" : marker == null ? "unknown contact" : marker.label) + (gun.gunsReady() ? "" : "   (gun reloading)")
                 + (target != null && target == game.raider && game.raiderHostile() ? "   FIRING ON YOU" : ""), left, top - 20f);
         float reload = gun.missileReloadTime();
+        int missiles = gun.missilesLeft();
         // Inbound missiles are ui-hud's missile warning.
-        font.draw(batch, "Missile: " + (reload < 0f ? "offline" : reload > 0f ? String.format("%.0f s", reload) : "ready"),
+        font.draw(batch, "Missile: " + (missiles == 0 ? "none left" : reload < 0f ? "offline"
+                        : reload > 0f ? String.format("%.0f s", reload) : "ready")
+                        + (missiles > 0 ? "   (" + missiles + " left)" : ""),
                 left, top - 40f);
         // Key hints for where the player is, from the registry, sit to the right of the ship panel,
         // which only shows outside
@@ -1529,7 +1581,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         EnumSet<HintRegistry.Context> c = EnumSet.of(HintRegistry.Context.ANY);
         boolean outside = hud.getViewMode().getMode() != ViewMode.INTERIOR;
         if (!outside) c.add(HintRegistry.Context.DECK);
-        else if (world.bridge.playerAtWeapons()) c.add(HintRegistry.Context.WEAPONS);
+        else if (world.bridge.playerOnGuns()) c.add(HintRegistry.Context.WEAPONS);
         else c.add(HintRegistry.Context.HELM);
         if (outside && world.bridge.playerAtHelm()) c.add(HintRegistry.Context.MAP);
         if (hud.getTradeWindow().isDocked()) c.add(HintRegistry.Context.DOCKED);

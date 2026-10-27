@@ -25,7 +25,7 @@ import com.ringsofiron.interiorgrid.crew.SealBreachTask;
  * (see {@link LeakPatches}), a {@link ResetShortTask} for every shorted system or conduit, an
  * {@link IsolateTankTask} for every leaking tank (see {@link DamageStates}), a {@link RepairTask}
  * for every damaged system and a {@link ManConsoleTask}
- * for every helm and weapons console still standing, and cancels open tasks that no
+ * for every helm, weapons console and turret mount still standing, and cancels open tasks that no
  * longer need doing.
  *
  * Combat and the hazard simulation post the same tasks as they happen; posting is
@@ -85,9 +85,10 @@ public class ShipHazardScanSystem extends FixedIteratingSystem {
         }
     }
 
-    /** True for the systems crew man: the helm and the weapons console. */
+    /** True for the systems crew man: the helm, the weapons console and each turret mount. */
     public static boolean isConsole(SubsystemComponent.SubsystemType type) {
-        return type == SubsystemComponent.SubsystemType.HELM || type == SubsystemComponent.SubsystemType.WEAPONS;
+        return type == SubsystemComponent.SubsystemType.HELM || type == SubsystemComponent.SubsystemType.WEAPONS
+                || type == SubsystemComponent.SubsystemType.TURRET_MOUNT;
     }
 
     private static boolean bordersInterior(ShipGridComponent grid, int x, int y) {

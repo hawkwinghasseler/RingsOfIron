@@ -10,14 +10,15 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * Consoles the crew can walk up to and use: one on each helm, weapons, life support and reactor
- * aboard a ship, at the system's footprint origin. The HUD shows "Press [E]" near one and opens
+ * Consoles the crew can walk up to and use: one on each helm, weapons, turret mount (a gun),
+ * life support and reactor aboard a ship, at the system's footprint origin. The HUD shows "Press [E]" near one and opens
  * its window. Call once a ship spawned from data has its interior and subsystems.
  */
 public final class ShipConsoles {
     /** The systems that get a console. */
     public static final Set<SubsystemType> USABLE =
-            EnumSet.of(SubsystemType.HELM, SubsystemType.WEAPONS, SubsystemType.LIFE_SUPPORT, SubsystemType.REACTOR);
+            EnumSet.of(SubsystemType.HELM, SubsystemType.WEAPONS, SubsystemType.TURRET_MOUNT, SubsystemType.LIFE_SUPPORT,
+                    SubsystemType.REACTOR);
 
     private ShipConsoles() {}
 
@@ -40,8 +41,9 @@ public final class ShipConsoles {
         return added;
     }
 
-    /** "LIFE_SUPPORT" as "Life support". */
+    /** "LIFE_SUPPORT" as "Life support"; a turret mount is a "Gun". */
     static String title(SubsystemType type) {
+        if (type == SubsystemType.TURRET_MOUNT) return "Gun";
         String name = type.name().replace('_', ' ').toLowerCase();
         return Character.toUpperCase(name.charAt(0)) + name.substring(1);
     }
