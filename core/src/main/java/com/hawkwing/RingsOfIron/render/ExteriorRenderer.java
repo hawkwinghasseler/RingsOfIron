@@ -213,9 +213,23 @@ public final class ExteriorRenderer implements Disposable {
      * outline. {@code delta} (seconds since the last frame, 0 while paused) spools the flames.
      */
     public void drawBodies(OrthographicCamera camera, float delta) {
+        drawBodies(camera, delta, null);
+    }
+
+    /**
+     * {@link #drawBodies(OrthographicCamera, float)}, leaving out every body owned by one of
+     * {@code without} (null for none): the deck view's craft, drawn as decks instead.
+     */
+    public void drawBodies(OrthographicCamera camera, float delta, Array<Entity> without) {
         GameWorld w = world.get();
         Matrix4 view = view(camera);
         w.physics.getWorld().getBodies(bodies);
+        if (without != null) {
+            for (int i = bodies.size - 1; i >= 0; i--) {
+                Entity e = owner(bodies.get(i));
+                if (e != null && without.contains(e, true)) bodies.removeIndex(i);
+            }
+        }
         boolean lit = exteriorLighting != null && lightsOn;
         if (lit) exteriorLighting.begin();
         flames.begin(delta);
