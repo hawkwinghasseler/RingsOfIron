@@ -83,6 +83,8 @@ public final class PictureInPicture implements Disposable {
         final Vector2 anchor = new Vector2();
         final Vector2 center = new Vector2();
         boolean onScreen;
+        /** Drawn right over the craft, so with no line to it. */
+        boolean centered;
         /** Meters per screen pixel in the bubble. */
         float metersPerPixel;
         float distance;
@@ -177,14 +179,14 @@ public final class PictureInPicture implements Disposable {
         float mpp = viewports.metersPerPixel();
         float scale = viewports.getUiScale();
         float radiusPx = RADIUS * scale;
-        collect(player, "Your ship", Color.CYAN, viewports, mpp, radiusPx, uiW, uiH, player);
+        collect(player, "", Color.CYAN, viewports, mpp, radiusPx, uiW, uiH, player);
         collect(target, null, null, viewports, mpp, radiusPx, uiW, uiH, player);
         collect(navTarget, null, null, viewports, mpp, radiusPx, uiW, uiH, player);
         if (shown.size == 0) {
             keepClear.clear();
             return;
         }
-        place(uiW, uiH);
+        place(uiW, uiH, player);
 
         float originX = viewports.getUiViewport().getScreenX(), originY = viewports.getUiViewport().getScreenY();
         int size = Math.round(2f * radiusPx);
@@ -314,15 +316,22 @@ public final class PictureInPicture implements Disposable {
     }
 
     /**
-     * Each bubble's middle: beside its craft, away from the middle of the screen, or at the edge
-     * towards a craft off screen; when that is over a HUD panel or another bubble, the nearest
-     * place round it that is clear.
+     * Each bubble's middle: right over its craft when that is clear of the HUD's panels and the
+     * bubbles before it, and always for the player's ship ({@code player}); else beside it, away from the middle of the screen, or at the edge towards
+     * a craft off screen; when that is over a HUD panel or another bubble too, the nearest place
+     * round it that is clear.
      */
-    private void place(float uiW, float uiH) {
+    private void place(float uiW, float uiH, Entity player) {
         float cx = uiW * 0.5f, cy = uiH * 0.5f;
         for (int i = 0; i < shown.size; i++) {
             Bubble b = shown.get(i);
             Vector2 dir = tmp.set(b.anchor).sub(cx, cy);
+            // The player's own bubble always sits over its ship (in the middle); the others make way for it
+            b.centered = b.onScreen && (b.entity == player || centeredClear(i, b.anchor, uiW, uiH));
+            if (b.centered) {
+                b.center.set(b.anchor);
+                continue;
+            }
             if (b.onScreen) {
                 // Beside it, on the side away from the middle; the player's ship (in the middle) below right
                 if (dir.len() < 2f * RADIUS) dir.set(1f, -1f);
@@ -360,6 +369,20 @@ public final class PictureInPicture implements Disposable {
             }
         }
         keepClear.clear();
+    }
+
+    /**
+     * True when the {@code i}th bubble can sit right over its craft at {@code at}: whole on the
+     * screen, clear of the HUD's panels and of the bubbles before it.
+     */
+    private boolean centeredClear(int i, Vector2 at, float uiW, float uiH) {
+        float edge = RADIUS + MARGIN;
+        if (at.x < edge || at.x > uiW - edge || at.y < edge + LABEL_ROOM || at.y > uiH - edge) return false;
+        box.set(at.x - RADIUS, at.y - RADIUS - LABEL_ROOM, 2f * RADIUS, 2f * RADIUS + LABEL_ROOM);
+        for (Rectangle r : keepClear) if (r.overlaps(box)) return false;
+        float apart = 2f * RADIUS + GAP;
+        for (int j = 0; j < i; j++) if (shown.get(j).center.dst2(at) < apart * apart) return false;
+        return true;
     }
 
     /** True when bubble {@code b} (the {@code i}th) at {@code at} is clear of the HUD's panels, the bubbles before it and its own craft. */
@@ -416,7 +439,8 @@ public final class PictureInPicture implements Disposable {
             ring(b.center.x, b.center.y, RADIUS, 2f);
             Vector2 dir = tmp.set(b.anchor).sub(b.center);
             float len = dir.len();
-            if (len < 1f) continue;
+            // Over its craft: nothing to point at
+            if (b.centered || len < 1f) continue;
             dir.scl(1f / len);
             if (b.onScreen) {
                 // A line from the rim to just short of the craft as the main view draws it
@@ -438,6 +462,8 @@ public final class PictureInPicture implements Disposable {
         batch.setProjectionMatrix(viewports.getUiCamera().combined);
         batch.begin();
         for (Bubble b : shown) {
+            // The player's own ship goes unnamed
+            if (b.label.isEmpty()) continue;
             String text = b.distance < 0f ? b.label : b.label + "  " + distance(b.distance);
             font.setColor(b.color);
             layout.setText(font, text);
