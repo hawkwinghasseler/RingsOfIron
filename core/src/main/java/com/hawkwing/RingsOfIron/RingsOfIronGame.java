@@ -64,6 +64,7 @@ import com.hawkwing.RingsOfIron.shell.SaveSummary;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
+import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.stationsdocking.ForceMethod;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.orbital.warp.TimeWarpController;
@@ -306,6 +307,16 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 viewports.getUiViewport().getWorldHeight() - statusBottom + 4f));
         hud.setBannerRight(() -> viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH - 10f);
         hud.getTrafficMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
+        // A click on a radar contact locks it, as Tab would; a station or other marked object that is
+        // not a sensor contact becomes the navigation target instead, as on the traffic map
+        hud.getRadar().setPickListener(e -> {
+            if (game.contacts.contains(e, true)) {
+                gun.setTarget(e);
+                return;
+            }
+            UuidComponent id = e.getComponent(UuidComponent.class);
+            if (id != null) world.notices.replace("Navigation target", world.nav.target.select(id.id));
+        });
         gameHud.yard.setLayoutEditor(this::openRefit);
         gameHud.yard.setFurnisher(this::startFurnishing);
         world.combatEvents.intercepts.add((signal, hit) -> {
