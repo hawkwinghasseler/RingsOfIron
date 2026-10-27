@@ -22,7 +22,8 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 public class ViewportManager {
     public static final float DEFAULT_VIEW_METERS = 300f;
     public static final float MIN_VIEW_METERS = 20f;
-    public static final float MAX_VIEW_METERS = 8000f;
+    /** Far enough out to take in the whole physics bubble (25 km to its edge). */
+    public static final float MAX_VIEW_METERS = 60_000f;
 
     private final OrthographicCamera worldCamera = new OrthographicCamera();
     private final ExtendViewport worldViewport;

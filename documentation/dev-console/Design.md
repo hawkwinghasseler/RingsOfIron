@@ -48,6 +48,8 @@ demo toggle the same drawing the same way. Besides the built-in ones (`grid`, `v
   shows it before it glows. Hidden in the game; shown in the interior demo, which has no light map.
 - **`snow`** (`render.SpaceSnow`): the space snow the game draws behind the exterior view to show
   speed (see `documentation/art/Design.md`). Shown by default; this hides it.
+- **`stars`** (`render.StarField`): the distant starfield behind the snow. Shown by default; this
+  hides it.
 
 A command typed on its own runs (`heal`), and Groovy's command syntax works (`wound 95, 'SPALL'`).
 `selected`, `player` and `avatar` are read fresh each time a line uses them. `world` and `game` are
