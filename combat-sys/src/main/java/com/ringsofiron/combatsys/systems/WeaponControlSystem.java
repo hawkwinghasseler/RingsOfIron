@@ -128,6 +128,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     private final Vector2 estPos = new Vector2();
     private final Vector2 estVel = new Vector2();
     private final Vector2 dir = new Vector2();
+    private final Vector2 backstop = new Vector2();
 
     public WeaponControlSystem(PhysicsManager physics, CombatEvents events, CombatDefs defs, BallisticsSystem ballistics,
                                MissileGuidanceSystem missiles, SensorTrackingSystem sensors, long seed) {
@@ -165,21 +166,34 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
 
     /**
      * True if, firing at will, {@code ship} holds fire because a ship or station other than
-     * {@code target} lies between {@code from} and {@code to}.
+     * {@code target} lies between {@code from} and {@code to}. Behind a missile, the ship that
+     * launched it is fair game.
      */
     private boolean blocked(Entity ship, Entity target, Vector2 from, Vector2 to) {
         if (holdFire == null) return false;
+        MissileComponent missile = target == null ? null : missileMapper.get(target);
+        Entity launcher = missile == null ? null : missile.launcher;
         blocker[0] = null;
         physics.rayCast(from.x, from.y, to.x, to.y, (fixture, px, py, nx, ny, f) -> {
             short category = fixture.getFilterData().categoryBits;
             if ((category & (CollisionCategories.CATEGORY_SHIP | CollisionCategories.CATEGORY_STATION)) == 0) return -1f;
             Object owner = fixture.getBody().getUserData();
-            if (!(owner instanceof Entity) || owner == ship || owner == target) return -1f;
+            if (!(owner instanceof Entity) || owner == ship || owner == target || owner == launcher) return -1f;
             if (!holdFire.holds(ship, (Entity) owner)) return -1f;
             blocker[0] = (Entity) owner;
             return 0f;
         });
         return blocker[0] != null;
+    }
+
+    /**
+     * Where a shot fired at will must not find a ship or station in the way: the intercept point,
+     * or for point defense, which misses most of its small, fast targets, as far as its rounds fly
+     * (the player's misses past a missile went on into Highport and the haulers by it).
+     */
+    private Vector2 lineOfFire(WeaponMountComponent mount, ProjectileDef round, float maxTime) {
+        if (!mount.def.pointDefense) return mount.solution.interceptPoint;
+        return backstop.set(mount.solution.aimDir).nor().scl(round.muzzleSpeed * maxTime).add(muzzle);
     }
 
     /** Takes the energy for one shot: {@code power_draw * cooldown}, all or nothing. */
@@ -302,7 +316,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
                 : (mount.weaponsFree && !hand && onTarget && mount.engagedFor >= reactionTime(mount));
         mount.trigger = false;
         if (!wantsFire || !available || mount.cooldown > 0f) return;
-        if (atWill && blocked(ship, target, muzzle, mount.solution.interceptPoint)) return;
+        if (atWill && blocked(ship, target, muzzle, lineOfFire(mount, round, maxTime))) return;
         if (!powerShot(mount)) return;
 
         float green = 1.5f - MathUtils.clamp(mount.gunnerySkill, 0f, 1f);

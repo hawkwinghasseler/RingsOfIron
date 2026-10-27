@@ -328,6 +328,42 @@ class FireControlTest {
     }
 
     @Test
+    void pointDefenseHoldsWhenItsMissesWouldCarryOnIntoAShipItSpares() {
+        // A station out past the incoming missile: rounds that miss the missile go on into it
+        Entity attacker = spawnShip(-3000, 0, 0, 0);
+        Entity bystander = new Entity();
+        bystander.add(new PhysicsBodyComponent(physics.createPolygonBody(bystander, -3700, 0, 0f,
+                new float[] {-150, -300, 150, -300, 150, 300, -150, 300}, 50f,
+                CollisionCategories.CATEGORY_STATION, CollisionCategories.MASK_ALL)));
+        engine.addEntity(bystander);
+        Entity defender = spawnShip(0, 0, 0, 0);
+        WeaponMountComponent pd = arm(defender, "autocannon_mk1", -8f, 0f, MathUtils.PI);
+        weaponControl.setHoldFire((shooter, blocker) -> blocker == bystander);
+        run(1f);
+        MissileDef harpoon = defs.missile("harpoon");
+        Entity missile = missiles.launch(harpoon, attacker, null, defender, -2990f, 0f, harpoon.ejectSpeed, 0f, 0f);
+        for (int i = 0; i < 6 * 60; i++) engine.update(DT);
+        assertTrue(missile.getComponent(MissileComponent.class) != null, "the missile is still coming");
+        assertEquals(0, pd.shotsFired, "no burst toward the bystander");
+    }
+
+    @Test
+    void pointDefenseFiresWithOnlyTheLaunchingShipBehindTheMissile() {
+        Entity attacker = spawnShip(-3000, 0, 0, 0);
+        Entity defender = spawnShip(0, 0, 0, 0);
+        arm(defender, "autocannon_mk1", -8f, 0f, MathUtils.PI);
+        // Gunners who hold for anyone in the way still shoot back toward the ship that fired at them
+        weaponControl.setHoldFire((shooter, blocker) -> true);
+        run(1f);
+        MissileDef harpoon = defs.missile("harpoon");
+        missiles.launch(harpoon, attacker, null, defender, -2990f, 0f, harpoon.ejectSpeed, 0f, 0f);
+        boolean[] killed = new boolean[1];
+        events.intercepts.add((s, hit) -> killed[0] |= hit.destroyed && hit.shooter == defender);
+        for (int i = 0; i < 40 * 60 && !killed[0]; i++) engine.update(DT);
+        assertTrue(killed[0], "point defense broke the missile up");
+    }
+
+    @Test
     void aBrightDecoyStealsTheSeekersLock() {
         Entity ship = spawnShip(0, 0, 0, 0);
         Entity target = spawnShip(4000, 0, 0, 0);
