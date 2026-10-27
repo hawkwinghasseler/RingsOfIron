@@ -7,25 +7,36 @@
 # urgent incoming missile; launchers throw guided missiles at the locked target;
 # beams burn beam_power watts into whatever they touch for beam_duration seconds.
 # price is what a new one costs at a station yard's refit (a used one half that).
-# min_mount_size (S, M, L or XL) is the smallest turret mount it fits; leave it out for any.
-# rare = true: yards never sell it new; it only comes off a beaten ace (see loadouts.toml).
+# min_mount_size (S, M, L or XL) is the weapon's size: the smallest turret mount it fits.
+#
+# Speed against damage: within a size, a gun's sustained muzzle power (round energy / cooldown)
+# times its muzzle speed is at most WeaponDef.speedBudget(size): 1.8e10 W*m/s for Small, times the
+# mount's tiles for bigger ones (4 Medium, 9 Large, 25 Extra Large). A fast round is easy to land at
+# range but its gun does less damage; a slow cannon is hard to land from afar and wins a brawl. Fast
+# guns also fire slowly, so each shot still carries enough to punch a hull. DataDefsTest holds every
+# gun to it. Mk2s keep their Mk1's round and budget, and are better mounts: they slew faster, hold
+# tighter and draw less power. Projectile ids are kept from before the rule so saves still load.
 
+# Small: 0.67 kg at 6 km/s, 12 MJ every 4 s (3 MW). It hits at any range and loses a brawl.
 [weapon.railgun_mk1]
 name = "Railgun Mk1"
 price = 60000.0
 mount = "turret"
+min_mount_size = "S"
 slew_rate_deg = 40
 firing_arc_deg = 270
-cooldown = 1.5
-power_draw = 2.0e6
+cooldown = 4.0
+power_draw = 7.5e5
 projectile = "slug_tungsten_20kg"
 spread_rad = 0.0005
 sound = "evt_railgun_fire"
 
+# Small point defense: 0.45 kg at 2 km/s, 0.9 MJ every 0.1 s (9 MW).
 [weapon.autocannon_mk1]
 name = "Autocannon Mk1"
 price = 12000.0
 mount = "turret"
+min_mount_size = "S"
 slew_rate_deg = 120
 firing_arc_deg = 300
 cooldown = 0.1
@@ -39,14 +50,16 @@ sound = "evt_autocannon_fire"
 [weapon.chaingun_mk1]
 name = "Chaingun Mk1"
 price = 18000.0
-# The light raider's one gun: an autocannon's rounds from a turret that shoots at the locked
-# target rather than at missiles.
+# The light raider's one gun: a Small cannon that shoots at the locked target. 3.7 kg at
+# 1.5 km/s, 4.2 MJ every 0.35 s (12 MW): slow rounds, the most damage a Small gun does, each heavy
+# enough to punch a medium hull (a lighter, faster-firing round only scuffed it).
 mount = "turret"
+min_mount_size = "S"
 slew_rate_deg = 90
 firing_arc_deg = 270
-cooldown = 0.15
-power_draw = 4.0e4
-projectile = "autocannon_30mm"
+cooldown = 0.35
+power_draw = 1.7e4
+projectile = "autocannon_40mm"
 spread_rad = 0.002
 max_range = 3000.0
 sound = "evt_autocannon_fire"
@@ -55,6 +68,7 @@ sound = "evt_autocannon_fire"
 name = "Harpoon Launcher"
 price = 30000.0
 mount = "launcher"
+min_mount_size = "S"
 firing_arc_deg = 360
 cooldown = 8.0
 missile = "harpoon"
@@ -65,6 +79,7 @@ sound = "evt_missile_launch"
 name = "Laser Mk1"
 price = 45000.0
 mount = "beam"
+min_mount_size = "S"
 slew_rate_deg = 60
 firing_arc_deg = 300
 cooldown = 5.0
@@ -75,13 +90,31 @@ spread_rad = 0.0005
 max_range = 3000.0
 sound = "evt_laser_fire"
 
+# Small, the middle speed: 2 kg at 3 km/s, 9 MJ every 1.5 s (6 MW). Easier to land at range
+# than a cannon, more damage than a railgun; a medium hull stops a slug a tile or two in.
+[weapon.coilgun_mk1]
+name = "Coilgun Mk1"
+# The starting corvette's nose gun, priced as the railgun it replaced so the corvette keeps its value
+price = 60000.0
+mount = "turret"
+min_mount_size = "S"
+slew_rate_deg = 80
+firing_arc_deg = 300
+cooldown = 1.5
+power_draw = 6.0e5
+projectile = "coil_slug_2kg"
+spread_rad = 0.001
+max_range = 5000.0
+sound = "evt_coilgun_fire"
+
 # Point defense that bursts near a missile rather than having to strike it: its shells are
 # proximity fused, so each one that passes within 25 m of a missile takes it. Slower and
-# shorter-ranged than the autocannon, and little use against a hull.
+# shorter-ranged than the autocannon, and little use against a hull (2.6 MW, well inside its budget).
 [weapon.flak_mk1]
 name = "Flak Gun Mk1"
 price = 16000.0
 mount = "turret"
+min_mount_size = "S"
 slew_rate_deg = 140
 firing_arc_deg = 300
 cooldown = 0.35
@@ -98,23 +131,26 @@ sound = "evt_flak_fire"
 name = "Dart Rack"
 price = 15000.0
 mount = "launcher"
+min_mount_size = "S"
 firing_arc_deg = 360
 cooldown = 4.0
 missile = "dart"
 max_range = 8000.0
 sound = "evt_missile_launch"
 
-# A gunship's or frigate's spinal-weight gun: a 60 kg slug, three times the railgun's, on a
-# mount of Medium or bigger. It drinks power: 9 MJ a shot.
+# Medium railgun: 3.5 kg at 5.5 km/s, 52 MJ every 4 s (13 MW). Each
+# slug carries four Small railguns' worth, enough to drill a heavy hull. It drinks power: 9 MJ a shot.
 [weapon.railgun_heavy]
 name = "Heavy Railgun"
-price = 140000.0
+# 140,000 until Oct 2026: since the speed rule it does a quarter the heavy cannon's damage a second
+# and is priced as it
+price = 70000.0
 mount = "turret"
 min_mount_size = "M"
 slew_rate_deg = 20
 firing_arc_deg = 200
-cooldown = 3.0
-power_draw = 3.0e6
+cooldown = 4.0
+power_draw = 2.25e6
 projectile = "slug_tungsten_60kg"
 spread_rad = 0.0004
 sound = "evt_railgun_heavy_fire"
@@ -126,6 +162,7 @@ sound = "evt_railgun_heavy_fire"
 name = "Ion Cannon Mk1"
 price = 40000.0
 mount = "turret"
+min_mount_size = "S"
 slew_rate_deg = 60
 firing_arc_deg = 270
 cooldown = 2.0
@@ -135,16 +172,33 @@ spread_rad = 0.001
 max_range = 3500.0
 sound = "evt_ion_fire"
 
-# Rare refits, found only on aces and stripped off them once beaten.
+# Medium, the slow end: 12 kg at 1.5 km/s, 13.5 MJ every 0.4 s (34 MW; its budget allows 48, but at
+# that a frigate with two shrugged off the pirate base). Slow shells a raider
+# dodges from afar; up close nothing Medium does more. The patrol gunship and frigate carry it.
+[weapon.cannon_heavy]
+name = "Heavy Cannon"
+price = 70000.0
+mount = "turret"
+min_mount_size = "M"
+slew_rate_deg = 45
+firing_arc_deg = 270
+cooldown = 0.4
+power_draw = 1.2e5
+projectile = "cannon_shell_heavy"
+spread_rad = 0.0015
+max_range = 3500.0
+sound = "evt_cannon_heavy_fire"
+
+# Better mounts for the same rounds: an ace's refits, and a yard's dearest Small guns.
 [weapon.railgun_mk2]
 name = "Railgun Mk2"
 price = 95000.0
-rare = true
 mount = "turret"
+min_mount_size = "S"
 slew_rate_deg = 55
 firing_arc_deg = 270
-cooldown = 1.0
-power_draw = 2.0e6
+cooldown = 4.0
+power_draw = 5.0e5
 projectile = "slug_tungsten_20kg"
 spread_rad = 0.0003
 sound = "evt_railgun_fire"
@@ -152,21 +206,21 @@ sound = "evt_railgun_fire"
 [weapon.chaingun_mk2]
 name = "Chaingun Mk2"
 price = 32000.0
-rare = true
 mount = "turret"
+min_mount_size = "S"
 slew_rate_deg = 120
 firing_arc_deg = 300
-# An ace's gun: heavier rounds than the Mk1's, which chip a warship's hull where 30 mm grazes off
-cooldown = 0.12
-power_draw = 4.0e4
+cooldown = 0.35
+power_draw = 1.4e4
 projectile = "autocannon_40mm"
 spread_rad = 0.0015
 max_range = 3500.0
 sound = "evt_autocannon_fire"
 
+# The railgun's slug (its id is from when it weighed 20 kg)
 [projectile.slug_tungsten_20kg]
 art = "railgun_slug"
-mass = 20.0
+mass = 0.67
 muzzle_speed = 6000.0
 damage_type = "kinetic"
 penetration_factor = 1.0
@@ -177,8 +231,8 @@ max_lifetime = 30.0
 
 [projectile.autocannon_30mm]
 art = "autocannon_round"
-mass = 0.4
-muzzle_speed = 1500.0
+mass = 0.45
+muzzle_speed = 2000.0
 damage_type = "kinetic"
 penetration_factor = 0.8
 ricochet_angle_deg = 65
@@ -186,20 +240,22 @@ ricochet_restitution = 0.4
 spall = { count = 2, angle_deg = 20, fraction = 0.2 }
 max_lifetime = 15.0
 
+# The chainguns' shell (its id is from when it was a 40 mm round)
 [projectile.autocannon_40mm]
 art = "autocannon_round"
-mass = 1.75
-muzzle_speed = 1800.0
+mass = 3.7
+muzzle_speed = 1500.0
 damage_type = "kinetic"
 penetration_factor = 0.85
 ricochet_angle_deg = 65
 ricochet_restitution = 0.4
-spall = { count = 2, angle_deg = 20, fraction = 0.2 }
+spall = { count = 4, angle_deg = 25, fraction = 0.5 }
 max_lifetime = 15.0
 
+# The heavy railgun's slug (its id is from when it weighed 60 kg)
 [projectile.slug_tungsten_60kg]
 art = "railgun_slug_heavy"
-mass = 60.0
+mass = 3.45
 muzzle_speed = 5500.0
 damage_type = "kinetic"
 penetration_factor = 1.0
@@ -207,6 +263,29 @@ ricochet_angle_deg = 75
 ricochet_restitution = 0.6
 spall = { count = 10, angle_deg = 30, fraction = 0.35 }
 max_lifetime = 30.0
+
+# The heavy cannon's shell
+[projectile.cannon_shell_heavy]
+art = "autocannon_round"
+mass = 12.0
+muzzle_speed = 1500.0
+damage_type = "kinetic"
+penetration_factor = 0.85
+ricochet_angle_deg = 65
+ricochet_restitution = 0.4
+spall = { count = 6, angle_deg = 30, fraction = 0.5 }
+max_lifetime = 15.0
+
+[projectile.coil_slug_2kg]
+art = "coil_slug"
+mass = 2.0
+muzzle_speed = 3000.0
+damage_type = "kinetic"
+penetration_factor = 0.9
+ricochet_angle_deg = 70
+ricochet_restitution = 0.5
+spall = { count = 4, angle_deg = 25, fraction = 0.3 }
+max_lifetime = 20.0
 
 [projectile.flak_shell]
 art = "flak_shell"
@@ -271,3 +350,4 @@ fragment_speed = 2000.0
 fragment_cone_deg = 60
 blast_radius_tiles = 2
 blast_damage = 1.5e5
+

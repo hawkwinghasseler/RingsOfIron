@@ -11,6 +11,7 @@ Nothing here runs in `./gradlew build`, `test`, `slowTest`, `-PallTests` or CI. 
 ./gradlew :core:playtestBenchmark --tests '*FirstHourBalanceBenchmark'     # one benchmark, about a minute
 ./gradlew :core:playtestBenchmark --tests '*MidCareerBalanceBenchmark'
 ./gradlew :core:playtestBenchmark --tests '*CareerPacingBenchmark'         # seed 2026's careers, up to an hour
+./gradlew :core:playtestBenchmark --tests '*WeaponDuelBenchmark'           # each Small gun against the raider, a few minutes
 ./gradlew :core:playtestBenchmark --tests '*CareerPacingBenchmark.round3*' -PcareerSeeds=2026,7,12
 ```
 
@@ -64,9 +65,9 @@ From round 4's balance pass (a prize paid ten bounties, the gunship was forty we
 | The first raider towed home as a prize | 1 to 2 of its bounties |
 | Stripping a prize first pays less than taking it whole | yes |
 | The gunship after the corvette's trade-in | 4 to 8 weeks of a Lieutenant Commander's pay |
-| The gunship's list price | over its 304,000 cr value |
+| The gunship's list price | over its 314,000 cr value (304,000 before its heavy cannon) |
 | An ace raider below difficulty 1.5 carries the chaingun Mk2 | yes |
-| The Mk2's round against the Mk1's | at least 5 times the energy |
+| The Mk2's aim spread and slew against the Mk1's (it fires the same round since Oct 2026) | at most 0.8 the spread, at least 1.25 the slew |
 | The frigate's list price against its value | 0 to 5% over |
 | A base with no railgun, against the frigate holding where the raid holds | takes at least 0.05 of hull |
 
@@ -74,7 +75,7 @@ Play the career from the start (or from **First ace fight**, then **Gunship**, *
 
 - [ ] Towing a prize home is worth the trouble against taking a bounty and leaving the wreck, without being the only sensible choice.
 - [ ] Saving for the gunship as a Lieutenant Commander takes a few weeks, and those weeks have things to do. Note the day you could afford it.
-- [ ] The ace's chaingun is frightening: its hits hurt the corvette in a way the plain raiders' do not.
+- [ ] The ace is frightening: its chaingun lands more of its rounds than a plain raider's, and its crew lead you better.
 - [ ] Buying the frigate as a Commander feels like a step up, priced about like the gunship was for its rank.
 - [ ] In the raid, the base's guns are a threat to the frigate even without a railgun: the hull drops, and you have to think about where you hold.
 - [ ] Note anything that felt off: money piling up with nothing to buy, a ship out of reach for too long, a fight that is a formality.
@@ -102,3 +103,26 @@ Play a career from a new game, at your own pace, taking the contracts you would 
 - [ ] The raid on the base is a real fight that the frigate can win: note your hull afterwards, and how many tries it took.
 - [ ] Losing a fight sets you back without ending the career.
 - [ ] Note where the career dragged or rushed, by day, and what you were doing then.
+
+## Weapons (`WeaponDuelBenchmark`)
+
+From Joe's speed rule (Oct 2026): within a mount size, a faster round means less damage a second, so a railgun is the gun to have at range and a cannon the gun to have in a brawl. The First Play corvette keeps only its nose mount, fitted with each Small gun in turn, and fights the First Play raider from a held 4 km and 1.5 km. The raider fights back with its chaingun, which reaches 3 km.
+
+| Target | Bot's target |
+|---|---|
+| From 4 km, who beats the raider soonest | the railgun, then the coilgun, then the chaingun |
+| From 1.5 km, who beats the raider soonest | the chaingun, then the coilgun, then the railgun |
+| From 4 km, the share of rounds that land | the railgun's above the chaingun's |
+
+The table also lists each duel: beaten or not, how long it took, both hulls, and rounds landed of fired.
+
+Refit the corvette's nose at Highport with each gun in turn (or load a later save and fit the gunship), then pick a fight with a raider at range and then up close.
+
+- [ ] At range the railgun is the gun you want: its slugs land, and a cannon's rounds spray past.
+- [ ] Once a brawl closes in, you wish you had the cannon: the railgun's slow fire can't keep up.
+- [ ] The coilgun feels like the all-rounder it is meant to be, without being the obvious buy.
+- [ ] The gunship's and frigate's heavy cannons win a brawl with raiders and a base's platforms, but a raider standing off 4 km dodges their shells; swapping one for a heavy railgun feels like a real choice.
+- [ ] A Mk2 feels like a better mount for the same round: it gets onto a target faster and holds it tighter.
+- [ ] A heavy shell's hit shreds the room behind the hull; a railgun slug drills a neat line.
+- [ ] Note any weapon you never wanted to buy, or never wanted to sell.
+

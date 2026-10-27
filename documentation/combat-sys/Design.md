@@ -265,7 +265,7 @@ Stop when `P ≤ 0`, or apply the def's fuse first (`DELAYED(depthTiles)` detona
 - If the ray reaches void beyond the far hull with `P > 0`, the round **over-penetrates**. The exit hull tile is breached too, and the round respawns in space on the far side with `|v_exit| = |v_rel| · sqrt(P_left / P_start)` in the same direction, converted back to world velocity. It can hit something behind the ship.
 - **Along the skin** (round 2 playtest): the hull is a thin skin drawn a tile thick, so a ray that steps from one hull tile to the next along the hull (both facing open space on the same side, square to the step) is grazing the plating. It leaves the ship there with what it has left rather than boring down the row. Before this, a railgun slug fired down a corvette's length took out the whole top or bottom row of hull, and two such slugs made a ship surrender.
 - **How much machinery one ray wrecks** (`SUBSYSTEM_TILE_SHARE`): a ray crossing a system's tile takes at most a tenth of the system's hardness from it (scaled by its health), however much energy it carries: a slug drills through machinery rather than wrecking all of it. At a quarter, three railgun slugs through a corvette's nose shut its reactor down and fights ended in seconds; at a tenth a ship takes many hits, and its crew have fires, breaches and repairs to deal with meanwhile. Rounds too weak to reach the cap are unchanged.
-- **Spall (optional, per def):** when a hull tile is penetrated, spawn `spallCount` short secondary rays in a cone of `±spallAngle` around the shot line. They share `spallFraction × absorbed` and run the same traversal. This is how a "small" hit still shreds the compartment behind the armor.
+- **Spall (optional, per def):** when a hull tile is penetrated, spawn `spallCount` short secondary rays in a cone of `±spallAngle` around the shot line. They share `spallFraction × massScale × P_left`, where `P_left` is what the round still carries past that tile, and that energy comes out of the round. This is how a heavy, slow shell shreds the compartment behind the armor. A light round throws less: `massScale = m / (m + 5 kg)` (`SpallDef.massScale`) scales both the share and the ray count (at least one), so a 0.67 kg railgun slug keeps nearly all it has for the line it drills, and a missile's fragments throw almost none. (Before Joe's rule of Oct 2026, spall was a share of what the hull tile absorbed, whatever the round weighed.)
 
 ### 5.5 Explosive damage
 Blast behaves differently inside and outside the hull. This is a hard-sci-fi feature worth leaning into:
@@ -367,7 +367,7 @@ Hazards then evolve on their own tick (0.25 s). All random draws (fire, spall, g
 ---
 
 ## 6. Data Definitions (TOML)
-All tuning lives in data so modders can add weapons without code. These are illustrative shapes for `modding-data`'s `WeaponDef` family:
+All tuning lives in data so modders can add weapons without code. These are illustrative shapes for `modding-data`'s `WeaponDef` family (the shipped numbers in `weapons.toml` differ: see 6.1):
 
 ```toml
 [weapon.railgun_mk1]
@@ -419,6 +419,24 @@ heavy  = { mass = 5000.0, hit_points = 1.2e7, armor = 8.0e6 }
 
 Hardness values per tile (`HULL`, `INTERNAL`, `FLOOR`, conduit, each subsystem type, crew) come from `material.*` entries referenced by the chassis blueprint. Armor upgrades are a matter of pointing hull tiles at a harder material.
 
+### 6.1 Speed against damage (Joe's rule, Oct 2026)
+Every weapon has a size, its `min_mount_size` (S, M, L or XL), the smallest turret mount it fits. Within a size, a gun's sustained muzzle power (its round's `½ m v²` over its cooldown) times its muzzle speed is at most `WeaponDef.speedBudget(size)`: `SMALL_SPEED_BUDGET` (1.8e10 W·m/s) for Small, times the mount's tiles for the others (4 Medium, 9 Large, 25 Extra Large). So a fast round is easy to land at range, with a short flight that leaves the target little time to move off the lead, but its gun does less damage per second. A slow cannon is hard to land from afar and wins a close brawl. Fast guns also fire slowly, so each shot still carries enough to punch a hull. `DataDefsTest` holds every shipped gun to it. Flak (proximity-fused point defense) sits well inside its budget, and ion bolts do no kinetic damage.
+
+| Gun | Size | Round | Every | Sustained | Was |
+|---|---|---|---|---|---|
+| Chaingun Mk1, Mk2 | S | 3.7 kg at 1.5 km/s, 4.2 MJ | 0.35 s | 12 MW | Mk1 0.4 kg at 1.5 km/s every 0.15 s (3 MW); Mk2 1.75 kg at 1.8 km/s every 0.12 s (24 MW) |
+| Coilgun Mk1 (new) | S | 2 kg at 3 km/s, 9 MJ | 1.5 s | 6 MW | |
+| Autocannon Mk1 (PD) | S | 0.45 kg at 2 km/s, 0.9 MJ | 0.1 s | 9 MW | 0.4 kg at 1.5 km/s (4.5 MW) |
+| Railgun Mk1, Mk2 | S | 0.67 kg at 6 km/s, 12 MJ | 4 s | 3 MW | 20 kg, every 1.5 s (Mk1) and 1 s (Mk2): 240 and 360 MW |
+| Heavy railgun | M | 3.45 kg at 5.5 km/s, 52 MJ | 4 s | 13 MW | 60 kg every 3 s (302 MW) |
+| Heavy cannon (new) | M | 12 kg at 1.5 km/s, 13.5 MJ | 0.4 s | 34 MW | |
+
+Damage is not linear in energy: a round that cannot get through a tile's armor only wears it (`ARMOR_WEAR`), so each gun's shot has to be heavy enough to punch the hulls it is for. The chaingun's first restatement, 1.6 kg rounds every 0.15 s, only scuffed a raider's medium hull and lost a brawl to the coilgun; 3.7 kg shells at the same 12 MW punch it. `WeaponDuelBenchmark` checks the order that comes out: from 4 km the railgun beats the First Play raider soonest and the chaingun never does, from 1.5 km the other way round, the coilgun between both times.
+
+The patrol gunship and frigate carried railguns, which had been the best gun at any range. Under the rule a heavy railgun does 13 MW, so on the enemy survey a frigate with two (or one and a heavy cannon) lost most raids on the pirate base, whose raiders and platforms brawl. Both carry heavy cannons now: the frigate wins 7 base raids in 10 (6 before the rule) and the gunship 9 (7). The heavy cannon runs at 34 MW, under the 48 its budget allows, because at 48 the frigate won every raid with hull to spare.
+
+A Mk2 keeps its Mk1's round and budget and is the better mount: it slews faster, holds tighter and draws less power. There are no rare weapons any more: every weapon with a price is sold at yards. A beaten ace leaves a spare of its most valuable gun crated in its hold (`PirateAces.dropPart`).
+
 ---
 
 ## Implemented Components
@@ -449,9 +467,9 @@ All in `combat-sys/src/main/java/com/ringsofiron/combatsys` (`components` packag
 | `dart_rack` | Light missile rack: a 6e4 J `dart` with a light frag warhead every 4 s, 8 km | launcher | 15,000 |
 | `railgun_heavy` | 60 kg tungsten slugs every 3 s, 3 MW | `min_mount_size = "M"` | 140,000 |
 | `ion_mk1` | Ion bolts every 2 s, 3.5 km, 1.5 MW (5.11) | any | 40,000 |
-| `railgun_mk2`, `chaingun_mk2` | Faster-firing rare refits, carried only by pirate aces (`rare = true`: never sold, salvage only) | any | 95,000, 32,000 |
+| `railgun_mk2`, `chaingun_mk2` | Better mounts for the Mk1's rounds, an ace's refits (round 3 made them rare, salvage only; since Oct 2026 yards sell them, see 6.1) | any | 95,000, 32,000 |
 
-  `WeaponDef.fitsMount` ranks mount sizes S < M < L < XL; the yard refuses a weapon too big for a hardpoint's mount (`StationYard.tooSmall`) and never offers a rare one.
+  `WeaponDef.fitsMount` ranks mount sizes S < M < L < XL; the yard refuses a weapon too big for a hardpoint's mount (`StationYard.tooSmall`).
 - **Loadouts** (round 3, `loadouts.toml`, `[loadout.*]`): a weighted list of weapon sets per ship, each with a difficulty range and an `ace` flag. `Loadouts.pick` draws one by weight from those the difficulty allows, and `Loadouts.apply` fits it to the hardpoints in order, skipping empty entries and weapons too big for a mount.
 
 ## Utilities

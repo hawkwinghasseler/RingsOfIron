@@ -59,8 +59,6 @@ public class WeaponDef {
      * fits any. A yard won't fit it to a smaller mount, and a pirate's loadout never does.
      */
     public String minMountSize;
-    /** Rare: yards never sell it new; it only comes off a beaten ace. */
-    public boolean rare;
 
     /**
      * True if it fits a turret mount of {@code size} ({@code S} .. {@code XL}, the names of
@@ -69,6 +67,32 @@ public class WeaponDef {
     public boolean fitsMount(String size) {
         if (minMountSize == null) return true;
         return size != null && sizeRank(size) >= sizeRank(minMountSize);
+    }
+
+    /**
+     * Speed against damage, W*m/s: the most a gun of {@code size} may have of sustained muzzle power
+     * (its round's energy over its cooldown) times its round's muzzle speed. A Small mount's budget
+     * times the mount's tiles (1, 4, 9 and 25 for S to XL), so a faster round always means less
+     * damage per second from a gun of the same size; 0 for an unknown size.
+     */
+    public static double speedBudget(String size) {
+        if (size == null) return 0;
+        switch (size.toUpperCase(java.util.Locale.ROOT)) {
+            case "S": return SMALL_SPEED_BUDGET;
+            case "M": return SMALL_SPEED_BUDGET * 4;
+            case "L": return SMALL_SPEED_BUDGET * 9;
+            case "XL": return SMALL_SPEED_BUDGET * 25;
+            default: return 0;
+        }
+    }
+
+    /** {@link #speedBudget} of a Small mount: 12 MW of rounds at 1.5 km/s, or 3 MW at 6 km/s. */
+    public static final double SMALL_SPEED_BUDGET = 1.8e10;
+
+    /** Sustained muzzle power of this gun firing {@code round}, W: the round's kinetic energy over the cooldown. */
+    public double sustainedPower(ProjectileDef round) {
+        if (round == null || cooldown <= 0f) return 0;
+        return 0.5 * round.mass * round.muzzleSpeed * round.muzzleSpeed / cooldown;
     }
 
     private static int sizeRank(String size) {

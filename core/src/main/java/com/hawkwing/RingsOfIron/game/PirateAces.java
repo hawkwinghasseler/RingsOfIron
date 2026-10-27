@@ -26,11 +26,11 @@ import java.util.Set;
  * Named pirate aces (round 3, enemies). A pirate becomes one when it gets away from a fight with
  * the player, or once it has robbed {@link #PLUNDERS_TO_ACE} freighters; no more than
  * {@link #MAX_ACES} are about at once. An ace takes a callsign, a better crew ({@link #ACE_SKILL})
- * and a refit from its ship's {@code ace = true} loadouts, which carry a weapon no yard sells. One
+ * and a refit from its ship's {@code ace = true} loadouts, which carry its hull's best guns. One
  * that got away from the player keeps a grudge and hunts them whatever the odds. Beaten, it is worth
  * {@link #BOUNTY_SCALE} times a pirate's bounty, {@link #BOUNTY_STANDING_PER_TIER} more standing for each
- * step of its bounty's tier (from 1 for an ace no match for the player's ship), and a spare
- * rare weapon is left crated in its hold, for whoever boards it. An ace never runs on the odds and
+ * step of its bounty's tier (from 1 for an ace no match for the player's ship), and a spare of
+ * its most valuable weapon is left crated in its hold, for whoever boards it. An ace never runs on the odds and
  * fights on to {@link #BREAK_OFF_HULL} (round 4: the one in round 3 ran at its first hit).
  *
  * <p>Round 5: once the player flies a gunship, an ace takes one of the pirates' gunships
@@ -157,33 +157,31 @@ public final class PirateAces {
     }
 
     /**
-     * A beaten ace: leaves a crate of its rare weapon in its hold (the first rare weapon in the data,
-     * if its refit carried none), once, and forgets its grudge. Returns the weapon's id, or null.
+     * A beaten ace: leaves a crate of its most valuable weapon in its hold, once, and forgets its
+     * grudge. Returns the weapon's id, or null when it carries none.
      */
     public static String dropPart(Entity ship, HostileComponent h, CombatDefs defs) {
         if (!h.ace || h.partDropped) return null;
         h.partDropped = true;
         h.grudge = false;
-        String rare = rareWeapon(ship);
-        if (rare == null) rare = firstRare(defs);
+        String best = bestWeapon(ship);
         CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
-        if (rare == null || hold == null) return rare;
-        hold.load(Salvage.PART + rare, 1, Salvage.CRATE_VOLUME, Salvage.CRATE_MASS);
-        return rare;
+        if (best == null || hold == null) return best;
+        hold.load(Salvage.PART + best, 1, Salvage.CRATE_VOLUME, Salvage.CRATE_MASS);
+        return best;
     }
 
-    /** The first weapon aboard no yard sells, or null. */
-    static String rareWeapon(Entity ship) {
+    /** The weapon aboard with the highest price (the first id on a tie), or null. */
+    static String bestWeapon(Entity ship) {
         WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);
         if (weapons == null) return null;
-        for (WeaponMountComponent m : weapons.mounts) if (m.def != null && m.def.rare) return m.def.id;
-        return null;
-    }
-
-    static String firstRare(CombatDefs defs) {
-        String best = null;
-        for (WeaponDef d : defs.weapons.values()) if (d.rare && (best == null || d.id.compareTo(best) < 0)) best = d.id;
-        return best;
+        WeaponDef best = null;
+        for (WeaponMountComponent m : weapons.mounts) {
+            WeaponDef d = m.def;
+            if (d == null) continue;
+            if (best == null || d.price > best.price || (d.price == best.price && d.id.compareTo(best.id) < 0)) best = d;
+        }
+        return best == null ? null : best.id;
     }
 
     private static Iterable<CrewMemberComponent> crewOf(GameWorld world, Entity ship) {

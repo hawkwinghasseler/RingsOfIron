@@ -678,7 +678,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         return false;
     }
 
-    /** A beaten ace: its rare part crated aboard, and the news. */
+    /** A beaten ace: a spare of its best gun crated aboard, and the news. */
     private void aceBeaten(Entity e, HostileComponent h) {
         String part = PirateAces.dropPart(e, h, world.combatDefs);
         WeaponDef def = part == null ? null : world.combatDefs.weapons.get(part);

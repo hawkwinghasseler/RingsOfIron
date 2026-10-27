@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="132" height="76" viewBox="-38 -38 132 76">
+  <title>cannon_heavy turret: pivot at origin, two short heavy barrels toward +x</title>
+  <g id="base">
+    <circle cx="0" cy="0" r="34" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
+    <circle cx="0" cy="0" r="23.8" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="12" y="-15" width="72" height="12" rx="2" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <rect x="12" y="3" width="72" height="12" rx="2" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <rect x="76" y="-17" width="12" height="16" rx="2" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="76" y="1" width="12" height="16" rx="2" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="24" y="-18" width="8" height="36" rx="2" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="-26" y="-20" width="40" height="40" rx="5" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <clipPath id="hz_cannonheavy_-24_-18"><rect x="-24" y="-18" width="28" height="5"/></clipPath>
+    <rect x="-24" y="-18" width="28" height="5" fill="#f2c230"/>
+    <g clip-path="url(#hz_cannonheavy_-24_-18)">
+    <polygon points="-37,-13 -29,-13 -24,-18 -32,-18" fill="#10141a"/>
+    <polygon points="-21,-13 -13,-13 -8,-18 -16,-18" fill="#10141a"/>
+    <polygon points="-5,-13 3,-13 8,-18 0,-18" fill="#10141a"/>
+    <polygon points="11,-13 19,-13 24,-18 16,-18" fill="#10141a"/>
+    </g>
+    <rect x="-24" y="-18" width="28" height="5" fill="none" stroke="#10141a" stroke-width="1.5"/>
+  </g>
+</svg>

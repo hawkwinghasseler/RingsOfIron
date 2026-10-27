@@ -106,6 +106,36 @@ class PenetrationResolverTest {
         }
     }
 
+    /** What spall takes out of a round fired through a wide medium box: its exit budget against a round with none. */
+    private float spallLoss(float budget, float spallScale) {
+        ShipGridComponent plain = TestShips.box(10, 7, TILE, WeightClass.MEDIUM);
+        float without = shootFromLeft(plain, 3, budget, DamageType.KINETIC, Fuse.contact(), new SpallDef()).exitBudget;
+        ShipGridComponent grid = TestShips.box(10, 7, TILE, WeightClass.MEDIUM);
+        report.clear();
+        Vector2 point = new Vector2(grid.gridOriginLocal.x, grid.gridOriginLocal.y + 3.5f * TILE);
+        float with = resolver.resolveHit(grid, ship, point, new Vector2(-1, 0), new Vector2(1000, 0), budget,
+                DamageType.KINETIC, Fuse.contact(), new SpallDef(6, 30f, 0.3f), spallScale, 70f, 0.5f,
+                new RandomXS128(1), report, result).exitBudget;
+        return without - with;
+    }
+
+    @Test
+    void spallTakesAShareOfWhatTheRoundStillCarries() {
+        float small = spallLoss(2e7f, 1f), big = spallLoss(1e8f, 1f);
+        assertTrue(small > 0f, "spall is thrown");
+        // The same hull tile absorbs the same from both, so spall that came from it would match.
+        assertTrue(big > 4f * small, big + " from a round five times as strong, against " + small);
+    }
+
+    @Test
+    void aLightRoundThrowsLessSpall() {
+        float heavy = spallLoss(1e8f, 1f);
+        float light = spallLoss(1e8f, SpallDef.massScale(0.5f));
+        assertEquals(0.5f / 5.5f, SpallDef.massScale(0.5f), 1e-6f);
+        assertTrue(light < 0.15f * heavy, light + " against " + heavy);
+        assertEquals(0f, spallLoss(1e8f, 0f), 1f, "a massless round throws none");
+    }
+
     @Test
     void grazingHitRicochets() {
         ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.HEAVY);
