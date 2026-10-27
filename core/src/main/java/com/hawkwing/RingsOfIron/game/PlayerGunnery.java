@@ -258,7 +258,8 @@ public class PlayerGunnery {
         return best;
     }
 
-    private static boolean isMainGun(WeaponMountComponent m) {
+    /** A gun the player fires: neither point defense nor a launcher. */
+    public static boolean isMainGun(WeaponMountComponent m) {
         return m.def != null && !m.def.pointDefense && m.def.mount != WeaponDef.MountType.LAUNCHER;
     }
 }
