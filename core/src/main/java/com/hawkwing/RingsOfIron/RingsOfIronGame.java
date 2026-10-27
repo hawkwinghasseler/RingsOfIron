@@ -56,6 +56,7 @@ import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
 import com.hawkwing.RingsOfIron.render.HeatOverlay;
 import com.hawkwing.RingsOfIron.render.HullShading;
 import com.hawkwing.RingsOfIron.render.SpaceSnow;
+import com.hawkwing.RingsOfIron.render.StarField;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
@@ -176,6 +177,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private ExteriorRenderer exterior;
     /** Speed shown against a circular orbit at the player's altitude. */
     private SpaceSnow snow;
+    /** The distant stars behind it all. */
+    private final StarField stars = new StarField();
     /** The HUD skin's body, banner and display fonts, rasterised for the UI scale. */
     private BitmapFont font, largeFont, displayFont;
     /** Deck lights and shadows, and the glow of every lamp and screen, from the art's emissive layers. */
@@ -624,6 +627,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 deckRenderer::heatShown, deckRenderer::setHeatShown);
         builtInOverlays.install(dev.overlays);
         dev.addOverlay(SpaceSnow.NAME, SpaceSnow.DESCRIPTION, snow::isShown, snow::setShown);
+        dev.addOverlay(StarField.NAME, StarField.DESCRIPTION, stars::isShown, stars::setShown);
         dev.setScenarioLoader(this::loadScenario);
         debugMenu = new com.hawkwing.RingsOfIron.debug.DebugMenu(hud.getSkin(), dev,
                 () -> scenarioEntry == null ? null : scenarioEntry.name);
@@ -1379,6 +1383,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     // -----------------------------------------------------------------------
     private void drawBodies() {
         float px = viewports.getViewMeters() / 400f;
+        stars.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
         snow.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
         exterior.drawBodies(viewports.getWorldCamera());
         exterior.drawFlight(viewports.getWorldCamera(), px, Gdx.graphics.getDeltaTime());
