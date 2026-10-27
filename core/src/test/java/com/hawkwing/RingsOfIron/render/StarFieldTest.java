@@ -16,7 +16,7 @@ class StarFieldTest {
                 assertTrue(b >= 0f && b <= 1f);
                 if (b <= 0f) continue;
                 stars++;
-                if (b < 0.4f) faint++;
+                if (b < 0.5f) faint++;
                 if (b > 0.85f) bright++;
             }
         }
