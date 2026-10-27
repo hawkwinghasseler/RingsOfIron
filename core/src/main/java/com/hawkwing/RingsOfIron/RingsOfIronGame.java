@@ -55,7 +55,9 @@ import com.hawkwing.RingsOfIron.lighting.SceneLighting;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
 import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
 import com.hawkwing.RingsOfIron.render.HeatOverlay;
+import com.hawkwing.RingsOfIron.render.HullShading;
 import com.hawkwing.RingsOfIron.render.SpaceSnow;
+import com.hawkwing.RingsOfIron.render.StarField;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
@@ -178,6 +180,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private ExteriorRenderer exterior;
     /** Speed shown against a circular orbit at the player's altitude. */
     private SpaceSnow snow;
+    /** The distant stars behind it all. */
+    private final StarField stars = new StarField();
     /** The HUD skin's body, banner and display fonts, rasterised for the UI scale. */
     private BitmapFont font, largeFont, displayFont;
     /** Deck lights and shadows, and the glow of every lamp and screen, from the art's emissive layers. */
@@ -574,6 +578,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             else world.notices.postOnce(NoticeLog.RELOADING, NoticeLog.Kind.INFO);
         }
         if (just(Action.DECOY) && gun.dropDecoy()) show("Decoy away");
+        if (just(Action.SHIELDS)) show(toggleShields());
         if (just(Action.NEXT_TARGET)) gun.setTarget(game.nextContact(gun.getTarget()));
         navigationKeys();
         if (!helm) return;
@@ -586,6 +591,15 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         // An open window has the arrow keys
         if (hud.openWindow() == null) planBurns();
+    }
+
+    /** Raises the player's shields, or lowers them safely into the emitters; what to tell the player. */
+    private String toggleShields() {
+        com.ringsofiron.combatsys.shields.ShieldCloudComponent cloud = com.ringsofiron.combatsys.shields.ShieldModel.ensure(game.player);
+        if (cloud == null) return "No shield emitters aboard";
+        if (!cloud.raised && world.docking.dockedTo(game.player) != null) return "Shields stay down while docked";
+        com.ringsofiron.combatsys.shields.ShieldModel.raise(game.player, !cloud.raised);
+        return cloud.raised ? "Raising shields" : "Lowering shields";
     }
 
     /** True while one of the HUD's windows or the traffic map is open; Esc closes it first. */
@@ -623,6 +637,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 deckRenderer::heatShown, deckRenderer::setHeatShown);
         builtInOverlays.install(dev.overlays);
         dev.addOverlay(SpaceSnow.NAME, SpaceSnow.DESCRIPTION, snow::isShown, snow::setShown);
+        dev.addOverlay(StarField.NAME, StarField.DESCRIPTION, stars::isShown, stars::setShown);
         dev.setScenarioLoader(this::loadScenario);
         debugMenu = new com.hawkwing.RingsOfIron.debug.DebugMenu(hud.getSkin(), dev,
                 () -> scenarioEntry == null ? null : scenarioEntry.name);
@@ -643,6 +658,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 }
                 if (keycode == Input.Keys.F3 && refitEditor == null) {
                     debugMenu.toggle(hud.getStage());
+                    return true;
+                }
+                if (keycode == Input.Keys.F7) {
+                    // Prototype: how the hulls are lit, to compare the baked art with the game's lighting
+                    HullShading.mode = HullShading.mode.next();
+                    show(HullShading.mode.label());
                     return true;
                 }
                 if (keycode == Input.Keys.ESCAPE && debugMenu.isOpen()) {
@@ -1411,6 +1432,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     // -----------------------------------------------------------------------
     private void drawBodies() {
         float px = viewports.getViewMeters() / 400f;
+        stars.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
         snow.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
         exterior.drawBodies(viewports.getWorldCamera());
         exterior.drawFlight(viewports.getWorldCamera(), px, Gdx.graphics.getDeltaTime());
@@ -1734,6 +1756,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gameHud.dispose();
         lighting.dispose();
         exteriorLighting.dispose();
+        exterior.dispose();
         docking.dispose();
         world.dispose();
         shapes.dispose();

@@ -2,9 +2,9 @@
   <title>nacelle_l: an engine filling its 3x7 slot outside the hull, nozzle toward +y, mounting flange at the bottom, burning, unpowered</title>
   <defs><radialGradient id="nacelle_bell_l_throat"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#9fd8ff" stop-opacity="0.9"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></radialGradient></defs>
   <g id="base">
-    <rect x="2" y="424.96" width="188" height="21.04" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <path d="M3.75,444.25 L3.75,426.71 L188.25,426.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M188.25,426.71 L188.25,444.25 L3.75,444.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="2" y="424.96" width="188" height="29.04" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <path d="M3.75,452.25 L3.75,426.71 L188.25,426.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M188.25,426.71 L188.25,452.25 L3.75,452.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <clipPath id="hz_bell_l_6_427"><rect x="6" y="427.96" width="180" height="5.07"/></clipPath>
     <rect x="6" y="427.96" width="180" height="5.07" fill="#f2c230"/>
     <g clip-path="url(#hz_bell_l_6_427)">
@@ -34,8 +34,8 @@
     <rect x="61.28" y="433.72" width="8" height="11.52" rx="2" fill="#b07a2a" stroke="#10141a" stroke-width="1.2"/>
     <rect x="122.72" y="433.72" width="8" height="11.52" rx="2" fill="#3f6f9a" stroke="#10141a" stroke-width="1.2"/>
     <rect x="62.52" y="308.73" width="66.96" height="82.73" rx="6" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
-    <path d="M64.27,389.72 L64.27,310.48 L127.73,310.48" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M127.73,310.48 L127.73,389.72 L64.27,389.72" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M64.27,389.72 L64.27,310.48 L127.73,310.48" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M127.73,310.48 L127.73,389.72 L64.27,389.72" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <line x1="64.52" y1="336.31" x2="127.48" y2="336.31" stroke="#4b5563" stroke-width="1.5" stroke-linecap="round"/>
     <line x1="64.52" y1="363.89" x2="127.48" y2="363.89" stroke="#4b5563" stroke-width="1.5" stroke-linecap="round"/>
     <path d="M65.87,391.47 Q69.22,409.88 96,409.88 Q122.78,409.88 126.13,391.47 Z" fill="#465060" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>

@@ -56,6 +56,11 @@ class PirateBoardingTest {
         world.gunCrews.holdFire = true;
         world.pirateBoarding.robbed.add((sig, t) -> takes.add(t));
         world.notices.posted.add((sig, n) -> said.add(n.text));
+        // First Play's raider waits 1.3 km off the player with its point defense up: it shot at the
+        // gunship's darts, its rounds struck the gunship, and the gunship turned on it rather than
+        // board (Oct 2026, merged with the new hull outlines)
+        world.engine.removeEntity(game.raider);
+        world.update(FRAME);
     }
 
     @AfterEach

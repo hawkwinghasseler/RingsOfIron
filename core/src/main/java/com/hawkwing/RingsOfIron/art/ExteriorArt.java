@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.hawkwing.RingsOfIron.render.HullShading;
 import com.hawkwing.RingsOfIron.render.RcsNozzles;
 import com.badlogic.gdx.utils.FloatArray;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
@@ -30,6 +31,7 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
  */
 public final class ExteriorArt {
     private final ArtLibrary art;
+    private final HullShading shading = new HullShading();
     private final RcsNozzles nozzles = new RcsNozzles();
     private final Vector2 at = new Vector2();
     private final Vector2 local = new Vector2();
@@ -58,13 +60,24 @@ public final class ExteriorArt {
         Vector2 p = PhysicsManager.getPosition(body, at);
         float px = p.x, py = p.y, angle = body.getAngle();
         ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
-        if (grid.dents == null || hull.rotate || !dented(batch, hull, grid, px, py, angle)) {
-            pivoted(batch, hull, px, py, angle * MathUtils.radiansToDegrees, 1f, 1f);
-        }
+        if (!lit(batch, hull, grid, px, py, angle)) hull(batch, hull, art.info(hull), grid, px, py, angle);
         rcs(batch, craft, body);
         engines(batch, craft, body, angle);
         turrets(batch, craft, body);
         return true;
+    }
+
+    /** The hull art {@code r} placed as {@code info} says, warped by its dents when it has any. */
+    private void hull(Batch batch, AtlasRegion r, ArtLibrary.Info info, ShipGridComponent grid, float px, float py, float angle) {
+        if (grid.dents == null || r.rotate || !dented(batch, r, info, grid, px, py, angle)) {
+            pivoted(batch, r, info, px, py, angle * MathUtils.radiansToDegrees, 1f, 1f);
+        }
+    }
+
+    /** The hull lit by the game ({@link HullShading}) when its mode asks for it; false to draw the baked art. */
+    private boolean lit(Batch batch, AtlasRegion hull, ShipGridComponent grid, float px, float py, float angle) {
+        ArtLibrary.Info info = art.info(hull);
+        return shading.draw(batch, art, hull, px, py, angle, r -> hull(batch, r, info, grid, px, py, angle));
     }
 
     /** The craft's RCS blocks on its hull; a block whose hull tile is gone is drawn wrecked. */
@@ -243,7 +256,11 @@ public final class ExteriorArt {
      * {@code length} and {@code width} scale it along its own x and y.
      */
     private void pivoted(Batch batch, AtlasRegion r, float x, float y, float degrees, float length, float width) {
-        ArtLibrary.Info info = art.info(r);
+        pivoted(batch, r, art.info(r), x, y, degrees, length, width);
+    }
+
+    /** {@link #pivoted} placed as {@code info} says (art packed without an index entry of its own, as a hull's lit twins are). */
+    private void pivoted(Batch batch, AtlasRegion r, ArtLibrary.Info info, float x, float y, float degrees, float length, float width) {
         float u = 1f / ArtLibrary.UNITS_PER_TILE;
         float left = info == null ? -r.originalWidth / 2f * u : info.x * u;
         float top = info == null ? r.originalHeight / 2f * u : -info.y * u;
@@ -268,8 +285,7 @@ public final class ExteriorArt {
      * and darkened where they are pushed furthest. Art past the grid's edge moves with the
      * nearest edge corner. False if the art has no viewBox to place it by.
      */
-    private boolean dented(Batch batch, AtlasRegion r, ShipGridComponent grid, float px, float py, float angle) {
-        ArtLibrary.Info info = art.info(r);
+    private boolean dented(Batch batch, AtlasRegion r, ArtLibrary.Info info, ShipGridComponent grid, float px, float py, float angle) {
         if (info == null) return false;
         float u = 1f / ArtLibrary.UNITS_PER_TILE;
         float left = info.x * u, top = -info.y * u, w = info.w * u, h = info.h * u;

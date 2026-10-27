@@ -27,6 +27,7 @@ public final class KeyBindings {
         FIRE("Fire guns", Input.Keys.SPACE),
         MISSILE("Launch missile", Input.Keys.R),
         DECOY("Decoy / force door", Input.Keys.F),
+        SHIELDS("Raise / lower shields", Input.Keys.NUM_9),
         CUT("Cut door / next burn", Input.Keys.B),
         NEXT_TARGET("Next target", Input.Keys.TAB),
         WARP_UP("Time warp up", Input.Keys.PERIOD),

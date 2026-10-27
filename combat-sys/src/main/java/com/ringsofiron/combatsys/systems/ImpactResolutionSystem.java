@@ -23,6 +23,7 @@ import com.ringsofiron.combatsys.damage.Shields;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.defs.DamageType;
 import com.ringsofiron.combatsys.defs.ProjectileDef;
+import com.ringsofiron.combatsys.defs.SpallDef;
 import com.ringsofiron.combatsys.defs.WarheadDef;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.events.DamageReport;
@@ -244,7 +245,8 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         if (body == null || grid == null) return null;
         CombatPhysics.toBodyLocal(body, worldX, worldY, localPoint);
         CombatPhysics.vectorToBodyLocal(body, dirX, dirY, localRel);
-        float shielded = Shields.absorb(ship, energy);
+        float shielded = Shields.absorbBeam(ship, body, energy, localPoint.x, localPoint.y, localRel.x, localRel.y,
+                PhysicsManager.TIME_STEP);
         energy -= shielded;
         report.clear();
         report.ship = ship;
@@ -327,7 +329,8 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         CombatPhysics.vectorToBodyLocal(body, hit.relVelocity.x, hit.relVelocity.y, localRel);
         float budget = hit.penetration >= 0f ? hit.penetration
                 : 0.5f * hit.mass * speed * speed * def.penetrationFactor;
-        float shielded = hit.ram ? 0f : Shields.absorb(ship, budget);
+        float shielded = hit.ram ? 0f : Shields.absorb(ship, body, def, hit.mass, budget,
+                localPoint.x, localPoint.y, localRel.x, localRel.y);
 
         RandomXS128 rng = rngFor(ship);
         if (def.damageType == DamageType.ION) {
@@ -338,7 +341,7 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         report.clear();
         report.ship = ship;
         resolver.resolveHit(grid, ship, localPoint, localNormal, localRel, budget, def.damageType, def.fuse,
-                def.spall, def.ricochetAngleDeg, def.ricochetRestitution, rng, report, result);
+                def.spall, SpallDef.massScale(hit.mass), def.ricochetAngleDeg, def.ricochetRestitution, rng, report, result);
 
         CombatPhysics.velocityAt(body, hit.worldPoint.x, hit.worldPoint.y, surfaceVel);
         HullHitEvent.Outcome outcome;

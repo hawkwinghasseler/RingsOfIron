@@ -664,6 +664,7 @@ art/interactive/terminal_unpowered.svg
 art/lights.json
 art/preview.html
 art/projectiles/autocannon_round.svg
+art/projectiles/coil_slug.svg
 art/projectiles/decoy_flare.svg
 art/projectiles/flak_shell.svg
 art/projectiles/harpoon.svg
@@ -682,8 +683,11 @@ art/tiles/floor.svg
 art/tiles/pipe_arm.svg
 art/tiles/pipe_hub.svg
 art/turrets/autocannon_mk1.svg
+art/turrets/cannon_heavy.svg
 art/turrets/chaingun_mk1.svg
 art/turrets/chaingun_mk2.svg
+art/turrets/coilgun_mk1.svg
+art/turrets/coilgun_mk1_unpowered.svg
 art/turrets/dart_rack.svg
 art/turrets/flak_mk1.svg
 art/turrets/harpoon_launcher.svg

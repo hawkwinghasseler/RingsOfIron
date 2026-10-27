@@ -2,9 +2,9 @@
   <title>aster_lyra XL: the aerospike engine, 5x12 auxiliary slot outside the hull, nozzle toward +y at rotation 0, mounting flange at the bottom, damaged</title>
   <defs><radialGradient id="aster_lyra_c_aerospike_xl_throat"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#9fd8ff" stop-opacity="0.9"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></radialGradient></defs>
   <g id="base">
-    <rect x="2" y="744.96" width="316" height="21.04" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <path d="M3.75,764.25 L3.75,746.71 L316.25,746.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M316.25,746.71 L316.25,764.25 L3.75,764.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="2" y="744.96" width="316" height="29.04" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <path d="M3.75,772.25 L3.75,746.71 L316.25,746.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M316.25,746.71 L316.25,772.25 L3.75,772.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <clipPath id="hz_spike_xl_6_747"><rect x="6" y="747.96" width="308" height="5.07"/></clipPath>
     <rect x="6" y="747.96" width="308" height="5.07" fill="#f2c230"/>
     <g clip-path="url(#hz_spike_xl_6_747)">
@@ -100,8 +100,8 @@
     <rect x="302.82" y="567.52" width="12.18" height="22.4" rx="2" fill="#5b6675" stroke="#10141a" stroke-width="1"/>
     <line x1="308.91" y1="569.52" x2="308.91" y2="588.92" stroke="#4b5563" stroke-width="1.2" stroke-linecap="round"/>
     <rect x="19.6" y="588.92" width="280.8" height="141.96" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <path d="M21.35,729.13 L21.35,590.67 L298.65,590.67" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M298.65,590.67 L298.65,729.13 L21.35,729.13" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M21.35,729.13 L21.35,590.67 L298.65,590.67" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M298.65,590.67 L298.65,729.13 L21.35,729.13" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <line x1="22.6" y1="609.2" x2="297.4" y2="609.2" stroke="#10141a" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
     <line x1="22.6" y1="629.48" x2="297.4" y2="629.48" stroke="#10141a" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
     <line x1="22.6" y1="649.76" x2="297.4" y2="649.76" stroke="#10141a" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>

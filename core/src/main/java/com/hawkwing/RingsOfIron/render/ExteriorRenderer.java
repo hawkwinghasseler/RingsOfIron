@@ -18,6 +18,7 @@ import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
@@ -55,7 +56,7 @@ import java.util.function.Supplier;
  * <p>Everything is drawn in world meters; {@link #inFrameOf} draws it instead in one body's own
  * frame, for a view that turns with a craft.
  */
-public final class ExteriorRenderer {
+public final class ExteriorRenderer implements Disposable {
     /** How outlines are drawn. */
     public interface Style {
         /** The color of {@code fixture}'s outline on {@code body}, owned by {@code owner} (may be null); null skips it. */
@@ -110,6 +111,7 @@ public final class ExteriorRenderer {
     private final Vector2 tmp2 = new Vector2();
     private final float[] polygon = new float[16];
     private final ThrusterFlames flames;
+    private final ShieldParticles shields = new ShieldParticles();
     /** Craft drawn with their hull art this frame, whose flames are drawn with art too. */
     private final ObjectSet<Entity> withArt = new ObjectSet<>();
 
@@ -216,6 +218,7 @@ public final class ExteriorRenderer {
         boolean lit = exteriorLighting != null && lightsOn;
         if (lit) exteriorLighting.begin();
         flames.begin(delta);
+        shields.begin(delta);
         // Every hull's own lights, drawn with art or not: only the hull's own body, since a port's
         // collar carriage and head carry the craft as owner too
         for (Body body : bodies) {
@@ -227,14 +230,21 @@ public final class ExteriorRenderer {
             if (lighting != null && chassis != null) lighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
             if (lit && chassis != null) exteriorLighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
             flames.collect(e, body);
+            shields.collect(e, body, lit ? exteriorLighting : null);
         }
         flames.end();
+        shields.end();
         // Every flame lights the hulls and glows, as strong as it is long
         flames.light(lit ? exteriorLighting : null, lighting);
         if (lit) lightsInFlight();
-        if (hullArtOn) {
+        // The shield flecks under the light map, so it lights them: those beyond the hull's plane under its art
+        float mpp = metersPerPixel(camera);
+        if (hullArtOn || shields.any()) {
             batch.setProjectionMatrix(view);
             batch.begin();
+            shields.drawFlecks(batch, true, mpp);
+        }
+        if (hullArtOn) {
             for (int i = bodies.size - 1; i >= 0; i--) {
                 Body body = bodies.get(i);
                 Entity e = owner(body);
@@ -243,12 +253,17 @@ public final class ExteriorRenderer {
                     bodies.removeIndex(i);
                 }
             }
+        }
+        if (hullArtOn || shields.any()) {
+            shields.drawFlecks(batch, false, mpp);
             batch.end();
         }
         if (lit) renderLightMap(camera, view);
         // The flames give off their own light: over the light map, not darkened by it
         batch.setProjectionMatrix(view);
         flames.draw(batch, withArt);
+        // So does the shield where it packs and where it is struck, over hull art and outline alike
+        shields.drawGlow(batch, mpp);
         shapes.setProjectionMatrix(view);
         shapes.begin(ShapeRenderer.ShapeType.Line);
         for (Body body : bodies) {
@@ -265,6 +280,12 @@ public final class ExteriorRenderer {
         shapes.end();
         bodies.clear();
         withArt.clear();
+    }
+
+    /** Meters one screen pixel spans under {@code camera}. */
+    private static float metersPerPixel(OrthographicCamera camera) {
+        int width = Gdx.graphics == null ? 0 : Gdx.graphics.getWidth();
+        return width > 0 ? camera.viewportWidth * camera.zoom / width : 0f;
     }
 
     /**
@@ -457,6 +478,11 @@ public final class ExteriorRenderer {
         }
         batch.end();
         return beams;
+    }
+
+    @Override
+    public void dispose() {
+        shields.dispose();
     }
 
     private void drawFixture(Body body, Shape shape) {

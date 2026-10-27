@@ -209,6 +209,7 @@ public final class HintRegistry {
         r.register(Context.HELM, "rotation assist", 51, Action.ROTATION_ASSIST);
         r.register(Context.HELM, "missile", 52, Action.MISSILE);
         r.register(Context.HELM, "decoy", 53, Action.DECOY);
+        r.register(Context.HELM, "raise / lower shields", 58, Action.SHIELDS);
         r.register(Context.HELM, "next target", 54, Action.NEXT_TARGET);
         r.register(Context.HELM, "arm port, ask clearance", 55, Action.ARM_PORT);
         r.register(Context.HELM, "next port", 56, Action.NEXT_PORT);
@@ -220,6 +221,7 @@ public final class HintRegistry {
         r.register(Context.WEAPONS, "missile", 11, Action.MISSILE);
         r.register(Context.WEAPONS, "next target", 12, Action.NEXT_TARGET);
         r.register(Context.WEAPONS, "decoy", 13, Action.DECOY);
+        r.register(Context.WEAPONS, "raise / lower shields", 14, Action.SHIELDS);
         r.register(Context.WEAPONS, "stand up", 40, Action.VIEW);
         r.registerKey(Context.WEAPONS, "Wheel", "zoom", 59);
         // Docked: what the station offers comes first

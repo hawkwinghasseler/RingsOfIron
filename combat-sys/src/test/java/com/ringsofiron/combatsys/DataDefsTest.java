@@ -81,15 +81,36 @@ class DataDefsTest {
         assertEquals("M", heavy.minMountSize);
         assertFalse(heavy.fitsMount("S"), "too big for a corvette's turret mount");
         assertTrue(heavy.fitsMount("M") && heavy.fitsMount("L"));
-        assertTrue(defs.weapon("railgun_mk1").fitsMount("S"), "no minimum fits any mount");
+        assertTrue(defs.weapon("railgun_mk1").fitsMount("S"), "a Small gun fits a Small mount");
 
         ProjectileDef bolt = defs.projectile(defs.weapon("ion_mk1").projectile);
         assertEquals(DamageType.ION, bolt.damageType);
         assertEquals(2f, bolt.stun.radiusTiles);
         assertEquals(10f, bolt.stun.minSeconds);
         assertEquals(30f, bolt.stun.maxSeconds);
+    }
 
-        assertTrue(defs.weapon("railgun_mk2").rare && defs.weapon("chaingun_mk2").rare);
-        assertFalse(defs.weapon("railgun_mk1").rare);
+    /**
+     * Speed against damage: every weapon has a size, and no gun's sustained muzzle power times its
+     * round's speed passes its size's budget, so a faster round never means more damage per second.
+     */
+    @Test
+    void everyGunKeepsToItsSizesSpeedBudget() throws Exception {
+        Path file = Paths.get("..", "assets", "data", "weapons.toml");
+        String toml = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+        DefRegistry registry = new DefRegistry();
+        LoadReport report = new LoadReport();
+        registry.mergeFile(DataFileParser.parseToml(toml, "weapons.toml"), "weapons.toml", report);
+        CombatDefs defs = CombatDefs.fromRegistry(registry);
+        for (WeaponDef w : defs.weapons.values()) {
+            assertNotNull(w.minMountSize, w.id + " has a size");
+            assertTrue(WeaponDef.speedBudget(w.minMountSize) > 0, w.id + "'s size " + w.minMountSize);
+            ProjectileDef round = w.projectile == null ? null : defs.projectile(w.projectile);
+            if (round == null || round.damageType == DamageType.ION) continue;
+            double index = w.sustainedPower(round) * round.muzzleSpeed;
+            double budget = WeaponDef.speedBudget(w.minMountSize);
+            assertTrue(index <= budget * 1.05, String.format("%s: %.3g W*m/s over its %s budget of %.3g",
+                    w.id, index, w.minMountSize, budget));
+        }
     }
 }

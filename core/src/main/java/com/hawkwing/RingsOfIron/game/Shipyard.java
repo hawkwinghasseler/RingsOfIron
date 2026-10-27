@@ -315,6 +315,29 @@ public class Shipyard extends EntitySystem {
     }
 
     /**
+     * For the developer console: the player's ship swapped for a new {@code shipId} where it is,
+     * free and with no yard, rank or room checks; credits, cargo and crew go across as for a
+     * purchase, and a ship docked anywhere stays docked there. Returns what happened.
+     */
+    public String swap(String shipId) {
+        Entity old = world.getPlayer();
+        if (old == null) return "No player ship";
+        if (world.getContent() == null || !world.getContent().defs.ids("ship").contains(shipId)) return "No ship " + shipId;
+        Entity station = world.docking.dockedTo(old);
+        int stationPort = -1;
+        DockingPortsComponent oldPorts = old.getComponent(DockingPortsComponent.class);
+        if (oldPorts != null && station != null) {
+            for (DockingPort p : oldPorts.ports) {
+                if (p.state == DockingPort.State.DOCKED && p.partnerPort >= 0) stationPort = p.partnerPort;
+            }
+        }
+        Entity ship = exchange(old, shipId, credits(old));
+        if (station != null) dockAt(ship, station, stationPort);
+        deals.dispatch(new Deal(Deal.Kind.BOUGHT, old, ship, station, 0, 0f));
+        return "Now flying a " + shipId;
+    }
+
+    /**
      * A new {@code shipId} where {@code old} is, made the player's: their controls, {@code credits},
      * cargo and crew go across (the avatar to the first open tile), and the old ship is undocked and
      * taken out of the world. A purchase does this; so does a debug scenario that changes the player's

@@ -145,8 +145,12 @@ class HostileTrafficGameTest {
 
     @Test
     void aPirateFightsOnWhileThePlayerIsDarkFromAnIonStun() {
-        // Seed 2026's ion raider stunned the corvette's reactor and flew off as if it had won. The
-        // player's crew hold fire: this is the pirate's fight against a ship gone dark
+        // Seed 2026's ion raider stunned the corvette's reactor and flew off as if it had won
+        // First Play's raider, 1.3 km off with its point defense up, would draw the gunship's fire
+        // (as in PirateBoardingTest)
+        world.engine.removeEntity(game.raider);
+        world.update(FRAME);
+        // The player's crew hold fire too: this is the pirate's fight against a ship gone dark
         world.gunCrews.holdFire = true;
         String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
         HostileComponent h = hostiles.get(id);

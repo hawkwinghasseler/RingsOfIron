@@ -2,9 +2,9 @@
   <title>aster_lyra_nacelle_m: the aerospike engine filling its 2x3 slot outside the hull, nozzle toward +y, mounting flange at the bottom, burning</title>
   <defs><radialGradient id="aster_lyra_aerospike_m_throat"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#9fd8ff" stop-opacity="0.9"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></radialGradient></defs>
   <g id="base">
-    <rect x="2" y="168.96" width="124" height="21.04" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <path d="M3.75,188.25 L3.75,170.71 L124.25,170.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M124.25,170.71 L124.25,188.25 L3.75,188.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="2" y="168.96" width="124" height="29.04" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <path d="M3.75,196.25 L3.75,170.71 L124.25,170.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M124.25,170.71 L124.25,196.25 L3.75,196.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <clipPath id="hz_spike_m_6_171"><rect x="6" y="171.96" width="116" height="5.07"/></clipPath>
     <rect x="6" y="171.96" width="116" height="5.07" fill="#f2c230"/>
     <g clip-path="url(#hz_spike_m_6_171)">
@@ -52,8 +52,8 @@
     <rect x="110" y="109.82" width="13" height="19.95" rx="2" fill="#5b6675" stroke="#10141a" stroke-width="1"/>
     <line x1="116.5" y1="111.82" x2="116.5" y2="128.77" stroke="#4b5563" stroke-width="1.2" stroke-linecap="round"/>
     <rect x="10" y="128.77" width="108" height="26.11" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <path d="M11.75,153.13 L11.75,130.52 L116.25,130.52" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M116.25,130.52 L116.25,153.13 L11.75,153.13" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M11.75,153.13 L11.75,130.52 L116.25,130.52" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M116.25,130.52 L116.25,153.13 L11.75,153.13" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <line x1="13" y1="141.82" x2="115" y2="141.82" stroke="#10141a" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
     <circle cx="13.24" cy="141.82" r="10.24" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <path d="M13.24,141.82 Q20,146.45 17.94,149.15" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>

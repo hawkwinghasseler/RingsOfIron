@@ -61,6 +61,7 @@ class IonShieldSoakTest {
         engine.addSystem(new PhysicsUpdateSystem(physics));
         ballistics = new BallisticsSystem(physics, events);
         engine.addSystem(ballistics);
+        engine.addSystem(new com.ringsofiron.combatsys.shields.ShieldSystem(physics));
         engine.addSystem(new ImpactResolutionSystem(physics, events, defs, ballistics, MaterialTable.createDefault(), 42L));
         events.hullHits.add((signal, hit) -> {
             HullHitEvent copy = new HullHitEvent();
@@ -123,14 +124,15 @@ class IonShieldSoakTest {
             body.setAngularVelocity(0f);
             reactor.stunned = 0f;
             int before = hits.size();
-            ballistics.spawn(bolt, bolt.mass, -300f, 0.5f, bolt.muzzleSpeed, 0f, null);
-            run(0.3f);
+            // From 3 km the emitters see each bolt a second out and gather a region in its path
+            ballistics.spawn(bolt, bolt.mass, -3000f, 0.5f, bolt.muzzleSpeed, 0f, null);
+            run(1.1f);
             assertEquals(before + 1, hits.size(), "bolt " + i + " hit");
             HullHitEvent hit = hits.get(before);
             assertTrue(hit.ion && hit.shielded > 0f, "the shields took part of bolt " + i);
             if (reactor.stunned > 0f) stunned++;
         }
-        // Two emitters take 75% of each bolt, so about three in four are soaked
+        // A gathered region takes most of each bolt, so about three in four are soaked
         int soaked = BOLTS - stunned;
         assertTrue(stunned > 0, "some bolts get through and stun");
         assertTrue(soaked > stunned, soaked + " soaked, " + stunned + " stunned");

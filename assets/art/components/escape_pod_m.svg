@@ -2,8 +2,8 @@
   <title>escape_pod M: 2x3 auxiliary slot</title>
   <g id="base">
     <rect x="5" y="13" width="118" height="174" rx="28.16" fill="#46505e" stroke="#10141a" stroke-width="2"/>
-    <path d="M8.6,183.4 L8.6,16.6 L119.4,16.6" fill="none" stroke="#7d8898" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M119.4,16.6 L119.4,183.4 L8.6,183.4" fill="none" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M8.6,183.4 L8.6,16.6 L119.4,16.6" fill="none" stroke="#7d8898" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M119.4,16.6 L119.4,183.4 L8.6,183.4" fill="none" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="7" y="91" width="114" height="10" fill="#ff7a2a" stroke="#10141a" stroke-width="1.2"/>
     <clipPath id="hz_pod_m_hatch_13_2"><rect x="13" y="2" width="102" height="10"/></clipPath>
     <rect x="13" y="2" width="102" height="10" fill="#f2c230"/>

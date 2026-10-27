@@ -3,8 +3,8 @@
   <g id="base">
     <rect x="0" y="0" width="192" height="192" fill="#2a3039"/>
     <rect x="4" y="4" width="184" height="184" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <path d="M5.75,186.25 L5.75,5.75 L186.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M186.25,5.75 L186.25,186.25 L5.75,186.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M5.75,186.25 L5.75,5.75 L186.25,5.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M186.25,5.75 L186.25,186.25 L5.75,186.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <circle cx="96" cy="96" r="50" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
     <circle cx="96" cy="96" r="43" fill="none" stroke="#10141a" stroke-width="1" stroke-dasharray="3 3"/>
     <circle cx="142.5" cy="96" r="1.75" fill="#7d8898"/>
@@ -66,8 +66,8 @@
     <line x1="175" y1="48" x2="175" y2="132" stroke="#2f5664" stroke-width="5" stroke-linecap="round"/>
     <line x1="175" y1="48" x2="175" y2="132" stroke="#7d8898" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
     <rect x="14" y="154" width="60" height="22" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M15.5,174.5 L15.5,155.5 L72.5,155.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M72.5,155.5 L72.5,174.5 L15.5,174.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M15.5,174.5 L15.5,155.5 L72.5,155.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M72.5,155.5 L72.5,174.5 L15.5,174.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="18" y="157" width="52" height="12.1" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="18" y="171.1" width="52" height="1.9" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <rect x="84.8" y="156.9" width="14.4" height="16.2" rx="4.5" fill="#2b2f36" stroke="#10141a" stroke-width="1.5"/>
@@ -75,8 +75,8 @@
     <rect x="86.6" y="154.2" width="9" height="2.7" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="86.6" y="173.1" width="9" height="2.7" rx="1.5" fill="#2b2f36" stroke="#10141a" stroke-width="1"/>
     <rect x="124" y="156" width="52" height="18" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M125.5,172.5 L125.5,157.5 L174.5,157.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M174.5,157.5 L174.5,172.5 L125.5,172.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M125.5,172.5 L125.5,157.5 L174.5,157.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M174.5,157.5 L174.5,172.5 L125.5,172.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="128" y="159" width="44" height="9.9" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="128" y="170.9" width="44" height="0.1" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <circle cx="14" cy="14" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>

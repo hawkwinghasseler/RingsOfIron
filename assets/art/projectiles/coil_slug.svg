@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="14" viewBox="-84 -7 96 14">
+  <title>coil_slug: steel coilgun slug, pivot at origin, nose toward +x, short warm streak behind</title>
+  <defs><linearGradient id="coil_streak" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#ffcf8a" stop-opacity="0"/><stop offset="1" stop-color="#ffcf8a" stop-opacity="0.8"/></linearGradient></defs>
+  <g id="base">
+    <polygon points="-8,-3 4,-3 9,0 4,3 -8,3" fill="#8a8f96" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round"/>
+  </g>
+  <g id="emissive">
+    <path d="M-82,0 L-6,-2.5 L-6,2.5 Z" fill="url(#coil_streak)"/>
+  </g>
+</svg>

@@ -16,8 +16,8 @@
     <path d="M-7.5,-1 C-7.5,4 -4,6.5 0,6.5 C4,6.5 7.5,4 7.5,-1 C7.5,-4 5,-6 0,-6 C-5,-6 -7.5,-4 -7.5,-1 Z" fill="#2a2a30" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
     <path d="M-1.5,-8.5 L0,-10 L1.5,-8.5" fill="none" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
     <rect x="-11" y="-34" width="22" height="18" rx="2" fill="#c4c7cc" stroke="#10141a" stroke-width="2"/>
-    <path d="M-9.25,-17.75 L-9.25,-32.25 L9.25,-32.25" fill="none" stroke="#eef0f2" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M9.25,-32.25 L9.25,-17.75 L-9.25,-17.75" fill="none" stroke="#8a8e94" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-9.25,-17.75 L-9.25,-32.25 L9.25,-32.25" fill="none" stroke="#eef0f2" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M9.25,-32.25 L9.25,-17.75 L-9.25,-17.75" fill="none" stroke="#8a8e94" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <line x1="-11" y1="-25" x2="11" y2="-25" stroke="#8a8e94" stroke-width="1.5" stroke-linecap="round"/>
     <line x1="-4" y1="-34" x2="-4" y2="-16" stroke="#a6aab0" stroke-width="1.2" stroke-linecap="round"/>
     <line x1="4" y1="-34" x2="4" y2="-16" stroke="#a6aab0" stroke-width="1.2" stroke-linecap="round"/>
