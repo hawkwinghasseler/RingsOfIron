@@ -85,8 +85,10 @@
     <polygon points="51.2,25.6 230.4,25.6 268.8,-51.2 230.4,-153.6 51.2,-153.6" fill="#c8c8c8"/>
     <circle cx="512" cy="0" r="96" fill="#ffffff"/>
     </g>
+    <circle cx="320" cy="128" r="25.6" fill="#414141"/>
     <circle cx="384" cy="-96" r="29.44" fill="#515151"/>
     <circle cx="384" cy="96" r="29.44" fill="#515151"/>
+    <rect x="-160" y="-192" width="192" height="64" rx="3" fill="#414141"/>
   </g>
   <g id="emissive">
     <g data-light="glow">

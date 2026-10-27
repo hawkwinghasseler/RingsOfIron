@@ -112,9 +112,11 @@
     <polygon points="-524.8,102.4 76.8,102.4 115.2,64 76.8,25.6 -524.8,25.6" fill="#a6a6a6"/>
     <polygon points="166.4,-25.6 332.8,-25.6 371.2,-76.8 332.8,-185.6 166.4,-185.6" fill="#d9d9d9"/>
     </g>
+    <circle cx="160" cy="160" r="25.6" fill="#414141"/>
     <circle cx="480" cy="-128" r="29.44" fill="#515151"/>
     <circle cx="448" cy="32" r="58.88" fill="#515151"/>
     <circle cx="288" cy="128" r="29.44" fill="#515151"/>
+    <rect x="-192" y="-224" width="192" height="64" rx="3" fill="#414141"/>
   </g>
   <g id="emissive">
     <g data-light="glow">

@@ -148,6 +148,9 @@
     <circle cx="608" cy="288" r="11.52" fill="#434343"/>
     <line x1="648" y1="428.8" x2="696" y2="428.8" stroke="#474747" stroke-width="7" stroke-linecap="round"/>
     </g>
+    <rect x="-192" y="-512" width="192" height="64" rx="3" fill="#414141"/>
+    <rect x="-768" y="-192" width="192" height="448" rx="3" fill="#414141"/>
+    <rect x="-320" y="384" width="320" height="128" rx="3" fill="#414141"/>
   </g>
   <g id="emissive">
     <g data-light="glow">

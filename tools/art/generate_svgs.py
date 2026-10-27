@@ -145,6 +145,9 @@ RAISED = ' data-raised="1"'
 HEIGHT_BASE, HEIGHT_SCALE = 0.25, 1.5
 # The hull's rim chamfer in the height layer: (stroke width, height) from its inner edge out, each
 # band a little lower, a tenth of a meter down at the outer edge over the rim's 8 units
+# A hatch or port frame set in the roof: its own plate a hair proud, so the roof's seams (grooves in
+# the height layer) stop at its edge instead of showing through it
+HATCH_HEIGHT = 0.01
 CHAMFER = [(16, -0.02), (12, -0.045), (8, -0.07), (4, -0.1)]
 
 
@@ -2330,12 +2333,14 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
             pass  # outside the hull: the game draws the engine itself (engines/nacelle_<size>)
         elif m == "airlock":
             a.b += rect(x + 6, y + 6, pw - 12, ph - 12, STEEL_DARK, rx=6, stroke=INK, sw=2)
+            a.h += rect(x + 6, y + 6, pw - 12, ph - 12, gray(HATCH_HEIGHT), rx=6)
             a.b += hazard_band(x + 10, y + 10, pw - 20, 8, f"ext_al_{col}_{row}")
             light(a, cx, cy, 4, HAZARD)
         elif m == "escape_pod":
             # the pod's hull hatch: a round cover ringed in its band color, with explosive bolts
             r = s * 0.4
             a.b += circle(cx, cy, r, STEEL_DARK, stroke=INK, sw=2)
+            a.h += circle(cx, cy, r, gray(HATCH_HEIGHT))
             a.b += circle(cx, cy, r * 0.78, "none", stroke=ACCENT["escape_pod"], sw=4)
             a.b += circle(cx, cy, r * 0.45, HOUSING, stroke=INK, sw=1.5)
             for k in range(6):
@@ -2343,6 +2348,7 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
                 a.b += circle(cx + math.cos(ang) * r * 0.92, cy + math.sin(ang) * r * 0.92, 2, HAZARD, stroke=INK, sw=0.8)
         elif m == "docking_port":
             a.b += rect(x, y, pw, ph, STEEL_DARK, rx=3, stroke=INK, sw=2)
+            a.h += rect(x, y, pw, ph, gray(HATCH_HEIGHT), rx=3)
             a.b += rect(x + 10, y + 10, pw - 20, ph - 20, "none", stroke=HAZARD, sw=4,
                         extra=' stroke-dasharray="12 8"')
             # collar half a tile out on the open side: the one with only space beyond the port

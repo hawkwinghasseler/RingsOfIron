@@ -136,12 +136,15 @@
     <polygon points="652.8,217.6 780.8,89.6 780.8,-89.6 652.8,-217.6" fill="#a6a6a6"/>
     <polygon points="-544,121.6 0,121.6 51.2,51.2 384,51.2 422.4,0 384,-51.2 51.2,-51.2 0,-121.6 -544,-121.6" fill="#c8c8c8"/>
     </g>
+    <circle cx="416" cy="-192" r="25.6" fill="#414141"/>
+    <circle cx="416" cy="192" r="25.6" fill="#414141"/>
     <circle cx="96" cy="-96" r="25.6" fill="#4d4d4d"/>
     <circle cx="96" cy="-160" r="29.44" fill="#515151"/>
     <circle cx="352" cy="-160" r="29.44" fill="#515151"/>
     <circle cx="512" cy="0" r="58.88" fill="#515151"/>
     <circle cx="96" cy="160" r="29.44" fill="#515151"/>
     <circle cx="352" cy="160" r="29.44" fill="#515151"/>
+    <rect x="-192" y="-256" width="192" height="64" rx="3" fill="#414141"/>
   </g>
   <g id="emissive">
     <circle cx="96" cy="-96" r="16" fill="#4fd1ff" opacity="0.6"/>
