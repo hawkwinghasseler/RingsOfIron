@@ -51,6 +51,12 @@ public class MissileComponent implements Component {
      * no proximity fuse. It flies on as a ballistic slug that still hits what it strikes.
      */
     public transient boolean guidanceCut;
+    /**
+     * Where it comes in from, radians off the line to the target, + to the left: it steers for a
+     * point that far to the side of the target, which closes on the target itself as it nears, so
+     * the missiles of a salvo arrive from several sides. 0 flies straight in.
+     */
+    public float approachAngle;
     /** Distance to the fuse target last tick, meters, to detect closest approach. */
     public float lastFuseDistance = Float.MAX_VALUE;
 

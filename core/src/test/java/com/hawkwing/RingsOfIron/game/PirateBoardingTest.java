@@ -51,6 +51,9 @@ class PirateBoardingTest {
         world = new GameWorld();
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
         hostiles = world.macroSim.hostiles();
+        // Round 11: the player's crewed guns fire on a pirate coming for them, and would drive the
+        // boarder off before it latched; these watch a boarding the player doesn't fight
+        world.gunCrews.holdFire = true;
         world.pirateBoarding.robbed.add((sig, t) -> takes.add(t));
         world.notices.posted.add((sig, n) -> said.add(n.text));
         // First Play's raider waits 1.3 km off the player with its point defense up: it shot at the

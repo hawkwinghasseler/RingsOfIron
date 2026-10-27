@@ -1196,6 +1196,7 @@ public final class CrewTasks {
             case EVACUATE: return "the escape pods";
             case MAN_CONSOLE: {
                 SubsystemComponent.SubsystemType type = ((ManConsoleTask) t).type();
+                if (type == SubsystemComponent.SubsystemType.TURRET_MOUNT) return "manning a gun";
                 return "manning the " + (type == null ? "console" : type.name().toLowerCase());
             }
             default: return t.kind.name().toLowerCase();

@@ -22,17 +22,19 @@ public enum CrewRole {
 
     /**
      * How much this role wants {@code task}: {@link #affinity(CrewTask.Kind)}, except that which
-     * console a crew member mans depends on the console: marines take the weapons console,
-     * crewmen the helm first and the weapons console after.
+     * console a crew member mans depends on the console: marines take the weapons console, then
+     * the guns, crewmen the helm first, the weapons console after and a gun last. Nobody else
+     * mans a gun.
      */
     public float affinity(CrewTask task) {
         if (!(task instanceof ManConsoleTask)) return affinity(task.kind);
         SubsystemComponent.SubsystemType type = ((ManConsoleTask) task).type();
         boolean weapons = type == SubsystemComponent.SubsystemType.WEAPONS;
+        boolean gun = type == SubsystemComponent.SubsystemType.TURRET_MOUNT;
         switch (this) {
-            case MARINE: return weapons ? 1.5f : 0f;
-            case CREWMAN: return weapons ? 1f : 1.2f;
-            default: return affinity(task.kind);
+            case MARINE: return weapons ? 1.5f : gun ? 1.3f : 0f;
+            case CREWMAN: return weapons ? 1f : gun ? 0.9f : 1.2f;
+            default: return gun ? 0f : affinity(task.kind);
         }
     }
 

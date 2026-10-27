@@ -150,6 +150,8 @@ class HostileTrafficGameTest {
         // (as in PirateBoardingTest)
         world.engine.removeEntity(game.raider);
         world.update(FRAME);
+        // The player's crew hold fire too: this is the pirate's fight against a ship gone dark
+        world.gunCrews.holdFire = true;
         String id = pirate(HostileTraffic.PIRATE_GUNSHIP);
         HostileComponent h = hostiles.get(id);
         h.targetUuid = HostileComponent.PLAYER;

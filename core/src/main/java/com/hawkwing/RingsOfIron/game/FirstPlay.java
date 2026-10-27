@@ -38,7 +38,8 @@ public final class FirstPlay {
         UNDOCK("Undock from Highport: {UNDOCK} lets go of the port"),
         FLY_CLEAR("Fly clear of the station, 2 km out: {THRUST}/{REVERSE} thrust, {TURN_LEFT}/{TURN_RIGHT} turn, "
                 + "{ROTATION_ASSIST} rotation assist"),
-        FIGHT("A raider is coming for you. {NEXT_TARGET} locks it, {FIRE} fires the guns, {MISSILE} a missile, "
+        FIGHT("A raider is coming for you. Your crew's guns open up on it in range; {NEXT_TARGET} locks it, {FIRE} "
+                + "fires the guns at once, {MISSILE} a salvo of missiles, "
                 + "{DECOY} a decoy. Knock out its guns or its reactor until it gives up, or run back to Highport"),
         BOARD("The raider is beaten. Pull alongside it and press {ARM_PORT} to latch on, then {BOARD}: send a "
                 + "boarding party, and strip what you want once it is taken"),

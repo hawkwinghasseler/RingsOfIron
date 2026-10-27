@@ -32,6 +32,18 @@ public class WeaponMountComponent implements Component {
      */
     public boolean trigger;
     /**
+     * Aimed by hand: while set, the barrel slews onto {@link #aimPoint} rather than a target, and
+     * the trigger fires once it is there. Set by whoever has the gun in hand, each frame.
+     */
+    public transient boolean manualAim;
+    /** Where a hand-aimed barrel points, local meters (the bubble frame). */
+    public final transient Vector2 aimPoint = new Vector2();
+    /**
+     * Launcher: missiles left in it; -1 until weapon control first fills it to its magazine.
+     * Unused by a weapon with no magazine.
+     */
+    public int ammo = -1;
+    /**
      * Gunner skill 0 (green) .. 1 (veteran): aim jitter, reaction time and burst walking.
      * ai-crew writes this from the gunner's stats.
      */

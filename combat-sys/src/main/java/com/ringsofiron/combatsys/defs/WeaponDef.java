@@ -59,6 +59,11 @@ public class WeaponDef {
      * fits any. A yard won't fit it to a smaller mount, and a pirate's loadout never does.
      */
     public String minMountSize;
+    /**
+     * Launcher: missiles it holds when full. Each launch takes one, and an empty launcher fires no
+     * more until a station restocks it. 0 means it never runs out.
+     */
+    public int magazine;
 
     /**
      * True if it fits a turret mount of {@code size} ({@code S} .. {@code XL}, the names of

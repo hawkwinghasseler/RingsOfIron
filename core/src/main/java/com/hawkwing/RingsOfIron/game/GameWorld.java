@@ -159,6 +159,8 @@ public class GameWorld implements Disposable {
     public final AvatarInteractor avatar;
     /** The player's seat at the helm or weapons console, and the helm flying the ship meanwhile. */
     public final Bridge bridge;
+    /** Who works the player's guns, and whether those guns fire by themselves. */
+    public final GunCrews gunCrews;
     public final AudioListenerSync audioListener;
     /** Pirates and faction patrols: their ships, and how they fly and fight in the bubble. */
     public final HostileTraffic hostiles;
@@ -471,14 +473,20 @@ public class GameWorld implements Disposable {
         missiles = new MissileGuidanceSystem(physics, combatEvents, combatDefs, ballistics, sensors);
         weaponControl = new WeaponControlSystem(physics, combatEvents, combatDefs, ballistics, missiles, sensors,
                 modules.combatSeed + 2);
-        // The crew aboard set each ship's gunnery and tracking skill
-        engine.addSystem(new CrewStationSync());
+        // The crew aboard set each ship's gunnery and tracking skill; on the player's ship, gun by gun,
+        // with whoever mans each gun or the weapons console, and those guns fire by themselves
+        CrewStationSync stations = new CrewStationSync();
+        stations.gunsByGun = ship -> ship == getPlayer();
+        engine.addSystem(stations);
+        gunCrews = new GunCrews(this);
+        engine.addSystem(gunCrews);
         engine.addSystem(sensors);
         // Shots and beams draw on the ship's power circuits.
         weaponControl.setPower(new ShipWeaponPower());
         // Round 7: other ships' gunners hold fire with a ship in the way (a pirate emptied its
-        // magazine into a surrendered wingmate); the player's guns fire as the player sets them
-        weaponControl.setHoldFire((shooter, blocker) -> shooter != getPlayer());
+        // magazine into a surrendered wingmate); the player's crew, firing at will, hold for any
+        // but a hostile one
+        weaponControl.setHoldFire((shooter, blocker) -> shooter != getPlayer() || !GunCrews.hostile(this, blocker));
         // Round 9: the player's guns firing at will (point defense, crewed guns) never take a struck ship;
         // round 10: nor a fallen base's silenced battery (they went on hitting Den batteries 23 and 24)
         weaponControl.setSpared((shooter, target) -> shooter == getPlayer() && Struck.struck(this, target));

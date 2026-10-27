@@ -54,6 +54,8 @@ class RunStanceTest {
 
     @Test
     void aHitRaiderRunsFromThePlayerAndGetsAway() {
+        // The hull is set by hand here: the player's crew hold fire (round 11's crewed guns would add their own)
+        world.gunCrews.holdFire = true;
         String id = pirate(HostileTraffic.RAIDER);
         HostileComponent h = hostiles.get(id);
         String was = h.displayName;

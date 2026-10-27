@@ -274,9 +274,10 @@ class SurrenderHoldsTest {
         }
         assertEquals(0, atBattery.get(), "no shot at a fallen base's battery");
 
-        // The trigger still fires on one: aimed fire is the player's choice
+        // The trigger still fires on one: aimed fire is the player's choice. The nearest, since the
+        // trigger only fires a gun that can reach what it is aimed at
         PlayerGunnery gun = new PlayerGunnery(world, game.player);
-        gun.setTarget(batteries.get(0));
+        gun.setTarget(nearest(batteries));
         for (int i = 0; i < 5 / FRAME && atBattery.get() == 0; i++) {
             gun.fireGuns();
             world.update(FRAME);
@@ -437,6 +438,22 @@ class SurrenderHoldsTest {
         for (int i = 0; i < 120 && ship.getComponent(PhysicsBodyComponent.class) == null; i++) world.update(FRAME);
         assertNotNull(ship.getComponent(PhysicsBodyComponent.class), "came into the bubble");
         return ship;
+    }
+
+    private Entity nearest(java.util.List<Entity> ships) {
+        com.badlogic.gdx.math.Vector2 at = com.ringsofiron.physicsexterior.PhysicsManager.getPosition(
+                game.player.getComponent(PhysicsBodyComponent.class).body, new com.badlogic.gdx.math.Vector2());
+        Entity best = null;
+        float nearest = Float.MAX_VALUE;
+        for (Entity e : ships) {
+            float d = com.ringsofiron.physicsexterior.PhysicsManager.getPosition(
+                    e.getComponent(PhysicsBodyComponent.class).body, new com.badlogic.gdx.math.Vector2()).dst(at);
+            if (d < nearest) {
+                nearest = d;
+                best = e;
+            }
+        }
+        return best;
     }
 
     private void run(double seconds) {

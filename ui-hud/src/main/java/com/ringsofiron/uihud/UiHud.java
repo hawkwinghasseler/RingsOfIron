@@ -87,6 +87,7 @@ public class UiHud implements Disposable {
     private final Table orbitPanel;
     private final ConsoleWindow consoleWindow;
     private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleLayouts = new ObjectMap<>();
+    private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleExtras = new ObjectMap<>();
     private final TrafficMap trafficMap;
     private final TradeWindow tradeWindow;
     private final YardWindow yardWindow;
@@ -392,7 +393,7 @@ public class UiHud implements Disposable {
 
     private void openConsole(Entity console, InteractableConsoleComponent data) {
         interactPromptSystem.setPromptsEnabled(false);
-        consoleWindow.open(console, data, consoleLayouts.get(data.consoleId));
+        consoleWindow.open(console, data, consoleLayouts.get(data.consoleId), consoleExtras.get(data.consoleId));
     }
 
     /**
@@ -401,6 +402,11 @@ public class UiHud implements Disposable {
      */
     public void setViewKey(Runnable action) {
         viewKey = action;
+    }
+
+    /** Adds rows under the window of consoles with this id (e.g. "weapons"), whatever their layout. */
+    public void registerConsoleExtra(String consoleId, ConsoleWindow.ContentBuilder builder) {
+        consoleExtras.put(consoleId, builder);
     }
 
     /** Registers a custom window layout for consoles with this id (e.g. "helm"). */
