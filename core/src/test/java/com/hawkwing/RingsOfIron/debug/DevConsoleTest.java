@@ -212,13 +212,28 @@ class DevConsoleTest {
 
     @Test
     void flyShipPutsThePlayerInANewHullWithTheirCrew() {
+        assertTrue(game.dockAtHighport());
         int crew = aboard(world.getPlayer());
         dev.console.submit("flyShip 'gunship_heavy'");
         assertTrue(last().contains("gunship_heavy"), last());
         assertSame(game.player, world.getPlayer());
         assertEquals("gunship_heavy", world.getPlayer().getComponent(com.ringsofiron.moddingdata.components.DefRefComponent.class).defId);
         for (int i = 0; i < 10; i++) world.update(1f / 60f);
-        assertTrue(com.ringsofiron.combatsys.damage.Shields.up(world.getPlayer()), "its shield comes up");
+        // Docked, its shields stay packed in their emitters; undocked, they come up
+        com.ringsofiron.combatsys.shields.ShieldCloudComponent cloud =
+                world.getPlayer().getComponent(com.ringsofiron.combatsys.shields.ShieldCloudComponent.class);
+        assertNotNull(world.docking.dockedTo(world.getPlayer()), "still docked");
+        assertFalse(cloud.raised, "lowered for docking");
+        assertTrue(cloud.loweredForDock);
+        dev.console.submit("shields()");
+        assertTrue(last().startsWith("Shields down"), last());
+        world.docking.undock(world.getPlayer());
+        for (int i = 0; i < 300; i++) world.update(1f / 60f);
+        assertTrue(cloud.raised, "raised again undocked");
+        assertTrue(com.ringsofiron.combatsys.damage.Shields.up(world.getPlayer()), "and out round the hull");
+        dev.console.submit("shields false");
+        assertFalse(cloud.raised);
+        assertFalse(cloud.loweredForDock, "the crew's order: docking won't raise it again");
         assertEquals(crew, aboard(world.getPlayer()), "everyone came across");
         for (int i = 0; i < 60; i++) world.update(1f / 60f);
     }

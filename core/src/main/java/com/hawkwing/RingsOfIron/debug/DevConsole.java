@@ -446,6 +446,17 @@ public final class DevConsole {
         console.define("warheads", "warheads()", "the warhead ids blast() takes", hits, args -> actions.tools.warheads());
         console.define("reactors", "reactors([ship])", "switches the ship's reactors off, or back on", decks, args ->
                 actions.tools.toggleReactors(shipTarget(args, 0)) ? "Reactors on" : "Reactors off");
+        console.define("shields", "shields([on], [ship])", "raises the ship's shields (true), or lowers them safely into its"
+                + " emitters (false); shields() says how its cloud stands", decks, args -> {
+            Boolean on = args.length > 0 && args[0] instanceof Boolean ? (Boolean) args[0] : null;
+            Entity ship = shipTarget(args, on == null ? 0 : 1);
+            com.ringsofiron.combatsys.shields.ShieldCloudComponent c = on == null
+                    ? com.ringsofiron.combatsys.shields.ShieldModel.ensure(ship)
+                    : com.ringsofiron.combatsys.shields.ShieldModel.raise(ship, on);
+            if (c == null) return "No shield emitters aboard";
+            return String.format(java.util.Locale.ROOT, "Shields %s: %.0f kg out, %.0f stowed, %.0f scattered, %.0f adrift, %.0f lost of %.0f",
+                    c.raised ? "up" : "down", c.cloud(), c.stowed, c.scattered, c.adrift, c.lost, c.capacity);
+        });
         console.define("doors", "doors([ship])", "seals every door aboard, or opens them all", decks, args ->
                 actions.tools.toggleDoors(shipTarget(args, 0)) ? "Doors sealed" : "Doors open");
 

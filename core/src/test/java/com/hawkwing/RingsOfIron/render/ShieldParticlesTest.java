@@ -108,14 +108,60 @@ class ShieldParticlesTest {
     }
 
     @Test
-    void whenAnEmitterDropsItsShareDriftsLooseAndComesBack() {
-        run(0.5f);
-        cloud.holding = 0.5f;
-        run(0.1f);
-        assertEquals(100, swarm.count(ShieldParticles.LOOSE), 1);
-        cloud.holding = 1f;
-        run(0.1f);
+    void massAdriftKeepsItsVelocityWhileTheShipFliesOn() {
+        ShieldParticles.Frame f = new ShieldParticles.Frame();
+        for (int i = 0; i < 30; i++) swarm.update(cloud, DT, f);
+        cloud.adrift = 150f;
+        swarm.update(cloud, DT, f);
+        assertEquals(100, swarm.count(ShieldParticles.LOOSE), "150 kg adrift is a hundred flecks");
+        float before = meanLooseX();
+        // The ship speeds up 10 m/s and flies on a second: what is adrift falls 10 m behind it
+        f.vx = 10f;
+        for (int i = 0; i < 60; i++) swarm.update(cloud, DT, f);
+        assertEquals(-10f, meanLooseX() - before, 1.5f, "left behind");
+        // The floating origin moving shifts every velocity at once: that leaves nothing behind
+        before = meanLooseX();
+        f.vx = 210f;
+        swarm.update(cloud, DT, f);
+        assertEquals(0f, meanLooseX() - before, 0.5f);
+        // Pulled back in when the emitters recover
+        cloud.adrift = 0f;
+        swarm.update(cloud, DT, f);
         assertEquals(0, swarm.count(ShieldParticles.LOOSE));
+    }
+
+    private float meanLooseX() {
+        float sum = 0f;
+        int n = 0;
+        for (int i = 0; i < swarm.n; i++) {
+            if (swarm.state[i] != ShieldParticles.LOOSE) continue;
+            sum += swarm.x[i];
+            n++;
+        }
+        return sum / Math.max(1, n);
+    }
+
+    @Test
+    void loweredShieldsStreamIntoTheEmittersAndComeBackOutOfThem() {
+        ShieldCloudComponent.Emitter em = new ShieldCloudComponent.Emitter();
+        em.spec = EmitterSpec.S;
+        em.x = 4f;
+        em.y = 1f;
+        cloud.emitters.put(new com.badlogic.ashley.core.Entity(), em);
+        run(0.5f);
+        cloud.stowed = 300f;
+        run(0.1f);
+        assertEquals(0, swarm.count(ShieldParticles.FREE), "all on their way in");
+        run(3f);
+        assertEquals(200, swarm.count(ShieldParticles.STOWED), "and in");
+        cloud.stowed = 0f;
+        swarm.update(cloud, DT);
+        assertEquals(0, swarm.count(ShieldParticles.STOWED));
+        for (int i = 0; i < swarm.n; i++) {
+            assertTrue(Vector2.dst(swarm.x[i], swarm.y[i], em.x, em.y) < 0.5f, "deployed from the emitter");
+        }
+        run(2f);
+        for (int i = 0; i < swarm.n; i++) assertTrue(offCurve(i) < 4f, "back out round the curve: " + offCurve(i));
     }
 
     @Test

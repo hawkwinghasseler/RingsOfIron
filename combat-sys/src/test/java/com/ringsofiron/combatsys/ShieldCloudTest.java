@@ -295,6 +295,72 @@ class ShieldCloudTest {
     }
 
     @Test
+    void cutOffItsEmitterTheCloudGoesAdriftAndIsLost() {
+        Entity ship = spawnShip(0, 0);
+        SubsystemComponent s = emitter(ship, MountFootprint.MountSize.S, 1, 2, 1e9);
+        run(0.2f);
+        ShieldCloudComponent c = cloud(ship);
+        assertEquals(300f, c.cloud(), 1f);
+        s.isOperational = false;
+        run(0.1f);
+        assertFalse(Shields.up(ship));
+        assertTrue(c.adrift > 290f, "nothing holds it: " + c.adrift);
+        run(15f);
+        assertTrue(c.lost > 0.9f * 300f, "drifted off and gone: " + c.lost);
+        assertEquals(300f - c.lost, c.stock, 1e-2f);
+    }
+
+    @Test
+    void anEmitterBackInTimePullsMostOfItsCloudBack() {
+        Entity ship = spawnShip(0, 0);
+        SubsystemComponent s = emitter(ship, MountFootprint.MountSize.S, 1, 2, 1e9);
+        run(0.2f);
+        ShieldCloudComponent c = cloud(ship);
+        s.isOperational = false;
+        run(0.5f);
+        s.isOperational = true;
+        run(8f);
+        assertTrue(c.lost < 0.25f * 300f, "most recaptured: " + c.lost + " kg lost");
+        assertEquals(300f - c.lost, c.cloud() + c.scattered, 2f, "and back round the hull, the last of it rejoining");
+    }
+
+    @Test
+    void loweredShieldsPackIntoTheEmittersAndCostNothingThere() {
+        Entity ship = spawnShip(0, 0);
+        SubsystemComponent s = emitter(ship, MountFootprint.MountSize.S, 1, 2, 1e9);
+        run(0.2f);
+        ShieldCloudComponent c = ShieldModel.raise(ship, false);
+        run(ShieldModel.STOW_TIME + 0.5f);
+        assertEquals(300f, c.stowed, 1f, "all packed away");
+        assertFalse(Shields.up(ship));
+        assertEquals(0f, c.lost, 1e-3f, "nothing lost lowering it");
+        assertTrue(c.emitters.get(s.footprint.installed).draw < 1e3f, "and nothing to hold: " + c.emitters.get(s.footprint.installed).draw);
+        // Power gone while it is packed away: it is safe
+        s.isOperational = false;
+        run(5f);
+        assertEquals(0f, c.lost, 1e-3f);
+        s.isOperational = true;
+        ShieldModel.raise(ship, true);
+        run(ShieldModel.STOW_TIME + 0.5f);
+        assertEquals(300f, c.cloud(), 1f, "back out");
+        assertEquals(0f, c.stowed, 1f);
+    }
+
+    @Test
+    void aShipThatComesIntoTheWorldDarkKeepsItsCloudPackedAway() {
+        Entity ship = spawnShip(0, 0);
+        SubsystemComponent s = emitter(ship, MountFootprint.MountSize.S, 1, 2, 1e9);
+        s.isOperational = false;
+        ShieldCloudComponent c = cloud(ship);
+        run(1f);
+        assertEquals(300f, c.stowed, 1e-3f);
+        assertEquals(0f, c.lost, 1e-3f);
+        s.isOperational = true;
+        run(ShieldModel.STOW_TIME + 0.5f);
+        assertEquals(300f, c.cloud(), 1f, "out once it has power");
+    }
+
+    @Test
     void aShipsOwnRoundsAreNoThreatToItsCloud() {
         Entity ship = spawnShip(0, 0);
         emitter(ship, MountFootprint.MountSize.S, 1, 2, 1e9);

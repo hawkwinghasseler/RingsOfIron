@@ -12,10 +12,13 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
  * {@link ShieldSystem} keeps it each tick and {@link com.ringsofiron.combatsys.damage.Shields}
  * resolves hits against it.
  *
- * <p>Mass: {@link #stock} is everything aboard; {@link #scattered} is knocked loose by hits and
- * drifting back; the share of what is left that belongs to emitters not working now (broken,
- * off, unpowered, tripped) drifts loose too. The rest, {@link #cloud}, protects the ship. Only
- * the mass is saved; emitters, regions and heat start afresh on load.
+ * <p>Mass: {@link #stock} is everything aboard. Of it, {@link #stowed} is packed safe inside the
+ * emitters (shields lowered); {@link #scattered} is knocked loose by hits and being pulled back;
+ * {@link #adrift} is what no working emitter holds (they lost power, broke, were stunned or
+ * tripped), drifting away and being lost unless an emitter comes back in time. The rest,
+ * {@link #cloud}, protects the ship. Lowering the shields ({@link #raised} false) packs the cloud
+ * into the emitters, where it costs nothing and is not lost; docking does it on its own. Emitters,
+ * regions and heat start afresh on load.
  */
 public class ShieldCloudComponent implements Component {
     /** How deep the cloud is, meters: mass per meter of perimeter over this is its density. */
@@ -29,7 +32,15 @@ public class ShieldCloudComponent implements Component {
     public float scattered;
     /** Mass lost out of the bubble since the shield was fitted, kg. */
     public float lost;
-    /** Share of the pool held by working emitters, 0 to 1. */
+    /** Packed inside the emitters, kg: safe, costing nothing, not protecting the ship. */
+    public float stowed;
+    /** Out of the emitters' hold, drifting away, kg: lost over time unless recaptured. */
+    public float adrift;
+    /** The crew's order: shields up (the cloud out round the hull) or down (packed into the emitters). */
+    public boolean raised = true;
+    /** Lowered on its own for docking, and raised again on undocking. */
+    public boolean loweredForDock;
+    /** Share of the emitters' capacity that is working now, 0 to 1. */
     public float holding;
 
     public transient ShieldPerimeter perimeter;
@@ -47,7 +58,7 @@ public class ShieldCloudComponent implements Component {
 
     /** Mass protecting the ship now, kg. */
     public float cloud() {
-        return Math.max(0f, (stock - scattered) * holding);
+        return Math.max(0f, stock - stowed - scattered - adrift);
     }
 
     /** Mass in regions now, kg. */

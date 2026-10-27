@@ -430,6 +430,21 @@ public class PlaytestLauncher {
                     }
                     return debugActions(world).shoot(spawned, Integer.parseInt(cmd[2]), Integer.parseInt(cmd[3]), cmd[1]);
                 }
+                case "shields": {
+                    // shields on|off: raises or lowers the spawned ship's shields
+                    if (spawned == null || cmd.length < 2) return "spawnship first, then shields on|off";
+                    return com.ringsofiron.combatsys.shields.ShieldModel.raise(spawned, cmd[1].equals("on")) == null
+                            ? "no shield" : "shields " + cmd[1];
+                }
+                case "push": {
+                    // push <dx> <dy>: adds that velocity, m/s, to the spawned ship
+                    if (spawned == null || cmd.length < 3) return "spawnship first, then push <dx> <dy>";
+                    com.badlogic.gdx.physics.box2d.Body body = world.docking.bodyOf(spawned);
+                    com.badlogic.gdx.math.Vector2 v = body.getLinearVelocity().cpy();
+                    v.add(Float.parseFloat(cmd[1]) * PhysicsManager.UNITS_PER_METER, Float.parseFloat(cmd[2]) * PhysicsManager.UNITS_PER_METER);
+                    body.setLinearVelocity(v);
+                    return "pushed";
+                }
                 case "reactors": {
                     if (spawned == null) return "spawnship first";
                     return debugActions(world).tools.toggleReactors(spawned) ? "reactors on" : "reactors off";

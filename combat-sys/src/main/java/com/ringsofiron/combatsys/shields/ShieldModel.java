@@ -33,6 +33,10 @@ public final class ShieldModel {
     public static final float HOLD_W_PER_KG = 1_000f, REGION_W_PER_KG = 500f;
     /** Recapturing scattered mass costs its kinetic energy (capped at the retention speed) this many times over. */
     public static final float RECAPTURE_COST = 2f;
+    /** Seconds to pack the whole cloud into its emitters, or to put it back out. */
+    public static final float STOW_TIME = 3f;
+    /** Seconds (e-folding) for mass adrift to be lost, and for working emitters with room to pull it back. */
+    public static final float ADRIFT_LIFE = 6f, ADRIFT_RECAPTURE = 1f;
     /** Seconds a round's region stands after the round has passed inside the perimeter. */
     static final float LINGER = 0.1f;
     /** Seconds a beam's region holds after the beam stops touching it. */
@@ -104,9 +108,29 @@ public final class ShieldModel {
             if (!registry.subsystems.contains(e, true)) it.remove();
         }
         cloud.capacity = capacity;
-        if (cloud.stock < 0f) cloud.stock = capacity;
+        if (cloud.stock < 0f) {
+            // Filled packed away unless an emitter is working to hold it out: a ship that comes
+            // into the world dark, or before its power is routed, doesn't throw its cloud away
+            cloud.stock = capacity;
+            if (!cloud.raised || holding <= 0f) cloud.stowed = capacity;
+        }
         cloud.stock = Math.min(cloud.stock, capacity);
+        cloud.stowed = Math.min(cloud.stowed, cloud.stock);
+        cloud.adrift = Math.min(cloud.adrift, cloud.stock - cloud.stowed);
+        cloud.scattered = Math.min(cloud.scattered, cloud.stock - cloud.stowed - cloud.adrift);
         cloud.holding = capacity > 0f ? holding / capacity : 0f;
+        return cloud;
+    }
+
+    /**
+     * Orders {@code ship}'s shields up or down: lowered, the emitters pack the cloud away inside
+     * themselves, safe; raised, they put it back out. Returns the shield, or null if it has none.
+     */
+    public static ShieldCloudComponent raise(Entity ship, boolean up) {
+        ShieldCloudComponent cloud = ensure(ship);
+        if (cloud == null) return null;
+        cloud.raised = up;
+        cloud.loweredForDock = false;
         return cloud;
     }
 
@@ -169,8 +193,54 @@ public final class ShieldModel {
             cloud.perimeter = ShieldPerimeter.fit(cloud.fittedTo);
             cloud.refitIn = REFIT_EVERY;
         }
+        // Lowered, the emitters gather nothing: they are packing the cloud away
+        if (!cloud.raised) threats.clear();
         updateRegions(cloud, threats, comX, comY, dt);
         payAndHeat(cloud, dt);
+        flows(cloud, dt);
+    }
+
+    /**
+     * Where the cloud's mass goes this tick, by what the working emitters can hold: lowered, it packs
+     * into them and raised it comes back out, over {@link #STOW_TIME}; mass beyond their hold goes
+     * adrift, is lost over {@link #ADRIFT_LIFE} and is pulled back in over {@link #ADRIFT_RECAPTURE}
+     * while they have room.
+     */
+    private static void flows(ShieldCloudComponent cloud, float dt) {
+        float held = 0f;
+        for (ShieldCloudComponent.Emitter em : cloud.emitters.values()) if (em.working) held += em.spec.capacity;
+        float rate = held / STOW_TIME * dt;
+        if (!cloud.raised) {
+            float move = Math.min(cloud.cloud(), rate);
+            cloud.stowed += move;
+            for (ShieldCloudComponent.Region r : cloud.regions) r.mass = 0f;
+        } else if (cloud.stowed > 0f) {
+            float room = Math.max(0f, held - cloud.cloud() - cloud.scattered);
+            cloud.stowed -= Math.min(cloud.stowed, Math.min(room, rate));
+        }
+        // What the working emitters can't hold: the cloud first, then what is scattered
+        float over = cloud.cloud() + cloud.scattered - held;
+        if (over > 0f) {
+            float fromCloud = Math.min(over, cloud.cloud());
+            float fromScattered = Math.min(over - fromCloud, cloud.scattered);
+            cloud.scattered -= fromScattered;
+            cloud.adrift += fromCloud + fromScattered;
+            float left = cloud.cloud(), in = cloud.concentrated();
+            if (in > left && in > 0f) for (ShieldCloudComponent.Region r : cloud.regions) r.mass *= left / in;
+        }
+        if (cloud.adrift > 0f) {
+            float gone = cloud.adrift * Math.min(1f, dt / ADRIFT_LIFE);
+            cloud.adrift -= gone;
+            cloud.stock = Math.max(0f, cloud.stock - gone);
+            cloud.lost += gone;
+            float room = Math.max(0f, held - cloud.cloud() - cloud.scattered);
+            float back = Math.min(room, cloud.adrift * Math.min(1f, dt / ADRIFT_RECAPTURE));
+            if (back > 0f) {
+                cloud.adrift -= back;
+                if (cloud.raised) cloud.scattered += back;
+                else cloud.stowed += back;
+            }
+        }
     }
 
     private static void updateRegions(ShieldCloudComponent cloud, Array<Threat> threats, float comX, float comY, float dt) {
@@ -248,7 +318,7 @@ public final class ShieldModel {
     }
 
     private static void payAndHeat(ShieldCloudComponent cloud, float dt) {
-        float pool = Math.max(0f, cloud.stock - cloud.scattered);
+        float pool = cloud.cloud();
         boolean recaptured = true;
         for (com.badlogic.gdx.utils.ObjectMap.Entry<Entity, ShieldCloudComponent.Emitter> e : cloud.emitters) {
             ShieldCloudComponent.Emitter em = e.value;
@@ -287,7 +357,10 @@ public final class ShieldModel {
             if (em == null || !em.working) cloud.regions.removeIndex(i);
         }
         float rejoin = recaptured ? REJOIN : 4f * REJOIN;
-        cloud.scattered = Math.max(0f, cloud.scattered - cloud.scattered * Math.min(1f, dt / rejoin));
+        float back = cloud.scattered * Math.min(1f, dt / rejoin);
+        cloud.scattered = Math.max(0f, cloud.scattered - back);
+        // Lowered, it comes back into the emitters
+        if (!cloud.raised) cloud.stowed += back;
     }
 
     /** Mass per frontal area of a round, kg/m^2: from its caliber, or a steel slug three calibers long. */

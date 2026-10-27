@@ -34,7 +34,7 @@ a command acts on the selection; a crew member, ship or target can be passed ins
 | Crew | `kill` (on a ship: everyone aboard; in flight: removes it), `heal`, `revive`, `wound(points, [cause])` through the game's own wounding (a second serious hit on someone critical halves their clock, as in play), `hurt(points)` (health, as fire takes it), `ko`, `suit`, `crew()` (the `CrewMemberComponent` to read or set), `aboard`, `spawn([role], [name])`, `boarder([role])`, `remove`, `teleport(x, y)` |
 | Decks | `fire`, `extinguish`, `damage(amount)`, `breach`, `repair`, `air`, `reactors`, `doors`, `tile()` |
 | Hits | `shoot([weapon], [target], [range], [bearing])` (a real round, missile or beam; the target a tile, a crew member's tile or a whole ship, aimed at its middle; range in meters, 60 for a round and 600 for a missile by default; bearing in degrees off the target ship's bow, counterclockwise, by default straight outboard of a tile or from the player's side of a ship: `shoot 'autocannon_mk1', selected, 2000, 90`), `blast([warhead])` (inside the hull), `ram([km/s], [tonnes])` (under 1 km/s a Box2D rock that crashes as combat-sys 5.12 describes), `shortOut`, `weapons`, `warheads` |
-| Ships | `ships`, `spawnShip(id)`, `flyShip(id)` (the player's ship swapped for a new one where it is, free, with crew, cargo and credits aboard) |
+| Ships | `ships`, `spawnShip(id)`, `shields([on], [ship])` (raises the shields or lowers them safely into the emitters; with no argument, where the cloud's mass is), `flyShip(id)` (the player's ship swapped for a new one where it is, free, with crew, cargo and credits aboard) |
 | View | `overlay([name], [on])`: shows or hides a developer overlay; `overlay()` lists them |
 
 ### Overlays
