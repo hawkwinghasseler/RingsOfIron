@@ -90,6 +90,7 @@ public final class ExteriorRenderer implements Disposable {
     private final HullArt hullArt;
     private final Supplier<Entity> player;
     private ExteriorLighting exteriorLighting;
+    private final float[] pointLightBuffer = new float[4 * ExteriorLighting.MAX_LIGHTS];
     private boolean lightsOn = true;
     /**
      * Rounds seen last frame and this one, so each muzzle flashes once. By their projectile, not
@@ -237,6 +238,9 @@ public final class ExteriorRenderer implements Disposable {
         // Every flame lights the hulls and glows, as strong as it is long
         flames.light(lit ? exteriorLighting : null, lighting);
         if (lit) lightsInFlight();
+        // The same lights shade the lit hulls by their normal maps
+        int pointLights = lit ? exteriorLighting.pointLights(pointLightBuffer) : 0;
+        exteriorArt.setPointLights(pointLightBuffer, pointLights, lit ? exteriorLighting.ambientBrightness() : 1f);
         // The shield flecks under the light map, so it lights them: those beyond the hull's plane under its art
         float mpp = metersPerPixel(camera);
         if (hullArtOn || shields.any()) {

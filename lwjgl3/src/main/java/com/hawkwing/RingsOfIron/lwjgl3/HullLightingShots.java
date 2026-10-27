@@ -21,9 +21,11 @@ import java.io.File;
  * hull three times side by side, lit as each {@link HullShading.Mode} lights it (the art's baked
  * light, normal maps, normal maps and roof shadows), turned {@code -Dshots.angle} degrees (30 by
  * default) under the fixed key light, saved as {@code <out>/<hull>.png}. No light map over it:
- * the art as the shader leaves it.
+ * the art as the shader leaves it. {@code -Dshots.lights} puts point lights by each hull (body
+ * meters, {@code x:y:reach:strength;...}), which shade it by its normal map against
+ * {@code -Dshots.ambient}.
  *
- * <pre>gradlew :lwjgl3:hullLightingShots -Pout=build/hull-lighting -Phulls=corvette,frigate</pre>
+ * <pre>gradlew :lwjgl3:hullLightingShots -Pout=build/hull-lighting -Phulls=corvette,frigate -Plights=-9:0:8:1</pre>
  */
 public final class HullLightingShots extends ApplicationAdapter {
     private static final int WIDTH = 2400, HEIGHT = 900;
@@ -34,6 +36,9 @@ public final class HullLightingShots extends ApplicationAdapter {
     private ArtLibrary art;
     private SpriteBatch batch;
     private final HullShading shading = new HullShading();
+    private final float[] lights = lights(System.getProperty("shots.lights", ""));
+    private final float ambient = Float.parseFloat(System.getProperty("shots.ambient", "0.48"));
+    private final float[] world = new float[lights.length];
     private int next;
 
     private HullLightingShots(String[] hulls, File out) {
@@ -89,6 +94,7 @@ public final class HullLightingShots extends ApplicationAdapter {
         for (int i = 0; i < modes.length; i++) {
             HullShading.mode = modes[i];
             float px = (i + 0.5f) * panel;
+            lightsAt(px, angle);
             if (!shading.draw(batch, art, hull, px, 0f, angle, r -> place(r, info, px, angle))) place(hull, info, px, angle);
         }
         HullShading.mode = was;
@@ -100,6 +106,29 @@ public final class HullLightingShots extends ApplicationAdapter {
         PixmapIO.writePNG(Gdx.files.absolute(new File(out, id + ".png").getAbsolutePath()), flipped);
         shot.dispose();
         flipped.dispose();
+    }
+
+    /** The point lights by a hull at ({@code x}, 0) turned {@code angle}, into the world. */
+    private void lightsAt(float x, float angle) {
+        float cos = MathUtils.cos(angle), sin = MathUtils.sin(angle);
+        for (int i = 0; i + 3 < lights.length; i += 4) {
+            world[i] = x + lights[i] * cos - lights[i + 1] * sin;
+            world[i + 1] = lights[i] * sin + lights[i + 1] * cos;
+            world[i + 2] = lights[i + 2];
+            world[i + 3] = lights[i + 3];
+        }
+        shading.setPointLights(world, lights.length / 4, ambient);
+    }
+
+    private static float[] lights(String spec) {
+        if (spec.isBlank()) return new float[0];
+        String[] each = spec.split(";");
+        float[] out = new float[4 * each.length];
+        for (int i = 0; i < each.length; i++) {
+            String[] v = each[i].split(":");
+            for (int k = 0; k < 4; k++) out[4 * i + k] = Float.parseFloat(v[k].trim());
+        }
+        return out;
     }
 
     /** A region of the hull's art with its body origin at ({@code x}, 0), turned {@code angle}, as ExteriorArt places it. */
