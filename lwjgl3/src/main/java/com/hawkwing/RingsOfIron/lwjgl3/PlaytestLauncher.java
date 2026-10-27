@@ -76,6 +76,8 @@ public class PlaytestLauncher {
         config.useVsync(true);
         config.setForegroundFPS(60);
         config.setWindowedMode(Integer.getInteger("playtest.width", 1280), Integer.getInteger("playtest.height", 800));
+        // An 8-bit stencil buffer: the hulls' roof shadows are cut out with it (HullShading)
+        config.setBackBufferConfig(8, 8, 8, 8, 16, 8, 0);
         config.disableAudio(true);
         new Lwjgl3Application(new Driven(shell, commands, saves), config);
     }

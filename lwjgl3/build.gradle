@@ -250,6 +250,22 @@ tasks.register('runGame', JavaExec) {
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
+// Still pictures of the hull lighting prototype: each hull lit as the art bakes it, by normal maps, and with
+// roof shadows, side by side. -Pout=<folder> (build/hull-lighting by default), -Phulls=corvette,frigate,..., -Pangle=<degrees>
+tasks.register('hullLightingShots', JavaExec) {
+  group = 'application'
+  description = 'Draws each hull under each hull lighting mode, side by side, into PNGs.'
+  mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.HullLightingShots'
+  classpath = sourceSets.main.runtimeClasspath
+  workingDir = rootProject.file('assets').path
+  def outDir = project.hasProperty('out') ? rootProject.file(project.property('out').toString()) : layout.buildDirectory.dir('hull-lighting').get().asFile
+  args = [outDir.path] + (project.hasProperty('hulls') ? [project.property('hulls').toString()] : [])
+  // -Pangle=<degrees>: how far each hull is turned under the key light (30 by default)
+  if (project.hasProperty('angle')) systemProperty 'shots.angle', project.property('angle').toString()
+  jvmArgs += "--enable-native-access=ALL-UNNAMED"
+  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+}
+
 // Runs the AI crew demo instead of the main game.
 tasks.register('runCrewDemo', JavaExec) {
   group = 'application'

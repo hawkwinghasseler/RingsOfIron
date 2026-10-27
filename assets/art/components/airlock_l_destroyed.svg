@@ -3,8 +3,8 @@
   <g id="base">
     <rect x="0" y="0" width="192" height="448" fill="#2a3039"/>
     <rect x="2" y="2" width="188" height="444" rx="4" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <path d="M3.75,444.25 L3.75,3.75 L188.25,3.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M188.25,3.75 L188.25,444.25 L3.75,444.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M3.75,444.25 L3.75,3.75 L188.25,3.75" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M188.25,3.75 L188.25,444.25 L3.75,444.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="8" y="16" width="176" height="190" fill="#20262e" stroke="#10141a" stroke-width="1.5"/>
     <line x1="12" y1="18" x2="12" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
     <line x1="18" y1="18" x2="18" y2="204" stroke="#373f4b" stroke-width="2" stroke-linecap="round"/>
@@ -149,8 +149,8 @@
     <rect x="14" y="160" width="28" height="40" rx="2" fill="#566a7a" stroke="#10141a" stroke-width="1.5"/>
     <line x1="28" y1="162" x2="28" y2="198" stroke="#10141a" stroke-width="1" stroke-linecap="round"/>
     <rect x="142" y="40" width="36" height="60" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="1.5"/>
-    <path d="M143.5,98.5 L143.5,41.5 L176.5,41.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M176.5,41.5 L176.5,98.5 L143.5,98.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M143.5,98.5 L143.5,41.5 L176.5,41.5" fill="none" stroke="#465060" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M176.5,41.5 L176.5,98.5 L143.5,98.5" fill="none" stroke="#10141a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <rect x="145" y="44" width="19.8" height="52" rx="1.5" fill="#0c1a26" stroke="#10141a" stroke-width="1.5"/>
     <rect x="166.8" y="44" width="8.2" height="52" rx="1" fill="#465060" stroke="#10141a" stroke-width="1"/>
     <circle cx="40.41" cy="17.14" r="23.56" fill="#0b0d10" opacity="0.33"/>

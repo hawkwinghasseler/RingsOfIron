@@ -3,8 +3,8 @@
   <defs><radialGradient id="nacelle_bell_xl_throat"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.35" stop-color="#9fd8ff" stop-opacity="0.9"/><stop offset="1" stop-color="#9fd8ff" stop-opacity="0"/></radialGradient></defs>
   <g id="base">
     <rect x="2" y="744.96" width="316" height="21.04" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
-    <path d="M3.75,764.25 L3.75,746.71 L316.25,746.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M316.25,746.71 L316.25,764.25 L3.75,764.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M3.75,764.25 L3.75,746.71 L316.25,746.71" fill="none" stroke="#465060" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M316.25,746.71 L316.25,764.25 L3.75,764.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <clipPath id="hz_bell_xl_6_747"><rect x="6" y="747.96" width="308" height="5.07"/></clipPath>
     <rect x="6" y="747.96" width="308" height="5.07" fill="#f2c230"/>
     <g clip-path="url(#hz_bell_xl_6_747)">
@@ -47,8 +47,8 @@
     <rect x="104.8" y="753.72" width="8" height="11.52" rx="2" fill="#b07a2a" stroke="#10141a" stroke-width="1.2"/>
     <rect x="207.2" y="753.72" width="8" height="11.52" rx="2" fill="#3f6f9a" stroke="#10141a" stroke-width="1.2"/>
     <rect x="103.48" y="520.51" width="113.04" height="146.95" rx="6" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
-    <path d="M105.23,665.71 L105.23,522.26 L214.77,522.26" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M214.77,522.26 L214.77,665.71 L105.23,665.71" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M105.23,665.71 L105.23,522.26 L214.77,522.26" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M214.77,522.26 L214.77,665.71 L105.23,665.71" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
     <line x1="105.48" y1="569.49" x2="214.52" y2="569.49" stroke="#4b5563" stroke-width="1.5" stroke-linecap="round"/>
     <line x1="105.48" y1="618.47" x2="214.52" y2="618.47" stroke="#4b5563" stroke-width="1.5" stroke-linecap="round"/>
     <path d="M109.13,667.46 Q114.78,698.54 160,698.54 Q205.22,698.54 210.87,667.46 Z" fill="#465060" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>

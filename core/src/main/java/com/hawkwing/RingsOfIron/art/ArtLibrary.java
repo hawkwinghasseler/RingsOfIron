@@ -40,14 +40,21 @@ public final class ArtLibrary implements Disposable {
         public final float[] collider;
         /** Where crew stand or reach to use the object, {cx, cy}, or null. */
         public final float[] interact;
+        /**
+         * What stands up off a hull's roof and casts a shadow on it: one entry per raised part,
+         * {h, x0, y0, x1, y1, ...}, its height in meters then its outline in SVG units; null for art
+         * with no relief layer.
+         */
+        public final float[][] relief;
 
-        Info(float x, float y, float w, float h, float[] collider, float[] interact) {
+        Info(float x, float y, float w, float h, float[] collider, float[] interact, float[][] relief) {
             this.x = x;
             this.y = y;
             this.w = w;
             this.h = h;
             this.collider = collider;
             this.interact = interact;
+            this.relief = relief;
         }
     }
 
@@ -102,8 +109,15 @@ public final class ArtLibrary implements Disposable {
             float[] collider = null;
             if (c != null) collider = (c.has("rect") ? c.get("rect") : c.get("circle")).asFloatArray();
             JsonValue i = r.get("interact");
+            JsonValue rl = r.get("relief");
+            float[][] relief = null;
+            if (rl != null) {
+                relief = new float[rl.size][];
+                int k = 0;
+                for (JsonValue part = rl.child; part != null; part = part.next) relief[k++] = part.asFloatArray();
+            }
             out.put(r.name, new Info(r.getFloat("x"), r.getFloat("y"), r.getFloat("w"), r.getFloat("h"),
-                    collider, i == null ? null : i.asFloatArray()));
+                    collider, i == null ? null : i.asFloatArray(), relief));
         }
         return out;
     }
