@@ -292,7 +292,7 @@ Crew-facing outputs, through `DamageTaskSink`:
 - `RepairTask` per subsystem below 1.0 health.
 - `ExtinguishTask` per new fire. `GridHazardSystem` will also post these as fire spreads.
 
-Outputs to `ui-hud` and `audio-spatial`: a `HullHitEvent` per impact (tile, severity), so the wireframe minimap flashes the hit and audio plays a located, muffled impact.
+Outputs to `ui-hud`, `audio-spatial` and the deck view: a `HullHitEvent` per impact (tile, severity, damage type, and where it struck, which way it was going and the hull's normal there, in the grid's tile space; where an over-penetrating round left; the tile a warhead went off in inside), so the wireframe minimap flashes the hit, audio plays a located, muffled impact, and the deck shows it struck (lighting's "Hits seen from the deck"). The console's `blast()` publishes one too.
 
 ### 5.9 Crew injury
 Penetrating hits, spall, fragments and interior blast all damage crew. Combat only applies the damage. The crew states below belong to `ai-crew`, and combat relies on them behaving this way:

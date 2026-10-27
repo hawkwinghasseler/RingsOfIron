@@ -71,6 +71,8 @@ public final class SceneLighting implements Disposable {
     private final LightSpots local = new LightSpots();
     private final LightSpots deckSpots = new LightSpots();
     private final LightSpots glowSpots = new LightSpots();
+    /** This frame's flashes, which cast before the decks' own lights so the cap never drops them. */
+    private final LightSpots flashes = new LightSpots();
 
     private World shadows;
     private RayHandler handler;
@@ -115,6 +117,7 @@ public final class SceneLighting implements Disposable {
         time += delta;
         deckSpots.clear();
         glowSpots.clear();
+        flashes.clear();
         crew.clear();
         for (Deck d : decks.values()) d.seen = false;
     }
@@ -180,6 +183,26 @@ public final class SceneLighting implements Disposable {
     }
 
     /**
+     * A flash at ({@code x}, {@code y}) world meters, such as a hit on the hull: light of
+     * {@code color} at {@code strength} (0 to 1) out to {@code reach} meters, shadowed by the walls,
+     * and a glow {@code glow} meters across. Lasts the frame; a fading flash is added each frame.
+     */
+    public void addFlash(float x, float y, Color color, float strength, float reach, float glow) {
+        LightSpot s = flashes.add();
+        s.x = x;
+        s.y = y;
+        s.color.set(color);
+        s.strength = strength;
+        s.reach = reach;
+        LightSpot g = glowSpots.add();
+        g.x = x;
+        g.y = y;
+        g.color.set(color);
+        g.color.a = Math.min(1f, strength);
+        g.glow = glow;
+    }
+
+    /**
      * Draws the light map over what is on screen: ambient for a craft {@code withPower} or not,
      * and the deck lights, shadowed by the walls. {@code camera} must not be rotated.
      */
@@ -194,8 +217,8 @@ public final class SceneLighting implements Disposable {
         placeCrew();
         handler.setAmbientLight(withPower ? AMBIENT_POWERED : AMBIENT_DARK);
         int p = 0, c = 0;
-        for (int i = 0; i < deckSpots.size() && p + c < MAX_LIGHTS; i++) {
-            LightSpot s = deckSpots.get(i);
+        for (int i = 0; i < flashes.size() + deckSpots.size() && p + c < MAX_LIGHTS; i++) {
+            LightSpot s = i < flashes.size() ? flashes.get(i) : deckSpots.get(i - flashes.size());
             if (!s.on || !s.casts()) continue;
             Light l;
             if (s.isCone) {
