@@ -31,7 +31,7 @@ public class FireArcOverlay {
     /** Size of the ship the arcs are for with nothing locked, meters. */
     static final float REFERENCE_RADIUS = 12f;
     /** How strong the tint is: a subtle wash over the view. */
-    static final float FILL_ALPHA = 0.07f, EDGE_ALPHA = 0.25f;
+    static final float FILL_ALPHA = 0.12f, EDGE_ALPHA = 0.3f;
     private static final Color RED = new Color(1f, 0.25f, 0.2f, 1f);
     private static final Color YELLOW = new Color(1f, 0.85f, 0.25f, 1f);
     private static final Color GREEN = new Color(0.35f, 1f, 0.45f, 1f);
