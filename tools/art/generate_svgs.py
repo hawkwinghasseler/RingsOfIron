@@ -106,8 +106,8 @@ def write(path, w, h, art, title, viewbox=None, unpowered=None, transform=None):
             svg += f"  <defs>{art.defs}</defs>\n"
         svg += f'  <g id="base"{tr}>\n{art.b}  </g>\n'
         if art.c:
-            svg += f'  <g id="collision"{tr}>\n{art.c}  </g>\n'
-        # data only, hidden from a browser or editor: the art packer reads them
+            svg += f'  <g id="collision" display="none"{tr}>\n{art.c}  </g>\n'
+        # data only, hidden from a browser or editor: the game and the art packer read them
         if art.r:
             svg += f'  <g id="relief" display="none"{tr}>\n{art.r}  </g>\n'
         if art.h:
@@ -143,6 +143,9 @@ RAISED = ' data-raised="1"'
 # The height layer's gray: HEIGHT_BASE is the bare roof, and each step of 1 above it is
 # HEIGHT_SCALE meters higher (a seam is a little below the roof, space is 0)
 HEIGHT_BASE, HEIGHT_SCALE = 0.25, 1.5
+# The hull's rim chamfer in the height layer: (stroke width, height) from its inner edge out, each
+# band a little lower, a tenth of a meter down at the outer edge over the rim's 8 units
+CHAMFER = [(16, -0.02), (12, -0.045), (8, -0.07), (4, -0.1)]
 
 
 def gray(h):
@@ -2215,13 +2218,17 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
     roof += f'    <path d="{"".join(lips)}" fill="none" stroke="{STEEL_HI}" stroke-width="1.5" opacity="0.35"{BAKED}/>\n'
     # the seams are shallow grooves between the plates
     a.h += f'    <path d="{"".join(seams)}" fill="none" stroke="{gray(-0.04)}" stroke-width="3"/>\n'
-    # A rim of heavier plate along the edge, standing a little proud of the roof
+    # A rim of heavier plate along the edge, chamfered: it slopes down from the roof toward the
+    # outer edge, in bands the packer's blur smooths into one slope (each stroke is half inside)
     if outline:
         roof += f'    <polygon points="{outline}" fill="none" stroke="{STEEL_DARK}" stroke-width="16" stroke-linejoin="round"/>\n'
-        a.h += f'    <polygon points="{outline}" fill="none" stroke="{gray(0.04)}" stroke-width="16" stroke-linejoin="round"/>\n'
     if rim:
         roof += f'    <path d="{rim}" fill="none" stroke="{STEEL_DARK}" stroke-width="16" stroke-linecap="square"/>\n'
-        a.h += f'    <path d="{rim}" fill="none" stroke="{gray(0.04)}" stroke-width="16" stroke-linecap="square"/>\n'
+    for k, (w, h) in enumerate(CHAMFER):
+        if outline:
+            a.h += f'    <polygon points="{outline}" fill="none" stroke="{gray(h)}" stroke-width="{w}" stroke-linejoin="round"/>\n'
+        if rim:
+            a.h += f'    <path d="{rim}" fill="none" stroke="{gray(h)}" stroke-width="{w}" stroke-linecap="square"/>\n'
     if outline:
         roof += (f'    <polygon points="{outline}" fill="none" stroke="{STEEL_HI}" stroke-width="20" '
                  f'stroke-linejoin="round" opacity="0.18" stroke-dasharray="3 9"{BAKED}/>\n')
@@ -2243,26 +2250,26 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
             w_, h_ = T * rng.choice((0.5, 0.65)), T * 0.28
             vx, vy = x + rng.uniform(6, T - 6 - w_), y + rng.uniform(6, T - 6 - h_)
             boxes.append(f"M{f(vx)} {f(vy)}h{f(w_)}v{f(h_)}h{f(-w_)}z")
-            relief(a, ("poly", [(vx, vy), (vx + w_, vy), (vx + w_, vy + h_), (vx, vy + h_)]), 0.12)
+            relief(a, ("poly", [(vx, vy), (vx + w_, vy), (vx + w_, vy + h_), (vx, vy + h_)]), 0.05)
             for k in range(3):
                 slots.append(f"M{f(vx + 4)} {f(vy + 3 + k * (h_ - 6) / 2)}h{f(w_ - 8)}")
         elif kind == "box":
             w_, h_ = T * rng.uniform(0.3, 0.6), T * rng.uniform(0.25, 0.45)
             vx, vy = x + rng.uniform(6, T - 6 - w_), y + rng.uniform(6, T - 6 - h_)
             boxes.append(f"M{f(vx)} {f(vy)}h{f(w_)}v{f(h_)}h{f(-w_)}z")
-            relief(a, ("poly", [(vx, vy), (vx + w_, vy), (vx + w_, vy + h_), (vx, vy + h_)]), 0.15)
+            relief(a, ("poly", [(vx, vy), (vx + w_, vy), (vx + w_, vy + h_), (vx, vy + h_)]), 0.06)
         elif kind == "hatch":
             rr = T * 0.18
             cx_, cy_ = x + T / 2, y + T / 2
             hatches.append(f"M{f(cx_ - rr)} {f(cy_)}a{f(rr)} {f(rr)} 0 1 0 {f(2 * rr)} 0a{f(rr)} {f(rr)} 0 1 0 {f(-2 * rr)} 0z")
-            relief(a, ("circle", cx_, cy_, rr), 0.04)
+            relief(a, ("circle", cx_, cy_, rr), 0.02)
         else:
             n = 1
             while (c + n, r) in bare and n < 3:
                 n += 1
             ry = y + T * rng.choice((0.3, 0.5, 0.7))
             runs.append(f"M{f(x + 8)} {f(ry)}h{f(n * T - 16)}")
-            relief(a, ("line", x + 8, ry, x + n * T - 8, ry, 7), 0.1)
+            relief(a, ("line", x + 8, ry, x + n * T - 8, ry, 7), 0.04)
     if runs:
         roof += f'    <path d="{"".join(runs)}" fill="none" stroke="{INK}" stroke-width="7" stroke-linecap="round"{RAISED}/>\n'
         roof += f'    <path d="{"".join(runs)}" fill="none" stroke="{STEEL_MID}" stroke-width="4" stroke-linecap="round"{RAISED}/>\n'
@@ -2314,10 +2321,10 @@ def hull_svg(ch, name, overhang=None, engines=False, superstructure=None):
             a.b += circle(cx, cy, r, STEEL_DARK, stroke=INK, sw=2, extra=RAISED)
             a.b += circle(cx, cy, r * 0.8, "none", stroke=STEEL_HI, sw=1.5, extra=' stroke-dasharray="4 4"' + RAISED)
             a.b += circle(cx, cy, r * 0.3, INK, extra=RAISED)
-            relief(a, ("circle", cx, cy, r), 0.3)
+            relief(a, ("circle", cx, cy, r), 0.1)
         elif m == "shield_emitter":
             a.b += circle(cx, cy, s * 0.4, "#2f5664", stroke=INK, sw=2, extra=RAISED)
-            relief(a, ("circle", cx, cy, s * 0.4), 0.2)
+            relief(a, ("circle", cx, cy, s * 0.4), 0.08)
             a.e += circle(cx, cy, s * 0.25, ACCENT["shield_emitter"], extra=' opacity="0.6"')
         elif m == "engine":
             pass  # outside the hull: the game draws the engine itself (engines/nacelle_<size>)
