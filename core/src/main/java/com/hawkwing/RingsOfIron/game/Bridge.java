@@ -26,8 +26,9 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
 /**
  * The player's ship's bridge: who sits at which console, and who has the helm.
  *
- * <p>Seats (GDD §6): the player's avatar sits at the helm or weapons console it stands beside
- * ({@link #sit}), which is what lets the screen show the ship from outside. It stays seated until it
+ * <p>Seats (GDD §6): the player's avatar sits at the helm, the weapons console or a gun's turret
+ * mount it stands beside ({@link #sit}), which is what lets the screen show the ship from outside.
+ * At the weapons console the player has every gun in hand, at a gun only that one ({@link PlayerGunnery}). It stays seated until it
  * stands ({@link #stand}), or until it can't stay: it is knocked out or no longer beside the console,
  * the console is destroyed, or the ship is no longer the player's. Then {@link #unseated} says why.
  *
@@ -98,14 +99,14 @@ public class Bridge extends FixedLogicSystem {
     }
 
     /**
-     * Sits the avatar at the helm or weapons console of the player's ship it stands beside, the
-     * nearer if both. Returns null once seated (or already seated there), else why it can't.
+     * Sits the avatar at the helm, weapons console or gun of the player's ship it stands beside, the
+     * nearest if more than one. Returns null once seated (or already seated there), else why it can't.
      */
     public String sit() {
         return sit(null);
     }
 
-    /** Sits the avatar at the console of {@code type} (HELM or WEAPONS; null for the nearer) beside it. */
+    /** Sits the avatar at the console of {@code type} (HELM, WEAPONS or TURRET_MOUNT; null for the nearest) beside it. */
     public String sit(SubsystemType type) {
         Entity avatar = world.avatar.getAvatar();
         Entity ship = world.getPlayer();
@@ -116,20 +117,31 @@ public class Bridge extends FixedLogicSystem {
         if (c != null && !c.isConscious()) return "You're in no state to";
         SubsystemComponent best = null;
         float nearest = SIT_REACH;
-        for (SubsystemType t : new SubsystemType[]{SubsystemType.HELM, SubsystemType.WEAPONS}) {
+        // The helm and weapons console first, so one beside a gun still wins a tie
+        for (SubsystemType t : new SubsystemType[]{SubsystemType.HELM, SubsystemType.WEAPONS, SubsystemType.TURRET_MOUNT}) {
             if (type != null && t != type) continue;
-            SubsystemComponent s = console(ship, t);
-            if (s == null) continue;
-            float d = reach(pos, s.footprint);
-            if (d <= nearest + 1e-4f && (best == null || d < nearest - 1e-4f)) {
-                best = s;
-                nearest = d;
+            ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
+            if (registry == null) break;
+            // By index: console() walks the same array
+            for (int i = 0; i < registry.subsystems.size; i++) {
+                SubsystemComponent s = SUBSYSTEMS.get(registry.subsystems.get(i));
+                if (s == null || s.type != t || s.isDestroyed()) continue;
+                // Only the first helm and weapons console are flown and fought from
+                if (t != SubsystemType.TURRET_MOUNT && s != console(ship, t)) continue;
+                float d = reach(pos, s.footprint);
+                if (d <= nearest + 1e-4f && (best == null || d < nearest - 1e-4f)) {
+                    best = s;
+                    nearest = d;
+                }
             }
         }
-        if (best == null) return "Stand at the helm or the weapons console to sit at it";
+        if (best == null) return type == SubsystemType.TURRET_MOUNT ? "Stand at a gun to take it"
+                : "Stand at the helm, the weapons console or a gun to sit at it";
         SeatComponent seat = SEATS.get(avatar);
-        if (seat == null) avatar.add(new SeatComponent(best.type));
+        if (seat == null) avatar.add(seat = new SeatComponent(best.type));
         else seat.console = best.type;
+        seat.gunX = best.type == SubsystemType.TURRET_MOUNT ? best.footprint.originX : -1;
+        seat.gunY = best.type == SubsystemType.TURRET_MOUNT ? best.footprint.originY : -1;
         PlayerAvatarComponent figure = avatar.getComponent(PlayerAvatarComponent.class);
         if (figure != null) figure.seated = true;
         pos.path.clear();
@@ -160,6 +172,37 @@ public class Bridge extends FixedLogicSystem {
     /** True while the player sits at the weapons console of their ship. */
     public boolean playerAtWeapons() {
         return seat() == SubsystemType.WEAPONS;
+    }
+
+    /** True while the player sits at one of their ship's guns. */
+    public boolean playerAtGun() {
+        return seat() == SubsystemType.TURRET_MOUNT;
+    }
+
+    /** True while the player has guns in hand: at the weapons console or at a gun. */
+    public boolean playerOnGuns() {
+        return playerAtWeapons() || playerAtGun();
+    }
+
+    /** The turret mount (its subsystem entity) of the gun the player sits at, or null. */
+    public Entity seatedGun() {
+        Entity avatar = world.avatar.getAvatar();
+        SeatComponent seat = avatar == null ? null : SEATS.get(avatar);
+        Entity ship = world.getPlayer();
+        if (seat == null || seat.console != SubsystemType.TURRET_MOUNT || ship == null) return null;
+        return gunAt(ship, seat.gunX, seat.gunY);
+    }
+
+    /** The turret mount of {@code ship} whose footprint starts at (x, y), not destroyed, or null. */
+    static Entity gunAt(Entity ship, int x, int y) {
+        ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (registry == null) return null;
+        for (Entity e : registry.subsystems) {
+            SubsystemComponent s = SUBSYSTEMS.get(e);
+            if (s != null && s.type == SubsystemType.TURRET_MOUNT && !s.isDestroyed()
+                    && s.footprint.originX == x && s.footprint.originY == y) return e;
+        }
+        return null;
     }
 
     /** Why the player at the helm can't fly the ship ("the helm has no power"), or null when they can. */
@@ -220,11 +263,15 @@ public class Bridge extends FixedLogicSystem {
         if (figure != null) figure.seated = seat != null;
         if (seat == null) return;
         String why = null;
-        String name = seat.console == SubsystemType.HELM ? "the helm" : "the weapons console";
+        String name = seat.console == SubsystemType.HELM ? "the helm"
+                : seat.console == SubsystemType.TURRET_MOUNT ? "the gun" : "the weapons console";
         GridPositionComponent pos = POSITIONS.get(avatar);
         CrewMemberComponent c = CREW.get(avatar);
         Entity ship = world.getPlayer();
-        SubsystemComponent console = ship == null ? null : console(ship, seat.console);
+        Entity gun = ship == null || seat.console != SubsystemType.TURRET_MOUNT ? null : gunAt(ship, seat.gunX, seat.gunY);
+        SubsystemComponent console = ship == null ? null
+                : seat.console == SubsystemType.TURRET_MOUNT ? (gun == null ? null : SUBSYSTEMS.get(gun))
+                : console(ship, seat.console);
         if (ship == null || pos.ship != ship) why = "You left your ship";
         else if (c != null && !c.isConscious()) why = "You were knocked out at " + name;
         else if (console == null) why = "The " + name.substring(4) + " is destroyed";

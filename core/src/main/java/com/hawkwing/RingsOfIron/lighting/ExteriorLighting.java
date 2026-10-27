@@ -151,6 +151,38 @@ public final class ExteriorLighting implements Disposable {
         return spots;
     }
 
+    /**
+     * Every light this frame that lights its surroundings, steady and fading, into {@code out}
+     * (world meters) as x, y, reach, strength each, as the light map draws them; returns how
+     * many, at most {@code out.length / 4}. A cone is taken as a light all round its tip.
+     */
+    public int pointLights(float[] out) {
+        int n = 0, max = out.length / 4;
+        for (int i = 0; i < spots.size() && n < max; i++) {
+            LightSpot s = spots.get(i);
+            n = put(out, n, s.x, s.y, s.reach, s.strength);
+        }
+        for (int i = 0; i < flashes.size && n < max; i++) {
+            float[] f = flashes.get(i);
+            float left = 1f - f[4] / f[5];
+            n = put(out, n, f[0], f[1], f[2] * (0.6f + 0.4f * left), f[3] * left * left);
+        }
+        return n;
+    }
+
+    private static int put(float[] out, int n, float x, float y, float reach, float strength) {
+        out[4 * n] = x;
+        out[4 * n + 1] = y;
+        out[4 * n + 2] = reach;
+        out[4 * n + 3] = MathUtils.clamp(strength, 0f, 1f);
+        return n + 1;
+    }
+
+    /** How bright the ambient is, 0-1: its color's mean. */
+    public float ambientBrightness() {
+        return (ambient.r + ambient.g + ambient.b) / 3f;
+    }
+
     /** How many flashes are still fading. For tests. */
     public int flashes() {
         return flashes.size;

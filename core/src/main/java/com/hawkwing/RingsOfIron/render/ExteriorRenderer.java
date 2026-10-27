@@ -90,6 +90,7 @@ public final class ExteriorRenderer implements Disposable {
     private final HullArt hullArt;
     private final Supplier<Entity> player;
     private ExteriorLighting exteriorLighting;
+    private final float[] pointLightBuffer = new float[4 * ExteriorLighting.MAX_LIGHTS];
     private boolean lightsOn = true;
     /**
      * Rounds seen last frame and this one, so each muzzle flashes once. By their projectile, not
@@ -212,9 +213,23 @@ public final class ExteriorRenderer implements Disposable {
      * outline. {@code delta} (seconds since the last frame, 0 while paused) spools the flames.
      */
     public void drawBodies(OrthographicCamera camera, float delta) {
+        drawBodies(camera, delta, null);
+    }
+
+    /**
+     * {@link #drawBodies(OrthographicCamera, float)}, leaving out every body owned by one of
+     * {@code without} (null for none): the deck view's craft, drawn as decks instead.
+     */
+    public void drawBodies(OrthographicCamera camera, float delta, Array<Entity> without) {
         GameWorld w = world.get();
         Matrix4 view = view(camera);
         w.physics.getWorld().getBodies(bodies);
+        if (without != null) {
+            for (int i = bodies.size - 1; i >= 0; i--) {
+                Entity e = owner(bodies.get(i));
+                if (e != null && without.contains(e, true)) bodies.removeIndex(i);
+            }
+        }
         boolean lit = exteriorLighting != null && lightsOn;
         if (lit) exteriorLighting.begin();
         flames.begin(delta);
@@ -237,6 +252,9 @@ public final class ExteriorRenderer implements Disposable {
         // Every flame lights the hulls and glows, as strong as it is long
         flames.light(lit ? exteriorLighting : null, lighting);
         if (lit) lightsInFlight();
+        // The same lights shade the lit hulls by their normal maps
+        int pointLights = lit ? exteriorLighting.pointLights(pointLightBuffer) : 0;
+        exteriorArt.setPointLights(pointLightBuffer, pointLights, lit ? exteriorLighting.ambientBrightness() : 1f);
         // The shield flecks under the light map, so it lights them: those beyond the hull's plane under its art
         float mpp = metersPerPixel(camera);
         if (hullArtOn || shields.any()) {

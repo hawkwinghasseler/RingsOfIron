@@ -28,13 +28,13 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 |---|---|
 | W / S, A / D, Z / C | Thrust forward and back, turn, strafe (seated at the helm) |
 | X | Toggle rotation assist |
-| Space | Fire guns |
-| R | Launch a missile at the target |
+| Space | Fire the guns now. Guns fire on ships attacking you by themselves while a crew member mans them or the weapons console; at the weapons console or a gun, the mouse aims and Space or a left click fires |
+| R | Launch a salvo of missiles at the target (each launcher holds a few; a station restocks it while docked) |
 | F | Drop a decoy (on deck: force the door across a dock) |
 | 9 | Raise or lower the shields (lowered, the cloud packs safely into the emitters; docking lowers them on its own) |
 | Tab | Cycle the target |
-| Click (outside view) | Select a ship or station: a ship becomes the target, and either becomes the navigation target. Zoomed out, your ship and your targets show magnified in picture-in-picture bubbles; a click inside a bubble selects there too |
-| V | Stand up from your console into the deck view; on deck beside the helm or weapons console, sit there and look outside (`gradlew :lwjgl3:runGame -PviewAnywhere` switches anywhere) |
+| Click (outside view) | Select a ship or station: a ship becomes the target, and either becomes the navigation target. Zoomed out, your ship and your targets show magnified in picture-in-picture bubbles; a click inside a bubble selects there too, and "+3 others" under a bubble lists the names it hides |
+| V | Stand up from your console into the deck view; on deck beside the helm, the weapons console or a gun, sit there and look outside (`gradlew :lwjgl3:runGame -PviewAnywhere` switches anywhere) |
 | M | Traffic map |
 | T | Trade, when in range of a station |
 | Y | Yard: repairs and refits, while docked |

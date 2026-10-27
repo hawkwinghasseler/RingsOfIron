@@ -33,7 +33,8 @@ public final class CrewQueries {
      * The best skill at {@code station} among the conscious crew of {@code ship}'s own faction
      * (boarders don't man its guns). On a ship with a weapons console, both stations are worked
      * from it, so only crew manning it count (see {@link #isManning}); with no one at it the guns
-     * and sensors run as a green crew's would. On a ship without one, anyone aboard counts. The
+     * and sensors run as a green crew's would; for gunnery, crew manning a gun count too. On a ship
+     * without one, anyone aboard counts. The
      * player's avatar always counts: the player is at the controls.
      *
      * @return the skill, 0 .. 1; 0 when every crew member aboard is down or no one mans the
@@ -52,7 +53,8 @@ public final class CrewQueries {
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
             if (p.ship != ship || c.faction != faction) continue;
             boolean counts = c.isConscious() && (!console || e.getComponent(PlayerAvatarComponent.class) != null
-                    || isManning(e, SubsystemComponent.SubsystemType.WEAPONS));
+                    || isManning(e, SubsystemComponent.SubsystemType.WEAPONS)
+                    || station == Station.GUNNERY && isManning(e, SubsystemComponent.SubsystemType.TURRET_MOUNT));
             float skill = !counts ? 0f
                     : station == Station.GUNNERY ? c.def.gunnerySkill : c.def.trackingSkill;
             best = Math.max(best, skill);
@@ -73,6 +75,34 @@ public final class CrewQueries {
         SubsystemComponent s = t.console.getComponent(SubsystemComponent.class);
         int x = p.tileX(), y = p.tileY();
         return s != null && (s.covers(x + 1, y) || s.covers(x - 1, y) || s.covers(x, y + 1) || s.covers(x, y - 1));
+    }
+
+    /** True if {@code crew} is manning that very console or gun ({@code console}, a subsystem entity). */
+    public static boolean isManning(Entity crew, Entity console) {
+        CrewMemberComponent c = crew.getComponent(CrewMemberComponent.class);
+        if (c == null || !(c.task instanceof ManConsoleTask) || ((ManConsoleTask) c.task).console != console) return false;
+        return isManning(crew, ((ManConsoleTask) c.task).type());
+    }
+
+    /**
+     * The best gunnery skill among the conscious crew of {@code ship}'s own faction manning
+     * {@code console} (a gun's turret mount, or a weapons console), the player's avatar left out;
+     * {@link #NO_CREW} when nobody mans it.
+     */
+    public static float gunneryAt(Engine engine, Entity ship, Entity console) {
+        if (console == null) return NO_CREW;
+        ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
+        int faction = board == null ? 0 : board.faction;
+        ImmutableArray<Entity> crew = engine.getEntitiesFor(CrewService.CREW);
+        float best = NO_CREW;
+        for (int i = 0; i < crew.size(); i++) {
+            Entity e = crew.get(i);
+            GridPositionComponent p = e.getComponent(GridPositionComponent.class);
+            CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+            if (p.ship != ship || c.faction != faction || e.getComponent(PlayerAvatarComponent.class) != null) continue;
+            if (isManning(e, console)) best = Math.max(best, c.def.gunnerySkill);
+        }
+        return best;
     }
 
     /** True if {@code ship} has a system of {@code type} that is not destroyed. */

@@ -62,6 +62,14 @@ public class ConsoleWindow extends Window {
     }
 
     public void open(Entity console, InteractableConsoleComponent data, ContentBuilder custom) {
+        open(console, data, custom, null);
+    }
+
+    /**
+     * Opens on {@code console}: {@code custom}'s layout, or the default status and on/off switch, then
+     * {@code extra}'s rows under it (null for none), such as a gun's "take it" button.
+     */
+    public void open(Entity console, InteractableConsoleComponent data, ContentBuilder custom, ContentBuilder extra) {
         this.console = console;
         getTitleLabel().setText(data.title.toUpperCase(Locale.ROOT));
         body.clearChildren();
@@ -74,6 +82,7 @@ public class ConsoleWindow extends Window {
         } else {
             buildDefault(data);
         }
+        if (extra != null) extra.build(body, skin, console, data);
         setVisible(true);
         pack();
         setWidth(Math.max(getWidth(), 280f));

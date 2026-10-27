@@ -76,6 +76,8 @@ class EnemyWingsTest {
 
     @Test
     void aWingBreaksOffWithItsLeaderAndFiresAsItGoes() {
+        // The hull is set by hand here: the player's crew hold fire (round 11's crewed guns would add their own)
+        world.gunCrews.holdFire = true;
         List<String> ids = world.hostiles.spawnWing(HostileTraffic.RAIDER, 3, game.highport, "raider_chaingun");
         assertEquals(3, ids.size());
         HostileComponent lead = hostiles.get(ids.get(0));

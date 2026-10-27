@@ -4,7 +4,8 @@
 #
 # Ships mount weapons through their hardpoints (ships.toml). Turrets aim at the
 # ship's locked target; point_defense mounts pick their own targets, the most
-# urgent incoming missile; launchers throw guided missiles at the locked target;
+# urgent incoming missile; launchers throw guided missiles at the locked target,
+# magazine of them (0 or left out: no limit), cooldown seconds apart;
 # beams burn beam_power watts into whatever they touch for beam_duration seconds.
 # price is what a new one costs at a station yard's refit (a used one half that).
 # min_mount_size (S, M, L or XL) is the weapon's size: the smallest turret mount it fits.
@@ -70,7 +71,9 @@ price = 30000.0
 mount = "launcher"
 min_mount_size = "S"
 firing_arc_deg = 360
-cooldown = 8.0
+# Four harpoons, thrown a second apart; a station restocks the launcher while docked
+cooldown = 1.0
+magazine = 4
 missile = "harpoon"
 max_range = 15000.0
 sound = "evt_missile_launch"
@@ -126,14 +129,15 @@ max_range = 3000.0
 sound = "evt_flak_fire"
 
 # Two tubes of light darts for a small ship's one mount: half the reach of a harpoon and a
-# lighter warhead, but quicker to reload.
+# lighter warhead, but more of them and quicker to throw.
 [weapon.dart_rack]
 name = "Dart Rack"
 price = 15000.0
 mount = "launcher"
 min_mount_size = "S"
 firing_arc_deg = 360
-cooldown = 4.0
+cooldown = 0.6
+magazine = 6
 missile = "dart"
 max_range = 8000.0
 sound = "evt_missile_launch"

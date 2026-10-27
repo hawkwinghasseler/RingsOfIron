@@ -119,6 +119,10 @@ class FireControlTest {
         return m;
     }
 
+    private static float wrapAngle(float a) {
+        return MathUtils.atan2(MathUtils.sin(a), MathUtils.cos(a));
+    }
+
     private static Body body(Entity e) {
         return e.getComponent(PhysicsBodyComponent.class).body;
     }
@@ -217,10 +221,139 @@ class FireControlTest {
     }
 
     @Test
+    void aTurretPulledOutOfReachHoldsRatherThanFiringDownItsBarrel() {
+        // The starter corvette's laser sits on its starboard beam; out of range, a pulled trigger
+        // used to burn its pulse off to the side
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(5000, 0, 0, 0);
+        ship.getComponent(SensorComponent.class).lockedTarget = target;
+        WeaponMountComponent laser = arm(ship, "laser_mk1", -1.5f, -1.5f, -MathUtils.HALF_PI);
+        for (int i = 0; i < Math.round(3f / DT); i++) {
+            laser.trigger = true;
+            engine.update(DT);
+        }
+        assertEquals(0, laser.shotsFired, "out of its 3 km reach, the trigger holds");
+        body(target).setTransform(2000 * PhysicsManager.UNITS_PER_METER, 0f, 0f);
+        for (int i = 0; i < Math.round(3f / DT) && laser.shotsFired == 0; i++) {
+            laser.trigger = true;
+            engine.update(DT);
+        }
+        assertEquals(1, laser.shotsFired, "in reach, it burns once the barrel is on");
+        assertTrue(Math.abs(laser.beamDir.angleRad()) < 0.01f, "at the target, dead ahead: " + laser.beamDir);
+    }
+
+    @Test
+    void aHandAimedGunFiresWhereThePlayerPointsIt() {
+        Entity ship = spawnShip(0, 0, 0, 0);
+        WeaponMountComponent gun = arm(ship, "railgun_mk1", 6f, 0f, 0f);
+        float[] fired = {Float.NaN};
+        float[] worst = {0f};
+        events.shots.add((s, shot) -> {
+            if (Float.isNaN(fired[0])) fired[0] = shot.direction.angleRad();
+            // Each shot along the line from the muzzle to the spot, however the recoil turns the ship
+            float want = new com.badlogic.gdx.math.Vector2(gun.aimPoint).sub(gun.muzzle).angleRad();
+            worst[0] = Math.max(worst[0], Math.abs(wrapAngle(shot.direction.angleRad() - want)));
+        });
+        gun.manualAim = true;
+        gun.aimPoint.set(6f, 1500f);
+        for (int i = 0; i < Math.round(4f / DT); i++) {
+            gun.trigger = true;
+            engine.update(DT);
+        }
+        assertTrue(gun.shotsFired > 0, "it fired at the spot");
+        assertEquals(MathUtils.HALF_PI, fired[0], 0.02f, "only once the barrel had swung onto it");
+        assertTrue(worst[0] < 0.02f, "every shot went at the spot: off by " + worst[0]);
+    }
+
+    @Test
+    void aLauncherEmptiesItsMagazineInARapidSalvoThatSpreads() {
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(8000, 0, 0, 0);
+        ship.getComponent(SensorComponent.class).lockedTarget = target;
+        WeaponMountComponent launcher = arm(ship, "harpoon_launcher", 0f, 4f, MathUtils.HALF_PI);
+        java.util.Set<Float> angles = new java.util.HashSet<>();
+        events.shots.add((s, shot) -> {
+            MissileComponent m = shot.round == null ? null : shot.round.getComponent(MissileComponent.class);
+            if (m != null) angles.add(m.approachAngle);
+        });
+        for (int i = 0; i < Math.round(6f / DT); i++) {
+            launcher.trigger = true;
+            engine.update(DT);
+        }
+        assertEquals(4, launcher.shotsFired, "its four harpoons on the trigger, a second apart");
+        assertEquals(0, launcher.ammo);
+        assertEquals(4, angles.size(), "each from its own side: " + angles);
+        for (int i = 0; i < Math.round(4f / DT); i++) {
+            launcher.trigger = true;
+            engine.update(DT);
+        }
+        assertEquals(4, launcher.shotsFired, "and nothing more from an empty launcher");
+        assertEquals(1, WeaponControlSystem.restock(launcher, 1));
+        assertEquals(1, launcher.ammo, "until it is restocked");
+    }
+
+    @Test
+    void aMissileGivenAnApproachAngleComesInFromTheSide() {
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(7000, 0, 0, 0);
+        run(1f);
+        MissileDef harpoon = defs.missile("harpoon");
+        Entity missile = missiles.launch(harpoon, ship, null, target, 10f, 0f, harpoon.ejectSpeed, 0f, 0f);
+        missile.getComponent(MissileComponent.class).approachAngle = 30f * MathUtils.degreesToRadians;
+        ProjectileComponent p = missile.getComponent(ProjectileComponent.class);
+        boolean[] struck = new boolean[1];
+        events.detonations.add((s, boom) -> struck[0] |= boom.target == target);
+        events.impacts.add((s, hit) -> struck[0] |= hit.target == target && hit.owner == ship);
+        float widest = 0f;
+        for (int i = 0; i < 60 * 60 && !struck[0]; i++) {
+            engine.update(DT);
+            if (!struck[0]) widest = Math.max(widest, p.pos.y);
+        }
+        assertTrue(widest > 300f, "it swung out to the left of the line: " + widest + " m");
+        assertTrue(struck[0], "and still came in on the target");
+    }
+
+    @Test
     void pointDefenseShootsDownAnIncomingMissile() {
         Entity attacker = spawnShip(-3000, 0, 0, 0);
         Entity defender = spawnShip(0, 0, 0, 0);
         arm(defender, "autocannon_mk1", -8f, 0f, MathUtils.PI);
+        run(1f);
+        MissileDef harpoon = defs.missile("harpoon");
+        missiles.launch(harpoon, attacker, null, defender, -2990f, 0f, harpoon.ejectSpeed, 0f, 0f);
+        boolean[] killed = new boolean[1];
+        events.intercepts.add((s, hit) -> killed[0] |= hit.destroyed && hit.shooter == defender);
+        for (int i = 0; i < 40 * 60 && !killed[0]; i++) engine.update(DT);
+        assertTrue(killed[0], "point defense broke the missile up");
+    }
+
+    @Test
+    void pointDefenseHoldsWhenItsMissesWouldCarryOnIntoAShipItSpares() {
+        // A station out past the incoming missile: rounds that miss the missile go on into it
+        Entity attacker = spawnShip(-3000, 0, 0, 0);
+        Entity bystander = new Entity();
+        bystander.add(new PhysicsBodyComponent(physics.createPolygonBody(bystander, -3700, 0, 0f,
+                new float[] {-150, -300, 150, -300, 150, 300, -150, 300}, 50f,
+                CollisionCategories.CATEGORY_STATION, CollisionCategories.MASK_ALL)));
+        engine.addEntity(bystander);
+        Entity defender = spawnShip(0, 0, 0, 0);
+        WeaponMountComponent pd = arm(defender, "autocannon_mk1", -8f, 0f, MathUtils.PI);
+        weaponControl.setHoldFire((shooter, blocker) -> blocker == bystander);
+        run(1f);
+        MissileDef harpoon = defs.missile("harpoon");
+        Entity missile = missiles.launch(harpoon, attacker, null, defender, -2990f, 0f, harpoon.ejectSpeed, 0f, 0f);
+        for (int i = 0; i < 6 * 60; i++) engine.update(DT);
+        assertTrue(missile.getComponent(MissileComponent.class) != null, "the missile is still coming");
+        assertEquals(0, pd.shotsFired, "no burst toward the bystander");
+    }
+
+    @Test
+    void pointDefenseFiresWithOnlyTheLaunchingShipBehindTheMissile() {
+        Entity attacker = spawnShip(-3000, 0, 0, 0);
+        Entity defender = spawnShip(0, 0, 0, 0);
+        arm(defender, "autocannon_mk1", -8f, 0f, MathUtils.PI);
+        // Gunners who hold for anyone in the way still shoot back toward the ship that fired at them
+        weaponControl.setHoldFire((shooter, blocker) -> true);
         run(1f);
         MissileDef harpoon = defs.missile("harpoon");
         missiles.launch(harpoon, attacker, null, defender, -2990f, 0f, harpoon.ejectSpeed, 0f, 0f);

@@ -51,7 +51,19 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
  * A gunner firing at will holds fire while a ship or station other than the target lies on the
  * line to the aim point and {@link #setHoldFire the game's rule} says to (round 7: a pirate put
  * some 2,200 rounds into a surrendered wingmate between it and the player). A pulled trigger fires
- * regardless.
+ * regardless, but only once the barrel is on: a turret pulled out of reach of its target, or with
+ * nothing to aim at, holds (a starter corvette's laser, out of range, burned off its beam into
+ * empty space). Only a spinal gun with no target fires straight down its barrel, where the ship
+ * points it.
+ *
+ * A mount aimed by hand ({@link WeaponMountComponent#manualAim}) slews onto its aim point instead
+ * of a target, with no lead, and its trigger fires once the barrel is there.
+ *
+ * A launcher with a magazine takes a missile from it each launch and is silent once it is empty. On
+ * the trigger it launches as fast as it reloads; firing at will, no faster than one every
+ * {@link #AT_WILL_LAUNCH_GAP}, so a gunner doesn't empty it in one go.
+ * Each missile of a run of launches is given its own approach angle
+ * ({@link MissileComponent#approachAngle}), so a salvo spreads and comes in from several sides.
  *
  * Runs from {@link PhysicsManager.StepListener#beforeStep}, after {@link SensorTrackingSystem}.
  */
@@ -75,6 +87,12 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     public static final float DEFAULT_BEAM_RANGE = 3000f;
     /** How fast a beam's wander changes, seconds. */
     public static final float BEAM_WANDER_TIME = 0.5f;
+    /** A hand-aimed barrel this close to its aim point fires on the trigger, radians, at the least. */
+    public static final float HAND_AIM_TOLERANCE = 0.01f;
+    /** Seconds a launcher firing at will waits between missiles, however fast it reloads. */
+    public static final float AT_WILL_LAUNCH_GAP = 8f;
+    /** Step between the approach angles of a salvo's missiles, radians: 0, +1, -1, +2, -2 steps. */
+    public static final float SALVO_SPREAD = 15f * MathUtils.degreesToRadians;
 
     private final ComponentMapper<WeaponsComponent> weaponsMapper = ComponentMapper.getFor(WeaponsComponent.class);
     private final ComponentMapper<PhysicsBodyComponent> bodyMapper = ComponentMapper.getFor(PhysicsBodyComponent.class);
@@ -110,6 +128,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     private final Vector2 estPos = new Vector2();
     private final Vector2 estVel = new Vector2();
     private final Vector2 dir = new Vector2();
+    private final Vector2 backstop = new Vector2();
 
     public WeaponControlSystem(PhysicsManager physics, CombatEvents events, CombatDefs defs, BallisticsSystem ballistics,
                                MissileGuidanceSystem missiles, SensorTrackingSystem sensors, long seed) {
@@ -147,21 +166,34 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
 
     /**
      * True if, firing at will, {@code ship} holds fire because a ship or station other than
-     * {@code target} lies between {@code from} and {@code to}.
+     * {@code target} lies between {@code from} and {@code to}. Behind a missile, the ship that
+     * launched it is fair game.
      */
     private boolean blocked(Entity ship, Entity target, Vector2 from, Vector2 to) {
         if (holdFire == null) return false;
+        MissileComponent missile = target == null ? null : missileMapper.get(target);
+        Entity launcher = missile == null ? null : missile.launcher;
         blocker[0] = null;
         physics.rayCast(from.x, from.y, to.x, to.y, (fixture, px, py, nx, ny, f) -> {
             short category = fixture.getFilterData().categoryBits;
             if ((category & (CollisionCategories.CATEGORY_SHIP | CollisionCategories.CATEGORY_STATION)) == 0) return -1f;
             Object owner = fixture.getBody().getUserData();
-            if (!(owner instanceof Entity) || owner == ship || owner == target) return -1f;
+            if (!(owner instanceof Entity) || owner == ship || owner == target || owner == launcher) return -1f;
             if (!holdFire.holds(ship, (Entity) owner)) return -1f;
             blocker[0] = (Entity) owner;
             return 0f;
         });
         return blocker[0] != null;
+    }
+
+    /**
+     * Where a shot fired at will must not find a ship or station in the way: the intercept point,
+     * or for point defense, which misses most of its small, fast targets, as far as its rounds fly
+     * (the player's misses past a missile went on into Highport and the haulers by it).
+     */
+    private Vector2 lineOfFire(WeaponMountComponent mount, ProjectileDef round, float maxTime) {
+        if (!mount.def.pointDefense) return mount.solution.interceptPoint;
+        return backstop.set(mount.solution.aimDir).nor().scl(round.muzzleSpeed * maxTime).add(muzzle);
     }
 
     /** Takes the energy for one shot: {@code power_draw * cooldown}, all or nothing. */
@@ -213,9 +245,12 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         WeaponDef def = mount.def;
         if (def == null) return;
         mount.cooldown = Math.max(0f, mount.cooldown - dt);
+        fillMagazine(mount);
 
         Entity target = def.pointDefense ? pickMissileThreat(ship, body, sensor, def)
                 : (mount.target != null ? mount.target : sensor == null ? null : sensor.lockedTarget);
+        boolean hand = mount.manualAim && !def.pointDefense && def.mount != WeaponDef.MountType.LAUNCHER;
+        if (hand) target = null;
         if (target != null && !mount.trigger && spared != null && spared.holds(ship, target)) target = null;
         if (target != mount.lastTarget) {
             mount.engagedFor = 0f;
@@ -240,7 +275,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
             return;
         }
         if (def.mount == WeaponDef.MountType.BEAM) {
-            beam(ship, mount, target, track, available, bodyAngle, dt);
+            beam(ship, mount, target, track, available, bodyAngle, dt, hand);
             mount.trigger = false;
             return;
         }
@@ -250,7 +285,9 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         mount.solution.invalidate();
         float maxTime = round.maxLifetime;
         if (def.maxRange > 0f) maxTime = Math.min(maxTime, def.maxRange / round.muzzleSpeed);
-        if (track != null) {
+        if (hand) {
+            aimByHand(mount, round.muzzleSpeed);
+        } else if (track != null) {
             float age = sensors.ageOf(track);
             track.positionAt(age, estPos);
             track.velocityAt(age, estVel);
@@ -268,17 +305,18 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         if (mount.solution.valid) {
             float error = Math.abs(wrap(barrel - mount.solution.aimDir.angleRad()));
             float range = mount.solution.timeToImpact * round.muzzleSpeed;
-            onTarget = error * range < radiusOf(target) + def.spreadRad * range;
+            onTarget = hand ? error < handTolerance(def)
+                    : error * range < radiusOf(target) + def.spreadRad * range;
         }
         mount.onTarget = onTarget;
 
         boolean atWill = !mount.trigger;
         boolean wantsFire = mount.trigger
-                ? (onTarget || !mount.solution.valid)
-                : (mount.weaponsFree && onTarget && mount.engagedFor >= reactionTime(mount));
+                ? (onTarget || straightDownTheBarrel(mount, track, hand))
+                : (mount.weaponsFree && !hand && onTarget && mount.engagedFor >= reactionTime(mount));
         mount.trigger = false;
         if (!wantsFire || !available || mount.cooldown > 0f) return;
-        if (atWill && blocked(ship, target, muzzle, mount.solution.interceptPoint)) return;
+        if (atWill && blocked(ship, target, muzzle, lineOfFire(mount, round, maxTime))) return;
         if (!powerShot(mount)) return;
 
         float green = 1.5f - MathUtils.clamp(mount.gunnerySkill, 0f, 1f);
@@ -305,12 +343,15 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
      * The beam's own wander follows gunnery skill.
      */
     private void beam(Entity ship, WeaponMountComponent mount, Entity target, Track track, boolean available,
-                      float bodyAngle, float dt) {
+                      float bodyAngle, float dt, boolean hand) {
         WeaponDef def = mount.def;
         mount.solution.invalidate();
         float reach = def.maxRange > 0f ? def.maxRange : DEFAULT_BEAM_RANGE;
         float dist = 0f;
-        if (track != null) {
+        if (hand) {
+            aimByHand(mount, 0f);
+            dist = mount.solution.valid ? Math.min(estPos.set(mount.aimPoint).dst(muzzle), reach) : 0f;
+        } else if (track != null) {
             track.positionAt(sensors.ageOf(track), estPos);
             dir.set(estPos).sub(muzzle);
             dist = dir.len();
@@ -324,8 +365,9 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         float want = mount.solution.valid ? mount.solution.aimDir.angleRad() - bodyAngle : mount.facing;
         if (def.mount != WeaponDef.MountType.SPINAL) slew(mount, want, dt);
         float barrel = bodyAngle + mount.aim;
+        float error = Math.abs(wrap(barrel - mount.solution.aimDir.angleRad()));
         boolean onTarget = mount.solution.valid
-                && Math.abs(wrap(barrel - mount.solution.aimDir.angleRad())) * dist < radiusOf(target);
+                && (hand ? error < handTolerance(def) : error * dist < radiusOf(target));
         mount.onTarget = onTarget;
 
         if (!available) {
@@ -337,8 +379,8 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         boolean metered = power != null && needed > 0;
         if (mount.beamTime <= 0f) {
             boolean wantsFire = mount.trigger
-                    ? (onTarget || !mount.solution.valid)
-                    : (mount.weaponsFree && onTarget && mount.engagedFor >= reactionTime(mount));
+                    ? (onTarget || straightDownTheBarrel(mount, track, hand))
+                    : (mount.weaponsFree && !hand && onTarget && mount.engagedFor >= reactionTime(mount));
             if (!wantsFire || mount.cooldown > 0f) return;
             if (!mount.trigger && blocked(ship, target, muzzle, estPos)) return;
             // A pulse only starts with power to start it.
@@ -379,10 +421,13 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
             mount.solution.interceptPoint.set(estPos);
             mount.solution.valid = true;
         }
+        // At will a gunner spaces its missiles out; the trigger throws them as fast as the launcher reloads
         boolean wantsFire = mount.trigger
                 ? track != null
-                : (mount.weaponsFree && inRange && mount.engagedFor >= reactionTime(mount));
-        if (!wantsFire || !available || mount.cooldown > 0f || !powerShot(mount)) return;
+                : (mount.weaponsFree && inRange && mount.engagedFor >= reactionTime(mount)
+                        && mount.sinceShot >= AT_WILL_LAUNCH_GAP);
+        boolean loaded = def.magazine <= 0 || mount.ammo > 0;
+        if (!wantsFire || !available || !loaded || mount.cooldown > 0f || !powerShot(mount)) return;
 
         // Throw it clear toward the target (or along the rail), within the launcher's arc.
         float want = track != null ? dir.set(estPos).sub(muzzle).angleRad() - bodyAngle : mount.facing;
@@ -392,6 +437,10 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         float x = muzzle.x + dir.x * def.muzzleOffset, y = muzzle.y + dir.y * def.muzzleOffset;
         float vx = muzzleVel.x + dir.x * missile.ejectSpeed, vy = muzzleVel.y + dir.y * missile.ejectSpeed;
         Entity e = missiles.launch(missile, ship, mount.subsystem, target, x, y, vx, vy, heading);
+        if (def.magazine > 0) mount.ammo--;
+        // One of a salvo: each missile comes in on its own side of the line to the target
+        MissileComponent flying = e == null ? null : missileMapper.get(e);
+        if (flying != null) flying.approachAngle = approachAngle(mount.shotsFired);
         float kick = (missile.dryMass + missile.propellantMass) * missile.ejectSpeed;
         CombatPhysics.applyImpulseAt(body, -dir.x * kick, -dir.y * kick, muzzle.x, muzzle.y);
         fired(ship, mount, e, x, y);
@@ -448,6 +497,62 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
             }
         }
         return best;
+    }
+
+    /** Fills a launcher's magazine the first time it is seen (a new mount, or a save from before magazines). */
+    static void fillMagazine(WeaponMountComponent mount) {
+        int magazine = mount.def.magazine;
+        if (magazine <= 0) return;
+        if (mount.ammo < 0 || mount.ammo > magazine) mount.ammo = magazine;
+    }
+
+    /** Refills a launcher to its magazine, as a station's yard does. Returns how many it took. */
+    public static int restock(WeaponMountComponent mount, int most) {
+        if (mount.def == null || mount.def.magazine <= 0) return 0;
+        fillMagazine(mount);
+        int add = Math.min(most, mount.def.magazine - mount.ammo);
+        mount.ammo += add;
+        return add;
+    }
+
+    /**
+     * The approach angle of the {@code n}th missile a launcher throws, radians off the line to the
+     * target: 0, then a step to one side, then the other, then two steps each way, and round again.
+     */
+    public static float approachAngle(int n) {
+        switch (n % 5) {
+            case 1: return SALVO_SPREAD;
+            case 2: return -SALVO_SPREAD;
+            case 3: return 2f * SALVO_SPREAD;
+            case 4: return -2f * SALVO_SPREAD;
+            default: return 0f;
+        }
+    }
+
+    /**
+     * Points a hand-aimed mount's solution at its aim point, with no lead. {@code speed} gives the
+     * time to impact for a gun; 0 (a beam) gives none.
+     */
+    private void aimByHand(WeaponMountComponent mount, float speed) {
+        dir.set(mount.aimPoint).sub(mount.muzzle);
+        float dist = dir.len();
+        if (dist < 1e-3f) return;
+        mount.solution.aimDir.set(dir).scl(1f / dist);
+        mount.solution.interceptPoint.set(mount.aimPoint);
+        mount.solution.timeToImpact = speed > 0f ? dist / speed : 0f;
+        mount.solution.valid = true;
+    }
+
+    private static float handTolerance(WeaponDef def) {
+        return Math.max(HAND_AIM_TOLERANCE, 3f * def.spreadRad);
+    }
+
+    /**
+     * A pulled trigger with nothing to aim at fires only a spinal gun, along the ship's nose. A
+     * turret holds: its barrel rests to the side, and would throw the shot away.
+     */
+    private static boolean straightDownTheBarrel(WeaponMountComponent mount, Track track, boolean hand) {
+        return mount.def.mount == WeaponDef.MountType.SPINAL && track == null && !hand;
     }
 
     /** Share of the last shot's miss the gunner corrects on the next. */

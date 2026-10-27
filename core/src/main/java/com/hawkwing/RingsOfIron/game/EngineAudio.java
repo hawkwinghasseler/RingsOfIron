@@ -14,7 +14,8 @@ import java.util.function.Supplier;
 
 /**
  * The player's engines as a sound: a thruster loop on the player's ship whose intensity follows
- * the stick. The main engine drives it fully; RCS (strafing, turning) is quieter. It ramps up and
+ * the stick. The main engine drives it fully; RCS (strafing, turning) is quieter. Rotation assist
+ * firing the RCS on its own to stop a spin is heard too, as hard as it fires. It ramps up and
  * down rather than switching, and falls silent when the tanks are dry. Runs every frame just
  * before the audio systems.
  */
@@ -73,7 +74,7 @@ public class EngineAudio extends EntitySystem {
         }
 
         float target = thruster.isOutOfFuel() ? 0f : MathUtils.clamp(Math.max(Math.abs(control.forward),
-                RCS_SHARE * Math.max(Math.abs(control.strafe), Math.abs(control.turn))), 0f, 1f);
+                RCS_SHARE * Math.max(Math.abs(control.strafe), Math.max(Math.abs(control.turn), control.assistTurn))), 0f, 1f);
         float rate = target > intensity ? ATTACK_PER_SECOND : RELEASE_PER_SECOND;
         intensity = MathUtils.clamp(target, intensity - rate * deltaTime, intensity + rate * deltaTime);
         emitter.setParameter(AudioParameters.INTENSITY, intensity);

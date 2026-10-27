@@ -29,6 +29,9 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
     private final ComponentMapper<ThrusterComponent> thrusterMapper = ComponentMapper.getFor(ThrusterComponent.class);
     private final ComponentMapper<FlightControlComponent> controlMapper = ComponentMapper.getFor(FlightControlComponent.class);
 
+    /** Below this spin, rad/s, rotation assist's trim is too slight to count as firing ({@link FlightControlComponent#assistTurn}). */
+    public static final float ASSIST_SPIN = 0.01f;
+
     private final PhysicsManager physics;
     private final Vector2 force = new Vector2(), center = new Vector2();
     private ImmutableArray<Entity> entities;
@@ -60,6 +63,7 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
     }
 
     private void applyControls(Body body, ThrusterComponent thruster, FlightControlComponent control, float deltaTime) {
+        control.assistTurn = 0f;
         if (thruster.isOutOfFuel()) return;
 
         float forward = MathUtils.clamp(control.forward, -1f, 1f);
@@ -90,6 +94,9 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
         localX *= throttleScale;
         localY *= throttleScale;
         torque *= throttleScale;
+        if (turn == 0f && thruster.maxTorque > 0f && Math.abs(body.getAngularVelocity()) > ASSIST_SPIN) {
+            control.assistTurn = Math.min(1f, Math.abs(torque) / thruster.maxTorque);
+        }
 
         if (localX != 0f || localY != 0f) {
             force.set(localX, localY).rotateRad(body.getAngle());

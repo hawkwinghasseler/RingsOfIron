@@ -89,6 +89,8 @@ public final class Tactics {
             WeaponDef d = m.def;
             if (d == null || d.pointDefense) continue;
             if (d.mount == WeaponDef.MountType.LAUNCHER) {
+                // An empty launcher is no reason to stand off
+                if (d.magazine > 0 && m.ammo == 0) continue;
                 a.launchers = true;
             } else {
                 a.guns = true;

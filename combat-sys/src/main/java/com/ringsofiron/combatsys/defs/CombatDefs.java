@@ -228,7 +228,8 @@ public class CombatDefs {
         launcher.id = "harpoon_launcher";
         launcher.mount = WeaponDef.MountType.LAUNCHER;
         launcher.firingArcDeg = 360f;
-        launcher.cooldown = 8f;
+        launcher.cooldown = 1f;
+        launcher.magazine = 4;
         launcher.missile = harpoon.id;
         launcher.maxRange = 15000f;
         launcher.name = "Harpoon Launcher";
