@@ -26,7 +26,7 @@ import com.ringsofiron.combatsys.shields.ShieldPerimeter;
  * drifting in lazy orbits round the {@link ShieldPerimeter}, sparse at rest, that stream into the
  * regions the emitters gather and glow there as they pack. A hit flashes, blasts the flecks it
  * plowed through along the shot, throws the lost ones clear to fade, and lets the rest curve back
- * in; an emitter that stops holding lets its share drift loose. Each emitter's projector glows on
+ * in. A faint bubble traces the curve, brighter where regions pack it; an emitter that stops holding lets its share drift loose. Each emitter's projector glows on
  * the hull, toward orange as it heats.
  *
  * <p>Each frame: {@link #begin}, {@link #collect} every craft in view, {@link #end}; then
@@ -41,10 +41,14 @@ public final class ShieldParticles implements Disposable {
     /** Bare flecks: dark gunmetal, lit by the light map. */
     static final Color FLECK = new Color(0.62f, 0.65f, 0.7f, 1f);
     /** Kilograms of the cloud each fleck stands for, and the fewest and most a ship draws. */
-    static final float KG_PER_FLECK = 1.5f;
-    static final int MIN_FLECKS = 120, MAX_FLECKS = 1_200;
+    static final float KG_PER_FLECK = 0.4f;
+    static final int MIN_FLECKS = 400, MAX_FLECKS = 5_000;
     /** A fleck's size, meters, and the fewest pixels it is drawn across. */
-    static final float FLECK_SIZE = 0.22f, MIN_PIXELS = 1.6f;
+    static final float FLECK_SIZE = 0.08f, MIN_PIXELS = 1f;
+    /** The bubble's glow at rest, and how much a packed region adds to it. */
+    static final float BUBBLE_REST = 0.05f, BUBBLE_PACKED = 0.22f;
+    /** Areal density at which a region lights the bubble fully, kg/m^2. */
+    static final float BUBBLE_FULL = 25f;
     /** How far a fleck's lazy orbit swings it in and out of the curve, meters. */
     static final float ORBIT = 0.9f;
     /** Pull toward where a fleck should be (per second squared per meter), its damping, and its top speed, m/s. */
@@ -376,7 +380,7 @@ public final class ShieldParticles implements Disposable {
     private final ObjectMap<Entity, Body> drawn = new ObjectMap<>();
     private final ObjectSet<Entity> seen = new ObjectSet<>();
     private final Vector2 at = new Vector2();
-    private TextureRegion dot, glow;
+    private TextureRegion dot, glow, band;
     private float delta;
 
     /** How bright a hit shows for {@code joules} the cloud took, 0.2 to 1, by its order. */
@@ -464,10 +468,11 @@ public final class ShieldParticles implements Disposable {
             ShieldCloudComponent cloud = e.key.getComponent(ShieldCloudComponent.class);
             if (sw == null || cloud == null) continue;
             Body body = e.value;
+            bubble(batch, body, cloud);
             for (int i = 0; i < sw.n; i++) {
                 byte st = sw.state[i];
                 if (st == DEAD) continue;
-                float charge = 0.06f;
+                float charge = 0.025f;
                 if (st == PACKED && sw.region[i] != null) {
                     ShieldCloudComponent.Region r = sw.region[i];
                     charge = 0.15f + 0.75f * Math.min(1f, r.peak() / r.spec.maxDensity);
@@ -478,7 +483,7 @@ public final class ShieldParticles implements Disposable {
                 }
                 float a = Math.min(1f, charge + sw.flash[i]);
                 if (a < 0.02f) continue;
-                float s = size * (2.2f + 1.5f * sw.flash[i]);
+                float s = size * (1.8f + 2f * sw.flash[i]);
                 Vector2 w = CombatPhysics.toWorld(body, sw.x[i], sw.y[i], at);
                 // White-hot as it is struck, cooling to cyan
                 float hot = sw.flash[i];
@@ -517,6 +522,34 @@ public final class ShieldParticles implements Disposable {
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
     }
 
+    /**
+     * The faint bubble on {@code cloud}'s curve: a soft band through the cloud's depth, as bright as
+     * the share of the cloud held, and brighter where regions pack it.
+     */
+    private void bubble(Batch batch, Body body, ShieldCloudComponent cloud) {
+        ShieldPerimeter per = cloud.perimeter;
+        float held = cloud.stock > 0f && cloud.capacity > 0f ? cloud.holding * Math.min(1f, (cloud.stock - cloud.scattered) / cloud.capacity) : 0f;
+        if (held <= 0.01f) return;
+        float base = cloud.baseLineDensity() / ShieldCloudComponent.DEPTH;
+        float deg = body.getAngle() * MathUtils.radiansToDegrees;
+        for (int k = 0; k < ShieldPerimeter.SAMPLES; k++) {
+            int k2 = (k + 1) % ShieldPerimeter.SAMPLES;
+            float x0 = per.x[k], y0 = per.y[k], x1 = per.x[k2], y1 = per.y[k2];
+            float len = Vector2.dst(x0, y0, x1, y1);
+            if (len < 1e-4f) continue;
+            float mid = per.along[k] + 0.5f * len;
+            float packed = Math.max(0f, cloud.densityAt(mid) - base) / BUBBLE_FULL;
+            float a = held * (BUBBLE_REST + BUBBLE_PACKED * Math.min(1f, packed));
+            Vector2 w = CombatPhysics.toWorld(body, 0.5f * (x0 + x1), 0.5f * (y0 + y1), at);
+            float along = MathUtils.atan2(y1 - y0, x1 - x0) * MathUtils.radiansToDegrees + deg;
+            float thick = ShieldCloudComponent.DEPTH;
+            batch.setColor(SHIELD.r, SHIELD.g, SHIELD.b, a);
+            // A little longer than the segment, so neighbours meet without a seam
+            float l = len + 0.05f;
+            batch.draw(band, w.x - 0.5f * l, w.y - 0.5f * thick, 0.5f * l, 0.5f * thick, l, thick, 1f, 1f, along);
+        }
+    }
+
     /** True if any craft collected this frame has flecks to draw. */
     public boolean any() {
         return drawn.size > 0;
@@ -525,7 +558,8 @@ public final class ShieldParticles implements Disposable {
     private void textures() {
         if (dot != null) return;
         dot = new TextureRegion(dotTexture(16));
-        glow = new TextureRegion(ShieldParticles.glowTexture(64));
+        glow = new TextureRegion(glowTexture(64));
+        band = new TextureRegion(bandTexture(32));
     }
 
     /** A hard-edged round fleck, white, for tinting. */
@@ -554,6 +588,23 @@ public final class ShieldParticles implements Disposable {
         return texture(pm);
     }
 
+    /** A band, soft across and even along, white, for tinting and stretching along a curve. */
+    static Texture bandTexture(int n) {
+        Pixmap pm = new Pixmap(4, n, Pixmap.Format.RGBA8888);
+        for (int y = 0; y < n; y++) {
+            float v = (y + 0.5f) / n * 2f - 1f;
+            float a = bandAlpha(v);
+            for (int x = 0; x < 4; x++) pm.drawPixel(x, y, Color.rgba8888(1f, 1f, 1f, a));
+        }
+        return texture(pm);
+    }
+
+    /** The band's alpha {@code v} across it (-1 to 1): a bright thin line at the middle over a soft glow. */
+    static float bandAlpha(float v) {
+        float line = v / 0.12f, soft = v / 0.5f;
+        return Math.min(1f, 0.8f * (float) Math.exp(-line * line) + 0.35f * (float) Math.exp(-soft * soft));
+    }
+
     private static Texture texture(Pixmap pm) {
         Texture t = new Texture(pm);
         t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
@@ -570,6 +621,7 @@ public final class ShieldParticles implements Disposable {
     public void dispose() {
         if (dot != null) dot.getTexture().dispose();
         if (glow != null) glow.getTexture().dispose();
-        dot = glow = null;
+        if (band != null) band.getTexture().dispose();
+        dot = glow = band = null;
     }
 }

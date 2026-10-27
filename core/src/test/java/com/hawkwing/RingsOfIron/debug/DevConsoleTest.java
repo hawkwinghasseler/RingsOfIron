@@ -179,6 +179,51 @@ class DevConsoleTest {
     }
 
     @Test
+    void shootTakesAWholeShipARangeAndABearing() {
+        dev.console.submit("spawnShip 'gunship_heavy'");
+        Entity gunship = dev.picker.selected().ship;
+        dev.console.submit("shoot 'autocannon_mk1', selected, 2000, 90");
+        assertTrue(last().contains("fired"), last());
+        com.ringsofiron.combatsys.components.ProjectileComponent round = null;
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(
+                com.badlogic.ashley.core.Family.all(com.ringsofiron.combatsys.components.ProjectileComponent.class).get())) {
+            round = e.getComponent(com.ringsofiron.combatsys.components.ProjectileComponent.class);
+        }
+        assertNotNull(round);
+        com.badlogic.gdx.physics.box2d.Body body = world.docking.bodyOf(gunship);
+        com.badlogic.gdx.math.Vector2 at = com.ringsofiron.physicsexterior.PhysicsManager.getPosition(body, new com.badlogic.gdx.math.Vector2());
+        float off = round.pos.dst(at);
+        assertEquals(2000f, off, 30f, "2 km out");
+        // From port: 90 degrees counterclockwise of the bow
+        float a = body.getAngle() + com.badlogic.gdx.math.MathUtils.HALF_PI;
+        float dot = ((round.pos.x - at.x) * com.badlogic.gdx.math.MathUtils.cos(a) + (round.pos.y - at.y) * com.badlogic.gdx.math.MathUtils.sin(a)) / off;
+        assertTrue(dot > 0.99f, "off the port side: " + dot);
+        dev.console.submit("shoot 'autocannon_mk1', player");
+        assertTrue(last().contains("fired"), last());
+    }
+
+    private int aboard(Entity ship) {
+        int n = 0;
+        for (Entity e : world.crew.crewEntities()) {
+            if (world.crew.position(e) != null && world.crew.position(e).ship == ship) n++;
+        }
+        return n;
+    }
+
+    @Test
+    void flyShipPutsThePlayerInANewHullWithTheirCrew() {
+        int crew = aboard(world.getPlayer());
+        dev.console.submit("flyShip 'gunship_heavy'");
+        assertTrue(last().contains("gunship_heavy"), last());
+        assertSame(game.player, world.getPlayer());
+        assertEquals("gunship_heavy", world.getPlayer().getComponent(com.ringsofiron.moddingdata.components.DefRefComponent.class).defId);
+        for (int i = 0; i < 10; i++) world.update(1f / 60f);
+        assertTrue(com.ringsofiron.combatsys.damage.Shields.up(world.getPlayer()), "its shield comes up");
+        assertEquals(crew, aboard(world.getPlayer()), "everyone came across");
+        for (int i = 0; i < 60; i++) world.update(1f / 60f);
+    }
+
+    @Test
     void boardersAreHostileAndRemoveTakesThemAway() {
         dev.picker.select(DebugTarget.craft(game.player, false));
         dev.console.submit("boarder()");

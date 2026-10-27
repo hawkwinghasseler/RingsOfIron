@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Array;
@@ -222,17 +223,58 @@ public final class WorldDebug implements PhysicsManager.StepListener {
      * from the ship's center through the tile). See {@link #fire(Entity, String, int, int, float, float)}.
      */
     public String fire(Entity ship, String weaponId, int x, int y) {
-        return fire(ship, weaponId, x, y, STANDOFF);
+        return fire(ship, weaponId, x, y, Float.NaN);
     }
 
-    /** As {@link #fire(Entity, String, int, int)}, a gun's round put in flight {@code standoff} meters out. */
+    /** As {@link #fire(Entity, String, int, int)}, put in flight {@code standoff} meters out (NaN: the usual distance). */
     public String fire(Entity ship, String weaponId, int x, int y, float standoff) {
+        return fireFrom(ship, weaponId, x, y, Float.NaN, standoff);
+    }
+
+    /**
+     * Fires {@code weaponId} once at tile (x, y) of {@code ship} from {@code bearing} degrees off its
+     * bow, counterclockwise (0 from dead ahead, 90 from port, 180 from astern), put in flight
+     * {@code range} meters out. NaN bearing: straight outboard of the tile (out from the ship's center
+     * through it); NaN range: {@link #STANDOFF} for a round, {@link #MISSILE_STANDOFF} for a missile.
+     */
+    public String fireFrom(Entity ship, String weaponId, int x, int y, float bearing, float range) {
+        Body body = body(ship);
+        ShipGridComponent grid = grid(ship);
+        if (body == null || grid == null || !grid.inBounds(x, y)) return "No ship there";
         Vector2 at = tileWorld(ship, x, y, new Vector2());
-        Vector2 center = PhysicsManager.getPosition(body(ship), new Vector2());
-        Vector2 out = at.cpy().sub(center);
-        if (out.isZero(1e-3f)) out.set(1f, 0f);
+        Vector2 out;
+        if (Float.isNaN(bearing)) {
+            out = at.cpy().sub(PhysicsManager.getPosition(body, new Vector2()));
+            if (out.isZero(1e-3f)) out.set(1f, 0f);
+        } else {
+            float a = body.getAngle() + bearing * MathUtils.degreesToRadians;
+            out = new Vector2(MathUtils.cos(a), MathUtils.sin(a));
+        }
         out.nor();
-        return fire(ship, weaponId, x, y, at.x + out.x, at.y + out.y, standoff);
+        return fire(ship, weaponId, x, y, at.x + out.x, at.y + out.y, range);
+    }
+
+    /** The tile of {@code ship}'s hull nearest its center of mass: where a shot at the whole ship aims. */
+    public int[] centerTile(Entity ship) {
+        Body body = body(ship);
+        ShipGridComponent grid = grid(ship);
+        if (body == null || grid == null) return null;
+        Vector2 c = new Vector2(body.getLocalCenter()).scl(PhysicsManager.METERS_PER_UNIT);
+        int[] best = null;
+        float bestD = Float.MAX_VALUE;
+        for (int ty = 0; ty < grid.height; ty++) {
+            for (int tx = 0; tx < grid.width; tx++) {
+                Tile t = grid.getTile(tx, ty);
+                if (t == null || t.isVoid()) continue;
+                Vector2 l = grid.tileToLocal(tx, ty);
+                float d = l.dst2(c);
+                if (d < bestD) {
+                    bestD = d;
+                    best = new int[]{tx, ty};
+                }
+            }
+        }
+        return best;
     }
 
     /**
@@ -242,10 +284,10 @@ public final class WorldDebug implements PhysicsManager.StepListener {
      * out at the ship; a beam burns for its pulse at its power. Returns what happened, or why not.
      */
     public String fire(Entity ship, String weaponId, int x, int y, float fromX, float fromY) {
-        return fire(ship, weaponId, x, y, fromX, fromY, STANDOFF);
+        return fire(ship, weaponId, x, y, fromX, fromY, Float.NaN);
     }
 
-    /** As {@link #fire(Entity, String, int, int, float, float)}, a gun's round put in flight {@code standoff} meters out. */
+    /** As {@link #fire(Entity, String, int, int, float, float)}, put in flight {@code standoff} meters out (NaN: the usual distance). */
     public String fire(Entity ship, String weaponId, int x, int y, float fromX, float fromY, float standoff) {
         WeaponDef weapon = world.combatDefs.weapons.get(weaponId);
         if (weapon == null) return "No weapon " + weaponId;
@@ -264,14 +306,16 @@ public final class WorldDebug implements PhysicsManager.StepListener {
         if (weapon.missile != null) {
             MissileDef missile = world.combatDefs.missiles.get(weapon.missile);
             if (missile == null) return "No missile " + weapon.missile;
-            float sx = at.x - dir.x * MISSILE_STANDOFF, sy = at.y - dir.y * MISSILE_STANDOFF;
+            float out = Float.isNaN(standoff) ? MISSILE_STANDOFF : standoff;
+            float sx = at.x - dir.x * out, sy = at.y - dir.y * out;
             world.missiles.launch(missile, null, null, ship, sx, sy,
                     shipVel.x + dir.x * missile.ejectSpeed, shipVel.y + dir.y * missile.ejectSpeed, dir.angleRad());
             return missile.id + " launched";
         }
         ProjectileDef round = weapon.projectile == null ? null : world.combatDefs.projectiles.get(weapon.projectile);
         if (round == null) return "No round for " + weaponId;
-        float sx = at.x - dir.x * standoff, sy = at.y - dir.y * standoff;
+        float out = Float.isNaN(standoff) ? STANDOFF : standoff;
+        float sx = at.x - dir.x * out, sy = at.y - dir.y * out;
         Entity e = world.ballistics.spawn(round, round.mass, sx, sy,
                 shipVel.x + dir.x * round.muzzleSpeed, shipVel.y + dir.y * round.muzzleSpeed, null);
         e.getComponent(ProjectileComponent.class).aimedAt = ship;

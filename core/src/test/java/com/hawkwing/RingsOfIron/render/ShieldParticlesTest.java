@@ -119,6 +119,13 @@ class ShieldParticlesTest {
     }
 
     @Test
+    void theBubbleIsAThinLineOverASoftGlow() {
+        assertTrue(ShieldParticles.bandAlpha(0f) > 0.9f, "bright at its middle");
+        assertTrue(ShieldParticles.bandAlpha(0.3f) < 0.3f, "faint off it");
+        assertTrue(ShieldParticles.bandAlpha(1f) < 0.01f, "nothing at its edge");
+    }
+
+    @Test
     void bigHitsShowBrighterThanSmallOnes() {
         assertTrue(ShieldParticles.strength(1.8e5f) < 0.5f);
         assertEquals(1f, ShieldParticles.strength(1.8e8f), 1e-6f);

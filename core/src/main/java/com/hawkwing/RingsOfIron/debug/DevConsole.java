@@ -400,11 +400,29 @@ public final class DevConsole {
         });
 
         String hits = "Hits";
-        console.define("shoot", "shoot([weapon], [target])", "fires a weapon once at the tile (or the crew member's) from"
-                + " straight outboard: a real round, missile or beam. weapons() lists them", hits, args -> {
-            String weapon = args.length > 0 && args[0] instanceof CharSequence ? String.valueOf(args[0]) : null;
-            int[] t = tileTarget(args, weapon != null ? 1 : 0);
-            return actions.shoot(tileShip, t[0], t[1], weapon);
+        console.define("shoot", "shoot([weapon], [target], [range], [bearing])", "fires a weapon once: a real round, missile"
+                + " or beam. The target is a tile, a crew member's tile, or a whole ship (aimed at its middle). range: meters out"
+                + " it starts (60 for a round, 600 for a missile). bearing: degrees off the target ship's bow, counterclockwise"
+                + " (0 ahead, 90 port, 180 astern); a tile is shot from straight outboard, a ship from your ship's side."
+                + " shoot 'autocannon_mk1', player, 2000, 90. weapons() lists them", hits, args -> {
+            int i = 0;
+            String weapon = args.length > i && args[i] instanceof CharSequence ? String.valueOf(args[i++]) : null;
+            Object target = args.length > i && !(args[i] instanceof Number) ? args[i++] : null;
+            float range = args.length > i && args[i] instanceof Number ? ((Number) args[i++]).floatValue() : Float.NaN;
+            float bearing = args.length > i && args[i] instanceof Number ? ((Number) args[i++]).floatValue() : Float.NaN;
+            DebugTarget t = target(target == null ? new Object[0] : new Object[]{target}, 0);
+            int[] tile;
+            Entity ship;
+            if (t.isTile() || t.isCrew()) {
+                tile = tileTarget(new Object[]{t}, 0);
+                ship = tileShip;
+            } else {
+                ship = t.ship != null ? t.ship : t.entity;
+                tile = ship == null ? null : actions.tools.centerTile(ship);
+                if (tile == null) throw new ConsoleException("Select a ship, tile or crew member first (" + t + " is selected)");
+                if (Float.isNaN(bearing)) bearing = bearingFromPlayer(ship);
+            }
+            return actions.shoot(ship, tile[0], tile[1], weapon, bearing, range);
         });
         console.define("blast", "blast([warhead], [target])", "sets off a warhead inside the hull at the tile. warheads() lists them", hits, args -> {
             String warhead = args.length > 0 && args[0] instanceof CharSequence ? String.valueOf(args[0]) : null;
@@ -434,12 +452,28 @@ public final class DevConsole {
         String ships = "Ships";
         console.define("ships", "ships()", "the ship ids spawnShip() takes", ships, args ->
                 world.getContent() == null ? List.of() : world.getContent().defs.ids("ship"));
+        console.define("flyShip", "flyShip(id)", "swaps the player's ship for a new one from ships.toml where it is, free,"
+                + " crew, cargo and credits aboard (flyShip 'gunship_heavy')", ships, args -> {
+            if (args.length == 0) throw new ConsoleException("flyShip(id): which ship? ships() lists them");
+            return world.shipyard.swap(String.valueOf(args[0]));
+        });
         console.define("spawnShip", "spawnShip(id)", "a new ship from ships.toml ahead of the player, uncrewed; selects it", ships, args -> {
             if (args.length == 0) throw new ConsoleException("spawnShip(id): which ship? ships() lists them");
             Entity ship = actions.spawnShip(String.valueOf(args[0]), world.getPlayer());
             picker.select(DebugTarget.craft(ship, false));
             return picker.selected();
         });
+    }
+
+    /** Degrees off {@code ship}'s bow, counterclockwise, that the player's ship lies at; dead ahead if it is the player's. */
+    private float bearingFromPlayer(Entity ship) {
+        Entity player = world.getPlayer();
+        com.badlogic.gdx.physics.box2d.Body body = world.docking.bodyOf(ship);
+        com.badlogic.gdx.physics.box2d.Body from = player == null || player == ship ? null : world.docking.bodyOf(player);
+        if (body == null || from == null) return 0f;
+        float dx = from.getPosition().x - body.getPosition().x, dy = from.getPosition().y - body.getPosition().y;
+        if (dx * dx + dy * dy < 1e-6f) return 0f;
+        return (com.badlogic.gdx.math.MathUtils.atan2(dy, dx) - body.getAngle()) * com.badlogic.gdx.math.MathUtils.radiansToDegrees;
     }
 
     /** Each overlay, whether it is shown, and what it draws. */
