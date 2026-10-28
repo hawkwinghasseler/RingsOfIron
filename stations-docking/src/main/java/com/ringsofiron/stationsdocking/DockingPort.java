@@ -105,6 +105,14 @@ public class DockingPort {
     public transient float lockAt;
     /** Seconds a captured collar has drawn in no further, and the extension it was stuck at, meters. */
     public transient float stalled, stalledAt;
+    /** Sim second it was armed by its own crew; NaN when not, or since a load. */
+    public transient double armedAt = Double.NaN;
+    /**
+     * The other craft's active port this one drew its collar in for ({@link #holdCollar}), when
+     * both reached for each other; null otherwise. Lets the collar out again once that port is
+     * no longer armed.
+     */
+    public transient DockingPort yieldedTo;
 
     public DockingPort() {
     }

@@ -43,7 +43,34 @@ class CorvettePairDockingTest {
 
     @Test
     void theirTailFinsHoldTheCollarATileOut() {
-        // Well clear of Highport, a second corvette 1.6 m off the player's port, port to port
+        Entity other = parkAnother();
+        DockingPort pp = port(game.player), op = port(other);
+        assertTrue(armAndWeld(), "latched and welded");
+        // Drawn all the way in, each one's tail fins would rest on the other's hull
+        assertEquals(1f, pp.lockedExtension, 1e-4f, "locked a tile out");
+        assertEquals(0f, op.lockedExtension, 1e-4f);
+        Body ship = world.docking.bodyOf(game.player), ob = world.docking.bodyOf(other);
+        float turned = (ob.getAngle() - ship.getAngle()) * MathUtils.radDeg;
+        assertEquals(0f, ((turned - 180f) % 360f + 540f) % 360f - 180f, 0.5f, "square, end to end");
+    }
+
+    @Test
+    void withBothCollarsOutTheOneArmedFirstReachesAndTheOtherWaits() {
+        // Both reaching for each other used to leave the two heads pushing on each other for good
+        Entity other = parkAnother();
+        DockingPort pp = port(game.player), op = port(other);
+        assertNull(world.docking.arm(other, 0));
+        for (int i = 0; i < 30; i++) world.update(FRAME);
+        assertTrue(armAndWeld(), "latched and welded");
+        assertEquals(1f, op.lockedExtension, 1e-4f, "the other craft's collar, armed first, reached and locked out");
+        assertEquals(0f, pp.lockedExtension, 1e-4f, "the player's drew in and waited");
+        assertTrue(world.docking.dockedWithClearance(game.player), "both armed: with leave");
+        world.docking.undock(game.player);
+        assertFalse(op.holdCollar || pp.holdCollar, "undocked, neither is held in");
+    }
+
+    /** A second starter corvette 1.6 m off the player's port, port to port, well clear of Highport. */
+    private Entity parkAnother() {
         world.docking.undock(game.player);
         for (int i = 0; i < 300; i++) world.update(FRAME);
         Body ship = world.docking.bodyOf(game.player);
@@ -63,21 +90,19 @@ class CorvettePairDockingTest {
         Vector2 v = PhysicsManager.getVelocity(ship, new Vector2());
         PhysicsManager.setVelocity(ob, v.x, v.y);
         ob.setAngularVelocity(0f);
+        return other;
+    }
 
+    /** Arms the player's port as G does and runs until the pair is welded (30 s at most). */
+    private boolean armAndWeld() {
         PlayerDocking docking = new PlayerDocking(world, () -> game.player, msg -> { });
         try {
             docking.toggleArm();
-            boolean rigid = false;
-            for (int i = 0; i < 60 * 30 && !rigid; i++) {
+            for (int i = 0; i < 60 * 30; i++) {
                 world.update(FRAME);
-                rigid = world.docking.isRigid(game.player);
+                if (world.docking.isRigid(game.player)) return true;
             }
-            assertTrue(rigid, "latched and welded");
-            // Drawn all the way in, each one's tail fins would rest on the other's hull
-            assertEquals(1f, pp.lockedExtension, 1e-4f, "locked a tile out");
-            assertEquals(0f, op.lockedExtension, 1e-4f);
-            float turned = (ob.getAngle() - ship.getAngle()) * MathUtils.radDeg;
-            assertEquals(0f, ((turned - 180f) % 360f + 540f) % 360f - 180f, 0.5f, "square, end to end");
+            return false;
         } finally {
             docking.dispose();
         }

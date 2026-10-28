@@ -246,6 +246,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         port.armed = true;
         port.armedFor = null;
         port.clearanceUntil = Double.NaN;
+        port.armedAt = physics.getSimSeconds();
         return null;
     }
 
@@ -589,10 +590,16 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         p.armedFor = null;
         p.clearanceUntil = Double.NaN;
         p.holdCollar = false;
+        p.yieldedTo = null;
     }
 
     /** Puts an active port's collar head out while armed, draws it in when not, contracts it once it has hold. */
     private void updateCollar(Entity e, int index, DockingPort p, Body body) {
+        // Drawn in for another craft's collar that has since stopped reaching: out again
+        if (p.yieldedTo != null && (!p.yieldedTo.armed || !p.isFree())) {
+            if (p.isFree()) p.holdCollar = false;
+            p.yieldedTo = null;
+        }
         boolean wantOut = p.active && p.armed && p.intact() && !p.holdCollar && p.isFree();
         if (wantOut && p.head == null) createHead(e, p, body);
         if (p.head == null) {
@@ -848,8 +855,18 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             for (int k = 0; k < oPorts.ports.length; k++) {
                 DockingPort q = oPorts.ports[k];
                 if (q.size != p.size || !q.isFree() || !q.intact()) continue;
-                // An extended collar does the reaching; this port waits for it.
-                if (q.head != null) continue;
+                // An extended collar does the reaching; this port waits for it. Two collars
+                // reaching for each other would only push each other off: the one armed first
+                // reaches, and the other draws in and waits for it as a passive port would.
+                if (q.head != null) {
+                    if (p.head != null && q.yieldedTo == null && reachesFirst(e, p, o, q)
+                            && facing(p.head, p.normalX * p.collarDepth * 0.5f, p.normalY * p.collarDepth * 0.5f, p, ob, q,
+                            t.headRange + q.tuning().maxExtension)) {
+                        q.holdCollar = true;
+                        q.yieldedTo = p;
+                    }
+                    continue;
+                }
                 if (q.armedFor != null && !q.armedFor.equals(ownUuid) && q.armed) continue;
                 if (p.head != null) {
                     // The head's frame is turned like its craft's, with its middle at the origin.
@@ -874,6 +891,27 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
      * across the face, each pulling its point towards the mirrored point on the other face, so the
      * pull also turns the ports square. Returns true if in range and facing.
      */
+    /** Of two armed active ports reaching for each other, true if {@code p} (of {@code a}) keeps its collar out. */
+    private boolean reachesFirst(Entity a, DockingPort p, Entity b, DockingPort q) {
+        boolean pt = !Double.isNaN(p.armedAt), qt = !Double.isNaN(q.armedAt);
+        if (pt != qt) return pt;
+        if (pt && p.armedAt != q.armedAt) return p.armedAt < q.armedAt;
+        // Armed together, or both before a load: the same craft wins every time
+        return uuidOf(a).compareTo(uuidOf(b)) < 0;
+    }
+
+    /** True if the port faces at {@code a}'s point and {@code b}'s port {@code q} face each other within {@code range} meters. */
+    private boolean facing(Body a, float ax, float ay, DockingPort p, Body b, DockingPort q, float range) {
+        Vector2 fa = worldPoint(a, ax, ay, v0);
+        Vector2 na = worldVector(a, p.normalX, p.normalY, v1);
+        Vector2 fb = worldPoint(b, q.faceX(), q.faceY(), v2);
+        Vector2 nb = worldVector(b, q.normalX, q.normalY, v3);
+        if (na.dot(nb) > -MathUtils.cos(DockingTuning.MAGNET_CONE)) return false;
+        float rx = fb.x - fa.x, ry = fb.y - fa.y;
+        if (rx * rx + ry * ry > range * range) return false;
+        return rx * na.x + ry * na.y >= -0.5f && -(rx * nb.x + ry * nb.y) >= -0.5f;
+    }
+
     private boolean magnet(Body a, float ax, float ay, DockingPort p, Body b, DockingPort q, float range, float force) {
         Vector2 fa = worldPoint(a, ax, ay, v0);
         Vector2 na = worldVector(a, p.normalX, p.normalY, v1);
