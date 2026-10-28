@@ -100,7 +100,7 @@ Each round's pull request names the save that shows its change, under "Try it in
 ./gradlew :core:playtestBenchmark   # the balance benchmarks, for a human tester (never part of the build)
 ```
 
-CI runs only `./gradlew build test` and the smoke tests. A test there loads or builds the game state it needs and checks one thing in a few seconds; it never plays a long stretch of the sandbox to get somewhere, which is what human playtesting is for. A bug found in play gets a test of that one moment.
+CI runs only `./gradlew build test` and the smoke tests. A test there loads or builds the game state it needs and checks one thing in a few seconds; it never plays a long stretch of the sandbox to get somewhere, which is what human playtesting is for. A bug found in play gets a test of that one moment. On CI each test has 30 seconds (JUnit's default timeout, set when `CI` is in the environment); one that needs longer belongs with the slow tests.
 
 Tests that play long stretches (a career played through, a replay played twice, a trip flown at every warp rate) are tagged `@Tag("slow")` and are tools for a person to run by hand, like the scripted career seeds (`-PcareerSeeds`): neither `build`, `test` nor CI runs them.
 
