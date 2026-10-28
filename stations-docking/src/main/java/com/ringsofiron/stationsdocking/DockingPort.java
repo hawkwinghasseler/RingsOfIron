@@ -54,6 +54,11 @@ public class DockingPort {
     public boolean holdCollar;
     /** 1 for a whole collar, 0 once torn off. A torn port cannot arm or latch until repaired. */
     public float collarIntegrity = 1f;
+    /**
+     * Jammed by a hit: its latches won't close (and an active collar won't run out), so it cannot arm
+     * or latch until its crew free it from outside on EVA, or a yard repairs it.
+     */
+    public boolean jammed;
 
     public State state = State.IDLE;
     /** The craft and port this one is latched to, while not {@link State#IDLE}. */
@@ -104,6 +109,11 @@ public class DockingPort {
 
     public boolean intact() {
         return collarIntegrity > 0f;
+    }
+
+    /** True if it could arm and latch: its collar whole and not jammed. */
+    public boolean usable() {
+        return intact() && !jammed;
     }
 
     public boolean isFree() {

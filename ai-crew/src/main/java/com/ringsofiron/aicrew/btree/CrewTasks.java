@@ -1244,7 +1244,7 @@ public final class CrewTasks {
             case EXTINGUISH: return "fighting fire at " + t.x + "," + t.y;
             case SEAL_BREACH: return "sealing breach at " + t.x + "," + t.y;
             case PATCH_LEAK: return "patching a leak at " + t.x + "," + t.y;
-            case REPAIR_RCS: return "repairing an RCS thruster on EVA";
+            case REPAIR_RCS: case PATCH_HULL: case FREE_COLLAR: case MOUNT_PART: case RETRIEVE: return EvaTasks.doing(t);
             case REPAIR: {
                 SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                 return "repairing " + (s == null ? "system" : s.type.name().toLowerCase());

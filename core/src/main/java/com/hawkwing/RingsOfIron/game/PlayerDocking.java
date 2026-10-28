@@ -179,7 +179,7 @@ public class PlayerDocking {
 
     private static String describe(DockingPort p) {
         String state = p.state == DockingPort.State.IDLE ? "free" : p.state == DockingPort.State.CAPTURED ? "captured" : "docked";
-        return p.size + (p.active ? " active" : " passive") + ", " + (p.intact() ? state : "collar torn off");
+        return p.size + (p.active ? " active" : " passive") + ", " + (!p.intact() ? "collar torn off" : p.jammed ? "collar jammed" : state);
     }
 
     /** What the player calls a station or ship. */

@@ -83,6 +83,18 @@ public class CrewMemberComponent implements Component {
     public Suit.Kind suitKind = Suit.Kind.IVA;
     /** Delta-v left in the jetpack of the suit they have on, m/s: an EVA suit's. */
     public float suitJet;
+    /** The player's order on going out on EVA ({@link EvaOrders}). */
+    public EvaOrder evaOrder = EvaOrder.NONE;
+
+    /** The player's order on going out on EVA, for one crew member. */
+    public enum EvaOrder {
+        /** None: out for work outside as it comes, unless the ship holds everyone in ({@link ShipTaskBoardComponent#evaHeld}). */
+        NONE,
+        /** Sent out: for the work outside and nothing else, at battle stations or held in or not; over once they are back in. */
+        OUT,
+        /** Kept in: called back in if out, and out for nothing until sent out or let out again. */
+        IN
+    }
     /**
      * Seconds spent so far taking their suit off at work ({@code CrewTasks.DoWork}), so a save
      * part way through doesn't start it again (round 9).

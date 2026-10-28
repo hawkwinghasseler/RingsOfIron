@@ -23,9 +23,9 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
  *                                           Sequence( IsTaskKind(YARD), SuitUp, WorkOnTile, CompleteTask ),
  *                                           Sequence( IsTaskKind(FORCE_DOOR), ForceDoor, CompleteTask ),
  *                                           Sequence( IsTaskKind(BOARD), Board, CompleteTask ),
- *                                           Sequence( IsTaskKind(REPAIR_RCS), SuitUpForEva, GoOutside ),
+ *                                           Sequence( IsEvaJob, SuitUpForEva, GoOutside ),
  *                                           Sequence( IsTaskKind(not RESCUE, CARRY, YARD, FORCE_DOOR, BOARD
- *                                                     or REPAIR_RCS), SuitUp,
+ *                                                     or work outside), SuitUp,
  *                                                     MoveToWorkSpot, DoWork, CompleteTask ) ) )
  *                     Idle (heads home first when aboard another craft; steps out of a docked port's
  *                           opening; takes a suit off once calm)
@@ -58,10 +58,8 @@ public final class CrewBehaviorTrees {
                         new CrewTasks.CompleteTask()),
                 new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.BOARD), new CrewTasks.Board(),
                         new CrewTasks.CompleteTask()),
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.REPAIR_RCS), new EvaTasks.SuitUpForEva(),
-                        new EvaTasks.GoOutside()),
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.RESCUE, true),
-                        new CrewTasks.IsTaskKind(CrewTask.Kind.REPAIR_RCS, true),
+                new Sequence<>(new EvaTasks.IsEvaJob(), new EvaTasks.SuitUpForEva(), new EvaTasks.GoOutside()),
+                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.RESCUE, true), new EvaTasks.IsEvaJob(true),
                         new CrewTasks.IsTaskKind(CrewTask.Kind.CARRY, true),
                         new CrewTasks.IsTaskKind(CrewTask.Kind.YARD, true),
                         new CrewTasks.IsTaskKind(CrewTask.Kind.FORCE_DOOR, true),

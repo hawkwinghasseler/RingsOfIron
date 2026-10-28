@@ -245,6 +245,8 @@ public class GameWorld implements Disposable {
     public final BerthVenting berthVenting;
     /** The player's crew out on EVA: warp waits for them, and notices say what befalls them. */
     public final Spacewalks spacewalks;
+    /** Docking collars jammed by hits, and the crew's work outside to free them. */
+    public final JammedCollars jammedCollars;
     /** The player's figure suiting up at battle stations and in thin air. */
     public final CaptainSafety captain;
     /** Warnings before the player's people run out of air. */
@@ -607,6 +609,7 @@ public class GameWorld implements Disposable {
         medical = new CrewMedical(this);
         berthVenting = new BerthVenting(this);
         spacewalks = new Spacewalks(this);
+        jammedCollars = new JammedCollars(this);
         captain = new CaptainSafety(this);
         air = new AirWatch(this);
         infirmary = new StationInfirmary(this);
@@ -736,6 +739,8 @@ public class GameWorld implements Disposable {
         hostiles.afterUpdate();
         pirateBase.afterUpdate();
         derelicts.update();
+        spacewalks.update();
+        jammedCollars.update();
         events.update();
         checkBubbleCrash();
         checkAvatar();

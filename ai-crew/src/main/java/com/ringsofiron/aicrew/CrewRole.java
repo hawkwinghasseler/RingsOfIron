@@ -47,10 +47,13 @@ public enum CrewRole {
         if (kind == CrewTask.Kind.EVACUATE) return 1f;
         // Anyone stops a bleed: as keen as they are to put out a fire, a medic keener
         if (kind == CrewTask.Kind.STABILISE) return this == MEDIC ? 1.5f : Math.max(1f, affinity(CrewTask.Kind.EXTINGUISH));
+        // Anyone fetches a shipmate adrift as they would carry one out of a fire, an engineer, who works outside, keenest
+        if (kind == CrewTask.Kind.RETRIEVE) return this == ENGINEER ? 1.5f : affinity(CrewTask.Kind.RESCUE);
         switch (this) {
             case ENGINEER:
                 switch (kind) {
                     case SEAL_BREACH: case PATCH_LEAK: case REPAIR: case REPAIR_RCS: case RESET_SHORT: case ISOLATE_TANK: return 1.5f;
+                    case PATCH_HULL: case FREE_COLLAR: case MOUNT_PART: return 1.5f;
                     case EXTINGUISH: case FORCE_DOOR: case YARD: return 1.2f;
                     case RESCUE: return 0.8f;
                     case CARRY: case TREAT: return 0.5f;
@@ -82,6 +85,7 @@ public enum CrewRole {
                 switch (kind) {
                     case YARD: return 1.5f;
                     case REPAIR: case REPAIR_RCS: case SEAL_BREACH: case PATCH_LEAK: case RESET_SHORT: case ISOLATE_TANK: return 1.2f;
+                    case PATCH_HULL: case FREE_COLLAR: case MOUNT_PART: return 1.2f;
                     case EXTINGUISH: case RESCUE: return 0.8f;
                     case TREAT: return 0.5f;
                     default: return 0f;
@@ -92,7 +96,7 @@ public enum CrewRole {
                     case CARRY: case BOARD: case TREAT: return 0.5f;
                     case REPAIR: case SEAL_BREACH: case PATCH_LEAK: case RESET_SHORT: case ISOLATE_TANK: return 0.5f;
                     // EVA is engineers' work: a crewman stays at the helm
-                    case REPAIR_RCS: return 0f;
+                    case REPAIR_RCS: case PATCH_HULL: case FREE_COLLAR: case MOUNT_PART: return 0f;
                     default: return 0f;
                 }
         }

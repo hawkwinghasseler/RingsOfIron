@@ -18,6 +18,7 @@ public final class SaveTypes {
 
     public static void register(SerializationService s) {
         s.registerType("crew.CrewMember", com.ringsofiron.aicrew.CrewMemberComponent.class);
+        s.registerType("crew.Eva", com.ringsofiron.aicrew.EvaComponent.class);
         s.registerType("crew.GridPosition", com.ringsofiron.aicrew.GridPositionComponent.class);
         s.registerType("crew.PlayerAvatar", com.ringsofiron.aicrew.PlayerAvatarComponent.class);
         s.registerType("crew.ShipTaskBoard", com.ringsofiron.aicrew.ShipTaskBoardComponent.class);

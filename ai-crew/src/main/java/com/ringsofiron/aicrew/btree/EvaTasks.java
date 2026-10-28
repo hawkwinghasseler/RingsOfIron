@@ -1,14 +1,18 @@
 package com.ringsofiron.aicrew.btree;
 
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.EvaComponent;
 import com.ringsofiron.aicrew.EvaSystem;
+import com.ringsofiron.aicrew.OutsideTask;
+import com.ringsofiron.aicrew.RetrieveTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.interiorgrid.Airlock;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.Furnishing;
+import com.ringsofiron.interiorgrid.HullPlating;
 import com.ringsofiron.interiorgrid.HullSurface;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.RcsThruster;
@@ -20,23 +24,25 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
 import com.ringsofiron.interiorgrid.crew.Suit;
 
 /**
- * Work outside the hull, in a crew member's behavior tree: an RCS block whose hull tile is wrecked,
- * mended on EVA ({@link EvaSystem}).
+ * Work outside the hull, in a crew member's behavior tree: the jobs only done on EVA ({@link
+ * CrewTask.Kind#isEva}) through {@link EvaSystem}. An RCS block whose hull tile is wrecked, framed
+ * back up; a wrecked hull tile, plated over; and whatever work outside the game posts ({@link
+ * OutsideTask}): a jammed docking collar to free, a part to mount.
  *
  * <pre>
- * [OnEva]  Spacewalk                                          first under the root
- * Sequence( IsTaskKind(REPAIR_RCS), SuitUpForEva, GoOutside ) in the task branch
+ * [OnEva]  Spacewalk                                 first under the root
+ * Sequence( IsEvaJob, SuitUpForEva, GoOutside )      in the task branch
  * </pre>
  *
  * A crew member takes the job only with an EVA suit to be had ({@link #suitReady}). They hang up
  * any pressure suit they have on, get into an EVA suit at a locker, and walk to the docking port the
- * block is best reached from ({@link #plan}): one that can cycle (undocked, its door and hatch
- * standing), whose door opens onto the hull, and from which the hull runs round to the block within
- * the tether's reach. Standing in its chamber they go out ({@link EvaSystem#begin}), and from then
- * on {@link Spacewalk} has them, the task still theirs: along the hull to the block, the work there
- * ({@link com.ringsofiron.aicrew.CrewDef#rcsRepairTime} at their suited pace), then on to another
- * wrecked block within reach, or back in. They head back in as soon as battle stations sound, or
- * once their air is down to what the way back takes and {@link #AIR_MARGIN} more.
+ * job is best reached from ({@link #plan}): one that can cycle (undocked, its door and hatch
+ * standing), whose door opens onto the hull, and from which the hull runs round to the ring tile the
+ * job is worked from ({@link #workTile}) within the tether's reach. Standing in its chamber they go
+ * out ({@link EvaSystem#begin}), and from then on {@link Spacewalk} has them, the task still theirs:
+ * along the hull to the job, the work there ({@link #workSeconds} at their suited pace), then on to
+ * another job outside within reach, or back in. They head back in as soon as battle stations sound,
+ * or once their air is down to what the way back takes and {@link #AIR_MARGIN} more.
  */
 public final class EvaTasks {
     /** Seconds of air an EVA suit needs in it to go out in: half a full pack. */
@@ -73,6 +79,25 @@ public final class EvaTasks {
         }
     }
 
+    /** Succeeds if the agent's task is work outside ({@link CrewTask.Kind#isEva}); negated, if it is any other. */
+    public static class IsEvaJob extends CrewLeaf {
+        private final boolean negate;
+
+        public IsEvaJob() {
+            this(false);
+        }
+
+        public IsEvaJob(boolean negate) {
+            this.negate = negate;
+        }
+
+        @Override
+        public Status execute() {
+            CrewTask t = agent().crew.task;
+            return t != null && t.kind.isEva() != negate ? Status.SUCCEEDED : Status.FAILED;
+        }
+    }
+
     /** Gets the agent into an EVA suit with air enough to go out in, out of any other suit first. */
     public static class SuitUpForEva extends CrewLeaf {
         @Override
@@ -80,7 +105,7 @@ public final class EvaTasks {
             CrewAgent a = agent();
             CrewMemberComponent c = a.crew;
             CrewTask t = c.task;
-            if (t == null) return Status.FAILED;
+            if (t == null || stale(a, t)) return Status.FAILED;
             if (c.suited && c.suitKind == Suit.Kind.EVA && c.suitAir >= MIN_AIR) {
                 c.suiting = 0f;
                 return Status.SUCCEEDED;
@@ -94,6 +119,19 @@ public final class EvaTasks {
             }
             return c.suited && c.suitKind == Suit.Kind.EVA && s == Status.SUCCEEDED ? Status.SUCCEEDED : Status.RUNNING;
         }
+    }
+
+    /**
+     * True, and the job dropped from the board, if nobody needs it done any more: mended from inside
+     * or by another hand, or a castaway who has caught hold again, before they were out to it.
+     */
+    static boolean stale(CrewAgent a, CrewTask t) {
+        ShipGridComponent grid = a.service.grid(a.service.homeOf(a.entity));
+        if (grid == null || TaskRules.isStillNeeded(t, grid, a.service)) return false;
+        ShipTaskBoardComponent board = a.board();
+        if (board != null) board.cancel(t);
+        a.crew.task = null;
+        return true;
     }
 
     /** Walks to the airlock the job is best reached from, waits for it, and goes out through it. */
@@ -123,7 +161,7 @@ public final class EvaTasks {
             CrewTask t = a.crew.task;
             EvaSystem eva = a.service.eva;
             ShipGridComponent grid = a.grid();
-            if (t == null || eva == null || grid == null || a.pos.ship != a.service.homeOf(a.entity)) return Status.FAILED;
+            if (t == null || eva == null || grid == null || a.pos.ship != a.service.homeOf(a.entity) || stale(a, t)) return Status.FAILED;
             if (route == null || route.task != t || a.time - planned > REPLAN || !Airlock.works(grid, route.port)) {
                 if (route != null && route.port.airlock != null) route.port.airlock.release(a.entity);
                 route = plan(a, grid, eva.hull(grid), t);
@@ -206,6 +244,15 @@ public final class EvaTasks {
                 backLook = 2f;
                 backSeconds = wayBack(eva, hull, scratch, tile);
             }
+            if (eva.towing != null) {
+                // Hold of the shipmate they came out for: back in with them
+                if (t != null && t.kind == CrewTask.Kind.RETRIEVE && board != null) {
+                    board.complete(t);
+                    c.task = null;
+                    t = null;
+                }
+                eva.returning = true;
+            }
             if (!eva.returning) {
                 // Called in by battle stations; or their line has parted, and nobody works on untethered
                 boolean back = board == null || board.battleStations || !eva.tethered;
@@ -223,7 +270,7 @@ public final class EvaTasks {
                 if (!back && t == null) t = next(a, eva, grid, hull, board);
                 if (t == null) back = true;
                 if (!back) {
-                    float workLeft = (c.def.rcsRepairTime - (workingOn == t ? work : 0f)) / Math.max(0.05f, c.workPace());
+                    float workLeft = (workSeconds(c.def, t) - (workingOn == t ? work : 0f)) / Math.max(0.05f, c.workPace());
                     back = c.suitAir < backSeconds + AIR_MARGIN + workLeft;
                 }
                 if (back) {
@@ -234,12 +281,15 @@ public final class EvaTasks {
             if (eva.returning) {
                 workingOn = null;
                 work = 0f;
+                eva.chase = null;
                 EvaSystem.doorRing(eva.portMount, tile);
                 eva.goalX = tile[0];
                 eva.goalY = tile[1];
-                c.activity = moving(eva, "heading back to the airlock");
+                CrewMemberComponent towed = eva.towing == null ? null : a.service.crew(eva.towing);
+                c.activity = towed != null ? "bringing " + towed.name + " back in" : moving(eva, "heading back to the airlock");
                 return Status.RUNNING;
             }
+            if (t.kind == CrewTask.Kind.RETRIEVE) return fetch(a, c, eva, grid, hull, (RetrieveTask) t);
             workTile(grid, hull, t, tile);
             eva.goalX = tile[0];
             eva.goalY = tile[1];
@@ -248,15 +298,15 @@ public final class EvaTasks {
                 work = 0f;
             }
             if (!eva.atGoal()) {
-                c.activity = moving(eva, "crawling along the hull to an RCS thruster");
+                c.activity = moving(eva, "crawling along the hull to " + where(t));
                 return Status.RUNNING;
             }
             float dt = a.dt * c.workPace();
             work += dt;
             c.record().pendingWork += dt; // engineering experience
-            c.activity = "repairing an RCS thruster on EVA";
-            if (work >= c.def.rcsRepairTime) {
-                RcsThruster.fieldRepair(grid, t.x, t.y);
+            c.activity = doing(t);
+            if (work >= workSeconds(c.def, t)) {
+                finishWork(a, grid, t);
                 board.complete(t);
                 c.task = null;
                 workingOn = null;
@@ -265,12 +315,43 @@ public final class EvaTasks {
             return Status.RUNNING;
         }
 
+        /**
+         * Out for a shipmate adrift: along the hull to the ring tile nearest them, then off it to them
+         * on the jetpack, until they take hold of them ({@link EvaSystem}).
+         */
+        private Status fetch(CrewAgent a, CrewMemberComponent c, EvaComponent eva, ShipGridComponent grid, HullSurface hull,
+                             RetrieveTask r) {
+            String name = a.service.crew(r.castaway).name;
+            if (eva.phase == EvaComponent.Phase.FREE) {
+                c.activity = eva.chase != null ? "jetting out to " + name : moving(eva, "");
+                // The line run out short of them
+                if (eva.chase != null && eva.lineOut >= EvaSystem.LINE_MAX - 0.05f && eva.stretch > 0.05f) {
+                    eva.chase = null;
+                    eva.outOfReach = true;
+                }
+                return Status.RUNNING;
+            }
+            workTile(grid, hull, r, tile);
+            eva.goalX = tile[0];
+            eva.goalY = tile[1];
+            if (!eva.atGoal()) {
+                c.activity = moving(eva, "crawling along the hull toward " + name);
+                return Status.RUNNING;
+            }
+            eva.chase = r.castaway;
+            c.activity = "pushing off the hull to " + name;
+            return Status.RUNNING;
+        }
+
         /** What they are doing on their way: crawling, flying, swinging on the line or adrift. */
         private static String moving(EvaComponent eva, String crawling) {
-            if (eva.phase == EvaComponent.Phase.ON_HULL) return crawling;
-            if (eva.jetting) return "jetting to the hull";
+            if (eva.heldBy != null) return "being brought in";
+            if (eva.phase == EvaComponent.Phase.ON_HULL) return eva.burnWait ? "waiting for the main engines' burn to end" : crawling;
+            if (eva.jetting) return eva.tethered ? "jetting to the hull" : "jetting back to the ship";
             if (eva.climbing) return "pulling in along the tether";
-            return eva.tethered ? "swinging on the tether" : "adrift";
+            if (eva.tethered) return "swinging on the tether";
+            if (eva.shortOfFuel) return "adrift, waiting to be picked up";
+            return eva.waiting ? "adrift, waiting for the ship's burn to end" : "adrift";
         }
     }
 
@@ -373,23 +454,46 @@ public final class EvaTasks {
     }
 
     /**
-     * The ring tile outside the hull that RCS job {@code t} is worked from: beyond the edge its block
-     * sits on, else beyond another edge of its tile, else off a corner. {@code out = {x, y}}; false if
-     * the tile has no outside.
+     * The ring tile outside the hull job {@code t} is worked from: {@code out = {x, y}}; false if
+     * there is none. An RCS block's is beyond the edge it sits on, else beside its tile; a hull
+     * tile's is beside it; work the game posts says where its own is.
      */
-    static boolean workTile(ShipGridComponent grid, HullSurface hull, CrewTask t, int[] out) {
-        for (int i = 0; i < grid.rcsThrusters.size; i++) {
-            RcsThruster r = grid.rcsThrusters.get(i);
-            if (r.x != t.x || r.y != t.y) continue;
-            int[] o = hull.outside(t.x, t.y, r.side);
-            if (o != null) {
-                out[0] = o[0];
-                out[1] = o[1];
+    public static boolean workTile(ShipGridComponent grid, HullSurface hull, CrewTask t, int[] out) {
+        switch (t.kind) {
+            case REPAIR_RCS:
+                for (int i = 0; i < grid.rcsThrusters.size; i++) {
+                    RcsThruster r = grid.rcsThrusters.get(i);
+                    if (r.x != t.x || r.y != t.y) continue;
+                    int[] o = hull.outside(t.x, t.y, r.side);
+                    if (o != null) {
+                        out[0] = o[0];
+                        out[1] = o[1];
+                        return true;
+                    }
+                }
+                return beside(hull, t.x, t.y, out);
+            case PATCH_HULL:
+                return beside(hull, t.x, t.y, out);
+            case RETRIEVE: {
+                EvaComponent o = EvaSystem.of(((RetrieveTask) t).castaway);
+                int[] n = o == null ? null : hull.nearest(o.rx, o.ry);
+                if (n == null) return false;
+                out[0] = n[0];
+                out[1] = n[1];
                 return true;
             }
+            default:
+                return t instanceof OutsideTask && ((OutsideTask) t).job.workTile(hull, out);
         }
+    }
+
+    /**
+     * The ring tile beside tile (x, y): beyond one of its edges, else off one of its corners.
+     * {@code out = {x, y}}; false if the tile has no outside.
+     */
+    public static boolean beside(HullSurface hull, int x, int y, int[] out) {
         for (Side s : Side.values()) {
-            int[] o = hull.outside(t.x, t.y, s);
+            int[] o = hull.outside(x, y, s);
             if (o != null) {
                 out[0] = o[0];
                 out[1] = o[1];
@@ -398,31 +502,78 @@ public final class EvaTasks {
         }
         for (int dy = -1; dy <= 1; dy += 2) {
             for (int dx = -1; dx <= 1; dx += 2) {
-                if (!hull.isRing(t.x + dx, t.y + dy)) continue;
-                out[0] = t.x + dx;
-                out[1] = t.y + dy;
+                if (!hull.isRing(x + dx, y + dy)) continue;
+                out[0] = x + dx;
+                out[1] = y + dy;
                 return true;
             }
         }
         return false;
     }
 
-    /** The RCS job {@code a} holds, or null (forgetting a task that is no longer theirs). */
+    /** Seconds of work job {@code t} takes at a steady pace. */
+    public static float workSeconds(CrewDef def, CrewTask t) {
+        switch (t.kind) {
+            case REPAIR_RCS: return def.rcsRepairTime;
+            case PATCH_HULL: return def.hullPatchTime;
+            default: return t instanceof OutsideTask ? ((OutsideTask) t).job.seconds(def) : 0f;
+        }
+    }
+
+    /** What job {@code t}'s work does, once it is done. */
+    static void finishWork(CrewAgent a, ShipGridComponent grid, CrewTask t) {
+        switch (t.kind) {
+            case REPAIR_RCS:
+                RcsThruster.fieldRepair(grid, t.x, t.y);
+                break;
+            case PATCH_HULL:
+                HullPlating.plate(grid, t.x, t.y);
+                break;
+            default:
+                if (t instanceof OutsideTask) ((OutsideTask) t).job.done(a.entity);
+                break;
+        }
+    }
+
+    /** What a crew member at job {@code t} is doing, for their activity line. */
+    public static String doing(CrewTask t) {
+        switch (t.kind) {
+            case REPAIR_RCS: return "repairing an RCS thruster on EVA";
+            case PATCH_HULL: return "plating a holed hull tile on EVA";
+            case RETRIEVE: return "fetching a shipmate adrift on EVA";
+            default: return t instanceof OutsideTask ? ((OutsideTask) t).job.doing() + " on EVA" : "working on EVA";
+        }
+    }
+
+    /** What a crew member crawls to for job {@code t}. */
+    static String where(CrewTask t) {
+        switch (t.kind) {
+            case REPAIR_RCS: return "an RCS thruster";
+            case PATCH_HULL: return "a holed hull tile";
+            case RETRIEVE: return "a shipmate adrift";
+            default: return t instanceof OutsideTask ? ((OutsideTask) t).job.where() : "the job";
+        }
+    }
+
+    /** The job outside {@code a} holds, or null (forgetting a task that is no longer theirs). */
     static CrewTask held(CrewAgent a) {
         CrewTask t = a.crew.task;
         if (t == null) return null;
-        if (t.kind == CrewTask.Kind.REPAIR_RCS && t.isActive() && t.claimedBy == a.entity) return t;
+        if (t.kind.isEva() && t.isActive() && t.claimedBy == a.entity) return t;
         a.service.releaseTask(a.entity);
         return null;
     }
 
-    /** Claims another RCS job the line reaches from the port they are out of, the best for them; null if none. */
+    /**
+     * Claims another job outside the line reaches from the port they are out of, the best for them;
+     * null if none. A part to mount is fetched from inside, so it isn't one.
+     */
     static CrewTask next(CrewAgent a, EvaComponent eva, ShipGridComponent grid, HullSurface hull, ShipTaskBoardComponent board) {
         if (board == null || board.faction != a.crew.faction) return null;
         int[] work = new int[2];
         Array<int[]> path = new Array<>();
-        CrewTask t = board.best(a.crew.role, eva.ringX, eva.ringY, task -> task.kind == CrewTask.Kind.REPAIR_RCS
-                && !a.isIgnoring(task) && workTile(grid, hull, task, work)
+        CrewTask t = board.best(a.crew.role, eva.ringX, eva.ringY, task -> task.kind.isEva()
+                && task.kind != CrewTask.Kind.MOUNT_PART && a.mayTake(task) && workTile(grid, hull, task, work)
                 && crawlTiles(grid, hull, eva.portMount, work[0], work[1], path) >= 0);
         if (t == null || !board.claim(t, a.entity)) return null;
         a.crew.task = t;

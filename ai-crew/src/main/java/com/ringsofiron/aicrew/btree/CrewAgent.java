@@ -178,7 +178,7 @@ public class CrewAgent {
      */
     public boolean mayTake(CrewTask task) {
         if (isIgnoring(task) || crew.held) return false;
-        if (task.kind == CrewTask.Kind.REPAIR_RCS && !EvaTasks.suitReady(this)) return false;
+        if (task.kind.isEva() && !EvaTasks.suitReady(this)) return false;
         // The lightly wounded patch themselves up while idle (CrewHealthSystem), leaving the task to others
         if (task instanceof TreatTask && ((TreatTask) task).patient == entity) return false;
         if (task instanceof BoardTask && !((BoardTask) task).isFor(entity)) return false;

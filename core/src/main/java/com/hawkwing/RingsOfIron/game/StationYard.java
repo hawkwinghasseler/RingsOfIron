@@ -199,8 +199,9 @@ public class StationYard extends EntitySystem {
                     }
                     break;
                 default:
-                    // A collar is whole or torn: it goes back on only when the work is done
+                    // A collar is whole or torn: it goes back on only when the work is done, freed of any jam
                     port.collarIntegrity = after >= 1f - EPS ? 1f : before;
+                    if (after >= 1f - EPS) port.jammed = false;
                     return after - before;
             }
             return after - before;
