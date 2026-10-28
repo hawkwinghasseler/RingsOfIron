@@ -10,7 +10,7 @@ package com.ringsofiron.interiorgrid;
 public final class RcsThruster {
     public enum Kind {
         /** One nozzle, out through the hull edge it sits on. */
-        LINEAR(1.5e5),
+        LINEAR(3.0e5),
         /** Three nozzles: out through its edge, and each way along the hull. */
         QUAD(1.0e5);
 

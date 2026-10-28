@@ -58,22 +58,16 @@ class RcsThrustTest {
     }
 
     @Test
-    void eachShipsBlocksTurnStrafeAndBackItUpAsHardAsItsFiguresDid() {
+    void eachShipsStandardBlocksTurnStrafeAndBackItUpEveryWay() {
         for (String id : SHIPS) {
-            ShipDef def = world.getContent().defs.get("ship", id, ShipDef.class);
             Entity ship = spawn(id);
-            double rated = EngineThrust.ratedThrust(ship, world.getContent().defs);
-            RcsThrust.Authority a = authority(ship);
-            assertEquals(def.maxTorque, a.torque(), def.maxTorque * 0.02, id + " turns as hard as before");
-            double lateral = rated * ShipPhysicsAssembler.LATERAL_THRUST_FRACTION;
-            assertEquals(lateral, a.lateral(), lateral * 0.02, id + " strafes as hard as before");
-            double retro = rated * ShipPhysicsAssembler.REVERSE_THRUST_FRACTION;
-            if (id.equals(GameScenario.FREIGHTER_SHIP)) {
-                // Its docking port fills the bow's middle, so its retro pair sits off the centreline
-                assertEquals(retro * 0.4, a.retro, retro * 0.02, id + " backs up slower");
-            } else {
-                assertEquals(retro, a.retro, retro * 0.02, id + " backs up as hard as before");
+            for (RcsThruster r : ship.getComponent(ShipGridComponent.class).rcsThrusters) {
+                assertEquals(r.kind.standardThrust, r.nozzleThrust(), id + " " + r + " gives its kind's standard thrust");
             }
+            RcsThrust.Authority a = authority(ship);
+            assertTrue(a.retro > 0, id + " backs up");
+            assertTrue(a.port > 0 && a.starboard > 0, id + " strafes both ways");
+            assertTrue(a.ccw > 0 && a.cw > 0, id + " turns both ways");
         }
     }
 
@@ -96,9 +90,42 @@ class RcsThrustTest {
         int bow = 0;
         for (RcsThruster r : grid.rcsThrusters) bow = Math.max(bow, r.x);
         for (RcsThruster r : grid.rcsThrusters) if (r.x >= bow - 1) grid.getTile(r.x, r.y).setIntegrity(0f);
-        // About 0.61 with the engines wholly outside the hull, which puts the centre of mass a little further
-        // aft and so the amidships pair a little further from it (it was under 0.6)
-        assertTrue(authority(ship).torque() < before * 0.65, "the stern blocks alone turn it slower");
+        // About half: the stern quads turn it as hard as the bow ones did
+        assertTrue(authority(ship).torque() < before * 0.6, "the stern blocks alone turn it slower");
+    }
+
+    /** The screenshot's case: the corvette's starboard strafe block amidships wrecked, its corner quads still firing. */
+    @Test
+    void losingOneSidesStrafeBlockStillStrafesTheOtherWayAndPushesWithWhatFires() {
+        Entity ship = spawn("corvette_patrol");
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        RcsThruster amidships = null;
+        for (RcsThruster r : grid.rcsThrusters) if (r.kind == RcsThruster.Kind.LINEAR && r.side == Side.TOP) amidships = r;
+        assertNotNull(amidships);
+        RcsThrust.Authority whole = authority(ship);
+        grid.getTile(amidships.x, amidships.y).setIntegrity(0f);
+        world.engine.getEcsEngine().getSystem(RcsThrust.class).update(0f);
+        ThrusterComponent t = ship.getComponent(ThrusterComponent.class);
+        RcsThrust.Authority a = authority(ship);
+
+        // Firing up out of the top hull pushes to starboard: that way only the corner quads' 100 kN nozzles are left
+        assertTrue(a.starboard > 0 && a.starboard < whole.starboard * 0.5, "the quads alone strafe it to starboard, slower");
+        assertEquals(whole.port, a.port, 1.0, "to port is untouched");
+        assertEquals(a.port, t.lateral(1f), a.port * 1e-4, "and the ship flies on it");
+        assertEquals(a.starboard, t.lateral(-1f), a.starboard * 1e-4);
+        assertEquals(a.lateral(), t.lateralThrust, a.lateral() * 1e-4, "planners still go by the weaker way");
+        assertEquals(a.ccw, t.torque(1f), a.ccw * 1e-4);
+        assertEquals(a.cw, t.torque(-1f), a.cw * 1e-4);
+    }
+
+    @Test
+    void aJetIsDrawnAsBigAsTheThrustItGives() {
+        assertEquals(1f, RcsThrust.jetSize(new RcsThruster(0, 0, Side.TOP, RcsThruster.Kind.LINEAR)), 1e-6f, "a standard linear block's 300 kN");
+        assertEquals((float) Math.sqrt(1.0 / 3.0), RcsThrust.jetSize(new RcsThruster(0, 0, Side.TOP, RcsThruster.Kind.QUAD)), 1e-6f,
+                "a standard quad's 100 kN: a little over half as big");
+        assertEquals(0.5f, RcsThrust.jetSize(new RcsThruster(0, 0, Side.TOP, RcsThruster.Kind.QUAD, 7.5e4)), 1e-6f);
+        assertEquals(RcsThrust.MAX_JET, RcsThrust.jetSize(new RcsThruster(0, 0, Side.TOP, RcsThruster.Kind.LINEAR, 1e7)), 1e-6f,
+                "however hard a nozzle pushes, its jet is drawn no more than twice as big");
     }
 
     @Test
@@ -130,8 +157,14 @@ class RcsThrustTest {
 
         c.forward = 0f;
         c.rotationAssist = true;
+        assertEquals(0f, RcsThrust.firing(grid, bowTop, Side.TOP, center, c, null, 0.5f), "no trim from flight control yet");
+        c.assistTurn = 1f;
         assertEquals(1f, RcsThrust.firing(grid, bowTop, Side.TOP, center, c, null, 0.5f), "assist stops a spin to port");
         assertEquals(0f, RcsThrust.firing(grid, bowTop, Side.TOP, center, c, null, -0.5f));
+
+        c.assistTurn = 0.1f;
+        assertEquals(0.1f, RcsThrust.firing(grid, bowTop, Side.TOP, center, c, null, 0.5f), 1e-6f,
+                "a gentle trim fires gently, as flight control trims");
 
         c.turn = -1f;
         grid.getTile(bowTop.x, bowTop.y).setIntegrity(0f);
