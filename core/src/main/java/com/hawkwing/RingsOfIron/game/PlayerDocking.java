@@ -159,7 +159,9 @@ public class PlayerDocking {
         Entity other = e.vessel == player ? e.other : e.vessel;
         switch (e.kind) {
             case CAPTURED:
-                notices.accept(name(other) + "'s collar has you; drawing in");
+                // Whose collar it is: the one that caught the other
+                notices.accept(e.vessel == player ? "Your collar has hold of " + name(other) + "; drawing in"
+                        : name(other) + "'s collar has you; drawing in");
                 break;
             case DOCKED:
                 notices.accept("Docked at " + name(other) + (e.permitted ? "" : " (without clearance)"));

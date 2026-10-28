@@ -11,7 +11,7 @@ public final class DockingTuning {
     public static final DockingTuning SMALL = new DockingTuning(
             3f, 3_000f, 1f, 6_000f, 1f, 150f, 0.12f, 6e5f, 6e5f);
     public static final DockingTuning MEDIUM = new DockingTuning(
-            4f, 8_000f, 1.25f, 16_000f, 1.5f, 400f, 0.15f, 1.5e6f, 2.5e6f);
+            4f, 8_000f, 1.25f, 16_000f, 2f, 400f, 0.15f, 1.5e6f, 2.5e6f);
     public static final DockingTuning LARGE = new DockingTuning(
             5f, 20_000f, 1.5f, 40_000f, 2f, 900f, 0.2f, 4e6f, 8e6f);
 
@@ -53,8 +53,22 @@ public final class DockingTuning {
      * hard stop; the seating then closes the rest.
      */
     public static final float LOCK_EXTENSION = 0.3f;
+    /** A collar that has to stay out locks once it is within this of its whole tile, meters. */
+    public static final float LOCK_TOLERANCE = 0.05f;
+    /**
+     * A contracting collar that draws in less than {@link #STALL_PROGRESS} meters in
+     * {@link #STALL_TIME} seconds is held off by the hulls: it locks at the next whole tile out.
+     */
+    public static final float STALL_TIME = 1.5f, STALL_PROGRESS = 0.01f;
     /** Seating ends and the weld goes rigid once the pose is this close: meters and radians. */
     public static final float SEATED_DISTANCE = 0.02f, SEATED_ANGLE = 0.01f;
+    /**
+     * How briskly the seating draws latched craft face to face and square, 1/s: the natural
+     * frequency of its critically damped spring (about 1.5 s to settle from a few tenths of a meter).
+     */
+    public static final float SEAT_RATE = 3f;
+    /** The most force and torque the seating puts on, as a share of the port's break limits. */
+    public static final float SEAT_FORCE = 0.3f;
     /** Longest the seating may take before the weld is made anyway, seconds. */
     public static final float SEATING_TIME = 3f;
     /** Time constant of the low-pass filter on the strain read from the weld, seconds. */
@@ -81,7 +95,10 @@ public final class DockingTuning {
     public final float headRange;
     /** Pull of an active collar head at contact, newtons. */
     public final float headForce;
-    /** How far an active collar telescopes out, meters. */
+    /**
+     * How far an active collar telescopes out, meters: a whole number of tiles, so a collar that
+     * has to stay all the way out still leaves the hulls a whole number of tiles apart.
+     */
     public final float maxExtension;
     /** Mass of an active collar head, kg. */
     public final float headMass;

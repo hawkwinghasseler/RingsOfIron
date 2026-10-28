@@ -75,6 +75,13 @@ public class DockingPort {
      * whole collar would, however worn this one is.
      */
     public boolean clamped;
+    /**
+     * How far this active port's collar stays out while latched, meters: a whole number of tiles,
+     * so the two hulls are a whole number of tiles apart. Above 0 when drawing the craft in any
+     * further would have put the hulls into each other ({@link DockingSystem}). The collar face,
+     * and so the latched pose, is this much further out. 0 while free.
+     */
+    public float lockedExtension;
 
     /** How far the active collar is out now, meters. Runtime only. */
     public transient float extension;
@@ -94,6 +101,10 @@ public class DockingPort {
     public transient Joint capture;
     /** Spring length the collar is driven towards, meters. */
     public transient float springTarget;
+    /** Extension a captured collar draws in to and locks at, meters (whole tiles). */
+    public transient float lockAt;
+    /** Seconds a captured collar has drawn in no further, and the extension it was stuck at, meters. */
+    public transient float stalled, stalledAt;
 
     public DockingPort() {
     }
@@ -110,14 +121,14 @@ public class DockingPort {
         return state == State.IDLE;
     }
 
-    /** Collar face middle, body-local x. */
+    /** Collar face middle, body-local x: out as far as the collar is locked. */
     public float faceX() {
-        return edgeX + normalX * collarDepth;
+        return edgeX + normalX * (collarDepth + lockedExtension);
     }
 
-    /** Collar face middle, body-local y. */
+    /** Collar face middle, body-local y: out as far as the collar is locked. */
     public float faceY() {
-        return edgeY + normalY * collarDepth;
+        return edgeY + normalY * (collarDepth + lockedExtension);
     }
 
     /** Clears the latch record: free, no partner. */
@@ -129,6 +140,7 @@ public class DockingPort {
         consented = false;
         forced = false;
         clamped = false;
+        lockedExtension = 0f;
     }
 
     @Override
