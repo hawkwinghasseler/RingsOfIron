@@ -49,6 +49,15 @@ public class CrewAgent {
     boolean refilling;
     /** Sim time until which no oxygen supply aboard was found reachable. */
     float refillBlockedUntil = Float.NEGATIVE_INFINITY;
+    /** Sim time until which no suit locker aboard with a suit in it was found reachable ({@link SuitErrand}). */
+    float suitBlockedUntil = Float.NEGATIVE_INFINITY;
+    /** Sim time until which no suit locker aboard with room for their suit was found reachable. */
+    float stowBlockedUntil = Float.NEGATIVE_INFINITY;
+    /** Left their post to fetch a suit ({@link CrewTasks.DoWork}): {@link CrewTasks.SuitUp} gets them one on the way back. */
+    boolean fetchSuit;
+    /** Whether an EVA suit and an airlock were to be had at the last look ({@link EvaTasks#suitReady}), and when to look again. */
+    boolean evaSuitReady;
+    float evaSuitLookAt = Float.NEGATIVE_INFINITY;
 
     public CrewAgent(Entity entity, CrewMemberComponent crew, GridPositionComponent pos, CrewService service) {
         this.entity = entity;
@@ -138,6 +147,11 @@ public class CrewAgent {
         return ignoreUntil.get(task, Float.NEGATIVE_INFINITY) > time;
     }
 
+    /** Skips {@code task} for {@code seconds}. */
+    public void ignore(CrewTask task, float seconds) {
+        ignoreUntil.put(task, time + seconds);
+    }
+
     /** Gives up the current task and skips it for {@link #UNREACHABLE_COOLDOWN} seconds. */
     public void abandonUnreachable() {
         if (crew.task != null) ignoreUntil.put(crew.task, time + UNREACHABLE_COOLDOWN);
@@ -159,10 +173,12 @@ public class CrewAgent {
      * True if this crew member would take {@code task} now: not one they just found unreachable, and
      * only carrying, yard work and boarding while away from the craft they work for (other work is
      * done from home), and only a boarding order that is theirs, and nothing where the fire is falling
-     * ({@link TaskRules#waitsOutFire}). A crew member held prisoner takes nothing.
+     * ({@link TaskRules#waitsOutFire}), and EVA work only with an EVA suit to go out in ({@link
+     * EvaTasks#suitReady}). A crew member held prisoner takes nothing.
      */
     public boolean mayTake(CrewTask task) {
         if (isIgnoring(task) || crew.held) return false;
+        if (task.kind == CrewTask.Kind.REPAIR_RCS && !EvaTasks.suitReady(this)) return false;
         // The lightly wounded patch themselves up while idle (CrewHealthSystem), leaving the task to others
         if (task instanceof TreatTask && ((TreatTask) task).patient == entity) return false;
         if (task instanceof BoardTask && !((BoardTask) task).isFor(entity)) return false;

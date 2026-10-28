@@ -105,6 +105,8 @@ public class CrewScenario {
             if (placement.type == SubsystemComponent.SubsystemType.REACTOR) reactor = sys;
         }
 
+        // Suit lockers for the five of them and a spare
+        com.ringsofiron.interiorgrid.SuitOutfit.outfit(grid, null, 5);
         if (withCrew) {
             crewMembers.add(CrewFactory.spawn(crew, ship, "Okafor", CrewRole.ENGINEER, 0, 3, 4));
             crewMembers.add(CrewFactory.spawn(crew, ship, "Lindqvist", CrewRole.ENGINEER, 0, 5, 1));

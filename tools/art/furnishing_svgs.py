@@ -255,6 +255,71 @@ def furnishings(out):
     ], meta=[])
 
 
+    # Suit lockers: open racks against a wall, back toward the top, the suits hung in them drawn
+    # over the rack by the game, one in each bay (locker_suit_iva, locker_suit_eva below)
+    steel, steelD, bay, rail = '#4b5563', '#373f4b', '#232931', '#7d8898'
+    # Pressure suit locker: 1 x 0.5 tiles, four bays
+    rack = [
+        f'<rect x="1" y="1" width="62" height="30" rx="2" fill="{steel}" stroke="{O}" stroke-width="2"/>',
+        f'<rect x="4" y="3" width="56" height="23" rx="1" fill="{bay}"/>',
+        f'<path d="M5,6.5 L59,6.5" stroke="{rail}" stroke-width="1.6" fill="none" stroke-linecap="round"/>',
+    ]
+    for x in (18, 32, 46):
+        rack.append(f'<path d="M{x},3 L{x},26" stroke="{steelD}" stroke-width="1.5" fill="none"/>')
+    for i in range(4):
+        cx = 11 + i * 14
+        rack.append(f'<path d="M{cx - 2},6.5 C{cx - 2},9 {cx + 2},9 {cx + 2},6.5" stroke="#a6aab0" stroke-width="1" fill="none"/>')
+    rack += [
+        f'<rect x="2" y="26" width="60" height="4" rx="1" fill="{steelD}" stroke="{O}" stroke-width="1"/>',
+        '<path d="M6,28 L58,28" stroke="#6aa8ff" stroke-width="0.8" fill="none" opacity="0.7"/>',
+    ]
+    svg('suit_locker', 64, 32, 'pressure suit locker: four bays, back toward +y', rack)
+
+    # EVA locker: 1.25 x 0.6 tiles, two deep bays with an air and propellant line each, a hazard
+    # stripe along its front, a lamp in each bay lit while it tops its suit up
+    rack = [
+        f'<rect x="1" y="1" width="78" height="36" rx="2" fill="{steel}" stroke="{O}" stroke-width="2"/>',
+        f'<rect x="4" y="3" width="34.5" height="27" rx="1.5" fill="{bay}"/>',
+        f'<rect x="41.5" y="3" width="34.5" height="27" rx="1.5" fill="{bay}"/>',
+    ]
+    for cx in (21.25, 58.75):
+        rack += [
+            f'<path d="M{cx - 6},4 L{cx - 6},8 M{cx + 6},4 L{cx + 6},8" stroke="#86aebd" stroke-width="2" fill="none"/>',
+            f'<circle cx="{cx - 6}" cy="8.5" r="1.8" fill="#4e7484" stroke="{O}" stroke-width="0.8"/>',
+            f'<circle cx="{cx + 6}" cy="8.5" r="1.8" fill="#e0a040" stroke="{O}" stroke-width="0.8"/>',
+        ]
+    rack.append(f'<rect x="2" y="30" width="76" height="6" rx="1" fill="#f2c230" stroke="{O}" stroke-width="1"/>')
+    for x in range(4, 78, 6):
+        rack.append(f'<path d="M{x},36 L{x + 4},30" stroke="{O}" stroke-width="2" fill="none"/>')
+    lamps = [f'<circle cx="{cx}" cy="5.5" r="1.3" fill="#4dff88"/>' for cx in (7, 44.5)]
+    svg('eva_locker', 80, 38, 'EVA locker: two bays, back toward +y', rack, emissive=lamps)
+
+    # A pressure suit hung in its bay, seen from above: the air pack against the wall, the shoulders
+    # on the hanger, the bubble helmet clipped on in front
+    svg('locker_suit_iva', 16, 20, 'a pressure suit hung in a suit locker, back toward +y', [
+        '<rect x="3.5" y="1" width="9" height="5" rx="1.5" fill="#6d7782" stroke="#10141a" stroke-width="1"/>',
+        '<rect x="1" y="4.5" width="14" height="7" rx="3" fill="#b9c2cc" stroke="#10141a" stroke-width="1.2"/>',
+        '<rect x="1" y="6" width="3" height="2" rx="0.5" fill="#6aa8ff"/>',
+        '<rect x="12" y="6" width="3" height="2" rx="0.5" fill="#6aa8ff"/>',
+        '<circle cx="8" cy="14" r="4.6" fill="#cfeaff" fill-opacity="0.35" stroke="#10141a" stroke-width="1"/>',
+        '<path d="M5.4,12.4 C6.4,11 8,10.6 9.4,10.8" stroke="#ffffff" stroke-width="0.9" fill="none" opacity="0.8"/>',
+    ], meta=[])
+
+    # An EVA suit hung in its bay: the jetpack against the wall, the white shoulders, the helmet in
+    # front with its gold visor toward the room
+    svg('locker_suit_eva', 30, 28, 'an EVA suit hung in an EVA locker, back toward +y', [
+        '<rect x="6" y="1" width="18" height="8" rx="2" fill="#5b6675" stroke="#10141a" stroke-width="1.2"/>',
+        '<rect x="7.5" y="2" width="6" height="6" rx="1.5" fill="#6d7886"/>',
+        '<rect x="16.5" y="2" width="6" height="6" rx="1.5" fill="#6d7886"/>',
+        '<rect x="1.5" y="7.5" width="27" height="9" rx="4" fill="#e9ecf0" stroke="#10141a" stroke-width="1.4"/>',
+        '<rect x="2" y="9.5" width="4" height="2.5" rx="0.6" fill="#6aa8ff"/>',
+        '<rect x="24" y="9.5" width="4" height="2.5" rx="0.6" fill="#6aa8ff"/>',
+        '<circle cx="15" cy="19.5" r="6.5" fill="#f2f4f7" stroke="#10141a" stroke-width="1.3"/>',
+        '<path d="M9.8,21.5 C10.6,25.6 19.4,25.6 20.2,21.5 C17.4,23.2 12.6,23.2 9.8,21.5 Z" fill="#d9a520" stroke="#10141a" stroke-width="0.8"/>',
+        '<path d="M12.2,23.6 C13.8,24.4 16.2,24.4 17.8,23.6" stroke="#ffe9a8" stroke-width="0.8" fill="none" opacity="0.8"/>',
+    ], meta=[])
+
+
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     furnishings(sys.argv[1] if len(sys.argv) > 1 else os.path.join(root, "assets", "art", "decor"))

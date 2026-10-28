@@ -7,8 +7,9 @@ package com.ringsofiron.interiorgrid;
  * and {@code D} deep (Small 3 x 1, Medium 5 x 2, Large 7 x 3). The tile at each end of the width
  * is frame (hull); the {@code W - 2} tiles between them, through the whole depth, are the opening:
  * floor the crew walk through. The opening's outer edge carries the port door, a sealed bulkhead,
- * and faces space. The latch collar is not on the grid: it sticks out half a tile past the outer
- * edge and is the docking module's business.
+ * and faces space; its inner edge, the inner hatch, an open one. With both shut the opening is
+ * the airlock's chamber ({@link Airlock}). The latch collar is not on the grid: it sticks out half
+ * a tile past the outer edge and is the docking module's business.
  *
  * <p>The footprint's rotation sets the side it faces: 0 is {@link Side#TOP} (+y), 1
  * {@link Side#LEFT}, 2 {@link Side#BOTTOM}, 3 {@link Side#RIGHT}, counter-clockwise like every
@@ -161,9 +162,9 @@ public final class DockingPortLayout {
     }
 
     /**
-     * Builds the port into the grid: frame tiles become hull, opening tiles steel floor, and the
-     * opening's outer edge gets the port door, a sealed medium bulkhead. Call after
-     * {@link #validate} passed; does not register the mount.
+     * Builds the port into the grid: frame tiles become hull, opening tiles steel floor, the
+     * opening's outer edge gets the port door, a sealed medium bulkhead, and its inner edge the
+     * inner hatch, an open one. Call after {@link #validate} passed; does not register the mount.
      */
     static void build(ShipGridComponent grid, MountFootprint port) {
         Side out = facing(port);
@@ -181,6 +182,9 @@ public final class DockingPortLayout {
                         door.bulkheadSealed = true;
                         grid.setEdge(x, y, out, door);
                     }
+                    if (a[1] == depth(port) - 1 && grid.getEdge(x, y, out.opposite()) == null) {
+                        grid.setEdge(x, y, out.opposite(), new EdgeWall(WeightClass.MEDIUM, MaterialTable.DEFAULT_MATERIAL, true));
+                    }
                 } else {
                     if (t.wallType != Tile.WallType.HULL) t.weightClass = WeightClass.MEDIUM;
                     t.wallType = Tile.WallType.HULL;
@@ -194,5 +198,94 @@ public final class DockingPortLayout {
     /** The port door on opening tile (x, y), or null if that tile is not on the port's outer row. */
     public static EdgeWall door(ShipGridComponent grid, MountFootprint port, int x, int y) {
         return isDoorTile(port, x, y) ? grid.getEdge(x, y, facing(port)) : null;
+    }
+
+    /** True for the inner row of the opening, whose inner edge is the inner hatch. */
+    public static boolean isHatchTile(MountFootprint port, int x, int y) {
+        if (!isOpening(port, x, y)) return false;
+        int[] a = new int[2];
+        along(port, x, y, a);
+        return a[1] == depth(port) - 1;
+    }
+
+    /**
+     * The inner hatch on opening tile (x, y): the bulkhead door across the opening's inner edge, or
+     * null if that tile is not on the inner row or the edge carries no door.
+     */
+    public static EdgeWall hatch(ShipGridComponent grid, MountFootprint port, int x, int y) {
+        if (!isHatchTile(port, x, y)) return null;
+        EdgeWall e = grid.getEdge(x, y, facing(port).opposite());
+        return e != null && e.hasBulkhead ? e : null;
+    }
+
+    /**
+     * True if the {@code side} edge of tile (x, y) is where a port's inner hatch goes: between the
+     * inner row of its opening and the deck inside, from either side.
+     */
+    public static boolean isHatchEdge(ShipGridComponent grid, int x, int y, Side side) {
+        Tile t = grid.getTile(x, y), n = grid.getTile(x + side.dx, y + side.dy);
+        MountFootprint here = t == null ? null : t.mount, there = n == null ? null : n.mount;
+        if (here != null && here.kind == MountFootprint.MountKind.PORT && isHatchTile(here, x, y)
+                && side == facing(here).opposite()) return true;
+        return there != null && there.kind == MountFootprint.MountKind.PORT && isHatchTile(there, x + side.dx, y + side.dy)
+                && side == facing(there);
+    }
+
+    /**
+     * Fits an inner hatch, open, across each tile of the opening's inner edge that has no wall
+     * there: for a port built before ports had them.
+     *
+     * @return true if any went in
+     */
+    public static boolean fitHatches(ShipGridComponent grid, MountFootprint port) {
+        Side in = facing(port).opposite();
+        boolean fitted = false;
+        for (int y = port.originY; y < port.originY + port.height(); y++) {
+            for (int x = port.originX; x < port.originX + port.width(); x++) {
+                if (!isHatchTile(port, x, y) || grid.getEdge(x, y, in) != null) continue;
+                Tile inside = grid.getTile(x + in.dx, y + in.dy);
+                if (inside == null || !inside.isFloor()) continue;
+                grid.setEdge(x, y, in, new EdgeWall(WeightClass.MEDIUM, MaterialTable.DEFAULT_MATERIAL, true));
+                fitted = true;
+            }
+        }
+        return fitted;
+    }
+
+    /**
+     * The opening tile in the middle of the outer row, where whoever goes out through the port
+     * stands to wait for its door: {@code out = {x, y}}.
+     */
+    public static int[] chamberTile(MountFootprint port, int[] out) {
+        return openingTile(port, openingWidth(port) / 2 + 1, 0, out);
+    }
+
+    /** The opening tile in the middle of the inner row: {@code out = {x, y}}. */
+    public static int[] hatchTile(MountFootprint port, int[] out) {
+        return openingTile(port, openingWidth(port) / 2 + 1, depth(port) - 1, out);
+    }
+
+    /** The tile of the footprint {@code along} the hull and {@code deep} in from the outer edge, as {@link #along} counts. */
+    private static int[] openingTile(MountFootprint port, int along, int deep, int[] out) {
+        int d = depth(port), w = width(port);
+        switch (facing(port)) {
+            case TOP:
+                out[0] = port.originX + w - 1 - along;
+                out[1] = port.originY + d - 1 - deep;
+                break;
+            case BOTTOM:
+                out[0] = port.originX + along;
+                out[1] = port.originY + deep;
+                break;
+            case LEFT:
+                out[0] = port.originX + deep;
+                out[1] = port.originY + w - 1 - along;
+                break;
+            default:
+                out[0] = port.originX + d - 1 - deep;
+                out[1] = port.originY + along;
+                break;
+        }
+        return out;
     }
 }

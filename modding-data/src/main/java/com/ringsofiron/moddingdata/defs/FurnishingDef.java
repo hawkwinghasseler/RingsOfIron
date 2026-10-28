@@ -33,7 +33,7 @@ public class FurnishingDef {
     public double price = 500;
     /**
      * What the crew do with it in their downtime: LOUNGE, GAME, MUSIC, SCREEN, EXERCISE, READING,
-     * or DECOR (nothing; it only makes the room nicer).
+     * DECOR (nothing; it only makes the room nicer) or STORAGE (a locker; see {@link #holds}).
      */
     public String use = "DECOR";
     /** How many crew can use it at once. */
@@ -44,4 +44,11 @@ public class FurnishingDef {
     public String verb;
     /** Lies flat on the floor (a rug): other furnishings can stand on it. */
     public boolean flat;
+    /**
+     * A suit locker's kind of suit, "IVA" (pressure suits) or "EVA"; left out for anything that
+     * isn't one. A locker comes from the yard full.
+     */
+    public String holds;
+    /** How many suits a locker holds. */
+    public int capacity;
 }

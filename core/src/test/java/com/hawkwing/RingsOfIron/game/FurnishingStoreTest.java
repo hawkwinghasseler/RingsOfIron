@@ -11,6 +11,8 @@ import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.FurnishingType;
 import com.ringsofiron.interiorgrid.Furnishings;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.SuitLockers;
+import com.ringsofiron.interiorgrid.crew.Suit;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -77,8 +79,8 @@ class FurnishingStoreTest {
         assertEquals(before, trader.credits, 1e-6, "paid for when it lands");
         assertEquals(1, world.furnishings.pending(game.player).size());
         assertNotNull(world.furnishings.refusal(game.player, couch, spot[0], spot[1], 30f), "the spot is held");
-        assertTrue(runUntil(FurnishingStore.LATE_SECONDS + 60, () -> Furnishings.all(grid).size == 1), "it comes aboard");
-        Furnishing f = Furnishings.all(grid).first();
+        assertTrue(runUntil(FurnishingStore.LATE_SECONDS + 60, () -> bought(grid).size == 1), "it comes aboard");
+        Furnishing f = bought(grid).first();
         assertEquals(spot[0], f.x(), 1e-4f);
         assertEquals(spot[1], f.y(), 1e-4f);
         assertEquals(30f, f.rotation, 1e-4f);
@@ -95,7 +97,7 @@ class FurnishingStoreTest {
         assertTrue(world.docking.undock(game.player));
         run(10);
         assertTrue(world.furnishings.pending(game.player).isEmpty());
-        assertEquals(0, Furnishings.all(grid).size);
+        assertEquals(0, bought(grid).size);
         assertEquals(before, trader.credits, 1e-6);
     }
 
@@ -111,13 +113,13 @@ class FurnishingStoreTest {
         arrange.turn(45f);
         assertNull(arrange.refusal(), "turning it where it stands fits");
         assertTrue(arrange.click().endsWith("moved"));
-        Furnishing moved = Furnishings.all(grid).first();
+        Furnishing moved = bought(grid).first();
         assertEquals(45f, moved.rotation, 1e-4f);
         double before = trader.credits;
         arrange.point(spot[0], spot[1]);
         assertTrue(arrange.sell().startsWith("The yard took"));
         assertEquals(before + chair.price * FurnishingStore.BUY_BACK, trader.credits, 1e-6);
-        assertEquals(0, Furnishings.all(grid).size);
+        assertEquals(0, bought(grid).size);
     }
 
     @Test
@@ -146,11 +148,13 @@ class FurnishingStoreTest {
         assertNull(game.quickSave(file));
         game.quickLoad(file);
         ShipGridComponent loaded = game.player.getComponent(ShipGridComponent.class);
-        assertEquals(1, Furnishings.all(loaded).size);
-        Furnishing back = Furnishings.all(loaded).first();
+        assertEquals(1, bought(loaded).size);
+        Furnishing back = bought(loaded).first();
         assertEquals("couch", back.type.id);
         assertEquals(spot[0], back.x(), 1e-4f);
         assertEquals(0.5f, back.condition(), 1e-4f);
+        assertEquals(SuitLockers.count(grid, Suit.Kind.IVA), SuitLockers.count(loaded, Suit.Kind.IVA), "the suits come back in their lockers");
+        assertEquals(SuitLockers.count(grid, Suit.Kind.EVA), SuitLockers.count(loaded, Suit.Kind.EVA));
     }
 
     @Test
@@ -170,6 +174,13 @@ class FurnishingStoreTest {
         r.pendingLeisure = 0.2f;
         run(120);
         assertEquals(CrewCareer.LEISURE_CEILING, r.morale, 0.01f, "downtime alone lifts it only so far");
+    }
+
+    /** The furnishings aboard {@code grid} bought at a yard: all but the suit lockers it was built with. */
+    private static com.badlogic.gdx.utils.Array<Furnishing> bought(ShipGridComponent grid) {
+        com.badlogic.gdx.utils.Array<Furnishing> out = new com.badlogic.gdx.utils.Array<>();
+        for (Furnishing f : Furnishings.all(grid)) if (!SuitLockers.isLocker(f)) out.add(f);
+        return out;
     }
 
     /** The middle of the first floor spot aboard where {@code type} fits turned each of {@code rotations}. */

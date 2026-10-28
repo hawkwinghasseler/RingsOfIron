@@ -167,6 +167,7 @@ class CrewCareTest {
         // A suit slows care by a fifth: worn the whole ten minutes, it left a critical wound short
         // of healed. Battle stations over and the air good, the carer takes it off
         TestShips s = ward();
+        s.locker(5, 3, 4);
         // Down in a medbay bed already, so nobody carries them anywhere
         Entity down = s.spawn(CrewRole.CREWMAN, 0, 8, 1);
         Entity medic = s.spawn(CrewRole.MEDIC, 0, 6, 2);
@@ -180,7 +181,8 @@ class CrewCareTest {
         assertTrue(s.c(medic).task instanceof TreatTask, "treating: " + s.c(medic).activity);
         assertTrue(s.c(medic).suited, "still suited while at battle stations");
         s.board.battleStations = false;
-        s.run(5f);
+        // Hung up in the locker, three tiles off, and back to the patient
+        s.run(12f);
         assertFalse(s.c(medic).suited, "out of the suit to work");
         assertTrue(s.c(medic).task instanceof TreatTask, "and treating still");
     }
@@ -214,6 +216,8 @@ class CrewCareTest {
         // Round 9's trace: on four of the wound survey's seeds the gunner sat at the weapons from
         // before the fight began, so never suited up for it, and suffocated there as the cabin vented
         TestShips s = ConsoleTest.bridge();
+        // A locker within reach of the post
+        s.locker(8, 4, 4);
         Entity marine = s.spawn(CrewRole.MARINE, 0, 8, 4);
         s.run(8f);
         assertTrue(CrewQueries.isManning(marine, SubsystemType.WEAPONS), s.c(marine).activity);
@@ -239,6 +243,7 @@ class CrewCareTest {
     @Test
     void aHandAtAConsoleSuitsUpThereAsTheRoomVentsOffBattleStations() {
         TestShips s = ConsoleTest.bridge();
+        s.locker(8, 4, 4);
         Entity marine = s.spawn(CrewRole.MARINE, 0, 8, 4);
         s.run(8f);
         assertTrue(CrewQueries.isManning(marine, SubsystemType.WEAPONS), s.c(marine).activity);
