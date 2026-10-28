@@ -528,6 +528,12 @@ public final class ExteriorRenderer implements Disposable {
         shapes.setProjectionMatrix(view);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (Body body : hulls) {
+            Entity craft = owner(body);
+            if (craft != null && decks.containsKey(craft)) {
+                // Drawn as its deck plan, whose outline is its tiles, not its hull art's
+                maskDeck(body, craft.getComponent(ShipGridComponent.class));
+                continue;
+            }
             for (Fixture fixture : body.getFixtureList()) {
                 if (!(fixture.getShape() instanceof PolygonShape)) continue;
                 int n = PolygonSkin.outline(body, (PolygonShape) fixture.getShape(), polygon);
@@ -541,6 +547,25 @@ public final class ExteriorRenderer implements Disposable {
         Gdx.gl.glColorMask(true, true, true, true);
         Gdx.gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
         Gdx.gl.glDisable(GL20.GL_STENCIL_TEST);
+    }
+
+    /** {@code grid}'s tiles that are not void, filled in world meters at {@code body}'s pose. */
+    private void maskDeck(Body body, ShipGridComponent grid) {
+        if (grid == null) return;
+        Vector2 at = PhysicsManager.getPosition(body, tmp2);
+        float c = MathUtils.cos(body.getAngle()), sn = MathUtils.sin(body.getAngle()), t = grid.tileSize;
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                if (grid.getTile(x, y).isVoid()) continue;
+                float lx = grid.gridOriginLocal.x + x * t, ly = grid.gridOriginLocal.y + y * t;
+                float x0 = at.x + c * lx - sn * ly, y0 = at.y + sn * lx + c * ly;
+                float x1 = x0 + c * t, y1 = y0 + sn * t;
+                float x3 = x0 - sn * t, y3 = y0 + c * t;
+                float x2 = x1 - sn * t, y2 = y1 + c * t;
+                shapes.triangle(x0, y0, x1, y1, x2, y2);
+                shapes.triangle(x0, y0, x2, y2, x3, y3);
+            }
+        }
     }
 
     private void drawFixture(Body body, Shape shape) {
