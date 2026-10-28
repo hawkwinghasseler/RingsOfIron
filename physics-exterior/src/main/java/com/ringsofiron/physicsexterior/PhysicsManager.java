@@ -306,6 +306,40 @@ public class PhysicsManager implements Disposable {
         return true;
     }
 
+    /**
+     * Sorts bodies into an order that is the same every run: by their entity's UUID, then where they
+     * are. {@code World.getBodies} lists them by native address, which changes from run to run, and
+     * moving bodies in that order (a rebase) queued their broadphase updates in it, so the contacts
+     * that came of them were solved in a different order and a replayed career drifted apart (seed 7
+     * docking at Anvil Yards, Oct 2026).
+     */
+    static void inStableOrder(Array<Body> bodies) {
+        bodies.sort(STABLE_ORDER);
+    }
+
+    private static String uuidOf(Body body) {
+        Object data = body.getUserData();
+        if (!(data instanceof Entity)) return "";
+        com.ringsofiron.coreengine.components.UuidComponent id =
+                ((Entity) data).getComponent(com.ringsofiron.coreengine.components.UuidComponent.class);
+        return id == null || id.id == null ? "" : id.id;
+    }
+
+    private static final java.util.Comparator<Body> STABLE_ORDER = (a, b) -> {
+        int c = uuidOf(a).compareTo(uuidOf(b));
+        if (c != 0) return c;
+        Vector2 pa = a.getPosition();
+        float ax = pa.x, ay = pa.y;
+        Vector2 pb = b.getPosition();
+        c = Float.compare(ax, pb.x);
+        if (c != 0) return c;
+        c = Float.compare(ay, pb.y);
+        if (c != 0) return c;
+        c = Float.compare(a.getAngle(), b.getAngle());
+        if (c != 0) return c;
+        return Float.compare(a.getMass(), b.getMass());
+    };
+
     public void addStepListener(StepListener listener) {
         if (!stepListeners.contains(listener, true)) stepListeners.add(listener);
     }
@@ -326,6 +360,7 @@ public class PhysicsManager implements Disposable {
         float uvy = dvy * UNITS_PER_METER;
 
         world.getBodies(bodyBuffer);
+        inStableOrder(bodyBuffer);
         for (int i = 0; i < bodyBuffer.size; i++) {
             Body body = bodyBuffer.get(i);
             Vector2 p = body.getPosition();
