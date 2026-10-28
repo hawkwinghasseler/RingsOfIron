@@ -442,6 +442,7 @@ public class UiHud implements Disposable {
         hudRenderSystem.setTargeting(targeting);
         flightReadoutSystem.setTargeting(targeting);
         radarSystem.setTargeting(targeting);
+        navMarkerSystem.setTargeting(targeting);
     }
 
     /** Feeds the propellant, structure, power and oxygen gauges; null leaves them reading "--". */

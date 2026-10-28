@@ -77,7 +77,7 @@ Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. C
 | `TrafficMap` | Full-screen map (M) of stations and haulers on rails around the body you orbit, with range rings; the wheel zooms toward you |
 | `ShipGauges` | Under the flight readout: propellant (with kg), structure, power (store charge and reactor output) and oxygen bars, amber below 50% and red below 25%. With no oxygen tanks the oxygen bar shows the air in the worst room |
 | `RadarScope`, `RadarSystem` | Under the ship gauges, compact and out of the middle of the view: every marked contact around the ship, north up like the view, tinted like its marker, the locked target ringed, the ship's heading as a line. Contacts out of range sit hollow on the rim. The − and + buttons either side of the range step it through 0.5, 2, 10, 50, 250 and 1,000 km. A click on a contact locks it as Tab would, or makes it the navigation target if it is a station or other object that is not a sensor contact |
-| `NavMarkers`, `NavMarkerSystem` | Prograde (circle with ticks) and retrograde (circle with a cross) 70 px from the ship in the exterior view, along the ship's orbital velocity: its velocity in the bubble plus the bubble's own, the same velocity the speed readout shows |
+| `NavMarkers`, `NavMarkerSystem` | Prograde (circle with ticks) and retrograde (circle with a cross) 70 px from the ship in the exterior view, along the ship's orbital velocity: its velocity in the bubble plus the bubble's own, the same velocity the speed readout shows. While a target with a body in the bubble is locked (Tab), they follow the velocity relative to it instead, drawn magenta with a "TGT" tag by each; the flight readout's "Markers" line names the frame (orbit, or TARGET with the relative speed) |
 
 ### Interfaces other modules fill in
 
@@ -102,6 +102,12 @@ These live in `com.ringsofiron.uihud.providers`. The adapters that implement the
 ![Main menu](main-menu.png)
 
 ![Gauges, radar and the prograde markers in flight](gauges-radar.png)
+
+With no target the markers follow the orbit (yellow-green, "Markers  orbit"); with a target locked they follow the velocity relative to it (magenta, tagged TGT, "Markers  TARGET" with the relative speed):
+
+![Prograde markers in the orbit frame](nav-markers-orbit.png)
+
+![Prograde markers relative to the target](nav-markers-target.png)
 
 The radar has since moved under the gauges at a smaller size, its rings drawn as smooth, soft-edged bands (`HudDraw.ring`, `HudDraw.disc`), shown here at 3x:
 
