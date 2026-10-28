@@ -687,6 +687,7 @@ art/tiles/conduit_arm_unpowered.svg
 art/tiles/conduit_unpowered.svg
 art/tiles/covering_carpet.svg
 art/tiles/covering_medbay.svg
+art/tiles/dock_tunnel_wall.svg
 art/tiles/dock_walkway.svg
 art/tiles/floor.svg
 art/tiles/pipe_arm.svg

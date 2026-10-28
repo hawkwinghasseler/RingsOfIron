@@ -375,6 +375,8 @@ public final class ArtNames {
     public static final String CRUSHED = "effects/crushed";
     /** The gangway across two latched collars, stretched along the crossing. */
     public static final String WALKWAY = "tiles/dock_walkway";
+    /** A side wall of a collar tunnel, half a tile long, for the deck view. */
+    public static final String TUNNEL_WALL = "tiles/dock_tunnel_wall";
 
     /** Frames of {@link #explosion}. */
     public static final int EXPLOSION_FRAMES = 4;

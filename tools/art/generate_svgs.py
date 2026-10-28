@@ -3310,6 +3310,27 @@ def dock_walkway():
           "dock_walkway: gangway between two latched collars; uniform along y, stretch or tile it to the gap")
 
 
+def dock_tunnel_wall():
+    """One side wall of a collar's tunnel seen from inside, for the deck view: half a tile of it
+    along y (two pleats), the walkway side at x 0 and the outer skin at x 26. The game lays it
+    in half-tile pieces down each side of the gangway, only where the collar is out past the two
+    collars on the hulls, so a tunnel locked a tile out shows its walls."""
+    w, h = 26, T // 2
+    a = Art()
+    a.b = rect(0, 0, w, h, STEEL_DARK)
+    # bellows: each pleat a lit rib and the shadowed fold behind it, across the wall
+    for k in range(2):
+        y = (k + 0.5) * h / 2
+        a.b += rect(3, y - 5, w - 7, 4, STEEL_MID)
+        a.b += rect(3, y - 1, w - 7, 3, "#2a3039")
+        a.b += line(3, y - 5, w - 4, y - 5, STEEL_HI, sw=1, extra=' opacity="0.7"')
+    # the rail the tunnel telescopes on, at the walkway's edge, and the outer skin
+    a.b += rect(0, 0, 3, h, HOUSING) + line(1.5, 0, 1.5, h, "#7a8594", sw=1)
+    a.b += rect(w - 4, 0, 4, h, INK)
+    write("tiles/dock_tunnel_wall.svg", w, h, a,
+          "dock_tunnel_wall: side wall of a collar tunnel, half a tile along y, walkway side at x 0; laid in pieces down the gangway")
+
+
 def main():
     if os.path.isdir(OUT):
         for sub in os.listdir(OUT):
@@ -3336,6 +3357,7 @@ def main():
     projectiles()
     blasts()
     dock_walkway()
+    dock_tunnel_wall()
     print(f"wrote {len(written)} SVGs to {os.path.relpath(OUT, ROOT)}")
 
 

@@ -534,7 +534,48 @@ public final class DeckArt {
             float cx = ox + (link.x + 0.5f + side.dx * 0.5f) * s + side.dx * half / 2f;
             float cy = oy + (link.y + 0.5f + side.dy * 0.5f) * s + side.dy * half / 2f;
             centered(batch, r, cx, cy, s, half, side.dx != 0 ? 1 : 0);
+            tunnelWalls(batch, grid, link, half);
         }
+    }
+
+    /**
+     * The tunnel's side walls down this grid's half of the gangway, where a collar locked out
+     * runs past the two collars on the hulls: half a tile from the edge (the collar) to halfway
+     * across, beside the outermost openings of the port. Nothing for collars that met.
+     */
+    private void tunnelWalls(Batch batch, ShipGridComponent grid, GridLink link, float half) {
+        TextureRegion r = art.region(ArtNames.TUNNEL_WALL);
+        float s = grid.tileSize, run = half - s * 0.5f;
+        if (r == null || run < s * 0.25f) return;
+        ArtLibrary.Info info = art.info((com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion) r);
+        float thick = (info == null ? r.getRegionWidth() : info.w) * s / ArtLibrary.UNITS_PER_TILE;
+        Side side = link.side;
+        // Along the gangway (out of the port) and across it
+        float ax = side.dx, ay = side.dy, cxAcross = -side.dy, cyAcross = side.dx;
+        float ex = grid.gridOriginLocal.x + (link.x + 0.5f + side.dx * 0.5f) * s;
+        float ey = grid.gridOriginLocal.y + (link.y + 0.5f + side.dy * 0.5f) * s;
+        int pieces = Math.max(1, Math.round(run / (s * 0.5f)));
+        float piece = run / pieces;
+        for (int k = -1; k <= 1; k += 2) {
+            if (linkBeside(grid, link, k)) continue;
+            float off = s * 0.5f + thick * 0.5f;
+            // The art's walkway side is its x 0: facing in on either side
+            int rotation = (side.dx != 0 ? 1 : 0) + ((k > 0) == (side.dx != 0 ? side.dx < 0 : side.dy > 0) ? 2 : 0);
+            for (int i = 0; i < pieces; i++) {
+                float along = s * 0.5f + piece * (i + 0.5f);
+                float cx = ex + ax * along + cxAcross * off * k, cy = ey + ay * along + cyAcross * off * k;
+                centered(batch, r, cx, cy, thick, piece, rotation);
+            }
+        }
+    }
+
+    /** True if the same dock has another opening beside {@code link}, on side {@code k} (-1 or 1) across it. */
+    private static boolean linkBeside(ShipGridComponent grid, GridLink link, int k) {
+        int nx = link.x - link.side.dy * k, ny = link.y + link.side.dx * k;
+        for (GridLink l : grid.links) {
+            if (l != link && l.otherShip == link.otherShip && l.side == link.side && l.x == nx && l.y == ny) return true;
+        }
+        return false;
     }
 
     /** Whether there is crew art; without it, draw crew as dots. */
