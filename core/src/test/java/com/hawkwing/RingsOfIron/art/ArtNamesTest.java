@@ -253,6 +253,18 @@ class ArtNamesTest {
     }
 
     @Test
+    void everyFurnishingInDataHasArt() throws IOException {
+        String text = new String(Files.readAllBytes(ASSETS.resolve("data/furnishings.toml")), java.nio.charset.StandardCharsets.UTF_8);
+        Matcher m = Pattern.compile("^art = \"([a-z0-9_/]+)\"", Pattern.MULTILINE).matcher(text);
+        int n = 0;
+        while (m.find()) {
+            assertArt(m.group(1));
+            n++;
+        }
+        assertTrue(n > 10, "read the furnishings: " + n);
+    }
+
+    @Test
     void everyChassisAndWeaponInDataHasExteriorArt() throws IOException {
         for (String chassis : ids(ASSETS.resolve("data/chassis.toml"), "chassis")) assertArt(ArtNames.hull(chassis));
         for (String weapon : ids(ASSETS.resolve("data/weapons.toml"), "weapon")) {
@@ -270,7 +282,17 @@ class ArtNamesTest {
             for (ArtNames.CrewPose pose : ArtNames.CrewPose.values()) {
                 assertArt(ArtNames.crew(who, pose, false));
                 assertArt(ArtNames.crew(who, pose, true));
+                // ...in each suit
+                for (com.ringsofiron.interiorgrid.crew.Suit.Kind suit : com.ringsofiron.interiorgrid.crew.Suit.Kind.values()) {
+                    assertArt(ArtNames.crew(who, pose, suit));
+                }
             }
+            // ...and out on EVA, crawling and floating
+            for (ArtNames.EvaPose pose : ArtNames.EvaPose.values()) assertArt(ArtNames.crew(who, pose));
+        }
+        // A suit hung in each kind of locker
+        for (com.ringsofiron.interiorgrid.crew.Suit.Kind suit : com.ringsofiron.interiorgrid.crew.Suit.Kind.values()) {
+            assertArt(ArtNames.lockerSuit(suit));
         }
         // Each wound, over a standing figure and one down
         com.ringsofiron.aicrew.CrewMemberComponent c = new com.ringsofiron.aicrew.CrewMemberComponent();

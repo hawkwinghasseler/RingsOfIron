@@ -234,6 +234,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     /** The craft whose decks the interior view draws. */
     private final Array<Entity> decks = new Array<>();
+    /** No decks: in the exterior view every craft is seen from outside. */
+    private static final Array<Entity> NO_DECKS = new Array<>();
     private final Vector2 followAt = new Vector2();
     private final Vector2 tmp = new Vector2();
     /** Furniture being put down on the deck from the yard window, or null. */
@@ -332,6 +334,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.combatEvents.detonations.add((signal, boom) ->
                 exterior.explode(boom.worldPoint.x, boom.worldPoint.y));
 
+        // E at a suit locker: a suit on, or hung back up
+        hud.getInteractPromptSystem().setInteraction(world.captain.lockerUse());
         world.bridge.playerAlwaysAtHelm = VIEW_ANYWHERE;
         if (!VIEW_ANYWHERE) {
             hud.setViewKey(this::sitOrStand);
@@ -1469,6 +1473,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         snow.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
         exterior.drawBodies(viewports.getWorldCamera());
         exterior.drawFlight(viewports.getWorldCamera(), px, Gdx.graphics.getDeltaTime());
+        // Crew out on EVA, on the hulls and off them
+        deckRenderer.drawOutside(NO_DECKS, viewports.getWorldCamera(), Gdx.graphics.getDeltaTime());
         // Every planned burn's direction, and the corridor into a docking port
         navOverlay.draw(shapes, px);
         // The arcs of the guns in hand, or of every gun flying with a target locked
@@ -1491,6 +1497,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         int glowFrom = lighting.glowSpots().size();
         exteriorLighting.age(delta);
         exterior.drawBodies(camera, delta, decks, () -> deckRenderer.footprints(decks, camera));
+        // ...and the crew out on EVA from those other craft
+        deckRenderer.drawOutside(decks, camera, delta);
         // Their navigation lights and running systems glow as outside; the decks' glowed already
         lighting.renderGlow(batch, camera, 2.5f * viewports.getViewMeters() / 400f, glowFrom);
     }
@@ -1619,6 +1627,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
             font.setColor(Color.LIGHT_GRAY);
             font.draw(batch, bridge, left, below);
             below -= 20f;
+        }
+        // Crew outside: a burn can throw them off, so the helm needs to know
+        String eva = world.spacewalks.statusLine();
+        if (eva != null) {
+            font.setColor(Color.ORANGE);
+            below = statusLine(eva, left, below);
         }
         statusBottom = below;
         batch.end();

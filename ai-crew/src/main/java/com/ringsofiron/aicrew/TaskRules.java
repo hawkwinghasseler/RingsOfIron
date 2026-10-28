@@ -10,6 +10,7 @@ import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.LeakPatches;
+import com.ringsofiron.interiorgrid.RcsThruster;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -55,6 +56,8 @@ public final class TaskRules {
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && s.health < 1f;
             }
+            case REPAIR_RCS:
+                return RcsThruster.fieldRepairable(grid, task.x, task.y);
             case MAN_CONSOLE: {
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && !s.isDestroyed();
@@ -297,11 +300,11 @@ public final class TaskRules {
     /**
      * True if {@code crew}, of {@code board}'s ship but aboard a docked craft, may go back aboard for
      * {@code task}: the player's crews only ({@link #suitCare}), to stop a bleed or carry a casualty
-     * out, with a suit and {@link #BACK_ABOARD_AIR} or more in it.
+     * out, in a suit with {@link #BACK_ABOARD_AIR} or more in it.
      */
     public static boolean goesBackAboard(CrewMemberComponent crew, CrewTask task, ShipTaskBoardComponent board) {
         return shelterGoesBack && suitCare(board) && (task.kind == CrewTask.Kind.STABILISE || task.kind == CrewTask.Kind.RESCUE)
-                && crew.def.suitAir > 0f && crew.suitAir >= BACK_ABOARD_AIR;
+                && crew.suited && crew.suitAir >= BACK_ABOARD_AIR;
     }
 
     /** True if {@code board}'s crew suit up at their posts and fill a casualty's suit (round 9). */
@@ -386,12 +389,15 @@ public final class TaskRules {
     /**
      * True if {@code task} lies where the fire is falling on its ship ({@link
      * ShipTaskBoardComponent#underFire}) and waits for the fight to end: damage control, repairs and
-     * casualties alike, except a casualty with no more than {@link #LAST_CHANCE} to live, bleeding out
+     * casualties alike (and EVA work anywhere at battle stations), except a casualty with no more than
+     * {@link #LAST_CHANCE} to live, bleeding out
      * or down in bad air with that much suit air or none. Manning a
      * console, orders, work away from the ship and damage control on what the ship fights with
      * ({@link #vital}) never wait.
      */
     public static boolean waitsOutFire(CrewTask task, ShipTaskBoardComponent board, CrewService crew) {
+        // Nobody goes out on the hull in a fight, under fire or not
+        if (task.kind == CrewTask.Kind.REPAIR_RCS) return board != null && board.battleStations;
         if (board != null && !board.keepsClearOfFire) return false;
         if (board == null || !board.battleStations || board.hitTiles.size == 0) return false;
         switch (task.kind) {

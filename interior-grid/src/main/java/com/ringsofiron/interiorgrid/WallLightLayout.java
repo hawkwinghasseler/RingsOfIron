@@ -128,7 +128,11 @@ public final class WallLightLayout {
         return beyond != null && beyond.isIntactWall();
     }
 
-    /** Floor tiles numbered by room, -1 for everything else; edge walls and doors part rooms. */
+    /**
+     * Floor tiles numbered by room, -1 for everything else; edge walls and doors part rooms. A
+     * docking port's inner hatch does not: it stands open but while the airlock cycles, and its
+     * chamber, with no wall of its own to hang a light on, is lit from the deck it opens off.
+     */
     public static int[] rooms(ShipGridComponent grid) {
         int w = grid.width, h = grid.height;
         int[] room = new int[w * h];
@@ -151,7 +155,7 @@ public final class WallLightLayout {
                     int nx = x + s.dx, ny = y + s.dy;
                     if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
                     int j = ny * w + nx;
-                    if (room[j] != -2 || grid.getEdge(x, y, s) != null) continue;
+                    if (room[j] != -2 || grid.getEdge(x, y, s) != null && !DockingPortLayout.isHatchEdge(grid, x, y, s)) continue;
                     room[j] = next;
                     stack.add(j);
                 }

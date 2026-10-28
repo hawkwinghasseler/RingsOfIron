@@ -17,11 +17,14 @@ import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.FloorCovering;
+import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.interiorgrid.SuitLockers;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
+import com.ringsofiron.interiorgrid.crew.Suit;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 
 import java.util.ArrayList;
@@ -126,11 +129,39 @@ public final class DebugActions {
         return c.name + " is " + c.state.name().toLowerCase(Locale.ROOT);
     }
 
-    /** Puts the crew member's space suit on, or takes it off. */
+    /**
+     * Puts a suit on the crew member where they stand, or takes theirs off: a suit from the nearest
+     * locker aboard with one (a pressure suit first), back into the nearest with room; with none, a
+     * fresh pressure suit out of nowhere, or the suit gone.
+     */
     public String suit(Entity crew) {
         CrewMemberComponent c = crewOf(crew);
-        c.setSuited(!c.suited);
-        return c.name + (c.suited ? " suits up" : " takes their suit off");
+        GridPositionComponent p = world.crew.position(crew);
+        ShipGridComponent grid = p == null ? null : world.crew.grid(p.ship);
+        if (c.suited) {
+            Suit off = c.takeOff();
+            Furnishing to = nearestLocker(grid, p, f -> SuitLockers.hasRoom(f, off.kind));
+            if (to != null) SuitLockers.stow(to, off);
+            return c.name + " takes their suit off" + (to != null ? " and hangs it in the " + to.type.name.toLowerCase(Locale.ROOT) + " at " + to.tileX + "," + to.tileY : "");
+        }
+        Furnishing from = nearestLocker(grid, p, f -> SuitLockers.hasSuit(f, Suit.Kind.IVA));
+        if (from == null) from = nearestLocker(grid, p, f -> SuitLockers.hasSuit(f, Suit.Kind.EVA));
+        c.wear(from != null ? SuitLockers.take(from, from.type.holds) : Suit.iva());
+        return c.name + " suits up" + (from != null ? " from the " + from.type.name.toLowerCase(Locale.ROOT) + " at " + from.tileX + "," + from.tileY : "");
+    }
+
+    /** The locker aboard nearest {@code p} that {@code test} accepts, or null. */
+    private static Furnishing nearestLocker(ShipGridComponent grid, GridPositionComponent p, java.util.function.Predicate<Furnishing> test) {
+        Furnishing best = null;
+        float bestD = Float.MAX_VALUE;
+        for (Furnishing f : SuitLockers.all(grid)) {
+            float d = Math.abs(f.x() - p.x) + Math.abs(f.y() - p.y);
+            if (test.test(f) && d < bestD) {
+                bestD = d;
+                best = f;
+            }
+        }
+        return best;
     }
 
     /** Puts the crew member on another tile of their ship, or of another ship. */

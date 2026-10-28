@@ -5,6 +5,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
 import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.LeakPatches;
+import com.ringsofiron.interiorgrid.RcsThruster;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.Side;
@@ -14,6 +15,7 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
 import com.ringsofiron.interiorgrid.crew.ExtinguishTask;
 import com.ringsofiron.interiorgrid.crew.IsolateTankTask;
 import com.ringsofiron.interiorgrid.crew.PatchLeakTask;
+import com.ringsofiron.interiorgrid.crew.RcsRepairTask;
 import com.ringsofiron.interiorgrid.crew.RepairTask;
 import com.ringsofiron.interiorgrid.crew.ResetShortTask;
 import com.ringsofiron.interiorgrid.crew.SealBreachTask;
@@ -24,7 +26,8 @@ import com.ringsofiron.interiorgrid.crew.SealBreachTask;
  * the interior, a {@link PatchLeakTask} for every leak to space the ship's patch kits can stop
  * (see {@link LeakPatches}), a {@link ResetShortTask} for every shorted system or conduit, an
  * {@link IsolateTankTask} for every leaking tank (see {@link DamageStates}), a {@link RepairTask}
- * for every damaged system and a {@link ManConsoleTask}
+ * for every damaged system, an {@link RcsRepairTask} for every RCS block whose hull tile is wrecked
+ * (off battle stations: it is EVA work, see {@link EvaSystem}) and a {@link ManConsoleTask}
  * for every helm, weapons console and turret mount still standing, and cancels open tasks that no
  * longer need doing.
  *
@@ -56,7 +59,8 @@ public class ShipHazardScanSystem extends FixedIteratingSystem {
         ShipGridComponent grid = gridM.get(ship);
         ShipTaskBoardComponent board = boardM.get(ship);
         for (CrewTask t : board.tasks) {
-            if (t.status == CrewTask.Status.OPEN && !TaskRules.isStillNeeded(t, grid, service)) board.cancel(t);
+            if (t.status == CrewTask.Status.OPEN && (!TaskRules.isStillNeeded(t, grid, service)
+                    || t.kind == CrewTask.Kind.REPAIR_RCS && board.battleStations)) board.cancel(t);
         }
         board.prune();
         for (int y = 0; y < grid.height; y++) {
@@ -65,6 +69,12 @@ public class ShipHazardScanSystem extends FixedIteratingSystem {
                 if (t.isBurning()) board.post(new ExtinguishTask(x, y));
                 else if (t.isHullBreach() && bordersInterior(grid, x, y)) board.post(new SealBreachTask(x, y));
                 if (t.shorted) board.post(new ResetShortTask(x, y));
+            }
+        }
+        if (!board.battleStations) {
+            for (int i = 0; i < grid.rcsThrusters.size; i++) {
+                RcsThruster r = grid.rcsThrusters.get(i);
+                if (RcsThruster.fieldRepairable(grid, r.x, r.y)) board.post(new RcsRepairTask(r.x, r.y));
             }
         }
         if (grid.patchKits > 0) {
