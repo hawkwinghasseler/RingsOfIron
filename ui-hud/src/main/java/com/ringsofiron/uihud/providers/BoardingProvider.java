@@ -16,6 +16,11 @@ public interface BoardingProvider {
     /** Sends the boarding party across; returns what was ordered. */
     String orderBoarding();
 
+    /** Sends the boarding party to storm the other ship, forcing every shut door on the way; returns what was ordered. */
+    default String storm() {
+        return "";
+    }
+
     /** Calls the boarding party back; returns what was done. */
     String recall();
 
@@ -50,6 +55,10 @@ public interface BoardingProvider {
         public String state = "";
         /** Why no boarding party can go now, or empty if one can. */
         public String boardRefusal = "";
+        /** Why the party can't storm it now, or empty if it can. */
+        public String stormRefusal = "";
+        /** Not latched to it: the party goes over on EVA. */
+        public boolean byEva;
         /** A boarding party is on its way or aboard. */
         public boolean boarding;
         /** Taken: its parts and cargo are the player's to strip. */
@@ -72,8 +81,8 @@ public interface BoardingProvider {
         }
 
         public void clear() {
-            craftName = state = boardRefusal = salvageRefusal = "";
-            boarding = salvage = false;
+            craftName = state = boardRefusal = stormRefusal = salvageRefusal = "";
+            boarding = salvage = byEva = false;
             parts.clear();
             cargo.clear();
         }

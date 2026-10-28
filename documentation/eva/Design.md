@@ -181,6 +181,49 @@ dark, the suit's lamps lighting the plating round them.
 
 `tools/playtest/eva.sh` plays it through in a real window and takes the screenshots.
 
+## Boarding across on EVA
+
+A boarding no longer needs a dock (`Boarding`, core; `EvaTasks.Departure`, `EvaSystem.cross`, ai-crew).
+With the player's ship latched to nothing, K's window offers the ship standing off within
+`EvaSystem.CROSS_RANGE` (300 m, hull to hull near enough) and drifting less than `CROSS_DRIFT`
+(2 m/s) from it: the navigation target if it is such a ship, else the nearest. Send boarders on EVA
+works as a boarding across a dock does (a beaten ship, standing cost, the sweep room by room, taken
+once no one aboard fights), but the party goes over on their jetpacks:
+
+- **Who goes:** as many of the party as there are EVA suits aboard with half their air or more, worn
+  or hanging in lockers. The corvette's two EVA suits send two.
+- **Out:** into an EVA suit (out of a pressure suit first), to the airlock whose door is the shortest
+  walk and crawl from the side of the hull facing the other ship, and out with no line clipped on:
+  40 m of line doesn't reach. Over the hull to the ring tile nearest the other ship, and off it.
+- **Across:** from the push off they count as aboard the ship they make for (`CROSSING`): its
+  frame is theirs and its hull the one they catch hold of. They jet to the nearest point of it at up
+  to `CROSS_SPEED` (3 m/s), catch hold, and crawl (or hop) to the port they go in by: the one not
+  latched to anything whose door is nearest their own ship (`EvaTasks.entryPort`).
+- **The airlock door, from outside** (`BoardTask.Job.breach`): unpowered, it is pried (8 s);
+  powered, hacked (45 s), and the airlock is then theirs: it cycles them in and the cabin keeps its
+  air. Storming, a powered door is cut instead (20 s). A door pried or cut stands open on a chamber
+  whose hatch is open at rest, so the cabin behind it vents, and they go straight in (`ABOARD`).
+  Two boarders at one door work it together. Each is a hostile act, costed as a door forced across
+  a dock (`FactionStanding.onForcedEntry`).
+- **Back:** once the ship is taken (or the boarding called off), the party, idle aboard a ship with
+  no dock to their own for 3 s, go back the same way: out of its airlock, across, and in through
+  their own, cycled for them as from any EVA.
+- **Called off** if the two ships drift more than `LOST_RANGE` (500 m) apart. While any of the
+  player's crew are aboard a ship their own isn't docked to, rails warp waits ("Crew are across on
+  another ship").
+
+## Storming: forcing a way in
+
+Force a way in, in K's window, boards a ship whether or not it is beaten, latched to it or standing
+off on EVA (`Boarding.storm`). The boarders get no free run of its doors: each shut door in their
+way is forced (`CrewService.DoorRights.forcing`, `CrewDoors.Forcing`), pried in 8 s while the ship
+has no reactor running, cut in 20 s while it has (left at 0.4 integrity), and left open behind them.
+The docked port's door is forced first as the existing order does it, cut if it is powered. Any
+boarder, storming or not, forces an airlock door or hatch held shut for its cycle rather than wait
+on it. While the storm lasts, the two crews fight whatever the player's standing with the other
+ship's owners (`Boarding.storming`); it is taken as any boarding is, once no one aboard still
+fights for it.
+
 ## Screenshots
 
 From `tools/playtest/eva.sh` on the patrol corvette, with the hull tile under its starboard bow
@@ -262,6 +305,12 @@ line and finish the block:
   line until it ends), a full one along the hull parting the line and the reel winding the loose
   line in, a full burn snapping it and leaving them behind, a short one parting it so they come in
   and go out again on a new line, a floating-origin shift.
+- `EvaBoardingTest` (ai-crew): a marine across on EVA to a craft standing off, round its hull,
+  its airlock door forced open (the cabin vents) and aboard, then home again; an airlock hacked
+  cycling them in with the cabin's air kept; a craft out of range not crossed to.
+- `CrewDoorTest` (ai-crew): boarders who force their way work at a door for its time and leave it open.
+- `BoardingEvaTest` (core): the surrendered raider standing off 40 m boarded on EVA, taken, and the
+  party back aboard with rails warp waiting meanwhile; storming a latched raider that can still fight.
 - `SpacewalksTest` (core): the patrol corvette's engineer mending a block with rails warp waiting,
   the notices and the status line, the corvette's full burn parting the line of one at its bow
   block while the swing from a long burn astern doesn't, and a save made while they are outside
@@ -274,4 +323,9 @@ line and finish the block:
   out, for the ship to come back for them.
 - Only RCS blocks are EVA work. Hull patches from outside, a jammed docking collar, mounting
   external parts are natural next jobs.
-- The player can't order an EVA, or call one back, by hand.
+- The player can't order an EVA, or call one back, by hand (but for a boarding).
+- Boarders over on EVA who are knocked out aboard the other ship are carried home when the party
+  stands down, as across a dock, rather than towed across.
+- A ship with no airlock left to go out by (its doors all blown) strands boarders aboard it until a
+  dock is made.
+- Only the player boards on EVA; pirates still board only by latching on.

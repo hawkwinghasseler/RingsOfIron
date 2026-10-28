@@ -30,6 +30,21 @@ public final class Spacewalks {
         world.engine.addRailsWarpGuard(this::railsWarpBlockedReason);
     }
 
+    /** Start of the refusal while some of the crew are aboard a craft with no dock to their own. */
+    public static final String ACROSS = "Crew are across on another ship";
+
+    /** One of the player's crew aboard a craft their own isn't docked to (gone over on EVA), or null. */
+    public Entity awayAcross() {
+        ImmutableArray<Entity> all = world.crew.crewEntities();
+        for (int i = 0; i < all.size(); i++) {
+            Entity e = all.get(i);
+            if (!ours(e) || !world.crew.crew(e).isAlive()) continue;
+            Entity at = world.crew.position(e).ship, home = world.crew.homeOf(e);
+            if (at != null && home != null && at != home && !world.crew.joined(at, home)) return e;
+        }
+        return null;
+    }
+
     /** The player's crew on an EVA: outside, or in an airlock on the way out or back in. */
     public List<Entity> onEva() {
         List<Entity> out = new ArrayList<>();
@@ -44,7 +59,12 @@ public final class Spacewalks {
     /** Why rails warp waits, naming who is out; null when nobody is. */
     public String railsWarpBlockedReason() {
         List<Entity> out = onEva();
-        if (out.isEmpty()) return null;
+        if (out.isEmpty()) {
+            // Boarders gone over on EVA wait to come back the same way
+            Entity away = awayAcross();
+            return away == null ? null : ACROSS + ": " + world.crew.crew(away).name + " is aboard "
+                    + Boarding.name(world.crew.position(away).ship);
+        }
         if (out.size() == 1) return REFUSAL + ": " + world.crew.crew(out.get(0)).name + " is outside";
         return REFUSAL + ": " + out.size() + " of the crew are outside";
     }
@@ -81,6 +101,7 @@ public final class Spacewalks {
             case ON_HULL:
                 return eva.tethered ? "on the hull, " + Math.round(eva.lineOut) + " m of line out" : "on the hull, no line";
             default:
+                if (eva.crossing && !eva.fell) return "crossing on the jetpack";
                 return eva.tethered ? "off the hull on " + Math.round(eva.lineOut) + " m of line" : "adrift, no line";
         }
     }
@@ -94,6 +115,13 @@ public final class Spacewalks {
                 break;
             case BACK:
                 world.notices.post(name + " is back in from EVA", NoticeLog.Kind.INFO);
+                break;
+            case CROSSING:
+                if (e.ship == world.crew.homeOf(e.crew)) world.notices.post(name + " pushes off across to the other ship", NoticeLog.Kind.INFO);
+                else world.notices.post(name + " pushes off to come back across", NoticeLog.Kind.INFO);
+                break;
+            case ABOARD:
+                world.notices.post(name + " is aboard " + Boarding.name(e.ship) + " through its airlock", NoticeLog.Kind.INFO);
                 break;
             case LOST_GRIP:
                 world.notices.post(name + " is thrown off the hull", NoticeLog.Kind.WARNING);

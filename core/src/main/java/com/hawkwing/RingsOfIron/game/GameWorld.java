@@ -535,6 +535,8 @@ public class GameWorld implements Disposable {
         // Beaten ships are boarded, taken and stripped
         boarding = new Boarding(docking, crew, forcing, standing, disablement, engine.getUuidRegistry(), engine::getSimSeconds);
         engine.addSystem(boarding);
+        // A craft being stormed fights its boarders, whatever the player's standing with its owners
+        crew.hostility = (a, b) -> standing.hostile(a, b) || boarding.storming(a, b);
         salvage = new Salvage(docking, crew, boarding, cargo, engine.getUuidRegistry(), combatDefs);
         engine.addSystem(salvage);
         // Ships bought at faction yards, and taken ships towed home as prizes
@@ -582,6 +584,8 @@ public class GameWorld implements Disposable {
         addResettable(tension);
         yard.priceFactor = tension::priceFactor;
         nav = Navigation.install(this);
+        // The navigation target is the craft boarded on EVA, when it is in reach
+        boarding.preferred = nav.target::entity;
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);
         // Things that happen on their own, a day at a time, with jobs on the boards
