@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.render;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
@@ -49,9 +50,27 @@ public final class ShieldParticles implements Disposable {
     static final float KG_PER_FLECK = 0.4f;
     static final int MIN_FLECKS = 400, MAX_FLECKS = 5_000;
     /** A fleck's size, meters, and the fewest pixels it is drawn across. */
-    static final float FLECK_SIZE = 0.08f, MIN_PIXELS = 1f;
+    static final float FLECK_SIZE = 0.05f, MIN_PIXELS = 1.2f;
+    /**
+     * The flecks show fully zoomed in to this many meters a pixel, and are gone zoomed out to this
+     * many: far out they would only be noise; the bubble and the glow of what is struck stay.
+     */
+    static final float FADE_NEAR = 0.2f, FADE_FAR = 0.4f;
     /** The bubble's glow at rest, and how much a packed region adds to it. */
-    static final float BUBBLE_REST = 0.05f, BUBBLE_PACKED = 0.22f;
+    static final float BUBBLE_REST = 0.07f, BUBBLE_PACKED = 0.22f;
+    /**
+     * How far round the curve the bubble's outline is smoothed, samples (a Gaussian's sigma), so it
+     * doesn't trace every step of the hull; and the most it may sit inside the shield's own curve, meters.
+     */
+    static final float BUBBLE_SMOOTH = 3f, BUBBLE_INSET = 0.6f;
+    /**
+     * The infill across the bubble, brightest at its edge: the bottom one under the hull (seen from
+     * the deck too), the top one over it (outside only); their alpha at the edge, and how sharply
+     * they rise toward it (alpha goes as the fraction of the way out to this power).
+     */
+    static final float INFILL_BOTTOM = 0.11f, INFILL_TOP = 0.05f, INFILL_EDGE = 3f;
+    /** Rings the infill is drawn in, center to edge. */
+    static final int INFILL_RINGS = 10;
     /** Areal density at which a region lights the bubble fully, kg/m^2. */
     static final float BUBBLE_FULL = 25f;
     /** How far a fleck's lazy orbit swings it in and out of the curve, meters. */
@@ -95,6 +114,12 @@ public final class ShieldParticles implements Disposable {
          * fleck's orbit {@link #u} is a share of that mass, so the flecks lie as the layer does.
          */
         final float[] cdf = new float[ShieldPerimeter.SAMPLES + 1];
+        /** The bubble's smoothed curve and its outward normals, body-local, for {@link #curveFor}. */
+        final float[] cx = new float[ShieldPerimeter.SAMPLES], cy = new float[ShieldPerimeter.SAMPLES],
+                cnx = new float[ShieldPerimeter.SAMPLES], cny = new float[ShieldPerimeter.SAMPLES];
+        ShieldPerimeter curveFor;
+        /** The bubble's alpha at each sample of its curve this frame. */
+        final float[] bubbleAlpha = new float[ShieldPerimeter.SAMPLES];
         byte[] state;
         ShieldCloudComponent.Region[] region;
         /** The last hit read from the cloud's log. */
@@ -562,9 +587,13 @@ public final class ShieldParticles implements Disposable {
     private final ObjectMap<Entity, Swarm> swarms = new ObjectMap<>();
     private final ObjectMap<Entity, Body> drawn = new ObjectMap<>();
     private final ObjectSet<Entity> seen = new ObjectSet<>();
+    /** The craft collected this frame that are drawn as their decks. */
+    private final ObjectSet<Entity> decked = new ObjectSet<>();
+    /** One quad's vertices for the batch: x, y, color, u, v at each corner. */
+    private final float[] quad = new float[20];
     private final Vector2 at = new Vector2();
     private final Frame frame = new Frame();
-    private TextureRegion dot, glow, band;
+    private TextureRegion dot, glow, band, white;
     private float delta;
 
     /** How bright a hit shows for {@code joules} the cloud took, 0.2 to 1, by its order. */
@@ -578,6 +607,7 @@ public final class ShieldParticles implements Disposable {
         this.delta = Math.max(0f, delta);
         seen.clear();
         drawn.clear();
+        decked.clear();
     }
 
     /**
@@ -585,6 +615,15 @@ public final class ShieldParticles implements Disposable {
      * shield light into {@code light} (may be null).
      */
     public void collect(Entity craft, Body body, ExteriorLighting light) {
+        collect(craft, body, light, false);
+    }
+
+    /**
+     * As {@link #collect(Entity, Body, ExteriorLighting)}; {@code onDeck}: drawn as its deck plan
+     * (the deck view), so its top infill is left out and what is below the hull's plane is kept
+     * off the deck.
+     */
+    public void collect(Entity craft, Body body, ExteriorLighting light, boolean onDeck) {
         ShieldCloudComponent cloud = craft == null ? null : craft.getComponent(ShieldCloudComponent.class);
         if (cloud == null || cloud.perimeter == null || body == null || cloud.capacity <= 0f) return;
         seen.add(craft);
@@ -604,6 +643,7 @@ public final class ShieldParticles implements Disposable {
             }
         }
         drawn.put(craft, body);
+        if (onDeck) decked.add(craft);
     }
 
     /** Forgets the craft not collected since {@link #begin}. */
@@ -614,78 +654,106 @@ public final class ShieldParticles implements Disposable {
     }
 
     /**
+     * How much of the flecks shows at {@code metersPerPixel}: all of them zoomed in to
+     * {@link #FADE_NEAR}, none zoomed out past {@link #FADE_FAR}.
+     */
+    static float zoomFade(float metersPerPixel) {
+        return MathUtils.clamp((FADE_FAR - metersPerPixel) / (FADE_FAR - FADE_NEAR), 0f, 1f);
+    }
+
+    /**
      * The flecks of every craft collected this frame into {@code batch} (begun, normal blending):
-     * those behind the hull's plane with {@code behind}, else those in front. {@code metersPerPixel}
-     * keeps them a pixel or two across however far out the view is.
+     * those behind the hull's plane with {@code behind}, else those in front; those behind a craft
+     * on its deck are left to {@link #drawGlow}, which keeps them off the deck. They fade out as the
+     * view zooms out ({@link #zoomFade}), and stay {@link #MIN_PIXELS} across while they show.
      */
     public void drawFlecks(Batch batch, boolean behind, float metersPerPixel) {
         if (drawn.size == 0) return;
+        float fade = zoomFade(metersPerPixel);
+        if (fade <= 0f) return;
         textures();
-        float size = Math.max(FLECK_SIZE, MIN_PIXELS * metersPerPixel);
         for (ObjectMap.Entry<Entity, Body> e : drawn) {
+            if (behind && decked.contains(e.key)) continue;
             Swarm sw = swarms.get(e.key);
             if (sw == null) continue;
-            Body body = e.value;
-            for (int i = 0; i < sw.n; i++) {
-                byte st = sw.state[i];
-                if (st == DEAD || st == STOWED || (sw.z[i] < 0f) != behind) continue;
-                float a = st == LOST ? Math.max(0f, sw.timer[i] / LOST_FADE) : 1f;
-                // Turned toward the light above the plane, shadowed below it
-                float shade = 0.6f + 0.4f * sw.z[i];
-                if (st == LOOSE) shade *= 0.7f;
-                float s = size * (1f + 0.25f * sw.z[i]);
-                Vector2 w = where(body, sw, i);
-                batch.setColor(FLECK.r * shade, FLECK.g * shade, FLECK.b * shade, a);
-                batch.draw(dot, w.x - 0.5f * s, w.y - 0.5f * s, s, s);
-            }
+            flecks(batch, e.value, sw, behind, metersPerPixel, fade);
         }
         batch.setColor(Color.WHITE);
     }
 
+    private void flecks(Batch batch, Body body, Swarm sw, boolean behind, float metersPerPixel, float fade) {
+        float min = MIN_PIXELS * metersPerPixel;
+        for (int i = 0; i < sw.n; i++) {
+            byte st = sw.state[i];
+            if (st == DEAD || st == STOWED || (sw.z[i] < 0f) != behind) continue;
+            float a = fade * (st == LOST ? Math.max(0f, sw.timer[i] / LOST_FADE) : 1f);
+            // Turned toward the light above the plane, shadowed below it
+            float shade = 0.6f + 0.4f * sw.z[i];
+            if (st == LOOSE) shade *= 0.7f;
+            float real = FLECK_SIZE * (1f + 0.25f * sw.z[i]);
+            // Smaller than its least size on screen: drawn at that, fainter for it
+            float s = Math.max(real, min);
+            a *= Math.max(0.45f, real / s);
+            Vector2 w = where(body, sw, i);
+            batch.setColor(FLECK.r * shade, FLECK.g * shade, FLECK.b * shade, a);
+            batch.draw(dot, w.x - 0.5f * s, w.y - 0.5f * s, s, s);
+        }
+    }
+
     /**
-     * The shield's own light, into {@code batch} (not begun, its projection set), additively:
-     * packed flecks glowing by how dense their region is, hits' flashes, and the emitters' projectors.
+     * The shield's own light, into {@code batch} (not begun, its projection set), additively: the
+     * bottom infill, kept off the hulls ({@code maskHulls} marks every collected craft's hull with 1
+     * in the stencil buffer; null draws it unmasked), and with it the flecks below a deck craft's
+     * plane; the top infill of craft not on their decks; the bubble's outline; packed flecks glowing
+     * by how dense their region is (those below the plane off the hull too); hits' flashes; and the
+     * emitters' projectors.
      */
-    public void drawGlow(Batch batch, float metersPerPixel) {
+    public void drawGlow(Batch batch, float metersPerPixel, Runnable maskHulls) {
         if (drawn.size == 0) return;
         textures();
-        float size = Math.max(FLECK_SIZE, MIN_PIXELS * metersPerPixel);
+        float fade = zoomFade(metersPerPixel);
+        boolean masked = maskHulls != null;
+        if (masked) {
+            maskHulls.run();
+            Gdx.gl.glEnable(GL20.GL_STENCIL_TEST);
+            Gdx.gl.glStencilFunc(GL20.GL_EQUAL, 0, 0xFF);
+            Gdx.gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
+        }
+        // Below the hull's plane: the flecks under a deck, then the light under every hull
+        if (fade > 0f && decked.size > 0) {
+            batch.begin();
+            for (ObjectMap.Entry<Entity, Body> e : drawn) {
+                Swarm sw = swarms.get(e.key);
+                if (sw != null && decked.contains(e.key)) flecks(batch, e.value, sw, true, metersPerPixel, fade);
+            }
+            batch.end();
+        }
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
         batch.begin();
         for (ObjectMap.Entry<Entity, Body> e : drawn) {
             Swarm sw = swarms.get(e.key);
             ShieldCloudComponent cloud = e.key.getComponent(ShieldCloudComponent.class);
             if (sw == null || cloud == null) continue;
+            infill(batch, e.value, cloud, sw, INFILL_BOTTOM);
+            if (fade > 0f) glowFlecks(batch, e.value, sw, true, metersPerPixel, fade);
+        }
+        batch.flush();
+        if (masked) Gdx.gl.glDisable(GL20.GL_STENCIL_TEST);
+        for (ObjectMap.Entry<Entity, Body> e : drawn) {
+            Swarm sw = swarms.get(e.key);
+            ShieldCloudComponent cloud = e.key.getComponent(ShieldCloudComponent.class);
+            if (sw == null || cloud == null) continue;
             Body body = e.value;
-            bubble(batch, body, cloud);
-            for (int i = 0; i < sw.n; i++) {
-                byte st = sw.state[i];
-                if (st == DEAD || st == STOWED) continue;
-                float charge = 0.025f;
-                if (st == PACKED && sw.region[i] != null) {
-                    ShieldCloudComponent.Region r = sw.region[i];
-                    charge = 0.15f + 0.75f * Math.min(1f, r.peak() / r.spec.maxDensity);
-                } else if (st == LOOSE) {
-                    charge = 0f;
-                } else if (st == LOST) {
-                    charge = 0.5f * Math.max(0f, sw.timer[i] / LOST_FADE);
-                }
-                float a = Math.min(1f, charge + sw.flash[i]);
-                if (a < 0.02f) continue;
-                float s = size * (1.8f + 2f * sw.flash[i]);
-                Vector2 w = where(body, sw, i);
-                // White-hot as it is struck, cooling to cyan
-                float hot = sw.flash[i];
-                batch.setColor(SHIELD.r + (1f - SHIELD.r) * hot, SHIELD.g + (1f - SHIELD.g) * hot, 1f, a * 0.8f);
-                batch.draw(glow, w.x - 0.5f * s, w.y - 0.5f * s, s, s);
-            }
+            if (!decked.contains(e.key)) infill(batch, body, cloud, sw, INFILL_TOP);
+            bubble(batch, body, cloud, sw);
+            if (fade > 0f) glowFlecks(batch, body, sw, false, metersPerPixel, fade);
             for (float[] f : sw.flashes) {
-                float t = f[5] / FLASH_LIFE, fade = (1f - t) * (1f - t);
+                float t = f[5] / FLASH_LIFE, fadeOut = (1f - t) * (1f - t);
                 float s = (1.5f + 4f * f[4]) * (0.6f + 0.8f * t);
                 Vector2 w = CombatPhysics.toWorld(body, f[0], f[1], at);
-                batch.setColor(1f, 1f, 1f, 0.9f * f[4] * fade);
+                batch.setColor(1f, 1f, 1f, 0.9f * f[4] * fadeOut);
                 batch.draw(glow, w.x - 0.5f * s, w.y - 0.5f * s, s, s);
-                batch.setColor(SHIELD.r, SHIELD.g, SHIELD.b, 0.5f * fade);
+                batch.setColor(SHIELD.r, SHIELD.g, SHIELD.b, 0.5f * fadeOut);
                 batch.draw(glow, w.x - s, w.y - s, 2f * s, 2f * s);
             }
             for (ShieldCloudComponent.Emitter em : cloud.emitters.values()) {
@@ -700,7 +768,7 @@ public final class ShieldParticles implements Disposable {
                     g = 0.35f;
                     b = 0.15f;
                 }
-                float s = Math.max(1.6f, 4f * MIN_PIXELS * metersPerPixel);
+                float s = Math.max(1.6f, 4f * metersPerPixel);
                 Vector2 w = CombatPhysics.toWorld(body, em.x, em.y, at);
                 batch.setColor(r, g, b, a);
                 batch.draw(glow, w.x - 0.5f * s, w.y - 0.5f * s, s, s);
@@ -711,35 +779,145 @@ public final class ShieldParticles implements Disposable {
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
     }
 
+    /** The glow of {@code sw}'s flecks on one side of the hull's plane: packed ones by their region's density, struck ones white-hot. */
+    private void glowFlecks(Batch batch, Body body, Swarm sw, boolean behind, float metersPerPixel, float fade) {
+        float size = Math.max(FLECK_SIZE, MIN_PIXELS * metersPerPixel);
+        for (int i = 0; i < sw.n; i++) {
+            byte st = sw.state[i];
+            if (st == DEAD || st == STOWED || (sw.z[i] < 0f) != behind) continue;
+            float charge = 0.025f;
+            if (st == PACKED && sw.region[i] != null) {
+                ShieldCloudComponent.Region r = sw.region[i];
+                charge = 0.15f + 0.75f * Math.min(1f, r.peak() / r.spec.maxDensity);
+            } else if (st == LOOSE) {
+                charge = 0f;
+            } else if (st == LOST) {
+                charge = 0.5f * Math.max(0f, sw.timer[i] / LOST_FADE);
+            }
+            float a = fade * Math.min(1f, charge + sw.flash[i]);
+            if (a < 0.02f) continue;
+            float s = size * (1.8f + 2f * sw.flash[i]);
+            Vector2 w = where(body, sw, i);
+            // White-hot as it is struck, cooling to cyan
+            float hot = sw.flash[i];
+            batch.setColor(SHIELD.r + (1f - SHIELD.r) * hot, SHIELD.g + (1f - SHIELD.g) * hot, 1f, a * 0.8f);
+            batch.draw(glow, w.x - 0.5f * s, w.y - 0.5f * s, s, s);
+        }
+    }
+
     /**
-     * The faint bubble on {@code cloud}'s curve: a soft band through the cloud's depth, as bright as
-     * the share of the cloud held, dimmer where the resting layer is thin (a dead emitter's notch),
-     * and brighter where regions pack it.
+     * The curve the bubble is drawn on, body-local, into {@code sw}: the shield's own curve smoothed
+     * round its center over {@link #BUBBLE_SMOOTH} samples, so it no longer follows every step of the
+     * hull, kept at most {@link #BUBBLE_INSET} inside it; with each point's outward normal.
      */
-    private void bubble(Batch batch, Body body, ShieldCloudComponent cloud) {
+    static void smoothCurve(ShieldPerimeter per, float[] sx, float[] sy, float[] nx, float[] ny) {
+        int n = ShieldPerimeter.SAMPLES;
+        float[] r = new float[n], dx = new float[n], dy = new float[n];
+        for (int k = 0; k < n; k++) {
+            float ox = per.x[k] - per.cx, oy = per.y[k] - per.cy;
+            r[k] = (float) Math.sqrt(ox * ox + oy * oy);
+            dx[k] = r[k] > 0f ? ox / r[k] : 1f;
+            dy[k] = r[k] > 0f ? oy / r[k] : 0f;
+        }
+        int reach = (int) Math.ceil(3f * BUBBLE_SMOOTH);
+        for (int k = 0; k < n; k++) {
+            float sum = 0f, wsum = 0f;
+            for (int j = -reach; j <= reach; j++) {
+                float w = (float) Math.exp(-0.5f * j * j / (BUBBLE_SMOOTH * BUBBLE_SMOOTH));
+                sum += w * r[((k + j) % n + n) % n];
+                wsum += w;
+            }
+            float smooth = Math.max(sum / wsum, r[k] - BUBBLE_INSET);
+            sx[k] = per.cx + dx[k] * smooth;
+            sy[k] = per.cy + dy[k] * smooth;
+        }
+        for (int k = 0; k < n; k++) {
+            int a = (k - 1 + n) % n, b = (k + 1) % n;
+            float tx = sx[b] - sx[a], ty = sy[b] - sy[a];
+            float len = (float) Math.sqrt(tx * tx + ty * ty);
+            // Counterclockwise curve: outward is the tangent turned clockwise
+            nx[k] = len > 0f ? ty / len : dx[k];
+            ny[k] = len > 0f ? -tx / len : dy[k];
+        }
+    }
+
+    /** {@code sw}'s smoothed curve, made afresh when the shield's curve is refitted. */
+    private static void curveOf(Swarm sw, ShieldPerimeter per) {
+        if (sw.curveFor == per) return;
+        smoothCurve(per, sw.cx, sw.cy, sw.cnx, sw.cny);
+        sw.curveFor = per;
+    }
+
+    /**
+     * The faint bubble on {@code cloud}'s curve (smoothed): one continuous band through the cloud's
+     * depth, a thin line over a soft glow, as bright as the share of the cloud held, dimmer where the
+     * resting layer is thin (a dead emitter's notch) and brighter where it is thick, and brighter
+     * still where regions pack it. Neighbouring stretches share their edges, so nothing overlaps.
+     */
+    private void bubble(Batch batch, Body body, ShieldCloudComponent cloud, Swarm sw) {
         ShieldPerimeter per = cloud.perimeter;
         float held = cloud.capacity > 0f ? Math.min(1f, cloud.cloud() / cloud.capacity) : 0f;
         if (held <= 0.01f) return;
+        curveOf(sw, per);
+        int n = ShieldPerimeter.SAMPLES;
         float base = cloud.baseLineDensity() / ShieldCloudComponent.DEPTH;
-        float deg = body.getAngle() * MathUtils.radiansToDegrees;
-        for (int k = 0; k < ShieldPerimeter.SAMPLES; k++) {
-            int k2 = (k + 1) % ShieldPerimeter.SAMPLES;
-            float x0 = per.x[k], y0 = per.y[k], x1 = per.x[k2], y1 = per.y[k2];
-            float len = Vector2.dst(x0, y0, x1, y1);
-            if (len < 1e-4f) continue;
-            float mid = per.along[k] + 0.5f * len;
-            float rest = cloud.baseLineDensityAt(mid) / ShieldCloudComponent.DEPTH;
-            float packed = Math.max(0f, cloud.densityAt(mid) - rest) / BUBBLE_FULL;
+        float half = 0.5f * ShieldCloudComponent.DEPTH;
+        float[] alpha = sw.bubbleAlpha;
+        for (int k = 0; k < n; k++) {
+            float along = per.along[k];
+            float rest = cloud.baseLineDensityAt(along) / ShieldCloudComponent.DEPTH;
+            float packed = Math.max(0f, cloud.densityAt(along) - rest) / BUBBLE_FULL;
             float lean = base > 0f ? Math.min(2f, rest / base) : 1f;
-            float a = held * (BUBBLE_REST * lean + BUBBLE_PACKED * Math.min(1f, packed));
-            Vector2 w = CombatPhysics.toWorld(body, 0.5f * (x0 + x1), 0.5f * (y0 + y1), at);
-            float along = MathUtils.atan2(y1 - y0, x1 - x0) * MathUtils.radiansToDegrees + deg;
-            float thick = ShieldCloudComponent.DEPTH;
-            batch.setColor(SHIELD.r, SHIELD.g, SHIELD.b, a);
-            // A little longer than the segment, so neighbours meet without a seam
-            float l = len + 0.05f;
-            batch.draw(band, w.x - 0.5f * l, w.y - 0.5f * thick, 0.5f * l, 0.5f * thick, l, thick, 1f, 1f, along);
+            alpha[k] = held * (BUBBLE_REST * lean + BUBBLE_PACKED * Math.min(1f, packed));
         }
+        float u = 0.5f * (band.getU() + band.getU2());
+        for (int k = 0; k < n; k++) {
+            int j = (k + 1) % n;
+            // Outer edge first, then inner: the band's texture runs across it
+            corner(body, sw.cx[k] + sw.cnx[k] * half, sw.cy[k] + sw.cny[k] * half, alpha[k], u, band.getV(), 0);
+            corner(body, sw.cx[k] - sw.cnx[k] * half, sw.cy[k] - sw.cny[k] * half, alpha[k], u, band.getV2(), 1);
+            corner(body, sw.cx[j] - sw.cnx[j] * half, sw.cy[j] - sw.cny[j] * half, alpha[j], u, band.getV2(), 2);
+            corner(body, sw.cx[j] + sw.cnx[j] * half, sw.cy[j] + sw.cny[j] * half, alpha[j], u, band.getV(), 3);
+            batch.draw(band.getTexture(), quad, 0, 20);
+        }
+    }
+
+    /**
+     * An infill across {@code cloud}'s bubble, {@code edge} alpha at its rim and fading toward its
+     * center as the fraction of the way out to the {@link #INFILL_EDGE} power, as bright as the share
+     * of the cloud held: in rings, each sharing its edges with the next.
+     */
+    private void infill(Batch batch, Body body, ShieldCloudComponent cloud, Swarm sw, float edge) {
+        float held = cloud.capacity > 0f ? Math.min(1f, cloud.cloud() / cloud.capacity) : 0f;
+        if (held <= 0.01f) return;
+        ShieldPerimeter per = cloud.perimeter;
+        curveOf(sw, per);
+        int n = ShieldPerimeter.SAMPLES;
+        float u = 0.5f * (white.getU() + white.getU2()), v = 0.5f * (white.getV() + white.getV2());
+        for (int ring = 0; ring < INFILL_RINGS; ring++) {
+            float s0 = ring / (float) INFILL_RINGS, s1 = (ring + 1) / (float) INFILL_RINGS;
+            float a0 = edge * held * (float) Math.pow(s0, INFILL_EDGE), a1 = edge * held * (float) Math.pow(s1, INFILL_EDGE);
+            if (a1 < 0.002f) continue;
+            for (int k = 0; k < n; k++) {
+                int j = (k + 1) % n;
+                corner(body, per.cx + (sw.cx[k] - per.cx) * s0, per.cy + (sw.cy[k] - per.cy) * s0, a0, u, v, 0);
+                corner(body, per.cx + (sw.cx[k] - per.cx) * s1, per.cy + (sw.cy[k] - per.cy) * s1, a1, u, v, 1);
+                corner(body, per.cx + (sw.cx[j] - per.cx) * s1, per.cy + (sw.cy[j] - per.cy) * s1, a1, u, v, 2);
+                corner(body, per.cx + (sw.cx[j] - per.cx) * s0, per.cy + (sw.cy[j] - per.cy) * s0, a0, u, v, 3);
+                batch.draw(white.getTexture(), quad, 0, 20);
+            }
+        }
+    }
+
+    /** Corner {@code c} of {@link #quad}: body-local ({@code lx}, {@code ly}) in world meters, shield cyan at {@code alpha}. */
+    private void corner(Body body, float lx, float ly, float alpha, float u, float v, int c) {
+        Vector2 w = CombatPhysics.toWorld(body, lx, ly, at);
+        int o = c * 5;
+        quad[o] = w.x;
+        quad[o + 1] = w.y;
+        quad[o + 2] = Color.toFloatBits(SHIELD.r, SHIELD.g, SHIELD.b, MathUtils.clamp(alpha, 0f, 1f));
+        quad[o + 3] = u;
+        quad[o + 4] = v;
     }
 
     /** Fleck {@code i} of {@code sw} in world meters, in the ship's frame or in space. */
@@ -759,18 +937,32 @@ public final class ShieldParticles implements Disposable {
         dot = new TextureRegion(dotTexture(16));
         glow = new TextureRegion(glowTexture(64));
         band = new TextureRegion(bandTexture(32));
+        white = new TextureRegion(whiteTexture());
     }
 
-    /** A hard-edged round fleck, white, for tinting. */
+    /** A round fleck, white, for tinting: solid at its heart and fading to nothing at its rim. */
     static Texture dotTexture(int n) {
         Pixmap pm = new Pixmap(n, n, Pixmap.Format.RGBA8888);
         for (int y = 0; y < n; y++) {
             for (int x = 0; x < n; x++) {
                 float dx = (x + 0.5f) / n * 2f - 1f, dy = (y + 0.5f) / n * 2f - 1f;
-                float r = (float) Math.sqrt(dx * dx + dy * dy);
-                pm.drawPixel(x, y, Color.rgba8888(1f, 1f, 1f, MathUtils.clamp((1f - r) * 4f, 0f, 1f)));
+                pm.drawPixel(x, y, Color.rgba8888(1f, 1f, 1f, dotAlpha((float) Math.sqrt(dx * dx + dy * dy))));
             }
         }
+        return texture(pm);
+    }
+
+    /** A fleck's alpha {@code r} out from its center (0 to 1 at its rim): a smooth fall from 1 to 0. */
+    static float dotAlpha(float r) {
+        float t = MathUtils.clamp(1f - r, 0f, 1f);
+        return t * t * (3f - 2f * t);
+    }
+
+    /** Plain white, for tinting. */
+    static Texture whiteTexture() {
+        Pixmap pm = new Pixmap(2, 2, Pixmap.Format.RGBA8888);
+        pm.setColor(Color.WHITE);
+        pm.fill();
         return texture(pm);
     }
 
@@ -821,6 +1013,7 @@ public final class ShieldParticles implements Disposable {
         if (dot != null) dot.getTexture().dispose();
         if (glow != null) glow.getTexture().dispose();
         if (band != null) band.getTexture().dispose();
-        dot = glow = band = null;
+        if (white != null) white.getTexture().dispose();
+        dot = glow = band = white = null;
     }
 }

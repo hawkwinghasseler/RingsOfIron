@@ -115,6 +115,10 @@ public final class ExteriorRenderer implements Disposable {
     private final ShieldParticles shields = new ShieldParticles();
     /** Craft drawn with their hull art this frame, whose flames are drawn with art too. */
     private final ObjectSet<Entity> withArt = new ObjectSet<>();
+    /** This frame's craft drawn as their decks instead (the deck view), with their hulls' bodies. */
+    private final com.badlogic.gdx.utils.ObjectMap<Entity, Body> decks = new com.badlogic.gdx.utils.ObjectMap<>();
+    /** Every hull this frame whose shield is drawn, for keeping the light under it off it. */
+    private final Array<Body> hulls = new Array<>();
 
     /**
      * Draws the world {@code world} gives (a demo may load a new one) with {@code shapes} and
@@ -227,7 +231,10 @@ public final class ExteriorRenderer implements Disposable {
         if (without != null) {
             for (int i = bodies.size - 1; i >= 0; i--) {
                 Entity e = owner(bodies.get(i));
-                if (e != null && without.contains(e, true)) bodies.removeIndex(i);
+                if (e == null || !without.contains(e, true)) continue;
+                // Drawn as a deck, but its shield shows round it all the same
+                if (w.docking.bodyOf(e) == bodies.get(i)) decks.put(e, bodies.get(i));
+                bodies.removeIndex(i);
             }
         }
         boolean lit = exteriorLighting != null && lightsOn;
@@ -246,6 +253,11 @@ public final class ExteriorRenderer implements Disposable {
             if (lit && chassis != null) exteriorLighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
             flames.collect(e, body);
             shields.collect(e, body, lit ? exteriorLighting : null);
+            hulls.add(body);
+        }
+        for (com.badlogic.gdx.utils.ObjectMap.Entry<Entity, Body> d : decks) {
+            shields.collect(d.key, d.value, null, true);
+            hulls.add(d.value);
         }
         flames.end();
         shields.end();
@@ -281,7 +293,7 @@ public final class ExteriorRenderer implements Disposable {
         batch.setProjectionMatrix(view);
         flames.draw(batch, withArt);
         // So does the shield where it packs and where it is struck, over hull art and outline alike
-        shields.drawGlow(batch, mpp);
+        shields.drawGlow(batch, mpp, () -> maskHulls(view));
         shapes.setProjectionMatrix(view);
         shapes.begin(ShapeRenderer.ShapeType.Line);
         for (Body body : bodies) {
@@ -298,6 +310,8 @@ public final class ExteriorRenderer implements Disposable {
         shapes.end();
         bodies.clear();
         withArt.clear();
+        decks.clear();
+        hulls.clear();
     }
 
     /** Meters one screen pixel spans under {@code camera}. */
@@ -501,6 +515,32 @@ public final class ExteriorRenderer implements Disposable {
     @Override
     public void dispose() {
         shields.dispose();
+    }
+
+    /** Marks every hull drawn this frame with 1 in the stencil buffer, the rest 0, drawing nothing. */
+    private void maskHulls(Matrix4 view) {
+        Gdx.gl.glEnable(GL20.GL_STENCIL_TEST);
+        Gdx.gl.glClearStencil(0);
+        Gdx.gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
+        Gdx.gl.glColorMask(false, false, false, false);
+        Gdx.gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xFF);
+        Gdx.gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
+        shapes.setProjectionMatrix(view);
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        for (Body body : hulls) {
+            for (Fixture fixture : body.getFixtureList()) {
+                if (!(fixture.getShape() instanceof PolygonShape)) continue;
+                int n = PolygonSkin.outline(body, (PolygonShape) fixture.getShape(), polygon);
+                // Box2D's polygons are convex: a fan from the first corner fills one
+                for (int k = 1; k + 1 < n; k++) {
+                    shapes.triangle(polygon[0], polygon[1], polygon[2 * k], polygon[2 * k + 1], polygon[2 * k + 2], polygon[2 * k + 3]);
+                }
+            }
+        }
+        shapes.end();
+        Gdx.gl.glColorMask(true, true, true, true);
+        Gdx.gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
+        Gdx.gl.glDisable(GL20.GL_STENCIL_TEST);
     }
 
     private void drawFixture(Body body, Shape shape) {
