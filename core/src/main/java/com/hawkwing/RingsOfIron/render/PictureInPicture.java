@@ -544,8 +544,8 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
         shapes.setProjectionMatrix(viewports.getUiCamera().combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (Bubble b : shown) {
-            shapes.setColor(b.color.r, b.color.g, b.color.b, 0.85f);
-            ring(b.center.x, b.center.y, RADIUS, 2f);
+            shapes.setColor(b.color.r, b.color.g, b.color.b, 0.35f);
+            ring(b.center.x, b.center.y, RADIUS, 1.25f);
             Vector2 dir = tmp.set(b.anchor).sub(b.center);
             float len = dir.len();
             // Over its craft: nothing to point at
