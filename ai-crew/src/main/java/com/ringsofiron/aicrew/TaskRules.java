@@ -297,11 +297,11 @@ public final class TaskRules {
     /**
      * True if {@code crew}, of {@code board}'s ship but aboard a docked craft, may go back aboard for
      * {@code task}: the player's crews only ({@link #suitCare}), to stop a bleed or carry a casualty
-     * out, with a suit and {@link #BACK_ABOARD_AIR} or more in it.
+     * out, in a suit with {@link #BACK_ABOARD_AIR} or more in it.
      */
     public static boolean goesBackAboard(CrewMemberComponent crew, CrewTask task, ShipTaskBoardComponent board) {
         return shelterGoesBack && suitCare(board) && (task.kind == CrewTask.Kind.STABILISE || task.kind == CrewTask.Kind.RESCUE)
-                && crew.def.suitAir > 0f && crew.suitAir >= BACK_ABOARD_AIR;
+                && crew.suited && crew.suitAir >= BACK_ABOARD_AIR;
     }
 
     /** True if {@code board}'s crew suit up at their posts and fill a casualty's suit (round 9). */

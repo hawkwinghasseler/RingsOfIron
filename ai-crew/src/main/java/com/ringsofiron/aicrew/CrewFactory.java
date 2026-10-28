@@ -21,6 +21,7 @@ public final class CrewFactory {
         engine.addSystem(new CrewDecisionSystem());
         engine.addSystem(new CrewMovementSystem(service));
         engine.addSystem(new CrewHealthSystem(service));
+        engine.addSystem(new SuitLockerSystem());
         return service;
     }
 

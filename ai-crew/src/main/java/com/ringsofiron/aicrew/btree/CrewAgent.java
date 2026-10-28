@@ -49,6 +49,12 @@ public class CrewAgent {
     boolean refilling;
     /** Sim time until which no oxygen supply aboard was found reachable. */
     float refillBlockedUntil = Float.NEGATIVE_INFINITY;
+    /** Sim time until which no suit locker aboard with a suit in it was found reachable ({@link SuitErrand}). */
+    float suitBlockedUntil = Float.NEGATIVE_INFINITY;
+    /** Sim time until which no suit locker aboard with room for their suit was found reachable. */
+    float stowBlockedUntil = Float.NEGATIVE_INFINITY;
+    /** Left their post to fetch a suit ({@link CrewTasks.DoWork}): {@link CrewTasks.SuitUp} gets them one on the way back. */
+    boolean fetchSuit;
 
     public CrewAgent(Entity entity, CrewMemberComponent crew, GridPositionComponent pos, CrewService service) {
         this.entity = entity;

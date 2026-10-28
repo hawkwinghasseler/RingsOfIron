@@ -113,7 +113,7 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         }
         GridNavGraph nav = service.pathfinder(grid).graph;
         float speed = c.def.moveSpeed * (c.carrying != null ? c.def.carrySpeedFactor : 1f)
-                * (c.load != null ? c.def.loadSpeedFactor : 1f) * (c.suited ? c.def.suitSpeedFactor : 1f) * c.woundPace();
+                * (c.load != null ? c.def.loadSpeedFactor : 1f) * c.suitPace() * c.woundPace();
         boolean crossingOut = avatar == null && p.crossing != null && !p.isMoving();
         if (p.walkway != null || crossingOut || !nav.isWalkable(p.tileX(), p.tileY())) {
             // Off the deck proper: moved along without a body

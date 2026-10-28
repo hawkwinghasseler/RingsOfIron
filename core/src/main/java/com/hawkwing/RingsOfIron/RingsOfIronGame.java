@@ -328,6 +328,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.combatEvents.detonations.add((signal, boom) ->
                 exterior.explode(boom.worldPoint.x, boom.worldPoint.y));
 
+        // E at a suit locker: a suit on, or hung back up
+        hud.getInteractPromptSystem().setInteraction(world.captain.lockerUse());
         world.bridge.playerAlwaysAtHelm = VIEW_ANYWHERE;
         if (!VIEW_ANYWHERE) {
             hud.setViewKey(this::sitOrStand);

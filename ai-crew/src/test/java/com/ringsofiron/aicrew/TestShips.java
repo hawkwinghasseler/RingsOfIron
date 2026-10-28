@@ -44,6 +44,14 @@ final class TestShips {
         this(new ChassisBlueprint(rows), true);
     }
 
+    /** A pressure suit locker on tile (x, y), against one of its walls, holding {@code suits} suits. */
+    com.ringsofiron.interiorgrid.Furnishing locker(int x, int y, int suits) {
+        com.ringsofiron.interiorgrid.Furnishing f = com.ringsofiron.interiorgrid.SuitOutfit.placeLocker(grid,
+                com.ringsofiron.interiorgrid.crew.Suit.Kind.IVA, x, y, suits);
+        if (f == null) throw new IllegalStateException("no locker fits on " + x + "," + y);
+        return f;
+    }
+
     Entity spawn(CrewRole role, int faction, int x, int y) {
         return CrewFactory.spawn(crew, ship, role.name(), role, faction, x, y);
     }

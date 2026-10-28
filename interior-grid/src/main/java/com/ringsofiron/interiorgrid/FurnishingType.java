@@ -1,5 +1,6 @@
 package com.ringsofiron.interiorgrid;
 
+import com.ringsofiron.interiorgrid.crew.Suit;
 import com.ringsofiron.moddingdata.defs.FurnishingDef;
 
 import java.util.Locale;
@@ -26,11 +27,13 @@ public final class FurnishingType {
         /** Read from it. */
         READING,
         /** Nothing: it only makes the room nicer. */
-        DECOR;
+        DECOR,
+        /** Holds things: a suit locker ({@link FurnishingType#holds}). The crew don't sit at it. */
+        STORAGE;
 
         /** Whether the crew can use it at all. */
         public boolean usable() {
-            return this != DECOR;
+            return this != DECOR && this != STORAGE;
         }
     }
 
@@ -53,6 +56,10 @@ public final class FurnishingType {
     public final String verb;
     /** Lies flat on the floor (a rug): other furnishings can stand on it, and it is drawn under them. */
     public boolean flat;
+    /** The kind of suit it is a locker for ({@link SuitLockers}), or null for anything else. */
+    public Suit.Kind holds;
+    /** How many suits it holds, as a locker. */
+    public int capacity;
 
     public FurnishingType(String id, String name, String art, float width, float depth, float fuel, double price,
                           Use use, int seats, float relax, String verb) {
@@ -78,7 +85,23 @@ public final class FurnishingType {
         }
         FurnishingType t = new FurnishingType(d.id, d.name, d.art, d.width, d.depth, d.fuel, d.price, use, d.seats, d.relax, d.verb);
         t.flat = d.flat;
+        t.holds(d.holds, d.capacity);
         return t;
+    }
+
+    /**
+     * Makes it a locker for {@code capacity} suits of {@code kind} ("IVA" or "EVA"); nothing for a
+     * null or unknown kind. Returns itself.
+     */
+    public FurnishingType holds(String kind, int capacity) {
+        if (kind == null || capacity <= 0) return this;
+        try {
+            holds = Suit.Kind.valueOf(kind.toUpperCase(Locale.ROOT));
+            this.capacity = capacity;
+        } catch (IllegalArgumentException e) {
+            holds = null;
+        }
+        return this;
     }
 
     /** "the couch", for notices. */

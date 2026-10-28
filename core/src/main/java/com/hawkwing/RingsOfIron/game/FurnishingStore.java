@@ -148,6 +148,7 @@ public class FurnishingStore extends EntitySystem {
         if (grid == null || !Furnishings.all(grid).contains(f, true)) return "That isn't aboard";
         Furnishing moved = Furnishing.at(f.type, x, y, rotation);
         moved.fuel = f.fuel;
+        moved.suits.addAll(f.suits);
         Furnishings.remove(grid, f);
         String no = Furnishings.refusal(grid, moved, spots(ship, null));
         if (no != null) {
@@ -158,9 +159,16 @@ public class FurnishingStore extends EntitySystem {
         return capitalized(f.type.the()) + " moved";
     }
 
-    /** What the yard pays for {@code f}. */
+    /** Share of a full suit locker's price that is its suits: the yard pays less for one with suits missing. */
+    public static final double SUITS_SHARE = 0.75;
+
+    /** What the yard pays for {@code f}: for a suit locker, as much less as it has suits missing. */
     public static double buyBack(Furnishing f) {
-        return f.type.price * BUY_BACK * f.condition();
+        double worth = f.type.price;
+        if (f.type.holds != null && f.type.capacity > 0) {
+            worth *= 1 - SUITS_SHARE + SUITS_SHARE * Math.min(f.suits.size, f.type.capacity) / f.type.capacity;
+        }
+        return worth * BUY_BACK * f.condition();
     }
 
     /** The yard takes {@code f} off {@code ship} and pays for it; returns what the yard says. */
@@ -249,6 +257,10 @@ public class FurnishingStore extends EntitySystem {
         if (no != null) {
             world.notices.post("The yard took " + type.the() + " back. " + no);
             return;
+        }
+        // A suit locker comes full
+        for (int i = o.furnishing.suits.size; type.holds != null && i < type.capacity; i++) {
+            o.furnishing.suits.add(com.ringsofiron.interiorgrid.crew.Suit.full(type.holds));
         }
         if (trader != null) trader.credits -= o.price;
         world.notices.post(String.format(Locale.ROOT, "%s is in place (%s)", capitalized(type.the()), credits(o.price)));

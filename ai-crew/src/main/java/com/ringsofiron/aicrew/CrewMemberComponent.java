@@ -6,6 +6,7 @@ import com.ringsofiron.coreengine.EntityRef;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
+import com.ringsofiron.interiorgrid.crew.Suit;
 
 /**
  * A crew member: stats, health, consciousness state, role and what they are doing.
@@ -74,10 +75,14 @@ public class CrewMemberComponent implements Component {
      * work; they stay where they are kept.
      */
     public boolean held;
-    /** Whether this crew member has their space suit on. */
+    /** Whether this crew member has a space suit on. */
     public boolean suited;
-    /** Seconds of air left in their suit; topped up when it is taken off. */
+    /** Seconds of air left in the suit they have on. */
     public float suitAir;
+    /** The kind of suit they have on, while {@link #suited}. */
+    public Suit.Kind suitKind = Suit.Kind.IVA;
+    /** Delta-v left in the jetpack of the suit they have on, m/s: an EVA suit's. */
+    public float suitJet;
     /**
      * Seconds spent so far taking their suit off at work ({@code CrewTasks.DoWork}), so a save
      * part way through doesn't start it again (round 9).
@@ -117,13 +122,67 @@ public class CrewMemberComponent implements Component {
         return suited && suitAir > 0f;
     }
 
-    /** Puts their suit on, or takes it off (topping its air up). */
+    /** True if this crew member can wear a suit at all ({@link CrewDef#suitAir} isn't 0). */
+    public boolean wearsSuits() {
+        return def.suitAir > 0f;
+    }
+
+    /**
+     * Puts a fresh pressure suit on them, or takes theirs off and away: for tests and the dev
+     * console, where no locker is wanted. A crew member's own suits come from lockers ({@link #wear},
+     * {@link #takeOff}).
+     */
     public void setSuited(boolean on) {
-        suited = on;
+        if (on) {
+            wear(Suit.iva());
+            suitAir = def.suitAir;
+        } else {
+            takeOff();
+            suitAir = def.suitAir;
+        }
+    }
+
+    /** Puts {@code suit} on them: from then on its air and jetpack are theirs ({@link #suitAir}, {@link #suitJet}). */
+    public void wear(Suit suit) {
+        suited = true;
+        suitKind = suit.kind;
+        suitAir = suit.air;
+        suitJet = suit.jet;
         unsuiting = 0f;
         suiting = 0f;
-        if (!on) suitAir = def.suitAir;
-        equippedItem = on ? "space suit" : "";
+        equippedItem = suit.kind.noun;
+    }
+
+    /** Takes off the suit they have on and returns it, with the air and jetpack it has left; null if they wear none. */
+    public Suit takeOff() {
+        Suit off = suited ? new Suit(suitKind, suitAir, suitJet) : null;
+        suited = false;
+        suitJet = 0f;
+        unsuiting = 0f;
+        suiting = 0f;
+        equippedItem = "";
+        return off;
+    }
+
+    /** True while they wear an EVA suit. */
+    public boolean inEvaSuit() {
+        return suited && suitKind == Suit.Kind.EVA;
+    }
+
+    /** Seconds of air the suit they have on holds full: an EVA suit's, or their pressure suit's ({@link CrewDef#suitAir}). */
+    public float suitCapacity() {
+        return suitKind == Suit.Kind.EVA ? Suit.EVA_AIR : def.suitAir;
+    }
+
+    /** Seconds it takes them to put on a suit of {@code kind}; taking one off takes half. */
+    public float suitTime(Suit.Kind kind) {
+        return kind == Suit.Kind.EVA ? Suit.EVA_DON : def.suitTime;
+    }
+
+    /** Share of their walking speed the suit they have on leaves them: 1 with none. */
+    public float suitPace() {
+        if (!suited) return 1f;
+        return suitKind == Suit.Kind.EVA ? Suit.EVA_SPEED : def.suitSpeedFactor;
     }
 
     /** Goods carried by hand on a {@link CarryTask}. */
@@ -156,9 +215,9 @@ public class CrewMemberComponent implements Component {
         return wound == Wound.LIGHT ? def.woundedWorkFactor : 1f;
     }
 
-    /** Share of the usual work rate: slowed by a light wound and by a suit. */
+    /** Share of the usual work rate: slowed by a light wound and by a suit, an EVA suit's stiff gloves most. */
     public float workPace() {
-        return woundPace() * (suited ? def.suitWorkFactor : 1f);
+        return woundPace() * (!suited ? 1f : suitKind == Suit.Kind.EVA ? Suit.EVA_WORK : def.suitWorkFactor);
     }
 
     /**
