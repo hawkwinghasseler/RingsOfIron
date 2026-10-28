@@ -164,6 +164,49 @@ class ShieldParticlesTest {
         for (int i = 0; i < swarm.n; i++) assertTrue(offCurve(i) < 4f, "back out round the curve: " + offCurve(i));
     }
 
+    /** Puts {@code share} of the resting layer on the bow half of the curve (x > 0), the rest astern. */
+    private void layBow(float share) {
+        int bow = 0;
+        for (int k = 0; k < ShieldPerimeter.SAMPLES; k++) if (cloud.perimeter.x[k] > 0f) bow++;
+        for (int k = 0; k < ShieldPerimeter.SAMPLES; k++) {
+            boolean ahead = cloud.perimeter.x[k] > 0f;
+            cloud.line[k] = ahead ? share / bow : (1f - share) / (ShieldPerimeter.SAMPLES - bow);
+        }
+    }
+
+    private int ahead(byte state) {
+        int c = 0;
+        for (int i = 0; i < swarm.n; i++) if (swarm.state[i] == state && swarm.x[i] > 0f) c++;
+        return c;
+    }
+
+    @Test
+    void theFlecksLieAsTheRestingLayerDoes() {
+        layBow(0.8f);
+        run(2f);
+        int free = swarm.count(ShieldParticles.FREE);
+        assertEquals(0.8f, ahead(ShieldParticles.FREE) / (float) free, 0.08f, "four in five ahead, where the layer is");
+        layBow(0.5f);
+        run(3f);
+        assertEquals(0.5f, ahead(ShieldParticles.FREE) / (float) swarm.count(ShieldParticles.FREE), 0.08f, "and they follow it as it moves");
+    }
+
+    @Test
+    void whatGoesAdriftLeavesFromWhereNoEmitterHoldsTheCurve() {
+        run(0.5f);
+        // The stern's emitter has died: nothing holds the curve astern
+        for (int k = 0; k < ShieldPerimeter.SAMPLES; k++) cloud.anchored[k] = cloud.perimeter.x[k] > 0f ? 1f : 0f;
+        cloud.adrift = 60f;
+        run(DT);
+        int loose = swarm.count(ShieldParticles.LOOSE), astern = 0;
+        for (int i = 0; i < swarm.n; i++) {
+            // In space, along the world's axes: the ship lies at heading 0, so its own
+            if (swarm.state[i] == ShieldParticles.LOOSE && swarm.x[i] < 0f) astern++;
+        }
+        assertEquals(40, loose, 2, "one fleck per 1.5 kg adrift");
+        assertTrue(astern > 0.9f * loose, "from astern: " + astern + " of " + loose);
+    }
+
     @Test
     void theBubbleIsAThinLineOverASoftGlow() {
         assertTrue(ShieldParticles.bandAlpha(0f) > 0.9f, "bright at its middle");

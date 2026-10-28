@@ -17,6 +17,7 @@ import com.ringsofiron.combatsys.shields.ShieldCloudComponent;
 import com.ringsofiron.combatsys.shields.ShieldModel;
 import com.ringsofiron.combatsys.shields.ShieldPerimeter;
 import com.ringsofiron.combatsys.shields.ShieldSystem;
+import com.ringsofiron.combatsys.shields.Trim;
 import com.ringsofiron.combatsys.systems.BallisticsSystem;
 import com.ringsofiron.combatsys.systems.ImpactResolutionSystem;
 import com.ringsofiron.coreengine.components.TransformComponent;
@@ -322,6 +323,64 @@ class ShieldCloudTest {
         run(8f);
         assertTrue(c.lost < 0.25f * 300f, "most recaptured: " + c.lost + " kg lost");
         assertEquals(300f - c.lost, c.cloud() + c.scattered, 2f, "and back round the hull, the last of it rejoining");
+    }
+
+    /** The resting layer's density, kg/m^2, where a ray from the center along ({@code dx}, {@code dy}) meets the curve. */
+    private static float restingAt(ShieldCloudComponent c, float dx, float dy) {
+        float[] out = new float[2];
+        assertTrue(c.perimeter.cross(0f, 0f, dx, dy, 100f, true, out));
+        return c.baseLineDensityAt(out[0]) / ShieldCloudComponent.DEPTH;
+    }
+
+    @Test
+    void aDeadEmitterOpensAWeakSpotWhereItWasNotAThinnerBubble() {
+        Entity ship = spawnShip(0, 0);
+        emitter(ship, MountFootprint.MountSize.S, 18, 2, 1e9);
+        SubsystemComponent stern = emitter(ship, MountFootprint.MountSize.S, 1, 2, 1e9);
+        run(3f);
+        ShieldCloudComponent c = cloud(ship);
+        float bow = restingAt(c, 1f, 0f), aft = restingAt(c, -1f, 0f);
+        assertEquals(bow, aft, 0.15f * bow, "two like emitters at either end: even");
+        stern.isOperational = false;
+        run(0.5f);
+        assertEquals(300f, c.cloud(), 5f, "the bow emitter still holds its share");
+        assertTrue(c.adrift > 100f, "the stern emitter's share goes adrift: " + c.adrift);
+        assertTrue(restingAt(c, -1f, 0f) < 0.4f * restingAt(c, 1f, 0f),
+                "a gap astern: " + restingAt(c, -1f, 0f) + " vs " + restingAt(c, 1f, 0f));
+        // Half the cloud gone, evenly spread, would halve it
+        assertTrue(restingAt(c, 1f, 0f) > 0.65f * bow, "and the bow thins far less than the half lost: " + restingAt(c, 1f, 0f) + " vs " + bow);
+    }
+
+    @Test
+    void aTrimLeansTheRestingLayerTowardOneSide() {
+        Entity ship = spawnShip(0, 0);
+        emitter(ship, MountFootprint.MountSize.S, 18, 2, 1e9);
+        emitter(ship, MountFootprint.MountSize.S, 1, 2, 1e9);
+        run(3f);
+        ShieldCloudComponent c = cloud(ship);
+        float out = c.cloud();
+        ShieldModel.trim(ship, Trim.BOW);
+        run(3f * ShieldModel.SPREAD_TIME);
+        assertTrue(restingAt(c, 1f, 0f) > 3f * restingAt(c, -1f, 0f),
+                "thick at the bow, thin astern: " + restingAt(c, 1f, 0f) + " vs " + restingAt(c, -1f, 0f));
+        assertEquals(out, c.cloud(), 1f, "leaning moves mass, it doesn't make any");
+        ShieldModel.trim(ship, Trim.EVEN);
+        run(3f * ShieldModel.SPREAD_TIME);
+        assertEquals(restingAt(c, 1f, 0f), restingAt(c, -1f, 0f), 0.15f * restingAt(c, 1f, 0f), "even again");
+    }
+
+    @Test
+    void aHitThinsTheRestingLayerWhereItLandsAndNowhereElse() {
+        Entity ship = spawnShip(0, 0);
+        emitter(ship, MountFootprint.MountSize.S, 10, 2, 1e9);
+        run(1f);
+        ShieldCloudComponent c = cloud(ship);
+        float aft = restingAt(c, -1f, 0f), beam = restingAt(c, 0f, 1f);
+        Body body = ship.getComponent(PhysicsBodyComponent.class).body;
+        ProjectileDef round = defs.projectile("autocannon_30mm");
+        Shields.absorb(ship, body, round, round.mass, 4.5e5f, -20f, 0f, 1f, 0f);
+        assertTrue(restingAt(c, -1f, 0f) < 0.5f * aft, "plowed where it crossed: " + restingAt(c, -1f, 0f) + " vs " + aft);
+        assertEquals(beam, restingAt(c, 0f, 1f), 0.05f * beam, "untouched off the beam");
     }
 
     @Test

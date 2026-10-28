@@ -608,6 +608,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         if (just(Action.DECOY) && gun.dropDecoy()) show("Decoy away");
         if (just(Action.SHIELDS)) show(toggleShields());
+        if (just(Action.SHIELD_TRIM)) show(trimShields());
         if (just(Action.NEXT_TARGET)) gun.setTarget(game.nextContact(gun.getTarget()));
         navigationKeys();
         if (!helm) return;
@@ -629,6 +630,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
         if (!cloud.raised && world.docking.dockedTo(game.player) != null) return "Shields stay down while docked";
         com.ringsofiron.combatsys.shields.ShieldModel.raise(game.player, !cloud.raised);
         return cloud.raised ? "Raising shields" : "Lowering shields";
+    }
+
+    /** Leans the player's resting shield cloud the next way round; what to tell the player. */
+    private String trimShields() {
+        com.ringsofiron.combatsys.shields.ShieldCloudComponent cloud = com.ringsofiron.combatsys.shields.ShieldModel.ensure(game.player);
+        if (cloud == null) return "No shield emitters aboard";
+        com.ringsofiron.combatsys.shields.ShieldModel.trim(game.player, cloud.trim.next());
+        return "Shields trimmed " + cloud.trim.label;
     }
 
     /** True while one of the HUD's windows or the traffic map is open; Esc closes it first. */

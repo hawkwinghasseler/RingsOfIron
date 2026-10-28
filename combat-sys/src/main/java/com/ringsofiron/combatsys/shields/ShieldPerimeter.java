@@ -167,6 +167,11 @@ public final class ShieldPerimeter {
         return len > 0f ? out.set(dy / len, -dx / len) : out.set(1f, 0f);
     }
 
+    /** The segment of the curve {@code s} meters along it lies in: from sample i to the next. */
+    public int segmentAt(float s) {
+        return segment(wrap(s));
+    }
+
     private int segment(float s) {
         int lo = 0, hi = SAMPLES - 1;
         while (lo < hi) {

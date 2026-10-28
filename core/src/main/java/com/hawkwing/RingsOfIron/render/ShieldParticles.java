@@ -27,8 +27,10 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
  * drifting in lazy orbits round the {@link ShieldPerimeter}, sparse at rest, that stream into the
  * regions the emitters gather and glow there as they pack. A hit flashes, blasts the flecks it
  * plowed through along the shot, throws the lost ones clear to fade, and lets the rest curve back
- * in. A faint bubble traces the curve, brighter where regions pack it. Mass no working emitter
- * holds goes adrift: its flecks keep the velocity they had and the ship flies on without them,
+ * in. Free flecks lie as the cloud's resting layer does, thick where emitters overlap or the crew
+ * trim it and thin where one has died. A faint bubble traces the curve, dimmer where the layer is
+ * thin and brighter where regions pack it. Mass no working emitter holds goes adrift, from where
+ * its emitters stopped first: its flecks keep the velocity they had and the ship flies on without them,
  * until they are lost or pulled back. Lowered shields stream into the emitters and come back out
  * of them when raised. Each emitter's projector glows on the hull, toward orange as it heats.
  *
@@ -88,6 +90,11 @@ public final class ShieldParticles implements Disposable {
         int n;
         float kgPer;
         float[] u, drift, off, ph, w, x, y, vx, vy, timer, flash, rs, rn, z, homeX, homeY;
+        /**
+         * The resting layer's mass round the curve, cumulative, 0 to 1, at each sample: a free
+         * fleck's orbit {@link #u} is a share of that mass, so the flecks lie as the layer does.
+         */
+        final float[] cdf = new float[ShieldPerimeter.SAMPLES + 1];
         byte[] state;
         ShieldCloudComponent.Region[] region;
         /** The last hit read from the cloud's log. */
@@ -160,6 +167,7 @@ public final class ShieldParticles implements Disposable {
             }
             lastVx = frame.vx;
             lastVy = frame.vy;
+            layout(cloud, per);
             boolean first = hitsSeen < 0;
             if (first) {
                 hitsSeen = cloud.hitCount;
@@ -183,10 +191,44 @@ public final class ShieldParticles implements Disposable {
             }
         }
 
+        /** {@link #cdf} from the cloud's resting layer; even round the curve until it has one. */
+        void layout(ShieldCloudComponent cloud, ShieldPerimeter per) {
+            float sum = 0f;
+            for (float m : cloud.line) sum += m;
+            cdf[0] = 0f;
+            for (int k = 0; k < ShieldPerimeter.SAMPLES; k++) {
+                cdf[k + 1] = sum > 0f ? cdf[k] + cloud.line[k] / sum : per.along[k + 1] / per.length;
+            }
+            cdf[ShieldPerimeter.SAMPLES] = 1f;
+        }
+
+        /** Meters along the curve at share {@code share} of the resting layer's mass. */
+        float sOf(ShieldPerimeter per, float share) {
+            int lo = 0, hi = ShieldPerimeter.SAMPLES - 1;
+            while (lo < hi) {
+                int mid = (lo + hi + 1) >>> 1;
+                if (cdf[mid] <= share) lo = mid;
+                else hi = mid - 1;
+            }
+            float span = cdf[lo + 1] - cdf[lo];
+            float f = span > 0f ? MathUtils.clamp((share - cdf[lo]) / span, 0f, 1f) : 0f;
+            return per.along[lo] + f * (per.along[lo + 1] - per.along[lo]);
+        }
+
+        /** The share of the resting layer's mass that lies before {@code s} meters along the curve. */
+        float uOf(ShieldPerimeter per, float s) {
+            s = per.wrap(s);
+            int k = per.segmentAt(s);
+            float seg = per.along[k + 1] - per.along[k];
+            float f = seg > 0f ? (s - per.along[k]) / seg : 0f;
+            return cdf[k] + f * (cdf[k + 1] - cdf[k]);
+        }
+
         /** Where fleck {@code i}'s orbit has it now, into {@link #p}; its depth into {@link #z}. */
         private void place(ShieldPerimeter per, int i) {
-            per.pointAt(u[i] * per.length, p);
-            per.normalAt(u[i] * per.length, nrm);
+            float s = sOf(per, u[i]);
+            per.pointAt(s, p);
+            per.normalAt(s, nrm);
             float swing = ORBIT * MathUtils.sin(ph[i]);
             z[i] = MathUtils.cos(ph[i]);
             p.mulAdd(nrm, off[i] + swing);
@@ -300,16 +342,29 @@ public final class ShieldParticles implements Disposable {
             return state[i] == LOOSE || state[i] == LOST;
         }
 
-        /** As many flecks adrift as the cloud has mass adrift: they go with what velocity they had; recaptured ones come back. */
+        /**
+         * As many flecks adrift as the cloud has mass adrift, those where no working emitter holds
+         * the curve first: they go with what velocity they had; recaptured ones come back.
+         */
         private void adrift(ShieldCloudComponent cloud, ShieldPerimeter per) {
             int want = Math.round(cloud.adrift / kgPer), have = count(LOOSE);
-            for (int i = 0; i < n && have < want; i++) {
-                byte st = state[i];
-                if (st != FREE && st != PACKED && st != THROWN && st != STOWING) continue;
-                state[i] = LOOSE;
-                region[i] = null;
-                toSpace(i);
-                have++;
+            if (have < want) {
+                Array<float[]> out = new Array<>();
+                for (int i = 0; i < n; i++) {
+                    byte st = state[i];
+                    if (st != FREE && st != PACKED && st != THROWN && st != STOWING) continue;
+                    // Thrown or streaming in: as likely as any
+                    float held = st == FREE || st == PACKED ? cloud.anchored[per.segmentAt(sOf(per, u[i]))] : 0.5f;
+                    out.add(new float[]{held + 0.05f * MathUtils.random(), i});
+                }
+                out.sort((a, b) -> Float.compare(a[0], b[0]));
+                for (int k = 0; k < out.size && have < want; k++) {
+                    int i = (int) out.get(k)[1];
+                    state[i] = LOOSE;
+                    region[i] = null;
+                    toSpace(i);
+                    have++;
+                }
             }
             for (int i = 0; i < n && have > want; i++) {
                 if (state[i] != LOOSE) continue;
@@ -406,8 +461,8 @@ public final class ShieldParticles implements Disposable {
             }
         }
 
-        /** The arc-length fraction of the curve's sample nearest ({@code px}, {@code py}). */
-        private static float nearestU(ShieldPerimeter per, float px, float py) {
+        /** The orbit, as a share of the resting layer, of the curve's sample nearest ({@code px}, {@code py}). */
+        private float nearestU(ShieldPerimeter per, float px, float py) {
             int best = 0;
             float bestD = Float.MAX_VALUE;
             for (int k = 0; k < ShieldPerimeter.SAMPLES; k++) {
@@ -417,7 +472,7 @@ public final class ShieldParticles implements Disposable {
                     best = k;
                 }
             }
-            return per.along[best] / per.length;
+            return cdf[best];
         }
 
         private void move(ShieldPerimeter per, float dt, float dvx, float dvy) {
@@ -468,7 +523,7 @@ public final class ShieldParticles implements Disposable {
                     z[i] = 0.3f * MathUtils.cos(ph[i]);
                     tx = p.x;
                     ty = p.y;
-                    u[i] = per.wrap(s) / per.length;
+                    u[i] = uOf(per, s);
                 } else {
                     u[i] += drift[i] * dt / per.length;
                     u[i] -= MathUtils.floor(u[i]);
@@ -658,7 +713,8 @@ public final class ShieldParticles implements Disposable {
 
     /**
      * The faint bubble on {@code cloud}'s curve: a soft band through the cloud's depth, as bright as
-     * the share of the cloud held, and brighter where regions pack it.
+     * the share of the cloud held, dimmer where the resting layer is thin (a dead emitter's notch),
+     * and brighter where regions pack it.
      */
     private void bubble(Batch batch, Body body, ShieldCloudComponent cloud) {
         ShieldPerimeter per = cloud.perimeter;
@@ -672,8 +728,10 @@ public final class ShieldParticles implements Disposable {
             float len = Vector2.dst(x0, y0, x1, y1);
             if (len < 1e-4f) continue;
             float mid = per.along[k] + 0.5f * len;
-            float packed = Math.max(0f, cloud.densityAt(mid) - base) / BUBBLE_FULL;
-            float a = held * (BUBBLE_REST + BUBBLE_PACKED * Math.min(1f, packed));
+            float rest = cloud.baseLineDensityAt(mid) / ShieldCloudComponent.DEPTH;
+            float packed = Math.max(0f, cloud.densityAt(mid) - rest) / BUBBLE_FULL;
+            float lean = base > 0f ? Math.min(2f, rest / base) : 1f;
+            float a = held * (BUBBLE_REST * lean + BUBBLE_PACKED * Math.min(1f, packed));
             Vector2 w = CombatPhysics.toWorld(body, 0.5f * (x0 + x1), 0.5f * (y0 + y1), at);
             float along = MathUtils.atan2(y1 - y0, x1 - x0) * MathUtils.radiansToDegrees + deg;
             float thick = ShieldCloudComponent.DEPTH;
