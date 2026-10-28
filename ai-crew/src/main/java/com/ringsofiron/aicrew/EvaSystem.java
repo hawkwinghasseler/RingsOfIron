@@ -593,6 +593,7 @@ public class EvaSystem extends FixedLogicSystem {
         boolean conscious = c.isConscious();
         if (eva.airSeen > 0f && c.suitAir <= 0f && c.state != CrewState.DEAD) emit(EvaEvent.Kind.AIR_OUT, e, p.ship, 0f);
         eva.airSeen = c.suitAir;
+        eva.cargo = c.crate == null ? 0f : c.crate.mass;
         burning = exhaust.read(p.ship, grid);
         scorch(e, eva, c, p, dt);
         if (eva.heldBy != null) {
@@ -785,9 +786,12 @@ public class EvaSystem extends FixedLogicSystem {
     // Fetching a shipmate adrift
     // -----------------------------------------------------------------------
 
-    /** The mass {@code eva} moves: theirs, and a shipmate's in tow. */
+    /** The mass {@code eva} moves: theirs and the crate they carry, and a shipmate's in tow with theirs. */
     static float mass(EvaComponent eva) {
-        return eva.towing != null ? 2f * MASS : MASS;
+        float m = MASS + eva.cargo;
+        if (eva.towing == null) return m;
+        EvaComponent o = of(eva.towing);
+        return m + MASS + (o == null ? 0f : o.cargo);
     }
 
     /** {@code e} takes hold of {@code other}, adrift, to bring them in. */
@@ -796,9 +800,10 @@ public class EvaSystem extends FixedLogicSystem {
         eva.towing = other;
         o.heldBy = e;
         o.stranded = false;
-        // Their two speeds made one
-        eva.vx = (eva.vx + o.vx) * 0.5f;
-        eva.vy = (eva.vy + o.vy) * 0.5f;
+        // Their two speeds made one, momentum kept
+        float m = MASS + eva.cargo, mo = MASS + o.cargo;
+        eva.vx = (eva.vx * m + o.vx * mo) / (m + mo);
+        eva.vy = (eva.vy * m + o.vy * mo) / (m + mo);
         GridPositionComponent op = service.position(other);
         event.by = e;
         emit(EvaEvent.Kind.TAKEN_IN_TOW, other, op == null ? null : op.ship, o.adrift);

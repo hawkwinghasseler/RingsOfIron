@@ -247,6 +247,8 @@ public class GameWorld implements Disposable {
     public final Spacewalks spacewalks;
     /** Docking collars jammed by hits, and the crew's work outside to free them. */
     public final JammedCollars jammedCollars;
+    /** Salvaged weapons the crew mount on the ship's hardpoints from outside, away from a yard. */
+    public final FieldRefits fieldRefits;
     /** The player's figure suiting up at battle stations and in thin air. */
     public final CaptainSafety captain;
     /** Warnings before the player's people run out of air. */
@@ -610,6 +612,7 @@ public class GameWorld implements Disposable {
         berthVenting = new BerthVenting(this);
         spacewalks = new Spacewalks(this);
         jammedCollars = new JammedCollars(this);
+        fieldRefits = new FieldRefits(this);
         captain = new CaptainSafety(this);
         air = new AirWatch(this);
         infirmary = new StationInfirmary(this);
@@ -741,6 +744,7 @@ public class GameWorld implements Disposable {
         derelicts.update();
         spacewalks.update();
         jammedCollars.update();
+        fieldRefits.update();
         events.update();
         checkBubbleCrash();
         checkAvatar();

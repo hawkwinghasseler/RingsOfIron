@@ -157,6 +157,11 @@ public class CrewDef {
     public float hullPatchTime = 30f;
     /** Seconds out on EVA at a docking port's jammed collar working it free, at their own pace. */
     public float collarTime = 60f;
+    /**
+     * Seconds out on EVA at a weapon hardpoint, for each tile of its turret mount, unbolting the
+     * weapon on it and bolting a new one on in its place, at their own pace.
+     */
+    public float mountTime = 45f;
 
     /** Tiles within which hostiles are noticed (also needs line of sight). */
     public float sightRange = 12f;

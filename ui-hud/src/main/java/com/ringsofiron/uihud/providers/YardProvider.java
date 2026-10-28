@@ -5,12 +5,17 @@ import com.badlogic.gdx.utils.Array;
 /**
  * A station's yard for the yard window: whether the player's ship is docked where it can be worked
  * on, what is damaged and what the repairs cost, the ship's hardpoints and the weapons on offer.
+ * Where no yard can work on the ship, the crew's own refits instead ({@link YardBoard#field}): the
+ * salvaged weapons in the hold they can mount on the hardpoints from outside, on EVA.
  * Implemented in the game wiring, so ui-hud does not depend on the station or weapon modules.
  * Called on the render thread.
  */
 public interface YardProvider {
 
-    /** Fills {@code out} (already cleared). Leave {@link YardBoard#stationName} empty when no yard can work on the ship. */
+    /**
+     * Fills {@code out} (already cleared). Leave {@link YardBoard#stationName} empty when no yard can
+     * work on the ship, and set {@link YardBoard#field} for the crew's own refits then.
+     */
     void collect(YardBoard out);
 
     /** Orders every repair; returns what the yard says. */
@@ -32,9 +37,17 @@ public interface YardProvider {
     /** Orders {@code weaponId}, new or used, fitted to hardpoint {@code hardpoint}; returns what the yard says. */
     String orderRefit(int hardpoint, String weaponId, boolean used);
 
-    /** Orders a salvaged {@code weaponId} out of the ship's own hold fitted to hardpoint {@code hardpoint}; returns what the yard says. */
+    /**
+     * Orders a salvaged {@code weaponId} out of the ship's own hold fitted to hardpoint {@code
+     * hardpoint}, by the yard, or with no yard by the crew on EVA; returns what is said.
+     */
     default String orderSalvagedRefit(int hardpoint, String weaponId) {
         return "This yard doesn't fit salvaged parts";
+    }
+
+    /** Calls off the crew's refit ordered at hardpoint {@code hardpoint} ({@link Hardpoint#callOff}); returns what is said. */
+    default String callOffFieldRefit(int hardpoint) {
+        return "Nothing to call off";
     }
 
     /**
@@ -77,11 +90,20 @@ public interface YardProvider {
         public String weapon = "";
         /** The refit under way there, or empty. */
         public String progress = "";
+        /** The crew's refit is under way there ({@link YardBoard#field}). */
+        public boolean mounting;
+        /** ... and can still be called off: its part is not out yet. */
+        public boolean callOff;
     }
 
     final class YardBoard {
         /** Station whose yard can work on the ship; empty when none. */
         public String stationName = "";
+        /**
+         * No yard: the crew's own refits, the salvaged weapons in the hold ({@link #offers}) they can
+         * mount on the hardpoints from outside. Only the hardpoints and offers are filled.
+         */
+        public boolean field;
         public double credits;
         public int damaged;
         public double repairCost;
@@ -120,6 +142,7 @@ public interface YardProvider {
 
         public void clear() {
             stationName = "";
+            field = false;
             repairs = "";
             credits = repairCost = refillCost = 0;
             tanks = "";
@@ -131,7 +154,7 @@ public interface YardProvider {
         }
 
         public boolean isOpen() {
-            return !stationName.isEmpty();
+            return !stationName.isEmpty() || field;
         }
     }
 }

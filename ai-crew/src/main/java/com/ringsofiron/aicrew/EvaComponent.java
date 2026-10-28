@@ -145,6 +145,11 @@ public class EvaComponent implements Component {
     public transient boolean burnWait;
     /** Which way the jetpack pushed them last, a unit vector in the ship's frame: its puffs go the other way. */
     public transient float jetX, jetY;
+    /**
+     * The mass of the crate they carry ({@link CrewMemberComponent#crate}), kg, 0 with none: it moves
+     * with them, so their hold, their line and their jetpack bear it too. Kept by {@link EvaSystem}.
+     */
+    public transient float cargo;
 
     /** "No goal". */
     public static final int NONE = Integer.MIN_VALUE;

@@ -59,6 +59,8 @@ public class CrewMemberComponent implements Component {
     public transient Entity carriedBy;
     /** Goods in hand on a carry task, or null. */
     public transient Load load;
+    /** A crate in hand for work outside (a part to mount, or the one it replaced), or null. */
+    public transient Crate crate;
     /**
      * The craft this crew member works for, when it is not always the one they are aboard: a
      * station's loaders walk aboard docked ships and come home. Null means the craft they are on.
@@ -195,6 +197,32 @@ public class CrewMemberComponent implements Component {
     public float suitPace() {
         if (!suited) return 1f;
         return suitKind == Suit.Kind.EVA ? Suit.EVA_SPEED : def.suitSpeedFactor;
+    }
+
+    /**
+     * A crate carried by hand for work outside ({@link OutsideTask.Job#take}): lifted out of the
+     * hold, taken out on EVA (its mass with theirs) to the work, and set down there; or the part the
+     * work took off, brought back in. Whatever is left in hand once they are aboard with no work
+     * outside to take it to goes back in the hold.
+     */
+    public static final class Crate {
+        /** Its cargo id in the hold: "part:railgun_mk1". */
+        public final String commodity;
+        /** What it is, for activity lines: "the salvaged railgun". */
+        public final String name;
+        /** Its volume, m³, and mass, kg, in the hold and in hand. */
+        public final double volume;
+        public final float mass;
+        /** The work it is carried out for, told when it is set down or back in the hold; null for none. */
+        public final OutsideTask.Job job;
+
+        public Crate(String commodity, String name, double volume, float mass, OutsideTask.Job job) {
+            this.commodity = commodity;
+            this.name = name;
+            this.volume = volume;
+            this.mass = mass;
+            this.job = job;
+        }
     }
 
     /** Goods carried by hand on a {@link CarryTask}. */

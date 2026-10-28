@@ -1,5 +1,6 @@
 package com.ringsofiron.aicrew.btree;
 
+import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
@@ -10,6 +11,7 @@ import com.ringsofiron.aicrew.RetrieveTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.interiorgrid.Airlock;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.HullPlating;
@@ -30,8 +32,9 @@ import com.ringsofiron.interiorgrid.crew.Suit;
  * OutsideTask}): a jammed docking collar to free, a part to mount.
  *
  * <pre>
- * [OnEva]  Spacewalk                                 first under the root
- * Sequence( IsEvaJob, SuitUpForEva, GoOutside )      in the task branch
+ * [OnEva]        Spacewalk                                      first under the root
+ * [CrateToStow]  StowCrate                                      before the task branch
+ * Sequence( IsEvaJob, FetchPart, SuitUpForEva, GoOutside )      in the task branch
  * </pre>
  *
  * A crew member takes the job only with an EVA suit to be had ({@link #suitReady}). They hang up
@@ -43,6 +46,11 @@ import com.ringsofiron.interiorgrid.crew.Suit;
  * along the hull to the job, the work there ({@link #workSeconds} at their suited pace), then on to
  * another job outside within reach, or back in. They head back in as soon as battle stations sound,
  * or once their air is down to what the way back takes and {@link #AIR_MARGIN} more.
+ *
+ * <p>Work that needs a part ({@link OutsideTask.Job#part}) has it fetched first: they lift its
+ * crate out of the hold ({@link FetchPart}), carry it out, and set it down at the work. A crate in
+ * hand aboard with no work outside to take it to (the work called off, or the part it took off)
+ * goes back in the hold ({@link StowCrate}).
  */
 public final class EvaTasks {
     /** Seconds of air an EVA suit needs in it to go out in: half a full pack. */
@@ -122,6 +130,125 @@ public final class EvaTasks {
     }
 
     /**
+     * For work outside that needs a part ({@link OutsideTask.Job#part}): to a bay of the hold that
+     * has it, and its crate lifted out ({@link CrewDef#loadTime}) to carry out. Succeeds at once for
+     * work that needs none, or with its crate in hand already.
+     */
+    public static class FetchPart extends CrewLeaf {
+        private float working;
+        private boolean anyBay;
+
+        @Override
+        public void start() {
+            working = 0f;
+            anyBay = false;
+        }
+
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            CrewMemberComponent c = a.crew;
+            OutsideTask.Job job = c.task instanceof OutsideTask ? ((OutsideTask) c.task).job : null;
+            if (job == null || c.crate != null && c.crate.job == job) return Status.SUCCEEDED;
+            String part = job.part();
+            if (part == null) return Status.SUCCEEDED;
+            Entity ship = a.service.homeOf(a.entity);
+            if (c.crate != null || stale(a, c.task) || a.pos.ship != ship) {
+                a.releaseTask();
+                return Status.FAILED;
+            }
+            c.activity = "fetching a crate from the hold";
+            CrewAgent.Travel go = a.travel(ship, CrewTasks.beside(a, ship, anyBay ? null : part, true));
+            if (go == CrewAgent.Travel.UNREACHABLE && !anyBay) {
+                // No way to the bays it is in: work from whichever bay of the hold can be reached
+                anyBay = true;
+                go = a.travel(ship, CrewTasks.beside(a, ship, null, true));
+            }
+            if (go == CrewAgent.Travel.UNREACHABLE) {
+                a.ignore(c.task, NO_ROUTE);
+                a.releaseTask();
+                return Status.FAILED;
+            }
+            if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
+            c.activity = "lifting a crate out of the hold";
+            working += a.dt;
+            if (working < c.def.loadTime) return Status.RUNNING;
+            CrewMemberComponent.Crate crate = job.take(a.entity);
+            if (crate == null) {
+                // Gone from the hold
+                a.releaseTask();
+                return Status.FAILED;
+            }
+            c.crate = crate;
+            return Status.SUCCEEDED;
+        }
+    }
+
+    /**
+     * Succeeds if the agent, aboard and not out on EVA, has a crate in hand that no work of theirs
+     * takes outside: a part whose work they put down, or the part the work took off.
+     */
+    public static class CrateToStow extends CrewLeaf {
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            CrewMemberComponent.Crate crate = a.crew.crate;
+            if (crate == null || EvaSystem.of(a.entity) != null) return Status.FAILED;
+            CrewTask t = a.crew.task;
+            boolean carried = crate.job != null && t instanceof OutsideTask && ((OutsideTask) t).job == crate.job
+                    && t.isActive() && t.claimedBy == a.entity;
+            return carried ? Status.FAILED : Status.SUCCEEDED;
+        }
+    }
+
+    /**
+     * Carries the crate in hand to a bay of the craft's hold with room for it and sets it down there
+     * ({@link CrewDef#loadTime}). With no way to the hold, it goes in all the same; with no room in
+     * it, it is cast off. Its work hears which ({@link OutsideTask.Job#stowed}).
+     */
+    public static class StowCrate extends CrewLeaf {
+        private float working;
+        private boolean anyBay;
+
+        @Override
+        public void start() {
+            working = 0f;
+            anyBay = false;
+        }
+
+        @Override
+        public Status execute() {
+            CrewAgent a = agent();
+            CrewMemberComponent c = a.crew;
+            CrewMemberComponent.Crate crate = c.crate;
+            if (crate == null) return Status.SUCCEEDED;
+            Entity ship = a.service.homeOf(a.entity);
+            CargoHoldComponent hold = ship == null ? null : ship.getComponent(CargoHoldComponent.class);
+            CrewAgent.Travel go = CrewAgent.Travel.UNREACHABLE;
+            if (hold != null && a.pos.ship == ship) {
+                go = a.travel(ship, CrewTasks.beside(a, ship, anyBay ? null : crate.commodity, false));
+                if (go == CrewAgent.Travel.UNREACHABLE && !anyBay) {
+                    anyBay = true;
+                    go = a.travel(ship, CrewTasks.beside(a, ship, null, false));
+                }
+            }
+            if (go == CrewAgent.Travel.GOING) {
+                c.activity = "carrying " + crate.name + " to the hold";
+                return Status.RUNNING;
+            }
+            if (go == CrewAgent.Travel.ARRIVED) {
+                c.activity = "stowing " + crate.name + " in the hold";
+                working += a.dt;
+                if (working < c.def.loadTime) return Status.RUNNING;
+            }
+            double in = hold == null ? 0 : hold.load(crate.commodity, 1, crate.volume, crate.mass);
+            c.crate = null;
+            if (crate.job != null) crate.job.stowed(a.entity, crate, in >= 1 - 1e-6);
+            return Status.SUCCEEDED;
+        }
+    }
+
+    /**
      * True, and the job dropped from the board, if nobody needs it done any more: mended from inside
      * or by another hand, or a castaway who has caught hold again, before they were out to it.
      */
@@ -190,7 +317,7 @@ public final class EvaTasks {
             }
             stuck = 0f;
             if (go == CrewAgent.Travel.GOING) {
-                a.crew.activity = "heading for the airlock";
+                a.crew.activity = a.crew.crate != null ? "carrying " + a.crew.crate.name + " to the airlock" : "heading for the airlock";
                 return Status.RUNNING;
             }
             a.pos.stop();
@@ -272,7 +399,7 @@ public final class EvaTasks {
                 if (!back && t == null) t = next(a, eva, grid, hull, board);
                 if (t == null) back = true;
                 if (!back) {
-                    float workLeft = (workSeconds(c.def, t) - (workingOn == t ? work : 0f)) / Math.max(0.05f, c.workPace());
+                    float workLeft = (workSeconds(c.def, t) - (workingOn == t ? work : worked(t))) / Math.max(0.05f, c.workPace());
                     back = c.suitAir < backSeconds + AIR_MARGIN + workLeft;
                 }
                 if (back) {
@@ -288,23 +415,36 @@ public final class EvaTasks {
                 eva.goalX = tile[0];
                 eva.goalY = tile[1];
                 CrewMemberComponent towed = eva.towing == null ? null : a.service.crew(eva.towing);
-                c.activity = towed != null ? "bringing " + towed.name + " back in" : moving(eva, "heading back to the airlock");
+                c.activity = towed != null ? "bringing " + towed.name + " back in"
+                        : moving(eva, c.crate != null ? "bringing " + c.crate.name + " back in" : "heading back to the airlock");
                 return Status.RUNNING;
             }
             if (t.kind == CrewTask.Kind.RETRIEVE) return fetch(a, c, eva, grid, hull, (RetrieveTask) t);
+            OutsideTask.Job job = t instanceof OutsideTask ? ((OutsideTask) t).job : null;
+            boolean bringing = job != null && c.crate != null && c.crate.job == job;
+            if (job != null && job.part() != null && !bringing) {
+                // Its part is still inside, for whoever fetches it
+                a.service.releaseTask(a.entity);
+                return Status.RUNNING;
+            }
             workTile(grid, hull, t, tile);
             eva.goalX = tile[0];
             eva.goalY = tile[1];
             if (workingOn != t) {
                 workingOn = t;
-                work = 0f;
+                work = worked(t);
             }
             if (!eva.atGoal()) {
-                c.activity = moving(eva, "crawling along the hull to " + where(t));
+                c.activity = moving(eva, (bringing ? "carrying " + c.crate.name + " along the hull to " : "crawling along the hull to ") + where(t));
                 return Status.RUNNING;
+            }
+            if (bringing) {
+                job.setDown(a.entity, c.crate);
+                c.crate = null;
             }
             float dt = a.dt * c.workPace();
             work += dt;
+            if (job != null) job.work(a.entity, dt);
             c.record().pendingWork += dt; // engineering experience
             c.activity = doing(t);
             if (work >= workSeconds(c.def, t)) {
@@ -550,6 +690,11 @@ public final class EvaTasks {
         }
     }
 
+    /** Seconds of work already put into job {@code t}, kept from an earlier spacewalk. */
+    static float worked(CrewTask t) {
+        return t instanceof OutsideTask ? ((OutsideTask) t).job.worked() : 0f;
+    }
+
     /** What job {@code t}'s work does, once it is done. */
     static void finishWork(CrewAgent a, ShipGridComponent grid, CrewTask t) {
         switch (t.kind) {
@@ -596,14 +741,15 @@ public final class EvaTasks {
 
     /**
      * Claims another job outside the line reaches from the port they are out of, the best for them;
-     * null if none. A part to mount is fetched from inside, so it isn't one.
+     * null if none. Work whose part is still inside ({@link OutsideTask.Job#part}) isn't one.
      */
     static CrewTask next(CrewAgent a, EvaComponent eva, ShipGridComponent grid, HullSurface hull, ShipTaskBoardComponent board) {
         if (board == null || board.faction != a.crew.faction) return null;
         int[] work = new int[2];
         Array<int[]> path = new Array<>();
         CrewTask t = board.best(a.crew.role, eva.ringX, eva.ringY, task -> task.kind.isEva()
-                && task.kind != CrewTask.Kind.MOUNT_PART && a.mayTake(task) && workTile(grid, hull, task, work)
+                && !(task instanceof OutsideTask && ((OutsideTask) task).job.part() != null) && a.mayTake(task)
+                && workTile(grid, hull, task, work)
                 && crawlTiles(grid, hull, eva.portMount, work[0], work[1], path) >= 0);
         if (t == null || !board.claim(t, a.entity)) return null;
         a.crew.task = t;

@@ -42,6 +42,7 @@ public final class SaveTypes {
         s.registerType("game.CargoOrders", CargoOrdersComponent.class);
         s.registerType("game.Disabled", DisabledComponent.class);
         s.registerType("game.FactionStanding", FactionStandingComponent.class);
+        s.registerType("game.FieldRefits", FieldRefitComponent.class);
         s.registerType("game.Helm", HelmComponent.class);
         s.registerType("game.HelmOrder", HelmOrderComponent.class);
         s.registerType("game.Morale", MoraleComponent.class);
