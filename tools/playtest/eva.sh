@@ -17,7 +17,7 @@ E='com.ringsofiron.aicrew.EvaSystem'
 # Prints a dev command's answer: what follows the ".join('; '): " that ends its echo in the log
 answer() { cmd dev "$1"; pause 0.4; grep -F "PLAYTEST dev $2" "$OUT/game.log" | tail -1 | sed "s/.*join('; '): //"; }
 # What the player's crew on EVA are doing, or "nobody"
-eva() { answer "def out = world.spacewalks.onEva(); out.isEmpty() ? 'nobody' : out.collect { world.crew.crew(it).name + ' ' + $E.of(it).phase + ' ' + world.crew.crew(it).activity + ' line ' + String.format('%.1f', $E.of(it).lineOut) + ' m' }.join('; ')" "def out"; }
+eva() { answer "def out = world.spacewalks.onEva(); out.isEmpty() ? 'nobody' : out.collect { world.crew.crew(it).name + ' ' + $E.of(it).phase + ' ' + world.crew.crew(it).activity + ' line ' + String.format('%.1f', $E.of(it).lineOut) + ' m' + ($E.of(it).tethered ? '' : ' (parted)') }.join('; ')" "def out"; }
 # What each of the ship's crew is doing
 doing() { answer "world.crew.crewEntities().findAll { world.crew.position(it).ship == player }.collect { world.crew.crew(it).name + ' ' + world.crew.crew(it).activity }.join('; ')" "world.crew.crewEntities"; }
 # Waits up to $2 polls (2 s apart) for $1 (eva or doing) to answer something matching $3
@@ -75,7 +75,7 @@ helm; shot e-16-back-on-the-hull-outside
 until_ eva 60 "repairing"
 
 # A full burn ahead, 12 m/s2: the line parts and they drift aft
-xdotool keydown w; pause 1.2; xdotool keyup w
+xdotool keydown w; pause 2; xdotool keyup w
 pause 0.3; eva; shot e-17-line-parted
 wheel 5 6; pause 2; eva; shot e-18-adrift
 pause 4; eva; shot e-19-jetting-back

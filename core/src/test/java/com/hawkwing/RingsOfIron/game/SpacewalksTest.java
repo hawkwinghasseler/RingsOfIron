@@ -26,7 +26,8 @@ import org.junit.jupiter.api.io.TempDir;
  * The patrol career's corvette, cast off from Highport with the RCS block nearest its docking port
  * wrecked: an engineer goes out through the port to mend it, rails warp waits while they are out,
  * the notices and the status line say so, and a save made while they are on the hull loads with
- * them still out there. Out at the bow block instead, a full burn ahead parts their line.
+ * them still out there. Out at the bow block instead, a full burn ahead parts their line, while the
+ * swing a long burn astern starts them on doesn't.
  */
 class SpacewalksTest {
     static final float FRAME = 1f / 60f;
@@ -115,27 +116,54 @@ class SpacewalksTest {
         assertTrue(Airlock.of(grid, port).isIn(), "the airlock back at rest");
     }
 
-    @Test
-    void aFullBurnAheadPartsTheLineOfOneAtTheBow() {
-        // The bow block on the keel instead, round the bow from the port: a burn ahead drags the
-        // keel back past them, and the line wrapped round the bow takes their weight in it
+    /**
+     * The starboard bow block instead of the one by the docking port, and whoever goes out to it once
+     * they are at work there, round the bow from the docking port with their line wrapped round it.
+     */
+    private Entity outAtTheBowBlock() {
         grid.getTile(block.x, block.y).setIntegrity(1f);
         block = null;
         for (RcsThruster r : grid.rcsThrusters) if (r.side == Side.BOTTOM && (block == null || r.x > block.x)) block = r;
         grid.getTile(block.x, block.y).setIntegrity(0f);
         grid.gridDirty = true;
         Entity e = goOut();
-        String name = world.crew.crew(e).name;
         for (int i = 0; i < 60 * 120 && !"repairing an RCS thruster on EVA".equals(world.crew.crew(e).activity); i++) run(1);
         assertEquals("repairing an RCS thruster on EVA", world.crew.crew(e).activity, "out at the block");
+        return e;
+    }
+
+    @Test
+    void aFullBurnAheadPartsTheLineOfOneAtTheBow() {
+        // A burn ahead drags the hull back past them, and the line round the bow takes their weight in it
+        Entity e = outAtTheBowBlock();
+        String name = world.crew.crew(e).name;
         FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
-        for (int i = 0; i < 60 * 2 && !said(name + "'s tether has parted"); i++) {
+        for (int i = 0; i < 60 * 3 && !said(name + "'s tether has parted"); i++) {
             controls.forward = 1f;
             run(1);
         }
         controls.forward = 0f;
         assertTrue(said(name + " is thrown off the hull"));
         assertTrue(said(name + "'s tether has parted"), "the corvette's full burn is more than the line holds");
+    }
+
+    @Test
+    void aLongBurnAsternSwingsOneAtTheBowRoundItOnTheLineAndItHolds() {
+        // A burn astern throws them off ahead of the bow, and they swing back and forth round it on
+        // the line, its pull peaking at the bottom of each swing
+        Entity e = outAtTheBowBlock();
+        String name = world.crew.crew(e).name;
+        FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
+        for (int i = 0; i < 60 * 4; i++) {
+            controls.forward = -1f;
+            run(1);
+        }
+        controls.forward = 0f;
+        assertTrue(said(name + " is thrown off the hull"));
+        assertFalse(said(name + "'s tether has parted"), "the line held through the swing");
+        for (int i = 0; i < 60 * 30 && !said(name + " has caught hold of the hull again"); i++) run(1);
+        assertTrue(said(name + " has caught hold of the hull again"), "back on the hull once the burn ends");
+        assertTrue(EvaSystem.of(e).tethered, "still on their line");
     }
 
     @Test

@@ -131,22 +131,27 @@ segments (Verlet integration, length constraints only, 16 iterations a tick swee
 each point pushed out of the hull): it floats slack, drapes, wraps round the hull's corners and
 goes taut.
 
-- **The reel** takes up slack and pays the line out as it is drawn, but locks like a seatbelt
-  when it is drawn out faster than 1.5 m/s, and frees again once the line has gone slack.
+- **The reel** takes up slack on its spring at 2 m/s, so a loose line doesn't hang about in loops,
+  and pays the line out as it is drawn, but locks like a seatbelt when it is drawn out faster than
+  1.5 m/s, and frees again once the line has gone slack.
 - **The line** stretches when it is drawn past what is paid out, locked or run out, and pulls
   back: 4,000 N per meter of stretch plus 1,200 N·s/m of damping on how fast it stretches (the
   stretch smoothed over 0.05 s, since the rope's shape jitters as it slides over the hull). It
   pulls the crew member and, equally and opposite, the ship at the reel.
-- **It snaps** when its elastic pull passes 1,600 N, a little under a g on a crew member: the
-  corvette's full burn (12 m/s²) parts the line of anyone it throws off, and so can a long burn
-  astern (5 m/s²), by the swing it starts them on; a short one doesn't. Untethered and adrift,
-  they jet back to the hull while the pack has fuel, and crawl back to the airlock.
+- **It parts** under a pull it can't bear for long. It holds 1,750 N, a little under a g on a crew
+  member, for as long as it is asked to; past that it gives, and once the pull past 1,750 N adds up
+  to 100 N·s it parts, as a hold on the hull gives way past the grip. The corvette's full burn
+  (12 m/s²) parts the line of anyone it throws off after about a second and a half. A burn astern
+  (5 m/s²), however long, swings them round the hull's corner with the line's pull peaking near
+  1,900 N, but each peak passes too quickly to part it. It parts at their clip: the loose line
+  whips back and the reel's spring winds it in. Untethered and adrift, they jet
+  back to the hull while the pack has fuel, and crawl back to the airlock.
 - **Left behind**: adrift with no line more than 500 m from their ship, a crew member is gone:
   a `LEFT_BEHIND` event, and taken out of the world.
 - **Winched in**: one who can't climb (out cold, or dead) is wound in by the reel at 0.5 m/s while
   their weight on the line is under the motor's 400 N, and pulled into the airlock at the door.
 
-A burn of 4 m/s² away from a crew member on the keel throws them off: the reel locks, and they
+A burn of 4 m/s² away from a crew member on the side of the hull throws them off: the reel locks, and they
 swing on the line like a pendulum round the hull's corner, the line's pull peaking at the bottom of
 each swing above their 720 N weight in the burn. When the burn ends they jet back to the hull.
 
@@ -170,11 +175,53 @@ each swing above their 720 N weight in the burn. When the burn ends they jet bac
 
 Drawn, in the deck view and from outside: the figure in the crawl's two alternating frames, turned
 along the hull, or floating free, seen from behind with the jetpack on their back; the tether as a
-yellow line with a dark edge from the reel; the jetpack's puffs blown against its push; and in the
-deck view, where the light map leaves the outside of the hull dark, the suit's lamps lighting the
-plating round them.
+yellow line with a dark edge from the reel, curved through the rope's points; the jetpack's puffs
+blown against its push; and in the deck view, where the light map leaves the outside of the hull
+dark, the suit's lamps lighting the plating round them.
 
 `tools/playtest/eva.sh` plays it through in a real window and takes the screenshots.
+
+## Screenshots
+
+From `tools/playtest/eva.sh` on the patrol corvette, with the hull tile under its starboard bow
+RCS block wrecked.
+
+The engineer at the EVA locker by the bridge, getting into one of its two suits:
+
+![Suiting up](screens/suiting-up.png)
+
+In the docking port's chamber with the inner hatch shut behind them, while the pump draws the air
+back into the ship:
+
+![The airlock](screens/airlock.png)
+
+Out on the hull in the deck view, the line running back to the reel by the door; one suit is left
+in the locker:
+
+![On the hull](screens/on-the-hull-deck.png)
+
+From outside, at work at the starboard bow block, the line round the bow:
+
+![At the block](screens/at-the-block.png)
+
+A burn astern, the bow blocks firing, throws them off ahead of the bow; they hang on the line round
+its corner and jet back:
+
+![Thrown off](screens/thrown-off.png)
+
+A second after the burn, swung up over the bow on the line, which holds; the status panel warns the
+helm:
+
+![Swinging round the bow](screens/swinging-round-the-bow.png)
+
+A full burn ahead parts the line at their clip and the reel winds it in, while they fall astern:
+
+![The line parted](screens/line-parted.png)
+
+Well astern with no line, jetting after the ship. They catch hold, go in, come out again on a new
+line and finish the block:
+
+![Adrift](screens/adrift.png)
 
 ## Judgment calls
 
@@ -184,13 +231,18 @@ plating round them.
 - **Tiles are 1 m**, so the corvette's 18 x 6 hull is 48 m round: the 40 m line reaches most of
   it from the one port, and the crew pick the shortest way round.
 - **The hull they crawl on is the deck plan's outline**, the one the RCS blocks are bolted to, not
-  the hull art's: seen from outside, the corvette's nose stands proud of it, so a crawl round the
-  bow crosses the nose's plating, as the bow's RCS blocks already sit on it.
+  the hull art's. Seen from outside, the corvette's nose stands proud of it, so a crawl round the
+  bow crosses the nose's plating, as the bow's RCS blocks already sit on it; and at the stern the
+  outline runs about a meter behind the plating between the engine bells, so crew holding on
+  there look to be hanging off it.
 - **Grip and line numbers.** The grip is a suited human's: a third of a g to hold on with. The
-  line is weaker than a real one, a little under a g of their weight, so that a tether parting is
-  something the ship the player flies can do: the corvette's full burn parts it, and a short burn
-  astern doesn't. At 2 kN a playtest's full burn left the line holding, the hull's rub on the crew
-  member taking the difference.
+  line is weaker than a real one, so that a tether parting is something the ship the player flies
+  can do: the corvette's full burn parts it, and the swing from a burn astern doesn't. Two
+  playtests set it. With a line that simply snapped at 2 kN, the hull's rub on the crew member
+  took enough of a full burn that the line held. At 1.6 kN, a 3 s burn astern swung one round the
+  bow hard enough to part it. Measuring the line through each manoeuvre showed a full burn's pull
+  stays high while a swing's only peaks, hence a line that bears its rated pull indefinitely and
+  parts on how long it is pulled past it.
 - **The knocked-out are winched in** rather than left: a reel motor is the obvious safety feature,
   and the alternative is a body on a line until someone else suits up.
 - **Not at battle stations**, and called back in when they sound, as the original ask said.
@@ -206,13 +258,14 @@ plating round them.
   crushed tile, one knocked out on the hull winched in.
 - `EvaPhysicsTest` (ai-crew): the ship as a Box2D body: a gentle burn held through, a hard one into
   them only pressing them on, one past their grip throwing them off to swing on the line and jet
-  back, one along the keel too hard to catch hold through (once thrown off, they stay off on the
-  line until it ends), a full one along the keel parting the line, a full burn snapping it and
-  leaving them behind, a short one parting it so they come in and go out again on a new line, a
-  floating-origin shift.
+  back, one along the hull too hard to catch hold through (once thrown off, they stay off on the
+  line until it ends), a full one along the hull parting the line and the reel winding the loose
+  line in, a full burn snapping it and leaving them behind, a short one parting it so they come in
+  and go out again on a new line, a floating-origin shift.
 - `SpacewalksTest` (core): the patrol corvette's engineer mending a block with rails warp waiting,
   the notices and the status line, the corvette's full burn parting the line of one at its bow
-  block, and a save made while they are outside loading with them still out there.
+  block while the swing from a long burn astern doesn't, and a save made while they are outside
+  loading with them still out there.
 - `ArtNamesTest`: every suited, crawling and floating figure and every furnishing has its art.
 
 ## Not yet

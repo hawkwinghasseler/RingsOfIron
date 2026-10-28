@@ -99,6 +99,8 @@ public class EvaComponent implements Component {
     public transient float[] rope, ropePrev;
     /** The line's stretch last step, meters; and smoothed over a few steps, which its pull goes by. */
     public transient float stretch, stretchF;
+    /** How far past {@link EvaSystem#LINE_RATED} the line has been pulled, newton-seconds ({@link EvaSystem#LINE_GIVE}). */
+    public transient float lineStrain;
     /** Seconds before they can catch hold of the hull again after a fall. */
     public transient float regrab;
     /** Seconds the line has been slack while the reel is locked. */

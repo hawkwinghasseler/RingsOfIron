@@ -65,10 +65,11 @@ import java.util.WeakHashMap;
  * <h2>The tether</h2>
  * The line runs {@link #LINE_MAX} at most from a reel at the airlock's door, and is a rope of
  * {@link #ROPE_SEGMENTS} segments (Verlet, stretch constraints only, pushed out of the hull) that
- * floats slack, wraps round the hull and goes taut. The reel takes up slack and pays out as it is
- * pulled, and locks like a seatbelt when the line is drawn out faster than {@link #REEL_LOCK_SPEED};
+ * floats slack, wraps round the hull and goes taut. The reel takes up slack ({@link #TAKE_UP_SPEED})
+ * and pays out as it is pulled, and locks like a seatbelt when the line is drawn out faster than {@link #REEL_LOCK_SPEED};
  * locked or run out, the line stretches and pulls back ({@link #LINE_K}, {@link #LINE_C}) on the crew
- * member and, equally, on the ship at the reel. Past {@link #LINE_BREAK} it snaps. A crew member who
+ * member and, equally, on the ship at the reel. Held past {@link #LINE_RATED} long enough ({@link
+ * #LINE_GIVE}) it parts at their clip, and the reel winds the loose line in. A crew member who
  * can't climb in (out cold, or dead) is winched in at {@link #REEL_SPEED}, and pulled into the
  * airlock at the door.
  *
@@ -119,15 +120,20 @@ public class EvaSystem extends FixedLogicSystem {
     public static final float LINE_K = 4000f;
     /** The line's damping as it stretches, N s/m: a crew member on its end swings to rest without bouncing much. */
     public static final float LINE_C = 1200f;
+    /** The pull the line holds for as long as it is asked to, newtons (on its stretch): a little under a g on a crew member. */
+    public static final float LINE_RATED = 1750f;
     /**
-     * The line's breaking strength, newtons (on its stretch): a little under a g on a crew member. A
-     * corvette's full burn parts it; a short burn astern, or the swing it starts, doesn't.
+     * Past {@link #LINE_RATED} the line gives, and once the pull past it adds up to this many
+     * newton-seconds it parts, as a hold does past {@link #GRIP}: the corvette's full burn parts it
+     * in a second and a half, while the hardest swing a burn astern starts them on peaks too briefly.
      */
-    public static final float LINE_BREAK = 1600f;
+    public static final float LINE_GIVE = 100f;
     /** The reel locks when the line is drawn out faster than this, m/s. */
     public static final float REEL_LOCK_SPEED = 1.5f;
-    /** The reel takes up slack, and winches in a crew member who can't climb, at this speed, m/s. */
+    /** The reel winches in a crew member who can't climb at this speed, m/s. */
     public static final float REEL_SPEED = 0.5f;
+    /** The reel's spring takes up slack at this speed, m/s: quick, so a loose line doesn't float about in loops. */
+    public static final float TAKE_UP_SPEED = 2f;
     /** The most the reel's motor (or a crew member hand over hand) pulls on the line winding it in, newtons. */
     public static final float WINCH_PULL = 400f;
     /** Slack the reel leaves in the line, meters. */
@@ -244,14 +250,14 @@ public class EvaSystem extends FixedLogicSystem {
 
     /**
      * The rope of {@code e}'s tether in their ship's frame, tiles, reel first: {@code out} gets x, y
-     * pairs. Empty if they are not on a line.
+     * pairs. Once it has parted, the line their reel is winding back in; empty once it is in.
      */
     public void ropeTiles(Entity e, FloatArray out) {
         out.clear();
         EvaComponent eva = of(e);
         GridPositionComponent p = service.position(e);
         ShipGridComponent grid = p == null ? null : service.grid(p.ship);
-        if (eva == null || eva.rope == null || !eva.tethered || grid == null) return;
+        if (eva == null || eva.rope == null || grid == null) return;
         frame.read(p.ship, grid);
         for (int i = 0; i < eva.rope.length; i += 2) {
             frame.toTiles(eva.rope[i], eva.rope[i + 1], a);
@@ -528,6 +534,7 @@ public class EvaSystem extends FixedLogicSystem {
         }
         if (eva.phase == EvaComponent.Phase.FREE) fly(e, eva, c, grid, hull, dt);
         if (eva.tethered && port != null) rope(e, eva, c, p, grid, hull, port, dt);
+        else if (eva.rope != null && port != null) reelIn(eva, hull, port, dt);
         else eva.rope = null;
         toShipFrame(eva, p);
         if (port == null || lock == null) {
@@ -931,57 +938,8 @@ public class EvaSystem extends FixedLogicSystem {
         frame.toWorld(a[0], a[1], b);
         float ax = b[0], ay = b[1];
         if (eva.rope == null) layRope(eva, ax, ay);
-        float[] r = eva.rope, prev = eva.ropePrev;
-        // The free points swing on, losing some of their motion relative to the hull beside them
-        for (int i = 2; i < 2 * n; i += 2) {
-            float x = r[i], y = r[i + 1];
-            frame.velocityAt(x, y, c4);
-            float vx = x - prev[i], vy = y - prev[i + 1];
-            float sx = c4[0] * dt, sy = c4[1] * dt;
-            vx = sx + (vx - sx) * ROPE_KEEP;
-            vy = sy + (vy - sy) * ROPE_KEEP;
-            prev[i] = x;
-            prev[i + 1] = y;
-            r[i] = x + vx;
-            r[i + 1] = y + vy;
-        }
-        // The ends go with the reel and the crew member
-        prev[0] = r[0];
-        prev[1] = r[1];
-        r[0] = ax;
-        r[1] = ay;
-        prev[2 * n] = r[2 * n];
-        prev[2 * n + 1] = r[2 * n + 1];
-        r[2 * n] = eva.wx;
-        r[2 * n + 1] = eva.wy;
-        float rest = Math.max(0.05f, eva.lineOut) / n;
-        for (int it = 0; it < ROPE_ITERATIONS; it++) {
-            // Sweeping from each end in turn, so a pull at either end travels the length of the rope
-            for (int step = 0; step < n; step++) {
-                int i = it % 2 == 0 ? step : n - 1 - step;
-                int j = 2 * i, k = j + 2;
-                float dx = r[k] - r[j], dy = r[k + 1] - r[j + 1];
-                float d = (float) Math.sqrt(dx * dx + dy * dy);
-                if (d <= rest || d < 1e-6f) continue;
-                float wa = i == 0 ? 0f : 1f, wb = i == n - 1 ? 0f : 1f;
-                if (wa + wb == 0f) continue;
-                float move = (d - rest) / d / (wa + wb);
-                r[j] += dx * move * wa;
-                r[j + 1] += dy * move * wa;
-                r[k] -= dx * move * wb;
-                r[k + 1] -= dy * move * wb;
-            }
-            // Out of the hull
-            if (it >= ROPE_ITERATIONS - 3) {
-                for (int i = 2; i < 2 * n; i += 2) {
-                    frame.toTiles(r[i], r[i + 1], q);
-                    if (!hull.pushOut(q[0], q[1], b)) continue;
-                    frame.toWorld(b[0], b[1], q);
-                    r[i] = q[0];
-                    r[i + 1] = q[1];
-                }
-            }
-        }
+        float[] r = eva.rope;
+        swing(r, eva.ropePrev, ax, ay, true, eva.wx, eva.wy, Math.max(0.05f, eva.lineOut) / n, hull, dt);
         float length = 0f;
         for (int i = 0; i < n; i++) {
             float dx = r[2 * i + 2] - r[2 * i], dy = r[2 * i + 3] - r[2 * i + 1];
@@ -1004,7 +962,7 @@ public class EvaSystem extends FixedLogicSystem {
         if (winched) {
             if (eva.tension < WINCH_PULL) eva.lineOut = Math.max(0.3f, eva.lineOut - (c.isConscious() ? CLIMB_SPEED : REEL_SPEED) * dt);
         } else if (!eva.reelLocked && stretch < 0f && eva.lineOut > straight + SLACK) {
-            eva.lineOut = Math.max(straight + SLACK, eva.lineOut - REEL_SPEED * dt);
+            eva.lineOut = Math.max(straight + SLACK, eva.lineOut - TAKE_UP_SPEED * dt);
         }
         if (eva.reelLocked) {
             eva.slackTime = stretch < 0f ? eva.slackTime + dt : 0f;
@@ -1013,8 +971,8 @@ public class EvaSystem extends FixedLogicSystem {
                 eva.slackTime = 0f;
             }
         }
-        // Its pull: the stretch, and the line's own damping as it stretches; it parts when the stretch
-        // alone is past its strength
+        // Its pull: the stretch, and the line's own damping as it stretches; it parts once the stretch
+        // alone has been past what it is rated for long enough
         float before = eva.stretchF;
         eva.stretchF += (stretch - eva.stretchF) * Math.min(1f, dt / STRETCH_TAU);
         float tension = 0f, elastic = 0f;
@@ -1025,7 +983,8 @@ public class EvaSystem extends FixedLogicSystem {
         }
         eva.stretch = stretch;
         eva.tension = tension;
-        if (elastic > LINE_BREAK) {
+        eva.lineStrain = Math.max(0f, eva.lineStrain + (elastic - LINE_RATED) * dt);
+        if (eva.lineStrain > LINE_GIVE) {
             eva.tethered = false;
             eva.tension = 0f;
             eva.reelLocked = false;
@@ -1045,6 +1004,82 @@ public class EvaSystem extends FixedLogicSystem {
                 f[3] = ay;
             }
         }
+    }
+
+    /**
+     * Moves rope {@code r} on by {@code dt} ({@code prev}: its points a step ago): the free points
+     * swing on, losing some of their motion relative to the hull beside them; the first goes with the
+     * reel at ({@code ax}, {@code ay}) and, if {@code held}, the last with the crew member at ({@code
+     * ex}, {@code ey}). Then no segment is let stay longer than {@code rest}, and the rope is pushed
+     * out of the hull.
+     */
+    private void swing(float[] r, float[] prev, float ax, float ay, boolean held, float ex, float ey, float rest,
+                       HullSurface hull, float dt) {
+        int n = r.length / 2 - 1, free = held ? 2 * n : 2 * n + 2;
+        for (int i = 2; i < free; i += 2) {
+            float x = r[i], y = r[i + 1];
+            frame.velocityAt(x, y, c4);
+            float vx = x - prev[i], vy = y - prev[i + 1];
+            float sx = c4[0] * dt, sy = c4[1] * dt;
+            vx = sx + (vx - sx) * ROPE_KEEP;
+            vy = sy + (vy - sy) * ROPE_KEEP;
+            prev[i] = x;
+            prev[i + 1] = y;
+            r[i] = x + vx;
+            r[i + 1] = y + vy;
+        }
+        prev[0] = r[0];
+        prev[1] = r[1];
+        r[0] = ax;
+        r[1] = ay;
+        if (held) {
+            prev[2 * n] = r[2 * n];
+            prev[2 * n + 1] = r[2 * n + 1];
+            r[2 * n] = ex;
+            r[2 * n + 1] = ey;
+        }
+        for (int it = 0; it < ROPE_ITERATIONS; it++) {
+            // Sweeping from each end in turn, so a pull at either end travels the length of the rope
+            for (int step = 0; step < n; step++) {
+                int i = it % 2 == 0 ? step : n - 1 - step;
+                int j = 2 * i, k = j + 2;
+                float dx = r[k] - r[j], dy = r[k + 1] - r[j + 1];
+                float d = (float) Math.sqrt(dx * dx + dy * dy);
+                if (d <= rest || d < 1e-6f) continue;
+                float wa = i == 0 ? 0f : 1f, wb = held && i == n - 1 ? 0f : 1f;
+                if (wa + wb == 0f) continue;
+                float move = (d - rest) / d / (wa + wb);
+                r[j] += dx * move * wa;
+                r[j + 1] += dy * move * wa;
+                r[k] -= dx * move * wb;
+                r[k + 1] -= dy * move * wb;
+            }
+            // Out of the hull
+            if (it >= ROPE_ITERATIONS - 3) {
+                for (int i = 2; i < free; i += 2) {
+                    frame.toTiles(r[i], r[i + 1], q);
+                    if (!hull.pushOut(q[0], q[1], b)) continue;
+                    frame.toWorld(b[0], b[1], q);
+                    r[i] = q[0];
+                    r[i + 1] = q[1];
+                }
+            }
+        }
+    }
+
+    /**
+     * A tick of a parted line: it parted at the crew member's clip, so the whole of it is left on the
+     * reel, its loose end free, and the reel's spring winds it in; gone once it is.
+     */
+    private void reelIn(EvaComponent eva, HullSurface hull, MountFootprint port, float dt) {
+        eva.lineOut -= TAKE_UP_SPEED * dt;
+        if (eva.lineOut <= 0.1f) {
+            eva.rope = null;
+            return;
+        }
+        reel(port, a);
+        frame.toWorld(a[0], a[1], b);
+        swing(eva.rope, eva.ropePrev, b[0], b[1], false, 0f, 0f, eva.lineOut / ROPE_SEGMENTS, hull, dt);
     }
 
     /** Lays the rope straight from the reel to the crew member, at rest relative to the hull. */

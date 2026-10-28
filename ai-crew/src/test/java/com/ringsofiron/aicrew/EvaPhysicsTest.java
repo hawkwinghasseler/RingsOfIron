@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Crew on EVA on a ship that moves: {@link EvaRepairTest}'s ship as a 180 t Box2D body, its engineer
  * out at the wrecked RCS block on its underside, and the ship thrust up (+y), away from them, down
- * into them, or along its keel: held through, pressed on, thrown off to swing on the line, dragged
+ * into them, or along the side they are on: held through, pressed on, thrown off to swing on the line, dragged
  * past too hard to catch hold, the line parted.
  */
 class EvaPhysicsTest {
@@ -99,7 +99,7 @@ class EvaPhysicsTest {
     @Test
     void aBurnPastTheirGripThrowsThemOffAndTheLineHoldsThemTillTheyGetBackOn() {
         out();
-        // 4 m/s2: 720 N, past their 600 N grip; within the line's 1.6 kN
+        // 4 m/s2: 720 N, past their 600 N grip; well within the line's 1.75 kN
         thrust.set(0f, 4f);
         s.run(8f);
         assertTrue(events.contains(EvaEvent.Kind.LOST_GRIP), "thrown off: " + events);
@@ -131,7 +131,7 @@ class EvaPhysicsTest {
         for (int i = 0; i < 600 && s.engine.getEntities().contains(crew, true); i++) s.run(0.1f);
         assertTrue(events.contains(EvaEvent.Kind.LOST_GRIP), "thrown off: " + events);
         assertTrue(events.contains(EvaEvent.Kind.TETHER_SNAPPED), "the line parted: " + events);
-        assertTrue(amounts.get(events.indexOf(EvaEvent.Kind.TETHER_SNAPPED)) > EvaSystem.LINE_BREAK);
+        assertTrue(amounts.get(events.indexOf(EvaEvent.Kind.TETHER_SNAPPED)) > EvaSystem.LINE_RATED);
         assertTrue(events.contains(EvaEvent.Kind.LEFT_BEHIND), "left behind: " + events);
         assertFalse(s.engine.getEntities().contains(crew, true), "gone from the ship's world");
         assertFalse(EvaRepairTest.block(s).works(s.grid), "the work never done");
@@ -140,7 +140,7 @@ class EvaPhysicsTest {
     @Test
     void aBurnAlongTheHullPastTheirGripKeepsThemOffItTillItEndsOnTheLine() {
         out();
-        // 7 m/s2 along the keel, away from the corner the line wraps round: the hull drags past them
+        // 7 m/s2 along the underside, away from the corner the line wraps round: the hull drags past them
         // with 1,260 N, more than their grip holds, so they slide along it on the line; it holds
         thrust.set(7f, 0f);
         s.run(4f);
@@ -160,9 +160,23 @@ class EvaPhysicsTest {
         out();
         // 12 m/s2, the corvette's main engine: 2,160 N on the line, less what the hull's rub takes
         thrust.set(12f, 0f);
-        for (int i = 0; i < 60 && eva().tethered; i++) s.run(0.05f);
+        for (int i = 0; i < 80 && eva().tethered; i++) s.run(0.05f);
         assertTrue(events.contains(EvaEvent.Kind.TETHER_SNAPPED), "the line parted: " + events);
         assertEquals(1, java.util.Collections.frequency(events, EvaEvent.Kind.LOST_GRIP), "thrown off: " + events);
+        thrust.set(0f, 0f);
+        // Parted at their clip: the loose line is left on the reel, which winds it in
+        com.badlogic.gdx.utils.FloatArray rope = new com.badlogic.gdx.utils.FloatArray();
+        s.crew.eva.ropeTiles(crew, rope);
+        assertTrue(rope.size >= 4, "the loose line hangs from the reel");
+        float out = eva().lineOut;
+        s.run(2f);
+        assertEquals(out - 2f * EvaSystem.TAKE_UP_SPEED, eva().lineOut, 0.1f, "being wound in");
+        for (int i = 0; i < 300 && rope.size > 0; i++) {
+            s.run(0.1f);
+            s.crew.eva.ropeTiles(crew, rope);
+        }
+        assertEquals(0, rope.size, "all of it in");
+        assertNotNull(eva(), "while they are still out");
     }
 
     @Test
