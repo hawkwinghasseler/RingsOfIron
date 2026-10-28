@@ -258,9 +258,25 @@ public class StationYard extends EntitySystem {
         return count(station, CrewRole.TECHNICIAN);
     }
 
-    /** True if {@code station} can work on {@code ship}: the two are docked and it has technicians. */
+    /**
+     * True if {@code station} can work on {@code ship}: the two are docked and it has technicians. A
+     * yard whose technicians have all died takes on new ones first ({@link #restaff}).
+     */
     public boolean canWork(Entity ship, Entity station) {
-        return ship != null && station != null && docking.docked(ship, station) && technicians(station) > 0;
+        return ship != null && station != null && docking.docked(ship, station) && (technicians(station) > 0 || restaff(ship, station));
+    }
+
+    /**
+     * Takes on new technicians at {@code station}, a station friendly to {@code ship}, once all of its
+     * own have died; true if it did. A yard whose hands died aboard a wreck otherwise held its order
+     * open with nobody to work it, and the ship at the berth, warp refused, for good.
+     */
+    private boolean restaff(Entity ship, Entity station) {
+        ShipTaskBoardComponent board = crew.board(station);
+        if (board == null || !crew.friendlyTo(board.faction, ship)) return false;
+        if (StationCrew.replaceTechnicians(crew, station).isEmpty()) return false;
+        notices.add(PlayerDocking.name(station) + "'s yard took on new technicians");
+        return true;
     }
 
     /** Everything damaged aboard {@code ship} that a yard can put right. */
@@ -674,6 +690,7 @@ public class StationYard extends EntitySystem {
                 continue;
             }
             orders.looseSince = -1;
+            if (technicians(station) == 0) restaff(ship, station);
             boolean walkway = walkway(ship, station);
             boolean[][] reach = walkway ? reachable(ship.getComponent(ShipGridComponent.class), crew, station) : null;
             if (orders.repairs) repairs(ship, station, orders, reach, dt);

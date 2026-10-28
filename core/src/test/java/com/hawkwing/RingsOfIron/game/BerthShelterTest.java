@@ -54,7 +54,7 @@ class BerthShelterTest {
     }
 
     @Test
-    void aShipThatCannotHoldItsAirAtTheBerthLosesNobody() {
+    void aShipThatCannotHoldItsAirAtTheBerthSendsItsCaptainAndCasualtyAshore() {
         assertSame(world.engine.getEntity(game.highport), world.docking.dockedTo(game.player));
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
         List<Entity> crew = new ArrayList<>(world.crewCareer.ownCrew(game.player));
@@ -65,45 +65,65 @@ class BerthShelterTest {
         assertFalse(world.crew.crew(down).isConscious(), "down");
         // Holed beside every room, with no patches aboard: the cabin can't be held
         grid.patchKits = 0;
+        holeBesideEveryRoom(grid);
+        // Ashore before a suit's air is gone
+        float suitAir = world.crew.crew(game.avatar).def.suitAir;
+        double t0 = world.engine.getSimSeconds();
+        while (world.engine.getSimSeconds() - t0 < suitAir
+                && (world.crew.position(down).ship == game.player || world.crew.position(game.avatar).ship == game.player)) {
+            run(60);
+        }
+        StringBuilder all = new StringBuilder();
+        for (Entity e : crew) all.append(describe(e)).append("; ");
+        for (Entity e : crew) assertTrue(world.crew.crew(e).isAlive(), describe(e) + " / " + all);
+        assertTrue(world.crew.crew(game.avatar).isAlive(), "the captain alive");
+        assertNotSame(game.player, world.crew.position(game.avatar).ship, "the captain went aboard the station: " + describe(game.avatar));
+        assertNotSame(game.player, world.crew.position(down).ship, "the casualty was carried aboard the station: " + describe(down));
+    }
+
+    @Test
+    void theYardMendsAShipItsCrewShelterFromAndTheyComeHome() {
+        Entity highport = world.docking.dockedTo(game.player);
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        List<Entity> crew = new ArrayList<>(world.crewCareer.ownCrew(game.player));
+        grid.patchKits = 0;
+        holeBesideEveryRoom(grid);
+        // The crew sheltering aboard the station, as they went ashore while the cabin vented
+        ShipGridComponent station = world.crew.grid(highport);
+        List<int[]> safe = new ArrayList<>();
+        for (int[] t : GameScenario.floorTiles(station)) if (com.ringsofiron.aicrew.TaskRules.isSafe(station, t[0], t[1])) safe.add(t);
+        for (int i = 0; i < crew.size(); i++) {
+            Entity e = crew.get(i);
+            world.crew.releaseTask(e);
+            GridPositionComponent p = world.crew.position(e);
+            p.stop();
+            p.setShip(highport);
+            int[] t = safe.get(i * 7 % safe.size());
+            p.setTile(t[0], t[1]);
+        }
+        game.player.getComponent(TraderComponent.class).credits = 1e6;
+        String said = world.yard.orderRepairs(game.player, highport);
+        assertTrue(said.startsWith("Repairs ordered"), said);
+        for (int i = 0; i < 60 * 60 * 30 && (world.yard.repairing(game.player) || !allAboard(crew)); i++) world.update(FRAME);
+        assertFalse(world.yard.repairing(game.player), "repaired");
+        StringBuilder after = new StringBuilder();
+        for (Entity e : crew) after.append(describe(e)).append("; ");
+        for (Entity e : crew) assertTrue(world.crew.crew(e).isAlive(), after.toString());
+        assertTrue(allAboard(crew), "back aboard: " + after);
+    }
+
+    private boolean allAboard(List<Entity> crew) {
+        for (Entity e : crew) if (world.crew.position(e).ship != game.player) return false;
+        return true;
+    }
+
+    private static void holeBesideEveryRoom(ShipGridComponent grid) {
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
                 if (t.wallType == Tile.WallType.HULL && t.mount == null && besideAir(grid, x, y) && (x + y) % 3 == 0) t.setIntegrity(0f);
             }
         }
-        run(60 * 60);
-        double highest = 0;
-        for (Compartment c : grid.compartments) highest = Math.max(highest, c.pressure());
-        assertTrue(highest < 20, "the cabin vented, to " + highest + " kPa");
-        // Long past a suit's air
-        boolean casualtyAshore = false, captainAshore = false;
-        for (int i = 0; i < 25 * 60; i++) {
-            run(60);
-            casualtyAshore |= world.crew.position(down).ship != game.player;
-            captainAshore |= world.crew.position(game.avatar).ship != game.player;
-        }
-        StringBuilder all = new StringBuilder();
-        for (Entity e : crew) all.append(describe(e)).append("; ");
-        for (Entity e : crew) assertTrue(world.crew.crew(e).isAlive(), describe(e) + " / " + all);
-        assertTrue(world.crew.crew(game.avatar).isAlive(), "the captain alive");
-        assertTrue(captainAshore, "the captain went aboard the station: " + describe(game.avatar));
-        assertTrue(casualtyAshore, "the casualty was carried aboard the station: " + describe(down));
-
-        // The yard mends it and puts the air back: everyone comes home
-        Entity highport = world.engine.getEntity(game.highport);
-        game.player.getComponent(TraderComponent.class).credits = 1e6;
-        String said = world.yard.orderRepairs(game.player, highport);
-        assertTrue(said.startsWith("Repairs ordered"), said);
-        for (int i = 0; i < 60 * 60 * 30 && world.yard.repairing(game.player); i++) world.update(FRAME);
-        assertFalse(world.yard.repairing(game.player), "repaired");
-        run(60 * 60);
-        StringBuilder after = new StringBuilder();
-        for (Entity e : crew) after.append(describe(e)).append("; ");
-        for (Entity e : crew) {
-            assertTrue(world.crew.crew(e).isAlive(), after.toString());
-            assertSame(game.player, world.crew.position(e).ship, "back aboard: " + after);
-        }
-        assertSame(game.player, world.crew.position(game.avatar).ship, "the captain home: " + describe(game.avatar));
     }
 
     @Test

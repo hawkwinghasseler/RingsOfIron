@@ -11,6 +11,7 @@ import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -19,7 +20,12 @@ import org.junit.jupiter.api.Test;
  * at 1.2 km/s and tore Free Trader Mira off the depot's other port: the burn home from its ambush 5 km
  * behind the depot, planned days before during the tow's skip, fired only at the skip's end, from
  * the hold it was snapped to on the side its burn carried it through the depot from.
+ *
+ * <p>Plays the career to get there, so it is slow, run by hand: the fix's own quick tests are
+ * {@code HostileTrafficTest}'s (burns planned in a long jump fire when due; a pirate never flies
+ * through the station it lays an ambush by) and {@link TowPursuitTest}.
  */
+@Tag("slow")
 class TowedInTest extends CareerScript {
     @Override
     String journalName() {

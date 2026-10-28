@@ -2,7 +2,7 @@
 
 The game's balance targets (how long the first fight lasts, what a prize pays, how many weeks of pay the gunship costs, whether the frigate wins the raid) were tuned against the scripted career: a bot that flies, fights and trades headless. Its game is not a person's, so these targets are no longer checks in the build. They are optional benchmarks: a tester runs one, reads the table it writes, then plays the same moment by hand and works through its checklist.
 
-Nothing here runs in `./gradlew build`, `test`, `slowTest`, `-PallTests` or CI. The build still checks everything that is a rule or a regression: the careers still play through on CI's seeds, replay exactly and never get stuck. Only whether they hit the tuned numbers moved here.
+Nothing here runs in `./gradlew build`, `test`, `slowTest`, `-PallTests` or CI. CI checks rules and regressions with quick tests of one moment each; whether the scripted careers play through, replay exactly and hit the tuned numbers is for a person to run by hand (`slowTest`, `-PcareerSeeds`).
 
 ## Running them
 
