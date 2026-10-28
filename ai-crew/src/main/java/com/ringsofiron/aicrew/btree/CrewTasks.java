@@ -923,14 +923,28 @@ public final class CrewTasks {
     /**
      * Goes aboard {@link BoardTask#ship} to the task's tile, suited (no one boards a hostile craft
      * without a suit if there is one to be had: a pressure suit from a locker, or an EVA suit), and
-     * reports arriving to the job.
+     * reports arriving to the job. With no dock to walk across, over on EVA ({@link EvaTasks.Departure}).
      */
     public static class Board extends CrewLeaf {
+        private final EvaTasks.Departure departure = new EvaTasks.Departure();
+
+        @Override
+        public void end() {
+            departure.reset(getObject());
+        }
+
         @Override
         public Status execute() {
             CrewAgent a = agent();
             BoardTask t = (BoardTask) a.crew.task;
             if (!t.job.isOpen()) return Status.FAILED;
+            if (a.pos.ship != t.ship && a.pos.crossing == null && !a.service.joined(a.pos.ship, t.ship)) {
+                // No dock between: out of the airlock and across
+                a.crew.activity = t.job.what();
+                if (departure.step(a, t.ship, true) == Status.RUNNING) return Status.RUNNING;
+                a.abandonUnreachable();
+                return Status.FAILED;
+            }
             if (!a.crew.suited && a.crew.wearsSuits() && a.pos.ship == a.service.homeOf(a.entity)
                     && SuitErrand.suitUp(a, true) == Status.RUNNING) {
                 if (a.crew.suiting > 0f) a.crew.activity = "suiting up to board";
@@ -1032,20 +1046,27 @@ public final class CrewTasks {
     public static class Idle extends CrewLeaf {
         /** Seconds on a safe tile with nothing to do before a suit goes back to its locker. */
         public static final float SUIT_OFF_DELAY = 5f;
+        /** Seconds idle aboard another craft with no dock to their own before they go back across on EVA. */
+        public static final float STRANDED_SECONDS = 3f;
         private float calm;
         /** On the way to hang their suit up, or taking it off. */
         private boolean stowing;
         private final Downtime downtime = new Downtime();
+        /** Seconds idle aboard a craft with no dock to their own, before going back across on EVA. */
+        private float stranded;
+        private final EvaTasks.Departure homeward = new EvaTasks.Departure();
 
         @Override
         public void start() {
             calm = 0f;
             stowing = false;
+            stranded = 0f;
             downtime.reset(getObject());
         }
 
         @Override
         public void end() {
+            homeward.reset(getObject());
             if (getObject() != null) downtime.stop(getObject());
         }
 
@@ -1060,8 +1081,15 @@ public final class CrewTasks {
             if ((home != a.pos.ship || a.pos.crossing != null) && !sheltering) {
                 ShipGridComponent homeGrid = a.service.grid(home);
                 GridNavGraph nav = homeGrid == null ? null : a.service.pathfinder(homeGrid).graph;
-                if (nav != null && a.travel(home, nav::isWalkable) == CrewAgent.Travel.GOING) {
+                CrewAgent.Travel go = nav == null ? CrewAgent.Travel.UNREACHABLE : a.travel(home, nav::isWalkable);
+                if (go == CrewAgent.Travel.GOING) {
                     a.crew.activity = "heading back";
+                    stranded = 0f;
+                    return Status.RUNNING;
+                }
+                // No dock to walk back across: home on EVA, once it's clear nothing more is wanted here
+                if (go == CrewAgent.Travel.UNREACHABLE && nav != null && a.pos.crossing == null && !a.service.joined(a.pos.ship, home)
+                        && (stranded += a.dt) >= STRANDED_SECONDS && homeward.step(a, home, false) == Status.RUNNING) {
                     return Status.RUNNING;
                 }
             }
