@@ -54,8 +54,8 @@ import java.util.function.Supplier;
  * laid on the screen as a disc; the window needs no stencil buffer.
  *
  * <p>The HUD's names for the craft under a bubble are hidden ({@link HudRenderSystem.NameCover});
- * the bubble says how many under its own name, "+3 others", and a click there opens the list of
- * them (and "-3 others" closes it again). A click on a name in the list selects that craft.
+ * the bubble says how many under its own name, "[+] 3 others", and a click there opens the list of
+ * them (and "[-] 3 others" closes it again). A click on a name in the list selects that craft.
  */
 public final class PictureInPicture implements Disposable, HudRenderSystem.NameCover {
     /** A bubble's radius, UI units. */
@@ -99,7 +99,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
         float distance;
         /** The bubble's square in window pixels (logical, y up), as drawn. */
         int glX, glY, glSize;
-        /** Under the bubble, UI units, as drawn: all its text, and the "+3 others" line. */
+        /** Under the bubble, UI units, as drawn: all its text, and the "[+] 3 others" line. */
         final Rectangle text = new Rectangle(), toggle = new Rectangle();
         /** Where the top of the text under it goes, UI units: below the pointer when that points down. */
         float textTop;
@@ -201,7 +201,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
 
     /**
      * True when {@code marked}'s HUD name at {@code text} is under a bubble drawn last frame, or
-     * under the text below it; it is then counted in that bubble's "+3 others", unless it has a
+     * under the text below it; it is then counted in that bubble's "[+] 3 others", unless it has a
      * bubble of its own (and is named there already).
      */
     @Override
@@ -240,7 +240,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
 
     /**
      * A left click at ({@code x}, {@code y}), UI units, on the text under a bubble drawn last frame:
-     * on "+3 others" (or "-3 others") it opens (or closes) the list of names, on a name in the list
+     * on "[+] 3 others" (or "[-] 3 others") it opens (or closes) the list of names, on a name in the list
      * it gives that craft to {@code select}. False when it is on none of that.
      */
     public boolean click(float x, float y, Consumer<Entity> select) {
@@ -569,7 +569,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
         shapes.end();
         Gdx.gl.glDisable(GL20.GL_BLEND);
         for (Bubble b : shown) layOut(b);
-        // A dark backing for "+3 others" and the open list, which may lie over anything
+        // A dark backing for "[+] 3 others" and the open list, which may lie over anything
         Gdx.gl.glEnable(GL20.GL_BLEND);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         shapes.setColor(BACKGROUND.r, BACKGROUND.g, BACKGROUND.b, 0.75f);
@@ -608,7 +608,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
 
     /**
      * Where the text under bubble {@code b} goes, UI units, for the HUD to hide its names under and
-     * clicks to find: its name, "+3 others" when it hides any, and those names when the list is open.
+     * clicks to find: its name, "[+] 3 others" when it hides any, and those names when the list is open.
      */
     private void layOut(Bubble b) {
         float lineHeight = font.getLineHeight();
@@ -656,9 +656,9 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
         return y - font.getLineHeight();
     }
 
-    /** "+3 others", or "-3 others" with the list open. */
+    /** "[+] 3 others", or "[-] 3 others" with the list open. */
     static String others(int count, boolean open) {
-        return (open ? "-" : "+") + count + (count == 1 ? " other" : " others");
+        return com.ringsofiron.uihud.widgets.MarkerWidget.othersText(count, open);
     }
 
     /** A hidden craft's name and how far off it is, as the HUD would have shown it. */

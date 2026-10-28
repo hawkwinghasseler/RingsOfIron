@@ -18,14 +18,14 @@ import com.badlogic.gdx.utils.Array;
  * On screen it draws corner brackets around the entity with its name and range on a line beneath;
  * off screen it draws an arrow at the screen edge pointing toward it.
  *
- * <p>A marker whose name would lie over its neighbours' carries theirs instead: "+3 others" under
- * its own, which a click opens into the list of them (and "-3 others" closes again); a click on a
+ * <p>A marker whose name would lie over its neighbours' carries theirs instead: "[+] 3 others" under
+ * its own, which a click opens into the list of them (and "[-] 3 others" closes again); a click on a
  * name in the list picks that one ({@link Listener}).
  */
 public class MarkerWidget extends Group {
     /** What a click on the list under a marker does. */
     public interface Listener {
-        /** "+3 others" (or "-3 others") under {@code marker} was clicked. */
+        /** "[+] 3 others" (or "[-] 3 others") under {@code marker} was clicked. */
         void toggle(MarkerWidget marker);
 
         /** The {@code index}th name listed under {@code marker} was clicked. */
@@ -47,7 +47,7 @@ public class MarkerWidget extends Group {
     public MarkerWidget(Skin skin) {
         this.skin = skin;
         white = skin.getRegion("white");
-        // Only the "+3 others" line and the names under it take clicks
+        // Only the "[+] 3 others" line and the names under it take clicks
         setTouchable(Touchable.childrenOnly);
         name = new Label("", skin);
         name.setAlignment(Align.center);
@@ -94,6 +94,11 @@ public class MarkerWidget extends Group {
         setOthers(0, false);
     }
 
+    /** "[+] 3 others", or with the list open "[-] 3 others": the brackets show it can be clicked. */
+    public static String othersText(int count, boolean open) {
+        return (open ? "[-] " : "[+] ") + count + (count == 1 ? " other" : " others");
+    }
+
     /** "Freighter  3.0 km", or the name alone without a range. */
     public static String line(String label, String rangeText) {
         return rangeText == null || rangeText.isEmpty() ? label : label + "  " + rangeText;
@@ -110,7 +115,7 @@ public class MarkerWidget extends Group {
             others.setVisible(false);
             return;
         }
-        String text = (open ? "-" : "+") + count + (count == 1 ? " other" : " others");
+        String text = othersText(count, open);
         if (!others.textEquals(text)) others.setText(text);
         others.setColor(getColor());
         others.pack();
@@ -150,7 +155,7 @@ public class MarkerWidget extends Group {
         return out.set(getX() + name.getX(), getY() + name.getY(), name.getWidth(), name.getHeight());
     }
 
-    /** All the text's box (the name, "+3 others" and the open list), in the parent's coordinates, into {@code out}. */
+    /** All the text's box (the name, "[+] 3 others" and the open list), in the parent's coordinates, into {@code out}. */
     public Rectangle textBounds(Rectangle out) {
         nameBounds(out);
         if (others.isVisible()) out.merge(boxOf(others));

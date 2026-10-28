@@ -68,7 +68,7 @@ public class HudRenderSystem extends EntitySystem {
     /** Off-screen markers shown this frame, nearest first. */
     private final com.badlogic.gdx.utils.Array<Entity> edge = new com.badlogic.gdx.utils.Array<>();
     private final com.badlogic.gdx.utils.Array<MarkerWidget> leaders = new com.badlogic.gdx.utils.Array<>();
-    /** Each leading marker's entity to the ones whose names it carries ("+3 others"). */
+    /** Each leading marker's entity to the ones whose names it carries ("[+] 3 others"). */
     private final ObjectMap<Entity, com.badlogic.gdx.utils.Array<Entity>> grouped = new ObjectMap<>();
     private final com.badlogic.gdx.utils.Array<com.badlogic.gdx.utils.Array<Entity>> groupPool = new com.badlogic.gdx.utils.Array<>();
     /** The leading markers (by entity) whose list of names is open. */
@@ -131,7 +131,7 @@ public class HudRenderSystem extends EntitySystem {
         }
     }
 
-    /** Gets the entity whose name was clicked in the list under a marker ("+3 others" opened). */
+    /** Gets the entity whose name was clicked in the list under a marker ("[+] 3 others" opened). */
     public void setPickListener(java.util.function.Consumer<Entity> listener) {
         pickListener = listener;
     }
@@ -249,7 +249,7 @@ public class HudRenderSystem extends EntitySystem {
 
     /**
      * Names in {@code shown} (on screen, or by the edge) that would lie over each other go under one
-     * marker's: the locked target's, or the nearest's. It shows "+3 others", and opened, their names
+     * marker's: the locked target's, or the nearest's. It shows "[+] 3 others", and opened, their names
      * and ranges. The off-screen ones that lead are left in {@link #leaders}, to be stacked.
      */
     private void group(com.badlogic.gdx.utils.Array<Entity> shown, Entity locked, TransformComponent player) {
@@ -293,7 +293,7 @@ public class HudRenderSystem extends EntitySystem {
     }
 
     /**
-     * Where leading marker {@code l}'s text goes, with a line for "+3 others" under its name, and
+     * Where leading marker {@code l}'s text goes, with a line for "[+] 3 others" under its name, and
      * the names under that when its list is open: a name over any of that joins its group.
      */
     private Rectangle groupBox(MarkerWidget l) {

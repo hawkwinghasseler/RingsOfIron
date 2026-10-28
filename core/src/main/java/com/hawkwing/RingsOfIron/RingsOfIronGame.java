@@ -313,7 +313,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         }
         // and hide the names under them, which a bubble lists instead
         hud.getHudRenderSystem().setNameCover(pip);
-        // A name picked from the list under a marker ("+3 others") is selected as a click on it would be
+        // A name picked from the list under a marker ("[+] 3 others") is selected as a click on it would be
         hud.getHudRenderSystem().setPickListener(this::selectContact);
         snow = new SpaceSnow(() -> world, () -> game.player);
 
@@ -930,7 +930,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
      */
     private boolean selectAt(int screenX, int screenY) {
         Vector2 at = tmp;
-        // The names listed under a bubble, and the "+3 others" that opens the list
+        // The names listed under a bubble, and the "[+] 3 others" that opens the list
         viewports.getUiViewport().unproject(at.set(screenX, screenY));
         if (pip.click(at.x, at.y, this::selectContact)) return true;
         float mpp = pip.unproject(screenX, Gdx.graphics.getHeight() - 1 - screenY, at);
