@@ -26,6 +26,7 @@ import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.LeakPatches;
+import com.ringsofiron.interiorgrid.RcsThruster;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.TankSupply;
@@ -384,7 +385,9 @@ public final class CrewTasks {
             ShipGridComponent grid = site == null ? null : a.service.grid(site);
             if (grid == null) grid = a.grid();
             ShipTaskBoardComponent board = a.board();
-            if (!TaskRules.needsSuit(grid, TaskRules.targetX(t, a.service), TaskRules.targetY(t, a.service))
+            // EVA work is done outside, always in a suit
+            if (t.kind != CrewTask.Kind.REPAIR_RCS
+                    && !TaskRules.needsSuit(grid, TaskRules.targetX(t, a.service), TaskRules.targetY(t, a.service))
                     && (board == null || !board.battleSuits())) {
                 return Status.SUCCEEDED;
             }
@@ -420,7 +423,7 @@ public final class CrewTasks {
             float dt = a.dt * a.crew.workPace();
             elapsed += dt;
             a.crew.activity = describe(t);
-            if (t.kind == CrewTask.Kind.REPAIR || t.kind == CrewTask.Kind.EXTINGUISH || t.kind == CrewTask.Kind.SEAL_BREACH
+            if (t.kind == CrewTask.Kind.REPAIR || t.kind == CrewTask.Kind.REPAIR_RCS || t.kind == CrewTask.Kind.EXTINGUISH || t.kind == CrewTask.Kind.SEAL_BREACH
                     || t.kind == CrewTask.Kind.PATCH_LEAK || t.kind == CrewTask.Kind.RESET_SHORT
                     || t.kind == CrewTask.Kind.ISOLATE_TANK) {
                 a.crew.record().pendingWork += dt; // engineering experience
@@ -453,6 +456,19 @@ public final class CrewTasks {
                         return Status.SUCCEEDED;
                     }
                     return Status.RUNNING;
+                }
+                case REPAIR_RCS: {
+                    // Out on the hull: off the ship's air, and back in when the suit runs short or a fight starts
+                    ShipTaskBoardComponent board = a.board();
+                    float left = TaskRules.evaTime(t, grid, a.crew.def, a.pos.tileX(), a.pos.tileY()) - elapsed;
+                    if (board != null && board.battleStations || a.crew.suitAir < left) {
+                        a.releaseTask();
+                        return Status.FAILED;
+                    }
+                    a.crew.suitAir = Math.max(0f, a.crew.suitAir - a.dt);
+                    if (left > 0f) return Status.RUNNING;
+                    RcsThruster.fieldRepair(grid, t.x, t.y);
+                    return Status.SUCCEEDED;
                 }
                 case RESET_SHORT: {
                     if (elapsed < a.crew.def.resetTime) return Status.RUNNING;
@@ -1176,6 +1192,7 @@ public final class CrewTasks {
             case EXTINGUISH: return "fighting fire at " + t.x + "," + t.y;
             case SEAL_BREACH: return "sealing breach at " + t.x + "," + t.y;
             case PATCH_LEAK: return "patching a leak at " + t.x + "," + t.y;
+            case REPAIR_RCS: return "out on EVA repairing an RCS thruster";
             case REPAIR: {
                 SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                 return "repairing " + (s == null ? "system" : s.type.name().toLowerCase());

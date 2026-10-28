@@ -100,6 +100,34 @@ public final class RcsThruster {
     }
 
     /**
+     * The condition a crew out on EVA frames a block's wrecked hull tile (or its hull piece) back
+     * up to ({@link #fieldRepair}): standing, so the block fires again, but still leaking (below
+     * {@link Tile#LEAK_START}) until a yard repairs it.
+     */
+    public static final float FIELD_REPAIR = 0.2f;
+
+    /**
+     * True if hull tile (x, y) carries a block that no longer fires and a crew out on EVA can
+     * mend it: wrecked to 0, not crushed flat (that wants a yard).
+     */
+    public static boolean fieldRepairable(ShipGridComponent grid, int x, int y) {
+        Tile t = grid.getTile(x, y);
+        if (t == null || !t.isWall() || t.isIntactWall() || t.isCrushed()) return false;
+        for (int i = 0; i < grid.rcsThrusters.size; i++) {
+            RcsThruster r = grid.rcsThrusters.get(i);
+            if (r.x == x && r.y == y) return true;
+        }
+        return false;
+    }
+
+    /** Frames hull tile (x, y) back up to {@link #FIELD_REPAIR}, so the blocks on it fire again. */
+    public static void fieldRepair(ShipGridComponent grid, int x, int y) {
+        Tile t = grid.getTile(x, y);
+        t.setIntegrity(Math.max(t.getIntegrity(), FIELD_REPAIR));
+        grid.gridDirty = true;
+    }
+
+    /**
      * Why a block can't go on the {@code side} edge of tile (x, y), or null when it can: it needs a
      * hull tile with space (or the grid's edge) beyond that edge.
      */

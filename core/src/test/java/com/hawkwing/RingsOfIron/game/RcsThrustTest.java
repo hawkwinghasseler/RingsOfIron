@@ -101,6 +101,42 @@ class RcsThrustTest {
         assertTrue(authority(ship).torque() < before * 0.65, "the stern blocks alone turn it slower");
     }
 
+    /** The screenshot's case: the corvette's starboard strafe block amidships wrecked, its corner quads still firing. */
+    @Test
+    void losingOneSidesStrafeBlockStillStrafesTheOtherWayAndPushesWithWhatFires() {
+        Entity ship = spawn("corvette_patrol");
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        RcsThruster amidships = null;
+        for (RcsThruster r : grid.rcsThrusters) if (r.kind == RcsThruster.Kind.LINEAR && r.side == Side.TOP) amidships = r;
+        assertNotNull(amidships);
+        RcsThrust.Authority whole = authority(ship);
+        grid.getTile(amidships.x, amidships.y).setIntegrity(0f);
+        world.engine.getEcsEngine().getSystem(RcsThrust.class).update(0f);
+        ThrusterComponent t = ship.getComponent(ThrusterComponent.class);
+        RcsThrust.Authority a = authority(ship);
+
+        // Firing up out of the top hull pushes to starboard: that way only the small corner quads are left
+        assertTrue(a.starboard < whole.starboard * 0.05, "the quads alone barely strafe it to starboard");
+        assertEquals(whole.port, a.port, 1.0, "to port is untouched");
+        assertEquals(a.port, t.lateral(1f), a.port * 1e-4, "and the ship flies on it");
+        assertEquals(a.starboard, t.lateral(-1f), a.starboard * 1e-4);
+        assertEquals(a.lateral(), t.lateralThrust, a.lateral() * 1e-4, "planners still go by the weaker way");
+        assertEquals(a.ccw, t.torque(1f), a.ccw * 1e-4);
+        assertEquals(a.cw, t.torque(-1f), a.cw * 1e-4);
+    }
+
+    @Test
+    void aTunedDownNozzlesJetIsDrawnSmaller() {
+        Entity ship = spawn("corvette_patrol");
+        for (RcsThruster r : ship.getComponent(ShipGridComponent.class).rcsThrusters) {
+            // The corvette's corner quads give 6.45 kN a nozzle, its linear blocks 467 to 587 kN
+            if (r.kind == RcsThruster.Kind.QUAD) assertEquals(RcsThrust.MIN_JET, RcsThrust.jetSize(r), 1e-6f, r.toString());
+            else assertEquals(1f, RcsThrust.jetSize(r), 1e-6f, r.toString());
+        }
+        assertEquals(1f, RcsThrust.jetSize(new RcsThruster(0, 0, Side.TOP, RcsThruster.Kind.QUAD)), "a standard nozzle is drawn whole");
+        assertEquals(0.5f, RcsThrust.jetSize(new RcsThruster(0, 0, Side.TOP, RcsThruster.Kind.QUAD, 2.5e4)), 1e-6f);
+    }
+
     @Test
     void theNozzlesThatHelpFireAndTheOthersDont() {
         Entity ship = spawn("corvette_patrol");
@@ -130,8 +166,14 @@ class RcsThrustTest {
 
         c.forward = 0f;
         c.rotationAssist = true;
+        assertEquals(0f, RcsThrust.firing(grid, bowTop, Side.TOP, center, c, null, 0.5f), "no trim from flight control yet");
+        c.assistTurn = 1f;
         assertEquals(1f, RcsThrust.firing(grid, bowTop, Side.TOP, center, c, null, 0.5f), "assist stops a spin to port");
         assertEquals(0f, RcsThrust.firing(grid, bowTop, Side.TOP, center, c, null, -0.5f));
+
+        c.assistTurn = 0.1f;
+        assertEquals(0.1f, RcsThrust.firing(grid, bowTop, Side.TOP, center, c, null, 0.5f), 1e-6f,
+                "a gentle trim fires gently, as flight control trims");
 
         c.turn = -1f;
         grid.getTile(bowTop.x, bowTop.y).setIntegrity(0f);

@@ -20,10 +20,12 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
  * A craft's RCS thruster blocks set how hard it can turn, strafe and back up. Each working nozzle
  * pushes the ship away from the way it fires, from where it sits on the hull, so it adds to the
  * retro thrust if it fires forward, to the strafe one way or the other if it fires to a side, and
- * to the turn one way or the other by its lever arm about the centre of mass. The ship can strafe
- * and turn as hard as its weaker side allows ({@link ThrusterComponent} limits are the same both
- * ways). A block stops working when the hull tile under it is destroyed, so a craft that loses its
- * bow thrusters turns slower.
+ * to the turn one way or the other by its lever arm about the centre of mass. The ship strafes and
+ * turns each way as hard as the nozzles pushing that way allow ({@link ThrusterComponent#lateral},
+ * {@link ThrusterComponent#torque}), so every nozzle drawn firing ({@link #firing}) pushes; planners
+ * go by the weaker way ({@link ThrusterComponent#lateralThrust}, {@link ThrusterComponent#maxTorque}).
+ * A block stops working when the hull tile under it is destroyed, so a craft that loses its bow
+ * thrusters turns slower, and one that loses a side's strafes only the other way.
  *
  * <p>A craft with no RCS blocks keeps its ship's figures ({@code ships.toml}, and the engines'
  * share in {@link EngineThrust}). The main engines stay the forward thrust either way.
@@ -87,6 +89,10 @@ public class RcsThrust extends EntitySystem {
         t.reverseThrust = (float) authority.retro;
         t.lateralThrust = (float) authority.lateral();
         t.maxTorque = (float) authority.torque();
+        t.portThrust = (float) authority.port;
+        t.starboardThrust = (float) authority.starboard;
+        t.ccwTorque = (float) authority.ccw;
+        t.cwTorque = (float) authority.cw;
         return true;
     }
 
@@ -121,13 +127,14 @@ public class RcsThrust extends EntitySystem {
      * How hard nozzle {@code exhaust} of block {@code r} fires, 0 to 1, for what the pilot asks:
      * any nozzle whose push helps the retro burn, the strafe or the turn fires, at the strongest
      * of the three it helps. With rotation assist on and no turn asked for, the turn is the one
-     * that stops {@code spin} (rad/s). Nothing fires out of fuel, or from a block that no longer works.
+     * that stops {@code spin} (rad/s), as hard as flight control's trim last was
+     * ({@link FlightControlComponent#assistTurn}). Nothing fires out of fuel, or from a block that no longer works.
      */
     public static float firing(ShipGridComponent grid, RcsThruster r, Side exhaust, Vector2 center,
                                FlightControlComponent c, ThrusterComponent t, float spin) {
         if (c == null || (t != null && t.isOutOfFuel()) || !r.works(grid)) return 0f;
         float turn = c.turn;
-        if (turn == 0f && c.rotationAssist && !c.assistHeld && Math.abs(spin) > ASSIST_SPIN) turn = -Math.signum(spin);
+        if (turn == 0f && c.rotationAssist && !c.assistHeld && Math.abs(spin) > ASSIST_SPIN) turn = -Math.signum(spin) * c.assistTurn;
         float fx = -exhaust.dx, fy = -exhaust.dy;
         float lx = grid.gridOriginLocal.x + r.nozzleX(exhaust) * grid.tileSize - center.x;
         float ly = grid.gridOriginLocal.y + r.nozzleY(exhaust) * grid.tileSize - center.y;
@@ -137,6 +144,20 @@ public class RcsThrust extends EntitySystem {
         if (c.strafe * fy > 0f) out = Math.max(out, Math.min(1f, Math.abs(c.strafe)));
         if (turn * torque > 1e-4f) out = Math.max(out, Math.min(1f, Math.abs(turn)));
         return out;
+    }
+
+    /** The smallest a firing nozzle's jet is drawn, of its kind's standard nozzle's ({@link #jetSize}). */
+    static final float MIN_JET = 0.3f;
+
+    /**
+     * How big block {@code r}'s jets are drawn, 0 to 1 of a standard nozzle's at the same throttle:
+     * as the square root of its thrust over its kind's standard (a nozzle's mouth grows with its
+     * thrust), no smaller than {@link #MIN_JET} and no bigger than 1. A tuned-down nozzle pushes
+     * little, so it is not drawn as big as one that pushes the ship.
+     */
+    public static float jetSize(RcsThruster r) {
+        float size = (float) Math.sqrt(r.nozzleThrust() / r.kind.standardThrust);
+        return Math.max(MIN_JET, Math.min(1f, size));
     }
 
     /** {@link #firing} for a craft's own controls and body. */

@@ -16,6 +16,11 @@ public abstract class CrewTask {
         /** Patch a leaking wall or deck plate from the ship's stores, so it stops venting. */
         PATCH_LEAK,
         REPAIR,
+        /**
+         * Go out on EVA through an airlock or docking port and frame a wrecked hull tile back up so
+         * the RCS block on it fires again: never at battle stations.
+         */
+        REPAIR_RCS,
         /** Reset a system or conduit a short circuit faulted, so it carries power again. */
         RESET_SHORT,
         /** Shut a leaking tank's valve so it stops leaking. */

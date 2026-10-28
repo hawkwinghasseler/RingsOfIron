@@ -24,7 +24,10 @@ public final class RcsNozzles {
 
     /** A nozzle that fires this frame. */
     public interface Jets {
-        /** A nozzle whose mouth is at ({@code x}, {@code y}), firing toward {@code degrees} at {@code throttle} (0 to 1]. */
+        /**
+         * A nozzle whose mouth is at ({@code x}, {@code y}), firing toward {@code degrees} at {@code throttle}
+         * (0 to 1], scaled down for a nozzle smaller than its kind's standard ({@link RcsThrust#jetSize}).
+         */
         void jet(float x, float y, float degrees, float throttle);
     }
 
@@ -78,7 +81,7 @@ public final class RcsNozzles {
         pose(x, y, radians);
         for (RcsThruster r : grid.rcsThrusters) {
             for (Side exhaust : r.nozzles()) {
-                float throttle = RcsThrust.firing(ship, r, exhaust, center);
+                float throttle = RcsThrust.firing(ship, r, exhaust, center) * RcsThrust.jetSize(r);
                 if (throttle <= 0f && !all) continue;
                 Vector2 w = world(grid, r.nozzleX(exhaust), r.nozzleY(exhaust));
                 out.jet(w.x, w.y, degrees + degrees(exhaust), throttle);
