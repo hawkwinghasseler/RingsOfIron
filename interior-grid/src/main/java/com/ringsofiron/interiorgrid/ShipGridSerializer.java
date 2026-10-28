@@ -271,6 +271,8 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 }
             }
             grid.mounts.add(mount);
+            // Saves from before ports had inner hatches get them, open
+            if (mount.kind == MountFootprint.MountKind.PORT) DockingPortLayout.fitHatches(grid, mount);
         }
 
         // Saves from before RCS blocks have none

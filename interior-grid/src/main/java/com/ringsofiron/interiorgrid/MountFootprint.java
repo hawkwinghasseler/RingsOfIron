@@ -75,6 +75,11 @@ public class MountFootprint {
      * load, {@link ShipGridComponent#relinkMounts} restores it from the ship's systems.
      */
     public transient Entity installed;
+    /**
+     * A docking port's airlock while it is cycling or has cycled ({@link Airlock#of}), or null. Not
+     * saved: the doors are, and after a load the airlock is made again from them.
+     */
+    public transient Airlock airlock;
 
     /** For deserialization only; the loader fills in the fields. */
     @SuppressWarnings("unused")

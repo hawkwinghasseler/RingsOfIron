@@ -56,9 +56,14 @@ final class TestShips {
         return CrewFactory.spawn(crew, ship, role.name(), role, faction, x, y);
     }
 
+    /**
+     * Seconds per engine update. A test with a physics body steps one 60 Hz tick at a time, so the
+     * physics and the crew take their turns tick by tick as the game's {@code GameEngine} runs them.
+     */
+    float step = 1f / 30f;
+
     void run(float seconds) {
-        float dt = 1f / 30f;
-        for (float t = 0; t < seconds; t += dt) engine.update(dt);
+        for (float t = 0; t < seconds; t += step) engine.update(step);
     }
 
     CrewMemberComponent c(Entity e) {

@@ -22,7 +22,7 @@ import com.ringsofiron.interiorgrid.Side;
  * behavior tree re-plans, and the same happens to one held up for {@link #STALL_SECONDS}.
  *
  * Unconscious and dead crew do not move, and lie where others can step over them; carried crew
- * ride on their carrier's tile. Out on the walkway through a docked port ({@link GridLink}),
+ * ride on their carrier's tile. Crew out on EVA are moved by the {@link EvaSystem}. Out on the walkway through a docked port ({@link GridLink}),
  * across the collars between two craft, and on a tile that isn't open, crew move along without a
  * body and take one up again once back on the deck.
  */
@@ -92,6 +92,11 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         GridPositionComponent p = service.position(e);
         ShipGridComponent grid = service.grid(p.ship);
         if (grid == null) {
+            service.physics.release(e);
+            return;
+        }
+        if (EvaSystem.outside(e)) {
+            // Out on the hull: the EVA system moves them
             service.physics.release(e);
             return;
         }

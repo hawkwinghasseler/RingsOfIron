@@ -10,6 +10,7 @@ import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.LeakPatches;
+import com.ringsofiron.interiorgrid.RcsThruster;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -55,6 +56,8 @@ public final class TaskRules {
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && s.health < 1f;
             }
+            case REPAIR_RCS:
+                return RcsThruster.fieldRepairable(grid, task.x, task.y);
             case MAN_CONSOLE: {
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && !s.isDestroyed();
@@ -386,12 +389,15 @@ public final class TaskRules {
     /**
      * True if {@code task} lies where the fire is falling on its ship ({@link
      * ShipTaskBoardComponent#underFire}) and waits for the fight to end: damage control, repairs and
-     * casualties alike, except a casualty with no more than {@link #LAST_CHANCE} to live, bleeding out
+     * casualties alike (and EVA work anywhere at battle stations), except a casualty with no more than
+     * {@link #LAST_CHANCE} to live, bleeding out
      * or down in bad air with that much suit air or none. Manning a
      * console, orders, work away from the ship and damage control on what the ship fights with
      * ({@link #vital}) never wait.
      */
     public static boolean waitsOutFire(CrewTask task, ShipTaskBoardComponent board, CrewService crew) {
+        // Nobody goes out on the hull in a fight, under fire or not
+        if (task.kind == CrewTask.Kind.REPAIR_RCS) return board != null && board.battleStations;
         if (board != null && !board.keepsClearOfFire) return false;
         if (board == null || !board.battleStations || board.hitTiles.size == 0) return false;
         switch (task.kind) {

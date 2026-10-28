@@ -151,6 +151,8 @@ public class CrewDef {
     public float resetTime = 5f;
     /** Seconds to shut a leaking tank's valve. */
     public float isolateTime = 4f;
+    /** Seconds out on EVA at an RCS block's wrecked hull tile framing it back up, at their own pace (an EVA suit's gloves slow it). */
+    public float rcsRepairTime = 40f;
 
     /** Tiles within which hostiles are noticed (also needs line of sight). */
     public float sightRange = 12f;

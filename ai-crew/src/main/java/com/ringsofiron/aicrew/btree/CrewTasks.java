@@ -1066,10 +1066,11 @@ public final class CrewTasks {
                 }
             }
             int x = a.pos.tileX(), y = a.pos.tileY();
-            // Nobody idles in a docked port's opening: it is the only way across, one tile wide
-            if (TaskRules.isSafe(grid, x, y) && onLink(grid, x, y)) {
-                if (!a.pos.isMoving() && a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty) && !onLink(grid, tx, ty),
-                        a.pathScratch)) {
+            // Nobody idles in a docked port's opening: it is the only way across, one tile wide; nor in
+            // an airlock's chamber while someone wants it to cycle
+            if (TaskRules.isSafe(grid, x, y) && (onLink(grid, x, y) || EvaTasks.inAirlock(grid, x, y))) {
+                if (!a.pos.isMoving() && a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty) && !onLink(grid, tx, ty)
+                        && !EvaTasks.inAirlock(grid, tx, ty), a.pathScratch)) {
                     a.pos.setPath(a.pathScratch);
                     a.crew.activity = "stepping clear of the port";
                 }
@@ -1243,6 +1244,7 @@ public final class CrewTasks {
             case EXTINGUISH: return "fighting fire at " + t.x + "," + t.y;
             case SEAL_BREACH: return "sealing breach at " + t.x + "," + t.y;
             case PATCH_LEAK: return "patching a leak at " + t.x + "," + t.y;
+            case REPAIR_RCS: return "repairing an RCS thruster on EVA";
             case REPAIR: {
                 SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                 return "repairing " + (s == null ? "system" : s.type.name().toLowerCase());

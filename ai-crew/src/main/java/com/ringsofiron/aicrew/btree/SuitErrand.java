@@ -81,6 +81,47 @@ final class SuitErrand {
     }
 
     /**
+     * One step of getting {@code a} into an EVA suit with at least {@code minAir} seconds of air in it,
+     * to go outside: the fullest at the locker they stand at, else they walk to the nearest locker
+     * with one. Only where the air is fit to breathe while they get into it. SUCCEEDED at once if they
+     * have one on; FAILED with another suit on, or no such suit to be had.
+     */
+    static Status suitUpEva(CrewAgent a, float minAir) {
+        CrewMemberComponent c = a.crew;
+        if (c.suited) return c.suitKind == Suit.Kind.EVA ? Status.SUCCEEDED : Status.FAILED;
+        ShipGridComponent grid = a.grid();
+        if (grid == null || !c.wearsSuits() || !TaskRules.isBreathable(grid, a.pos.tileX(), a.pos.tileY())) return Status.FAILED;
+        Furnishing at = a.pos.isMoving() || a.pos.walkway != null || a.pos.crossing != null ? null
+                : SuitLockers.within(grid, a.pos.x, a.pos.y, f -> hasEvaSuit(f, minAir));
+        if (at != null) {
+            if (c.suiting == 0f) a.service.physics.standAt(a.entity, SuitLockers.front(at, FRONT).x, FRONT.y);
+            c.activity = dressing(Suit.Kind.EVA);
+            c.suiting += a.dt;
+            if (c.suiting < c.suitTime(Suit.Kind.EVA)) return Status.RUNNING;
+            c.wear(SuitLockers.take(at, Suit.Kind.EVA));
+            c.activity = "idle";
+            return Status.SUCCEEDED;
+        }
+        c.suiting = 0f;
+        GridNavGraph nav = a.pathfinder().graph;
+        CrewAgent.Travel go = a.travel(a.pos.ship, (x, y) -> nav.isWalkable(x, y)
+                && SuitLockers.on(grid, x, y, f -> hasEvaSuit(f, minAir)) != null);
+        if (go == CrewAgent.Travel.UNREACHABLE) return Status.FAILED;
+        c.activity = "going for " + article(Suit.Kind.EVA);
+        return Status.RUNNING;
+    }
+
+    /** True if locker {@code f} works and its fullest EVA suit has at least {@code minAir} seconds of air. */
+    static boolean hasEvaSuit(Furnishing f, float minAir) {
+        if (!SuitLockers.hasSuit(f, Suit.Kind.EVA)) return false;
+        for (int i = 0; i < f.suits.size; i++) {
+            Suit s = f.suits.get(i);
+            if (s.kind == Suit.Kind.EVA && s.air >= minAir) return true;
+        }
+        return false;
+    }
+
+    /**
      * One step of {@code a} taking their suit off and hanging it in a locker with room for it, aboard
      * the craft they work for. SUCCEEDED at once if they have none on.
      */

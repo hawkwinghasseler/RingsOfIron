@@ -53,6 +53,11 @@ public final class HullSurface {
         return cached != null && cached.grid == grid && cached.layout == grid.layoutRevision ? cached : new HullSurface(grid);
     }
 
+    /** The craft's tile size, meters. */
+    public float tileSize() {
+        return grid.tileSize;
+    }
+
     /** True if tile (x, y) is part of the craft: anything but empty space, past the grid's edge included. */
     public boolean solid(int x, int y) {
         Tile t = grid.getTile(x, y);
@@ -172,9 +177,10 @@ public final class HullSurface {
 
     /**
      * The point on the hull's outside nearest (x, y) and its outward normal, tiles: {@code out = {x, y,
-     * nx, ny}}, where a crew member there would cling. From the nearest solid tile's square.
+     * nx, ny}}, where a crew member there would cling. From the nearest solid tile's square, looking
+     * no more than three tiles off; false (and {@code out} meaningless) if there is none that near.
      */
-    public void surface(float x, float y, float[] out) {
+    public boolean surface(float x, float y, float[] out) {
         int cx = (int) Math.floor(x), cy = (int) Math.floor(y);
         float bestD = Float.MAX_VALUE;
         for (int r = 0; r <= 3 && bestD == Float.MAX_VALUE; r++) {
@@ -191,13 +197,7 @@ public final class HullSurface {
                 }
             }
         }
-        if (bestD == Float.MAX_VALUE) {
-            out[0] = x;
-            out[1] = y;
-            out[2] = 0f;
-            out[3] = 1f;
-            return;
-        }
+        if (bestD == Float.MAX_VALUE) return false;
         float nx = x - out[0], ny = y - out[1], len = (float) Math.sqrt(nx * nx + ny * ny);
         if (len < 1e-4f) {
             out[2] = 0f;
@@ -206,5 +206,26 @@ public final class HullSurface {
             out[2] = nx / len;
             out[3] = ny / len;
         }
+        return true;
+    }
+
+    /**
+     * Pushes point (x, y), tiles, out of the solid tile it is in across the nearest edge of that tile
+     * with open space beyond it: {@code out = {x, y}}. False (and {@code out} left alone) if it is not
+     * in a solid tile, or is buried in one with solid tiles all round.
+     */
+    public boolean pushOut(float x, float y, float[] out) {
+        int tx = (int) Math.floor(x), ty = (int) Math.floor(y);
+        if (!solid(tx, ty)) return false;
+        final float eps = 0.01f;
+        float best = Float.MAX_VALUE, bx = x, by = y;
+        if (!solid(tx - 1, ty) && x - tx < best) { best = x - tx; bx = tx - eps; by = y; }
+        if (!solid(tx + 1, ty) && tx + 1 - x < best) { best = tx + 1 - x; bx = tx + 1 + eps; by = y; }
+        if (!solid(tx, ty - 1) && y - ty < best) { best = y - ty; bx = x; by = ty - eps; }
+        if (!solid(tx, ty + 1) && ty + 1 - y < best) { best = ty + 1 - y; bx = x; by = ty + 1 + eps; }
+        if (best == Float.MAX_VALUE) return false;
+        out[0] = bx;
+        out[1] = by;
+        return true;
     }
 }

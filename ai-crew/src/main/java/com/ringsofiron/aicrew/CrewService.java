@@ -54,6 +54,8 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     public final CrewPhysics physics = new CrewPhysics();
     /** The bulkhead doors crew open on their way, and shut behind them. */
     public final CrewDoors doors = new CrewDoors(this);
+    /** Crew out on EVA and the airlocks they use; set by {@link CrewFactory#install}. */
+    public EvaSystem eva;
     public final RandomXS128 random;
 
     public CrewService(Engine engine) {
