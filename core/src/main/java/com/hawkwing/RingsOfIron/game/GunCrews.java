@@ -34,7 +34,7 @@ import com.ringsofiron.uihud.components.HudMarkerComponent;
  * and shoots with the player's skill when they sit at it, or from the weapons console with its own
  * gunner's, or the player's at {@link #REMOTE_SKILL} if it has none. Launchers always wait for the
  * player's word, since their missiles run out; point defense keeps to itself
- * ({@link CrewStationSync}).
+ * ({@link CrewStationSync}), and {@link PlayerGunnery} hands it to the player and back.
  *
  * <p>While the ship is docked at a station, each launcher takes on a missile every {@link #RESTOCK_TIME}.
  */

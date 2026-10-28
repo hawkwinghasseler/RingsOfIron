@@ -258,9 +258,11 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         mount.cooldown = Math.max(0f, mount.cooldown - dt);
         fillMagazine(mount);
 
-        Entity target = def.pointDefense ? pickMissileThreat(ship, body, sensor, def)
+        // Point defense picks its own missiles, unless it has been given a target or is aimed by hand
+        boolean hand = mount.manualAim && def.mount != WeaponDef.MountType.LAUNCHER;
+        boolean hunting = def.pointDefense && mount.target == null && !hand;
+        Entity target = hunting ? pickMissileThreat(ship, body, sensor, def)
                 : (mount.target != null ? mount.target : sensor == null ? null : sensor.lockedTarget);
-        boolean hand = mount.manualAim && !def.pointDefense && def.mount != WeaponDef.MountType.LAUNCHER;
         if (hand) target = null;
         if (target != null && !mount.trigger && spared != null && spared.holds(ship, target)) target = null;
         if (target != mount.lastTarget) {
@@ -297,7 +299,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         mount.solution.invalidate();
         // Point defense picks its threats inside its range; any other gun aims as far as its round flies
         float maxTime = round.maxLifetime;
-        if (def.pointDefense && def.maxRange > 0f) maxTime = Math.min(maxTime, def.maxRange / round.muzzleSpeed);
+        if (hunting && def.maxRange > 0f) maxTime = Math.min(maxTime, def.maxRange / round.muzzleSpeed);
         if (hand) {
             aimByHand(mount, round.muzzleSpeed);
         } else if (track != null) {

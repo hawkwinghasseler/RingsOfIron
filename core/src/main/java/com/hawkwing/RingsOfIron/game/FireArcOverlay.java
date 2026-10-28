@@ -78,8 +78,8 @@ public class FireArcOverlay {
         boolean flyingArmed = !onGuns && world.bridge.playerAtHelm() && locked() != null;
         if (!onGuns && !flyingArmed) return;
         for (WeaponMountComponent m : weapons.mounts) {
-            if (!PlayerGunnery.isMainGun(m)) continue;
-            if (!onGuns || PlayerGunnery.inHand(world, m)) out.add(m);
+            if (onGuns ? PlayerGunnery.inHand(world, m) && m.def.mount != WeaponDef.MountType.LAUNCHER
+                    : PlayerGunnery.isMainGun(m)) out.add(m);
         }
     }
 
