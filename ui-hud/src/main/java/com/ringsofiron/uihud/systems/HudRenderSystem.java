@@ -63,6 +63,32 @@ public class HudRenderSystem extends EntitySystem {
     private TargetingProvider targeting;
     private NameCover cover;
     private final Rectangle textBox = new Rectangle();
+    /** On-screen markers whose names show this frame, nearest first; the ones whose names lead a group. */
+    private final com.badlogic.gdx.utils.Array<Entity> named = new com.badlogic.gdx.utils.Array<>();
+    /** Off-screen markers shown this frame, nearest first. */
+    private final com.badlogic.gdx.utils.Array<Entity> edge = new com.badlogic.gdx.utils.Array<>();
+    private final com.badlogic.gdx.utils.Array<MarkerWidget> leaders = new com.badlogic.gdx.utils.Array<>();
+    /** Each leading marker's entity to the ones whose names it carries ("+3 others"). */
+    private final ObjectMap<Entity, com.badlogic.gdx.utils.Array<Entity>> grouped = new ObjectMap<>();
+    private final com.badlogic.gdx.utils.Array<com.badlogic.gdx.utils.Array<Entity>> groupPool = new com.badlogic.gdx.utils.Array<>();
+    /** The leading markers (by entity) whose list of names is open. */
+    private final com.badlogic.gdx.utils.ObjectSet<Entity> expanded = new com.badlogic.gdx.utils.ObjectSet<>();
+    private final com.badlogic.gdx.utils.ObjectFloatMap<Entity> range2 = new com.badlogic.gdx.utils.ObjectFloatMap<>();
+    private final Rectangle groupBox = new Rectangle();
+    private java.util.function.Consumer<Entity> pickListener;
+    private final MarkerWidget.Listener clicks = new MarkerWidget.Listener() {
+        @Override
+        public void toggle(MarkerWidget marker) {
+            Entity e = (Entity) marker.getUserObject();
+            if (!expanded.add(e)) expanded.remove(e);
+        }
+
+        @Override
+        public void pick(MarkerWidget marker, int index) {
+            com.badlogic.gdx.utils.Array<Entity> group = grouped.get((Entity) marker.getUserObject());
+            if (pickListener != null && group != null && index < group.size) pickListener.accept(group.get(index));
+        }
+    };
 
     /** @param layer the stage group markers are added to (normally full-screen, behind panels). */
     public HudRenderSystem(ViewportManager viewports, Group layer, Skin skin) {
@@ -103,6 +129,11 @@ public class HudRenderSystem extends EntitySystem {
         default boolean replacesEdgeMarker(Entity marked) {
             return false;
         }
+    }
+
+    /** Gets the entity whose name was clicked in the list under a marker ("+3 others" opened). */
+    public void setPickListener(java.util.function.Consumer<Entity> listener) {
+        pickListener = listener;
     }
 
     /** Hides the names {@code cover} lies over; null for none. */
@@ -147,12 +178,17 @@ public class HudRenderSystem extends EntitySystem {
         }
         for (java.util.function.Supplier<Rectangle> area : keepClearAreas) edgeText.add(new Rectangle(area.get()));
         if (cover != null) cover.begin();
+        named.clear();
+        edge.clear();
+        range2.clear();
         for (Entity e : marked) {
             HudMarkerComponent m = MARKERS.get(e);
             TransformComponent t = TRANSFORMS.get(e);
             MarkerWidget widget = widgets.get(e);
             if (widget == null) {
                 widget = new MarkerWidget(skin);
+                widget.setUserObject(e);
+                widget.setListener(clicks);
                 widgets.put(e, widget);
                 layer.addActor(widget);
             }
@@ -172,8 +208,31 @@ public class HudRenderSystem extends EntitySystem {
             String range = player != null ? formatRange(Vector2.dst(player.x, player.y, t.x, t.y)) : "";
             float half = Math.max(MIN_BRACKET, m.radius * pixelsPerMeter * 1.2f);
             widget.set(m.label, range, m.color, half, !onScreen, angle, e == locked);
-            if (!onScreen) unstack(widget, screen.y < h / 2f ? 1f : -1f, w, h);
-            widget.setTextHidden(cover != null && cover.covers(e, widget.textBounds(textBox)));
+            range2.put(e, player != null ? Vector2.dst2(player.x, player.y, t.x, t.y) : 0f);
+            if (!onScreen) {
+                // Grouped first, then stacked clear of each other and placed under any bubble
+                edge.add(e);
+                continue;
+            }
+            boolean covered = cover != null && cover.covers(e, widget.textBounds(textBox));
+            widget.setTextHidden(covered);
+            if (!covered) named.add(e);
+        }
+        for (com.badlogic.gdx.utils.Array<Entity> group : grouped.values()) {
+            group.clear();
+            groupPool.add(group);
+        }
+        grouped.clear();
+        group(named, locked, player);
+        group(edge, locked, player);
+        for (MarkerWidget leader : leaders) {
+            unstack(leader, leader.getY() < h / 2f ? 1f : -1f, w, h);
+            Entity e = (Entity) leader.getUserObject();
+            if (cover != null && cover.covers(e, leader.textBounds(textBox))) leader.setTextHidden(true);
+        }
+        // Forget lists left open under markers that no longer lead one
+        for (com.badlogic.gdx.utils.ObjectSet.ObjectSetIterator<Entity> it = expanded.iterator(); it.hasNext(); ) {
+            if (!grouped.containsKey(it.next())) it.remove();
         }
 
         // Drop widgets whose entity lost its marker or left the engine.
@@ -189,6 +248,63 @@ public class HudRenderSystem extends EntitySystem {
     }
 
     /**
+     * Names in {@code shown} (on screen, or by the edge) that would lie over each other go under one
+     * marker's: the locked target's, or the nearest's. It shows "+3 others", and opened, their names
+     * and ranges. The off-screen ones that lead are left in {@link #leaders}, to be stacked.
+     */
+    private void group(com.badlogic.gdx.utils.Array<Entity> shown, Entity locked, TransformComponent player) {
+        shown.sort((a, b) -> a == locked ? -1 : b == locked ? 1 : Float.compare(range2.get(a, 0f), range2.get(b, 0f)));
+        leaders.clear();
+        for (Entity e : shown) {
+            MarkerWidget widget = widgets.get(e);
+            widget.nameBounds(textBox);
+            MarkerWidget leader = null;
+            for (MarkerWidget l : leaders) {
+                if (groupBox(l).overlaps(textBox)) {
+                    leader = l;
+                    break;
+                }
+            }
+            if (leader == null) {
+                leaders.add(widget);
+                continue;
+            }
+            Entity lead = (Entity) leader.getUserObject();
+            com.badlogic.gdx.utils.Array<Entity> group = grouped.get(lead);
+            if (group == null) grouped.put(lead, group = groupPool.size > 0 ? groupPool.pop() : new com.badlogic.gdx.utils.Array<>());
+            group.add(e);
+            widget.setTextHidden(true);
+        }
+        for (MarkerWidget leader : leaders) {
+            Entity lead = (Entity) leader.getUserObject();
+            com.badlogic.gdx.utils.Array<Entity> group = grouped.get(lead);
+            if (group == null) continue;
+            boolean open = expanded.contains(lead);
+            leader.setOthers(group.size, open);
+            if (!open) continue;
+            for (int i = 0; i < group.size; i++) {
+                Entity e = group.get(i);
+                HudMarkerComponent m = MARKERS.get(e);
+                TransformComponent t = TRANSFORMS.get(e);
+                String range = player != null ? formatRange(Vector2.dst(player.x, player.y, t.x, t.y)) : "";
+                leader.setRow(i, MarkerWidget.line(m.label, range), m.color);
+            }
+        }
+    }
+
+    /**
+     * Where leading marker {@code l}'s text goes, with a line for "+3 others" under its name, and
+     * the names under that when its list is open: a name over any of that joins its group.
+     */
+    private Rectangle groupBox(MarkerWidget l) {
+        l.nameBounds(groupBox);
+        com.badlogic.gdx.utils.Array<Entity> group = grouped.get((Entity) l.getUserObject());
+        int lines = 1 + (group != null && expanded.contains((Entity) l.getUserObject()) ? group.size : 0);
+        float below = lines * l.lineHeight();
+        return groupBox.set(groupBox.x - 2f, groupBox.y - below - 2f, groupBox.width + 4f, groupBox.height + below + 4f);
+    }
+
+    /**
      * Two contacts the same way off screen put their names on top of each other at the edge: moves
      * this one's text inward ({@code dir} up or down) until it clears the ones already placed. A
      * long name by the left or right edge is first slid back inside the screen ({@code width} wide).
@@ -197,9 +313,12 @@ public class HudRenderSystem extends EntitySystem {
     private void unstack(MarkerWidget widget, float dir, float width, float height) {
         Rectangle box = widget.textBounds(new Rectangle());
         float dx = box.x < 2f ? 2f - box.x : box.x + box.width > width - 2f ? width - 2f - box.x - box.width : 0f;
-        if (dx != 0f) {
-            widget.nudgeText(dx, 0f);
+        // and a list opened under a name by the bottom edge back up inside the screen
+        float dyIn = box.y < 2f ? 2f - box.y : box.y + box.height > height - 2f ? height - 2f - box.y - box.height : 0f;
+        if (dx != 0f || dyIn != 0f) {
+            widget.nudgeText(dx, dyIn);
             box.x += dx;
+            box.y += dyIn;
         }
         for (int tries = 0; tries < 8; tries++) {
             Rectangle hit = null;
