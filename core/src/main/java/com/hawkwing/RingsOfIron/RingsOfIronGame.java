@@ -171,6 +171,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private PlayerGunnery gun;
     private PlayerDocking docking;
     private com.hawkwing.RingsOfIron.game.NavOverlay navOverlay;
+    /** The guns' firing arcs, tinted by their chance to hit. */
+    private com.hawkwing.RingsOfIron.game.FireArcOverlay fireArcs;
 
     private ShapeRenderer shapes;
     private SpriteBatch batch;
@@ -301,6 +303,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         hud.setTargeting(new CombatTargetingProvider(gun));
         docking = new PlayerDocking(world, () -> game.player, this::show);
         navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world, docking);
+        fireArcs = new com.hawkwing.RingsOfIron.game.FireArcOverlay(world);
         world.nav.keyNames = this::key;
         // A click on the traffic map makes that station or ship the navigation target
         // Off-screen marker names by the right edge keep clear of the status column, which is drawn
@@ -1467,6 +1470,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         exterior.drawFlight(viewports.getWorldCamera(), px, Gdx.graphics.getDeltaTime());
         // Every planned burn's direction, and the corridor into a docking port
         navOverlay.draw(shapes, px);
+        // The arcs of the guns in hand, or of every gun flying with a target locked
+        fireArcs.draw(shapes, px);
         // Navigation lights and the glow of running systems, a few pixels across at least
         lighting.renderGlow(batch, viewports.getWorldCamera(), 2.5f * px);
     }

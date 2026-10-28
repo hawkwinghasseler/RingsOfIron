@@ -28,7 +28,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 |---|---|
 | W / S, A / D, Z / C | Thrust forward and back, turn, strafe (seated at the helm) |
 | X | Toggle rotation assist |
-| Space | Fire the guns now. Guns fire on ships attacking you by themselves while a crew member mans them or the weapons console; at the weapons console or a gun, the mouse aims and Space or a left click fires |
+| Space | Fire the guns now, at any range. Guns fire on ships attacking you by themselves, once they have a fair chance of a hit, while a crew member mans them or the weapons console; at the weapons console or a gun, the mouse aims and Space or a left click fires. For the guns in hand (or, flying with a target locked, every gun) the firing arc's edges are drawn, and two lines either side of the target where it could dodge to, colored by the chance to hit: green, yellow, red |
 | R | Launch a salvo of missiles at the target (each launcher holds a few; a station restocks it while docked) |
 | F | Drop a decoy (on deck: force the door across a dock) |
 | 9 | Raise or lower the shields (lowered, the cloud packs safely into the emitters; docking lowers them on its own) |
