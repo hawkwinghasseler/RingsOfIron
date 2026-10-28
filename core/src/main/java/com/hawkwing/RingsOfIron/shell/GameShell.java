@@ -195,10 +195,10 @@ public class GameShell implements ApplicationListener {
         return game == null || paused;
     }
 
-    /** A HUD window, the traffic map or the game's notice log or controls panel is open: Esc closes it first. */
+    /** A HUD window, the map or the game's notice log or controls panel is open: Esc closes it first. */
     boolean hudWindowOpen() {
         UiHud hud = game.getHud();
-        return hud.getTrafficMap().isVisible() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
+        return hud.isMapOpen() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
                 || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getCrewWindow().isOpen()
                 || hud.getShipyardWindow().isOpen()
                 || hud.getConsoleWindow().isOpen() || game.isOverlayOpen() || game.isDevConsoleOpen()

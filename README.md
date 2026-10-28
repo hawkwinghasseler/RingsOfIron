@@ -34,7 +34,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | 9 | Raise or lower the shields (lowered, the cloud packs safely into the emitters; docking lowers them on its own) |
 | Tab | Cycle the target |
 | V | Stand up from your console into the deck view; on deck beside the helm, the weapons console or a gun, sit there and look outside (`gradlew :lwjgl3:runGame -PviewAnywhere` switches anywhere) |
-| M | Traffic map |
+| M | Map: the orbit map (plan burns with the mouse, see where they lead, fly them) or the traffic map, with tabs between them |
 | T | Trade, when in range of a station |
 | Y | Yard: repairs and refits, while docked |
 | J | Mission board: the station's contracts while docked, and the ones you hold |
@@ -47,7 +47,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | F1 | Every control for where you are |
 | G / H / U | Arm docking, pick the next port, undock |
 | , / . | Time warp down and up |
-| N, B, arrows, [ / ] | Plan a burn: add a node, select the next, change its Δv, move it in time |
+| N, B, arrows, [ / ] | Plan a burn: add a node, select the next, change its Δv, move it in time (or with the mouse on the orbit map) |
 | Q | Cycle the navigation target (or click a contact on the traffic map) |
 | ; (semicolon), Enter / Backspace | Plan a transfer to the target; accept or discard the plan |
 | / | Warp to the next burn, stopping a minute before it |

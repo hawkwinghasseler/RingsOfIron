@@ -631,9 +631,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         return cloud.raised ? "Raising shields" : "Lowering shields";
     }
 
-    /** True while one of the HUD's windows or the traffic map is open; Esc closes it first. */
+    /** True while one of the HUD's windows or the map is open; Esc closes it first. */
     private boolean hudWindowOpen() {
-        return hud.getTrafficMap().isVisible() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
+        return hud.isMapOpen() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
                 || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getConsoleWindow().isOpen()
                 || isDevConsoleOpen() || isDebugMenuOpen();
     }
