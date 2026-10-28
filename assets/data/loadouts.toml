@@ -202,13 +202,6 @@ weight = 1
 
 # Oct 2026's new weapons (combat-sys Design.md 6.1). Pirates only carry them from difficulty 1.5, so
 # the first hour never meets one; the heavy laser is yards only, since no pirate hull has the reactor.
-[loadout.raider_coilgun]
-name = "Coil runner"
-ship = "raider_light"
-weapons = ["coilgun_mk1"]
-weight = 2
-min_difficulty = 1.5
-
 [loadout.raider_lance]
 name = "Lancer"
 ship = "raider_light"
