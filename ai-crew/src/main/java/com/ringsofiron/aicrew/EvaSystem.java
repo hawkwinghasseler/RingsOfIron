@@ -347,6 +347,9 @@ public class EvaSystem extends FixedLogicSystem {
         EvaComponent holder = of(eva.heldBy);
         if (holder != null && holder.towing == e) holder.towing = null;
         e.remove(EvaComponent.class);
+        // Sent out, the order is carried out once they are back in
+        CrewMemberComponent c = service.crew(e);
+        if (c != null && c.evaOrder == CrewMemberComponent.EvaOrder.OUT) c.evaOrder = CrewMemberComponent.EvaOrder.NONE;
     }
 
     private void stepOut(Entity e, EvaComponent eva, GridPositionComponent p, ShipGridComponent grid, Airlock lock) {
@@ -702,7 +705,7 @@ public class EvaSystem extends FixedLogicSystem {
             eva.reach = eva.shortOfFuel && c.state != CrewState.DEAD ? lineToReach(eva, grid, hull) : Float.MAX_VALUE;
         }
         ShipTaskBoardComponent board = service.board(p.ship);
-        if (board != null && !board.battleStations && retrievable(e)) {
+        if (board != null && retrievable(e)) {
             int[] n = hull.nearest(eva.rx, eva.ry);
             board.post(new RetrieveTask(e, n == null ? 0 : n[0], n == null ? 0 : n[1]));
         }

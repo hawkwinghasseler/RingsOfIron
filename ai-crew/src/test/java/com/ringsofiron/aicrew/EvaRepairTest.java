@@ -123,7 +123,8 @@ class EvaRepairTest {
         assertFalse(block(s).works(s.grid), "the work left undone");
         assertTrue(s.c(e).task == null || s.c(e).task.kind != CrewTask.Kind.REPAIR_RCS, "the job put down");
         s.run(5f);
-        assertFalse(posted(s), "and off the board until the fight is over");
+        assertTrue(posted(s), "the job waits on the board till the fight is over");
+        for (CrewTask t : s.board.tasks) if (t.kind == CrewTask.Kind.REPAIR_RCS && t.isActive()) assertEquals(CrewTask.Status.OPEN, t.status);
     }
 
     @Test
@@ -133,7 +134,7 @@ class EvaRepairTest {
         Entity e = s.spawn(CrewRole.ENGINEER, 0, 9, 2);
         s.run(120f);
         assertNull(EvaSystem.of(e));
-        assertFalse(posted(s), "no EVA job at battle stations");
+        assertTrue(posted(s), "the job waits on the board for anyone sent out to it");
     }
 
     @Test

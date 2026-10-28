@@ -24,8 +24,9 @@ import java.util.Map;
  * free it from outside, or a yard refits the collar. Each crewed craft's jammed ports go on its task
  * board as work outside ({@link OutsideTask}, {@link CrewTask.Kind#FREE_COLLAR}): out on EVA to the
  * ring of hull just outside the port's door, and {@link CrewDef#collarTime} of work at the collar
- * there. Not at battle stations, when nobody goes out. The player hears when one of their ports
- * jams, and when it is freed.
+ * there: at battle stations, only by anyone the player sends out ({@link
+ * com.ringsofiron.aicrew.EvaOrders}). The player hears when one of their ports jams, and when it is
+ * freed.
  */
 public final class JammedCollars {
     private static final Family SHIPS = Family.all(DockingPortsComponent.class, ShipGridComponent.class, ShipTaskBoardComponent.class).get();
@@ -64,7 +65,7 @@ public final class JammedCollars {
                     }
                 }
                 job.seen = true;
-                if (!board.battleStations) board.post(new OutsideTask(CrewTask.Kind.FREE_COLLAR, m.originX, m.originY, job));
+                board.post(new OutsideTask(CrewTask.Kind.FREE_COLLAR, m.originX, m.originY, job));
             }
         }
         for (Iterator<Free> it = jobs.values().iterator(); it.hasNext(); ) {

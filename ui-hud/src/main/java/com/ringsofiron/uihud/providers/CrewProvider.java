@@ -33,6 +33,16 @@ public interface CrewProvider {
         return "";
     }
 
+    /** Holds everyone on the player's ship in from EVA, or lets them go out again; returns what came of it. */
+    default String toggleEva() {
+        return "";
+    }
+
+    /** Does what {@link Member#evaAction} says for crew member {@code id}; returns what came of it. */
+    default String evaOrder(long id) {
+        return "";
+    }
+
     final class Member {
         public long id;
         public String name = "";
@@ -49,6 +59,8 @@ public interface CrewProvider {
         public String history = "";
         /** True when the crew member can be let go here (docked). */
         public boolean dismissable;
+        /** What the player can order them to do about EVA: "Send out", "Call in", "Let out"; empty for nothing. */
+        public String evaAction = "";
     }
 
     final class Hire {
@@ -83,6 +95,8 @@ public interface CrewProvider {
         public boolean prisonersAlongside;
         /** "Suits at battle stations: on"; empty when it can't be set. */
         public String suits = "";
+        /** "EVA: crew go out for work outside as it comes"; empty when it can't be set. */
+        public String eva = "";
         public final Array<Member> crew = new Array<>();
         public final Array<Hire> hires = new Array<>();
         public final Array<Prisoner> prisoners = new Array<>();
@@ -116,6 +130,7 @@ public interface CrewProvider {
             stationName = "";
             prisonersAlongside = false;
             suits = "";
+            eva = "";
             crew.clear();
             hires.clear();
             prisoners.clear();

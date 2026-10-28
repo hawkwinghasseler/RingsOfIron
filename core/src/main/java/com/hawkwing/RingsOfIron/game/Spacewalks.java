@@ -6,8 +6,10 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.EvaComponent;
 import com.ringsofiron.aicrew.EvaEvent;
+import com.ringsofiron.aicrew.EvaOrders;
 import com.ringsofiron.aicrew.EvaSystem;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.TransientComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -27,7 +29,9 @@ import java.util.Map;
  * comes up as notices. Anyone adrift gets a marker on the HUD, so the ship can find them and come
  * back for them. Someone left behind costs the rest of the crew morale, as a death does. The status
  * line warns of anyone in the way of the main engines' exhaust ({@link
- * com.ringsofiron.aicrew.EngineExhaust}), before a burn.
+ * com.ringsofiron.aicrew.EngineExhaust}), before a burn. The player's orders on EVA ({@link
+ * EvaOrders}) are given here for the crew window: the ship's hold on going out, and sending one
+ * out, calling one in and letting one out again.
  */
 public final class Spacewalks {
     /** Start of every refusal, for tests and the screen. */
@@ -187,6 +191,62 @@ public final class Spacewalks {
             if (keep) continue;
             world.engine.removeEntity(m.getValue());
             it.remove();
+        }
+    }
+
+    /** The crew window's line on whether the crew go out on EVA on their own; empty with no ship. */
+    public String holdLine() {
+        ShipTaskBoardComponent board = world.crew.board(world.getPlayer());
+        if (board == null) return "";
+        return board.evaHeld ? "EVA: held in, only crew sent out go out" : "EVA: crew go out for work outside as it comes";
+    }
+
+    /** Holds the player's crew in from EVA, or lets them go out again; returns what came of it. */
+    public String toggleHold() {
+        Entity ship = world.getPlayer();
+        if (world.crew.board(ship) == null) return "";
+        return EvaOrders.toggleHold(world.crew, ship) ? "Nobody goes out on EVA unless sent, and anyone out is called back in"
+                : "Crew go out on EVA for work outside as it comes";
+    }
+
+    /**
+     * What the player can order {@code e} to do about EVA, for the crew window: "Call in" while they
+     * are out or sent out, "Let out" while kept in, "Send out" while there is work outside for them,
+     * or nothing.
+     */
+    public String orderFor(Entity e) {
+        CrewMemberComponent c = world.crew.crew(e);
+        if (c == null || !ours(e)) return "";
+        switch (c.evaOrder) {
+            case IN:
+                return "Let out";
+            case OUT:
+                return "Call in";
+            default:
+                if (EvaSystem.of(e) != null) return c.state == CrewState.DEAD ? "" : "Call in";
+                return c.isConscious() && c.wearsSuits() && EvaOrders.workFor(world.crew, e) ? "Send out" : "";
+        }
+    }
+
+    /** Gives {@code e} the order {@link #orderFor} offers; returns what came of it. */
+    public String order(Entity e) {
+        CrewMemberComponent c = world.crew.crew(e);
+        if (c == null) return "No longer aboard";
+        switch (orderFor(e)) {
+            case "Send out": {
+                String why = EvaOrders.sendOut(world.crew, e);
+                return why != null ? why : c.name + " is going out for the work outside";
+            }
+            case "Call in": {
+                boolean out = EvaSystem.of(e) != null;
+                EvaOrders.callIn(world.crew, e);
+                return c.name + (out ? " is coming back in, and stays in till let out" : " stays in till let out");
+            }
+            case "Let out":
+                EvaOrders.letOut(world.crew, e);
+                return c.name + " goes out on EVA for work as it comes again";
+            default:
+                return "";
         }
     }
 

@@ -115,7 +115,6 @@ class EvaRetrieveTest {
         castOff(10f);
         s.board.battleStations = true;
         s.run(60f);
-        assertFalse(posted(s));
         assertNull(EvaSystem.of(other), "nobody goes out in a fight");
     }
 }

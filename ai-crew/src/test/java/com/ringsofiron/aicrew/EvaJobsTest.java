@@ -126,7 +126,7 @@ class EvaJobsTest {
         Entity e = s.spawn(CrewRole.ENGINEER, 0, 9, 2);
         s.run(60f);
         assertNull(EvaSystem.of(e));
-        assertFalse(posted(s, CrewTask.Kind.PATCH_HULL));
+        assertTrue(posted(s, CrewTask.Kind.PATCH_HULL), "the job waits on the board");
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.ringsofiron.aicrew.BoardTask;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.aicrew.RetrieveTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.TreatTask;
@@ -174,15 +175,22 @@ public class CrewAgent {
      * only carrying, yard work and boarding while away from the craft they work for (other work is
      * done from home), and only a boarding order that is theirs, and nothing where the fire is falling
      * ({@link TaskRules#waitsOutFire}), and EVA work only with an EVA suit to go out in ({@link
-     * EvaTasks#suitReady}). A crew member held prisoner takes nothing.
+     * EvaTasks#suitReady}) and the player's leave ({@link EvaTasks#mayGoOut}); sent out on EVA, only
+     * the work outside, at battle stations all the same. A crew member held prisoner takes nothing.
      */
     public boolean mayTake(CrewTask task) {
         if (isIgnoring(task) || crew.held) return false;
-        if (task.kind.isEva() && !EvaTasks.suitReady(this)) return false;
+        boolean sent = crew.evaOrder == CrewMemberComponent.EvaOrder.OUT;
+        if (task.kind.isEva()) {
+            if (!EvaTasks.suitReady(this) || !EvaTasks.mayGoOut(this)) return false;
+            if (task instanceof RetrieveTask && ((RetrieveTask) task).castaway == entity) return false;
+        } else if (sent) {
+            return false;
+        }
         // The lightly wounded patch themselves up while idle (CrewHealthSystem), leaving the task to others
         if (task instanceof TreatTask && ((TreatTask) task).patient == entity) return false;
         if (task instanceof BoardTask && !((BoardTask) task).isFor(entity)) return false;
-        if (TaskRules.waitsOutFire(task, board(), service)) return false;
+        if (!(sent && task.kind.isEva()) && TaskRules.waitsOutFire(task, board(), service)) return false;
         return pos.ship == service.homeOf(entity) || task.kind == CrewTask.Kind.CARRY || task.kind == CrewTask.Kind.YARD
                 || task.kind == CrewTask.Kind.BOARD || TaskRules.goesBackAboard(crew, task, board());
     }

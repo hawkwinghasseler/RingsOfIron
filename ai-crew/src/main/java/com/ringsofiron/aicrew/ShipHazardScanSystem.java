@@ -29,8 +29,8 @@ import com.ringsofiron.interiorgrid.crew.SealBreachTask;
  * (see {@link LeakPatches}), a {@link ResetShortTask} for every shorted system or conduit, an
  * {@link IsolateTankTask} for every leaking tank (see {@link DamageStates}), a {@link RepairTask}
  * for every damaged system, an {@link RcsRepairTask} for every RCS block whose hull tile is wrecked
- * and a {@link HullPatchTask} for every other wrecked hull tile open to space (off battle stations:
- * they are EVA work, see {@link EvaSystem}) and a {@link ManConsoleTask}
+ * and a {@link HullPatchTask} for every other wrecked hull tile open to space (EVA work, see {@link
+ * EvaSystem}: at battle stations only anyone sent out takes it, {@link EvaOrders}) and a {@link ManConsoleTask}
  * for every helm, weapons console and turret mount still standing, and cancels open tasks that no
  * longer need doing.
  *
@@ -62,8 +62,7 @@ public class ShipHazardScanSystem extends FixedIteratingSystem {
         ShipGridComponent grid = gridM.get(ship);
         ShipTaskBoardComponent board = boardM.get(ship);
         for (CrewTask t : board.tasks) {
-            if (t.status == CrewTask.Status.OPEN && (!TaskRules.isStillNeeded(t, grid, service)
-                    || t.kind.isEva() && board.battleStations)) board.cancel(t);
+            if (t.status == CrewTask.Status.OPEN && !TaskRules.isStillNeeded(t, grid, service)) board.cancel(t);
         }
         board.prune();
         for (int y = 0; y < grid.height; y++) {
@@ -74,15 +73,14 @@ public class ShipHazardScanSystem extends FixedIteratingSystem {
                 if (t.shorted) board.post(new ResetShortTask(x, y));
             }
         }
-        if (!board.battleStations) {
-            for (int i = 0; i < grid.rcsThrusters.size; i++) {
-                RcsThruster r = grid.rcsThrusters.get(i);
-                if (RcsThruster.fieldRepairable(grid, r.x, r.y)) board.post(new RcsRepairTask(r.x, r.y));
-            }
-            for (int y = 0; y < grid.height; y++) {
-                for (int x = 0; x < grid.width; x++) {
-                    if (HullPlating.plateable(grid, x, y)) board.post(new HullPatchTask(x, y));
-                }
+        // Work outside: at battle stations it waits on the board (TaskRules#waitsOutFire) for anyone sent out to it
+        for (int i = 0; i < grid.rcsThrusters.size; i++) {
+            RcsThruster r = grid.rcsThrusters.get(i);
+            if (RcsThruster.fieldRepairable(grid, r.x, r.y)) board.post(new RcsRepairTask(r.x, r.y));
+        }
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                if (HullPlating.plateable(grid, x, y)) board.post(new HullPatchTask(x, y));
             }
         }
         if (grid.patchKits > 0) {

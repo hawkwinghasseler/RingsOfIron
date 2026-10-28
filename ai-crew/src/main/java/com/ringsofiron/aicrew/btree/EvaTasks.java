@@ -254,8 +254,10 @@ public final class EvaTasks {
                 eva.returning = true;
             }
             if (!eva.returning) {
-                // Called in by battle stations; or their line has parted, and nobody works on untethered
-                boolean back = board == null || board.battleStations || !eva.tethered;
+                // Called in by battle stations, unless sent out all the same, or by the player; or their
+                // line has parted, and nobody works on untethered
+                boolean sent = c.evaOrder == CrewMemberComponent.EvaOrder.OUT;
+                boolean back = board == null || board.battleStations && !sent || !mayGoOut(a) || !eva.tethered;
                 if (!back && t != null && (!TaskRules.isStillNeeded(t, grid, a.service) || !workTile(grid, hull, t, tile))) {
                     a.service.releaseTask(a.entity);
                     t = null;
@@ -358,6 +360,34 @@ public final class EvaTasks {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * True if the player lets {@code a} go out on EVA: sent out ({@link
+     * CrewMemberComponent.EvaOrder#OUT}), or left to go out as work comes ({@link
+     * CrewMemberComponent.EvaOrder#NONE}) while their ship doesn't hold everyone in ({@link
+     * ShipTaskBoardComponent#evaHeld}). Not kept in.
+     */
+    public static boolean mayGoOut(CrewAgent a) {
+        switch (a.crew.evaOrder) {
+            case OUT:
+                return true;
+            case IN:
+                return false;
+            default:
+                ShipTaskBoardComponent board = a.board();
+                return board == null || !board.evaHeld;
+        }
+    }
+
+    /**
+     * Sent out on EVA with no work outside to take, and not out: the order lapses (true), so they go
+     * back to whatever else there is.
+     */
+    static boolean sentOutForNothing(CrewAgent a) {
+        if (a.crew.evaOrder != CrewMemberComponent.EvaOrder.OUT || EvaSystem.of(a.entity) != null) return false;
+        a.crew.evaOrder = CrewMemberComponent.EvaOrder.NONE;
+        return true;
+    }
 
     /**
      * True if {@code a} could go out on EVA for a job: they wear suits, and have an EVA suit on with
