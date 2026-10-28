@@ -110,6 +110,13 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
      */
     public java.util.function.BiPredicate<Entity, Entity> towLocked = (a, b) -> false;
 
+    /**
+     * Craft that let anyone dock with them (a ship that has struck its colours): each of their
+     * ports counts as armed for whoever latches on, so the dock has clearance and their door opens,
+     * and one that strikes while latched opens its door then. The game decides which; by default none.
+     */
+    public java.util.function.Predicate<Entity> yields = craft -> false;
+
     public ClearancePolicy clearance = (station, vessel) ->
             station.getComponent(StationComponent.class).grantsClearance ? null : "";
 
@@ -954,8 +961,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     /** Clearance is permission: the other side's port was armed for this craft, or by its own crew. */
     private boolean permittedBetween(DockingPort pa, DockingPort pb, Entity a, Entity b) {
         String ua = uuidOf(a), ub = uuidOf(b);
-        boolean bAgreed = pb.armed && (pb.armedFor == null || pb.armedFor.equals(ua));
-        boolean aAgreed = pa.armed && (pa.armedFor == null || pa.armedFor.equals(ub));
+        boolean bAgreed = pb.armed && (pb.armedFor == null || pb.armedFor.equals(ua)) || yields.test(b);
+        boolean aAgreed = pa.armed && (pa.armedFor == null || pa.armedFor.equals(ub)) || yields.test(a);
         return bAgreed && aAgreed;
     }
 
@@ -969,17 +976,25 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         pb.partnerPort = portA;
         pa.permitted = permitted;
         pb.permitted = permitted;
-        pa.consented = agreed(pa, b);
-        pb.consented = agreed(pb, a);
+        pa.consented = agreed(a, pa, b);
+        pb.consented = agreed(b, pb, a);
         pa.clearanceUntil = Double.NaN;
         pb.clearanceUntil = Double.NaN;
         pa.clamped = false;
         pb.clamped = false;
     }
 
-    /** The port's own side wanted this dock: armed by its crew, or for the craft now docking. */
-    private boolean agreed(DockingPort p, Entity other) {
-        return p.armed && (p.armedFor == null || p.armedFor.equals(uuidOf(other)));
+    /** {@code own}'s side wanted this dock: its port armed by its crew or for the craft now docking, or it yields to any. */
+    private boolean agreed(Entity own, DockingPort p, Entity other) {
+        return p.armed && (p.armedFor == null || p.armedFor.equals(uuidOf(other))) || yields.test(own);
+    }
+
+    /** {@code own} has struck since latching: its port door opens to the craft it is latched to. */
+    private void yieldDoor(Link link, Entity own, DockingPort p) {
+        p.consented = true;
+        ShipGridComponent grid = gridMapper.get(own);
+        MountFootprint mount = grid == null || link.gridLinks.size == 0 ? null : DockLinks.mount(grid, p);
+        if (mount != null) DockLinks.setDoors(grid, mount, true);
     }
 
     /** A saved latch: find its other half and hold it again. */
@@ -1019,6 +1034,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             return;
         }
         link.waiting = 0f;
+        if (!link.pa.consented && yields.test(link.a)) yieldDoor(link, link.a, link.pa);
+        if (!link.pb.consented && yields.test(link.b)) yieldDoor(link, link.b, link.pb);
         DockingTuning t = link.pa.tuning();
         if (link.joint == null) {
             if (link.snap) {

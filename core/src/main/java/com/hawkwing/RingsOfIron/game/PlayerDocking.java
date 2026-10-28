@@ -64,6 +64,11 @@ public class PlayerDocking {
         }
         String refused = world.docking.arm(player, ports.selected);
         if (refused != null) return "Can't arm the port: " + refused;
+        // The nearest port is a struck ship's: it does not refuse, so no station is asked
+        Entity near = world.docking.approach(player, ports.selected, READOUT_RANGE, approach).target;
+        if (near != null && world.docking.yields.test(near)) {
+            return name(near) + " opens its port to you; port armed";
+        }
         DockingSystem.Clearance c = world.docking.requestClearance(player, ports.selected);
         String station = c.station == null ? null : name(c.station);
         switch (c.outcome) {
