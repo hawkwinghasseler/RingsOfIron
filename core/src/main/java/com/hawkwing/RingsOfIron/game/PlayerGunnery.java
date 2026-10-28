@@ -18,10 +18,11 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
  * ({@link GunCrews}); the trigger ({@link #fireGuns}) fires them at once on the lock. Point defense
  * stays under the gunners' control and shoots down incoming missiles by itself.
  *
- * <p>Sitting at the weapons console the player has every gun and launcher in hand, point defense
- * too, at a gun just that one ({@link #inHand}): the guns follow the pointer ({@link #aim}), leading
- * a contact under it and otherwise pointing at the spot, and only the trigger fires them. Point
- * defense in hand leaves the missiles to the player; let go, it goes back to shooting them down.
+ * <p>Sitting at the weapons console the player has every gun and launcher in hand but point
+ * defense, at a gun just that one, point defense too ({@link #inHand}): the guns follow the pointer
+ * ({@link #aim}), leading a contact under it and otherwise pointing at the spot, and only the
+ * trigger fires them. Point defense in hand leaves the missiles to the player; let go, it goes back
+ * to shooting them down.
  *
  * <p>A missile key press launches a salvo ({@link #SALVO}) from one launcher, a missile each time it
  * is ready again, each coming in from its own side.
@@ -106,11 +107,12 @@ public class PlayerGunnery {
 
     /**
      * True if the player has {@code mount} in hand: seated at the weapons console, any gun or
-     * launcher; seated at a gun, that gun. Point defense as well.
+     * launcher but point defense, which keeps shooting down missiles by itself; seated at a gun,
+     * that gun, point defense or not.
      */
     public static boolean inHand(GameWorld world, WeaponMountComponent mount) {
         if (mount.def == null) return false;
-        if (world.bridge.playerAtWeapons()) return true;
+        if (world.bridge.playerAtWeapons()) return !mount.def.pointDefense;
         Entity gun = world.bridge.seatedGun();
         return gun != null && mount.subsystem == gun;
     }

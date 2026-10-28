@@ -129,18 +129,35 @@ class GunCrewsTest {
     }
 
     @Test
-    void pointDefenseInHandFollowsThePointerAndFiresOnTheTrigger() {
+    void atTheWeaponsConsolePointDefenseStaysOnTheMissiles() {
         WeaponMountComponent pd = pointDefense();
         world.bridge.stand();
         SubsystemComponent console = Bridge.console(game.player, SubsystemType.WEAPONS);
         game.avatar.getComponent(GridPositionComponent.class).setTile(console.footprint.originX - 1, console.footprint.originY);
         assertNull(world.bridge.sit(SubsystemType.WEAPONS));
-        assertTrue(PlayerGunnery.inHand(world, pd), "point defense is in hand at the console");
+        assertFalse(PlayerGunnery.inHand(world, pd), "point defense stays automatic at the console");
+        PlayerGunnery gunnery = new PlayerGunnery(world, game.player);
+        gunnery.aim(pd.muzzle.x + 500f, pd.muzzle.y, 1f);
+        gunnery.fireGuns();
+        assertFalse(pd.manualAim);
+        assertFalse(pd.trigger, "the trigger leaves it alone");
+        assertTrue(pd.weaponsFree);
+    }
+
+    @Test
+    void seatedAtThePointDefenseGunItFollowsThePointerAndFiresOnTheTrigger() {
+        WeaponMountComponent pd = pointDefense();
+        assertNotNull(pd.subsystem, "point defense has a mount to sit at");
+        SubsystemComponent mount = pd.subsystem.getComponent(SubsystemComponent.class);
+        world.bridge.stand();
+        game.avatar.getComponent(GridPositionComponent.class).setTile(mount.footprint.originX - 1, mount.footprint.originY);
+        assertNull(world.bridge.sit(SubsystemType.TURRET_MOUNT));
+        assertSame(pd.subsystem, world.bridge.seatedGun());
+        for (WeaponMountComponent m : weapons.mounts) assertEquals(m == pd, PlayerGunnery.inHand(world, m), m.def.id);
         PlayerGunnery gunnery = new PlayerGunnery(world, game.player);
         com.badlogic.gdx.physics.box2d.Body body = world.docking.bodyOf(game.player);
         // A spot off its rest facing, inside its arc
-        float want = pd.facing + 0.3f;
-        float a = body.getAngle() + want;
+        float a = body.getAngle() + pd.facing + 0.3f;
         float x = pd.muzzle.x + com.badlogic.gdx.math.MathUtils.cos(a) * 800f;
         float y = pd.muzzle.y + com.badlogic.gdx.math.MathUtils.sin(a) * 800f;
         for (int i = 0; i < 180; i++) {
@@ -163,18 +180,6 @@ class GunCrewsTest {
         assertFalse(pd.manualAim);
         assertNull(pd.target);
         assertTrue(pd.weaponsFree, "let go, it shoots down missiles by itself again");
-    }
-
-    @Test
-    void thePlayerCanSitAtThePointDefenseGun() {
-        WeaponMountComponent pd = pointDefense();
-        assertNotNull(pd.subsystem, "point defense has a mount to sit at");
-        SubsystemComponent mount = pd.subsystem.getComponent(SubsystemComponent.class);
-        world.bridge.stand();
-        game.avatar.getComponent(GridPositionComponent.class).setTile(mount.footprint.originX - 1, mount.footprint.originY);
-        assertNull(world.bridge.sit(SubsystemType.TURRET_MOUNT));
-        assertSame(pd.subsystem, world.bridge.seatedGun());
-        for (WeaponMountComponent m : weapons.mounts) assertEquals(m == pd, PlayerGunnery.inHand(world, m), m.def.id);
     }
 
     private static float wrap(float a) {
