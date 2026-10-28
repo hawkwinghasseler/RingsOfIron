@@ -77,6 +77,7 @@ Stages 1 (station grids and docking ports), 2 (walking and air across a dock), 3
 - Stations can be damaged and boarded exactly like ships: the same grid damage, air and fire hazards, breaches and internal combat rules.
 - Station markets keep their stock in physical cargo-bay tiles on the station grid, so goods bought or sold move between real tiles.
 - Each of a station's docking ports stands at the end of a **pier** (a blister, for a Large port: it is three tiles deep itself), a corridor as wide as the port with its outer edge 5 tiles out from the hull. Whatever a ship has beside its own port (an engine, a wing, a turret) then sits beside the pier and clears the station's hull. Both layouts, Outpost and Hub, are built this way in `chassis.toml`.
+  ![Highport's two piers, a ship docked at one](docking-ports/station-piers.png)
 
 ## Docking Ports
 A docking port is a new subsystem: an airlock built into the hull edge, with a facing direction and a latch collar.
@@ -111,6 +112,9 @@ A docking port is a new subsystem: an airlock built into the hull edge, with a f
 3. On contact within tolerance, the ports latch. An active collar then contracts on its springs. It draws the craft in with a push along the port's axis at the middle of each craft's mass (`DockingSystem.drive`), not with the slider's motor. The motor pulled at the port, and on a ship whose port is meters from its middle the pull turned the ship harder than the tilt spring could hold it square.
 4. The latched craft are **seated**: a critically damped spring (`DockingSystem.pullIntoSeat`, `DockingTuning.SEAT_RATE`) draws the port faces together and the craft square, pushing at each craft's middle of mass and turning it about that. A rope joint that is never drawn taut keeps the hulls from colliding meanwhile. It used to be a Box2D motor joint. That joint holds its second body's origin at an offset in its first body's frame, and solves as if that frame did not turn. With the ship as the first body, a ship latched right after undocking was swung forwards into the station and turned several degrees, until the seating ran out of time (3 s) and put it straight.
 5. The connection becomes rigid: a weld joint between the two bodies.
+
+   Undocked and re-armed at once: latched, drawn in and seated without swinging (as of the seating fix).
+   ![Undocked, latched, seated](docking-ports/redock.png)
 
 ### Undocking
 The active port's magnets disengage and the spring force pushes the two craft apart.
