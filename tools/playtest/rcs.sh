@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# RCS thrust and EVA repair in a real window under Xvfb: a new game, the ship put 300 m off Highport,
-# its starboard strafe block amidships wrecked, then a strafe each way at the helm (the speed off
-# Highport read after each), and the deck while the crew go out on EVA to mend the block, and the
-# strafe again once it is back. Screenshots throughout. Needs Xvfb, xdotool and ImageMagick's import.
+# RCS thrust in a real window under Xvfb: a new game, the ship put 300 m off Highport, a strafe each
+# way at the helm with every block whole, then again with its starboard strafe block amidships
+# wrecked (the speed off Highport read after each). Screenshots throughout. Needs Xvfb, xdotool and
+# ImageMagick's import.
 #   tools/playtest/rcs.sh [out-dir]     (default build/playtest-screens-rcs)
 # Run from the repository root.
 set -u
@@ -29,6 +29,8 @@ still; pause 1; shot r-01-whole
 # Strafe each way with every block whole
 xdotool keydown z; pause 1.5; shot r-02-strafe-z-whole; pause 1.5; xdotool keyup z; speed
 still; xdotool keydown c; pause 1.5; shot r-03-strafe-c-whole; pause 1.5; xdotool keyup c; speed
+# A turn: the corner quads fire, their jets a little over half the size of a linear block's
+still; xdotool keydown a; pause 0.5; shot r-03-turn; xdotool keyup a; pause 2
 
 # Wreck the hull tile under the starboard strafe block amidships (it fires up out of the top hull)
 cmd dev "player.getComponent($G).getTile(10, 5).setIntegrity(0f); player.getComponent($G).gridDirty = true"
@@ -36,18 +38,6 @@ still; pause 1; shot r-04-wrecked
 xdotool keydown z; pause 1.5; shot r-05-strafe-z-wrecked; pause 1.5; xdotool keyup z; speed
 still; xdotool keydown c; pause 1.5; shot r-06-strafe-c-wrecked; pause 1.5; xdotool keyup c; speed
 
-# On deck: the crew seal the breach, then one suits up and goes out on EVA to mend the block
-still; key v; pause 2
-xdotool mousemove --window "$WIN" 640 400; for _ in 1 2 3 4 5 6; do xdotool click 4; pause 0.1; done
-shot r-07-deck
-for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-  pause 10; shot r-08-deck-$i
-  cmd dev "world.crew.crewEntities().take(4).collect { world.crew.crew(it).name + ': ' + world.crew.crew(it).activity }.join('; ')"
-  [ "$i" = 4 ] && { key i; pause 1; shot r-08-roster; key i; }
-done
-cmd dev "player.getComponent($G).getTile(10, 5).getIntegrity()"
-key v; pause 2
-still; xdotool keydown c; pause 1.5; shot r-09-strafe-c-mended; pause 1.5; xdotool keyup c; speed
 pause 1
 grep 'PLAYTEST \(dev\|target\)' "$OUT/game.log"
 finish

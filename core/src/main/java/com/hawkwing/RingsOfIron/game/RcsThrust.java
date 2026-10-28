@@ -146,18 +146,19 @@ public class RcsThrust extends EntitySystem {
         return out;
     }
 
-    /** The smallest a firing nozzle's jet is drawn, of its kind's standard nozzle's ({@link #jetSize}). */
-    static final float MIN_JET = 0.3f;
+    /** The thrust of a nozzle whose jet is drawn at full size ({@link #jetSize}): a standard linear block's, newtons. */
+    static final double FULL_JET = RcsThruster.Kind.LINEAR.standardThrust;
+    /** The most a jet is drawn, of a {@link #FULL_JET} nozzle's, however hard its nozzle pushes. */
+    static final float MAX_JET = 2f;
 
     /**
-     * How big block {@code r}'s jets are drawn, 0 to 1 of a standard nozzle's at the same throttle:
-     * as the square root of its thrust over its kind's standard (a nozzle's mouth grows with its
-     * thrust), no smaller than {@link #MIN_JET} and no bigger than 1. A tuned-down nozzle pushes
-     * little, so it is not drawn as big as one that pushes the ship.
+     * How big block {@code r}'s jets are drawn at full throttle, of a {@link #FULL_JET} nozzle's: as
+     * the square root of the thrust it gives (a nozzle's mouth grows with its thrust), up to
+     * {@link #MAX_JET}. A standard quad's 100 kN jets are drawn a little over half as big as a
+     * linear block's 300 kN one, so each jet shows how hard it pushes.
      */
     public static float jetSize(RcsThruster r) {
-        float size = (float) Math.sqrt(r.nozzleThrust() / r.kind.standardThrust);
-        return Math.max(MIN_JET, Math.min(1f, size));
+        return Math.min(MAX_JET, (float) Math.sqrt(r.nozzleThrust() / FULL_JET));
     }
 
     /** {@link #firing} for a craft's own controls and body. */

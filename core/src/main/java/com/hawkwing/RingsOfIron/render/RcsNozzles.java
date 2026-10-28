@@ -26,7 +26,7 @@ public final class RcsNozzles {
     public interface Jets {
         /**
          * A nozzle whose mouth is at ({@code x}, {@code y}), firing toward {@code degrees} at {@code throttle}
-         * (0 to 1], scaled down for a nozzle smaller than its kind's standard ({@link RcsThrust#jetSize}).
+         * (0 to 1] scaled by the thrust it gives ({@link RcsThrust#jetSize}): how big its jet is drawn.
          */
         void jet(float x, float y, float degrees, float throttle);
     }

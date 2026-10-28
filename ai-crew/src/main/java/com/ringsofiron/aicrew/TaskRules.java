@@ -10,8 +10,6 @@ import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.LeakPatches;
-import com.ringsofiron.interiorgrid.MountFootprint;
-import com.ringsofiron.interiorgrid.RcsThruster;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -57,8 +55,6 @@ public final class TaskRules {
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && s.health < 1f;
             }
-            case REPAIR_RCS:
-                return RcsThruster.fieldRepairable(grid, task.x, task.y);
             case MAN_CONSOLE: {
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && !s.isDestroyed();
@@ -199,30 +195,9 @@ public final class TaskRules {
                 return x == tx && y == ty;
             case EVACUATE:
                 return ((EvacuateTask) task).inPod(x, y);
-            case REPAIR_RCS:
-                // Out through an airlock or docking port: the work is outside, along the hull
-                return isEvaExit(grid, x, y);
             default:
                 return x == tx && y == ty;
         }
-    }
-
-    /** True if a suited crew member on (x, y) can go out on EVA from there: an airlock or docking port still standing. */
-    public static boolean isEvaExit(ShipGridComponent grid, int x, int y) {
-        Tile t = grid.getTile(x, y);
-        MountFootprint m = t == null ? null : t.mount;
-        SubsystemComponent s = m == null || m.installed == null ? null : m.installed.getComponent(SubsystemComponent.class);
-        return s != null && !s.isDestroyed()
-                && (s.type == SubsystemComponent.SubsystemType.AIRLOCK || s.type == SubsystemComponent.SubsystemType.DOCKING_PORT);
-    }
-
-    /**
-     * Seconds an EVA from (x, y) to mend RCS repair {@code task} takes {@code crew}: out along the hull to
-     * its tile and back at {@link CrewDef#evaSpeed}, and {@link CrewDef#rcsRepairTime} there.
-     */
-    public static float evaTime(CrewTask task, ShipGridComponent grid, CrewDef crew, int x, int y) {
-        float meters = (Math.abs(task.x - x) + Math.abs(task.y - y)) * grid.tileSize;
-        return crew.rcsRepairTime + 2f * meters / Math.max(0.01f, crew.evaSpeed);
     }
 
     /** A predicate for {@link GridPathfinder#nearest} over the task's work spots. */
@@ -411,15 +386,12 @@ public final class TaskRules {
     /**
      * True if {@code task} lies where the fire is falling on its ship ({@link
      * ShipTaskBoardComponent#underFire}) and waits for the fight to end: damage control, repairs and
-     * casualties alike (and EVA work anywhere at battle stations), except a casualty with no more than
-     * {@link #LAST_CHANCE} to live, bleeding out
+     * casualties alike, except a casualty with no more than {@link #LAST_CHANCE} to live, bleeding out
      * or down in bad air with that much suit air or none. Manning a
      * console, orders, work away from the ship and damage control on what the ship fights with
      * ({@link #vital}) never wait.
      */
     public static boolean waitsOutFire(CrewTask task, ShipTaskBoardComponent board, CrewService crew) {
-        // Nobody goes out on the hull in a fight, under fire or not
-        if (task.kind == CrewTask.Kind.REPAIR_RCS) return board != null && board.battleStations;
         if (board != null && !board.keepsClearOfFire) return false;
         if (board == null || !board.battleStations || board.hitTiles.size == 0) return false;
         switch (task.kind) {

@@ -10,7 +10,7 @@ package com.ringsofiron.interiorgrid;
 public final class RcsThruster {
     public enum Kind {
         /** One nozzle, out through the hull edge it sits on. */
-        LINEAR(1.5e5),
+        LINEAR(3.0e5),
         /** Three nozzles: out through its edge, and each way along the hull. */
         QUAD(1.0e5);
 
@@ -97,34 +97,6 @@ public final class RcsThruster {
     public boolean works(ShipGridComponent grid) {
         Tile t = grid.getTile(x, y);
         return t != null && t.isIntactWall();
-    }
-
-    /**
-     * The condition a crew out on EVA frames a block's wrecked hull tile (or its hull piece) back
-     * up to ({@link #fieldRepair}): standing, so the block fires again, but still leaking (below
-     * {@link Tile#LEAK_START}) until a yard repairs it.
-     */
-    public static final float FIELD_REPAIR = 0.2f;
-
-    /**
-     * True if hull tile (x, y) carries a block that no longer fires and a crew out on EVA can
-     * mend it: wrecked to 0, not crushed flat (that wants a yard).
-     */
-    public static boolean fieldRepairable(ShipGridComponent grid, int x, int y) {
-        Tile t = grid.getTile(x, y);
-        if (t == null || !t.isWall() || t.isIntactWall() || t.isCrushed()) return false;
-        for (int i = 0; i < grid.rcsThrusters.size; i++) {
-            RcsThruster r = grid.rcsThrusters.get(i);
-            if (r.x == x && r.y == y) return true;
-        }
-        return false;
-    }
-
-    /** Frames hull tile (x, y) back up to {@link #FIELD_REPAIR}, so the blocks on it fire again. */
-    public static void fieldRepair(ShipGridComponent grid, int x, int y) {
-        Tile t = grid.getTile(x, y);
-        t.setIntegrity(Math.max(t.getIntegrity(), FIELD_REPAIR));
-        grid.gridDirty = true;
     }
 
     /**

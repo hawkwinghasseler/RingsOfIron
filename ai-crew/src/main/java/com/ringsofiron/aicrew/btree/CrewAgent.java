@@ -159,8 +159,7 @@ public class CrewAgent {
      * True if this crew member would take {@code task} now: not one they just found unreachable, and
      * only carrying, yard work and boarding while away from the craft they work for (other work is
      * done from home), and only a boarding order that is theirs, and nothing where the fire is falling
-     * ({@link TaskRules#waitsOutFire}), and EVA work only with a suit at least half full. A crew member
-     * held prisoner takes nothing.
+     * ({@link TaskRules#waitsOutFire}). A crew member held prisoner takes nothing.
      */
     public boolean mayTake(CrewTask task) {
         if (isIgnoring(task) || crew.held) return false;
@@ -168,8 +167,6 @@ public class CrewAgent {
         if (task instanceof TreatTask && ((TreatTask) task).patient == entity) return false;
         if (task instanceof BoardTask && !((BoardTask) task).isFor(entity)) return false;
         if (TaskRules.waitsOutFire(task, board(), service)) return false;
-        // EVA wants a suit, and one with air enough in it (a suit taken off is filled again)
-        if (task.kind == CrewTask.Kind.REPAIR_RCS && (crew.def.suitAir <= 0f || crew.suited && crew.suitAir < crew.def.suitAir * 0.5f)) return false;
         return pos.ship == service.homeOf(entity) || task.kind == CrewTask.Kind.CARRY || task.kind == CrewTask.Kind.YARD
                 || task.kind == CrewTask.Kind.BOARD || TaskRules.goesBackAboard(crew, task, board());
     }
