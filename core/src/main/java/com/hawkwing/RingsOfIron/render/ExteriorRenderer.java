@@ -221,6 +221,17 @@ public final class ExteriorRenderer implements Disposable {
      * {@code without} (null for none): the deck view's craft, drawn as decks instead.
      */
     public void drawBodies(OrthographicCamera camera, float delta, Array<Entity> without) {
+        drawBodies(camera, delta, without, null);
+    }
+
+    /**
+     * {@link #drawBodies(OrthographicCamera, float, Array)}, the light map kept off whatever
+     * {@code unlit} draws (null for nothing): the deck view's decks, which have a light map of
+     * their own. {@code unlit} draws with the shape renderer or batch into the stencil buffer
+     * only, under {@code camera}. Without a stencil buffer to keep it off with, the hulls are
+     * drawn as the art is.
+     */
+    public void drawBodies(OrthographicCamera camera, float delta, Array<Entity> without, Runnable unlit) {
         GameWorld w = world.get();
         Matrix4 view = view(camera);
         w.physics.getWorld().getBodies(bodies);
@@ -230,7 +241,8 @@ public final class ExteriorRenderer implements Disposable {
                 if (e != null && without.contains(e, true)) bodies.removeIndex(i);
             }
         }
-        boolean lit = exteriorLighting != null && lightsOn;
+        boolean lit = exteriorLighting != null && lightsOn
+                && (unlit == null || Gdx.graphics.getBufferFormat().stencil > 0);
         if (lit) exteriorLighting.begin();
         flames.begin(delta);
         shields.begin(delta);
@@ -276,7 +288,7 @@ public final class ExteriorRenderer implements Disposable {
             shields.drawFlecks(batch, false, mpp);
             batch.end();
         }
-        if (lit) renderLightMap(camera, view);
+        if (lit) renderLightMap(camera, view, unlit);
         // The flames give off their own light: over the light map, not darkened by it
         batch.setProjectionMatrix(view);
         flames.draw(batch, withArt);
@@ -343,6 +355,32 @@ public final class ExteriorRenderer implements Disposable {
             DecoyComponent d = e.getComponent(DecoyComponent.class);
             l.add(d.pos.x, d.pos.y, DECOY_LIGHT, 10f, 0.8f);
         }
+    }
+
+    /**
+     * The light map over the hull art, in the frame's body when there is one, and not over what
+     * {@code unlit} draws (null for nothing).
+     */
+    private void renderLightMap(OrthographicCamera camera, Matrix4 view, Runnable unlit) {
+        if (unlit == null) {
+            renderLightMap(camera, view);
+            return;
+        }
+        GL20 gl = Gdx.gl;
+        // 1 where the light map must not fall; the map's own framebuffer has no stencil, so its
+        // lights draw there as ever and only its pass onto the screen is kept off the marks
+        gl.glClearStencil(0);
+        gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
+        gl.glEnable(GL20.GL_STENCIL_TEST);
+        gl.glColorMask(false, false, false, false);
+        gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xff);
+        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
+        unlit.run();
+        gl.glColorMask(true, true, true, true);
+        gl.glStencilFunc(GL20.GL_EQUAL, 0, 0xff);
+        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
+        renderLightMap(camera, view);
+        gl.glDisable(GL20.GL_STENCIL_TEST);
     }
 
     /** The light map over the hull art, in the frame's body when there is one. */
