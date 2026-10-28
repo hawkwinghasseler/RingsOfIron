@@ -336,7 +336,21 @@ public final class DeckRenderer {
                 if (!withArt || !deckArt.hasArt(ghost)) furnishingBlock(g, ghost, color.set(ghostFits ? GHOST_FITS : GHOST_BLOCKED));
                 outline(g, ghost, ghostFits ? GHOST_FITS : GHOST_BLOCKED);
             }
-            boolean figures = withArt && deckArt.hasCrew();
+            shapes.end();
+        }
+        // Everyone aboard over every deck, so one craft's deck does not cover crew out on the walkway
+        // from another, nor what of them reaches past their own craft's collar
+        boolean figures = withArt && deckArt.hasCrew();
+        for (Entity ship : decks) {
+            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+            if (g == null || !pose.of(ship, at, angle)) continue;
+            float s = g.tileSize, degrees = angle[0] * MathUtils.radiansToDegrees;
+            transform.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, degrees);
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            shapes.begin(ShapeRenderer.ShapeType.Filled);
+            shapes.identity();
+            shapes.translate(at.x, at.y, 0f);
+            shapes.rotate(0f, 0f, 1f, degrees);
             for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
                 if (pos.ship != ship) continue;

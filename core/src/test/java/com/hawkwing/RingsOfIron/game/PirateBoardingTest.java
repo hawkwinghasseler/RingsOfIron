@@ -350,7 +350,7 @@ class PirateBoardingTest {
     // ---------------------------------------------------------------------------------------------
 
     private String huntingPirate() {
-        return huntingPirate(3_000);
+        return huntingPirate(800);
     }
 
     /** A pirate gunship hunting the player, brought in {@code dx} m off. */

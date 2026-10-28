@@ -130,6 +130,11 @@ The grid works in whole tiles, but each collar sticks out half a tile past the h
 - The joined collar space has no compartment of its own (see Decisions above): air moves straight from the room behind one door to the room behind the other, and only while both doors are open.
 - Fits the existing edge-wall and compartment model with the fewest grid changes. Cross-grid links are needed for cargo carrying anyway.
 
+- In the deck view `DeckRenderer` draws every craft's deck first and everyone aboard after, over all of them. Crew out on the walkway lie past their own grid's edge, and a figure is wider than the half-tile collar, so when each craft drew its crew straight after its deck, the next craft's collar covered whoever was crossing from the first: half a body showed at the seam. `tools/playtest/dock-crossing.sh` stands the avatar along the walkway at Highport and takes a screenshot at each point (below, before and after the fix; the player's ship is at the bottom).
+
+  ![Before: cut at the seam](dock-crossing/before.png)
+  ![After: whole all the way across](dock-crossing/after.png)
+
 Rejected alternatives: giving each port a full collar tile that overlaps its mate when docked (two copies of the same space), and spawning a bridge grid on docking (every system would have to handle a third grid that comes and goes).
 
 ## Moving Cargo Across
