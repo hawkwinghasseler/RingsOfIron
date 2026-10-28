@@ -84,9 +84,10 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
         }
 
         if (turn == 0f && control.rotationAssist && !control.assistHeld) {
-            // Torque that would cancel the current spin in one tick, within RCS limits.
+            // Torque that would cancel the current spin in one tick, within RCS limits and what a latch bears.
             float stopTorque = -inertia(body, tow) * body.getAngularVelocity() / deltaTime;
-            torque = MathUtils.clamp(stopTorque, -thruster.torque(-1f), thruster.torque(1f));
+            torque = MathUtils.clamp(stopTorque, -Math.min(thruster.torque(-1f), control.assistLimit),
+                    Math.min(thruster.torque(1f), control.assistLimit));
         }
 
         float throttleScale = burnFuel(thruster, Vector2.len(localX, localY), Math.abs(torque), deltaTime);

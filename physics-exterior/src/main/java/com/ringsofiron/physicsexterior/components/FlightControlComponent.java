@@ -25,6 +25,11 @@ public class FlightControlComponent implements Component {
      */
     public transient boolean assistHeld;
     /**
+     * Most torque rotation assist may put on the ship, N*m: set while it is welded to another craft,
+     * so stopping the pair's spin doesn't tear the latch between them. Runtime only.
+     */
+    public transient float assistLimit = Float.POSITIVE_INFINITY;
+    /**
      * How hard rotation assist is turning against the spin, 0 to 1 of the RCS torque, as of the
      * last physics tick; 0 while the pilot turns or assist is off. Written by the flight control
      * system so the RCS can be heard and seen when it fires on its own. Runtime only.

@@ -75,6 +75,8 @@ class EditorRcsTest {
         int before = corvette.value.rcs.size();
         int top = topHullRow(corvette.value, project.catalog());
         assertNull(corvette.value.toggleRcs(5, top, Side.TOP, "LINEAR", project.catalog()));
+        // One block given its own thrust, as a layout may
+        corvette.value.rcs.get(0).thrust = 2.0e5;
         corvette.dirty = true;
         project.save();
 
@@ -83,7 +85,8 @@ class EditorRcsTest {
         assertEquals(before + 1, back.rcs.size());
         assertNotNull(back.rcsAt(5, top, Side.TOP));
         assertTrue(grid(back, again.catalog()).rcsThrusters.contains(new RcsThruster(5, top, Side.TOP, RcsThruster.Kind.LINEAR), false));
-        assertTrue(back.rcs.stream().anyMatch(r -> r.thrust > 0), "the tuned blocks keep their thrust");
+        assertEquals(2.0e5, back.rcs.get(0).thrust, 1.0, "a block with its own thrust keeps it");
+        assertTrue(back.rcs.stream().skip(1).allMatch(r -> r.thrust == 0), "the rest keep their kind's standard");
     }
 
     @Test
