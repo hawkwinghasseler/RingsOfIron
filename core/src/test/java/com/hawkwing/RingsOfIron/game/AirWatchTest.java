@@ -73,8 +73,11 @@ class AirWatchTest {
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
         grid.patchKits = 0;
         // Suited, as for battle stations: a breach this size knocks out anyone without a suit at once
+        // with four minutes of air left in each, so the warning is due soon
         for (Entity e : world.crewCareer.ownCrew(game.player)) world.crew.crew(e).setSuited(true);
         world.crew.crew(game.avatar).setSuited(true);
+        for (Entity e : world.crewCareer.ownCrew(game.player)) world.crew.crew(e).suitAir = 240f;
+        world.crew.crew(game.avatar).suitAir = 240f;
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);

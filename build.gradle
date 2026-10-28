@@ -57,7 +57,7 @@ configure(subprojects) {
 
   // Tests tagged @Tag("slow") (whole careers, surveys, replays played twice) stay out of test and
   // build so they don't slow every run. ./gradlew slowTest runs only them, and -PallTests puts
-  // them back into test. CI runs slowTest in its own job.
+  // them back into test. CI runs neither: they are tools to run by hand.
   def slowTest = tasks.register('slowTest', Test) {
     group = 'verification'
     description = 'Runs the tests tagged slow: whole careers, surveys and replays.'
