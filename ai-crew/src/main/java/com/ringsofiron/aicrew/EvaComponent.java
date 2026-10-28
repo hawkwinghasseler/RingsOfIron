@@ -80,12 +80,21 @@ public class EvaComponent implements Component {
     public final transient Array<int[]> path = new Array<>();
     /** How far along the path's first step, 0 to 1. */
     public transient float stepDone;
+    /** How far short of where the crawl puts them they caught hold, tiles; closed at crawling speed. */
+    public transient float slideX, slideY;
     /** World-frame state, meters and m/s in the physics world's frame; rebuilt from {@link #rx} etc. when not {@link #worldValid}. */
     public transient float wx, wy, vx, vy;
     public transient boolean worldValid;
+    /** The ship's physics body that world-frame state was worked in (null for a ship without one). */
+    public transient com.badlogic.gdx.physics.box2d.Body frameBody;
     /** The hull point's world velocity last step, for its acceleration. */
     public transient float hullVx, hullVy;
     public transient boolean hullVValid;
+    /** Their ship's velocity and spin last step, m/s and rad/s, for how hard its hull drags while they are off it. */
+    public transient float shipVx, shipVy, shipOmega;
+    public transient boolean shipVValid;
+    /** Their ship's acceleration and its spin's, smoothed over {@link EvaSystem#DRAG_TAU}: m/s2 and rad/s2. */
+    public transient float shipAx, shipAy, shipAlpha;
     /** The rope's points in the world frame, x then y, the reel first and the crew member last; null until laid out. */
     public transient float[] rope, ropePrev;
     /** The line's stretch last step, meters; and smoothed over a few steps, which its pull goes by. */
@@ -98,6 +107,8 @@ public class EvaComponent implements Component {
     public transient com.ringsofiron.interiorgrid.HullSurface pathHull;
     /** Firing the jetpack this step; pulling themselves in along the line this step. For the animation. */
     public transient boolean jetting, climbing;
+    /** Which way the jetpack pushed them last, a unit vector in the ship's frame: its puffs go the other way. */
+    public transient float jetX, jetY;
 
     /** "No goal". */
     public static final int NONE = Integer.MIN_VALUE;

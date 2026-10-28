@@ -207,7 +207,8 @@ public final class EvaTasks {
                 backSeconds = wayBack(eva, hull, scratch, tile);
             }
             if (!eva.returning) {
-                boolean back = board == null || board.battleStations;
+                // Called in by battle stations; or their line has parted, and nobody works on untethered
+                boolean back = board == null || board.battleStations || !eva.tethered;
                 if (!back && t != null && (!TaskRules.isStillNeeded(t, grid, a.service) || !workTile(grid, hull, t, tile))) {
                     a.service.releaseTask(a.entity);
                     t = null;

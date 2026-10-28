@@ -47,6 +47,58 @@ class AirlockTest {
     }
 
     @Test
+    void thePortKeepsItsPowerWithTheHatchShutSoThePumpRuns() {
+        // A reactor in the room; a Small port in the top hull row, as on the corvette, a system of
+        // its own fed only through its opening, the tiles either side of it hull
+        ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(new ChassisBlueprint(
+                "##########",
+                "#........#",
+                "#........#",
+                "#R.......#",
+                "##########").tileSize(1f));
+        ShipGridComponent g = r.grid;
+        MountFootprint port = new MountFootprint(MountFootprint.MountKind.PORT, MountFootprint.MountSize.S, 4, 4, 0);
+        g.placeMount(port);
+        com.badlogic.ashley.core.Engine engine = new com.badlogic.ashley.core.Engine();
+        engine.addSystem(new PowerRoutingSystem());
+        Entity ship = new Entity();
+        ShipSubsystemRegistryComponent registry = new ShipSubsystemRegistryComponent(ship);
+        ship.add(g);
+        ship.add(registry);
+        engine.addEntity(ship);
+        for (ChassisBlueprintLoader.SubsystemPlacement p : r.subsystems) install(engine, registry, p.footprint, p.type);
+        SubsystemComponent dock = install(engine, registry, port, SubsystemComponent.SubsystemType.DOCKING_PORT);
+        hazards.step(g, DT);
+        engine.update(PowerRoutingSystem.CHARGE_TICK);
+        Airlock lock = Airlock.of(g, port);
+        assertTrue(dock.powered && lock.powered(g), "fed through the opening");
+        double before = TestShips.totalMoles(g);
+        assertTrue(lock.claim(user, true));
+        for (float t = 0f; t < 60f && !lock.isOut(); t += DT) {
+            lock.update(g, DT);
+            hazards.step(g, DT);
+            engine.update(DT);
+            if (lock.state() == Airlock.State.PUMPING) assertTrue(lock.powered(g), "still powered with the hatch shut");
+        }
+        assertTrue(lock.isOut());
+        assertTrue(dock.powered);
+        hazards.step(g, DT);
+        double lost = before - TestShips.totalMoles(g);
+        assertTrue(lost < 0.02 * before, "the chamber's air pumped back into the cabin, not vented: lost " + lost / before);
+    }
+
+    private static SubsystemComponent install(com.badlogic.ashley.core.Engine engine, ShipSubsystemRegistryComponent registry,
+                                              MountFootprint at, SubsystemComponent.SubsystemType type) {
+        Entity e = new Entity();
+        SubsystemComponent s = new SubsystemComponent(at, type);
+        e.add(s);
+        at.installed = e;
+        engine.addEntity(e);
+        registry.registerSubsystem(e);
+        return s;
+    }
+
+    @Test
     void aPortFromBeforeHatchesGetsThemFitted() {
         ShipGridComponent g = grid();
         MountFootprint port = port(g);

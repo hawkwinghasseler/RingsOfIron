@@ -19,8 +19,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Crew on EVA on a ship that moves: {@link EvaRepairTest}'s ship as a 180 t Box2D body, its engineer
- * out at the wrecked RCS block on its underside, and the ship thrust up (+y), away from them, or down
- * into them.
+ * out at the wrecked RCS block on its underside, and the ship thrust up (+y), away from them, down
+ * into them, or along its keel: held through, pressed on, thrown off to swing on the line, dragged
+ * past too hard to catch hold, the line parted.
  */
 class EvaPhysicsTest {
 
@@ -98,7 +99,7 @@ class EvaPhysicsTest {
     @Test
     void aBurnPastTheirGripThrowsThemOffAndTheLineHoldsThemTillTheyGetBackOn() {
         out();
-        // 4 m/s2: 720 N, past their 600 N grip; within the line's 2 kN
+        // 4 m/s2: 720 N, past their 600 N grip; within the line's 1.6 kN
         thrust.set(0f, 4f);
         s.run(8f);
         assertTrue(events.contains(EvaEvent.Kind.LOST_GRIP), "thrown off: " + events);
@@ -134,6 +135,54 @@ class EvaPhysicsTest {
         assertTrue(events.contains(EvaEvent.Kind.LEFT_BEHIND), "left behind: " + events);
         assertFalse(s.engine.getEntities().contains(crew, true), "gone from the ship's world");
         assertFalse(EvaRepairTest.block(s).works(s.grid), "the work never done");
+    }
+
+    @Test
+    void aBurnAlongTheHullPastTheirGripKeepsThemOffItTillItEndsOnTheLine() {
+        out();
+        // 7 m/s2 along the keel, away from the corner the line wraps round: the hull drags past them
+        // with 1,260 N, more than their grip holds, so they slide along it on the line; it holds
+        thrust.set(7f, 0f);
+        s.run(4f);
+        assertEquals(1, java.util.Collections.frequency(events, EvaEvent.Kind.LOST_GRIP),
+                "thrown off once, not caught and thrown off again: " + events);
+        assertFalse(events.contains(EvaEvent.Kind.CAUGHT_HULL), "no taking hold of a hull dragging past that hard: " + events);
+        assertEquals(EvaComponent.Phase.FREE, eva().phase);
+        assertTrue(eva().tethered, "the line holds");
+        assertTrue(eva().tension > 0.5f * 7f * EvaSystem.MASS, "and takes their weight in the burn: " + eva().tension);
+        thrust.set(0f, 0f);
+        for (int i = 0; i < 300 && !events.contains(EvaEvent.Kind.CAUGHT_HULL); i++) s.run(0.1f);
+        assertEquals(1, java.util.Collections.frequency(events, EvaEvent.Kind.CAUGHT_HULL), "they take hold once it is over: " + events);
+    }
+
+    @Test
+    void aFullBurnAlongTheHullPartsTheLine() {
+        out();
+        // 12 m/s2, the corvette's main engine: 2,160 N on the line, less what the hull's rub takes
+        thrust.set(12f, 0f);
+        for (int i = 0; i < 60 && eva().tethered; i++) s.run(0.05f);
+        assertTrue(events.contains(EvaEvent.Kind.TETHER_SNAPPED), "the line parted: " + events);
+        assertEquals(1, java.util.Collections.frequency(events, EvaEvent.Kind.LOST_GRIP), "thrown off: " + events);
+    }
+
+    @Test
+    void aShortHardBurnPartsTheLineSoTheyComeBackInAndGoOutAgainOnANewOne() {
+        out();
+        thrust.set(0f, 15f);
+        for (int i = 0; i < 100 && !events.contains(EvaEvent.Kind.TETHER_SNAPPED); i++) s.run(0.05f);
+        thrust.set(0f, 0f);
+        assertTrue(events.contains(EvaEvent.Kind.TETHER_SNAPPED), "the line parted: " + events);
+        assertFalse(eva().tethered);
+        s.run(1f);
+        assertTrue(eva().returning, "untethered, they make for the airlock rather than finish the job");
+        for (int i = 0; i < 3000 && !events.contains(EvaEvent.Kind.BACK); i++) s.run(0.1f);
+        assertTrue(events.contains(EvaEvent.Kind.BACK), "back in: " + events);
+        assertTrue(events.contains(EvaEvent.Kind.CAUGHT_HULL), "caught hold of the hull on the way: " + events);
+        assertFalse(events.contains(EvaEvent.Kind.LEFT_BEHIND));
+        assertFalse(EvaRepairTest.block(s).works(s.grid), "the job left for later");
+        for (int i = 0; i < 6000 && !EvaRepairTest.block(s).works(s.grid); i++) s.run(0.1f);
+        assertTrue(EvaRepairTest.block(s).works(s.grid), "done on a second trip out, on a new line");
+        assertEquals(2, java.util.Collections.frequency(events, EvaEvent.Kind.OUT), "out twice: " + events);
     }
 
     @Test

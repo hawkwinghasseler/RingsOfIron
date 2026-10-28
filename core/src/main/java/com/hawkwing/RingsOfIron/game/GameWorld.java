@@ -243,6 +243,8 @@ public class GameWorld implements Disposable {
     public final CrewMedical medical;
     /** A ship docked with a hole to space: the station warns, and warp waits. */
     public final BerthVenting berthVenting;
+    /** The player's crew out on EVA: warp waits for them, and notices say what befalls them. */
+    public final Spacewalks spacewalks;
     /** The player's figure suiting up at battle stations and in thin air. */
     public final CaptainSafety captain;
     /** Warnings before the player's people run out of air. */
@@ -604,6 +606,7 @@ public class GameWorld implements Disposable {
         damageControl = new DamageControl(this);
         medical = new CrewMedical(this);
         berthVenting = new BerthVenting(this);
+        spacewalks = new Spacewalks(this);
         captain = new CaptainSafety(this);
         air = new AirWatch(this);
         infirmary = new StationInfirmary(this);

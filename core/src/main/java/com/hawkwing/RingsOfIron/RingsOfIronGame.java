@@ -231,6 +231,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     /** The craft whose decks the interior view draws. */
     private final Array<Entity> decks = new Array<>();
+    /** No decks: in the exterior view every craft is seen from outside. */
+    private static final Array<Entity> NO_DECKS = new Array<>();
     private final Vector2 followAt = new Vector2();
     private final Vector2 tmp = new Vector2();
     /** Furniture being put down on the deck from the yard window, or null. */
@@ -1467,6 +1469,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         snow.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
         exterior.drawBodies(viewports.getWorldCamera());
         exterior.drawFlight(viewports.getWorldCamera(), px, Gdx.graphics.getDeltaTime());
+        // Crew out on EVA, on the hulls and off them
+        deckRenderer.drawOutside(NO_DECKS, viewports.getWorldCamera(), Gdx.graphics.getDeltaTime());
         // Every planned burn's direction, and the corridor into a docking port
         navOverlay.draw(shapes, px);
         // Navigation lights and the glow of running systems, a few pixels across at least
@@ -1487,6 +1491,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         exterior.setLightsOn(false);
         exterior.drawBodies(viewports.getWorldCamera(), delta, decks);
         exterior.setLightsOn(lightsOn);
+        // ...and the crew out on EVA from those other craft
+        deckRenderer.drawOutside(decks, viewports.getWorldCamera(), delta);
     }
 
     /** Where the avatar stands, world meters, or null when it is aboard nothing in the bubble. */
@@ -1613,6 +1619,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
             font.setColor(Color.LIGHT_GRAY);
             font.draw(batch, bridge, left, below);
             below -= 20f;
+        }
+        // Crew outside: a burn can throw them off, so the helm needs to know
+        String eva = world.spacewalks.statusLine();
+        if (eva != null) {
+            font.setColor(Color.ORANGE);
+            below = statusLine(eva, left, below);
         }
         statusBottom = below;
         batch.end();

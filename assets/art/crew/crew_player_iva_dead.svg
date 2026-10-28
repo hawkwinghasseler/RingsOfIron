@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="60" height="64" viewBox="-30 -32 60 64">
+  <title>crew_player_iva_dead: the player's body in a pressure suit, limbs thrown out, head toward +y</title>
+  <g id="base">
+    <rect x="-9.5" y="6" width="8" height="20" rx="4" fill="#848b92" stroke="#10141a" stroke-width="1.5" transform="rotate(16 -5.5 6)"/>
+    <rect x="-10" y="23" width="9" height="7" rx="3" fill="#3a3f47" stroke="#10141a" stroke-width="1.2" transform="rotate(16 -5.5 6)"/>
+    <rect x="1.5" y="6" width="8" height="20" rx="4" fill="#848b92" stroke="#10141a" stroke-width="1.5" transform="rotate(-16 5.5 6)"/>
+    <rect x="1" y="23" width="9" height="7" rx="3" fill="#3a3f47" stroke="#10141a" stroke-width="1.2" transform="rotate(-16 5.5 6)"/>
+    <path d="M-11,-6 L-26,2" fill="none" stroke="#10141a" stroke-width="8.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-11,-6 L-26,2" fill="none" stroke="#848b92" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="-26" cy="2" r="3.3" fill="#585d62" stroke="#10141a" stroke-width="1"/>
+    <path d="M11,-6 L24,-14" fill="none" stroke="#10141a" stroke-width="8.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M11,-6 L24,-14" fill="none" stroke="#848b92" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="24" cy="-14" r="3.3" fill="#585d62" stroke="#10141a" stroke-width="1"/>
+    <rect x="-11.5" y="-12" width="23" height="21" rx="6" fill="#a3a9af" stroke="#10141a" stroke-width="2"/>
+    <rect x="-11" y="-9" width="5" height="3" rx="1" fill="#6fa380"/>
+    <rect x="6" y="-9" width="5" height="3" rx="1" fill="#6fa380"/>
+    <rect x="-11.5" y="4" width="23" height="3" fill="#8a949f" stroke="#10141a" stroke-width="1"/>
+    <circle cx="0" cy="-19" r="7.5" fill="#a99a92" stroke="#10141a" stroke-width="1.8"/>
+    <path d="M-7.4,-17.5 C-7.8,-24 -4,-26.8 0,-26.8 C4,-26.8 7.8,-24 7.4,-17.5 C5.5,-22 3,-23.5 0,-23.5 C-3,-23.5 -5.5,-22 -7.4,-17.5 Z" fill="#644d3c" stroke="#10141a" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="-4.5" y1="-18.5" x2="-1.8" y2="-18" stroke="#10141a" stroke-width="1.1" stroke-linecap="round"/>
+    <line x1="1.8" y1="-18" x2="4.5" y2="-18.5" stroke="#10141a" stroke-width="1.1" stroke-linecap="round"/>
+    <circle cx="0" cy="-19" r="10.6" fill="none" stroke="#5d6670" stroke-width="2.4"/>
+    <circle cx="0" cy="-19" r="10" fill="#cfeaff" stroke="#10141a" stroke-width="1.5" fill-opacity="0.3"/>
+    <path d="M-6.2,-24.5 C-4,-27.6 -0.5,-28.8 2.5,-28.5" fill="none" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.75"/>
+  </g>
+  <g id="meta">
+    <circle id="collider" cx="0" cy="0" r="19.2" fill="none" stroke="none"/>
+  </g>
+</svg>

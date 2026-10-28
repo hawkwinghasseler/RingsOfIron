@@ -59,7 +59,8 @@ import java.util.WeakHashMap;
  * {@link Suit#JET_DV} of delta-v) flies them to where they are going, or back to the nearest point
  * of the hull after a fall; without fuel they pull themselves in hand over hand along the line.
  * Hitting the hull stops the part of their speed into it and some along it; past {@link
- * #HURT_SPEED} it wounds them, and slow enough they catch hold.
+ * #HURT_SPEED} it wounds them, and slow enough they catch hold, unless it is dragging past them
+ * harder than their grip could hold (a burn still going): then they hang on the line until it eases.
  *
  * <h2>The tether</h2>
  * The line runs {@link #LINE_MAX} at most from a reel at the airlock's door, and is a rope of
@@ -118,8 +119,11 @@ public class EvaSystem extends FixedLogicSystem {
     public static final float LINE_K = 4000f;
     /** The line's damping as it stretches, N s/m: a crew member on its end swings to rest without bouncing much. */
     public static final float LINE_C = 1200f;
-    /** The line's breaking strength, newtons (on its stretch): a little over a g on a crew member. */
-    public static final float LINE_BREAK = 2000f;
+    /**
+     * The line's breaking strength, newtons (on its stretch): a little under a g on a crew member. A
+     * corvette's full burn parts it; a short burn astern, or the swing it starts, doesn't.
+     */
+    public static final float LINE_BREAK = 1600f;
     /** The reel locks when the line is drawn out faster than this, m/s. */
     public static final float REEL_LOCK_SPEED = 1.5f;
     /** The reel takes up slack, and winches in a crew member who can't climb, at this speed, m/s. */
@@ -139,6 +143,8 @@ public class EvaSystem extends FixedLogicSystem {
     static final float STRETCH_TAU = 0.05f;
     /** Share of the rope's swing, relative to the hull beside it, kept each tick. */
     static final float ROPE_KEEP = 0.97f;
+    /** Seconds over which the ship's acceleration is smoothed, for whether a crew member off the hull can catch hold of it. */
+    static final float DRAG_TAU = 0.1f;
     /** Seconds between looks for airlocks a load caught part way through a cycle. */
     static final float SCAN_SECONDS = 1f;
     /** Within this of the reel, meters, a crew member winched in is pulled into the airlock. */
@@ -356,11 +362,44 @@ public class EvaSystem extends FixedLogicSystem {
 
     @Override
     protected void catchUp(long ticks, double seconds) {
-        // Rails warp waits for crew to be in (the game's guard), so only idle airlocks finish their cycles
+        // Rails warp waits while the player's crew are out (the game's guard). Anyone else's are back
+        // in by the end of the skipped time, their job put down: a ship jumping along its orbit would
+        // leave them where they were
+        if (crew != null) {
+            for (int i = 0; i < crew.size(); i++) bringIn(crew.get(i));
+            for (Entity e : ending) finish(e);
+            ending.clear();
+            for (Entity e : leaving) leftBehind(e);
+            leaving.clear();
+        }
         for (int i = 0; i < 64 && updateAirlocks((float) Math.min(seconds, Airlock.DOOR_SECONDS * 4f)); i++) {
             seconds -= Airlock.DOOR_SECONDS * 4f;
             if (seconds <= 0) break;
         }
+    }
+
+    /**
+     * Puts {@code e}, on an EVA, back in their airlock's chamber with it over, for a time skip; one
+     * with no port left to come in by is left behind.
+     */
+    private void bringIn(Entity e) {
+        EvaComponent eva = evaM.get(e);
+        if (eva == null) return;
+        GridPositionComponent p = service.position(e);
+        ShipGridComponent grid = service.grid(p.ship);
+        if (grid != null && eva.portMount == null && eva.port >= 0 && eva.port < grid.mounts.size) eva.portMount = grid.mounts.get(eva.port);
+        if (grid == null || eva.portMount == null) {
+            (eva.outside() ? leaving : ending).add(e);
+            return;
+        }
+        if (eva.outside()) {
+            DockingPortLayout.chamberTile(eva.portMount, tile);
+            eva.rope = null;
+            p.stop();
+            p.setTile(tile[0], tile[1]);
+        }
+        service.releaseTask(e);
+        ending.add(e);
     }
 
     /** Finds ports a load left part way through a cycle, so their airlocks bring them back to rest. */
@@ -464,6 +503,21 @@ public class EvaSystem extends FixedLogicSystem {
                 break;
         }
         frame.read(p.ship, grid);
+        // Their ship's body made again (the bubble rebuilt) or new to it (come into the bubble): where
+        // they are in the world is worked out again from where they are relative to the ship
+        if (frame.body != eva.frameBody) eva.worldValid = eva.shipVValid = false;
+        eva.frameBody = frame.body;
+        // The ship's acceleration, smoothed: what a hand on its hull has to hold against
+        if (eva.shipVValid) {
+            float k = Math.min(1f, dt / DRAG_TAU);
+            eva.shipAx += ((frame.vx - eva.shipVx) / dt - eva.shipAx) * k;
+            eva.shipAy += ((frame.vy - eva.shipVy) / dt - eva.shipAy) * k;
+            eva.shipAlpha += ((frame.omega - eva.shipOmega) / dt - eva.shipAlpha) * k;
+        }
+        eva.shipVx = frame.vx;
+        eva.shipVy = frame.vy;
+        eva.shipOmega = frame.omega;
+        eva.shipVValid = true;
         HullSurface hull = hull(grid);
         if (!eva.worldValid) initWorld(eva);
         if (eva.regrab > 0f) eva.regrab -= dt;
@@ -517,6 +571,7 @@ public class EvaSystem extends FixedLogicSystem {
         float fromX = eva.rx, fromY = eva.ry;
         if (crawl(eva, c, hull, dt)) {
             // Off on a hop: the jetpack takes over from the hull point's motion
+            eva.slideX = eva.slideY = 0f;
             frame.toWorld(eva.rx, eva.ry, a);
             frame.velocityAt(a[0], a[1], b);
             eva.wx = a[0];
@@ -526,6 +581,16 @@ public class EvaSystem extends FixedLogicSystem {
             eva.phase = EvaComponent.Phase.FREE;
             eva.hullVValid = false;
             return;
+        }
+        // Just caught hold short of the hug point: they pull themselves over to it
+        if (eva.slideX != 0f || eva.slideY != 0f) {
+            float len = (float) Math.sqrt(eva.slideX * eva.slideX + eva.slideY * eva.slideY);
+            float ease = CRAWL_SPEED / hull.tileSize() * dt;
+            float k = len > ease ? (len - ease) / len : 0f;
+            eva.slideX *= k;
+            eva.slideY *= k;
+            eva.rx += eva.slideX;
+            eva.ry += eva.slideY;
         }
         eva.rvx = (eva.rx - fromX) / dt;
         eva.rvy = (eva.ry - fromY) / dt;
@@ -575,6 +640,7 @@ public class EvaSystem extends FixedLogicSystem {
 
     private void letGo(Entity e, EvaComponent eva, GridPositionComponent p, float accel) {
         eva.phase = EvaComponent.Phase.FREE;
+        eva.slideX = eva.slideY = 0f;
         eva.hop = false;
         eva.path.clear();
         eva.stepDone = 0f;
@@ -730,12 +796,22 @@ public class EvaSystem extends FixedLogicSystem {
             fx += ax * MASS;
             fy += ay * MASS;
             eva.jetting = spend > 0f;
+            if (eva.jetting) {
+                frame.vecToTiles(ax, ay, c4);
+                float jet = (float) Math.sqrt(c4[0] * c4[0] + c4[1] * c4[1]);
+                eva.jetX = c4[0] / jet;
+                eva.jetY = c4[1] / jet;
+            }
             eva.facing = (float) Math.atan2(ry, rx) - frame.angle;
-            // There, and slow enough to take hold
+            // There, slow enough to take hold, and the hull not dragging past their grip
             float rel = (float) Math.sqrt(rvx * rvx + rvy * rvy);
-            if (dist < 0.3f && rel < GRAB_SPEED && eva.regrab <= 0f) {
-                grab(e, eva, target[0], target[1], hull);
-                return;
+            if (dist < 0.3f && rel < GRAB_SPEED && eva.regrab <= 0f && hull.surface(v2.x, v2.y, q)) {
+                frame.vecToWorld(q[2], q[3], c4);
+                float len = (float) Math.sqrt(c4[0] * c4[0] + c4[1] * c4[1]);
+                if (canHold(eva, a[0], a[1], c4[0] / len, c4[1] / len)) {
+                    grab(e, eva, target[0], target[1], hull);
+                    return;
+                }
             }
         }
         eva.vx += fx / MASS * dt;
@@ -797,10 +873,26 @@ public class EvaSystem extends FixedLogicSystem {
             if (impact > HURT_SPEED) service.applyDamage(e, (impact - HURT_SPEED) * HURT_PER_MPS, CrewDamageSink.DamageCause.IMPACT);
         }
         float rel = (float) Math.sqrt(rvx * rvx + rvy * rvy);
-        if (c.isConscious() && eva.regrab <= 0f && rel < GRAB_SPEED) {
+        if (c.isConscious() && eva.regrab <= 0f && rel < GRAB_SPEED && canHold(eva, eva.wx, eva.wy, nwx, nwy)) {
             int[] ring = hull.nearest(px, py);
             if (ring != null) grab(e, eva, ring[0], ring[1], hull);
         }
+    }
+
+    /**
+     * True if a crew member could keep hold of the hull at world point ({@code wx}, {@code wy}), its
+     * outward normal ({@code nx}, {@code ny}): the force that would keep them moving with it, but for
+     * the hull's push, within their grip. Their line doesn't count: it pulls one way and then another
+     * as they swing, so nobody can lean on it to take hold. A hull dragging harder than that past them
+     * (a hard burn still going) can't be caught; they hang on the line until it eases.
+     */
+    private boolean canHold(EvaComponent eva, float wx, float wy, float nx, float ny) {
+        float rx = wx - frame.cx, ry = wy - frame.cy, w2 = frame.omega * frame.omega;
+        float fx = MASS * (eva.shipAx - eva.shipAlpha * ry - w2 * rx);
+        float fy = MASS * (eva.shipAy + eva.shipAlpha * rx - w2 * ry);
+        float fn = fx * nx + fy * ny;
+        float tx = fx - fn * nx, ty = fy - fn * ny, pull = Math.min(0f, fn);
+        return tx * tx + ty * ty + pull * pull <= GRIP * GRIP;
     }
 
     private void grab(Entity e, EvaComponent eva, int x, int y, HullSurface hull) {
@@ -814,7 +906,13 @@ public class EvaSystem extends FixedLogicSystem {
         eva.hullVValid = false;
         eva.jetting = false;
         eva.climbing = false;
+        // Where they took hold, short of the ring tile's hug point
+        frame.toTiles(eva.wx, eva.wy, a);
         settle(eva, hull);
+        eva.slideX = a[0] - eva.rx;
+        eva.slideY = a[1] - eva.ry;
+        eva.rx = a[0];
+        eva.ry = a[1];
         if (eva.fell) {
             eva.fell = false;
             emit(EvaEvent.Kind.CAUGHT_HULL, e, service.position(e).ship, 0f);
@@ -1008,7 +1106,10 @@ public class EvaSystem extends FixedLogicSystem {
         float dx = (float) s.deltaX, dy = (float) s.deltaY, dvx = (float) s.deltaVx, dvy = (float) s.deltaVy;
         for (int i = 0; i < crew.size(); i++) {
             EvaComponent eva = evaM.get(crew.get(i));
-            if (eva == null || !eva.worldValid) continue;
+            if (eva == null) continue;
+            eva.shipVx -= dvx;
+            eva.shipVy -= dvy;
+            if (!eva.worldValid) continue;
             eva.wx -= dx;
             eva.wy -= dy;
             eva.vx -= dvx;
