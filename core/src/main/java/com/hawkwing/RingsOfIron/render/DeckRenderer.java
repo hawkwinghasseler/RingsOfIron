@@ -439,6 +439,36 @@ public final class DeckRenderer {
     }
 
     /**
+     * Fills where {@code decks} are drawn under {@code camera}: every tile that is not void, a
+     * little past its edges so the hull walls on them are inside. For marking the decks in the
+     * stencil buffer, so the light map outside ({@link ExteriorRenderer}) keeps off them.
+     */
+    public void footprints(Array<Entity> decks, OrthographicCamera camera) {
+        shapes.setProjectionMatrix(camera.combined);
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        for (Entity ship : decks) {
+            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+            if (g == null || !pose.of(ship, at, angle)) continue;
+            shapes.identity();
+            shapes.translate(at.x, at.y, 0f);
+            shapes.rotate(0f, 0f, 1f, angle[0] * MathUtils.radiansToDegrees);
+            float s = g.tileSize, half = s * (0.5f + FOOTPRINT_MARGIN);
+            for (int ty = 0; ty < g.height; ty++) {
+                for (int tx = 0; tx < g.width; tx++) {
+                    if (g.getTile(tx, ty) == null || g.getTile(tx, ty).isVoid()) continue;
+                    Vector2 p = g.tileToLocal(tx, ty);
+                    shapes.rect(p.x - half, p.y - half, 2f * half, 2f * half);
+                }
+            }
+        }
+        shapes.end();
+        shapes.identity();
+    }
+
+    /** How far past a tile's edge its footprint reaches, in tiles. */
+    private static final float FOOTPRINT_MARGIN = 0.15f;
+
+    /**
      * {@code e}'s figure at ({@code x}, {@code y}), the deck's local meters, in a begun batch: in
      * their suit if they wear one, and out on EVA crawling or floating, turned the way they go.
      */
