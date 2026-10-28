@@ -9,6 +9,7 @@ import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.PolygonSkin;
 
 /**
  * How far out a captured active collar has to stay so the two hulls clear each other once
@@ -20,6 +21,13 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 final class CollarReach {
     /** Overlap of two hulls in the latched pose that still counts as clear, meters: hulls only just touching. */
     static final float TOLERANCE = 0.05f;
+    /**
+     * How far each hull's drawn outline (and what Box2D collides on) stands out past its fixture,
+     * meters: the fixtures are inset by the skin ({@link PolygonSkin}). Two starter corvettes'
+     * fixtures cleared by 2 cm, so the collar drew all the way in, yet the fins touched the other
+     * hull in the game and held the collar a tile out.
+     */
+    private static final float SKIN = PolygonSkin.SKIN;
     private static final float M = PhysicsManager.METERS_PER_UNIT;
 
     private CollarReach() {
@@ -64,7 +72,7 @@ final class CollarReach {
                 moved[i + 1] = oy + s * a[i] + c * a[i + 1];
             }
             for (float[] b : otherHull) {
-                if (overlap(moved, b) > TOLERANCE) return true;
+                if (overlap(moved, b) + 2f * SKIN > TOLERANCE) return true;
             }
         }
         return false;
