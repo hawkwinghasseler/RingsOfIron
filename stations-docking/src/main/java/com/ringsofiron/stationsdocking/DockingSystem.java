@@ -736,7 +736,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
                 lock(e, index, p);
                 return;
             }
-            p.guide.setMotorSpeed(0f);
+            drive(e, p, 0f);
             // Home but held turned (the hulls touching, by something not foreseen): out a tile more
             float tile = tileSize(e);
             if ((p.stalled += dt) > DockingTuning.STALL_TIME && p.lockAt + tile <= CollarReach.maxTiles(p, tile) * tile + 1e-4f) {
@@ -748,7 +748,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         }
         if (short_) {
             // Caught nearer than it locks: out again to a whole tile
-            p.guide.setMotorSpeed(Math.min(DockingTuning.CONTRACT_SPEED, 2f * (p.lockAt - p.extension) + 0.02f) * U);
+            drive(e, p, Math.min(DockingTuning.CONTRACT_SPEED, 2f * (p.lockAt - p.extension) + 0.02f));
             return;
         }
         if (p.extension < p.stalledAt - DockingTuning.STALL_PROGRESS) {
@@ -763,7 +763,34 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             p.stalledAt = p.extension;
         }
         float speed = Math.min(DockingTuning.CONTRACT_SPEED, 2f * (p.extension - p.lockAt) + 0.02f);
-        p.guide.setMotorSpeed(-speed * U);
+        drive(e, p, -speed);
+    }
+
+    /**
+     * Brings the captured collar's extension to change at {@code rate} m/s (negative drawing in):
+     * a push along the port's axis at the middle of each craft's mass, easing in over
+     * {@link DockingTuning#DRIVE_TIME} and no harder than {@link DockingTuning#DRIVE_FORCE} of the
+     * break force. The slider only carries the head; were it the motor, its pull would come at the
+     * port, and on a ship whose port is meters from its middle it turned the ship harder than the
+     * tilt spring could hold it square (a ship latched right after undocking swung in a few degrees).
+     */
+    private void drive(Entity e, DockingPort p, float rate) {
+        Body own = bodyOf(e);
+        Entity other = p.partnerUuid == null ? null : uuids.getEntity(p.partnerUuid);
+        Body far = other == null ? null : bodyOf(other);
+        if (own == null || far == null) return;
+        boolean dOwn = own.getType() == BodyDef.BodyType.DynamicBody, dFar = far.getType() == BodyDef.BodyType.DynamicBody;
+        if (!dOwn && !dFar) return;
+        float mOwn = dOwn ? PhysicsManager.getMass(own) : 0f, mFar = dFar ? PhysicsManager.getMass(far) : 0f;
+        float mass = dOwn && dFar ? mOwn * mFar / (mOwn + mFar) : Math.max(mOwn, mFar);
+        // The extension grows as the craft draw apart along the port's axis
+        float now = p.guide.getJointSpeed() * M;
+        float push = MathUtils.clamp(mass * (rate - now) / DockingTuning.DRIVE_TIME,
+                -DockingTuning.DRIVE_FORCE * p.tuning().breakForce, DockingTuning.DRIVE_FORCE * p.tuning().breakForce);
+        Vector2 n = worldVector(own, p.normalX, p.normalY, v6);
+        // Pushing the craft apart along n lengthens the collar
+        if (dOwn) PhysicsManager.applyForce(own, -n.x * push, -n.y * push);
+        if (dFar) PhysicsManager.applyForce(far, n.x * push, n.y * push);
     }
 
     /** A craft's tile size, meters: what its collar locks out in whole numbers of. 1 for a craft without a grid. */
@@ -914,9 +941,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         pa.capture = physics.getWorld().createJoint(weld);
         destroyJoint(pa.spring);
         pa.spring = null;
-        pa.guide.setMaxMotorForce(0.5f * pa.tuning().breakForce * U);
-        pa.guide.setMotorSpeed(0f);
-        pa.guide.enableMotor(true);
+        // The slider runs free: drive() draws the craft in
+        pa.guide.enableMotor(false);
         latchRecords(a, portA, pa, b, portB, pb, DockingPort.State.CAPTURED, permittedBetween(pa, pb, a, b));
         // How far out the collar will lock: in all the way unless the hulls would meet
         pa.lockAt = CollarReach.lockExtension(bodyOf(a), pa, other, pb, tileSize(a));

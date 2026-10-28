@@ -254,6 +254,16 @@ public final class ArtNames {
         return "components/docking_collar_" + size.name().toLowerCase(Locale.ROOT) + (powered ? "" : "_unpowered");
     }
 
+    /** An active port's collar head, out on its tunnel: origin at its middle, its face toward +x. */
+    public static String collarHead(MountFootprint.MountSize size, boolean powered) {
+        return "components/docking_collar_head_" + size.name().toLowerCase(Locale.ROOT) + (powered ? "" : "_unpowered");
+    }
+
+    /** A tile of the tunnel from a port's collar out to its head: origin at the collar end, running along +x. */
+    public static String collarTunnel(MountFootprint.MountSize size) {
+        return "components/docking_tunnel_" + size.name().toLowerCase(Locale.ROOT);
+    }
+
     public static String fire(Tile.FireSize size) {
         return size == Tile.FireSize.NONE ? null : "effects/fire_" + size.name().toLowerCase(Locale.ROOT);
     }

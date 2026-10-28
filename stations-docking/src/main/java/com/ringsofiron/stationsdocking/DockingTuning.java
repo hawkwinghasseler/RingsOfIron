@@ -32,6 +32,10 @@ public final class DockingTuning {
     public static final float EXTEND_SPEED = 0.5f;
     /** How fast a captured collar draws the craft together, m/s. */
     public static final float CONTRACT_SPEED = 0.3f;
+    /** Time constant a captured collar brings the craft to the speed it wants in, seconds. */
+    public static final float DRIVE_TIME = 0.5f;
+    /** The most force a captured collar draws the craft in with, as a share of the break force. */
+    public static final float DRIVE_FORCE = 0.5f;
     /** Collar spring stiffness and damping, as Box2D frequency (Hz) and damping ratio. */
     public static final float SPRING_HZ = 4f, SPRING_DAMPING = 0.7f;
     /** Farthest an active collar head tilts off its port's axis, radians (20 degrees). */

@@ -50,6 +50,12 @@ art/components/cargo_s_destroyed.svg
 art/components/cargo_xl.svg
 art/components/cargo_xl_damaged.svg
 art/components/cargo_xl_destroyed.svg
+art/components/docking_collar_head_l.svg
+art/components/docking_collar_head_l_unpowered.svg
+art/components/docking_collar_head_m.svg
+art/components/docking_collar_head_m_unpowered.svg
+art/components/docking_collar_head_s.svg
+art/components/docking_collar_head_s_unpowered.svg
 art/components/docking_collar_l.svg
 art/components/docking_collar_l_unpowered.svg
 art/components/docking_collar_m.svg
@@ -86,6 +92,9 @@ art/components/docking_port_s_open_damaged_unpowered.svg
 art/components/docking_port_s_open_destroyed.svg
 art/components/docking_port_s_open_unpowered.svg
 art/components/docking_port_s_unpowered.svg
+art/components/docking_tunnel_l.svg
+art/components/docking_tunnel_m.svg
+art/components/docking_tunnel_s.svg
 art/components/engine_l.svg
 art/components/engine_l_damaged.svg
 art/components/engine_l_damaged_unpowered.svg
