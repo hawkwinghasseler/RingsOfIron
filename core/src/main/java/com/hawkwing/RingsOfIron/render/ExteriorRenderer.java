@@ -549,14 +549,15 @@ public final class ExteriorRenderer implements Disposable {
         Gdx.gl.glDisable(GL20.GL_STENCIL_TEST);
     }
 
-    /** {@code grid}'s tiles that are not void, filled in world meters at {@code body}'s pose. */
+    /** {@code grid}'s tiles that are deck (not void, nor an engine's casing), filled in world meters at {@code body}'s pose. */
     private void maskDeck(Body body, ShipGridComponent grid) {
         if (grid == null) return;
         Vector2 at = PhysicsManager.getPosition(body, tmp2);
         float c = MathUtils.cos(body.getAngle()), sn = MathUtils.sin(body.getAngle()), t = grid.tileSize;
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
-                if (grid.getTile(x, y).isVoid()) continue;
+                // An engine's casing is drawn as its nozzle alone, with space round it
+                if (grid.getTile(x, y).isVoid() || com.ringsofiron.interiorgrid.EngineLayout.isCasing(grid, x, y)) continue;
                 float lx = grid.gridOriginLocal.x + x * t, ly = grid.gridOriginLocal.y + y * t;
                 float x0 = at.x + c * lx - sn * ly, y0 = at.y + sn * lx + c * ly;
                 float x1 = x0 + c * t, y1 = y0 + sn * t;
