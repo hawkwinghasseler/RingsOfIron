@@ -89,25 +89,12 @@ class CaptainCareTest {
     }
 
     @Test
-    void atWarpWithLongFramesTheSuitComesOffAfterTheSameSimTime() {
-        // Safe at the berth, suited: the suit comes off once the captain has stood calm this long
-        double calmFor = CrewTasks.Idle.SUIT_OFF_DELAY + you().def.suitTime * 0.5f;
-        you().setSuited(true);
-        world.timeWarp.setWarp(10);
-        assertEquals(10, world.timeWarp.getWarp());
-        double start = world.engine.getSimSeconds();
-        // 4 frames a second at 10x: 150 ticks, 2.5 sim seconds, a frame. Counted once a frame and
-        // capped at half a second, the calm took five times as long
-        while (you().suited && world.engine.getSimSeconds() - start < calmFor * 4) world.update(0.25f);
-        assertFalse(you().suited, "the suit came off");
-        assertEquals(calmFor, world.engine.getSimSeconds() - start, 2.5 + 0.1, "within a frame of the calm time");
-    }
-
-    @Test
     void towedInVentedAndWarpedTheCaptainIsNeverWalkedAshore() {
         // A lost fight's ship: out from the berth, holed past holding, then towed in
         world.docking.undock(game.player);
         run(60);
+        // The player put a suit on before the fight
+        you().setSuited(true);
         holeTheCabin();
         assertTrue(runUntil(120f, this::vented), "the cabin vented");
         run(60 * 30);

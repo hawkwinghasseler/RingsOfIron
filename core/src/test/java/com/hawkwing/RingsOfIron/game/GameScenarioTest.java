@@ -402,6 +402,9 @@ class GameScenarioTest {
         gun.setTarget(game.raider);
         for (int i = 0; i < 60; i++) world.update(FRAME);
         game.provokeRaider();
+        // The captain in a suit for the fight, as the game used to put them in one at battle stations
+        // (this fight's course turns on who aboard takes the lockers' suits)
+        world.crew.crew(game.avatar).setSuited(true);
         NpcCombatComponent combat = game.raider.getComponent(NpcCombatComponent.class);
         assertNotNull(combat, "the raider has a combat pilot");
         assertSame(game.player, combat.target);

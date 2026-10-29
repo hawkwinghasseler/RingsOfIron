@@ -81,8 +81,9 @@ How wounds work aboard is in `ai-crew/Design.md` section 5. On the game's side (
 ### The captain in a holed ship (round 6)
 The player's own figure has no behaviour tree, so `CaptainSafety` does for it what the crew's tree does for them:
 
-- **Battle stations:** while the ship is at battle stations with suits on (the crew window's toggle), the figure suits up too, in the crew's suit time, and keeps the suit on; calm again on air fit to breathe, it takes it off as the crew do.
-- **Losing air:** on a tile whose air is no longer fit to breathe the figure pulls its suit on, the player hears "The air here is going: you pull your suit on. Get to a pressurised room", and a hint ("walk to air") stays up while it lasts. Walking to air is the player's to do; the suit's air runs out.
+- **Suits are the player's to put on:** the figure never suits up or out by itself, at battle stations or in thin air. E at a suit locker puts a suit on or hangs it up, in the crew's suit time.
+- **Losing air:** on a tile whose air is no longer fit to breathe the player hears "The air here is going: get to a pressurised room" (unsuited: "..., or a suit locker to put on a suit"), and a hint ("walk to air") stays up while it lasts. Walking to air is the player's to do; the suit's air runs out.
+- **Filling at a console:** seated at one of the ship's consoles, a worn suit fills from empty in the crew's refill time (20 s).
 - **Down anyway:** the crew carry the figure to the nearest breathable tile like any casualty (`RescueTask`, priority 90, above fires and breaches), or put its suit on where it lies when nowhere aboard has air, and fill it at the ship's oxygen once it runs low (round 9). Being carried home to a station stays the last resort, when the figure dies; crew sheltering at the berth count for it (round 10).
 - The suit and its air are saved with the figure; a suit half on when the game is saved starts again after a load (a crew member's suit half on or off at work is saved, round 9), and a carry under way is set down and taken up again (as for any crew member).
 
@@ -158,7 +159,7 @@ Round 10 (part 4), the captain looked after like the crew. Round 9's real window
 - **Your suit fills at the ship's oxygen.** Suited on thin air with four minutes or less (`CaptainSafety.REFILL_AT`), the figure standing still beside an oxygen tank or a working life support fills its suit there over the crew's refill time (20 s), as a crewman does, and the player is told.
 - **The crew fill a downed captain's suit.** This already held: round 9's casualty care treats the figure as any casualty. A test now holds it.
 
-**Since removed: the game never walks the player's figure.** The walk ashore at `ASHORE_AT`, warp giving way to it, the walk home after being laid ashore, and the walk to an escape pod after an abandon-ship order are all gone, along with `CaptainAshoreProbe`. Where the figure goes is the player's alone. In a vented ship the player is still suited up at a locker, warned as the suit's air runs low (a pressure suit holds 600 s, and `AirWatch` warns at 240 s), and can fill the suit at the ship's oxygen; walking to air, ashore, or to a pod is theirs to do. A captain who goes down is still carried to air, or laid ashore, by the crew.
+**Since removed: the game never walks the player's figure.** The walk ashore at `ASHORE_AT`, warp giving way to it, the walk home after being laid ashore, and the walk to an escape pod after an abandon-ship order are all gone, along with `CaptainAshoreProbe`. Where the figure goes, and whether it wears a suit, is the player's alone. In a vented ship the player is warned as the suit's air runs low (a pressure suit holds 600 s, and `AirWatch` warns at 240 s), and can fill the suit at the ship's oxygen; walking to air, ashore, or to a pod is theirs to do. A captain who goes down is still carried to air, or laid ashore, by the crew.
 
 ## Not done here
 - A boarding fight on the interior grid: the pirates only take the cargo and credits (round 7 plan, "Still parked").

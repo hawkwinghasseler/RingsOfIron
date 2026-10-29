@@ -65,6 +65,8 @@ class BerthShelterTest {
         assertFalse(world.crew.crew(down).isConscious(), "down");
         // Holed beside every room, with no patches aboard: the cabin can't be held
         grid.patchKits = 0;
+        // The player put a suit on
+        world.crew.crew(game.avatar).setSuited(true);
         holeBesideEveryRoom(grid);
         // Ashore before a suit's air is gone
         float suitAir = world.crew.crew(game.avatar).def.suitAir;

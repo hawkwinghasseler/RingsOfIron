@@ -5,7 +5,6 @@ import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
-import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.btree.CrewTasks;
 import com.ringsofiron.interiorgrid.Furnishing;
@@ -16,39 +15,32 @@ import com.ringsofiron.uihud.systems.InteractPromptSystem;
 
 /**
  * The player's own figure in a holed ship (round 6 part 1). The crew's behaviour tree suits them up
- * at battle stations and walks them out of thin air; the player's figure has no tree, so this suits
- * it up the same way (but never walks it). Suits hang in suit lockers ({@link SuitLockers}): the figure takes one from a
- * locker within its reach, and hangs it back up in one, never anywhere else. E at a locker puts a
- * suit on or hangs it up ({@link #lockerUse}).
+ * and walks them out of thin air; the player's figure has no tree, and nothing here moves it or
+ * dresses it: where it goes, and whether it wears a suit, is the player's alone. Suits hang in suit
+ * lockers ({@link SuitLockers}): E at a locker within reach puts a suit on from it (a pressure suit
+ * first) or hangs the figure's suit up in it, over the crew's suit times ({@link #lockerUse}).
  * <ul>
- *   <li><b>Battle stations.</b> While their ship is at battle stations and the crew suit up for it
- *       ({@link ShipTaskBoardComponent#battleSuits}, the crew window's toggle), the figure standing at
- *       a locker suits up too, taking the crew's suit time, and keeps the suit on. Once calm on air
- *       fit to breathe beside a locker with room for it, it comes off again, as the crew's do.</li>
- *   <li><b>Losing air.</b> On a tile whose air is no longer fit to breathe the figure at a locker pulls
- *       a suit on (a pressure suit, or an EVA suit if that is all there is), and the player is told
- *       to get to a pressurised room (a notice once each time, and a hint while it lasts); away from
- *       one, the player is told to get to a suit locker ({@link #NO_SUIT}). The suit's air runs out;
- *       walking to air is the player's to do.</li>
+ *   <li><b>Losing air.</b> On a tile whose air is no longer fit to breathe the player is told to get
+ *       to a pressurised room, or, unsuited, to a suit locker (a notice once each time, and a hint
+ *       while it lasts). A suit's air is finite (a pressure suit holds {@code CrewDef#suitAir}
+ *       seconds of it), and {@link AirWatch} warns as it runs low.</li>
  *   <li><b>Filling the suit</b> (round 10). Suited on thin air with {@link #REFILL_AT} or less
  *       left, the figure standing still beside an oxygen tank or working life support fills its suit
  *       there over the crew's refill time, as a crewman does.</li>
+ *   <li><b>Filling at a console.</b> Seated at one of the ship's consoles ({@link SeatComponent}),
+ *       a worn suit fills from empty in the crew's refill time.</li>
  * </ul>
- * The figure is never walked anywhere: where it goes is the player's alone. A suit's air is finite
- * (a pressure suit holds {@code CrewDef#suitAir} seconds of it), so the player is warned as it runs low
- * ({@link AirWatch}) and the walk to air, or ashore, is theirs to make.
- * Should the figure go down anyway, the crew carry it to air as they would any casualty
+ * Should the figure go down, the crew carry it to air as they would any casualty
  * ({@code CrewHealthSystem} posts the rescue), and put its suit on when nowhere aboard has air. The
- * suit is saved with the figure; a suit half on when the game is saved starts again after a load. A
- * suit put on with E stays on, calm or not, until it is hung up with E.
+ * suit is saved with the figure; a suit half on when the game is saved starts again after a load.
  */
 public final class CaptainSafety {
     /** Notice text when the figure starts losing air. */
-    public static final String THIN_AIR = "The air here is going: you pull your suit on. Get to a pressurised room";
-    /** Notice text when the figure wants a suit and there is none within reach. */
-    public static final String NO_SUIT = "You need a suit: get to a suit locker";
+    public static final String THIN_AIR = "The air here is going: get to a pressurised room";
+    /** Notice text when the figure starts losing air without a suit on. */
+    public static final String NO_SUIT = "The air here is going: get to a pressurised room, or a suit locker to put on a suit";
 
-    /** Most sim seconds one update counts toward suiting up or calming down. */
+    /** Most sim seconds one update counts toward suiting up or filling the suit. */
     static final float MAX_STEP = 0.5f;
     /** Suit air left, seconds, below which standing beside the ship's oxygen fills the figure's suit: when the warning shows. */
     public static final float REFILL_AT = AirWatch.WARN_AT;
@@ -56,16 +48,12 @@ public final class CaptainSafety {
     public static final String SUIT_FILLED = "Your suit is filled from the ship's oxygen";
 
     private final GameWorld world;
-    /** Seconds spent putting the suit on or taking it off, or on calm air before taking it off, or filling it. */
-    private float suiting, calm, filling;
+    /** Seconds spent putting the suit on or taking it off, or filling it. */
+    private float suiting, filling;
     /** What the figure is doing at a suit locker, and the locker. */
     private enum AtLocker { NONE, ON, OFF }
     private AtLocker atLocker = AtLocker.NONE;
     private Furnishing locker;
-    /** Told this spell that there is no suit within reach. */
-    private boolean toldNoSuit;
-    /** The suit on was put on with E: it stays on until taken off with E, whatever the calm. */
-    private boolean kept;
     /** On thin air at the last update: told once per spell. */
     private boolean warned;
     private double last = Double.NaN;
@@ -107,7 +95,6 @@ public final class CaptainSafety {
                 if (f == null) return;
                 boolean on = !world.crew.crew(avatar()).suited;
                 startAt(on ? AtLocker.ON : AtLocker.OFF, f);
-                kept = on;
             }
         };
     }
@@ -166,7 +153,7 @@ public final class CaptainSafety {
             if (!SuitLockers.stow(locker, off)) c.wear(off);
         }
         atLocker = AtLocker.NONE;
-        suiting = calm = 0f;
+        suiting = 0f;
     }
 
     /** The player's figure, or null. */
@@ -187,64 +174,45 @@ public final class CaptainSafety {
     /** A save was loaded: what this held belonged to the game before it. */
     void loaded() {
         last = Double.NaN;
-        suiting = calm = filling = 0f;
+        suiting = filling = 0f;
         atLocker = AtLocker.NONE;
         locker = null;
-        warned = toldNoSuit = kept = false;
+        warned = false;
     }
 
     /** Once a sim tick ({@link GameWorld#tickManagers}). */
     public void update() {
         double now = world.engine.getSimSeconds();
-        // A time skip (a tow home, a jump in warp) is not time spent putting a suit on or standing calm
+        // A time skip (a tow home, a jump in warp) is not time spent putting a suit on or filling it
         float dt = Double.isNaN(last) ? 0f : (float) Math.min(MAX_STEP, Math.max(0, now - last));
         last = now;
         Entity e = avatar();
         CrewMemberComponent c = e == null ? null : world.crew.crew(e);
         if (c == null || !c.isConscious() || c.held || !c.wearsSuits()) {
-            suiting = calm = 0f;
+            suiting = 0f;
             atLocker = AtLocker.NONE;
-            warned = toldNoSuit = false;
+            warned = false;
             return;
         }
         GridPositionComponent p = world.crew.position(e);
         ShipGridComponent grid = world.crew.grid(p.ship);
         if (grid == null) return;
-        int x = p.tileX(), y = p.tileY();
-        boolean thin = !TaskRules.isBreathable(grid, x, y);
+        boolean thin = !TaskRules.isBreathable(grid, p.tileX(), p.tileY());
         fillSuit(e, c, p, grid, thin, dt);
-        ShipTaskBoardComponent board = world.crew.board(world.crew.homeOf(e));
-        boolean battle = board != null && board.battleSuits();
-        if (thin && !warned) world.notices.post(THIN_AIR, NoticeLog.Kind.WARNING);
+        fillAtConsole(e, c, dt);
+        if (thin && !warned) world.notices.post(c.suited ? THIN_AIR : NO_SUIT, NoticeLog.Kind.WARNING);
         warned = thin;
-        if (battle || thin) {
-            calm = 0f;
-            // Not out of a suit now; into one from a locker within reach
-            if (atLocker == AtLocker.OFF) atLocker = AtLocker.NONE;
-            if (!c.suited && atLocker == AtLocker.NONE) {
-                Furnishing f = lockerWithSuit(grid, p, thin);
-                if (f != null) {
-                    startAt(AtLocker.ON, f);
-                } else if (!toldNoSuit) {
-                    world.notices.post(NO_SUIT, NoticeLog.Kind.WARNING);
-                    toldNoSuit = true;
-                }
-            }
-            stepAtLocker(c, p, grid, dt);
-            return;
-        }
-        toldNoSuit = false;
-        if (!c.suited) kept = false;
-        if (!c.suited || kept || !TaskRules.isSafe(grid, x, y)) {
-            calm = 0f;
-        } else if (atLocker == AtLocker.NONE) {
-            calm += dt;
-            // Calm: hung back up in a locker within reach with room for it
-            Furnishing f = calm >= CrewTasks.Idle.SUIT_OFF_DELAY
-                    ? SuitLockers.within(grid, p.x, p.y, l -> SuitLockers.hasRoom(l, c.suitKind)) : null;
-            if (f != null) startAt(AtLocker.OFF, f);
-        }
         stepAtLocker(c, p, grid, dt);
+    }
+
+    /**
+     * Fills the suit of a figure seated at one of its ship's consoles ({@link SeatComponent}), from
+     * full in the crew's refill time: the ship's stations feed a worn suit while they are manned.
+     */
+    private void fillAtConsole(Entity e, CrewMemberComponent c, float dt) {
+        if (!c.suited || e.getComponent(SeatComponent.class) == null) return;
+        float full = c.suitCapacity();
+        c.suitAir = Math.min(full, c.suitAir + full / c.def.suitRefillTime * dt);
     }
 
     /** Fills the figure's suit standing still beside the ship's oxygen on thin air ({@link #REFILL_AT}). */
