@@ -33,6 +33,7 @@ import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
@@ -560,7 +561,7 @@ public final class ExteriorRenderer implements Disposable {
         shields.dispose();
     }
 
-    /** Marks every hull drawn this frame with 1 in the stencil buffer, the rest 0, drawing nothing. */
+    /** Marks every hull drawn this frame with 1 in the stencil buffer (not its docking collars), the rest 0, drawing nothing. */
     private void maskHulls(Matrix4 view) {
         Gdx.gl.glEnable(GL20.GL_STENCIL_TEST);
         Gdx.gl.glClearStencil(0);
@@ -579,6 +580,8 @@ public final class ExteriorRenderer implements Disposable {
             }
             for (Fixture fixture : body.getFixtureList()) {
                 if (!(fixture.getShape() instanceof PolygonShape)) continue;
+                // A docking port's collar stands out past the hull: the shield shows over it as round the rest
+                if ((fixture.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0) continue;
                 int n = PolygonSkin.outline(body, (PolygonShape) fixture.getShape(), polygon);
                 // Box2D's polygons are convex: a fan from the first corner fills one
                 for (int k = 1; k + 1 < n; k++) {
