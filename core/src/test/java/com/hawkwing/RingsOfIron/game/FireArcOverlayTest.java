@@ -82,16 +82,30 @@ class FireArcOverlayTest {
         sensor.lockedTarget = game.raider;
         for (int i = 0; i < 60; i++) world.update(FRAME);
         FireArcOverlay.Dodge d = new FireArcOverlay.Dodge();
-        assertTrue(arcs.dodge(coilgun, game.raider, new com.badlogic.gdx.math.Vector2(), d), "the raider is tracked");
+        com.badlogic.gdx.math.Vector2 muzzle = FireArcOverlay.muzzle(coilgun, world.docking.bodyOf(game.player), new com.badlogic.gdx.math.Vector2());
+        assertTrue(arcs.dodge(coilgun, muzzle, game.raider, new com.badlogic.gdx.math.Vector2(), d), "the raider is tracked");
         assertTrue(d.flight > 0f);
         float aside = com.ringsofiron.combatsys.fire.HitChance.BROADSIDE_SHARE * world.weaponControl.radiusOf(game.raider)
                 + 0.5f * world.weaponControl.evasionOf(game.raider) * d.flight * d.flight;
         assertEquals(aside, d.left.dst(d.intercept), 0.01f * aside + 0.01f);
         assertEquals(aside, d.right.dst(d.intercept), 0.01f * aside + 0.01f);
         // Square to the line of fire
-        com.badlogic.gdx.math.Vector2 fire = new com.badlogic.gdx.math.Vector2(d.intercept).sub(coilgun.muzzle);
+        com.badlogic.gdx.math.Vector2 fire = new com.badlogic.gdx.math.Vector2(d.intercept).sub(muzzle);
         com.badlogic.gdx.math.Vector2 across = new com.badlogic.gdx.math.Vector2(d.left).sub(d.right);
         assertEquals(0f, fire.nor().dot(across.nor()), 1e-3f);
+    }
+
+    @Test
+    void theArcsStayOnTheirGunsAtSpeed() {
+        WeaponMountComponent coilgun = mount("coilgun_mk1");
+        com.badlogic.gdx.physics.box2d.Body body = world.docking.bodyOf(game.player);
+        com.ringsofiron.physicsexterior.PhysicsManager.setVelocity(body, 300f, 0f);
+        for (int i = 0; i < 10; i++) world.update(FRAME);
+        com.badlogic.gdx.math.Vector2 hull = com.ringsofiron.physicsexterior.PhysicsManager.getPosition(body, new com.badlogic.gdx.math.Vector2());
+        com.badlogic.gdx.math.Vector2 onHull = new com.badlogic.gdx.math.Vector2(coilgun.hardpoint).rotateRad(body.getAngle()).add(hull);
+        com.badlogic.gdx.math.Vector2 muzzle = FireArcOverlay.muzzle(coilgun, body, new com.badlogic.gdx.math.Vector2());
+        assertEquals(0f, muzzle.dst(onHull), 0.05f, "where the hull is drawn");
+        assertTrue(coilgun.muzzle.dst(onHull) > 1f, "weapon control's muzzle trails by a tick's travel: " + coilgun.muzzle.dst(onHull));
     }
 
     @Test
