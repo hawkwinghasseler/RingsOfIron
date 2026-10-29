@@ -67,6 +67,7 @@ class RescueEdgesTest {
 
     private Rescue.Result abandonAndWait() {
         assertNull(world.abandon.order(game.player));
+        PlayerToPod.board(world, game.player);
         for (int i = 0; i < 60 / FRAME && rescues.isEmpty(); i++) world.update(FRAME);
         assertEquals(1, rescues.size(), "rescued");
         return rescues.get(0);

@@ -104,66 +104,57 @@ class CaptainCareTest {
     }
 
     @Test
-    void towedInVentedAndWarpedTheCaptainIsWalkedAshoreBeforeTheSuitRunsDry() {
+    void towedInVentedAndWarpedTheCaptainIsNeverWalkedAshore() {
         // A lost fight's ship: out from the berth, holed past holding, then towed in
         world.docking.undock(game.player);
         run(60);
         holeTheCabin();
         assertTrue(runUntil(120f, this::vented), "the cabin vented");
         run(60 * 30);
-        // At the helm, as round 10's real window was when it lost the fight
         assertNull(world.bridge.sit(com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.HELM), "seated at the helm");
         assertNull(world.rescue.tow(game.player));
         assertTrue(runUntil(30f, () -> world.docking.dockedTo(game.player) != null), "towed in and docked");
-        assertNotNull(world.bridge.seat(), "still at the helm at the berth");
-        Entity highport = world.docking.dockedTo(game.player);
         assertTrue(vented(), "still in vacuum at the berth");
         assertTrue(you().suited, "the captain is suited");
         assertSame(game.player, where().ship, "the captain is aboard");
 
-        // Two minutes of air left: the walk ashore has to come before it runs dry
+        // Low on air, at warp: the figure is the player's alone, and stays where it is
         you().suitAir = 120f;
-        // Warp at the berth, as round 9's real window did: four steps up, 10x
         for (int i = 0; i < 4; i++) world.timeWarp.step(1);
         assertEquals(10, world.timeWarp.getWarp());
-        boolean ashore = false;
-        double until = world.engine.getSimSeconds() + you().suitAir + 120;
+        int x = where().tileX(), y = where().tileY();
         com.ringsofiron.aicrew.PlayerAvatarComponent walker = game.avatar.getComponent(com.ringsofiron.aicrew.PlayerAvatarComponent.class);
-        while (world.engine.getSimSeconds() < until && you().isAlive() && !ashore) {
+        for (int i = 0; i < 60; i++) {
             // The screen clears the figure's walk from the keys before each update: no key held
             walker.moveX = walker.moveY = 0f;
             world.update(FRAME);
-            ashore |= where().ship == highport && where().walkway == null;
-            // The player keeps asking for warp: it waits while they are walked from thin air
-            if (world.timeWarp.getWarp() == 1 && !world.captain.walkingToAir()) world.timeWarp.setWarp(10);
+            assertEquals(0f, walker.moveX);
+            assertEquals(0f, walker.moveY);
         }
-        assertTrue(you().isAlive(), "the captain lives: suit " + you().suitAir + ", " + you().state);
-        assertTrue(ashore, "walked aboard Highport");
-        assertNull(world.getCareerOver());
-        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.equals(CaptainSafety.WARP_DROPS)),
-                "told why warp dropped");
+        assertSame(game.player, where().ship, "still aboard");
+        assertEquals(x, where().tileX());
+        assertEquals(y, where().tileY());
+        assertEquals(10, world.timeWarp.getWarp(), "warp is the player's too");
     }
 
     @Test
-    void upAgainInVacuumAtTheBerthTheCaptainIsWalkedAshoreThoughTheCrewKeepTheSuitFilled() {
-        // Part 6's real window on 9725213: up again at 33 s of air in a vented ship at the berth,
-        // the crew topped the suit up again and again and the captain stayed aboard in vacuum
+    void aSuitedCaptainInAVentedShipAtTheBerthIsNeverWalkedAshore() {
+        // Joe's save: docked, the ship vented, the captain suited with a few minutes of air, and the
+        // figure was walked off the ship to the station without a key pressed
         holeTheCabin();
         assertTrue(runUntil(120f, this::vented), "the cabin vented");
-        Entity highport = world.docking.dockedTo(game.player);
         world.bridge.stand();
         you().setSuited(true);
-        you().suitAir = 33f;
+        you().suitAir = 124f;
+        int x = where().tileX(), y = where().tileY();
         com.ringsofiron.aicrew.PlayerAvatarComponent walker = game.avatar.getComponent(com.ringsofiron.aicrew.PlayerAvatarComponent.class);
-        boolean ashore = false;
-        for (int i = 0; i < 180f / FRAME && !ashore && you().isAlive(); i++) {
+        for (int i = 0; i < 20f / FRAME; i++) {
             walker.moveX = walker.moveY = 0f;
-            // A crewman fills the suit a few seconds into the walk
-            if (i == (int) (3f / FRAME)) you().suitAir = 407f;
             world.update(FRAME);
-            ashore = where().ship == highport && where().walkway == null;
         }
-        assertTrue(ashore, () -> "walked aboard Highport: on " + PlayerDocking.name(where().ship) + ", suit " + you().suitAir);
+        assertSame(game.player, where().ship, () -> "still aboard: on " + PlayerDocking.name(where().ship));
+        assertEquals(x, where().tileX());
+        assertEquals(y, where().tileY());
         assertTrue(you().isAlive());
     }
 
@@ -200,18 +191,16 @@ class CaptainCareTest {
         assertTrue(com.ringsofiron.aicrew.TaskRules.isSafe(there, p.tileX(), p.tileY()),
                 "laid where they can breathe: on " + PlayerDocking.name(p.ship));
         assertSame(highport, p.ship, "ashore, where the crew shelter");
-        assertTrue(world.captain.ashore(), "to be walked home once the ship holds air");
     }
 
     @Test
-    void ashoreAtTheBerthIsKeptThroughASave(@org.junit.jupiter.api.io.TempDir Path dir) {
+    void laidAshoreAtTheBerthIsKeptThroughASave(@org.junit.jupiter.api.io.TempDir Path dir) {
         holeTheCabin();
         assertTrue(runUntil(120f, this::vented), "the cabin vented");
         Entity highport = world.docking.dockedTo(game.player);
         world.crew.applyDamage(game.avatar, 10_000f, DamageCause.PENETRATOR);
         run(2);
         assertSame(highport, where().ship, "laid ashore");
-        assertTrue(world.captain.ashore());
         com.badlogic.gdx.files.FileHandle file = new com.badlogic.gdx.files.FileHandle(dir.resolve("ashore.json").toFile());
         assertNull(game.quickSave(file));
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
@@ -222,11 +211,6 @@ class CaptainCareTest {
             for (int i = 0; i < 3; i++) fresh.update(FRAME);
             GridPositionComponent p = fresh.crew.position(loaded.avatar);
             assertSame(fresh.docking.dockedTo(loaded.player), p.ship, "still ashore after a load");
-            assertTrue(fresh.captain.ashore(), "and still to be walked home");
-            // Loaded again over a game where the figure was aboard: nothing stale is kept
-            game.quickLoad(file);
-            for (int i = 0; i < 3; i++) world.update(FRAME);
-            assertTrue(world.captain.ashore());
         } finally {
             fresh.dispose();
         }

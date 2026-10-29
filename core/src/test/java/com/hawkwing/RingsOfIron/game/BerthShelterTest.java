@@ -54,7 +54,7 @@ class BerthShelterTest {
     }
 
     @Test
-    void aShipThatCannotHoldItsAirAtTheBerthSendsItsCaptainAndCasualtyAshore() {
+    void aShipThatCannotHoldItsAirAtTheBerthSendsItsCasualtyAshoreButLeavesTheCaptainToThePlayer() {
         assertSame(world.engine.getEntity(game.highport), world.docking.dockedTo(game.player));
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
         List<Entity> crew = new ArrayList<>(world.crewCareer.ownCrew(game.player));
@@ -69,15 +69,13 @@ class BerthShelterTest {
         // Ashore before a suit's air is gone
         float suitAir = world.crew.crew(game.avatar).def.suitAir;
         double t0 = world.engine.getSimSeconds();
-        while (world.engine.getSimSeconds() - t0 < suitAir
-                && (world.crew.position(down).ship == game.player || world.crew.position(game.avatar).ship == game.player)) {
-            run(60);
-        }
+        while (world.engine.getSimSeconds() - t0 < suitAir && world.crew.position(down).ship == game.player) run(60);
         StringBuilder all = new StringBuilder();
         for (Entity e : crew) all.append(describe(e)).append("; ");
         for (Entity e : crew) assertTrue(world.crew.crew(e).isAlive(), describe(e) + " / " + all);
         assertTrue(world.crew.crew(game.avatar).isAlive(), "the captain alive");
-        assertNotSame(game.player, world.crew.position(game.avatar).ship, "the captain went aboard the station: " + describe(game.avatar));
+        // The figure is the player's alone: never walked ashore
+        assertSame(game.player, world.crew.position(game.avatar).ship, "the captain left where they stood: " + describe(game.avatar));
         assertNotSame(game.player, world.crew.position(down).ship, "the casualty was carried aboard the station: " + describe(down));
     }
 

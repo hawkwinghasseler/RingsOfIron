@@ -17,7 +17,6 @@ import com.ringsofiron.aicrew.EvacuateTask;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
-import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.interiorgrid.EscapePodLayout;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -36,7 +35,7 @@ import java.util.function.Function;
  * Abandoning ship (GDD section 5, Technical Design Decisions section 6). {@link #order} sends a
  * ship's crew to its escape pods: every seat goes on the task board as an {@link EvacuateTask}
  * above any other job, so the crew drop what they are doing and make for the nearest pod. The
- * player's avatar walks there too, by itself unless the player steers it.
+ * player's avatar is never walked there: getting into a pod is the player's to do.
  *
  * <p>A pod launches with whoever is aboard once it is full, once every conscious crew member
  * aboard the ship is in a pod, or {@link #LAUNCH_AFTER} seconds after the order (at once on
@@ -112,11 +111,6 @@ public class AbandonShip extends EntitySystem {
     /** A ship gone from the engine comes back from its pool as a new one, which has no seats posted yet. */
     private final EntityRemovalListener forget = posted::remove;
     private final Array<Entity> buffer = new Array<>();
-    // Walking the player's avatar to a pod
-    private final Array<GridNode> avatarPath = new Array<>();
-    private int avatarStep;
-    private double repathAt = Double.NEGATIVE_INFINITY;
-    private float steerX, steerY;
 
     public AbandonShip(CrewService crew, ShipDisablement disablement, DoubleSupplier simSeconds,
                        Function<Entity, Entity> dockedTo) {
@@ -231,7 +225,6 @@ public class AbandonShip extends EntitySystem {
             closeSeats(ship);
             return;
         }
-        steerAvatar(ship, now);
     }
 
     private void launch(Entity ship, AbandonOrderComponent order, Entity pod, List<Entity> aboard, double now) {
@@ -248,7 +241,7 @@ public class AbandonShip extends EntitySystem {
                 player = true;
                 e.getComponent(GridPositionComponent.class).stop();
                 PlayerAvatarComponent a = e.getComponent(PlayerAvatarComponent.class);
-                a.moveX = a.moveY = steerX = steerY = 0f;
+                a.moveX = a.moveY = 0f;
                 continue;
             }
             Survivor survivor = new Survivor(c.name, c.role);
@@ -318,78 +311,5 @@ public class AbandonShip extends EntitySystem {
     private void closeSeats(Entity ship) {
         List<EvacuateTask> tasks = posted.remove(ship);
         if (tasks != null) for (EvacuateTask t : tasks) t.open = false;
-        avatarPath.clear();
-    }
-
-    /**
-     * Each tick before the crew move: the walk to the pod, again, if the screen cleared it. The game
-     * clears the figure's walk from the keys each frame before the world updates, and this system
-     * updates after the sim ticks, so in a real window the walk to the pod never moved the figure
-     * (round 10, as with {@link CaptainSafety#keepWalking()}). The player's own keys still win.
-     */
-    public void keepWalking() {
-        if (steerX == 0f && steerY == 0f) return;
-        Entity avatar = null;
-        for (Entity e : crew.crewEntities()) if (e.getComponent(PlayerAvatarComponent.class) != null) avatar = e;
-        if (avatar == null) return;
-        GridPositionComponent p = avatar.getComponent(GridPositionComponent.class);
-        PlayerAvatarComponent walk = avatar.getComponent(PlayerAvatarComponent.class);
-        if (!abandoning(p.ship) || !avatar.getComponent(CrewMemberComponent.class).isConscious() || p.walkway != null) {
-            steerX = steerY = 0f;
-            return;
-        }
-        if (walk.moveX != 0f || walk.moveY != 0f) return;
-        walk.moveX = steerX;
-        walk.moveY = steerY;
-    }
-
-    /**
-     * Walks the player's avatar, if it is aboard {@code ship}, to the nearest pod with a free seat,
-     * unless the player is steering it themselves.
-     */
-    private void steerAvatar(Entity ship, double now) {
-        Entity avatar = null;
-        for (Entity e : crew.crewEntities()) if (e.getComponent(PlayerAvatarComponent.class) != null) avatar = e;
-        if (avatar == null) return;
-        GridPositionComponent p = avatar.getComponent(GridPositionComponent.class);
-        CrewMemberComponent c = avatar.getComponent(CrewMemberComponent.class);
-        PlayerAvatarComponent walk = avatar.getComponent(PlayerAvatarComponent.class);
-        if (p.ship != ship || !c.isConscious() || p.walkway != null) return;
-        List<Entity> pods = usablePods(ship);
-        if (podAt(pods, avatar) != null) {
-            if (walk.moveX == steerX && walk.moveY == steerY) walk.moveX = walk.moveY = steerX = steerY = 0f;
-            return;
-        }
-        // The player's own input wins
-        if ((walk.moveX != 0f || walk.moveY != 0f) && (walk.moveX != steerX || walk.moveY != steerY)) {
-            repathAt = Double.NEGATIVE_INFINITY;
-            return;
-        }
-        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
-        if (now >= repathAt || avatarStep >= avatarPath.size) {
-            repathAt = now + 1.0;
-            avatarStep = 0;
-            if (!crew.pathfinder(grid).nearest(p.tileX(), p.tileY(), (x, y) -> {
-                for (Entity pod : pods) if (pod.getComponent(SubsystemComponent.class).covers(x, y)) return true;
-                return false;
-            }, avatarPath)) {
-                avatarPath.clear();
-            }
-        }
-        while (avatarStep < avatarPath.size) {
-            GridNode n = avatarPath.get(avatarStep);
-            float dx = n.x + 0.5f - p.x, dy = n.y + 0.5f - p.y;
-            float d = (float) Math.sqrt(dx * dx + dy * dy);
-            if (d < 0.15f) {
-                avatarStep++;
-                continue;
-            }
-            steerX = dx / d;
-            steerY = dy / d;
-            walk.moveX = steerX;
-            walk.moveY = steerY;
-            return;
-        }
-        walk.moveX = walk.moveY = steerX = steerY = 0f;
     }
 }

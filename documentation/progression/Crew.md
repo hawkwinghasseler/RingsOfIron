@@ -158,6 +158,8 @@ Round 10 (part 4), the captain looked after like the crew. Round 9's real window
 - **Your suit fills at the ship's oxygen.** Suited on thin air with four minutes or less (`CaptainSafety.REFILL_AT`), the figure standing still beside an oxygen tank or a working life support fills its suit there over the crew's refill time (20 s), as a crewman does, and the player is told.
 - **The crew fill a downed captain's suit.** This already held: round 9's casualty care treats the figure as any casualty. A test now holds it.
 
+**Since removed: the game never walks the player's figure.** The walk ashore at `ASHORE_AT`, warp giving way to it, the walk home after being laid ashore, and the walk to an escape pod after an abandon-ship order are all gone, along with `CaptainAshoreProbe`. Where the figure goes is the player's alone. In a vented ship the player is still suited up at a locker, warned as the suit's air runs low (a pressure suit holds 600 s, and `AirWatch` warns at 240 s), and can fill the suit at the ship's oxygen; walking to air, ashore, or to a pod is theirs to do. A captain who goes down is still carried to air, or laid ashore, by the crew.
+
 ## Not done here
 - A boarding fight on the interior grid: the pirates only take the cargo and credits (round 7 plan, "Still parked").
 - The starting corvette has no medic (Ada, Bea and Cole are an engineer, a crewman and a marine), and no medbay.
