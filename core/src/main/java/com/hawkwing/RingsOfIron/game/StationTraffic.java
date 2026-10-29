@@ -31,15 +31,11 @@ import java.util.List;
  * flies itself off ({@link FreighterTraffic}) or leaves the bubble. With no port free it is moved
  * clear of the station, to the nearest spot round it no other freighter is waiting in.
  *
- * <p>Freighters fly a hull with no grid ({@link FreighterHull}), so each one gets a passive Medium
- * port where its hull's bow port is. Register after {@link NpcBubblePilots}: this takes the pilot
- * back off a docked freighter.
+ * <p>Freighters fly a default hull with no grid, so each one gets a passive Medium port on its
+ * nose. Register after {@link NpcBubblePilots}: this takes the pilot back off a docked freighter.
  */
 public class StationTraffic implements BubbleTransitionListener {
-    /**
-     * Room from a freighter's middle to its nose, meters: where its port sits with no
-     * {@link FreighterHull} to say, and more than that hull needs.
-     */
+    /** The default freighter hull's nose, where its port sits. */
     static final float NOSE_X = 20f;
     /** Space kept between a freighter moved clear and the station's hull, meters. */
     static final float CLEARANCE = 25f;
@@ -66,11 +62,9 @@ public class StationTraffic implements BubbleTransitionListener {
         if (freighter == null || freighter.getComponent(FreighterComponent.class) == null) return;
         PhysicsBodyComponent pb = freighter.getComponent(PhysicsBodyComponent.class);
         if (pb == null || pb.body == null) return;
-        DockingPort bow = bowPort();
-        DockingPortsComponent ports = portsMapper.get(freighter);
-        // One that came in before freighters had their own hull has its port out on the old box's nose
-        if (ports == null || (ports.ports.length == 1 && ports.ports[0].isFree() && ports.ports[0].edgeX != bow.edgeX)) {
-            freighter.add(new DockingPortsComponent(bow));
+        if (!portsMapper.has(freighter)) {
+            freighter.add(new DockingPortsComponent(DockingPortsComponent.hullPort(MountFootprint.MountSize.M,
+                    false, NOSE_X, 0f, 1f, 0f)));
         }
         Entity at = stationInside(pb.body, t);
         if (at == null) return;
@@ -89,13 +83,6 @@ public class StationTraffic implements BubbleTransitionListener {
             controls.turn = 0f;
             controls.strafe = 0f;
         }
-    }
-
-    /** A fresh port for a freighter's bow: its {@link FreighterHull}'s, else out on {@link #NOSE_X}. */
-    private DockingPort bowPort() {
-        FreighterHull hull = world.freighterHull();
-        DockingPort bow = hull == null ? null : hull.bowPort();
-        return bow != null ? bow : DockingPortsComponent.hullPort(MountFootprint.MountSize.M, false, NOSE_X, 0f, 1f, 0f);
     }
 
     @Override

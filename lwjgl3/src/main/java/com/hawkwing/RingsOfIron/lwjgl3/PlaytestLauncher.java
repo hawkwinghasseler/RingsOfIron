@@ -355,6 +355,37 @@ public class PlaytestLauncher {
                     }
                     return out.length() == 0 ? "no crew" : out.toString();
                 }
+                case "haul": {
+                    // A trade staged: every hauler in the bubble has bought cmd[2] units of cmd[1], to be carried aboard
+                    int n = 0;
+                    for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.badlogic.ashley.core.Family.all(
+                            com.ringsofiron.macrosim.fleet.FreighterComponent.class, PhysicsBodyComponent.class).get())) {
+                        com.ringsofiron.macrosim.fleet.FreighterComponent f = e.getComponent(com.ringsofiron.macrosim.fleet.FreighterComponent.class);
+                        f.cargoCommodity = cmd[1];
+                        f.cargoQuantity = Double.parseDouble(cmd[2]);
+                        n++;
+                    }
+                    return n + " haulers";
+                }
+                case "loads": {
+                    // Only reads: each hauler in the bubble, what its bays hold and the loads still to carry
+                    StringBuilder out = new StringBuilder();
+                    for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.badlogic.ashley.core.Family.all(
+                            com.ringsofiron.macrosim.fleet.FreighterComponent.class, PhysicsBodyComponent.class).get())) {
+                        com.ringsofiron.macrosim.fleet.FreighterComponent f = e.getComponent(com.ringsofiron.macrosim.fleet.FreighterComponent.class);
+                        com.ringsofiron.interiorgrid.CargoHoldComponent hold = e.getComponent(com.ringsofiron.interiorgrid.CargoHoldComponent.class);
+                        out.append(String.format(java.util.Locale.ROOT, "%n  %s: carries %.1f %s, bays hold %.1f", f.displayName,
+                                f.cargoQuantity, f.cargoCommodity, hold == null || f.cargoCommodity == null ? 0.0 : hold.amount(f.cargoCommodity)));
+                        com.hawkwing.RingsOfIron.game.CargoOrdersComponent orders = e.getComponent(com.hawkwing.RingsOfIron.game.CargoOrdersComponent.class);
+                        if (orders != null) {
+                            for (com.hawkwing.RingsOfIron.game.CargoOrdersComponent.CargoOrder o : orders.orders) {
+                                out.append(String.format(java.util.Locale.ROOT, "%n    %s %.1f %s, %.1f in hand%s", o.toShip ? "load" : "unload",
+                                        o.units, o.commodity, o.inHand, o.closed ? ", done" : ""));
+                            }
+                        }
+                    }
+                    return out.length() == 0 ? "no haulers" : out.toString();
+                }
                 case "shots":
                     // Only reads: the rounds the player's ship has fired since the load, by weapon
                     return playerShots.isEmpty() ? "none" : playerShots.toString();

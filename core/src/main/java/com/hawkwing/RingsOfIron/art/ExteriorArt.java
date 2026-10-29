@@ -7,13 +7,11 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
-import com.hawkwing.RingsOfIron.game.FreighterHull;
 import com.hawkwing.RingsOfIron.render.HullShading;
 import com.hawkwing.RingsOfIron.render.RcsNozzles;
 import com.badlogic.gdx.utils.FloatArray;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
-import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
 import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -25,8 +23,6 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 
-import java.util.function.Function;
-
 /**
  * Draws craft from outside with the art pack: the hull of the chassis a craft was built from
  * (warped where collisions have dented and crushed it), an engine for each engine system (over
@@ -34,8 +30,7 @@ import java.util.function.Function;
  * each active docking port's collar while it is out (its head, and the tunnel back to the port);
  * and the flames of the engines and RCS nozzles that fire, which {@code ThrusterFlames} draws in a
  * pass of their own. Exterior art is in the body frame (64 SVG units to the meter), so it
- * is drawn straight at the body's pose, in world meters. A freighter, which has no grid, is drawn
- * as its {@link FreighterHull}: that chassis's hull and engines.
+ * is drawn straight at the body's pose, in world meters.
  */
 public final class ExteriorArt {
     private final ArtLibrary art;
@@ -45,40 +40,15 @@ public final class ExteriorArt {
     private final Vector2 local = new Vector2();
     final Vector2 socket = new Vector2();
     float socketDegrees;
-    /** The hull a craft with no grid wears, or null. */
-    private Function<Entity, FreighterHull> standIns = craft -> null;
 
     public ExteriorArt(ArtLibrary art) {
         this.art = art;
     }
 
-    /** Where a craft with no grid of its own finds the hull it wears (null for none). */
-    public ExteriorArt setStandIns(Function<Entity, FreighterHull> standIns) {
-        this.standIns = standIns;
-        return this;
-    }
-
     /** The hull art of a craft, or null when it has none (and is drawn as its outline). */
     public AtlasRegion hullOf(Entity craft) {
-        ShipGridComponent grid = gridOf(craft);
+        ShipGridComponent grid = craft == null ? null : craft.getComponent(ShipGridComponent.class);
         return grid == null ? null : art.region(ArtNames.hull(grid.chassis));
-    }
-
-    /**
-     * The layout {@code craft} is drawn by: its own grid, or the layout of the hull it wears
-     * without one ({@link #setStandIns}); null for neither.
-     */
-    public ShipGridComponent gridOf(Entity craft) {
-        if (craft == null) return null;
-        ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
-        if (grid != null) return grid;
-        FreighterHull worn = standIns.apply(craft);
-        return worn == null ? null : worn.grid;
-    }
-
-    /** The hull {@code craft} wears for want of a grid of its own, or null. */
-    private FreighterHull standIn(Entity craft) {
-        return craft.getComponent(ShipGridComponent.class) != null ? null : standIns.apply(craft);
     }
 
     /**
@@ -92,7 +62,7 @@ public final class ExteriorArt {
         if (hull == null) return false;
         Vector2 p = PhysicsManager.getPosition(body, at);
         float px = p.x, py = p.y, angle = body.getAngle();
-        ShipGridComponent grid = gridOf(craft);
+        ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
         if (!lit(batch, hull, grid, px, py, angle)) hull(batch, hull, art.info(hull), grid, px, py, angle);
         rcs(batch, craft, body);
         engines(batch, craft, body, angle);
@@ -185,7 +155,7 @@ public final class ExteriorArt {
 
     /** The craft's RCS blocks on its hull; a block whose hull tile is gone is drawn wrecked. */
     private void rcs(Batch batch, Entity craft, Body body) {
-        nozzles.blocks(gridOf(craft), body, (r, works, x, y, degrees) -> {
+        nozzles.blocks(craft, body, (r, works, x, y, degrees) -> {
             AtlasRegion block = art.first(ArtNames.rcs(r.kind.name(), works), ArtNames.rcs(r.kind.name(), true));
             if (block != null) pivoted(batch, block, x, y, degrees - 180f, 1f, 1f);
         });
@@ -233,23 +203,11 @@ public final class ExteriorArt {
     public void engineNozzles(Entity craft, Body body, NozzleSink out) {
         if (hullOf(craft) == null) return;
         FlightControlComponent controls = craft.getComponent(FlightControlComponent.class);
-        ShipGridComponent grid = gridOf(craft);
+        ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
         if (controls == null || grid == null) return;
         ThrusterComponent thruster = craft.getComponent(ThrusterComponent.class);
         boolean dry = thruster != null && thruster.isOutOfFuel();
         float throttle = dry ? 0f : MathUtils.clamp(controls.forward, 0f, 1f), angle = body.getAngle();
-        FreighterHull worn = standIn(craft);
-        if (worn != null) {
-            // No engine systems to fail: every engine in the layout burns at the throttle
-            for (ChassisBlueprintLoader.SubsystemPlacement e : worn.engines) {
-                MountFootprint m = e.footprint;
-                socket(grid, m);
-                Vector2 w = world(body, socket.x, socket.y);
-                float exhaust = angle + (socketDegrees + 180f) * MathUtils.degreesToRadians;
-                out.nozzle(ArtNames.engineSize(m.size), e.component.id, w.x, w.y, exhaust, Math.min(m.width(), m.height()) * grid.tileSize, throttle);
-            }
-            return;
-        }
         if (hasEngines(grid)) {
             for (MountFootprint m : grid.mounts) {
                 SubsystemComponent sub = engineIn(m);
@@ -276,22 +234,23 @@ public final class ExteriorArt {
      */
     private void engines(Batch batch, Entity craft, Body body, float angle) {
         FlightControlComponent controls = craft.getComponent(FlightControlComponent.class);
-        FreighterHull worn = standIn(craft);
-        if (worn != null) {
-            // Drawn cold while it sits unpiloted at a port
-            boolean burning = controls != null && controls.forward > 0f;
-            for (ChassisBlueprintLoader.SubsystemPlacement e : worn.engines) {
-                nacelle(batch, body, worn.grid, e.footprint, e.component.id, burning, angle);
-            }
-            return;
-        }
         ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
         if (controls == null || grid == null) return;
         boolean burning = controls.forward > 0f;
         if (hasEngines(grid)) {
+            float s = grid.tileSize;
             for (MountFootprint m : grid.mounts) {
                 SubsystemComponent sub = engineIn(m);
-                if (sub != null) nacelle(batch, body, grid, m, sub.component, burning && sub.isOperational, angle);
+                if (sub == null) continue;
+                String size = ArtNames.engineSize(m.size);
+                AtlasRegion engine = art.first(ArtNames.nacelle(sub.component, size, burning && sub.isOperational));
+                if (engine == null) continue;
+                // The art is the slot unturned, nozzle up the canvas; turned with the slot about its middle
+                float bw = m.size.baseWidth(m.kind) * s, bh = m.size.baseHeight(m.kind) * s;
+                Vector2 c = world(body, grid.gridOriginLocal.x + (m.originX + m.width() / 2f) * s,
+                        grid.gridOriginLocal.y + (m.originY + m.height() / 2f) * s);
+                batch.draw(engine, c.x - bw / 2f, c.y - bh / 2f, bw / 2f, bh / 2f, bw, bh, 1f, 1f,
+                        angle * MathUtils.radiansToDegrees + m.rotation * 90f);
             }
             return;
         }
@@ -301,20 +260,6 @@ public final class ExteriorArt {
             Vector2 w = engineMount(body, grid, k, 0f);
             pivoted(batch, engine, w.x, w.y, angle * MathUtils.radiansToDegrees, 1f, 1f);
         }
-    }
-
-    /** The engine {@code component} over its slot {@code m}, outside the hull. */
-    private void nacelle(Batch batch, Body body, ShipGridComponent grid, MountFootprint m, String component,
-                         boolean burning, float angle) {
-        AtlasRegion engine = art.first(ArtNames.nacelle(component, ArtNames.engineSize(m.size), burning));
-        if (engine == null) return;
-        // The art is the slot unturned, nozzle up the canvas; turned with the slot about its middle
-        float s = grid.tileSize;
-        float bw = m.size.baseWidth(m.kind) * s, bh = m.size.baseHeight(m.kind) * s;
-        Vector2 c = world(body, grid.gridOriginLocal.x + (m.originX + m.width() / 2f) * s,
-                grid.gridOriginLocal.y + (m.originY + m.height() / 2f) * s);
-        batch.draw(engine, c.x - bw / 2f, c.y - bh / 2f, bw / 2f, bh / 2f, bw, bh, 1f, 1f,
-                angle * MathUtils.radiansToDegrees + m.rotation * 90f);
     }
 
     private static boolean hasEngines(ShipGridComponent grid) {

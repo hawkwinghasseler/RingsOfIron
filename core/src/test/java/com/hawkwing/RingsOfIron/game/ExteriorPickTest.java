@@ -29,6 +29,9 @@ class ExteriorPickTest {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         world = new GameWorld();
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
+        // Two frames: Highport's haulers are ships a click picks, and in the first they come in
+        // over the station's middle, before they are drawn onto their ports
+        world.update(1f / 60f);
         world.update(1f / 60f);
     }
 

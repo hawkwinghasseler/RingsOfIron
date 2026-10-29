@@ -53,7 +53,6 @@ import com.ringsofiron.macrosim.MacroSimSystem;
 import com.ringsofiron.macrosim.MacroSimulation;
 import com.ringsofiron.macrosim.economy.DefRegistryCommodityCatalog;
 import com.ringsofiron.macrosim.economy.DefaultCommodityCatalog;
-import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.rails.orbital.OrbitalRailsModel;
 import com.ringsofiron.moddingdata.DefRegistry;
 import com.ringsofiron.moddingdata.ModContext;
@@ -268,8 +267,6 @@ public class GameWorld implements Disposable {
     private ModContext content;
     /** What ships collide on, once content has loaded. */
     private ShipHulls hulls;
-    /** What macro-sim's freighters look, collide and dock as, once content has loaded. */
-    private FreighterHull freighterHull;
     private Crash crash;
     /** Frames after a load that rails warp still waits for the player's latch to weld again. */
     static final int LOAD_SETTLE_FRAMES = 120;
@@ -446,7 +443,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(forcing);
         cargoSettlement = new SalvageSettlement(new MarketCargo(macroSim), commodities,
                 this::partPrice);
-        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, cargoSettlement);
+        // Freighters' loads only move goods: macro-sim settles their trades
+        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds,
+                new FreighterCargo(cargoSettlement, commodities));
         engine.addSystem(cargo);
         avatar = new AvatarInteractor(engine.getEcsEngine());
         // Who sits at the player's consoles, and who flies the ship when the player isn't at the helm
@@ -932,12 +931,12 @@ public class GameWorld implements Disposable {
 
     /**
      * A Box2D body for a ship with a layout, at the bubble origin: shaped as the physics assembler
-     * shapes it ({@link ShipHulls}) and weighing what {@link #shipMass} says. A freighter, which has
-     * no layout, gets its {@link FreighterHull}. Null for any other craft without a grid, or before
-     * content has loaded.
+     * shapes it ({@link ShipHulls}) and weighing what {@link #shipMass} says. A freighter macro-sim
+     * made without one is built into a Hauler first ({@link FreighterShips#outfit}). Null for any
+     * other craft without a grid, or before content has loaded.
      */
     public Body buildShipBody(Entity ship) {
-        if (ship.getComponent(ShipGridComponent.class) == null) return buildFreighterBody(ship);
+        FreighterShips.outfit(this, ship);
         ShipGridComponent.MassProperties m = shipMass(ship);
         java.util.List<float[]> hull = hulls == null || m == null ? null : hulls.hullFor(ship, null);
         if (hull == null || hull.isEmpty()) return null;
@@ -945,36 +944,6 @@ public class GameWorld implements Disposable {
                 CollisionCategories.CATEGORY_SHIP, CollisionCategories.MASK_ALL);
         PhysicsManager.setMassData(body, m.mass, m.center.x, m.center.y, m.inertia);
         return body;
-    }
-
-    /**
-     * A freighter's body on its {@link FreighterHull}, weighing and turning as the plain hull it
-     * flew before did, so it flies and docks as it always has. Null for a craft that is not a
-     * freighter, or with no hull for freighters.
-     */
-    private Body buildFreighterBody(Entity ship) {
-        FreighterHull f = freighterHullOf(ship);
-        if (f == null || f.pieces.isEmpty()) return null;
-        Body body = physics.createPolygonBody(ship, 0f, 0f, 0f, f.pieces, 1f,
-                CollisionCategories.CATEGORY_SHIP, CollisionCategories.MASK_ALL);
-        float[] center = new float[2];
-        f.centroid(center);
-        PhysicsManager.setMassData(body, GameBubbleGateway.DEFAULT_HULL_MASS, center[0], center[1],
-                GameBubbleGateway.DEFAULT_HULL_INERTIA);
-        return body;
-    }
-
-    /** What macro-sim's freighters look, collide and dock as; null before content has loaded, or without a Hauler. */
-    public FreighterHull freighterHull() {
-        if (freighterHull == null && content != null) freighterHull = FreighterHull.of(content.defs);
-        return freighterHull;
-    }
-
-    /** The {@link FreighterHull} {@code craft} wears: a freighter's, with no grid of its own; else null. */
-    public FreighterHull freighterHullOf(Entity craft) {
-        if (craft == null || craft.getComponent(FreighterComponent.class) == null
-                || craft.getComponent(ShipGridComponent.class) != null) return null;
-        return freighterHull();
     }
 
     /** A ship's mass for the physics assembler, from {@link #shipMass}. */

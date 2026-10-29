@@ -32,6 +32,7 @@ import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.uihud.minimap.TileShade;
 
@@ -215,7 +216,8 @@ public final class DeckRenderer {
 
     /**
      * The craft aboard and every craft docked to it, into {@code out}: what the deck view shows
-     * when standing aboard {@code aboard}.
+     * when standing aboard {@code aboard}. Docked at a station, the other craft docked there too,
+     * so the haulers loading and unloading at its other ports can be watched.
      */
     public static Array<Entity> decksAround(Entity aboard, Array<Entity> out) {
         out.clear();
@@ -224,6 +226,15 @@ public final class DeckRenderer {
         out.add(aboard);
         for (GridLink link : grid.links) {
             if (!out.contains(link.otherShip, true)) out.add(link.otherShip);
+        }
+        for (int i = 1, n = out.size; i < n; i++) {
+            Entity station = out.get(i);
+            ShipGridComponent g = station.getComponent(StationComponent.class) == null ? null
+                    : station.getComponent(ShipGridComponent.class);
+            if (g == null) continue;
+            for (GridLink link : g.links) {
+                if (!out.contains(link.otherShip, true)) out.add(link.otherShip);
+            }
         }
         return out;
     }

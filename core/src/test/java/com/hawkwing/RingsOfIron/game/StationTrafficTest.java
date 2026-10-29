@@ -6,18 +6,14 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
-import com.badlogic.gdx.physics.box2d.Fixture;
-import com.badlogic.gdx.physics.box2d.PolygonShape;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
-import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.stationsdocking.DockingEvent;
-import com.ringsofiron.stationsdocking.DockingPort;
-import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -102,43 +98,47 @@ class StationTrafficTest {
     }
 
     @Test
-    void freightersAtAStationWearTheHaulersHullNotABox() {
-        // They came in as a plain 40 m box drawn as a green outline, its port 20 m out on its nose
+    void freightersComeIntoTheBubbleAsRealHaulersWithACrew() {
+        // They came in as a plain 40 m box drawn as a green outline
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         world = new GameWorld();
         GameScenario game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
         double hold = InteriorGridData.cargoBayVolume(game.content.defs, GameScenario.FREIGHTER_SHIP);
         String uuid = world.macroSim.addFreighter("Docked", hold, 20_000, game.highport);
+        assertNull(world.engine.getEntity(uuid).getComponent(ShipGridComponent.class), "a bare entity on the rails");
         for (int i = 0; i < 30; i++) world.update(1f / 60f);
 
         Entity freighter = world.engine.getEntity(uuid);
-        FreighterHull hull = world.freighterHullOf(freighter);
-        assertNotNull(hull, "a freighter with no grid wears the Hauler's hull");
-        assertEquals("freighter", hull.chassis);
-        assertNull(freighter.getComponent(ShipGridComponent.class), "but has no interior of its own");
-        assertNull(world.freighterHullOf(game.player), "a ship with a grid wears its own");
+        ShipGridComponent grid = freighter.getComponent(ShipGridComponent.class);
+        assertNotNull(grid, "a Hauler's interior once in the bubble");
+        assertEquals("freighter", grid.chassis);
+        assertNotNull(freighter.getComponent(CargoHoldComponent.class), "with its cargo bays");
+        int crew = 0;
+        for (Entity e : world.crew.crewEntities()) if (world.crew.homeOf(e) == freighter) crew++;
+        assertEquals(3, crew, "and its crew aboard");
+        assertNotNull(world.docking.dockedTo(freighter), "docked at Highport");
+    }
 
-        Body body = freighter.getComponent(PhysicsBodyComponent.class).body;
-        float bow = -Float.MAX_VALUE;
-        int pieces = 0;
-        Vector2 v = new Vector2();
-        for (Fixture f : body.getFixtureList()) {
-            // Not the collar it is latched by
-            if (f.isSensor() || (f.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0) continue;
-            pieces++;
-            PolygonShape p = (PolygonShape) f.getShape();
-            for (int i = 0; i < p.getVertexCount(); i++) {
-                p.getVertex(i, v);
-                bow = Math.max(bow, v.x * PhysicsManager.METERS_PER_UNIT);
-            }
-        }
-        assertEquals(hull.pieces.size(), pieces, "shaped like the Hauler's layout");
-        assertEquals(10f, bow, 0.25f, "its bow where the Hauler's is");
-        assertEquals(GameBubbleGateway.DEFAULT_HULL_MASS, PhysicsManager.getMass(body), 1f, "and weighing what it did, so it flies as before");
+    @Test
+    void goodsAFreighterBuysAreCarriedAcrossLoadByLoad() {
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        world = new GameWorld();
+        GameScenario game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
+        double hold = InteriorGridData.cargoBayVolume(game.content.defs, GameScenario.FREIGHTER_SHIP);
+        String uuid = world.macroSim.addFreighter("Loading", hold, 20_000, game.highport);
+        for (int i = 0; i < 30; i++) world.update(1f / 60f);
+        Entity freighter = world.engine.getEntity(uuid);
+        assertNotNull(world.docking.dockedTo(freighter));
 
-        DockingPort port = freighter.getComponent(DockingPortsComponent.class).ports[0];
-        assertEquals(10f, port.edgeX, 0.01f, "its port in the bow");
-        assertEquals(0f, port.edgeY, 0.01f);
-        assertNotNull(world.docking.dockedTo(freighter), "and docked by it");
+        // macro-sim settles the trade at once: 20 t of food now the freighter's
+        FreighterComponent f = freighter.getComponent(FreighterComponent.class);
+        f.cargoCommodity = "food";
+        f.cargoQuantity = 20;
+        CargoHoldComponent bays = freighter.getComponent(CargoHoldComponent.class);
+        for (int i = 0; i < 2 * 60; i++) world.update(1f / 60f);
+        assertNotNull(freighter.getComponent(CargoOrdersComponent.class), "carried across");
+        assertTrue(bays.amount("food") < 20, "not there at once: " + bays.amount("food"));
+        for (int i = 0; i < 600 * 60 && bays.amount("food") < 20 - 1e-6; i++) world.update(1f / 60f);
+        assertEquals(20, bays.amount("food"), 1e-6, "all of it, in the end");
     }
 }
