@@ -202,6 +202,23 @@ class DevConsoleTest {
         assertTrue(last().contains("fired"), last());
     }
 
+    @Test
+    void flyShipLeavesTheNewHullArmedAndLoaded() {
+        assertTrue(game.dockAtHighport());
+        Entity old = world.getPlayer();
+        dev.console.submit("flyShip 'gunship_heavy'");
+        world.docking.undock(world.getPlayer());
+        for (int i = 0; i < 120; i++) world.update(1f / 60f);
+        // The gunnery the game rebuilds on a deal: the new hull's, not the one traded in
+        com.hawkwing.RingsOfIron.game.PlayerGunnery stale = new com.hawkwing.RingsOfIron.game.PlayerGunnery(world, old);
+        assertNull(stale.weapons(), "the old hull is gone, and its gunnery with it");
+        com.hawkwing.RingsOfIron.game.PlayerGunnery gun = new com.hawkwing.RingsOfIron.game.PlayerGunnery(world, world.getPlayer());
+        assertEquals("cannon_heavy", gun.primary().def.id);
+        assertTrue(gun.gunsReady(), "the heavy cannon is loaded");
+        assertTrue(gun.missilesLeft() != 0, "the harpoon launchers have missiles: " + gun.missilesLeft());
+        assertTrue(gun.missileReloadTime() >= 0f, "and a launcher works");
+    }
+
     private int aboard(Entity ship) {
         int n = 0;
         for (Entity e : world.crew.crewEntities()) {
