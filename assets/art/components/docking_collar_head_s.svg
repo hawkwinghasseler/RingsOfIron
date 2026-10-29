@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="192" viewBox="-16 -96 32 192">
+  <title>docking collar head S: an active port's collar head out on its tunnel, origin at its middle, its face toward +x</title>
+  <g id="base">
+    <rect x="-16" y="-70.4" width="12.8" height="140.8" rx="3" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <rect x="-6.4" y="-93" width="19.4" height="186" rx="4" fill="#4b5563" stroke="#10141a" stroke-width="2"/>
+    <path d="M-4.65,91.25 L-4.65,-91.25 L11.25,-91.25" fill="none" stroke="#7d8898" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <path d="M11.25,-91.25 L11.25,91.25 L-4.65,91.25" fill="none" stroke="#10141a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-baked="1"/>
+    <rect x="9" y="-60.8" width="5" height="121.6" rx="1" fill="#1e2227" stroke="#10141a" stroke-width="1"/>
+    <rect x="2" y="-67" width="6" height="6" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="2" y="-35" width="6" height="6" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="2" y="-3" width="6" height="6" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="2" y="29" width="6" height="6" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="2" y="61" width="6" height="6" rx="1" fill="#7a8594" stroke="#10141a" stroke-width="1"/>
+    <rect x="-6.4" y="-93" width="19.4" height="28.8" rx="3" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <clipPath id="hz_ch_s_-93_-2_-89"><rect x="-2.4" y="-89" width="11.4" height="20.8"/></clipPath>
+    <rect x="-2.4" y="-89" width="11.4" height="20.8" fill="#f2c230"/>
+    <g clip-path="url(#hz_ch_s_-93_-2_-89)">
+    <polygon points="-30.4,-68.2 -22.4,-68.2 -1.6,-89 -9.6,-89" fill="#10141a"/>
+    <polygon points="-14.4,-68.2 -6.4,-68.2 14.4,-89 6.4,-89" fill="#10141a"/>
+    <polygon points="1.6,-68.2 9.6,-68.2 30.4,-89 22.4,-89" fill="#10141a"/>
+    <polygon points="17.6,-68.2 25.6,-68.2 46.4,-89 38.4,-89" fill="#10141a"/>
+    <polygon points="33.6,-68.2 41.6,-68.2 62.4,-89 54.4,-89" fill="#10141a"/>
+    </g>
+    <rect x="-2.4" y="-89" width="11.4" height="20.8" fill="none" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="-6.4" y="64.2" width="19.4" height="28.8" rx="3" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <clipPath id="hz_ch_s_64_-2_68"><rect x="-2.4" y="68.2" width="11.4" height="20.8"/></clipPath>
+    <rect x="-2.4" y="68.2" width="11.4" height="20.8" fill="#f2c230"/>
+    <g clip-path="url(#hz_ch_s_64_-2_68)">
+    <polygon points="-30.4,89 -22.4,89 -1.6,68.2 -9.6,68.2" fill="#10141a"/>
+    <polygon points="-14.4,89 -6.4,89 14.4,68.2 6.4,68.2" fill="#10141a"/>
+    <polygon points="1.6,89 9.6,89 30.4,68.2 22.4,68.2" fill="#10141a"/>
+    <polygon points="17.6,89 25.6,89 46.4,68.2 38.4,68.2" fill="#10141a"/>
+    <polygon points="33.6,89 41.6,89 62.4,68.2 54.4,68.2" fill="#10141a"/>
+    </g>
+    <rect x="-2.4" y="68.2" width="11.4" height="20.8" fill="none" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="3.84" cy="-44.8" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+    <circle cx="3.84" cy="44.8" r="3" fill="#1b2028" stroke="#10141a" stroke-width="1"/>
+  </g>
+  <g id="height" display="none" data-base="0.25" data-scale="1.5">
+    <rect x="-6.4" y="-93" width="19.4" height="186" rx="4" fill="#414141"/>
+  </g>
+  <g id="emissive">
+    <g data-light="glow">
+    <circle cx="3.84" cy="-44.8" r="7.2" fill="#f2c230" opacity="0.18"/>
+    <circle cx="3.84" cy="-44.8" r="2.4" fill="#f2c230"/>
+    </g>
+    <g data-light="glow">
+    <circle cx="3.84" cy="44.8" r="7.2" fill="#f2c230" opacity="0.18"/>
+    <circle cx="3.84" cy="44.8" r="2.4" fill="#f2c230"/>
+    </g>
+  </g>
+</svg>

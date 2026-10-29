@@ -295,6 +295,11 @@ public final class ExteriorRenderer implements Disposable {
                     bodies.removeIndex(i);
                 }
             }
+            // A port's collar head and carriage are drawn with their craft's art, not as outlines
+            for (int i = bodies.size - 1; i >= 0; i--) {
+                Entity e = owner(bodies.get(i));
+                if (e != null && withArt.contains(e) && ExteriorArt.isCollarHead(e, bodies.get(i))) bodies.removeIndex(i);
+            }
         }
         if (hullArtOn || shields.any()) {
             shields.drawFlecks(batch, false, mpp);

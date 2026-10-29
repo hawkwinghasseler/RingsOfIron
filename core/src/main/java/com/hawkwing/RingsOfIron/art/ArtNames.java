@@ -256,6 +256,16 @@ public final class ArtNames {
         return "components/docking_collar_" + size.name().toLowerCase(Locale.ROOT) + (powered ? "" : "_unpowered");
     }
 
+    /** An active port's collar head, out on its tunnel: origin at its middle, its face toward +x. */
+    public static String collarHead(MountFootprint.MountSize size, boolean powered) {
+        return "components/docking_collar_head_" + size.name().toLowerCase(Locale.ROOT) + (powered ? "" : "_unpowered");
+    }
+
+    /** A tile of the tunnel from a port's collar out to its head: origin at the collar end, running along +x. */
+    public static String collarTunnel(MountFootprint.MountSize size) {
+        return "components/docking_tunnel_" + size.name().toLowerCase(Locale.ROOT);
+    }
+
     public static String fire(Tile.FireSize size) {
         return size == Tile.FireSize.NONE ? null : "effects/fire_" + size.name().toLowerCase(Locale.ROOT);
     }
@@ -367,6 +377,8 @@ public final class ArtNames {
     public static final String CRUSHED = "effects/crushed";
     /** The gangway across two latched collars, stretched along the crossing. */
     public static final String WALKWAY = "tiles/dock_walkway";
+    /** A side wall of a collar tunnel, half a tile long, for the deck view. */
+    public static final String TUNNEL_WALL = "tiles/dock_tunnel_wall";
 
     /** Frames of {@link #explosion}. */
     public static final int EXPLOSION_FRAMES = 4;
