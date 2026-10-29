@@ -45,7 +45,7 @@ class SaveSlotsTest {
         slots.quickSave().file().setLastModified(500L);
 
         Array<SaveSummary> list = slots.list();
-        assertEquals(3, list.size, "summaries and the settings file are not saves");
+        assertEquals(3, list.size, "the settings file is not a save");
         assertEquals("Newer", list.get(0).name);
         assertEquals("Older", list.get(1).name);
         assertEquals(SaveSlots.QUICK_SAVE_NAME, list.get(2).name);
@@ -55,20 +55,17 @@ class SaveSlotsTest {
 
         slots.delete(list.get(0));
         assertFalse(slots.fileFor("Newer").exists());
-        assertFalse(SaveSummary.metaFor(slots.fileFor("Newer")).exists());
         assertEquals("Older", slots.latest().name);
     }
 
     private static void write(SaveSlots slots, String name, long savedAt, double gameSeconds, double credits) {
-        FileHandle f = slots.fileFor(name);
-        f.writeString("{}", false);
         SaveSummary s = new SaveSummary();
         s.name = name;
         s.savedAt = savedAt;
         s.gameSeconds = gameSeconds;
         s.ship = "Patrol Corvette";
         s.credits = credits;
-        s.writeFor(f);
+        TestSaves.write(slots.fileFor(name), s);
         new GameSettings().save(slots.dir().child(GameSettings.FILE_NAME));
     }
 
@@ -83,8 +80,7 @@ class SaveSlotsTest {
 
             SaveSlots slots = new SaveSlots(new FileHandle(dir.toFile()));
             FileHandle file = slots.fileFor("Mine");
-            assertNull(game.quickSave(file));
-            SaveSummary.of(game, "Mine").writeFor(file);
+            assertNull(game.quickSave(file, SaveSummary.of(game, "Mine")));
 
             SaveSummary read = slots.latest();
             assertEquals("Mine", read.name);
@@ -92,6 +88,8 @@ class SaveSlotsTest {
             assertEquals(1_234, read.credits, 1e-9);
             assertEquals(world.engine.getSimSeconds(), read.gameSeconds, 1e-6);
             assertEquals(file.path(), read.file.path());
+            assertEquals(1, dir.toFile().list().length, "the summary is in the save, not beside it");
+            game.quickLoad(file); // and the save loads as any other
         } finally {
             world.dispose();
         }

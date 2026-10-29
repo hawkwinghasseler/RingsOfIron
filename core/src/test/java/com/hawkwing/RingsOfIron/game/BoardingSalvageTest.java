@@ -168,7 +168,12 @@ class BoardingSalvageTest {
             assertEquals("Port armed", docking.toggleArm());
             assertTrue(runUntil(30, () -> world.docking.dockedTo(game.player) == game.raider), "latched");
             assertTrue(runUntil(10, () -> world.docking.isRigid(game.player)), "welded, a walkway between");
-            world.disablement.set(game.raider, DisabledComponent.Reason.SURRENDERED);
+            // Its crew knocked out, not struck: a struck ship would open its door
+            for (Entity e : raiderCrew) {
+                CrewMemberComponent c = world.crew.crew(e);
+                c.health = 0.01f;
+                c.state = CrewState.UNCONSCIOUS;
+            }
             assertEquals(ForceMethod.DoorState.UNPOWERED, world.docking.doorState(game.raider, 0));
             String said = world.boarding.order(game.player);
             assertTrue(said.contains("door is being forced"), said);
@@ -176,6 +181,55 @@ class BoardingSalvageTest {
                     "taken; the marine is " + world.crew.crew(marine()).activity);
             assertEquals(-Boarding.STANDING_COST - FactionStanding.PRY_COST, world.standing.standing(owner), 1e-3,
                     "boarding and the door both cost standing");
+        } finally {
+            docking.dispose();
+        }
+    }
+
+    @Test
+    void aStruckShipOpensItsPortToThePlayerSoNoDoorIsForced() {
+        ownedBySelene();
+        for (Entity e : game.raider.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s.type == SubsystemComponent.SubsystemType.REACTOR) s.switchedOn = false;
+        }
+        world.disablement.set(game.raider, DisabledComponent.Reason.SURRENDERED);
+        world.update(FRAME);
+        parkAlongside(game.raider, 0.6f);
+        PlayerDocking docking = new PlayerDocking(world, () -> game.player, s -> { });
+        try {
+            assertEquals("Raider (surrendered) opens its port to you; port armed", docking.toggleArm());
+            assertTrue(runUntil(30, () -> world.docking.dockedTo(game.player) == game.raider), "latched");
+            assertTrue(runUntil(10, () -> world.docking.isRigid(game.player)), "welded, a walkway between");
+            assertTrue(world.docking.dockedWithClearance(game.player), "with its leave");
+            assertEquals(ForceMethod.DoorState.OPEN, world.docking.doorState(game.raider, 0));
+            String said = world.boarding.order(game.player);
+            assertFalse(said.contains("forced"), said);
+            assertTrue(runUntil(240, () -> world.boarding.takenBy(game.raider, game.player)),
+                    "taken; the marine is " + world.crew.crew(marine()).activity);
+            assertEquals(-Boarding.STANDING_COST, world.standing.standing(owner), 1e-3, "boarding costs standing, no door does");
+        } finally {
+            docking.dispose();
+        }
+    }
+
+    @Test
+    void aShipThatStrikesWhileLatchedOpensItsDoor() {
+        for (Entity e : game.raider.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
+            SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+            if (s.type == SubsystemComponent.SubsystemType.REACTOR) s.switchedOn = false;
+        }
+        world.update(FRAME);
+        parkAlongside(game.raider, 0.6f);
+        PlayerDocking docking = new PlayerDocking(world, () -> game.player, s -> { });
+        try {
+            assertEquals("Port armed", docking.toggleArm());
+            assertTrue(runUntil(30, () -> world.docking.dockedTo(game.player) == game.raider), "latched");
+            assertTrue(runUntil(10, () -> world.docking.isRigid(game.player)), "welded, a walkway between");
+            assertEquals(ForceMethod.DoorState.UNPOWERED, world.docking.doorState(game.raider, 0), "caught unarmed, shut");
+            world.disablement.set(game.raider, DisabledComponent.Reason.SURRENDERED);
+            run(2);
+            assertEquals(ForceMethod.DoorState.OPEN, world.docking.doorState(game.raider, 0));
         } finally {
             docking.dispose();
         }

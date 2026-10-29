@@ -153,6 +153,15 @@ public class CrewDef {
     public float isolateTime = 4f;
     /** Seconds out on EVA at an RCS block's wrecked hull tile framing it back up, at their own pace (an EVA suit's gloves slow it). */
     public float rcsRepairTime = 40f;
+    /** Seconds out on EVA at a wrecked hull tile framing it back up and plating it over, at their own pace. */
+    public float hullPatchTime = 30f;
+    /** Seconds out on EVA at a docking port's jammed collar working it free, at their own pace. */
+    public float collarTime = 60f;
+    /**
+     * Seconds out on EVA at a weapon hardpoint, for each tile of its turret mount, unbolting the
+     * weapon on it and bolting a new one on in its place, at their own pace.
+     */
+    public float mountTime = 45f;
 
     /** Tiles within which hostiles are noticed (also needs line of sight). */
     public float sightRange = 12f;

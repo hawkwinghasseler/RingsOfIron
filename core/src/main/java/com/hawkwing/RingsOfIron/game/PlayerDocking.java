@@ -64,6 +64,11 @@ public class PlayerDocking {
         }
         String refused = world.docking.arm(player, ports.selected);
         if (refused != null) return "Can't arm the port: " + refused;
+        // The nearest port is a struck ship's: it does not refuse, so no station is asked
+        Entity near = world.docking.approach(player, ports.selected, READOUT_RANGE, approach).target;
+        if (near != null && world.docking.yields.test(near)) {
+            return name(near) + " opens its port to you; port armed";
+        }
         DockingSystem.Clearance c = world.docking.requestClearance(player, ports.selected);
         String station = c.station == null ? null : name(c.station);
         switch (c.outcome) {
@@ -159,7 +164,9 @@ public class PlayerDocking {
         Entity other = e.vessel == player ? e.other : e.vessel;
         switch (e.kind) {
             case CAPTURED:
-                notices.accept(name(other) + "'s collar has you; drawing in");
+                // Whose collar it is: the one that caught the other
+                notices.accept(e.vessel == player ? "Your collar has hold of " + name(other) + "; drawing in"
+                        : name(other) + "'s collar has you; drawing in");
                 break;
             case DOCKED:
                 notices.accept("Docked at " + name(other) + (e.permitted ? "" : " (without clearance)"));
@@ -179,7 +186,7 @@ public class PlayerDocking {
 
     private static String describe(DockingPort p) {
         String state = p.state == DockingPort.State.IDLE ? "free" : p.state == DockingPort.State.CAPTURED ? "captured" : "docked";
-        return p.size + (p.active ? " active" : " passive") + ", " + (p.intact() ? state : "collar torn off");
+        return p.size + (p.active ? " active" : " passive") + ", " + (!p.intact() ? "collar torn off" : p.jammed ? "collar jammed" : state);
     }
 
     /** What the player calls a station or ship. */

@@ -12,12 +12,10 @@ import static org.junit.jupiter.api.Assertions.*;
 class SaveSlotsAutosaveTest {
 
     private static void write(SaveSlots slots, int n, long at) {
-        FileHandle f = slots.autosave(n);
-        f.writeString("{}", false);
         SaveSummary s = new SaveSummary();
         s.name = SaveSlots.autosaveName(n);
         s.savedAt = at;
-        s.writeFor(f);
+        TestSaves.write(slots.autosave(n), s);
     }
 
     @Test

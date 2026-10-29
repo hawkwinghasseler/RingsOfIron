@@ -304,9 +304,10 @@ public class HelmOrders {
         if (own == null || own.ports.length == 0) return "This ship has no docking port";
         DockingPort port = own.selectedPort();
         if (!port.intact()) return "The selected docking port's collar is torn off (" + keys.apply(Action.NEXT_PORT) + " picks another)";
+        if (port.jammed) return "The selected docking port's collar is jammed: the crew can free it on EVA (" + keys.apply(Action.NEXT_PORT) + " picks another)";
         DockingPortsComponent theirs = other == null ? null : other.getComponent(DockingPortsComponent.class);
         if (theirs == null || theirs.ports.length == 0) return target.name() + " has no docking port";
-        for (DockingPort q : theirs.ports) if (q.size == port.size && q.isFree() && q.intact()) return null;
+        for (DockingPort q : theirs.ports) if (q.size == port.size && q.isFree() && q.usable()) return null;
         return target.name() + " has no free " + port.size + " port for yours (" + keys.apply(Action.NEXT_PORT) + " picks another of yours)";
     }
 

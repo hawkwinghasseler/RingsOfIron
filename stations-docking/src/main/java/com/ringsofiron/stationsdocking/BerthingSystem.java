@@ -357,7 +357,7 @@ public class BerthingSystem extends EntitySystem {
     /** The port is still armed for this craft; for one docking {@link BerthingComponent#uninvited uninvited}, still free. */
     private boolean cleared(Entity e, BerthingComponent b, Entity station, int port) {
         DockingPort q = ports.has(station) ? ports.get(station).get(port) : null;
-        if (b.uninvited) return q != null && q.isFree() && q.intact();
+        if (b.uninvited) return q != null && q.isFree() && q.usable();
         UuidComponent id = e.getComponent(UuidComponent.class);
         return q != null && q.armed && q.isFree() && id != null && id.id.equals(q.armedFor);
     }
@@ -405,7 +405,7 @@ public class BerthingSystem extends EntitySystem {
         float bestD = Float.MAX_VALUE;
         for (int i = 0; i < list.ports.length; i++) {
             DockingPort q = list.ports[i];
-            if (q.size != own.size || !q.isFree() || !q.intact()) continue;
+            if (q.size != own.size || !q.isFree() || !q.usable()) continue;
             float d = DockingSystem.worldPoint(ob, q.faceX(), q.faceY(), qFace).dst(face);
             if (d < bestD) {
                 bestD = d;

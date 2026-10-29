@@ -76,14 +76,19 @@ public final class SuitLockers {
 
     /** Takes the fullest suit of {@code kind} out of {@code f}; null if it has none. */
     public static Suit take(Furnishing f, Suit.Kind kind) {
+        return take(f, kind, s -> true);
+    }
+
+    /** Takes the fullest suit of {@code kind} out of {@code f} that {@code fit} accepts; null if it has none. */
+    public static Suit take(Furnishing f, Suit.Kind kind, Predicate<Suit> fit) {
         if (!hasSuit(f, kind)) return null;
         int best = -1;
         for (int i = 0; i < f.suits.size; i++) {
             Suit s = f.suits.get(i);
-            if (s.kind != kind) continue;
+            if (s.kind != kind || !fit.test(s)) continue;
             if (best < 0 || s.air + s.jet > f.suits.get(best).air + f.suits.get(best).jet) best = i;
         }
-        return f.suits.removeIndex(best);
+        return best < 0 ? null : f.suits.removeIndex(best);
     }
 
     /** Hangs {@code suit} in {@code f}; false if it has no room for it. */

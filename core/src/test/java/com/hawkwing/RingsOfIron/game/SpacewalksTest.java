@@ -3,17 +3,27 @@ package com.hawkwing.RingsOfIron.game;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.aicrew.CrewMemberComponent;
+import com.ringsofiron.aicrew.CrewState;
+import com.ringsofiron.aicrew.EngineExhaust;
 import com.ringsofiron.aicrew.EvaComponent;
 import com.ringsofiron.aicrew.EvaSystem;
+import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.interiorgrid.Airlock;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
+import com.ringsofiron.interiorgrid.HullSurface;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.RcsThruster;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
+import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
+import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.uihud.systems.HudRenderSystem;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
@@ -27,7 +37,9 @@ import org.junit.jupiter.api.io.TempDir;
  * wrecked: an engineer goes out through the port to mend it, rails warp waits while they are out,
  * the notices and the status line say so, and a save made while they are on the hull loads with
  * them still out there. Out at the bow block instead, a full burn ahead parts their line, while the
- * swing a long burn astern starts them on doesn't.
+ * swing a long burn astern starts them on doesn't; with their line parted and their pack empty they
+ * are adrift, marked on the HUD for the ship to come back for, until their air runs out. One on the
+ * hull behind an engine's nozzle is warned of, and a burn kills them.
  */
 class SpacewalksTest {
     static final float FRAME = 1f / 60f;
@@ -164,6 +176,113 @@ class SpacewalksTest {
         for (int i = 0; i < 60 * 30 && !said(name + " has caught hold of the hull again"); i++) run(1);
         assertTrue(said(name + " has caught hold of the hull again"), "back on the hull once the burn ends");
         assertTrue(EvaSystem.of(e).tethered, "still on their line");
+    }
+
+    @Test
+    void oneAdriftWithNoWayBackIsMarkedForTheShipToComeBackForTillTheirAirRunsOut() {
+        Entity e = outAtTheBowBlock();
+        CrewMemberComponent c = world.crew.crew(e);
+        String name = c.name;
+        FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
+        for (int i = 0; i < 60 * 3 && !said(name + "'s tether has parted"); i++) {
+            controls.forward = 1f;
+            run(1);
+        }
+        controls.forward = 0f;
+        assertTrue(said(name + "'s tether has parted"));
+        // An empty pack: no way back alone
+        c.suitJet = 0f;
+        java.util.function.BooleanSupplier warned = () -> world.notices.history().stream().anyMatch(n -> n.text.startsWith(name + " is adrift ")
+                && n.text.endsWith(" off with no way back alone: bring the ship to them"));
+        for (int i = 0; i < 60 * 5 && !warned.getAsBoolean(); i++) run(1);
+        assertTrue(warned.getAsBoolean(), "the warning");
+        assertNotNull(world.spacewalks.marker(e), "a marker on the HUD over them");
+        // Over them when the HUD draws it, mid-frame: against the ship's transform as they are against its hull
+        float[] seen = new float[4];
+        EntitySystem hud = new EntitySystem(HudRenderSystem.DEFAULT_PRIORITY) {
+            @Override
+            public void update(float deltaTime) {
+                TransformComponent mark = world.spacewalks.marker(e).getComponent(TransformComponent.class);
+                TransformComponent ship = game.player.getComponent(TransformComponent.class);
+                Vector2 hull = PhysicsManager.getPosition(game.player.getComponent(PhysicsBodyComponent.class).body, new Vector2());
+                EvaComponent adrift = EvaSystem.of(e);
+                seen[0] = mark.x - ship.x;
+                seen[1] = mark.y - ship.y;
+                seen[2] = adrift.wx - hull.x;
+                seen[3] = adrift.wy - hull.y;
+            }
+        };
+        world.engine.addSystem(hud);
+        run(1);
+        world.engine.removeSystem(hud);
+        assertEquals(seen[2], seen[0], 0.5f, "over them");
+        assertEquals(seen[3], seen[1], 0.5f, "over them");
+        assertEquals(Spacewalks.REFUSAL + ": " + name + " is adrift", world.spacewalks.railsWarpBlockedReason());
+        String status = world.spacewalks.statusLine();
+        assertTrue(status.startsWith("EVA: " + name + " adrift "), status);
+        assertTrue(status.contains(" min of air: waiting to be picked up"), status);
+        // Their air runs out, and they die out there: warp doesn't wait for a body
+        c.suitAir = 5f;
+        for (int i = 0; i < 60 * 60 && c.state != CrewState.DEAD; i++) run(1);
+        assertTrue(said(name + "'s suit is out of air"));
+        assertEquals(CrewState.DEAD, c.state);
+        run(2);
+        assertNull(world.spacewalks.marker(e), "no marker over the body");
+        assertNull(world.spacewalks.railsWarpBlockedReason());
+        assertNull(world.spacewalks.statusLine());
+    }
+
+    @Test
+    void oneOnTheHullBehindAnEngineIsWarnedOfAndABurnKillsThem() {
+        Entity e = goOut();
+        CrewMemberComponent c = world.crew.crew(e);
+        String name = c.name;
+        // The tile of hull a full burn pushes hardest on: right behind a nozzle
+        HullSurface hull = world.crew.eva.hull(grid);
+        EngineExhaust exhaust = new EngineExhaust();
+        assertTrue(exhaust.read(game.player, grid, 1f), "the corvette's engines");
+        Vector2 v = new Vector2();
+        int bx = 0, by = 0;
+        float best = 0f;
+        for (int y = -1; y <= grid.height; y++) {
+            for (int x = -1; x <= grid.width; x++) {
+                if (!hull.isRing(x, y)) continue;
+                hull.hug(x, y, v);
+                float push = exhaust.push(v.x, v.y, null);
+                if (push > best) {
+                    best = push;
+                    bx = x;
+                    by = y;
+                }
+            }
+        }
+        assertTrue(best > EngineExhaust.BURN_FROM, "hull behind a nozzle: " + best);
+        // There, their line cast off
+        EvaComponent eva = EvaSystem.of(e);
+        hull.hug(bx, by, v);
+        eva.phase = EvaComponent.Phase.ON_HULL;
+        eva.ringX = bx;
+        eva.ringY = by;
+        eva.rx = v.x;
+        eva.ry = v.y;
+        eva.rvx = eva.rvy = 0f;
+        eva.path.clear();
+        eva.stepDone = 0f;
+        eva.slideX = eva.slideY = 0f;
+        eva.tethered = false;
+        eva.rope = null;
+        eva.worldValid = false;
+        eva.hullVValid = false;
+        String status = world.spacewalks.statusLine();
+        assertTrue(status.endsWith(name + " is in the way of the main engines' exhaust"), status);
+        FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
+        for (int i = 0; i < 10; i++) {
+            controls.forward = 1f;
+            run(1);
+        }
+        controls.forward = 0f;
+        assertTrue(said(name + " is caught in the main engines' exhaust"));
+        assertEquals(CrewState.DEAD, c.state, "right behind the nozzle of an engine at full burn");
     }
 
     @Test

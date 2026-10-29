@@ -235,6 +235,7 @@ public class Shipyard extends EntitySystem {
         }
         YardOrdersComponent orders = ship.getComponent(YardOrdersComponent.class);
         if (orders != null && !orders.isEmpty()) return "Wait for the yard's work on your ship to finish";
+        if (FieldRefits.partsOut(ship)) return "Wait for your crew's mounting work outside to finish";
         if (AbandonShip.abandoning(ship)) return "Your crew are abandoning ship";
         double cost = cost(listing, ship);
         if (cost > credits(ship) + 1e-6) return String.format(Locale.ROOT, "Needs %,.0f cr after the trade-in", cost);

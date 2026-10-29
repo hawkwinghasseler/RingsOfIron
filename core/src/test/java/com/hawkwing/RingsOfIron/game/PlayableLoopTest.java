@@ -170,6 +170,17 @@ class PlayableLoopTest {
         assertTrue(runUntil(240f, () -> world.boarding.takenBy(game.raider, game.player)), "taken: " + world.boarding.notices);
         assertEquals(before, world.standing.standing(world.standing.sponsor()), 1e-3);
 
+        // Who the raider's fire knocks down turns on every meter of the flight out, so is no fixed
+        // outcome; patch our own crew up, as the medbay would given time, so an engineer is on hand
+        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(com.ringsofiron.aicrew.CrewService.CREW)) {
+            var c = world.crew.crew(e);
+            if (e.getComponent(com.ringsofiron.aicrew.GridPositionComponent.class).ship != game.player) continue;
+            while (c.wound != com.ringsofiron.aicrew.Wound.NONE && c.state != com.ringsofiron.aicrew.CrewState.DEAD) {
+                world.crew.easeWound(e);
+            }
+            world.crew.heal(e, c.def.maxHealth);
+        }
+
         // Strip a gun; it comes home as a crate
         WeaponMountComponent mount = null;
         for (WeaponMountComponent m : game.raider.getComponent(WeaponsComponent.class).mounts) {
@@ -210,6 +221,7 @@ class PlayableLoopTest {
         world.rescue.rescues.add((signal, r) -> rescues.add(r));
         Entity oldShip = game.player;
         assertNull(world.abandon.order(game.player));
+        PlayerToPod.board(world, game.player);
         assertTrue(runUntil(60f, () -> !rescues.isEmpty()), "rescued");
         Rescue.Result r = rescues.get(0);
 

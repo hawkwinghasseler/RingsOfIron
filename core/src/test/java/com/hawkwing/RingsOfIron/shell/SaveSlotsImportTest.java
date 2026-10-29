@@ -54,7 +54,6 @@ class SaveSlotsImportTest {
         assertEquals("Frigate", result.copied.toString(", "));
         assertEquals("Gunship", result.kept.toString(", "));
         assertEquals("{mine:true}", mine.fileFor("Gunship").readString());
-        assertFalse(SaveSummary.metaFor(mine.fileFor("Gunship")).exists(), "nor given the career's summary");
 
         result = mine.importFrom(career.dir());
         assertEquals(0, result.copied.size, "a second run copies nothing new");
@@ -85,24 +84,24 @@ class SaveSlotsImportTest {
         writeSave(round9, "Before the raid", 9_000L);
         writeSave(round9, "Gunship", 9_000L);
         writeSave(round9, "First ace fight", 9_000L);
-        round9.fileFor("Before the raid").writeString("{round:9}", false);
+        writeSave(round9, "Before the raid", 9_000L, ",round:9");
 
         SaveSlots.Imported result = mine.importFrom(round9.dir());
         assertEquals("First_ace_fight", result.copied.toString(", "));
         assertEquals("Before_the_raid", result.replaced.toString(", "));
         assertEquals("Gunship", result.kept.toString(", "));
-        assertEquals("{round:9}", mine.fileFor("Before the raid").readString());
+        assertTrue(mine.fileFor("Before the raid").readString().endsWith(",round:9}"));
         assertEquals(9_000L, SaveSummary.readFor(mine.fileFor("Before the raid"), "?").savedAt, "with the new summary");
         assertEquals("{played:on}", mine.fileFor("Gunship").readString(), "a save played on is never overwritten");
         assertEquals("{own:1}", mine.fileFor("My own").readString());
         assertTrue(mine.fileFor("Frigate").exists(), "a save the new folder lacks stays");
 
         // And a third run replaces round 9's, Frigate included, but still not the gunship
-        round9.fileFor("Before the raid").writeString("{round:10}", false);
+        writeSave(round9, "Before the raid", 9_000L, ",round:10");
         result = mine.importFrom(round9.dir());
         assertEquals("Before_the_raid, First_ace_fight", result.replaced.toString(", "));
         assertEquals("Gunship", result.kept.toString(", "));
-        assertEquals("{round:10}", mine.fileFor("Before the raid").readString());
+        assertTrue(mine.fileFor("Before the raid").readString().endsWith(",round:10}"));
 
         // A copied save the player deletes leaves the list too
         mine.delete(SaveSummary.readFor(mine.fileFor("First ace fight"), "First ace fight"));
@@ -120,8 +119,10 @@ class SaveSlotsImportTest {
     }
 
     private static void writeSave(SaveSlots slots, String name, long savedAt) {
-        FileHandle save = slots.fileFor(name);
-        save.writeString("{}", false);
-        SaveSummary.metaFor(save).writeString("{name:\"" + name + "\",savedAt:" + savedAt + ",gameSeconds:0}", false);
+        writeSave(slots, name, savedAt, "");
+    }
+
+    private static void writeSave(SaveSlots slots, String name, long savedAt, String rest) {
+        TestSaves.write(slots.fileFor(name), "{name:\"" + name + "\",savedAt:" + savedAt + ",gameSeconds:0}", rest);
     }
 }

@@ -54,6 +54,11 @@ public class DockingPort {
     public boolean holdCollar;
     /** 1 for a whole collar, 0 once torn off. A torn port cannot arm or latch until repaired. */
     public float collarIntegrity = 1f;
+    /**
+     * Jammed by a hit: its latches won't close (and an active collar won't run out), so it cannot arm
+     * or latch until its crew free it from outside on EVA, or a yard repairs it.
+     */
+    public boolean jammed;
 
     public State state = State.IDLE;
     /** The craft and port this one is latched to, while not {@link State#IDLE}. */
@@ -75,6 +80,13 @@ public class DockingPort {
      * whole collar would, however worn this one is.
      */
     public boolean clamped;
+    /**
+     * How far this active port's collar stays out while latched, meters: a whole number of tiles,
+     * so the two hulls are a whole number of tiles apart. Above 0 when drawing the craft in any
+     * further would have put the hulls into each other ({@link DockingSystem}). The collar face,
+     * and so the latched pose, is this much further out. 0 while free.
+     */
+    public float lockedExtension;
 
     /** How far the active collar is out now, meters. Runtime only. */
     public transient float extension;
@@ -94,6 +106,18 @@ public class DockingPort {
     public transient Joint capture;
     /** Spring length the collar is driven towards, meters. */
     public transient float springTarget;
+    /** Extension a captured collar draws in to and locks at, meters (whole tiles). */
+    public transient float lockAt;
+    /** Seconds a captured collar has drawn in no further, and the extension it was stuck at, meters. */
+    public transient float stalled, stalledAt;
+    /** Sim second it was armed by its own crew; NaN when not, or since a load. */
+    public transient double armedAt = Double.NaN;
+    /**
+     * The other craft's active port this one drew its collar in for ({@link #holdCollar}), when
+     * both reached for each other; null otherwise. Lets the collar out again once that port is
+     * no longer armed.
+     */
+    public transient DockingPort yieldedTo;
 
     public DockingPort() {
     }
@@ -106,18 +130,23 @@ public class DockingPort {
         return collarIntegrity > 0f;
     }
 
+    /** True if it could arm and latch: its collar whole and not jammed. */
+    public boolean usable() {
+        return intact() && !jammed;
+    }
+
     public boolean isFree() {
         return state == State.IDLE;
     }
 
-    /** Collar face middle, body-local x. */
+    /** Collar face middle, body-local x: out as far as the collar is locked. */
     public float faceX() {
-        return edgeX + normalX * collarDepth;
+        return edgeX + normalX * (collarDepth + lockedExtension);
     }
 
-    /** Collar face middle, body-local y. */
+    /** Collar face middle, body-local y: out as far as the collar is locked. */
     public float faceY() {
-        return edgeY + normalY * collarDepth;
+        return edgeY + normalY * (collarDepth + lockedExtension);
     }
 
     /** Clears the latch record: free, no partner. */
@@ -129,6 +158,7 @@ public class DockingPort {
         consented = false;
         forced = false;
         clamped = false;
+        lockedExtension = 0f;
     }
 
     @Override

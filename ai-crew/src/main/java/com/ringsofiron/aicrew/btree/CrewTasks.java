@@ -122,6 +122,7 @@ public final class CrewTasks {
             }
             a.crew.activity = "filling their suit";
             filled += a.dt;
+            a.crew.showProgress(filled, a.crew.def.suitRefillTime);
             if (filled < a.crew.def.suitRefillTime) return Status.RUNNING;
             drawSuitOxygen(beside(grid, supplies, a.pos.tileX(), a.pos.tileY()), a.crew.suitKind);
             a.crew.suitAir = a.crew.suitCapacity();
@@ -221,7 +222,9 @@ public final class CrewTasks {
             // Pirate crews put down what they hold for the power (round 10): the task goes back, the best is claimed anew
             if (holding && a.crew.carrying == null && a.board() != null
                     && a.board().yieldsToPower(a.crew.task, a.crew.role, a.pos.tileX(), a.pos.tileY(), a::mayTake)) return Status.FAILED;
-            return holding || a.hasAvailableTask() ? Status.SUCCEEDED : Status.FAILED;
+            boolean available = a.hasAvailableTask();
+            if (!holding && !available && EvaTasks.sentOutForNothing(a)) available = a.hasAvailableTask();
+            return holding || available ? Status.SUCCEEDED : Status.FAILED;
         }
     }
 
@@ -321,13 +324,18 @@ public final class CrewTasks {
             ShipTaskBoardComponent board = a.board();
             if (held != null && held.isActive() && held.claimedBy == a.entity) {
                 // Fire falling where the job is: put it down until the fight is over, unless already
-                // carrying someone out
-                if (a.crew.carrying == null && TaskRules.waitsOutFire(held, board, a.service)) board.release(held);
+                // carrying someone out; and the player's say on EVA: work outside put down when they
+                // may not go out, other work when they are sent out
+                boolean sent = a.crew.evaOrder == CrewMemberComponent.EvaOrder.OUT;
+                boolean putDown = !(sent && held.kind.isEva()) && TaskRules.waitsOutFire(held, board, a.service)
+                        || held.kind.isEva() && !EvaTasks.mayGoOut(a) || sent && !held.kind.isEva();
+                if (a.crew.carrying == null && putDown) board.release(held);
                 else return Status.SUCCEEDED;
             }
             a.crew.task = null;
             if (board == null || board.faction != a.crew.faction) return Status.FAILED;
             CrewTask t = board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(), a::mayTake);
+            if (t == null && EvaTasks.sentOutForNothing(a)) t = board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(), a::mayTake);
             if (t == null || !board.claim(t, a.entity)) return Status.FAILED;
             a.crew.task = t;
             return Status.SUCCEEDED;
@@ -472,11 +480,13 @@ public final class CrewTasks {
                     }
                     return Status.RUNNING;
                 case SEAL_BREACH:
+                    a.crew.showProgress(elapsed, a.crew.def.sealTime);
                     if (elapsed < a.crew.def.sealTime) return Status.RUNNING;
                     tile.bulkheadSealed = true;
                     grid.gridDirty = true;
                     return Status.SUCCEEDED;
                 case PATCH_LEAK: {
+                    a.crew.showProgress(elapsed, a.crew.def.patchTime);
                     if (elapsed < a.crew.def.patchTime) return Status.RUNNING;
                     PatchLeakTask p = (PatchLeakTask) t;
                     return LeakPatches.patch(grid, p.x, p.y, p.side) ? Status.SUCCEEDED : Status.FAILED;
@@ -484,6 +494,8 @@ public final class CrewTasks {
                 case REPAIR: {
                     SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                     s.health = Math.min(1f, s.health + a.crew.def.repairRate * dt);
+                    // Slow, and nothing on the deck shows it: the bar is the system's health
+                    a.crew.progress = s.health;
                     if (s.health >= 1f) {
                         grid.gridDirty = true; // a repaired system may route power again
                         DamageStates.repaired(grid, s);
@@ -492,6 +504,7 @@ public final class CrewTasks {
                     return Status.RUNNING;
                 }
                 case RESET_SHORT: {
+                    a.crew.showProgress(elapsed, a.crew.def.resetTime);
                     if (elapsed < a.crew.def.resetTime) return Status.RUNNING;
                     ResetShortTask r = (ResetShortTask) t;
                     if (r.subsystem == null) DamageStates.reset(grid, t.x, t.y);
@@ -499,6 +512,7 @@ public final class CrewTasks {
                     return Status.SUCCEEDED;
                 }
                 case ISOLATE_TANK: {
+                    a.crew.showProgress(elapsed, a.crew.def.isolateTime);
                     if (elapsed < a.crew.def.isolateTime) return Status.RUNNING;
                     DamageStates.isolate(((IsolateTankTask) t).tank.getComponent(SubsystemComponent.class));
                     return Status.SUCCEEDED;
@@ -523,6 +537,8 @@ public final class CrewTasks {
                     }
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
                     p.treatedBy = a.entity;
+                    // CrewHealthSystem gives the care: the bar shows the wound easing toward the next level down
+                    a.crew.showProgress(p.care, CrewDef.careTime(p.wound));
                     // Off battle stations and in good air, the carer slips their suit off to work (round 8):
                     // it slowed the care of the wounded long after the fight. SuitUp hangs it up on the
                     // way; one still on comes off here only into a locker within reach of the patient
@@ -533,6 +549,7 @@ public final class CrewTasks {
                             // On the crew member, so it is saved (round 9)
                             a.crew.unsuiting += a.dt;
                             a.crew.activity = SuitErrand.undressing(a.crew.suitKind);
+                            a.crew.showProgress(a.crew.unsuiting, a.crew.suitTime(a.crew.suitKind) * 0.5f);
                             if (a.crew.unsuiting >= a.crew.suitTime(a.crew.suitKind) * 0.5f) {
                                 Suit off = a.crew.takeOff();
                                 if (!SuitLockers.stow(locker, off)) a.crew.wear(off);
@@ -545,6 +562,7 @@ public final class CrewTasks {
                     // Quicker for a medic and for skill; slow with no medical stores left
                     float time = a.crew.def.stabiliseTime * (a.crew.role == CrewRole.MEDIC ? CrewDef.MEDIC_STABILISE : 1f)
                             / CrewRecord.factor(a.crew.record().medicine) / (grid.medicalStores > 0 ? 1f : CrewDef.NO_STORES_CARE);
+                    a.crew.showProgress(elapsed, time);
                     if (elapsed < time) return Status.RUNNING;
                     if (grid.medicalStores > 0) grid.medicalStores--;
                     a.service.crew(((StabiliseTask) t).patient).stabilised = true;
@@ -560,6 +578,7 @@ public final class CrewTasks {
                         if (locker != null) {
                             a.crew.activity = "putting on a pressure suit at their post";
                             a.crew.suiting += a.dt;
+                            a.crew.showProgress(a.crew.suiting, a.crew.suitTime(Suit.Kind.IVA));
                             if (a.crew.suiting >= a.crew.suitTime(Suit.Kind.IVA)) a.crew.wear(SuitLockers.take(locker, Suit.Kind.IVA));
                             return Status.RUNNING;
                         }
@@ -717,6 +736,7 @@ public final class CrewTasks {
             if (at != null) {
                 a.crew.activity = "putting " + SuitErrand.article(kind) + " on " + c.name;
                 suiting += a.dt;
+                a.crew.showProgress(suiting, a.crew.suitTime(kind));
                 if (suiting < a.crew.suitTime(kind)) return Status.RUNNING;
                 c.wear(SuitLockers.take(at, kind));
                 suiting = 0f;
@@ -741,6 +761,7 @@ public final class CrewTasks {
             }
             a.crew.activity = "filling " + c.name + "'s suit";
             filling += a.dt;
+            a.crew.showProgress(filling, c.def.suitRefillTime);
             if (filling < c.def.suitRefillTime) return Status.RUNNING;
             drawSuitOxygen(RefillSuit.beside(grid, supplies, a.pos.tileX(), a.pos.tileY()), c.suitKind);
             c.suitAir = c.suitCapacity();
@@ -887,7 +908,9 @@ public final class CrewTasks {
             a.crew.activity = t.job.what();
             float dt = a.dt * a.crew.workPace();
             a.crew.record().pendingWork += dt;
-            return t.job.work(a.crew.def.repairRate * dt) ? Status.SUCCEEDED : Status.RUNNING;
+            boolean done = t.job.work(a.crew.def.repairRate * dt);
+            a.crew.progress = t.job.progress();
+            return done ? Status.SUCCEEDED : Status.RUNNING;
         }
     }
 
@@ -916,21 +939,37 @@ public final class CrewTasks {
             a.crew.activity = t.job.what();
             float dt = a.dt * a.crew.workPace();
             a.crew.record().pendingWork += dt;
-            return t.job.work(a.entity, dt) ? Status.SUCCEEDED : Status.RUNNING;
+            boolean open = t.job.work(a.entity, dt);
+            a.crew.progress = t.job.progress(a.entity);
+            return open ? Status.SUCCEEDED : Status.RUNNING;
         }
     }
 
     /**
      * Goes aboard {@link BoardTask#ship} to the task's tile, suited (no one boards a hostile craft
      * without a suit if there is one to be had: a pressure suit from a locker, or an EVA suit), and
-     * reports arriving to the job.
+     * reports arriving to the job. With no dock to walk across, over on EVA ({@link EvaTasks.Departure}).
      */
     public static class Board extends CrewLeaf {
+        private final EvaTasks.Departure departure = new EvaTasks.Departure();
+
+        @Override
+        public void end() {
+            departure.reset(getObject());
+        }
+
         @Override
         public Status execute() {
             CrewAgent a = agent();
             BoardTask t = (BoardTask) a.crew.task;
             if (!t.job.isOpen()) return Status.FAILED;
+            if (a.pos.ship != t.ship && a.pos.crossing == null && !a.service.joined(a.pos.ship, t.ship)) {
+                // No dock between: out of the airlock and across
+                a.crew.activity = t.job.what();
+                if (departure.step(a, t.ship, true) == Status.RUNNING) return Status.RUNNING;
+                a.abandonUnreachable();
+                return Status.FAILED;
+            }
             if (!a.crew.suited && a.crew.wearsSuits() && a.pos.ship == a.service.homeOf(a.entity)
                     && SuitErrand.suitUp(a, true) == Status.RUNNING) {
                 if (a.crew.suiting > 0f) a.crew.activity = "suiting up to board";
@@ -1032,20 +1071,27 @@ public final class CrewTasks {
     public static class Idle extends CrewLeaf {
         /** Seconds on a safe tile with nothing to do before a suit goes back to its locker. */
         public static final float SUIT_OFF_DELAY = 5f;
+        /** Seconds idle aboard another craft with no dock to their own before they go back across on EVA. */
+        public static final float STRANDED_SECONDS = 3f;
         private float calm;
         /** On the way to hang their suit up, or taking it off. */
         private boolean stowing;
         private final Downtime downtime = new Downtime();
+        /** Seconds idle aboard a craft with no dock to their own, before going back across on EVA. */
+        private float stranded;
+        private final EvaTasks.Departure homeward = new EvaTasks.Departure();
 
         @Override
         public void start() {
             calm = 0f;
             stowing = false;
+            stranded = 0f;
             downtime.reset(getObject());
         }
 
         @Override
         public void end() {
+            homeward.reset(getObject());
             if (getObject() != null) downtime.stop(getObject());
         }
 
@@ -1060,8 +1106,15 @@ public final class CrewTasks {
             if ((home != a.pos.ship || a.pos.crossing != null) && !sheltering) {
                 ShipGridComponent homeGrid = a.service.grid(home);
                 GridNavGraph nav = homeGrid == null ? null : a.service.pathfinder(homeGrid).graph;
-                if (nav != null && a.travel(home, nav::isWalkable) == CrewAgent.Travel.GOING) {
+                CrewAgent.Travel go = nav == null ? CrewAgent.Travel.UNREACHABLE : a.travel(home, nav::isWalkable);
+                if (go == CrewAgent.Travel.GOING) {
                     a.crew.activity = "heading back";
+                    stranded = 0f;
+                    return Status.RUNNING;
+                }
+                // No dock to walk back across: home on EVA, once it's clear nothing more is wanted here
+                if (go == CrewAgent.Travel.UNREACHABLE && nav != null && a.pos.crossing == null && !a.service.joined(a.pos.ship, home)
+                        && (stranded += a.dt) >= STRANDED_SECONDS && homeward.step(a, home, false) == Status.RUNNING) {
                     return Status.RUNNING;
                 }
             }
@@ -1244,7 +1297,7 @@ public final class CrewTasks {
             case EXTINGUISH: return "fighting fire at " + t.x + "," + t.y;
             case SEAL_BREACH: return "sealing breach at " + t.x + "," + t.y;
             case PATCH_LEAK: return "patching a leak at " + t.x + "," + t.y;
-            case REPAIR_RCS: return "repairing an RCS thruster on EVA";
+            case REPAIR_RCS: case PATCH_HULL: case FREE_COLLAR: case MOUNT_PART: case RETRIEVE: return EvaTasks.doing(t);
             case REPAIR: {
                 SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                 return "repairing " + (s == null ? "system" : s.type.name().toLowerCase());

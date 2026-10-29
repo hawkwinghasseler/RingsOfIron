@@ -97,6 +97,7 @@ class AbandonShipTest {
 
         assertNull(world.abandon.order(game.player));
         assertTrue(AbandonShip.abandoning(game.player));
+        PlayerToPod.board(world, game.player);
         runUntilRescued(60f);
 
         assertEquals(1, launches.size(), "one pod");
@@ -132,17 +133,17 @@ class AbandonShipTest {
     }
 
     @Test
-    void inAWindowThatClearsTheWalkEachFrameThePlayerStillReachesThePod() {
-        // Round 10: the screen clears the figure's walk from the keys before each world update
-        PlayerAvatarComponent walk = game.avatar.getComponent(PlayerAvatarComponent.class);
-        assertNotNull(world.bridge.seat(), "seated at the helm, as part 6's captain was");
+    void thePlayerIsNeverWalkedToThePod() {
+        // The figure is the player's alone: the crew go, and the player stays where they were left
+        GridPositionComponent p = game.avatar.getComponent(GridPositionComponent.class);
+        int x = p.tileX(), y = p.tileY();
         assertNull(world.abandon.order(game.player));
-        for (int i = 0; i < 60f / FRAME && launches.isEmpty(); i++) {
-            walk.moveX = walk.moveY = 0f;
-            world.update(FRAME);
-        }
-        assertEquals(1, launches.size(), "the pod went");
-        assertTrue(launches.get(0).player, "with the player aboard");
+        for (int i = 0; i < AbandonShip.LAUNCH_AFTER / FRAME + 60 && launches.isEmpty(); i++) world.update(FRAME);
+        assertEquals(1, launches.size(), "the pod went without the player");
+        assertFalse(launches.get(0).player);
+        assertSame(game.player, p.ship);
+        assertEquals(x, p.tileX());
+        assertEquals(y, p.tileY());
     }
 
     @Test
@@ -157,6 +158,7 @@ class AbandonShipTest {
             break;
         }
         assertNull(world.abandon.order(game.player));
+        PlayerToPod.board(world, game.player);
         runUntilRescued(60f);
         assertEquals(1, rescues.size());
         Rescue.Result r = rescues.get(0);
@@ -184,6 +186,7 @@ class AbandonShipTest {
     @Test
     void anOrderInHandIsSaved(@TempDir Path dir) {
         assertNull(world.abandon.order(game.player));
+        PlayerToPod.board(world, game.player);
         run(30);
         FileHandle file = new FileHandle(dir.resolve("abandon.json").toFile());
         assertNull(game.quickSave(file));

@@ -59,6 +59,8 @@ public class CrewMemberComponent implements Component {
     public transient Entity carriedBy;
     /** Goods in hand on a carry task, or null. */
     public transient Load load;
+    /** A crate in hand for work outside (a part to mount, or the one it replaced), or null. */
+    public transient Crate crate;
     /**
      * The craft this crew member works for, when it is not always the one they are aboard: a
      * station's loaders walk aboard docked ships and come home. Null means the craft they are on.
@@ -83,6 +85,18 @@ public class CrewMemberComponent implements Component {
     public Suit.Kind suitKind = Suit.Kind.IVA;
     /** Delta-v left in the jetpack of the suit they have on, m/s: an EVA suit's. */
     public float suitJet;
+    /** The player's order on going out on EVA ({@link EvaOrders}). */
+    public EvaOrder evaOrder = EvaOrder.NONE;
+
+    /** The player's order on going out on EVA, for one crew member. */
+    public enum EvaOrder {
+        /** None: out for work outside as it comes, unless the ship holds everyone in ({@link ShipTaskBoardComponent#evaHeld}). */
+        NONE,
+        /** Sent out: for the work outside and nothing else, at battle stations or held in or not; over once they are back in. */
+        OUT,
+        /** Kept in: called back in if out, and out for nothing until sent out or let out again. */
+        IN
+    }
     /**
      * Seconds spent so far taking their suit off at work ({@code CrewTasks.DoWork}), so a save
      * part way through doesn't start it again (round 9).
@@ -95,6 +109,12 @@ public class CrewMemberComponent implements Component {
     public float fireCooldown = 0f;
     /** Short description of the current activity, for debug display and the HUD. */
     public String activity = "idle";
+    /**
+     * Share of the timed job in hand done, 0 to 1, for the bar drawn over them; negative while at
+     * none. Set each step the work goes on ({@link #showProgress}); {@code CrewDecisionSystem}
+     * clears it before each step of the crew's trees.
+     */
+    public transient float progress = -1f;
 
     public CrewMemberComponent() {
         this.health = def.maxHealth;
@@ -109,6 +129,20 @@ public class CrewMemberComponent implements Component {
         this.health = def.maxHealth;
         this.suitAir = def.suitAir;
         this.record = CrewRecord.from(def);
+    }
+
+    /**
+     * Seconds a job must take before it gets a bar: a quick one is over before a bar would tell the
+     * player anything. Jobs that show themselves (a fire shrinking, cargo in hand) get none at all.
+     */
+    public static final float PROGRESS_MIN_SECONDS = 5f;
+
+    /**
+     * Shows {@code done} of {@code of} seconds as the share of the job in hand done ({@link #progress});
+     * no bar for a job shorter than {@link #PROGRESS_MIN_SECONDS}.
+     */
+    public void showProgress(float done, float of) {
+        progress = of >= PROGRESS_MIN_SECONDS ? Math.max(0f, Math.min(1f, done / of)) : -1f;
     }
 
     /** This crew member's record, made from their def if they have none yet. */
@@ -183,6 +217,32 @@ public class CrewMemberComponent implements Component {
     public float suitPace() {
         if (!suited) return 1f;
         return suitKind == Suit.Kind.EVA ? Suit.EVA_SPEED : def.suitSpeedFactor;
+    }
+
+    /**
+     * A crate carried by hand for work outside ({@link OutsideTask.Job#take}): lifted out of the
+     * hold, taken out on EVA (its mass with theirs) to the work, and set down there; or the part the
+     * work took off, brought back in. Whatever is left in hand once they are aboard with no work
+     * outside to take it to goes back in the hold.
+     */
+    public static final class Crate {
+        /** Its cargo id in the hold: "part:railgun_mk1". */
+        public final String commodity;
+        /** What it is, for activity lines: "the salvaged railgun". */
+        public final String name;
+        /** Its volume, m³, and mass, kg, in the hold and in hand. */
+        public final double volume;
+        public final float mass;
+        /** The work it is carried out for, told when it is set down or back in the hold; null for none. */
+        public final OutsideTask.Job job;
+
+        public Crate(String commodity, String name, double volume, float mass, OutsideTask.Job job) {
+            this.commodity = commodity;
+            this.name = name;
+            this.volume = volume;
+            this.mass = mass;
+            this.job = job;
+        }
     }
 
     /** Goods carried by hand on a {@link CarryTask}. */

@@ -101,8 +101,8 @@ public final class RcsThruster {
 
     /**
      * The condition a crew out on EVA frames a block's wrecked hull tile back up to ({@link
-     * #fieldRepair}): standing, so the block fires again, but still leaking (below {@link
-     * Tile#LEAK_START}) until a yard repairs it.
+     * #fieldRepair}): standing, so the block fires again, but leaking (below {@link
+     * Tile#LEAK_START}) unless they plate it over too ({@link HullPlating}), until a yard repairs it.
      */
     public static final float FIELD_REPAIR = 0.2f;
 

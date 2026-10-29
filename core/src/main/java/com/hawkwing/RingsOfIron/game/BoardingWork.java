@@ -22,8 +22,9 @@ public class BoardingWork implements BoardingProvider {
 
     @Override
     public void collect(BoardingBoard out) {
-        Entity ship = world.getPlayer(), craft = world.boarding.target(ship);
+        Entity ship = world.getPlayer(), craft = world.boarding.boardable(ship);
         if (craft == null) return;
+        out.byEva = !world.docking.docked(ship, craft);
         out.craftName = Boarding.name(craft);
         BoardedComponent b = Boarding.of(craft);
         boolean ours = b != null && b.by != null && b.by.get(world.engine.getUuidRegistry()) == ship;
@@ -31,11 +32,15 @@ public class BoardingWork implements BoardingProvider {
         out.state = state(ship, craft, b, ours);
         String refused = world.boarding.refusal(ship, craft);
         out.boardRefusal = refused == null ? "" : refused;
+        String noStorm = world.boarding.refusal(ship, craft, true);
+        out.stormRefusal = noStorm == null ? "" : noStorm;
         out.salvage = ours && b.taken;
         if (!out.salvage) {
-            out.salvageRefusal = ShipDisablement.isDisabled(craft)
+            out.salvageRefusal = out.byEva ? (refused != null ? refused : "Board it on EVA, or latch on to it to strip it")
+                    : ShipDisablement.isDisabled(craft)
                     ? "Take it to strip it: send the boarding party across, or strip a ship no one defends"
                     : "";
+            if (out.byEva) return;
             // No one aboard defends it: marking a part to strip takes it
             if (!ShipDisablement.isDisabled(craft) || world.boarding.defenders(craft) > 0) return;
             out.salvage = true;
@@ -100,6 +105,11 @@ public class BoardingWork implements BoardingProvider {
     @Override
     public String orderBoarding() {
         return world.boarding.order(world.getPlayer());
+    }
+
+    @Override
+    public String storm() {
+        return world.boarding.storm(world.getPlayer());
     }
 
     @Override

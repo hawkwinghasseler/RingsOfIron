@@ -104,6 +104,7 @@ class Round2SaveRoundTripTest {
         List<Rescue.Result> rescues = new ArrayList<>();
         world.rescue.rescues.add((signal, r) -> rescues.add(r));
         assertNull(world.abandon.order(game.player));
+        PlayerToPod.board(world, game.player);
         assertTrue(runUntil(world, 60f, () -> !rescues.isEmpty()), "rescued");
         Rescue.Result rescue = rescues.get(0);
         runUntil(world, 2f, () -> false);
