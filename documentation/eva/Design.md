@@ -333,6 +333,50 @@ line and finish the block:
 
 ![Adrift](screens/adrift.png)
 
+From `tools/playtest/eva-jobs.sh` on the corvette, with what it needs staged from the console: a
+salvaged railgun's crate in the hold, the docking collar jammed, the engineer's jetpack spent, and
+the ship brought back beside her once she is adrift.
+
+Y away from a yard opens the field refit. With the railgun's mount on the nose ordered, its row
+offers to call it off:
+
+![The field refit](screens/field-refit.png)
+
+The engineer, Ada, carrying the railgun's crate (green) along the hull on her line:
+
+![Carrying the crate](screens/carrying-the-crate.png)
+
+At the nose hardpoint with it, the line round the bow:
+
+![Mounting at the nose](screens/mounting-at-the-nose.png)
+
+The crew window with the crew held in. Ada has work outside in her trade, so she can be sent out:
+
+![The crew window](screens/crew-window.png)
+
+Sent out, at the docking port's ring, working its jammed collar free:
+
+![Freeing the collar](screens/freeing-the-collar.png)
+
+Out at the collar again with her jetpack spent, a full burn throws her off and parts her line. She
+falls astern with no way back alone, the HUD marks her, and the status panel warns the helm that
+she is in the way of the main engines' exhaust:
+
+![In the way of the exhaust](screens/in-the-way-of-the-exhaust.png)
+
+A short burn all the same catches her in the exhaust. It burns her, and leaves her 160 m astern
+and drifting away at 30 m/s:
+
+![Caught in the exhaust](screens/caught-in-the-exhaust.png)
+
+With the ship back beside her, Bea goes out on a line and pushes off the hull to her:
+
+![Jetting out to her](screens/jetting-out-to-her.png)
+
+Bea has hold of her and brings her in on the line:
+
+![Taken in tow](screens/taken-in-tow.png)
+
 ## Judgment calls
 
 - **The docking ports are the airlocks.** The chassis data has an `airlock` auxiliary part, but no
