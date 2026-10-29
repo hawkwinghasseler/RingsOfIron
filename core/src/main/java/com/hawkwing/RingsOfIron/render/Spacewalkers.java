@@ -7,7 +7,11 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
+import com.hawkwing.RingsOfIron.game.DeckView;
+import com.hawkwing.RingsOfIron.game.GameWorld;
+import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.EvaComponent;
 import com.ringsofiron.aicrew.EvaSystem;
@@ -22,7 +26,8 @@ import java.util.Map;
  * What goes with crew out on EVA, drawn round their craft in its own frame: each one's tether, from
  * the reel by the airlock door along the rope's sag and wrap round the hull to their hip (or, once it
  * has parted, loose, as the reel winds it in), and the puffs of their jetpack while it fires, blown
- * the other way from its push and gone in a moment.
+ * the other way from its push and gone in a moment. A crate one carries out trails behind them on
+ * its strap, and one clipped on at a hardpoint for mounting waits there ({@code FieldRefits}).
  * Their figures are drawn with the rest of the crew ({@link DeckRenderer}).
  */
 final class Spacewalkers {
@@ -36,11 +41,16 @@ final class Spacewalkers {
     static final int CURVE_STEPS = 4;
     /** Puffs a second while a jetpack fires, how long each lasts, seconds, and how fast it leaves, m/s. */
     static final float PUFFS_PER_SECOND = 40f, PUFF_LIFE = 0.45f, PUFF_SPEED = 2f;
+    /** A part's crate, meters across (a cubic meter seen from above), and how far behind its carrier it trails. */
+    static final float CRATE = 0.8f, CRATE_TRAIL = 0.6f;
+    static final Color CRATE_EDGE = new Color(0.08f, 0.09f, 0.1f, 0.95f);
 
     /** Each craft's puffs, in its local meters: x, y, vx, vy, age per puff. */
     private final Map<Entity, FloatArray> puffs = new IdentityHashMap<>();
-    private final FloatArray rope = new FloatArray(), curve = new FloatArray();
+    private final FloatArray rope = new FloatArray(), curve = new FloatArray(), crates = new FloatArray();
+    private final Array<String> crateParts = new Array<>();
     private final Vector2 local = new Vector2();
+    private final Color tint = new Color();
     private long frame = -1;
 
     /** Moves every puff on by {@code delta} and lets the spent ones go; once a frame, however often it is called. */
@@ -61,11 +71,19 @@ final class Spacewalkers {
     }
 
     /**
-     * Inside a filled batch moved to {@code ship}'s pose (its local meters): the tethers of its crew
-     * outside, and their jetpacks' puffs, new ones blown off those firing over {@code delta}.
+     * Inside a filled batch moved to {@code ship}'s pose (its local meters): the crates clipped on at
+     * its hardpoints, the tethers of its crew outside and the crates they carry, and their jetpacks'
+     * puffs, new ones blown off those firing over {@code delta}.
      */
-    void draw(ShapeRenderer shapes, CrewService crew, Entity ship, ShipGridComponent g, float delta) {
+    void draw(ShapeRenderer shapes, GameWorld world, Entity ship, ShipGridComponent g, float delta) {
         float s = g.tileSize, ox = g.gridOriginLocal.x, oy = g.gridOriginLocal.y;
+        CrewService crew = world.crew;
+        crates.clear();
+        crateParts.clear();
+        world.fieldRefits.cratesOutside(ship, crates, crateParts);
+        for (int i = 0; i < crateParts.size; i++) {
+            crate(shapes, ox + crates.get(2 * i) * s, oy + crates.get(2 * i + 1) * s, 0f, crateParts.get(i), s);
+        }
         ImmutableArray<Entity> all = crew.crewEntities();
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
@@ -88,6 +106,16 @@ final class Spacewalkers {
                 shapes.circle(rx, ry, REEL * s, 12);
                 shapes.setColor(LINE);
                 shapes.circle(rx, ry, REEL * 0.45f * s, 10);
+            }
+            CrewMemberComponent c = crew.crew(e);
+            if (c != null && c.crate != null) {
+                // Trailing behind them on its strap
+                Vector2 at = pos.toShipLocal(g, local);
+                float bx = -MathUtils.cos(eva.facing), by = -MathUtils.sin(eva.facing);
+                float cx = at.x + bx * CRATE_TRAIL * s, cy = at.y + by * CRATE_TRAIL * s;
+                shapes.setColor(LINE_EDGE);
+                shapes.rectLine(at.x, at.y, cx, cy, EDGE_WIDTH * s);
+                crate(shapes, cx, cy, eva.facing * MathUtils.radiansToDegrees, c.crate.commodity, s);
             }
             if (eva.jetting && delta > 0f) blow(ship, pos.toShipLocal(g, local), eva, delta, s);
         }
@@ -123,6 +151,25 @@ final class Spacewalkers {
     private static float catmullRom(float p0, float p1, float p2, float p3, float t) {
         return 0.5f * (2f * p1 + (p2 - p0) * t + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t * t
                 + (3f * p1 - p0 - 3f * p2 + p3) * t * t * t);
+    }
+
+    /** A crate of {@code commodity} carried aboard, at ({@code x}, {@code y}) in the deck's local meters, under its carrier. */
+    void crate(ShapeRenderer shapes, float x, float y, String commodity, float s) {
+        crate(shapes, x, y, 0f, commodity, s);
+    }
+
+    /** A crate of {@code commodity} at ({@code x}, {@code y}), local meters, turned {@code degrees}: in the hold's colors, edged dark. */
+    private void crate(ShapeRenderer shapes, float x, float y, float degrees, String commodity, float s) {
+        float h = CRATE * 0.5f * s, e = EDGE_WIDTH * 0.5f * s;
+        shapes.setColor(CRATE_EDGE);
+        shapes.rect(x - h - e, y - h - e, h + e, h + e, 2f * (h + e), 2f * (h + e), 1f, 1f, degrees);
+        shapes.setColor(DeckView.commodityColor(commodity, tint).lerp(Color.WHITE, 0.15f));
+        shapes.rect(x - h, y - h, h, h, 2f * h, 2f * h, 1f, 1f, degrees);
+        // Its lid's straps
+        shapes.setColor(CRATE_EDGE);
+        float c = MathUtils.cosDeg(degrees), sn = MathUtils.sinDeg(degrees), w = 0.04f * s;
+        shapes.rectLine(x - c * h, y - sn * h, x + c * h, y + sn * h, w);
+        shapes.rectLine(x + sn * h, y - c * h, x - sn * h, y + c * h, w);
     }
 
     /** New puffs from {@code eva}'s jetpack at {@code at}, blown against its push, for {@code delta} seconds of firing. */

@@ -1,23 +1,33 @@
 # EVA: suits, airlocks and work outside the hull
 
-Crew leave the ship physically to do work that can only be done from outside: today, framing back
-up the wrecked hull tile under an RCS block so the block fires again. Nothing about it is
-abstracted. The suits are objects that hang in lockers, the docking ports are airlocks that pump
-down and fill again, the crew member crawls round the outside of the hull hand over hand or hops
-on a jetpack with a limited tank, and the tether is a rope that drapes, wraps round corners, goes
-taut and can snap. What the ship does while they are out (a burn, a turn, a collision) acts on
-them through their grip and their line.
+Crew leave the ship physically to do work that can only be done from outside: framing back up the
+wrecked hull tile under an RCS block so the block fires again, plating over a holed hull tile,
+working a jammed docking collar free, mounting a salvaged weapon on a hardpoint, and going out on a
+line for a shipmate adrift. Nothing about it is abstracted. The suits are objects that hang in
+lockers, the docking ports are airlocks that pump down and fill again, the crew member crawls round
+the outside of the hull hand over hand or hops on a jetpack with a limited tank, and the tether is
+a rope that drapes, wraps round corners, goes taut and can snap. What the ship does while they are
+out (a burn, a turn, a collision) acts on them through their grip and their line, and its main
+engines' exhaust on anyone behind them. One whose line parts and who can't get back stays out
+there, adrift, until the ship comes back for them or their air runs out. The player can hold the
+crew in, send one out, or call one back.
 
 | Where | What |
 |---|---|
 | `interior-grid` `crew/Suit`, `SuitLockers`, `SuitOutfit` | Suits as objects; lockers; fitting a ship out with them |
 | `interior-grid` `Airlock`, `DockingPortLayout` | A docking port's chamber, inner hatch, outer door and their cycle |
 | `interior-grid` `HullSurface` | The ring of empty tiles hugging the hull that crew crawl along |
-| `interior-grid` `RcsThruster.fieldRepair` | What the work does: the tile back to `FIELD_REPAIR` |
-| `ai-crew` `EvaSystem`, `EvaComponent`, `EvaEvent` | The simulation outside: grip, crawl, jetpack, rope, reel, falls, airlocks |
-| `ai-crew` `btree/EvaTasks`, `btree/SuitErrand` | The behavior: who goes, which port, suiting up, the work, coming back |
-| `core` `game/Spacewalks` | The game's side: floating origin, rails warp guard, notices, morale |
-| `core` `render/Spacewalkers`, `DeckRenderer`, `art/DeckArt` | Drawing it: suits, crawl and float poses, tether, jetpack puffs, lockers |
+| `interior-grid` `HullPlating` | What the work on a holed hull tile does, an RCS block's included: framed back up to `FIELD_REPAIR` and plated |
+| `ai-crew` `EvaSystem`, `EvaComponent`, `EvaEvent` | The simulation outside: grip, crawl, jetpack, rope, reel, falls, airlocks, adrift, a shipmate in tow |
+| `ai-crew` `EngineExhaust` | The main engines' exhaust: how hard it pushes and burns where |
+| `ai-crew` `OutsideTask`, `RetrieveTask`, `TaskRules` | Work outside the game posts (a collar, a part to mount); fetching one adrift; what waits at battle stations |
+| `ai-crew` `EvaOrders` | The player's say: the ship's hold on going out, send one out, call one in |
+| `ai-crew` `btree/EvaTasks`, `btree/SuitErrand` | The behavior: who goes, which port, suiting up, fetching a part, the work, coming back |
+| `core` `game/Spacewalks` | The game's side: floating origin, rails warp guard, notices, morale, markers for those adrift, the orders |
+| `core` `game/JammedCollars`, `CollarWear` | Collars jammed by hits, and the work outside to free them |
+| `core` `game/FieldRefits`, `YardWork` | A salvaged weapon mounted from outside, ordered from the Y window away from a yard |
+| `core` `game/CrewRoster`, `ui-hud` `CrewWindow`, `YardWindow` | The crew window's EVA orders; the field refit |
+| `core` `render/Spacewalkers`, `DeckRenderer`, `art/DeckArt` | Drawing it: suits, crawl and float poses, tether, jetpack puffs, crates, lockers |
 | `tools/art/suit_svgs.py`, `furnishing_svgs.py` | The art |
 
 ## Suits are objects
@@ -71,28 +81,86 @@ air, which vents.
 
 ## Who goes out, and when
 
-`ShipHazardScanSystem` posts an `RcsRepairTask` for every RCS block whose hull tile is wrecked
-(integrity 0) but not crushed flat (that is yard work), and only off battle stations; going to
-battle stations takes the open ones off the board. It is engineering work.
+Every job outside is a task on the ship's board (`CrewTask.Kind.isEva`):
 
-An engineer takes the job only when an EVA suit with at least half its air is aboard and a port
-can cycle (`EvaTasks.suitReady`). They hang up any pressure suit they wear, get into an EVA suit,
-and pick the port to go out by (`EvaTasks.plan`): one that can cycle, whose door opens onto the
-hull's ring, and from which the hull runs round to the block within the line's reach (40 m less
-2 m spare), choosing by the walk inside plus the crawl outside (a tile of hull costs as much as 3.5
-tiles of deck). They queue for a busy airlock at its hatch.
+| Job | Posted by, when | Worked from | Work, at the EVA suit's pace |
+|---|---|---|---|
+| Frame an RCS block's wrecked hull tile back up (`REPAIR_RCS`) | `ShipHazardScanSystem`: the tile wrecked (integrity 0) but not crushed flat (that is yard work) | the ring beyond the edge the block sits on | `rcsRepairTime`, 40 s: framed back up so the block fires and, while the ship has patch kits, plated airtight as below |
+| Plate over a holed hull tile (`PATCH_HULL`) | `ShipHazardScanSystem`: any other hull tile wrecked, not crushed, with a side open to space | the ring beside it | `hullPatchTime`, 30 s: framed back up and, while the ship has patch kits, plated airtight (`HullPlating`) |
+| Free a jammed docking collar (`FREE_COLLAR`) | `JammedCollars`: a port whose collar a hit jammed | the ring outside the port's door | `collarTime`, 60 s |
+| Mount a salvaged weapon (`MOUNT_PART`) | `FieldRefits`: the player's order | the ring tile nearest the hardpoint's turret mount | `mountTime`, 45 s for each tile of the mount |
+| Fetch a shipmate adrift (`RETRIEVE`) | `EvaSystem`: one adrift who can't get back alone, within reach | the ring tile nearest them, then out to them on the jetpack | until they have hold of them |
 
-Outside, `Spacewalk` holds the task: along the hull to the tile beside the block, the work there
-(`CrewDef.rcsRepairTime`, 40 s, at the EVA suit's pace), then on to another wrecked block within
-reach, or back in. They come back in:
+Engineers (and a yard's technicians) do the work on the hull; crewmen don't. Anyone who rescues
+goes out for a shipmate adrift, engineers (who work outside) and medics keenest. At battle stations
+the jobs stay on the board but nobody takes one unless the player sends them out (below).
 
-- as soon as battle stations sound;
+A crew member takes a job only when they wear suits, an EVA suit with at least half its air and
+half its jetpack is aboard (`EvaTasks.fitToGoOut`), and a port can cycle (`EvaTasks.suitReady`).
+They hang up any pressure suit they wear, or an EVA suit too spent to go out in, get into an EVA
+suit fit to go out in, and pick the port to go out by (`EvaTasks.plan`): one that can cycle, whose
+door opens onto the hull's ring, and from which the hull runs round to the job within the line's
+reach (40 m less 2 m spare), choosing by the walk inside plus the crawl outside (a tile of hull
+costs as much as 3.5 tiles of deck). They queue for a busy airlock at its hatch.
+
+Outside, `Spacewalk` holds the task: along the hull to the job's ring tile, the work there, then on
+to another job within reach, or back in. They come back in:
+
+- as soon as battle stations sound, unless the player sent them out;
+- when the player calls them in, or holds everyone in;
 - once their line has parted: nobody works untethered, so the job waits for a trip out on a new one;
-- once their air is down to what the way back takes, the airlock cycle and 300 s more;
+- once their air is down to what the way back takes, the airlock cycle and 300 s more, and what is
+  left of the work;
 - when the job is gone (done by someone else, or no longer needed), or out of reach;
 - after a load (the task is not saved; they finish the way back).
 
 Back in, they hang the suit up in a locker with room.
+
+## The player's say
+
+Left alone, crew go out for work outside as it comes, but not at battle stations. The crew window
+(I) gives the player a say over that (`EvaOrders`, `Spacewalks.order`):
+
+- **EVA: Change**, at the top, holds everyone in: nobody goes out on their own, and anyone out
+  comes back in. Change it again and they go out for work as it comes.
+- **Send out**, on a crew member who wears suits and has work outside in their trade: they put
+  down what they are doing and go out for it, at battle stations or held in all the same, and take
+  nothing else until they are back in. With nothing outside left for them, the order lapses.
+- **Call in**, on one out or on their way: back in now, leaving the work where it stands, and kept
+  in. **Let out** lets them go out for work as it comes again.
+
+## Mounting a salvaged weapon
+
+A weapon stripped off a taken craft comes home as a crate in the hold (`part:<weapon>`, 1 m³,
+250 kg; `Salvage`). Docked at a yard, its technicians fit it. Away from one, Y opens the field
+refit: the yard window with only the ship's hardpoints, the salvaged weapons in the hold to pick
+from for each, and **Mount on EVA**. The order is saved with the ship (`FieldRefitComponent`).
+
+An engineer lifts the crate out of the hold, suits up and carries it out through the airlock
+(`EvaTasks.FetchPart`). Out there it is part of them: its 250 kg goes with their 180 kg, so their
+hold on the hull, the pull on their line and what their jetpack's delta-v buys are all reckoned for
+430 kg. With it in hand their 600 N grip holds against only 1.4 m/s² of the hull pulling away. It
+trails behind them on its strap. At the ring tile nearest the hardpoint's turret mount they clip it
+on and work, unbolting the weapon there and bolting the new one on. From the first of that work the
+weapon on the hardpoint is out of action (`WeaponMountComponent.underRefit`) until the new one is on,
+and a notice says so. The new one comes in at a used part's condition, as from a yard, and the old
+one comes off in a crate they carry back in and stow in the hold (`EvaTasks.StowCrate`).
+
+Called in before they reach the hardpoint, they bring the crate back in and stow it. Called away at
+the hardpoint, they leave it clipped on there, and the work done stands for whoever goes out next,
+straight out with nothing to fetch; the hardpoint stays out of action till then. While the crate is still inside the order can be called off;
+one lost with whoever had it (left behind adrift) ends it. A save made with a crate in hand loads
+with it back in the hold. A yard's refit of the same hardpoint takes over an order whose part is
+still inside, and waits for one already out.
+
+## Jammed docking collars
+
+A heavy hit on a docking port's footprint (a fifth of a tile's strength or more, `CollarWear`) jams
+its collar, unless the craft is a station. A jammed port won't arm or latch ("the collar is
+jammed"; the docking panel lists it as "collar jammed", and the helm's dock order says so and offers
+the next port) until an engineer works it free from outside (`JammedCollars`), a minute at the ring
+outside its door, or a yard's collar repair makes it whole. The player hears when one of their ports
+jams and when it is freed.
 
 ## Out on the hull
 
@@ -124,6 +192,43 @@ ring tile's hug point, they pull themselves over to it at crawling speed. With n
 pull themselves in along the line, 0.3 m/s. Hitting the hull stops their speed into it and some
 along it; faster than 3 m/s it wounds them (12 hit points per m/s over).
 
+## The main engines' exhaust
+
+A ship's main engines burning throw a cone of exhaust out of each nozzle, as wide as the nozzle at
+its mouth and spreading 15° either side of its axis (`EngineExhaust`). The engine's thrust is the
+momentum the exhaust carries through every cross-section of the cone, so what falls on a crew
+member in it is the thrust times their broadside (0.6 m²) over the cone's cross-section where they
+are. Right behind the corvette's nozzles at full throttle that is hundreds of kilonewtons; a hundred
+meters back, a few hundred newtons. It pushes them away from the nozzle, on the hull (their grip has
+to bear it with everything else) or off it, and it burns: past 300 N, 15 health a second for each
+kilonewton more. Right behind a nozzle it throws them off and kills them at once. A line through the
+exhaust where it pushes harder than 20 kPa burns through (`TETHER_BURNED`).
+
+Crawling along the hull, a crew member holds back at the edge of an engine's exhaust while it
+burns ("waiting for the main engines' burn to end"), and goes on once it stops. The status panel
+warns the helm before a burn of anyone, or anyone's line, behind an engine: "EVA: Ada is in the way
+of the main engines' exhaust". An engine's thrust is the ship's at the stick's throttle, shared
+among its working engines by nozzle area and health.
+
+## Adrift
+
+Off the hull with no line (it parted, or burned through), a crew member jets back to the hull,
+faster the further out they are (up to 10 m/s, at a pace that would bring them back in about a
+minute), so long as their pack has the delta-v to match the ship's speed and stop again, and the
+ship isn't under way harder than the pack could follow. Otherwise they hold off and wait for the
+ship to come back for them (an `ADRIFT` event): they stay in the world, drifting on the orbit their
+speed gives them with the bubble's tidal gravity on them as on the ship, breathing their suit's air
+until it runs out (`AIR_OUT`). Each of the player's crew adrift has a marker on the HUD, and rails
+warp waits for them.
+
+With the ship back near enough and slow enough, they jet back on their own. One who can't (out cold,
+or a pack that can't bring them back) is fetched (`RetrieveTask`) once they are within a line's reach
+of a port's reel (38 m round the hull and straight out) and drifting off slower than 0.5 m/s: a
+shipmate goes out on a line, crawls to the ring tile nearest them, pushes off to them on the jetpack,
+takes hold within 0.6 m and slower than 0.8 m/s, and brings them in on the line, the two of them one
+mass (`TAKEN_IN_TOW`). More than 25 km from their ship (out of the physics bubble), or adrift through
+a rails jump, they are left behind for good (`LEFT_BEHIND`), and taken out of the world.
+
 ## The tether
 
 The line runs from a reel beside the airlock's outer door, 40 m at most. It is a rope of 20
@@ -146,8 +251,7 @@ goes taut.
   1,900 N, but each peak passes too quickly to part it. It parts at their clip: the loose line
   whips back and the reel's spring winds it in. Untethered and adrift, they jet
   back to the hull while the pack has fuel, and crawl back to the airlock.
-- **Left behind**: adrift with no line more than 500 m from their ship, a crew member is gone:
-  a `LEFT_BEHIND` event, and taken out of the world.
+- **Adrift**: with no line and no way back, they wait out there for the ship (above).
 - **Winched in**: one who can't climb (out cold, or dead) is wound in by the reel at 0.5 m/s while
   their weight on the line is under the motor's 400 N, and pulled into the airlock at the door.
 
@@ -165,11 +269,16 @@ each swing above their 720 N weight in the burn. When the burn ends they jet bac
 - **Rails warp waits** while any of the player's crew are on an EVA, in the airlock or outside: "Crew
   are out on EVA: Ada is outside". Other ships' crew outside at a rails jump are taken to be back
   in by its end (their job put down), or left behind if their port is gone.
-- **Notices**: out on EVA, back in, thrown off the hull, caught hold again, the tether parted, left
-  behind. Someone left behind costs the rest of the crew morale as a death does.
+- **Notices**: out on EVA, back in, thrown off the hull, caught hold again, the tether parted or
+  burned through, caught in the exhaust, adrift (and for how long, once they are back), taken in
+  tow, out of air, left behind. Someone left behind costs the rest of the crew morale as a death
+  does.
 - **The status panel** says who is out and where while anyone is ("EVA: Ada on the hull, 16 m of
   line out. A hard burn can throw them off the hull"; off it, "A hard burn can part the line"), so
   the helm knows before it burns.
+- **The vacuum alarm** leaves out a docking port's chamber while its hatch is shut for a cycle
+  (`ShipAlerts.chamber`): pumped down for someone going out, it is empty on purpose, so the HUD no
+  longer counts a room at vacuum and reads the cabin as VACUUM all the while someone is out.
 - Saved: the phase, where they are and how fast they move relative to the ship, the line paid out
   and the port. The world-frame state and the rope's shape are rebuilt after a load.
 
@@ -179,7 +288,9 @@ yellow line with a dark edge from the reel, curved through the rope's points; th
 blown against its push; and in the deck view, where the light map leaves the outside of the hull
 dark, the suit's lamps lighting the plating round them.
 
-`tools/playtest/eva.sh` plays it through in a real window and takes the screenshots.
+`tools/playtest/eva.sh` plays it through in a real window and takes the screenshots;
+`tools/playtest/eva-jobs.sh` plays the other jobs, the crew window's orders, and a crew member
+thrown off, caught in the exhaust and fetched.
 
 ## Boarding across on EVA
 
@@ -190,8 +301,8 @@ With the player's ship latched to nothing, K's window offers the ship standing o
 works as a boarding across a dock does (a beaten ship, standing cost, the sweep room by room, taken
 once no one aboard fights), but the party goes over on their jetpacks:
 
-- **Who goes:** as many of the party as there are EVA suits aboard with half their air or more, worn
-  or hanging in lockers. The corvette's two EVA suits send two.
+- **Who goes:** as many of the party as there are EVA suits aboard fit to go out in (half their air
+  and half their jetpack or more), worn or hanging in lockers. The corvette's two EVA suits send two.
 - **Out:** into an EVA suit (out of a pressure suit first), to the airlock whose door is the shortest
   walk and crawl from the side of the hull facing the other ship, and out with no line clipped on:
   40 m of line doesn't reach. Over the hull to the ring tile nearest the other ship, and off it.
@@ -208,7 +319,7 @@ once no one aboard fights), but the party goes over on their jetpacks:
 - **Back:** once the ship is taken (or the boarding called off), the party, idle aboard a ship with
   no dock to their own for 3 s, go back the same way: out of its airlock, across, and in through
   their own, cycled for them as from any EVA.
-- **Called off** if the two ships drift more than `LOST_RANGE` (500 m) apart. While any of the
+- **Called off** if the two ships drift more than `CROSS_REACH` (500 m) apart. While any of the
   player's crew are aboard a ship their own isn't docked to, rails warp waits ("Crew are across on
   another ship").
 
@@ -266,6 +377,50 @@ line and finish the block:
 
 ![Adrift](screens/adrift.png)
 
+From `tools/playtest/eva-jobs.sh` on the corvette, with what it needs staged from the console: a
+salvaged railgun's crate in the hold, the docking collar jammed, the engineer's jetpack spent, and
+the ship brought back beside her once she is adrift.
+
+Y away from a yard opens the field refit. With the railgun's mount on the nose ordered, its row
+offers to call it off:
+
+![The field refit](screens/field-refit.png)
+
+The engineer, Ada, carrying the railgun's crate (green) along the hull on her line:
+
+![Carrying the crate](screens/carrying-the-crate.png)
+
+At the nose hardpoint with it, the line round the bow:
+
+![Mounting at the nose](screens/mounting-at-the-nose.png)
+
+The crew window with the crew held in. Ada has work outside in her trade, so she can be sent out:
+
+![The crew window](screens/crew-window.png)
+
+Sent out, at the docking port's ring, working its jammed collar free:
+
+![Freeing the collar](screens/freeing-the-collar.png)
+
+Out at the collar again with her jetpack spent, a full burn throws her off and parts her line. She
+falls astern with no way back alone, the HUD marks her, and the status panel warns the helm that
+she is in the way of the main engines' exhaust:
+
+![In the way of the exhaust](screens/in-the-way-of-the-exhaust.png)
+
+A short burn all the same catches her in the exhaust. It burns her, and leaves her 160 m astern
+and drifting away at 30 m/s:
+
+![Caught in the exhaust](screens/caught-in-the-exhaust.png)
+
+With the ship back beside her, Bea goes out on a line and pushes off the hull to her:
+
+![Jetting out to her](screens/jetting-out-to-her.png)
+
+Bea has hold of her and brings her in on the line:
+
+![Taken in tow](screens/taken-in-tow.png)
+
 ## Judgment calls
 
 - **The docking ports are the airlocks.** The chassis data has an `airlock` auxiliary part, but no
@@ -288,7 +443,28 @@ line and finish the block:
   parts on how long it is pulled past it.
 - **The knocked-out are winched in** rather than left: a reel motor is the obvious safety feature,
   and the alternative is a body on a line until someone else suits up.
-- **Not at battle stations**, and called back in when they sound, as the original ask said.
+- **Not at battle stations**, and called back in when they sound, as the original ask said; but
+  the player can send one out all the same, so the jobs wait on the board instead of coming off it.
+- **The crate is part of the crew member.** It isn't a body of its own on a line of its own: it is
+  clipped to their harness, so it moves with them and adds to their mass. A turret's base stands on
+  the hull over its mount, a tile or two in from the hull's side, so it is worked from the nearest
+  ring tile, as the other jobs are.
+- **A hardpoint goes quiet once the work on it starts.** The weapon there is being unbolted, so
+  from the first of the work it doesn't fire, and an engineer called in part way leaves it so until
+  someone finishes the job. A field refit is seldom done mid-fight. A yard's refit still keeps the
+  old weapon in action until the swap; the ship is docked there.
+- **The exhaust is a cone of momentum**, not a gas simulation: enough to say where it is lethal,
+  where it only pushes, and where a line burns, which is what the crew and the helm need.
+- **An RCS block's tile is plated like any holed hull tile.** Mending a block from outside used to
+  frame its tile back up and leave it leaking till a yard. The corvette's starboard bow block sits
+  on a hull tile behind the machinery in the bow corner, where nobody inside can reach to patch it,
+  so a hit there emptied the cabin for good, and with the cabin empty nobody could change into an
+  EVA suit to fetch a shipmate (a suit comes off only where the air is fit). The engineer out there
+  now plates it while the ship has patch kits.
+- **An EVA suit goes out with half its jetpack as well as half its air.** In a playtest, an
+  engineer fetched in off an empty pack went straight back out to her job on it, and thrown off
+  again would have been adrift again with no way back. Now she hangs it up to fill (a locker fills
+  a pack from empty in 5 minutes) and goes out in a fuller suit, or waits for one.
 - **The airlock chamber is lit from the deck it opens off.** With the hatch it became a room of its
   own with no wall to hang a light on; the stock chassis keep their lights.
 
@@ -296,9 +472,11 @@ line and finish the block:
 
 - `AirlockTest` (interior-grid): the cycle both ways, the cabin's air, a crowded chamber, the door
   held open on a line, a load mid-cycle, the port keeping its power with the hatch shut.
-- `EvaRepairTest` (ai-crew): the whole job on a ship standing still, called back by a fight, never
-  at battle stations, crewmen leave it to engineers, no suit aboard, a port that can't cycle, a
-  crushed tile, one knocked out on the hull winched in.
+- `EvaRepairTest` (ai-crew): the whole job on a ship standing still, the block's tile plated with
+  a kit (framed and leaking with none), called back by a fight, never at battle stations, crewmen
+  leave it to engineers, no suit aboard, a port that can't cycle, a crushed tile, one knocked out on
+  the hull winched in, a suit with its pack spent changed for a full one, and nobody out till a
+  locker has filled a pack halfway.
 - `EvaPhysicsTest` (ai-crew): the ship as a Box2D body: a gentle burn held through, a hard one into
   them only pressing them on, one past their grip throwing them off to swing on the line and jet
   back, one along the hull too hard to catch hold through (once thrown off, they stay off on the
@@ -315,15 +493,37 @@ line and finish the block:
   the notices and the status line, the corvette's full burn parting the line of one at its bow
   block while the swing from a long burn astern doesn't, and a save made while they are outside
   loading with them still out there.
+- `EvaJobsTest` (ai-crew): a holed hull tile plated from outside, work the game posts, the jobs
+  waiting at battle stations.
+- `EvaRetrieveTest` (ai-crew): one adrift jetting back once the ship comes back for them, one out
+  cold fetched on a line and brought in, nobody going out beyond a line's reach, air running out.
+- `EvaExhaustTest` (ai-crew): the exhaust's push near the nozzle and far back, one behind a nozzle
+  thrown off and burned to death, a crawler holding back from a burn and going on after it, a line
+  past a nozzle burning through.
+- `EvaOrdersTest` (ai-crew): sent out at battle stations, held in but sent, called in and kept in
+  till let out, the hold calling everyone in, no work in their trade.
+- `EvaCrateTest` (ai-crew): a part fetched from the hold, carried out with its mass on them, set
+  down at the work and the old one brought back in; called in with it, back in the hold; called away
+  at the work, the part and the work left for the next trip.
+- `JammedCollarsTest` (core): the corvette's jammed port won't arm until an engineer frees it from
+  outside; held in from the crew window, nobody goes until one is sent.
+- `FieldRefitsTest` (core): a salvaged railgun mounted on the corvette's nose from outside and the
+  coilgun brought in to the hold; the coilgun in action while the crate comes out, out of action
+  from the first of the work and after a call in, and the railgun firing once on; a save with the
+  crate out in hand.
+- `SpacewalksTest` (core) also: one adrift with a marker over them and the notices, and one on the
+  hull behind an engine warned of and killed by a burn.
+- `PlayerShipStatusTest` (core): the corvette's airlock pumped down for someone going out is no
+  vacuum alarm, and the cabin reads full.
 - `ArtNamesTest`: every suited, crawling and floating figure and every furnishing has its art.
 
 ## Not yet
 
-- Crew left behind are gone at once; they could stay in the world adrift until their air ran
-  out, for the ship to come back for them.
-- Only RCS blocks are EVA work. Hull patches from outside, a jammed docking collar, mounting
-  external parts are natural next jobs.
-- The player can't order an EVA, or call one back, by hand (but for a boarding).
+- A body adrift isn't fetched: only the living are.
+- RCS jets don't push or burn anyone; only the main engines do. Ships whose engines are drawn in
+  their hull art, with no engine systems in their layout, have no exhaust either.
+- A crate is clipped to whoever carries it; one let go of has no body of its own to drift away.
+- Mounting is for weapons only: the yard's other refits (systems, decks) aren't field work.
 - Boarders over on EVA who are knocked out aboard the other ship are carried home when the party
   stands down, as across a dock, rather than towed across.
 - A ship with no airlock left to go out by (its doors all blown) strands boarders aboard it until a

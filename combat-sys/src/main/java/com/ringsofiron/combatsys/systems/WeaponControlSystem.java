@@ -245,8 +245,9 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         }
     }
 
-    /** Whether the mount's system can work: no system, or one that is operational. */
+    /** Whether the mount can work: not under a refit, and no system or one that is operational. */
     public boolean available(WeaponMountComponent mount) {
+        if (mount.underRefit) return false;
         if (mount.subsystem == null) return true;
         SubsystemComponent s = subsystemMapper.get(mount.subsystem);
         return s == null || (s.isOperational && !s.isDisabled());

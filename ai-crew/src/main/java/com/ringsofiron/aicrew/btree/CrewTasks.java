@@ -222,7 +222,9 @@ public final class CrewTasks {
             // Pirate crews put down what they hold for the power (round 10): the task goes back, the best is claimed anew
             if (holding && a.crew.carrying == null && a.board() != null
                     && a.board().yieldsToPower(a.crew.task, a.crew.role, a.pos.tileX(), a.pos.tileY(), a::mayTake)) return Status.FAILED;
-            return holding || a.hasAvailableTask() ? Status.SUCCEEDED : Status.FAILED;
+            boolean available = a.hasAvailableTask();
+            if (!holding && !available && EvaTasks.sentOutForNothing(a)) available = a.hasAvailableTask();
+            return holding || available ? Status.SUCCEEDED : Status.FAILED;
         }
     }
 
@@ -322,13 +324,18 @@ public final class CrewTasks {
             ShipTaskBoardComponent board = a.board();
             if (held != null && held.isActive() && held.claimedBy == a.entity) {
                 // Fire falling where the job is: put it down until the fight is over, unless already
-                // carrying someone out
-                if (a.crew.carrying == null && TaskRules.waitsOutFire(held, board, a.service)) board.release(held);
+                // carrying someone out; and the player's say on EVA: work outside put down when they
+                // may not go out, other work when they are sent out
+                boolean sent = a.crew.evaOrder == CrewMemberComponent.EvaOrder.OUT;
+                boolean putDown = !(sent && held.kind.isEva()) && TaskRules.waitsOutFire(held, board, a.service)
+                        || held.kind.isEva() && !EvaTasks.mayGoOut(a) || sent && !held.kind.isEva();
+                if (a.crew.carrying == null && putDown) board.release(held);
                 else return Status.SUCCEEDED;
             }
             a.crew.task = null;
             if (board == null || board.faction != a.crew.faction) return Status.FAILED;
             CrewTask t = board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(), a::mayTake);
+            if (t == null && EvaTasks.sentOutForNothing(a)) t = board.best(a.crew.role, a.pos.tileX(), a.pos.tileY(), a::mayTake);
             if (t == null || !board.claim(t, a.entity)) return Status.FAILED;
             a.crew.task = t;
             return Status.SUCCEEDED;
@@ -1290,7 +1297,7 @@ public final class CrewTasks {
             case EXTINGUISH: return "fighting fire at " + t.x + "," + t.y;
             case SEAL_BREACH: return "sealing breach at " + t.x + "," + t.y;
             case PATCH_LEAK: return "patching a leak at " + t.x + "," + t.y;
-            case REPAIR_RCS: return "repairing an RCS thruster on EVA";
+            case REPAIR_RCS: case PATCH_HULL: case FREE_COLLAR: case MOUNT_PART: case RETRIEVE: return EvaTasks.doing(t);
             case REPAIR: {
                 SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                 return "repairing " + (s == null ? "system" : s.type.name().toLowerCase());

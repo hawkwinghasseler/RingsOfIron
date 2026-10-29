@@ -368,7 +368,7 @@ public final class DeckRenderer {
             shapes.translate(at.x, at.y, 0f);
             shapes.rotate(0f, 0f, 1f, degrees);
             // Under everyone, the tethers of those out on EVA and the puffs of their jetpacks
-            spacewalkers.draw(shapes, world.get().crew, ship, g, delta);
+            spacewalkers.draw(shapes, world.get(), ship, g, delta);
             for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
                 if (pos.ship != ship) continue;
@@ -380,6 +380,12 @@ public final class DeckRenderer {
                     continue;
                 }
                 style.underCrew(shapes, e, c, l.x, l.y, s, figures);
+                // A part's crate in the arms of one aboard whose figure doesn't hold it: in a suit (the
+                // carrying art has none), at work in a pose with no carrying art, or with no art at all
+                if (c.crate != null && !EvaSystem.outside(e)
+                        && (c.suited || !figures || !deckArt.carries(style.figure(e, c), ArtNames.CrewPose.of(c)))) {
+                    spacewalkers.crate(shapes, l.x, l.y, c.crate.commodity, s);
+                }
                 if (!posed && (c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS)) {
                     // Without the art, the disc shows the wound and that they are down
                     Color w = woundColor(c, clock, crewColor);
@@ -480,7 +486,8 @@ public final class DeckRenderer {
         ArtNames.EvaPose out = ArtNames.EvaPose.of(eva);
         float turn = out == null ? Float.NaN : eva.facing * MathUtils.radiansToDegrees - 90f;
         deckArt.crew(batch, e, style.figure(e, c), pose, c.suited ? c.suitKind : null, out, turn, wound,
-                bleeding(c) ? 0.55f : 1f, c.load == null ? null : c.load.task.job.commodity(), x, y, s);
+                bleeding(c) ? 0.55f : 1f, c.load != null ? c.load.task.job.commodity() : c.crate != null ? c.crate.commodity : null,
+                x, y, s);
     }
 
     /**
@@ -513,7 +520,7 @@ public final class DeckRenderer {
             shapes.identity();
             shapes.translate(at.x, at.y, 0f);
             shapes.rotate(0f, 0f, 1f, degrees);
-            spacewalkers.draw(shapes, current.crew, ship, g, delta);
+            spacewalkers.draw(shapes, current, ship, g, delta);
             if (!figures) {
                 for (int i = 0; i < crew.size(); i++) {
                     Entity e = crew.get(i);

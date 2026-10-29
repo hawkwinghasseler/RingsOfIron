@@ -15,6 +15,7 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
  *   [OnEva]           Spacewalk (out on the hull: to the job, the work, back in; see EvaTasks)
  *   [HostileInSight]  EngageHostile
  *   [SuitAirLow]      RefillSuit (at an oxygen tank or working life support)
+ *   [CrateToStow]     StowCrate (a crate in hand that no work outside of theirs takes out: back in the hold)
  *   [HasWork]         TaskBranch( ClaimTask,
  *                                 Selector( Sequence( IsTaskKind(RESCUE), SuitUp, MoveToWorkSpot,
  *                                                     PickUpCasualty, CarryToSafety, PutDownCasualty ),
@@ -23,9 +24,9 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
  *                                           Sequence( IsTaskKind(YARD), SuitUp, WorkOnTile, CompleteTask ),
  *                                           Sequence( IsTaskKind(FORCE_DOOR), ForceDoor, CompleteTask ),
  *                                           Sequence( IsTaskKind(BOARD), Board, CompleteTask ),
- *                                           Sequence( IsTaskKind(REPAIR_RCS), SuitUpForEva, GoOutside ),
+ *                                           Sequence( IsEvaJob, FetchPart, SuitUpForEva, GoOutside ),
  *                                           Sequence( IsTaskKind(not RESCUE, CARRY, YARD, FORCE_DOOR, BOARD
- *                                                     or REPAIR_RCS), SuitUp,
+ *                                                     or work outside), SuitUp,
  *                                                     MoveToWorkSpot, DoWork, CompleteTask ) ) )
  *                     Idle (heads home first when aboard another craft; steps out of a docked port's
  *                           opening; takes a suit off once calm)
@@ -58,10 +59,9 @@ public final class CrewBehaviorTrees {
                         new CrewTasks.CompleteTask()),
                 new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.BOARD), new CrewTasks.Board(),
                         new CrewTasks.CompleteTask()),
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.REPAIR_RCS), new EvaTasks.SuitUpForEva(),
+                new Sequence<>(new EvaTasks.IsEvaJob(), new EvaTasks.FetchPart(), new EvaTasks.SuitUpForEva(),
                         new EvaTasks.GoOutside()),
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.RESCUE, true),
-                        new CrewTasks.IsTaskKind(CrewTask.Kind.REPAIR_RCS, true),
+                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.RESCUE, true), new EvaTasks.IsEvaJob(true),
                         new CrewTasks.IsTaskKind(CrewTask.Kind.CARRY, true),
                         new CrewTasks.IsTaskKind(CrewTask.Kind.YARD, true),
                         new CrewTasks.IsTaskKind(CrewTask.Kind.FORCE_DOOR, true),
@@ -77,7 +77,10 @@ public final class CrewBehaviorTrees {
         Task<CrewAgent> spacewalk = new EvaTasks.Spacewalk();
         spacewalk.setGuard(new EvaTasks.OnEva());
 
-        Task<CrewAgent> root = new DynamicGuardSelector<>(spacewalk, engage, refill, work, new CrewTasks.Idle());
+        Task<CrewAgent> stow = new EvaTasks.StowCrate();
+        stow.setGuard(new EvaTasks.CrateToStow());
+
+        Task<CrewAgent> root = new DynamicGuardSelector<>(spacewalk, engage, refill, stow, work, new CrewTasks.Idle());
         return new BehaviorTree<>(root, agent);
     }
 }

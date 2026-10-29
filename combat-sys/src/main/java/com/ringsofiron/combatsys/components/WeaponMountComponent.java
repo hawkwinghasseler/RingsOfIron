@@ -53,6 +53,11 @@ public class WeaponMountComponent implements Component {
      * while that system is operational and powered. Null means always available.
      */
     public transient Entity subsystem;
+    /**
+     * Partly unbolted: crew are swapping it for another weapon, and it doesn't fire until the new
+     * one is on. Set each frame by whoever does the work; not saved.
+     */
+    public transient boolean underRefit;
 
     /** Latest solution on the target, for the HUD lead reticle. Valid when {@code solution.valid}. */
     public final FiringSolution solution = new FiringSolution();

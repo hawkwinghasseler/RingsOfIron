@@ -614,6 +614,18 @@ public final class DeckArt {
     }
 
     /**
+     * Whether {@code who}'s figure in {@code pose}, out of a suit, holds the crate they carry: there
+     * is carrying art for the pose. Without it the crate is drawn on its own.
+     */
+    public boolean carries(ArtNames.Crew who, ArtNames.CrewPose pose) {
+        if (pose.lying()) return false;
+        TextureRegion r = art.first(ArtNames.crew(who, pose, true), ArtNames.crew(who, pose, false),
+                ArtNames.crew(who, true), ArtNames.crew(who, false));
+        ArtLibrary.Info info = r == null ? null : art.info((AtlasRegion) r);
+        return info != null && info.h > info.w;
+    }
+
+    /**
      * A crew member at ({@code x}, {@code y}) in the grid's local meters, turned the way they last
      * walked, in {@code pose} (standing, when there is no art for it), with {@code wound} (a region,
      * or null) over the figure at {@code woundAlpha}, and the crate they carry on their feet tinted

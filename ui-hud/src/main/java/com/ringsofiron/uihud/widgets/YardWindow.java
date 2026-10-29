@@ -26,6 +26,10 @@ import java.util.function.BooleanSupplier;
  * decor (click to pick the next) to buy and place on the deck, and Arrange moves what is aboard;
  * both close the window for the deck, where the piece is put down. Refreshes
  * from the {@link YardProvider} a few times a second; closes itself when the ship leaves the yard.
+ *
+ * <p>Away from a yard it is the crew's field refit ({@link YardBoard#field}): the hardpoints only,
+ * each with a salvaged weapon in the hold to mount instead (click to pick the next), and Mount on
+ * EVA to have an engineer take it out and mount it, or Call off while its crate is still inside.
  */
 public class YardWindow extends Window {
     public static final float REFRESH_INTERVAL = 0.5f;
@@ -46,32 +50,50 @@ public class YardWindow extends Window {
     private int furnishingChoice;
     private final Table rows = new Table();
     private final Array<Row> rowWidgets = new Array<>();
+    /** The window's body, laid out for a yard or for the crew's field refit, and its parts. */
+    private final Table content = new Table();
+    private final Table top = new Table(), fuel = new Table(), furnish = new Table(), bottom = new Table(),
+            fieldBottom = new Table();
+    private final Label fieldNote;
+    /** Which the body and rows are laid out for: a field refit, or a yard. */
+    private boolean shownField, rowsField;
     private YardProvider provider;
     private float sinceRefresh = REFRESH_INTERVAL;
 
     private final class Row {
         final int index;
+        final boolean field;
         final Label weapon, progress;
         final TextButton choice, fitNew, fitUsed, fitSalvaged;
         int offer;
+        /** A field refit there that can be called off: the salvaged button calls it off. */
+        boolean callOff;
 
-        Row(Hardpoint h) {
+        Row(Hardpoint h, boolean field) {
             index = h.index;
+            this.field = field;
             weapon = new Label("", skin);
             progress = new Label("", skin, "dim");
             choice = button("", () -> offer = board.offers.size == 0 ? 0 : (offer + 1) % board.offers.size);
             fitNew = button("", () -> order(false));
             fitUsed = button("", () -> order(true));
             fitSalvaged = button("", () -> {
-                if (provider == null || board.offers.size == 0) return;
+                if (provider == null) return;
+                if (field && callOff) {
+                    say(provider.callOffFieldRefit(index));
+                    return;
+                }
+                if (board.offers.size == 0) return;
                 Offer o = board.offers.get(Math.min(offer, board.offers.size - 1));
                 say(provider.orderSalvagedRefit(index, o.weaponId));
             });
             rows.add(new Label(capitalized(h.name), skin)).left().padRight(14f);
             rows.add(weapon).left().padRight(14f);
             rows.add(choice).padRight(6f);
-            rows.add(fitNew).padRight(3f);
-            rows.add(fitUsed).padRight(3f);
+            if (!field) {
+                rows.add(fitNew).padRight(3f);
+                rows.add(fitUsed).padRight(3f);
+            }
             rows.add(fitSalvaged).padRight(10f);
             rows.add(progress).left().row();
         }
@@ -81,6 +103,18 @@ public class YardWindow extends Window {
             progress.setText(h.progress);
             Offer o = board.offers.size == 0 ? null : board.offers.get(Math.min(offer, board.offers.size - 1));
             choice.setText(o == null ? "-" : o.name + " >");
+            if (field) {
+                callOff = h.callOff;
+                choice.setDisabled(o == null || h.mounting);
+                if (h.mounting) {
+                    fitSalvaged.setText(h.callOff ? "Call off" : "Mounting");
+                    fitSalvaged.setDisabled(!h.callOff);
+                } else {
+                    fitSalvaged.setText(o == null ? "Mount on EVA" : "Mount on EVA (" + o.salvaged + ")");
+                    fitSalvaged.setDisabled(o == null || o.salvaged == 0);
+                }
+                return;
+            }
             fitNew.setText(o == null ? "New" : "New " + formatCredits(o.price));
             fitUsed.setText(o == null ? "Used" : "Used " + formatCredits(o.price * board.usedPrice));
             fitNew.setDisabled(o == null || board.credits < o.price);
@@ -113,16 +147,11 @@ public class YardWindow extends Window {
         refill = button("Refill tanks", () -> {
             if (provider != null) say(provider.orderRefill());
         });
-        Table top = new Table();
         top.add(summary).left().padRight(14f);
         top.add(repair);
-        add(top).left().row();
-        add(repairs).left().padTop(4f).row();
-        Table fuel = new Table();
         fuel.add(tanks).left().padRight(14f);
         fuel.add(refill);
-        add(fuel).left().padTop(4f).row();
-        add(rows).left().padTop(8f).row();
+        fieldNote = new Label("", skin, "dim");
         furnishing = button("", () -> furnishingChoice = board.furnishings.size == 0 ? 0 : (furnishingChoice + 1) % board.furnishings.size);
         place = button("", () -> {
             if (provider == null || board.furnishings.size == 0) return;
@@ -137,15 +166,11 @@ public class YardWindow extends Window {
             else say(said);
         });
         furnished = new Label("", skin, "dim");
-        Table furnish = new Table();
         furnish.add(new Label("Furnish", skin)).left().padRight(14f);
         furnish.add(furnishing).padRight(6f);
         furnish.add(place).padRight(10f);
         furnish.add(arrange).padRight(10f);
         furnish.add(furnished).left();
-        add(furnish).left().padTop(8f).row();
-        add(status).left().padTop(8f).row();
-        Table bottom = new Table();
         bottom.add(button("Rebuild decks...", () -> {
             if (provider == null) return;
             String said = provider.openLayoutEditor();
@@ -157,8 +182,30 @@ public class YardWindow extends Window {
         });
         bottom.add(ships).padRight(10f);
         bottom.add(button("Close [Y]", () -> setOpen(false)));
-        add(bottom).right().padTop(10f);
+        fieldBottom.add(button("Close [Y]", () -> setOpen(false)));
+        add(content);
+        layoutFor(false);
         setVisible(false);
+    }
+
+    /** Lays the body out for the crew's field refit, or for a station's yard. */
+    private void layoutFor(boolean field) {
+        shownField = field;
+        content.clearChildren();
+        if (field) {
+            content.add(fieldNote).left().row();
+            content.add(rows).left().padTop(8f).row();
+            content.add(status).left().padTop(8f).row();
+            content.add(fieldBottom).right().padTop(10f);
+            return;
+        }
+        content.add(top).left().row();
+        content.add(repairs).left().padTop(4f).row();
+        content.add(fuel).left().padTop(4f).row();
+        content.add(rows).left().padTop(8f).row();
+        content.add(furnish).left().padTop(8f).row();
+        content.add(status).left().padTop(8f).row();
+        content.add(bottom).right().padTop(10f);
     }
 
     public void setProvider(YardProvider provider) {
@@ -176,9 +223,14 @@ public class YardWindow extends Window {
         return isVisible();
     }
 
-    /** True while a yard can work on the ship. */
+    /** True while a yard can work on the ship, or the crew can refit it themselves ({@link #isField}). */
     public boolean isAvailable() {
         return board.isOpen();
+    }
+
+    /** True while there is no yard, only the crew's own field refit. */
+    public boolean isField() {
+        return board.field;
     }
 
     /** Opens the yard if docked at one; closing always works. Returns whether the window is now open. */
@@ -215,6 +267,19 @@ public class YardWindow extends Window {
             if (isVisible()) setVisible(false);
             return;
         }
+        if (board.field != shownField) {
+            layoutFor(board.field);
+            if (isVisible()) pack();
+        }
+        if (rowWidgets.size != board.hardpoints.size || rowsField != board.field) rebuildRows();
+        if (board.field) {
+            getTitleLabel().setText("FIELD REFIT");
+            fieldNote.setText(board.offers.size == 0 ? "No yard here, and no salvaged weapons in the hold for the crew to mount"
+                    : "No yard here: an engineer can mount a salvaged weapon from the hold on EVA");
+            for (int i = 0; i < rowWidgets.size; i++) rowWidgets.get(i).update(board.hardpoints.get(i));
+            fit();
+            return;
+        }
         getTitleLabel().setText(board.stationName.toUpperCase(Locale.ROOT) + " YARD");
         summary.setText(String.format(Locale.ROOT, "Credits %s     %s", formatCredits(board.credits), damageLine(board)));
         repair.setDisabled(board.damaged == 0 || !board.repairs.isEmpty());
@@ -230,23 +295,37 @@ public class YardWindow extends Window {
         place.setText(f == null ? "Buy and place" : "Buy and place " + formatCredits(f.price));
         place.setDisabled(f == null || board.credits < f.price);
         furnished.setText(board.furnished);
-        if (rowWidgets.size != board.hardpoints.size) rebuildRows();
         for (int i = 0; i < rowWidgets.size; i++) rowWidgets.get(i).update(board.hardpoints.get(i));
+        fit();
+    }
+
+    /**
+     * Grows the window about its centre to fit what it shows: a refit's progress or an answer
+     * widens a row, and the rows ran out past its edges (the field refit, real window).
+     */
+    private void fit() {
+        if (isVisible() && (getPrefWidth() > getWidth() + 0.5f || getPrefHeight() > getHeight() + 0.5f)) {
+            float cx = getX() + getWidth() / 2f, cy = getY() + getHeight() / 2f;
+            pack();
+            setPosition(cx - getWidth() / 2f, cy - getHeight() / 2f);
+        }
     }
 
     private void rebuildRows() {
+        rowsField = board.field;
         rows.clearChildren();
         rowWidgets.clear();
         rows.add(new Label("Hardpoint", skin, "dim")).left().padRight(14f);
         rows.add(new Label("Fitted", skin, "dim")).left().padRight(14f);
-        rows.add(new Label("Fit instead", skin, "dim")).colspan(4).left().row();
-        for (Hardpoint h : board.hardpoints) rowWidgets.add(new Row(h));
+        rows.add(new Label(board.field ? "Mount instead" : "Fit instead", skin, "dim")).colspan(board.field ? 2 : 4).left().row();
+        for (Hardpoint h : board.hardpoints) rowWidgets.add(new Row(h, board.field));
         if (isVisible()) pack();
     }
 
     private void say(String message) {
         refresh();
         status.setText(message == null ? "" : message);
+        fit();
     }
 
     private TextButton button(String text, Runnable action) {
