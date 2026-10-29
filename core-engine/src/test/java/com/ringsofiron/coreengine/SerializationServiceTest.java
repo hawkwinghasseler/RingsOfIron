@@ -207,4 +207,42 @@ class SerializationServiceTest {
         assertThrows(SerializationException.class,
             () -> engine.getSerializationService().loadGame("{\"version\":99,\"tick\":0,\"entities\":[]}"));
     }
+
+    public static class Summary {
+        public String name;
+        public long savedAt;
+    }
+
+    @Test
+    void aSummaryOpensTheSaveAndIsReadWithoutTheRest(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        GameEngine engine = new GameEngine();
+        engine.stepTicks(77);
+        for (int i = 0; i < 3; i++) {
+            Entity e = engine.createEntityWithUuid();
+            e.add(new TransformComponent(i, i, 0f));
+            engine.addEntity(e);
+        }
+        Summary summary = new Summary();
+        summary.name = "Brace } and \"quote\" {";
+        summary.savedAt = 1234L;
+        com.badlogic.gdx.files.FileHandle file = new com.badlogic.gdx.files.FileHandle(dir.resolve("save.json").toFile());
+        engine.getSerializationService().saveToFile(file, summary);
+
+        JsonValue read = SerializationService.readSummary(file);
+        assertNotNull(read);
+        assertEquals(summary.name, read.getString("name"));
+        assertEquals(1234L, read.getLong("savedAt"));
+
+        GameEngine loaded = new GameEngine();
+        loaded.getSerializationService().loadFromFile(file);
+        assertEquals(77, loaded.getTick());
+        assertEquals(3, loaded.getEcsEngine().getEntities().size());
+        assertTrue(loaded.getSerializationService().getLastLoadWarnings().isEmpty(), "the summary is no part of the game");
+
+        engine.getSerializationService().saveToFile(file);
+        assertNull(SerializationService.readSummary(file), "a save without one");
+        assertNull(SerializationService.readSummary(file.sibling("missing.json")), "no file");
+        file.writeString("{summary:{name:", false);
+        assertNull(SerializationService.readSummary(file), "cut short");
+    }
 }

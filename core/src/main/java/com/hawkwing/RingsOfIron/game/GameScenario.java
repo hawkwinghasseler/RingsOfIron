@@ -491,11 +491,16 @@ public class GameScenario {
      * the ship is lost or the career over, which a save would bring back as a live game; null when saved.
      */
     public String quickSave(FileHandle file) {
+        return quickSave(file, null);
+    }
+
+    /** As {@link #quickSave(FileHandle)}, opening the save with {@code summary} for the load list. */
+    public String quickSave(FileHandle file, Object summary) {
         if (world.getCrash() != null) return "the ship is lost";
         if (world.getCareerOver() != null) return "the career is over";
         if (world.timeWarp.isRailsWarp()) return "drop out of time warp first";
         if (world.rescue.bringingIn()) return "the tug is still bringing you in";
-        world.engine.getSerializationService().saveToFile(file);
+        world.engine.getSerializationService().saveToFile(file, summary);
         return null;
     }
 

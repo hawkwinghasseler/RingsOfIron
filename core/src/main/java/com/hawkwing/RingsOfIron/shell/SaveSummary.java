@@ -3,8 +3,9 @@ package com.hawkwing.RingsOfIron.shell;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Json;
-import com.badlogic.gdx.utils.JsonWriter;
+import com.badlogic.gdx.utils.JsonValue;
 import com.hawkwing.RingsOfIron.game.GameScenario;
+import com.ringsofiron.coreengine.SerializationService;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.moddingdata.components.DefRefComponent;
 import com.ringsofiron.moddingdata.defs.ShipDef;
@@ -13,11 +14,10 @@ import java.util.Locale;
 
 /**
  * What the load list shows about a save: its name, when it was made, the game time, the ship and
- * the credits. Written beside the save as {@code <save>.meta.json}, so the list never reads the
- * saves themselves and the save format (core-engine's) stays as it is.
+ * the credits. Written at the top of the save itself (core-engine's {@code summary}), so the list
+ * reads only that much of each save.
  */
 public class SaveSummary {
-    public static final String META_SUFFIX = ".meta.json";
 
     public String name = "";
     /** Wall-clock time of the save, milliseconds since 1970. */
@@ -55,26 +55,16 @@ public class SaveSummary {
         return ref.defId;
     }
 
-    public static FileHandle metaFor(FileHandle save) {
-        return save.sibling(save.nameWithoutExtension() + META_SUFFIX);
-    }
-
-    /** Writes this summary beside {@code save}, whole or not at all. */
-    public void writeFor(FileHandle save) {
-        Json json = new Json(JsonWriter.OutputType.json);
-        com.ringsofiron.coreengine.AtomicFiles.writeString(metaFor(save), json.prettyPrint(this));
-    }
-
     /**
-     * The summary beside {@code save}, or one made from the file alone (its name and date) when
-     * there is none or it can't be read, as for saves from before summaries.
+     * The summary at the top of {@code save}, or one made from the file alone (its name and date)
+     * when it has none or it can't be read.
      */
     public static SaveSummary readFor(FileHandle save, String fallbackName) {
         SaveSummary s = null;
-        FileHandle meta = metaFor(save);
-        if (meta.exists()) {
+        JsonValue summary = SerializationService.readSummary(save);
+        if (summary != null) {
             try {
-                s = new Json().fromJson(SaveSummary.class, meta);
+                s = new Json().readValue(SaveSummary.class, summary);
             } catch (RuntimeException e) {
                 s = null;
             }

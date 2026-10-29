@@ -6,7 +6,7 @@ import com.ringsofiron.coreengine.AtomicFiles;
 
 /**
  * Named saves in one folder ({@code saves/} beside the game's working directory): each is
- * {@code <file>.json}, core-engine's save, with its {@link SaveSummary} beside it. The F5 quick save
+ * {@code <file>.json}, core-engine's save, with its {@link SaveSummary} at the top. The F5 quick save
  * is the slot {@link #QUICK_SAVE} in the same folder, so it shows in the load list too.
  */
 public class SaveSlots {
@@ -82,7 +82,7 @@ public class SaveSlots {
         if (!dir.isDirectory()) return out;
         for (FileHandle f : dir.list(".json")) {
             String n = f.name();
-            if (n.endsWith(SaveSummary.META_SUFFIX) || n.equals(GameSettings.FILE_NAME)) continue;
+            if (n.equals(GameSettings.FILE_NAME)) continue;
             String base = f.nameWithoutExtension();
             String fallback = base.equals(QUICK_SAVE) ? QUICK_SAVE_NAME
                     : base.startsWith(AUTOSAVE + "-") ? "Autosave " + base.substring(AUTOSAVE.length() + 1) : base;
@@ -101,7 +101,6 @@ public class SaveSlots {
     public void delete(SaveSummary save) {
         if (save.file == null) return;
         save.file.delete();
-        SaveSummary.metaFor(save.file).delete();
     }
 
     /**
@@ -122,11 +121,11 @@ public class SaveSlots {
 
     /**
      * Copies the saves in {@code from} (the career test's {@code core/build/playtest-saves/seed-2026},
-     * say) into this folder, each with its summary, so the load list shows them beside the player's own.
+     * say) into this folder, so the load list shows them beside the player's own.
      * Each one copied is noted in {@link #CAREER_LIST} with its checksum. A later copy replaces those
      * files, and only those, so a new round's saves take the place of the last round's. A save no copy
-     * made, or one the player has saved over since (its checksum moved), is left alone, its summary too,
-     * and so is any settings file.
+     * made, or one the player has saved over since (its checksum moved), is left alone, and so is any
+     * settings file.
      */
     public Imported importFrom(FileHandle from) {
         Imported out = new Imported();
@@ -137,7 +136,7 @@ public class SaveSlots {
         java.util.Arrays.sort(files, (a, b) -> a.name().compareTo(b.name()));
         for (FileHandle f : files) {
             String n = f.name();
-            if (n.endsWith(SaveSummary.META_SUFFIX) || n.equals(GameSettings.FILE_NAME)) continue;
+            if (n.equals(GameSettings.FILE_NAME)) continue;
             FileHandle to = dir.child(n);
             boolean replacing = false;
             if (to.exists()) {
@@ -150,9 +149,6 @@ public class SaveSlots {
             }
             // Whole or not at all, like a save: a copy cut short would replace a good save with half of one
             AtomicFiles.writeBytes(to, f.readBytes());
-            FileHandle meta = SaveSummary.metaFor(f);
-            if (meta.exists()) AtomicFiles.writeBytes(SaveSummary.metaFor(to), meta.readBytes());
-            else SaveSummary.metaFor(to).delete();
             ours.put(n, checksum(to));
             (replacing ? out.replaced : out.copied).add(f.nameWithoutExtension());
         }
