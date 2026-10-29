@@ -9,6 +9,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.combatsys.damage.Shields;
 import com.ringsofiron.combatsys.defs.CombatDefs;
+import com.ringsofiron.combatsys.defs.DamageType;
 import com.ringsofiron.combatsys.defs.ProjectileDef;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.events.HullHitEvent;
@@ -205,6 +206,33 @@ class ShieldCloudTest {
     }
 
     @Test
+    void anIonBoltStripsTheCloudWhereItLandsButLosesNoneOfIt() {
+        Entity ship = spawnShip(0, 0);
+        emitter(ship, MountFootprint.MountSize.S, 10, 2, 1e9);
+        run(1f);
+        ShieldCloudComponent c = cloud(ship);
+        float aft = restingAt(c, -1f, 0f), before = c.cloud();
+        Body body = ship.getComponent(PhysicsBodyComponent.class).body;
+        // The ion cannon's bolt, as weapons.toml has it
+        ProjectileDef bolt = new ProjectileDef();
+        bolt.id = "ion_bolt_strip_test";
+        bolt.mass = 0.1f;
+        bolt.muzzleSpeed = 3000f;
+        bolt.damageType = DamageType.ION;
+        bolt.penetrationFactor = 0.5f;
+        float energy = 0.5f * bolt.mass * bolt.muzzleSpeed * bolt.muzzleSpeed * bolt.penetrationFactor;
+        Shields.absorb(ship, body, bolt, bolt.mass, energy, -20f, 0f, 1f, 0f);
+        float stripped = before - c.cloud();
+        assertEquals(energy / ShieldModel.ION_STRIP_COST, stripped, 1f, "one kg per strip cost: " + stripped);
+        assertEquals(stripped, c.scattered, 1e-3f, "all of it only scattered");
+        assertEquals(0f, c.lost, 1e-6f, "none lost for good");
+        assertEquals(300f, c.stock, 1e-3f);
+        assertTrue(restingAt(c, -1f, 0f) < 0.5f * aft, "a hole where it landed: " + restingAt(c, -1f, 0f) + " vs " + aft);
+        run(15f);
+        assertEquals(300f, c.cloud(), 3f, "and it all comes back");
+    }
+
+    @Test
     void theClosestEmitterInBearingAnswersAndABusyOneHandsOn() {
         Entity ship = spawnShip(0, 0);
         // Bow and stern emitters: tiles 18 and 1, at +17 m and -17 m
@@ -309,6 +337,45 @@ class ShieldCloudTest {
         run(15f);
         assertTrue(c.lost > 0.9f * 300f, "drifted off and gone: " + c.lost);
         assertEquals(300f - c.lost, c.stock, 1e-2f);
+    }
+
+    @Test
+    void aStunnedEmitterDropsItsCloudButKeepsItForWhenItComesRound() {
+        Entity ship = spawnShip(0, 0);
+        SubsystemComponent s = emitter(ship, MountFootprint.MountSize.S, 1, 2, 1e9);
+        run(0.2f);
+        ShieldCloudComponent c = cloud(ship);
+        // As an ion bolt leaves it: stunned, and so not operational
+        s.stunned = 20f;
+        s.isOperational = false;
+        run(15f);
+        assertFalse(Shields.up(ship), "nothing protecting the ship while it is stunned");
+        assertEquals(300f, c.scattered, 1f, "all of it only scattered");
+        assertEquals(0f, c.lost, 1e-3f, "none lost for good");
+        s.stunned = 0f;
+        s.isOperational = true;
+        run(25f);
+        assertEquals(300f, c.cloud(), 3f, "back round the hull once the stun wears off");
+        assertEquals(0f, c.lost, 1e-3f);
+    }
+
+    @Test
+    void anEmitterAStunnedReactorCutsOffKeepsItsCloudToo() {
+        Entity ship = spawnShip(0, 0);
+        SubsystemComponent s = emitter(ship, MountFootprint.MountSize.S, 1, 2, 1e9);
+        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        Entity reactor = TestShips.install(grid, SubsystemComponent.SubsystemType.REACTOR, MountFootprint.MountSize.S, 15, 2);
+        ship.getComponent(ShipSubsystemRegistryComponent.class).registerSubsystem(reactor);
+        run(0.2f);
+        ShieldCloudComponent c = cloud(ship);
+        // The reactor stunned, the emitter loses its power
+        reactor.getComponent(SubsystemComponent.class).stunned = 20f;
+        s.powered = false;
+        s.isOperational = false;
+        run(15f);
+        assertFalse(Shields.up(ship));
+        assertEquals(0f, c.lost, 1e-3f, "none lost for good");
+        assertEquals(300f, c.scattered, 1f);
     }
 
     @Test

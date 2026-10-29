@@ -12,7 +12,7 @@ import com.badlogic.gdx.math.MathUtils;
  */
 public class SynthVoice {
 
-    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, AUTOCANNON, LAUNCH, MISSILE, EXPLOSION, FOOTSTEP, VOICE, FLAK, ION, COILGUN, CANNON, SHIELD, CHIME, WARNING, BEEP }
+    public enum Patch { HUM, FIRE, ALARM, HISS, THRUSTER, LASER, IMPACT, DOOR, AUTOCANNON, LAUNCH, MISSILE, EXPLOSION, FOOTSTEP, VOICE, FLAK, ION, COILGUN, CANNON, BREACHER, TORPEDO, HEAVY_LASER, SHIELD, CHIME, WARNING, BEEP }
 
     final Patch patch;
     final boolean looping;
@@ -51,6 +51,10 @@ public class SynthVoice {
         if (path.contains("flak")) return Patch.FLAK;
         if (path.contains("coilgun")) return Patch.COILGUN;
         if (path.contains("cannon_heavy")) return Patch.CANNON;
+        if (path.contains("breacher")) return Patch.BREACHER;
+        if (path.contains("torpedo")) return Patch.TORPEDO;
+        if (path.contains("laser_heavy")) return Patch.HEAVY_LASER;
+        if (path.contains("ion_disruptor")) return Patch.ION;
         // By folder: "ion" is in "explosion" too
         if (path.endsWith("weapons/ion") || path.endsWith("impacts/ion")) return Patch.ION;
         if (path.contains("shield")) return Patch.SHIELD;
@@ -281,6 +285,30 @@ public class SynthVoice {
                 brown = brown * 0.97f + noise() * 0.08f;
                 float crack = (0.6f * noise() + 1.2f * brown) * (float) Math.exp(-t * 30f);
                 return 1.0f * thump + 0.6f * crack;
+            }
+            case BREACHER: {
+                // A heavy shell leaving a short barrel: a low cough, then the breech slamming shut
+                float hz = 40f + 30f * (float) Math.exp(-t * 14f);
+                phaseA = step(phaseA, hz);
+                float cough = (float) Math.sin(MathUtils.PI2 * phaseA) * (float) Math.exp(-t * 11f);
+                float after = Math.max(0f, t - 0.16f);
+                float clank = t < 0.16f ? 0f : (sin(620f, t) + 0.6f * sin(910f, t)) * (float) Math.exp(-after * 40f);
+                return 0.9f * cough + 0.35f * clank + 0.3f * noise() * (float) Math.exp(-t * 35f);
+            }
+            case TORPEDO: {
+                // A torpedo thrown out of its tube: a deep thump, then its motor catching low and slow
+                brown = brown * 0.985f + noise() * 0.05f;
+                float thump = sin(45f, t) * (float) Math.exp(-t * 12f);
+                float motor = Math.min(1f, Math.max(0f, t - 0.25f) * 4f) * (float) Math.exp(-t * 1.5f);
+                return 0.8f * thump + 0.9f * motor * (1.4f * brown + 0.15f * noise());
+            }
+            case HEAVY_LASER: {
+                // The laser's "bzap" an octave down and held longer, warbled slower
+                float hz = 70f + 700f * (float) Math.exp(-t * 7f);
+                hz *= 1f + 0.12f * sin(25f, t);
+                phaseA = step(phaseA, hz);
+                float env = Math.min(1f, t * 300f) * (float) Math.exp(-t * 4f);
+                return 0.75f * env * buzz(phaseA, 8);
             }
             case SHIELD: {
                 // A glassy shimmer: two close high tones beating, fading fast

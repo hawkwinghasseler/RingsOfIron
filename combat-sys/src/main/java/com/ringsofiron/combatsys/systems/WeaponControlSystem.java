@@ -46,7 +46,8 @@ import com.ringsofiron.physicsexterior.components.ThrusterComponent;
  * out part of the miss they saw on the last one.
  *
  * Point-defense mounts pick their own target: the incoming missile their ship tracks that will
- * pass closest soonest. Launchers throw a missile at the target's track when loaded; guidance
+ * pass closest soonest. A beam firing at will does the same before it turns to its target, so lasers
+ * are point defense too. Launchers throw a missile at the target's track when loaded; guidance
  * takes it from there. Beams point straight at the track (light needs no lead) and burn for a
  * pulse while the gunner fights to hold the spot steady; {@link BeamSystem} finds what they touch.
  *
@@ -265,6 +266,15 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         Entity target = hunting ? pickMissileThreat(ship, body, sensor, def)
                 : (mount.target != null ? mount.target : sensor == null ? null : sensor.lockedTarget);
         if (hand) target = null;
+        // A beam firing at will turns on the most urgent missile in its reach first: lasers are point defense too
+        mount.defending = false;
+        if (def.mount == WeaponDef.MountType.BEAM && !hunting && !hand && !mount.trigger && mount.target == null) {
+            Entity threat = pickMissileThreat(ship, body, sensor, def);
+            if (threat != null) {
+                target = threat;
+                mount.defending = true;
+            }
+        }
         if (target != null && !mount.trigger && spared != null && spared.holds(ship, target)) target = null;
         if (target != mount.lastTarget) {
             mount.engagedFor = 0f;
@@ -399,7 +409,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
             boolean wantsFire = mount.trigger
                     ? (onTarget || straightDownTheBarrel(mount, track, hand))
                     : (mount.weaponsFree && !hand && onTarget && mount.engagedFor >= reactionTime(mount)
-                            && worthAShot(mount, target, dist));
+                            && (mount.defending || worthAShot(mount, target, dist)));
             if (!wantsFire || mount.cooldown > 0f) return;
             if (!mount.trigger && blocked(ship, target, muzzle, estPos)) return;
             // A pulse only starts with power to start it.
@@ -492,7 +502,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         PhysicsManager.getPosition(body, shipPos);
         PhysicsManager.getVelocity(body, shipVel);
         ProjectileDef round = def.projectile == null ? null : defs.projectiles.get(def.projectile);
-        float reach = def.maxRange > 0f ? def.maxRange
+        float reach = def.mount == WeaponDef.MountType.BEAM ? beamReach(def) : def.maxRange > 0f ? def.maxRange
                 : round == null ? 0f : round.muzzleSpeed * round.maxLifetime;
         Entity best = null;
         float bestTime = Float.MAX_VALUE;
@@ -581,7 +591,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
 
     private float reactionTime(WeaponMountComponent mount) {
         float green = 1f - MathUtils.clamp(mount.gunnerySkill, 0f, 1f);
-        return mount.def.pointDefense ? PD_REACTION_BASE + PD_REACTION_GREEN * green
+        return mount.def.pointDefense || mount.defending ? PD_REACTION_BASE + PD_REACTION_GREEN * green
                 : REACTION_BASE + REACTION_GREEN * green;
     }
 

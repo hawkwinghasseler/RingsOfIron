@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="62" height="14" viewBox="-50 -7 62 14">
+  <title>breach_shell: a fat fused shell with a dull tracer, pivot at origin, nose toward +x</title>
+  <defs><linearGradient id="breach_tracer" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#ff7a3a" stop-opacity="0"/><stop offset="1" stop-color="#ff7a3a" stop-opacity="0.8"/></linearGradient></defs>
+  <g id="base">
+    <rect x="-9" y="-4" width="10" height="8" rx="1" fill="#6a3b2a" stroke="#10141a" stroke-width="1"/>
+    <polygon points="1,-4 6,-4 10,0 6,4 1,4" fill="#7d8898" stroke="#10141a" stroke-width="1" stroke-linejoin="round"/>
+    <rect x="-3" y="-4" width="2" height="8" fill="#f2c230"/>
+  </g>
+  <g id="emissive">
+    <path d="M-48,0 L-8,-3.5 L-8,3.5 Z" fill="url(#breach_tracer)"/>
+  </g>
+</svg>

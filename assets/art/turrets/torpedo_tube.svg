@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="56" viewBox="-28 -28 72 56">
+  <title>torpedo_tube: pivot at origin, two wide tubes facing +x</title>
+  <g id="base">
+    <circle cx="0" cy="0" r="24" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
+    <circle cx="0" cy="0" r="16.8" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="-16" y="-19" width="54" height="17" rx="5" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <rect x="-16" y="2" width="54" height="17" rx="5" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+    <circle cx="32" cy="-10.5" r="6.5" fill="#1e2227" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="32" cy="-10.5" r="3" fill="#8a5a2a"/>
+    <circle cx="32" cy="10.5" r="6.5" fill="#1e2227" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="32" cy="10.5" r="3" fill="#8a5a2a"/>
+  </g>
+</svg>

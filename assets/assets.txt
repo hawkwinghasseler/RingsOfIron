@@ -704,14 +704,17 @@ art/interactive/terminal_unpowered.svg
 art/lights.json
 art/preview.html
 art/projectiles/autocannon_round.svg
+art/projectiles/breach_shell.svg
 art/projectiles/coil_slug.svg
 art/projectiles/decoy_flare.svg
 art/projectiles/flak_shell.svg
 art/projectiles/harpoon.svg
 art/projectiles/ion_bolt.svg
+art/projectiles/lance.svg
 art/projectiles/missile.svg
 art/projectiles/railgun_slug.svg
 art/projectiles/railgun_slug_heavy.svg
+art/projectiles/torpedo.svg
 art/tiles/conduit.svg
 art/tiles/conduit_arm.svg
 art/tiles/conduit_arm_unpowered.svg
@@ -724,6 +727,7 @@ art/tiles/floor.svg
 art/tiles/pipe_arm.svg
 art/tiles/pipe_hub.svg
 art/turrets/autocannon_mk1.svg
+art/turrets/breaching_cannon.svg
 art/turrets/cannon_heavy.svg
 art/turrets/chaingun_mk1.svg
 art/turrets/chaingun_mk2.svg
@@ -732,8 +736,13 @@ art/turrets/coilgun_mk1_unpowered.svg
 art/turrets/dart_rack.svg
 art/turrets/flak_mk1.svg
 art/turrets/harpoon_launcher.svg
+art/turrets/ion_disruptor.svg
+art/turrets/ion_disruptor_unpowered.svg
 art/turrets/ion_mk1.svg
 art/turrets/ion_mk1_unpowered.svg
+art/turrets/lance_rack.svg
+art/turrets/laser_heavy.svg
+art/turrets/laser_heavy_unpowered.svg
 art/turrets/laser_mk1.svg
 art/turrets/laser_mk1_unpowered.svg
 art/turrets/railgun_heavy.svg
@@ -742,6 +751,7 @@ art/turrets/railgun_mk1.svg
 art/turrets/railgun_mk1_unpowered.svg
 art/turrets/railgun_mk2.svg
 art/turrets/railgun_mk2_unpowered.svg
+art/turrets/torpedo_tube.svg
 art/walls/composite_armor_heavy_0.svg
 art/walls/composite_armor_heavy_e.svg
 art/walls/composite_armor_heavy_es.svg

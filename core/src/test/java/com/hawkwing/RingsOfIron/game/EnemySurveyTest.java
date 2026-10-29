@@ -96,7 +96,8 @@ class EnemySurveyTest {
 
     @Test
     void theBasesDefenceFightsTheCorvette() {
-        Result r = fight(2026, CORVETTE, BASE, 0, null);
+        // Seeing the wing fire is enough: fought out, the corvette's raid runs minutes of sim time
+        Result r = fight(2026, CORVETTE, BASE, 0, null, START, 1);
         System.out.println("RESULT " + r);
         assertTrue(r.fired > 0, "it fired: " + r);
         assertTrue(r.loadouts.contains("battery_"), "its guns joined the defence: " + r);
@@ -230,6 +231,15 @@ class EnemySurveyTest {
      * its lurk as the game does ({@link #hunt}).
      */
     static Result fight(long seed, int ours, String shipId, int size, String loadout, String start) {
+        return fight(seed, ours, shipId, size, loadout, start, 0);
+    }
+
+    /**
+     * As {@link #fight(long, int, String, int, String, String)}; a raid on the {@link #BASE} ends once its
+     * wing has fired {@code enoughShots} rounds, when that is above 0 ({@link RaidRoutine#fly(GameWorld,
+     * GameScenario, Runnable, long, int)}).
+     */
+    static Result fight(long seed, int ours, String shipId, int size, String loadout, String start, int enoughShots) {
         boolean gunship = ours != CORVETTE;
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         GameWorld world = new GameWorld();
@@ -255,9 +265,9 @@ class EnemySurveyTest {
             }
             if (BASE.equals(shipId)) {
                 world.pirateBase.reveal(null);
-                if (!NO_RAILGUN.equals(loadout)) return RaidRoutine.fly(world, game, () -> { });
+                if (!NO_RAILGUN.equals(loadout)) return RaidRoutine.fly(world, game, () -> { }, -1, enoughShots);
                 pinDifficulty(world, game.player, NO_RAILGUN_DIFFICULTY);
-                return RaidRoutine.fly(world, game, () -> { }, seed);
+                return RaidRoutine.fly(world, game, () -> { }, seed, enoughShots);
             }
             String lurk = game.highport;
             // Armed as the difficulty would arm it, drawn by the seed (the top-up's own draw is the same in every game)
@@ -310,6 +320,9 @@ class EnemySurveyTest {
             int[] frame = new int[1];
             double t0 = world.engine.getSimSeconds();
             double[] end = {Double.NaN};
+            // The captain killed and the crew carrying them home ends the fight: the bubble is gone with them
+            boolean[] carried = new boolean[1];
+            world.carriedHome.add((sig, tow) -> carried[0] = true);
             r.hull0 = hull(player);
             r.crew0 = alive(world, player);
             for (Entity s : ships) r.enemyCrew0 += alive(world, s);
@@ -332,7 +345,8 @@ class EnemySurveyTest {
                 gun.launchMissile();
                 gun.update(FRAME);
                 if (DEBUG && frame[0]++ % 15 == 0) debug(world, player, ships, hs);
-                boolean done = !anyLeft || FirstPlay.beaten(world, player) || alive(world, player) == 0 || world.getCrash() != null;
+                boolean done = !anyLeft || FirstPlay.beaten(world, player) || alive(world, player) == 0 || world.getCrash() != null
+                        || carried[0];
                 if (done) end[0] = world.engine.getSimSeconds();
                 return done;
             });
@@ -349,8 +363,8 @@ class EnemySurveyTest {
                 allBeaten &= beaten;
                 anyEscaped |= !beaten && s.getComponent(PhysicsBodyComponent.class) == null;
             }
-            r.outcome = FirstPlay.beaten(world, player) || r.crew1 == 0 ? "lost" : allBeaten ? "won" : anyEscaped && over ? "ran" : "draw";
-            if ("lost".equals(r.outcome)) r.ourEnd = String.valueOf(ShipDisablement.reason(player));
+            r.outcome = FirstPlay.beaten(world, player) || r.crew1 == 0 || carried[0] ? "lost" : allBeaten ? "won" : anyEscaped && over ? "ran" : "draw";
+            if ("lost".equals(r.outcome)) r.ourEnd = carried[0] ? "the captain was killed" : String.valueOf(ShipDisablement.reason(player));
             return r;
         } finally {
             world.dispose();

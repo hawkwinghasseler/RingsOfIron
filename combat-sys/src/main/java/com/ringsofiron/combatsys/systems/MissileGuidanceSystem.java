@@ -219,11 +219,12 @@ public class MissileGuidanceSystem extends EntitySystem implements PhysicsManage
             body.mass = def.dryMass + def.propellantMass;
             body.muzzleSpeed = 0f;
             body.damageType = DamageType.EXPLOSIVE;
-            body.penetrationFactor = 0.3f;
-            // A missile that strikes the hull goes off on it rather than glancing away.
+            body.penetrationFactor = def.penetrationFactor;
+            // A missile that strikes the hull goes off on it rather than glancing away; one with a
+            // delayed fuse (a torpedo) punches in first
             body.ricochetAngleDeg = 89f;
             body.ricochetRestitution = 0.1f;
-            body.fuse = Fuse.contact();
+            body.fuse = def.fuse != null && def.fuse.type == Fuse.Type.DELAYED ? def.fuse : Fuse.contact();
             body.warhead = def.warhead;
             body.maxLifetime = def.maxLifetime;
             body.armingTime = def.armingDelay;

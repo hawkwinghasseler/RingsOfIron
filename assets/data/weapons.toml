@@ -78,6 +78,8 @@ missile = "harpoon"
 max_range = 15000.0
 sound = "evt_missile_launch"
 
+# Lasers are point defense too: firing at will, a beam burns down the most urgent incoming missile
+# in its reach before it turns to its target.
 [weapon.laser_mk1]
 name = "Laser Mk1"
 price = 45000.0
@@ -161,7 +163,8 @@ sound = "evt_railgun_heavy_fire"
 
 # Ion bolts break nothing: each one that lands stuns the systems within two tiles of where it
 # struck for 10 to 30 s, so a ship can be stopped and boarded without wrecking it. A shield
-# soaks a bolt as often as it takes its share of one.
+# soaks a bolt as often as it takes its share of one, but the bolt strips the cloud where it lands
+# (some 56 kg here), and stunned emitters drop their share: both come back, neither is lost.
 [weapon.ion_mk1]
 name = "Ion Cannon Mk1"
 price = 40000.0
@@ -192,6 +195,85 @@ projectile = "cannon_shell_heavy"
 spread_rad = 0.0015
 max_range = 3500.0
 sound = "evt_cannon_heavy_fire"
+
+# Medium, a crew killer: a 20 kg shell at 1.2 km/s (14 MJ) every 2 s (7 MW, well inside its budget,
+# since its charge does what its joules don't). Its delayed fuse sets it off one tile inside the hull:
+# overpressure through the pressurized room behind the armor and a spray of fragments. Venting the
+# compartment first, or a heavy hull that stops the shell at the skin, keeps it outside.
+[weapon.breaching_cannon]
+name = "Breaching Cannon"
+price = 55000.0
+mount = "turret"
+min_mount_size = "M"
+slew_rate_deg = 35
+firing_arc_deg = 240
+cooldown = 2.0
+power_draw = 1.0e5
+projectile = "breach_shell"
+spread_rad = 0.0015
+max_range = 3000.0
+sound = "evt_breacher_fire"
+
+# Medium beam: 8 MW for 2 s (16 MJ) every 6 s, 4 km. It draws 10 MW while it burns, so on a small
+# reactor it starves the rest of the ship. Spinning or juking smears the spot.
+[weapon.laser_heavy]
+name = "Heavy Laser"
+price = 110000.0
+mount = "beam"
+min_mount_size = "M"
+slew_rate_deg = 40
+firing_arc_deg = 270
+cooldown = 6.0
+power_draw = 1.0e7
+beam_power = 8.0e6
+beam_duration = 2.0
+spread_rad = 0.0004
+max_range = 4000.0
+sound = "evt_laser_heavy_fire"
+
+# Two torpedoes, slow (1.6 km/s of delta-v) and tough enough to take several point-defense hits, on a
+# thermal seeker that a flare fools. A hardened nose punches two tiles in before the charge goes off.
+[weapon.torpedo_tube]
+name = "Torpedo Tube"
+price = 75000.0
+mount = "launcher"
+min_mount_size = "S"
+firing_arc_deg = 360
+cooldown = 6.0
+magazine = 2
+missile = "torpedo"
+max_range = 12000.0
+sound = "evt_torpedo_launch"
+
+# A sprint missile: it burns almost everything closing, so point defense has little time to find it,
+# and holds back only 5% for the end; a hard turn late makes it overshoot.
+[weapon.lance_rack]
+name = "Lance Rack"
+price = 28000.0
+mount = "launcher"
+min_mount_size = "S"
+firing_arc_deg = 360
+cooldown = 0.8
+magazine = 4
+missile = "lance"
+max_range = 12000.0
+sound = "evt_missile_launch"
+
+# The ion cannon's big brother: bolts that stun three tiles round for 15 to 40 s, out to 4 km. An ace's
+# prize-taking refit, and a yard's dearest stunner.
+[weapon.ion_disruptor]
+name = "Ion Disruptor"
+price = 70000.0
+mount = "turret"
+min_mount_size = "S"
+slew_rate_deg = 60
+firing_arc_deg = 270
+cooldown = 2.5
+power_draw = 2.0e6
+projectile = "disruptor_bolt"
+spread_rad = 0.0008
+max_range = 4000.0
+sound = "evt_ion_disruptor_fire"
 
 # Better mounts for the same rounds: an ace's refits, and a yard's dearest Small guns.
 [weapon.railgun_mk2]
@@ -291,6 +373,38 @@ ricochet_restitution = 0.5
 spall = { count = 4, angle_deg = 25, fraction = 0.3 }
 max_lifetime = 20.0
 
+# The breaching cannon's shell: it goes off one tile inside the hull
+[projectile.breach_shell]
+art = "breach_shell"
+mass = 20.0
+muzzle_speed = 1200.0
+damage_type = "kinetic"
+penetration_factor = 0.7
+ricochet_angle_deg = 60
+ricochet_restitution = 0.3
+fuse = { type = "delayed", depth_tiles = 1 }
+warhead = "breach_charge"
+spall = { count = 3, angle_deg = 25, fraction = 0.3 }
+max_lifetime = 15.0
+
+[warhead.breach_charge]
+fragment_count = 12
+fragment_mass = 0.3
+fragment_speed = 1500.0
+fragment_cone_deg = 90
+blast_radius_tiles = 2
+blast_damage = 1.5e6
+
+# The ion disruptor's bolt
+[projectile.disruptor_bolt]
+art = "ion_bolt"
+mass = 0.15
+muzzle_speed = 3500.0
+damage_type = "ion"
+penetration_factor = 0.5
+stun = { radius_tiles = 3, min_seconds = 15, max_seconds = 40 }
+max_lifetime = 5.0
+
 [projectile.flak_shell]
 art = "flak_shell"
 mass = 1.5
@@ -355,3 +469,49 @@ fragment_cone_deg = 60
 blast_radius_tiles = 2
 blast_damage = 1.5e5
 
+# The torpedo tube's torpedo: heavy, slow to turn, thermal-seeking, with a hardened nose and a delayed fuse.
+# Armored to take some thirty flak hits (about 0.9 MJ each): a lone pair has to get through a gunship's flak (shield benchmark)
+[missile.torpedo]
+art = "torpedo"
+dry_mass = 250.0
+propellant_mass = 175.0
+exhaust_velocity = 3000.0
+max_thrust = 50000.0
+turn_rate_deg = 45
+seeker = { type = "thermal", fov_deg = 30, range = 15000, discrimination = 0.4 }
+nav_gain = 3.5
+terminal_reserve = 0.4
+closing_burn = 20.0
+arming_delay = 1.0
+hit_radius = 1.5
+hit_points = 3.0e7
+penetration_factor = 1.0
+fuse = { type = "delayed", depth_tiles = 2 }
+warhead = "torpedo_charge"
+max_lifetime = 150.0
+
+[warhead.torpedo_charge]
+fragment_count = 30
+fragment_mass = 0.5
+fragment_speed = 1500.0
+fragment_cone_deg = 120
+blast_radius_tiles = 4
+blast_damage = 3.0e6
+
+# The lance rack's sprint missile
+[missile.lance]
+art = "lance"
+dry_mass = 30.0
+propellant_mass = 70.0
+exhaust_velocity = 3200.0
+max_thrust = 40000.0
+turn_rate_deg = 60
+seeker = { type = "radar", fov_deg = 30, range = 12000, discrimination = 0.5 }
+nav_gain = 4.0
+terminal_reserve = 0.05
+closing_burn = 200.0
+arming_delay = 0.4
+hit_radius = 0.6
+hit_points = 6.0e4
+fuse = { type = "proximity", radius = 8 }
+warhead = "frag_light"

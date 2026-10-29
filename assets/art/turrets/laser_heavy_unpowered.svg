@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="124" height="76" viewBox="-38 -38 124 76">
+  <title>laser_heavy turret: pivot at origin, emitter toward +x, unpowered</title>
+  <g id="base">
+    <circle cx="0" cy="0" r="34" fill="#5b6675" stroke="#10141a" stroke-width="2"/>
+    <circle cx="0" cy="0" r="23.8" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="8" y="-12" width="60" height="24" rx="10" fill="#2f3641" stroke="#10141a" stroke-width="2"/>
+    <rect x="22" y="-15" width="5" height="30" rx="1.5" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <rect x="36" y="-15" width="5" height="30" rx="1.5" fill="#4b5563" stroke="#10141a" stroke-width="1.5"/>
+    <circle cx="70" cy="0" r="11" fill="#4a1f1f" stroke="#10141a" stroke-width="2"/>
+    <rect x="-26" y="-18" width="34" height="36" rx="4" fill="#373f4b" stroke="#10141a" stroke-width="2"/>
+  </g>
+</svg>

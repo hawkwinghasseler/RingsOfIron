@@ -19,7 +19,8 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
  * has burning is cast from its muzzle along its direction to its reach; the first ship, asteroid
  * or station hull it meets takes {@code beamPower * dt} (less on short power) through
  * {@link ImpactResolutionSystem#burn}. Light has no travel time, so this bypasses ballistics, and
- * a beam that keeps moving across a hull spreads its heat over many tiles.
+ * a beam that keeps moving across a hull spreads its heat over many tiles. A missile on the beam
+ * nearer than any hull takes the burn instead, off its hit points ({@link BallisticsSystem#burnMissile}).
  *
  * Runs from {@link PhysicsManager.StepListener#beforeStep}. Add it to the engine after
  * {@link WeaponControlSystem}.
@@ -32,6 +33,8 @@ public class BeamSystem extends EntitySystem implements PhysicsManager.StepListe
 
     private final PhysicsManager physics;
     private final ImpactResolutionSystem impacts;
+    private final BallisticsSystem ballistics;
+    private final float[] along = new float[1];
     private ImmutableArray<Entity> ships;
 
     // Closest hit of the current cast.
@@ -42,6 +45,7 @@ public class BeamSystem extends EntitySystem implements PhysicsManager.StepListe
     public BeamSystem(PhysicsManager physics, ImpactResolutionSystem impacts) {
         this.physics = physics;
         this.impacts = impacts;
+        this.ballistics = impacts.ballistics();
     }
 
     @Override
@@ -75,12 +79,12 @@ public class BeamSystem extends EntitySystem implements PhysicsManager.StepListe
                     mount.beamContact = null;
                     continue;
                 }
-                fire(body, mount, dt);
+                fire(ship, body, mount, dt);
             }
         }
     }
 
-    private void fire(Body body, WeaponMountComponent mount, float dt) {
+    private void fire(Entity ship, Body body, WeaponMountComponent mount, float dt) {
         WeaponDef def = mount.def;
         float reach = def.maxRange > 0f ? def.maxRange : WeaponControlSystem.DEFAULT_BEAM_RANGE;
         float dx = mount.beamDir.x, dy = mount.beamDir.y;
@@ -92,6 +96,16 @@ public class BeamSystem extends EntitySystem implements PhysicsManager.StepListe
         hitFraction = 2f;
         physics.rayCast(sx, sy, ex, ey, this::closest);
         ownBody = null;
+
+        // A missile nearer than any hull takes the beam instead: lasers are point defense too
+        Entity missile = ballistics.missileOnLine(sx, sy, ex, ey, ship, along);
+        if (missile != null && along[0] < hitFraction) {
+            float mx = sx + (ex - sx) * along[0], my = sy + (ey - sy) * along[0];
+            mount.beamEnd.set(mx, my);
+            ballistics.burnMissile(missile, ship, def.beamPower * mount.beamStrength * dt, mx, my, missile != mount.beamContact);
+            mount.beamContact = missile;
+            return;
+        }
 
         Entity target = hitFixture == null ? null
                 : hitFixture.getBody().getUserData() instanceof Entity ? (Entity) hitFixture.getBody().getUserData() : null;

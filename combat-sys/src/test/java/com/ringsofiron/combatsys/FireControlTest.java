@@ -39,6 +39,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -449,6 +450,24 @@ class FireControlTest {
         assertEquals(1000f - 8f, laser.beamEnd.x, 1f, "and stopped at it");
         // 4 MW for 2.5 s is 10 MJ: more than one medium steel tile (8 MJ) holds, if the spot holds still.
         assertTrue(hits.contains(HullHitEvent.Outcome.PENETRATED), "it burned through: " + hits);
+    }
+
+    @Test
+    void aLaserTurnsFromItsTargetToBurnDownAnIncomingMissile() {
+        Entity attacker = spawnShip(-2500, 0, 0, 0);
+        Entity defender = spawnShip(0, 0, 0, 0);
+        defender.getComponent(SensorComponent.class).lockedTarget = attacker;
+        WeaponMountComponent laser = arm(defender, "laser_mk1", -6f, 0f, MathUtils.PI);
+        run(1f);
+        MissileDef harpoon = defs.missile("harpoon");
+        missiles.launch(harpoon, attacker, null, defender, -2490f, 0f, harpoon.ejectSpeed, 0f, 0f);
+        boolean[] killed = new boolean[1];
+        events.intercepts.add((s, hit) -> killed[0] |= hit.destroyed && hit.beam && hit.shooter == defender);
+        boolean[] struck = new boolean[1];
+        events.hullHits.add((s, hit) -> struck[0] |= hit.ship == defender && !hit.beam);
+        for (int i = 0; i < 40 * 60 && !killed[0]; i++) engine.update(DT);
+        assertTrue(killed[0], "the laser broke the missile up");
+        assertFalse(struck[0], "before it reached the hull");
     }
 
     @Test
