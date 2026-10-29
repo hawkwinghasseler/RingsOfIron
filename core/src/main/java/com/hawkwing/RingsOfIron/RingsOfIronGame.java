@@ -388,6 +388,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
             rearm();
             show(rescueNotice(rescue));
         });
+        // A ship bought at a yard (or swapped in by flyShip): the guns, launchers and HUD on the new
+        // hull, not the one traded in. GameScenario's listener has made it game.player by now.
+        world.shipyard.deals.add((signal, deal) -> {
+            if (deal.newShip != null) rearm();
+        });
         world.rescue.tows.add((signal, tow) -> {
             matchViewToSeat();
             long days = Math.round(tow.skipped / 86_400);
