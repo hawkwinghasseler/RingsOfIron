@@ -47,7 +47,7 @@ final class RaidRoutine {
     /**
      * As {@link #fly(GameWorld, GameScenario, Runnable, long)}; with {@code enoughShots} above 0 the raid
      * ends once the base's wing has fired that many rounds: a quick check that the defence
-     * fights needn't play out the whole raid (a corvette's can run all {@link #RAID_SECONDS}).
+     * fights needn't play out the whole raid.
      */
     static EnemySurveyTest.Result fly(GameWorld world, GameScenario game, Runnable arrived, long redraw, int enoughShots) {
         EnemySurveyTest.Result r = new EnemySurveyTest.Result();
@@ -109,6 +109,9 @@ final class RaidRoutine {
         double t0 = world.engine.getSimSeconds();
         double[] end = {Double.NaN};
         int[] frame = new int[1];
+        // The captain killed and the crew carrying them home ends the raid: the bubble is gone with them
+        boolean[] carried = new boolean[1];
+        world.carriedHome.add((sig, tow) -> carried[0] = true);
         r.hull0 = EnemySurveyTest.hull(player);
         r.crew0 = EnemySurveyTest.alive(world, player);
         for (Entity s : ships) r.enemyCrew0 += EnemySurveyTest.alive(world, s);
@@ -171,7 +174,7 @@ final class RaidRoutine {
             }
             frame[0]++;
             boolean done = !world.pirateBase.standing() || FirstPlay.beaten(world, player) || EnemySurveyTest.alive(world, player) == 0
-                    || world.getCrash() != null || (enoughShots > 0 && fired[0] >= enoughShots);
+                    || world.getCrash() != null || carried[0] || (enoughShots > 0 && fired[0] >= enoughShots);
             if (done) end[0] = world.engine.getSimSeconds();
             return done;
         });
@@ -188,8 +191,9 @@ final class RaidRoutine {
             r.ends += (r.ends.isEmpty() ? "" : ", ") + EnemySurveyTest.end(world, s);
             anyEscaped |= !FirstPlay.beaten(world, s) && s.getComponent(PhysicsBodyComponent.class) == null;
         }
-        r.outcome = FirstPlay.beaten(world, player) || r.crew1 == 0 ? "lost" : !world.pirateBase.standing() ? "won"
+        r.outcome = FirstPlay.beaten(world, player) || r.crew1 == 0 || carried[0] ? "lost" : !world.pirateBase.standing() ? "won"
                 : anyEscaped && over ? "ran" : "draw";
+        if (carried[0]) r.ourEnd = "the captain was killed";
         return r;
     }
 
