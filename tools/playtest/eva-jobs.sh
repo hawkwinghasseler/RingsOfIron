@@ -82,68 +82,66 @@ deck
 key y; pause 1.5; shot j-01-field-refit
 click 1091 495; pause 1; refit; shot j-02-mount-ordered
 key y; pause 0.3
-# The hold is beside the engineer's post: she is at it in a few seconds, and lifts the crate in two
-until_fast doing 20 "lifting a crate"
-shot j-03-lifting-the-crate
+# The hold is beside the engineer's post: she has the crate out of it in a few seconds, and suits up
 until_fast doing 20 "EVA suit"
-pause 3; doing; shot j-04-suiting-up-with-the-crate
+pause 3; doing; shot j-03-suiting-up-with-the-crate
 warp 1
 until_ doing 40 "to the airlock\|cycling out"
-warp 0; doing; shot j-05-carrying-it-to-the-airlock
+warp 0; doing; shot j-04-carrying-it-to-the-airlock
 warp 1
 until_ eva 40 "ON_HULL"
-warp 0; pause 1.5; eva; shot j-06-out-with-the-crate-deck
-helm; shot j-07-out-with-the-crate-outside
+warp 0; pause 1.5; eva; shot j-05-out-with-the-crate-deck
+helm; shot j-06-out-with-the-crate-outside
 warp 1
 until_ eva 40 "mounting"
-warp 0; pause 1; eva; refit; shot j-08-mounting-outside
-deck; shot j-09-mounting-deck
-key y; pause 1.5; shot j-10-field-refit-progress; key y; pause 1
+warp 0; pause 1; eva; refit; shot j-07-mounting-outside
+deck; shot j-08-mounting-deck
+key y; pause 1.5; shot j-09-field-refit-progress; key y; pause 1
 # Called in from the crew window: she leaves the crate clipped on at the nose and comes in
-crew; shot j-11-crew-call-in
-click $ADA_EVA; pause 1; shot j-12-called-in
+crew; shot j-10-crew-call-in
+click $ADA_EVA; pause 1; shot j-11-called-in
 uncrew
 warp 1
 until_ eva 60 "nobody"
-warp 0; pause 1; doing; refit; shot j-13-in-the-crate-left-at-the-nose
+warp 0; pause 1; doing; refit; shot j-12-in-the-crate-left-at-the-nose
 # Let out again: straight out to the nose, nothing to fetch
-crew; shot j-14-crew-let-out
+crew; shot j-13-crew-let-out
 click $ADA_EVA; pause 1; uncrew
 warp 1
 until_ eva 60 "ON_HULL"
 until_ eva 40 "mounting"
-warp 0; pause 1; eva; refit; shot j-15-back-at-it
+warp 0; pause 1; eva; refit; shot j-14-back-at-it
 until_ eva 60 "the old"
-pause 1; eva; notices; shot j-16-bringing-the-old-one-in-deck
-helm; shot j-17-bringing-the-old-one-in-outside
+pause 1; eva; notices; shot j-15-bringing-the-old-one-in-deck
+helm; shot j-16-bringing-the-old-one-in-outside
 deck
 warp 1
 until_ eva 60 "cycling back in"
 warp 0
 until_fast doing 30 "stowing the old\|to the hold"
-shot j-18-stowing-the-old-one
+shot j-17-stowing-the-old-one
 until_ refit 20 "none"
-key y; pause 1.5; shot j-19-field-refit-after; key y; pause 1
+key y; pause 1.5; shot j-18-field-refit-after; key y; pause 1
 
 # 2. Everyone held in; then a hit jams the docking collar
-crew; click 1034 455; pause 1; shot j-20-held-in
+crew; click 1034 455; pause 1; shot j-19-held-in
 uncrew
 cmd dev "player.getComponent($P).ports[0].jammed = true; 'jammed'"
 warp 2; pause 8; warp 0
-doing; eva; notices; shot j-21-collar-jammed-nobody-out
-crew; shot j-22-crew-send-out
-click $ADA_EVA; pause 1; shot j-23-sent-out
+doing; eva; notices; shot j-20-collar-jammed-nobody-out
+crew; shot j-21-crew-send-out
+click $ADA_EVA; pause 1; shot j-22-sent-out
 uncrew
 warp 1
 until_ eva 60 "ON_HULL"
 until_ eva 30 "freeing"
-warp 0; pause 1; eva; shot j-24-freeing-the-collar-deck
-helm; shot j-25-freeing-the-collar-outside
+warp 0; pause 1; eva; shot j-23-freeing-the-collar-deck
+helm; shot j-24-freeing-the-collar-outside
 warp 2
 until_ eva 60 "nobody"
-warp 0; notices; deck; shot j-26-collar-freed
+warp 0; notices; deck; shot j-25-collar-freed
 # Let out again: the crew go out for work as it comes
-crew; click 976 452; pause 1; shot j-27-let-out-again; uncrew
+crew; click 976 452; pause 1; shot j-26-let-out-again; uncrew
 
 # 3. The collar jammed again: Ada goes out to it
 helm
@@ -154,36 +152,38 @@ until_ eva 60 "freeing"
 warp 0
 # Her jetpack spent
 cmd dev "world.crew.crew($ADA).suitJet = 0f; 'pack spent'"
-pause 1; eva; status; shot j-28-at-the-collar-pack-spent
-# A full burn ahead throws her off the hull, and her line parts after a second and a quarter. With
-# nothing in her pack she falls astern, no way back alone, through where the main engines' exhaust
-# would burn her: the status panel warns of her before a burn
+pause 1; eva; status; shot j-27-at-the-collar-pack-spent
+# Zoomed out, a full burn ahead throws her off the hull, and her line parts after a second and a
+# quarter. With nothing in her pack she falls astern, no way back alone, through where the main
+# engines' exhaust would burn her: the status panel warns of her before a burn
+wheel 5 8; pause 1
 hold w 2
 until_fast status 15 "in the way of the main engines"
-shot j-29-in-the-way-of-the-exhaust
+shot j-28-in-the-way-of-the-exhaust
 # A short burn all the same: the exhaust catches her
 health; hold w 0.5
-pause 0.3; notices; status; health; shot j-30-caught-in-the-exhaust
-wheel 5 8; pause 2; status; shot j-31-adrift-marker
+pause 0.3; notices; status; health; shot j-29-caught-in-the-exhaust
+# Further out, the HUD marks her
+wheel 5 6; pause 1; status; shot j-30-adrift-marker
 # The ship comes back beside her: 20 m off the docking port, her speed matched
 cmd dev "def a = $ADA; def e = $E.of(a); def b = player.getComponent($B).body; def g = player.getComponent($G); def th = b.getAngle(); def lx = g.gridOriginLocal.x + 8.5f; def ly = g.gridOriginLocal.y + 26f; $M.setPosition(b, (e.wx - (Math.cos(th) * lx - Math.sin(th) * ly)) as float, (e.wy - (Math.sin(th) * lx + Math.cos(th) * ly)) as float, th as float); $M.setVelocity(b, e.vx, e.vy); b.setAngularVelocity(0f); 'beside her'"
-wheel 4 12; pause 2; status; notices; shot j-32-back-for-her
+wheel 4 7; pause 2; status; notices; shot j-31-back-for-her
 # A shipmate suits up, goes out on a line and jets out to her from the hull beside the port
 deck
 until_ doing 60 "EVA suit"
-pause 0.5; doing; shot j-33-suiting-up-to-fetch-her
+pause 0.5; doing; shot j-32-suiting-up-to-fetch-her
 helm
 warp 1
 until_ eva 90 "cycling out\|jetting out"
 warp 0
 until_fast eva 60 "jetting out to Ada"
-pause 0.5; eva; shot j-34-jetting-out-to-her
+pause 0.5; eva; shot j-33-jetting-out-to-her
 until_fast eva 60 "bringing Ada"
-pause 0.5; eva; status; notices; shot j-35-taken-in-tow
-pause 3; eva; shot j-36-bringing-her-in
+pause 0.5; eva; status; notices; shot j-34-taken-in-tow
+pause 3; eva; shot j-35-bringing-her-in
 # Both back in: Ada hangs up her spent suit to fill, rather than go back out to the collar on it
 until_ eva 60 "nobody"
-deck; pause 4; doing; notices; shot j-37-both-back-in
+deck; pause 4; doing; notices; shot j-36-both-back-in
 
 pause 1
 grep 'PLAYTEST \(dev\|target\)' "$OUT/game.log" | sed "s/.*join('; '): /  /" | tail -80

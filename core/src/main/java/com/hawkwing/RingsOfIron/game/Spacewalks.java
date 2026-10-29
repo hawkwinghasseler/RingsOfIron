@@ -12,7 +12,6 @@ import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.TransientComponent;
-import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -179,9 +178,10 @@ public final class Spacewalks {
                 world.engine.addEntity(m);
                 markers.put(e, m);
             }
+            // Both in the bubble's meters
             TransformComponent t = m.getComponent(TransformComponent.class);
-            t.x = eva.wx * PhysicsManager.UNITS_PER_METER;
-            t.y = eva.wy * PhysicsManager.UNITS_PER_METER;
+            t.x = eva.wx;
+            t.y = eva.wy;
         }
         for (Iterator<Map.Entry<Entity, Entity>> it = markers.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<Entity, Entity> m = it.next();
