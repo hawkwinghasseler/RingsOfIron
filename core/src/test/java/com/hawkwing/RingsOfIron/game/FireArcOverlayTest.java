@@ -99,7 +99,7 @@ class FireArcOverlayTest {
     void theArcsStayOnTheirGunsAtSpeed() {
         WeaponMountComponent coilgun = mount("coilgun_mk1");
         com.badlogic.gdx.physics.box2d.Body body = world.docking.bodyOf(game.player);
-        com.ringsofiron.physicsexterior.PhysicsManager.setVelocity(body, 300f, 0f);
+        com.ringsofiron.physicsexterior.PhysicsManager.setVelocity(body, 150f, 0f); // under the rebase speed, so it moves through the bubble
         for (int i = 0; i < 10; i++) world.update(FRAME);
         com.badlogic.gdx.math.Vector2 hull = com.ringsofiron.physicsexterior.PhysicsManager.getPosition(body, new com.badlogic.gdx.math.Vector2());
         com.badlogic.gdx.math.Vector2 onHull = new com.badlogic.gdx.math.Vector2(coilgun.hardpoint).rotateRad(body.getAngle()).add(hull);
