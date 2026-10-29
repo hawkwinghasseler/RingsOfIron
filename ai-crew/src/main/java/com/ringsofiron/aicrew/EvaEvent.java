@@ -10,6 +10,10 @@ public final class EvaEvent {
         OUT,
         /** Back in, the hatch open behind them. */
         BACK,
+        /** Pushed off their own hull for another craft's, on the jetpack. */
+        CROSSING,
+        /** In through the airlock of a craft not their own, crossed to on EVA. */
+        ABOARD,
         /** Torn off the hull: the ship moved harder than their grip could follow, or the line pulled them off. */
         LOST_GRIP,
         /** Caught hold of the hull again. */

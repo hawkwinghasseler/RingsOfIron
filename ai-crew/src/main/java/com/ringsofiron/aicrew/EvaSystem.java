@@ -95,6 +95,16 @@ import java.util.WeakHashMap;
  * hull, a crew member holds back from crawling on into the exhaust of an engine burning, and goes on
  * once it stops.
  *
+ * <h2>Across to another craft</h2>
+ * A crew member can go out to cross to another craft standing off nearby ({@link #beginCrossing}):
+ * out of the airlock with no line clipped on, over the hull to the side of it facing the other
+ * craft, and off it on the jetpack ({@link #cross}) at up to {@link #CROSS_SPEED}. From the moment
+ * they push off they count as aboard the craft they make for, in its frame: they catch hold of its
+ * hull as of their own, crawl to the port they mean to go in by and go in through its airlock, cycled
+ * for them if it is their own craft's (or has been taken over), straight into its chamber if its door
+ * has been forced open ({@link EvaComponent#forcedIn}). A hostile craft's door is forced from
+ * outside first ({@link EvaComponent#breaking}): their behavior does that work, and says how it went.
+ *
  * <p>Ships without a physics body (no exterior world, as in the crew module's own tests) stand still
  * at the origin, unturned: their crew still crawl, hop, swing and fall, relative to them. With the
  * exterior world attached ({@link #attach}) the floating origin's shifts carry the crew along.
@@ -194,6 +204,17 @@ public class EvaSystem extends FixedLogicSystem {
     static final float SCAN_SECONDS = 1f;
     /** Within this of the reel, meters, a crew member winched in is pulled into the airlock. */
     static final float AT_REEL = 1.2f;
+    /** Cruising speed relative to the craft being crossed to, m/s: brisk, with no line to fall back on. */
+    public static final float CROSS_SPEED = 3f;
+    /** The furthest off, meters (hull to hull, near enough), another craft is crossed to on the jetpack. */
+    public static final float CROSS_RANGE = 300f;
+    /** The most the two craft may be drifting apart or together for a crossing to set out, m/s. */
+    public static final float CROSS_DRIFT = 2f;
+    /**
+     * The furthest apart, meters, the two craft of a boarding across on EVA may drift before the
+     * boarders are out of reach to cross back, and it is called off.
+     */
+    public static final float CROSS_REACH = 500f;
 
     private static final Family EVA = Family.all(EvaComponent.class, CrewMemberComponent.class, GridPositionComponent.class).get();
     private static final Family SHIPS = Family.all(ShipGridComponent.class).get();
@@ -338,6 +359,141 @@ public class EvaSystem extends FixedLogicSystem {
         return true;
     }
 
+    /**
+     * Starts {@code e}'s EVA through {@code port} to cross to {@code target} and go in by its port
+     * {@code targetPort}, its door forced from outside first if {@code breaking}: out with no line,
+     * over the hull to the side facing {@code target}, and off it ({@link #cross}). False if they
+     * can't go out there.
+     */
+    public boolean beginCrossing(Entity e, MountFootprint port, Entity target, MountFootprint targetPort, boolean breaking) {
+        if (target == null || targetPort == null || !begin(e, port)) return false;
+        EvaComponent eva = of(e);
+        eva.crossTo = target;
+        eva.crossPort = targetPort;
+        eva.crossBreaking = breaking;
+        return true;
+    }
+
+    /**
+     * Pushes {@code e} off the hull (or wherever they are outside) for {@code target}, to go in by its
+     * port {@code port}, forced from outside first if {@code breaking}. From now on they count as
+     * aboard {@code target}, untethered; their place and speed are worked out in its frame. False if
+     * they are not outside or {@code port} is not one of {@code target}'s.
+     */
+    public boolean cross(Entity e, Entity target, MountFootprint port, boolean breaking) {
+        EvaComponent eva = of(e);
+        GridPositionComponent p = service.position(e);
+        ShipGridComponent from = p == null ? null : service.grid(p.ship), to = service.grid(target);
+        if (eva == null || !eva.outside() || from == null || to == null || port == null) return false;
+        int index = to.mounts.indexOf(port, true);
+        if (index < 0) return false;
+        frame.read(p.ship, from);
+        if (!eva.worldValid) initWorld(eva);
+        if (eva.portMount != null && eva.portMount.airlock != null) eva.portMount.airlock.release(e);
+        if (eva.phase == EvaComponent.Phase.ON_HULL) {
+            // Off with the hull point's motion and a push away from it
+            frame.toWorld(eva.rx, eva.ry, a);
+            frame.velocityAt(a[0], a[1], b);
+            eva.wx = a[0];
+            eva.wy = a[1];
+            eva.vx = b[0];
+            eva.vy = b[1];
+        }
+        eva.phase = EvaComponent.Phase.FREE;
+        eva.tethered = false;
+        eva.rope = null;
+        eva.reelLocked = false;
+        eva.tension = 0f;
+        eva.hop = false;
+        eva.path.clear();
+        eva.stepDone = 0f;
+        eva.strain = 0f;
+        eva.slideX = eva.slideY = 0f;
+        eva.hullVValid = false;
+        eva.fell = false;
+        eva.regrab = REGRAB_SECONDS;
+        eva.port = index;
+        eva.portMount = port;
+        eva.crossing = true;
+        eva.breaking = breaking;
+        eva.forcedIn = false;
+        eva.returning = true;
+        eva.outOfReach = false;
+        eva.crossTo = null;
+        eva.crossPort = null;
+        Entity left = p.ship;
+        // They still work for the craft they leave, which counts as home by where they stand
+        CrewMemberComponent c = service.crew(e);
+        if (c.home == null) c.setHome(left);
+        p.setShip(target);
+        frame.read(target, to);
+        frame.toTiles(eva.wx, eva.wy, a);
+        eva.rx = a[0];
+        eva.ry = a[1];
+        frame.velocityAt(eva.wx, eva.wy, b);
+        frame.vecToTiles(eva.vx - b[0], eva.vy - b[1], c4);
+        eva.rvx = c4[0];
+        eva.rvy = c4[1];
+        eva.frameBody = frame.body;
+        eva.shipVValid = false;
+        p.x = eva.rx;
+        p.y = eva.ry;
+        emit(EvaEvent.Kind.CROSSING, e, left, 0f);
+        return true;
+    }
+
+    /**
+     * {@code other}'s middle in {@code ship}'s frame, tiles: {@code out = {x, y}}. False if either has
+     * no grid.
+     */
+    public boolean middleIn(Entity other, Entity ship, float[] out) {
+        ShipGridComponent grid = service.grid(ship), og = service.grid(other);
+        if (grid == null || og == null) return false;
+        ShipFrame there = new ShipFrame();
+        there.read(other, og);
+        there.toWorld(og.width * 0.5f, og.height * 0.5f, q);
+        frame.read(ship, grid);
+        frame.toTiles(q[0], q[1], out);
+        return true;
+    }
+
+    /**
+     * The ring tile of {@code e}'s hull (the craft they count as aboard) nearest {@code other}'s
+     * middle, from which they push off for it: {@code out = {x, y}}. False if either has no grid or
+     * no hull.
+     */
+    public boolean launchTile(Entity e, Entity other, int[] out) {
+        GridPositionComponent p = service.position(e);
+        ShipGridComponent grid = p == null ? null : service.grid(p.ship);
+        if (grid == null || !middleIn(other, p.ship, a)) return false;
+        int[] ring = hull(grid).nearest(a[0], a[1]);
+        if (ring == null) return false;
+        out[0] = ring[0];
+        out[1] = ring[1];
+        return true;
+    }
+
+    /**
+     * The distance between {@code a}'s and {@code b}'s middles, meters, and how fast they are drawing
+     * apart (positive) or together, m/s: {@code out = {distance, rate}}. Craft without a physics body
+     * stand at the origin. False if either has no grid.
+     */
+    public boolean separation(Entity a, Entity b, float[] out) {
+        ShipGridComponent ga = service.grid(a), gb = service.grid(b);
+        if (ga == null || gb == null) return false;
+        ShipFrame fa = new ShipFrame(), fb = new ShipFrame();
+        fa.read(a, ga);
+        fb.read(b, gb);
+        float[] pa = new float[2], pb = new float[2];
+        fa.toWorld(ga.width * 0.5f, ga.height * 0.5f, pa);
+        fb.toWorld(gb.width * 0.5f, gb.height * 0.5f, pb);
+        float dx = pb[0] - pa[0], dy = pb[1] - pa[1];
+        float d = (float) Math.sqrt(dx * dx + dy * dy);
+        out[0] = d;
+        out[1] = d < 1e-4f ? 0f : ((fb.vx - fa.vx) * dx + (fb.vy - fa.vy) * dy) / d;
+        return true;
+    }
+
     /** Ends {@code e}'s EVA where they stand: back aboard, or never out. */
     private void finish(Entity e) {
         EvaComponent eva = of(e);
@@ -372,7 +528,8 @@ public class EvaSystem extends FixedLogicSystem {
         eva.worldValid = false;
         eva.hullVValid = false;
         eva.rope = null;
-        eva.tethered = true;
+        // Out to cross to another craft, no line is clipped on: it wouldn't reach
+        eva.tethered = eva.crossTo == null;
         eva.reelLocked = false;
         eva.strain = 0f;
         eva.tension = 0f;
@@ -559,13 +716,14 @@ public class EvaSystem extends FixedLogicSystem {
                     // Brought into the chamber by a shipmate: in with them once the hatch opens
                     if (lock == null || of(eva.heldBy) == null || lock.isIn() && lock.user() != eva.heldBy) {
                         ending.add(e);
-                        emit(EvaEvent.Kind.BACK, e, p.ship, 0f);
+                        emit(p.ship == service.homeOf(e) ? EvaEvent.Kind.BACK : EvaEvent.Kind.ABOARD, e, p.ship, 0f);
                     }
                     return;
                 }
-                if (lock == null || lock.claim(e, false) && lock.isIn()) {
+                // In by a door forced open there is no cycle: through the hatch as it stands
+                if (lock == null || eva.forcedIn || lock.claim(e, false) && lock.isIn()) {
                     ending.add(e);
-                    emit(EvaEvent.Kind.BACK, e, p.ship, 0f);
+                    emit(p.ship == service.homeOf(e) ? EvaEvent.Kind.BACK : EvaEvent.Kind.ABOARD, e, p.ship, 0f);
                 }
                 return;
             default:
@@ -620,11 +778,21 @@ public class EvaSystem extends FixedLogicSystem {
             if (!eva.tethered) driftCheck(e, eva, p);
             return;
         }
-        // At the door on the way in: in once it opens, and anyone in tow with them
+        // At the door on the way in: in once it opens, and anyone in tow with them. A hostile craft's
+        // door is forced first (their behavior's work), then they go in through it as it was left
         doorRing(port, tile);
         boolean atDoor = eva.phase == EvaComponent.Phase.ON_HULL && eva.ringX == tile[0] && eva.ringY == tile[1] && eva.path.size == 0;
         boolean reeledIn = !conscious && eva.tethered && eva.lineOut <= AT_REEL;
-        if (atDoor && eva.returning || reeledIn) {
+        if (eva.forcedIn && atDoor && eva.returning) {
+            if (doorOpen(grid, port)) {
+                stepIn(e, eva, p);
+                if (eva.towing != null) inWith(eva);
+            } else {
+                // Shut again on them from inside: forced again
+                eva.forcedIn = false;
+                eva.breaking = true;
+            }
+        } else if (!eva.breaking && (atDoor && eva.returning || reeledIn)) {
             if (lock.claim(e, true) && lock.isOut()) {
                 stepIn(e, eva, p);
                 if (eva.towing != null) inWith(eva);
@@ -756,6 +924,18 @@ public class EvaSystem extends FixedLogicSystem {
     private float range(EvaComponent eva) {
         float dx = eva.wx - frame.cx, dy = eva.wy - frame.cy;
         return (float) Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /** True if any of {@code port}'s outer doors stands open or is gone. */
+    public static boolean doorOpen(ShipGridComponent grid, MountFootprint port) {
+        for (int y = port.originY; y < port.originY + port.height(); y++) {
+            for (int x = port.originX; x < port.originX + port.width(); x++) {
+                if (!DockingPortLayout.isDoorTile(port, x, y)) continue;
+                EdgeWall d = DockingPortLayout.door(grid, port, x, y);
+                if (d == null || !d.blocks()) return true;
+            }
+        }
+        return false;
     }
 
     /** Left behind once adrift beyond {@link #LOST_RANGE} of their ship. */
@@ -1121,8 +1301,9 @@ public class EvaSystem extends FixedLogicSystem {
             float dist = (float) Math.sqrt(rx * rx + ry * ry);
             float maxA = JET_THRUST / mass;
             // Far out with no line, faster than a hop, or the way back would outlast their air; out from
-            // the hull on a line, no faster than the reel pays out without locking
-            float cruise = eva.tethered ? HOP_SPEED : Math.max(HOP_SPEED, Math.min(CRUISE_MAX, dist / CRUISE_SECONDS));
+            // the hull on a line, no faster than the reel pays out without locking; across to another
+            // craft, briskly
+            float cruise = eva.crossing ? CROSS_SPEED : eva.tethered ? HOP_SPEED : Math.max(HOP_SPEED, Math.min(CRUISE_MAX, dist / CRUISE_SECONDS));
             if (chased != null) cruise = Math.min(cruise, REEL_LOCK_SPEED * 0.8f);
             float speed = Math.min(cruise, (float) Math.sqrt(2f * maxA * 0.6f * dist));
             float wantX = dist > 0.05f ? rx / dist * speed : 0f, wantY = dist > 0.05f ? ry / dist * speed : 0f;

@@ -34,13 +34,13 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | 8 | Shield trim: lean the resting cloud toward the bow, port, stern or starboard, or even |
 | 9 | Raise or lower the shields (lowered, the cloud packs safely into the emitters; docking lowers them on its own) |
 | Tab | Cycle the target |
-| Click (outside view) | Select a ship or station: a ship becomes the target, and either becomes the navigation target. Zoomed out, your ship and your targets show magnified in picture-in-picture bubbles; a click inside a bubble selects there too, and "[+] 3 others" under a bubble or a contact's name lists the names hidden there, a click on one selecting it |
+| Click (outside view) | Select a ship or station: a ship becomes the target, and either becomes the navigation target. Zoomed out, your ship and your targets show whole in picture-in-picture bubbles of their own fixed zoom; a click inside a bubble selects there too, and "[+] 3 others" under a bubble or a contact's name lists the names hidden there, a click on one selecting it |
 | V | Stand up from your console into the deck view; on deck beside the helm, the weapons console or a gun, sit there and look outside (`gradlew :lwjgl3:runGame -PviewAnywhere` switches anywhere) |
 | M | Traffic map |
 | T | Trade, when in range of a station |
 | Y | Yard: repairs and refits, while docked |
 | J | Mission board: the station's contracts while docked, and the ones you hold |
-| K | Boarding: board the ship you are latched to, strip its parts and take its cargo |
+| K | Boarding: board the ship you are latched to, or one standing off within 300 m on EVA; force a way in to storm a ship that can still fight; strip its parts and take its cargo |
 | P | Abandon ship (P again within 3 s to confirm; P while abandoning launches the pods at once) |
 | I | Crew roster: your crew, the station's hires and any prisoners |
 | L | Notice log: the last 50 notices |

@@ -19,7 +19,6 @@ import com.badlogic.gdx.physics.box2d.MassData;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.joints.DistanceJoint;
 import com.badlogic.gdx.physics.box2d.joints.DistanceJointDef;
-import com.badlogic.gdx.physics.box2d.joints.MotorJointDef;
 import com.badlogic.gdx.physics.box2d.joints.PrismaticJoint;
 import com.badlogic.gdx.physics.box2d.joints.PrismaticJointDef;
 import com.badlogic.gdx.physics.box2d.joints.RevoluteJoint;
@@ -78,6 +77,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
     private static final float SPRING_BASE = 1f;
     /** Seconds a latch waits for both craft to have bodies (after a load) before it is dropped. */
     static final float BODY_GRACE = 5f;
+    /** Slack in the rope that keeps seating craft from colliding, beyond how far apart they start, meters. */
+    private static final float SEAT_ROPE_SLACK = 1_000f;
     /** How long docking clearance keeps a station's port armed for the craft that asked, sim seconds. */
     public static final double CLEARANCE_SECONDS = 600;
     /** How far a station hears a request for docking clearance, meters. */
@@ -108,6 +109,13 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
      * pair flies as one body. The game decides which; by default none.
      */
     public java.util.function.BiPredicate<Entity, Entity> towLocked = (a, b) -> false;
+
+    /**
+     * Craft that let anyone dock with them (a ship that has struck its colours): each of their
+     * ports counts as armed for whoever latches on, so the dock has clearance and their door opens,
+     * and one that strikes while latched opens its door then. The game decides which; by default none.
+     */
+    public java.util.function.Predicate<Entity> yields = craft -> false;
 
     public ClearancePolicy clearance = (station, vessel) ->
             station.getComponent(StationComponent.class).grantsClearance ? null : "";
@@ -239,6 +247,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         port.armed = true;
         port.armedFor = null;
         port.clearanceUntil = Double.NaN;
+        port.armedAt = physics.getSimSeconds();
         return null;
     }
 
@@ -589,10 +598,16 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         p.armedFor = null;
         p.clearanceUntil = Double.NaN;
         p.holdCollar = false;
+        p.yieldedTo = null;
     }
 
     /** Puts an active port's collar head out while armed, draws it in when not, contracts it once it has hold. */
     private void updateCollar(Entity e, int index, DockingPort p, Body body) {
+        // Drawn in for another craft's collar that has since stopped reaching: out again
+        if (p.yieldedTo != null && (!p.yieldedTo.armed || !p.isFree())) {
+            if (p.isFree()) p.holdCollar = false;
+            p.yieldedTo = null;
+        }
         boolean wantOut = p.active && p.armed && p.usable() && !p.holdCollar && p.isFree();
         if (wantOut && p.head == null) createHead(e, p, body);
         if (p.head == null) {
@@ -728,16 +743,82 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
 
     /**
      * The captured collar's slider draws the craft together while its tilt spring turns them into
-     * line. Home and square means latched; home but still turned waits for the spring.
+     * line. Home and square means latched; home but still turned waits for the spring. Home is
+     * {@link DockingPort#lockAt} out: all the way in, or a whole number of tiles out where drawing
+     * in further would put the hulls into each other ({@link CollarReach}). A collar held off
+     * short of home by something that was not foreseen stops and locks at the next whole tile out;
+     * one held turned at home goes a tile further out.
      */
     private void contract(Entity e, int index, DockingPort p) {
         boolean square = Math.abs(tiltOf(p)) < DockingTuning.LATCH_ANGLE;
-        if (p.extension < DockingTuning.LOCK_EXTENSION && square) {
-            lock(e, index, p);
+        float home = p.lockAt + DockingTuning.LOCK_EXTENSION;
+        boolean short_ = p.lockAt > 0f && p.extension < p.lockAt - DockingTuning.LOCK_TOLERANCE;
+        if (p.extension < home && !short_) {
+            if (square) {
+                lock(e, index, p);
+                return;
+            }
+            drive(e, p, 0f);
+            // Home but held turned (the hulls touching, by something not foreseen): out a tile more
+            float tile = tileSize(e);
+            if ((p.stalled += dt) > DockingTuning.STALL_TIME && p.lockAt + tile <= CollarReach.maxTiles(p, tile) * tile + 1e-4f) {
+                p.lockAt += tile;
+                p.stalled = 0f;
+                p.stalledAt = p.extension;
+            }
             return;
         }
-        float speed = Math.min(DockingTuning.CONTRACT_SPEED, 2f * p.extension + 0.02f);
-        p.guide.setMotorSpeed(p.extension < DockingTuning.LOCK_EXTENSION ? 0f : -speed * U);
+        if (short_) {
+            // Caught nearer than it locks: out again to a whole tile
+            drive(e, p, Math.min(DockingTuning.CONTRACT_SPEED, 2f * (p.lockAt - p.extension) + 0.02f));
+            return;
+        }
+        if (p.extension < p.stalledAt - DockingTuning.STALL_PROGRESS) {
+            p.stalledAt = p.extension;
+            p.stalled = 0f;
+        } else if ((p.stalled += dt) > DockingTuning.STALL_TIME) {
+            // Held off by the hulls: locks at the next whole tile out (as far as the collar reaches)
+            float tile = tileSize(e);
+            int tiles = (int) Math.ceil((p.extension - DockingTuning.LOCK_EXTENSION) / tile - 1e-3f);
+            p.lockAt = Math.min(CollarReach.maxTiles(p, tile), Math.max(tiles, 0)) * tile;
+            p.stalled = 0f;
+            p.stalledAt = p.extension;
+        }
+        float speed = Math.min(DockingTuning.CONTRACT_SPEED, 2f * (p.extension - p.lockAt) + 0.02f);
+        drive(e, p, -speed);
+    }
+
+    /**
+     * Brings the captured collar's extension to change at {@code rate} m/s (negative drawing in):
+     * a push along the port's axis at the middle of each craft's mass, easing in over
+     * {@link DockingTuning#DRIVE_TIME} and no harder than {@link DockingTuning#DRIVE_FORCE} of the
+     * break force. The slider only carries the head; were it the motor, its pull would come at the
+     * port, and on a ship whose port is meters from its middle it turned the ship harder than the
+     * tilt spring could hold it square (a ship latched right after undocking swung in a few degrees).
+     */
+    private void drive(Entity e, DockingPort p, float rate) {
+        Body own = bodyOf(e);
+        Entity other = p.partnerUuid == null ? null : uuids.getEntity(p.partnerUuid);
+        Body far = other == null ? null : bodyOf(other);
+        if (own == null || far == null) return;
+        boolean dOwn = own.getType() == BodyDef.BodyType.DynamicBody, dFar = far.getType() == BodyDef.BodyType.DynamicBody;
+        if (!dOwn && !dFar) return;
+        float mOwn = dOwn ? PhysicsManager.getMass(own) : 0f, mFar = dFar ? PhysicsManager.getMass(far) : 0f;
+        float mass = dOwn && dFar ? mOwn * mFar / (mOwn + mFar) : Math.max(mOwn, mFar);
+        // The extension grows as the craft draw apart along the port's axis
+        float now = p.guide.getJointSpeed() * M;
+        float push = MathUtils.clamp(mass * (rate - now) / DockingTuning.DRIVE_TIME,
+                -DockingTuning.DRIVE_FORCE * p.tuning().breakForce, DockingTuning.DRIVE_FORCE * p.tuning().breakForce);
+        Vector2 n = worldVector(own, p.normalX, p.normalY, v6);
+        // Pushing the craft apart along n lengthens the collar
+        if (dOwn) PhysicsManager.applyForce(own, -n.x * push, -n.y * push);
+        if (dFar) PhysicsManager.applyForce(far, n.x * push, n.y * push);
+    }
+
+    /** A craft's tile size, meters: what its collar locks out in whole numbers of. 1 for a craft without a grid. */
+    private float tileSize(Entity e) {
+        ShipGridComponent grid = gridMapper.get(e);
+        return grid == null ? 1f : grid.tileSize;
     }
 
     private void lock(Entity e, int index, DockingPort p) {
@@ -751,6 +832,8 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         }
         p.state = DockingPort.State.DOCKED;
         q.state = DockingPort.State.DOCKED;
+        p.lockedExtension = p.lockAt;
+        q.lockedExtension = 0f;
         linkFor(e, index, p, other, p.partnerPort, q);
         fire(DockingEvent.Kind.DOCKED, e, index, other, p.partnerPort, p.permitted);
     }
@@ -780,8 +863,18 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             for (int k = 0; k < oPorts.ports.length; k++) {
                 DockingPort q = oPorts.ports[k];
                 if (q.size != p.size || !q.isFree() || !q.usable()) continue;
-                // An extended collar does the reaching; this port waits for it.
-                if (q.head != null) continue;
+                // An extended collar does the reaching; this port waits for it. Two collars
+                // reaching for each other would only push each other off: the one armed first
+                // reaches, and the other draws in and waits for it as a passive port would.
+                if (q.head != null) {
+                    if (p.head != null && q.yieldedTo == null && reachesFirst(e, p, o, q)
+                            && facing(p.head, p.normalX * p.collarDepth * 0.5f, p.normalY * p.collarDepth * 0.5f, p, ob, q,
+                            t.headRange + q.tuning().maxExtension)) {
+                        q.holdCollar = true;
+                        q.yieldedTo = p;
+                    }
+                    continue;
+                }
                 if (q.armedFor != null && !q.armedFor.equals(ownUuid) && q.armed) continue;
                 if (p.head != null) {
                     // The head's frame is turned like its craft's, with its middle at the origin.
@@ -806,6 +899,27 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
      * across the face, each pulling its point towards the mirrored point on the other face, so the
      * pull also turns the ports square. Returns true if in range and facing.
      */
+    /** Of two armed active ports reaching for each other, true if {@code p} (of {@code a}) keeps its collar out. */
+    private boolean reachesFirst(Entity a, DockingPort p, Entity b, DockingPort q) {
+        boolean pt = !Double.isNaN(p.armedAt), qt = !Double.isNaN(q.armedAt);
+        if (pt != qt) return pt;
+        if (pt && p.armedAt != q.armedAt) return p.armedAt < q.armedAt;
+        // Armed together, or both before a load: the same craft wins every time
+        return uuidOf(a).compareTo(uuidOf(b)) < 0;
+    }
+
+    /** True if the port faces at {@code a}'s point and {@code b}'s port {@code q} face each other within {@code range} meters. */
+    private boolean facing(Body a, float ax, float ay, DockingPort p, Body b, DockingPort q, float range) {
+        Vector2 fa = worldPoint(a, ax, ay, v0);
+        Vector2 na = worldVector(a, p.normalX, p.normalY, v1);
+        Vector2 fb = worldPoint(b, q.faceX(), q.faceY(), v2);
+        Vector2 nb = worldVector(b, q.normalX, q.normalY, v3);
+        if (na.dot(nb) > -MathUtils.cos(DockingTuning.MAGNET_CONE)) return false;
+        float rx = fb.x - fa.x, ry = fb.y - fa.y;
+        if (rx * rx + ry * ry > range * range) return false;
+        return rx * na.x + ry * na.y >= -0.5f && -(rx * nb.x + ry * nb.y) >= -0.5f;
+    }
+
     private boolean magnet(Body a, float ax, float ay, DockingPort p, Body b, DockingPort q, float range, float force) {
         Vector2 fa = worldPoint(a, ax, ay, v0);
         Vector2 na = worldVector(a, p.normalX, p.normalY, v1);
@@ -880,18 +994,21 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         pa.capture = physics.getWorld().createJoint(weld);
         destroyJoint(pa.spring);
         pa.spring = null;
-        pa.guide.setMaxMotorForce(0.5f * pa.tuning().breakForce * U);
-        pa.guide.setMotorSpeed(0f);
-        pa.guide.enableMotor(true);
+        // The slider runs free: drive() draws the craft in
+        pa.guide.enableMotor(false);
         latchRecords(a, portA, pa, b, portB, pb, DockingPort.State.CAPTURED, permittedBetween(pa, pb, a, b));
+        // How far out the collar will lock: in all the way unless the hulls would meet
+        pa.lockAt = CollarReach.lockExtension(bodyOf(a), pa, other, pb, tileSize(a));
+        pa.stalled = 0f;
+        pa.stalledAt = pa.extension;
         fire(DockingEvent.Kind.CAPTURED, a, portA, b, portB, pa.permitted);
     }
 
     /** Clearance is permission: the other side's port was armed for this craft, or by its own crew. */
     private boolean permittedBetween(DockingPort pa, DockingPort pb, Entity a, Entity b) {
         String ua = uuidOf(a), ub = uuidOf(b);
-        boolean bAgreed = pb.armed && (pb.armedFor == null || pb.armedFor.equals(ua));
-        boolean aAgreed = pa.armed && (pa.armedFor == null || pa.armedFor.equals(ub));
+        boolean bAgreed = pb.armed && (pb.armedFor == null || pb.armedFor.equals(ua)) || yields.test(b);
+        boolean aAgreed = pa.armed && (pa.armedFor == null || pa.armedFor.equals(ub)) || yields.test(a);
         return bAgreed && aAgreed;
     }
 
@@ -905,17 +1022,25 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         pb.partnerPort = portA;
         pa.permitted = permitted;
         pb.permitted = permitted;
-        pa.consented = agreed(pa, b);
-        pb.consented = agreed(pb, a);
+        pa.consented = agreed(a, pa, b);
+        pb.consented = agreed(b, pb, a);
         pa.clearanceUntil = Double.NaN;
         pb.clearanceUntil = Double.NaN;
         pa.clamped = false;
         pb.clamped = false;
     }
 
-    /** The port's own side wanted this dock: armed by its crew, or for the craft now docking. */
-    private boolean agreed(DockingPort p, Entity other) {
-        return p.armed && (p.armedFor == null || p.armedFor.equals(uuidOf(other)));
+    /** {@code own}'s side wanted this dock: its port armed by its crew or for the craft now docking, or it yields to any. */
+    private boolean agreed(Entity own, DockingPort p, Entity other) {
+        return p.armed && (p.armedFor == null || p.armedFor.equals(uuidOf(other))) || yields.test(own);
+    }
+
+    /** {@code own} has struck since latching: its port door opens to the craft it is latched to. */
+    private void yieldDoor(Link link, Entity own, DockingPort p) {
+        p.consented = true;
+        ShipGridComponent grid = gridMapper.get(own);
+        MountFootprint mount = grid == null || link.gridLinks.size == 0 ? null : DockLinks.mount(grid, p);
+        if (mount != null) DockLinks.setDoors(grid, mount, true);
     }
 
     /** A saved latch: find its other half and hold it again. */
@@ -955,23 +1080,31 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             return;
         }
         link.waiting = 0f;
+        if (!link.pa.consented && yields.test(link.a)) yieldDoor(link, link.a, link.pa);
+        if (!link.pb.consented && yields.test(link.b)) yieldDoor(link, link.b, link.pb);
         DockingTuning t = link.pa.tuning();
         if (link.joint == null) {
-            if (link.snap) snap(link, ba, bb);
+            if (link.snap) {
+                // Brought in docked: an active collar stays out as far as the hulls need to clear
+                if (link.pa.lockedExtension == 0f && link.pb.lockedExtension == 0f) {
+                    if (link.pa.active) link.pa.lockedExtension = CollarReach.lockExtension(ba, link.pa, bb, link.pb, tileSize(link.a));
+                    else if (link.pb.active) link.pb.lockedExtension = CollarReach.lockExtension(bb, link.pb, ba, link.pa, tileSize(link.b));
+                }
+                snap(link, ba, bb);
+            }
             link.snap = false;
             link.hadJoint = true;
             if (seated(link, ba, bb)) {
                 weld(link, ba, bb);
             } else {
-                MotorJointDef seat = new MotorJointDef();
+                // The seating itself is a spring pulling face onto face (pullIntoSeat); the joint
+                // only keeps the two hulls from colliding meanwhile, its rope never drawn taut
+                RopeJointDef seat = new RopeJointDef();
                 seat.bodyA = ba;
                 seat.bodyB = bb;
-                matedOffset(link.pa, link.pb, v0);
-                seat.linearOffset.set(v0.x * U, v0.y * U);
-                seat.angularOffset = matedReference(link, ba, bb);
-                seat.maxForce = 0.3f * t.breakForce * U;
-                seat.maxTorque = 0.3f * t.breakTorque * U * U;
-                seat.correctionFactor = 0.05f;
+                seat.localAnchorA.setZero();
+                seat.localAnchorB.setZero();
+                seat.maxLength = ba.getPosition().dst(bb.getPosition()) + SEAT_ROPE_SLACK * U;
                 seat.collideConnected = false;
                 link.joint = physics.getWorld().createJoint(seat);
                 link.rigid = false;
@@ -982,6 +1115,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         if (!link.rigid) {
             link.seatingTime += dt;
             boolean seated = seated(link, ba, bb);
+            if (!seated) pullIntoSeat(link, ba, bb, t);
             if (seated || link.seatingTime > DockingTuning.SEATING_TIME) {
                 destroyJoint(link.joint);
                 // The last of it (or, out of time, what the seating could not close) is put
@@ -1008,6 +1142,46 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         }
         ShipGridComponent ga = gridMapper.get(link.a), gb = gridMapper.get(link.b);
         if (ga != null && gb != null) PortSeals.update(link, ga, gb, crossing, dt);
+    }
+
+    /**
+     * The seating: a critically damped spring drawing the two port faces together and the craft
+     * square, as hard as {@link DockingTuning#SEAT_FORCE} of the break limits at most. It pushes
+     * at the middle of each craft's mass and turns them about it, so neither part throws the
+     * other: Box2D's motor joint, which did this before, pulls on a body's origin, and a ship
+     * whose origin is meters from its middle was swung round and into the other hull.
+     */
+    private void pullIntoSeat(Link link, Body ba, Body bb, DockingTuning t) {
+        boolean da = ba.getType() == BodyDef.BodyType.DynamicBody, db = bb.getType() == BodyDef.BodyType.DynamicBody;
+        if (!da && !db) return;
+        float ma = da ? PhysicsManager.getMass(ba) : 0f, mb = db ? PhysicsManager.getMass(bb) : 0f;
+        float ia = da ? PhysicsManager.getInertia(ba) : 0f, ib = db ? PhysicsManager.getInertia(bb) : 0f;
+        float mass = da && db ? ma * mb / (ma + mb) : Math.max(ma, mb);
+        float inertia = da && db ? ia * ib / (ia + ib) : Math.max(ia, ib);
+        float k = DockingTuning.SEAT_RATE * DockingTuning.SEAT_RATE, c = 2f * DockingTuning.SEAT_RATE;
+        Vector2 fa = worldPoint(ba, link.pa.faceX(), link.pa.faceY(), v1);
+        Vector2 fb = worldPoint(bb, link.pb.faceX(), link.pb.faceY(), v2);
+        Vector2 va = velocityAt(ba, fa, v3);
+        Vector2 vb = velocityAt(bb, fb, v4);
+        float fx = mass * (k * (fb.x - fa.x) + c * (vb.x - va.x));
+        float fy = mass * (k * (fb.y - fa.y) + c * (vb.y - va.y));
+        float most = DockingTuning.SEAT_FORCE * t.breakForce, len = (float) Math.sqrt(fx * fx + fy * fy);
+        if (len > most) {
+            fx *= most / len;
+            fy *= most / len;
+        }
+        float angle = bb.getAngle() - ba.getAngle() - matedAngle(link.pa, link.pb);
+        angle = MathUtils.atan2(MathUtils.sin(angle), MathUtils.cos(angle));
+        float torque = inertia * (k * angle + c * (bb.getAngularVelocity() - ba.getAngularVelocity()));
+        torque = MathUtils.clamp(torque, -DockingTuning.SEAT_FORCE * t.breakTorque, DockingTuning.SEAT_FORCE * t.breakTorque);
+        if (da) {
+            PhysicsManager.applyForce(ba, fx, fy);
+            PhysicsManager.applyTorque(ba, torque);
+        }
+        if (db) {
+            PhysicsManager.applyForce(bb, -fx, -fy);
+            PhysicsManager.applyTorque(bb, -torque);
+        }
     }
 
     /**
@@ -1059,8 +1233,13 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
      * not wrap angles, so a joint told "0" between bodies at 0 and 2 pi would spin one round.
      */
     private static float matedReference(Link link, Body ba, Body bb) {
+        return matedReference(link.pa, ba, link.pb, bb);
+    }
+
+    /** As {@link #matedReference(Link, Body, Body)}, for port {@code pa} on {@code ba} latched to {@code pb} on {@code bb}. */
+    private static float matedReference(DockingPort pa, Body ba, DockingPort pb, Body bb) {
         float now = bb.getAngle() - ba.getAngle();
-        float off = matedAngle(link.pa, link.pb) - now;
+        float off = matedAngle(pa, pb) - now;
         return now + MathUtils.atan2(MathUtils.sin(off), MathUtils.cos(off));
     }
 

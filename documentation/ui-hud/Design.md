@@ -121,7 +121,7 @@ The game starts at a main menu (`com.hawkwing.RingsOfIron.shell.GameShell` in co
 |---|---|
 | `GameShell` | Owns the menus and the running game; creates it on New game or Load, disposes it on Quit to menu |
 | `ShellMenus` | The main and pause menus, the load list, the save panel and the settings window |
-| `SaveSlots`, `SaveSummary` | Named saves in `saves/` (under `assets/` when run from Gradle). Each is core-engine's save as it was, `<name>.json`, with `<name>.meta.json` beside it holding the name, when it was saved, the game time, the ship and the credits, which is what the load list shows. F5 writes the slot `quicksave`, so it is listed too |
+| `SaveSlots`, `SaveSummary` | Named saves in `saves/` (under `assets/` when run from Gradle). Each is one file, core-engine's save `<name>.json`, opening with a summary of the name, when it was saved, the game time, the ship and the credits, which is all of the save the load list reads. F5 writes the slot `quicksave`, so it is listed too |
 | `GameSettings` | Master, effects and ambience volume, HRTF (auto, on, off), fullscreen and window size, the gamepad switch and the key bindings, in `saves/settings.json`. The launcher reads it to open the window; Apply writes it |
 | `KeyBindings`, `RemappedInput` | Rebinding. The game still asks for its default keys; `RemappedInput` stands in `Gdx.input` and answers with the key the player bound. Binding a key that is already used swaps the two actions. Esc can't be bound |
 | `GamepadKeys` | A gamepad through libGDX Controllers, read as the game's keys (below) |

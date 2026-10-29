@@ -138,10 +138,9 @@ class AutosaveGapsTest {
     void continueAndTheLostShipScreenLoadTheLatestAutosaveNotAnOlderOne(@TempDir Path dir) {
         SaveSlots slots = new SaveSlots(new FileHandle(dir.toFile()));
         FileHandle quick = slots.quickSave();
-        assertNull(game.quickSave(quick));
         SaveSummary q = SaveSummary.of(game, SaveSlots.QUICK_SAVE_NAME);
         q.savedAt = 1000;
-        q.writeFor(quick);
+        assertNull(game.quickSave(quick, q));
 
         // Four autosaves, as the game makes them: the fourth goes over the first
         undock();
@@ -152,10 +151,9 @@ class AutosaveGapsTest {
             game.player.getComponent(TraderComponent.class).credits = 1000 * (i + 1);
             int n = slots.nextAutosave();
             FileHandle file = slots.autosave(n);
-            assertNull(game.quickSave(file));
             SaveSummary s = SaveSummary.of(game, SaveSlots.autosaveName(n));
             s.savedAt = 2000 + i;
-            s.writeFor(file);
+            assertNull(game.quickSave(file, s));
             simAt[i] = world.engine.getSimSeconds();
             slotOf[i] = n;
         }

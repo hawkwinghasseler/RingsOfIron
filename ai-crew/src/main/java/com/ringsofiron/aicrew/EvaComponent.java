@@ -15,6 +15,11 @@ import com.ringsofiron.interiorgrid.MountFootprint;
  * their grip holds. The tether runs from the airlock's reel, beside its outer door, and is a rope of
  * {@link EvaSystem#ROPE_SEGMENTS} segments that drapes, wraps round the hull and goes taut.
  *
+ * <p>Crossing to another craft ({@link #crossing}), untethered on the jetpack, the craft they are
+ * making for is the one they count as aboard ({@link GridPositionComponent#ship}): its frame is
+ * theirs from the moment they push off, its hull the one they catch hold of, and {@link #port} its
+ * port they go in by. A hostile craft's airlock door is forced from outside ({@link #breaking}).
+ *
  * <p>Saved with the crew member: the phase, where they are and how fast they are going relative to
  * their ship (so the save doesn't depend on the physics world's frame), the line out and the port.
  * The world-frame state and the rope's shape are rebuilt after a load.
@@ -82,6 +87,21 @@ public class EvaComponent implements Component {
     public boolean fell;
     /** Crawl the whole way: no jetpack hops (their behavior saving the fuel). */
     public boolean noHops;
+
+    /** Crossing to the craft they count as aboard from another, untethered: in by {@link #port} there. */
+    public boolean crossing;
+    /** That port's outer door is to be forced from outside before they can go in: a hostile craft's. */
+    public boolean breaking;
+    /** The door is forced open: they go straight into the chamber without a cycle. */
+    public boolean forcedIn;
+    /**
+     * The craft they push off for once out of the airlock and over to the side of the hull facing it,
+     * and the port they go in by there; null on an EVA that stays on the hull. Not saved: a load ends
+     * a trip out before it leaves the hull.
+     */
+    public transient com.badlogic.ashley.core.Entity crossTo;
+    public transient MountFootprint crossPort;
+    public transient boolean crossBreaking;
 
     /** The ring path being crawled, tiles, the current one left out. Rebuilt as needed. */
     public final transient Array<int[]> path = new Array<>();

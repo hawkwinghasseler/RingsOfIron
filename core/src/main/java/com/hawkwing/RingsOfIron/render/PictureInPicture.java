@@ -62,10 +62,11 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
     public static final float RADIUS = 56f;
     /** A craft drawn smaller than this, radius in screen pixels, gets a bubble. */
     public static final float MIN_APPARENT_PIXELS = 10f;
-    /** How much of the bubble's radius the craft's own reach fills. */
+    /**
+     * How much of the bubble's radius the craft's own reach fills: a bubble's zoom is fixed by its
+     * craft's size, whatever the main view's zoom, so the whole craft always shows.
+     */
     private static final float FILL = 0.7f;
-    /** A bubble at least magnifies this much over the main view. */
-    private static final float MIN_MAGNIFICATION = 2f;
     /** From a bubble's edge to the edge of the screen, UI units. */
     private static final float MARGIN = 14f;
     /** Bubbles for things off screen sit this much further in, room for the pointer on the rim. */
@@ -382,7 +383,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
         viewports.worldToUi(b.at.x, b.at.y, b.anchor);
         b.onScreen = b.anchor.x >= 0f && b.anchor.x <= uiW && b.anchor.y >= 0f && b.anchor.y <= uiH;
         if (b.onScreen && b.reach / mpp >= MIN_APPARENT_PIXELS) return;
-        b.metersPerPixel = Math.min(b.reach / (FILL * radiusPx), mpp / MIN_MAGNIFICATION);
+        b.metersPerPixel = b.reach / (FILL * radiusPx);
         HudMarkerComponent marker = e.getComponent(HudMarkerComponent.class);
         b.label = label != null ? label : marker != null && marker.label != null && !marker.label.isEmpty()
                 ? marker.label : "Contact";

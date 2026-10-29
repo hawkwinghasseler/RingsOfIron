@@ -195,8 +195,9 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             }
             return;
         }
-        // Held up: by a crowd, or round a corner it can't get past
-        if (b.waypoint != p.pathIndex || d < b.bestDistance - 0.02f) {
+        // Held up: by a crowd, or round a corner it can't get past; not while at work on a door, which
+        // can take a while when it is being forced
+        if (b.waypoint != p.pathIndex || d < b.bestDistance - 0.02f || p.doorWork > 0f) {
             b.waypoint = p.pathIndex;
             b.bestDistance = d;
             b.stalled = 0f;

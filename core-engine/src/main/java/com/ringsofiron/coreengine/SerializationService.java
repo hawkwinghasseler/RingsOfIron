@@ -19,6 +19,7 @@ import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.TransientComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -31,6 +32,7 @@ import java.util.List;
  *
  * <pre>
  * {
+ *   "summary": { "name": "...", ... },
  *   "version": 2,
  *   "tick": 123456,
  *   "entities": [
@@ -58,6 +60,10 @@ import java.util.List;
  * </ul>
  * Module-global state is saved through {@link SaveParticipant}s.
  *
+ * <p>A save may open with a {@code summary}, whatever the game wants a list of saves to show about
+ * it. It is written first so {@link #readSummary} can read it without reading the rest; a load
+ * ignores it.
+ *
  * <p>A load reads and decodes the whole save before it touches the game ({@link #prepareLoad}), so a
  * malformed or unreadable save is refused with the game as it was; only then are the entities
  * replaced ({@link #applyLoad}).
@@ -65,6 +71,10 @@ import java.util.List;
 public class SerializationService {
     /** 1: components keyed by class name. 2: keyed by stable type id where the class has one. */
     public static final int FORMAT_VERSION = 2;
+    /** The key a save's summary is written under, first in the file. */
+    public static final String SUMMARY = "summary";
+    /** How far {@link #readSummary} reads looking for the end of the summary before giving up. */
+    private static final int SUMMARY_MAX_CHARS = 64 * 1024;
 
     private final GameEngine gameEngine;
     private final Engine engine;
@@ -167,10 +177,16 @@ public class SerializationService {
      * Serializes sim time, all non-transient entities and all participants to a JSON string.
      */
     public String saveGame() {
+        return saveGame(null);
+    }
+
+    /** As {@link #saveGame()}, opening with {@code summary} (written field by field) when it isn't null. */
+    public String saveGame(Object summary) {
         StringWriter out = new StringWriter();
         json.setWriter(out);
         try {
             json.writeObjectStart();
+            if (summary != null) json.writeValue(SUMMARY, summary, summary.getClass());
             json.writeValue("version", FORMAT_VERSION);
             json.writeValue("tick", gameEngine.getTick());
 
@@ -328,7 +344,45 @@ public class SerializationService {
 
     /** Writes the save through a temporary file, so a failed write leaves the old save whole. */
     public void saveToFile(FileHandle file) {
-        AtomicFiles.writeString(file, saveGame());
+        saveToFile(file, null);
+    }
+
+    /** Saves to {@code file}, whole or not at all, opening with {@code summary} when it isn't null. */
+    public void saveToFile(FileHandle file, Object summary) {
+        AtomicFiles.writeString(file, saveGame(summary));
+    }
+
+    /**
+     * The summary {@code file} opens with, or null when it has none or can't be read. Reads only as
+     * far as the end of the summary, so listing saves never reads the games in them.
+     */
+    public static JsonValue readSummary(FileHandle file) {
+        StringBuilder head = new StringBuilder();
+        try (java.io.Reader in = file.reader(4096, "UTF-8")) {
+            // Up to the end of the save's first member: the summary, if it has one
+            int depth = 0;
+            boolean inString = false, escaped = false;
+            for (int c; (c = in.read()) != -1; ) {
+                if (head.length() >= SUMMARY_MAX_CHARS) return null;
+                head.append((char) c);
+                if (inString) {
+                    if (escaped) escaped = false;
+                    else if (c == '\\') escaped = true;
+                    else if (c == '"') inString = false;
+                } else if (c == '"') {
+                    inString = true;
+                } else if (c == '{' || c == '[') {
+                    depth++;
+                } else if (c == '}' || c == ']') {
+                    if (--depth <= 1) break;
+                }
+            }
+            JsonValue root = new JsonReader().parse(head.append('}').toString());
+            JsonValue summary = root == null ? null : root.get(SUMMARY);
+            return summary != null && summary.isObject() ? summary : null;
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
     }
 
     public void loadFromFile(FileHandle file) {
