@@ -1528,6 +1528,61 @@ def docking_collar(size):
     return w, h, a
 
 
+def collar_head(size):
+    """An active port's collar head, seen from outside as it reaches out on its tunnel: the clamp
+    ring that takes hold of the other port. Body frame, origin at its middle, its face (the side
+    that meets the other port) toward +x: half a tile deep along x, the port's W tiles across."""
+    tw, _ = PORT[size]
+    w, d = tw * T, T / 2
+    x0, y0 = -d / 2, -w / 2
+    a = Art()
+    # the back plate the tunnel joins, then the ring itself across the port
+    a.b += rect(x0, y0 + T * 0.4, d * 0.4, w - T * 0.8, HOUSING, rx=3, stroke=INK, sw=2)
+    a.b += rect(x0 + d * 0.3, y0 + 3, d * 0.7 - 3, w - 6, STEEL_MID, rx=4, stroke=INK, sw=2)
+    a.b += bevel(x0 + d * 0.3 + 1, y0 + 4, d * 0.7 - 5, w - 8, STEEL_HI, INK)
+    a.h += rect(x0 + d * 0.3, y0 + 3, d * 0.7 - 3, w - 6, gray(HATCH_HEIGHT), rx=4)
+    # the seal along the face, and the latch bolts that lock onto the other port
+    a.b += rect(d / 2 - 7, y0 + T * 0.55, 5, w - T * 1.1, "#1e2227", rx=1, stroke=INK, sw=1)
+    n = tw * 2
+    for i in range(1, n):
+        y = y0 + w * i / n
+        a.b += rect(d / 2 - 14, y - 3, 6, 6, "#7a8594", rx=1, stroke=INK, sw=1)
+    # a claw at each end of the ring, hazard banded
+    for yc in (y0 + 3, y0 + w - 3 - T * 0.45):
+        a.b += rect(x0 + d * 0.3, yc, d * 0.7 - 3, T * 0.45, STEEL_DARK, rx=3, stroke=INK, sw=2)
+        a.b += hazard_band(x0 + d * 0.3 + 4, yc + 4, d * 0.7 - 11, T * 0.45 - 8, f"ch_{size}_{int(yc)}")
+    light(a, x0 + d * 0.62, y0 + T * 0.8, 3, HAZARD)
+    light(a, x0 + d * 0.62, y0 + w - T * 0.8, 3, HAZARD)
+    return w, d, a
+
+
+def collar_tunnel(size):
+    """The telescoping tunnel from a port's collar out to its collar head, seen from outside: one
+    tile of it, origin at the collar end of its middle, running out along +x. The game draws it
+    from the collar to the head as long as the collar is out, a tile of pleats at a time. As wide
+    as the collar on the hull, less a little, so it reads as coming out of it."""
+    tw, _ = PORT[size]
+    w, length = (tw - 1) * T - 12, T
+    y0 = -w / 2
+    a = Art()
+    # the sleeve's sides and its roof between them
+    a.b += rect(0, y0, length, w, STEEL_DARK)
+    a.b += rect(0, y0 + 7, length, w - 14, "#55606d")
+    a.h += rect(0, y0, length, w, gray(HATCH_HEIGHT * 0.6))
+    # bellows: four pleats a tile, each a lit rib and the shadowed fold behind it
+    for k in range(4):
+        x = (k + 0.5) * length / 4
+        a.b += rect(x - 5, y0, 4, w, STEEL_MID)
+        a.b += rect(x - 1, y0, 3, w, "#2a3039")
+        a.b += line(x - 5, y0 + 7, x - 5, y0 + w - 7, STEEL_HI, sw=1, extra=BAKED)
+    # the rails down both sides it telescopes on
+    a.b += line(0, y0 + 1.5, length, y0 + 1.5, INK, sw=3)
+    a.b += line(0, y0 + w - 1.5, length, y0 + w - 1.5, INK, sw=3)
+    a.b += line(0, y0 + 5, length, y0 + 5, "#7a8594", sw=1.5)
+    a.b += line(0, y0 + w - 5, length, y0 + w - 5, "#7a8594", sw=1.5)
+    return w, length, a
+
+
 # --- Tanks (passive: no emissives) ---------------------------------------------
 
 def storage_tank(component, size):
@@ -1677,6 +1732,15 @@ def components():
         p = f"components/docking_collar_{size}.svg"
         write(p, w, h, a, f"docking collar {size.upper()}: sits half a tile outside the port's outer edge",
               unpowered=unp(p))
+        w, d, a = collar_head(size)
+        p = f"components/docking_collar_head_{size}.svg"
+        write(p, d, w, a, f"docking collar head {size.upper()}: an active port's collar head out on its tunnel, "
+              "origin at its middle, its face toward +x", viewbox=f"{f(-d / 2)} {f(-w / 2)} {f(d)} {f(w)}",
+              unpowered=unp(p))
+        w, length, a = collar_tunnel(size)
+        write(f"components/docking_tunnel_{size}.svg", length, w, a,
+              f"docking tunnel {size.upper()}: one tile of the tunnel from a port's collar to its head, origin at the "
+              "collar end, running out along +x", viewbox=f"0 {f(-w / 2)} {f(length)} {f(w)}")
 
 
 # ---------------------------------------------------------------------------
@@ -3246,6 +3310,27 @@ def dock_walkway():
           "dock_walkway: gangway between two latched collars; uniform along y, stretch or tile it to the gap")
 
 
+def dock_tunnel_wall():
+    """One side wall of a collar's tunnel seen from inside, for the deck view: half a tile of it
+    along y (two pleats), the walkway side at x 0 and the outer skin at x 26. The game lays it
+    in half-tile pieces down each side of the gangway, only where the collar is out past the two
+    collars on the hulls, so a tunnel locked a tile out shows its walls."""
+    w, h = 26, T // 2
+    a = Art()
+    a.b = rect(0, 0, w, h, STEEL_DARK)
+    # bellows: each pleat a lit rib and the shadowed fold behind it, across the wall
+    for k in range(2):
+        y = (k + 0.5) * h / 2
+        a.b += rect(3, y - 5, w - 7, 4, STEEL_MID)
+        a.b += rect(3, y - 1, w - 7, 3, "#2a3039")
+        a.b += line(3, y - 5, w - 4, y - 5, STEEL_HI, sw=1, extra=' opacity="0.7"')
+    # the rail the tunnel telescopes on, at the walkway's edge, and the outer skin
+    a.b += rect(0, 0, 3, h, HOUSING) + line(1.5, 0, 1.5, h, "#7a8594", sw=1)
+    a.b += rect(w - 4, 0, 4, h, INK)
+    write("tiles/dock_tunnel_wall.svg", w, h, a,
+          "dock_tunnel_wall: side wall of a collar tunnel, half a tile along y, walkway side at x 0; laid in pieces down the gangway")
+
+
 def main():
     if os.path.isdir(OUT):
         for sub in os.listdir(OUT):
@@ -3269,9 +3354,13 @@ def main():
     rcs()
     crew()
     crew_states()
+    # Crew in pressure and EVA suits, drawn by their own script
+    from suit_svgs import suits
+    suits()
     projectiles()
     blasts()
     dock_walkway()
+    dock_tunnel_wall()
     print(f"wrote {len(written)} SVGs to {os.path.relpath(OUT, ROOT)}")
 
 

@@ -77,8 +77,8 @@ Entry point: `com.ringsofiron.uihud.UiHud` builds the stage, skin and systems. C
 | `ManeuverMap` | The full-screen orbit map (M, the Orbits tab): the game's `OrbitMap` at any zoom, panned by dragging and zoomed about the pointer by the wheel, with the apsides, changes of sphere of influence and impacts labelled, and a moon the path meets drawn where it will be with the path on around it. A click on the path plans a burn there; the selected burn has prograde, retrograde, radial out and radial in handles, dragged out to add delta-v (more the farther, Shift for a tenth); dragging the burn slides it along its orbit. The side panel has the orbit, the selected burn and the plan, and buttons to warp to the burn, have the helm fly the burns, start the autopilot, and plan, accept or discard a transfer to the navigation target. See below |
 | `TrafficMap` | Full-screen map (M, the Traffic tab) of stations and haulers on rails around the body you orbit, with range rings; the wheel zooms toward you |
 | `ShipGauges` | Under the flight readout: propellant (with kg), structure, power (store charge and reactor output) and oxygen bars, amber below 50% and red below 25%. With no oxygen tanks the oxygen bar shows the air in the worst room |
-| `RadarScope`, `RadarSystem` | Under the ship gauges, compact and out of the middle of the view: every marked contact around the ship, north up like the view, tinted like its marker, the locked target ringed, the ship's heading as a line. Contacts out of range sit hollow on the rim. The − and + buttons either side of the range step it through 0.5, 2, 10, 50, 250 and 1,000 km. A click on a contact locks it as Tab would, or makes it the navigation target if it is a station or other object that is not a sensor contact |
-| `NavMarkers`, `NavMarkerSystem` | Prograde (circle with ticks) and retrograde (circle with a cross) 70 px from the ship in the exterior view, along the ship's orbital velocity: its velocity in the bubble plus the bubble's own, the same velocity the speed readout shows |
+| `RadarScope`, `RadarSystem` | Under the ship gauges, compact and out of the middle of the view: every marked contact around the ship, north up like the view, tinted like its marker, the locked target ringed, the ship's heading as a line. Contacts out of range sit on the rim as smaller, faded dots; only the locked target gets a ring. The − and + buttons either side of the range step it through 0.5, 2, 10, 50, 250 and 1,000 km. A click on a contact locks it as Tab would, or makes it the navigation target if it is a station or other object that is not a sensor contact |
+| `NavMarkers`, `NavMarkerSystem` | Prograde (circle with ticks) and retrograde (circle with a cross) 70 px from the ship in the exterior view, along the ship's orbital velocity: its velocity in the bubble plus the bubble's own, the same velocity the speed readout shows. While a target with a body in the bubble is locked (Tab), they follow the velocity relative to it instead, drawn magenta with a "TGT" tag by each; the flight readout's "Markers" line names the frame (orbit, or TARGET with the relative speed) |
 
 ### Interfaces other modules fill in
 
@@ -120,6 +120,12 @@ Mouse planning places a burn at the time the ship passes nearest the click on th
 
 ![Gauges, radar and the prograde markers in flight](gauges-radar.png)
 
+With no target the markers follow the orbit (yellow-green, "Markers  orbit"); with a target locked they follow the velocity relative to it (magenta, tagged TGT, "Markers  TARGET" with the relative speed):
+
+![Prograde markers in the orbit frame](nav-markers-orbit.png)
+
+![Prograde markers relative to the target](nav-markers-target.png)
+
 The radar has since moved under the gauges at a smaller size, its rings drawn as smooth, soft-edged bands (`HudDraw.ring`, `HudDraw.disc`), shown here at 3x:
 
 ![The compact radar, zoomed](radar.png)
@@ -132,7 +138,7 @@ The game starts at a main menu (`com.hawkwing.RingsOfIron.shell.GameShell` in co
 |---|---|
 | `GameShell` | Owns the menus and the running game; creates it on New game or Load, disposes it on Quit to menu |
 | `ShellMenus` | The main and pause menus, the load list, the save panel and the settings window |
-| `SaveSlots`, `SaveSummary` | Named saves in `saves/` (under `assets/` when run from Gradle). Each is core-engine's save as it was, `<name>.json`, with `<name>.meta.json` beside it holding the name, when it was saved, the game time, the ship and the credits, which is what the load list shows. F5 writes the slot `quicksave`, so it is listed too |
+| `SaveSlots`, `SaveSummary` | Named saves in `saves/` (under `assets/` when run from Gradle). Each is one file, core-engine's save `<name>.json`, opening with a summary of the name, when it was saved, the game time, the ship and the credits, which is all of the save the load list reads. F5 writes the slot `quicksave`, so it is listed too |
 | `GameSettings` | Master, effects and ambience volume, HRTF (auto, on, off), fullscreen and window size, the gamepad switch and the key bindings, in `saves/settings.json`. The launcher reads it to open the window; Apply writes it |
 | `KeyBindings`, `RemappedInput` | Rebinding. The game still asks for its default keys; `RemappedInput` stands in `Gdx.input` and answers with the key the player bound. Binding a key that is already used swaps the two actions. Esc can't be bound |
 | `GamepadKeys` | A gamepad through libGDX Controllers, read as the game's keys (below) |

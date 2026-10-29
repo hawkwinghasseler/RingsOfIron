@@ -1066,8 +1066,7 @@ abstract class CareerScript {
         }
         com.badlogic.gdx.files.FileHandle file = new com.badlogic.gdx.files.FileHandle(
                 dir.resolve(name.replaceAll("[^A-Za-z0-9_-]+", "_") + ".json").toFile());
-        String refused = game.quickSave(file);
-        if (refused == null) com.hawkwing.RingsOfIron.shell.SaveSummary.of(game, name).writeFor(file);
+        String refused = game.quickSave(file, com.hawkwing.RingsOfIron.shell.SaveSummary.of(game, name));
         log("  (playtest save %s: %s)", name, refused == null ? "written" : refused);
     }
 

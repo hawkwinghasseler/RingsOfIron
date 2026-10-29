@@ -66,6 +66,41 @@ class CrewDoorTest {
     }
 
     @Test
+    void boardersWhoForceTheirWayWorkAtADoorAndLeaveItOpen() {
+        TestShips s = twoRooms(false);
+        Entity boarder = s.spawn(CrewRole.MARINE, 1, 1, 2);
+        s.crew.doorRights = new CrewService.DoorRights() {
+            @Override
+            public boolean mayPass(Entity crew, Entity ship) {
+                return false;
+            }
+
+            @Override
+            public CrewDoors.Forcing forcing(Entity crew, Entity ship, EdgeWall door) {
+                return crew == boarder ? new CrewDoors.Forcing(3f, "cutting through a door") : null;
+            }
+        };
+        assertTrue(s.crew.doors.mayOpen(boarder, s.ship, 3, 2, 4, 2), "a way through for them, by force");
+        GridPositionComponent p = s.p(boarder);
+        com.badlogic.gdx.utils.Array<com.ringsofiron.aicrew.nav.GridNode> way = new com.badlogic.gdx.utils.Array<>();
+        assertTrue(s.crew.pathfinder(s.grid).findPath(1, 2, 6, 2, way, (x, y, nx, ny) -> s.crew.doors.mayOpen(boarder, s.ship, x, y, nx, ny)));
+        p.setPath(way);
+        boolean cutting = false;
+        float shut = 0f;
+        for (int i = 0; i < 30 * 10 && door(s).bulkheadSealed; i++) {
+            s.run(1f / 30f);
+            cutting |= "cutting through a door".equals(s.c(boarder).activity);
+            shut += 1f / 30f;
+        }
+        assertFalse(door(s).bulkheadSealed, "forced");
+        assertTrue(cutting, "at work on it");
+        assertTrue(shut > 3f, "it took the time forcing it does: " + shut);
+        s.run(3f);
+        assertFalse(door(s).bulkheadSealed, "left open behind them");
+        assertFalse(s.crew.doors.isHeld(door(s)));
+    }
+
+    @Test
     void boardersCannotOpenTheShipsDoors() {
         TestShips s = twoRooms(false);
         Entity boarder = s.spawn(CrewRole.MARINE, 1, 1, 2);

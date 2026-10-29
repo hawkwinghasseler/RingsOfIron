@@ -5,6 +5,9 @@
 # max_thrust is the main engine of a ship with no engines in its layout. A ship with engines
 # gets its thrust from them instead (thrust in components.toml), so the values below for the
 # corvette and hauler only restate what their engines give.
+# max_torque turns a ship with no RCS blocks in its layout. A ship with blocks turns, strafes and
+# backs up on what they give it (rcs in chassis.toml), so for those it only stands in until the
+# blocks are counted.
 # exhaust_velocity: the warships' drives run at 700 km/s (round 3 integration), so a corvette's
 # tanks give about 7 km/s, enough for a transfer to the Moon and a capture there; at the 100 km/s
 # left out elsewhere they gave about 1 km/s and the Moon was out of reach.
@@ -83,8 +86,6 @@ texture = "tex_raider"
 # at 153 t)
 mass = 154600.0
 max_thrust = 2.8e6
-# What its RCS blocks give it: 6.0e5 until its engines moved wholly outside the hull, which put its
-# centre of mass a little further aft of its amidships pair
 max_torque = 6.25e5
 exhaust_velocity = 700000.0
 crew = 3

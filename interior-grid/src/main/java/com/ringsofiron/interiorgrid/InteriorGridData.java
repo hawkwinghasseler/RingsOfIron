@@ -39,6 +39,12 @@ public final class InteriorGridData {
         return catalog(defs);
     }
 
+    /** The furnishings of the installed definitions ({@code [furnishing.*]}), or none when nothing is installed. */
+    public static FurnishingCatalog furnishings() {
+        DefRegistry defs = activeDefs;
+        return defs == null ? new FurnishingCatalog() : FurnishingCatalog.from(defs);
+    }
+
     /** The tile types and components of {@code defs}. */
     public static synchronized ShipPartCatalog catalog(DefRegistry defs) {
         if (defs != cachedDefs || defs.revision() != cachedRevision || cachedCatalog == null) {
@@ -52,8 +58,9 @@ public final class InteriorGridData {
     /**
      * Registers the "ship" assembler: each ship gets a {@link ShipGridComponent} built from
      * its chassis, a {@link ShipSubsystemRegistryComponent}, one entity per installed
-     * system, added to the engine at once, and an empty {@link CargoHoldComponent} over its
-     * cargo bays when the chassis has any.
+     * system, added to the engine at once, an empty {@link CargoHoldComponent} over its
+     * cargo bays when the chassis has any, and its suit lockers, full, for its crew
+     * ({@link SuitOutfit}).
      */
     public static void install(ModContext ctx) {
         activeDefs = ctx.defs;
@@ -61,6 +68,7 @@ public final class InteriorGridData {
             ShipDef ship = factory.defs().convert(def, ShipDef.class);
             ChassisDef chassis = factory.defs().require("chassis", ship.chassis, ChassisDef.class);
             installInterior(entity, chassis, factory.engine());
+            SuitOutfit.outfit(entity.getComponent(ShipGridComponent.class), FurnishingCatalog.from(factory.defs()), ship.crew);
         });
     }
 

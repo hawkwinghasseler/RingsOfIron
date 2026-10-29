@@ -40,6 +40,9 @@ import com.ringsofiron.interiorgrid.crew.PatchLeakTask;
 import com.ringsofiron.interiorgrid.crew.RepairTask;
 import com.ringsofiron.interiorgrid.crew.RescueTask;
 import com.ringsofiron.interiorgrid.crew.ResetShortTask;
+import com.ringsofiron.interiorgrid.crew.Suit;
+import com.ringsofiron.interiorgrid.Furnishing;
+import com.ringsofiron.interiorgrid.SuitLockers;
 
 /** The leaf tasks of the crew behavior tree. See {@link CrewBehaviorTrees} for how they fit together. */
 public final class CrewTasks {
@@ -69,12 +72,12 @@ public final class CrewTasks {
         public Status execute() {
             CrewAgent a = agent();
             CrewMemberComponent c = a.crew;
-            if (!c.suited || c.def.suitAir <= 0f || c.held || a.time < a.refillBlockedUntil) return fail(a);
+            if (!c.suited || !c.wearsSuits() || c.held || a.time < a.refillBlockedUntil) return fail(a);
             if (!a.refilling) {
                 ShipGridComponent grid = a.grid();
                 if (grid == null || TaskRules.isBreathable(grid, a.pos.tileX(), a.pos.tileY())) return fail(a);
-                if (c.suitAir >= c.def.suitAir * c.def.suitRefillShare) return fail(a);
-            } else if (c.suitAir >= c.def.suitAir) {
+                if (c.suitAir >= c.suitCapacity() * c.def.suitRefillShare) return fail(a);
+            } else if (c.suitAir >= c.suitCapacity()) {
                 return fail(a);
             }
             return oxygenSupplies(a, null) ? Status.SUCCEEDED : fail(a);
@@ -88,7 +91,9 @@ public final class CrewTasks {
 
     /**
      * Drops whatever they were doing, walks to an oxygen tank or a working life support aboard and
-     * fills their suit there over {@link CrewDef#suitRefillTime}, drawing {@link CrewDef#SUIT_OXYGEN_KG}.
+     * fills their suit there over {@link CrewDef#suitRefillTime} from its hose, drawing {@link
+     * CrewDef#SUIT_OXYGEN_KG} (an EVA suit's pack, {@link Suit#EVA_OXYGEN_KG}). A suit can't come off
+     * on air not fit to breathe, so it is filled where it is worn, not swapped at a locker.
      */
     public static class RefillSuit extends CrewLeaf {
         private float filled;
@@ -118,8 +123,8 @@ public final class CrewTasks {
             a.crew.activity = "filling their suit";
             filled += a.dt;
             if (filled < a.crew.def.suitRefillTime) return Status.RUNNING;
-            drawSuitOxygen(beside(grid, supplies, a.pos.tileX(), a.pos.tileY()));
-            a.crew.suitAir = a.crew.def.suitAir;
+            drawSuitOxygen(beside(grid, supplies, a.pos.tileX(), a.pos.tileY()), a.crew.suitKind);
+            a.crew.suitAir = a.crew.suitCapacity();
             a.refilling = false;
             return Status.SUCCEEDED;
         }
@@ -153,13 +158,28 @@ public final class CrewTasks {
         return RefillSuit.beside(grid, supplies, x, y);
     }
 
-    /** Takes a suit's fill of oxygen ({@link CrewDef#SUIT_OXYGEN_KG}) from {@code at}, a tank or life support; nothing if null. */
+    /** Takes a pressure suit's fill of oxygen ({@link CrewDef#SUIT_OXYGEN_KG}) from {@code at}, a tank or life support; nothing if null. */
     public static void drawSuitOxygen(SubsystemComponent at) {
-        if (at == null) return;
+        drawOxygen(at, CrewDef.SUIT_OXYGEN_KG);
+    }
+
+    /** Takes the fill of oxygen of a suit of {@code kind} from {@code at}; nothing if null. */
+    public static void drawSuitOxygen(SubsystemComponent at, Suit.Kind kind) {
+        drawOxygen(at, suitOxygen(kind));
+    }
+
+    /** Kilograms of oxygen a suit of {@code kind} takes from empty to full. */
+    public static double suitOxygen(Suit.Kind kind) {
+        return kind == Suit.Kind.EVA ? Suit.EVA_OXYGEN_KG : CrewDef.SUIT_OXYGEN_KG;
+    }
+
+    /** Takes {@code kg} of oxygen from {@code at}, a tank or life support (from the tanks piped to it); nothing if null. */
+    public static void drawOxygen(SubsystemComponent at, double kg) {
+        if (at == null || kg <= 0) return;
         if (at.type == SubsystemComponent.SubsystemType.TANK) {
-            at.contents = Math.max(0, at.contents - CrewDef.SUIT_OXYGEN_KG);
+            at.contents = Math.max(0, at.contents - kg);
         } else {
-            TankSupply.draw(at, Fluid.OXYGEN, CrewDef.SUIT_OXYGEN_KG);
+            TankSupply.draw(at, Fluid.OXYGEN, kg);
         }
     }
 
@@ -173,7 +193,7 @@ public final class CrewTasks {
     }
 
     /** {@link #oxygenSupplies(CrewAgent, Array)} aboard {@code ship}. */
-    static boolean oxygenSupplies(Entity ship, Array<SubsystemComponent> out) {
+    public static boolean oxygenSupplies(Entity ship, Array<SubsystemComponent> out) {
         ShipSubsystemRegistryComponent registry = ship == null ? null : ship.getComponent(ShipSubsystemRegistryComponent.class);
         if (registry == null) return false;
         boolean tanks = TankSupply.hasTanks(registry, Fluid.OXYGEN), any = false;
@@ -360,23 +380,22 @@ public final class CrewTasks {
     }
 
     /**
-     * Puts the agent's space suit on before they go to a task whose spot is out of breathable air
-     * (a breach, a room losing its air). Succeeds at once if they need none, have it on, or have none.
+     * Dresses the agent for their task before they go to it: fetches a suit from a suit locker and
+     * puts it on ({@link SuitErrand#suitUp}) when the task's spot is out of breathable air (a breach,
+     * a room losing its air), at battle stations with suits ordered, or for a post whose room is
+     * losing its air ({@link TaskRules#suitsUpAtPost}); and hangs a suit up first, off battle stations
+     * and in good air, before sitting with a patient, whose care it would slow (round 8). Succeeds at
+     * once if they need none, have it on, or wear none. With no suit to be had they go without where
+     * the spot has air, and to seal a breach or carry a casualty out of airless air, a dash of
+     * seconds on held breath; other work where there is no air is left for a crewmate with a suit.
      */
     public static class SuitUp extends CrewLeaf {
-        private float elapsed;
-
-        @Override
-        public void start() {
-            elapsed = 0f;
-        }
-
         @Override
         public Status execute() {
             CrewAgent a = agent();
             CrewTask t = a.crew.task;
             if (t == null) return Status.FAILED;
-            if (a.crew.suited || a.crew.def.suitAir <= 0f) return Status.SUCCEEDED;
+            if (!a.crew.wearsSuits()) return Status.SUCCEEDED;
             // The spot may be on another craft: a ship latched alongside being stripped, say
             Entity site = TaskRules.siteOf(t);
             // Or back aboard their own ship, from a docked craft they shelter on
@@ -384,16 +403,26 @@ public final class CrewTasks {
             ShipGridComponent grid = site == null ? null : a.service.grid(site);
             if (grid == null) grid = a.grid();
             ShipTaskBoardComponent board = a.board();
-            if (!TaskRules.needsSuit(grid, TaskRules.targetX(t, a.service), TaskRules.targetY(t, a.service))
-                    && (board == null || !board.battleSuits())) {
+            int tx = TaskRules.targetX(t, a.service), ty = TaskRules.targetY(t, a.service);
+            boolean needs = TaskRules.needsSuit(grid, tx, ty);
+            // A hand who left their post for a suit (DoWork) fetches one before going back to it
+            boolean wants = needs || board != null && board.battleSuits() || a.fetchSuit;
+            if (!wants) {
+                if (!a.crew.suited || t.kind != CrewTask.Kind.TREAT || TaskRules.needsSuit(a.grid(), a.pos.tileX(), a.pos.tileY())) {
+                    return Status.SUCCEEDED;
+                }
+                // Hung up before sitting with a patient; kept on if there is nowhere to hang it
+                return SuitErrand.stow(a) == Status.RUNNING ? Status.RUNNING : Status.SUCCEEDED;
+            }
+            // An EVA suit only when the air is going: it takes long to get into, and is clumsy indoors
+            Status dressed = a.crew.suited ? Status.SUCCEEDED : SuitErrand.suitUp(a, needs);
+            if (dressed == Status.RUNNING) return dressed;
+            a.fetchSuit = false;
+            if (dressed == Status.SUCCEEDED || !needs || t.kind == CrewTask.Kind.SEAL_BREACH || t.kind == CrewTask.Kind.RESCUE) {
                 return Status.SUCCEEDED;
             }
-            a.pos.stop();
-            a.crew.activity = "putting on a suit";
-            elapsed += a.dt;
-            if (elapsed < a.crew.def.suitTime) return Status.RUNNING;
-            a.crew.setSuited(true);
-            return Status.SUCCEEDED;
+            a.abandonUnreachable();
+            return Status.FAILED;
         }
     }
 
@@ -415,6 +444,14 @@ public final class CrewTasks {
             if (!TaskRules.isStillNeeded(t, grid, a.service)) return Status.SUCCEEDED;
             if (!TaskRules.isWorkSpot(t, grid, a.pathfinder().graph, a.service, a.pos.tileX(), a.pos.tileY())) {
                 return Status.FAILED; // target moved (a casualty was carried off); re-plan next step
+            }
+            // The air going where they work: off for a suit while there is time to get into one, then
+            // back to it (a breach they dash in to seal, and a post, which has its own locker, aside)
+            if (!a.crew.suited && a.crew.wearsSuits() && t.kind != CrewTask.Kind.SEAL_BREACH && t.kind != CrewTask.Kind.MAN_CONSOLE
+                    && a.time >= a.suitBlockedUntil && !TaskRules.isBreathable(grid, a.pos.tileX(), a.pos.tileY())) {
+                a.fetchSuit = true;
+                a.releaseTask();
+                return Status.FAILED;
             }
             // A light wound and a suit slow the work
             float dt = a.dt * a.crew.workPace();
@@ -487,13 +524,20 @@ public final class CrewTasks {
                     CrewMemberComponent p = a.service.crew(((TreatTask) t).patient);
                     p.treatedBy = a.entity;
                     // Off battle stations and in good air, the carer slips their suit off to work (round 8):
-                    // it slowed the care of the wounded long after the fight
+                    // it slowed the care of the wounded long after the fight. SuitUp hangs it up on the
+                    // way; one still on comes off here only into a locker within reach of the patient
                     if (a.crew.suited && (board == null || !board.battleSuits()) && !TaskRules.needsSuit(grid, a.pos.tileX(), a.pos.tileY())
                             && !TaskRules.needsSuit(grid, t.x, t.y)) {
-                        // On the crew member, so it is saved (round 9)
-                        a.crew.unsuiting += a.dt;
-                        a.crew.activity = "taking off a suit";
-                        if (a.crew.unsuiting >= a.crew.def.suitTime * 0.5f) a.crew.setSuited(false);
+                        Furnishing locker = SuitLockers.within(grid, a.pos.x, a.pos.y, f -> SuitLockers.hasRoom(f, a.crew.suitKind));
+                        if (locker != null && a.pos.ship == a.service.homeOf(a.entity)) {
+                            // On the crew member, so it is saved (round 9)
+                            a.crew.unsuiting += a.dt;
+                            a.crew.activity = SuitErrand.undressing(a.crew.suitKind);
+                            if (a.crew.unsuiting >= a.crew.suitTime(a.crew.suitKind) * 0.5f) {
+                                Suit off = a.crew.takeOff();
+                                if (!SuitLockers.stow(locker, off)) a.crew.wear(off);
+                            }
+                        }
                     }
                     return Status.RUNNING; // CrewHealthSystem heals faster; done when the patient wakes or the wound heals
                 }
@@ -509,12 +553,21 @@ public final class CrewTasks {
                 case MAN_CONSOLE: {
                     ShipTaskBoardComponent board = a.board();
                     // The suit goes on where they sit, the post still held, for battle stations or as
-                    // their room's air goes (round 9)
-                    if (!a.crew.suited && a.crew.def.suitAir > 0f && TaskRules.suitsUpAtPost(grid, board, a.pos.tileX(), a.pos.tileY())) {
-                        a.crew.activity = "putting on a suit at their post";
-                        a.crew.suiting += a.dt;
-                        if (a.crew.suiting >= a.crew.def.suitTime) a.crew.setSuited(true);
-                        return Status.RUNNING;
+                    // their room's air goes (round 9): from the locker beside the post. With none within
+                    // reach the post goes back up while they fetch one (SuitUp), unless none is to be had
+                    if (!a.crew.suited && a.crew.wearsSuits() && TaskRules.suitsUpAtPost(grid, board, a.pos.tileX(), a.pos.tileY())) {
+                        Furnishing locker = SuitLockers.within(grid, a.pos.x, a.pos.y, f -> SuitLockers.hasSuit(f, Suit.Kind.IVA));
+                        if (locker != null) {
+                            a.crew.activity = "putting on a pressure suit at their post";
+                            a.crew.suiting += a.dt;
+                            if (a.crew.suiting >= a.crew.suitTime(Suit.Kind.IVA)) a.crew.wear(SuitLockers.take(locker, Suit.Kind.IVA));
+                            return Status.RUNNING;
+                        }
+                        if (a.time >= a.suitBlockedUntil) {
+                            a.fetchSuit = true;
+                            a.releaseTask();
+                            return Status.FAILED;
+                        }
                     }
                     // At it until anything else on the board wants them: then the console goes back up.
                     // The helm the ship needs isn't left to sit with a patient
@@ -583,9 +636,9 @@ public final class CrewTasks {
 
     /**
      * Carries the casualty to the nearest safe tile, or for a {@link MedbayCarryTask} to the nearest
-     * free medbay bed. With nowhere aboard to carry them to (the whole
-     * ship holed), the rescuer puts the casualty's suit on them where they are instead, taking their
-     * own suit time, and leaves them for the next try. Round 9: once that suit runs low
+     * free medbay bed. With nowhere aboard to carry them to (the whole ship holed), the rescuer carries
+     * the casualty to a suit locker instead and puts a suit from it on them there, taking their own
+     * suit time, and leaves them for the next try. Round 9: once that suit runs low
      * ({@link CrewDef#suitRefillShare}), they carry the casualty to the ship's oxygen and fill it
      * there, as they would their own ({@link RefillSuit}). The wound survey lost six crew who lay
      * down in a holed ship, suited, until their suits ran dry beside full oxygen tanks.
@@ -629,14 +682,11 @@ public final class CrewTasks {
                         }
                     }
                     // No bed to be reached: they are put down where they are, on safe deck
-                    if (!medbay && !c.suited && c.def.suitAir > 0f) {
-                        a.pos.stop();
-                        a.crew.activity = "putting a suit on " + c.name;
-                        suiting += a.dt;
-                        if (suiting < a.crew.def.suitTime) return Status.RUNNING;
-                        c.setSuited(true);
+                    if (!medbay && !c.suited && c.wearsSuits()) {
+                        Status dressed = dress(a, c, grid);
+                        if (dressed == Status.RUNNING) return dressed;
                     }
-                    if (!medbay && c.suited && c.suitAir < c.def.suitAir * c.def.suitRefillShare && TaskRules.suitCare(a.board())) {
+                    if (!medbay && c.suited && c.suitAir < c.suitCapacity() * c.def.suitRefillShare && TaskRules.suitCare(a.board())) {
                         Status fill = fillSuit(a, c, grid);
                         if (fill != null) return fill;
                     }
@@ -645,6 +695,36 @@ public final class CrewTasks {
                 }
                 a.pos.setPath(a.pathScratch);
             }
+            return Status.RUNNING;
+        }
+
+        /**
+         * Carries the casualty to a suit locker and puts a suit from it on them there: a pressure
+         * suit, or an EVA suit if no pressure suit can be reached. FAILED if there is none to be had.
+         */
+        private Status dress(CrewAgent a, CrewMemberComponent c, ShipGridComponent grid) {
+            Suit.Kind kind = Suit.Kind.IVA;
+            Furnishing at = SuitErrand.lockerAtHand(a, grid, kind, true);
+            CrewAgent.Travel go = null;
+            if (at == null) {
+                // A pressure suit a few steps off before an EVA suit at hand, slow to get anyone into
+                go = SuitErrand.toLocker(a, grid, Suit.Kind.IVA, true);
+                if (go == CrewAgent.Travel.UNREACHABLE) {
+                    at = SuitErrand.lockerAtHand(a, grid, kind = Suit.Kind.EVA, true);
+                    if (at == null) go = SuitErrand.toLocker(a, grid, Suit.Kind.EVA, true);
+                }
+            }
+            if (at != null) {
+                a.crew.activity = "putting " + SuitErrand.article(kind) + " on " + c.name;
+                suiting += a.dt;
+                if (suiting < a.crew.suitTime(kind)) return Status.RUNNING;
+                c.wear(SuitLockers.take(at, kind));
+                suiting = 0f;
+                return Status.SUCCEEDED;
+            }
+            suiting = 0f;
+            if (go == CrewAgent.Travel.UNREACHABLE) return Status.FAILED;
+            a.crew.activity = "carrying " + c.name + " to " + SuitErrand.article(kind);
             return Status.RUNNING;
         }
 
@@ -662,8 +742,8 @@ public final class CrewTasks {
             a.crew.activity = "filling " + c.name + "'s suit";
             filling += a.dt;
             if (filling < c.def.suitRefillTime) return Status.RUNNING;
-            drawSuitOxygen(RefillSuit.beside(grid, supplies, a.pos.tileX(), a.pos.tileY()));
-            c.suitAir = c.def.suitAir;
+            drawSuitOxygen(RefillSuit.beside(grid, supplies, a.pos.tileX(), a.pos.tileY()), c.suitKind);
+            c.suitAir = c.suitCapacity();
             filling = 0f;
             return Status.SUCCEEDED;
         }
@@ -842,14 +922,15 @@ public final class CrewTasks {
 
     /**
      * Goes aboard {@link BoardTask#ship} to the task's tile, suited (no one boards a hostile craft
-     * without a suit), and reports arriving to the job.
+     * without a suit if there is one to be had: a pressure suit from a locker, or an EVA suit), and
+     * reports arriving to the job. With no dock to walk across, over on EVA ({@link EvaTasks.Departure}).
      */
     public static class Board extends CrewLeaf {
-        private float suiting;
+        private final EvaTasks.Departure departure = new EvaTasks.Departure();
 
         @Override
-        public void start() {
-            suiting = 0f;
+        public void end() {
+            departure.reset(getObject());
         }
 
         @Override
@@ -857,12 +938,17 @@ public final class CrewTasks {
             CrewAgent a = agent();
             BoardTask t = (BoardTask) a.crew.task;
             if (!t.job.isOpen()) return Status.FAILED;
-            if (!a.crew.suited && a.crew.def.suitAir > 0f) {
-                a.pos.stop();
-                a.crew.activity = "suiting up to board";
-                suiting += a.dt;
-                if (suiting < a.crew.def.suitTime) return Status.RUNNING;
-                a.crew.setSuited(true);
+            if (a.pos.ship != t.ship && a.pos.crossing == null && !a.service.joined(a.pos.ship, t.ship)) {
+                // No dock between: out of the airlock and across
+                a.crew.activity = t.job.what();
+                if (departure.step(a, t.ship, true) == Status.RUNNING) return Status.RUNNING;
+                a.abandonUnreachable();
+                return Status.FAILED;
+            }
+            if (!a.crew.suited && a.crew.wearsSuits() && a.pos.ship == a.service.homeOf(a.entity)
+                    && SuitErrand.suitUp(a, true) == Status.RUNNING) {
+                if (a.crew.suiting > 0f) a.crew.activity = "suiting up to board";
+                return Status.RUNNING;
             }
             a.crew.activity = t.job.what();
             CrewAgent.Travel go = a.travel(t.ship, near(a, t.ship, t.x, t.y, 1, 1));
@@ -949,26 +1035,38 @@ public final class CrewTasks {
 
     /**
      * Stands by. Heads home if aboard another craft, and moves off a tile that is not safe to
-     * breathe on. At battle stations ({@link ShipTaskBoardComponent#battleSuits}) they suit up and
-     * keep the suit on; otherwise a suited crew member takes the suit off after
-     * {@link #SUIT_OFF_DELAY} seconds standing by on a safe tile. Aboard their own ship, out of
-     * their suit and with nothing to do, they use its furnishings ({@link Downtime}). Never finishes.
+     * breathe on. At battle stations ({@link ShipTaskBoardComponent#battleSuits}) they fetch a
+     * pressure suit from a suit locker and keep it on; otherwise a suited crew member takes the suit
+     * back to a locker with room for it after {@link #SUIT_OFF_DELAY} seconds standing by on a safe
+     * tile aboard their own ship, and keeps it on while none can be reached ({@link SuitErrand}).
+     * With nowhere aboard safe they fetch a suit, a pressure suit or an EVA suit, before anything
+     * else. Aboard their own ship, out of their suit and with nothing to do, they use its
+     * furnishings ({@link Downtime}). Never finishes.
      */
     public static class Idle extends CrewLeaf {
-        /** Seconds on a safe tile with nothing to do before a suit comes off. */
+        /** Seconds on a safe tile with nothing to do before a suit goes back to its locker. */
         public static final float SUIT_OFF_DELAY = 5f;
-        private float calm, suiting;
+        /** Seconds idle aboard another craft with no dock to their own before they go back across on EVA. */
+        public static final float STRANDED_SECONDS = 3f;
+        private float calm;
+        /** On the way to hang their suit up, or taking it off. */
+        private boolean stowing;
         private final Downtime downtime = new Downtime();
+        /** Seconds idle aboard a craft with no dock to their own, before going back across on EVA. */
+        private float stranded;
+        private final EvaTasks.Departure homeward = new EvaTasks.Departure();
 
         @Override
         public void start() {
             calm = 0f;
-            suiting = 0f;
+            stowing = false;
+            stranded = 0f;
             downtime.reset(getObject());
         }
 
         @Override
         public void end() {
+            homeward.reset(getObject());
             if (getObject() != null) downtime.stop(getObject());
         }
 
@@ -983,16 +1081,24 @@ public final class CrewTasks {
             if ((home != a.pos.ship || a.pos.crossing != null) && !sheltering) {
                 ShipGridComponent homeGrid = a.service.grid(home);
                 GridNavGraph nav = homeGrid == null ? null : a.service.pathfinder(homeGrid).graph;
-                if (nav != null && a.travel(home, nav::isWalkable) == CrewAgent.Travel.GOING) {
+                CrewAgent.Travel go = nav == null ? CrewAgent.Travel.UNREACHABLE : a.travel(home, nav::isWalkable);
+                if (go == CrewAgent.Travel.GOING) {
                     a.crew.activity = "heading back";
+                    stranded = 0f;
+                    return Status.RUNNING;
+                }
+                // No dock to walk back across: home on EVA, once it's clear nothing more is wanted here
+                if (go == CrewAgent.Travel.UNREACHABLE && nav != null && a.pos.crossing == null && !a.service.joined(a.pos.ship, home)
+                        && (stranded += a.dt) >= STRANDED_SECONDS && homeward.step(a, home, false) == Status.RUNNING) {
                     return Status.RUNNING;
                 }
             }
             int x = a.pos.tileX(), y = a.pos.tileY();
-            // Nobody idles in a docked port's opening: it is the only way across, one tile wide
-            if (TaskRules.isSafe(grid, x, y) && onLink(grid, x, y)) {
-                if (!a.pos.isMoving() && a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty) && !onLink(grid, tx, ty),
-                        a.pathScratch)) {
+            // Nobody idles in a docked port's opening: it is the only way across, one tile wide; nor in
+            // an airlock's chamber while someone wants it to cycle
+            if (TaskRules.isSafe(grid, x, y) && (onLink(grid, x, y) || EvaTasks.inAirlock(grid, x, y))) {
+                if (!a.pos.isMoving() && a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty) && !onLink(grid, tx, ty)
+                        && !EvaTasks.inAirlock(grid, tx, ty), a.pathScratch)) {
                     a.pos.setPath(a.pathScratch);
                     a.crew.activity = "stepping clear of the port";
                 }
@@ -1000,7 +1106,7 @@ public final class CrewTasks {
             }
             if (TaskRules.isSafe(grid, x, y)) {
                 ShipTaskBoardComponent board = a.board();
-                boolean battle = board != null && board.battleSuits() && a.crew.def.suitAir > 0f;
+                boolean battle = board != null && board.battleSuits() && a.crew.wearsSuits();
                 // Downtime: aboard their own ship, out of their suit, with nothing else to do (never a prisoner)
                 if (!battle && !a.crew.suited && !a.crew.held && home == a.pos.ship && a.pos.crossing == null) {
                     if (downtime.step(a)) return Status.RUNNING;
@@ -1009,33 +1115,30 @@ public final class CrewTasks {
                 }
                 if (!a.pos.isMoving()) a.crew.activity = "idle";
                 if (battle) {
-                    // Battle stations: suit up and keep it on
+                    // Battle stations: a suit from a locker, kept on
                     calm = 0f;
-                    if (!a.crew.suited) {
-                        a.pos.stop();
-                        a.crew.activity = "suiting up for battle stations";
-                        suiting += a.dt;
-                        if (suiting >= a.crew.def.suitTime) {
-                            a.crew.setSuited(true);
-                            a.crew.activity = "idle";
-                            suiting = 0f;
-                        }
-                    }
+                    stowing = false;
+                    if (!a.crew.suited) SuitErrand.suitUp(a, false);
                     return Status.RUNNING;
                 }
-                suiting = 0f;
-                if (a.crew.suited && !a.pos.isMoving()) {
+                if (!a.crew.suited || home != a.pos.ship || a.pos.crossing != null) {
+                    calm = 0f;
+                    stowing = false;
+                    return Status.RUNNING;
+                }
+                if (!stowing && !a.pos.isMoving()) {
                     calm += a.dt;
-                    if (calm >= SUIT_OFF_DELAY) a.crew.activity = "taking off a suit";
-                    if (calm >= SUIT_OFF_DELAY + a.crew.def.suitTime * 0.5f) {
-                        a.crew.setSuited(false);
-                        a.crew.activity = "idle";
-                        calm = 0f;
-                    }
+                    stowing = calm >= SUIT_OFF_DELAY && a.time >= a.stowBlockedUntil;
+                }
+                if (stowing && SuitErrand.stow(a) != Status.RUNNING) {
+                    // Hung up; or nowhere to hang it, and kept on for now
+                    stowing = false;
+                    calm = 0f;
                 }
                 return Status.RUNNING;
             }
             calm = 0f;
+            stowing = false;
             if (downtime.using() != null) downtime.stop(a);
             if (!a.pos.isMoving() || a.pos.pathBlocked) {
                 if (a.nearest(x, y, (tx, ty) -> TaskRules.isSafe(grid, tx, ty), a.pathScratch)) {
@@ -1043,16 +1146,9 @@ public final class CrewTasks {
                     a.crew.activity = "leaving hazard";
                     return Status.RUNNING;
                 }
-                // Nowhere aboard is safe (the ship holed past holding, its air gone): they suit up, and
-                // go aboard the craft it is docked to, a station's berth say, until it is
-                if (!a.crew.suited && a.crew.def.suitAir > 0f) {
-                    a.pos.stop();
-                    a.crew.activity = "putting on a suit";
-                    suiting += a.dt;
-                    if (suiting < a.crew.def.suitTime) return Status.RUNNING;
-                    a.crew.setSuited(true);
-                    suiting = 0f;
-                }
+                // Nowhere aboard is safe (the ship holed past holding, its air gone): they fetch a suit,
+                // and go aboard the craft it is docked to, a station's berth say, until it is
+                if (!a.crew.suited && SuitErrand.suitUp(a, true) == Status.RUNNING) return Status.RUNNING;
                 Entity shelter = shelter(a);
                 if (shelter == null) return Status.RUNNING;
                 ShipGridComponent there = a.service.grid(shelter);
@@ -1176,6 +1272,7 @@ public final class CrewTasks {
             case EXTINGUISH: return "fighting fire at " + t.x + "," + t.y;
             case SEAL_BREACH: return "sealing breach at " + t.x + "," + t.y;
             case PATCH_LEAK: return "patching a leak at " + t.x + "," + t.y;
+            case REPAIR_RCS: return "repairing an RCS thruster on EVA";
             case REPAIR: {
                 SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                 return "repairing " + (s == null ? "system" : s.type.name().toLowerCase());

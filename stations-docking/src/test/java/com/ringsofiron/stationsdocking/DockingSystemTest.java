@@ -22,8 +22,11 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.RailsBubbleHandoff;
 import com.ringsofiron.physicsexterior.TrueTrajectory;
 import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
+import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.physicsexterior.components.ThrusterComponent;
+import com.ringsofiron.physicsexterior.systems.FlightControlSystem;
 import com.ringsofiron.physicsexterior.systems.KinematicTransientSystem;
 import com.ringsofiron.physicsexterior.systems.PhysicsUpdateSystem;
 import com.ringsofiron.physicsexterior.systems.TidalGravitySystem;
@@ -189,6 +192,84 @@ class DockingSystemTest {
         assertEquals(List.of(DockingEvent.Kind.CAPTURED, DockingEvent.Kind.DOCKED), events);
     }
 
+    /** Gives {@code e}'s hull an arm reaching {@code reach} m out past its nose (+x) beside its port, 1.75 to 2.75 m off its centerline (to its right, looking out of the port). */
+    private static void armBesidePort(Entity e, float reach) {
+        com.badlogic.gdx.physics.box2d.PolygonShape shape = new com.badlogic.gdx.physics.box2d.PolygonShape();
+        float u = PhysicsManager.UNITS_PER_METER;
+        shape.set(new float[]{4f * u, 1.75f * u, (5f + reach) * u, 1.75f * u, (5f + reach) * u, 2.75f * u, 4f * u, 2.75f * u});
+        com.badlogic.gdx.physics.box2d.FixtureDef fd = new com.badlogic.gdx.physics.box2d.FixtureDef();
+        fd.shape = shape;
+        fd.density = 0f;
+        fd.filter.categoryBits = CollisionCategories.CATEGORY_SHIP;
+        fd.filter.maskBits = CollisionCategories.MASK_ALL;
+        body(e).createFixture(fd);
+        shape.dispose();
+    }
+
+    @Test
+    void aCollarStaysOutAWholeTileWhenDrawingInWouldPutTheHullsTogether() {
+        Entity a = ship(0f, 0f, 0f, true);
+        Entity b = ship(12.5f, 0f, MathUtils.PI, false);
+        // b's arm reaches 1.5 m past its hull: the collars alone (1 m) leave no room for it
+        armBesidePort(b, 1.5f);
+        assertNull(docking.arm(a, 0));
+        stepUntil(port(a), DockingPort.State.CAPTURED, 20f);
+        stepUntil(port(a), DockingPort.State.DOCKED, 30f);
+        game.stepTicks(60 * 4);
+        assertTrue(docking.isRigid(a));
+        assertEquals(1f, port(a).lockedExtension, 1e-6f, "locked a whole tile out");
+        assertEquals(0f, port(b).lockedExtension, 1e-6f);
+        // The hulls are a whole number of tiles apart: the two collars and the tile of tunnel
+        Vector2 edgeA = body(a).getWorldPoint(new Vector2(5f, 0f).scl(PhysicsManager.UNITS_PER_METER)).cpy().scl(PhysicsManager.METERS_PER_UNIT);
+        Vector2 edgeB = body(b).getWorldPoint(new Vector2(5f, 0f).scl(PhysicsManager.UNITS_PER_METER)).cpy().scl(PhysicsManager.METERS_PER_UNIT);
+        assertEquals(2f, edgeA.dst(edgeB), 0.03f);
+        assertEquals(0f, face(body(a), port(a)).dst(face(body(b), port(b))), 0.03f, "the locked collar's face on b's");
+        float angle = body(b).getAngle() - body(a).getAngle() - MathUtils.PI;
+        assertEquals(0f, MathUtils.atan2(MathUtils.sin(angle), MathUtils.cos(angle)), 0.01f, "square");
+        // Undocking lets the collar in again
+        assertTrue(docking.undock(a));
+        assertEquals(0f, port(a).lockedExtension);
+    }
+
+    @Test
+    void withNothingInTheWayTheCollarDrawsAllTheWayIn() {
+        Entity a = ship(0f, 0f, 0f, true);
+        Entity b = ship(12.5f, 0.2f, MathUtils.PI, false);
+        // An arm short of a's hull (0.8 m out, 1 m between the hulls) is no reason to stay out
+        armBesidePort(b, 0.8f);
+        assertNull(docking.arm(a, 0));
+        stepUntil(port(a), DockingPort.State.DOCKED, 30f);
+        assertEquals(0f, port(a).lockedExtension);
+    }
+
+    @Test
+    void theSeatingDrawsALatchedShipStraightInWithoutSwingingIt() {
+        // Latched a little off its seat (0.2 m out, 0.1 m aside, 1.5 degrees turned), with its
+        // middle 4 m from its origin: Box2D's motor joint pulled on the origin and swung such a ship
+        // round into the other hull before the seating gave up and put it straight
+        Entity a = ship(0f, 0f, 0f, false);
+        float turn = 1.5f * MathUtils.degreesToRadians;
+        Entity b = ship(11.2f, 0.1f, MathUtils.PI + turn, false);
+        PhysicsManager.setMassData(body(b), PhysicsManager.getMass(body(b)), 4f, 0f, PhysicsManager.getInertia(body(b)));
+        assertNull(docking.arm(a, 0));
+        assertNull(docking.arm(b, 0));
+        game.stepTicks(1);
+        assertEquals(DockingPort.State.DOCKED, port(a).state);
+        float worstAngle = 0f, worstGap = 0f;
+        float seconds = 0f;
+        for (int i = 0; i < 60 * 4 && !docking.isRigid(a); i++) {
+            game.stepTicks(1);
+            seconds += 1f / 60f;
+            float off = body(b).getAngle() - body(a).getAngle() - MathUtils.PI;
+            worstAngle = Math.max(worstAngle, Math.abs(MathUtils.atan2(MathUtils.sin(off), MathUtils.cos(off))));
+            worstGap = Math.max(worstGap, face(body(a), port(a)).dst(face(body(b), port(b))));
+        }
+        assertTrue(docking.isRigid(a));
+        assertTrue(seconds < DockingTuning.SEATING_TIME, "seated, not put straight when time ran out: " + seconds);
+        assertTrue(worstAngle <= turn + 0.002f, "never turned further off than it started: " + worstAngle);
+        assertTrue(worstGap < 0.3f, "never pulled off its port: " + worstGap);
+    }
+
     @Test
     void aShipComingInTurnedAwayIsCaughtByTheTiltingHeadAndTurnedSquare() {
         Entity a = ship(0f, 0f, 0f, true);
@@ -296,6 +377,43 @@ class DockingSystemTest {
         game.stepTicks(60 * 2);
         assertFalse(events.contains(DockingEvent.Kind.TORN));
         assertEquals(DockingPort.State.DOCKED, port(pair[0]).state);
+    }
+
+    /**
+     * Oct 2026: with RCS blocks at standard thrust the corvette's rotation assist turned about five
+     * times what a Small latch bears, and stopping a docked pair's spin tore the latch. Welded, the
+     * assist turns no harder than its share of the latch, and still stops the spin.
+     */
+    @Test
+    void rotationAssistStopsADockedPairsSpinWithoutTearingTheLatch() {
+        game.addSystem(new FlightControlSystem(physics));
+        Entity[] pair = approachPassive();
+        ThrusterComponent rcs = new ThrusterComponent();
+        rcs.maxTorque = 10 * DockingTuning.SMALL.breakTorque;
+        FlightControlComponent controls = new FlightControlComponent();
+        pair[0].add(rcs);
+        pair[0].add(controls);
+        stepUntil(port(pair[0]), DockingPort.State.DOCKED, 60f);
+        game.stepTicks(60 * 4);
+        // Something turns the pair, gently, with the assist off
+        int[] ticks = {0};
+        physics.addStepListener(dt -> {
+            if (ticks[0]++ < 120) PhysicsManager.applyTorque(body(pair[1]), 0.4f * DockingTuning.SMALL.breakTorque);
+        });
+        game.stepTicks(120);
+        float spin = body(pair[0]).getAngularVelocity();
+        assertTrue(spin > 0.1f, "the pair spins: " + spin);
+        assertEquals(DockingTuning.ASSIST_SHARE * DockingTuning.SMALL.breakTorque, controls.assistLimit, 1f);
+
+        controls.rotationAssist = true;
+        game.stepTicks(60 * 10);
+        assertFalse(events.contains(DockingEvent.Kind.TORN), events.toString());
+        assertEquals(DockingPort.State.DOCKED, port(pair[0]).state);
+        assertEquals(0f, body(pair[0]).getAngularVelocity(), 0.01f, "the assist stopped the spin");
+
+        docking.undock(pair[0]);
+        game.stepTicks(60);
+        assertEquals(Float.POSITIVE_INFINITY, controls.assistLimit, "free again, the assist turns as hard as the RCS allows");
     }
 
     /**

@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.interiorgrid.Compartment;
+import com.ringsofiron.interiorgrid.Furnishing;
+import com.ringsofiron.interiorgrid.SuitLockers;
+import com.ringsofiron.interiorgrid.crew.Suit;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.DamageTaskSink;
 import com.ringsofiron.interiorgrid.crew.SealBreachTask;
@@ -16,6 +19,7 @@ class SpaceSuitTest {
         TestShips s = CrewHealthTest.room();
         Tile breach = s.grid.getTile(9, 2);
         breach.setIntegrity(0f);
+        Furnishing locker = s.locker(1, 3, 4);
         Entity e = s.spawn(CrewRole.ENGINEER, 0, 1, 2);
         CrewMemberComponent c = s.c(e);
         boolean wasSuited = false;
@@ -28,18 +32,68 @@ class SpaceSuitTest {
         assertTrue(c.health > c.def.maxHealth * 0.9f, "breathed from the suit, health " + c.health);
         assertTrue(c.suitAir < c.def.suitAir, "used suit air");
         assertEquals(CrewState.CONSCIOUS, c.state);
+        assertEquals(3, locker.suits.size, "a suit from the locker");
     }
 
     @Test
-    void aSuitComesOffOnceTheAirIsBackAndIsToppedUp() {
+    void withNoSuitToBeHadAnEngineerStillDashesInToSealABreach() {
         TestShips s = CrewHealthTest.room();
+        Tile breach = s.grid.getTile(9, 2);
+        breach.setIntegrity(0f);
+        Entity e = s.spawn(CrewRole.ENGINEER, 0, 6, 2);
+        for (int i = 0; i < 30 * 30 && breach.isHullBreach(); i++) s.run(1f / 30f);
+        assertFalse(breach.isHullBreach(), "sealed on held breath");
+        assertFalse(s.c(e).suited, "no locker aboard");
+    }
+
+    @Test
+    void aSuitIsTakenFromALockerAndHungBackUpInIt() {
+        TestShips s = CrewHealthTest.room();
+        Furnishing locker = s.locker(5, 3, 1);
+        Entity e = s.spawn(CrewRole.CREWMAN, 0, 1, 1);
+        CrewMemberComponent c = s.c(e);
+        s.board.battleStations = true;
+        s.run(c.def.suitTime + 8f);
+        assertTrue(c.suited, c.activity);
+        assertEquals(0, locker.suits.size, "the locker's one suit is on");
+        assertTrue(SuitLockers.reaches(locker, s.p(e).x, s.p(e).y), "dressed at the locker");
+        s.board.battleStations = false;
+        s.run(CrewTasksIdleDelay() + c.def.suitTime);
+        assertFalse(c.suited, c.activity);
+        assertEquals(1, locker.suits.size, "hung back up");
+    }
+
+    @Test
+    void aSecondHandFindsTheLockerEmptyAndGoesWithout() {
+        TestShips s = CrewHealthTest.room();
+        s.locker(5, 3, 1);
+        Entity a = s.spawn(CrewRole.CREWMAN, 0, 4, 2), b = s.spawn(CrewRole.CREWMAN, 0, 1, 1);
+        s.board.battleStations = true;
+        s.run(20f);
+        assertNotEquals(s.c(a).suited, s.c(b).suited, "one suit between the two of them");
+    }
+
+    @Test
+    void aSuitComesOffOnceTheAirIsBackAndIsToppedUpInItsLocker() {
+        TestShips s = new TestShips(
+                "##########",
+                "#L.......#",
+                "#L.......#",
+                "#........#",
+                "##########");
+        Furnishing locker = s.locker(5, 3, 3);
         Entity e = s.spawn(CrewRole.CREWMAN, 0, 2, 2);
         CrewMemberComponent c = s.c(e);
         c.setSuited(true);
         c.suitAir = 10f;
         s.run(CrewTasksIdleDelay() + c.def.suitTime);
         assertFalse(c.suited);
-        assertEquals(c.def.suitAir, c.suitAir);
+        assertEquals(4, locker.suits.size, "hung up in the locker");
+        float least = Float.MAX_VALUE;
+        for (Suit suit : locker.suits) least = Math.min(least, suit.air);
+        assertTrue(least < 60f, "back with the air it had: " + least);
+        s.run(SuitLockerSystem.AIR_FILL);
+        for (Suit suit : locker.suits) assertEquals(Suit.IVA_AIR, suit.air, 1e-3f, "filled from the ship's oxygen");
     }
 
     private static float CrewTasksIdleDelay() {

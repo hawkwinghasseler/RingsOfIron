@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.render;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -23,6 +24,8 @@ import com.ringsofiron.aicrew.CrewBody;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.CrewState;
+import com.ringsofiron.aicrew.EvaComponent;
+import com.ringsofiron.aicrew.EvaSystem;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
@@ -80,6 +83,9 @@ public final class DeckRenderer {
     private static final Matrix4 IDENTITY = new Matrix4();
     /** The tint of a down crew member's figure, and what their dot is scaled by. */
     private static final Color GREYED = new Color(0.55f, 0.55f, 0.6f, 1f);
+    /** The lamps on an EVA suit: their light, how strong, how far it reaches and the glow of the lamps, meters. */
+    private static final Color SUIT_LAMP = new Color(1f, 0.95f, 0.84f, 1f);
+    private static final float SUIT_LAMP_STRENGTH = 0.7f, SUIT_LAMP_REACH = 2.5f, SUIT_LAMP_GLOW = 0.25f;
     /** A body's cross without the art for one. */
     private static final Color BODY = new Color(0.55f, 0.55f, 0.55f, 1f);
     /** How long a bleeding wound's disc takes to blink. */
@@ -114,6 +120,10 @@ public final class DeckRenderer {
     private final float[] angle = new float[1];
     private final Color color = new Color();
     private final RcsNozzles nozzles = new RcsNozzles();
+    /** Tethers and jetpack puffs of the crew out on EVA. */
+    private final Spacewalkers spacewalkers = new Spacewalkers();
+    /** Craft with crew out on EVA, drawn from outside this frame. */
+    private final Array<Entity> outside = new Array<>();
     /** Every hull hit in the world on show, drawn on its craft's deck. */
     private final DeckImpacts impacts = new DeckImpacts();
     private final Color crewColor = new Color();
@@ -247,6 +257,7 @@ public final class DeckRenderer {
         GameWorld current = world.get();
         impacts.listen(current == null ? null : current.combatEvents.hullHits);
         impacts.update(delta);
+        spacewalkers.update(delta);
         if (decks.size == 0) return;
         boolean withArt = deckArt.available();
         boolean lit = lighting != null && lightsOn;
@@ -284,7 +295,12 @@ public final class DeckRenderer {
                     GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
                     if (pos.ship != ship) continue;
                     Vector2 l = pos.toShipLocal(g, local);
-                    lighting.addCrew(x + cos * l.x - sin * l.y, y + sin * l.x + cos * l.y, CrewBody.RADIUS * g.tileSize);
+                    float wx = x + cos * l.x - sin * l.y, wy = y + sin * l.x + cos * l.y;
+                    lighting.addCrew(wx, wy, CrewBody.RADIUS * g.tileSize);
+                    // Out on EVA, their suit's lamps light the hull round them
+                    if (EvaSystem.outside(e)) {
+                        lighting.addFlash(wx, wy, SUIT_LAMP, SUIT_LAMP_STRENGTH, SUIT_LAMP_REACH * g.tileSize, SUIT_LAMP_GLOW * g.tileSize);
+                    }
                 }
                 // Hits on the hull light the deck for a moment
                 impacts.flashes(g, (fx, fy, c, strength, reach, glow) -> {
@@ -336,7 +352,23 @@ public final class DeckRenderer {
                 if (!withArt || !deckArt.hasArt(ghost)) furnishingBlock(g, ghost, color.set(ghostFits ? GHOST_FITS : GHOST_BLOCKED));
                 outline(g, ghost, ghostFits ? GHOST_FITS : GHOST_BLOCKED);
             }
-            boolean figures = withArt && deckArt.hasCrew();
+            shapes.end();
+        }
+        // Everyone aboard over every deck, so one craft's deck does not cover crew out on the walkway
+        // from another, nor what of them reaches past their own craft's collar
+        boolean figures = withArt && deckArt.hasCrew();
+        for (Entity ship : decks) {
+            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+            if (g == null || !pose.of(ship, at, angle)) continue;
+            float s = g.tileSize, degrees = angle[0] * MathUtils.radiansToDegrees;
+            transform.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, degrees);
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            shapes.begin(ShapeRenderer.ShapeType.Filled);
+            shapes.identity();
+            shapes.translate(at.x, at.y, 0f);
+            shapes.rotate(0f, 0f, 1f, degrees);
+            // Under everyone, the tethers of those out on EVA and the puffs of their jetpacks
+            spacewalkers.draw(shapes, world.get().crew, ship, g, delta);
             for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
                 if (pos.ship != ship) continue;
@@ -372,9 +404,7 @@ public final class DeckRenderer {
                     if (!posed && c.state == CrewState.DEAD) continue;
                     Vector2 l = pos.toShipLocal(g, local);
                     batch.setColor(!posed && c.state == CrewState.UNCONSCIOUS ? GREYED : Color.WHITE);
-                    String wound = posed ? ArtNames.crewWound(c, pose) : null;
-                    deckArt.crew(batch, e, style.figure(e, c), pose, wound, bleeding(c) ? 0.55f : 1f,
-                            c.load == null ? null : c.load.task.job.commodity(), l.x, l.y, s);
+                    figure(e, c, pose, posed, l.x, l.y, s);
                 }
                 batch.setColor(Color.WHITE);
                 batch.end();
@@ -406,6 +436,115 @@ public final class DeckRenderer {
             batch.setTransformMatrix(IDENTITY);
         }
         lighting.renderGlow(batch, camera, 0f);
+    }
+
+    /**
+     * Fills where {@code decks} are drawn under {@code camera}: every tile that is not void, a
+     * little past its edges so the hull walls on them are inside. For marking the decks in the
+     * stencil buffer, so the light map outside ({@link ExteriorRenderer}) keeps off them.
+     */
+    public void footprints(Array<Entity> decks, OrthographicCamera camera) {
+        shapes.setProjectionMatrix(camera.combined);
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        for (Entity ship : decks) {
+            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+            if (g == null || !pose.of(ship, at, angle)) continue;
+            shapes.identity();
+            shapes.translate(at.x, at.y, 0f);
+            shapes.rotate(0f, 0f, 1f, angle[0] * MathUtils.radiansToDegrees);
+            float s = g.tileSize, half = s * (0.5f + FOOTPRINT_MARGIN);
+            for (int ty = 0; ty < g.height; ty++) {
+                for (int tx = 0; tx < g.width; tx++) {
+                    if (g.getTile(tx, ty) == null || g.getTile(tx, ty).isVoid()) continue;
+                    Vector2 p = g.tileToLocal(tx, ty);
+                    shapes.rect(p.x - half, p.y - half, 2f * half, 2f * half);
+                }
+            }
+        }
+        shapes.end();
+        shapes.identity();
+    }
+
+    /** How far past a tile's edge its footprint reaches, in tiles. */
+    private static final float FOOTPRINT_MARGIN = 0.15f;
+
+    /**
+     * {@code e}'s figure at ({@code x}, {@code y}), the deck's local meters, in a begun batch: in
+     * their suit if they wear one, and out on EVA crawling or floating, turned the way they go.
+     */
+    private void figure(Entity e, CrewMemberComponent c, ArtNames.CrewPose pose, boolean posed, float x, float y, float s) {
+        String wound = posed ? ArtNames.crewWound(c, pose) : null;
+        EvaComponent eva = EvaSystem.of(e);
+        ArtNames.EvaPose out = ArtNames.EvaPose.of(eva);
+        float turn = out == null ? Float.NaN : eva.facing * MathUtils.radiansToDegrees - 90f;
+        deckArt.crew(batch, e, style.figure(e, c), pose, c.suited ? c.suitKind : null, out, turn, wound,
+                bleeding(c) ? 0.55f : 1f, c.load == null ? null : c.load.task.job.commodity(), x, y, s);
+    }
+
+    /**
+     * The crew out on EVA from every craft but {@code decks} (drawn with their decks, crew and all),
+     * over the craft as they look from outside: their tethers, the puffs of their jetpacks and
+     * their figures. Those still in an airlock stay hidden under the hull.
+     */
+    public void drawOutside(Array<Entity> decks, OrthographicCamera camera, float delta) {
+        GameWorld current = world.get();
+        if (current == null) return;
+        spacewalkers.update(delta);
+        ImmutableArray<Entity> crew = current.engine.getEcsEngine().getEntitiesFor(CrewService.CREW);
+        outside.clear();
+        for (int i = 0; i < crew.size(); i++) {
+            Entity e = crew.get(i);
+            Entity ship = EvaSystem.outside(e) ? e.getComponent(GridPositionComponent.class).ship : null;
+            if (ship != null && !decks.contains(ship, true) && !outside.contains(ship, true)) outside.add(ship);
+        }
+        if (outside.size == 0) return;
+        boolean figures = deckArt.available() && deckArt.hasCrew();
+        shapes.setProjectionMatrix(camera.combined);
+        batch.setProjectionMatrix(camera.combined);
+        for (Entity ship : outside) {
+            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+            if (g == null || !pose.of(ship, at, angle)) continue;
+            float s = g.tileSize, degrees = angle[0] * MathUtils.radiansToDegrees;
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+            shapes.begin(ShapeRenderer.ShapeType.Filled);
+            shapes.identity();
+            shapes.translate(at.x, at.y, 0f);
+            shapes.rotate(0f, 0f, 1f, degrees);
+            spacewalkers.draw(shapes, current.crew, ship, g, delta);
+            if (!figures) {
+                for (int i = 0; i < crew.size(); i++) {
+                    Entity e = crew.get(i);
+                    GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
+                    if (pos.ship != ship || !EvaSystem.outside(e)) continue;
+                    CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                    Vector2 l = pos.toShipLocal(g, local);
+                    Color dot = crewColor.set(style.dot(e, c));
+                    if (c.state == CrewState.UNCONSCIOUS) dot.mul(GREYED);
+                    DeckView.crew(shapes, c, l.x, l.y, s, dot, color);
+                }
+            }
+            shapes.end();
+            if (!figures) continue;
+            batch.setTransformMatrix(transform.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, degrees));
+            batch.begin();
+            for (int i = 0; i < crew.size(); i++) {
+                Entity e = crew.get(i);
+                GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
+                if (pos.ship != ship || !EvaSystem.outside(e)) continue;
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                ArtNames.CrewPose pose = ArtNames.CrewPose.of(c);
+                boolean posed = deckArt.hasCrew(pose);
+                Vector2 l = pos.toShipLocal(g, local);
+                batch.setColor(!posed && c.state == CrewState.UNCONSCIOUS ? GREYED : Color.WHITE);
+                figure(e, c, pose, posed, l.x, l.y, s);
+            }
+            batch.setColor(Color.WHITE);
+            batch.end();
+            batch.setTransformMatrix(IDENTITY);
+        }
+        shapes.identity();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     /** The sparks, flashes and fire of hits on {@code decks}' hulls, over the light map so it does not dim them. */

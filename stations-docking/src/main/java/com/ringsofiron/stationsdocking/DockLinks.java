@@ -39,7 +39,8 @@ final class DockLinks {
         for (int[] ta : doorsA) {
             edgeWorld(ba, ga, ta[0], ta[1], sa, pa);
             int[] best = null;
-            float bestDistance = PAIR_DISTANCE * ga.tileSize;
+            // A collar locked out holds the edges that much further apart
+            float bestDistance = PAIR_DISTANCE * ga.tileSize + link.pa.lockedExtension + link.pb.lockedExtension;
             for (int[] tb : doorsB) {
                 float d = edgeWorld(bb, gb, tb[0], tb[1], sb, pb).dst(pa);
                 if (d < bestDistance) {
@@ -49,7 +50,7 @@ final class DockLinks {
             }
             if (best == null) continue;
             GridLink joined = GridLink.join(a, ga, ta[0], ta[1], sa, b, gb, best[0], best[1], sb);
-            // The walkway between the two edges: the collars, face to face
+            // The walkway between the two edges: the collars, face to face, and any collar tunnel out
             joined.setGap(bestDistance / ga.tileSize);
             link.gridLinks.add(joined);
         }

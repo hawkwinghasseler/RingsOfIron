@@ -14,7 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * Round 3's career ({@link CareerScript#playToTheGunship}) on each of CI's career seeds, played twice:
+ * Round 3's career ({@link CareerScript#playToTheGunship}) on each of the given seeds, played twice:
  * the two journals must match line for line, and the career must reach the gunship, unless the seed
  * is listed in {@link #STOPS} as stopping at a known place, in which case it must stop exactly there.
  * A listed seed that gets through fails too, so it is taken off the list when its fix lands. How the
@@ -23,9 +23,9 @@ import org.junit.jupiter.params.provider.MethodSource;
  * Round 5's career ({@link Round5CareerTest}, on to the raid) is played the same way, against
  * {@link #ROUND5_STOPS}.
  *
- * <p>Runs only when {@code career.seeds} is set, since each seed plays two careers: CI's "Career
- * seed" jobs run one seed each, and {@code ./gradlew :core:test --tests '*CareerSeedsTest'
- * -PcareerSeeds=2026,7,12} plays them locally ({@code --tests '*CareerSeedsTest.round5*'} plays only
+ * <p>Runs only when {@code career.seeds} is set, since each seed plays two careers: a tool to run by
+ * hand, not part of CI. {@code ./gradlew :core:test --tests '*CareerSeedsTest' -PcareerSeeds=2026,7,12}
+ * plays them ({@code --tests '*CareerSeedsTest.round5*'} plays only
  * round 5's). Each run's journal is written to {@code build/career-seed-<seed>-<run>.txt}, or
  * {@code build/round5-career-seed-<seed>-<run>.txt}.
  */

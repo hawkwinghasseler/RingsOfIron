@@ -14,7 +14,9 @@ import com.ringsofiron.uihud.providers.InteractorProvider;
 /**
  * Finds the nearest {@link InteractableConsoleComponent} within {@link #INTERACT_RADIUS} tiles
  * of the player's avatar and shows "Press [E] for the ... panel" for it. {@link #interact()} (bound
- * to E by the HUD) opens that console through the {@link ConsoleOpener}.
+ * to E by the HUD) opens that console through the {@link ConsoleOpener}. Something else the game
+ * lets the avatar use where it stands (a suit locker) is an {@link Interaction}: its prompt shows
+ * instead when it is nearer than any console.
  */
 public class InteractPromptSystem extends EntitySystem {
     public static final int DEFAULT_PRIORITY = 950;
@@ -24,6 +26,21 @@ public class InteractPromptSystem extends EntitySystem {
     /** Opens the UI for a console entity; supplied by the HUD facade. */
     public interface ConsoleOpener {
         void open(Entity console, InteractableConsoleComponent data);
+    }
+
+    /** Something besides a console that E uses where the avatar stands: a suit locker, say. */
+    public interface Interaction {
+        /**
+         * What E does here, finishing "Press [E] to ...", e.g. "put on a pressure suit"; null when
+         * there is nothing to use.
+         */
+        String prompt();
+
+        /** Squared distance, tiles, from the avatar to the thing used: the nearer of it and a console wins. */
+        float distance2();
+
+        /** Uses it. */
+        void act();
     }
 
     private static final Family CONSOLES = Family.all(InteractableConsoleComponent.class).get();
@@ -37,6 +54,10 @@ public class InteractPromptSystem extends EntitySystem {
     private Entity nearest;
     private boolean enabled = true;
     private java.util.function.Function<InteractableConsoleComponent, String> promptExtra;
+    private Interaction interaction;
+    /** The interaction's prompt as of the last update, when it was nearer than any console; null otherwise. */
+    private String using;
+    private float nearestDist2;
 
     public InteractPromptSystem(Label prompt, ConsoleOpener opener) {
         super(DEFAULT_PRIORITY);
@@ -58,6 +79,11 @@ public class InteractPromptSystem extends EntitySystem {
         promptExtra = extra;
     }
 
+    /** What E uses besides consoles; null for nothing. */
+    public void setInteraction(Interaction interaction) {
+        this.interaction = interaction;
+    }
+
     public void setPromptsEnabled(boolean enabled) {
         this.enabled = enabled;
     }
@@ -76,6 +102,15 @@ public class InteractPromptSystem extends EntitySystem {
     @Override
     public void update(float deltaTime) {
         nearest = enabled ? findNearest() : null;
+        using = enabled && interaction != null ? interaction.prompt() : null;
+        if (using != null && nearest != null && interaction.distance2() > nearestDist2) using = null;
+        if (using != null) {
+            nearest = null;
+            String text = "Press [E] to " + using;
+            if (!prompt.textEquals(text)) prompt.setText(text);
+            prompt.setVisible(true);
+            return;
+        }
         if (nearest == null) {
             prompt.setVisible(false);
             return;
@@ -92,8 +127,12 @@ public class InteractPromptSystem extends EntitySystem {
         return nearest;
     }
 
-    /** Opens the console in reach. Returns false if there is none. */
+    /** Opens the console in reach, or uses the {@link Interaction} whose prompt shows. Returns false if there is neither. */
     public boolean interact() {
+        if (using != null && interaction != null && interaction.prompt() != null) {
+            interaction.act();
+            return true;
+        }
         if (nearest == null) return false;
         opener.open(nearest, MAPPER.get(nearest));
         return true;
@@ -114,6 +153,7 @@ public class InteractPromptSystem extends EntitySystem {
                 best = e;
             }
         }
+        nearestDist2 = bestDist2;
         return best;
     }
 }

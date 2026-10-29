@@ -19,6 +19,12 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
  * {@link #cloud}, protects the ship. Lowering the shields ({@link #raised} false) packs the cloud
  * into the emitters, where it costs nothing and is not lost; docking does it on its own. Emitters,
  * regions and heat start afresh on load.
+ *
+ * <p>The cloud is one pool, but its resting mass is not spread evenly: {@link #line} holds how much
+ * lies along each stretch of the curve, thicker where more emitters reach and toward the
+ * {@link #trim}. Each stretch is anchored to the emitters that reach it ({@link #anchored}); when
+ * one stops working, the mass only it held goes adrift first, so a dead emitter opens a weak spot
+ * where it was instead of thinning the whole bubble.
  */
 public class ShieldCloudComponent implements Component {
     /** How deep the cloud is, meters: mass per meter of perimeter over this is its density. */
@@ -42,6 +48,15 @@ public class ShieldCloudComponent implements Component {
     public boolean loweredForDock;
     /** Share of the emitters' capacity that is working now, 0 to 1. */
     public float holding;
+    /** Which way the crew lean the resting cloud. */
+    public Trim trim = Trim.EVEN;
+
+    /** The resting layer's mass along each segment of the curve, kg; kept summing to it each tick. */
+    public final transient float[] line = new float[ShieldPerimeter.SAMPLES];
+    /** Each segment's share held by working emitters, 0 to 1: the rest is no working emitter's. */
+    public final transient float[] anchored = new float[ShieldPerimeter.SAMPLES];
+    /** Where the emitters want the resting layer, each segment's weight (any scale). */
+    final transient float[] want = new float[ShieldPerimeter.SAMPLES];
 
     public transient ShieldPerimeter perimeter;
     transient ShipGridComponent fittedTo;
@@ -74,9 +89,25 @@ public class ShieldCloudComponent implements Component {
         return Math.max(0f, cloud() - concentrated()) / perimeter.length;
     }
 
+    /**
+     * The thin layer outside the regions {@code s} meters along the perimeter, kg per meter:
+     * {@link #line}'s share of it there, or the even spread before it has one.
+     */
+    public float baseLineDensityAt(float s) {
+        if (perimeter == null || perimeter.length <= 0f) return 0f;
+        float sum = 0f;
+        for (float m : line) sum += m;
+        if (!(sum > 0f)) return baseLineDensity();
+        int i = perimeter.segmentAt(s);
+        float len = perimeter.along[i + 1] - perimeter.along[i];
+        if (len < 1e-4f) return baseLineDensity();
+        float base = Math.max(0f, cloud() - concentrated());
+        return base * line[i] / sum / len;
+    }
+
     /** Areal density of the cloud {@code s} meters along the perimeter, kg/m^2. */
     public float densityAt(float s) {
-        float sigma = baseLineDensity() / DEPTH;
+        float sigma = baseLineDensityAt(s) / DEPTH;
         for (Region r : regions) sigma += r.densityAt(perimeter.between(r.s, s));
         return sigma;
     }

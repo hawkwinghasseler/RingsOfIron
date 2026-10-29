@@ -12,12 +12,15 @@ import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.ViewportManager;
+import com.ringsofiron.uihud.providers.TargetingProvider;
 import com.ringsofiron.uihud.widgets.NavMarkers;
 
 /**
- * Places the {@link NavMarkers} around the player's ship along its orbital velocity: the ship's
- * velocity in the bubble plus the bubble's own (the floating origin's), the same velocity the
- * flight readout's speed is. Hidden below {@link #MIN_SPEED}, where the direction means nothing.
+ * Places the {@link NavMarkers} around the player's ship along its velocity. With no target that is
+ * the orbital velocity: the ship's velocity in the bubble plus the bubble's own (the floating
+ * origin's), the same velocity the flight readout's speed is. While a target with a body in the
+ * bubble is locked it is the velocity relative to that target, and the markers say so. Hidden below
+ * {@link #MIN_SPEED}, where the direction means nothing.
  */
 public class NavMarkerSystem extends EntitySystem {
     public static final int DEFAULT_PRIORITY = HudRenderSystem.DEFAULT_PRIORITY + 2;
@@ -29,9 +32,11 @@ public class NavMarkerSystem extends EntitySystem {
     private final ViewportManager viewports;
     private final NavMarkers markers;
     private final Vector2 v = new Vector2();
+    private final Vector2 tv = new Vector2();
     private final Vector2 at = new Vector2();
     private ImmutableArray<Entity> players;
     private PhysicsManager physics;
+    private TargetingProvider targeting;
 
     public NavMarkerSystem(ViewportManager viewports, NavMarkers markers) {
         super(DEFAULT_PRIORITY);
@@ -41,6 +46,10 @@ public class NavMarkerSystem extends EntitySystem {
 
     public void setPhysics(PhysicsManager physics) {
         this.physics = physics;
+    }
+
+    public void setTargeting(TargetingProvider targeting) {
+        this.targeting = targeting;
     }
 
     @Override
@@ -57,15 +66,34 @@ public class NavMarkerSystem extends EntitySystem {
             return;
         }
         PhysicsManager.getVelocity(b.body, v);
-        float angle = progradeAngle(v.x, v.y, physics == null ? 0 : physics.getOriginVx(),
-                physics == null ? 0 : physics.getOriginVy());
+        Entity target = relativeTarget(targeting, player);
+        float angle;
+        if (target != null) {
+            // Both velocities are in the bubble, so the bubble's own cancels out
+            PhysicsManager.getVelocity(BODIES.get(target).body, tv);
+            angle = progradeAngle(v.x - tv.x, v.y - tv.y, 0, 0);
+        } else {
+            angle = progradeAngle(v.x, v.y, physics == null ? 0 : physics.getOriginVx(),
+                    physics == null ? 0 : physics.getOriginVy());
+        }
         if (Float.isNaN(angle)) {
             markers.hide();
             return;
         }
         TransformComponent t = TRANSFORMS.get(player);
         viewports.worldToUi(t.x, t.y, at);
-        markers.show(at.x, at.y, angle);
+        markers.show(at.x, at.y, angle, target != null);
+    }
+
+    /**
+     * The locked target the markers are relative to, or null for the orbital frame: a target other
+     * than the player with a body in the bubble, whose velocity can be read.
+     */
+    public static Entity relativeTarget(TargetingProvider targeting, Entity player) {
+        Entity target = targeting == null ? null : targeting.getLockedTarget();
+        if (target == null || target == player) return null;
+        PhysicsBodyComponent tb = BODIES.get(target);
+        return tb == null || tb.body == null ? null : target;
     }
 
     /**

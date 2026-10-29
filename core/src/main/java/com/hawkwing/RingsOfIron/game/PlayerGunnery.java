@@ -18,9 +18,11 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
  * ({@link GunCrews}); the trigger ({@link #fireGuns}) fires them at once on the lock. Point defense
  * stays under the gunners' control and shoots down incoming missiles by itself.
  *
- * <p>Sitting at the weapons console the player has every gun and launcher in hand, at a gun just
- * that one ({@link #inHand}): the guns follow the pointer ({@link #aim}), leading a contact under it
- * and otherwise pointing at the spot, and only the trigger fires them.
+ * <p>Sitting at the weapons console the player has every gun and launcher in hand but point
+ * defense, at a gun just that one, point defense too ({@link #inHand}): the guns follow the pointer
+ * ({@link #aim}), leading a contact under it and otherwise pointing at the spot, and only the
+ * trigger fires them. Point defense in hand leaves the missiles to the player; let go, it goes back
+ * to shooting them down.
  *
  * <p>A missile key press launches a salvo ({@link #SALVO}) from one launcher, a missile each time it
  * is ready again, each coming in from its own side.
@@ -99,17 +101,18 @@ public class PlayerGunnery {
         if (weapons == null) return;
         boolean onGuns = world.bridge.playerOnGuns();
         for (WeaponMountComponent m : weapons.mounts) {
-            if (isMainGun(m) && (!onGuns || inHand(world, m))) m.trigger = true;
+            if (onGuns ? inHand(world, m) && m.def.mount != WeaponDef.MountType.LAUNCHER : isMainGun(m)) m.trigger = true;
         }
     }
 
     /**
      * True if the player has {@code mount} in hand: seated at the weapons console, any gun or
-     * launcher; seated at a gun, that gun. Never point defense.
+     * launcher but point defense, which keeps shooting down missiles by itself; seated at a gun,
+     * that gun, point defense or not.
      */
     public static boolean inHand(GameWorld world, WeaponMountComponent mount) {
-        if (mount.def == null || mount.def.pointDefense) return false;
-        if (world.bridge.playerAtWeapons()) return true;
+        if (mount.def == null) return false;
+        if (world.bridge.playerAtWeapons()) return !mount.def.pointDefense;
         Entity gun = world.bridge.seatedGun();
         return gun != null && mount.subsystem == gun;
     }
@@ -124,22 +127,39 @@ public class PlayerGunnery {
         if (weapons == null) return;
         Entity contact = contactAt(x, y, pick);
         for (WeaponMountComponent m : weapons.mounts) {
-            if (!inHand(world, m) || m.def.mount == WeaponDef.MountType.LAUNCHER) continue;
+            if (m.def.mount == WeaponDef.MountType.LAUNCHER) continue;
+            if (!inHand(world, m)) {
+                if (m.def.pointDefense) release(m);
+                continue;
+            }
             m.target = contact;
             m.manualAim = contact == null;
             m.aimPoint.set(x, y);
+            // The player's now, not the missiles'
+            if (m.def.pointDefense) m.weaponsFree = false;
         }
     }
 
-    /** Hands every gun back to its crew's aim. */
+    /** Hands every gun back to its crew's aim, and point defense back to the missiles. */
     public void releaseAim() {
         WeaponsComponent weapons = weapons();
         if (weapons == null) return;
         for (WeaponMountComponent m : weapons.mounts) {
+            if (m.def != null && m.def.pointDefense) {
+                release(m);
+                continue;
+            }
             if (!m.manualAim) continue;
             m.manualAim = false;
             m.target = null;
         }
+    }
+
+    /** Point defense out of the player's hand: free to pick its own missiles again. */
+    private static void release(WeaponMountComponent m) {
+        m.manualAim = false;
+        m.target = null;
+        m.weaponsFree = true;
     }
 
     /** The tracked contact (not a missile) nearest (x, y) within {@code pick} meters of its hull, or null. */
@@ -258,7 +278,8 @@ public class PlayerGunnery {
         return best;
     }
 
-    private static boolean isMainGun(WeaponMountComponent m) {
+    /** A gun the player fires: neither point defense nor a launcher. */
+    public static boolean isMainGun(WeaponMountComponent m) {
         return m.def != null && !m.def.pointDefense && m.def.mount != WeaponDef.MountType.LAUNCHER;
     }
 }

@@ -111,8 +111,8 @@ class BridgeTest {
         float heading = body.getAngle();
         world.bridge.stand();
         waitForHelmsman();
-        // Something knocks the ship round
-        body.setAngularVelocity(0.15f);
+        // Something knocks the ship round, harder than its RCS can stop in a few ticks
+        body.setAngularVelocity(0.4f);
         run(1f);
         assertTrue(Math.abs(angleOff(body, heading)) > 0.02f, "it turned off its heading");
         run(30f);

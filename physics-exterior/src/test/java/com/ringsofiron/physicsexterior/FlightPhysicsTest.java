@@ -139,6 +139,36 @@ class FlightPhysicsTest {
     }
 
     @Test
+    void lateralThrustAndTorqueCanDifferEachWay() {
+        // A side's strafe blocks lost: 2 kN to port, 200 N to starboard; and only 1,000 N m clockwise
+        ThrusterComponent thruster = new ThrusterComponent(0f, 0f, 200f, 1_000f);
+        thruster.portThrust = 2_000f;
+        thruster.starboardThrust = 200f;
+        thruster.ccwTorque = 50_000f;
+        thruster.cwTorque = 1_000f;
+        Entity ship = spawnShip(0, 0, 0, thruster);
+        FlightControlComponent control = ship.getComponent(FlightControlComponent.class);
+        float inertia = PhysicsManager.getInertia(body(ship));
+
+        control.strafe = 1f;
+        runTicks(60);
+        assertEquals(2f, PhysicsManager.getVelocity(body(ship), new Vector2()).y, 1e-3f, "to port on the stronger side's blocks");
+        PhysicsManager.setVelocity(body(ship), 0f, 0f);
+        control.strafe = -1f;
+        runTicks(60);
+        assertEquals(-0.2f, PhysicsManager.getVelocity(body(ship), new Vector2()).y, 1e-3f, "to starboard on what is left");
+
+        control.strafe = 0f;
+        control.turn = 1f;
+        runTicks(60);
+        assertEquals(50_000f / inertia, body(ship).getAngularVelocity(), 1e-2f);
+        body(ship).setAngularVelocity(0f);
+        control.turn = -1f;
+        runTicks(60);
+        assertEquals(-1_000f / inertia, body(ship).getAngularVelocity(), 1e-3f);
+    }
+
+    @Test
     void torqueSpinsShipAndRotationAssistStopsIt() {
         Entity ship = spawnShip(0, 0, 0, new ThrusterComponent(0f, 0f, 0f, 50_000f));
         FlightControlComponent control = ship.getComponent(FlightControlComponent.class);

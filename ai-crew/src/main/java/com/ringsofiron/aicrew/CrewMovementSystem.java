@@ -22,7 +22,7 @@ import com.ringsofiron.interiorgrid.Side;
  * behavior tree re-plans, and the same happens to one held up for {@link #STALL_SECONDS}.
  *
  * Unconscious and dead crew do not move, and lie where others can step over them; carried crew
- * ride on their carrier's tile. Out on the walkway through a docked port ({@link GridLink}),
+ * ride on their carrier's tile. Crew out on EVA are moved by the {@link EvaSystem}. Out on the walkway through a docked port ({@link GridLink}),
  * across the collars between two craft, and on a tile that isn't open, crew move along without a
  * body and take one up again once back on the deck.
  */
@@ -95,6 +95,11 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             service.physics.release(e);
             return;
         }
+        if (EvaSystem.outside(e)) {
+            // Out on the hull: the EVA system moves them
+            service.physics.release(e);
+            return;
+        }
         // The ship may have been given its UUID after the crew boarded
         if (p.shipRef == null) p.setShip(p.ship);
         keepAboard(p, grid);
@@ -113,7 +118,7 @@ public class CrewMovementSystem extends FixedIteratingSystem {
         }
         GridNavGraph nav = service.pathfinder(grid).graph;
         float speed = c.def.moveSpeed * (c.carrying != null ? c.def.carrySpeedFactor : 1f)
-                * (c.load != null ? c.def.loadSpeedFactor : 1f) * (c.suited ? c.def.suitSpeedFactor : 1f) * c.woundPace();
+                * (c.load != null ? c.def.loadSpeedFactor : 1f) * c.suitPace() * c.woundPace();
         boolean crossingOut = avatar == null && p.crossing != null && !p.isMoving();
         if (p.walkway != null || crossingOut || !nav.isWalkable(p.tileX(), p.tileY())) {
             // Off the deck proper: moved along without a body
@@ -190,8 +195,9 @@ public class CrewMovementSystem extends FixedIteratingSystem {
             }
             return;
         }
-        // Held up: by a crowd, or round a corner it can't get past
-        if (b.waypoint != p.pathIndex || d < b.bestDistance - 0.02f) {
+        // Held up: by a crowd, or round a corner it can't get past; not while at work on a door, which
+        // can take a while when it is being forced
+        if (b.waypoint != p.pathIndex || d < b.bestDistance - 0.02f || p.doorWork > 0f) {
             b.waypoint = p.pathIndex;
             b.bestDistance = d;
             b.stalled = 0f;

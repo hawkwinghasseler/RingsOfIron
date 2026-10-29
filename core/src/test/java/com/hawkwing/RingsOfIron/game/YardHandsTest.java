@@ -102,6 +102,29 @@ class YardHandsTest {
         assertTrue(handsAboard().isEmpty(), handsAboard().toString());
     }
 
+    /**
+     * Highport's two technicians died aboard a gunship an ace had shredded, and its yard held the order
+     * open with nobody to work it, the ship at the berth and warp refused, for good (seed 7's round 5
+     * career ran CI out of time). A yard whose technicians have all died takes on new ones.
+     */
+    @Test
+    void techniciansWhoDieAreReplaced() {
+        List<Entity> hands = repairUntilTechniciansAreAboard();
+        for (Entity e : world.crew.crewEntities()) {
+            CrewMemberComponent c = world.crew.crew(e);
+            if (c.home == highport && c.role == com.ringsofiron.aicrew.CrewRole.TECHNICIAN) {
+                c.health = 0;
+                world.crew.updateState(e);
+            }
+        }
+        assertEquals(0, world.yard.technicians(highport));
+        assertTrue(runUntil(600, () -> !world.yard.repairing(game.player)), "the yard finishes with new hands");
+        assertEquals(0, world.yard.repairCost(game.player), 0.5);
+        assertEquals(StationCrew.TECHNICIANS, world.yard.technicians(highport));
+        assertTrue(world.yard.notices.contains("Highport's yard took on new technicians"), world.yard.notices.toString());
+        for (Entity e : hands) assertFalse(world.crew.crew(e).isAlive());
+    }
+
     /** Holes the ship, orders repairs at Highport, and runs until the yard's technicians are aboard. */
     private List<Entity> repairUntilTechniciansAreAboard() {
         int n = 6;

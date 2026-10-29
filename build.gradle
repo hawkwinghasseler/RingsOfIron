@@ -57,7 +57,7 @@ configure(subprojects) {
 
   // Tests tagged @Tag("slow") (whole careers, surveys, replays played twice) stay out of test and
   // build so they don't slow every run. ./gradlew slowTest runs only them, and -PallTests puts
-  // them back into test. CI runs slowTest in its own job.
+  // them back into test. CI runs neither: they are tools to run by hand.
   def slowTest = tasks.register('slowTest', Test) {
     group = 'verification'
     description = 'Runs the tests tagged slow: whole careers, surveys and replays.'
@@ -78,6 +78,10 @@ configure(subprojects) {
     // Every run measures afresh, even when nothing changed
     outputs.upToDateWhen { false }
   }
+  // On CI (which sets CI=true), each test has 30 seconds to do its one thing: a test that needs
+  // longer is playing out a stretch of the game instead of checking a moment, and belongs with the
+  // slow tests a person runs by hand. Runs by hand, with -PcareerSeeds and the like, have no budget.
+  def testBudget = 'junit.jupiter.execution.timeout.testable.method.default'
   // After the module's own test block, so its JUnit setup, properties and logging are in place
   afterEvaluate {
     def test = tasks.named('test').get()
@@ -85,12 +89,15 @@ configure(subprojects) {
       if (!project.hasProperty('allTests')) excludeTags 'slow'
       excludeTags 'playtest'
     }
+    // The slow tests and benchmarks take the test task's properties, but never its budget
+    def handRun = test.systemProperties.findAll { it.key != testBudget }
+    if (System.getenv('CI') && !project.hasProperty('allTests')) test.systemProperty testBudget, '30 s'
     slowTest.configure {
       useJUnitPlatform {
         includeTags 'slow'
         excludeTags 'playtest'
       }
-      systemProperties test.systemProperties
+      systemProperties handRun
       jvmArgs test.jvmArgs
       environment test.environment
       maxHeapSize = test.maxHeapSize
@@ -100,7 +107,7 @@ configure(subprojects) {
     }
     playtestBenchmark.configure {
       useJUnitPlatform { includeTags 'playtest' }
-      systemProperties test.systemProperties
+      systemProperties handRun
       jvmArgs test.jvmArgs
       environment test.environment
       maxHeapSize = test.maxHeapSize

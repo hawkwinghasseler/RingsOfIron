@@ -20,11 +20,14 @@ import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
+import com.ringsofiron.stationsdocking.DockingPort;
+import com.ringsofiron.stationsdocking.DockingPortsComponent;
 
 /**
  * Draws craft from outside with the art pack: the hull of the chassis a craft was built from
  * (warped where collisions have dented and crushed it), an engine for each engine system (over
  * its slot, outside the hull), each RCS block, and each weapon's turret on its hardpoint, turned to where it aims;
+ * each active docking port's collar while it is out (its head, and the tunnel back to the port);
  * and the flames of the engines and RCS nozzles that fire, which {@code ThrusterFlames} draws in a
  * pass of their own. Exterior art is in the body frame (64 SVG units to the meter), so it
  * is drawn straight at the body's pose, in world meters.
@@ -63,8 +66,69 @@ public final class ExteriorArt {
         if (!lit(batch, hull, grid, px, py, angle)) hull(batch, hull, art.info(hull), grid, px, py, angle);
         rcs(batch, craft, body);
         engines(batch, craft, body, angle);
+        collars(batch, craft, body);
         turrets(batch, craft, body);
         return true;
+    }
+
+    /** True if {@code body} is the collar head of one of {@code craft}'s ports, which {@link #draw} draws with the craft. */
+    public static boolean isCollarHead(Entity craft, Body body) {
+        DockingPortsComponent ports = craft == null ? null : craft.getComponent(DockingPortsComponent.class);
+        if (ports == null) return false;
+        for (DockingPort p : ports.ports) {
+            if (p.head == body || p.carriage == body) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Each active port's collar that is out: the head where it is (on its own body while it
+     * reaches and draws in, or locked out from the port once latched), and the tunnel from the
+     * collar on the hull out to the head, a tile of pleats for every meter or so, stretched to fit.
+     */
+    private void collars(Batch batch, Entity craft, Body body) {
+        DockingPortsComponent ports = craft.getComponent(DockingPortsComponent.class);
+        if (ports == null) return;
+        for (DockingPort p : ports.ports) {
+            boolean locked = p.head == null && p.lockedExtension > 0f && p.state == DockingPort.State.DOCKED;
+            if (p.head == null && !locked) continue;
+            AtlasRegion head = art.first(ArtNames.collarHead(p.size, p.armed || !p.isFree()), ArtNames.collarHead(p.size, true));
+            AtlasRegion tunnel = art.region(ArtNames.collarTunnel(p.size));
+            if (head == null) continue;
+            // The head's middle and the way its face points, in the world
+            float hx, hy, nx, ny;
+            if (locked) {
+                Vector2 c = world(body, p.edgeX + p.normalX * (p.lockedExtension + p.collarDepth * 0.5f),
+                        p.edgeY + p.normalY * (p.lockedExtension + p.collarDepth * 0.5f));
+                hx = c.x;
+                hy = c.y;
+                Vector2 n = body.getWorldVector(local.set(p.normalX, p.normalY));
+                nx = n.x;
+                ny = n.y;
+            } else {
+                Vector2 c = PhysicsManager.getPosition(p.head, at);
+                hx = c.x;
+                hy = c.y;
+                Vector2 n = p.head.getWorldVector(local.set(p.normalX, p.normalY));
+                nx = n.x;
+                ny = n.y;
+            }
+            // From the collar's face on the hull to the back of the head
+            Vector2 base = world(body, p.edgeX + p.normalX * p.collarDepth, p.edgeY + p.normalY * p.collarDepth);
+            float bx = base.x, by = base.y;
+            float tx = hx - nx * p.collarDepth * 0.5f - bx, ty = hy - ny * p.collarDepth * 0.5f - by;
+            float length = (float) Math.sqrt(tx * tx + ty * ty);
+            if (tunnel != null && length > 0.02f) {
+                float degrees = MathUtils.atan2(ty, tx) * MathUtils.radiansToDegrees;
+                int pieces = Math.max(1, Math.round(length));
+                float piece = length / pieces;
+                for (int i = 0; i < pieces; i++) {
+                    float f = i * piece / length;
+                    pivoted(batch, tunnel, bx + tx * f, by + ty * f, degrees, piece, 1f);
+                }
+            }
+            pivoted(batch, head, hx, hy, MathUtils.atan2(ny, nx) * MathUtils.radiansToDegrees, 1f, 1f);
+        }
     }
 
     /** The hull art {@code r} placed as {@code info} says, warped by its dents when it has any. */

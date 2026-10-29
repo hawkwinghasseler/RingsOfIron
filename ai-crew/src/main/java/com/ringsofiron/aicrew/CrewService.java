@@ -54,6 +54,8 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     public final CrewPhysics physics = new CrewPhysics();
     /** The bulkhead doors crew open on their way, and shut behind them. */
     public final CrewDoors doors = new CrewDoors(this);
+    /** Crew out on EVA and the airlocks they use; set by {@link CrewFactory#install}. */
+    public EvaSystem eva;
     public final RandomXS128 random;
 
     public CrewService(Engine engine) {
@@ -137,9 +139,21 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
 
     private final float[] across = new float[2];
 
-    /** Who may go through the doors of a craft whose crew are hostile to them anyway. */
+    /**
+     * Who may go through the doors of a craft whose crew are hostile to them anyway, and who force
+     * their way through instead: through its doors, and through an airlock's held shut for its cycle.
+     */
     public interface DoorRights {
         boolean mayPass(Entity crew, Entity ship);
+
+        /** How {@code crew} force {@code door} of {@code ship} rather than open it, or null if they don't. */
+        default CrewDoors.Forcing forcing(Entity crew, Entity ship, com.ringsofiron.interiorgrid.EdgeWall door) {
+            return null;
+        }
+
+        /** {@code crew} forced {@code door} of {@code ship} open {@code how}. */
+        default void forced(Entity crew, Entity ship, com.ringsofiron.interiorgrid.EdgeWall door, CrewDoors.Forcing how) {
+        }
     }
 
     /** Lets a boarding party through the doors of the craft it boards; by default no one. */

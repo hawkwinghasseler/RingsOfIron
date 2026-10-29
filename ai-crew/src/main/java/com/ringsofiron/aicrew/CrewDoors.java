@@ -23,6 +23,10 @@ import com.ringsofiron.interiorgrid.Tile;
  * into a room that is not open to space (the two rooms share their air, and life support makes
  * it up).
  *
+ * <p>Crew whose {@link CrewService#doorRights} have them force their way ({@link Forcing}: boarders
+ * storming a craft) pry, cut or hack through a hostile craft's doors and an airlock's held shut for
+ * its cycle, for as long as that takes; a door forced open is left open.
+ *
  * <p>Owned by the {@link CrewService}; the {@link CrewMovementSystem} opens doors and shuts them
  * each tick. Which doors are held open is not saved: after a load a door that was held stays open.
  */
@@ -34,6 +38,17 @@ public final class CrewDoors {
     public static final float MIN_OPEN_SECONDS = 0.5f;
     /** How far into a doorway a crew member keeps the door from shutting, tiles from the door. */
     static final float DOORWAY = CrewBody.RADIUS + 0.05f;
+
+    /** How a crew member forces a door: how long it takes, and what they are doing, e.g. "cutting through a door". */
+    public static final class Forcing {
+        public final float seconds;
+        public final String doing;
+
+        public Forcing(float seconds, String doing) {
+            this.seconds = seconds;
+            this.doing = doing;
+        }
+    }
 
     /** A door a crew member opened, to shut once the way is clear. */
     private static final class Held {
@@ -61,7 +76,8 @@ public final class CrewDoors {
 
     /**
      * True if {@code crew} may open the shut door between (x, y) and (nx, ny) on {@code ship}, going
-     * that way: the craft's crew are not hostile to them, and they are not stepping from breathable
+     * that way: it is not an airlock's door locked for its cycle ({@link EdgeWall#locked}), the
+     * craft's crew are not hostile to them, and they are not stepping from breathable
      * air into air too thin to breathe (which would let it out), unless they breathe from a suit and
      * the room beyond is not open to space.
      */
@@ -69,14 +85,24 @@ public final class CrewDoors {
         CrewMemberComponent c = service.crew(crew);
         ShipGridComponent grid = service.grid(ship);
         if (c == null || grid == null) return false;
-        ShipTaskBoardComponent board = service.board(ship);
-        if (board != null && service.hostility.hostile(board.faction, c.faction) && !service.doorRights.mayPass(crew, ship)) {
-            return false;
-        }
+        // An airlock's door held shut for its cycle opens for no one, and a hostile craft's are forced,
+        // by those who force their way
+        EdgeWall wall = grid.getEdgeBetween(x, y, nx, ny);
+        if (mustForce(crew, ship, c, wall) && service.doorRights.forcing(crew, ship, wall) == null) return false;
         boolean hereThick = grid.pressureRatioAt(x, y) >= TaskRules.SAFE_PRESSURE;
         boolean thereThick = grid.pressureRatioAt(nx, ny) >= TaskRules.SAFE_PRESSURE;
         if (!hereThick || thereThick) return true;
         return c.breathesFromSuit() && !openToSpace(grid, grid.compartmentAt(nx, ny));
+    }
+
+    /**
+     * True if {@code wall} of {@code ship} is shut against {@code crew}: an airlock's door held for its
+     * cycle, or a door of a craft whose crew are hostile to them that they have no rights to.
+     */
+    private boolean mustForce(Entity crew, Entity ship, CrewMemberComponent c, EdgeWall wall) {
+        if (wall != null && wall.locked) return true;
+        ShipTaskBoardComponent board = service.board(ship);
+        return board != null && service.hostility.hostile(board.faction, c.faction) && !service.doorRights.mayPass(crew, ship);
     }
 
     /** True if {@code room} has a hole to space (not just a leak), or is no room at all. */
@@ -101,10 +127,18 @@ public final class CrewDoors {
             p.doorWork = 0f;
             return false;
         }
+        Forcing how = mustForce(crew, p.ship, service.crew(crew), door) ? service.doorRights.forcing(crew, p.ship, door) : null;
         p.doorWork += dt;
-        if (p.doorWork < OPEN_SECONDS) return true;
+        if (how != null) service.crew(crew).activity = how.doing;
+        if (p.doorWork < (how != null ? how.seconds : OPEN_SECONDS)) return true;
         p.doorWork = 0f;
         door.bulkheadSealed = false;
+        if (how != null) {
+            // Forced open, it is left so
+            door.locked = false;
+            service.doorRights.forced(crew, p.ship, door, how);
+            return true;
+        }
         held.add(new Held(nav.grid, door, x, y, nx, ny));
         return true;
     }

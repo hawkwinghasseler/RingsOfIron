@@ -491,11 +491,16 @@ public class GameScenario {
      * the ship is lost or the career over, which a save would bring back as a live game; null when saved.
      */
     public String quickSave(FileHandle file) {
+        return quickSave(file, null);
+    }
+
+    /** As {@link #quickSave(FileHandle)}, opening the save with {@code summary} for the load list. */
+    public String quickSave(FileHandle file, Object summary) {
         if (world.getCrash() != null) return "the ship is lost";
         if (world.getCareerOver() != null) return "the career is over";
         if (world.timeWarp.isRailsWarp()) return "drop out of time warp first";
         if (world.rescue.bringingIn()) return "the tug is still bringing you in";
-        world.engine.getSerializationService().saveToFile(file);
+        world.engine.getSerializationService().saveToFile(file, summary);
         return null;
     }
 
@@ -572,6 +577,23 @@ public class GameScenario {
         if (newGame.seeded) world.reseed(newGame.combatSeed(), newGame.crewSeed());
         relink();
         world.standing.migrateLegacy(player);
+        outfitLegacy();
+    }
+
+    /**
+     * Saves from before suit lockers: each crewed craft (a ship or station with a task board) that
+     * has none is fitted with them, full, for the crew it carries, as a new one is when built.
+     */
+    private void outfitLegacy() {
+        for (Entity craft : world.engine.getEcsEngine().getEntitiesFor(
+                Family.all(ShipGridComponent.class, com.ringsofiron.aicrew.ShipTaskBoardComponent.class).get())) {
+            ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
+            if (com.ringsofiron.interiorgrid.SuitLockers.any(grid)) continue;
+            int crew = 0;
+            // The captain's figure too: everyone who lives aboard
+            for (Entity e : world.crew.crewEntities()) if (world.crew.homeOf(e) == craft) crew++;
+            com.ringsofiron.interiorgrid.SuitOutfit.outfit(grid, com.ringsofiron.interiorgrid.InteriorGridData.furnishings(), Math.max(2, crew));
+        }
     }
 
     /**

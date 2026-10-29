@@ -21,6 +21,7 @@ import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.WallLight;
 import com.ringsofiron.interiorgrid.WallLightLayout;
+import com.ringsofiron.interiorgrid.crew.Suit;
 
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -452,7 +453,27 @@ public final class DeckArt {
             batch.setColor(shade, shade * 0.92f, shade * 0.85f, was.a);
         }
         batch.draw(r, cx - w / 2f, cy - h / 2f, w / 2f, h / 2f, w, h, 1f, 1f, f.rotation);
+        if (f.type.holds != null && f.suits.size > 0) lockerSuits(batch, f, cx, cy, w, s);
         batch.setColor(was);
+    }
+
+    /**
+     * The suits hung in locker {@code f}, drawn over it at its middle ({@code cx}, {@code cy}), its
+     * width {@code w}: one in each of its bays from the left, as many as it holds.
+     */
+    private void lockerSuits(Batch batch, Furnishing f, float cx, float cy, float w, float tileSize) {
+        AtlasRegion r = art.region(ArtNames.lockerSuit(f.type.holds));
+        if (r == null) return;
+        ArtLibrary.Info info = art.info(r);
+        float u = tileSize / ArtLibrary.UNITS_PER_TILE;
+        float sw = (info == null ? r.getRegionWidth() : info.w) * u, sh = (info == null ? r.getRegionHeight() : info.h) * u;
+        float cos = MathUtils.cosDeg(f.rotation), sin = MathUtils.sinDeg(f.rotation);
+        int bays = Math.max(1, f.type.capacity);
+        for (int i = 0; i < Math.min(f.suits.size, bays); i++) {
+            float along = ((i + 0.5f) / bays - 0.5f) * w;
+            float x = cx + along * cos, y = cy + along * sin;
+            batch.draw(r, x - sw / 2f, y - sh / 2f, sw / 2f, sh / 2f, sw, sh, 1f, 1f, f.rotation);
+        }
     }
 
     private void effects(Batch batch, ShipGridComponent grid) {
@@ -534,7 +555,48 @@ public final class DeckArt {
             float cx = ox + (link.x + 0.5f + side.dx * 0.5f) * s + side.dx * half / 2f;
             float cy = oy + (link.y + 0.5f + side.dy * 0.5f) * s + side.dy * half / 2f;
             centered(batch, r, cx, cy, s, half, side.dx != 0 ? 1 : 0);
+            tunnelWalls(batch, grid, link, half);
         }
+    }
+
+    /**
+     * The tunnel's side walls down this grid's half of the gangway, where a collar locked out
+     * runs past the two collars on the hulls: half a tile from the edge (the collar) to halfway
+     * across, beside the outermost openings of the port. Nothing for collars that met.
+     */
+    private void tunnelWalls(Batch batch, ShipGridComponent grid, GridLink link, float half) {
+        TextureRegion r = art.region(ArtNames.TUNNEL_WALL);
+        float s = grid.tileSize, run = half - s * 0.5f;
+        if (r == null || run < s * 0.25f) return;
+        ArtLibrary.Info info = art.info((com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion) r);
+        float thick = (info == null ? r.getRegionWidth() : info.w) * s / ArtLibrary.UNITS_PER_TILE;
+        Side side = link.side;
+        // Along the gangway (out of the port) and across it
+        float ax = side.dx, ay = side.dy, cxAcross = -side.dy, cyAcross = side.dx;
+        float ex = grid.gridOriginLocal.x + (link.x + 0.5f + side.dx * 0.5f) * s;
+        float ey = grid.gridOriginLocal.y + (link.y + 0.5f + side.dy * 0.5f) * s;
+        int pieces = Math.max(1, Math.round(run / (s * 0.5f)));
+        float piece = run / pieces;
+        for (int k = -1; k <= 1; k += 2) {
+            if (linkBeside(grid, link, k)) continue;
+            float off = s * 0.5f + thick * 0.5f;
+            // The art's walkway side is its x 0: facing in on either side
+            int rotation = (side.dx != 0 ? 1 : 0) + ((k > 0) == (side.dx != 0 ? side.dx < 0 : side.dy > 0) ? 2 : 0);
+            for (int i = 0; i < pieces; i++) {
+                float along = s * 0.5f + piece * (i + 0.5f);
+                float cx = ex + ax * along + cxAcross * off * k, cy = ey + ay * along + cyAcross * off * k;
+                centered(batch, r, cx, cy, thick, piece, rotation);
+            }
+        }
+    }
+
+    /** True if the same dock has another opening beside {@code link}, on side {@code k} (-1 or 1) across it. */
+    private static boolean linkBeside(ShipGridComponent grid, GridLink link, int k) {
+        int nx = link.x - link.side.dy * k, ny = link.y + link.side.dx * k;
+        for (GridLink l : grid.links) {
+            if (l != link && l.otherShip == link.otherShip && l.side == link.side && l.x == nx && l.y == ny) return true;
+        }
+        return false;
     }
 
     /** Whether there is crew art; without it, draw crew as dots. */
@@ -560,14 +622,41 @@ public final class DeckArt {
      */
     public void crew(Batch batch, Object key, ArtNames.Crew who, ArtNames.CrewPose pose, String wound, float woundAlpha,
                      String commodity, float x, float y, float tileSize) {
-        if (pose.lying()) commodity = null;
-        TextureRegion r = art.first(ArtNames.crew(who, pose, commodity != null), ArtNames.crew(who, pose, false),
-                ArtNames.crew(who, commodity != null), ArtNames.crew(who, false));
+        crew(batch, key, who, pose, null, null, Float.NaN, wound, woundAlpha, commodity, x, y, tileSize);
+    }
+
+    /**
+     * {@link #crew(Batch, Object, ArtNames.Crew, ArtNames.CrewPose, String, float, String, float, float, float)}
+     * in a suit of kind {@code suit} (null for none), or out on EVA in {@code outside} (null while
+     * aboard: on the hull or off it, seen from behind, the jetpack on their back), and turned to
+     * {@code turn} degrees in the deck's frame (the art's +y along it) unless it is NaN, when they
+     * face the way they last moved. Suited, they carry no crate; outside, no wound shows.
+     */
+    public void crew(Batch batch, Object key, ArtNames.Crew who, ArtNames.CrewPose pose, Suit.Kind suit,
+                     ArtNames.EvaPose outside, float turn, String wound, float woundAlpha, String commodity,
+                     float x, float y, float tileSize) {
+        if (pose.lying() || suit != null || outside != null) commodity = null;
+        TextureRegion r;
+        if (outside != null && !pose.lying()) {
+            r = art.first(ArtNames.crew(who, outside), ArtNames.crew(who, pose, Suit.Kind.EVA), ArtNames.crew(who, pose, false),
+                    ArtNames.crew(who, false));
+            wound = null;
+        } else if (suit != null || outside != null) {
+            r = art.first(ArtNames.crew(who, pose, suit != null ? suit : Suit.Kind.EVA), ArtNames.crew(who, pose, false),
+                    ArtNames.crew(who, false));
+        } else {
+            r = art.first(ArtNames.crew(who, pose, commodity != null), ArtNames.crew(who, pose, false),
+                    ArtNames.crew(who, commodity != null), ArtNames.crew(who, false));
+        }
         if (r == null) return;
         float[] f = facing.get(key);
         if (f == null) facing.put(key, f = new float[]{x, y, 0f});
         float dx = x - f[0], dy = y - f[1];
-        if (dx * dx + dy * dy > 0.0004f * tileSize * tileSize) {
+        if (!Float.isNaN(turn)) {
+            f[2] = turn;
+            f[0] = x;
+            f[1] = y;
+        } else if (dx * dx + dy * dy > 0.0004f * tileSize * tileSize) {
             // Art faces +y, so a walk along +y is no turn
             f[2] = MathUtils.atan2(dy, dx) * MathUtils.radiansToDegrees - 90f;
             f[0] = x;

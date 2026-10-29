@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="26" height="32" viewBox="0 0 26 32">
+  <title>dock_tunnel_wall: side wall of a collar tunnel, half a tile along y, walkway side at x 0; laid in pieces down the gangway</title>
+  <g id="base">
+    <rect x="0" y="0" width="26" height="32" fill="#373f4b"/>
+    <rect x="3" y="3" width="19" height="4" fill="#4b5563"/>
+    <rect x="3" y="7" width="19" height="3" fill="#2a3039"/>
+    <line x1="3" y1="3" x2="22" y2="3" stroke="#7d8898" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
+    <rect x="3" y="19" width="19" height="4" fill="#4b5563"/>
+    <rect x="3" y="23" width="19" height="3" fill="#2a3039"/>
+    <line x1="3" y1="19" x2="22" y2="19" stroke="#7d8898" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
+    <rect x="0" y="0" width="3" height="32" fill="#2f3641"/>
+    <line x1="1.5" y1="0" x2="1.5" y2="32" stroke="#7a8594" stroke-width="1" stroke-linecap="round"/>
+    <rect x="22" y="0" width="4" height="32" fill="#10141a"/>
+  </g>
+</svg>

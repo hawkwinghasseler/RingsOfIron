@@ -27,7 +27,7 @@ public class BoardingWindow extends Window {
     private final Skin skin;
     private final BoardingBoard board = new BoardingBoard();
     private final Label state;
-    private final TextButton boardButton;
+    private final TextButton boardButton, stormButton;
     private final Label status;
     private final Table rows = new Table();
     private BoardingProvider provider;
@@ -46,10 +46,14 @@ public class BoardingWindow extends Window {
         boardButton = button("", () -> {
             if (provider != null) say(board.boarding ? provider.recall() : provider.orderBoarding());
         });
+        stormButton = button("Force a way in", () -> {
+            if (provider != null) say(provider.storm());
+        });
         status = new Label("", skin, "dim");
         Table top = new Table();
         top.add(state).left().padRight(14f);
         top.add(boardButton);
+        top.add(stormButton).padLeft(6f);
         add(top).left().row();
         add(rows).left().padTop(8f).row();
         add(status).left().padTop(8f).row();
@@ -107,9 +111,11 @@ public class BoardingWindow extends Window {
         }
         getTitleLabel().setText(board.craftName.toUpperCase(Locale.ROOT));
         state.setText(board.state);
-        boardButton.setText(board.boarding ? "Recall boarders" : "Send boarding party");
+        boardButton.setText(board.boarding ? "Recall boarders" : board.byEva ? "Send boarders on EVA" : "Send boarding party");
         boardButton.setVisible(!board.salvage);
         boardButton.setDisabled(!board.boarding && !board.boardRefusal.isEmpty());
+        // Storming forces every door: for a ship still able to fight, or one whose doors are held
+        stormButton.setVisible(!board.salvage && !board.boarding && board.stormRefusal.isEmpty());
         String now = layoutKey();
         if (!now.equals(layout)) rebuildRows();
         layout = now;

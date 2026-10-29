@@ -26,6 +26,11 @@ public class EdgeWall {
      * ({@link GridLink#canCross}). Not saved; the docking system sets it again each tick.
      */
     public boolean opensForCrew;
+    /**
+     * Held shut by an airlock part way through its cycle ({@link Airlock}): no one opens it until the
+     * cycle is done. Not saved; the airlock sets it again each tick.
+     */
+    public transient boolean locked;
 
     public EdgeWall(WeightClass weightClass) {
         this(weightClass, MaterialTable.DEFAULT_MATERIAL, false);
