@@ -22,8 +22,11 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.RailsBubbleHandoff;
 import com.ringsofiron.physicsexterior.TrueTrajectory;
 import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
+import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.physicsexterior.components.ThrusterComponent;
+import com.ringsofiron.physicsexterior.systems.FlightControlSystem;
 import com.ringsofiron.physicsexterior.systems.KinematicTransientSystem;
 import com.ringsofiron.physicsexterior.systems.PhysicsUpdateSystem;
 import com.ringsofiron.physicsexterior.systems.TidalGravitySystem;
@@ -374,6 +377,43 @@ class DockingSystemTest {
         game.stepTicks(60 * 2);
         assertFalse(events.contains(DockingEvent.Kind.TORN));
         assertEquals(DockingPort.State.DOCKED, port(pair[0]).state);
+    }
+
+    /**
+     * Oct 2026: with RCS blocks at standard thrust the corvette's rotation assist turned about five
+     * times what a Small latch bears, and stopping a docked pair's spin tore the latch. Welded, the
+     * assist turns no harder than its share of the latch, and still stops the spin.
+     */
+    @Test
+    void rotationAssistStopsADockedPairsSpinWithoutTearingTheLatch() {
+        game.addSystem(new FlightControlSystem(physics));
+        Entity[] pair = approachPassive();
+        ThrusterComponent rcs = new ThrusterComponent();
+        rcs.maxTorque = 10 * DockingTuning.SMALL.breakTorque;
+        FlightControlComponent controls = new FlightControlComponent();
+        pair[0].add(rcs);
+        pair[0].add(controls);
+        stepUntil(port(pair[0]), DockingPort.State.DOCKED, 60f);
+        game.stepTicks(60 * 4);
+        // Something turns the pair, gently, with the assist off
+        int[] ticks = {0};
+        physics.addStepListener(dt -> {
+            if (ticks[0]++ < 120) PhysicsManager.applyTorque(body(pair[1]), 0.4f * DockingTuning.SMALL.breakTorque);
+        });
+        game.stepTicks(120);
+        float spin = body(pair[0]).getAngularVelocity();
+        assertTrue(spin > 0.1f, "the pair spins: " + spin);
+        assertEquals(DockingTuning.ASSIST_SHARE * DockingTuning.SMALL.breakTorque, controls.assistLimit, 1f);
+
+        controls.rotationAssist = true;
+        game.stepTicks(60 * 10);
+        assertFalse(events.contains(DockingEvent.Kind.TORN), events.toString());
+        assertEquals(DockingPort.State.DOCKED, port(pair[0]).state);
+        assertEquals(0f, body(pair[0]).getAngularVelocity(), 0.01f, "the assist stopped the spin");
+
+        docking.undock(pair[0]);
+        game.stepTicks(60);
+        assertEquals(Float.POSITIVE_INFINITY, controls.assistLimit, "free again, the assist turns as hard as the RCS allows");
     }
 
     /**

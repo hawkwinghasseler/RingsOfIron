@@ -51,6 +51,16 @@ public final class ShieldModel {
     static final float RESTART_AT = 0.5f;
     /** How often the curve is refitted to the hull, seconds. */
     static final float REFIT_EVERY = 2f;
+    /** Seconds (e-folding) for the resting layer to settle where the emitters want it. */
+    public static final float SPREAD_TIME = 2f;
+    /**
+     * The least an emitter holds of the resting layer anywhere on the curve, as a share of what it
+     * holds on its own side: its hold falls off past its radius (e-folding over one radius) and away
+     * from its bearing, but every working emitter holds a little of the whole curve.
+     */
+    static final float REACH_FLOOR = 0.2f;
+    /** How hard a trim leans the resting layer: the side it leans to weighs 1 + this, the far side 1 - this. */
+    public static final float TRIM_BIAS = 0.75f;
 
     private ShieldModel() {
     }
@@ -134,6 +144,14 @@ public final class ShieldModel {
         return cloud;
     }
 
+    /** Leans {@code ship}'s resting cloud toward {@code trim}. Returns the shield, or null if it has none. */
+    public static ShieldCloudComponent trim(Entity ship, Trim trim) {
+        ShieldCloudComponent cloud = ensure(ship);
+        if (cloud == null) return null;
+        cloud.trim = trim == null ? Trim.EVEN : trim;
+        return cloud;
+    }
+
     static boolean up(SubsystemComponent s) {
         return s != null && s.isOperational && s.circuit != null && !s.isDisabled();
     }
@@ -197,7 +215,111 @@ public final class ShieldModel {
         if (!cloud.raised) threats.clear();
         updateRegions(cloud, threats, comX, comY, dt);
         payAndHeat(cloud, dt);
+        anchor(cloud, comX, comY);
         flows(cloud, dt);
+        spread(cloud, dt);
+    }
+
+    /**
+     * How each segment of the curve is held: {@link ShieldCloudComponent#want}, where the working
+     * emitters would have the resting layer (each holding most on its own side of the ship and
+     * within its radius, by its capacity, leaned by the trim), and
+     * {@link ShieldCloudComponent#anchored}, the share of its hold that is working.
+     */
+    static void anchor(ShieldCloudComponent cloud, float comX, float comY) {
+        ShieldPerimeter p = cloud.perimeter;
+        float trim = cloud.trim == null || cloud.trim == Trim.EVEN ? Float.NaN : cloud.trim.bearing * MathUtils.degreesToRadians;
+        // An emitter near the middle of the ship has no side: it holds the curve all round
+        float middle = Math.max(1f, 0.25f * Math.max(p.halfW, p.halfH));
+        for (int i = 0; i < ShieldPerimeter.SAMPLES; i++) {
+            int j = (i + 1) % ShieldPerimeter.SAMPLES;
+            float mx = 0.5f * (p.x[i] + p.x[j]), my = 0.5f * (p.y[i] + p.y[j]);
+            float bearing = MathUtils.atan2(my - comY, mx - comX);
+            float all = 0f, work = 0f;
+            for (ShieldCloudComponent.Emitter em : cloud.emitters.values()) {
+                float d = (float) Math.sqrt((mx - em.x) * (mx - em.x) + (my - em.y) * (my - em.y));
+                float r = em.spec.radius;
+                float reach = d <= r ? 1f : (float) Math.exp(-(d - r) / r);
+                float ex = em.x - comX, ey = em.y - comY;
+                float sided = Math.min(1f, (float) Math.sqrt(ex * ex + ey * ey) / middle);
+                float facing = 0.5f * (1f + MathUtils.cos(bearing - MathUtils.atan2(ey, ex)));
+                float side = 1f - sided * (1f - facing * facing);
+                float f = em.spec.capacity * Math.max(REACH_FLOOR, reach * side);
+                all += f;
+                if (em.working) work += f;
+            }
+            float lean = Float.isNaN(trim) ? 1f : 1f + TRIM_BIAS * MathUtils.cos(MathUtils.atan2(my - comY, mx - comX) - trim);
+            cloud.want[i] = (p.along[i + 1] - p.along[i]) * work * lean;
+            cloud.anchored[i] = all > 0f ? work / all : 0f;
+        }
+    }
+
+    /**
+     * Takes {@code kg} of the resting layer out that no working emitter holds first, where its
+     * emitters stopped, then evenly from the rest. {@code base} is the layer before, kg.
+     */
+    private static void unanchor(ShieldCloudComponent cloud, float kg, float base) {
+        float[] line = cloud.line;
+        float sum = 0f, orphaned = 0f;
+        for (int i = 0; i < line.length; i++) {
+            sum += line[i];
+            orphaned += line[i] * (1f - cloud.anchored[i]);
+        }
+        if (!(sum > 0f) || !(base > 0f)) return;
+        float take = Math.min(sum, kg * sum / base);
+        float fromOrphaned = Math.min(take, orphaned);
+        float rest = sum - orphaned;
+        float k = rest > 0f ? (take - fromOrphaned) / rest : 0f;
+        for (int i = 0; i < line.length; i++) {
+            float o = line[i] * (1f - cloud.anchored[i]);
+            float off = orphaned > 0f ? o * fromOrphaned / orphaned : 0f;
+            off += (line[i] - o) * k;
+            line[i] = Math.max(0f, line[i] - off);
+        }
+    }
+
+    /** Takes {@code kg} of the resting layer out at {@code s}, where a round plowed it, spilling to the next segments. */
+    private static void takeLine(ShieldCloudComponent cloud, float s, float kg, float base) {
+        float[] line = cloud.line;
+        float sum = 0f;
+        for (float m : line) sum += m;
+        if (!(sum > 0f) || !(base > 0f) || !(kg > 0f)) return;
+        float left = kg * sum / base;
+        int i = cloud.perimeter.segmentAt(s), n = line.length;
+        for (int k = 0; k < n && left > 0f; k++) {
+            // Out from the hit both ways: i, i+1, i-1, i+2, ...
+            int j = ((i + ((k & 1) == 0 ? k / 2 : -(k + 1) / 2)) % n + n) % n;
+            float off = Math.min(line[j], left);
+            line[j] -= off;
+            left -= off;
+        }
+    }
+
+    /**
+     * The resting layer settles toward where the emitters want it over {@link #SPREAD_TIME}, mass
+     * streaming round the curve; then it is kept summing to the cloud outside the regions.
+     */
+    private static void spread(ShieldCloudComponent cloud, float dt) {
+        float[] line = cloud.line, want = cloud.want;
+        float base = Math.max(0f, cloud.cloud() - cloud.concentrated());
+        float sum = 0f, wsum = 0f;
+        for (int i = 0; i < line.length; i++) {
+            sum += line[i];
+            wsum += want[i];
+        }
+        if (wsum > 0f) {
+            if (!(sum > 0f)) {
+                // Nothing laid out yet (or all of it came back in): it goes out where it is wanted
+                for (int i = 0; i < line.length; i++) line[i] = want[i] / wsum;
+                sum = 1f;
+            } else {
+                float k = Math.min(1f, dt / SPREAD_TIME);
+                for (int i = 0; i < line.length; i++) line[i] += (sum * want[i] / wsum - line[i]) * k;
+            }
+        }
+        if (!(sum > 0f)) return;
+        float scale = base / sum;
+        for (int i = 0; i < line.length; i++) line[i] *= scale;
     }
 
     /**
@@ -222,6 +344,8 @@ public final class ShieldModel {
         float over = cloud.cloud() + cloud.scattered - held;
         if (over > 0f) {
             float fromCloud = Math.min(over, cloud.cloud());
+            // Out of the stretches no working emitter holds first
+            unanchor(cloud, fromCloud, Math.max(0f, cloud.cloud() - cloud.concentrated()));
             float fromScattered = Math.min(over - fromCloud, cloud.scattered);
             cloud.scattered -= fromScattered;
             cloud.adrift += fromCloud + fromScattered;
@@ -460,6 +584,9 @@ public final class ShieldModel {
             r.mass -= take;
             fromRegions += take;
         }
+        // The rest is the resting layer's, out of the stretch it was plowed from
+        float base = Math.max(0f, cloud.cloud() - cloud.concentrated() - fromRegions);
+        takeLine(cloud, s, Math.max(0f, want - fromRegions), base);
         return Math.max(want, fromRegions);
     }
 

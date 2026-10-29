@@ -4,6 +4,7 @@ import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.SuitOutfit;
 import com.ringsofiron.moddingdata.DefRegistry;
 import com.ringsofiron.moddingdata.ModContext;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
@@ -67,7 +68,11 @@ public final class DockingData {
     public static StationComponent buildStation(Entity station, ChassisDef chassis, String blueprint, GameEngine engine,
                                                 String name, String typeId) {
         InteriorGridData.installInterior(station, chassis, engine);
-        station.add(portsFor(station.getComponent(ShipGridComponent.class), chassis));
+        DockingPortsComponent ports = portsFor(station.getComponent(ShipGridComponent.class), chassis);
+        station.add(ports);
+        // Suits for its loaders (one a port) and its yard's two technicians
+        SuitOutfit.outfit(station.getComponent(ShipGridComponent.class), InteriorGridData.furnishings(),
+                Math.max(2, ports.ports.length) + 2);
         StationComponent component = new StationComponent(name, typeId, blueprint);
         station.add(component);
         return component;

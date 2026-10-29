@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.art;
 
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewState;
+import com.ringsofiron.aicrew.EvaComponent;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.MaterialTable;
@@ -9,6 +10,7 @@ import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.WeightClass;
+import com.ringsofiron.interiorgrid.crew.Suit;
 
 import java.util.LinkedHashSet;
 import java.util.Locale;
@@ -440,6 +442,49 @@ public final class ArtNames {
     /** A crew member in {@code pose}, holding a crate while they carry a load on their feet. */
     public static String crew(Crew who, CrewPose pose, boolean carrying) {
         return "crew/crew_" + who.name().toLowerCase(Locale.ROOT) + pose.suffix + (carrying && !pose.lying() ? "_carrying" : "");
+    }
+
+    /**
+     * A crew member in a suit of kind {@code suit} (null for none), in {@code pose}: {@code
+     * crew/crew_ship_eva_down}. Suited figures carry no crate.
+     */
+    public static String crew(Crew who, CrewPose pose, Suit.Kind suit) {
+        if (suit == null) return crew(who, pose, false);
+        return "crew/crew_" + who.name().toLowerCase(Locale.ROOT) + "_" + suit.name().toLowerCase(Locale.ROOT) + pose.suffix;
+    }
+
+    /**
+     * How a crew member out on EVA is drawn, seen from behind with the jetpack on their back:
+     * crawling along the hull hand over hand (two frames, the limbs alternating) or floating free.
+     */
+    public enum EvaPose {
+        CRAWL_A("_eva_crawl_a"), CRAWL_B("_eva_crawl_b"), FLOAT("_eva_float");
+
+        /** Tiles crawled per frame of the crawl. */
+        public static final float CRAWL_STRIDE = 0.25f;
+
+        private final String suffix;
+
+        EvaPose(String suffix) {
+            this.suffix = suffix;
+        }
+
+        /** The pose for {@code eva}, or null while they are in the airlock: on the hull, the crawl's frame by how far they have crawled. */
+        public static EvaPose of(EvaComponent eva) {
+            if (eva == null || !eva.outside()) return null;
+            if (eva.phase == EvaComponent.Phase.FREE) return FLOAT;
+            return (int) Math.floor(eva.crawled / CRAWL_STRIDE) % 2 == 0 ? CRAWL_A : CRAWL_B;
+        }
+    }
+
+    /** A crew member out on EVA in {@code pose}: {@code crew/crew_ship_eva_crawl_a}. */
+    public static String crew(Crew who, EvaPose pose) {
+        return "crew/crew_" + who.name().toLowerCase(Locale.ROOT) + pose.suffix;
+    }
+
+    /** A suit of {@code kind} hung in its locker, drawn in its bay. */
+    public static String lockerSuit(Suit.Kind kind) {
+        return "decor/locker_suit_" + kind.name().toLowerCase(Locale.ROOT);
     }
 
     /** A light on a wall, dark without power. */

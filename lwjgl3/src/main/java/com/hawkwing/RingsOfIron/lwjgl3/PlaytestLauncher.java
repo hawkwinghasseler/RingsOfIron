@@ -443,6 +443,50 @@ public class PlaytestLauncher {
                     return com.ringsofiron.combatsys.shields.ShieldModel.raise(spawned, cmd[1].equals("on")) == null
                             ? "no shield" : "shields " + cmd[1];
                 }
+                case "fit": {
+                    // fit <x> <y>: a Small shield emitter on that tile of the spawned ship, on its first
+                    // emitter's circuit, so a ship that carries one can show several (tools/playtest/shields.sh)
+                    if (spawned == null || cmd.length < 3) return "spawnship first, then fit <x> <y>";
+                    ShipGridComponent grid = spawned.getComponent(ShipGridComponent.class);
+                    ShipSubsystemRegistryComponent registry = spawned.getComponent(ShipSubsystemRegistryComponent.class);
+                    SubsystemComponent like = null;
+                    for (Entity e : registry.subsystems) {
+                        SubsystemComponent sub = e.getComponent(SubsystemComponent.class);
+                        if (sub.type == SubsystemComponent.SubsystemType.SHIELD_EMITTER) like = sub;
+                    }
+                    if (like == null) return "no emitter to copy";
+                    com.ringsofiron.interiorgrid.MountFootprint m = new com.ringsofiron.interiorgrid.MountFootprint(
+                            SubsystemComponent.SubsystemType.SHIELD_EMITTER.mountKind, com.ringsofiron.interiorgrid.MountFootprint.MountSize.S,
+                            Integer.parseInt(cmd[1]), Integer.parseInt(cmd[2]), 0);
+                    String problem = grid.validateMount(m);
+                    if (problem != null) return "can't fit there: " + problem;
+                    grid.placeMount(m);
+                    Entity e = new Entity();
+                    SubsystemComponent sub = new SubsystemComponent(m, SubsystemComponent.SubsystemType.SHIELD_EMITTER);
+                    sub.circuit = like.circuit;
+                    sub.powered = like.powered;
+                    sub.isOperational = true;
+                    e.add(sub);
+                    m.installed = e;
+                    registry.registerSubsystem(e);
+                    return "emitter at " + cmd[1] + " " + cmd[2];
+                }
+                case "trim": {
+                    // trim <side>: leans the spawned ship's resting cloud (even, bow, port, stern, starboard)
+                    com.ringsofiron.combatsys.shields.Trim side = cmd.length > 1 ? com.ringsofiron.combatsys.shields.Trim.named(cmd[1]) : null;
+                    if (spawned == null || side == null) return "spawnship first, then trim even|bow|port|stern|starboard";
+                    return com.ringsofiron.combatsys.shields.ShieldModel.trim(spawned, side) == null ? "no shield" : "trimmed " + side.label;
+                }
+                case "knock": {
+                    // knock <x> <y>: the spawned ship's system on that tile wrecked, or mended
+                    if (spawned == null || cmd.length < 3) return "spawnship first, then knock <x> <y>";
+                    Entity e = spawned.getComponent(ShipGridComponent.class).subsystemAt(Integer.parseInt(cmd[1]), Integer.parseInt(cmd[2]));
+                    if (e == null) return "nothing there";
+                    SubsystemComponent sub = e.getComponent(SubsystemComponent.class);
+                    sub.health = sub.health > 0f ? 0f : 1f;
+                    sub.isOperational = sub.health > 0f;
+                    return sub.type + (sub.health > 0f ? " mended" : " wrecked");
+                }
                 case "push": {
                     // push <dx> <dy>: adds that velocity, m/s, to the spawned ship
                     if (spawned == null || cmd.length < 3) return "spawnship first, then push <dx> <dy>";

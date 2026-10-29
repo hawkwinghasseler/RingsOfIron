@@ -2,10 +2,12 @@ package com.ringsofiron.aicrew.btree;
 
 import com.badlogic.gdx.ai.btree.Task;
 import com.badlogic.gdx.ai.btree.branch.Sequence;
+import com.ringsofiron.aicrew.EvaSystem;
 
 /**
  * A sequence that works one board task. If it fails or is interrupted (a hostile came
- * into sight, the crew member was knocked out) the task goes back on the board.
+ * into sight, the crew member was knocked out) the task goes back on the board, unless the
+ * crew member has just gone out on EVA for it ({@link EvaTasks.Spacewalk} carries it on).
  */
 public class TaskBranch extends Sequence<CrewAgent> {
 
@@ -16,7 +18,8 @@ public class TaskBranch extends Sequence<CrewAgent> {
 
     @Override
     public void end() {
-        if (status != Status.SUCCEEDED && getObject().crew.task != null) getObject().releaseTask();
+        CrewAgent a = getObject();
+        if (status != Status.SUCCEEDED && a.crew.task != null && EvaSystem.of(a.entity) == null) a.releaseTask();
         super.end();
     }
 }

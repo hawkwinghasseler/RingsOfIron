@@ -15,6 +15,13 @@ public class ThrusterComponent implements Component {
     public float lateralThrust;
     /** Maximum turning torque from RCS thrusters, in newton-meters. */
     public float maxTorque;
+    /**
+     * Lateral thrust toward port (+Y) and toward starboard, newtons, and torque counter-clockwise
+     * and clockwise, newton-meters, where RCS blocks give different figures each way (a side's
+     * blocks lost): what {@link #lateral} and {@link #torque} fly on. Negative means
+     * {@link #lateralThrust} or {@link #maxTorque}, the same both ways, which planners use.
+     */
+    public float portThrust = -1f, starboardThrust = -1f, ccwTorque = -1f, cwTorque = -1f;
 
     /** Remaining fuel, in kg. */
     public float fuel;
@@ -42,6 +49,18 @@ public class ThrusterComponent implements Component {
         this.reverseThrust = reverseThrust;
         this.lateralThrust = lateralThrust;
         this.maxTorque = maxTorque;
+    }
+
+    /** Lateral thrust the way {@code sign} asks (+ to port, - to starboard), newtons. */
+    public float lateral(float sign) {
+        float each = sign >= 0f ? portThrust : starboardThrust;
+        return each >= 0f ? each : lateralThrust;
+    }
+
+    /** Torque the way {@code sign} asks (+ counter-clockwise, - clockwise), newton-meters. */
+    public float torque(float sign) {
+        float each = sign >= 0f ? ccwTorque : cwTorque;
+        return each >= 0f ? each : maxTorque;
     }
 
     public ThrusterComponent withFuel(float capacity, float perNewtonSecond, float perTorqueSecond) {

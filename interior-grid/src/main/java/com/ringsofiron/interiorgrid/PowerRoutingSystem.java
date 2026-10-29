@@ -351,9 +351,11 @@ public class PowerRoutingSystem extends FixedLogicSystem {
             out.add(GridNodes.edgeNode(grid, x, y, side));
             int nx = x + side.dx, ny = y + side.dy;
             if (!grid.inBounds(nx, ny)) continue;
-            // A conduit passes through a thin wall; nothing else does
+            // A conduit passes through a thin wall, and a docking port's feed through its inner hatch,
+            // so the airlock's pump keeps its power with the hatch shut; nothing else does
             if (grid.isEdgeBlocked(x, y, nx, ny)
-                    && !(current.isPowerConduit() && grid.getTile(nx, ny).isPowerConduit())) continue;
+                    && !(current.isPowerConduit() && grid.getTile(nx, ny).isPowerConduit())
+                    && !DockingPortLayout.isHatchEdge(grid, x, y, side)) continue;
             out.add(ny * grid.width + nx);
         }
     }

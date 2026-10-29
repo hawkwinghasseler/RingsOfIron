@@ -239,6 +239,7 @@ class CrewWoundTest {
     @Test
     void crewSuitUpAtBattleStationsAndOutOfThemAfter() {
         TestShips s = room();
+        s.locker(2, 3, 4);
         Entity e = s.spawn(CrewRole.CREWMAN, 0, 2, 2);
         s.run(1f);
         assertFalse(s.c(e).suited);

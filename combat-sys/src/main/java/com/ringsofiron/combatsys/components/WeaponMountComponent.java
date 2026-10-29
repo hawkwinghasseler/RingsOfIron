@@ -65,6 +65,15 @@ public class WeaponMountComponent implements Component {
      * target, or for point defense the most urgent incoming missile. Set by weapon control.
      */
     public transient Entity engaged;
+    /**
+     * How far this mount opens up firing at will on {@link #engaged}: the range where its chance a
+     * shot reaches {@code HitChance.OPEN_FIRE} against that target dodging. Kept by weapon control,
+     * refreshed now and then.
+     */
+    public transient float effectiveRange;
+    /** The target {@link #effectiveRange} was worked out for, and seconds since. */
+    public transient Entity rangedFor;
+    public transient float rangedAge;
     /** Whether the barrel was on the solution last tick. */
     public boolean onTarget;
     /** The hardpoint in the bubble frame last tick, local meters. Set by weapon control. */

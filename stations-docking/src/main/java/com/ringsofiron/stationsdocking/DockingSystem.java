@@ -563,16 +563,23 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         for (int i = 0; i < vessels.size(); i++) holdAssist(vessels.get(i));
     }
 
-    /** While a collar or the seating turns a craft into line, its rotation assist must not hold it back. */
+    /**
+     * While a collar or the seating turns a craft into line, its rotation assist must not hold it
+     * back; once welded, it turns no harder than {@link DockingTuning#ASSIST_SHARE} of what the
+     * latch bears.
+     */
     private void holdAssist(Entity e) {
         FlightControlComponent control = controlMapper.get(e);
         if (control == null) return;
         boolean held = false;
+        float limit = Float.POSITIVE_INFINITY;
         for (DockingPort p : portsMapper.get(e).ports) {
             Link link = p.state == DockingPort.State.DOCKED ? links.get(p) : null;
             if (p.state == DockingPort.State.CAPTURED || (link != null && !link.rigid)) held = true;
+            if (link != null && link.rigid) limit = Math.min(limit, DockingTuning.ASSIST_SHARE * link.pa.tuning().breakTorque * hold(link));
         }
         control.assistHeld = held;
+        control.assistLimit = limit;
     }
 
     /** Clearance runs out; power lost drops the magnets. */
@@ -1121,12 +1128,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         float force = link.joint.getReactionForce(invDt).len() * M;
         float torque = Math.abs(link.joint.getReactionTorque(invDt)) * M * M;
         float k = Math.min(1f, dt / DockingTuning.STRAIN_FILTER);
-        // A collar part torn holds that much less of its load. A latch made in place (a tug's or a
-        // yard's berth, a boarding latch) is held by its clamps as a whole collar would be: scaled to
-        // nothing a torn-off collar tore every step, and the ship could never stay at the yard that
-        // mends it; worn to a tenth by hits, a shot-up prize tore loose as soon as it was boarded
-        float hold = Math.min(link.pa.collarIntegrity, link.pb.collarIntegrity);
-        if (hold <= 0f || link.pa.clamped || link.pb.clamped) hold = 1f;
+        float hold = hold(link);
         float breakForce = t.breakForce * hold, breakTorque = t.breakTorque * hold;
         boolean shock = force > DockingTuning.SHOCK_LIMIT * breakForce || torque > DockingTuning.SHOCK_LIMIT * breakTorque;
         // One round's hit on a ship welded to a station is a one-step spike many times the limit;
@@ -1179,6 +1181,18 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             PhysicsManager.applyForce(bb, -fx, -fy);
             PhysicsManager.applyTorque(bb, -torque);
         }
+    }
+
+    /**
+     * Share of its break limits a latch still bears. A collar part torn holds that much less of its
+     * load. A latch made in place (a tug's or a yard's berth, a boarding latch) is held by its clamps
+     * as a whole collar would be: scaled to nothing a torn-off collar tore every step, and the ship
+     * could never stay at the yard that mends it; worn to a tenth by hits, a shot-up prize tore loose
+     * as soon as it was boarded.
+     */
+    private static float hold(Link link) {
+        float hold = Math.min(link.pa.collarIntegrity, link.pb.collarIntegrity);
+        return hold <= 0f || link.pa.clamped || link.pb.clamped ? 1f : hold;
     }
 
     private void weld(Link link, Body ba, Body bb) {

@@ -61,7 +61,8 @@ public final class CrewDoors {
 
     /**
      * True if {@code crew} may open the shut door between (x, y) and (nx, ny) on {@code ship}, going
-     * that way: the craft's crew are not hostile to them, and they are not stepping from breathable
+     * that way: it is not an airlock's door locked for its cycle ({@link EdgeWall#locked}), the
+     * craft's crew are not hostile to them, and they are not stepping from breathable
      * air into air too thin to breathe (which would let it out), unless they breathe from a suit and
      * the room beyond is not open to space.
      */
@@ -69,6 +70,9 @@ public final class CrewDoors {
         CrewMemberComponent c = service.crew(crew);
         ShipGridComponent grid = service.grid(ship);
         if (c == null || grid == null) return false;
+        // An airlock's door held shut for its cycle opens for no one
+        EdgeWall wall = grid.getEdgeBetween(x, y, nx, ny);
+        if (wall != null && wall.locked) return false;
         ShipTaskBoardComponent board = service.board(ship);
         if (board != null && service.hostility.hostile(board.faction, c.faction) && !service.doorRights.mayPass(crew, ship)) {
             return false;

@@ -86,6 +86,8 @@ public class CrewHealthSystem extends FixedIteratingSystem {
         // (a ship's crew carried onto the station it is docked to while it could not be breathed)
         boolean cared = board != null && (board.faction == c.faction || c.held
                 || c.home != null && c.home != p.ship && service.friendlyTo(c.faction, p.ship));
+        // Out on the hull no one can reach them: their line brings them in (EvaSystem), and then they are seen to
+        if (EvaSystem.outside(e)) cared = false;
         // First aid for a light wound needs no good air while the patient breathes from a suit (round 8:
         // the cabin slow to come back on emergency oxygen left a graze open for ten minutes and more)
         boolean firstAid = safe || c.breathesFromSuit() && tile != null && tile.holdsAir() && !tile.isBurning()

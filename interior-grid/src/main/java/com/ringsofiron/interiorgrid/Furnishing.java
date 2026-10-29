@@ -3,6 +3,7 @@ package com.ringsofiron.interiorgrid;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.interiorgrid.crew.Suit;
 
 /**
  * One piece of furniture or decor set down on a deck: a couch, a card table, a plant. It belongs
@@ -30,6 +31,8 @@ public final class Furnishing {
     public float fuel;
     /** The crew using it now (their entities), at most {@link FurnishingType#seats}. Not saved. */
     public final transient Array<Object> users = new Array<>(false, 2);
+    /** The suits hung in it, for a suit locker ({@link FurnishingType#holds}): at most its capacity. */
+    public final Array<Suit> suits = new Array<>(false, 4);
 
     public Furnishing(FurnishingType type, int tileX, int tileY, float offsetX, float offsetY, float rotation) {
         this.type = type;

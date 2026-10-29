@@ -7,6 +7,7 @@ import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.macrosim.economy.DefaultCommodityCatalog;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
+import com.ringsofiron.macrosim.fleet.RoutePlanner;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.macrosim.rails.orbital.OrbitalRailsModel;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Freighters hauling between stations around Earth and around the Moon. */
@@ -135,6 +137,34 @@ class LunarRoutesTest {
         for (int i = 0; i < straight.size(); i++) {
             assertEquals(straight.get(i), reloaded.get(i), 1e-6 * Math.max(1, Math.abs(straight.get(i))), "value " + i);
         }
+    }
+
+    /**
+     * Oct 2026: a ship just undocked in low orbit, 0.0006 off circular, got "No transfer" to the Moon:
+     * the burn out was sized for a circular orbit, and the few m/s the ship was off put the far end
+     * thousands of km short of the Moon from every start searched. One orbit in five a little off
+     * circular had no route; from anywhere on them there is one now.
+     */
+    @Test
+    void aShipALittleOffCircularFindsARouteToTheMoon() {
+        String ice = null;
+        for (EconomyNode n : sim.stations()) if ("Shackleton Ice".equals(n.displayName)) ice = n.stationUuid;
+        assertNotNull(ice);
+        double t = engine.getSimSeconds();
+        StringBuilder none = new StringBuilder();
+        for (double e : new double[]{0.0002, 0.0006, 0.001, 0.003}) {
+            // The periapsis turned round an eighth at a time, and the ship an eighth at a time along the orbit
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < 8; j++) {
+                    KeplerOrbit k = new KeplerOrbit(MU_EARTH, 6_767e3, e, i * Math.PI / 4, j * Math.PI / 4, t, 1);
+                    com.ringsofiron.orbital.math.StateVector s = k.stateAt(t);
+                    RoutePlanner.Route route = RoutePlanner.plan(rails, earth, new StateVector(s.x, s.y, s.vx, s.vy), ice, t, t + 300);
+                    if (route == null) none.append(String.format(java.util.Locale.ROOT, " e %.4f w %d/8 M %d/8;", e, i, j));
+                    else assertEquals(moon, route.nextParent);
+                }
+            }
+        }
+        assertEquals("", none.toString(), "no route from");
     }
 
     private List<Double> fingerprint() {

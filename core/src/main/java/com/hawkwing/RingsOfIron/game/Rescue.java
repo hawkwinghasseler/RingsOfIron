@@ -18,7 +18,10 @@ import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.interiorgrid.MountFootprint;
+import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.SuitLockers;
+import com.ringsofiron.interiorgrid.crew.Suit;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.orbital.components.OrbitComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
@@ -324,10 +327,7 @@ public class Rescue {
             } else {
                 p.setShip(ship);
                 if (to != null) p.setTile(to[0], to[1]);
-                if (to == null || !TaskRules.isSafe(grid, to[0], to[1])) {
-                    c.setSuited(false);
-                    c.setSuited(true);
-                }
+                if (to == null || !TaskRules.isSafe(grid, to[0], to[1])) suitUp(c, grid);
             }
         }
         // Already in at a station: the crew carry you to its doctor, and the ship stays latched (and the yard's work on it goes on)
@@ -338,6 +338,27 @@ public class Rescue {
             return null;
         }
         return tow(ship);
+    }
+
+    /**
+     * The rescued captain, laid where nowhere is safe to breathe, in a suit with a fresh bottle: their
+     * own topped up, or else one from the ship's lockers (a pressure suit first), or else the
+     * rescuers' own spare.
+     */
+    private static void suitUp(CrewMemberComponent c, ShipGridComponent grid) {
+        if (!c.wearsSuits()) return;
+        if (c.suited) {
+            c.suitAir = c.suitCapacity();
+            return;
+        }
+        Suit suit = null;
+        for (Suit.Kind kind : Suit.Kind.values()) {
+            for (Furnishing f : SuitLockers.all(grid)) {
+                if (suit == null && SuitLockers.hasSuit(f, kind)) suit = SuitLockers.take(f, kind);
+            }
+        }
+        c.wear(suit != null ? suit : Suit.iva());
+        c.suitAir = c.suitCapacity();
     }
 
     /** A deck tile aboard {@code craft} safe to breathe on, off its docked ports' openings; null if none. */

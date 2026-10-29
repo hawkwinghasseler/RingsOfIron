@@ -25,11 +25,13 @@ import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.events.ShotFiredEvent;
 import com.ringsofiron.combatsys.fire.FiringSolutionSolver;
+import com.ringsofiron.combatsys.fire.HitChance;
 import com.ringsofiron.combatsys.fire.Track;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.physicsexterior.components.ThrusterComponent;
 
 /**
  * Turret fire control (combat-sys/Design.md 3.3). Per mount, per tick: pick what to engage, ask
@@ -47,6 +49,11 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
  * pass closest soonest. Launchers throw a missile at the target's track when loaded; guidance
  * takes it from there. Beams point straight at the track (light needs no lead) and burn for a
  * pulse while the gunner fights to hold the spot steady; {@link BeamSystem} finds what they touch.
+ *
+ * A weapon's max range is a guide, not a limit (but for point defense, whose threats it picks
+ * inside it). The trigger fires a gun at a target at any range the round can fly; a gunner firing
+ * at will opens up only inside the mount's effective range on it ({@link #effectiveRange}), where
+ * {@link HitChance} gives a shot a fair chance against the target dodging.
  *
  * A gunner firing at will holds fire while a ship or station other than the target lies on the
  * line to the aim point and {@link #setHoldFire the game's rule} says to (round 7: a pirate put
@@ -91,6 +98,8 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     public static final float HAND_AIM_TOLERANCE = 0.01f;
     /** Seconds a launcher firing at will waits between missiles, however fast it reloads. */
     public static final float AT_WILL_LAUNCH_GAP = 8f;
+    /** Seconds a mount keeps its effective range on a target before working it out again. */
+    public static final float RANGE_REFRESH = 1f;
     /** Step between the approach angles of a salvo's missiles, radians: 0, +1, -1, +2, -2 steps. */
     public static final float SALVO_SPREAD = 15f * MathUtils.degreesToRadians;
 
@@ -100,6 +109,8 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     private final ComponentMapper<SignatureComponent> signatureMapper = ComponentMapper.getFor(SignatureComponent.class);
     private final ComponentMapper<MissileComponent> missileMapper = ComponentMapper.getFor(MissileComponent.class);
     private final ComponentMapper<SubsystemComponent> subsystemMapper = ComponentMapper.getFor(SubsystemComponent.class);
+    private final ComponentMapper<ThrusterComponent> thrusterMapper = ComponentMapper.getFor(ThrusterComponent.class);
+    private final ComponentMapper<PhysicsBodyComponent> targetBodyMapper = ComponentMapper.getFor(PhysicsBodyComponent.class);
 
     private final PhysicsManager physics;
     private final CombatEvents events;
@@ -247,9 +258,11 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         mount.cooldown = Math.max(0f, mount.cooldown - dt);
         fillMagazine(mount);
 
-        Entity target = def.pointDefense ? pickMissileThreat(ship, body, sensor, def)
+        // Point defense picks its own missiles, unless it has been given a target or is aimed by hand
+        boolean hand = mount.manualAim && def.mount != WeaponDef.MountType.LAUNCHER;
+        boolean hunting = def.pointDefense && mount.target == null && !hand;
+        Entity target = hunting ? pickMissileThreat(ship, body, sensor, def)
                 : (mount.target != null ? mount.target : sensor == null ? null : sensor.lockedTarget);
-        boolean hand = mount.manualAim && !def.pointDefense && def.mount != WeaponDef.MountType.LAUNCHER;
         if (hand) target = null;
         if (target != null && !mount.trigger && spared != null && spared.holds(ship, target)) target = null;
         if (target != mount.lastTarget) {
@@ -259,6 +272,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         }
         mount.engaged = target;
         mount.engagedFor += dt;
+        mount.rangedAge += dt;
         mount.sinceShot += dt;
         mount.beamOn = false;
         Track track = sensor == null ? null : sensor.trackFor(target);
@@ -283,8 +297,9 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         ProjectileDef round = def.projectile == null ? null : defs.projectiles.get(def.projectile);
         if (round == null) return;
         mount.solution.invalidate();
+        // Point defense picks its threats inside its range; any other gun aims as far as its round flies
         float maxTime = round.maxLifetime;
-        if (def.maxRange > 0f) maxTime = Math.min(maxTime, def.maxRange / round.muzzleSpeed);
+        if (hunting && def.maxRange > 0f) maxTime = Math.min(maxTime, def.maxRange / round.muzzleSpeed);
         if (hand) {
             aimByHand(mount, round.muzzleSpeed);
         } else if (track != null) {
@@ -313,7 +328,8 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         boolean atWill = !mount.trigger;
         boolean wantsFire = mount.trigger
                 ? (onTarget || straightDownTheBarrel(mount, track, hand))
-                : (mount.weaponsFree && !hand && onTarget && mount.engagedFor >= reactionTime(mount));
+                : (mount.weaponsFree && !hand && onTarget && mount.engagedFor >= reactionTime(mount)
+                        && (def.pointDefense || worthAShot(mount, target, muzzle.dst(mount.solution.interceptPoint))));
         mount.trigger = false;
         if (!wantsFire || !available || mount.cooldown > 0f) return;
         if (atWill && blocked(ship, target, muzzle, lineOfFire(mount, round, maxTime))) return;
@@ -355,7 +371,8 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
             track.positionAt(sensors.ageOf(track), estPos);
             dir.set(estPos).sub(muzzle);
             dist = dir.len();
-            if (dist > 1e-3f && dist <= reach) {
+            // Past its reach the beam still points at the target, and burns short of it on the trigger
+            if (dist > 1e-3f) {
                 mount.solution.aimDir.set(dir).scl(1f / dist);
                 mount.solution.interceptPoint.set(estPos);
                 mount.solution.timeToImpact = 0f;
@@ -380,7 +397,8 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         if (mount.beamTime <= 0f) {
             boolean wantsFire = mount.trigger
                     ? (onTarget || straightDownTheBarrel(mount, track, hand))
-                    : (mount.weaponsFree && !hand && onTarget && mount.engagedFor >= reactionTime(mount));
+                    : (mount.weaponsFree && !hand && onTarget && mount.engagedFor >= reactionTime(mount)
+                            && worthAShot(mount, target, dist));
             if (!wantsFire || mount.cooldown > 0f) return;
             if (!mount.trigger && blocked(ship, target, muzzle, estPos)) return;
             // A pulse only starts with power to start it.
@@ -566,9 +584,67 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
                 : REACTION_BASE + REACTION_GREEN * green;
     }
 
-    private float radiusOf(Entity target) {
+    /** Size of {@code target}, meters: its signature's, or a guess with none. */
+    public float radiusOf(Entity target) {
         SignatureComponent s = target == null ? null : signatureMapper.get(target);
         return s == null ? DEFAULT_RADIUS : s.radius;
+    }
+
+    /**
+     * How hard {@code target} can dodge, m/s^2: its strongest thrust over its mass, 0 out of fuel,
+     * {@link HitChance#DEFAULT_EVASION} with its drive unknown.
+     */
+    public float evasionOf(Entity target) {
+        ThrusterComponent t = target == null ? null : thrusterMapper.get(target);
+        PhysicsBodyComponent pb = target == null ? null : targetBodyMapper.get(target);
+        if (t == null || pb == null || pb.body == null) return HitChance.DEFAULT_EVASION;
+        if (t.isOutOfFuel()) return 0f;
+        float mass = PhysicsManager.getMass(pb.body);
+        if (mass <= 0f) return HitChance.DEFAULT_EVASION;
+        return Math.max(t.forwardThrust, Math.max(t.reverseThrust, t.lateralThrust)) / mass;
+    }
+
+    /** The round {@code def} fires, or null for a beam or launcher. */
+    public ProjectileDef roundOf(WeaponDef def) {
+        return def == null || def.projectile == null ? null : defs.projectiles.get(def.projectile);
+    }
+
+    /** How far a beam of {@code def} reaches, meters. */
+    public static float beamReach(WeaponDef def) {
+        return def.maxRange > 0f ? def.maxRange : DEFAULT_BEAM_RANGE;
+    }
+
+    /** The chance one shot of {@code mount}'s, by its gunner, hits {@code target} at {@code range}, dodging or holding still. */
+    public float hitChance(WeaponMountComponent mount, Entity target, float range, boolean dodging) {
+        WeaponDef def = mount.def;
+        return HitChance.perShot(def, roundOf(def), beamReach(def), mount.gunnerySkill, range,
+                radiusOf(target), dodging ? evasionOf(target) : 0f);
+    }
+
+    /**
+     * How far {@code mount} opens up on {@code target} firing at will: where a shot's chance on it
+     * dodging ({@link HitChance#rated}) falls to {@link HitChance#OPEN_FIRE}. Worked out once per target and kept for
+     * {@link #RANGE_REFRESH}, as the gunner's skill or the target's drive may change.
+     */
+    public float effectiveRange(WeaponMountComponent mount, Entity target) {
+        if (target == null) return 0f;
+        if (mount.rangedFor != target || mount.rangedAge > RANGE_REFRESH) {
+            mount.effectiveRange = openingRange(mount, target);
+            mount.rangedFor = target;
+            mount.rangedAge = 0f;
+        }
+        return mount.effectiveRange;
+    }
+
+    /** {@link #effectiveRange} worked out afresh, and not kept: for weighing a target before taking it. */
+    public float openingRange(WeaponMountComponent mount, Entity target) {
+        WeaponDef def = mount.def;
+        return HitChance.effectiveRange(def, roundOf(def), beamReach(def), mount.gunnerySkill,
+                radiusOf(target), evasionOf(target), HitChance.OPEN_FIRE);
+    }
+
+    private boolean worthAShot(WeaponMountComponent mount, Entity target, float range) {
+        return range <= effectiveRange(mount, target);
     }
 
     /** Turns the barrel toward body-frame angle {@code want} at the slew rate, inside the arc. */
