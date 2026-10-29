@@ -57,6 +57,8 @@ class YardAirTest {
         // Hole the hull beside two rooms, as the ace's rounds do, and let the cabin vent: the crew
         // stand by rather than patch it
         for (Entity e : world.crewCareer.ownCrew(game.player)) world.crew.crew(e).held = true;
+        // The player puts a suit on: the game no longer does it for them
+        world.crew.crew(game.avatar).setSuited(true);
         int holed = 0;
         for (int y = 0; y < grid.height && holed < 2; y++) {
             for (int x = 0; x < grid.width && holed < 2; x++) {

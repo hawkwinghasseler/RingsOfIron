@@ -449,6 +449,7 @@ class CrewCareerTest {
         List<Rescue.Result> rescues = new ArrayList<>();
         world.rescue.rescues.add((signal, r) -> rescues.add(r));
         assertNull(world.abandon.order(game.player));
+        PlayerToPod.board(world, game.player);
         assertTrue(runUntil(60, () -> !rescues.isEmpty()), "rescued");
         boolean found = false;
         for (Entity e : world.crewCareer.ownCrew(game.player)) {

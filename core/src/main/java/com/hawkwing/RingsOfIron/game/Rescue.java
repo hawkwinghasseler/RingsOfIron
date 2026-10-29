@@ -313,8 +313,8 @@ public class Rescue {
                     break;
                 }
             }
-            // Nowhere aboard: laid where the crew shelter, aboard the craft it is docked to, and
-            // walked home once the ship can be breathed again (round 10)
+            // Nowhere aboard: laid where the crew shelter, aboard the craft it is docked to (round 10).
+            // Going home again is the player's walk to make
             Entity shelter = to == null ? world.docking.dockedTo(ship) : null;
             int[] ashore = shelter == null ? null : safeTile(shelter);
             if (to == null && !floor.isEmpty()) to = floor.get(0);
@@ -323,7 +323,6 @@ public class Rescue {
             if (ashore != null) {
                 p.setShip(shelter);
                 p.setTile(ashore[0], ashore[1]);
-                world.captain.ashore(ship);
             } else {
                 p.setShip(ship);
                 if (to != null) p.setTile(to[0], to[1]);
