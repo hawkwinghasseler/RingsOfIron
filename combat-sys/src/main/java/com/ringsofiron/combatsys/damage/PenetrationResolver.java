@@ -303,13 +303,6 @@ public class PenetrationResolver {
     public static final float CREW_CRUSH_LETHAL = 5e6f;
     /** How far the kernel reaches, in widths ({@code spread}). */
     private static final float CRUSH_REACH = 3f;
-    /** A corner is pushed this many tiles inward per point of integrity a collision takes from the tiles round it. */
-    public static final float DENT_PER_LOSS = 1.5f;
-    /**
-     * A crushed tile is left this share of its depth: a column of crushed tiles folds up into
-     * this much of the room it took.
-     */
-    public static final float CRUSHED_THICKNESS = 0.2f;
 
     /** What one collision did to one ship. */
     public static class CrushResult {
@@ -342,14 +335,12 @@ public class PenetrationResolver {
     /**
      * A collision crushing into {@code ship} (combat-sys/Design.md section 5.12). {@code energy} J
      * spread from where the hulls met over the solid tiles joined to it, by a Gaussian
-     * {@code spread} tiles wide, so a light knock dents a patch of hull. Each tile takes its share
+     * {@code spread} tiles wide, so a light knock damages a patch of hull. Each tile takes its share
      * out of its hit points; a share bigger than what the tile has left pushes on into the tile
      * behind it along {@code localDir}, so a hard hit crushes a column inward. A tile at 0 that is
      * open to space on a side (the void, or a tile crushed before it) is crushed flat: it folds
      * into the tiles behind, no longer collides, and is open to space until sealed. The systems
-     * and crew on each tile take its energy too; whoever stands in a crushed tile is killed. The
-     * tile corners round each damaged tile are pushed inward ({@link ShipGridComponent#dent}) so
-     * the hull art shows the dent.
+     * and crew on each tile take its energy too; whoever stands in a crushed tile is killed.
      *
      * @param localPoint where the hulls met, body-local meters
      * @param localDir   unit direction into the ship, body-local
@@ -476,7 +467,6 @@ public class PenetrationResolver {
                 for (int k = 0; k < occupants.size; k++) injure(occupants.get(k), CRUSH_LETHAL_INJURY, HitCause.IMPACT, x, y);
             }
         }
-        dentCorners(dx, dy);
         end();
         return out;
     }
@@ -576,70 +566,6 @@ public class PenetrationResolver {
             }
         }
         tryIgnite(tile, x, y, DamageType.KINETIC, energy / FLOOR_RESISTANCE);
-    }
-
-    /**
-     * Pushes the corners round this call's tiles inward along ({@code dx}, {@code dy}): by
-     * {@link #DENT_PER_LOSS} for each point of integrity the tiles round a corner lost, and for
-     * a column of crushed tiles, by how much of it lies inward of the corner, so the column folds
-     * up to {@link #CRUSHED_THICKNESS} of a tile each against the structure behind.
-     */
-    private void dentCorners(float dx, float dy) {
-        int w = grid.width, h = grid.height;
-        for (int cy = 0; cy <= h; cy++) {
-            for (int cx = 0; cx <= w; cx++) {
-                float loss = 0f, folded = 0f;
-                int around = 0;
-                boolean touched = false;
-                for (int oy = -1; oy <= 0; oy++) {
-                    for (int ox = -1; ox <= 0; ox++) {
-                        int x = cx + ox, y = cy + oy;
-                        if (grid.inBounds(x, y) && crushVisited[pack(x, y)]) touched = true;
-                        around++;
-                        if (grid.inBounds(x, y)) loss += crushLoss[pack(x, y)];
-                        folded += crushedInward(x, y, dx, dy);
-                    }
-                }
-                if (!touched) continue;
-                float push = DENT_PER_LOSS * loss / around + (1f - CRUSHED_THICKNESS) * folded / around;
-                grid.dent(cx, cy, dx * push, dy * push);
-            }
-        }
-    }
-
-    /**
-     * How many tiles this call crushed from the middle of tile (x, y) inward along ({@code dx},
-     * {@code dy}), counting the tile itself, up to the first tile still standing. A void tile
-     * (or one off the grid) counts the column in front of it.
-     */
-    private int crushedInward(int x, int y, float dx, float dy) {
-        Tile start = grid.getTile(x, y);
-        if (start != null && !start.isVoid() && !crushNew[pack(x, y)]) return 0;
-        float fx = x + 0.5f, fy = y + 0.5f;
-        int count = 0, lastX = x, lastY = y;
-        boolean seen = start != null && !start.isVoid();
-        if (seen) count = 1;
-        for (int i = 0; i < 4 * (grid.width + grid.height); i++) {
-            fx += dx * 0.5f;
-            fy += dy * 0.5f;
-            int tx = MathUtils.floor(fx), ty = MathUtils.floor(fy);
-            if (tx == lastX && ty == lastY) continue;
-            lastX = tx;
-            lastY = ty;
-            Tile t = grid.getTile(tx, ty);
-            if (t == null) {
-                if (seen) break;
-                continue;
-            }
-            if (t.isVoid()) {
-                if (seen) break;
-                continue;
-            }
-            seen = true;
-            if (!crushNew[pack(tx, ty)]) break;
-            count++;
-        }
-        return count;
     }
 
     /** One tick of a beam on a ship. */

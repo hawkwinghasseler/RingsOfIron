@@ -1,7 +1,6 @@
 package com.hawkwing.RingsOfIron.art;
 
 import com.badlogic.ashley.core.Entity;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.math.MathUtils;
@@ -9,7 +8,6 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.hawkwing.RingsOfIron.render.HullShading;
 import com.hawkwing.RingsOfIron.render.RcsNozzles;
-import com.badlogic.gdx.utils.FloatArray;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.interiorgrid.EngineLayout;
@@ -59,19 +57,16 @@ public final class ExteriorArt {
         if (hull == null) return false;
         Vector2 p = PhysicsManager.getPosition(body, at);
         float px = p.x, py = p.y, angle = body.getAngle();
-        ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
-        if (!lit(batch, hull, grid, px, py, angle)) hull(batch, hull, art.info(hull), grid, px, py, angle);
+        if (!lit(batch, hull, px, py, angle)) hull(batch, hull, art.info(hull), px, py, angle);
         rcs(batch, craft, body);
         engines(batch, craft, body, angle);
         turrets(batch, craft, body);
         return true;
     }
 
-    /** The hull art {@code r} placed as {@code info} says, warped by its dents when it has any. */
-    private void hull(Batch batch, AtlasRegion r, ArtLibrary.Info info, ShipGridComponent grid, float px, float py, float angle) {
-        if (grid.dents == null || r.rotate || !dented(batch, r, info, grid, px, py, angle)) {
-            pivoted(batch, r, info, px, py, angle * MathUtils.radiansToDegrees, 1f, 1f);
-        }
+    /** The hull art {@code r} placed as {@code info} says. */
+    private void hull(Batch batch, AtlasRegion r, ArtLibrary.Info info, float px, float py, float angle) {
+        pivoted(batch, r, info, px, py, angle * MathUtils.radiansToDegrees, 1f, 1f);
     }
 
     /**
@@ -84,9 +79,9 @@ public final class ExteriorArt {
     }
 
     /** The hull lit by the game ({@link HullShading}) when its mode asks for it; false to draw the baked art. */
-    private boolean lit(Batch batch, AtlasRegion hull, ShipGridComponent grid, float px, float py, float angle) {
+    private boolean lit(Batch batch, AtlasRegion hull, float px, float py, float angle) {
         ArtLibrary.Info info = art.info(hull);
-        return shading.draw(batch, art, hull, px, py, angle, r -> hull(batch, r, info, grid, px, py, angle));
+        return shading.draw(batch, art, hull, px, py, angle, r -> hull(batch, r, info, px, py, angle));
     }
 
     /** The craft's RCS blocks on its hull; a block whose hull tile is gone is drawn wrecked. */
@@ -278,67 +273,6 @@ public final class ExteriorArt {
         // SVG y runs down, so the region's bottom edge is at body y = -(viewBox y + height)
         float bottom = top - h;
         batch.draw(r, x + left, y + bottom, -left, -bottom, w, h, length, width, degrees);
-    }
-
-    /** Tile corners this far out of place, in tiles, are drawn at their darkest. */
-    private static final float DARKEST_DENT = 1.5f;
-    /** How dark the most crumpled metal is drawn: this share of the art's own color. */
-    private static final float DENT_SHADE = 0.55f;
-    private float[] mesh = new float[0];
-    private final FloatArray breaksX = new FloatArray();
-    private final FloatArray breaksY = new FloatArray();
-
-    /**
-     * The hull art warped by the collisions it has taken ({@link ShipGridComponent#dents}): cut
-     * along the grid's tile lines into a mesh whose corners are pushed where the dents put them,
-     * and darkened where they are pushed furthest. Art past the grid's edge moves with the
-     * nearest edge corner. False if the art has no viewBox to place it by.
-     */
-    private boolean dented(Batch batch, AtlasRegion r, ArtLibrary.Info info, ShipGridComponent grid, float px, float py, float angle) {
-        if (info == null) return false;
-        float u = 1f / ArtLibrary.UNITS_PER_TILE;
-        float left = info.x * u, top = -info.y * u, w = info.w * u, h = info.h * u;
-        float right = left + w, bottom = top - h;
-        float s = grid.tileSize, ox = grid.gridOriginLocal.x, oy = grid.gridOriginLocal.y;
-        breaks(breaksX, left, right, ox, s, grid.width);
-        breaks(breaksY, bottom, top, oy, s, grid.height);
-        int quads = (breaksX.size - 1) * (breaksY.size - 1);
-        if (mesh.length < quads * 20) mesh = new float[quads * 20];
-        float cos = MathUtils.cos(angle), sin = MathUtils.sin(angle);
-        float u0 = r.getU(), v0 = r.getV(), du = r.getU2() - u0, dv = r.getV2() - v0;
-        Color tint = batch.getColor();
-        int k = 0;
-        for (int j = 0; j < breaksY.size - 1; j++) {
-            for (int i = 0; i < breaksX.size - 1; i++) {
-                // Round the cell: bottom-left, top-left, top-right, bottom-right
-                for (int c = 0; c < 4; c++) {
-                    float lx = breaksX.get(c >= 2 ? i + 1 : i), ly = breaksY.get(c == 1 || c == 2 ? j + 1 : j);
-                    int cx = MathUtils.clamp(Math.round((lx - ox) / s), 0, grid.width);
-                    int cy = MathUtils.clamp(Math.round((ly - oy) / s), 0, grid.height);
-                    float dx = grid.dentX(cx, cy), dy = grid.dentY(cx, cy);
-                    float bx = lx + dx * s, by = ly + dy * s;
-                    float shade = 1f - (1f - DENT_SHADE) * Math.min(1f, (float) Math.sqrt(dx * dx + dy * dy) / DARKEST_DENT);
-                    mesh[k++] = px + bx * cos - by * sin;
-                    mesh[k++] = py + bx * sin + by * cos;
-                    mesh[k++] = Color.toFloatBits(tint.r * shade, tint.g * shade, tint.b * shade, tint.a);
-                    mesh[k++] = u0 + (lx - left) / w * du;
-                    mesh[k++] = v0 + (top - ly) / h * dv;
-                }
-            }
-        }
-        batch.draw(r.getTexture(), mesh, 0, k);
-        return true;
-    }
-
-    /** {@code from}, every tile line of the grid strictly between, and {@code to}, in body meters. */
-    private static void breaks(FloatArray out, float from, float to, float origin, float tile, int tiles) {
-        out.clear();
-        out.add(from);
-        for (int i = 0; i <= tiles; i++) {
-            float at = origin + i * tile;
-            if (at > from + 1e-4f && at < to - 1e-4f) out.add(at);
-        }
-        out.add(to);
     }
 
     // ---- Combat: rounds, missiles, decoys, beams and explosions, in world meters ----

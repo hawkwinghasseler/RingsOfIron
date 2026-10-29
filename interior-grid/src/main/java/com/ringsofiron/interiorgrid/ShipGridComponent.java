@@ -90,12 +90,6 @@ public class ShipGridComponent implements Component {
      */
     public transient boolean hullShapeDirty = false;
     /**
-     * How far collisions have pushed each tile corner, in tiles: {x, y} for each of the
-     * (width + 1) x (height + 1) corners, row by row from the bottom-left corner of tile (0, 0).
-     * Null while the hull is undented. Exterior art is drawn warped by it; see {@link #dent}.
-     */
-    public float[] dents;
-    /**
      * Id of the chassis this grid was built from (chassis.toml), which names its exterior art;
      * null for a grid made in code.
      */
@@ -178,47 +172,6 @@ public class ShipGridComponent implements Component {
         return new int[]{tx, ty};
     }
 
-    // -----------------------------------------------------------------------
-    // Collision dents
-    // -----------------------------------------------------------------------
-
-    /** Most a corner can be pushed from where it was built, in tiles. */
-    public static final float MAX_DENT = 4f;
-
-    /**
-     * Pushes corner ({@code cx}, {@code cy}), 0..width by 0..height, by ({@code dx}, {@code dy})
-     * tiles, up to {@link #MAX_DENT} from where it was built.
-     */
-    public void dent(int cx, int cy, float dx, float dy) {
-        if (cx < 0 || cx > width || cy < 0 || cy > height || (dx == 0f && dy == 0f)) return;
-        if (dents == null) dents = new float[2 * (width + 1) * (height + 1)];
-        int i = 2 * (cy * (width + 1) + cx);
-        float x = dents[i] + dx, y = dents[i + 1] + dy;
-        float len = (float) Math.sqrt(x * x + y * y);
-        if (len > MAX_DENT) {
-            x *= MAX_DENT / len;
-            y *= MAX_DENT / len;
-        }
-        dents[i] = x;
-        dents[i + 1] = y;
-    }
-
-    /** How far corner ({@code cx}, {@code cy}) has been pushed along x, in tiles; clamped to the grid. */
-    public float dentX(int cx, int cy) {
-        return dents == null ? 0f : dents[dentIndex(cx, cy)];
-    }
-
-    /** How far corner ({@code cx}, {@code cy}) has been pushed along y, in tiles; clamped to the grid. */
-    public float dentY(int cx, int cy) {
-        return dents == null ? 0f : dents[dentIndex(cx, cy) + 1];
-    }
-
-    private int dentIndex(int cx, int cy) {
-        cx = Math.max(0, Math.min(width, cx));
-        cy = Math.max(0, Math.min(height, cy));
-        return 2 * (cy * (width + 1) + cx);
-    }
-
     /** Whether any tile has been crushed, so the hull collides on its layout less those tiles. */
     public boolean hasCrushedTiles() {
         for (int y = 0; y < height; y++) {
@@ -230,22 +183,13 @@ public class ShipGridComponent implements Component {
     }
 
     /**
-     * Rebuilds a crushed tile (as a yard does once it is whole): it collides again, and the
-     * corners around it go back where they were built.
+     * Rebuilds a crushed tile (as a yard does once it is whole): it collides again.
      */
     public void uncrush(int x, int y) {
         Tile t = getTile(x, y);
         if (t == null || !t.isCrushed()) return;
         t.setCrushed(false);
         hullShapeDirty = true;
-        if (dents == null) return;
-        for (int cy = y; cy <= y + 1; cy++) {
-            for (int cx = x; cx <= x + 1; cx++) {
-                int i = dentIndex(cx, cy);
-                dents[i] = 0f;
-                dents[i + 1] = 0f;
-            }
-        }
     }
 
     /**

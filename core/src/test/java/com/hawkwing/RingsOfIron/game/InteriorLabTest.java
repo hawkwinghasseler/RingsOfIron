@@ -198,11 +198,10 @@ class InteriorLabTest {
         assertTrue(rammed.contains("20 m/s"), rammed);
         run(3f);
         assertEquals(before, structure(), 1e-4f, "no damage");
-        assertTrue(grid().dents == null);
     }
 
     @Test
-    void aCorvetteWeightRamAtFiftyDentsSeveralTilesWithoutABreach() {
+    void aCorvetteWeightRamAtFiftyDamagesSeveralTilesWithoutABreach() {
         float before = structure();
         slowRam(195.1f, 50f);
         run(3f);

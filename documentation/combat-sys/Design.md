@@ -345,7 +345,7 @@ Ships are small and slow next to orbital speeds, but two hulls meeting at tens o
 
 A tile at integrity 0 that the crush reached and that has a side on the void, the grid's edge or a crushed tile, is **crushed** (`Tile.crushed`, see interior-grid): folded flat into the structure behind it. Crushing spreads inward along a column. A crushed tile is open to space, is in `DamageReport.breaches` (so the crew seal it) and `crushed`, kills whoever stands in it (250 injury, past the lethal wound), and leaves the hull's collision shape: `hullShapeDirty` is set and the system reshapes the body (`HullShape` less crushed tiles, mass kept) before the next step. The hulls end up inside each other's old outlines, and the next contact is on what is left.
 
-The tile corners round every tile the crush took integrity from are pushed inward (`ShipGridComponent.dents`): 1.5 tiles per point of integrity lost round a corner, averaged over its four tiles, and a crushed column folds up to 0.2 of a tile per crushed tile against the structure behind. The exterior hull art is drawn warped by it (see the game's `ExteriorArt`).
+The exterior hull art is not deformed by collisions; damage shows through the crushed tiles and breaches.
 
 **Jolt.** Each ship's speed changes by `J / m` in an instant. Everyone aboard takes `JOLT_WOUND_PER_MPS` (1.5) injury for each m/s of it past `JOLT_SAFE_SPEED` (10 m/s), as `IMPACT`.
 
@@ -355,7 +355,7 @@ The tile corners round every tile the crush took integrity from are pushed inwar
 |---|---|---|---|---|
 | 25 m/s and under | 0 | 0 | a bump | unhurt |
 | 30 m/s | 13 MJ | 1.3 MJ | 22 tiles scuffed, worst 4% | unhurt |
-| 50 m/s | 91 MJ | 9.1 MJ | 22 tiles dented, worst 30%, no breach | a scratch (12.5 m/s) |
+| 50 m/s | 91 MJ | 9.1 MJ | 22 tiles damaged, worst 30%, no breach | a scratch (12.5 m/s) |
 | 100 m/s | 457 MJ | 46 MJ | 3 tiles crushed, the bow wrecked round them, 9 tiles' worth lost | light wounds (37.5 m/s) |
 | 200 m/s | 1.9 GJ | 192 MJ | a third of the ship crushed (33 tiles) | critical (87.5 m/s) |
 

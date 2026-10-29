@@ -143,7 +143,6 @@ class CollisionDamageTest {
         Entity[] s = headOn(24f);
         for (Entity e : s) {
             assertEquals(0, damaged(grid(e)), "no tile scratched");
-            assertTrue(grid(e).dents == null, "no dent");
         }
         assertTrue(hits.isEmpty());
         // They bounced apart, as Box2D does
@@ -159,7 +158,6 @@ class CollisionDamageTest {
             assertEquals(0, crushed(g), "nothing crushed");
             float worst = worst(g);
             assertTrue(worst > 0.15f && worst < Tile.LEAK_START, "light: the worst tile lost " + worst);
-            assertTrue(g.dents != null, "the hull art shows a dent");
         }
         assertEquals(2, hits.size, "one hull hit on each");
         assertTrue(hits.first().ram);
@@ -173,7 +171,7 @@ class CollisionDamageTest {
         for (Entity e : s) {
             ShipGridComponent g = grid(e);
             assertTrue(crushed(g) >= 2, "a few tiles crushed: " + crushed(g));
-            assertTrue(damaged(g) >= 8, "and more round them dented: " + damaged(g));
+            assertTrue(damaged(g) >= 8, "and more round them damaged: " + damaged(g));
             assertFalse(g.hullShapeDirty, "the hull was reshaped");
         }
         // Where the bows met no longer collides: the other ship's nose sits inside the old hull line

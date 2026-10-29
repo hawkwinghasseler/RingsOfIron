@@ -257,6 +257,6 @@ The first pass was drawn by `tools/art/generate_svgs.py`, which keeps the many v
 - **Pipes and tanks** (2026-10-19): pipes are laid in tile centers or along tile edges like conduits, and tanks are placed in the grid, so both need art in this pack (see Life Support in `documentation/interior-grid/Design.md`).
 
 ## Open Questions
-- Hull lighting prototype (**Light and shadow**): keep it, and if so, light the turrets, engines and deck art the same way, and drop the baked hulls from the atlas. Today it costs three more regions per hull. Not handled yet: turrets and engines cast no shadow, shadows are not warped with a dented hull, and point lights cast no shadows.
+- Hull lighting prototype (**Light and shadow**): keep it, and if so, light the turrets, engines and deck art the same way, and drop the baked hulls from the atlas. Today it costs three more regions per hull. Not handled yet: turrets and engines cast no shadow, and point lights cast no shadows.
 - Walls more than one tile thick show a small notch at inner corners; the 47-tile blob set would remove it if thick walls become common.
 - Hull steel and composite armor are the only materials with art. New materials need their own look decided before they get files.

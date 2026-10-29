@@ -77,7 +77,6 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             json.writeObjectEnd();
         }
         json.writeArrayEnd();
-        if (grid.dents != null) json.writeValue("dents", grid.dents);
 
         json.writeArrayStart("mounts");
         for (MountFootprint m : grid.mounts) {
@@ -246,9 +245,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             t.shorted = v.getBoolean("short", false);
             t.crushed = v.getBoolean("crushed", false);
         }
-        // Saves from before collision dents have none
-        JsonValue dents = data.get("dents");
-        if (dents != null && dents.size == 2 * (w + 1) * (h + 1)) grid.dents = dents.asFloatArray();
+        // Older saves may still carry "dents" (collision hull warping, since removed); it is ignored
 
         readEdges(data.get("edgeH"), grid.edgeH);
         readEdges(data.get("edgeV"), grid.edgeV);
