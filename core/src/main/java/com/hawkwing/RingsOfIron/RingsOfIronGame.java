@@ -1289,14 +1289,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
     }
 
     /**
-     * Saves the game to {@code file} with a {@link SaveSummary} named {@code name} beside it for the
+     * Saves the game to {@code file}, opening with a {@link SaveSummary} named {@code name} for the
      * load list. Null when saved, otherwise what to tell the player.
      */
     public String save(FileHandle file, String name) {
         try {
-            String refused = game.quickSave(file);
+            String refused = game.quickSave(file, SaveSummary.of(game, name));
             if (refused != null) return "Can't save: " + refused;
-            SaveSummary.of(game, name).writeFor(file);
             return null;
         } catch (RuntimeException e) {
             Gdx.app.error("RingsOfIron", "Save failed", e);

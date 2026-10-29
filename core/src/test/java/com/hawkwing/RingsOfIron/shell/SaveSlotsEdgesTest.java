@@ -30,9 +30,8 @@ class SaveSlotsEdgesTest {
     void aBrokenSummaryFallsBackToTheFile(@TempDir Path dir) {
         SaveSlots slots = new SaveSlots(new FileHandle(dir.toFile()));
         FileHandle save = slots.fileFor("Broken");
-        save.writeString("{}", false);
+        TestSaves.write(save, "{ not json", "");
         save.file().setLastModified(42_000L);
-        SaveSummary.metaFor(save).writeString("{ not json", false);
 
         SaveSummary s = slots.latest();
         assertEquals("Broken", s.name, "named by its file");
@@ -40,7 +39,7 @@ class SaveSlotsEdgesTest {
         assertEquals("", s.gameTime(), "game time unknown");
         assertEquals(save.path(), s.file.path());
 
-        SaveSummary.metaFor(save).writeString("{name:\"\",gameSeconds:0}", false);
+        TestSaves.write(save, "{name:\"\",gameSeconds:0}", "");
         assertEquals("Broken", slots.latest().name, "an empty name falls back too");
         assertEquals("Day 0 00:00", slots.latest().gameTime());
     }
