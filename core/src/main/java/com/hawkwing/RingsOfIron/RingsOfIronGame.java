@@ -63,6 +63,7 @@ import com.hawkwing.RingsOfIron.render.SpaceSnow;
 import com.hawkwing.RingsOfIron.render.StarField;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.hawkwing.RingsOfIron.shell.RemappedInput;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
 import com.hawkwing.RingsOfIron.shell.SaveSummary;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -529,6 +530,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
         return Gdx.input.isKeyPressed(action.defaultKey);
     }
 
+    /** How far the action is held, 0 to 1: a key all or nothing, a gamepad stick as far as it is pushed. */
+    private static float amount(Action action) {
+        if (Gdx.input instanceof RemappedInput) return ((RemappedInput) Gdx.input).amount(action.defaultKey);
+        return held(action) ? 1f : 0f;
+    }
+
     private void handleInput(float delta) {
         if (devWindow.isTyping()) {
             // Keys typed into the developer console fly nothing and fire nothing
@@ -607,11 +614,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
             }
             if (just(Action.LIGHTS)) toggleLights();
             // Up the screen is W whichever way the craft the avatar is aboard is turned
-            float sx = 0f, sy = 0f;
-            if (held(Action.THRUST)) sy += 1f;
-            if (held(Action.REVERSE)) sy -= 1f;
-            if (held(Action.TURN_LEFT)) sx -= 1f;
-            if (held(Action.TURN_RIGHT)) sx += 1f;
+            // A pad's stick walks as fast as it is pushed
+            float sy = amount(Action.THRUST) - amount(Action.REVERSE);
+            float sx = amount(Action.TURN_RIGHT) - amount(Action.TURN_LEFT);
             Entity aboard = world.avatar.getAvatarShip();
             DeckView.walk(walker, aboard == null ? null : world.docking.bodyOf(aboard), sx, sy, WALK_SPEED);
             return;
@@ -620,12 +625,10 @@ public class RingsOfIronGame extends ApplicationAdapter {
         boolean helm = world.bridge.playerAtHelm();
         if (helm && controls != null) {
             if (just(Action.ROTATION_ASSIST)) controls.rotationAssist = !controls.rotationAssist;
-            if (held(Action.THRUST)) controls.forward += 1f;
-            if (held(Action.REVERSE)) controls.forward -= 1f;
-            if (held(Action.TURN_LEFT)) controls.turn += 1f;
-            if (held(Action.TURN_RIGHT)) controls.turn -= 1f;
-            if (held(Action.STRAFE_LEFT)) controls.strafe += 1f;
-            if (held(Action.STRAFE_RIGHT)) controls.strafe -= 1f;
+            // Keys fly at full thrust; a pad's sticks throttle the engines and RCS as far as they are pushed
+            controls.forward = amount(Action.THRUST) - amount(Action.REVERSE);
+            controls.turn = amount(Action.TURN_LEFT) - amount(Action.TURN_RIGHT);
+            controls.strafe = amount(Action.STRAFE_LEFT) - amount(Action.STRAFE_RIGHT);
         }
         if (just(Action.LIGHTS)) toggleLights();
         handAim();

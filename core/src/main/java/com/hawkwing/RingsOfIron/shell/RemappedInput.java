@@ -97,6 +97,12 @@ public class RemappedInput implements Input {
         return real.isKeyPressed(physical(key)) || pad.pressed(key);
     }
 
+    /** How far the game's key is held, 0 to 1: a key all or nothing, a gamepad stick partway. */
+    public float amount(int key) {
+        if (real.isKeyPressed(physical(key))) return 1f;
+        return pad.amount(key);
+    }
+
     @Override
     public boolean isKeyJustPressed(int key) {
         if (key == Keys.ANY_KEY) return real.isKeyJustPressed(key);
