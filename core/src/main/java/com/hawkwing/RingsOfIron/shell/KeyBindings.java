@@ -28,6 +28,7 @@ public final class KeyBindings {
         MISSILE("Launch missile", Input.Keys.R),
         DECOY("Decoy / force door", Input.Keys.F),
         SHIELDS("Raise / lower shields", Input.Keys.NUM_9),
+        SHIELD_TRIM("Shield trim: even, bow, port, stern, starboard", Input.Keys.NUM_8),
         CUT("Cut door / next burn", Input.Keys.B),
         NEXT_TARGET("Next target", Input.Keys.TAB),
         WARP_UP("Time warp up", Input.Keys.PERIOD),

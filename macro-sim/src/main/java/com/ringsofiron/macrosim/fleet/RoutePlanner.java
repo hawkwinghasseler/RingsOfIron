@@ -147,7 +147,8 @@ public final class RoutePlanner {
     /**
      * Out to a moon: a Hohmann transfer up to the moon's orbit, its start shifted so the ship passes
      * the moon at the station's orbit radius, on the side that leaves it circling the same way as the
-     * station. The shift is found by bisection on the signed periapsis.
+     * station. The shift is found by bisection on the signed periapsis, the burn at each start sized
+     * from the ship's state there ({@link #outBurn}).
      */
     private static Route up(RailsModel rails, String parent, StateVector ship, String moon, StateVector station,
                             double t, double minStart) {
@@ -157,7 +158,6 @@ public final class RoutePlanner {
         StateVector moonNow = rails.stateAt(moon, t, new StateVector());
         TransferPlanner.Plan toMoon = TransferPlanner.plan(muP, ship, moonNow, t, minStart);
         if (toMoon.burns.isEmpty()) return null;
-        double dv = toMoon.burns.get(0).prograde;
         double nominal = toMoon.burns.get(0).time;
         double flight = toMoon.arrivalTime - nominal;
         KeplerOrbit shipOrbit = KeplerOrbit.fromState(ship.x, ship.y, ship.vx, ship.vy, muP, t);
@@ -177,14 +177,14 @@ public final class RoutePlanner {
             for (int i = 0; i <= samples; i++) {
                 double start = center - window + 2 * window * i / samples;
                 if (start < minStart) continue;
-                Pass pass = passMoon(rails, moon, muC, soi, shipOrbit.withBurn(start, dv, 0), start, flight);
+                Pass pass = passMoon(rails, moon, muC, soi, outTo(muP, shipOrbit, start, aC), start, flight);
                 if (pass == null) {
                     prevStart = Double.NaN;
                     continue;
                 }
                 double miss = pass.signedPeriapsis - want;
                 if (!Double.isNaN(prevStart) && Math.signum(miss) != Math.signum(prevMiss)) {
-                    return bisectUp(rails, moon, muC, soi, shipOrbit, dv, flight, want, prevStart, prevMiss, start,
+                    return bisectUp(rails, moon, muP, muC, soi, shipOrbit, aC, flight, want, prevStart, prevMiss, start,
                             station.distance());
                 }
                 prevStart = start;
@@ -194,14 +194,14 @@ public final class RoutePlanner {
         return null;
     }
 
-    private static Route bisectUp(RailsModel rails, String moon, double muC, double soi, KeplerOrbit shipOrbit,
-                                  double dv, double flight, double want, double lo, double loMiss, double hi,
+    private static Route bisectUp(RailsModel rails, String moon, double muP, double muC, double soi, KeplerOrbit shipOrbit,
+                                  double aC, double flight, double want, double lo, double loMiss, double hi,
                                   double stationRadius) {
         Pass best = null;
         double bestStart = hi;
         for (int i = 0; i < 50; i++) {
             double mid = (lo + hi) / 2;
-            Pass pass = passMoon(rails, moon, muC, soi, shipOrbit.withBurn(mid, dv, 0), mid, flight);
+            Pass pass = passMoon(rails, moon, muC, soi, outTo(muP, shipOrbit, mid, aC), mid, flight);
             if (pass == null) break;
             best = pass;
             bestStart = mid;
@@ -214,12 +214,31 @@ public final class RoutePlanner {
             }
         }
         if (best == null) return null;
+        double dv = outBurn(muP, shipOrbit, bestStart, aC);
         List<Burn> burns = new ArrayList<>();
         burns.add(new Burn(bestStart, dv, 0));
         double vPeri = Math.sqrt(muC * (2 / best.orbit.periapsis() - 1 / best.orbit.a));
         double capture = vPeri - Math.sqrt(muC / best.orbit.periapsis());
         double arrival = nextPeriapsis(best.orbit, best.entryTime) + period(muC, stationRadius);
         return new Route(burns, moon, best.entryTime, arrival, dv + Math.abs(capture));
+    }
+
+    /**
+     * The prograde delta-v at {@code start} that puts the far end of {@code orbit} out at radius
+     * {@code to}. A ship off circular (just undocked, say) moves a few m/s faster or slower at each
+     * point of its orbit, and a burn sized for the circular orbit then puts the far end thousands of
+     * km short of or past the moon (Oct 2026: from a 0.0006 eccentric orbit no start passed the moon
+     * closer than 4,000 km, and no transfer was found).
+     */
+    static double outBurn(double mu, KeplerOrbit orbit, double start, double to) {
+        com.ringsofiron.orbital.math.StateVector s = orbit.stateAt(start);
+        double r = Math.hypot(s.x, s.y);
+        return Math.sqrt(mu * (2 / r - 2 / (r + to))) - s.speed();
+    }
+
+    /** {@code orbit} after {@link #outBurn} at {@code start}. */
+    private static KeplerOrbit outTo(double mu, KeplerOrbit orbit, double start, double to) {
+        return orbit.withBurn(start, outBurn(mu, orbit, start, to), 0);
     }
 
     private static final class Pass {

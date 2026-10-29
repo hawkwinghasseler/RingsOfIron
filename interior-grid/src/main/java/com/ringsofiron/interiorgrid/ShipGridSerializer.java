@@ -3,6 +3,7 @@ package com.ringsofiron.interiorgrid;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
+import com.ringsofiron.interiorgrid.crew.Suit;
 
 /**
  * Saves a {@link ShipGridComponent} as plain state and rebuilds it on load.
@@ -134,6 +135,19 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 json.writeValue("relax", k.relax);
                 json.writeValue("verb", k.verb);
                 if (k.flat) json.writeValue("flat", true);
+                if (k.holds != null) {
+                    json.writeValue("holds", k.holds.name());
+                    json.writeValue("capacity", k.capacity);
+                    json.writeArrayStart("suits");
+                    for (Suit suit : f.suits) {
+                        json.writeObjectStart();
+                        json.writeValue("kind", suit.kind.name());
+                        json.writeValue("air", suit.air);
+                        if (suit.jet > 0f) json.writeValue("jet", suit.jet);
+                        json.writeObjectEnd();
+                    }
+                    json.writeArrayEnd();
+                }
                 json.writeValue("x", f.tileX);
                 json.writeValue("y", f.tileY);
                 json.writeValue("ox", f.offsetX);
@@ -257,6 +271,8 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 }
             }
             grid.mounts.add(mount);
+            // Saves from before ports had inner hatches get them, open
+            if (mount.kind == MountFootprint.MountKind.PORT) DockingPortLayout.fitHatches(grid, mount);
         }
 
         // Saves from before RCS blocks have none
@@ -289,9 +305,20 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                     f.getFloat("width", 1f), f.getFloat("depth", 1f), f.getFloat("fullFuel", 0f), f.getDouble("price", 0),
                     use, f.getInt("seats", 1), f.getFloat("relax", 0f), f.getString("verb", null));
             k.flat = f.getBoolean("flat", false);
+            k.holds(f.getString("holds", null), f.getInt("capacity", 0));
             Furnishing placed = new Furnishing(k, f.getInt("x"), f.getInt("y"), f.getFloat("ox", 0f), f.getFloat("oy", 0f),
                     f.getFloat("rotation", 0f));
             placed.fuel = f.getFloat("fuel", k.fuel);
+            JsonValue suits = f.get("suits");
+            for (JsonValue v = suits == null ? null : suits.child; v != null; v = v.next) {
+                Suit.Kind kind;
+                try {
+                    kind = Suit.Kind.valueOf(v.getString("kind", "IVA"));
+                } catch (IllegalArgumentException e) {
+                    continue;
+                }
+                placed.suits.add(new Suit(kind, v.getFloat("air", 0f), v.getFloat("jet", 0f)));
+            }
             Furnishings.restore(grid, placed);
         }
 

@@ -72,8 +72,8 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
 
         // Local frame: +X is the nose, +Y is port.
         float localX = forward >= 0f ? forward * thruster.forwardThrust : forward * thruster.reverseThrust;
-        float localY = strafe * thruster.lateralThrust;
-        float torque = turn * thruster.maxTorque;
+        float localY = strafe * thruster.lateral(strafe);
+        float torque = turn * thruster.torque(turn);
 
         Body tow = control.towing;
         if (tow != null) {
@@ -84,9 +84,10 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
         }
 
         if (turn == 0f && control.rotationAssist && !control.assistHeld) {
-            // Torque that would cancel the current spin in one tick, within RCS limits.
+            // Torque that would cancel the current spin in one tick, within RCS limits and what a latch bears.
             float stopTorque = -inertia(body, tow) * body.getAngularVelocity() / deltaTime;
-            torque = MathUtils.clamp(stopTorque, -thruster.maxTorque, thruster.maxTorque);
+            torque = MathUtils.clamp(stopTorque, -Math.min(thruster.torque(-1f), control.assistLimit),
+                    Math.min(thruster.torque(1f), control.assistLimit));
         }
 
         float throttleScale = burnFuel(thruster, Vector2.len(localX, localY), Math.abs(torque), deltaTime);
@@ -94,8 +95,9 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
         localX *= throttleScale;
         localY *= throttleScale;
         torque *= throttleScale;
-        if (turn == 0f && thruster.maxTorque > 0f && Math.abs(body.getAngularVelocity()) > ASSIST_SPIN) {
-            control.assistTurn = Math.min(1f, Math.abs(torque) / thruster.maxTorque);
+        float most = thruster.torque(torque);
+        if (turn == 0f && most > 0f && Math.abs(body.getAngularVelocity()) > ASSIST_SPIN) {
+            control.assistTurn = Math.min(1f, Math.abs(torque) / most);
         }
 
         if (localX != 0f || localY != 0f) {

@@ -272,6 +272,7 @@ public final class ShipRefit {
             Furnishing back = Furnishing.at(f.type, (lx - to.gridOriginLocal.x) / to.tileSize, (ly - to.gridOriginLocal.y) / to.tileSize,
                     f.rotation);
             back.fuel = f.fuel;
+            back.suits.addAll(f.suits);
             if (Furnishings.place(to, back) == null) continue;
             paid += FurnishingStore.buyBack(f);
             sold++;

@@ -70,6 +70,12 @@ public final class DockingTuning {
      * impulse worth about two thirds of a second at the break load, as from a ram, not one round.
      */
     public static final float SHOCK_LIMIT = 40f;
+    /**
+     * Most torque a welded craft's rotation assist may use, as a share of the latch's break torque:
+     * it still stops the pair's spin, but never tears the latch doing it (Oct 2026: with RCS blocks
+     * at standard thrust the corvette's assist turned 2.9 MN*m against a Small latch that tears at 0.6).
+     */
+    public static final float ASSIST_SHARE = 0.5f;
     /** Relative speed the separation springs push the craft apart at on undock, m/s. */
     public static final float SEPARATION_SPEED = 0.3f;
 

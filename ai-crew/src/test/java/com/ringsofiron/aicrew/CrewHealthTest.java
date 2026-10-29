@@ -83,6 +83,7 @@ class CrewHealthTest {
     void withNowhereAboardSafeCrewPullTheirSuitsOn() {
         TestShips s = room();
         s.grid.getTile(9, 2).setIntegrity(0f);
+        s.locker(6, 3, 4);
         Entity hand = s.spawn(CrewRole.MARINE, 0, 7, 2);
         s.run(60f);
         assertTrue(s.c(hand).suited, s.c(hand).activity);
@@ -135,6 +136,8 @@ class CrewHealthTest {
         s.grid.getEdge(5, 2, com.ringsofiron.interiorgrid.Side.LEFT).bulkheadSealed = true;
         s.grid.gridDirty = true;
         s.run(0.1f);
+        // The medic's suit, to go through the door onto thin air
+        s.locker(1, 3, 2);
         Entity you = CrewFactory.spawnPlayer(s.crew, s.ship, "You", 8, 2);
         Entity medic = s.spawn(CrewRole.MEDIC, 0, 1, 2);
         s.crew.applyDamage(you, 80f, DamageCause.ASPHYXIATION);
@@ -151,6 +154,7 @@ class CrewHealthTest {
     @Test
     void withNoAirAboardARescuerPutsTheCasualtysSuitOn() {
         TestShips s = room();
+        s.locker(2, 3, 4);
         Entity you = CrewFactory.spawnPlayer(s.crew, s.ship, "You", 7, 2);
         Entity medic = s.spawn(CrewRole.MEDIC, 0, 2, 2);
         s.crew.applyDamage(you, 80f, DamageCause.ASPHYXIATION);
@@ -158,7 +162,7 @@ class CrewHealthTest {
         assertEquals(CrewState.UNCONSCIOUS, s.c(you).state);
         assertFalse(s.c(you).suited);
         thinAir(s, 7, 2, 0.28, 20f);
-        assertTrue(s.c(you).suited, "suited where they lay: nowhere aboard has air");
+        assertTrue(s.c(you).suited, "carried to the locker and suited there: nowhere aboard has air");
         assertTrue(s.c(medic).suited, "the medic suited up to go in");
         thinAir(s, 7, 2, 0.28, 60f);
         assertTrue(s.c(you).isAlive(), "breathing from the suit");

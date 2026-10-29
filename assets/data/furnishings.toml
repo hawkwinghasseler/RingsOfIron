@@ -14,11 +14,18 @@
 #   fuel    combustible mass, kg: what a fire on its tile burns (a tile of carpet is 1.5 kg, and burns
 #           out in a few minutes)
 #   price   credits new
-#   use     LOUNGE, GAME, MUSIC, SCREEN, EXERCISE, READING, or DECOR (the crew don't use it)
+#   use     LOUNGE, GAME, MUSIC, SCREEN, EXERCISE, READING, DECOR (the crew don't use it), or
+#           STORAGE (a suit locker: see holds)
 #   seats   how many crew can use it at once
 #   relax   morale an hour of use gives, 0 to 1
 #   verb    what a crew member using it is doing (the crew window shows it)
 #   flat    lies flat on the floor (a rug): other furnishings can stand on it
+#   holds   a suit locker's suits: "IVA" (pressure suits) or "EVA" (EVA suits with jetpacks).
+#           A suit not being worn hangs in a locker: the crew suit up at one and hang the suit
+#           back up after, and a locker fills the suits in it from the ship's oxygen (and an EVA
+#           suit's jetpack from its propellant). A locker comes from the yard full. Every craft is
+#           built with lockers for its crew (SuitOutfit in interior-grid): see documentation/eva.
+#   capacity  how many suits a locker holds
 
 [furnishing.couch]
 name = "Couch"
@@ -227,3 +234,28 @@ fuel = 2.0
 price = 300.0
 use = "DECOR"
 flat = true
+
+# Suit lockers. A pressure suit locker holds four IVA suits: put on in 5 s, worn inside the ship
+# against a breach. An EVA locker holds two EVA suits, each with 40 minutes of air, a tether and a
+# 200 m/s jetpack, for going outside; it stands inside a docking port, the ship's airlock.
+[furnishing.suit_locker]
+name = "Suit locker"
+art = "decor/suit_locker"
+width = 1.0
+depth = 0.5
+fuel = 1.0
+price = 2400.0
+use = "STORAGE"
+holds = "IVA"
+capacity = 4
+
+[furnishing.eva_locker]
+name = "EVA locker"
+art = "decor/eva_locker"
+width = 1.25
+depth = 0.6
+fuel = 1.5
+price = 12000.0
+use = "STORAGE"
+holds = "EVA"
+capacity = 2

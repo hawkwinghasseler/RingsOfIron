@@ -221,25 +221,41 @@ class FireControlTest {
     }
 
     @Test
-    void aTurretPulledOutOfReachHoldsRatherThanFiringDownItsBarrel() {
-        // The starter corvette's laser sits on its starboard beam; out of range, a pulled trigger
-        // used to burn its pulse off to the side
+    void aTurretTriggeredOutOfReachTurnsOntoItsTargetBeforeItFires() {
+        // The starter corvette's laser sits on its starboard beam; a pulled trigger used to burn its
+        // pulse off to the side. Its 3 km reach is a guide: past it, it turns onto the target and
+        // burns toward it
         Entity ship = spawnShip(0, 0, 0, 0);
         Entity target = spawnShip(5000, 0, 0, 0);
         ship.getComponent(SensorComponent.class).lockedTarget = target;
         WeaponMountComponent laser = arm(ship, "laser_mk1", -1.5f, -1.5f, -MathUtils.HALF_PI);
-        for (int i = 0; i < Math.round(3f / DT); i++) {
-            laser.trigger = true;
-            engine.update(DT);
-        }
-        assertEquals(0, laser.shotsFired, "out of its 3 km reach, the trigger holds");
-        body(target).setTransform(2000 * PhysicsManager.UNITS_PER_METER, 0f, 0f);
         for (int i = 0; i < Math.round(3f / DT) && laser.shotsFired == 0; i++) {
             laser.trigger = true;
             engine.update(DT);
         }
-        assertEquals(1, laser.shotsFired, "in reach, it burns once the barrel is on");
+        assertEquals(1, laser.shotsFired, "out of its reach, the trigger still fires");
         assertTrue(Math.abs(laser.beamDir.angleRad()) < 0.01f, "at the target, dead ahead: " + laser.beamDir);
+    }
+
+    @Test
+    void aGunFiringAtWillOpensUpInsideItsEffectiveRange() {
+        Entity ship = spawnShip(0, 0, 0, 0);
+        Entity target = spawnShip(30_000, 0, 0, 0);
+        ship.getComponent(SensorComponent.class).lockedTarget = target;
+        WeaponMountComponent gun = arm(ship, "railgun_mk1", 6f, 0f, 0f);
+        run(4f);
+        float reach = weaponControl.effectiveRange(gun, target);
+        assertTrue(reach > 3000f && reach < 30_000f, "a fair chance some km out: " + reach);
+        assertEquals(0, gun.shotsFired, "at 30 km the gunner holds");
+        for (int i = 0; i < 4 / DT; i++) {
+            gun.trigger = true;
+            engine.update(DT);
+        }
+        assertTrue(gun.shotsFired > 0, "the trigger fires at any range");
+        int pulled = gun.shotsFired;
+        body(target).setTransform((reach - 500f) * PhysicsManager.UNITS_PER_METER, 0f, 0f);
+        run(6f);
+        assertTrue(gun.shotsFired > pulled, "inside it the gunner opens up");
     }
 
     @Test

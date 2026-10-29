@@ -454,8 +454,22 @@ public final class DevConsole {
                     ? com.ringsofiron.combatsys.shields.ShieldModel.ensure(ship)
                     : com.ringsofiron.combatsys.shields.ShieldModel.raise(ship, on);
             if (c == null) return "No shield emitters aboard";
-            return String.format(java.util.Locale.ROOT, "Shields %s: %.0f kg out, %.0f stowed, %.0f scattered, %.0f adrift, %.0f lost of %.0f",
-                    c.raised ? "up" : "down", c.cloud(), c.stowed, c.scattered, c.adrift, c.lost, c.capacity);
+            return String.format(java.util.Locale.ROOT, "Shields %s, trimmed %s: %.0f kg out, %.0f stowed, %.0f scattered, %.0f adrift, %.0f lost of %.0f",
+                    c.raised ? "up" : "down", c.trim.label, c.cloud(), c.stowed, c.scattered, c.adrift, c.lost, c.capacity);
+        });
+        console.define("trim", "trim([side], [ship])", "leans the ship's resting shield cloud toward 'bow', 'port', 'stern' or"
+                + " 'starboard', or 'even'; trim() says which way it leans", decks, args -> {
+            com.ringsofiron.combatsys.shields.Trim side = null;
+            if (args.length > 0 && args[0] instanceof String) {
+                side = com.ringsofiron.combatsys.shields.Trim.named((String) args[0]);
+                if (side == null) throw new ConsoleException("trim(side): 'even', 'bow', 'port', 'stern' or 'starboard'");
+            }
+            Entity ship = shipTarget(args, side == null ? 0 : 1);
+            com.ringsofiron.combatsys.shields.ShieldCloudComponent c = side == null
+                    ? com.ringsofiron.combatsys.shields.ShieldModel.ensure(ship)
+                    : com.ringsofiron.combatsys.shields.ShieldModel.trim(ship, side);
+            if (c == null) return "No shield emitters aboard";
+            return "Shields trimmed " + c.trim.label;
         });
         console.define("doors", "doors([ship])", "seals every door aboard, or opens them all", decks, args ->
                 actions.tools.toggleDoors(shipTarget(args, 0)) ? "Doors sealed" : "Doors open");

@@ -53,6 +53,27 @@ public final class StationCrew {
 
     /** Gives {@code station} its yard's technicians, of {@code faction}. */
     public static List<Entity> spawnTechnicians(CrewService crew, Entity station, int faction) {
+        return spawnTechnicians(crew, station, faction, 0);
+    }
+
+    /**
+     * Takes on new technicians at {@code station} once every one its yard had has died, of the faction
+     * its board works for, so the yard can work again (Highport's two died aboard a gunship an ace had
+     * shredded, and its yard never worked again). None while any of them lives. Returns them.
+     */
+    public static List<Entity> replaceTechnicians(CrewService crew, Entity station) {
+        int hired = 0;
+        for (Entity e : crew.crewEntities()) {
+            CrewMemberComponent c = crew.crew(e);
+            if (c.role != CrewRole.TECHNICIAN || c.home != station) continue;
+            if (c.isAlive()) return new ArrayList<>();
+            hired++;
+        }
+        return spawnTechnicians(crew, station, CrewFactory.ensureBoard(station).faction, hired);
+    }
+
+    /** {@code first}: how many technicians the station has had, for the new ones' names. */
+    private static List<Entity> spawnTechnicians(CrewService crew, Entity station, int faction, int first) {
         List<Entity> out = new ArrayList<>();
         ShipGridComponent grid = station.getComponent(ShipGridComponent.class);
         CargoHoldComponent hold = station.getComponent(CargoHoldComponent.class);
@@ -62,7 +83,7 @@ public final class StationCrew {
         CrewFactory.ensureBoard(station).faction = faction;
         for (int i = 0; i < TECHNICIANS; i++) {
             int[] t = spots.get(spots.size() - 1 - i * spots.size() / (TECHNICIANS + 1));
-            Entity e = CrewFactory.spawn(crew, station, TECH_NAMES[i % TECH_NAMES.length], CrewRole.TECHNICIAN, faction, t[0], t[1]);
+            Entity e = CrewFactory.spawn(crew, station, TECH_NAMES[(first + i) % TECH_NAMES.length], CrewRole.TECHNICIAN, faction, t[0], t[1]);
             e.getComponent(CrewMemberComponent.class).setHome(station);
             out.add(e);
         }

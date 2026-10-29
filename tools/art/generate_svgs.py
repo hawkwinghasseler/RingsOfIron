@@ -3269,6 +3269,9 @@ def main():
     rcs()
     crew()
     crew_states()
+    # Crew in pressure and EVA suits, drawn by their own script
+    from suit_svgs import suits
+    suits()
     projectiles()
     blasts()
     dock_walkway()

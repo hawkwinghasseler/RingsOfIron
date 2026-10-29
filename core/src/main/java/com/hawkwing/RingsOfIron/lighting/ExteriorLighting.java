@@ -6,6 +6,7 @@ import box2dLight.PointLight;
 import box2dLight.RayHandler;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector2;
@@ -63,6 +64,7 @@ public final class ExteriorLighting implements Disposable {
     private final Array<PointLight> points = new Array<>();
     private final Array<ConeLight> cones = new Array<>();
     private int[] screen;
+    private FrameBuffer target;
 
     public ExteriorLighting(EmissiveLights art) {
         rig = new HullLightRig(art);
@@ -190,7 +192,7 @@ public final class ExteriorLighting implements Disposable {
     public void render(OrthographicCamera camera) {
         prepare();
         handler.setCombinedMatrix(camera);
-        handler.updateAndRender();
+        draw();
     }
 
     /**
@@ -200,7 +202,27 @@ public final class ExteriorLighting implements Disposable {
     public void render(Matrix4 view, float x, float y, float radius) {
         prepare();
         handler.setCombinedMatrix(view, x, y, 2f * radius, 2f * radius);
-        handler.updateAndRender();
+        draw();
+    }
+
+    /**
+     * Draws into {@code buffer} rather than the screen, for a view drawn off screen (a
+     * picture-in-picture bubble); null for the screen. Set {@link #setScreenArea} to its whole area.
+     */
+    public void setTarget(FrameBuffer buffer) {
+        target = buffer;
+    }
+
+    private void draw() {
+        if (target == null) {
+            handler.updateAndRender();
+            return;
+        }
+        handler.update();
+        handler.prepareRender();
+        // box2dlights leaves the screen bound once its light map is ready: back to the buffer to lay it over
+        target.begin();
+        handler.renderOnly();
     }
 
     private void prepare() {

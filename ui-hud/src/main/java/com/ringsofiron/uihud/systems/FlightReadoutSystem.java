@@ -18,11 +18,13 @@ import com.ringsofiron.uihud.ViewModeController;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
 import com.ringsofiron.uihud.providers.TargetingProvider;
+import com.ringsofiron.uihud.widgets.NavMarkers;
 
 import java.util.Locale;
 
 /**
- * Text readout in the top-left: speed, heading, view mode, locked target and orbit.
+ * Text readout in the top-left: speed, heading, the prograde markers' frame, view mode, locked
+ * target and orbit.
  * Values come from the player entity, the optional {@link PhysicsManager} (for the
  * floating origin's own velocity), and the optional targeting and orbit providers.
  */
@@ -33,7 +35,7 @@ public class FlightReadoutSystem extends EntitySystem {
     private static final ComponentMapper<PhysicsBodyComponent> BODIES = ComponentMapper.getFor(PhysicsBodyComponent.class);
     private static final ComponentMapper<HudMarkerComponent> MARKERS = ComponentMapper.getFor(HudMarkerComponent.class);
 
-    private final Label speed, heading, mode, target, targetDetail, orbit, orbitDetail;
+    private final Label speed, heading, frame, mode, target, targetDetail, orbit, orbitDetail;
     private final ViewModeController viewMode;
     private final Vector2 v = new Vector2();
     private final Vector2 tv = new Vector2();
@@ -49,6 +51,7 @@ public class FlightReadoutSystem extends EntitySystem {
         panel.add(new Label("FLIGHT", skin, "title")).left().row();
         speed = add(panel, skin, "default");
         heading = add(panel, skin, "default");
+        frame = add(panel, skin, "default");
         mode = add(panel, skin, "dim");
         panel.add(new Label("TARGET", skin, "title")).left().padTop(8f).row();
         target = add(panel, skin, "default");
@@ -96,10 +99,30 @@ public class FlightReadoutSystem extends EntitySystem {
             float hdg = ((t.rotation % 360f) + 360f) % 360f;
             set(heading, fmt("Heading  %8.1f deg", hdg));
         }
+        updateFrame(player);
         set(mode, "View     " + viewMode.getMode() + "   [V]");
 
         updateTarget(player);
         updateOrbit();
+    }
+
+    /**
+     * Which velocity the prograde markers follow: the orbit's, or the locked target's while one is
+     * locked, with the speed relative to it, in the target markers' colour.
+     */
+    private void updateFrame(Entity player) {
+        Entity target = player == null ? null : NavMarkerSystem.relativeTarget(targeting, player);
+        if (target == null) {
+            set(frame, "Markers  orbit");
+            frame.setColor(NavMarkers.PROGRADE);
+            return;
+        }
+        velocityOf(player, v);
+        velocityOf(target, tv);
+        float rel = v.dst(tv);
+        set(frame, rel < NavMarkerSystem.MIN_SPEED ? "Markers  TARGET  matched"
+                : fmt("Markers  TARGET  %.1f m/s", rel));
+        frame.setColor(NavMarkers.TARGET_PROGRADE);
     }
 
     private void updateTarget(Entity player) {

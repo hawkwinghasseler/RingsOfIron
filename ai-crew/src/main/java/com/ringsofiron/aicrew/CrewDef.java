@@ -64,7 +64,7 @@ public class CrewDef {
     public float lightHealTime = 1800f;
     /** Work and walking speed multiplier with a light wound. */
     public float woundedWorkFactor = 0.7f;
-    /** Work speed multiplier while suited. */
+    /** Work speed multiplier in a pressure suit. */
     public float suitWorkFactor = 0.8f;
     /** Care rate of a crew member who isn't a medic, before skill; a light wound is first aid, which anyone gives at a medic's rate. */
     public static final float UNTRAINED_CARE = 0.4f;
@@ -118,11 +118,15 @@ public class CrewDef {
     /** Seconds to lift a load off a bay, and to set one down. */
     public float loadTime = 2f;
 
-    /** Seconds of air a space suit holds; 0 for a crew member with no suit. */
+    /**
+     * Seconds of air a pressure (IVA) suit holds on them ({@code Suit.IVA_AIR}); 0 for a crew member who
+     * wears no suit. Suits hang in suit lockers when not worn (interior-grid's {@code SuitLockers}); an
+     * EVA suit's figures are {@code Suit}'s.
+     */
     public float suitAir = 600f;
-    /** Seconds to put a suit on; taking it off takes half as long. */
+    /** Seconds to put a pressure suit on; taking it off takes half as long. */
     public float suitTime = 5f;
-    /** Speed multiplier while suited. */
+    /** Speed multiplier in a pressure suit. */
     public float suitSpeedFactor = 0.85f;
     /**
      * Share of {@link #suitAir} left, out of breathable air, at which a crew member goes to fill
@@ -132,7 +136,7 @@ public class CrewDef {
     public float suitRefillShare = 0.3f;
     /** Seconds to fill a suit from the ship's oxygen, at an oxygen tank or working life support. */
     public float suitRefillTime = 20f;
-    /** Kilograms of oxygen a full suit takes. */
+    /** Kilograms of oxygen a full pressure suit takes. */
     public static final double SUIT_OXYGEN_KG = 0.05;
 
     /** Fire intensity removed per second when fighting a fire. */
@@ -147,6 +151,8 @@ public class CrewDef {
     public float resetTime = 5f;
     /** Seconds to shut a leaking tank's valve. */
     public float isolateTime = 4f;
+    /** Seconds out on EVA at an RCS block's wrecked hull tile framing it back up, at their own pace (an EVA suit's gloves slow it). */
+    public float rcsRepairTime = 40f;
 
     /** Tiles within which hostiles are noticed (also needs line of sight). */
     public float sightRange = 12f;

@@ -231,6 +231,13 @@ class DevConsoleTest {
         for (int i = 0; i < 300; i++) world.update(1f / 60f);
         assertTrue(cloud.raised, "raised again undocked");
         assertTrue(com.ringsofiron.combatsys.damage.Shields.up(world.getPlayer()), "and out round the hull");
+        dev.console.submit("trim 'bow'");
+        assertEquals("Shields trimmed bow", last());
+        assertSame(com.ringsofiron.combatsys.shields.Trim.BOW, cloud.trim);
+        dev.console.submit("trim()");
+        assertEquals("Shields trimmed bow", last());
+        dev.console.submit("trim 'aft'");
+        assertTrue(last().contains("'stern'"), "names the sides it takes: " + last());
         dev.console.submit("shields false");
         assertFalse(cloud.raised);
         assertFalse(cloud.loweredForDock, "the crew's order: docking won't raise it again");
