@@ -141,13 +141,14 @@ An engineer lifts the crate out of the hold, suits up and carries it out through
 hold on the hull, the pull on their line and what their jetpack's delta-v buys are all reckoned for
 430 kg. With it in hand their 600 N grip holds against only 1.4 m/s² of the hull pulling away. It
 trails behind them on its strap. At the ring tile nearest the hardpoint's turret mount they clip it
-on and work, unbolting the weapon there and bolting the new one on; the new one comes in at a used
-part's condition, as from a yard, and the old one comes off in a crate they carry back in and stow
-in the hold (`EvaTasks.StowCrate`).
+on and work, unbolting the weapon there and bolting the new one on. From the first of that work the
+weapon on the hardpoint is out of action (`WeaponMountComponent.underRefit`) until the new one is on,
+and a notice says so. The new one comes in at a used part's condition, as from a yard, and the old
+one comes off in a crate they carry back in and stow in the hold (`EvaTasks.StowCrate`).
 
 Called in before they reach the hardpoint, they bring the crate back in and stow it. Called away at
 the hardpoint, they leave it clipped on there, and the work done stands for whoever goes out next,
-straight out with nothing to fetch. While the crate is still inside the order can be called off;
+straight out with nothing to fetch; the hardpoint stays out of action till then. While the crate is still inside the order can be called off;
 one lost with whoever had it (left behind adrift) ends it. A save made with a crate in hand loads
 with it back in the hold. A yard's refit of the same hardpoint takes over an order whose part is
 still inside, and waits for one already out.
@@ -405,8 +406,10 @@ Bea has hold of her and brings her in on the line:
   clipped to their harness, so it moves with them and adds to their mass. A turret's base stands on
   the hull over its mount, a tile or two in from the hull's side, so it is worked from the nearest
   ring tile, as the other jobs are.
-- **The old weapon fires until the swap.** As at a yard, the weapon on a hardpoint stays in action
-  until the new one goes on.
+- **A hardpoint goes quiet once the work on it starts.** The weapon there is being unbolted, so
+  from the first of the work it doesn't fire, and an engineer called in part way leaves it so until
+  someone finishes the job. A field refit is seldom done mid-fight. A yard's refit still keeps the
+  old weapon in action until the swap; the ship is docked there.
 - **The exhaust is a cone of momentum**, not a gas simulation: enough to say where it is lethal,
   where it only pushes, and where a line burns, which is what the crew and the helm need.
 - **An RCS block's tile is plated like any holed hull tile.** Mending a block from outside used to
@@ -456,7 +459,9 @@ Bea has hold of her and brings her in on the line:
 - `JammedCollarsTest` (core): the corvette's jammed port won't arm until an engineer frees it from
   outside; held in from the crew window, nobody goes until one is sent.
 - `FieldRefitsTest` (core): a salvaged railgun mounted on the corvette's nose from outside and the
-  coilgun brought in to the hold; a save with the crate out in hand.
+  coilgun brought in to the hold; the coilgun in action while the crate comes out, out of action
+  from the first of the work and after a call in, and the railgun firing once on; a save with the
+  crate out in hand.
 - `SpacewalksTest` (core) also: one adrift with a marker over them and the notices, and one on the
   hull behind an engine warned of and killed by a burn.
 - `PlayerShipStatusTest` (core): the corvette's airlock pumped down for someone going out is no

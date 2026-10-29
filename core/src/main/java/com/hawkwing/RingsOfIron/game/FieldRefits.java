@@ -37,8 +37,10 @@ import java.util.Map;
  * with theirs: their hold on the hull, their line and their jetpack bear it), along the hull to the
  * ring tile nearest the hardpoint's turret mount, and clips it on there; then unbolts the weapon on
  * the hardpoint and bolts the new one on, {@link CrewDef#mountTime} for each tile of the mount at
- * their suited pace. Called away part way, they leave the crate clipped on and the work done
- * stands, for whoever goes out next. Mounted, the weapon is in at a used part's condition ({@link
+ * their suited pace. From the first of that work the weapon on the hardpoint is out of action
+ * ({@link WeaponMountComponent#underRefit}) until the new one is on. Called away part way, they
+ * leave the crate clipped on and the work done stands, for whoever goes out next, and the hardpoint
+ * stays out of action till then. Mounted, the weapon is in at a used part's condition ({@link
  * StationYard#USED_CONDITION}), and the one it replaced comes off in a crate they bring in to the
  * hold.
  *
@@ -141,9 +143,12 @@ public final class FieldRefits {
             case CARRIED:
                 return name + ": " + who + " is taking it out";
             case AT_MOUNT: {
-                MountFootprint m = footprint(mount(ship, hardpoint));
+                WeaponMountComponent mount = mount(ship, hardpoint);
+                MountFootprint m = footprint(mount);
                 float seconds = m == null ? 1f : MOUNT_TIME * m.width() * m.height();
-                return String.format(Locale.ROOT, "%s: at the hardpoint, %.0f%% mounted", name, 100f * Math.min(1f, o.worked / seconds));
+                String said = String.format(Locale.ROOT, "%s: at the hardpoint, %.0f%% mounted", name, 100f * Math.min(1f, o.worked / seconds));
+                return mount != null && mount.underRefit && mount.def != null
+                        ? said + "; the " + mount.def.displayName() + " is out of action" : said;
             }
             default: {
                 WeaponDef old = world.combatDefs.weapons.get(o.old);
@@ -175,6 +180,8 @@ public final class FieldRefits {
             Entity ship = ships.get(i);
             FieldRefitComponent refits = ship.getComponent(FieldRefitComponent.class);
             ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
+            WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);
+            for (int w = 0; weapons != null && w < weapons.mounts.size; w++) weapons.mounts.get(w).underRefit = false;
             for (Iterator<Order> it = refits.orders.iterator(); it.hasNext(); ) {
                 Order o = it.next();
                 Mount job = jobs.get(o);
@@ -184,6 +191,8 @@ public final class FieldRefits {
                     continue;
                 }
                 job.seen = true;
+                // Partly unbolted: out of action till the new one is on
+                if (o.stage == Stage.AT_MOUNT && o.worked > 0f) job.mount().underRefit = true;
                 MountFootprint m = footprint(job.mount());
                 if (board != null && job.isOpen()) board.post(new OutsideTask(CrewTask.Kind.MOUNT_PART, m.originX, m.originY, job));
             }
@@ -403,6 +412,13 @@ public final class FieldRefits {
 
         @Override
         public void work(Entity worker, float seconds) {
+            WeaponMountComponent mount = mount();
+            if (order.worked <= 0f && seconds > 0f && mount != null && mount.def != null && def() != null && ship == world.getPlayer()) {
+                CrewMemberComponent c = worker == null ? null : world.crew.crew(worker);
+                world.notices.post(String.format(Locale.ROOT, "%s is unbolting the %s on %s: it is out of action till the %s is on",
+                        c == null ? "The crew" : c.name, mount.def.displayName(), FieldRefits.where(mount), def().displayName()),
+                        NoticeLog.Kind.INFO);
+            }
             order.worked += seconds;
         }
 
@@ -414,6 +430,7 @@ public final class FieldRefits {
             if (system == null || def == null || !alive()) return;
             WeaponDef old = mount.def;
             mount.def = def;
+            mount.underRefit = false;
             mount.cooldown = def.cooldown;
             mount.beamTime = 0f;
             // A launcher comes out loaded, as from a yard

@@ -119,6 +119,48 @@ class FieldRefitsTest {
     }
 
     @Test
+    void theNoseGoesQuietOnceTheWorkOnItStartsAndStaysSoTillTheRailgunIsOn() {
+        String coilgun = noseMount().def.id;
+        assertTrue(world.weaponControl.available(noseMount()), "the coilgun ready to fire");
+        yard.orderSalvagedRefit(nose, RAILGUN);
+        boolean readyTillThen = true;
+        FieldRefitComponent.Order o = null;
+        for (int i = 0; i < 60 * 60 * 10 && (o == null || o.worked <= 0f); i++) {
+            run(1);
+            o = world.fieldRefits.order(game.player, nose);
+            if (o == null || o.worked <= 0f) readyTillThen &= world.weaponControl.available(noseMount());
+        }
+        assertNotNull(o);
+        assertTrue(o.worked > 0f, "the work at the hardpoint begun");
+        assertTrue(readyTillThen, "the coilgun in action while the railgun was fetched and carried out");
+        run(2);
+        assertEquals(coilgun, noseMount().def.id);
+        assertFalse(world.weaponControl.available(noseMount()), "the coilgun out of action once the work starts");
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.contains(" is unbolting the ")));
+        YardProvider.YardBoard board = new YardProvider.YardBoard();
+        yard.collect(board);
+        assertTrue(board.hardpoints.get(nose).progress.contains("out of action"), board.hardpoints.get(nose).progress);
+
+        // Called in part way: the work done stands, and the coilgun stays unbolted
+        Entity engineer = world.spacewalks.onEva().get(0);
+        assertEquals("Call in", world.spacewalks.orderFor(engineer));
+        world.spacewalks.order(engineer);
+        for (int i = 0; i < 60 * 5 && !world.spacewalks.onEva().isEmpty(); i++) run(60);
+        assertTrue(world.spacewalks.onEva().isEmpty(), "back in");
+        o = world.fieldRefits.order(game.player, nose);
+        assertEquals(FieldRefitComponent.Stage.AT_MOUNT, o.stage, "the crate left clipped on at the hardpoint");
+        assertEquals(coilgun, noseMount().def.id);
+        assertFalse(world.weaponControl.available(noseMount()), "still out of action with the work half done");
+
+        assertEquals("Let out", world.spacewalks.orderFor(engineer));
+        world.spacewalks.order(engineer);
+        for (int i = 0; i < 60 * 20 && !mounted(); i++) run(60);
+        assertTrue(mounted(), "the railgun on");
+        run(2);
+        assertTrue(world.weaponControl.available(noseMount()), "the railgun ready to fire");
+    }
+
+    @Test
     void aSaveWithTheCrateOutInHandLoadsWithItBackInTheHoldAndTheWorkGoesOn(@TempDir Path dir) {
         yard.orderSalvagedRefit(nose, RAILGUN);
         boolean out = false;
