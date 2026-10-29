@@ -204,7 +204,9 @@ public final class SceneLighting implements Disposable {
 
     /**
      * Draws the light map over what is on screen: ambient for a craft {@code withPower} or not,
-     * and the deck lights, shadowed by the walls. {@code camera} must not be rotated.
+     * and the deck lights, shadowed by the walls. {@code camera} must not be rotated. A stencil
+     * test the caller has set applies to the map's pass onto the screen, so it can be kept to the
+     * decks ({@code DeckRenderer}).
      */
     public void renderLights(OrthographicCamera camera, boolean withPower) {
         ensureHandler();
