@@ -49,7 +49,9 @@ class WorkProgressTest {
         c.showProgress(50f, 40f);
         assertEquals(1f, c.progress, 1e-6f);
         c.showProgress(1f, 5f);
-        assertTrue(c.progress < 0f, "a pressure suit's few seconds get no bar");
+        assertEquals(0.2f, c.progress, 1e-6f, "a pressure suit's five seconds get a bar");
+        c.showProgress(1f, 4f);
+        assertTrue(c.progress < 0f, "a job of a few seconds gets none");
         c.showProgress(1f, 0f);
         assertTrue(c.progress < 0f);
     }

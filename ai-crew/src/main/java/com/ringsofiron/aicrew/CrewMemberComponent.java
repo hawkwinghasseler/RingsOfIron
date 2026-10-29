@@ -121,7 +121,7 @@ public class CrewMemberComponent implements Component {
      * Seconds a job must take before it gets a bar: a quick one is over before a bar would tell the
      * player anything. Jobs that show themselves (a fire shrinking, cargo in hand) get none at all.
      */
-    public static final float PROGRESS_MIN_SECONDS = 10f;
+    public static final float PROGRESS_MIN_SECONDS = 5f;
 
     /**
      * Shows {@code done} of {@code of} seconds as the share of the job in hand done ({@link #progress});
