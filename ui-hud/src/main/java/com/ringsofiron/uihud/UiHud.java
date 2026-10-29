@@ -33,6 +33,7 @@ import com.ringsofiron.uihud.providers.TrafficMapProvider;
 import com.ringsofiron.uihud.systems.FlightReadoutSystem;
 import com.ringsofiron.uihud.systems.HudRenderSystem;
 import com.ringsofiron.uihud.systems.InteractPromptSystem;
+import com.ringsofiron.uihud.systems.CameraFollowSystem;
 import com.ringsofiron.uihud.systems.NavMarkerSystem;
 import com.ringsofiron.uihud.systems.RadarSystem;
 import com.ringsofiron.uihud.systems.WireframeSyncSystem;
@@ -112,6 +113,7 @@ public class UiHud implements Disposable {
     private final FlightReadoutSystem flightReadoutSystem;
     private final RadarSystem radarSystem;
     private final NavMarkerSystem navMarkerSystem;
+    private final CameraFollowSystem cameraFollowSystem = new CameraFollowSystem();
 
     public UiHud() {
         this(new ViewportManager());
@@ -416,6 +418,7 @@ public class UiHud implements Disposable {
 
     /** Adds the HUD systems to an engine. Their priorities run them after physics and game logic. */
     public void addTo(Engine engine) {
+        engine.addSystem(cameraFollowSystem);
         engine.addSystem(hudRenderSystem);
         engine.addSystem(wireframeSyncSystem);
         engine.addSystem(interactPromptSystem);
@@ -425,12 +428,21 @@ public class UiHud implements Disposable {
     }
 
     public void removeFrom(Engine engine) {
+        engine.removeSystem(cameraFollowSystem);
         engine.removeSystem(hudRenderSystem);
         engine.removeSystem(wireframeSyncSystem);
         engine.removeSystem(interactPromptSystem);
         engine.removeSystem(flightReadoutSystem);
         engine.removeSystem(radarSystem);
         engine.removeSystem(navMarkerSystem);
+    }
+
+    /**
+     * Centers the world camera; run in the frame pass before the HUD systems place anything on
+     * screen, so they project with the camera this frame is drawn with. See {@link CameraFollowSystem}.
+     */
+    public void setCameraFollow(Runnable follow) {
+        cameraFollowSystem.setFollow(follow);
     }
 
     public void setPhysics(PhysicsManager physics) {
