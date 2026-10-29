@@ -298,6 +298,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         art = ArtLibrary.load(game.content.assets);
         deckArt = new DeckArt(art);
         gameHud = new GameHud(world, hud);
+        // The camera on the ship before the HUD places its markers, not after (flickering prograde markers)
+        hud.setCameraFollow(this::follow);
         silencedMarkers = new com.hawkwing.RingsOfIron.game.SilencedMarkers(world);
         EmissiveLights emissive = EmissiveLights.load(assetsDir);
         lighting = new SceneLighting(emissive);
