@@ -78,6 +78,8 @@ missile = "harpoon"
 max_range = 15000.0
 sound = "evt_missile_launch"
 
+# Lasers are point defense too: firing at will, a beam burns down the most urgent incoming missile
+# in its reach before it turns to its target.
 [weapon.laser_mk1]
 name = "Laser Mk1"
 price = 45000.0
@@ -161,7 +163,8 @@ sound = "evt_railgun_heavy_fire"
 
 # Ion bolts break nothing: each one that lands stuns the systems within two tiles of where it
 # struck for 10 to 30 s, so a ship can be stopped and boarded without wrecking it. A shield
-# soaks a bolt as often as it takes its share of one.
+# soaks a bolt as often as it takes its share of one, but the bolt strips the cloud where it lands
+# (some 56 kg here), and stunned emitters drop their share: both come back, neither is lost.
 [weapon.ion_mk1]
 name = "Ion Cannon Mk1"
 price = 40000.0

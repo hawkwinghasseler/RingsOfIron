@@ -75,7 +75,10 @@ class ShieldBenchmark {
         double interceptEnergy;
         /** Joules the cloud took, and the joules that reached the hull past it. */
         double shielded, absorbed;
-        float cloudBefore, cloudAfter;
+        /** Cloud protecting the ship before, at its thinnest during, and after the volley, kg. */
+        float cloudBefore, cloudLow, cloudAfter;
+        /** Shield mass lost for good over the volley, kg. */
+        float massLost;
 
         double shieldShare() {
             return shielded + absorbed <= 0 ? 0 : shielded / (shielded + absorbed);
@@ -98,6 +101,8 @@ class ShieldBenchmark {
             Volley v = new Volley();
             ShieldCloudComponent cloud = ship.getComponent(ShieldCloudComponent.class);
             v.cloudBefore = cloud == null ? 0f : cloud.cloud();
+            v.cloudLow = v.cloudBefore;
+            float lostBefore = cloud == null ? 0f : cloud.lost;
             lab.world.combatEvents.hullHits.add((s, h) -> {
                 if (h.ship != ship) return;
                 v.shielded += h.shielded;
@@ -133,6 +138,7 @@ class ShieldBenchmark {
                     if (launcher && !defended) holdTurrets(ship);
                     lab.update(FRAME);
                     if (!launcher) v.stunnedPeak = Math.max(v.stunnedPeak, stunned(ship));
+                    if (cloud != null) v.cloudLow = Math.min(v.cloudLow, cloud.cloud());
                 }
             }
             for (float t = 0, settle = launcher ? MISSILE_SETTLE : SETTLE; t < settle; t += FRAME) {
@@ -148,6 +154,7 @@ class ShieldBenchmark {
                 else if (m.wound != com.ringsofiron.aicrew.Wound.NONE) v.wounded++;
             }
             v.cloudAfter = cloud == null ? 0f : cloud.cloud();
+            v.massLost = cloud == null ? 0f : cloud.lost - lostBefore;
             return v;
         } finally {
             lab.dispose();
@@ -203,8 +210,8 @@ class ShieldBenchmark {
     }
 
     private static String describe(Volley v) {
-        return String.format(Locale.ROOT, "%d shots, %d hits: hull %.2f tiles, systems %.2f, %d killed, %d wounded, %d stunned, %d shot down (%d point-defense hits, %.1f MJ), %d went off; cloud took %.0f%% (%.1f MJ), mass %.0f -> %.0f kg",
-                v.shots, v.hits, v.hullTaken, v.systemsTaken, v.killed, v.wounded, v.stunnedPeak, v.intercepted, v.interceptHits, v.interceptEnergy / 1e6, v.detonated, 100 * v.shieldShare(), v.shielded / 1e6, v.cloudBefore, v.cloudAfter);
+        return String.format(Locale.ROOT, "%d shots, %d hits: hull %.2f tiles, systems %.2f, %d killed, %d wounded, %d stunned, %d shot down (%d point-defense hits, %.1f MJ), %d went off; cloud took %.0f%% (%.1f MJ), mass %.0f -> %.0f (low %.0f, %.0f lost for good) kg",
+                v.shots, v.hits, v.hullTaken, v.systemsTaken, v.killed, v.wounded, v.stunnedPeak, v.intercepted, v.interceptHits, v.interceptEnergy / 1e6, v.detonated, 100 * v.shieldShare(), v.shielded / 1e6, v.cloudBefore, v.cloudAfter, v.cloudLow, v.massLost);
     }
 
     @Test
@@ -246,6 +253,10 @@ class ShieldBenchmark {
         for (String w : new String[]{"cannon_heavy", "railgun_heavy"}) {
             report.atLeast("Medium shields: " + w + " hull damage kept", up.get("reaver_pirate/" + w).hullTaken / down.get("reaver_pirate/" + w).hullTaken, 0.85);
         }
+        // Ion strips the cloud only into mass that comes back (Joe, Oct 2026)
+        double ionLost = 0;
+        for (String h : HULLS) for (String w : new String[]{"ion_mk1", "ion_disruptor"}) ionLost += up.get(h + "/" + w).massLost;
+        report.atMost("Shield mass ion volleys lose for good, kg", ionLost, 1.0);
         Volley torp = up.get("gunship_heavy/torpedo_tube");
         report.atLeast("Hull tiles per torpedo, Small shields up", torp.hullTaken / torp.shots, 1.0);
         report.note("table", "\n\n| Hull | Weapon | Hull taken up (tiles) | down | Up over down | Systems up | down | Killed up/down | Wounded up/down | Stunned up/down | Cloud took | Cloud kg |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n" + String.join("\n", table) + "\n\n|");

@@ -104,6 +104,8 @@ public class WeaponMountComponent implements Component {
     public final transient Vector2 beamEnd = new Vector2();
     /** What the beam touched last tick, to tell a new contact from a held one. Set by BeamSystem. */
     public transient Entity beamContact;
+    /** A beam turned on an incoming missile this tick: lasers are point defense too. */
+    public transient boolean defending;
 
     public WeaponMountComponent() {
     }

@@ -3,6 +3,7 @@ package com.ringsofiron.combatsys.shields;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.combatsys.defs.DamageType;
 import com.ringsofiron.combatsys.defs.ProjectileDef;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -61,6 +62,12 @@ public final class ShieldModel {
     static final float REACH_FLOOR = 0.2f;
     /** How hard a trim leans the resting layer: the side it leans to weighs 1 + this, the far side 1 - this. */
     public static final float TRIM_BIAS = 0.75f;
+    /**
+     * An ion bolt discharges the cloud it meets instead of throwing it: one kg for every this many
+     * joules it carries, out of a stretch {@link #ION_WIDTH} meters wide. The stripped mass is only
+     * scattered (it rejoins once recharged), never lost.
+     */
+    public static final float ION_STRIP_COST = 4_000f, ION_WIDTH = 3f;
 
     private ShieldModel() {
     }
@@ -97,6 +104,11 @@ public final class ShieldModel {
             cloud.refitIn = REFIT_EVERY;
         }
         float capacity = 0f, holding = 0f;
+        cloud.powerStunned = false;
+        for (Entity e : registry.subsystems) {
+            SubsystemComponent r = e == null ? null : e.getComponent(SubsystemComponent.class);
+            if (r != null && r.type == SubsystemComponent.SubsystemType.REACTOR && r.isStunned()) cloud.powerStunned = true;
+        }
         for (Entity e : registry.subsystems) {
             if (!isEmitter(e)) continue;
             SubsystemComponent s = e.getComponent(SubsystemComponent.class);
@@ -326,11 +338,15 @@ public final class ShieldModel {
      * Where the cloud's mass goes this tick, by what the working emitters can hold: lowered, it packs
      * into them and raised it comes back out, over {@link #STOW_TIME}; mass beyond their hold goes
      * adrift, is lost over {@link #ADRIFT_LIFE} and is pulled back in over {@link #ADRIFT_RECAPTURE}
-     * while they have room.
+     * while they have room. A stunned emitter, or one a stunned reactor cut off, keeps hold of its
+     * share, but only as scattered mass: out of the cloud, not protecting the ship, and back in
+     * once the stun wears off.
      */
     private static void flows(ShieldCloudComponent cloud, float dt) {
-        float held = 0f;
-        for (ShieldCloudComponent.Emitter em : cloud.emitters.values()) if (em.working) held += em.spec.capacity;
+        float held = held(cloud), numb = 0f;
+        for (com.badlogic.gdx.utils.ObjectMap.Entry<Entity, ShieldCloudComponent.Emitter> e : cloud.emitters) {
+            if (numb(cloud, e.key, e.value)) numb += e.value.spec.capacity;
+        }
         float rate = held / STOW_TIME * dt;
         if (!cloud.raised) {
             float move = Math.min(cloud.cloud(), rate);
@@ -340,8 +356,8 @@ public final class ShieldModel {
             float room = Math.max(0f, held - cloud.cloud() - cloud.scattered);
             cloud.stowed -= Math.min(cloud.stowed, Math.min(room, rate));
         }
-        // What the working emitters can't hold: the cloud first, then what is scattered
-        float over = cloud.cloud() + cloud.scattered - held;
+        // What the working and stunned emitters can't hold: the cloud first, then what is scattered
+        float over = cloud.cloud() + cloud.scattered - held - numb;
         if (over > 0f) {
             float fromCloud = Math.min(over, cloud.cloud());
             // Out of the stretches no working emitter holds first
@@ -349,8 +365,14 @@ public final class ShieldModel {
             float fromScattered = Math.min(over - fromCloud, cloud.scattered);
             cloud.scattered -= fromScattered;
             cloud.adrift += fromCloud + fromScattered;
-            float left = cloud.cloud(), in = cloud.concentrated();
-            if (in > left && in > 0f) for (ShieldCloudComponent.Region r : cloud.regions) r.mass *= left / in;
+            keepRegions(cloud);
+        }
+        // What only the stunned ones hold drops out of the cloud, there first, but is kept
+        float numbed = cloud.cloud() - held;
+        if (numbed > 0f) {
+            unanchor(cloud, numbed, Math.max(0f, cloud.cloud() - cloud.concentrated()));
+            cloud.scattered += numbed;
+            keepRegions(cloud);
         }
         if (cloud.adrift > 0f) {
             float gone = cloud.adrift * Math.min(1f, dt / ADRIFT_LIFE);
@@ -365,6 +387,29 @@ public final class ShieldModel {
                 else cloud.stowed += back;
             }
         }
+    }
+
+    /** What the working emitters can hold together, kg. */
+    private static float held(ShieldCloudComponent cloud) {
+        float held = 0f;
+        for (ShieldCloudComponent.Emitter em : cloud.emitters.values()) if (em.working) held += em.spec.capacity;
+        return held;
+    }
+
+    /**
+     * True if {@code em} would be working but for a stun: whole, switched on, not tripped or
+     * shorted, and stunned itself or cut off or starved while a reactor aboard is stunned.
+     */
+    private static boolean numb(ShieldCloudComponent cloud, Entity e, ShieldCloudComponent.Emitter em) {
+        SubsystemComponent s = e.getComponent(SubsystemComponent.class);
+        if (em.working || em.tripped || s == null || !s.switchedOn || s.shorted || s.isDisabled()) return false;
+        return s.isStunned() || (cloud.powerStunned && (!s.powered || em.starved));
+    }
+
+    /** Scales the regions down so they hold no more than the cloud. */
+    private static void keepRegions(ShieldCloudComponent cloud) {
+        float left = cloud.cloud(), in = cloud.concentrated();
+        if (in > left && in > 0f) for (ShieldCloudComponent.Region r : cloud.regions) r.mass *= left / in;
     }
 
     private static void updateRegions(ShieldCloudComponent cloud, Array<Threat> threats, float comX, float comY, float dt) {
@@ -442,7 +487,9 @@ public final class ShieldModel {
     }
 
     private static void payAndHeat(ShieldCloudComponent cloud, float dt) {
-        float pool = cloud.cloud();
+        // With the cloud all gone, it pays for what it would have to hold to bring it back in, so
+        // an emitter that can't pay doesn't flicker on with nothing to hold
+        float pool = cloud.cloud() > 0f ? cloud.cloud() : cloud.scattered + cloud.adrift;
         boolean recaptured = true;
         for (com.badlogic.gdx.utils.ObjectMap.Entry<Entity, ShieldCloudComponent.Emitter> e : cloud.emitters) {
             ShieldCloudComponent.Emitter em = e.value;
@@ -481,7 +528,8 @@ public final class ShieldModel {
             if (em == null || !em.working) cloud.regions.removeIndex(i);
         }
         float rejoin = recaptured ? REJOIN : 4f * REJOIN;
-        float back = cloud.scattered * Math.min(1f, dt / rejoin);
+        // It rejoins only as far as the working emitters have room (a stunned one's share waits)
+        float back = Math.min(cloud.scattered * Math.min(1f, dt / rejoin), Math.max(0f, held(cloud) - cloud.cloud()));
         cloud.scattered = Math.max(0f, cloud.scattered - back);
         // Lowered, it comes back into the emitters
         if (!cloud.raised) cloud.stowed += back;
@@ -509,9 +557,48 @@ public final class ShieldModel {
         if (!(sigma > 0f)) return 0f;
         float f = 1f - (float) Math.exp(-K * sigma / sectionalDensity(def, mass));
         float absorbed = f * energy;
+        if (def != null && def.damageType == DamageType.ION) {
+            strip(cloud, s, dirX, dirY, absorbed, energy / ION_STRIP_COST, comX, comY);
+            return absorbed;
+        }
         float plowed = plow(cloud, s, sigma);
         if (plowed > 0f) scatter(cloud, s, dirX, dirY, absorbed, plowed, comX, comY, false);
         return absorbed;
+    }
+
+    /**
+     * An ion bolt that took {@code absorbed} joules discharges up to {@code kg} of the cloud round
+     * {@code s}: out of the regions there first, then the resting layer, opening a hole. All of it
+     * is scattered, none lost, and the emitter answering there owes the charge to put it back.
+     */
+    private static void strip(ShieldCloudComponent cloud, float s, float dirX, float dirY, float absorbed, float kg,
+                              float comX, float comY) {
+        kg = Math.min(kg, cloud.cloud());
+        if (!(kg > 0f)) return;
+        float fromRegions = 0f;
+        for (ShieldCloudComponent.Region r : cloud.regions) {
+            float take = Math.min(Math.min(r.mass, kg - fromRegions),
+                    r.densityAt(cloud.perimeter.between(r.s, s)) * ION_WIDTH * ShieldCloudComponent.DEPTH);
+            if (!(take > 0f)) continue;
+            r.mass -= take;
+            fromRegions += take;
+        }
+        float base = Math.max(0f, cloud.cloud() - cloud.concentrated() - fromRegions);
+        float fromBase = Math.min(kg - fromRegions, base);
+        takeLine(cloud, s, fromBase, base);
+        float stripped = fromRegions + Math.max(0f, fromBase);
+        cloud.scattered += stripped;
+        Entity owner = owner(cloud, s, comX, comY, false, null);
+        ShieldCloudComponent.Emitter em = owner == null ? null : cloud.emitters.get(owner);
+        if (em != null) em.recaptureOwed += stripped * ION_STRIP_COST;
+        ShieldCloudComponent.Hit h = new ShieldCloudComponent.Hit();
+        h.s = s;
+        float len = (float) Math.sqrt(dirX * dirX + dirY * dirY);
+        h.dirX = len > 0f ? dirX / len : 0f;
+        h.dirY = len > 0f ? dirY / len : 0f;
+        h.absorbed = absorbed;
+        h.scattered = stripped;
+        cloud.log(h);
     }
 
     /**

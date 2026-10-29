@@ -48,6 +48,8 @@ public class ShieldCloudComponent implements Component {
     public boolean loweredForDock;
     /** Share of the emitters' capacity that is working now, 0 to 1. */
     public float holding;
+    /** A reactor aboard is stunned: emitters it cuts off keep their share as scattered mass. */
+    public transient boolean powerStunned;
     /** Which way the crew lean the resting cloud. */
     public Trim trim = Trim.EVEN;
 

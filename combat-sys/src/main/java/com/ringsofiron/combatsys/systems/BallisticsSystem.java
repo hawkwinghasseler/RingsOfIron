@@ -307,6 +307,52 @@ public class BallisticsSystem extends EntitySystem implements PhysicsManager.Ste
     }
 
     /**
+     * The first missile not launched by {@code owner} that the segment a-b (local meters) touches,
+     * or null; {@code at[0]} gets the fraction along it where it does.
+     */
+    public Entity missileOnLine(float ax, float ay, float bx, float by, Entity owner, float[] at) {
+        Entity best = null;
+        float bestT = 2f;
+        for (int i = 0; i < missiles.size(); i++) {
+            Entity me = missiles.get(i);
+            ProjectileComponent mp = projectileMapper.get(me);
+            MissileComponent m = missileMapper.get(me);
+            if (mp.spent || me.isScheduledForRemoval() || m.launcher == owner) continue;
+            float t = segmentCircle(ax - mp.pos.x, ay - mp.pos.y, bx - mp.pos.x, by - mp.pos.y, m.def.hitRadius);
+            if (t >= 0f && t < bestT) {
+                bestT = t;
+                best = me;
+            }
+        }
+        at[0] = bestT;
+        return best;
+    }
+
+    /**
+     * A beam of {@code shooter}'s burning {@code energy} joules into {@code missile} this tick at
+     * ({@code x}, {@code y}): off its hit points, and at zero it breaks up. Publishes an intercept
+     * when the beam first touches it ({@code firstContact}) and when it breaks up.
+     */
+    public void burnMissile(Entity missile, Entity shooter, float energy, float x, float y, boolean firstContact) {
+        ProjectileComponent mp = projectileMapper.get(missile);
+        MissileComponent m = missileMapper.get(missile);
+        if (mp == null || m == null || mp.spent) return;
+        m.hitPoints -= energy;
+        boolean destroyed = m.hitPoints <= 0f;
+        if (destroyed) spend(missile, mp);
+        if (!firstContact && !destroyed) return;
+        InterceptEvent hit = new InterceptEvent();
+        hit.missile = missile;
+        hit.shooter = shooter;
+        hit.point.set(x, y);
+        hit.energy = energy;
+        hit.destroyed = destroyed;
+        hit.beam = true;
+        hit.tick = events.tick;
+        events.intercepts.dispatch(hit);
+    }
+
+    /**
      * Earliest fraction in [0, 1] at which the segment a-b enters the circle of radius r at the
      * origin, 0 if it starts inside, or -1 if it misses.
      */

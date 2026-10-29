@@ -136,6 +136,7 @@ How much the particle cloud (combat-sys Design.md 5.11) takes off each weapon. E
 | Medium shields: chaingun and coilgun hull damage kept | at most half |
 | Medium shields: heavy cannon and heavy railgun hull damage kept | at least 0.85 |
 | Hull tiles per torpedo, Small shields up | at least 1 |
+| Shield mass ion volleys lose for good | at most 1 kg (ion strips the cloud only into mass that comes back) |
 | Torpedoes that get through the gunship's flak | at least half |
 | Lances shot down, over darts shot down | at most 1 |
 
@@ -145,7 +146,8 @@ Fit the frigate (or a later save's gunship) with each weapon and fight a destroy
 
 - [ ] Against a shielded ship the chaingun and coilgun feel blunted, and you reach for a heavy gun.
 - [ ] Sustained heavy fire visibly strips a Small shield, and it stays down for a while.
-- [ ] Ion fire against a shielded ship does little until the cloud is down; note whether that feels fair or makes ion useless.
+- [ ] Ion fire strips the cloud where it lands (and a stunned emitter drops its share) but none of it is lost: watch the cloud thin under ion fire and come back within some seconds of it stopping. Note whether ion then opens the way for the other guns, and whether the stuns still feel too rare against a shielded ship.
+- [ ] Lasers turn on incoming missiles before their target when firing at will. Note how often a laser wastes its pulse on a dart, and whether it saves you from a torpedo.
 - [ ] A torpedo that gets through feels like a big hit, and from up close it bounces off.
 - [ ] Lances get through point defense more often than darts.
 - [ ] The breaching cannon wounds more crew in a pressurized ship than in a vented one.
