@@ -38,7 +38,11 @@ public final class RcsNozzles {
 
     /** Each of {@code ship}'s RCS blocks, at {@code body}'s pose. */
     public void blocks(Entity ship, Body body, Blocks out) {
-        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
+        blocks(ship.getComponent(ShipGridComponent.class), body, out);
+    }
+
+    /** Each RCS block on {@code grid}'s layout, at {@code body}'s pose; none for a null grid. */
+    public void blocks(ShipGridComponent grid, Body body, Blocks out) {
         if (grid == null || body == null) return;
         pose(body);
         for (RcsThruster r : grid.rcsThrusters) {

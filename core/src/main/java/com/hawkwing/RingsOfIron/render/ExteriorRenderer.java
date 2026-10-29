@@ -132,7 +132,11 @@ public final class ExteriorRenderer implements Disposable {
         this.shapes = shapes;
         this.batch = batch;
         this.art = art;
-        this.exteriorArt = new ExteriorArt(art);
+        // Freighters, with no grid, wear the Hauler's hull
+        this.exteriorArt = new ExteriorArt(art).setStandIns(craft -> {
+            GameWorld w = world.get();
+            return w == null ? null : w.freighterHullOf(craft);
+        });
         this.flames = new ThrusterFlames(exteriorArt);
         this.lighting = lighting;
         this.hullArt = hullArt;
@@ -257,12 +261,15 @@ public final class ExteriorRenderer implements Disposable {
         // collar carriage and head carry the craft as owner too
         for (Body body : bodies) {
             Entity e = owner(body);
-            ShipGridComponent hull = e == null ? null : e.getComponent(ShipGridComponent.class);
+            ShipGridComponent hull = exteriorArt.gridOf(e);
             if (hull == null || w.docking.bodyOf(e) != body) continue;
             Vector2 at = PhysicsManager.getPosition(body, tmp2);
-            String chassis = hullArt == null ? null : hullArt.chassisOf(e);
-            if (lighting != null && chassis != null) lighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
-            if (lit && chassis != null) exteriorLighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
+            // A craft wearing a hull for want of a grid of its own shows all that hull's lights:
+            // it has no systems to run them or go dark
+            ShipGridComponent own = e.getComponent(ShipGridComponent.class);
+            String chassis = hullArt == null ? null : own == null ? hull.chassis : hullArt.chassisOf(e);
+            if (lighting != null && chassis != null) lighting.addHull(chassis, own, at.x, at.y, body.getAngle());
+            if (lit && chassis != null) exteriorLighting.addHull(chassis, own, at.x, at.y, body.getAngle());
             flames.collect(e, body);
             shields.collect(e, body, lit ? exteriorLighting : null);
             hulls.add(body);

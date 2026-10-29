@@ -14,13 +14,17 @@ import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
  * macro-sim's bubble over physics-exterior, as the game runs it. The anchor's parent is read live
  * from physics (it changes at SOI crossings), and a body coming in gets back the shape it had when the
  * bubble last collapsed; else a ship with a layout (pirates, patrols) gets a body from {@link #ships},
- * and anything else a default freighter hull.
+ * as does a freighter ({@link FreighterHull}), and anything else the default hull.
  */
 public class GameBubbleGateway extends PhysicsBubbleGateway {
     /** Default hull, 40 m by 12 m, nose along +X. */
     static final float[] DEFAULT_HULL = {-20f, -6f, 20f, -6f, 20f, 6f, -20f, 6f};
     /** kg per square meter: about 50 t for the default hull. */
     static final float DEFAULT_HULL_DENSITY = 104f;
+    /** What the default hull weighs, kg; freighters weigh it too, on their own hull. */
+    static final float DEFAULT_HULL_MASS = 40f * 12f * DEFAULT_HULL_DENSITY;
+    /** The default hull's moment of inertia about its middle, kg m^2: a 40 m by 12 m plate. */
+    static final float DEFAULT_HULL_INERTIA = DEFAULT_HULL_MASS * (40f * 40f + 12f * 12f) / 12f;
 
     /** Builds a ship's body from its own layout, or returns null if it has none. */
     public interface ShipBodies {
@@ -54,7 +58,7 @@ public class GameBubbleGateway extends PhysicsBubbleGateway {
         Entity entity = uuids.getEntity(uuid);
         BodyShapeComponent shape = entity.getComponent(BodyShapeComponent.class);
         entity.getComponent(KinematicTransientComponent.class).mass =
-                shape != null ? shape.mass : polygonArea(DEFAULT_HULL) * DEFAULT_HULL_DENSITY;
+                shape != null ? shape.mass : DEFAULT_HULL_MASS;
     }
 
     @Override
@@ -75,13 +79,27 @@ public class GameBubbleGateway extends PhysicsBubbleGateway {
             BodyShapeComponent shape = entity.getComponent(BodyShapeComponent.class);
             if (shape != null) {
                 entity.remove(BodyShapeComponent.class);
-                return shape.build(physics, entity, 0f, 0f, 0f);
+                // A freighter saved on the old box comes back on its own hull
+                if (!isDefaultHull(shape)) return shape.build(physics, entity, 0f, 0f, 0f);
             }
             Body ship = ships == null ? null : ships.build(entity);
             if (ship != null) return ship;
             return physics.createPolygonBody(entity, 0f, 0f, 0f, DEFAULT_HULL, DEFAULT_HULL_DENSITY,
                     CollisionCategories.CATEGORY_SHIP, CollisionCategories.MASK_ALL);
         }
+    }
+
+    /**
+     * True if {@code shape} is the default hull, as a body that left the bubble on it saved it: one
+     * box its size, less the skin physics keeps its fixtures in by.
+     */
+    static boolean isDefaultHull(BodyShapeComponent shape) {
+        if (shape.fixtures.length != 1 || shape.fixtures[0].vertices.length != DEFAULT_HULL.length) return false;
+        float[] v = shape.fixtures[0].vertices;
+        for (int i = 0; i < v.length; i += 2) {
+            if (Math.abs(Math.abs(v[i]) - 20f) > 0.25f || Math.abs(Math.abs(v[i + 1]) - 6f) > 0.25f) return false;
+        }
+        return true;
     }
 
     /** Area of a simple polygon given as x, y pairs, in square meters. */
