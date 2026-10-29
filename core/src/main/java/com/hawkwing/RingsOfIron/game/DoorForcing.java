@@ -191,6 +191,12 @@ public class DoorForcing extends EntitySystem {
         public String what() {
             return how.doing + " the door of " + PlayerDocking.name(craft);
         }
+
+        @Override
+        public float progress(Entity member) {
+            Job j = jobOf(member);
+            return j == null || j.craft != craft || j.port != port ? -1f : j.progress();
+        }
     }
 
     /** The job {@code member} is at, or null. */
@@ -204,8 +210,16 @@ public class DoorForcing extends EntitySystem {
     /** Stops {@code member}'s work, if any. */
     public void cancel(Entity member) {
         for (int i = jobs.size - 1; i >= 0; i--) {
-            if (jobs.get(i).crew == member) jobs.removeIndex(i);
+            if (jobs.get(i).crew != member) continue;
+            jobs.removeIndex(i);
+            showProgress(member, -1f);
         }
+    }
+
+    /** Sets the progress bar over {@code member} ({@link CrewMemberComponent#progress}). */
+    private void showProgress(Entity member, float progress) {
+        CrewMemberComponent c = crew.crew(member);
+        if (c != null) c.progress = progress;
     }
 
     @Override
@@ -219,11 +233,15 @@ public class DoorForcing extends EntitySystem {
             if (stop != null) {
                 lastOutcome = stop;
                 jobs.removeIndex(i);
+                showProgress(j.crew, -1f);
                 continue;
             }
             j.done += dt;
+            // The player's figure has no tree to show it: the bar over whoever is at it is set here
+            showProgress(j.crew, j.progress());
             if (j.done < j.method.seconds) continue;
             jobs.removeIndex(i);
+            showProgress(j.crew, -1f);
             String refused = docking.forceDoor(crew.homeOf(j.crew), j.craft, j.port, j.method);
             lastOutcome = refused != null ? "Couldn't " + j.method.verb + " the door: " + refused
                     : "The door of " + PlayerDocking.name(j.craft) + " is forced open";

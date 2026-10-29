@@ -81,6 +81,8 @@ public final class CaptainSafety {
     /** What the figure is doing at a suit locker, and the locker. */
     private enum AtLocker { NONE, ON, OFF }
     private AtLocker atLocker = AtLocker.NONE;
+    /** Whether the bar over the figure is this class's ({@link #showProgress}). */
+    private boolean showing;
     private Furnishing locker;
     /** Told this spell that there is no suit within reach. */
     private boolean toldNoSuit;
@@ -308,6 +310,33 @@ public final class CaptainSafety {
 
     /** Once a sim tick ({@link GameWorld#tickManagers}). */
     public void update() {
+        step();
+        showProgress();
+    }
+
+    /**
+     * The bar over the figure while it puts a suit on, takes one off or fills one: it has no tree to
+     * set it ({@link CrewMemberComponent#progress}). Cleared only when this set it, so it doesn't
+     * wipe the bar {@link DoorForcing} sets.
+     */
+    private void showProgress() {
+        Entity e = avatar();
+        CrewMemberComponent c = e == null ? null : world.crew.crew(e);
+        if (c == null) return;
+        if (atLocker != AtLocker.NONE && locker != null) {
+            Suit.Kind kind = atLocker == AtLocker.ON ? locker.type.holds : c.suitKind;
+            c.showProgress(suiting, c.suitTime(kind) * (atLocker == AtLocker.ON ? 1f : 0.5f));
+            showing = true;
+        } else if (filling > 0f) {
+            c.showProgress(filling, c.def.suitRefillTime);
+            showing = true;
+        } else if (showing) {
+            c.progress = -1f;
+            showing = false;
+        }
+    }
+
+    private void step() {
         double now = world.engine.getSimSeconds();
         // A time skip (a tow home, a jump in warp) is not time spent putting a suit on or standing calm
         float dt = Double.isNaN(last) ? 0f : (float) Math.min(MAX_STEP, Math.max(0, now - last));

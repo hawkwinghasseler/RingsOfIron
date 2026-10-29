@@ -416,6 +416,7 @@ public final class DeckRenderer {
         Gdx.gl.glDisable(GL20.GL_BLEND);
         if (!lit) {
             glowingImpacts(decks, camera);
+            progressBars(decks, camera, false);
             return;
         }
         // The light map over the decks, dark when the craft aboard has no power; then the glow on top
@@ -436,6 +437,7 @@ public final class DeckRenderer {
             batch.setTransformMatrix(IDENTITY);
         }
         lighting.renderGlow(batch, camera, 0f);
+        progressBars(decks, camera, false);
     }
 
     /**
@@ -545,6 +547,53 @@ public final class DeckRenderer {
         }
         shapes.identity();
         Gdx.gl.glDisable(GL20.GL_BLEND);
+        progressBars(outside, camera, true);
+    }
+
+    /**
+     * A bar over each crew member aboard {@code ships} at a timed job ({@link CrewMemberComponent#progress}):
+     * repairing, sealing, forcing a door, getting into a suit. Over the light map so it reads in the
+     * dark, and level on the screen however the craft turns. {@code outsideOnly} keeps to those out on EVA.
+     */
+    private void progressBars(Array<Entity> ships, OrthographicCamera camera, boolean outsideOnly) {
+        GameWorld current = world.get();
+        if (current == null || ships.size == 0) return;
+        // Level on the screen: the bar's long side along the camera's right, raised along its up
+        float upX = camera.up.x, upY = camera.up.y;
+        float degrees = MathUtils.atan2(-upX, upY) * MathUtils.radiansToDegrees;
+        // World units to a screen pixel, so the bar keeps a readable size zoomed out
+        float pixel = Gdx.graphics.getWidth() > 0 ? camera.zoom * camera.viewportWidth / Gdx.graphics.getWidth() : 0f;
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        shapes.setProjectionMatrix(camera.combined);
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        for (Entity ship : ships) {
+            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+            if (g == null || !pose.of(ship, at, angle)) continue;
+            float cos = MathUtils.cos(angle[0]), sin = MathUtils.sin(angle[0]), s = g.tileSize;
+            for (Entity e : current.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
+                if (pos.ship != ship || (outsideOnly && !EvaSystem.outside(e))) continue;
+                CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+                if (c.progress < 0f || c.state == CrewState.DEAD) continue;
+                Vector2 l = pos.toShipLocal(g, local);
+                float grow = Math.max(1f, BAR_MIN_PIXELS * pixel / (BAR_WIDTH * s));
+                float w = BAR_WIDTH * s * grow, h = BAR_HEIGHT * s * grow, edge = BAR_EDGE * s * grow;
+                float raise = BAR_RAISE * s + (h - BAR_HEIGHT * s) / 2f;
+                float wx = at.x + cos * l.x - sin * l.y + upX * raise;
+                float wy = at.y + sin * l.x + cos * l.y + upY * raise;
+                shapes.identity();
+                shapes.translate(wx, wy, 0f);
+                shapes.rotate(0f, 0f, 1f, degrees);
+                shapes.setColor(BAR_BACK);
+                shapes.rect(-w / 2f - edge, -h / 2f - edge, w + 2f * edge, h + 2f * edge);
+                shapes.setColor(BAR_FILL);
+                shapes.rect(-w / 2f, -h / 2f, w * Math.min(1f, c.progress), h);
+            }
+        }
+        shapes.end();
+        shapes.identity();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     /** The sparks, flashes and fire of hits on {@code decks}' hulls, over the light map so it does not dim them. */
@@ -561,6 +610,12 @@ public final class DeckRenderer {
         shapes.identity();
         Gdx.gl.glDisable(GL20.GL_BLEND);
     }
+
+    /** A job's progress bar over a crew member, in tiles: its length, thickness, dark edge and how far above them. */
+    private static final float BAR_WIDTH = 0.9f, BAR_HEIGHT = 0.12f, BAR_EDGE = 0.03f, BAR_RAISE = 0.62f;
+    /** The shortest a progress bar is drawn on the screen, pixels: it grows to this zoomed out. */
+    private static final float BAR_MIN_PIXELS = 28f;
+    private static final Color BAR_BACK = new Color(0.05f, 0.06f, 0.08f, 0.75f), BAR_FILL = new Color(0.45f, 0.9f, 0.5f, 1f);
 
     /** The radius of the wound disc under a crew member, in tiles: a ring round the dot without the art. */
     private static final float WOUND_DISC = 0.336f;

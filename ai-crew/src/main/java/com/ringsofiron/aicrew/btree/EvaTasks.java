@@ -255,6 +255,7 @@ public final class EvaTasks {
             work += dt;
             c.record().pendingWork += dt; // engineering experience
             c.activity = "repairing an RCS thruster on EVA";
+            c.showProgress(work, c.def.rcsRepairTime);
             if (work >= c.def.rcsRepairTime) {
                 RcsThruster.fieldRepair(grid, t.x, t.y);
                 board.complete(t);
