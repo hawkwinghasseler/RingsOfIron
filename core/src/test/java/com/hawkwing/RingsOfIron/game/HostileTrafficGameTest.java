@@ -19,6 +19,7 @@ import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.hostile.HostileTrafficController;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.orbital.warp.TimeWarpController;
+import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.nio.file.Path;
@@ -99,6 +100,26 @@ class HostileTrafficGameTest {
         assertEquals(HudMarkerComponent.Kind.HOSTILE, marker.kind);
         assertEquals(hostiles.get(id).displayName, marker.label);
         assertTrue(game.contacts.contains(ship, true), "and lockable");
+    }
+
+    @Test
+    void aHostileNoPilotFliesLetsGoOfTheStick() {
+        // Joe's save: a gunship disengaged with its stick hard over, and nothing took it off again
+        // until it turned 14 times a second
+        Entity ship = bringIn(pirate(HostileTraffic.PIRATE_GUNSHIP), 3_000, 0);
+        if (ship.getComponent(NpcCombatComponent.class) == null) ship.add(new NpcCombatComponent(null));
+        FlightControlComponent controls = ship.getComponent(FlightControlComponent.class);
+        controls.forward = -1f;
+        controls.strafe = 1f;
+        controls.turn = -1f;
+        controls.rotationAssist = false;
+        ship.remove(NpcPilotComponent.class);
+        assertEquals(-1f, controls.turn, "still flown by its combat pilot");
+        ship.remove(NpcCombatComponent.class);
+        assertEquals(0f, controls.forward);
+        assertEquals(0f, controls.strafe);
+        assertEquals(0f, controls.turn);
+        assertTrue(controls.rotationAssist, "so it stops turning");
     }
 
     @Test

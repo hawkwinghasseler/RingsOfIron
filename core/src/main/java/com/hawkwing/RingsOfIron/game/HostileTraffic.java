@@ -1,7 +1,9 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntityListener;
 import com.badlogic.ashley.core.EntitySystem;
+import com.badlogic.ashley.core.Family;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Json;
@@ -18,6 +20,7 @@ import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.combatsys.modding.Loadouts;
 import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.coreengine.SaveParticipant;
+import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
@@ -31,6 +34,7 @@ import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.orbital.warp.DropOutSource;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.BodyShapeComponent;
+import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
@@ -187,6 +191,16 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
                 !hit.pointDefense && hit.aimedAt == hit.target));
         world.disablement.changes.add((signal, change) -> surrendering(change));
         world.engine.getEcsEngine().addEntityListener((EntityRemovalListener) this::forget);
+        world.engine.getEcsEngine().addEntityListener(UNFLOWN, new EntityListener() {
+            @Override
+            public void entityAdded(Entity e) {
+                letGo(e);
+            }
+
+            @Override
+            public void entityRemoved(Entity e) {
+            }
+        });
         world.engine.getSerializationService().addParticipant(this);
     }
 
@@ -649,6 +663,23 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
      * Drops a ship gone from the engine as victim and as attacker. The engine hands its entity out
      * again as a new one: left in, a hostile would go on fighting whatever came out of the pool.
      */
+    /** Hostiles that neither pilot flies, and that still could: no player at the helm, not disabled. */
+    static final Family UNFLOWN = Family.all(HostileComponent.class, FlightControlComponent.class)
+            .exclude(NpcPilotComponent.class, NpcCombatComponent.class, DisabledComponent.class, PlayerControllerComponent.class).get();
+
+    /**
+     * Takes {@code e}'s pilot's hands off the stick: no thrust, and rotation assist on so it stops
+     * turning. Each pilot sets the controls every tick but none clears them when it's taken off, so a
+     * ship left {@link #UNFLOWN} (disengaged, done with its burns, or loaded from a save like that)
+     * kept its last stick and turned faster and faster, to tens of turns a second.
+     */
+    static void letGo(Entity e) {
+        FlightControlComponent controls = e.getComponent(FlightControlComponent.class);
+        if (controls == null) return;
+        controls.clear();
+        controls.rotationAssist = true;
+    }
+
     private void forget(Entity e) {
         provoked.remove(e);
         provoked.values().removeIf(attacker -> attacker == e);
