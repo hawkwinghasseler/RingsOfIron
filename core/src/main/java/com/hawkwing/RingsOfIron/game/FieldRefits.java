@@ -444,7 +444,7 @@ public final class FieldRefits {
         @Override
         public String doing() {
             WeaponDef def = def();
-            return "mounting the salvaged " + (def == null ? "part" : def.displayName()) + " on " + FieldRefits.where(mount());
+            return "mounting the salvaged " + (def == null ? "part" : def.displayName()) + " at " + FieldRefits.where(mount());
         }
 
         @Override

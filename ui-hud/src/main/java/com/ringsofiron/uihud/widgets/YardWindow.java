@@ -277,6 +277,7 @@ public class YardWindow extends Window {
             fieldNote.setText(board.offers.size == 0 ? "No yard here, and no salvaged weapons in the hold for the crew to mount"
                     : "No yard here: an engineer can mount a salvaged weapon from the hold on EVA");
             for (int i = 0; i < rowWidgets.size; i++) rowWidgets.get(i).update(board.hardpoints.get(i));
+            fit();
             return;
         }
         getTitleLabel().setText(board.stationName.toUpperCase(Locale.ROOT) + " YARD");
@@ -295,6 +296,19 @@ public class YardWindow extends Window {
         place.setDisabled(f == null || board.credits < f.price);
         furnished.setText(board.furnished);
         for (int i = 0; i < rowWidgets.size; i++) rowWidgets.get(i).update(board.hardpoints.get(i));
+        fit();
+    }
+
+    /**
+     * Grows the window about its centre to fit what it shows: a refit's progress or an answer
+     * widens a row, and the rows ran out past its edges (the field refit, real window).
+     */
+    private void fit() {
+        if (isVisible() && (getPrefWidth() > getWidth() + 0.5f || getPrefHeight() > getHeight() + 0.5f)) {
+            float cx = getX() + getWidth() / 2f, cy = getY() + getHeight() / 2f;
+            pack();
+            setPosition(cx - getWidth() / 2f, cy - getHeight() / 2f);
+        }
     }
 
     private void rebuildRows() {
@@ -311,6 +325,7 @@ public class YardWindow extends Window {
     private void say(String message) {
         refresh();
         status.setText(message == null ? "" : message);
+        fit();
     }
 
     private TextButton button(String text, Runnable action) {

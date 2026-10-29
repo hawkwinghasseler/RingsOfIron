@@ -38,7 +38,8 @@ import com.ringsofiron.interiorgrid.crew.Suit;
  * </pre>
  *
  * A crew member takes the job only with an EVA suit to be had ({@link #suitReady}). They hang up
- * any pressure suit they have on, get into an EVA suit at a locker, and walk to the docking port the
+ * any pressure suit they have on (or an EVA suit too spent to go out in: {@link #fitToGoOut}), get
+ * into an EVA suit at a locker, and walk to the docking port the
  * job is best reached from ({@link #plan}): one that can cycle (undocked, its door and hatch
  * standing), whose door opens onto the hull, and from which the hull runs round to the ring tile the
  * job is worked from ({@link #workTile}) within the tether's reach. Standing in its chamber they go
@@ -55,6 +56,8 @@ import com.ringsofiron.interiorgrid.crew.Suit;
 public final class EvaTasks {
     /** Seconds of air an EVA suit needs in it to go out in: half a full pack. */
     public static final float MIN_AIR = Suit.EVA_AIR * 0.5f;
+    /** Delta-v an EVA suit's jetpack needs in it to go out with, m/s: half a full pack, a way back for one thrown off. */
+    public static final float MIN_JET = Suit.JET_DV * 0.5f;
     /** Seconds of air kept in hand beyond the way back in. */
     public static final float AIR_MARGIN = 300f;
     /** Seconds a crew member leaves an EVA job alone that they found no way out to. */
@@ -114,12 +117,12 @@ public final class EvaTasks {
             CrewMemberComponent c = a.crew;
             CrewTask t = c.task;
             if (t == null || stale(a, t)) return Status.FAILED;
-            if (c.suited && c.suitKind == Suit.Kind.EVA && c.suitAir >= MIN_AIR) {
+            if (fitToGoOut(c)) {
                 c.suiting = 0f;
                 return Status.SUCCEEDED;
             }
             // Out of the pressure suit (or a spent EVA suit) first, into its locker
-            Status s = c.suited ? SuitErrand.stow(a) : SuitErrand.suitUpEva(a, MIN_AIR);
+            Status s = c.suited ? SuitErrand.stow(a) : SuitErrand.suitUpEva(a, EvaTasks::fitToGoOut);
             if (s == Status.FAILED) {
                 a.ignore(t, NO_ROUTE);
                 a.releaseTask();
@@ -530,9 +533,10 @@ public final class EvaTasks {
     }
 
     /**
-     * True if {@code a} could go out on EVA for a job: they wear suits, and have an EVA suit on with
-     * {@link #MIN_AIR} in it or there is one hanging in a locker aboard the craft they work for, and
-     * a docking port there can cycle them out. Already out, true. Looked at every {@link #SUIT_LOOK}.
+     * True if {@code a} could go out on EVA for a job: they wear suits, and have an EVA suit on fit to
+     * go out in ({@link #fitToGoOut}) or there is one hanging in a locker aboard the craft they work
+     * for, and a docking port there can cycle them out. Already out, true. Looked at every {@link
+     * #SUIT_LOOK}.
      */
     public static boolean suitReady(CrewAgent a) {
         CrewMemberComponent c = a.crew;
@@ -541,10 +545,10 @@ public final class EvaTasks {
         if (a.time < a.evaSuitLookAt) return a.evaSuitReady;
         a.evaSuitLookAt = a.time + SUIT_LOOK;
         ShipGridComponent grid = a.service.grid(a.service.homeOf(a.entity));
-        boolean suit = c.suited && c.suitKind == Suit.Kind.EVA && c.suitAir >= MIN_AIR;
+        boolean suit = fitToGoOut(c);
         if (!suit && grid != null) {
             for (Furnishing f : SuitLockers.all(grid)) {
-                if (SuitErrand.hasEvaSuit(f, MIN_AIR)) {
+                if (SuitErrand.hasEvaSuit(f, EvaTasks::fitToGoOut)) {
                     suit = true;
                     break;
                 }
@@ -559,6 +563,16 @@ public final class EvaTasks {
         }
         a.evaSuitReady = suit && port;
         return a.evaSuitReady;
+    }
+
+    /** True if {@code s} is an EVA suit fit to go out in: {@link #MIN_AIR} of air and {@link #MIN_JET} in its jetpack. */
+    public static boolean fitToGoOut(Suit s) {
+        return s.kind == Suit.Kind.EVA && s.air >= MIN_AIR && s.jet >= MIN_JET;
+    }
+
+    /** True if {@code c} has an EVA suit on fit to go out in ({@link #fitToGoOut(Suit)}). */
+    public static boolean fitToGoOut(CrewMemberComponent c) {
+        return c.inEvaSuit() && c.suitAir >= MIN_AIR && c.suitJet >= MIN_JET;
     }
 
     /** The way out to a job: the port, and the ring tile outside the hull the job is worked from. */
@@ -699,9 +713,9 @@ public final class EvaTasks {
     static void finishWork(CrewAgent a, ShipGridComponent grid, CrewTask t) {
         switch (t.kind) {
             case REPAIR_RCS:
-                RcsThruster.fieldRepair(grid, t.x, t.y);
-                break;
             case PATCH_HULL:
+                // Framed back up, so a block on it fires again, and plated airtight while there are
+                // kits: a block's tile in the corvette's bow corner leaks where nobody inside can reach
                 HullPlating.plate(grid, t.x, t.y);
                 break;
             default:

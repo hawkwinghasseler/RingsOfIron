@@ -7,7 +7,8 @@ package com.ringsofiron.interiorgrid;
  * From inside a breach can only be sealed with an emergency bulkhead, which stops the air but leaves
  * the hull as broken as it was; the plate puts some of its strength back. A breach already sealed
  * keeps its seal under the plate; with no kits left the frame alone goes up, leaking. A tile crushed
- * flat is yard work, and an RCS block's tile is a job of its own ({@link RcsThruster#fieldRepairable}).
+ * flat is yard work, and an RCS block's tile is a job of its own ({@link RcsThruster#fieldRepairable}),
+ * framed and plated the same way once the block is mended.
  */
 public final class HullPlating {
 

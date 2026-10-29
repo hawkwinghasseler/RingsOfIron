@@ -3,6 +3,7 @@ package com.ringsofiron.aicrew;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.aicrew.btree.EvaTasks;
 import com.ringsofiron.interiorgrid.Airlock;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.Furnishing;
@@ -71,6 +72,7 @@ class EvaRepairTest {
     void anEngineerSuitsUpGoesOutAlongTheHullMendsTheBlockAndComesBackIn() {
         TestShips s = ship();
         assertFalse(block(s).works(s.grid));
+        int kits = s.grid.patchKits;
         Entity e = s.spawn(CrewRole.ENGINEER, 0, 9, 2);
         java.util.List<EvaEvent.Kind> events = new java.util.ArrayList<>();
         s.crew.eva.events.add((signal, ev) -> events.add(ev.kind));
@@ -99,6 +101,9 @@ class EvaRepairTest {
         assertTrue(worked, "did the work out there");
         assertTrue(block(s).works(s.grid), "the block fires again");
         assertEquals(RcsThruster.FIELD_REPAIR, s.grid.getTile(9, 0).getIntegrity(), 1e-6f, "framed back up, still wanting a yard");
+        assertTrue(s.grid.getTile(9, 0).isPatched(), "and plated over, as a holed hull tile is");
+        assertEquals(0f, s.grid.getTile(9, 0).leakFactor(), "so it holds air");
+        assertEquals(kits - 1, s.grid.patchKits, "a kit from the stores");
         assertNull(EvaSystem.of(e), "back in");
         assertFalse(offTheCraft(s, s.p(e).x, s.p(e).y));
         assertTrue(Airlock.of(s.grid, port(s)).isIn(), "the airlock back at rest");
@@ -108,6 +113,46 @@ class EvaRepairTest {
         assertEquals(java.util.Arrays.asList(EvaEvent.Kind.OUT, EvaEvent.Kind.BACK), events);
         assertTrue(lowestCabin > 0.9f, "the cabin kept its air through both cycles: " + lowestCabin);
         assertFalse(posted(s));
+    }
+
+    @Test
+    void withNoKitsTheBlocksTileIsFramedButLeaks() {
+        TestShips s = ship();
+        s.grid.patchKits = 0;
+        Entity e = s.spawn(CrewRole.ENGINEER, 0, 9, 2);
+        for (int i = 0; i < 6000 && !(block(s).works(s.grid) && EvaSystem.of(e) == null); i++) s.run(0.1f);
+        assertTrue(block(s).works(s.grid), "the block fires again");
+        assertFalse(s.grid.getTile(9, 0).isPatched());
+        assertTrue(s.grid.getTile(9, 0).leakFactor() > 0f, "standing, but leaking");
+    }
+
+    @Test
+    void aSuitWithItsPackSpentIsChangedForOneFitToGoOutIn() {
+        TestShips s = ship();
+        Entity e = s.spawn(CrewRole.ENGINEER, 0, 9, 2);
+        // Back in in a suit with all its air and nothing in its pack, as one fetched in from adrift
+        Suit spent = SuitLockers.take(evaLocker(s), Suit.Kind.EVA);
+        spent.jet = 0f;
+        s.c(e).wear(spent);
+        float jetOut = -1f;
+        for (int i = 0; i < 3000 && jetOut < 0f; i++) {
+            s.run(0.1f);
+            if (EvaSystem.of(e) != null) jetOut = s.c(e).suitJet;
+        }
+        assertTrue(jetOut >= EvaTasks.MIN_JET, "out in the full suit, not the spent one: " + jetOut);
+        assertEquals(1, evaLocker(s).suits.size, "the spent one hung up to fill");
+    }
+
+    @Test
+    void withEveryPackSpentNobodyGoesOutTillOneIsHalfFull() {
+        TestShips s = ship();
+        for (Suit suit : evaLocker(s).suits) suit.jet = 0f;
+        Entity e = s.spawn(CrewRole.ENGINEER, 0, 9, 2);
+        float t = 0f;
+        for (; t < 900f && EvaSystem.of(e) == null; t += 0.1f) s.run(0.1f);
+        assertNotNull(EvaSystem.of(e), "out once a pack had filled");
+        assertTrue(t >= SuitLockerSystem.JET_FILL * 0.5f, "not before the locker had half filled one: " + t);
+        assertTrue(s.c(e).suitJet >= EvaTasks.MIN_JET, "out with half a pack: " + s.c(e).suitJet);
     }
 
     @Test
