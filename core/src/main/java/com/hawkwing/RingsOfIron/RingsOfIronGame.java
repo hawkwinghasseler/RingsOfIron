@@ -1607,27 +1607,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private void drawInterior(float delta) {
         Entity aboard = world.avatar.getAvatarShip();
         OrthographicCamera camera = viewports.getWorldCamera();
-        // The stars and the snow behind the decks: drawn after them and kept off them with the
-        // stencil buffer, so the decks' light map, which would dim them to the deck ambient, is
-        // under them. Without a stencil buffer, under the decks and dimmed.
-        boolean clip = Gdx.graphics.getBufferFormat().stencil > 0;
-        if (!clip) drawBackdrop(camera);
+        // The stars and the snow behind the decks; the decks' light map keeps to the decks
+        drawBackdrop(camera);
         deckRenderer.draw(DeckRenderer.decksAround(aboard == null ? game.player : aboard, decks), camera, delta);
-        if (clip) {
-            GL20 gl = Gdx.gl;
-            gl.glClearStencil(0);
-            gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
-            gl.glEnable(GL20.GL_STENCIL_TEST);
-            gl.glColorMask(false, false, false, false);
-            gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xff);
-            gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
-            deckRenderer.footprints(decks, camera);
-            gl.glColorMask(true, true, true, true);
-            gl.glStencilFunc(GL20.GL_EQUAL, 0, 0xff);
-            gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
-            drawBackdrop(camera);
-            gl.glDisable(GL20.GL_STENCIL_TEST);
-        }
         // Over the decks' light map, which would darken them to the dim deck ambient: lit as
         // outside, the outside light map kept off the decks, which it would darken in turn
         int glowFrom = lighting.glowSpots().size();
