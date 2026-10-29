@@ -92,8 +92,8 @@ Every job outside is a task on the ship's board (`CrewTask.Kind.isEva`):
 | Fetch a shipmate adrift (`RETRIEVE`) | `EvaSystem`: one adrift who can't get back alone, within reach | the ring tile nearest them, then out to them on the jetpack | until they have hold of them |
 
 Engineers (and a yard's technicians) do the work on the hull; crewmen don't. Anyone who rescues
-goes out for a shipmate adrift, engineers first. At battle stations the jobs stay on the board but
-nobody takes one unless the player sends them out (below).
+goes out for a shipmate adrift, engineers (who work outside) and medics keenest. At battle stations
+the jobs stay on the board but nobody takes one unless the player sends them out (below).
 
 A crew member takes a job only when they wear suits, an EVA suit with at least half its air and
 half its jetpack is aboard (`EvaTasks.fitToGoOut`), and a port can cycle (`EvaTasks.suitReady`).
