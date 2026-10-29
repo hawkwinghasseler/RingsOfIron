@@ -446,6 +446,7 @@ public final class EvaTasks {
             if (job != null) job.work(a.entity, dt);
             c.record().pendingWork += dt; // engineering experience
             c.activity = doing(t);
+            c.showProgress(work, workSeconds(c.def, t));
             if (work >= workSeconds(c.def, t)) {
                 finishWork(a, grid, t);
                 board.complete(t);

@@ -68,6 +68,7 @@ final class SuitErrand {
             if (c.suiting == 0f) a.service.physics.standAt(a.entity, SuitLockers.front(at, FRONT).x, FRONT.y);
             c.activity = dressing(kind);
             c.suiting += a.dt;
+            c.showProgress(c.suiting, c.suitTime(kind));
             if (c.suiting < c.suitTime(kind)) return Status.RUNNING;
             c.wear(SuitLockers.take(at, kind));
             c.activity = "idle";
@@ -99,6 +100,7 @@ final class SuitErrand {
             if (c.suiting == 0f) a.service.physics.standAt(a.entity, SuitLockers.front(at, FRONT).x, FRONT.y);
             c.activity = dressing(Suit.Kind.EVA);
             c.suiting += a.dt;
+            c.showProgress(c.suiting, c.suitTime(Suit.Kind.EVA));
             if (c.suiting < c.suitTime(Suit.Kind.EVA)) return Status.RUNNING;
             c.wear(SuitLockers.take(at, Suit.Kind.EVA, fit));
             c.activity = "idle";
@@ -143,6 +145,7 @@ final class SuitErrand {
             if (c.unsuiting == 0f) a.service.physics.standAt(a.entity, SuitLockers.front(at, FRONT).x, FRONT.y);
             c.activity = undressing(kind);
             c.unsuiting += a.dt;
+            c.showProgress(c.unsuiting, c.suitTime(kind) * 0.5f);
             if (c.unsuiting < c.suitTime(kind) * 0.5f) return Status.RUNNING;
             Suit off = c.takeOff();
             if (!SuitLockers.stow(at, off)) c.wear(off);

@@ -24,6 +24,11 @@ public class YardTask extends CrewTask {
 
         /** For the crew member's activity line, e.g. "repairing hull". */
         String what();
+
+        /** Share of the tile's work done, 0 to 1, for the bar over the worker; negative if the job can't say. */
+        default float progress() {
+            return -1f;
+        }
     }
 
     /** The craft the tile is on. */
