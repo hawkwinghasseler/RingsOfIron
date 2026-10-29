@@ -1574,8 +1574,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     // -----------------------------------------------------------------------
     private void drawBodies() {
         float px = viewports.getViewMeters() / 400f;
-        stars.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
-        snow.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
+        drawBackdrop(viewports.getWorldCamera());
         exterior.drawBodies(viewports.getWorldCamera());
         exterior.drawFlight(viewports.getWorldCamera(), px, Gdx.graphics.getDeltaTime());
         // Crew out on EVA, on the hulls and off them
@@ -1588,6 +1587,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
         lighting.renderGlow(batch, viewports.getWorldCamera(), 2.5f * px);
     }
 
+    /** The distant starfield, then the space snow over it, in either view. */
+    private void drawBackdrop(OrthographicCamera camera) {
+        shapes.setProjectionMatrix(camera.combined);
+        stars.draw(shapes, camera, viewports.metersPerPixel());
+        snow.draw(shapes, camera, viewports.metersPerPixel());
+    }
+
     /**
      * The deck plan of the craft the avatar is aboard, and of any craft docked to it, each at its
      * own pose, with its smoke and flames, the cargo and everyone aboard; every other craft in view
@@ -1596,7 +1602,27 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private void drawInterior(float delta) {
         Entity aboard = world.avatar.getAvatarShip();
         OrthographicCamera camera = viewports.getWorldCamera();
+        // The stars and the snow behind the decks: drawn after them and kept off them with the
+        // stencil buffer, so the decks' light map, which would dim them to the deck ambient, is
+        // under them. Without a stencil buffer, under the decks and dimmed.
+        boolean clip = Gdx.graphics.getBufferFormat().stencil > 0;
+        if (!clip) drawBackdrop(camera);
         deckRenderer.draw(DeckRenderer.decksAround(aboard == null ? game.player : aboard, decks), camera, delta);
+        if (clip) {
+            GL20 gl = Gdx.gl;
+            gl.glClearStencil(0);
+            gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
+            gl.glEnable(GL20.GL_STENCIL_TEST);
+            gl.glColorMask(false, false, false, false);
+            gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xff);
+            gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
+            deckRenderer.footprints(decks, camera);
+            gl.glColorMask(true, true, true, true);
+            gl.glStencilFunc(GL20.GL_EQUAL, 0, 0xff);
+            gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
+            drawBackdrop(camera);
+            gl.glDisable(GL20.GL_STENCIL_TEST);
+        }
         // Over the decks' light map, which would darken them to the dim deck ambient: lit as
         // outside, the outside light map kept off the decks, which it would darken in turn
         int glowFrom = lighting.glowSpots().size();
