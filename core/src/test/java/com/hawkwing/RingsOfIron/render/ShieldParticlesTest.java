@@ -164,11 +164,101 @@ class ShieldParticlesTest {
         for (int i = 0; i < swarm.n; i++) assertTrue(offCurve(i) < 4f, "back out round the curve: " + offCurve(i));
     }
 
+    /** Puts {@code share} of the resting layer on the bow half of the curve (x > 0), the rest astern. */
+    private void layBow(float share) {
+        int bow = 0;
+        for (int k = 0; k < ShieldPerimeter.SAMPLES; k++) if (cloud.perimeter.x[k] > 0f) bow++;
+        for (int k = 0; k < ShieldPerimeter.SAMPLES; k++) {
+            boolean ahead = cloud.perimeter.x[k] > 0f;
+            cloud.line[k] = ahead ? share / bow : (1f - share) / (ShieldPerimeter.SAMPLES - bow);
+        }
+    }
+
+    private int ahead(byte state) {
+        int c = 0;
+        for (int i = 0; i < swarm.n; i++) if (swarm.state[i] == state && swarm.x[i] > 0f) c++;
+        return c;
+    }
+
+    @Test
+    void theFlecksLieAsTheRestingLayerDoes() {
+        layBow(0.8f);
+        run(2f);
+        int free = swarm.count(ShieldParticles.FREE);
+        assertEquals(0.8f, ahead(ShieldParticles.FREE) / (float) free, 0.08f, "four in five ahead, where the layer is");
+        layBow(0.5f);
+        run(3f);
+        assertEquals(0.5f, ahead(ShieldParticles.FREE) / (float) swarm.count(ShieldParticles.FREE), 0.08f, "and they follow it as it moves");
+    }
+
+    @Test
+    void whatGoesAdriftLeavesFromWhereNoEmitterHoldsTheCurve() {
+        run(0.5f);
+        // The stern's emitter has died: nothing holds the curve astern
+        for (int k = 0; k < ShieldPerimeter.SAMPLES; k++) cloud.anchored[k] = cloud.perimeter.x[k] > 0f ? 1f : 0f;
+        cloud.adrift = 60f;
+        run(DT);
+        int loose = swarm.count(ShieldParticles.LOOSE), astern = 0;
+        for (int i = 0; i < swarm.n; i++) {
+            // In space, along the world's axes: the ship lies at heading 0, so its own
+            if (swarm.state[i] == ShieldParticles.LOOSE && swarm.x[i] < 0f) astern++;
+        }
+        assertEquals(40, loose, 2, "one fleck per 1.5 kg adrift");
+        assertTrue(astern > 0.9f * loose, "from astern: " + astern + " of " + loose);
+    }
+
     @Test
     void theBubbleIsAThinLineOverASoftGlow() {
         assertTrue(ShieldParticles.bandAlpha(0f) > 0.9f, "bright at its middle");
         assertTrue(ShieldParticles.bandAlpha(0.3f) < 0.3f, "faint off it");
         assertTrue(ShieldParticles.bandAlpha(1f) < 0.01f, "nothing at its edge");
+    }
+
+    /** How much a closed curve's radius from (cx, cy) jumps from one sample to the next, on average, meters. */
+    private static float roughness(float[] x, float[] y, float cx, float cy) {
+        int n = x.length;
+        float sum = 0f;
+        for (int k = 0; k < n; k++) {
+            int a = (k - 1 + n) % n, b = (k + 1) % n;
+            float r = Vector2.dst(x[k], y[k], cx, cy);
+            // Second difference: a straight run or an even curve scores nothing, a step scores its height
+            sum += Math.abs(Vector2.dst(x[a], y[a], cx, cy) - 2f * r + Vector2.dst(x[b], y[b], cx, cy));
+        }
+        return sum / n;
+    }
+
+    @Test
+    void theBubblesOutlineIsSmoothedButStaysOnTheShieldsCurve() {
+                ShipGridComponent grid = new ShipGridComponent(12, 5, 2f, -12f, -5f);
+        // Every other tile along the top and bottom rows left out: a crenellated hull
+        for (int x = 0; x < 12; x++) for (int y = 0; y < 5; y++) {
+            boolean notch = (y == 0 || y == 4) && x % 2 == 1;
+            if (!notch) grid.getTile(x, y).floorType = com.ringsofiron.interiorgrid.Tile.FloorType.FLOOR;
+        }
+        ShieldPerimeter per = ShieldPerimeter.fit(grid);
+        int n = ShieldPerimeter.SAMPLES;
+        float[] x = new float[n], y = new float[n], nx = new float[n], ny = new float[n];
+        ShieldParticles.smoothCurve(per, x, y, nx, ny);
+        assertTrue(roughness(x, y, per.cx, per.cy) < 0.6f * roughness(per.x, per.y, per.cx, per.cy),
+                "smoother: " + roughness(x, y, per.cx, per.cy) + " vs " + roughness(per.x, per.y, per.cx, per.cy));
+        for (int k = 0; k < n; k++) {
+            float r = Vector2.dst(per.x[k], per.y[k], per.cx, per.cy), r2 = Vector2.dst(x[k], y[k], per.cx, per.cy);
+            assertTrue(r2 >= r - ShieldParticles.BUBBLE_INSET - 1e-3f, "never far inside the shield's curve at " + k);
+            assertEquals(1f, Vector2.len(nx[k], ny[k]), 1e-3f);
+            // Outward: away from the center
+            assertTrue((x[k] - per.cx) * nx[k] + (y[k] - per.cy) * ny[k] > 0f, "normal out at " + k);
+        }
+    }
+
+    @Test
+    void theFlecksAreSoftAndGoneZoomedFarOut() {
+        assertEquals(1f, ShieldParticles.dotAlpha(0f), 1e-6f);
+        assertTrue(ShieldParticles.dotAlpha(0.5f) > 0.2f && ShieldParticles.dotAlpha(0.5f) < 0.8f, "a gradient, not a solid disc");
+        assertEquals(0f, ShieldParticles.dotAlpha(1f), 1e-6f);
+        assertEquals(1f, ShieldParticles.zoomFade(0.05f), 1e-6f, "close in: all there");
+        assertEquals(0f, ShieldParticles.zoomFade(1f), 1e-6f, "far out: gone");
+        float mid = ShieldParticles.zoomFade(0.5f * (ShieldParticles.FADE_NEAR + ShieldParticles.FADE_FAR));
+        assertEquals(0.5f, mid, 1e-3f, "fading between");
     }
 
     @Test

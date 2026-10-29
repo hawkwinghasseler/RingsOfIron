@@ -247,12 +247,21 @@ public final class SceneLighting implements Disposable {
      * small lamps stay visible zoomed out.
      */
     public void renderGlow(SpriteBatch batch, OrthographicCamera camera, float minSize) {
-        if (glowSpots.size() == 0) return;
+        renderGlow(batch, camera, minSize, 0);
+    }
+
+    /**
+     * {@link #renderGlow(SpriteBatch, OrthographicCamera, float)} for the glowing parts added
+     * since {@code from} of them were ({@code glowSpots().size()} then): what was added after
+     * an earlier glow pass drew the rest.
+     */
+    public void renderGlow(SpriteBatch batch, OrthographicCamera camera, float minSize, int from) {
+        if (glowSpots.size() <= from) return;
         if (glow == null) glow = glowTexture();
         batch.setProjectionMatrix(camera.combined);
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
         batch.begin();
-        for (int i = 0; i < glowSpots.size(); i++) {
+        for (int i = from; i < glowSpots.size(); i++) {
             LightSpot s = glowSpots.get(i);
             if (!s.on) continue;
             float size = Math.max(minSize, s.glow * GLOW_SCALE);
