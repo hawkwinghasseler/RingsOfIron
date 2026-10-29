@@ -240,6 +240,16 @@ public class FactionStanding implements SaveParticipant, Resettable {
         acts.add(new Act(e.other, faction, e.method, standing(faction)));
     }
 
+    /**
+     * The player's crew forced a way into {@code craft} with no dock between, {@code how}: its airlock
+     * door from outside on EVA. A hostile act, as a door forced across a dock is.
+     */
+    public void onForcedEntry(Entity craft, ForceMethod how) {
+        int faction = factionOf(craft);
+        hostileAct(faction, cost(how), "forced their doors");
+        acts.add(new Act(craft, faction, how, standing(faction)));
+    }
+
     /** Standing a hostile act costs. */
     public static float cost(ForceMethod how) {
         switch (how) {

@@ -40,7 +40,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | T | Trade, when in range of a station |
 | Y | Yard: repairs and refits, while docked |
 | J | Mission board: the station's contracts while docked, and the ones you hold |
-| K | Boarding: board the ship you are latched to, strip its parts and take its cargo |
+| K | Boarding: board the ship you are latched to, or one standing off within 300 m on EVA; force a way in to storm a ship that can still fight; strip its parts and take its cargo |
 | P | Abandon ship (P again within 3 s to confirm; P while abandoning launches the pods at once) |
 | I | Crew roster: your crew, the station's hires and any prisoners |
 | L | Notice log: the last 50 notices |
