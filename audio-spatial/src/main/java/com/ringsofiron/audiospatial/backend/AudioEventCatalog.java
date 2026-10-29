@@ -44,6 +44,14 @@ public class AudioEventCatalog {
     public static final String COILGUN = "event:/weapons/coilgun";
     /** A heavy cannon's shot (key evt_cannon_heavy_fire): a deep boom. */
     public static final String CANNON_HEAVY = "event:/weapons/cannon_heavy";
+    /** A breaching cannon's shot (key evt_breacher_fire): a low cough and the breech slamming. */
+    public static final String BREACHER = "event:/weapons/breacher";
+    /** A torpedo leaving its tube (key evt_torpedo_launch). */
+    public static final String TORPEDO_LAUNCH = "event:/weapons/torpedo_launch";
+    /** A heavy laser's burn (key evt_laser_heavy_fire). */
+    public static final String LASER_HEAVY = "event:/weapons/laser_heavy";
+    /** An ion disruptor's bolt (key evt_ion_disruptor_fire): the ion cannon's zap. */
+    public static final String ION_DISRUPTOR = "event:/weapons/ion_disruptor";
     /** A shield taking part of a hit. */
     public static final String SHIELD_HIT = "event:/impacts/shield";
 
@@ -72,6 +80,10 @@ public class AudioEventCatalog {
         c.register(SoundEventDef.oneShot(RAILGUN_HEAVY, 0.8f, 15f, 1200f, 1f));
         c.register(SoundEventDef.oneShot(ION, 0.5f, 10f, 600f, 0.65f));
         c.register(SoundEventDef.oneShot(COILGUN, 0.35f, 10f, 800f, 0.75f));
+        c.register(SoundEventDef.oneShot(BREACHER, 0.45f, 12f, 1000f, 0.85f));
+        c.register(SoundEventDef.oneShot(TORPEDO_LAUNCH, 1.6f, 15f, 1000f, 0.85f));
+        c.register(SoundEventDef.oneShot(LASER_HEAVY, 0.8f, 12f, 800f, 0.7f));
+        c.register(SoundEventDef.oneShot(ION_DISRUPTOR, 0.5f, 10f, 700f, 0.7f));
         c.register(SoundEventDef.oneShot(CANNON_HEAVY, 0.5f, 12f, 1000f, 0.85f));
         c.register(SoundEventDef.oneShot(ION_HIT, 0.6f, 10f, 800f, 0.7f));
         c.register(SoundEventDef.oneShot(SHIELD_HIT, 0.5f, 10f, 800f, 0.6f));

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="60" height="10" viewBox="-34 -5 60 10">
+  <title>lance: a needle-thin sprint missile, pivot at origin, nose toward +x</title>
+  <g id="base">
+    <polygon points="-28,-4 -22,-1.5 -22,1.5 -28,4" fill="#4b5563" stroke="#10141a" stroke-width="1"/>
+    <rect x="-24" y="-1.8" width="38" height="3.6" rx="1.5" fill="#9aa4b2" stroke="#10141a" stroke-width="1"/>
+    <polygon points="14,-1.8 24,0 14,1.8" fill="#c9cfd8" stroke="#10141a" stroke-width="1" stroke-linejoin="round"/>
+  </g>
+  <g id="emissive">
+    <circle cx="-29" cy="0" r="2.5" fill="#ffd27a" opacity="0.9"/>
+  </g>
+</svg>

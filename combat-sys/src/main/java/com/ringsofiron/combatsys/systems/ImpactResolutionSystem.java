@@ -228,6 +228,11 @@ public class ImpactResolutionSystem extends EntitySystem implements PhysicsManag
         return u == null ? "" : u.id;
     }
 
+    /** Where rounds and missiles fly. */
+    public BallisticsSystem ballistics() {
+        return ballistics;
+    }
+
     /**
      * A beam holding on {@code ship} for one tick (section 5.6), resolved at once: beams have no
      * travel time and push nothing. Publishes a hull hit when the beam first touches the hull

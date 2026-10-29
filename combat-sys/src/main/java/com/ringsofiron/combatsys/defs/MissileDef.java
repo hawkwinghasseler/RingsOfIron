@@ -44,7 +44,13 @@ public class MissileDef {
     public float armingDelay = 0.5f;
     /** Speed the launcher throws the missile clear at, m/s. */
     public float ejectSpeed = 20f;
+    /**
+     * A proximity fuse goes off near the target; a delayed one goes off {@code depthTiles} inside the
+     * hull it strikes (a torpedo's); any other kind goes off on the hull.
+     */
     public Fuse fuse = Fuse.proximity(15f);
+    /** Share of the airframe's kinetic energy that drives it into the hull: a hardened nose's is higher. */
+    public float penetrationFactor = 0.3f;
     public String warhead;
     /** Size point defense has to hit, meters. */
     public float hitRadius = 1f;
