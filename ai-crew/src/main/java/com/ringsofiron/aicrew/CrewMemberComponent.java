@@ -95,6 +95,12 @@ public class CrewMemberComponent implements Component {
     public float fireCooldown = 0f;
     /** Short description of the current activity, for debug display and the HUD. */
     public String activity = "idle";
+    /**
+     * Share of the timed job in hand done, 0 to 1, for the bar drawn over them; negative while at
+     * none. Set each step the work goes on ({@link #showProgress}); {@code CrewDecisionSystem}
+     * clears it before each step of the crew's trees.
+     */
+    public transient float progress = -1f;
 
     public CrewMemberComponent() {
         this.health = def.maxHealth;
@@ -109,6 +115,20 @@ public class CrewMemberComponent implements Component {
         this.health = def.maxHealth;
         this.suitAir = def.suitAir;
         this.record = CrewRecord.from(def);
+    }
+
+    /**
+     * Seconds a job must take before it gets a bar: a quick one is over before a bar would tell the
+     * player anything. Jobs that show themselves (a fire shrinking, cargo in hand) get none at all.
+     */
+    public static final float PROGRESS_MIN_SECONDS = 5f;
+
+    /**
+     * Shows {@code done} of {@code of} seconds as the share of the job in hand done ({@link #progress});
+     * no bar for a job shorter than {@link #PROGRESS_MIN_SECONDS}.
+     */
+    public void showProgress(float done, float of) {
+        progress = of >= PROGRESS_MIN_SECONDS ? Math.max(0f, Math.min(1f, done / of)) : -1f;
     }
 
     /** This crew member's record, made from their def if they have none yet. */
