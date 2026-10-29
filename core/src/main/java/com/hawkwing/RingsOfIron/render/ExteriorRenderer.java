@@ -33,7 +33,6 @@ import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
-import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.PolygonSkin;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
@@ -118,8 +117,6 @@ public final class ExteriorRenderer implements Disposable {
     private final ObjectSet<Entity> withArt = new ObjectSet<>();
     /** This frame's craft drawn as their decks instead (the deck view), with their hulls' bodies. */
     private final com.badlogic.gdx.utils.ObjectMap<Entity, Body> decks = new com.badlogic.gdx.utils.ObjectMap<>();
-    /** Every hull this frame whose shield is drawn, for keeping the light under it off it. */
-    private final Array<Body> hulls = new Array<>();
 
     /**
      * Draws the world {@code world} gives (a demo may load a new one) with {@code shapes} and
@@ -201,7 +198,15 @@ public final class ExteriorRenderer implements Disposable {
      * small stays visible zoomed out; {@code delta} ages the explosions.
      */
     public void draw(OrthographicCamera camera, float px, float delta) {
-        drawBodies(camera, delta);
+        draw(camera, px, delta, null);
+    }
+
+    /**
+     * {@link #draw(OrthographicCamera, float, float)}, with what {@code under} draws (null for
+     * nothing: a demo's decks) under the hulls and over the shields' undersides.
+     */
+    public void draw(OrthographicCamera camera, float px, float delta, Runnable under) {
+        drawBodies(camera, delta, null, null, under);
         drawFlight(camera, px, delta);
         // Navigation lights and the glow of running systems, a few pixels across at least
         if (lighting != null) lighting.renderGlow(batch, camera, 2.5f * px);
@@ -237,6 +242,15 @@ public final class ExteriorRenderer implements Disposable {
      * drawn as the art is.
      */
     public void drawBodies(OrthographicCamera camera, float delta, Array<Entity> without, Runnable unlit) {
+        drawBodies(camera, delta, without, unlit, null);
+    }
+
+    /**
+     * {@link #drawBodies(OrthographicCamera, float, Array, Runnable)}, with what {@code under}
+     * draws (null for nothing: the deck view's decks) over the shields' undersides and under the
+     * hulls, the light map and the shields' glow.
+     */
+    public void drawBodies(OrthographicCamera camera, float delta, Array<Entity> without, Runnable unlit, Runnable under) {
         GameWorld w = world.get();
         Matrix4 view = view(camera);
         w.physics.getWorld().getBodies(bodies);
@@ -251,9 +265,24 @@ public final class ExteriorRenderer implements Disposable {
         }
         boolean lit = exteriorLighting != null && lightsOn
                 && (unlit == null || Gdx.graphics.getBufferFormat().stencil > 0);
+        // The shields first, and what of them is below the hulls' plane: the hulls and decks then
+        // cover it where they lie, with no mask to keep it off them
+        float mpp = metersPerPixel(camera);
+        shields.begin(delta);
+        for (Body body : bodies) {
+            Entity e = owner(body);
+            if (e == null || e.getComponent(ShipGridComponent.class) == null || w.docking.bodyOf(e) != body) continue;
+            shields.collect(e, body, lit ? exteriorLighting : null);
+        }
+        for (com.badlogic.gdx.utils.ObjectMap.Entry<Entity, Body> d : decks) shields.collect(d.key, d.value, null, true);
+        shields.end();
+        if (shields.any()) {
+            batch.setProjectionMatrix(view);
+            shields.drawUnder(batch, mpp);
+        }
+        if (under != null) under.run();
         if (lit) exteriorLighting.begin();
         flames.begin(delta);
-        shields.begin(delta);
         // Every hull's own lights, drawn with art or not: only the hull's own body, since a port's
         // collar carriage and head carry the craft as owner too
         for (Body body : bodies) {
@@ -265,27 +294,21 @@ public final class ExteriorRenderer implements Disposable {
             if (lighting != null && chassis != null) lighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
             if (lit && chassis != null) exteriorLighting.addHull(chassis, hull, at.x, at.y, body.getAngle());
             flames.collect(e, body);
-            shields.collect(e, body, lit ? exteriorLighting : null);
-            hulls.add(body);
-        }
-        for (com.badlogic.gdx.utils.ObjectMap.Entry<Entity, Body> d : decks) {
-            shields.collect(d.key, d.value, null, true);
-            hulls.add(d.value);
         }
         flames.end();
-        shields.end();
         // Every flame lights the hulls and glows, as strong as it is long
         flames.light(lit ? exteriorLighting : null, lighting);
         if (lit) lightsInFlight();
+        // Last, so the rest keep their lights when there are too many: the shields' own light,
+        // which keeps their undersides lit under the light map
+        if (lit) shields.light(exteriorLighting);
         // The same lights shade the lit hulls by their normal maps
         int pointLights = lit ? exteriorLighting.pointLights(pointLightBuffer) : 0;
         exteriorArt.setPointLights(pointLightBuffer, pointLights, lit ? exteriorLighting.ambientBrightness() : 1f);
-        // The shield flecks under the light map, so it lights them: those beyond the hull's plane under its art
-        float mpp = metersPerPixel(camera);
+        // The shield flecks in front of the hulls' plane under the light map too, so it lights them
         if (hullArtOn || shields.any()) {
             batch.setProjectionMatrix(view);
             batch.begin();
-            shields.drawFlecks(batch, true, mpp);
         }
         if (hullArtOn) {
             for (int i = bodies.size - 1; i >= 0; i--) {
@@ -311,7 +334,7 @@ public final class ExteriorRenderer implements Disposable {
         batch.setProjectionMatrix(view);
         flames.draw(batch, withArt);
         // So does the shield where it packs and where it is struck, over hull art and outline alike
-        shields.drawGlow(batch, mpp, () -> maskHulls(view));
+        shields.drawGlow(batch, mpp);
         shapes.setProjectionMatrix(view);
         shapes.begin(ShapeRenderer.ShapeType.Line);
         for (Body body : bodies) {
@@ -329,7 +352,6 @@ public final class ExteriorRenderer implements Disposable {
         bodies.clear();
         withArt.clear();
         decks.clear();
-        hulls.clear();
     }
 
     /** Meters one screen pixel spans under {@code camera}. */
@@ -559,60 +581,6 @@ public final class ExteriorRenderer implements Disposable {
     @Override
     public void dispose() {
         shields.dispose();
-    }
-
-    /** Marks every hull drawn this frame with 1 in the stencil buffer (not its docking collars), the rest 0, drawing nothing. */
-    private void maskHulls(Matrix4 view) {
-        Gdx.gl.glEnable(GL20.GL_STENCIL_TEST);
-        Gdx.gl.glClearStencil(0);
-        Gdx.gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
-        Gdx.gl.glColorMask(false, false, false, false);
-        Gdx.gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xFF);
-        Gdx.gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
-        shapes.setProjectionMatrix(view);
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
-        for (Body body : hulls) {
-            Entity craft = owner(body);
-            if (craft != null && decks.containsKey(craft)) {
-                // Drawn as its deck plan, whose outline is its tiles, not its hull art's
-                maskDeck(body, craft.getComponent(ShipGridComponent.class));
-                continue;
-            }
-            for (Fixture fixture : body.getFixtureList()) {
-                if (!(fixture.getShape() instanceof PolygonShape)) continue;
-                // A docking port's collar stands out past the hull: the shield shows over it as round the rest
-                if ((fixture.getFilterData().categoryBits & CollisionCategories.CATEGORY_COLLAR) != 0) continue;
-                int n = PolygonSkin.outline(body, (PolygonShape) fixture.getShape(), polygon);
-                // Box2D's polygons are convex: a fan from the first corner fills one
-                for (int k = 1; k + 1 < n; k++) {
-                    shapes.triangle(polygon[0], polygon[1], polygon[2 * k], polygon[2 * k + 1], polygon[2 * k + 2], polygon[2 * k + 3]);
-                }
-            }
-        }
-        shapes.end();
-        Gdx.gl.glColorMask(true, true, true, true);
-        Gdx.gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
-        Gdx.gl.glDisable(GL20.GL_STENCIL_TEST);
-    }
-
-    /** {@code grid}'s tiles that are deck (not void, nor an engine's casing), filled in world meters at {@code body}'s pose. */
-    private void maskDeck(Body body, ShipGridComponent grid) {
-        if (grid == null) return;
-        Vector2 at = PhysicsManager.getPosition(body, tmp2);
-        float c = MathUtils.cos(body.getAngle()), sn = MathUtils.sin(body.getAngle()), t = grid.tileSize;
-        for (int y = 0; y < grid.height; y++) {
-            for (int x = 0; x < grid.width; x++) {
-                // An engine's casing is drawn as its nozzle alone, with space round it
-                if (grid.getTile(x, y).isVoid() || com.ringsofiron.interiorgrid.EngineLayout.isCasing(grid, x, y)) continue;
-                float lx = grid.gridOriginLocal.x + x * t, ly = grid.gridOriginLocal.y + y * t;
-                float x0 = at.x + c * lx - sn * ly, y0 = at.y + sn * lx + c * ly;
-                float x1 = x0 + c * t, y1 = y0 + sn * t;
-                float x3 = x0 - sn * t, y3 = y0 + c * t;
-                float x2 = x1 - sn * t, y2 = y1 + c * t;
-                shapes.triangle(x0, y0, x1, y1, x2, y2);
-                shapes.triangle(x0, y0, x2, y2, x3, y3);
-            }
-        }
     }
 
     private void drawFixture(Body body, Shape shape) {
