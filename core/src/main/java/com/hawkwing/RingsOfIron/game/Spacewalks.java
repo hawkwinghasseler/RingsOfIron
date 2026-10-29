@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewState;
@@ -13,6 +14,7 @@ import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.coreengine.components.TransientComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.uihud.systems.HudRenderSystem;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
@@ -48,6 +50,33 @@ public final class Spacewalks {
         world.crew.eva.attach(world.physics);
         world.crew.eva.events.add((signal, e) -> onEvent(e));
         world.engine.addRailsWarpGuard(this::railsWarpBlockedReason);
+        world.engine.addSystem(new PlaceMarkers());
+    }
+
+    /**
+     * Puts each marker over the one adrift it marks, once the frame's physics has stepped and just
+     * before the HUD draws. A marker has no body, so every physics step carries it back by the
+     * bubble's travel, as if fixed to the planet: placed any earlier, it would be drawn that far off
+     * them (at orbital speed, a hundred meters and more a frame).
+     */
+    private final class PlaceMarkers extends EntitySystem {
+        PlaceMarkers() {
+            super(HudRenderSystem.DEFAULT_PRIORITY - 1);
+        }
+
+        @Override
+        public void update(float deltaTime) {
+            for (Map.Entry<Entity, Entity> m : markers.entrySet()) place(m.getKey(), m.getValue());
+        }
+    }
+
+    /** Puts marker {@code m} where {@code e} is, both in the bubble's meters. */
+    private static void place(Entity e, Entity m) {
+        EvaComponent eva = EvaSystem.of(e);
+        if (eva == null || !eva.worldValid) return;
+        TransformComponent t = m.getComponent(TransformComponent.class);
+        t.x = eva.wx;
+        t.y = eva.wy;
     }
 
     /**
@@ -159,29 +188,23 @@ public final class Spacewalks {
     }
 
     /**
-     * Once a frame, after the engine's update: puts a marker on the HUD over each of the player's
-     * crew adrift, alive, and drops the markers of those who aren't any more.
+     * Once a frame, after the engine's update: gives each of the player's crew adrift, alive, a
+     * marker on the HUD ({@link PlaceMarkers} keeps it over them), and drops the markers of those
+     * who aren't any more.
      */
     public void update() {
         ImmutableArray<Entity> all = world.crew.crewEntities();
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
             if (!ours(e) || !isAdrift(e) || world.crew.crew(e).state == CrewState.DEAD) continue;
-            EvaComponent eva = EvaSystem.of(e);
-            if (!eva.worldValid) continue;
-            Entity m = markers.get(e);
-            if (m == null) {
-                m = world.engine.createEntity();
-                m.add(new TransformComponent());
-                m.add(new TransientComponent());
-                m.add(new HudMarkerComponent(world.crew.crew(e).name + ", adrift", HudMarkerComponent.Kind.FRIENDLY).radius(1f));
-                world.engine.addEntity(m);
-                markers.put(e, m);
-            }
-            // Both in the bubble's meters
-            TransformComponent t = m.getComponent(TransformComponent.class);
-            t.x = eva.wx;
-            t.y = eva.wy;
+            if (!EvaSystem.of(e).worldValid || markers.containsKey(e)) continue;
+            Entity m = world.engine.createEntity();
+            m.add(new TransformComponent());
+            m.add(new TransientComponent());
+            m.add(new HudMarkerComponent(world.crew.crew(e).name + ", adrift", HudMarkerComponent.Kind.FRIENDLY).radius(1f));
+            place(e, m);
+            world.engine.addEntity(m);
+            markers.put(e, m);
         }
         for (Iterator<Map.Entry<Entity, Entity>> it = markers.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<Entity, Entity> m = it.next();

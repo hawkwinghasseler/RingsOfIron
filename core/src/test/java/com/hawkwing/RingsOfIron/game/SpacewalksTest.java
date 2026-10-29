@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.GdxNativesLoader;
@@ -22,6 +23,7 @@ import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.uihud.systems.HudRenderSystem;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
@@ -195,14 +197,26 @@ class SpacewalksTest {
         for (int i = 0; i < 60 * 5 && !warned.getAsBoolean(); i++) run(1);
         assertTrue(warned.getAsBoolean(), "the warning");
         assertNotNull(world.spacewalks.marker(e), "a marker on the HUD over them");
-        // Where they are against the ship, in the bubble's meters, as the HUD reads the ship's own transform
-        world.spacewalks.update();
-        TransformComponent mark = world.spacewalks.marker(e).getComponent(TransformComponent.class);
-        TransformComponent ship = game.player.getComponent(TransformComponent.class);
-        Vector2 hull = PhysicsManager.getPosition(game.player.getComponent(PhysicsBodyComponent.class).body, new Vector2());
-        EvaComponent adrift = EvaSystem.of(e);
-        assertEquals(adrift.wx - hull.x, mark.x - ship.x, 0.5f, "over them");
-        assertEquals(adrift.wy - hull.y, mark.y - ship.y, 0.5f, "over them");
+        // Over them when the HUD draws it, mid-frame: against the ship's transform as they are against its hull
+        float[] seen = new float[4];
+        EntitySystem hud = new EntitySystem(HudRenderSystem.DEFAULT_PRIORITY) {
+            @Override
+            public void update(float deltaTime) {
+                TransformComponent mark = world.spacewalks.marker(e).getComponent(TransformComponent.class);
+                TransformComponent ship = game.player.getComponent(TransformComponent.class);
+                Vector2 hull = PhysicsManager.getPosition(game.player.getComponent(PhysicsBodyComponent.class).body, new Vector2());
+                EvaComponent adrift = EvaSystem.of(e);
+                seen[0] = mark.x - ship.x;
+                seen[1] = mark.y - ship.y;
+                seen[2] = adrift.wx - hull.x;
+                seen[3] = adrift.wy - hull.y;
+            }
+        };
+        world.engine.addSystem(hud);
+        run(1);
+        world.engine.removeSystem(hud);
+        assertEquals(seen[2], seen[0], 0.5f, "over them");
+        assertEquals(seen[3], seen[1], 0.5f, "over them");
         assertEquals(Spacewalks.REFUSAL + ": " + name + " is adrift", world.spacewalks.railsWarpBlockedReason());
         String status = world.spacewalks.statusLine();
         assertTrue(status.startsWith("EVA: " + name + " adrift "), status);

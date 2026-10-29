@@ -413,8 +413,8 @@ line and finish the block:
   outside; held in from the crew window, nobody goes until one is sent.
 - `FieldRefitsTest` (core): a salvaged railgun mounted on the corvette's nose from outside and the
   coilgun brought in to the hold; a save with the crate out in hand.
-- `SpacewalksTest` (core) also: one adrift with a marker and the notices, and one on the hull behind
-  an engine warned of and killed by a burn.
+- `SpacewalksTest` (core) also: one adrift with a marker over them and the notices, and one on the
+  hull behind an engine warned of and killed by a burn.
 - `PlayerShipStatusTest` (core): the corvette's airlock pumped down for someone going out is no
   vacuum alarm, and the cabin reads full.
 - `ArtNamesTest`: every suited, crawling and floating figure and every furnishing has its art.
