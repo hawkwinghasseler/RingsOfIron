@@ -117,9 +117,18 @@ public class CrewMemberComponent implements Component {
         this.record = CrewRecord.from(def);
     }
 
-    /** Shows {@code done} seconds (or work) of {@code of} as the share of the job in hand done ({@link #progress}). */
+    /**
+     * Seconds a job must take before it gets a bar: a quick one is over before a bar would tell the
+     * player anything. Jobs that show themselves (a fire shrinking, cargo in hand) get none at all.
+     */
+    public static final float PROGRESS_MIN_SECONDS = 10f;
+
+    /**
+     * Shows {@code done} of {@code of} seconds as the share of the job in hand done ({@link #progress});
+     * no bar for a job shorter than {@link #PROGRESS_MIN_SECONDS}.
+     */
     public void showProgress(float done, float of) {
-        progress = of > 0f ? Math.max(0f, Math.min(1f, done / of)) : -1f;
+        progress = of >= PROGRESS_MIN_SECONDS ? Math.max(0f, Math.min(1f, done / of)) : -1f;
     }
 
     /** This crew member's record, made from their def if they have none yet. */

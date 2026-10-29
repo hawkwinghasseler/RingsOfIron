@@ -551,9 +551,9 @@ public final class DeckRenderer {
     }
 
     /**
-     * A bar over each crew member aboard {@code ships} at a timed job ({@link CrewMemberComponent#progress}):
-     * repairing, sealing, forcing a door, getting into a suit. Over the light map so it reads in the
-     * dark, and level on the screen however the craft turns. {@code outsideOnly} keeps to those out on EVA.
+     * A faint bar over each crew member aboard {@code ships} at a slow job nothing else on the deck
+     * shows ({@link CrewMemberComponent#progress}): repairing, forcing a door, getting into an EVA
+     * suit. Over the light map so it reads in the dark, and level on the screen however the craft turns. {@code outsideOnly} keeps to those out on EVA.
      */
     private void progressBars(Array<Entity> ships, OrthographicCamera camera, boolean outsideOnly) {
         GameWorld current = world.get();
@@ -578,7 +578,7 @@ public final class DeckRenderer {
                 if (c.progress < 0f || c.state == CrewState.DEAD) continue;
                 Vector2 l = pos.toShipLocal(g, local);
                 float grow = Math.max(1f, BAR_MIN_PIXELS * pixel / (BAR_WIDTH * s));
-                float w = BAR_WIDTH * s * grow, h = BAR_HEIGHT * s * grow, edge = BAR_EDGE * s * grow;
+                float w = BAR_WIDTH * s * grow, h = BAR_HEIGHT * s * grow;
                 float raise = BAR_RAISE * s + (h - BAR_HEIGHT * s) / 2f;
                 float wx = at.x + cos * l.x - sin * l.y + upX * raise;
                 float wy = at.y + sin * l.x + cos * l.y + upY * raise;
@@ -586,7 +586,7 @@ public final class DeckRenderer {
                 shapes.translate(wx, wy, 0f);
                 shapes.rotate(0f, 0f, 1f, degrees);
                 shapes.setColor(BAR_BACK);
-                shapes.rect(-w / 2f - edge, -h / 2f - edge, w + 2f * edge, h + 2f * edge);
+                shapes.rect(-w / 2f, -h / 2f, w, h);
                 shapes.setColor(BAR_FILL);
                 shapes.rect(-w / 2f, -h / 2f, w * Math.min(1f, c.progress), h);
             }
@@ -611,11 +611,12 @@ public final class DeckRenderer {
         Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
-    /** A job's progress bar over a crew member, in tiles: its length, thickness, dark edge and how far above them. */
-    private static final float BAR_WIDTH = 0.9f, BAR_HEIGHT = 0.12f, BAR_EDGE = 0.03f, BAR_RAISE = 0.62f;
+    /** A job's progress bar over a crew member, in tiles: its length, thickness and how far above them. */
+    private static final float BAR_WIDTH = 0.6f, BAR_HEIGHT = 0.05f, BAR_RAISE = 0.55f;
     /** The shortest a progress bar is drawn on the screen, pixels: it grows to this zoomed out. */
-    private static final float BAR_MIN_PIXELS = 28f;
-    private static final Color BAR_BACK = new Color(0.05f, 0.06f, 0.08f, 0.75f), BAR_FILL = new Color(0.45f, 0.9f, 0.5f, 1f);
+    private static final float BAR_MIN_PIXELS = 14f;
+    /** Faint: a hint over the figure, not a HUD element. */
+    private static final Color BAR_BACK = new Color(0.8f, 0.85f, 0.9f, 0.12f), BAR_FILL = new Color(0.8f, 0.88f, 0.95f, 0.45f);
 
     /** The radius of the wound disc under a crew member, in tiles: a ring round the dot without the art. */
     private static final float WOUND_DISC = 0.336f;

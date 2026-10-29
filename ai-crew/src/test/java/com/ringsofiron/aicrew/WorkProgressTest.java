@@ -42,12 +42,14 @@ class WorkProgressTest {
     }
 
     @Test
-    void showProgressClampsAndHidesWithNothingToShow() {
+    void showProgressClampsAndLeavesQuickJobsBare() {
         CrewMemberComponent c = new CrewMemberComponent();
-        c.showProgress(3f, 6f);
+        c.showProgress(20f, 40f);
         assertEquals(0.5f, c.progress, 1e-6f);
-        c.showProgress(9f, 6f);
+        c.showProgress(50f, 40f);
         assertEquals(1f, c.progress, 1e-6f);
+        c.showProgress(1f, 5f);
+        assertTrue(c.progress < 0f, "a pressure suit's few seconds get no bar");
         c.showProgress(1f, 0f);
         assertTrue(c.progress < 0f);
     }

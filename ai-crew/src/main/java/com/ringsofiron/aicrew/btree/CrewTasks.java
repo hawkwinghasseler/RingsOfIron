@@ -467,7 +467,6 @@ public final class CrewTasks {
             switch (t.kind) {
                 case EXTINGUISH:
                     tile.fireIntensity -= a.crew.def.extinguishRate * dt;
-                    a.crew.showProgress(1f - tile.fireIntensity, 1f);
                     if (tile.fireIntensity <= 0f) {
                         tile.extinguish();
                         return Status.SUCCEEDED;
@@ -488,7 +487,8 @@ public final class CrewTasks {
                 case REPAIR: {
                     SubsystemComponent s = ((RepairTask) t).subsystem.getComponent(SubsystemComponent.class);
                     s.health = Math.min(1f, s.health + a.crew.def.repairRate * dt);
-                    a.crew.showProgress(s.health, 1f);
+                    // Slow, and nothing on the deck shows it: the bar is the system's health
+                    a.crew.progress = s.health;
                     if (s.health >= 1f) {
                         grid.gridDirty = true; // a repaired system may route power again
                         DamageStates.repaired(grid, s);
@@ -821,7 +821,6 @@ public final class CrewTasks {
             if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
             a.crew.activity = "loading " + t.job.commodity();
             working += a.dt;
-            a.crew.showProgress(working, a.crew.def.loadTime);
             if (working < a.crew.def.loadTime) return Status.RUNNING;
             double units = t.job.take(a.crew.def.carryVolume);
             if (units <= 0) return finish(a, t);
@@ -875,7 +874,6 @@ public final class CrewTasks {
             if (go == CrewAgent.Travel.GOING) return Status.RUNNING;
             a.crew.activity = "unloading " + t.job.commodity();
             working += a.dt;
-            a.crew.showProgress(working, a.crew.def.loadTime);
             if (working < a.crew.def.loadTime) return Status.RUNNING;
             a.crew.load = null;
             t.job.deliver(load.units);
