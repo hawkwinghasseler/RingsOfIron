@@ -19,7 +19,7 @@ public interface CrewDamageSink {
         BURN,
         ASPHYXIATION,
         SMALL_ARMS,
-        /** A collision: thrown about by the jolt, or caught where the hull crushed in. Wounds. */
+        /** A collision: thrown about by the jolt, or caught where the hull gave way. Wounds. */
         IMPACT,
         OTHER
     }

@@ -85,11 +85,6 @@ public class ShipGridComponent implements Component {
      */
     public boolean gridDirty = false;
     /**
-     * Set when a tile is crushed or a crushed tile is rebuilt, so the hull's collision fixtures
-     * are reshaped before the next physics step (core's {@code HullReshaper}). Not saved.
-     */
-    public transient boolean hullShapeDirty = false;
-    /**
      * Id of the chassis this grid was built from (chassis.toml), which names its exterior art;
      * null for a grid made in code.
      */
@@ -170,26 +165,6 @@ public class ShipGridComponent implements Component {
             return new int[]{-1, -1};
         }
         return new int[]{tx, ty};
-    }
-
-    /** Whether any tile has been crushed, so the hull collides on its layout less those tiles. */
-    public boolean hasCrushedTiles() {
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                if (tiles[y][x].isCrushed()) return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Rebuilds a crushed tile (as a yard does once it is whole): it collides again.
-     */
-    public void uncrush(int x, int y) {
-        Tile t = getTile(x, y);
-        if (t == null || !t.isCrushed()) return;
-        t.setCrushed(false);
-        hullShapeDirty = true;
     }
 
     /**

@@ -430,7 +430,7 @@ public final class DevConsole {
             return actions.blast(tileShip, t[0], t[1], warhead);
         });
         console.define("ram", "ram([km/s], [tonnes], [target])", "a rock at the tile from straight outboard (2 km/s, 2 t)."
-                + " Under 1 km/s it crashes into the hull as ships do: nothing at 0.025 and under, damages at 0.05, crushes from 0.1", hits, args -> {
+                + " Under 1 km/s it crashes into the hull as ships do: nothing at 0.025 and under, damages from 0.05", hits, args -> {
             int numbers = 0;
             while (numbers < args.length && numbers < 2 && args[numbers] instanceof Number) numbers++;
             float speed = numbers > 0 ? number(args[0]) * 1000f : WorldDebug.RAM_SPEED;

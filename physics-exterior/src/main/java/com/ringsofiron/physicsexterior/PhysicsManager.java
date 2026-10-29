@@ -219,7 +219,7 @@ public class PhysicsManager implements Disposable {
     /**
      * Turns crashes on: from now, a new contact closing faster than {@code speed} m/s between two
      * bodies {@code filter} allows is not pushed apart by Box2D. For the tick they met in the
-     * bodies pass into each other, then {@link #crashes} reports it and its listener crushes what
+     * bodies pass into each other, then {@link #crashes} reports it and its listener damages what
      * they hit and trades their momentum. Contacts on sensors, docking collars and projectiles
      * never crash, and a pair that just crashed meets as Box2D would for
      * {@link #CRASH_COOLDOWN_TICKS}. An infinite speed (the default) turns crashes off.

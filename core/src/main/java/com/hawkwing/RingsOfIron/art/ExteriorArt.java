@@ -20,8 +20,8 @@ import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
 
 /**
- * Draws craft from outside with the art pack: the hull of the chassis a craft was built from
- * (warped where collisions have dented and crushed it), an engine for each engine system (over
+ * Draws craft from outside with the art pack: the hull of the chassis a craft was built from,
+ * an engine for each engine system (over
  * its slot, outside the hull), each RCS block, and each weapon's turret on its hardpoint, turned to where it aims;
  * and the flames of the engines and RCS nozzles that fire, which {@code ThrusterFlames} draws in a
  * pass of their own. Exterior art is in the body frame (64 SVG units to the meter), so it

@@ -72,7 +72,7 @@ air, which vents.
 ## Who goes out, and when
 
 `ShipHazardScanSystem` posts an `RcsRepairTask` for every RCS block whose hull tile is wrecked
-(integrity 0) but not crushed flat (that is yard work), and only off battle stations; going to
+(integrity 0), and only off battle stations; going to
 battle stations takes the open ones off the board. It is engineering work.
 
 An engineer takes the job only when an EVA suit with at least half its air is aboard and a port
@@ -254,8 +254,8 @@ line and finish the block:
 - `AirlockTest` (interior-grid): the cycle both ways, the cabin's air, a crowded chamber, the door
   held open on a line, a load mid-cycle, the port keeping its power with the hatch shut.
 - `EvaRepairTest` (ai-crew): the whole job on a ship standing still, called back by a fight, never
-  at battle stations, crewmen leave it to engineers, no suit aboard, a port that can't cycle, a
-  crushed tile, one knocked out on the hull winched in.
+  at battle stations, crewmen leave it to engineers, no suit aboard, a port that can't cycle, one
+  knocked out on the hull winched in.
 - `EvaPhysicsTest` (ai-crew): the ship as a Box2D body: a gentle burn held through, a hard one into
   them only pressing them on, one past their grip throwing them off to swing on the line and jet
   back, one along the hull too hard to catch hold through (once thrown off, they stay off on the

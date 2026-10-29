@@ -46,7 +46,6 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 json.writeValue("sealed", t.bulkheadSealed);
                 if (t.patchedAt > 0f) json.writeValue("patch", t.patchedAt);
                 if (t.shorted) json.writeValue("short", true);
-                if (t.crushed) json.writeValue("crushed", true);
                 json.writeObjectEnd();
             }
         }
@@ -73,7 +72,6 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             json.writeValue("material", p.material);
             json.writeValue("integrity", p.integrity);
             if (p.patchedAt > 0f) json.writeValue("patch", p.patchedAt);
-            if (p.crushed) json.writeValue("crushed", true);
             json.writeObjectEnd();
         }
         json.writeArrayEnd();
@@ -225,7 +223,6 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             grid.placeHullPiece(piece);
             piece.integrity = p.getFloat("integrity");
             piece.patchedAt = p.getFloat("patch", 0f);
-            piece.crushed = p.getBoolean("crushed", false);
         }
 
         int i = 0;
@@ -243,9 +240,8 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             t.bulkheadSealed = v.getBoolean("sealed");
             t.patchedAt = v.getFloat("patch", 0f);
             t.shorted = v.getBoolean("short", false);
-            t.crushed = v.getBoolean("crushed", false);
         }
-        // Older saves may still carry "dents" (collision hull warping, since removed); it is ignored
+        // Older saves may still carry "crushed" and "dents" (collision crushing and hull warping, since removed); they are ignored
 
         readEdges(data.get("edgeH"), grid.edgeH);
         readEdges(data.get("edgeV"), grid.edgeV);

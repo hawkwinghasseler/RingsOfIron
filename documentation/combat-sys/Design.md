@@ -341,11 +341,9 @@ Ships are small and slow next to orbital speeds, but two hulls meeting at tens o
 
 **Energy.** That impulse takes `E = mu (v^2 - v0^2) / 2` out of the pair's motion. `DAMAGE_SHARE` (0.2) of it goes into the hulls' structure; the rest is the frames flexing, heat, noise and spin, which a tile grid has no way to hold. The hulls split the damage by how hard each is where they met (the hit points of the first solid tile in from the contact): ship A takes `hpB / (hpA + hpB)`, so an armored bow does more to a freighter's flank than the other way round. A body with no grid (a rock) counts as medium hull steel and takes its share into nothing.
 
-**Crush** (`PenetrationResolver.crush`). Each ship's share spreads from the contact over the solid tiles joined to the one first struck, out to three spreads, weighted by a Gaussian `SPREAD_TILES` (1.25 tiles) wide. Each tile takes its share out of its hit points (`hitPoints`, no armor strip: armor is for rounds; a conduit's 0.4 MJ), and a share bigger than what is left pushes on into the tile behind it along the inward normal, so a hard hit crushes a column in rather than wrecking the ring around it. Machinery on a tile takes the same energy out of its hardness, crew on it are wounded by `100 * E / 5 MJ` (`HitCause.IMPACT`, which wounds), and it can catch fire like any kinetic hit. Tanks can burst.
+**Crush** (`PenetrationResolver.crush`). Each ship's share spreads from the contact over the solid tiles joined to the one first struck, out to three spreads, weighted by a Gaussian `SPREAD_TILES` (1.25 tiles) wide. Each tile takes its share out of its hit points (`hitPoints`, no armor strip: armor is for rounds; a conduit's 0.4 MJ), and a share bigger than what is left pushes on into the tile behind it along the inward normal, so a hard hit wrecks a column in rather than the ring around it. Machinery on a tile takes the same energy out of its hardness, crew on it are wounded by `100 * E / 5 MJ` (`HitCause.IMPACT`, which wounds), and it can catch fire like any kinetic hit. Tanks can burst.
 
-A tile at integrity 0 that the crush reached and that has a side on the void, the grid's edge or a crushed tile, is **crushed** (`Tile.crushed`, see interior-grid): folded flat into the structure behind it. Crushing spreads inward along a column. A crushed tile is open to space, is in `DamageReport.breaches` (so the crew seal it) and `crushed`, kills whoever stands in it (250 injury, past the lethal wound), and leaves the hull's collision shape: `hullShapeDirty` is set and the system reshapes the body (`HullShape` less crushed tiles, mass kept) before the next step. The hulls end up inside each other's old outlines, and the next contact is on what is left.
-
-The exterior hull art is not deformed by collisions; damage shows through the crushed tiles and breaches.
+A hull tile taken to 0 is a breach like any other (`DamageReport.breaches`, so the crew seal it). Collisions never change a hull's shape: no tile is crushed flat or taken out of the collision shape, and the exterior hull art is not deformed.
 
 **Jolt.** Each ship's speed changes by `J / m` in an instant. Everyone aboard takes `JOLT_WOUND_PER_MPS` (1.5) injury for each m/s of it past `JOLT_SAFE_SPEED` (10 m/s), as `IMPACT`.
 
@@ -356,8 +354,8 @@ The exterior hull art is not deformed by collisions; damage shows through the cr
 | 25 m/s and under | 0 | 0 | a bump | unhurt |
 | 30 m/s | 13 MJ | 1.3 MJ | 22 tiles scuffed, worst 4% | unhurt |
 | 50 m/s | 91 MJ | 9.1 MJ | 22 tiles damaged, worst 30%, no breach | a scratch (12.5 m/s) |
-| 100 m/s | 457 MJ | 46 MJ | 3 tiles crushed, the bow wrecked round them, 9 tiles' worth lost | light wounds (37.5 m/s) |
-| 200 m/s | 1.9 GJ | 192 MJ | a third of the ship crushed (33 tiles) | critical (87.5 m/s) |
+| 100 m/s | 457 MJ | 46 MJ | 22 tiles damaged, the bow wrecked and breached, 9 tiles' worth lost | light wounds (37.5 m/s) |
+| 200 m/s | 1.9 GJ | 192 MJ | 44 tiles damaged, 38 tiles' worth lost | critical (87.5 m/s) |
 
 Shields don't act on crashes. A crash publishes a `HullHitEvent` per struck ship with `ram = true` (audio plays its own collision sound from physics), and a `DamageReport`. `CollisionDamageSystem.last` keeps the last crash's numbers for tests, demos and the console. The game's debug ram (`WorldDebug.ram`) under 1 km/s flies a Box2D rock at the hull, so it crashes the same way.
 
@@ -368,7 +366,7 @@ Per 60 Hz tick:
 2. Box2D step (`PhysicsUpdateSystem`)
 3. `BallisticsSystem` / `MissileGuidanceSystem`
 4. `ImpactResolutionSystem` drains that tick's events in `tick, then shipUuid` order
-5. Crashes found in the step are settled after it (`CollisionDamageSystem`, 5.12), in the order Box2D found them; hulls they crushed are reshaped before the next step
+5. Crashes found in the step are settled after it (`CollisionDamageSystem`, 5.12), in the order Box2D found them
 
 Hazards then evolve on their own tick (0.25 s). All random draws (fire, spall, gunnery jitter) come from a per-ship seeded RNG, so replays and unit tests are reproducible. The RNG's position is not saved: after a load each ship's stream starts again from its seed, so a loaded game rolls the same as itself but not as the run it was saved from. The RNG (`ImpactResolutionSystem.rngFor`) is seeded from the game's combat seed and the ship's UUID while the engine's UUIDs are seeded (a seeded career, and since round 6 the designed start), and from the combat seed and the ship's spawn index otherwise (a world on random UUIDs), so every game rolls the same shorts and bursts each run.
 
