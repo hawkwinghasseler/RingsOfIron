@@ -96,7 +96,8 @@ class EnemySurveyTest {
 
     @Test
     void theBasesDefenceFightsTheCorvette() {
-        Result r = fight(2026, CORVETTE, BASE, 0, null);
+        // Seeing the wing fire is enough: the corvette can't take the base, so fought out the raid runs 900 s
+        Result r = fight(2026, CORVETTE, BASE, 0, null, START, 1);
         System.out.println("RESULT " + r);
         assertTrue(r.fired > 0, "it fired: " + r);
         assertTrue(r.loadouts.contains("battery_"), "its guns joined the defence: " + r);
@@ -230,6 +231,15 @@ class EnemySurveyTest {
      * its lurk as the game does ({@link #hunt}).
      */
     static Result fight(long seed, int ours, String shipId, int size, String loadout, String start) {
+        return fight(seed, ours, shipId, size, loadout, start, 0);
+    }
+
+    /**
+     * As {@link #fight(long, int, String, int, String, String)}; a raid on the {@link #BASE} ends once its
+     * wing has fired {@code enoughShots} rounds, when that is above 0 ({@link RaidRoutine#fly(GameWorld,
+     * GameScenario, Runnable, long, int)}).
+     */
+    static Result fight(long seed, int ours, String shipId, int size, String loadout, String start, int enoughShots) {
         boolean gunship = ours != CORVETTE;
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         GameWorld world = new GameWorld();
@@ -255,9 +265,9 @@ class EnemySurveyTest {
             }
             if (BASE.equals(shipId)) {
                 world.pirateBase.reveal(null);
-                if (!NO_RAILGUN.equals(loadout)) return RaidRoutine.fly(world, game, () -> { });
+                if (!NO_RAILGUN.equals(loadout)) return RaidRoutine.fly(world, game, () -> { }, -1, enoughShots);
                 pinDifficulty(world, game.player, NO_RAILGUN_DIFFICULTY);
-                return RaidRoutine.fly(world, game, () -> { }, seed);
+                return RaidRoutine.fly(world, game, () -> { }, seed, enoughShots);
             }
             String lurk = game.highport;
             // Armed as the difficulty would arm it, drawn by the seed (the top-up's own draw is the same in every game)

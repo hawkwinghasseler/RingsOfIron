@@ -41,6 +41,15 @@ final class RaidRoutine {
      * row (round 10), the draw the career meets most.
      */
     static EnemySurveyTest.Result fly(GameWorld world, GameScenario game, Runnable arrived, long redraw) {
+        return fly(world, game, arrived, redraw, 0);
+    }
+
+    /**
+     * As {@link #fly(GameWorld, GameScenario, Runnable, long)}; with {@code enoughShots} above 0 the raid
+     * ends once the base's wing has fired that many rounds: a quick check that the defence
+     * fights needn't play out the whole raid (a corvette's can run all {@link #RAID_SECONDS}).
+     */
+    static EnemySurveyTest.Result fly(GameWorld world, GameScenario game, Runnable arrived, long redraw, int enoughShots) {
         EnemySurveyTest.Result r = new EnemySurveyTest.Result();
         r.difficulty = Difficulty.of(world);
         Entity base = world.engine.getEntity(world.pirateBase.uuid());
@@ -162,7 +171,7 @@ final class RaidRoutine {
             }
             frame[0]++;
             boolean done = !world.pirateBase.standing() || FirstPlay.beaten(world, player) || EnemySurveyTest.alive(world, player) == 0
-                    || world.getCrash() != null;
+                    || world.getCrash() != null || (enoughShots > 0 && fired[0] >= enoughShots);
             if (done) end[0] = world.engine.getSimSeconds();
             return done;
         });
