@@ -36,7 +36,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | Tab | Cycle the target |
 | Click (outside view) | Select a ship or station: a ship becomes the target, and either becomes the navigation target. Zoomed out, your ship and your targets show whole in picture-in-picture bubbles of their own fixed zoom; a click inside a bubble selects there too, and "[+] 3 others" under a bubble or a contact's name lists the names hidden there, a click on one selecting it |
 | V | Stand up from your console into the deck view; on deck beside the helm, the weapons console or a gun, sit there and look outside (`gradlew :lwjgl3:runGame -PviewAnywhere` switches anywhere) |
-| M | Map: the orbit map (plan burns with the mouse, see where they lead, fly them) or the traffic map, with tabs between them |
+| M | Map: orbits and traffic in one (plan burns with the mouse, see where they lead, fly them; click a station or ship to make it the navigation target) |
 | T | Trade, when in range of a station |
 | Y | Yard: repairs and refits, while docked |
 | J | Mission board: the station's contracts while docked, and the ones you hold |
@@ -50,7 +50,7 @@ Some modules also have headless demos that print to the console: `./gradlew :ai-
 | G / H / U | Arm docking, pick the next port, undock |
 | , / . | Time warp down and up |
 | N, B, arrows, [ / ] | Plan a burn: add a node, select the next, change its Δv, move it in time (or with the mouse on the orbit map) |
-| Q | Cycle the navigation target (or click a contact on the traffic map) |
+| Q | Cycle the navigation target (or click a contact on the map) |
 | ; (semicolon), Enter / Backspace | Plan a transfer to the target; accept or discard the plan |
 | / | Warp to the next burn, stopping a minute before it |
 | 1 / 2 / 3 / 4 / 5 / 0 | Helm orders while you are away from the helm: fly the planned burns, match the target's velocity, hold position, approach the target (again to change the distance), dock at the target, cancel |
@@ -122,7 +122,7 @@ The art in `assets/art` is SVG. The `art-pipeline` module rasterizes it into a t
 | `combat-sys` | Sensors, fire control, ballistics, missiles and hull penetration into the deck |
 | `macro-sim` | The economy, freighters on rails, and moving ships in and out of the bubble |
 | `stations-docking` | Stations, docking ports and the walkable link between docked craft |
-| `ui-hud` | The HUD, minimap, consoles, trade window and traffic map |
+| `ui-hud` | The HUD, minimap, consoles, trade window and the map |
 | `audio-spatial` | Positional sound with wall and door muffling |
 | `modding-data` | TOML/JSON data loading, mods and Groovy mod scripts |
 | `art-pipeline` | Rasterizes the SVG art into the game's texture atlas |

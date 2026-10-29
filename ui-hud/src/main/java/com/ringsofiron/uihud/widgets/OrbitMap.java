@@ -61,6 +61,8 @@ public class OrbitMap extends Widget {
     private BitmapFont font;
     private boolean hasPath;
     private boolean showMarks;
+    /** Stations and an on-map target drawn here; off where another layer draws the traffic. */
+    private boolean showStations = true;
     /** Pixels left clear around a fitted orbit. */
     private float fitMargin = 4f;
     private float prefSize = 220f;
@@ -90,6 +92,14 @@ public class OrbitMap extends Widget {
     /** Labels the apsides, changes of sphere of influence and impacts on the path; off for the small map. */
     public void setShowMarks(boolean show) {
         showMarks = show;
+    }
+
+    /**
+     * Whether to draw the stations and the target where they are; off, only a target off the map is
+     * marked, on the edge in its direction, for a map that draws the traffic itself.
+     */
+    public void setShowStations(boolean show) {
+        showStations = show;
     }
 
     /** Pixels kept clear between a fitted orbit and the map's edge, for its labels; 4 by default. */
@@ -130,6 +140,11 @@ public class OrbitMap extends Widget {
     /** What was drawn last frame; for tests. */
     public OrbitPathProvider.OrbitPath getPath() {
         return path;
+    }
+
+    /** The labels drawn last frame, stage coordinates, for another layer to keep its own clear of. */
+    public Array<Rectangle> getPlacedLabels() {
+        return placed;
     }
 
     public boolean hasPath() {
@@ -221,7 +236,10 @@ public class OrbitMap extends Widget {
             if (font != null && i / 2 < path.nodeLabels.size) {
                 Color c = selected ? Color.WHITE : PLANNED;
                 font.setColor(c.r, c.g, c.b, a);
-                font.draw(batch, path.nodeLabels.get(i / 2), nx + 6f, ny - 4f - 14f * ((i / 2) % 2));
+                float ly = ny - 4f - 14f * ((i / 2) % 2);
+                layout.setText(font, path.nodeLabels.get(i / 2));
+                font.draw(batch, layout, nx + 6f, ly);
+                placed.add(new Rectangle(nx + 6f, ly - layout.height, layout.width, layout.height));
             }
         }
         dot(batch, cx + (float) path.shipX * scale, cy + (float) path.shipY * scale, 5f, Color.WHITE, a);
@@ -330,6 +348,8 @@ public class OrbitMap extends Widget {
             if (!m.target) return;
             x *= reach / far;
             y *= reach / far;
+        } else if (!showStations) {
+            return;
         }
         Color c = m.target ? TARGET : STATION;
         float size = m.target ? 9f : 5f;

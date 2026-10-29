@@ -338,7 +338,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH - 10f, statusBottom - 4f, STATUS_WIDTH,
                 viewports.getUiViewport().getWorldHeight() - statusBottom + 4f));
         hud.setBannerRight(() -> viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH - 10f);
-        hud.getTrafficMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
+        hud.getManeuverMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
         // A click on a radar contact selects it as a click on the outside view does
         hud.getRadar().setPickListener(this::selectContact);
         gameHud.yard.setLayoutEditor(this::openRefit);

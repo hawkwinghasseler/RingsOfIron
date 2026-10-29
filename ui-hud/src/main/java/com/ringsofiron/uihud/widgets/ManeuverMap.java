@@ -19,18 +19,22 @@ import com.badlogic.gdx.utils.FloatArray;
 import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.providers.ManeuverPlannerProvider;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
+import com.ringsofiron.uihud.providers.TrafficMapProvider;
 
 import java.util.Locale;
 
 /**
- * The full-screen orbit map (M): the game's {@link OrbitMap} at any zoom, with the apsides, changes of
- * sphere of influence and impacts labelled, and a side panel to plan burns and fly them.
+ * The full-screen map (M): the game's {@link OrbitMap} at any zoom, with the apsides, changes of sphere
+ * of influence and impacts labelled, the traffic around the body over it (a {@link TrafficLayer}:
+ * stations, haulers, pirates, derelicts, and the tension readout), and a side panel to plan burns and
+ * fly them.
  *
  * <p>Mouse: a click on the path plans a burn there; a click on a burn selects it, and dragging it slides
  * it along its orbit. The selected burn has four handles, prograde and retrograde, radial out and in:
  * dragging one out adds delta-v that way, more the farther it goes (Shift for a tenth as much), and the
  * planned path follows as it changes. Dragging empty space, or with the right button, pans; the wheel
- * zooms about the pointer. The panel's buttons warp to the next burn, give the helm the order to fly the
+ * zooms about the pointer. A click on a contact makes it the navigation target ({@link #setPickListener}).
+ * The panel's buttons warp to the next burn, give the helm the order to fly the
  * burns, start the transfer autopilot, and plan, accept or discard a transfer to the navigation target.
  */
 public class ManeuverMap extends Table {
@@ -58,6 +62,8 @@ public class ManeuverMap extends Table {
     private final TextureRegion white;
     private final BitmapFont font;
     private final OrbitMap map;
+    private final TrafficLayer traffic;
+    private java.util.function.Consumer<String> pickListener;
     private final Label orbitInfo, burnInfo, planInfo, hint;
     private final Table burnButtons, proposalButtons;
     private final TextButton focusButton, planButton;
@@ -82,8 +88,9 @@ public class ManeuverMap extends Table {
         map = new OrbitMap(white);
         map.setFont(font);
         map.setShowMarks(true);
-        // Clear of the tabs and titles at the top, with room for the apsides' labels
+        // Clear of the title at the top, with room for the apsides' labels
         map.setFitMargin(48f);
+        traffic = new TrafficLayer(white, font);
 
         orbitInfo = info(skin);
         burnInfo = info(skin);
@@ -131,7 +138,8 @@ public class ManeuverMap extends Table {
         view.left();
         focusButton = button(skin, "Centre: body", this::nextFocus);
         view.add(focusButton).padRight(6f);
-        view.add(button(skin, "Fit", this::fit));
+        view.add(button(skin, "Fit", this::fit)).padRight(6f);
+        view.add(button(skin, "All traffic", this::fitTraffic));
         panel.add(view).padTop(2f).row();
         panel.add(hint).padTop(10f).row();
 
@@ -193,6 +201,25 @@ public class ManeuverMap extends Table {
         map.setProvider(provider);
     }
 
+    /** Off-bubble traffic to draw over the orbits; null for none. */
+    public void setTraffic(TrafficMapProvider provider) {
+        traffic.setProvider(provider);
+    }
+
+    public TrafficLayer getTraffic() {
+        return traffic;
+    }
+
+    /** Called with a contact's id when the player clicks it; null turns picking contacts off. */
+    public void setPickListener(java.util.function.Consumer<String> listener) {
+        pickListener = listener;
+    }
+
+    /** Whether the traffic is drawn: there is some, around the body the orbits are drawn around. */
+    boolean showsTraffic() {
+        return traffic.matches(map.getPath().bodyName);
+    }
+
     public void setPlanner(ManeuverPlannerProvider planner) {
         this.planner = planner;
         refresh();
@@ -215,6 +242,19 @@ public class ManeuverMap extends Table {
     /** Back to the whole orbit around the body. */
     public void fit() {
         metersPerPixel = 0;
+        panX = panY = 0;
+        focus = Focus.BODY;
+    }
+
+    /** Out far enough to take in all the traffic around the body, centred on it. */
+    public void fitTraffic() {
+        if (!showsTraffic()) {
+            fit();
+            return;
+        }
+        float half = Math.min(map.getWidth(), map.getHeight()) / 2f - 40f;
+        if (half <= 0) return;
+        metersPerPixel = MathUtils.clamp(traffic.fitRadius() / half, MIN_SCALE, MAX_SCALE);
         panX = panY = 0;
         focus = Focus.BODY;
     }
@@ -391,7 +431,12 @@ public class ManeuverMap extends Table {
     }
 
     private void release(float x, float y) {
-        if (drag == Drag.PRESS && planner != null) {
+        // A contact under the click is picked rather than a burn planned on the path beneath it
+        String picked = drag == Drag.PRESS && pickListener != null && showsTraffic() ? traffic.pick(x, y) : null;
+        if (picked != null) {
+            pickListener.accept(picked);
+            refresh();
+        } else if (drag == Drag.PRESS && planner != null) {
             planner.addBurnNear(worldX(x), worldY(y), PATH_PICK * metersPerPixel());
             refresh();
         }
@@ -467,6 +512,9 @@ public class ManeuverMap extends Table {
     public void act(float delta) {
         super.act(delta);
         if (!isVisible()) return;
+        traffic.act(delta);
+        // The traffic layer marks the stations and the target; the orbit map only one off the edge
+        map.setShowStations(!showsTraffic());
         // Follow the focus as it moves (the ship along its orbit), keeping any panning
         if (metersPerPixel > 0) {
             double[] c = viewCenter();
@@ -492,7 +540,7 @@ public class ManeuverMap extends Table {
         focusButton.setText("Centre: " + focusName());
         hint.setText(selected
                 ? "Drag a handle to add delta-v (Shift: finer); drag the burn along its orbit to move it. Click the path to plan another."
-                : "Click the path to plan a burn there. Drag or right-drag to pan; the wheel zooms.");
+                : "Click the path to plan a burn there, or a contact to make it the navigation target. Drag or right-drag to pan; the wheel zooms.");
     }
 
     private String focusName() {
@@ -516,12 +564,26 @@ public class ManeuverMap extends Table {
             font.draw(batch, "No orbit to show", getX() + map.getX() + map.getWidth() / 2f - 50f, getY() + getHeight() / 2f);
             return;
         }
+        boolean showTraffic = showsTraffic();
+        if (showTraffic) {
+            // Over the orbits, inside the map's part of the screen
+            batch.flush();
+            if (map.clipBegin()) {
+                traffic.draw(batch, parentAlpha, map, getX() + map.getX(), getY() + map.getY(), map.getWidth(), map.getHeight());
+                batch.flush();
+                map.clipEnd();
+            }
+        }
         handles(batch, parentAlpha);
-        scaleBar(batch, parentAlpha);
+        float barY = scaleBar(batch, parentAlpha);
+        if (showTraffic) traffic.drawRegions(batch, parentAlpha, getX() + map.getX() + 20f, barY + TrafficLayer.LINE * traffic.regionLines());
+        String counts = showTraffic ? traffic.counts() : "";
         font.setColor(HudSkin.HUD_CYAN.r, HudSkin.HUD_CYAN.g, HudSkin.HUD_CYAN.b, parentAlpha);
-        font.draw(batch, "ORBIT MAP  " + map.getPath().bodyName.toUpperCase(Locale.ROOT), getX() + 16f, getY() + getHeight() - 14f);
+        font.draw(batch, "MAP  " + map.getPath().bodyName.toUpperCase(Locale.ROOT) + (counts.isEmpty() ? "" : "   " + counts),
+                getX() + 16f, getY() + getHeight() - 14f);
         font.setColor(HudSkin.HUD_DIM.r, HudSkin.HUD_DIM.g, HudSkin.HUD_DIM.b, parentAlpha);
-        font.draw(batch, "[M] close   [wheel] zoom   [drag] pan   [click the path] plan a burn",
+        font.draw(batch, "[M] close   [wheel] zoom   [drag] pan   [click the path] plan a burn"
+                        + (pickListener == null ? "" : "   [click a contact] navigation target"),
                 getX() + 16f, getY() + getHeight() - 32f);
         batch.setColor(old);
     }
@@ -555,19 +617,20 @@ public class ManeuverMap extends Table {
         }
     }
 
-    /** A bar of a round length in the bottom left, labelled. */
-    private void scaleBar(Batch batch, float alpha) {
+    /** A bar of a round length in the bottom left, labelled; returns the top of what it drew, stage y. */
+    private float scaleBar(Batch batch, float alpha) {
         double mpp = metersPerPixel();
-        if (!(mpp > 0)) return;
-        double length = TrafficMap.niceStep(160 * mpp);
-        float px = (float) (length / mpp);
         float x = getX() + map.getX() + 20f, y = getY() + map.getY() + 20f;
+        if (!(mpp > 0)) return y;
+        double length = TrafficLayer.niceStep(160 * mpp);
+        float px = (float) (length / mpp);
         batch.setColor(SCALE_BAR.r, SCALE_BAR.g, SCALE_BAR.b, SCALE_BAR.a * alpha);
         batch.draw(white, x, y, px, 1.5f);
         batch.draw(white, x, y, 1.5f, 6f);
         batch.draw(white, x + px - 1.5f, y, 1.5f, 6f);
         font.setColor(SCALE_BAR.r, SCALE_BAR.g, SCALE_BAR.b, alpha);
-        font.draw(batch, TrafficMap.formatDistance(length), x, y + 22f);
+        font.draw(batch, TrafficLayer.formatDistance(length), x, y + 22f);
+        return y + 44f;
     }
 
     private void ring(Batch batch, float x, float y, float r) {

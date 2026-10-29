@@ -53,7 +53,6 @@ import com.ringsofiron.uihud.widgets.ShipyardWindow;
 import com.ringsofiron.uihud.widgets.TradeWindow;
 import com.ringsofiron.uihud.widgets.BoardingWindow;
 import com.ringsofiron.uihud.widgets.YardWindow;
-import com.ringsofiron.uihud.widgets.TrafficMap;
 
 /**
  * Entry point to the ui-hud module: builds the Scene2D stage, the HUD widgets and the ECS
@@ -93,12 +92,7 @@ public class UiHud implements Disposable {
     private final ConsoleWindow consoleWindow;
     private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleLayouts = new ObjectMap<>();
     private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleExtras = new ObjectMap<>();
-    private final TrafficMap trafficMap;
     private final ManeuverMap maneuverMap;
-    /** The tabs over the full-screen maps, and which map M opens. */
-    private final Table mapTabs;
-    private final TextButton orbitTab, trafficTab;
-    private boolean trafficPage;
     private final TradeWindow tradeWindow;
     private final YardWindow yardWindow;
     private final MissionWindow missionWindow;
@@ -243,39 +237,9 @@ public class UiHud implements Disposable {
         }, () -> !shipyardWindow.getYard().stationName.isEmpty());
         boardingWindow = new BoardingWindow(skin);
 
-        trafficMap = new TrafficMap(skin);
-        trafficMap.setFillParent(true);
-        trafficMap.setVisible(false);
-        stage.addActor(trafficMap);
         maneuverMap = new ManeuverMap(skin);
         maneuverMap.setFillParent(true);
         stage.addActor(maneuverMap);
-        // Orbits and traffic share M: tabs at the top switch between them
-        orbitTab = new TextButton("Orbits", skin, "toggle");
-        trafficTab = new TextButton("Traffic", skin, "toggle");
-        new com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup<>(orbitTab, trafficTab);
-        orbitTab.pad(2f, 14f, 2f, 14f);
-        trafficTab.pad(2f, 14f, 2f, 14f);
-        orbitTab.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, com.badlogic.gdx.scenes.scene2d.Actor actor) {
-                if (orbitTab.isChecked() && isMapOpen()) showMap(false);
-            }
-        });
-        trafficTab.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, com.badlogic.gdx.scenes.scene2d.Actor actor) {
-                if (trafficTab.isChecked() && isMapOpen()) showMap(true);
-            }
-        });
-        mapTabs = new Table();
-        mapTabs.setFillParent(true);
-        mapTabs.setTouchable(Touchable.childrenOnly);
-        mapTabs.top().padTop(8f);
-        mapTabs.add(orbitTab).padRight(4f);
-        mapTabs.add(trafficTab);
-        mapTabs.setVisible(false);
-        stage.addActor(mapTabs);
 
         consoleWindow = new ConsoleWindow(skin, () -> interactPromptSystem().setPromptsEnabled(true));
         stage.addActor(consoleWindow);
@@ -322,12 +286,8 @@ public class UiHud implements Disposable {
 
             @Override
             public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY) {
-                if (maneuverMap.isVisible()) {
-                    maneuverMap.zoomAt(event.getStageX(), event.getStageY(), (float) Math.pow(1.25f, -amountY));
-                    return true;
-                }
-                if (!trafficMap.isVisible()) return false;
-                trafficMap.zoom((float) Math.pow(1.25f, -amountY));
+                if (!maneuverMap.isVisible()) return false;
+                maneuverMap.zoomAt(event.getStageX(), event.getStageY(), (float) Math.pow(1.25f, -amountY));
                 return true;
             }
         });
@@ -608,52 +568,23 @@ public class UiHud implements Disposable {
         return shipyardWindow;
     }
 
-    /** Off-bubble traffic for the map view (M). Without one the map says there is no data. */
+    /** Off-bubble traffic for the map (M), drawn over the orbits. Without one the map shows only orbits. */
     public void setTrafficMap(TrafficMapProvider provider) {
-        trafficMap.setProvider(provider);
+        maneuverMap.setTraffic(provider);
     }
 
-    /** Shows the traffic map, or closes the map. */
-    public void setTrafficMapVisible(boolean visible) {
-        if (visible) showMap(true);
-        else setMapVisible(false);
-    }
-
-    /** Opens the map on the page it was last on (the orbit map at first), or closes it. */
+    /** Opens the map (orbits, burns and traffic), or closes it. */
     public void setMapVisible(boolean visible) {
         if (visible) {
-            showMap(trafficPage);
-            return;
+            maneuverMap.getTraffic().refresh();
+            maneuverMap.refresh();
+            maneuverMap.toFront();
         }
-        trafficMap.setVisible(false);
-        maneuverMap.setVisible(false);
-        mapTabs.setVisible(false);
+        maneuverMap.setVisible(visible);
     }
 
-    /** Opens the map on the traffic page, or the orbit page. */
-    public void showMap(boolean traffic) {
-        trafficPage = traffic;
-        if (traffic) trafficMap.refresh();
-        else maneuverMap.refresh();
-        trafficMap.setVisible(traffic);
-        maneuverMap.setVisible(!traffic);
-        (traffic ? trafficMap : maneuverMap).toFront();
-        orbitTab.setProgrammaticChangeEvents(false);
-        trafficTab.setProgrammaticChangeEvents(false);
-        (traffic ? trafficTab : orbitTab).setChecked(true);
-        orbitTab.setProgrammaticChangeEvents(true);
-        trafficTab.setProgrammaticChangeEvents(true);
-        mapTabs.setVisible(true);
-        mapTabs.toFront();
-    }
-
-    /** Either full-screen map is open. */
     public boolean isMapOpen() {
-        return trafficMap.isVisible() || maneuverMap.isVisible();
-    }
-
-    public TrafficMap getTrafficMap() {
-        return trafficMap;
+        return maneuverMap.isVisible();
     }
 
     /** Briefly highlights a tile on the minimap, e.g. from combat-sys's hull-hit event. */
