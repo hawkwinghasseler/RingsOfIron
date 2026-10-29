@@ -73,6 +73,8 @@ public final class ShipRefit {
         if (hold != null && hold.usedVolume() > 1e-6) return "Unload the cargo before the yard rebuilds the decks";
         YardOrdersComponent orders = ship.getComponent(YardOrdersComponent.class);
         if (orders != null && !orders.isEmpty()) return "Wait for the yard's other work on the ship to finish";
+        FieldRefitComponent refits = ship.getComponent(FieldRefitComponent.class);
+        if (refits != null && !refits.orders.isEmpty()) return "Wait for the crew's own mounting work to finish, or call it off";
         return null;
     }
 

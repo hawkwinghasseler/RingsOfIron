@@ -53,6 +53,7 @@ public class CrewRoster implements CrewProvider {
             m.wage = r.wage > 0 ? String.format(Locale.ROOT, "%,.0f cr/wk", r.wage) : "Service";
             m.history = CrewCareer.history(r);
             m.dismissable = station != null;
+            m.evaAction = world.spacewalks.orderFor(e);
         }
         for (Entity e : world.prisoners.aboard(ship)) {
             CrewMemberComponent c = world.crew.crew(e);
@@ -69,6 +70,7 @@ public class CrewRoster implements CrewProvider {
         Entity taken = world.prisoners.takenAlongside();
         out.prisonersAlongside = taken != null && !world.prisoners.aboard(taken).isEmpty();
         out.suits = world.medical.suitsLine();
+        out.eva = world.spacewalks.holdLine();
         out.summary = String.format(Locale.ROOT, "%d / %d berths, %,.0f cr/wk in wages, %d medical stores",
                 world.crewHiring.aboard(ship), CrewHiring.berths(ship), world.crewCareer.weeklyWages(ship), world.medical.stores());
         if (station != null) {
@@ -106,6 +108,17 @@ public class CrewRoster implements CrewProvider {
     @Override
     public String toggleSuits() {
         return world.medical.toggleSuits();
+    }
+
+    @Override
+    public String toggleEva() {
+        return world.spacewalks.toggleHold();
+    }
+
+    @Override
+    public String evaOrder(long id) {
+        Entity e = find(id);
+        return e == null ? "No longer aboard" : world.spacewalks.order(e);
     }
 
     @Override

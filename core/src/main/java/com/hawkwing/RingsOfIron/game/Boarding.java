@@ -341,7 +341,10 @@ public class Boarding extends EntitySystem {
         return false;
     }
 
-    /** EVA suits aboard {@code ship} fit to go out in: worn, or hanging in its lockers with half their air or more. */
+    /**
+     * EVA suits aboard {@code ship} fit to go out in, worn or hanging in its lockers: with half their
+     * air and half their jetpack or more ({@link com.ringsofiron.aicrew.btree.EvaTasks#fitToGoOut}).
+     */
     public int evaSuits(Entity ship) {
         ShipGridComponent grid = crew.grid(ship);
         if (grid == null) return 0;
@@ -349,13 +352,13 @@ public class Boarding extends EntitySystem {
         for (Furnishing f : SuitLockers.all(grid)) {
             for (int i = 0; i < f.suits.size; i++) {
                 Suit s = f.suits.get(i);
-                if (s.kind == Suit.Kind.EVA && s.air >= com.ringsofiron.aicrew.btree.EvaTasks.MIN_AIR) n++;
+                if (com.ringsofiron.aicrew.btree.EvaTasks.fitToGoOut(s)) n++;
             }
         }
         ImmutableArray<Entity> all = crew.crewEntities();
         for (int i = 0; i < all.size(); i++) {
             CrewMemberComponent c = crew.crew(all.get(i));
-            if (crew.homeOf(all.get(i)) == ship && c.suited && c.suitKind == Suit.Kind.EVA) n++;
+            if (crew.homeOf(all.get(i)) == ship && com.ringsofiron.aicrew.btree.EvaTasks.fitToGoOut(c)) n++;
         }
         return n;
     }
@@ -400,7 +403,7 @@ public class Boarding extends EntitySystem {
             if (docked) b.byEva = false;
             // Over on EVA, the boarding holds while the two craft stay near enough to cross back
             boolean near = ship != null && b.byEva && crew.eva != null && crew.eva.separation(ship, target, sep)
-                    && sep[0] <= EvaSystem.LOST_RANGE;
+                    && sep[0] <= EvaSystem.CROSS_REACH;
             if (!docked && !near) {
                 end(target, b);
                 notices.add((b.byEva ? "Out of reach" : "Undocked") + ": the boarding of " + name(target) + " is called off");

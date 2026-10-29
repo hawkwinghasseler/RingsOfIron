@@ -474,7 +474,9 @@ class DockingDemoSceneTest {
         demo.update(FRAME);
         board.clear();
         yard.collect(board);
-        assertFalse(board.isOpen(), "no yard once undocked");
+        assertTrue(board.stationName.isEmpty(), "no yard once undocked");
+        assertTrue(board.field, "only the crew's own field refit");
+        assertEquals(0, board.damaged);
     }
 
     @Test

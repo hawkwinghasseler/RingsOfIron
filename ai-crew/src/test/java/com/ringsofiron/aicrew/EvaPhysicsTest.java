@@ -125,16 +125,76 @@ class EvaPhysicsTest {
     }
 
     @Test
-    void aFullBurnSnapsTheLineAndLeavesThemBehind() {
+    void aFullBurnSnapsTheLineAndLeavesThemAdriftTillTheShipComesBackForThem() {
         out();
         thrust.set(0f, 15f);
-        for (int i = 0; i < 600 && s.engine.getEntities().contains(crew, true); i++) s.run(0.1f);
+        float jetAtSnap = -1f;
+        for (int i = 0; i < 600 && !events.contains(EvaEvent.Kind.ADRIFT); i++) {
+            s.run(0.1f);
+            if (jetAtSnap < 0f && events.contains(EvaEvent.Kind.TETHER_SNAPPED)) jetAtSnap = s.c(crew).suitJet;
+        }
         assertTrue(events.contains(EvaEvent.Kind.LOST_GRIP), "thrown off: " + events);
         assertTrue(events.contains(EvaEvent.Kind.TETHER_SNAPPED), "the line parted: " + events);
         assertTrue(amounts.get(events.indexOf(EvaEvent.Kind.TETHER_SNAPPED)) > EvaSystem.LINE_RATED);
+        assertTrue(events.contains(EvaEvent.Kind.ADRIFT), "adrift, past what their pack can make up: " + events);
+        assertTrue(amounts.get(events.indexOf(EvaEvent.Kind.ADRIFT)) > 500f, "well astern by then");
+        assertEquals(jetAtSnap, s.c(crew).suitJet, 0.01f, "no fuel spent chasing a ship under full burn");
+        assertTrue(eva().stranded);
+        assertEquals("adrift, waiting to be picked up", s.c(crew).activity);
+        thrust.set(0f, 0f);
+        s.run(30f);
+        assertTrue(s.engine.getEntities().contains(crew, true), "still in the world, adrift");
+        assertFalse(events.contains(EvaEvent.Kind.LEFT_BEHIND));
+        assertEquals(jetAtSnap, s.c(crew).suitJet, 0.01f, "nor drifting away from it");
+        float[] range = new float[2];
+        assertTrue(s.crew.eva.rangeOf(crew, range));
+        assertTrue(range[0] > 1000f && range[1] < -100f, "far astern and falling further behind: " + range[0] + " m, " + range[1] + " m/s");
+        // The ship comes back for them: 60 m off, matching their speed
+        comeAlongside(60f);
+        for (int i = 0; i < 3000 && !events.contains(EvaEvent.Kind.CAUGHT_HULL); i++) s.run(0.1f);
+        assertTrue(events.contains(EvaEvent.Kind.CAUGHT_HULL), "jetted back and caught hold: " + events);
+        assertTrue(amounts.get(events.indexOf(EvaEvent.Kind.CAUGHT_HULL)) > 40f, "after a while adrift");
+        assertFalse(eva().stranded);
+        for (int i = 0; i < 3000 && !events.contains(EvaEvent.Kind.BACK); i++) s.run(0.1f);
+        assertTrue(events.contains(EvaEvent.Kind.BACK), "and back in: " + events);
+    }
+
+    /** Puts the ship {@code meters} off the crew member adrift, beside them and moving with them. */
+    void comeAlongside(float meters) {
+        float wx = eva().wx, wy = eva().wy;
+        body.setTransform((wx + meters) / PhysicsManager.METERS_PER_UNIT, wy / PhysicsManager.METERS_PER_UNIT, body.getAngle());
+        body.setLinearVelocity(eva().vx / PhysicsManager.METERS_PER_UNIT, eva().vy / PhysicsManager.METERS_PER_UNIT);
+        body.setAngularVelocity(0f);
+    }
+
+    @Test
+    void adriftTheirAirRunsOut() {
+        out();
+        thrust.set(0f, 15f);
+        for (int i = 0; i < 600 && !events.contains(EvaEvent.Kind.ADRIFT); i++) s.run(0.1f);
+        thrust.set(0f, 0f);
+        s.c(crew).suitAir = 20f;
+        for (int i = 0; i < 1200 && s.c(crew).state != CrewState.DEAD; i++) s.run(0.1f);
+        assertTrue(events.contains(EvaEvent.Kind.AIR_OUT), "their air ran out: " + events);
+        assertEquals(CrewState.DEAD, s.c(crew).state, "and they died of it");
+        assertEquals(1, java.util.Collections.frequency(events, EvaEvent.Kind.AIR_OUT));
+        s.run(10f);
+        assertNotNull(eva(), "their body still out there");
+        assertTrue(s.engine.getEntities().contains(crew, true));
+    }
+
+    @Test
+    void outOfTheBubbleTheyAreLeftBehind() {
+        out();
+        thrust.set(0f, 15f);
+        for (int i = 0; i < 600 && !events.contains(EvaEvent.Kind.ADRIFT); i++) s.run(0.1f);
+        thrust.set(0f, 0f);
+        // Fast forward: the ship far off along their way
+        body.setTransform(body.getPosition().x, body.getPosition().y + (EvaSystem.LOST_RANGE + 1000f) / PhysicsManager.METERS_PER_UNIT,
+                body.getAngle());
+        s.run(0.5f);
         assertTrue(events.contains(EvaEvent.Kind.LEFT_BEHIND), "left behind: " + events);
         assertFalse(s.engine.getEntities().contains(crew, true), "gone from the ship's world");
-        assertFalse(EvaRepairTest.block(s).works(s.grid), "the work never done");
     }
 
     @Test

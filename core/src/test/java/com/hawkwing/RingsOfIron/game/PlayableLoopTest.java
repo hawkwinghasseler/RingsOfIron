@@ -221,6 +221,7 @@ class PlayableLoopTest {
         world.rescue.rescues.add((signal, r) -> rescues.add(r));
         Entity oldShip = game.player;
         assertNull(world.abandon.order(game.player));
+        PlayerToPod.board(world, game.player);
         assertTrue(runUntil(60f, () -> !rescues.isEmpty()), "rescued");
         Rescue.Result r = rescues.get(0);
 

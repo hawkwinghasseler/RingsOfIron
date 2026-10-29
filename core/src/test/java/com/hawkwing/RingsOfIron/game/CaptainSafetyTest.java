@@ -18,7 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Round 6 part 1: the player's figure suits up at battle stations and in thin air, and the suit is saved. */
+/** The player's figure is never suited or unsuited by the game; its suit fills at a console, and is saved. */
 class CaptainSafetyTest {
     static final float FRAME = 1f / 60f;
 
@@ -62,33 +62,26 @@ class CaptainSafetyTest {
     }
 
     @Test
-    void theCaptainSuitsUpAtBattleStationsAndTakesItOffOnceCalm() {
+    void theCaptainNeverPutsASuitOnOrTakesItOffByThemselves() {
+        // Battle stations: the crew suit up, the captain doesn't unless the player does
         assertFalse(you().suited);
         game.provokeRaider();
         run(2);
         assertTrue(board().battleStations, "the raider has us as its target");
         runSeconds(you().def.suitTime + 1);
-        assertTrue(you().suited, "suited up with the crew");
+        assertFalse(you().suited, "no suit without the player");
 
-        // The crew window's toggle covers the captain too
-        world.medical.toggleSuits();
-        runSeconds(CrewTasks.Idle.SUIT_OFF_DELAY + you().def.suitTime);
-        assertFalse(you().suited, "out of the suit with suits at battle stations off");
-        world.medical.toggleSuits();
-        runSeconds(you().def.suitTime + 1);
-        assertTrue(you().suited);
-
-        // The raider beaten and no shot for the battle hold: the suit comes off
+        // Put on with E, it stays on once the fight is over and all is calm
+        you().setSuited(true);
         world.disablement.set(game.raider, DisabledComponent.Reason.SURRENDERED);
         for (int i = 0; i < (CrewMedical.BATTLE_HOLD + 30) / FRAME && board().battleStations; i++) world.update(FRAME);
         assertFalse(board().battleStations);
-        assertTrue(you().suited, "the suit stays on until calm");
-        runSeconds(CrewTasks.Idle.SUIT_OFF_DELAY + you().def.suitTime);
-        assertFalse(you().suited, "calm again");
+        runSeconds(CrewTasks.Idle.SUIT_OFF_DELAY + you().def.suitTime + 5);
+        assertTrue(you().suited, "the suit stays on until the player hangs it up");
     }
 
     @Test
-    void inThinAirTheCaptainPullsTheSuitOnAndIsToldToMove() {
+    void inThinAirTheCaptainIsToldToMoveButNotSuitedUp() {
         GridPositionComponent p = game.avatar.getComponent(GridPositionComponent.class);
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
         Compartment room = grid.compartmentAt(p.tileX(), p.tileY());
@@ -103,18 +96,36 @@ class CaptainSafetyTest {
             world.update(FRAME);
         }
         assertTrue(world.captain.inThinAir());
-        assertTrue(you().suited, "the suit went on");
-        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.equals(CaptainSafety.THIN_AIR)),
+        assertFalse(you().suited, "no suit without the player");
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.equals(CaptainSafety.NO_SUIT)),
                 () -> world.notices.history().stream().map(n -> n.text).toList().toString());
         assertTrue(world.hints.forContexts(java.util.EnumSet.of(HintRegistry.Context.DECK)).stream().anyMatch(h -> h.label.startsWith("walk to air")),
                 "a hint to walk to air");
     }
 
     @Test
+    void seatedAtAConsoleTheCaptainsSuitFills() {
+        assertNull(world.bridge.sit(com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType.HELM), "seated at the helm");
+        you().setSuited(true);
+        you().suitAir = 30f;
+        runSeconds(you().def.suitRefillTime / 2);
+        assertTrue(you().suitAir > 30f + you().suitCapacity() / 2 - 15f, "half filled: " + you().suitAir);
+        runSeconds(you().def.suitRefillTime / 2 + 1);
+        assertEquals(you().suitCapacity(), you().suitAir, 1e-3f, "full");
+
+        // Standing up, the console no longer feeds it
+        world.bridge.stand();
+        you().suitAir = 30f;
+        runSeconds(5);
+        assertTrue(you().suitAir <= 30f, "not filled away from the console: " + you().suitAir);
+    }
+
+    @Test
     void theCaptainsSuitIsSaved(@TempDir Path dir) {
-        game.provokeRaider();
+        world.bridge.stand();
+        you().setSuited(true);
+        you().suitAir = 200f;
         run(2);
-        runSeconds(you().def.suitTime + 1);
         assertTrue(you().suited);
         float air = you().suitAir;
         FileHandle file = new FileHandle(dir.resolve("captain.json").toFile());

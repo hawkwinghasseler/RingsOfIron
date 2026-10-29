@@ -69,9 +69,9 @@ import com.ringsofiron.uihud.widgets.YardWindow;
  * </pre>
  *
  * Keys handled by the HUD: E use console, Esc close console, map or market, V toggle exterior/interior view,
- * M toggle the map: the orbit map ({@link ManeuverMap}) or the traffic map, whichever was shown last, with
- * tabs between them (the mouse wheel zooms either while open), T open the station market while docked,
- * J the mission board (while docked, or holding a contract), I the crew roster. The shipyard opens from
+ * M toggle the map ({@link ManeuverMap}: orbits, burns and traffic in one; the mouse wheel zooms it while open),
+ * T open the station market while docked, J the mission board (while docked, or holding a contract), I the
+ * crew roster, Y the station yard (while docked at one) or, away from a yard, the crew's field refit. The shipyard opens from
  * the yard window's Ships for sale (while docked where ships are sold), or from Y with a prize in tow
  * near a station.
  */
@@ -228,9 +228,10 @@ public class UiHud implements Disposable {
         missionWindow = new MissionWindow(skin);
         crewWindow = new CrewWindow(skin);
         shipyardWindow = new ShipyardWindow(skin);
-        tradeWindow.setHintSuffix(() -> (yardWindow.isAvailable() && !yardWindow.isOpen() ? "   [Y] Yard" : "")
+        tradeWindow.setHintSuffix(() -> (yardWindow.isAvailable() && !yardWindow.isField() && !yardWindow.isOpen() ? "   [Y] Yard" : "")
                 + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : "")
-                + (!yardWindow.isAvailable() && shipyardWindow.isAvailable() && !shipyardWindow.isOpen() ? "   [Y] Shipyard" : ""));
+                + ((!yardWindow.isAvailable() || yardWindow.isField()) && shipyardWindow.isAvailable() && !shipyardWindow.isOpen()
+                        ? "   [Y] Shipyard" : ""));
         // Ships for sale is a yard service: the yard window's button opens the shipyard window
         yardWindow.setShipyard(() -> {
             if (shipyardWindow.setOpen(true)) yardWindow.setOpen(false);
@@ -353,11 +354,14 @@ public class UiHud implements Disposable {
                     shipyardWindow.setOpen(false);
                     return true;
                 }
-                if (yardWindow.isOpen() || yardWindow.isAvailable()) {
-                    yardWindow.setOpen(!yardWindow.isOpen());
+                if (yardWindow.isOpen()) {
+                    yardWindow.setOpen(false);
                     return true;
                 }
-                return shipyardWindow.isAvailable() && shipyardWindow.setOpen(true);
+                if (yardWindow.isAvailable() && !yardWindow.isField()) return yardWindow.setOpen(true);
+                // No yard: a prize to hand over first, else the crew's own field refit
+                if (shipyardWindow.isAvailable() && shipyardWindow.setOpen(true)) return true;
+                return yardWindow.isAvailable() && yardWindow.setOpen(true);
             case Input.Keys.J:
                 if (!missionWindow.isOpen() && !missionWindow.isAvailable()) return false;
                 missionWindow.setOpen(!missionWindow.isOpen());

@@ -9,6 +9,7 @@ import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
+import com.ringsofiron.interiorgrid.HullPlating;
 import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.RcsThruster;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -58,6 +59,12 @@ public final class TaskRules {
             }
             case REPAIR_RCS:
                 return RcsThruster.fieldRepairable(grid, task.x, task.y);
+            case PATCH_HULL:
+                return HullPlating.plateable(grid, task.x, task.y);
+            case FREE_COLLAR: case MOUNT_PART:
+                return ((OutsideTask) task).job.isOpen();
+            case RETRIEVE:
+                return crew.eva != null && crew.eva.retrievable(((RetrieveTask) task).castaway);
             case MAN_CONSOLE: {
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && !s.isDestroyed();
@@ -397,7 +404,7 @@ public final class TaskRules {
      */
     public static boolean waitsOutFire(CrewTask task, ShipTaskBoardComponent board, CrewService crew) {
         // Nobody goes out on the hull in a fight, under fire or not
-        if (task.kind == CrewTask.Kind.REPAIR_RCS) return board != null && board.battleStations;
+        if (task.kind.isEva()) return board != null && board.battleStations;
         if (board != null && !board.keepsClearOfFire) return false;
         if (board == null || !board.battleStations || board.hitTiles.size == 0) return false;
         switch (task.kind) {

@@ -22,6 +22,17 @@ public abstract class CrewTask {
          * stations.
          */
         REPAIR_RCS,
+        /**
+         * Go out on EVA to a wrecked hull tile that faces space, frame it back up from outside and
+         * plate it over from the ship's stores: never at battle stations.
+         */
+        PATCH_HULL,
+        /** Go out on EVA to a docking port whose collar has jammed and work it free: never at battle stations. */
+        FREE_COLLAR,
+        /** Take a part from the hold out on EVA and mount it on the hull: never at battle stations. */
+        MOUNT_PART,
+        /** Go out on EVA on a line to a crew member adrift and bring them back in: never at battle stations. */
+        RETRIEVE,
         /** Reset a system or conduit a short circuit faulted, so it carries power again. */
         RESET_SHORT,
         /** Shut a leaking tank's valve so it stops leaking. */
@@ -41,7 +52,12 @@ public abstract class CrewTask {
         /** Go aboard another craft as one of a boarding party and sweep it: an order. */
         BOARD,
         /** Stop a critical wound's bleeding where the casualty lies, so it no longer kills; treatment still to follow. */
-        STABILISE
+        STABILISE;
+
+        /** True for work done outside the hull, on EVA. */
+        public boolean isEva() {
+            return this == REPAIR_RCS || this == PATCH_HULL || this == FREE_COLLAR || this == MOUNT_PART || this == RETRIEVE;
+        }
     }
 
     public enum Status {

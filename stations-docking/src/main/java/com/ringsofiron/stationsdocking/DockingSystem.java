@@ -235,13 +235,14 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
 
     /**
      * Arms a port: magnets on, and an active port puts its collar out. Returns null when armed, or
-     * why it cannot arm (no such port, collar torn off, no power).
+     * why it cannot arm (no such port, collar torn off or jammed, no power).
      */
     public String arm(Entity vessel, int index) {
         DockingPortsComponent ports = portsMapper.get(vessel);
         DockingPort port = ports == null ? null : ports.get(index);
         if (port == null) return "no docking port";
         if (!port.intact()) return "the collar is torn off";
+        if (port.jammed) return "the collar is jammed";
         if (!hasPower(vessel, port)) return "the port has no power";
         port.armed = true;
         port.armedFor = null;
@@ -303,7 +304,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         float nearest = Float.MAX_VALUE;
         for (int i = 0; i < stationPorts.ports.length; i++) {
             DockingPort q = stationPorts.ports[i];
-            if (q.size != port.size || !q.isFree() || !q.intact()) continue;
+            if (q.size != port.size || !q.isFree() || !q.usable()) continue;
             if (q.armed && q.armedFor != null && !q.armedFor.equals(uuid)) continue;
             float d = worldPoint(sb, q.faceX(), q.faceY(), v1).dst(face);
             if (d < nearest) {
@@ -587,7 +588,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
         if (!p.armed || !p.isFree()) return;
         if (!Double.isNaN(p.clearanceUntil) && now > p.clearanceUntil) {
             disarmPort(p);
-        } else if (!p.intact() || !hasPower(e, p)) {
+        } else if (!p.usable() || !hasPower(e, p)) {
             disarmPort(p);
         }
     }
@@ -607,7 +608,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             if (p.isFree()) p.holdCollar = false;
             p.yieldedTo = null;
         }
-        boolean wantOut = p.active && p.armed && p.intact() && !p.holdCollar && p.isFree();
+        boolean wantOut = p.active && p.armed && p.usable() && !p.holdCollar && p.isFree();
         if (wantOut && p.head == null) createHead(e, p, body);
         if (p.head == null) {
             p.extension = 0f;
@@ -848,7 +849,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
 
     /** Magnets of one armed free port pull on matching free ports of other craft; contact latches or captures. */
     private void attract(Entity e, int index, DockingPort p, Body body) {
-        if (!p.armed || !p.isFree() || !p.intact()) return;
+        if (!p.armed || !p.isFree() || !p.usable()) return;
         if (p.active && !p.holdCollar && p.head == null) return; // collar still coming out
         DockingTuning t = p.tuning();
         String ownUuid = uuidOf(e);
@@ -861,7 +862,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             DockingPortsComponent oPorts = portsMapper.get(o);
             for (int k = 0; k < oPorts.ports.length; k++) {
                 DockingPort q = oPorts.ports[k];
-                if (q.size != p.size || !q.isFree() || !q.intact()) continue;
+                if (q.size != p.size || !q.isFree() || !q.usable()) continue;
                 // An extended collar does the reaching; this port waits for it. Two collars
                 // reaching for each other would only push each other off: the one armed first
                 // reaches, and the other draws in and waits for it as a passive port would.
@@ -1490,7 +1491,7 @@ public class DockingSystem extends EntitySystem implements PhysicsManager.StepLi
             DockingPort[] list = portsMapper.get(other).ports;
             for (int i = 0; i < list.length; i++) {
                 DockingPort q = list[i];
-                if (q.size != port.size || !q.isFree() || !q.intact()) continue;
+                if (q.size != port.size || !q.isFree() || !q.usable()) continue;
                 float d = worldPoint(ob, q.faceX(), q.faceY(), v1).dst(face);
                 if (d < best) {
                     best = d;

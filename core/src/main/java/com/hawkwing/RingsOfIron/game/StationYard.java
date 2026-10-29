@@ -199,8 +199,9 @@ public class StationYard extends EntitySystem {
                     }
                     break;
                 default:
-                    // A collar is whole or torn: it goes back on only when the work is done
+                    // A collar is whole or torn: it goes back on only when the work is done, freed of any jam
                     port.collarIntegrity = after >= 1f - EPS ? 1f : before;
+                    if (after >= 1f - EPS) port.jammed = false;
                     return after - before;
             }
             return after - before;
@@ -1048,6 +1049,11 @@ public class StationYard extends EntitySystem {
         public String what() {
             return damage.what();
         }
+
+        @Override
+        public float progress() {
+            return damage.condition();
+        }
     }
 
     /** A loader bringing a refit part aboard: one crate, paid for as it lands. */
@@ -1123,6 +1129,11 @@ public class StationYard extends EntitySystem {
         @Override
         public String what() {
             return "fitting a " + def.displayName();
+        }
+
+        @Override
+        public float progress() {
+            return Math.min(1f, refit.tileWork / FIT_WORK_PER_TILE);
         }
     }
 }

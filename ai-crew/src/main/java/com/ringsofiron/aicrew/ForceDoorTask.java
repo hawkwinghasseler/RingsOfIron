@@ -24,6 +24,11 @@ public class ForceDoorTask extends CrewTask {
 
         /** For the crew member's activity line, e.g. "prying a door". */
         String what();
+
+        /** Share of {@code crew}'s work on the door done, 0 to 1, for the bar over them; negative if the job can't say. */
+        default float progress(Entity crew) {
+            return -1f;
+        }
     }
 
     /** The craft the spot is on. */

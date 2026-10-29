@@ -29,6 +29,8 @@ public class CrewDecisionSystem extends FixedIteratingSystem {
     @Override
     protected void processEntity(Entity e, float dt) {
         CrewMemberComponent c = crewM.get(e);
+        // Whatever timed work goes on this step shows its progress again
+        c.progress = -1f;
         if (!c.isConscious()) return;
         BehaviorTreeComponent bt = btM.get(e);
         bt.agent.dt = dt;

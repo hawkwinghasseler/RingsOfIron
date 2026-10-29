@@ -245,6 +245,10 @@ public class GameWorld implements Disposable {
     public final BerthVenting berthVenting;
     /** The player's crew out on EVA: warp waits for them, and notices say what befalls them. */
     public final Spacewalks spacewalks;
+    /** Docking collars jammed by hits, and the crew's work outside to free them. */
+    public final JammedCollars jammedCollars;
+    /** Salvaged weapons the crew mount on the ship's hardpoints from outside, away from a yard. */
+    public final FieldRefits fieldRefits;
     /** The player's figure suiting up at battle stations and in thin air. */
     public final CaptainSafety captain;
     /** Warnings before the player's people run out of air. */
@@ -525,14 +529,6 @@ public class GameWorld implements Disposable {
         // ... and their crews take to the pods; the player's pod ends in a rescue
         abandon = new AbandonShip(crew, disablement, engine::getSimSeconds, docking::dockedTo);
         engine.addSystem(abandon);
-        // ... walking the player to a pod each tick before the crew move, as the screen clears the walk
-        engine.addSystem(new com.ringsofiron.coreengine.systems.FixedLogicSystem(CaptainSafety.KEEP_WALKING_PRIORITY,
-                (float) com.ringsofiron.coreengine.SimClock.TICK_SECONDS) {
-            @Override
-            protected void updateFixed(float deltaTime) {
-                abandon.keepWalking();
-            }
-        });
         rescue = new Rescue(this, bubble);
         // Beaten ships are boarded, taken and stripped
         boarding = new Boarding(docking, crew, forcing, standing, disablement, engine.getUuidRegistry(), engine::getSimSeconds);
@@ -613,6 +609,8 @@ public class GameWorld implements Disposable {
         medical = new CrewMedical(this);
         berthVenting = new BerthVenting(this);
         spacewalks = new Spacewalks(this);
+        jammedCollars = new JammedCollars(this);
+        fieldRefits = new FieldRefits(this);
         captain = new CaptainSafety(this);
         air = new AirWatch(this);
         infirmary = new StationInfirmary(this);
@@ -742,6 +740,9 @@ public class GameWorld implements Disposable {
         hostiles.afterUpdate();
         pirateBase.afterUpdate();
         derelicts.update();
+        spacewalks.update();
+        jammedCollars.update();
+        fieldRefits.update();
         events.update();
         checkBubbleCrash();
         checkAvatar();
@@ -750,8 +751,7 @@ public class GameWorld implements Disposable {
         warnings.update();
         damageControl.update();
         air.update();
-        // Warp changes only between updates: the walk to air drops it, the autopilot raises it again after a burn
-        captain.giveWayToTheWalk();
+        // Warp changes only between updates: the autopilot raises it again after a burn
         nav.autopilot.afterUpdate();
     }
 

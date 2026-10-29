@@ -51,6 +51,11 @@ public class ShipTaskBoardComponent implements Component {
      * shorted struck in reach for silenced guns).
      */
     public boolean resetsPowerFirst;
+    /**
+     * Nobody goes out on EVA unless sent ({@link CrewMemberComponent.EvaOrder#OUT}), and anyone out
+     * comes back in: the player's hold on EVA for their ship ({@link EvaOrders}). Off by default.
+     */
+    public boolean evaHeld;
     /** True while the ship is in a fight: set each tick by the game, so not saved. */
     public transient boolean battleStations;
     /**

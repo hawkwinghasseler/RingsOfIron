@@ -2,11 +2,15 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.interiorgrid.Airlock;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.LifeSupportSystem;
+import com.ringsofiron.interiorgrid.MountFootprint;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.TankSupply;
+import com.ringsofiron.uihud.minimap.ShipAlerts;
 import com.ringsofiron.uihud.providers.ShipStatusProvider.ShipStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -51,6 +55,22 @@ class PlayerShipStatusTest {
         assertTrue(s.powerOutputWatts > 0);
         assertFalse(Float.isNaN(s.oxygen), "the corvette carries oxygen tanks");
         assertEquals(1f, s.cabinPressure, 0.05f);
+    }
+
+    @Test
+    void anAirlockPumpedDownForSomeoneGoingOutIsNoAlarm() {
+        world.docking.undock(game.player);
+        for (int i = 0; i < 60; i++) world.update(1f / 60f);
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        MountFootprint port = null;
+        for (MountFootprint m : grid.mounts) if (m.kind == MountFootprint.MountKind.PORT) port = m;
+        Airlock lock = Airlock.of(grid, port);
+        assertTrue(lock.claim(this, true), "out through the port");
+        for (int i = 0; i < 60 * 60 && !lock.isOut(); i++) world.update(1f / 60f);
+        assertTrue(lock.isOut(), "cycled out: " + lock.state());
+        assertTrue(lock.chamberPressure(grid) < ShipAlerts.VACUUM_PRESSURE, "the chamber pumped down");
+        assertEquals(0, new ShipAlerts().scan(grid).vacuumCompartments, "the chamber is no room at vacuum");
+        assertEquals(1f, new PlayerShipStatus(() -> game.player).getShipStatus().cabinPressure, 0.05f);
     }
 
     @Test

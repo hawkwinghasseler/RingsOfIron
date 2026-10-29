@@ -10,6 +10,8 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SuitLockers;
 import com.ringsofiron.interiorgrid.crew.Suit;
 
+import java.util.function.Predicate;
+
 /**
  * Getting into a suit and out of one, at a suit locker (interior-grid's {@link SuitLockers}). A suit
  * not being worn hangs in a locker, so a crew member who wants one walks to a locker with one in it,
@@ -66,6 +68,7 @@ final class SuitErrand {
             if (c.suiting == 0f) a.service.physics.standAt(a.entity, SuitLockers.front(at, FRONT).x, FRONT.y);
             c.activity = dressing(kind);
             c.suiting += a.dt;
+            c.showProgress(c.suiting, c.suitTime(kind));
             if (c.suiting < c.suitTime(kind)) return Status.RUNNING;
             c.wear(SuitLockers.take(at, kind));
             c.activity = "idle";
@@ -81,42 +84,43 @@ final class SuitErrand {
     }
 
     /**
-     * One step of getting {@code a} into an EVA suit with at least {@code minAir} seconds of air in it,
-     * to go outside: the fullest at the locker they stand at, else they walk to the nearest locker
-     * with one. Only where the air is fit to breathe while they get into it. SUCCEEDED at once if they
-     * have one on; FAILED with another suit on, or no such suit to be had.
+     * One step of getting {@code a} into an EVA suit that {@code fit} accepts, to go outside: the
+     * fullest such at the locker they stand at, else they walk to the nearest locker with one. Only
+     * where the air is fit to breathe while they get into it. SUCCEEDED at once if they have one on;
+     * FAILED with another suit on, or no such suit to be had.
      */
-    static Status suitUpEva(CrewAgent a, float minAir) {
+    static Status suitUpEva(CrewAgent a, Predicate<Suit> fit) {
         CrewMemberComponent c = a.crew;
         if (c.suited) return c.suitKind == Suit.Kind.EVA ? Status.SUCCEEDED : Status.FAILED;
         ShipGridComponent grid = a.grid();
         if (grid == null || !c.wearsSuits() || !TaskRules.isBreathable(grid, a.pos.tileX(), a.pos.tileY())) return Status.FAILED;
         Furnishing at = a.pos.isMoving() || a.pos.walkway != null || a.pos.crossing != null ? null
-                : SuitLockers.within(grid, a.pos.x, a.pos.y, f -> hasEvaSuit(f, minAir));
+                : SuitLockers.within(grid, a.pos.x, a.pos.y, f -> hasEvaSuit(f, fit));
         if (at != null) {
             if (c.suiting == 0f) a.service.physics.standAt(a.entity, SuitLockers.front(at, FRONT).x, FRONT.y);
             c.activity = dressing(Suit.Kind.EVA);
             c.suiting += a.dt;
+            c.showProgress(c.suiting, c.suitTime(Suit.Kind.EVA));
             if (c.suiting < c.suitTime(Suit.Kind.EVA)) return Status.RUNNING;
-            c.wear(SuitLockers.take(at, Suit.Kind.EVA));
+            c.wear(SuitLockers.take(at, Suit.Kind.EVA, fit));
             c.activity = "idle";
             return Status.SUCCEEDED;
         }
         c.suiting = 0f;
         GridNavGraph nav = a.pathfinder().graph;
         CrewAgent.Travel go = a.travel(a.pos.ship, (x, y) -> nav.isWalkable(x, y)
-                && SuitLockers.on(grid, x, y, f -> hasEvaSuit(f, minAir)) != null);
+                && SuitLockers.on(grid, x, y, f -> hasEvaSuit(f, fit)) != null);
         if (go == CrewAgent.Travel.UNREACHABLE) return Status.FAILED;
         c.activity = "going for " + article(Suit.Kind.EVA);
         return Status.RUNNING;
     }
 
-    /** True if locker {@code f} works and its fullest EVA suit has at least {@code minAir} seconds of air. */
-    static boolean hasEvaSuit(Furnishing f, float minAir) {
+    /** True if locker {@code f} works and has an EVA suit in it that {@code fit} accepts. */
+    static boolean hasEvaSuit(Furnishing f, Predicate<Suit> fit) {
         if (!SuitLockers.hasSuit(f, Suit.Kind.EVA)) return false;
         for (int i = 0; i < f.suits.size; i++) {
             Suit s = f.suits.get(i);
-            if (s.kind == Suit.Kind.EVA && s.air >= minAir) return true;
+            if (s.kind == Suit.Kind.EVA && fit.test(s)) return true;
         }
         return false;
     }
@@ -141,6 +145,7 @@ final class SuitErrand {
             if (c.unsuiting == 0f) a.service.physics.standAt(a.entity, SuitLockers.front(at, FRONT).x, FRONT.y);
             c.activity = undressing(kind);
             c.unsuiting += a.dt;
+            c.showProgress(c.unsuiting, c.suitTime(kind) * 0.5f);
             if (c.unsuiting < c.suitTime(kind) * 0.5f) return Status.RUNNING;
             Suit off = c.takeOff();
             if (!SuitLockers.stow(at, off)) c.wear(off);

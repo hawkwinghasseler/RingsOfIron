@@ -1,6 +1,7 @@
 package com.ringsofiron.uihud.minimap;
 
 import com.ringsofiron.interiorgrid.Compartment;
+import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 
@@ -47,6 +48,8 @@ public class ShipAlerts {
         if (hullCount > 0) hullIntegrity = hullSum / hullCount;
 
         for (Compartment c : grid.compartments) {
+            // Pumped down for someone going out on EVA or coming in: empty on purpose, no alarm
+            if (chamber(grid, c)) continue;
             float p = c.pressureRatio();
             minPressure = Math.min(minPressure, p);
             if (p < VACUUM_PRESSURE) vacuumCompartments++;
@@ -55,5 +58,15 @@ public class ShipAlerts {
         }
         if (vacuumCompartments > 0) lowPressureCompartments += vacuumCompartments;
         return this;
+    }
+
+    /** True if {@code c} is the chamber of a docking port's airlock with its hatch shut, cycling or cycled. */
+    static boolean chamber(ShipGridComponent grid, Compartment c) {
+        for (int i = 0; i < grid.mounts.size; i++) {
+            MountFootprint m = grid.mounts.get(i);
+            if (m.kind != MountFootprint.MountKind.PORT || m.airlock == null || m.airlock.isIn()) continue;
+            if (m.airlock.chamber(grid) == c) return true;
+        }
+        return false;
     }
 }
