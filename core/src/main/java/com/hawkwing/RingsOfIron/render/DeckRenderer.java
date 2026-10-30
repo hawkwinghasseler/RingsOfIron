@@ -29,6 +29,7 @@ import com.ringsofiron.aicrew.EvaSystem;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -486,8 +487,9 @@ public final class DeckRenderer {
     }
 
     /**
-     * Fills where {@code decks} are drawn under {@code camera}: every tile that is not void, a
-     * little past its edges so the hull walls on them are inside. For marking the decks in the
+     * Fills where {@code decks} are drawn under {@code camera}: every tile that is not void nor an
+     * engine's casing (drawn as its nozzle alone, with space and the shield's underside showing
+     * round it), a little past its edges so the hull walls on them are inside. For marking the decks in the
      * stencil buffer, so the decks' light map keeps to them and the light map outside
      * ({@link ExteriorRenderer}) keeps off them.
      */
@@ -503,7 +505,7 @@ public final class DeckRenderer {
             float s = g.tileSize, half = s * (0.5f + FOOTPRINT_MARGIN);
             for (int ty = 0; ty < g.height; ty++) {
                 for (int tx = 0; tx < g.width; tx++) {
-                    if (g.getTile(tx, ty) == null || g.getTile(tx, ty).isVoid()) continue;
+                    if (g.getTile(tx, ty) == null || g.getTile(tx, ty).isVoid() || EngineLayout.isCasing(g, tx, ty)) continue;
                     Vector2 p = g.tileToLocal(tx, ty);
                     shapes.rect(p.x - half, p.y - half, 2f * half, 2f * half);
                 }
