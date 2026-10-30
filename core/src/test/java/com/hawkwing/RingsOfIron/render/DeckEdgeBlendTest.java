@@ -165,6 +165,35 @@ class DeckEdgeBlendTest {
     }
 
     @Test
+    void theHybridKeepsWhereTheFadeStartsAndLetsItsEndComeOut() {
+        boolean[][] on = block(8, 6);
+        on[0][0] = on[5][7] = false;
+        on[3][0] = on[3][1] = false;
+        IntArray wedges = new IntArray(DeckEdgeBlend.wedge(wedge(0, 0, 1, 1, 2)));
+        wedges.addAll(DeckEdgeBlend.wedge(wedge(7, 5, 1, 1, 0)));
+        DeckEdgeBlend.Outline edge = new DeckEdgeBlend.Outline(on, wedges);
+        float[] linear = edge.cornerWeights();
+        DeckEdgeBlend.fade = DeckEdgeBlend.Fade.HYBRID;
+        float[] hybrid = edge.cornerWeights();
+        boolean cameOut = false;
+        int cw = 8 * N + 1;
+        for (int i = 0; i < linear.length; i++) {
+            int vx = i % cw, vy = i / cw;
+            boolean drawn = false;
+            for (int ty = 0; ty < 6; ty++) {
+                for (int tx = 0; tx < 8; tx++) {
+                    drawn |= on[ty][tx] && vx >= tx * N && vx <= (tx + 1) * N && vy >= ty * N && vy <= (ty + 1) * N;
+                }
+            }
+            if (!drawn) continue;
+            assertEquals(linear[i] <= 0f, hybrid[i] <= 0f, "all outside at corner " + i);
+            if (linear[i] >= 1f) assertTrue(hybrid[i] >= 1f, "still all inside at corner " + i);
+            cameOut |= linear[i] < 1f && hybrid[i] >= 1f;
+        }
+        assertTrue(cameOut, "all inside further out somewhere");
+    }
+
+    @Test
     void twoWedgesBackToBackMakeNoEdgeBetweenThem() {
         boolean[][] on = block(3, 3);
         on[1][1] = false;

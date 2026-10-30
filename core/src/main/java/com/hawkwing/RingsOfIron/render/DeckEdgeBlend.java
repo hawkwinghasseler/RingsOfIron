@@ -60,26 +60,35 @@ public final class DeckEdgeBlend implements Disposable {
     /** How the fade runs across the outer tile: straight or eased, its corners sharp or soft. */
     public enum Fade {
         /** Straight from the edge to a tile in, creased where two faces' fades meet. */
-        LINEAR(false, false),
+        LINEAR(false, false, false),
         /** Eased in and out (smoothstep), so it starts and ends gently. */
-        EASED(true, false),
+        EASED(true, false, false),
         /**
          * Straight, but where two faces' fades meet the crease is rounded ({@link #SOFT_CORNER})
          * through the middle of the fade: where it starts and ends stay as {@link #LINEAR} has them.
          */
-        SOFT(false, true),
+        SOFT(false, true, false),
         /** Both. */
-        SOFT_EASED(true, true);
+        SOFT_EASED(true, true, false),
+        /**
+         * Rounded as {@link #SOFT}, where it starts staying as {@link #LINEAR} has it, but rounded
+         * right through to where it ends, which comes out toward the edge by {@link #SOFT_CORNER}
+         * so the rounding never takes it further in than {@link #LINEAR}'s.
+         */
+        HYBRID(false, true, true);
 
-        public final boolean eased, soft;
+        /** Whether the fade is eased, its creases rounded, and where it ends free to come out. */
+        public final boolean eased, soft, outward;
 
-        Fade(boolean eased, boolean soft) {
+        Fade(boolean eased, boolean soft, boolean outward) {
             this.eased = eased;
             this.soft = soft;
+            this.outward = outward;
         }
 
         public String label() {
-            return "Deck fade: " + (soft ? "soft corners, " : "sharp corners, ") + (eased ? "eased" : "straight");
+            return "Deck fade: " + (outward ? "soft corners, the inner line free to come out, "
+                    : soft ? "soft corners, " : "sharp corners, ") + (eased ? "eased" : "straight");
         }
 
         /** The fade named {@code name} (any case), or null. */
@@ -129,7 +138,8 @@ public final class DeckEdgeBlend implements Disposable {
             + "uniform float u_ease;\n"
             + "varying vec2 v_uv;\n"
             + "void main() {\n"
-            + "  float w = texture2D(u_weight, v_uv).r;\n"
+            + "  vec4 at = texture2D(u_weight, v_uv);\n"
+            + "  float w = min(at.r + at.g, 1.0);\n"
             + "  w = mix(w, w * w * (3.0 - 2.0 * w), u_ease);\n"
             + "  vec3 light = min(u_ambient + texture2D(u_light, v_uv).rgb, vec3(1.0));\n"
             + "  if (u_inside > 0.5) {\n"
@@ -151,7 +161,7 @@ public final class DeckEdgeBlend implements Disposable {
             + "uniform vec2 u_texel;\n"
             + "uniform float u_ease;\n"
             + "varying vec2 v_uv;\n"
-            + "float weight(vec2 uv) { float w = texture2D(u_weight, uv).r; return mix(w, w * w * (3.0 - 2.0 * w), u_ease); }\n"
+            + "float weight(vec2 uv) { vec4 at = texture2D(u_weight, uv); float w = min(at.r + at.g, 1.0); return mix(w, w * w * (3.0 - 2.0 * w), u_ease); }\n"
             + "float at(vec2 uv, float t) { return step(t, weight(uv)); }\n"
             + "float line(float t) {\n"
             + "  float around = max(max(at(v_uv + vec2(u_texel.x, 0.0), t), at(v_uv - vec2(u_texel.x, 0.0), t)),\n"
@@ -184,7 +194,7 @@ public final class DeckEdgeBlend implements Disposable {
 
     /**
      * Starts the weights for this frame: binds a buffer the size of the current viewport, cleared
-     * to 0, for the caller to fill (red: the weight) under its camera; {@link #end} then puts the
+     * to 0, for the caller to fill (the weight: red, and green past 1) under its camera; {@link #end} then puts the
      * viewport back. False, with nothing bound, where the shader won't compile.
      */
     public boolean begin() {
@@ -410,7 +420,8 @@ public final class DeckEdgeBlend implements Disposable {
         /**
          * The weights at the corners of the grid's tiles split {@link #SUBDIVISIONS}
          * ways each side: {@code (width * n + 1) * (height * n + 1)} of them, row by row from the
-         * bottom. Each is as far in as the nearest point of the edge ({@link #distance}).
+         * bottom. Each is as far in as the nearest point of the edge ({@link #distance}); past 1
+         * (as far as 2) deep in, for {@link Fade#outward}.
          */
         float[] cornerWeights() {
             int n = SUBDIVISIONS, cw = width * n + 1, ch = height * n + 1;
@@ -418,7 +429,7 @@ public final class DeckEdgeBlend implements Disposable {
             Arrays.fill(d, Float.MAX_VALUE);
             // Past this far from the edge the weight is 1 whatever the distance: each stretch
             // reaches only the corners within it
-            float reach = WIDTH + (fade.soft ? 2f * SOFT_CORNER : 0f);
+            float reach = WIDTH + (fade.outward ? 4f : fade.soft ? 2f : 0f) * SOFT_CORNER;
             for (int i = 0; i < edge.size; i += 4) {
                 int x0 = edge.get(i), y0 = edge.get(i + 1), x1 = edge.get(i + 2), y1 = edge.get(i + 3);
                 int vx0 = Math.max(0, MathUtils.floor((Math.min(x0, x1) - reach) * n));
@@ -436,13 +447,23 @@ public final class DeckEdgeBlend implements Disposable {
                 for (int i = 0; i < d.length; i++) d[i] = weight(d[i]);
                 return d;
             }
-            // Rounded through the middle of the fade, and less so toward its ends, so where it
-            // starts and where it ends stay where the sharp fade has them
             float[] soft = d.clone();
             soften(soft, cw, ch, reach);
             for (int i = 0; i < d.length; i++) {
                 float sharp = weight(d[i]);
-                d[i] = sharp + (weight(soft[i]) - sharp) * 4f * sharp * (1f - sharp);
+                if (fade.outward) {
+                    // Rounded right through to where it ends, but a fade SOFT_CORNER shorter, so
+                    // where the rounding cuts a corner off the end it still reaches as far out as
+                    // the sharp fade's; and less so toward where it starts, which stays put. Past
+                    // 1 as far as 2, so where it ends is drawn between the corners too (see shade)
+                    float to = MathUtils.clamp(soft[i] / (WIDTH - SOFT_CORNER), 0f, 2f);
+                    float half = MathUtils.clamp(2f * sharp, 0f, 1f);
+                    d[i] = sharp + (to - sharp) * half * half * (3f - 2f * half);
+                } else {
+                    // Rounded through the middle of the fade, and less so toward its ends, so
+                    // where it starts and where it ends stay where the sharp fade has them
+                    d[i] = sharp + (weight(soft[i]) - sharp) * 4f * sharp * (1f - sharp);
+                }
             }
             return d;
         }
@@ -616,8 +637,13 @@ public final class DeckEdgeBlend implements Disposable {
             return k;
         }
 
+        /**
+         * The weight {@code w} as a colour: red as far as 1, green past it as far as 2. The shaders
+         * take their sum, as far as 1, so where the weights reach 1 is drawn between the corners as
+         * the weights run on, not where the first corner is clamped to it.
+         */
         private static void shade(Color c, float w) {
-            c.set(w, w, w, 1f);
+            c.set(Math.min(w, 1f), MathUtils.clamp(w - 1f, 0f, 1f), 0f, 1f);
         }
     }
 

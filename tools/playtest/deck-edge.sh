@@ -25,7 +25,7 @@ shot deck-edge
 wheel 4 6
 # Each fade (deckFade), lit and as the light mask overlay: red where the decks' light is used,
 # blue the light outside
-for fade in linear eased soft soft_eased; do
+for fade in ${FADES:-linear eased soft soft_eased hybrid}; do
   cmd dev "deckFade '$fade'"; pause 1
   shot "deck-edge-close-$fade"
   cmd dev "overlay 'lightMask' true"; pause 1

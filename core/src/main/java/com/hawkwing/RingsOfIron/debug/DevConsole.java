@@ -472,12 +472,12 @@ public final class DevConsole {
             return "Shields trimmed " + c.trim.label;
         });
         console.define("deckFade", "deckFade([fade])", "how the decks' light fades into the light outside across the hull's"
-                + " outer tile: linear, eased, soft or soft_eased; deckFade() steps to the next", decks, args -> {
+                + " outer tile: linear, eased, soft, soft_eased or hybrid (soft, the inner line free to come out); deckFade() steps to the next", decks, args -> {
             com.hawkwing.RingsOfIron.render.DeckEdgeBlend.Fade f = args.length == 0 || args[0] == null
                     ? com.hawkwing.RingsOfIron.render.DeckEdgeBlend.Fade.values()[(com.hawkwing.RingsOfIron.render.DeckEdgeBlend.fade.ordinal() + 1)
                             % com.hawkwing.RingsOfIron.render.DeckEdgeBlend.Fade.values().length]
                     : com.hawkwing.RingsOfIron.render.DeckEdgeBlend.Fade.named(String.valueOf(args[0]));
-            if (f == null) throw new ConsoleException("deckFade(fade): linear, eased, soft or soft_eased");
+            if (f == null) throw new ConsoleException("deckFade(fade): linear, eased, soft, soft_eased or hybrid");
             com.hawkwing.RingsOfIron.render.DeckEdgeBlend.fade = f;
             return f.label();
         });
