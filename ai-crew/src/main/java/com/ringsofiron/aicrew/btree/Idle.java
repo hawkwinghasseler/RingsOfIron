@@ -27,7 +27,7 @@ public class Idle extends CrewLeaf {
     private final Downtime downtime = new Downtime();
     /** Seconds idle aboard a craft with no dock to their own, before going back across on EVA. */
     private float stranded;
-    private final EvaTasks.Departure homeward = new EvaTasks.Departure();
+    private final Departure homeward = new Departure();
 
     @Override
     public void start() {

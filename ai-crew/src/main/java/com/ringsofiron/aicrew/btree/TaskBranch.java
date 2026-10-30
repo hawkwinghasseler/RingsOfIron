@@ -7,7 +7,7 @@ import com.ringsofiron.aicrew.EvaSystem;
 /**
  * A sequence that works one board task. If it fails or is interrupted (a hostile came
  * into sight, the crew member was knocked out) the task goes back on the board, unless the
- * crew member has just gone out on EVA for it ({@link EvaTasks.Spacewalk} carries it on).
+ * crew member has just gone out on EVA for it ({@link Spacewalk} carries it on).
  */
 public class TaskBranch extends Sequence<CrewAgent> {
 
