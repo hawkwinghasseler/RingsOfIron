@@ -108,4 +108,65 @@ class GamepadKeysTest {
         GamepadKeys.menuKeysFor(p, keys);
         assertTrue(keys.contains(Input.Keys.ESCAPE), "B backs out");
     }
+
+    @Test
+    void theSticksAreAnalogPastASmallDeadzone() {
+        GamepadKeys pad = new GamepadKeys();
+        GamepadKeys.Pad p = new GamepadKeys.Pad();
+        p.leftY = -0.1f; // stick drift at rest
+        pad.keysNow(p);
+        assertEquals(0f, pad.amount(Input.Keys.W), "drift moves nothing");
+
+        p.leftY = -0.3f; // short of pressing W, but a gentle burn
+        pad.keysNow(p);
+        assertFalse(pad.pressed(Input.Keys.W));
+        float gentle = pad.amount(Input.Keys.W);
+        assertTrue(gentle > 0f && gentle < 0.5f, "partway: " + gentle);
+        assertEquals(0f, pad.amount(Input.Keys.S), "nothing backward");
+
+        p.leftY = -1f;
+        pad.keysNow(p);
+        assertEquals(1f, pad.amount(Input.Keys.W), 1e-5f, "the rim is full thrust");
+        assertTrue(pad.pressed(Input.Keys.W), "and still presses W for what reads keys");
+    }
+
+    @Test
+    void aDiagonalSplitsThePushAndASquareGateStopsAtFull() {
+        GamepadKeys.Pad p = new GamepadKeys.Pad();
+        p.leftX = 1f;
+        p.leftY = 1f; // a square gate's corner
+        float right = GamepadKeys.stickAmount(p, Input.Keys.D), down = GamepadKeys.stickAmount(p, Input.Keys.S);
+        assertEquals(right, down, 1e-5f);
+        assertEquals(1f, (float) Math.sqrt(right * right + down * down), 1e-5f, "no faster than straight");
+        assertEquals(0f, GamepadKeys.stickAmount(p, Input.Keys.A));
+    }
+
+    @Test
+    void theRightStickStrafesAndTheBumpersStrafeFull() {
+        GamepadKeys pad = new GamepadKeys();
+        GamepadKeys.Pad p = new GamepadKeys.Pad();
+        p.rightX = 0.5f;
+        p.rightY = -0.9f; // up and down on the right stick play nothing
+        pad.keysNow(p);
+        float c = pad.amount(Input.Keys.C);
+        assertTrue(c > 0.3f && c < 0.5f, "half a push, about half the RCS: " + c);
+        assertEquals(0f, pad.amount(Input.Keys.Z));
+
+        p.rightX = 0f;
+        p.l1 = true;
+        pad.keysNow(p);
+        assertEquals(1f, pad.amount(Input.Keys.Z), "a bumper is all the way");
+        assertEquals(0f, pad.amount(Input.Keys.C));
+    }
+
+    @Test
+    void inAMenuTheSticksFlyNothing() {
+        GamepadKeys pad = new GamepadKeys();
+        pad.setMenuMode(true);
+        GamepadKeys.Pad p = new GamepadKeys.Pad();
+        p.leftY = -1f;
+        pad.keysNow(p);
+        assertEquals(0f, pad.amount(Input.Keys.W));
+        assertTrue(pad.pressed(Input.Keys.UP), "it moves up the menu instead");
+    }
 }

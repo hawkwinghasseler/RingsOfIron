@@ -29,10 +29,20 @@ import com.badlogic.gdx.utils.IntSet;
  * <p>With a menu or window open ({@link #setMenuMode}), the pad drives it instead: the d-pad and
  * left stick move between buttons (arrow keys), A presses one (Enter), B or Start backs out (Esc).
  *
- * Sticks count past {@link #DEADZONE}. The first connected pad is used.
+ * <p>The sticks are analog where the game asks how far a key is held ({@link #amount}): the left
+ * stick's push is the main engine's and the turn's throttle outside and the walking pace on deck,
+ * and the right stick's the strafe's, each from nothing just past {@link #ANALOG_DEADZONE} to full
+ * at the rim. As keys, for whatever reads them all or nothing (menus, just-pressed checks), sticks
+ * count past {@link #DEADZONE}. The first connected pad is used.
  */
 public class GamepadKeys {
+    /** How far a stick goes before it presses its key, for what reads the sticks as keys. */
     public static final float DEADZONE = 0.4f;
+    /**
+     * How far a stick goes before it moves anything analog: past the drift of a worn stick at rest.
+     * Radial, and the rest of the throw scaled to 0..1, so the push grows smoothly from the edge of it.
+     */
+    public static final float ANALOG_DEADZONE = 0.15f;
 
     /** One frame of a pad, in the standard mapping's terms. Sticks -1 to 1, y down. */
     public static final class Pad {
@@ -42,7 +52,11 @@ public class GamepadKeys {
 
     private IntSet down = new IntSet();
     private IntSet was = new IntSet();
+    /** The keys a button holds this frame, which are all the way down whatever the sticks say. */
+    private final IntSet buttons = new IntSet();
     private final Pad pad = new Pad();
+    /** This frame's pad for {@link #amount}; idle while none is connected. */
+    private final Pad analog = new Pad();
     private boolean enabled = true;
     private boolean failed;
     private boolean menuMode;
@@ -65,6 +79,8 @@ public class GamepadKeys {
         was = down;
         down = t;
         down.clear();
+        buttons.clear();
+        clear(analog);
         if (!enabled || failed) return;
         Controller c;
         try {
@@ -88,7 +104,11 @@ public class GamepadKeys {
             backUsed = false;
             return;
         }
-        keysFor(p, down);
+        copy(p, analog);
+        buttons.clear();
+        buttonKeysFor(p, buttons);
+        down.addAll(buttons);
+        stickKeysFor(p, down);
         if (p.back && (p.a || p.b || p.x || p.y || p.l1 || p.r1 || p.l2 || p.r2 || p.up || p.down || p.left
                 || p.right || p.rightStick || p.leftStick || p.start)) backUsed = true;
         // Back let go after a tap alone: the map, for this one frame
@@ -103,6 +123,41 @@ public class GamepadKeys {
 
     public boolean justPressed(int key) {
         return down.contains(key) && !was.contains(key);
+    }
+
+    /**
+     * How far the pad holds the game's key, 0 to 1: a button all the way, a stick as far as it is
+     * pushed toward the key past {@link #ANALOG_DEADZONE}. Nothing in a menu, which the pad navigates.
+     */
+    public float amount(int key) {
+        if (menuMode) return 0f;
+        if (buttons.contains(key)) return 1f;
+        return stickAmount(analog, key);
+    }
+
+    /** How far this pad's sticks push toward the game's key, 0 to 1; 0 for a key no stick plays. */
+    public static float stickAmount(Pad p, int key) {
+        switch (key) {
+            case Input.Keys.W: return Math.max(0f, -radial(p.leftY, p.leftX));
+            case Input.Keys.S: return Math.max(0f, radial(p.leftY, p.leftX));
+            case Input.Keys.A: return Math.max(0f, -radial(p.leftX, p.leftY));
+            case Input.Keys.D: return Math.max(0f, radial(p.leftX, p.leftY));
+            case Input.Keys.Z: return Math.max(0f, -radial(p.rightX, 0f));
+            case Input.Keys.C: return Math.max(0f, radial(p.rightX, 0f));
+            default: return 0f;
+        }
+    }
+
+    /**
+     * The stick's {@code along} axis past a radial deadzone, scaled so the push runs 0 to 1 from the
+     * deadzone's edge to the rim; {@code across} is the stick's other axis. Radial, so a diagonal is
+     * not cut to one axis near the middle; a push past the rim (square gates) is held to 1.
+     */
+    static float radial(float along, float across) {
+        float length = (float) Math.sqrt(along * along + across * across);
+        if (length <= ANALOG_DEADZONE) return 0f;
+        float scaled = Math.min(1f, (length - ANALOG_DEADZONE) / (1f - ANALOG_DEADZONE));
+        return along / length * scaled;
     }
 
     public boolean any() {
@@ -153,6 +208,17 @@ public class GamepadKeys {
         p.leftStick = button(c, m.buttonLeftStick);
     }
 
+    private static void copy(Pad from, Pad to) {
+        to.leftX = from.leftX;
+        to.leftY = from.leftY;
+        to.rightX = from.rightX;
+        to.rightY = from.rightY;
+    }
+
+    private static void clear(Pad p) {
+        p.leftX = p.leftY = p.rightX = p.rightY = 0f;
+    }
+
     private static float axis(Controller c, int axis) {
         return axis == ControllerMapping.UNDEFINED ? 0f : c.getAxis(axis);
     }
@@ -163,12 +229,22 @@ public class GamepadKeys {
 
     /** The game's keys the pad holds down; Back's tap (the map) is {@link #keysNow}'s. */
     public static void keysFor(Pad p, IntSet out) {
+        stickKeysFor(p, out);
+        buttonKeysFor(p, out);
+    }
+
+    /** The keys the sticks hold down, pushed past {@link #DEADZONE}. */
+    static void stickKeysFor(Pad p, IntSet out) {
         if (p.leftY < -DEADZONE) out.add(Input.Keys.W);
         if (p.leftY > DEADZONE) out.add(Input.Keys.S);
         if (p.leftX < -DEADZONE) out.add(Input.Keys.A);
         if (p.leftX > DEADZONE) out.add(Input.Keys.D);
         if (p.rightX < -DEADZONE) out.add(Input.Keys.Z);
         if (p.rightX > DEADZONE) out.add(Input.Keys.C);
+    }
+
+    /** The keys the buttons hold down, with Back's second layer. */
+    static void buttonKeysFor(Pad p, IntSet out) {
         if (p.back) {
             // The second layer
             if (p.a) out.add(Input.Keys.J);

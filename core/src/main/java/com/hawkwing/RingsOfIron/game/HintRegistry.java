@@ -252,7 +252,7 @@ public final class HintRegistry {
         r.register(Context.ANY, "quick save", 88, Action.QUICK_SAVE);
         r.register(Context.ANY, "quick load", 89, Action.QUICK_LOAD);
         // The pad (see GamepadKeys); never on the bottom line, which shows no GAMEPAD context
-        r.registerKey(Context.GAMEPAD, "Left stick", "fly / walk", 1);
+        r.registerKey(Context.GAMEPAD, "Left stick", "fly / walk, as hard as pushed", 1);
         r.registerKey(Context.GAMEPAD, "A / RT", "fire; A uses a console", 2);
         r.registerKey(Context.GAMEPAD, "B / X / Y", "missile / decoy, force door / view", 3);
         r.registerKey(Context.GAMEPAD, "LT", "next target", 4);
