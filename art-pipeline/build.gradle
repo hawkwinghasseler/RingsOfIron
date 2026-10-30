@@ -1,4 +1,3 @@
-[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-art-pipeline'
 
 // A build tool, not part of the game: it turns assets/art's SVGs into the texture atlas the game

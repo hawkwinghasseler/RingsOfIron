@@ -335,7 +335,7 @@ public class GameEngine implements SimClock {
                 break;
             case FRAME: {
                 int interval = system.getTickInterval();
-                system.invokeInterpolated((float) (((tick % interval) + alpha) / interval));
+                system.invokeInterpolated(((tick % interval) + alpha) / interval);
                 break;
             }
             case CATCH_UP:

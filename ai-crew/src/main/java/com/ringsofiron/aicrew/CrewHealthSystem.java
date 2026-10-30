@@ -1,6 +1,7 @@
 package com.ringsofiron.aicrew;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
@@ -131,10 +132,10 @@ public class CrewHealthSystem extends FixedIteratingSystem {
 
     /** True while anyone alive aboard {@code ship} is seriously or critically wounded, with nobody treating them. */
     private boolean worseWaiting(Entity ship) {
-        for (Entity other : service.crewEntities()) {
-            CrewMemberComponent o = service.crew(other);
-            if (o.isAlive() && o.wound.compareTo(Wound.SERIOUS) >= 0 && o.treatedBy == null
-                    && service.position(other).ship == ship) return true;
+        ImmutableArray<Entity> aboard = service.aboard(ship);
+        for (int i = 0; i < aboard.size(); i++) {
+            CrewMemberComponent o = service.crew(aboard.get(i));
+            if (o.isAlive() && o.wound.compareTo(Wound.SERIOUS) >= 0 && o.treatedBy == null) return true;
         }
         return false;
     }

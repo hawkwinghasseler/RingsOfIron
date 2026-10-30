@@ -167,7 +167,7 @@ public final class DeckEdgeBlend implements Disposable {
         weights.begin();
         Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
         return true;
     }
 
@@ -199,7 +199,7 @@ public final class DeckEdgeBlend implements Disposable {
         if (!maskShown || !fresh) return;
         if (maskShader == null) maskShader = new ShaderProgram(VERTEX, MASK);
         if (!maskShader.isCompiled()) return;
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
         weights.getColorBufferTexture().bind(0);
         maskShader.bind();
         maskShader.setUniformi("u_weight", 0);

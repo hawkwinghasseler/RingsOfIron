@@ -1,5 +1,6 @@
-[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-physics-exterior'
+// PointMassAnchor, the RK4 stand-in anchor the tests here and in macro-sim fly on
+apply plugin: 'java-test-fixtures'
 
 dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
@@ -10,7 +11,7 @@ dependencies {
   compileOnly project(':modding-data')
 
   testImplementation project(':modding-data')
-  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testImplementation "org.junit.jupiter:junit-jupiter"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"
   // Box2D's native library, so tests can run a real physics world without a window.
   testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"

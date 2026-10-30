@@ -662,12 +662,12 @@ public class EvaSystem extends FixedLogicSystem {
 
     /** True if anyone but the airlock's user stands in its chamber. */
     private boolean crowded(Entity ship, Airlock lock) {
-        ImmutableArray<Entity> all = service.crewEntities();
-        for (int i = 0; i < all.size(); i++) {
-            Entity e = all.get(i);
+        ImmutableArray<Entity> aboard = service.aboard(ship);
+        for (int i = 0; i < aboard.size(); i++) {
+            Entity e = aboard.get(i);
             if (e == lock.user()) continue;
             GridPositionComponent p = service.position(e);
-            if (p.ship != ship || p.walkway != null || outside(e)) continue;
+            if (p.walkway != null || outside(e)) continue;
             // A shipmate brought in by the user comes through the cycle with them
             EvaComponent eva = of(e);
             if (eva != null && eva.heldBy != null && eva.heldBy == lock.user()) continue;
@@ -1689,7 +1689,7 @@ public class EvaSystem extends FixedLogicSystem {
 
     private void shift(WorldShiftEvent s) {
         if (crew == null) return;
-        float dx = (float) s.deltaX, dy = (float) s.deltaY, dvx = (float) s.deltaVx, dvy = (float) s.deltaVy;
+        float dx = s.deltaX, dy = s.deltaY, dvx = s.deltaVx, dvy = s.deltaVy;
         for (int i = 0; i < crew.size(); i++) {
             EvaComponent eva = evaM.get(crew.get(i));
             if (eva == null) continue;

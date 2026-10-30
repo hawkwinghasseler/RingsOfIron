@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import com.hawkwing.RingsOfIron.render.GlPass;
 import com.ringsofiron.interiorgrid.AirflowEdge;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -533,8 +534,7 @@ public class HazardParticles {
      * @param tilePx screen size of one tile
      */
     public void draw(ShipGridComponent grid, ShapeRenderer shapes, float offX, float offY, float tilePx) {
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        GlPass.alphaBlend();
         boolean clip = Gdx.graphics.getBufferFormat().stencil > 0;
         if (clip) writeStencil(grid, shapes, offX, offY, tilePx);
 
@@ -586,21 +586,17 @@ public class HazardParticles {
         shapes.end();
 
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-        if (clip) Gdx.gl.glDisable(GL20.GL_STENCIL_TEST);
+        if (clip) GlPass.endStencil();
     }
 
     /** Marks every tile in the stencil buffer with its smoke region + 1, walls with 255, space 0. */
     private void writeStencil(ShipGridComponent grid, ShapeRenderer shapes, float offX, float offY, float tilePx) {
-        Gdx.gl.glEnable(GL20.GL_STENCIL_TEST);
-        Gdx.gl.glClearStencil(0);
-        Gdx.gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
-        Gdx.gl.glColorMask(false, false, false, false);
-        Gdx.gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
+        GlPass.clearStencil();
         // One batch per stencil value, since the reference value cannot change mid-batch
         int regions = Math.min(regionCount, STENCIL_WALL - 1);
         for (int value = 1; value <= regions + 1; value++) {
             int target = value <= regions ? value : STENCIL_WALL;
-            Gdx.gl.glStencilFunc(GL20.GL_ALWAYS, target, 0xFF);
+            GlPass.stencilWrite(GL20.GL_ALWAYS, target, GL20.GL_REPLACE);
             shapes.begin(ShapeRenderer.ShapeType.Filled);
             for (int y = 0; y < grid.height; y++) {
                 for (int x = 0; x < grid.width; x++) {
@@ -614,7 +610,7 @@ public class HazardParticles {
             }
             shapes.end();
         }
-        Gdx.gl.glColorMask(true, true, true, true);
-        Gdx.gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
+        // Space first: draw() keeps its smoke to the 0s
+        GlPass.keepWhere(GL20.GL_EQUAL, 0);
     }
 }

@@ -1,5 +1,7 @@
 package com.ringsofiron.aicrew;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.badlogic.ashley.core.Component;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.MathUtils;
@@ -23,6 +25,9 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
  * {@link CrewSaveParticipant} relinks {@link #ship} after a load.
  */
 public class GridPositionComponent implements Component {
+
+    /** Counts every change of {@link #ship}, in any engine, so a {@link CrewIndex} knows to rebuild. */
+    private static final AtomicLong SHIP_CHANGES = new AtomicLong();
 
     /** The ship entity (holding the ShipGridComponent) this crew member is aboard. */
     public transient Entity ship;
@@ -60,7 +65,18 @@ public class GridPositionComponent implements Component {
     /** Puts this crew member aboard {@code ship}, keeping {@link #shipRef} in step. */
     public void setShip(Entity ship) {
         this.ship = ship;
+        SHIP_CHANGES.incrementAndGet();
         shipRef = ship != null && ship.getComponent(UuidComponent.class) != null ? EntityRef.of(ship) : null;
+    }
+
+    /** Points {@link #ship} at the ship {@link #shipRef} names, after a load, leaving the ref as saved. */
+    void relink(Entity ship) {
+        this.ship = ship;
+        SHIP_CHANGES.incrementAndGet();
+    }
+
+    static long shipChanges() {
+        return SHIP_CHANGES.get();
     }
 
     public int tileX() {

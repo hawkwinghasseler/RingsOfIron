@@ -49,6 +49,7 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
 
     private final Engine engine;
     private final ImmutableArray<Entity> crewEntities;
+    private final CrewIndex index;
     private final ObjectMap<ShipGridComponent, GridPathfinder> pathfinders = new ObjectMap<>();
     /** The Box2D world inside each deck crew are walking, and their bodies in it. */
     public final CrewPhysics physics = new CrewPhysics();
@@ -65,6 +66,7 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     public CrewService(Engine engine, long seed) {
         this.engine = engine;
         this.crewEntities = engine.getEntitiesFor(CREW);
+        this.index = new CrewIndex(engine);
         this.holds = engine.getEntitiesFor(HOLDS);
         this.random = new RandomXS128(seed);
     }
@@ -75,6 +77,11 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
 
     public ImmutableArray<Entity> crewEntities() {
         return crewEntities;
+    }
+
+    /** Everyone aboard {@code ship}, alive or not, in crew order; see {@link CrewIndex}. */
+    public ImmutableArray<Entity> aboard(Entity ship) {
+        return index.aboard(ship);
     }
 
     // -----------------------------------------------------------------------
@@ -206,10 +213,11 @@ public class CrewService implements GridOccupantQuery, CrewDamageSink, DamageTas
     @Override
     public void occupantsAt(Entity ship, int x, int y, Array<Entity> out) {
         // Indexed: ImmutableArray's iterator cannot be nested, and callers may be iterating crew
-        for (int i = 0; i < crewEntities.size(); i++) {
-            Entity e = crewEntities.get(i);
+        ImmutableArray<Entity> on = aboard(ship);
+        for (int i = 0; i < on.size(); i++) {
+            Entity e = on.get(i);
             GridPositionComponent p = posM.get(e);
-            if (p.ship == ship && p.tileX() == x && p.tileY() == y) out.add(e);
+            if (p.tileX() == x && p.tileY() == y) out.add(e);
         }
     }
 

@@ -604,7 +604,7 @@ public final class DevConsole {
                     + (c.bleedOut > 0f ? ", bleeds out in " + Math.round(c.bleedOut) + " s" : "") + ", " + c.activity;
         }
         if (o instanceof DebugTarget || o instanceof Tile || o instanceof CharSequence) return String.valueOf(o);
-        return org.codehaus.groovy.runtime.InvokerHelper.inspect(o);
+        return org.codehaus.groovy.runtime.FormatHelper.inspect(o);
     }
 
     /** A value's name for an error line. */

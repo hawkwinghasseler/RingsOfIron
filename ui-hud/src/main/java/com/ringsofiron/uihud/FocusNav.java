@@ -16,7 +16,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.Slider;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Pools;
 
 /**
  * Keyboard and gamepad focus for Scene2D menus and windows: Up and Down move between the
@@ -162,9 +161,7 @@ public final class FocusNav {
             // One of a group of choices: Enter picks it, as a click would
             ((Button) a).setChecked(true);
         } else if (a instanceof Button) {
-            ChangeListener.ChangeEvent e = Pools.obtain(ChangeListener.ChangeEvent.class);
-            a.fire(e);
-            Pools.free(e);
+            a.fire(new ChangeListener.ChangeEvent());
         }
     }
 

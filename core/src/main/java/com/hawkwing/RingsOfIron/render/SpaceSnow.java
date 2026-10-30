@@ -178,8 +178,7 @@ public final class SpaceSnow {
 
         float halfW = camera.viewportWidth * camera.zoom / metersPerPixel / 2f;
         float halfH = camera.viewportHeight * camera.zoom / metersPerPixel / 2f;
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        GlPass.alphaBlend();
         shapes.begin(ShapeRenderer.ShapeType.Line);
         for (int k = 0; k < LAYERS; k++) {
             float cell = CELL[k];

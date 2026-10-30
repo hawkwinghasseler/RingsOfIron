@@ -1,19 +1,19 @@
-[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-modding-data'
+// ModdingTestData: the game's data loaded for tests in other modules
+apply plugin: 'java-test-fixtures'
 
 dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
-  api "org.apache.groovy:groovy-all:$groovyVersion"
+  // Only modding-data and core (the dev console) use Groovy, so it stays off the other modules' compile path
+  implementation "org.apache.groovy:groovy-all:$groovyVersion"
   api project(':core-engine')
   // TOML 1.0 parser for data files and manifests.
   implementation "org.tomlj:tomlj:1.1.1"
   // Maps parsed TOML/JSON trees onto definition POJOs (snake_case keys -> camelCase fields).
-  api "com.google.code.gson:gson:2.11.0"
+  implementation "com.google.code.gson:gson:$gsonVersion"
 
-  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testImplementation "org.junit.jupiter:junit-jupiter"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"
-  // Chassis defs are checked against the real interior-grid blueprint loader.
-  testImplementation project(':interior-grid')
 }
 
 test {

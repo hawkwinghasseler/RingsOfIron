@@ -539,8 +539,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
 
     /** Each bubble's rim, its line or pointer to its craft, and its name (and how far off it is). */
     private void drawRims(ViewportManager viewports) {
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        GlPass.alphaBlend();
         float mpu = viewports.metersPerUiUnit();
         shapes.setProjectionMatrix(viewports.getUiCamera().combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
@@ -568,7 +567,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
             }
         }
         shapes.end();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
         for (Bubble b : shown) layOut(b);
         // A dark backing for "[+] 3 others" and the open list, which may lie over anything
         Gdx.gl.glEnable(GL20.GL_BLEND);
@@ -586,7 +585,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
             shapes.rect(left, bottom - 2f, right - left, b.toggle.y + b.toggle.height - bottom + 2f);
         }
         shapes.end();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
         batch.setProjectionMatrix(viewports.getUiCamera().combined);
         batch.begin();
         for (Bubble b : shown) {

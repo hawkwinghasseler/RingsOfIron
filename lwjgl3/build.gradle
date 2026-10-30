@@ -25,11 +25,6 @@ sourceSets.main.resources.srcDir(project(':art-pipeline').tasks.named('packArt')
 application.mainClass = 'com.hawkwing.RingsOfIron.lwjgl3.Lwjgl3Launcher'
 application.applicationName = appName
 eclipse.project.name = appName + '-lwjgl3'
-java.sourceCompatibility = 11
-java.targetCompatibility = 11
-if (JavaVersion.current().isJava9Compatible()) {
-        compileJava.options.release.set(11)
-}
 
 dependencies {
   implementation "com.badlogicgames.gdx-controllers:gdx-controllers-desktop:$gdxControllersVersion"
