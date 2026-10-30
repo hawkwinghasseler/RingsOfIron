@@ -184,13 +184,6 @@ class InteriorLabTest {
         return lab.debug.ram(lab.ship, hull[0], hull[1], out.x, out.y, tonnes * 1000f, speed);
     }
 
-    private int crushedTiles() {
-        ShipGridComponent g = grid();
-        int n = 0;
-        for (int y = 0; y < g.height; y++) for (int x = 0; x < g.width; x++) if (g.getTile(x, y).isCrushed()) n++;
-        return n;
-    }
-
     @Test
     void aSlowRamUnderTwentyFiveMetresASecondJustBumps() {
         float before = structure();
@@ -198,16 +191,14 @@ class InteriorLabTest {
         assertTrue(rammed.contains("20 m/s"), rammed);
         run(3f);
         assertEquals(before, structure(), 1e-4f, "no damage");
-        assertTrue(grid().dents == null);
     }
 
     @Test
-    void aCorvetteWeightRamAtFiftyDentsSeveralTilesWithoutABreach() {
+    void aCorvetteWeightRamAtFiftyDamagesSeveralTilesWithoutABreach() {
         float before = structure();
         slowRam(195.1f, 50f);
         run(3f);
         assertTrue(structure() < before - 0.1f, "structure " + before + " -> " + structure());
-        assertEquals(0, crushedTiles());
         assertTrue(lab.world.collisionDamage.last.damagedB + lab.world.collisionDamage.last.damagedA >= 5,
                 "spread over several tiles");
         ShipGridComponent g = grid();
@@ -215,11 +206,15 @@ class InteriorLabTest {
     }
 
     @Test
-    void aCorvetteWeightRamAtAHundredCrushesTheHullIn() {
+    void aCorvetteWeightRamAtAHundredWrecksTheHull() {
+        float before = structure();
         slowRam(195.1f, 100f);
         run(3f);
-        assertTrue(crushedTiles() >= 1, "crushed " + crushedTiles());
-        assertFalse(grid().hullShapeDirty, "the hull was reshaped round it");
+        assertTrue(structure() < before - 1f, "structure " + before + " -> " + structure());
+        ShipGridComponent g = grid();
+        boolean wrecked = false;
+        for (int y = 0; y < g.height; y++) for (int x = 0; x < g.width; x++) wrecked |= !g.getTile(x, y).isVoid() && g.getTile(x, y).getIntegrity() <= 0f;
+        assertTrue(wrecked, "a tile wrecked");
     }
 
     @Test

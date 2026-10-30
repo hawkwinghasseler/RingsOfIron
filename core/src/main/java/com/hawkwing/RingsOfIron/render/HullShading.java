@@ -204,7 +204,7 @@ public final class HullShading implements Disposable {
         ambientWeight = Math.max(0.05f, ambient);
     }
 
-    /** Draws a region of a hull's art where the hull is (its baked art's place, its dents). */
+    /** Draws a region of a hull's art where the hull is (its baked art's place). */
     public interface Placer {
         void draw(AtlasRegion region);
     }

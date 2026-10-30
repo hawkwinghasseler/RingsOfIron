@@ -33,7 +33,7 @@ public final class ShieldPerimeter {
     /** Farthest the curve gets from its center, meters: a quick reject for rays. */
     public float reach;
 
-    /** The curve round {@code grid}'s tiles that are not void or crushed. */
+    /** The curve round {@code grid}'s tiles that are not void. */
     public static ShieldPerimeter fit(ShipGridComponent grid) {
         ShieldPerimeter p = new ShieldPerimeter();
         int x0 = grid.width, y0 = grid.height, x1 = -1, y1 = -1;
@@ -99,7 +99,7 @@ public final class ShieldPerimeter {
     }
 
     private static boolean solid(Tile t) {
-        return t != null && !t.isVoid() && !t.isCrushed();
+        return t != null && !t.isVoid();
     }
 
     static float bearing(int i) {

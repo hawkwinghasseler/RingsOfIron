@@ -17,7 +17,7 @@ import com.ringsofiron.orbital.math.StateVector;
 import java.util.function.Supplier;
 
 /**
- * Faint motes of "space snow" behind the exterior view, so the player can read how fast they are
+ * Faint motes of "space snow" behind the exterior and deck views, so the player can read how fast they are
  * moving. The snow is not fixed to the screen, the bubble or the ship: it rides a circular orbit at
  * the ship's altitude, prograde with the ship, around the body whose sphere of influence the ship is
  * in. A ship in a circular orbit sees it hang still; any eccentricity, burn or intercept shows as

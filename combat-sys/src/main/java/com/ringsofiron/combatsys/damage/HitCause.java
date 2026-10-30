@@ -12,6 +12,6 @@ public enum HitCause {
     BLAST,
     /** Burns: a beam burning through. */
     FIRE,
-    /** A collision: the hull crushing in, or the jolt throwing the crew about. */
+    /** A collision: the hull giving way, or the jolt throwing the crew about. */
     IMPACT
 }

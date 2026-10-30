@@ -12,12 +12,14 @@ import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.uihud.components.InteractableConsoleComponent;
 import com.ringsofiron.uihud.minimap.WireframeMinimap;
 import com.ringsofiron.uihud.providers.InteractorProvider;
+import com.ringsofiron.uihud.providers.ManeuverPlannerProvider;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import com.ringsofiron.uihud.providers.ShipStatusProvider;
@@ -39,6 +41,7 @@ import com.ringsofiron.uihud.systems.RadarSystem;
 import com.ringsofiron.uihud.systems.WireframeSyncSystem;
 import com.ringsofiron.uihud.widgets.AlertList;
 import com.ringsofiron.uihud.widgets.ConsoleWindow;
+import com.ringsofiron.uihud.widgets.ManeuverMap;
 import com.ringsofiron.uihud.widgets.NavMarkers;
 import com.ringsofiron.uihud.widgets.OrbitMap;
 import com.ringsofiron.uihud.widgets.RadarScope;
@@ -50,7 +53,6 @@ import com.ringsofiron.uihud.widgets.ShipyardWindow;
 import com.ringsofiron.uihud.widgets.TradeWindow;
 import com.ringsofiron.uihud.widgets.BoardingWindow;
 import com.ringsofiron.uihud.widgets.YardWindow;
-import com.ringsofiron.uihud.widgets.TrafficMap;
 
 /**
  * Entry point to the ui-hud module: builds the Scene2D stage, the HUD widgets and the ECS
@@ -67,9 +69,9 @@ import com.ringsofiron.uihud.widgets.TrafficMap;
  * </pre>
  *
  * Keys handled by the HUD: E use console, Esc close console, map or market, V toggle exterior/interior view,
- * M toggle the traffic map (mouse wheel zooms it while open), T open the station market while docked,
- * J the mission board (while docked, or holding a contract), I the crew roster, Y the station yard
- * (while docked at one) or, away from a yard, the crew's field refit. The shipyard opens from
+ * M toggle the map ({@link ManeuverMap}: orbits, burns and traffic in one; the mouse wheel zooms it while open),
+ * T open the station market while docked, J the mission board (while docked, or holding a contract), I the
+ * crew roster, Y the station yard (while docked at one) or, away from a yard, the crew's field refit. The shipyard opens from
  * the yard window's Ships for sale (while docked where ships are sold), or from Y with a prize in tow
  * near a station.
  */
@@ -90,7 +92,7 @@ public class UiHud implements Disposable {
     private final ConsoleWindow consoleWindow;
     private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleLayouts = new ObjectMap<>();
     private final ObjectMap<String, ConsoleWindow.ContentBuilder> consoleExtras = new ObjectMap<>();
-    private final TrafficMap trafficMap;
+    private final ManeuverMap maneuverMap;
     private final TradeWindow tradeWindow;
     private final YardWindow yardWindow;
     private final MissionWindow missionWindow;
@@ -236,10 +238,9 @@ public class UiHud implements Disposable {
         }, () -> !shipyardWindow.getYard().stationName.isEmpty());
         boardingWindow = new BoardingWindow(skin);
 
-        trafficMap = new TrafficMap(skin);
-        trafficMap.setFillParent(true);
-        trafficMap.setVisible(false);
-        stage.addActor(trafficMap);
+        maneuverMap = new ManeuverMap(skin);
+        maneuverMap.setFillParent(true);
+        stage.addActor(maneuverMap);
 
         consoleWindow = new ConsoleWindow(skin, () -> interactPromptSystem().setPromptsEnabled(true));
         stage.addActor(consoleWindow);
@@ -286,8 +287,8 @@ public class UiHud implements Disposable {
 
             @Override
             public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY) {
-                if (!trafficMap.isVisible()) return false;
-                trafficMap.zoom((float) Math.pow(1.25f, -amountY));
+                if (!maneuverMap.isVisible()) return false;
+                maneuverMap.zoomAt(event.getStageX(), event.getStageY(), (float) Math.pow(1.25f, -amountY));
                 return true;
             }
         });
@@ -311,8 +312,8 @@ public class UiHud implements Disposable {
                 if (consoleWindow.isOpen()) return false;
                 return interactPromptSystem.interact();
             case Input.Keys.ESCAPE:
-                if (trafficMap.isVisible()) {
-                    setTrafficMapVisible(false);
+                if (isMapOpen()) {
+                    setMapVisible(false);
                     return true;
                 }
                 if (tradeWindow.isOpen()) {
@@ -374,7 +375,7 @@ public class UiHud implements Disposable {
                 crewWindow.setOpen(!crewWindow.isOpen());
                 return true;
             case Input.Keys.M:
-                setTrafficMapVisible(!trafficMap.isVisible());
+                setMapVisible(!isMapOpen());
                 return true;
             case Input.Keys.V:
                 if (viewKey != null) viewKey.run();
@@ -483,9 +484,19 @@ public class UiHud implements Disposable {
         flightReadoutSystem.setOrbitInfo(orbitInfo);
     }
 
-    /** Feeds the orbit map; null leaves it empty. */
+    /** Feeds the orbit map, small and full screen; null leaves them empty. */
     public void setOrbitPath(OrbitPathProvider orbitPath) {
         orbitMap.setProvider(orbitPath);
+        maneuverMap.setProvider(orbitPath);
+    }
+
+    /** What the full-screen orbit map's mouse planning and buttons do; null leaves them doing nothing. */
+    public void setManeuverPlanner(ManeuverPlannerProvider planner) {
+        maneuverMap.setPlanner(planner);
+    }
+
+    public ManeuverMap getManeuverMap() {
+        return maneuverMap;
     }
 
     public void setInteractor(InteractorProvider interactor) {
@@ -561,19 +572,23 @@ public class UiHud implements Disposable {
         return shipyardWindow;
     }
 
-    /** Off-bubble traffic for the map view (M). Without one the map says there is no data. */
+    /** Off-bubble traffic for the map (M), drawn over the orbits. Without one the map shows only orbits. */
     public void setTrafficMap(TrafficMapProvider provider) {
-        trafficMap.setProvider(provider);
+        maneuverMap.setTraffic(provider);
     }
 
-    public void setTrafficMapVisible(boolean visible) {
-        if (visible) trafficMap.refresh();
-        trafficMap.setVisible(visible);
-        if (visible) trafficMap.toFront();
+    /** Opens the map (orbits, burns and traffic), or closes it. */
+    public void setMapVisible(boolean visible) {
+        if (visible) {
+            maneuverMap.getTraffic().refresh();
+            maneuverMap.refresh();
+            maneuverMap.toFront();
+        }
+        maneuverMap.setVisible(visible);
     }
 
-    public TrafficMap getTrafficMap() {
-        return trafficMap;
+    public boolean isMapOpen() {
+        return maneuverMap.isVisible();
     }
 
     /** Briefly highlights a tile on the minimap, e.g. from combat-sys's hull-hit event. */

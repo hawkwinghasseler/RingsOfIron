@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
@@ -832,6 +833,9 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         // moored in a line, shooting each other for the rest of the raid after one's stray rounds
         HostileComponent by = attacker.getComponent(HostileComponent.class);
         if (by != null && h.faction != null && h.faction.equals(by.faction)) return;
+        // Nor does stray fire from a ship crewed by its own side: First Play's raider, its point
+        // defense up, turned a gunship on itself with the rounds it missed
+        if (!aimed && sameCrew(victim, attacker)) return;
         // A patrol hit by the player's stray rounds in someone else's fight doesn't turn on them,
         // unless the player stands hostile with its side (it used to follow them to the berth)
         if (!h.isPirate() && attacker == world.getPlayer()) {
@@ -855,6 +859,12 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         provoked.put(victim, attacker);
         attackers.computeIfAbsent(victim, k -> new IdentityHashMap<>()).put(attacker, world.macroSim.now());
         if (attacker == world.getPlayer()) h.foughtPlayer = true;
+    }
+
+    /** True if both ships' crews fly for the same side. */
+    private static boolean sameCrew(Entity a, Entity b) {
+        ShipTaskBoardComponent ba = a.getComponent(ShipTaskBoardComponent.class), bb = b.getComponent(ShipTaskBoardComponent.class);
+        return ba != null && bb != null && ba.faction == bb.faction;
     }
 
     // ---------------------------------------------------------------------------------------------

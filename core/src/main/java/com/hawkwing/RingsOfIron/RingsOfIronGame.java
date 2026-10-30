@@ -339,7 +339,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
                 viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH - 10f, statusBottom - 4f, STATUS_WIDTH,
                 viewports.getUiViewport().getWorldHeight() - statusBottom + 4f));
         hud.setBannerRight(() -> viewports.getUiViewport().getWorldWidth() - STATUS_WIDTH - 10f);
-        hud.getTrafficMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
+        hud.getManeuverMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
         // A click on a radar contact selects it as a click on the outside view does
         hud.getRadar().setPickListener(this::selectContact);
         gameHud.yard.setLayoutEditor(this::openRefit);
@@ -388,6 +388,11 @@ public class RingsOfIronGame extends ApplicationAdapter {
         world.rescue.rescues.add((signal, rescue) -> {
             rearm();
             show(rescueNotice(rescue));
+        });
+        // A ship bought at a yard (or swapped in by flyShip): the guns, launchers and HUD on the new
+        // hull, not the one traded in. GameScenario's listener has made it game.player by now.
+        world.shipyard.deals.add((signal, deal) -> {
+            if (deal.newShip != null) rearm();
         });
         world.rescue.tows.add((signal, tow) -> {
             matchViewToSeat();
@@ -673,9 +678,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
         return "Shields trimmed " + cloud.trim.label;
     }
 
-    /** True while one of the HUD's windows or the traffic map is open; Esc closes it first. */
+    /** True while one of the HUD's windows or the map is open; Esc closes it first. */
     private boolean hudWindowOpen() {
-        return hud.getTrafficMap().isVisible() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
+        return hud.isMapOpen() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
                 || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getConsoleWindow().isOpen()
                 || isDevConsoleOpen() || isDebugMenuOpen();
     }
@@ -1577,8 +1582,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     // -----------------------------------------------------------------------
     private void drawBodies() {
         float px = viewports.getViewMeters() / 400f;
-        stars.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
-        snow.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
+        drawBackdrop(viewports.getWorldCamera());
         exterior.drawBodies(viewports.getWorldCamera());
         exterior.drawFlight(viewports.getWorldCamera(), px, Gdx.graphics.getDeltaTime());
         // Crew out on EVA, on the hulls and off them
@@ -1591,6 +1595,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
         lighting.renderGlow(batch, viewports.getWorldCamera(), 2.5f * px);
     }
 
+    /** The distant starfield, then the space snow over it, in either view. */
+    private void drawBackdrop(OrthographicCamera camera) {
+        shapes.setProjectionMatrix(camera.combined);
+        stars.draw(shapes, camera, viewports.metersPerPixel());
+        snow.draw(shapes, camera, viewports.metersPerPixel());
+    }
+
     /**
      * The deck plan of the craft the avatar is aboard, and of any craft docked to it, each at its
      * own pose, with its smoke and flames, the cargo and everyone aboard; every other craft in view
@@ -1599,6 +1610,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private void drawInterior(float delta) {
         Entity aboard = world.avatar.getAvatarShip();
         OrthographicCamera camera = viewports.getWorldCamera();
+        // The stars and the snow behind the decks; the decks' light map keeps to the decks
+        drawBackdrop(camera);
         deckRenderer.draw(DeckRenderer.decksAround(aboard == null ? game.player : aboard, decks), camera, delta);
         // Over the decks' light map, which would darken them to the dim deck ambient: lit as
         // outside, the outside light map kept off the decks, which it would darken in turn

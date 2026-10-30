@@ -17,7 +17,7 @@ import com.badlogic.gdx.utils.IntSet;
  *   <li>A or right trigger: fire, and use a console (Space, E); B: missile (R); X: decoy or force a door (F)</li>
  *   <li>Y: deck / outside view (V); left trigger: next target (Tab)</li>
  *   <li>D-pad up/down: time warp up/down; left: arm port and ask clearance (G); right: undock (U)</li>
- *   <li>Start: pause menu (Esc); Back tapped: traffic map (M)</li>
+ *   <li>Start: pause menu (Esc); Back tapped: the map (M)</li>
  * </ul>
  *
  * <p>Holding Back gives the buttons a second layer: A mission board (J), B boarding (K), X market

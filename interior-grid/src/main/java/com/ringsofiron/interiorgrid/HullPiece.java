@@ -36,8 +36,6 @@ public class HullPiece {
     public float integrity = 1.0f;
     /** Condition at which the piece was patched in the field, or 0; see {@link Tile#isPatched(float, float)}. */
     public float patchedAt = 0f;
-    /** Crushed flat by a collision, every covered tile with it; see {@link Tile#crushed}. */
-    public boolean crushed = false;
 
     public HullPiece(Shape shape, int originX, int originY, int baseWidth, int baseHeight,
                      int rotation, WeightClass weightClass, String material) {

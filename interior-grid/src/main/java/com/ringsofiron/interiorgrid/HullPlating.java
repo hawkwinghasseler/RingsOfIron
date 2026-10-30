@@ -15,10 +15,10 @@ public final class HullPlating {
     private HullPlating() {
     }
 
-    /** True if hull tile (x, y) is wrecked, not crushed, carries no RCS block and has a side open to space. */
+    /** True if hull tile (x, y) is wrecked, carries no RCS block and has a side open to space. */
     public static boolean plateable(ShipGridComponent grid, int x, int y) {
         Tile t = grid.getTile(x, y);
-        if (t == null || t.wallType != Tile.WallType.HULL || t.getIntegrity() > 0f || t.isCrushed()) return false;
+        if (t == null || t.wallType != Tile.WallType.HULL || t.getIntegrity() > 0f) return false;
         return !RcsThruster.fieldRepairable(grid, x, y) && facesSpace(grid, x, y);
     }
 

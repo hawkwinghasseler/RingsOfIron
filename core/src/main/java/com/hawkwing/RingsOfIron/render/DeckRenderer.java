@@ -32,6 +32,7 @@ import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.uihud.minimap.TileShade;
 
@@ -215,7 +216,8 @@ public final class DeckRenderer {
 
     /**
      * The craft aboard and every craft docked to it, into {@code out}: what the deck view shows
-     * when standing aboard {@code aboard}.
+     * when standing aboard {@code aboard}. Docked at a station, the other craft docked there too,
+     * so the haulers loading and unloading at its other ports can be watched.
      */
     public static Array<Entity> decksAround(Entity aboard, Array<Entity> out) {
         out.clear();
@@ -224,6 +226,15 @@ public final class DeckRenderer {
         out.add(aboard);
         for (GridLink link : grid.links) {
             if (!out.contains(link.otherShip, true)) out.add(link.otherShip);
+        }
+        for (int i = 1, n = out.size; i < n; i++) {
+            Entity station = out.get(i);
+            ShipGridComponent g = station.getComponent(StationComponent.class) == null ? null
+                    : station.getComponent(ShipGridComponent.class);
+            if (g == null) continue;
+            for (GridLink link : g.links) {
+                if (!out.contains(link.otherShip, true)) out.add(link.otherShip);
+            }
         }
         return out;
     }
@@ -427,7 +438,7 @@ public final class DeckRenderer {
         }
         // The light map over the decks, dark when the craft aboard has no power; then the glow on top
         ShipGridComponent aboard = decks.first().getComponent(ShipGridComponent.class);
-        lighting.renderLights(camera, aboard != null && DeckLightRig.hasPower(aboard));
+        renderLights(decks, camera, aboard != null && DeckLightRig.hasPower(aboard));
         glowingImpacts(decks, camera);
         if (withArt) {
             // What gives off light shows lit whatever light falls on it
@@ -447,9 +458,38 @@ public final class DeckRenderer {
     }
 
     /**
+     * The decks' light map over {@code decks} only, kept to their {@link #footprints} with the
+     * stencil buffer, so what is drawn around them in space (the stars, other craft) is left to
+     * the light outside. Written after the smoke, which clips itself with the stencil buffer too.
+     * Without a stencil buffer the map covers the view, as it did before.
+     */
+    private void renderLights(Array<Entity> decks, OrthographicCamera camera, boolean withPower) {
+        if (Gdx.graphics.getBufferFormat().stencil == 0) {
+            lighting.renderLights(camera, withPower);
+            return;
+        }
+        GL20 gl = Gdx.gl;
+        // 1 on the decks; the map's own framebuffer has no stencil, so its lights draw there as
+        // ever and only its pass onto the screen is kept to the marks
+        gl.glClearStencil(0);
+        gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
+        gl.glEnable(GL20.GL_STENCIL_TEST);
+        gl.glColorMask(false, false, false, false);
+        gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xff);
+        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
+        footprints(decks, camera);
+        gl.glColorMask(true, true, true, true);
+        gl.glStencilFunc(GL20.GL_EQUAL, 1, 0xff);
+        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
+        lighting.renderLights(camera, withPower);
+        gl.glDisable(GL20.GL_STENCIL_TEST);
+    }
+
+    /**
      * Fills where {@code decks} are drawn under {@code camera}: every tile that is not void, a
      * little past its edges so the hull walls on them are inside. For marking the decks in the
-     * stencil buffer, so the light map outside ({@link ExteriorRenderer}) keeps off them.
+     * stencil buffer, so the decks' light map keeps to them and the light map outside
+     * ({@link ExteriorRenderer}) keeps off them.
      */
     public void footprints(Array<Entity> decks, OrthographicCamera camera) {
         shapes.setProjectionMatrix(camera.combined);

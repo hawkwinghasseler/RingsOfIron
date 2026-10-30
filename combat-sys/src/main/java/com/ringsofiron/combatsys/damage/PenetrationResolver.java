@@ -295,21 +295,10 @@ public class PenetrationResolver {
     // Collisions
     // ------------------------------------------------------------------
 
-    /**
-     * A crushed tile takes whoever stands in it: this much injury, past ai-crew's lethal wound.
-     */
-    public static final float CRUSH_LETHAL_INJURY = 250f;
     /** Collision energy on a tile, J, that wounds someone standing in it as badly as a lethal blast. */
     public static final float CREW_CRUSH_LETHAL = 5e6f;
     /** How far the kernel reaches, in widths ({@code spread}). */
     private static final float CRUSH_REACH = 3f;
-    /** A corner is pushed this many tiles inward per point of integrity a collision takes from the tiles round it. */
-    public static final float DENT_PER_LOSS = 1.5f;
-    /**
-     * A crushed tile is left this share of its depth: a column of crushed tiles folds up into
-     * this much of the room it took.
-     */
-    public static final float CRUSHED_THICKNESS = 0.2f;
 
     /** What one collision did to one ship. */
     public static class CrushResult {
@@ -319,21 +308,19 @@ public class PenetrationResolver {
         public float absorbed;
         /** Tiles that lost integrity. */
         public int tilesDamaged;
-        /** Tiles crushed flat. */
-        public int tilesCrushed;
         /** Most integrity any one tile lost. */
         public float worstLoss;
 
         void reset() {
             entryX = entryY = -1;
             absorbed = worstLoss = 0f;
-            tilesDamaged = tilesCrushed = 0;
+            tilesDamaged = 0;
         }
     }
 
     private float[] crushLoss = new float[0];
-    /** Tiles this call reached, and the ones it crushed. */
-    private boolean[] crushVisited = new boolean[0], crushNew = new boolean[0];
+    /** Tiles this call reached. */
+    private boolean[] crushVisited = new boolean[0];
     private final IntArray crushTiles = new IntArray();
     private final IntArray crushQueue = new IntArray();
     /** Each of {@link #crushTiles}' distance from the contact, then its share of the kernel. */
@@ -342,14 +329,11 @@ public class PenetrationResolver {
     /**
      * A collision crushing into {@code ship} (combat-sys/Design.md section 5.12). {@code energy} J
      * spread from where the hulls met over the solid tiles joined to it, by a Gaussian
-     * {@code spread} tiles wide, so a light knock dents a patch of hull. Each tile takes its share
+     * {@code spread} tiles wide, so a light knock damages a patch of hull. Each tile takes its share
      * out of its hit points; a share bigger than what the tile has left pushes on into the tile
-     * behind it along {@code localDir}, so a hard hit crushes a column inward. A tile at 0 that is
-     * open to space on a side (the void, or a tile crushed before it) is crushed flat: it folds
-     * into the tiles behind, no longer collides, and is open to space until sealed. The systems
-     * and crew on each tile take its energy too; whoever stands in a crushed tile is killed. The
-     * tile corners round each damaged tile are pushed inward ({@link ShipGridComponent#dent}) so
-     * the hull art shows the dent.
+     * behind it along {@code localDir}, so a hard hit wrecks a column inward. A hull tile taken to 0
+     * is a breach like any other. The systems and crew on each tile take its energy too. The
+     * hull's shape is never changed.
      *
      * @param localPoint where the hulls met, body-local meters
      * @param localDir   unit direction into the ship, body-local
@@ -364,11 +348,9 @@ public class PenetrationResolver {
         if (crushLoss.length < n) {
             crushLoss = new float[n];
             crushVisited = new boolean[n];
-            crushNew = new boolean[n];
         }
         Arrays.fill(crushLoss, 0, n, 0f);
         Arrays.fill(crushVisited, 0, n, false);
-        Arrays.fill(crushNew, 0, n, false);
         float dx = localDir.x, dy = localDir.y;
         float len = (float) Math.sqrt(dx * dx + dy * dy);
         if (len < 1e-6f) {
@@ -438,56 +420,18 @@ public class PenetrationResolver {
             out.absorbed += crushInto(idx % grid.width, idx / grid.width, dx, dy, share);
         }
 
-        // Crushed: at 0 now, reached this time, and open to space on a side; it spreads inward
-        boolean more = true;
-        while (more) {
-            more = false;
-            for (int idx = 0; idx < n; idx++) {
-                if (!crushVisited[idx]) continue;
-                int x = idx % grid.width, y = idx / grid.width;
-                Tile tile = grid.getTile(x, y);
-                if (tile.isCrushed() || tile.getIntegrity() > 0f || !openToSpace(x, y)) continue;
-                tile.setCrushed(true);
-                crushNew[idx] = true;
-                more = true;
-            }
-        }
         for (int idx = 0; idx < n; idx++) {
             if (!crushVisited[idx]) continue;
-            int x = idx % grid.width, y = idx / grid.width;
-            Tile tile = grid.getTile(x, y);
+            Tile tile = grid.getTile(idx % grid.width, idx / grid.width);
             float loss = crushLoss[idx];
             if (loss > 0f) {
                 out.tilesDamaged++;
                 out.worstLoss = Math.max(out.worstLoss, loss);
-            }
-            if (((loss > 0f && tile.getIntegrity() <= 0f) || crushNew[idx]) && report != null) report.structureChanged = true;
-            if (!crushNew[idx]) continue;
-            out.tilesCrushed++;
-            grid.hullShapeDirty = true;
-            if (report != null) {
-                report.crushed.add(idx);
-                if (!report.breaches.contains(idx)) report.breaches.add(idx);
-            }
-            // Whoever stands in it is caught there
-            if (crew != null) {
-                occupants.clear();
-                crew.occupantsAt(ship, x, y, occupants);
-                for (int k = 0; k < occupants.size; k++) injure(occupants.get(k), CRUSH_LETHAL_INJURY, HitCause.IMPACT, x, y);
+                if (tile.getIntegrity() <= 0f && report != null) report.structureChanged = true;
             }
         }
-        dentCorners(dx, dy);
         end();
         return out;
-    }
-
-    /** Whether tile (x, y) has a side on the void, the grid's edge or a crushed tile. */
-    private boolean openToSpace(int x, int y) {
-        for (Side side : Side.values()) {
-            Tile n = grid.getTile(x + side.dx, y + side.dy);
-            if (n == null || n.isVoid() || n.isCrushed()) return true;
-        }
-        return false;
     }
 
     /** Insertion sort of {@link #crushTiles} (with their weights) by distance from (px, py). */
@@ -576,70 +520,6 @@ public class PenetrationResolver {
             }
         }
         tryIgnite(tile, x, y, DamageType.KINETIC, energy / FLOOR_RESISTANCE);
-    }
-
-    /**
-     * Pushes the corners round this call's tiles inward along ({@code dx}, {@code dy}): by
-     * {@link #DENT_PER_LOSS} for each point of integrity the tiles round a corner lost, and for
-     * a column of crushed tiles, by how much of it lies inward of the corner, so the column folds
-     * up to {@link #CRUSHED_THICKNESS} of a tile each against the structure behind.
-     */
-    private void dentCorners(float dx, float dy) {
-        int w = grid.width, h = grid.height;
-        for (int cy = 0; cy <= h; cy++) {
-            for (int cx = 0; cx <= w; cx++) {
-                float loss = 0f, folded = 0f;
-                int around = 0;
-                boolean touched = false;
-                for (int oy = -1; oy <= 0; oy++) {
-                    for (int ox = -1; ox <= 0; ox++) {
-                        int x = cx + ox, y = cy + oy;
-                        if (grid.inBounds(x, y) && crushVisited[pack(x, y)]) touched = true;
-                        around++;
-                        if (grid.inBounds(x, y)) loss += crushLoss[pack(x, y)];
-                        folded += crushedInward(x, y, dx, dy);
-                    }
-                }
-                if (!touched) continue;
-                float push = DENT_PER_LOSS * loss / around + (1f - CRUSHED_THICKNESS) * folded / around;
-                grid.dent(cx, cy, dx * push, dy * push);
-            }
-        }
-    }
-
-    /**
-     * How many tiles this call crushed from the middle of tile (x, y) inward along ({@code dx},
-     * {@code dy}), counting the tile itself, up to the first tile still standing. A void tile
-     * (or one off the grid) counts the column in front of it.
-     */
-    private int crushedInward(int x, int y, float dx, float dy) {
-        Tile start = grid.getTile(x, y);
-        if (start != null && !start.isVoid() && !crushNew[pack(x, y)]) return 0;
-        float fx = x + 0.5f, fy = y + 0.5f;
-        int count = 0, lastX = x, lastY = y;
-        boolean seen = start != null && !start.isVoid();
-        if (seen) count = 1;
-        for (int i = 0; i < 4 * (grid.width + grid.height); i++) {
-            fx += dx * 0.5f;
-            fy += dy * 0.5f;
-            int tx = MathUtils.floor(fx), ty = MathUtils.floor(fy);
-            if (tx == lastX && ty == lastY) continue;
-            lastX = tx;
-            lastY = ty;
-            Tile t = grid.getTile(tx, ty);
-            if (t == null) {
-                if (seen) break;
-                continue;
-            }
-            if (t.isVoid()) {
-                if (seen) break;
-                continue;
-            }
-            seen = true;
-            if (!crushNew[pack(tx, ty)]) break;
-            count++;
-        }
-        return count;
     }
 
     /** One tick of a beam on a ship. */
