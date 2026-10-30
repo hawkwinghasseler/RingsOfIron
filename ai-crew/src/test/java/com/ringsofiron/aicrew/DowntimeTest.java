@@ -70,7 +70,7 @@ class DowntimeTest {
         Entity a = s.spawn(CrewRole.CREWMAN, 0, 1, 2);
         s.run(15f);
         assertEquals("lounging on the couch", s.c(a).activity, "the nearest first");
-        s.run(com.ringsofiron.aicrew.btree.CrewTasks.Idle.SUIT_OFF_DELAY + 180f + 30f);
+        s.run(com.ringsofiron.aicrew.btree.Idle.SUIT_OFF_DELAY + 180f + 30f);
         assertEquals("playing the arcade cabinet", s.c(a).activity, "then the other");
     }
 }

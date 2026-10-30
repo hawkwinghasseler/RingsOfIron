@@ -16,7 +16,7 @@ import com.ringsofiron.interiorgrid.Tile;
  * table, the exercise bike) and use it for {@link #SESSION} seconds, earning its
  * {@link com.ringsofiron.interiorgrid.FurnishingType#relax} morale an hour
  * ({@link com.ringsofiron.aicrew.CrewRecord#pendingLeisure}), then stand by for {@link #BREAK}
- * seconds before picking another, a different one where they can. Part of {@link CrewTasks.Idle}:
+ * seconds before picking another, a different one where they can. Part of {@link Idle}:
  * any task, a hazard or battle stations takes them off it at once.
  */
 final class Downtime {
