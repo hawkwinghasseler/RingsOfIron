@@ -1,8 +1,11 @@
 package com.hawkwing.RingsOfIron.game;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.macrosim.rails.Trajectory;
@@ -74,5 +77,17 @@ class GameBubbleGatewayTest {
         Entity collapsed = rails(shape);
         gateway.beginKinematicTransient(collapsed.getComponent(com.ringsofiron.coreengine.components.UuidComponent.class).id, STILL);
         assertEquals(123_000f, collapsed.getComponent(KinematicTransientComponent.class).mass);
+    }
+
+    @Test
+    void theOldBoxIsKnownWhenItComesBackSaved() {
+        // A freighter saved on the old box comes back on its own hull, not the box
+        Entity e = rails(null);
+        Body box = world.physics.createPolygonBody(e, 0f, 0f, 0f, GameBubbleGateway.DEFAULT_HULL,
+                GameBubbleGateway.DEFAULT_HULL_DENSITY, (short) 1, (short) -1);
+        assertTrue(GameBubbleGateway.isDefaultHull(BodyShapeComponent.capture(box)));
+        Body other = world.physics.createPolygonBody(e, 0f, 0f, 0f, new float[]{-10f, -6f, 10f, -6f, 10f, 6f, -10f, 6f},
+                GameBubbleGateway.DEFAULT_HULL_DENSITY, (short) 1, (short) -1);
+        assertFalse(GameBubbleGateway.isDefaultHull(BodyShapeComponent.capture(other)));
     }
 }

@@ -7,7 +7,7 @@ import com.badlogic.gdx.physics.box2d.Body;
 /**
  * Two bodies met faster than the crash speed ({@code PhysicsManager.setCrashHandling}). Box2D did
  * not push them apart: for the tick they met in they passed into each other, and whoever listens
- * (combat-sys's collision damage) decides what is crushed and what momentum they trade. Dispatched
+ * (combat-sys's collision damage) decides what is damaged and what momentum they trade. Dispatched
  * after the step, with the world unlocked, before that step's {@link CollisionEvent}s.
  *
  * The instance is reused; copy anything you keep.

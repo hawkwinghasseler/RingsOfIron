@@ -27,6 +27,39 @@ public interface OrbitPathProvider {
         public boolean target;
     }
 
+    /** What a {@link PathMark} marks on the map. */
+    enum MarkKind {
+        /** Highest and lowest points of a path. */
+        APOAPSIS, PERIAPSIS,
+        /** Where a path enters another body's sphere of influence, or leaves the map body's. */
+        SOI_ENTRY, SOI_EXIT,
+        /** Where a path meets a body's surface. */
+        IMPACT,
+        /** Where a body will be when a path meets it: drawn as its outline and sphere of influence. */
+        GHOST
+    }
+
+    /** A labelled point on a path: an apsis, a change of sphere of influence, an impact. */
+    final class PathMark {
+        public MarkKind kind = MarkKind.PERIAPSIS;
+        public double x, y;
+        /** A {@link MarkKind#GHOST}'s body radius and sphere of influence, m. */
+        public double radius, soiRadius;
+        /** On the path after planned burns, rather than the orbit now. */
+        public boolean planned;
+        public String text = "";
+    }
+
+    /**
+     * Where a path goes after it leaves the map body's own conic: around a moon it meets, drawn about
+     * where the moon will be then, and back out again. Points in the map's frame like the rest.
+     */
+    final class PathLeg {
+        public final FloatArray points = new FloatArray();
+        /** Follows the planned path, rather than the orbit now. */
+        public boolean planned;
+    }
+
     /**
      * Plain data for one frame's map. Points are x,y pairs in meters from the parent body's center,
      * sampled evenly in anomaly so the curve stays smooth near periapsis.
@@ -66,6 +99,37 @@ public interface OrbitPathProvider {
         /** A transfer proposed to the target but not yet accepted: its path and its burns. */
         public final FloatArray proposed = new FloatArray();
         public final FloatArray proposedNodes = new FloatArray();
+        /**
+         * Each planned burn's axes as unit vectors in the map's frame, four floats a burn: prograde x
+         * and y, then radial out x and y. For handles that drag a burn's delta-v.
+         */
+        public final FloatArray nodeAxes = new FloatArray();
+        /** Apsides, sphere-of-influence changes and impacts along the path that matters most. */
+        public final Array<PathMark> marks = new Array<>();
+        private final Array<PathMark> markPool = new Array<>();
+        /** The path on past a change of sphere of influence. */
+        public final Array<PathLeg> legs = new Array<>();
+        private final Array<PathLeg> legPool = new Array<>();
+
+        public PathMark addMark(MarkKind kind, double x, double y, String text) {
+            PathMark m = markPool.size > 0 ? markPool.pop() : new PathMark();
+            m.kind = kind;
+            m.x = x;
+            m.y = y;
+            m.radius = m.soiRadius = 0;
+            m.planned = false;
+            m.text = text == null ? "" : text;
+            marks.add(m);
+            return m;
+        }
+
+        public PathLeg addLeg(boolean planned) {
+            PathLeg l = legPool.size > 0 ? legPool.pop() : new PathLeg();
+            l.points.clear();
+            l.planned = planned;
+            legs.add(l);
+            return l;
+        }
 
         public MapBody addBody() {
             MapBody b = bodyPool.size > 0 ? bodyPool.pop() : new MapBody();
@@ -100,6 +164,11 @@ public interface OrbitPathProvider {
             approach.clear();
             proposed.clear();
             proposedNodes.clear();
+            nodeAxes.clear();
+            markPool.addAll(marks);
+            marks.clear();
+            legPool.addAll(legs);
+            legs.clear();
         }
     }
 }

@@ -83,7 +83,7 @@ public final class Furnishings {
                 float py = lerp(lerp(c[1], c[7], u), lerp(c[3], c[5], u), v);
                 int tx = MathUtils.floor(px), ty = MathUtils.floor(py);
                 Tile t = grid.getTile(tx, ty);
-                if (t == null || !t.isFloor() || t.isWall() || t.isCrushed()) return "It doesn't fit: there's a wall in the way";
+                if (t == null || !t.isFloor() || t.isWall()) return "It doesn't fit: there's a wall in the way";
                 if (t.mount != null) return "It doesn't fit: there's a system in the way";
                 // ...and no thin wall or door runs between it and the next point
                 if (j > 0 && (tx != lastX || ty != lastY) && crossesEdge(grid, lastX, lastY, tx, ty)) {

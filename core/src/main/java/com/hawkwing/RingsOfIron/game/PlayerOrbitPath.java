@@ -8,6 +8,7 @@ import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.components.OrbitComponent;
+import com.ringsofiron.orbital.events.OrbitalEvent;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.orbital.rails.RailsUniverse;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
@@ -17,6 +18,12 @@ import java.util.function.DoubleSupplier;
  * ui-hud's orbit map from orbital-mechanics: the player's conic now and after its planned burns,
  * sampled evenly in eccentric (or hyperbolic) anomaly rather than in time, so the curve stays smooth
  * through a fast periapsis pass. Burns already due are left out; they fire this frame.
+ *
+ * <p>The path the ship will fly (after the plan's last burn, or the orbit now with none) goes on past a
+ * change of sphere of influence: around a moon it meets and back out, through {@link MapTrajectory},
+ * with its apsides, the changes and any impact marked. A pass through a moon's sphere is drawn where the
+ * ship really goes, the moon moving on under it, and the moon is drawn where it is at the closest
+ * approach; a ship caught by the moon has its orbit there drawn about that point.
  *
  * <p>With {@link Navigation}: the stations around the same body, the navigation target with its
  * orbit (when it shares the parent), the closest approach to it, and a transfer proposed to it.
@@ -36,6 +43,9 @@ public class PlayerOrbitPath implements OrbitPathProvider {
     private Navigation nav;
     private final Array<Entity> children = new Array<>();
     private final StateVector s = new StateVector();
+    private final MapTrajectory trajectory;
+    private final StringBuilder summary = new StringBuilder();
+    private final double[] off = new double[2];
 
     public PlayerOrbitPath(GameWorld world, BurnPlanner planner) {
         this(world.universe, new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer), planner);
@@ -48,6 +58,7 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         this.orbits = orbits;
         this.planner = planner;
         this.clock = universe::now;
+        this.trajectory = new MapTrajectory(universe);
     }
 
     /** The body the last {@link #getPlayerPath} drew around, or null. */
@@ -60,6 +71,7 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         KeplerOrbit k = orbits.currentConic();
         CelestialBodyComponent body = orbits.body();
         if (k == null) return false;
+        Entity frame = orbits.parent();
         double now = clock.getAsDouble();
         out.bodyName = body.name == null ? "" : body.name;
         out.bodyRadius = body.radius;
@@ -73,23 +85,172 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         KeplerOrbit after = k;
         double t = now;
         int shown = 0;
+        long plan = 17;
         if (m != null) {
             for (ManeuverNodeComponent.Node n : m.nodes) {
                 if (n.time < now) continue;
                 after.stateAt(n.time, s);
                 out.nodes.add((float) s.x, (float) s.y);
+                // The burn's axes: along the velocity there, and radially out as withBurn reads it
+                double speed = Math.hypot(s.vx, s.vy);
+                float ux = (float) (s.vx / speed), uy = (float) (s.vy / speed);
+                out.nodeAxes.add(ux, uy, uy * after.direction, -ux * after.direction);
                 if (n == selected) out.selectedNode = shown;
                 shown++;
                 out.nodeLabels.add(shown + ": " + Navigation.formatTime(n.time - now));
                 after = after.withBurn(n.time, n.prograde, n.radial);
                 t = n.time;
+                plan = plan * 1_000_003 + Double.hashCode(n.time) * 31L + Double.hashCode(n.prograde) * 7L + Double.hashCode(n.radial);
             }
         }
-        if (shown > 0) sample(after, t, body, out.planned);
+        // The path the ship will fly, past the plan's last burn (or on from now) and through any moon it meets
+        trajectory(shown > 0 ? after : k, t, frame, body, shown > 0, plan, now, out);
         if (selected != null) caption(out.caption, selected, planner.selectedIndex(), m.nodes.size, now, after, body);
         else out.caption.append("N plans a burn");
+        if (summary.length() > 0) out.caption.append("\n").append(summary);
         if (nav != null) navigation(k, now, body, out);
         return true;
+    }
+
+    /**
+     * What the path does past its own conic, in a line: the moon it meets and how close, an impact, or
+     * leaving the body; empty when it does none of them. As of the last {@link #getPlayerPath}.
+     */
+    public String trajectorySummary() {
+        return summary.toString();
+    }
+
+    /**
+     * The path from {@code from} on conic {@code k}, into the planned path (or the current one, with no
+     * burns), cut where it meets a moon, the surface or the edge of the body's sphere of influence, and
+     * on from there as legs; with its apsides and those changes marked.
+     */
+    private void trajectory(KeplerOrbit k, double from, Entity frame, CelestialBodyComponent body, boolean planned,
+                            long plan, double now, OrbitPath out) {
+        summary.setLength(0);
+        FloatArray first = planned ? out.planned : out.current;
+        if (frame == null) {
+            if (planned) sample(k, from, body, first);
+            return;
+        }
+        java.util.List<MapTrajectory.Leg> legs = trajectory.legs(k, frame, from, plan);
+        for (int i = 0; i < legs.size(); i++) {
+            MapTrajectory.Leg leg = legs.get(i);
+            CelestialBodyComponent around = universe.celestial(leg.frame);
+            if (around == null) break;
+            String name = around.name == null ? "" : around.name;
+            FloatArray points = i == 0 ? first : out.addLeg(planned).points;
+            points.clear();
+            if (leg.frame == frame) {
+                sample(leg.conic, leg.from, leg.to, around, 0, 0, points);
+            } else if (Double.isNaN(leg.to)) {
+                // Caught by the moon: its orbit there, drawn about where the moon is at the periapsis
+                offset(leg, frame, ghostTime(leg), off);
+                sample(leg.conic, leg.from, leg.to, around, off[0], off[1], points);
+            } else {
+                // Through a moon's sphere: where the ship really is, the moon moving on under it, so the
+                // path runs on unbroken from the leg before into the one after
+                sampleMoving(leg, frame, points);
+            }
+            if (leg.frame != frame) {
+                offset(leg, frame, ghostTime(leg), off);
+                OrbitPathProvider.PathMark ghost = out.addMark(OrbitPathProvider.MarkKind.GHOST, off[0], off[1], name);
+                ghost.radius = around.radius;
+                ghost.soiRadius = around.soiRadius;
+                ghost.planned = planned;
+            }
+            apsides(leg, frame, around, i == 0 ? "" : name + " ", planned, now, out);
+            if (leg.end == null) continue;
+            offset(leg, frame, leg.to, off);
+            leg.conic.stateAt(leg.to, s);
+            double ex = s.x + off[0], ey = s.y + off[1];
+            String in = Navigation.formatTime(leg.to - now);
+            switch (leg.end) {
+                case SOI_ENTRY: {
+                    CelestialBodyComponent moon = universe.celestial(leg.entered);
+                    String moonName = moon.name == null ? "" : moon.name;
+                    out.addMark(OrbitPathProvider.MarkKind.SOI_ENTRY, ex, ey, "Enters " + moonName + " in " + in).planned = planned;
+                    if (summary.length() == 0) summary.append("Meets ").append(moonName).append(" in ").append(in);
+                    break;
+                }
+                case SOI_EXIT:
+                    out.addMark(OrbitPathProvider.MarkKind.SOI_EXIT, ex, ey, "Leaves " + name + " in " + in).planned = planned;
+                    if (summary.length() == 0) summary.append("Leaves ").append(name).append("'s sphere of influence in ").append(in);
+                    break;
+                default:
+                    out.addMark(OrbitPathProvider.MarkKind.IMPACT, ex, ey, "Impact: " + name + " in " + in).planned = planned;
+                    if (summary.length() == 0 || i > 0) {
+                        summary.append(summary.length() == 0 ? "" : "; then ").append("IMPACT on ").append(name).append(" in ").append(in);
+                    }
+            }
+        }
+    }
+
+    /**
+     * Where the leg's body is at {@code t} in the map's frame, into {@code out}: nothing for the map's
+     * own body.
+     */
+    private void offset(MapTrajectory.Leg leg, Entity frame, double t, double[] out) {
+        out[0] = out[1] = 0;
+        if (leg.frame == frame) return;
+        universe.stateInFrame(leg.frame, frame, t, s);
+        out[0] = s.x;
+        out[1] = s.y;
+    }
+
+    /** When a leg around a moon comes closest to it, or when it starts if that is never: where the moon is drawn. */
+    static double ghostTime(MapTrajectory.Leg leg) {
+        double pe = MapTrajectory.nextPeriapsis(leg.conic, leg.from);
+        return !Double.isNaN(pe) && (Double.isNaN(leg.to) || pe <= leg.to) ? pe : leg.from;
+    }
+
+    /**
+     * A leg through a moon's sphere as the map's frame sees it: its conic around the moon plus where the
+     * moon is at each moment, sampled evenly in anomaly so the swing past periapsis stays smooth.
+     */
+    private void sampleMoving(MapTrajectory.Leg leg, Entity frame, FloatArray out) {
+        KeplerOrbit c = leg.conic;
+        double a0 = c.anomalyAt(leg.from), a1 = c.anomalyAt(leg.to);
+        if (c.isElliptic() && a1 <= a0) a1 += 2 * Math.PI;
+        double m0 = meanAnomaly(c, a0);
+        for (int i = 0; i <= SEGMENTS; i++) {
+            double anomaly = a0 + (a1 - a0) * i / SEGMENTS;
+            double t = leg.from + (meanAnomaly(c, anomaly) - m0) / c.meanMotion();
+            c.positionAtAnomaly(anomaly, s);
+            double x = s.x, y = s.y;
+            universe.stateInFrame(leg.frame, frame, t, s);
+            out.add((float) (x + s.x), (float) (y + s.y));
+        }
+    }
+
+    /** Mean anomaly at an eccentric (or hyperbolic) anomaly, unwrapped. */
+    private static double meanAnomaly(KeplerOrbit c, double anomaly) {
+        return c.isElliptic() ? anomaly - c.e * Math.sin(anomaly) : c.e * Math.sinh(anomaly) - anomaly;
+    }
+
+    /** The leg's periapsis and apoapsis where it reaches them before it ends, labelled with the height. */
+    private void apsides(MapTrajectory.Leg leg, Entity frame, CelestialBodyComponent around, String prefix,
+                         boolean planned, double now, OrbitPath out) {
+        KeplerOrbit c = leg.conic;
+        double pe = MapTrajectory.nextPeriapsis(c, leg.from);
+        boolean ends = !Double.isNaN(leg.to);
+        boolean moving = leg.frame != frame && ends;
+        if (!Double.isNaN(pe) && (!ends || pe <= leg.to) && c.periapsis() > around.radius) {
+            offset(leg, frame, moving ? pe : ghostTime(leg), off);
+            c.positionAtAnomaly(0, s);
+            String text = prefix + "Pe " + km(c.periapsis() - around.radius);
+            if (!prefix.isEmpty()) {
+                text += " in " + Navigation.formatTime(pe - now);
+                if (leg.end != OrbitalEvent.Type.IMPACT) summary.append(", ").append(prefix).append("Pe ").append(km(c.periapsis() - around.radius));
+            }
+            out.addMark(OrbitPathProvider.MarkKind.PERIAPSIS, s.x + off[0], s.y + off[1], text).planned = planned;
+        }
+        double ap = MapTrajectory.nextApoapsis(c, leg.from);
+        if (!Double.isNaN(ap) && (!ends || ap <= leg.to)) {
+            offset(leg, frame, moving ? ap : ghostTime(leg), off);
+            c.positionAtAnomaly(Math.PI, s);
+            out.addMark(OrbitPathProvider.MarkKind.APOAPSIS, s.x + off[0], s.y + off[1], prefix + "Ap " + km(c.apoapsis() - around.radius)).planned = planned;
+        }
     }
 
     /** Stations, the target and its orbit, the closest approach and a proposed transfer. */
@@ -198,21 +359,38 @@ public class PlayerOrbitPath implements OrbitPathProvider {
      * {@link #OPEN_SPAN} on, or {@link #OPEN_RADII} radii out).
      */
     public static void sample(KeplerOrbit k, double t, CelestialBodyComponent body, FloatArray out) {
+        sample(k, t, Double.NaN, body, 0, 0, out);
+    }
+
+    /**
+     * As {@link #sample(KeplerOrbit, double, CelestialBodyComponent, FloatArray)}, but only as far as
+     * {@code to} (NaN for the whole orbit), and moved by ({@code ox}, {@code oy}): a path that meets a
+     * moon stops there.
+     */
+    public static void sample(KeplerOrbit k, double t, double to, CelestialBodyComponent body, double ox, double oy,
+                              FloatArray out) {
         StateVector s = new StateVector();
-        double from, to;
-        if (k.isElliptic()) {
+        double from, end;
+        if (k.isElliptic() && (Double.isNaN(to) || to - t >= k.period())) {
             from = 0;
-            to = 2 * Math.PI;
-        } else {
+            end = 2 * Math.PI;
+        } else if (k.isElliptic()) {
+            from = k.anomalyAt(t);
+            end = k.anomalyAt(to);
+            if (end <= from) end += 2 * Math.PI;
+        } else if (Double.isNaN(to)) {
             double edge = Math.min(body.soiRadius, OPEN_RADII * body.radius);
             double leave = k.nextTimeAtRadius(edge, t, KeplerOrbit.Crossing.OUTBOUND);
             double span = Double.isNaN(leave) ? OPEN_SPAN : Math.min(OPEN_SPAN, Math.max(1, leave - t));
             from = k.anomalyAt(t);
-            to = k.anomalyAt(t + span);
+            end = k.anomalyAt(t + span);
+        } else {
+            from = k.anomalyAt(t);
+            end = k.anomalyAt(to);
         }
         for (int i = 0; i <= SEGMENTS; i++) {
-            k.positionAtAnomaly(from + (to - from) * i / SEGMENTS, s);
-            out.add((float) s.x, (float) s.y);
+            k.positionAtAnomaly(from + (end - from) * i / SEGMENTS, s);
+            out.add((float) (s.x + ox), (float) (s.y + oy));
         }
     }
 

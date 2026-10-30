@@ -373,8 +373,6 @@ public final class ArtNames {
     public static final String DECOY = "projectiles/decoy_flare";
     /** The laser strip, stretched along a beam. */
     public static final String BEAM = "effects/beam";
-    /** A tile a collision crushed flat (interior-grid's {@code Tile#crushed}). */
-    public static final String CRUSHED = "effects/crushed";
     /** The gangway across two latched collars, stretched along the crossing. */
     public static final String WALKWAY = "tiles/dock_walkway";
     /** A side wall of a collar tunnel, half a tile long, for the deck view. */

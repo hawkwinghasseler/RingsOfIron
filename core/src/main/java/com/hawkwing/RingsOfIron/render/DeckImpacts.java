@@ -412,7 +412,7 @@ public final class DeckImpacts {
         // Still in the plate it came through, or out in space: nothing to bounce off yet
         if (from == null || !from.isOpen()) return false;
         if (to == null) return false;
-        return to.isIntactWall() || to.isCrushed() || g.isEdgeBlocked(x, y, nx, ny);
+        return to.isIntactWall() || g.isEdgeBlocked(x, y, nx, ny);
     }
 
     // -----------------------------------------------------------------------

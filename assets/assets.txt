@@ -585,7 +585,6 @@ art/edges/edge_wall_medium_v.svg
 art/effects/beam.svg
 art/effects/breach.svg
 art/effects/bulkhead_seal.svg
-art/effects/crushed.svg
 art/effects/damage_heavy.svg
 art/effects/damage_light.svg
 art/effects/explosion.svg

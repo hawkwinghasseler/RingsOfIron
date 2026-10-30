@@ -13,8 +13,8 @@ import com.badlogic.gdx.utils.IntArray;
  * past the nozzle, as wide as the engine, stay clear for its exhaust.
  *
  * <p>Built, an engine's tiles are hull: its casing ({@link #isCasing}), the casing class of its
- * model ({@link #CASING} unless the component says otherwise), so it is struck, collides and is
- * crushed like the rest of the hull. The crew and the ship's power and pipes reach the engine from
+ * model ({@link #CASING} unless the component says otherwise), so it is struck and collides like
+ * the rest of the hull. The crew and the ship's power and pipes reach the engine from
  * its feed tiles ({@link #isFeedTile}): the floor just inside the wall behind its flange.
  */
 public final class EngineLayout {

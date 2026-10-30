@@ -214,16 +214,6 @@ class EvaRepairTest {
     }
 
     @Test
-    void aCrushedTileIsYardWork() {
-        TestShips s = ship();
-        s.grid.getTile(9, 0).setCrushed(true);
-        assertFalse(RcsThruster.fieldRepairable(s.grid, 9, 0));
-        s.spawn(CrewRole.ENGINEER, 0, 9, 2);
-        s.run(20f);
-        assertFalse(posted(s));
-    }
-
-    @Test
     void oneKnockedOutOnTheHullIsWinchedInOnTheirLine() {
         TestShips s = ship();
         Entity e = s.spawn(CrewRole.ENGINEER, 0, 9, 2);

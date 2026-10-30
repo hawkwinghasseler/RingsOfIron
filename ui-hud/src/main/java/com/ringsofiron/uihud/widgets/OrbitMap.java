@@ -24,6 +24,11 @@ import com.ringsofiron.uihud.providers.OrbitPathProvider;
  * line between where each will be. A transfer proposed to the target but not accepted yet is drawn
  * in green.
  *
+ * <p>A path that meets a moon goes on around it, drawn where the moon will be then (the moon's outline
+ * and sphere of influence there, faint), and back out; one that meets the body's surface stops there.
+ * {@link #setShowMarks} labels the apsides, the changes of sphere of influence and impacts as well,
+ * for a map large enough to hold them.
+ *
  * <p>{@link #setView} fixes the scale and centre instead of fitting the orbit, for a map that fills a
  * screen and zooms; {@link #screenX} and {@link #screenY} then place anything else in the same frame.
  */
@@ -36,6 +41,11 @@ public class OrbitMap extends Widget {
     private static final Color TARGET = new Color(1f, 0.35f, 0.9f, 1f);
     private static final Color TARGET_ORBIT = new Color(1f, 0.35f, 0.9f, 0.5f);
     private static final Color PROPOSED = new Color(0.35f, 1f, 0.45f, 1f);
+    private static final Color CURRENT_LEG = new Color(0.45f, 0.85f, 1f, 0.6f);
+    private static final Color PLANNED_LEG = new Color(1f, 0.82f, 0.45f, 0.85f);
+    private static final Color GHOST = new Color(0.55f, 0.6f, 0.65f, 0.55f);
+    private static final Color GHOST_SOI = new Color(0.55f, 0.6f, 0.65f, 0.25f);
+    private static final Color IMPACT = new Color(1f, 0.3f, 0.25f, 1f);
     /** Wide enough for a transfer to Earth's Moon, about 60 Earth radii out. */
     private static final float MAX_BODY_RADII = 80f;
     private static final float EDGE = 8f;
@@ -50,6 +60,11 @@ public class OrbitMap extends Widget {
     private final GlyphLayout layout = new GlyphLayout();
     private BitmapFont font;
     private boolean hasPath;
+    private boolean showMarks;
+    /** Stations and an on-map target drawn here; off where another layer draws the traffic. */
+    private boolean showStations = true;
+    /** Pixels left clear around a fitted orbit. */
+    private float fitMargin = 4f;
     private float prefSize = 220f;
     /** Meters per pixel and the point at the map's centre, meters from the body; 0 fits the orbit instead. */
     private double viewScale, viewX, viewY;
@@ -72,6 +87,24 @@ public class OrbitMap extends Widget {
     /** Label to show the provider's caption in, or null. */
     public void setCaption(Label caption) {
         this.caption = caption;
+    }
+
+    /** Labels the apsides, changes of sphere of influence and impacts on the path; off for the small map. */
+    public void setShowMarks(boolean show) {
+        showMarks = show;
+    }
+
+    /**
+     * Whether to draw the stations and the target where they are; off, only a target off the map is
+     * marked, on the edge in its direction, for a map that draws the traffic itself.
+     */
+    public void setShowStations(boolean show) {
+        showStations = show;
+    }
+
+    /** Pixels kept clear between a fitted orbit and the map's edge, for its labels; 4 by default. */
+    public void setFitMargin(float margin) {
+        fitMargin = margin;
     }
 
     public void setPrefSize(float size) {
@@ -109,6 +142,11 @@ public class OrbitMap extends Widget {
         return path;
     }
 
+    /** The labels drawn last frame, stage coordinates, for another layer to keep its own clear of. */
+    public Array<Rectangle> getPlacedLabels() {
+        return placed;
+    }
+
     public boolean hasPath() {
         return hasPath;
     }
@@ -117,7 +155,8 @@ public class OrbitMap extends Widget {
     public void act(float delta) {
         super.act(delta);
         path.clear();
-        hasPath = provider != null && provider.getPlayerPath(path);
+        // A hidden map (the small one under the full-screen map, or in the deck view) asks for nothing
+        hasPath = provider != null && ancestorsVisible() && provider.getPlayerPath(path);
         if (caption != null) caption.setText(hasPath ? path.caption : "No orbit");
     }
 
@@ -141,7 +180,7 @@ public class OrbitMap extends Widget {
         } else {
             float extent = Math.max(Math.max(extent(path.current), extent(path.planned)), extent(path.proposed));
             extent = Math.max((float) path.bodyRadius * 1.1f, Math.min(extent, (float) path.bodyRadius * MAX_BODY_RADII));
-            scale = (half - 4f) / extent;
+            scale = (half - fitMargin) / extent;
             drawScale = scale;
             originX = vx;
             originY = vy;
@@ -151,10 +190,19 @@ public class OrbitMap extends Widget {
         if (!clipBegin()) return;
 
         for (OrbitPathProvider.MapBody b : path.bodies) polyline(batch, b.orbit, cx, cy, scale, OTHER_ORBIT, a);
+        // Where a moon the path meets will be by then, under everything else
+        for (OrbitPathProvider.PathMark m : path.marks) {
+            if (m.kind != OrbitPathProvider.MarkKind.GHOST) continue;
+            float gx = cx + (float) m.x * scale, gy = cy + (float) m.y * scale;
+            circle(batch, gx, gy, (float) m.soiRadius * scale, 1f, GHOST_SOI, a);
+            circle(batch, gx, gy, Math.max(3f, (float) m.radius * scale), 1.5f, GHOST, a);
+        }
 
         // The body as a disc of thin horizontal slices, only those on the map (zoomed in it is huge).
         float r = (float) path.bodyRadius * scale;
         batch.setColor(BODY.r, BODY.g, BODY.b, BODY.a * a);
+        // Zoomed far out it stays a dot rather than vanishing
+        if (r < 3f) dot(batch, cx, cy, 6f, OTHER_BODY, a);
         float left = getX(), right = getX() + getWidth();
         for (float y = Math.max(-r, (float) Math.floor(getY() - cy)); y < Math.min(r, getY() + getHeight() - cy); y += 1f) {
             float w = (float) Math.sqrt(Math.max(0f, r * r - (y + 0.5f) * (y + 0.5f)));
@@ -165,6 +213,7 @@ public class OrbitMap extends Widget {
         polyline(batch, path.targetOrbit, cx, cy, scale, TARGET_ORBIT, a);
         polyline(batch, path.current, cx, cy, scale, HudSkin.HUD_CYAN, a);
         polyline(batch, path.planned, cx, cy, scale, PLANNED, a);
+        for (OrbitPathProvider.PathLeg l : path.legs) polyline(batch, l.points, cx, cy, scale, l.planned ? PLANNED_LEG : CURRENT_LEG, a);
         polyline(batch, path.proposed, cx, cy, scale, PROPOSED, a);
         for (int i = 0; i + 1 < path.proposedNodes.size; i += 2) {
             dot(batch, cx + path.proposedNodes.get(i) * scale, cy + path.proposedNodes.get(i + 1) * scale, 5f, PROPOSED, a);
@@ -187,11 +236,15 @@ public class OrbitMap extends Widget {
             if (font != null && i / 2 < path.nodeLabels.size) {
                 Color c = selected ? Color.WHITE : PLANNED;
                 font.setColor(c.r, c.g, c.b, a);
-                font.draw(batch, path.nodeLabels.get(i / 2), nx + 6f, ny - 4f - 14f * ((i / 2) % 2));
+                float ly = ny - 4f - 14f * ((i / 2) % 2);
+                layout.setText(font, path.nodeLabels.get(i / 2));
+                font.draw(batch, layout, nx + 6f, ly);
+                placed.add(new Rectangle(nx + 6f, ly - layout.height, layout.width, layout.height));
             }
         }
         dot(batch, cx + (float) path.shipX * scale, cy + (float) path.shipY * scale, 5f, Color.WHITE, a);
         for (OrbitPathProvider.MapBody b : path.bodies) otherBody(batch, b, cx, cy, vx, vy, half, scale, a);
+        for (OrbitPathProvider.PathMark m : path.marks) mark(batch, m, cx, cy, scale, a);
         batch.flush();
         clipEnd();
         batch.setColor(old);
@@ -239,6 +292,52 @@ public class OrbitMap extends Widget {
         font.draw(batch, text, lx, box.y + box.height, LABEL_WIDTH, align, false);
     }
 
+    /**
+     * An apsis as a small tick across the path, a change of sphere of influence as a diamond and an
+     * impact as a red cross, each with its label when {@link #setShowMarks} is on; impacts always.
+     */
+    private void mark(Batch batch, OrbitPathProvider.PathMark m, float cx, float cy, float scale, float alpha) {
+        if (m.kind == OrbitPathProvider.MarkKind.GHOST) return;
+        boolean impact = m.kind == OrbitPathProvider.MarkKind.IMPACT;
+        if (!showMarks && !impact) return;
+        float x = cx + (float) m.x * scale, y = cy + (float) m.y * scale;
+        if (x < getX() || x > getX() + getWidth() || y < getY() || y > getY() + getHeight()) return;
+        Color c = impact ? IMPACT : m.planned ? PLANNED : HudSkin.HUD_CYAN;
+        batch.setColor(c.r, c.g, c.b, c.a * alpha);
+        switch (m.kind) {
+            case IMPACT:
+                batch.draw(white, x - 6f, y - 1f, 6f, 1f, 12f, 2f, 1f, 1f, 45f);
+                batch.draw(white, x - 6f, y - 1f, 6f, 1f, 12f, 2f, 1f, 1f, -45f);
+                break;
+            case SOI_ENTRY:
+            case SOI_EXIT:
+                batch.draw(white, x - 4f, y - 4f, 4f, 4f, 8f, 8f, 1f, 1f, 45f);
+                break;
+            default:
+                // Apsides: a hollow square, small enough not to hide the path under it
+                batch.draw(white, x - 4f, y - 4f, 8f, 1.5f);
+                batch.draw(white, x - 4f, y + 2.5f, 8f, 1.5f);
+                batch.draw(white, x - 4f, y - 4f, 1.5f, 8f);
+                batch.draw(white, x + 2.5f, y - 4f, 1.5f, 8f);
+        }
+        if (font == null || m.text.isEmpty() || !showMarks && !impact) return;
+        font.setColor(c.r, c.g, c.b, alpha);
+        boolean right = x > getX() + getWidth() - LABEL_WIDTH - 20f;
+        label(batch, m.text, right ? x - 8f - LABEL_WIDTH : x + 8f, y + 6f,
+                right ? com.badlogic.gdx.utils.Align.right : com.badlogic.gdx.utils.Align.left, -1f);
+    }
+
+    /** A circle outline as short segments; nothing when it is far bigger than the map or too small to see. */
+    private void circle(Batch batch, float x, float y, float r, float t, Color c, float alpha) {
+        if (r < 2f || r > 20f * Math.max(getWidth(), getHeight())) return;
+        batch.setColor(c.r, c.g, c.b, c.a * alpha);
+        int n = MathUtils.clamp((int) (r * 0.6f), 16, 160);
+        for (int i = 0; i < n; i++) {
+            float a0 = MathUtils.PI2 * i / n, a1 = MathUtils.PI2 * (i + 1) / n;
+            line(batch, x + MathUtils.cos(a0) * r, y + MathUtils.sin(a0) * r, x + MathUtils.cos(a1) * r, y + MathUtils.sin(a1) * r, t);
+        }
+    }
+
     /** A station or the target as a square outline, pulled to the map's edge when off it. */
     private void marker(Batch batch, OrbitPathProvider.MapMarker m, float cx, float cy, float vx, float vy, float half,
                         float scale, float alpha) {
@@ -249,6 +348,8 @@ public class OrbitMap extends Widget {
             if (!m.target) return;
             x *= reach / far;
             y *= reach / far;
+        } else if (!showStations) {
+            return;
         }
         Color c = m.target ? TARGET : STATION;
         float size = m.target ? 9f : 5f;
@@ -285,10 +386,14 @@ public class OrbitMap extends Widget {
     }
 
     private void line(Batch batch, float x0, float y0, float x1, float y1) {
+        line(batch, x0, y0, x1, y1, 1.5f);
+    }
+
+    private void line(Batch batch, float x0, float y0, float x1, float y1, float width) {
         float dx = x1 - x0, dy = y1 - y0;
         float len = (float) Math.sqrt(dx * dx + dy * dy);
         if (len < 1e-3f) return;
-        batch.draw(white, x0, y0 - 0.75f, 0f, 0.75f, len, 1.5f, 1f, 1f, MathUtils.atan2(dy, dx) * MathUtils.radiansToDegrees);
+        batch.draw(white, x0, y0 - width / 2f, 0f, width / 2f, len, width, 1f, 1f, MathUtils.atan2(dy, dx) * MathUtils.radiansToDegrees);
     }
 
     private void dot(Batch batch, float x, float y, float size, Color c, float alpha) {

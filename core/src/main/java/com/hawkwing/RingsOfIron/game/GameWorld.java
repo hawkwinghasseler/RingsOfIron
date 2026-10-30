@@ -38,7 +38,6 @@ import com.ringsofiron.coreengine.TickProfiler;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
-import com.ringsofiron.interiorgrid.HullShape;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.InteriorGridSaveParticipant;
 import com.ringsofiron.interiorgrid.InteriorHazardWarpGuard;
@@ -151,7 +150,7 @@ public class GameWorld implements Disposable {
     public final MissileGuidanceSystem missiles;
     /** Resolves hits; damage uses the loaded material data once {@link #loadContent} has run. */
     public final ImpactResolutionSystem impacts;
-    /** Hulls meeting faster than 25 m/s crush each other (combat-sys/Design.md 5.12). */
+    /** Hulls meeting faster than 25 m/s damage each other (combat-sys/Design.md 5.12). */
     public final CollisionDamageSystem collisionDamage;
     /** Finds what each burning beam touches and burns it. */
     public final BeamSystem beams;
@@ -443,7 +442,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(forcing);
         cargoSettlement = new SalvageSettlement(new MarketCargo(macroSim), commodities,
                 this::partPrice);
-        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, cargoSettlement);
+        // Freighters' loads only move goods: macro-sim settles their trades
+        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds,
+                new FreighterCargo(cargoSettlement, commodities));
         engine.addSystem(cargo);
         avatar = new AvatarInteractor(engine.getEcsEngine());
         // Who sits at the player's consoles, and who flies the ship when the player isn't at the helm
@@ -514,10 +515,8 @@ public class GameWorld implements Disposable {
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
         impacts.setEntityIds(engine.getEntityIds());
         engine.addSystem(impacts);
-        // Hulls that meet too fast crush each other, and collide on what is left (ShipHulls)
+        // Hulls that meet too fast damage each other
         collisionDamage = new CollisionDamageSystem(physics, combatEvents, impacts);
-        collisionDamage.setHullSource(ship -> hulls != null ? hulls.hullFor(ship, null)
-                : ship.getComponent(ShipGridComponent.class) == null ? null : HullShape.pieces(ship.getComponent(ShipGridComponent.class)));
         engine.addSystem(collisionDamage);
         // Hits beside a docking port wear its collar
         CollarWear.install(combatEvents);
@@ -929,10 +928,12 @@ public class GameWorld implements Disposable {
 
     /**
      * A Box2D body for a ship with a layout, at the bubble origin: shaped as the physics assembler
-     * shapes it ({@link ShipHulls}) and weighing what {@link #shipMass} says. Null for a craft
-     * without a grid, or before content has loaded.
+     * shapes it ({@link ShipHulls}) and weighing what {@link #shipMass} says. A freighter macro-sim
+     * made without one is built into a Hauler first ({@link FreighterShips#outfit}). Null for any
+     * other craft without a grid, or before content has loaded.
      */
     public Body buildShipBody(Entity ship) {
+        FreighterShips.outfit(this, ship);
         ShipGridComponent.MassProperties m = shipMass(ship);
         java.util.List<float[]> hull = hulls == null || m == null ? null : hulls.hullFor(ship, null);
         if (hull == null || hull.isEmpty()) return null;

@@ -4,8 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The outside of a craft as its layout draws it: every tile that is not void or crushed (see
- * {@link Tile#crushed}), with each wedge hull piece as its triangle rather than its square
+ * The outside of a craft as its layout draws it: every tile that is not void, with each wedge hull piece as its triangle rather than its square
  * footprint. Given as a few convex polygons, so physics can collide on it as one body with
  * several fixtures:
  * <ul>
@@ -41,15 +40,15 @@ public final class HullShape {
             }
         }
         for (HullPiece p : grid.hullPieces) {
-            if (p.shape == HullPiece.Shape.WEDGE && !p.crushed) out.add(wedge(grid, p));
+            if (p.shape == HullPiece.Shape.WEDGE) out.add(wedge(grid, p));
         }
         return out;
     }
 
-    /** True if tile (x, y) is part of the hull's boxes: solid, not crushed, and not under a wedge. */
+    /** True if tile (x, y) is part of the hull's boxes: solid and not under a wedge. */
     private static boolean boxed(ShipGridComponent grid, int x, int y) {
         Tile t = grid.getTile(x, y);
-        return t != null && !t.isVoid() && !t.isCrushed() && (t.piece == null || t.piece.shape != HullPiece.Shape.WEDGE);
+        return t != null && !t.isVoid() && (t.piece == null || t.piece.shape != HullPiece.Shape.WEDGE);
     }
 
     /** True if tiles {@code x0..x1-1} of row {@code y} are all boxed and unused, and the run ends there. */

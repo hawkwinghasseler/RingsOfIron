@@ -77,6 +77,59 @@ public class BurnPlanner {
         return selected;
     }
 
+    /**
+     * Plans a new empty burn at sim time {@code t} (at least {@link #MIN_LEAD} from now) and selects
+     * it, as the orbit map does where the player clicks the path.
+     */
+    public ManeuverNodeComponent.Node addNodeAt(double t) {
+        Entity ship = player.get();
+        if (ship == null) return null;
+        ManeuverNodeComponent m = ship.getComponent(ManeuverNodeComponent.class);
+        if (m == null) {
+            m = new ManeuverNodeComponent();
+            ship.add(m);
+        }
+        selected = new ManeuverNodeComponent.Node(Math.max(t, universe.now() + MIN_LEAD), 0, 0);
+        insertSorted(m, selected);
+        changed();
+        return selected;
+    }
+
+    /** Selects {@code n}, one of the planned burns; anything else is ignored. */
+    public void select(ManeuverNodeComponent.Node n) {
+        ManeuverNodeComponent m = nodes();
+        if (n != null && m != null && m.nodes.contains(n, true)) selected = n;
+    }
+
+    /** Sets the selected burn's delta-v, m/s along the velocity and outward from the parent. */
+    public void set(double prograde, double radial) {
+        ManeuverNodeComponent.Node n = selected();
+        if (n == null) return;
+        n.prograde = prograde;
+        n.radial = radial;
+        changed();
+    }
+
+    /** Moves the selected burn to sim time {@code t}, never closer than {@link #MIN_LEAD} from now. */
+    public void setTime(double t) {
+        ManeuverNodeComponent.Node n = selected();
+        if (n == null) return;
+        ManeuverNodeComponent m = nodes();
+        n.time = Math.max(universe.now() + MIN_LEAD, t);
+        m.nodes.removeValue(n, true);
+        insertSorted(m, n);
+        changed();
+    }
+
+    /** Removes every planned burn. */
+    public void clear() {
+        ManeuverNodeComponent m = nodes();
+        if (m == null) return;
+        m.nodes.clear();
+        selected = null;
+        changed();
+    }
+
     /** Selects the next planned burn, wrapping around. */
     public void selectNext() {
         ManeuverNodeComponent.Node n = selected();

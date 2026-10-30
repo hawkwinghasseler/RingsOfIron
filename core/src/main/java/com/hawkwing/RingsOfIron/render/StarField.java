@@ -7,7 +7,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
 /**
- * The distant stars behind everything in the exterior view, behind the {@link SpaceSnow}. They are
+ * The distant stars behind everything in either view, behind the {@link SpaceSnow}. They are
  * as good as infinitely far: they neither move with the ship nor change with zoom, so they sit
  * still in screen pixels while the snow and the ships slide over them. Most are faint points; a few
  * are brighter and larger, with a soft halo, tinted from blue-white to orange.
@@ -15,7 +15,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 public final class StarField {
     /** As a developer overlay ({@code overlay("stars")} and the debug menu); shown by default. */
     public static final String NAME = "stars";
-    public static final String DESCRIPTION = "the distant starfield behind the exterior view (on in play)";
+    public static final String DESCRIPTION = "the distant starfield behind the exterior and deck views (on in play)";
     /** Spacing of the grid the stars are scattered on, pixels: one cell holds at most one star. */
     static final float CELL = 26f;
     /** Of the cells, the share that hold a star. */
@@ -58,7 +58,7 @@ public final class StarField {
 
     /**
      * Draws the stars in the view of {@code camera} (world meters, not turned),
-     * {@code metersPerPixel} to a screen pixel. Call before anything else in the exterior view.
+     * {@code metersPerPixel} to a screen pixel. Call before anything else outside, and on deck behind the decks.
      */
     public void draw(ShapeRenderer shapes, OrthographicCamera camera, float metersPerPixel) {
         if (!shown || !(metersPerPixel > 0f)) return;

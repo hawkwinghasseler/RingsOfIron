@@ -108,11 +108,11 @@ public final class RcsThruster {
 
     /**
      * True if hull tile (x, y) carries a block that no longer fires and a crew out on EVA can
-     * mend it: wrecked to 0, not crushed flat (that wants a yard).
+     * mend it: wrecked to 0.
      */
     public static boolean fieldRepairable(ShipGridComponent grid, int x, int y) {
         Tile t = grid.getTile(x, y);
-        if (t == null || !t.isWall() || t.isIntactWall() || t.isCrushed()) return false;
+        if (t == null || !t.isWall() || t.isIntactWall()) return false;
         for (int i = 0; i < grid.rcsThrusters.size; i++) {
             RcsThruster r = grid.rcsThrusters.get(i);
             if (r.x == x && r.y == y) return true;
