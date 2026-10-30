@@ -32,6 +32,7 @@ import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.GridLink;
+import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -98,6 +99,10 @@ public final class DeckRenderer {
     private final SpriteBatch batch;
     private final DeckArt deckArt;
     private final SceneLighting lighting;
+    /** How the decks' light gives way to the light outside at the hull; null for a hard edge. */
+    private DeckEdgeBlend edgeBlend;
+    /** Whether this frame's {@link #draw} left the glow for {@link #drawGlow}. */
+    private boolean glowOwed;
     private Style style;
     private Pose pose;
     private boolean lightsOn = true;
@@ -266,6 +271,7 @@ public final class DeckRenderer {
      */
     public void draw(Array<Entity> decks, OrthographicCamera camera, float delta) {
         clock = (clock + delta) % BLINK;
+        glowOwed = false;
         GameWorld current = world.get();
         impacts.listen(current == null ? null : current.combatEvents.hullHits);
         impacts.update(delta);
@@ -440,8 +446,29 @@ public final class DeckRenderer {
         // The light map over the decks, dark when the craft aboard has no power; then the glow on top
         ShipGridComponent aboard = decks.first().getComponent(ShipGridComponent.class);
         renderLights(decks, camera, aboard != null && DeckLightRig.hasPower(aboard));
+        // Blended into the light outside at the hull: the glow waits for that light, which would dim it
+        if (edgeBlend != null && edgeBlend.ready()) {
+            glowOwed = true;
+            return;
+        }
+        glow(decks, camera, lighting.glowSpots().size());
+    }
+
+    /**
+     * The glow {@link #draw} left for later this frame, when the decks' light blends into the
+     * light outside at the hull: over that light, so neither dims it. {@code spots} is how many
+     * of the glowing parts were the decks' ({@code glowSpots().size()} after the draw).
+     */
+    public void drawGlow(Array<Entity> decks, OrthographicCamera camera, int spots) {
+        if (!glowOwed) return;
+        glowOwed = false;
+        glow(decks, camera, spots);
+    }
+
+    /** What on {@code decks} gives off light, over the light map, with the first {@code spots} of the glowing parts. */
+    private void glow(Array<Entity> decks, OrthographicCamera camera, int spots) {
         glowingImpacts(decks, camera);
-        if (withArt) {
+        if (deckArt.available()) {
             // What gives off light shows lit whatever light falls on it
             batch.setProjectionMatrix(camera.combined);
             for (Entity ship : decks) {
@@ -454,7 +481,7 @@ public final class DeckRenderer {
             }
             batch.setTransformMatrix(IDENTITY);
         }
-        lighting.renderGlow(batch, camera, 0f);
+        lighting.renderGlow(batch, camera, 0f, 0, spots);
         progressBars(decks, camera, false);
     }
 
@@ -465,6 +492,14 @@ public final class DeckRenderer {
      * Without a stencil buffer the map covers the view, as it did before.
      */
     private void renderLights(Array<Entity> decks, OrthographicCamera camera, boolean withPower) {
+        // Blended at the hull's edge: the map laid on by the weights, which the outside's pass uses after
+        if (edgeBlend != null && edgeBlend.begin()) {
+            edgeWeights(decks, camera);
+            edgeBlend.end();
+            lighting.prepareLights(camera, withPower);
+            edgeBlend.apply(lighting.lightMapTexture(), SceneLighting.ambient(withPower), true);
+            return;
+        }
         if (Gdx.graphics.getBufferFormat().stencil == 0) {
             lighting.renderLights(camera, withPower);
             return;
@@ -523,6 +558,42 @@ public final class DeckRenderer {
     /** Whether tile ({@code tx}, {@code ty}) of {@code g} is in its deck's {@link #footprints}. */
     private static boolean onFootprint(ShipGridComponent g, int tx, int ty) {
         return g.getTile(tx, ty) != null && !g.getTile(tx, ty).isVoid() && !EngineLayout.isCasing(g, tx, ty);
+    }
+
+    /** Sets how the decks' light gives way to the light outside at the hull ({@link DeckEdgeBlend}); null for a hard edge. */
+    public void setEdgeBlend(DeckEdgeBlend edgeBlend) {
+        this.edgeBlend = edgeBlend;
+    }
+
+    /**
+     * The weights of the decks' light against the light outside under {@code camera}, in red, into
+     * the buffer {@link DeckEdgeBlend#begin} bound: each deck's footprint, its sloped armor as its
+     * triangle, shaded by how far in from its edge each point lies ({@link DeckEdgeBlend.Outline}).
+     */
+    private void edgeWeights(Array<Entity> decks, OrthographicCamera camera) {
+        shapes.setProjectionMatrix(camera.combined);
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        for (Entity ship : decks) {
+            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+            if (g == null || !pose.of(ship, at, angle)) continue;
+            boolean[][] on = new boolean[g.height][g.width];
+            for (int ty = 0; ty < g.height; ty++) {
+                for (int tx = 0; tx < g.width; tx++) {
+                    com.ringsofiron.interiorgrid.Tile t = g.getTile(tx, ty);
+                    on[ty][tx] = onFootprint(g, tx, ty) && (t.piece == null || t.piece.shape != HullPiece.Shape.WEDGE);
+                }
+            }
+            com.badlogic.gdx.utils.IntArray wedges = new com.badlogic.gdx.utils.IntArray();
+            for (HullPiece p : g.hullPieces) {
+                if (p.shape == HullPiece.Shape.WEDGE && onFootprint(g, p.originX, p.originY)) wedges.addAll(DeckEdgeBlend.wedge(p));
+            }
+            shapes.identity();
+            shapes.translate(at.x, at.y, 0f);
+            shapes.rotate(0f, 0f, 1f, angle[0] * MathUtils.radiansToDegrees);
+            new DeckEdgeBlend.Outline(on, wedges).fill(shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, g.tileSize);
+        }
+        shapes.end();
+        shapes.identity();
     }
 
     /** How far a tile's footprint reaches into the filled tiles beside it, in tiles. */

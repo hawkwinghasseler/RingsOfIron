@@ -197,6 +197,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private SceneLighting lighting;
     /** Light over the hulls outside: starlight, the hulls' own lights, engines, guns and blasts. */
     private ExteriorLighting exteriorLighting;
+    /** How the decks' light gives way to the light outside at the hull in the deck view. */
+    private final com.hawkwing.RingsOfIron.render.DeckEdgeBlend deckEdge = new com.hawkwing.RingsOfIron.render.DeckEdgeBlend();
     /** Bubbles magnifying the player's ship and its targets when the outside view shows them too small, and their own light. */
     private PictureInPicture pip;
     private ExteriorLighting pipLighting;
@@ -308,7 +310,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         deckRenderer = new DeckRenderer(() -> world, shapes, batch, deckArt, lighting, () -> game.avatar);
         hullArt = new HullArt(game.content.defs);
         exterior = new ExteriorRenderer(() -> world, shapes, batch, art, lighting, hullArt, () -> game.player)
-                .setLighting(exteriorLighting);
+                .setLighting(exteriorLighting).setEdgeBlend(deckEdge);
+        deckRenderer.setEdgeBlend(deckEdge);
         pipLighting = new ExteriorLighting(emissive);
         pip = new PictureInPicture(() -> world,
                 new ExteriorRenderer(() -> world, shapes, batch, art, null, hullArt, () -> game.player),
@@ -712,6 +715,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         dev.addOverlay(HeatOverlay.NAME, HeatOverlay.DESCRIPTION,
                 deckRenderer::heatShown, deckRenderer::setHeatShown);
         builtInOverlays.install(dev.overlays);
+        dev.addOverlay(com.hawkwing.RingsOfIron.render.DeckEdgeBlend.NAME, com.hawkwing.RingsOfIron.render.DeckEdgeBlend.DESCRIPTION,
+                deckEdge::maskShown, deckEdge::setMaskShown);
         dev.addOverlay(SpaceSnow.NAME, SpaceSnow.DESCRIPTION, snow::isShown, snow::setShown);
         dev.addOverlay(StarField.NAME, StarField.DESCRIPTION, stars::isShown, stars::setShown);
         dev.setScenarioLoader(this::loadScenario);
@@ -1621,11 +1626,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
         exterior.drawBodies(camera, delta, decks, () -> deckRenderer.footprints(decks, camera), () -> {
             deckRenderer.draw(around, camera, delta);
             glowFrom[0] = lighting.glowSpots().size();
-        });
+        }, () -> deckRenderer.drawGlow(around, camera, glowFrom[0]));
         // ...and the crew out on EVA from those other craft
         deckRenderer.drawOutside(decks, camera, delta);
         // Their navigation lights and running systems glow as outside; the decks' glowed already
         lighting.renderGlow(batch, camera, 2.5f * viewports.getViewMeters() / 400f, glowFrom[0]);
+        deckEdge.drawMask();
     }
 
     /** Where the avatar stands, world meters, or null when it is aboard nothing in the bubble. */
@@ -1937,6 +1943,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gameHud.dispose();
         lighting.dispose();
         exteriorLighting.dispose();
+        deckEdge.dispose();
         exterior.dispose();
         pipLighting.dispose();
         pip.dispose();
