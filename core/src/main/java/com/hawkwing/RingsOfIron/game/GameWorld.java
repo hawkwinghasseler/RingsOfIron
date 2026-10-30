@@ -442,7 +442,9 @@ public class GameWorld implements Disposable {
         engine.addSystem(forcing);
         cargoSettlement = new SalvageSettlement(new MarketCargo(macroSim), commodities,
                 this::partPrice);
-        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, cargoSettlement);
+        // Freighters' loads only move goods: macro-sim settles their trades
+        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds,
+                new FreighterCargo(cargoSettlement, commodities));
         engine.addSystem(cargo);
         avatar = new AvatarInteractor(engine.getEcsEngine());
         // Who sits at the player's consoles, and who flies the ship when the player isn't at the helm
@@ -926,10 +928,12 @@ public class GameWorld implements Disposable {
 
     /**
      * A Box2D body for a ship with a layout, at the bubble origin: shaped as the physics assembler
-     * shapes it ({@link ShipHulls}) and weighing what {@link #shipMass} says. Null for a craft
-     * without a grid, or before content has loaded.
+     * shapes it ({@link ShipHulls}) and weighing what {@link #shipMass} says. A freighter macro-sim
+     * made without one is built into a Hauler first ({@link FreighterShips#outfit}). Null for any
+     * other craft without a grid, or before content has loaded.
      */
     public Body buildShipBody(Entity ship) {
+        FreighterShips.outfit(this, ship);
         ShipGridComponent.MassProperties m = shipMass(ship);
         java.util.List<float[]> hull = hulls == null || m == null ? null : hulls.hullFor(ship, null);
         if (hull == null || hull.isEmpty()) return null;

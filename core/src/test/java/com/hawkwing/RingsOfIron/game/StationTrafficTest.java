@@ -6,7 +6,9 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.InteriorGridData;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -93,5 +95,50 @@ class StationTrafficTest {
             else outside++;
         }
         assertTrue(docked >= 1 && outside >= 1, "one docked and others waiting: " + docked + " docked, " + outside + " not");
+    }
+
+    @Test
+    void freightersComeIntoTheBubbleAsRealHaulersWithACrew() {
+        // They came in as a plain 40 m box drawn as a green outline
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        world = new GameWorld();
+        GameScenario game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
+        double hold = InteriorGridData.cargoBayVolume(game.content.defs, GameScenario.FREIGHTER_SHIP);
+        String uuid = world.macroSim.addFreighter("Docked", hold, 20_000, game.highport);
+        assertNull(world.engine.getEntity(uuid).getComponent(ShipGridComponent.class), "a bare entity on the rails");
+        for (int i = 0; i < 30; i++) world.update(1f / 60f);
+
+        Entity freighter = world.engine.getEntity(uuid);
+        ShipGridComponent grid = freighter.getComponent(ShipGridComponent.class);
+        assertNotNull(grid, "a Hauler's interior once in the bubble");
+        assertEquals("freighter", grid.chassis);
+        assertNotNull(freighter.getComponent(CargoHoldComponent.class), "with its cargo bays");
+        int crew = 0;
+        for (Entity e : world.crew.crewEntities()) if (world.crew.homeOf(e) == freighter) crew++;
+        assertEquals(3, crew, "and its crew aboard");
+        assertNotNull(world.docking.dockedTo(freighter), "docked at Highport");
+    }
+
+    @Test
+    void goodsAFreighterBuysAreCarriedAcrossLoadByLoad() {
+        Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
+        world = new GameWorld();
+        GameScenario game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
+        double hold = InteriorGridData.cargoBayVolume(game.content.defs, GameScenario.FREIGHTER_SHIP);
+        String uuid = world.macroSim.addFreighter("Loading", hold, 20_000, game.highport);
+        for (int i = 0; i < 30; i++) world.update(1f / 60f);
+        Entity freighter = world.engine.getEntity(uuid);
+        assertNotNull(world.docking.dockedTo(freighter));
+
+        // macro-sim settles the trade at once: 20 t of food now the freighter's
+        FreighterComponent f = freighter.getComponent(FreighterComponent.class);
+        f.cargoCommodity = "food";
+        f.cargoQuantity = 20;
+        CargoHoldComponent bays = freighter.getComponent(CargoHoldComponent.class);
+        for (int i = 0; i < 2 * 60; i++) world.update(1f / 60f);
+        assertNotNull(freighter.getComponent(CargoOrdersComponent.class), "carried across");
+        assertTrue(bays.amount("food") < 20, "not there at once: " + bays.amount("food"));
+        for (int i = 0; i < 600 * 60 && bays.amount("food") < 20 - 1e-6; i++) world.update(1f / 60f);
+        assertEquals(20, bays.amount("food"), 1e-6, "all of it, in the end");
     }
 }
