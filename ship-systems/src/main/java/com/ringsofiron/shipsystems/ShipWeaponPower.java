@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.shipsystems;
 
 import com.badlogic.ashley.core.ComponentMapper;
 import com.ringsofiron.combatsys.WeaponPower;

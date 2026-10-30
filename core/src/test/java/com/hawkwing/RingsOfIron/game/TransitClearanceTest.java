@@ -12,6 +12,7 @@ import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.shipsystems.TransitClearance;
 import com.ringsofiron.stationsdocking.BerthingComponent;
 import com.ringsofiron.stationsdocking.DockingEvent;
 import java.nio.file.Path;

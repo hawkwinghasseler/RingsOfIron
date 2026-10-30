@@ -11,6 +11,7 @@ import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.economy.EconomySimulation;
 import com.ringsofiron.macrosim.economy.StationMarket;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.shipsystems.ShipWeaponPower;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

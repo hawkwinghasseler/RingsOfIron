@@ -9,6 +9,7 @@ import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.StateVector;
 
+import com.ringsofiron.shipsystems.PropellantFeed;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

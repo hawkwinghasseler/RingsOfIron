@@ -23,6 +23,7 @@ import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipsystems.PropellantFeed;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

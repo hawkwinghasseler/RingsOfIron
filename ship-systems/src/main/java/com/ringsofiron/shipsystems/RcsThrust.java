@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.shipsystems;
 
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Engine;
@@ -97,7 +97,7 @@ public class RcsThrust extends EntitySystem {
     }
 
     /** The body's centre of mass in its own frame, meters. */
-    static Vector2 centerOfMass(Body body, Vector2 out) {
+    public static Vector2 centerOfMass(Body body, Vector2 out) {
         return out.set(body.getLocalCenter()).scl(PhysicsManager.METERS_PER_UNIT);
     }
 
@@ -149,7 +149,7 @@ public class RcsThrust extends EntitySystem {
     /** The thrust of a nozzle whose jet is drawn at full size ({@link #jetSize}): a standard linear block's, newtons. */
     static final double FULL_JET = RcsThruster.Kind.LINEAR.standardThrust;
     /** The most a jet is drawn, of a {@link #FULL_JET} nozzle's, however hard its nozzle pushes. */
-    static final float MAX_JET = 2f;
+    public static final float MAX_JET = 2f;
 
     /**
      * How big block {@code r}'s jets are drawn at full throttle, of a {@link #FULL_JET} nozzle's: as

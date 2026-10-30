@@ -54,7 +54,8 @@ class ArchitectureTest {
             Map.entry("audiospatial", "audio-spatial"),
             Map.entry("moddingdata", "modding-data"),
             Map.entry("stationsdocking", "stations-docking"),
-            Map.entry("artpipeline", "art-pipeline"));
+            Map.entry("artpipeline", "art-pipeline"),
+            Map.entry("shipsystems", "ship-systems"));
 
     /**
      * Which modules each module's main code may use. The layering as it stands: each module uses
@@ -74,7 +75,9 @@ class ArchitectureTest {
             Map.entry("modding-data", Set.of("core-engine")),
             Map.entry("stations-docking",
                     Set.of("core-engine", "interior-grid", "modding-data", "orbital-mechanics", "physics-exterior")),
-            Map.entry("art-pipeline", Set.of()));
+            Map.entry("art-pipeline", Set.of()),
+            Map.entry("ship-systems",
+                    Set.of("ai-crew", "combat-sys", "core-engine", "interior-grid", "modding-data", "orbital-mechanics", "physics-exterior", "stations-docking")));
 
     /**
      * Classes whose constructor takes the whole GameWorld today. Phase 1 narrows them to the
