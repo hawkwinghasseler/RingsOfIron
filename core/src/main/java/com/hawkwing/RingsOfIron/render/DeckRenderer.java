@@ -489,9 +489,10 @@ public final class DeckRenderer {
     /**
      * Fills where {@code decks} are drawn under {@code camera}: every tile that is not void nor an
      * engine's casing (drawn as its nozzle alone, with space and the shield's underside showing
-     * round it), a little past its edges so the hull walls on them are inside. For marking the decks in the
-     * stencil buffer, so the decks' light map keeps to them and the light map outside
-     * ({@link ExteriorRenderer}) keeps off them.
+     * round it). Each reaches a little into the tiles beside it that are filled too, so no seam
+     * opens between them, but not past the hull's edge, where the shield's underside shows. For
+     * marking the decks in the stencil buffer, so the decks' light map keeps to them and the light
+     * map outside ({@link ExteriorRenderer}) keeps off them.
      */
     public void footprints(Array<Entity> decks, OrthographicCamera camera) {
         shapes.setProjectionMatrix(camera.combined);
@@ -502,12 +503,16 @@ public final class DeckRenderer {
             shapes.identity();
             shapes.translate(at.x, at.y, 0f);
             shapes.rotate(0f, 0f, 1f, angle[0] * MathUtils.radiansToDegrees);
-            float s = g.tileSize, half = s * (0.5f + FOOTPRINT_MARGIN);
+            float s = g.tileSize, half = 0.5f * s, over = s * FOOTPRINT_OVERLAP;
             for (int ty = 0; ty < g.height; ty++) {
                 for (int tx = 0; tx < g.width; tx++) {
-                    if (g.getTile(tx, ty) == null || g.getTile(tx, ty).isVoid() || EngineLayout.isCasing(g, tx, ty)) continue;
+                    if (!onFootprint(g, tx, ty)) continue;
                     Vector2 p = g.tileToLocal(tx, ty);
-                    shapes.rect(p.x - half, p.y - half, 2f * half, 2f * half);
+                    float x0 = p.x - half - (onFootprint(g, tx - 1, ty) ? over : 0f);
+                    float x1 = p.x + half + (onFootprint(g, tx + 1, ty) ? over : 0f);
+                    float y0 = p.y - half - (onFootprint(g, tx, ty - 1) ? over : 0f);
+                    float y1 = p.y + half + (onFootprint(g, tx, ty + 1) ? over : 0f);
+                    shapes.rect(x0, y0, x1 - x0, y1 - y0);
                 }
             }
         }
@@ -515,8 +520,13 @@ public final class DeckRenderer {
         shapes.identity();
     }
 
-    /** How far past a tile's edge its footprint reaches, in tiles. */
-    private static final float FOOTPRINT_MARGIN = 0.15f;
+    /** Whether tile ({@code tx}, {@code ty}) of {@code g} is in its deck's {@link #footprints}. */
+    private static boolean onFootprint(ShipGridComponent g, int tx, int ty) {
+        return g.getTile(tx, ty) != null && !g.getTile(tx, ty).isVoid() && !EngineLayout.isCasing(g, tx, ty);
+    }
+
+    /** How far a tile's footprint reaches into the filled tiles beside it, in tiles. */
+    private static final float FOOTPRINT_OVERLAP = 0.15f;
 
     /**
      * {@code e}'s figure at ({@code x}, {@code y}), the deck's local meters, in a begun batch: in
