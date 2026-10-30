@@ -6,8 +6,6 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.RandomXS128;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.FloatArray;
-import com.badlogic.gdx.utils.IntArray;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.defs.DamageType;
 import com.ringsofiron.combatsys.defs.Fuse;
@@ -20,11 +18,9 @@ import com.ringsofiron.interiorgrid.GridRayTraversal;
 import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
-import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 
-import java.util.Arrays;
 
 /**
  * Turns a hull hit into interior damage, entirely in the ship's local frame
@@ -144,23 +140,26 @@ public class PenetrationResolver {
         }
     }
 
-    private static final ComponentMapper<SubsystemComponent> subsystemMapper =
+    static final ComponentMapper<SubsystemComponent> subsystemMapper =
             ComponentMapper.getFor(SubsystemComponent.class);
 
-    private MaterialTable materials;
+    MaterialTable materials;
     private CombatDefs defs;
-    private CrewDamageBridge crew;
+    CrewDamageBridge crew;
     /** {@link #CREW_HIT_CHANCE}, or 1 for tests that need every round in a person's path to strike them. */
     private float crewHitChance = CREW_HIT_CHANCE;
 
     // Per-call state (one call at a time).
-    private ShipGridComponent grid;
-    private Entity ship;
+    ShipGridComponent grid;
+    Entity ship;
     private RandomXS128 rng;
-    private DamageReport report;
-    private final Array<Entity> occupants = new Array<>();
+    DamageReport report;
+    final Array<Entity> occupants = new Array<>();
     private final Array<SecondaryRay> secondaries = new Array<>();
     private final Vector2 tmp = new Vector2();
+    final CrushModel crushing = new CrushModel(this);
+    final BurnModel burning = new BurnModel(this);
+    final BlastModel blasting = new BlastModel(this);
 
     public PenetrationResolver(MaterialTable materials) {
         this.materials = materials;
@@ -201,7 +200,7 @@ public class PenetrationResolver {
         return defs == null ? 0f : defs.fireChance(material);
     }
 
-    private float ablationFactor(String material) {
+    float ablationFactor(String material) {
         float f = defs == null ? 1f : defs.ablationFactor(material);
         return f > 0f ? f : 1f;
     }
@@ -279,7 +278,7 @@ public class PenetrationResolver {
     public float detonateInside(ShipGridComponent grid, Entity ship, int x, int y, WarheadDef warhead,
                                 RandomXS128 rng, DamageReport report) {
         begin(grid, ship, rng, report);
-        float absorbed = blast(x, y, warhead);
+        float absorbed = blasting.blast(x, y, warhead);
         float fragmentBudget = 0.5f * warhead.fragmentMass * warhead.fragmentSpeed * warhead.fragmentSpeed;
         for (int i = 0; i < warhead.fragmentCount; i++) {
             float angle = (i + rng.nextFloat()) * MathUtils.PI2 / warhead.fragmentCount;
@@ -297,8 +296,6 @@ public class PenetrationResolver {
 
     /** Collision energy on a tile, J, that wounds someone standing in it as badly as a lethal blast. */
     public static final float CREW_CRUSH_LETHAL = 5e6f;
-    /** How far the kernel reaches, in widths ({@code spread}). */
-    private static final float CRUSH_REACH = 3f;
 
     /** What one collision did to one ship. */
     public static class CrushResult {
@@ -318,14 +315,6 @@ public class PenetrationResolver {
         }
     }
 
-    private float[] crushLoss = new float[0];
-    /** Tiles this call reached. */
-    private boolean[] crushVisited = new boolean[0];
-    private final IntArray crushTiles = new IntArray();
-    private final IntArray crushQueue = new IntArray();
-    /** Each of {@link #crushTiles}' distance from the contact, then its share of the kernel. */
-    private final FloatArray crushWeight = new FloatArray();
-
     /**
      * A collision crushing into {@code ship} (combat-sys/Design.md section 5.12). {@code energy} J
      * spread from where the hulls met over the solid tiles joined to it, by a Gaussian
@@ -341,185 +330,7 @@ public class PenetrationResolver {
      */
     public CrushResult crush(ShipGridComponent grid, Entity ship, Vector2 localPoint, Vector2 localDir, float energy,
                              float spread, RandomXS128 rng, DamageReport report, CrushResult out) {
-        out.reset();
-        if (!(energy > 0f)) return out;
-        begin(grid, ship, rng, report);
-        int n = grid.width * grid.height;
-        if (crushLoss.length < n) {
-            crushLoss = new float[n];
-            crushVisited = new boolean[n];
-        }
-        Arrays.fill(crushLoss, 0, n, 0f);
-        Arrays.fill(crushVisited, 0, n, false);
-        float dx = localDir.x, dy = localDir.y;
-        float len = (float) Math.sqrt(dx * dx + dy * dy);
-        if (len < 1e-6f) {
-            end();
-            return out;
-        }
-        dx /= len;
-        dy /= len;
-        float s = grid.tileSize;
-        // From just outside where they met, inward to the first solid tile
-        float px = (localPoint.x - grid.gridOriginLocal.x) / s - dx, py = (localPoint.y - grid.gridOriginLocal.y) / s - dy;
-        int seed = -1;
-        for (float t = 0f; t <= 4f; t += 0.25f) {
-            int x = MathUtils.floor(px + dx * t), y = MathUtils.floor(py + dy * t);
-            Tile tile = grid.getTile(x, y);
-            if (tile != null && !tile.isVoid()) {
-                seed = pack(x, y);
-                px += dx * t;
-                py += dy * t;
-                break;
-            }
-        }
-        if (seed < 0) {
-            end();
-            return out;
-        }
-        out.entryX = seed % grid.width;
-        out.entryY = seed / grid.width;
-
-        // The solid tiles joined to the one they met on, within reach, nearest first
-        float reach = CRUSH_REACH * Math.max(spread, 0.5f);
-        crushTiles.clear();
-        crushWeight.clear();
-        crushQueue.clear();
-        crushQueue.add(seed);
-        crushVisited[seed] = true;
-        while (crushQueue.size > 0) {
-            int idx = crushQueue.removeIndex(0);
-            int x = idx % grid.width, y = idx / grid.width;
-            float ddx = x + 0.5f - px, ddy = y + 0.5f - py;
-            float d = (float) Math.sqrt(ddx * ddx + ddy * ddy);
-            if (d > reach) continue;
-            crushTiles.add(idx);
-            crushWeight.add(d);
-            for (Side side : Side.values()) {
-                int nx = x + side.dx, ny = y + side.dy;
-                Tile nt = grid.getTile(nx, ny);
-                if (nt == null || nt.isVoid() || crushVisited[pack(nx, ny)]) continue;
-                crushVisited[pack(nx, ny)] = true;
-                crushQueue.add(pack(nx, ny));
-            }
-        }
-        Arrays.fill(crushVisited, 0, n, false);
-        float sum = 0f;
-        float twoSigma2 = 2f * spread * spread;
-        for (int i = 0; i < crushWeight.size; i++) {
-            float d = crushWeight.get(i);
-            float w = (float) Math.exp(-d * d / twoSigma2);
-            crushWeight.set(i, w);
-            sum += w;
-        }
-        // Nearest first, so the hull gives way before the decks behind it
-        sortByDistance(px, py);
-        for (int i = 0; i < crushTiles.size; i++) {
-            int idx = crushTiles.get(i);
-            float share = energy * crushWeight.get(i) / sum;
-            out.absorbed += crushInto(idx % grid.width, idx / grid.width, dx, dy, share);
-        }
-
-        for (int idx = 0; idx < n; idx++) {
-            if (!crushVisited[idx]) continue;
-            Tile tile = grid.getTile(idx % grid.width, idx / grid.width);
-            float loss = crushLoss[idx];
-            if (loss > 0f) {
-                out.tilesDamaged++;
-                out.worstLoss = Math.max(out.worstLoss, loss);
-                if (tile.getIntegrity() <= 0f && report != null) report.structureChanged = true;
-            }
-        }
-        end();
-        return out;
-    }
-
-    /** Insertion sort of {@link #crushTiles} (with their weights) by distance from (px, py). */
-    private void sortByDistance(float px, float py) {
-        for (int i = 1; i < crushTiles.size; i++) {
-            int idx = crushTiles.get(i);
-            float w = crushWeight.get(i);
-            float d = distance(idx, px, py);
-            int j = i - 1;
-            while (j >= 0 && distance(crushTiles.get(j), px, py) > d) {
-                crushTiles.set(j + 1, crushTiles.get(j));
-                crushWeight.set(j + 1, crushWeight.get(j));
-                j--;
-            }
-            crushTiles.set(j + 1, idx);
-            crushWeight.set(j + 1, w);
-        }
-    }
-
-    private float distance(int idx, float px, float py) {
-        float ddx = idx % grid.width + 0.5f - px, ddy = idx / grid.width + 0.5f - py;
-        return ddx * ddx + ddy * ddy;
-    }
-
-    /**
-     * {@code energy} J into tile (x, y): it takes what its hit points have left, and the rest
-     * pushes on into the tiles behind it along ({@code dx}, {@code dy}) until it is spent or leaves
-     * the ship. Returns what the structure took.
-     */
-    private float crushInto(int x, int y, float dx, float dy, float energy) {
-        float taken = 0f;
-        float fx = x + 0.5f, fy = y + 0.5f;
-        int steps = grid.width + grid.height;
-        while (energy > 1f && steps-- > 0) {
-            Tile tile = grid.getTile(x, y);
-            if (tile == null || tile.isVoid()) break;
-            int idx = pack(x, y);
-            crushVisited[idx] = true;
-            float integrity = tile.getIntegrity();
-            if (integrity > 0f) {
-                float hp = crushHitPoints(tile);
-                boolean wasBreach = tile.isHullBreach();
-                float take = Math.min(energy, hp * integrity);
-                energy -= take;
-                taken += take;
-                damagePiece(tile, take / hp);
-                crushLoss[idx] += take / hp;
-                crushContents(tile, x, y, take);
-                if (tile.getIntegrity() <= 0f) {
-                    if (!wasBreach && tile.isHullBreach()) addBreach(tile, x, y);
-                    if (tile.isPowerConduit()) grid.gridDirty = true;
-                }
-                if (energy <= 1f) break;
-            }
-            // On into the tile behind
-            int ox = x, oy = y;
-            while (x == ox && y == oy) {
-                fx += dx * 0.5f;
-                fy += dy * 0.5f;
-                x = MathUtils.floor(fx);
-                y = MathUtils.floor(fy);
-            }
-        }
-        return taken;
-    }
-
-    /** What it takes to crush a tile from whole to nothing: its hit points, or a conduit's. */
-    private float crushHitPoints(Tile tile) {
-        if (tile.isPowerConduit()) return CONDUIT_HIT_POINTS;
-        return materials.get(tile.material, tile.weightClass).hitPoints;
-    }
-
-    /** A system on the tile takes {@code energy} out of its hardness; whoever stands there is wounded by it. */
-    private void crushContents(Tile tile, int x, int y, float energy) {
-        Entity system = grid.subsystemAt(x, y);
-        SubsystemComponent sub = system == null ? null : subsystemMapper.get(system);
-        if (sub != null && !sub.isDestroyed()) {
-            float hardness = subsystemHardness(sub.type);
-            damageSubsystem(system, sub, Math.min(energy, hardness * sub.health) / hardness, x, y);
-        }
-        if (crew != null) {
-            occupants.clear();
-            crew.occupantsAt(ship, x, y, occupants);
-            for (int i = 0; i < occupants.size; i++) {
-                injure(occupants.get(i), 100f * energy / CREW_CRUSH_LETHAL, HitCause.IMPACT, x, y);
-            }
-        }
-        tryIgnite(tile, x, y, DamageType.KINETIC, energy / FLOOR_RESISTANCE);
+        return crushing.crush(grid, ship, localPoint, localDir, energy, spread, rng, report, out);
     }
 
     /** One tick of a beam on a ship. */
@@ -553,132 +364,11 @@ public class PenetrationResolver {
      * @param localDir   beam direction, body-local, unit
      */
     public BurnResult burn(ShipGridComponent grid, Entity ship, Vector2 localPoint, Vector2 localDir, float energy,
-                           RandomXS128 rng, DamageReport report, final BurnResult out) {
-        begin(grid, ship, rng, report);
-        out.reset();
-        if (energy <= 0f) {
-            end();
-            return out;
-        }
-        final float dirX = localDir.x, dirY = localDir.y;
-        float ex = (localPoint.x - grid.gridOriginLocal.x) / grid.tileSize;
-        float ey = (localPoint.y - grid.gridOriginLocal.y) / grid.tileSize;
-        final float[] left = {energy};
-        final float[] heat = {0f};
-        final boolean[] entered = {false};
-        float maxT = grid.width + grid.height + 2f * START_OUTSIDE_TILES + 2f;
-        GridRayTraversal.traverse(ex - dirX * START_OUTSIDE_TILES, ey - dirY * START_OUTSIDE_TILES, dirX, dirY, maxT,
-                new GridRayTraversal.Visitor() {
-                    @Override
-                    public boolean tile(int x, int y, float tEnter, float tExit) {
-                        Tile tile = PenetrationResolver.this.grid.getTile(x, y);
-                        if (tile == null || tile.isVoid()) return !entered[0];
-                        entered[0] = true;
-                        if (tile.isWall()) {
-                            if (tile.getIntegrity() <= 0f) return true;
-                            float took = burnWall(tile, x, y, left[0], out);
-                            left[0] -= took;
-                            heat[0] = took;
-                            return true;
-                        }
-                        if (heat[0] > 0f) {
-                            tryIgnite(tile, x, y, DamageType.ENERGY, heat[0] * BEAM_HEAT_SOAK / FLOOR_RESISTANCE);
-                            heat[0] = 0f;
-                        }
-                        if (left[0] <= 0f) return false;
-                        if (burnContents(tile, x, y, left[0], out)) {
-                            left[0] = 0f;
-                            return false;
-                        }
-                        return true;
-                    }
-
-                    @Override
-                    public boolean edge(int fromX, int fromY, int toX, int toY, float t) {
-                        if (!entered[0] || left[0] <= 0f) return left[0] > 0f || heat[0] > 0f;
-                        EdgeWall wall = PenetrationResolver.this.grid.getEdgeBetween(fromX, fromY, toX, toY);
-                        if (wall == null || !wall.blocks()) return true;
-                        MaterialTable.ClassStats stats = materials.get(wall.material, wall.weightClass);
-                        float hardness = (stats.hitPoints + stats.armor) * EDGE_WALL_FRACTION;
-                        float ablation = ablationFactor(wall.material);
-                        float took = Math.min(left[0], hardness * wall.integrity / ablation);
-                        wall.integrity = Math.max(0f, wall.integrity - took * ablation / hardness);
-                        left[0] -= took;
-                        heat[0] = took;
-                        touch(out, fromX, fromY, took);
-                        if (wall.isDestroyed()) {
-                            out.burnedThrough = true;
-                            if (report != null) report.structureChanged = true;
-                        }
-                        return true;
-                    }
-                });
-        end();
-        return out;
+                           RandomXS128 rng, DamageReport report, BurnResult out) {
+        return burning.burn(grid, ship, localPoint, localDir, energy, rng, report, out);
     }
 
-    /** Burns into an intact wall tile. Returns the energy it took. */
-    private float burnWall(Tile tile, int x, int y, float energy, BurnResult out) {
-        if (energy <= 0f) return 0f;
-        MaterialTable.ClassStats stats = materials.get(tile.material, tile.weightClass);
-        float hardness = stats.hitPoints + stats.armor;
-        float ablation = ablationFactor(tile.material);
-        float integrity = tile.getIntegrity();
-        float took = Math.min(energy, hardness * integrity / ablation);
-        boolean wasBreach = tile.isHullBreach();
-        damagePiece(tile, took * ablation / hardness);
-        touch(out, x, y, took);
-        if (tile.getIntegrity() <= 0f) {
-            tile.setIntegrity(0f);
-            out.burnedThrough = true;
-            if (!wasBreach && tile.isHullBreach()) addBreach(tile, x, y);
-            if (report != null) report.structureChanged = true;
-        }
-        return took;
-    }
-
-    /** A beam crossing an open tile. Returns true if machinery or a person there stopped it. */
-    private boolean burnContents(Tile tile, int x, int y, float energy, BurnResult out) {
-        Entity system = grid.subsystemAt(x, y);
-        SubsystemComponent sub = system == null ? null : subsystemMapper.get(system);
-        if (sub != null && !sub.isDestroyed()) {
-            damageSubsystem(system, sub, energy / subsystemHardness(sub.type), x, y);
-            touch(out, x, y, energy);
-            tryIgnite(tile, x, y, DamageType.ENERGY, energy / FLOOR_RESISTANCE);
-            return true;
-        }
-        if (crew != null) {
-            occupants.clear();
-            crew.occupantsAt(ship, x, y, occupants);
-            if (occupants.size > 0) {
-                injure(occupants.first(), energy / CREW_JOULES_PER_HP, HitCause.FIRE, x, y);
-                touch(out, x, y, energy);
-                tryIgnite(tile, x, y, DamageType.ENERGY, energy / FLOOR_RESISTANCE);
-                return true;
-            }
-        }
-        if (tile.isPowerConduit() && tile.getIntegrity() > 0f) {
-            // The beam crosses the deck and cuts any conduit in it.
-            damagePiece(tile, energy / CONDUIT_HIT_POINTS);
-            if (tile.getIntegrity() <= 0f) {
-                grid.gridDirty = true;
-                if (report != null) report.structureChanged = true;
-            }
-        }
-        return false;
-    }
-
-    private static void touch(BurnResult out, int x, int y, float energy) {
-        if (energy <= 0f) return;
-        if (!out.touched) {
-            out.touched = true;
-            out.tileX = x;
-            out.tileY = y;
-        }
-        out.absorbed += energy;
-    }
-
-    private void begin(ShipGridComponent grid, Entity ship, RandomXS128 rng, DamageReport report) {
+    void begin(ShipGridComponent grid, Entity ship, RandomXS128 rng, DamageReport report) {
         this.grid = grid;
         this.ship = ship;
         this.rng = rng;
@@ -686,7 +376,7 @@ public class PenetrationResolver {
         if (report != null && report.ship == null) report.ship = ship;
     }
 
-    private void end() {
+    void end() {
         if (grid != null) processBursts();
         grid = null;
         ship = null;
@@ -989,7 +679,7 @@ public class PenetrationResolver {
         ray.absorbed += lastAbsorbed;
     }
 
-    private void damagePiece(Tile tile, float integrityLoss) {
+    void damagePiece(Tile tile, float integrityLoss) {
         tile.setIntegrity(tile.getIntegrity() - integrityLoss);
     }
 
@@ -1042,7 +732,7 @@ public class PenetrationResolver {
         tryIgnite(tile, x, y, ray.damageType, spent / FLOOR_RESISTANCE);
     }
 
-    private void damageSubsystem(Entity system, SubsystemComponent sub, float healthLoss, int x, int y) {
+    void damageSubsystem(Entity system, SubsystemComponent sub, float healthLoss, int x, int y) {
         if (healthLoss <= 0f) return;
         sub.health = Math.max(0f, sub.health - healthLoss);
         if (sub.health < DISABLE_THRESHOLD) sub.isOperational = false;
@@ -1057,7 +747,7 @@ public class PenetrationResolver {
         }
     }
 
-    private void injure(Entity person, float healthPoints, HitCause cause, int x, int y) {
+    void injure(Entity person, float healthPoints, HitCause cause, int x, int y) {
         crew.applyDamage(person, healthPoints, cause);
         if (report != null && !report.injuredCrew.contains(person, true)) {
             report.injuredCrew.add(person);
@@ -1069,107 +759,24 @@ public class PenetrationResolver {
      * Lights a flammable tile with chance {@code (fireChance(type) + material fire_chance) * intensity},
      * intensity clamped to 1.
      */
-    private void tryIgnite(Tile tile, int x, int y, DamageType type, float intensity) {
+    void tryIgnite(Tile tile, int x, int y, DamageType type, float intensity) {
         if (!tile.isFlammable() || tile.isBurning()) return;
         float chance = (type.fireChance() + materialFireChance(tile.material)) * Math.min(1f, intensity);
         if (chance <= 0f || rng.nextFloat() >= chance) return;
         if (tile.ignite() && report != null) report.fires.add(pack(x, y));
     }
 
-    private void addBreach(Tile tile, int x, int y) {
+    void addBreach(Tile tile, int x, int y) {
         if (report != null) report.breaches.add(pack(x, y));
     }
 
-    private int pack(int x, int y) {
+    int pack(int x, int y) {
         return y * grid.width + x;
     }
 
     // ------------------------------------------------------------------
     // Blast and secondaries
     // ------------------------------------------------------------------
-
-    private final IntArray frontier = new IntArray();
-    private final IntArray nextFrontier = new IntArray();
-
-    /**
-     * Overpressure flood fill out to the blast radius, stopped by intact walls and closed doors.
-     * Air carries the blast, so damage scales with pressure at the detonation tile.
-     */
-    private float blast(int cx, int cy, WarheadDef warhead) {
-        return blast(cx, cy, warhead.blastRadiusTiles, warhead.blastDamage);
-    }
-
-    /** {@link #blast(int, int, WarheadDef)} with {@code blastDamage} J at the middle, out to {@code radius} tiles. */
-    private float blast(int cx, int cy, int radius, float blastDamage) {
-        float pressure = grid.pressureRatioAt(cx, cy);
-        if (pressure <= 0f || radius <= 0 || blastDamage <= 0f || !grid.inBounds(cx, cy)) return 0f;
-
-        boolean[] seen = new boolean[grid.width * grid.height];
-        frontier.clear();
-        frontier.add(pack(cx, cy));
-        seen[pack(cx, cy)] = true;
-        float total = 0f;
-        for (int d = 0; d <= radius && frontier.size > 0; d++) {
-            float energy = blastDamage * pressure * (1f - d / (radius + 1f));
-            nextFrontier.clear();
-            for (int i = 0; i < frontier.size; i++) {
-                int idx = frontier.get(i);
-                int x = idx % grid.width, y = idx / grid.width;
-                Tile tile = grid.getTile(x, y);
-                total += blastTile(tile, x, y, energy);
-                // Only open space carries the blast onward.
-                if (!tile.isOpen() || d == radius) continue;
-                for (Side s : Side.values()) {
-                    int nx = x + s.dx, ny = y + s.dy;
-                    if (!grid.inBounds(nx, ny)) continue;
-                    int n = pack(nx, ny);
-                    if (seen[n] || grid.isEdgeBlocked(x, y, nx, ny)) continue;
-                    Tile nt = grid.getTile(nx, ny);
-                    if (nt.isVoid()) continue;
-                    seen[n] = true;
-                    nextFrontier.add(n);
-                }
-            }
-            frontier.clear();
-            frontier.addAll(nextFrontier);
-        }
-        return total;
-    }
-
-    private float blastTile(Tile tile, int x, int y, float energy) {
-        if (energy <= 0f) return 0f;
-        if (tile.isWall()) {
-            if (tile.getIntegrity() <= 0f) return 0f;
-            MaterialTable.ClassStats stats = materials.get(tile.material, tile.weightClass);
-            boolean wasBreach = tile.isHullBreach();
-            float take = Math.min(energy, stats.hitPoints * tile.getIntegrity());
-            damagePiece(tile, take / stats.hitPoints);
-            if (tile.getIntegrity() <= 0f) {
-                if (!wasBreach && tile.isHullBreach()) addBreach(tile, x, y);
-                if (report != null) report.structureChanged = true;
-            }
-            return take;
-        }
-        float spent = 0f;
-        Entity system = grid.subsystemAt(x, y);
-        SubsystemComponent sub = system == null ? null : subsystemMapper.get(system);
-        if (sub != null && !sub.isDestroyed()) {
-            float hardness = subsystemHardness(sub.type);
-            float take = Math.min(energy, hardness * sub.health);
-            damageSubsystem(system, sub, take / hardness, x, y);
-            spent += take;
-        }
-        if (crew != null) {
-            occupants.clear();
-            crew.occupantsAt(ship, x, y, occupants);
-            for (int i = 0; i < occupants.size; i++) {
-                // Overpressure hits everyone on the tile without being used up by them.
-                injure(occupants.get(i), 100f * energy / CREW_BLAST_LETHAL, HitCause.BLAST, x, y);
-            }
-        }
-        tryIgnite(tile, x, y, DamageType.EXPLOSIVE, energy / FLOOR_RESISTANCE);
-        return spent;
-    }
 
     /** Tanks this call's hits burst, set off once the rays are done. */
     private final Array<SubsystemComponent> pendingBursts = new Array<>();
@@ -1187,7 +794,7 @@ public class PenetrationResolver {
                 if (burst.fire) report.fires.add(pack(burst.x, burst.y));
                 report.structureChanged = true;
             }
-            if (burst.blastEnergy > 0f) blast(burst.x, burst.y, DamageStates.BLAST_RADIUS, burst.blastEnergy);
+            if (burst.blastEnergy > 0f) blasting.blast(burst.x, burst.y, DamageStates.BLAST_RADIUS, burst.blastEnergy);
         }
         pendingBursts.clear();
     }
