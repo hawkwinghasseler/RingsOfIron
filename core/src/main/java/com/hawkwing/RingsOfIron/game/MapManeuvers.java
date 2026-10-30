@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
@@ -16,8 +17,10 @@ import java.util.Locale;
  * orders the keys do, each told to the player as a notice.
  *
  * <p>The path is the one the map draws: the orbit now until the first burn, then the orbit each burn
- * leaves until the next, and the last one for an orbit (or {@link PlayerOrbitPath#OPEN_SPAN} on an open
- * one). A point is matched to the time the ship passes nearest it on that path.
+ * leaves until the next, and the last one as {@link MapTrajectory} patches it: cut where it meets a moon,
+ * on through the moon's sphere (the moon moving on under it, as {@link PlayerOrbitPath} draws it) and
+ * back out, each leg with no end found drawn for an orbit (or {@link PlayerOrbitPath#OPEN_SPAN} on an
+ * open one). A point is matched to the time the ship passes nearest it on that path.
  */
 public class MapManeuvers implements ManeuverPlannerProvider {
     /** Samples per span of path when finding the time nearest a point; refined after. */
@@ -26,25 +29,40 @@ public class MapManeuvers implements ManeuverPlannerProvider {
     private final GameWorld world;
     private final PlayerOrbitPath path;
     private final PlayerOrbitInfo orbits;
+    private final MapTrajectory trajectory;
     private final StateVector s = new StateVector();
+    private final StateVector moon = new StateVector();
 
     public MapManeuvers(GameWorld world, PlayerOrbitPath path) {
         this.world = world;
         this.path = path;
         orbits = new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer);
+        trajectory = new MapTrajectory(world.universe);
     }
 
     // ------------------------------------------------------------------ planning
 
-    /** One stretch of the planned path: a conic flown from {@code from} until {@code to}. */
+    /**
+     * One stretch of the planned path: a conic flown from {@code from} until {@code to}, in the map's
+     * frame moved by ({@code ox}, {@code oy}), or around {@code moving} as it moves on in the map's frame.
+     */
     static final class Span {
         final KeplerOrbit conic;
         final double from, to;
+        final Entity moving;
+        final double ox, oy;
 
         Span(KeplerOrbit conic, double from, double to) {
+            this(conic, from, to, null, 0, 0);
+        }
+
+        Span(KeplerOrbit conic, double from, double to, Entity moving, double ox, double oy) {
             this.conic = conic;
             this.from = from;
             this.to = to;
+            this.moving = moving;
+            this.ox = ox;
+            this.oy = oy;
         }
     }
 
@@ -54,13 +72,45 @@ public class MapManeuvers implements ManeuverPlannerProvider {
         KeplerOrbit k = orbits.currentConic();
         if (k == null) return out;
         double t = world.universe.now();
-        for (ManeuverNodeComponent.Node n : shown()) {
+        List<ManeuverNodeComponent.Node> nodes = shown();
+        for (ManeuverNodeComponent.Node n : nodes) {
             out.add(new Span(k, t, n.time));
             k = k.withBurn(n.time, n.prograde, n.radial);
             t = n.time;
         }
-        out.add(new Span(k, t, t + reach(k)));
+        path(k, t, nodes, nodes.size(), out);
         return out;
+    }
+
+    /**
+     * The path on from {@code from} on conic {@code k}, as the map draws it past the plan's last burn
+     * (or past {@code burns} of {@code nodes}), into {@code out}: its legs through any moon it meets.
+     */
+    private void path(KeplerOrbit k, double from, List<ManeuverNodeComponent.Node> nodes, int burns, List<Span> out) {
+        Entity frame = orbits.parent();
+        if (frame == null) {
+            out.add(new Span(k, from, from + reach(k)));
+            return;
+        }
+        long plan = 17;
+        for (int i = 0; i < burns; i++) {
+            ManeuverNodeComponent.Node n = nodes.get(i);
+            plan = plan * 1_000_003 + Double.hashCode(n.time) * 31L + Double.hashCode(n.prograde) * 7L + Double.hashCode(n.radial);
+        }
+        for (MapTrajectory.Leg leg : trajectory.legs(k, frame, from, plan)) {
+            boolean ends = !Double.isNaN(leg.to);
+            double to = ends ? leg.to : leg.from + reach(leg.conic);
+            if (leg.frame == frame) {
+                out.add(new Span(leg.conic, leg.from, to));
+            } else if (ends) {
+                // Through a moon's sphere: drawn where the ship really is, the moon moving on under it
+                out.add(new Span(leg.conic, leg.from, to, leg.frame, 0, 0));
+            } else {
+                // Caught by the moon: its orbit there, drawn about where the moon is at the periapsis
+                world.universe.stateInFrame(leg.frame, frame, PlayerOrbitPath.ghostTime(leg), moon);
+                out.add(new Span(leg.conic, leg.from, to, null, moon.x, moon.y));
+            }
+        }
     }
 
     /** How far on the last stretch of a path is drawn: an orbit, or the open span. */
@@ -79,10 +129,10 @@ public class MapManeuvers implements ManeuverPlannerProvider {
     }
 
     /**
-     * The time in [from, to] when {@code k} passes nearest (x, y), and how near, into {time, distance}:
-     * sampled evenly in time, then narrowed between the samples either side of the best.
+     * The time in [from, to] when the ship on {@code k} passes nearest (x, y), and how near, into {time,
+     * distance}: sampled evenly in time, then narrowed between the samples either side of the best.
      */
-    double[] nearest(KeplerOrbit k, double from, double to, double x, double y) {
+    double[] nearest(Span k, double from, double to, double x, double y) {
         double best = from, bestD = Double.POSITIVE_INFINITY;
         double step = (to - from) / SAMPLES;
         if (!(step > 0)) return new double[]{from, distance(k, from, x, y)};
@@ -107,25 +157,35 @@ public class MapManeuvers implements ManeuverPlannerProvider {
         return d < bestD ? new double[]{t, d} : new double[]{best, bestD};
     }
 
-    private double distance(KeplerOrbit k, double t, double x, double y) {
-        k.stateAt(t, s);
-        return Math.hypot(s.x - x, s.y - y);
+    /** How far the ship on the span is from (x, y) at {@code t}, in the map's frame. */
+    private double distance(Span k, double t, double x, double y) {
+        k.conic.stateAt(t, s);
+        double px = s.x + k.ox, py = s.y + k.oy;
+        if (k.moving != null) {
+            world.universe.stateInFrame(k.moving, orbits.parent(), t, moon);
+            px += moon.x;
+            py += moon.y;
+        }
+        return Math.hypot(px - x, py - y);
+    }
+
+    /** The time on the spans, no sooner than a burn can be planned, nearest (x, y), and how near; NaN with none. */
+    private double[] nearest(List<Span> spans, double x, double y) {
+        double[] best = {Double.NaN, Double.POSITIVE_INFINITY};
+        double earliest = world.universe.now() + BurnPlanner.MIN_LEAD;
+        for (Span span : spans) {
+            if (span.to < earliest) continue;
+            double[] r = nearest(span, Math.max(span.from, earliest), span.to, x, y);
+            if (r[1] < best[1]) best = r;
+        }
+        return best;
     }
 
     @Override
     public boolean addBurnNear(double x, double y, double tolerance) {
-        double bestT = Double.NaN, bestD = Double.POSITIVE_INFINITY;
-        double earliest = world.universe.now() + BurnPlanner.MIN_LEAD;
-        for (Span span : spans()) {
-            if (span.to < earliest) continue;
-            double[] r = nearest(span.conic, Math.max(span.from, earliest), span.to, x, y);
-            if (r[1] < bestD) {
-                bestD = r[1];
-                bestT = r[0];
-            }
-        }
-        if (Double.isNaN(bestT) || bestD > tolerance) return false;
-        world.burns.addNodeAt(bestT);
+        double[] best = nearest(spans(), x, y);
+        if (Double.isNaN(best[0]) || best[1] > tolerance) return false;
+        world.burns.addNodeAt(best[0]);
         return true;
     }
 
@@ -153,17 +213,22 @@ public class MapManeuvers implements ManeuverPlannerProvider {
     public void moveSelectedNear(double x, double y) {
         ManeuverNodeComponent.Node n = world.burns.selected();
         if (n == null) return;
-        // Along the orbit the burns before it leave, for one turn of it from the last of them
+        // Along the path the burns before it leave, from the last of them: through any moon it meets
         KeplerOrbit k = orbits.currentConic();
         if (k == null) return;
         double from = world.universe.now();
-        for (ManeuverNodeComponent.Node b : shown()) {
+        List<ManeuverNodeComponent.Node> nodes = shown();
+        int before = 0;
+        for (ManeuverNodeComponent.Node b : nodes) {
             if (b == n) break;
             k = k.withBurn(b.time, b.prograde, b.radial);
             from = b.time;
+            before++;
         }
-        from = Math.max(from, world.universe.now() + BurnPlanner.MIN_LEAD);
-        world.burns.setTime(nearest(k, from, from + reach(k), x, y)[0]);
+        List<Span> spans = new ArrayList<>();
+        path(k, from, nodes, before, spans);
+        double t = nearest(spans, x, y)[0];
+        if (!Double.isNaN(t)) world.burns.setTime(t);
     }
 
     @Override

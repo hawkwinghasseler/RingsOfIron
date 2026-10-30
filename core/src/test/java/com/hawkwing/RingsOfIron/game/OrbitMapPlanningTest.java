@@ -192,6 +192,44 @@ class OrbitMapPlanningTest {
     }
 
     @Test
+    void aClickOnTheLegPastTheMoonPlansABurnThere() {
+        world.nav.target.select(game.lunarMine);
+        world.nav.transfer.plan();
+        world.nav.transfer.accept(world.burns);
+        draw();
+        // The path from the plan's last burn, as the map patches it
+        KeplerOrbit k = orbits.currentConic();
+        for (ManeuverNodeComponent.Node n : world.burns.nodes().nodes) k = k.withBurn(n.time, n.prograde, n.radial);
+        ManeuverNodeComponent.Node last = world.burns.nodes().nodes.peek();
+        java.util.List<MapTrajectory.Leg> legs = new MapTrajectory(world.universe).legs(k, orbits.parent(), last.time, 1);
+        assertTrue(legs.size() >= 2, "the transfer meets the Moon");
+        MapTrajectory.Leg toMoon = legs.get(0), pass = legs.get(1);
+        double soi = world.universe.celestial(pass.frame).soiRadius, tolerance = 0.02 * soi;
+        int before = world.burns.nodes().nodes.size;
+
+        // Where the old orbit round Earth would have gone on, had the Moon not met it: nothing is drawn there
+        double rest = toMoon.from + toMoon.conic.period() - toMoon.to;
+        StateVector ghost = toMoon.conic.stateAt(toMoon.to + rest / 2);
+        assertFalse(maneuvers.addBurnNear(ghost.x, ghost.y, tolerance), "no burn on the orbit the ship won't fly");
+        assertEquals(before, world.burns.nodes().nodes.size);
+
+        // Partway through the Moon's sphere, where the ship is then: the Moon moved on under it
+        double mid = pass.from + (Double.isNaN(pass.to) ? 600 : (pass.to - pass.from) / 3);
+        StateVector ship = pass.conic.stateAt(mid);
+        StateVector moon = world.universe.stateInFrame(pass.frame, orbits.parent(), mid, new StateVector());
+        assertTrue(maneuvers.addBurnNear(ship.x + moon.x, ship.y + moon.y, tolerance), "on the leg past the Moon");
+        assertEquals(before + 1, world.burns.nodes().nodes.size);
+        assertEquals(mid, world.burns.selected().time, 30, "when the ship is there");
+
+        // And slid along that leg, it stays on it
+        double later = pass.from + (Double.isNaN(pass.to) ? 1200 : (pass.to - pass.from) / 2);
+        ship = pass.conic.stateAt(later);
+        world.universe.stateInFrame(pass.frame, orbits.parent(), later, moon);
+        maneuvers.moveSelectedNear(ship.x + moon.x, ship.y + moon.y);
+        assertEquals(later, world.burns.selected().time, 30, "further on through the Moon's sphere");
+    }
+
+    @Test
     void thePanelDescribesTheOrbitAndThePlan() {
         String orbit = maneuvers.orbitText();
         assertTrue(orbit.startsWith("Around Earth"), orbit);
