@@ -17,7 +17,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
-import com.hawkwing.RingsOfIron.game.DeckView;
+import com.hawkwing.RingsOfIron.render.DeckView;
 import com.hawkwing.RingsOfIron.game.ShipNames;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
 import com.hawkwing.RingsOfIron.render.ExteriorRenderer;

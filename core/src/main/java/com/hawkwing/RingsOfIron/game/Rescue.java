@@ -205,7 +205,7 @@ public class Rescue {
         if (oldShip.getComponent(HudMarkerComponent.class) == null) {
             if (oldShip.getComponent(TransformComponent.class) == null) oldShip.add(new TransformComponent());
             HudMarkerComponent m = new HudMarkerComponent("Your old ship (abandoned)", HudMarkerComponent.Kind.NEUTRAL).radius(10f);
-            m.color.set(ShipDisablement.DISABLED_COLOR);
+            m.color.set(HudMarkerComponent.DISABLED_COLOR);
             oldShip.add(m);
         }
         int lost = crewAboard(oldShip);

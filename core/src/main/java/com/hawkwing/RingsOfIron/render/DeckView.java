@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.hawkwing.RingsOfIron.render;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;

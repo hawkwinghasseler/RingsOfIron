@@ -1,10 +1,13 @@
-package com.hawkwing.RingsOfIron.game;
+package com.hawkwing.RingsOfIron.render;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.hawkwing.RingsOfIron.game.GameWorld;
+import com.hawkwing.RingsOfIron.game.Navigation;
+import com.hawkwing.RingsOfIron.game.PlayerDocking;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.stationsdocking.DockingSystem;
 
@@ -70,7 +73,7 @@ public class NavOverlay {
     }
 
     /** "2: 3,084 m/s in 4m 10s" */
-    static String label(int number, float deltaV, float in) {
+    public static String label(int number, float deltaV, float in) {
         return String.format(java.util.Locale.ROOT, "%d: %,.0f m/s in %s", number, deltaV, Navigation.formatTime(in));
     }
 

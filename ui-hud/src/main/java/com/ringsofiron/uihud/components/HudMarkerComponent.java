@@ -23,6 +23,9 @@ public class HudMarkerComponent implements Component {
         }
     }
 
+    /** A disabled ship's marker tint. */
+    public static final Color DISABLED_COLOR = new Color(0.6f, 0.6f, 0.62f, 1f);
+
     public String label = "";
     public Kind kind = Kind.NEUTRAL;
     /** Marker tint; defaults to the kind's color. */

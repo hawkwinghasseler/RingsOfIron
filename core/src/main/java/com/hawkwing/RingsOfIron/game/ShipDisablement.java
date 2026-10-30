@@ -7,7 +7,6 @@ import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.signals.Signal;
 import com.badlogic.ashley.utils.ImmutableArray;
-import com.badlogic.gdx.graphics.Color;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -69,9 +68,6 @@ public class ShipDisablement extends EntitySystem {
     public static final float SURRENDER_HULL = 0.55f;
     /** Default share of an NPC ship's own crew still conscious below which it surrenders. */
     public static final float SURRENDER_CREW = 0.5f;
-    /** A disabled ship's marker tint. */
-    public static final Color DISABLED_COLOR = new Color(0.6f, 0.6f, 0.62f, 1f);
-
     private static final Family SHIPS = Family.all(ShipGridComponent.class, ShipSubsystemRegistryComponent.class,
             PhysicsBodyComponent.class).exclude(StationComponent.class).get();
     private static final ComponentMapper<DisabledComponent> DISABLED = ComponentMapper.getFor(DisabledComponent.class);
@@ -262,7 +258,7 @@ public class ShipDisablement extends EntitySystem {
             current.reason = reason;
             if (marker != null) {
                 marker.label = (current.markerLabel == null ? "" : current.markerLabel + " ") + "(" + reason.label + ")";
-                marker.color.set(DISABLED_COLOR);
+                marker.color.set(HudMarkerComponent.DISABLED_COLOR);
             }
             if (reason == DisabledComponent.Reason.WRECKED) coldReactors(REGISTRY.get(ship));
         }

@@ -101,7 +101,7 @@ class ShipDisablementTest {
         assertEquals(DisabledComponent.Reason.NO_POWER, ShipDisablement.reason(game.raider));
         HudMarkerComponent marker = game.raider.getComponent(HudMarkerComponent.class);
         assertEquals("Raider (reactor down)", marker.label);
-        assertEquals(ShipDisablement.DISABLED_COLOR, marker.color);
+        assertEquals(HudMarkerComponent.DISABLED_COLOR, marker.color);
         // It stops: no combat pilot, guns held, no lock
         assertNull(game.raider.getComponent(NpcCombatComponent.class));
         assertNull(game.raider.getComponent(SensorComponent.class).lockedTarget);

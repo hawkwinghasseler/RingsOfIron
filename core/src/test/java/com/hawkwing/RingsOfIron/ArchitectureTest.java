@@ -39,11 +39,7 @@ class ArchitectureTest {
             "\\bcom\\.hawkwing\\.RingsOfIron\\.(shell|render|debug)\\b|\\bcom\\.badlogic\\.gdx\\.graphics\\b");
 
     /** Game classes that use a forbidden package today, and which; Phase 2 empties this. */
-    static final Map<String, Set<String>> GAME_ALLOWED = Map.ofEntries(
-            Map.entry("DeckView", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("FireArcOverlay", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("NavOverlay", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("ShipDisablement", Set.of("com.badlogic.gdx.graphics")));
+    static final Map<String, Set<String>> GAME_ALLOWED = Map.of();
 
     /** Each module's source package under com.ringsofiron, and its folder. */
     static final Map<String, String> MODULE_PACKAGES = Map.ofEntries(
@@ -86,14 +82,15 @@ class ArchitectureTest {
      */
     static final Set<String> TAKES_GAME_WORLD = Set.of(
             "debug.DebugActions", "debug.DebugPicker", "debug.DevConsole", "debug.ScenarioSetup",
+            "render.FireArcOverlay", "render.NavOverlay",
             "game.AirWatch", "game.AudioLab", "game.Autopilot", "game.BerthVenting", "game.BoardingWork",
             "game.Bridge", "game.BurnPlanner", "game.CaptainSafety", "game.CombatThreats", "game.ContractBoard",
             "game.ContractMissions", "game.CrewCareer", "game.CrewHiring", "game.CrewMedical", "game.CrewRoster",
             "game.DamageControl", "game.DeckTools", "game.Derelicts", "game.DistressBeacon", "game.ExteriorPick",
-            "game.FactionTension", "game.FieldRefits", "game.FireArcOverlay", "game.FirstPlay", "game.FlightField",
+            "game.FactionTension", "game.FieldRefits", "game.FirstPlay", "game.FlightField",
             "game.FlightWarnings", "game.FreighterTraffic", "game.FurnishingPlacement", "game.FurnishingStore",
             "game.GameHud", "game.GameScenario", "game.GunCrews", "game.HelmOrders", "game.HostileTraffic",
-            "game.JammedCollars", "game.LoopWiring", "game.MapManeuvers", "game.MarketTrade", "game.NavOverlay",
+            "game.JammedCollars", "game.LoopWiring", "game.MapManeuvers", "game.MarketTrade",
             "game.NavTarget", "game.Navigation", "game.OpeningGuide", "game.PirateBase", "game.PirateBoarding",
             "game.PirateSightings", "game.PirateUpkeep", "game.PlayerDocking", "game.PlayerGunnery",
             "game.PlayerOrbitPath", "game.PlayerTransfer", "game.Prisoners", "game.RailsTrafficMap", "game.Rescue",

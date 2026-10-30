@@ -1,9 +1,13 @@
-package com.hawkwing.RingsOfIron.game;
+package com.hawkwing.RingsOfIron.render;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.hawkwing.RingsOfIron.game.GameScenario;
+import com.hawkwing.RingsOfIron.game.GameWorld;
+import com.hawkwing.RingsOfIron.game.PlayerGunnery;
+import com.hawkwing.RingsOfIron.render.FireArcOverlay;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;

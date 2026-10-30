@@ -74,7 +74,7 @@ class HostileLabelTest {
             HudMarkerComponent marker = ship(name).getComponent(HudMarkerComponent.class);
             assertTrue(marker.label.endsWith(SilencedMarkers.SUFFIX), marker.label);
             assertFalse(marker.label.endsWith(SilencedMarkers.SUFFIX + SilencedMarkers.SUFFIX), marker.label);
-            assertEquals(ShipDisablement.DISABLED_COLOR, marker.color);
+            assertEquals(HudMarkerComponent.DISABLED_COLOR, marker.color);
         }
         world.pirateBase.rise();
         markers.update();

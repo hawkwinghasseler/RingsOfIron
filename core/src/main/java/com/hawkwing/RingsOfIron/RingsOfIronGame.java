@@ -33,7 +33,7 @@ import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.Rescue;
 import com.hawkwing.RingsOfIron.game.WarpNotices;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
-import com.hawkwing.RingsOfIron.game.DeckView;
+import com.hawkwing.RingsOfIron.render.DeckView;
 import com.hawkwing.RingsOfIron.game.FirstPlay;
 import com.hawkwing.RingsOfIron.game.FurnishingPlacement;
 import com.hawkwing.RingsOfIron.game.ShipDisablement;
@@ -177,9 +177,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private ViewportManager viewports;
     private PlayerGunnery gun;
     private PlayerDocking docking;
-    private com.hawkwing.RingsOfIron.game.NavOverlay navOverlay;
+    private com.hawkwing.RingsOfIron.render.NavOverlay navOverlay;
     /** The guns' firing arcs, tinted by their chance to hit. */
-    private com.hawkwing.RingsOfIron.game.FireArcOverlay fireArcs;
+    private com.hawkwing.RingsOfIron.render.FireArcOverlay fireArcs;
 
     private ShapeRenderer shapes;
     private SpriteBatch batch;
@@ -333,8 +333,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gun.setTarget(game.firstTarget());
         hud.setTargeting(new CombatTargetingProvider(gun));
         docking = new PlayerDocking(world, () -> game.player, this::show);
-        navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world, docking);
-        fireArcs = new com.hawkwing.RingsOfIron.game.FireArcOverlay(world);
+        navOverlay = new com.hawkwing.RingsOfIron.render.NavOverlay(world, docking);
+        fireArcs = new com.hawkwing.RingsOfIron.render.FireArcOverlay(world);
         world.nav.keyNames = this::key;
         // A click on the traffic map makes that station or ship the navigation target
         // Off-screen marker names by the right edge keep clear of the status column, which is drawn
