@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.uihud;
 
 import com.ringsofiron.coreengine.input.Action;
 

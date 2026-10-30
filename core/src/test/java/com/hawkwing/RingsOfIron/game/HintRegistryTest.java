@@ -1,9 +1,10 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.gdx.Input;
-import com.hawkwing.RingsOfIron.game.HintRegistry.Context;
+import com.ringsofiron.uihud.HintRegistry.Context;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.ringsofiron.coreengine.input.Action;
+import com.ringsofiron.uihud.HintRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;

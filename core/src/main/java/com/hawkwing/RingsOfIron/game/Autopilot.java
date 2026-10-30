@@ -4,6 +4,7 @@ import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.orbital.events.OrbitalEvent;
+import com.ringsofiron.orbital.math.ClosestApproach;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.orbital.warp.DropOutSource;
 import com.ringsofiron.orbital.warp.TimeWarpController;

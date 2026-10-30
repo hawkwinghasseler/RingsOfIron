@@ -20,6 +20,7 @@ import com.ringsofiron.combatsys.defs.LoadoutDef;
 import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.combatsys.modding.Loadouts;
 import com.ringsofiron.coreengine.EntityRemovalListener;
+import com.ringsofiron.coreengine.Resettable;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;

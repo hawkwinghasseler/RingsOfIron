@@ -7,10 +7,12 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.fleet.RoutePlanner;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
+import com.ringsofiron.orbital.math.ClosestApproach;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.orbital.warp.DropOutSource;
 
+import com.ringsofiron.uihud.HintRegistry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;

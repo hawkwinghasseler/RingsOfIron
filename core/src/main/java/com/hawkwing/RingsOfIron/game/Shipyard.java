@@ -34,6 +34,7 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
+import com.ringsofiron.uihud.HintRegistry;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
 import java.util.ArrayList;

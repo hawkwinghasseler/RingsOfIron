@@ -16,6 +16,7 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.coreengine.input.Action;
 
+import com.ringsofiron.uihud.HintRegistry;
 import java.util.function.Function;
 
 /**

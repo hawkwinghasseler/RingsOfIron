@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.macrosim.bubble;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.physics.box2d.Body;
@@ -18,9 +18,9 @@ import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
  */
 public class GameBubbleGateway extends PhysicsBubbleGateway {
     /** Default hull, 40 m by 12 m, nose along +X. */
-    static final float[] DEFAULT_HULL = {-20f, -6f, 20f, -6f, 20f, 6f, -20f, 6f};
+    public static final float[] DEFAULT_HULL = {-20f, -6f, 20f, -6f, 20f, 6f, -20f, 6f};
     /** kg per square meter: about 50 t for the default hull. */
-    static final float DEFAULT_HULL_DENSITY = 104f;
+    public static final float DEFAULT_HULL_DENSITY = 104f;
     /** What the default hull weighs, kg. */
     static final float DEFAULT_HULL_MASS = 40f * 12f * DEFAULT_HULL_DENSITY;
 
@@ -91,7 +91,7 @@ public class GameBubbleGateway extends PhysicsBubbleGateway {
      * True if {@code shape} is the default hull, as a body that left the bubble on it saved it: one
      * box its size, less the skin physics keeps its fixtures in by.
      */
-    static boolean isDefaultHull(BodyShapeComponent shape) {
+    public static boolean isDefaultHull(BodyShapeComponent shape) {
         if (shape.fixtures.length != 1 || shape.fixtures[0].vertices.length != DEFAULT_HULL.length) return false;
         float[] v = shape.fixtures[0].vertices;
         for (int i = 0; i < v.length; i += 2) {

@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.audiospatial.systems.EngineAudio;
 import com.ringsofiron.interiorgrid.FloorTiles;
 import org.junit.jupiter.api.io.TempDir;
 import com.ringsofiron.coreengine.components.UuidComponent;

@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.audiospatial.systems;
 
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
@@ -22,7 +22,7 @@ import java.util.function.Supplier;
 public class EngineAudio extends EntitySystem {
     public static final int DEFAULT_PRIORITY = 890;
     /** How loud strafing and turning are next to the main engine at the same stick deflection. */
-    static final float RCS_SHARE = 0.5f;
+    public static final float RCS_SHARE = 0.5f;
     /** Intensity change per second when throttling up, and when throttling down. */
     static final float ATTACK_PER_SECOND = 8f;
     static final float RELEASE_PER_SECOND = 3f;

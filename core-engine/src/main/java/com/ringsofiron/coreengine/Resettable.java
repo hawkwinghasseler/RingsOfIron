@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.coreengine;
 
 /**
  * State of the game's own that a load starts again from scratch before the save is read over it,

@@ -10,6 +10,7 @@ import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 
+import com.ringsofiron.uihud.HintRegistry;
 import java.util.Locale;
 
 /**

@@ -11,6 +11,7 @@ import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SuitLockers;
 import com.ringsofiron.interiorgrid.crew.Suit;
+import com.ringsofiron.uihud.HintRegistry;
 import com.ringsofiron.uihud.systems.InteractPromptSystem;
 
 /**

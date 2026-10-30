@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.macrosim.economy;
 
 import com.ringsofiron.macrosim.economy.CommodityCatalog;
 import com.ringsofiron.macrosim.economy.CommodityType;

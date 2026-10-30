@@ -13,6 +13,7 @@ import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 
+import com.ringsofiron.uihud.HintRegistry;
 import java.util.IdentityHashMap;
 import java.util.Locale;
 import java.util.Map;
