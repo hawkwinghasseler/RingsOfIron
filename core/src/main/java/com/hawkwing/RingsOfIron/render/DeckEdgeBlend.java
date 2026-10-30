@@ -34,7 +34,10 @@ import java.util.Arrays;
  * of a grid of half tiles and on the slopes of sloped armor, and runs smoothly between them. The
  * edge is the outline of the footprint (tiles that are neither void nor an engine's casing), with
  * sloped armor as its triangle, so a slope is lit from outside and fades in behind it as a flat
- * side does. Where the shader won't compile, the decks keep a hard edge at the hull, drawn with
+ * side does. How far is measured along the grid, across plus up ({@link #toSegment}): square to
+ * a side that is a tile, but square to a slope only half a tile's diagonal, so the fade behind a
+ * slope ends on the line through the inner corners of the outermost tiles, and a wall block that
+ * touches the edge at one corner alone is lit from inside from its middle on. Where the shader won't compile, the decks keep a hard edge at the hull, drawn with
  * the stencil buffer instead.
  *
  * <p>Each frame in the deck view: {@link #begin} with the weights ({@code DeckRenderer}), then
@@ -88,13 +91,22 @@ public final class DeckEdgeBlend implements Disposable {
             + "    gl_FragColor = vec4(mix(light, inner, w) / max(laid, vec3(0.004)), 1.0);\n"
             + "  }\n"
             + "}\n";
-    /** The weights alone, for the overlay: red for the decks' light, blue for the light outside, mixed between. */
+    /**
+     * The weights alone, for the overlay: red for the decks' light, blue for the light outside,
+     * mixed between, and yellow where the decks' light stops being all there is (the first pixel
+     * short of it, beside one wholly lit from inside).
+     */
     private static final String MASK = "#ifdef GL_ES\nprecision mediump float;\n#endif\n"
             + "uniform sampler2D u_weight;\n"
+            + "uniform vec2 u_texel;\n"
             + "varying vec2 v_uv;\n"
+            + "float inside(vec2 at) { return step(0.998, texture2D(u_weight, at).r); }\n"
             + "void main() {\n"
             + "  float w = texture2D(u_weight, v_uv).r;\n"
-            + "  gl_FragColor = vec4(w, 0.0, 1.0 - w, 1.0);\n"
+            + "  float around = max(max(inside(v_uv + vec2(u_texel.x, 0.0)), inside(v_uv - vec2(u_texel.x, 0.0))),\n"
+            + "      max(inside(v_uv + vec2(0.0, u_texel.y)), inside(v_uv - vec2(0.0, u_texel.y))));\n"
+            + "  float line = around * (1.0 - inside(v_uv));\n"
+            + "  gl_FragColor = vec4(mix(vec3(w, 0.0, 1.0 - w), vec3(1.0, 0.9, 0.0), line), 1.0);\n"
             + "}\n";
 
     private FrameBuffer weights;
@@ -172,6 +184,7 @@ public final class DeckEdgeBlend implements Disposable {
         weights.getColorBufferTexture().bind(0);
         maskShader.bind();
         maskShader.setUniformi("u_weight", 0);
+        maskShader.setUniformf("u_texel", 1f / weights.getWidth(), 1f / weights.getHeight());
         quad.render(maskShader, GL20.GL_TRIANGLE_FAN);
     }
 
@@ -293,7 +306,7 @@ public final class DeckEdgeBlend implements Disposable {
             for (int x = x0, y = y0; x != x1 || y != y1; x += dx, y += dy) sides.add(side(x, y, x + dx, y + dy));
         }
 
-        /** How far ({@code x}, {@code y}) lies from the edge, in tiles. */
+        /** How far ({@code x}, {@code y}) lies from the edge, in tiles across plus up ({@link #toSegment}). */
         float distance(float x, float y) {
             float best = Float.MAX_VALUE;
             for (int i = 0; i < edge.size; i += 4) {
@@ -305,7 +318,7 @@ public final class DeckEdgeBlend implements Disposable {
         /**
          * The weights at the corners of the grid's tiles split {@link #SUBDIVISIONS}
          * ways each side: {@code (width * n + 1) * (height * n + 1)} of them, row by row from the
-         * bottom. Each is as far in as the nearest point of the edge.
+         * bottom. Each is as far in as the nearest point of the edge ({@link #distance}).
          */
         float[] cornerWeights() {
             int n = SUBDIVISIONS, cw = width * n + 1, ch = height * n + 1;
@@ -345,12 +358,20 @@ public final class DeckEdgeBlend implements Disposable {
                 for (int cx = 0; cx < width * n; cx++) {
                     if (!on[cy / n][cx / n]) continue;
                     float x0 = x + cx * step, y0 = y + cy * step, x1 = x0 + step, y1 = y0 + step;
-                    shade(c00, w[cy * cw + cx]);
-                    shade(c10, w[cy * cw + cx + 1]);
-                    shade(c01, w[(cy + 1) * cw + cx]);
-                    shade(c11, w[(cy + 1) * cw + cx + 1]);
-                    shapes.triangle(x0, y0, x1, y0, x1, y1, c00, c10, c11);
-                    shapes.triangle(x0, y0, x1, y1, x0, y1, c00, c11, c01);
+                    float w00 = w[cy * cw + cx], w10 = w[cy * cw + cx + 1], w01 = w[(cy + 1) * cw + cx], w11 = w[(cy + 1) * cw + cx + 1];
+                    shade(c00, w00);
+                    shade(c10, w10);
+                    shade(c01, w01);
+                    shade(c11, w11);
+                    // Split along the diagonal the weight changes least along, so a fade square to
+                    // a slope either way runs straight across the half tiles instead of in steps
+                    if (Math.abs(w00 - w11) <= Math.abs(w10 - w01)) {
+                        shapes.triangle(x0, y0, x1, y0, x1, y1, c00, c10, c11);
+                        shapes.triangle(x0, y0, x1, y1, x0, y1, c00, c11, c01);
+                    } else {
+                        shapes.triangle(x0, y0, x1, y0, x0, y1, c00, c10, c01);
+                        shapes.triangle(x1, y0, x1, y1, x0, y1, c10, c11, c01);
+                    }
                 }
             }
             for (int i = 0; i < wedges.size; i += 6) {
@@ -416,12 +437,27 @@ public final class DeckEdgeBlend implements Disposable {
         }
     }
 
-    /** How far ({@code x}, {@code y}) lies from the segment ({@code x0}, {@code y0}) to ({@code x1}, {@code y1}). */
-    private static float toSegment(float x, float y, float x0, float y0, float x1, float y1) {
-        float dx = x1 - x0, dy = y1 - y0, len = dx * dx + dy * dy;
-        float t = len == 0f ? 0f : MathUtils.clamp(((x - x0) * dx + (y - y0) * dy) / len, 0f, 1f);
-        float ex = x - (x0 + dx * t), ey = y - (y0 + dy * t);
-        return (float) Math.sqrt(ex * ex + ey * ey);
+    /**
+     * How far ({@code x}, {@code y}) lies from the segment ({@code x0}, {@code y0}) to
+     * ({@code x1}, {@code y1}), across plus up (the taxicab distance): along the grid's rows and
+     * columns, as the tiles lie, so a slope at 45 degrees is half its diagonal away from a tile's
+     * far corner. Least where the point's row or column crosses the segment, or at an end.
+     */
+    static float toSegment(float x, float y, float x0, float y0, float x1, float y1) {
+        float dx = x1 - x0, dy = y1 - y0;
+        float best = Math.min(taxicab(x, y, x0, y0), taxicab(x, y, x1, y1));
+        if (dx != 0f) best = Math.min(best, along(x, y, x0, y0, dx, dy, (x - x0) / dx));
+        if (dy != 0f) best = Math.min(best, along(x, y, x0, y0, dx, dy, (y - y0) / dy));
+        return best;
+    }
+
+    private static float along(float x, float y, float x0, float y0, float dx, float dy, float t) {
+        if (t <= 0f || t >= 1f) return Float.MAX_VALUE;
+        return taxicab(x, y, x0 + dx * t, y0 + dy * t);
+    }
+
+    private static float taxicab(float x, float y, float px, float py) {
+        return Math.abs(x - px) + Math.abs(y - py);
     }
 
     @Override

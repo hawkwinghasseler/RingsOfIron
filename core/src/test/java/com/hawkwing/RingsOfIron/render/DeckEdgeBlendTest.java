@@ -49,7 +49,8 @@ class DeckEdgeBlendTest {
         float[] w = weights(on);
         assertEquals(0f, at(w, 7, 3f, 3f), 1e-6f, "the hole's corner");
         assertEquals(1f, at(w, 7, 2f, 3f), 1e-6f, "a tile from the hole and from the hull's edge");
-        assertEquals((float) Math.sqrt(0.5), at(w, 7, 2.5f, 2.5f), 1e-5f, "across from the hole's corner, as the crow flies");
+        assertEquals(1f, at(w, 7, 2.5f, 2.5f), 1e-6f, "across from the hole's corner, half a tile across and half up");
+        assertEquals(0.5f, at(w, 7, 3f, 2.5f), 1e-6f, "half a tile below the hole's corner");
     }
 
     @Test
@@ -90,8 +91,31 @@ class DeckEdgeBlendTest {
         DeckEdgeBlend.Outline edge = new DeckEdgeBlend.Outline(on, wedges);
         assertEquals(0f, edge.distance(2.5f, 2.5f), 1e-6f, "on the slope");
         float[] w = edge.cornerWeights();
-        assertEquals((float) Math.sqrt(0.5), at(w, 3, 2f, 2f), 1e-5f, "the corner behind the slope, measured square to it");
-        assertEquals((float) Math.sqrt(0.125), at(w, 3, 2f, 2.5f), 1e-5f, "on a leg, nearer the slope than the hull's top");
+        assertEquals(1f, at(w, 3, 2f, 2f), 1e-6f, "the corner behind the slope: the fade ends there");
+        assertEquals(0.5f, at(w, 3, 2f, 2.5f), 1e-6f, "on a leg, nearer the slope than the hull's top");
+    }
+
+    @Test
+    void aWallBlockTouchingASlopeAtOneCornerIsLitFromInsideFromItsMiddleOn() {
+        // A staircase of slopes facing down and right, the wall block (1, 1) behind them touching
+        // the edge at its bottom right corner alone
+        boolean[][] on = block(4, 4);
+        on[0][1] = on[1][2] = false;
+        on[0][2] = on[0][3] = on[1][3] = false;
+        IntArray wedges = new IntArray(DeckEdgeBlend.wedge(wedge(1, 0, 1, 1, 3)));
+        wedges.addAll(DeckEdgeBlend.wedge(wedge(2, 1, 1, 1, 3)));
+        DeckEdgeBlend.Outline edge = new DeckEdgeBlend.Outline(on, wedges);
+        float[] w = edge.cornerWeights();
+        assertEquals(0f, at(w, 4, 2f, 1f), 1e-6f, "the corner on the edge");
+        assertEquals(1f, at(w, 4, 1.5f, 1.5f), 1e-6f, "its middle, half its diagonal in");
+        assertEquals(1f, at(w, 4, 1f, 2f), 1e-6f, "its far corner");
+    }
+
+    @Test
+    void theDistanceRunsAcrossPlusUp() {
+        assertEquals(1f, DeckEdgeBlend.toSegment(0f, 0f, 1f, -1f, 1f, 1f), 1e-6f, "square to a side");
+        assertEquals(1f, DeckEdgeBlend.toSegment(0f, 0f, 1f, 0f, 0f, 1f), 1e-6f, "to a slope: half a tile's diagonal");
+        assertEquals(2f, DeckEdgeBlend.toSegment(0f, 0f, 1f, 1f, 2f, 1f), 1e-6f, "to an end, one across and one up");
     }
 
     @Test
