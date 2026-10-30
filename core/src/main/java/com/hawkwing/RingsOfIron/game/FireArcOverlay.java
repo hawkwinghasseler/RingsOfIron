@@ -9,6 +9,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.combatsys.CombatPhysics;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
@@ -29,6 +30,11 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
  * round flew ({@code a t^2 / 2} out, beyond its half-width). They are drawn in the color of the gun's
  * chance to hit ({@link HitChance}): green where a shot (a second's worth, for a fast gun) all but
  * surely hits even a dodging target, red where it would hardly hit even a still one, yellow between.
+ *
+ * <p>Everything starts at the muzzle placed on the hull as it is drawn this frame, not at
+ * {@link WeaponMountComponent#muzzle}: weapon control sets that before the physics step, so it trails
+ * the hull by a tick's travel through the bubble and the lines slid off their guns as the ship
+ * picked up speed, until a floating origin rebase stopped it in the bubble again.
  */
 public class FireArcOverlay {
     /** How far the arc's edges reach from the muzzle, pixels. */
@@ -46,6 +52,7 @@ public class FireArcOverlay {
     private final Dodge dodge = new Dodge();
     private final Vector2 tmp = new Vector2();
     private final Vector2 shipVel = new Vector2();
+    private final Vector2 muzzle = new Vector2();
 
     public FireArcOverlay(GameWorld world) {
         this.world = world;
@@ -98,23 +105,29 @@ public class FireArcOverlay {
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapes.begin(ShapeRenderer.ShapeType.Line);
         for (WeaponMountComponent m : shown) {
-            edges(shapes, m, body.getAngle(), EDGE_PIXELS * px);
-            if (target == null || !dodge(m, target, shipVel, dodge)) continue;
+            muzzle(m, body, muzzle);
+            edges(shapes, m, muzzle, body.getAngle(), EDGE_PIXELS * px);
+            if (target == null || !dodge(m, muzzle, target, shipVel, dodge)) continue;
             tint(dodge.tint, color);
             shapes.setColor(color.r, color.g, color.b, LINE_ALPHA);
-            shapes.line(m.muzzle.x, m.muzzle.y, dodge.left.x, dodge.left.y);
-            shapes.line(m.muzzle.x, m.muzzle.y, dodge.right.x, dodge.right.y);
+            shapes.line(muzzle.x, muzzle.y, dodge.left.x, dodge.left.y);
+            shapes.line(muzzle.x, muzzle.y, dodge.right.x, dodge.right.y);
         }
         shapes.end();
     }
 
+    /** {@code m}'s hardpoint on {@code body} as the hull stands now, bubble meters, into {@code out}. */
+    static Vector2 muzzle(WeaponMountComponent m, Body body, Vector2 out) {
+        return CombatPhysics.toWorld(body, m.hardpoint.x, m.hardpoint.y, out);
+    }
+
     /**
-     * Works out {@code m}'s dodge lines on {@code target} into {@code out}, from the ship's track of it
+     * Works out the dodge lines on {@code target} of {@code m}, at {@code muzzle}, into {@code out}, from the ship's track of it
      * and the ship's own velocity {@code shipVel}: false with no track. The intercept is where a round
      * fired now meets the target holding its course; the ends sit either side of it, square to the
      * line of fire, by the target's half-width plus how far its best burn takes it in the flight time.
      */
-    boolean dodge(WeaponMountComponent m, Entity target, Vector2 shipVel, Dodge out) {
+    boolean dodge(WeaponMountComponent m, Vector2 muzzle, Entity target, Vector2 shipVel, Dodge out) {
         Entity ship = world.getPlayer();
         SensorComponent sensor = ship == null ? null : ship.getComponent(SensorComponent.class);
         Track track = sensor == null ? null : sensor.trackFor(target);
@@ -123,7 +136,7 @@ public class FireArcOverlay {
         WeaponDef def = m.def;
         ProjectileDef round = control.roundOf(def);
         float age = world.sensors.ageOf(track);
-        Vector2 at = track.positionAt(age, out.left).sub(m.muzzle);
+        Vector2 at = track.positionAt(age, out.left).sub(muzzle);
         Vector2 closing = track.velocityAt(age, out.right).sub(shipVel);
         float speed = round == null ? 0f : round.muzzleSpeed;
         float t = 0f;
@@ -135,7 +148,7 @@ public class FireArcOverlay {
         float radius = control.radiusOf(target), evasion = control.evasionOf(target);
         float aside = HitChance.BROADSIDE_SHARE * radius + 0.5f * evasion * t * t;
         tmp.set(out.intercept).nor().rotate90(1).scl(aside);
-        out.intercept.add(m.muzzle);
+        out.intercept.add(muzzle);
         out.left.set(out.intercept).add(tmp);
         out.right.set(out.intercept).sub(tmp);
         float beam = WeaponControlSystem.beamReach(def);
@@ -146,10 +159,10 @@ public class FireArcOverlay {
     }
 
     /** The arc's two edges, {@code length} out from the muzzle; nothing for a gun that turns all the way round. */
-    private static void edges(ShapeRenderer shapes, WeaponMountComponent m, float bodyAngle, float length) {
+    private static void edges(ShapeRenderer shapes, WeaponMountComponent m, Vector2 muzzle, float bodyAngle, float length) {
         if (m.def.firingArcDeg >= 360f) return;
         float half = 0.5f * m.def.firingArcDeg * MathUtils.degreesToRadians;
-        float x = m.muzzle.x, y = m.muzzle.y;
+        float x = muzzle.x, y = muzzle.y;
         shapes.setColor(EDGE);
         for (int side = -1; side <= 1; side += 2) {
             float a = bodyAngle + m.facing + side * half;
