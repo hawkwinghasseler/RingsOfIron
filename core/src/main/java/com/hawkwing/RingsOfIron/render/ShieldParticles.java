@@ -1,7 +1,6 @@
 package com.hawkwing.RingsOfIron.render;
 
 import com.badlogic.ashley.core.Entity;
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
@@ -36,10 +35,12 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
  * of them when raised. Each emitter's projector glows on the hull, toward orange as it heats.
  *
  * <p>Each frame: {@link #begin}, {@link #collect} every craft in view, {@link #end}; then
- * {@link #drawFlecks} with the hull art, so the light map lights them (those behind the hull's
- * plane first, {@code behind} true, and those in front after), and {@link #drawGlow} after the
- * light map, additively. The flecks follow the simulation's {@link ShieldCloudComponent}; they
- * show it and never feed back into it.
+ * {@link #drawUnder} before the hulls and decks, which cover it where they lie, and
+ * {@link #light} into the light map, so the shield's own light keeps what is under it bright;
+ * {@link #drawFlecks} (those in front) with the hull art, so the light map lights them; and
+ * {@link #drawGlow} after the light map, additively, over the hulls. Nothing is masked: what is
+ * below the hull's plane is drawn first and what is above it last. The flecks follow the
+ * simulation's {@link ShieldCloudComponent}; they show it and never feed back into it.
  */
 public final class ShieldParticles implements Disposable {
     /** Shield cyan, the emitter's color in the art. */
@@ -69,6 +70,14 @@ public final class ShieldParticles implements Disposable {
      * they rise toward it (alpha goes as the fraction of the way out to this power).
      */
     static final float INFILL_BOTTOM = 0.11f, INFILL_TOP = 0.05f, INFILL_EDGE = 3f;
+    /**
+     * The shield's light in the light map: this many lights round the bubble, each this far out
+     * from its center (a fraction of the way to the curve) and reaching this fraction of the
+     * curve's mean radius, at this strength with the whole cloud held. Enough to keep the infill
+     * under the hulls, which the light map would dim to starlight, about as bright as it is drawn.
+     */
+    static final int SHIELD_LIGHTS = 8;
+    static final float SHIELD_LIGHT_OUT = 0.8f, SHIELD_LIGHT_REACH = 0.9f, SHIELD_LIGHT = 0.55f;
     /** Rings the infill is drawn in, center to edge. */
     static final int INFILL_RINGS = 10;
     /** Areal density at which a region lights the bubble fully, kg/m^2. */
@@ -620,8 +629,7 @@ public final class ShieldParticles implements Disposable {
 
     /**
      * As {@link #collect(Entity, Body, ExteriorLighting)}; {@code onDeck}: drawn as its deck plan
-     * (the deck view), so its top infill is left out and what is below the hull's plane is kept
-     * off the deck.
+     * (the deck view), so its top infill is left out.
      */
     public void collect(Entity craft, Body body, ExteriorLighting light, boolean onDeck) {
         ShieldCloudComponent cloud = craft == null ? null : craft.getComponent(ShieldCloudComponent.class);
@@ -646,6 +654,34 @@ public final class ShieldParticles implements Disposable {
         if (onDeck) decked.add(craft);
     }
 
+    /**
+     * The shield's own light into {@code light}: {@link #SHIELD_LIGHTS} soft cyan lights round each
+     * collected craft's bubble, as bright as the share of its cloud held. The light map then lights
+     * what {@link #drawUnder} drew in space round the hull, and the hull's edge with it.
+     */
+    public void light(ExteriorLighting light) {
+        if (light == null) return;
+        for (ObjectMap.Entry<Entity, Body> e : drawn) {
+            Swarm sw = swarms.get(e.key);
+            ShieldCloudComponent cloud = e.key.getComponent(ShieldCloudComponent.class);
+            if (sw == null || cloud == null) continue;
+            float held = cloud.capacity > 0f ? Math.min(1f, cloud.cloud() / cloud.capacity) : 0f;
+            if (held <= 0.01f) continue;
+            ShieldPerimeter per = cloud.perimeter;
+            curveOf(sw, per);
+            int n = ShieldPerimeter.SAMPLES;
+            float mean = 0f;
+            for (int k = 0; k < n; k++) mean += (float) Math.hypot(sw.cx[k] - per.cx, sw.cy[k] - per.cy);
+            mean /= n;
+            for (int i = 0; i < SHIELD_LIGHTS; i++) {
+                int k = i * n / SHIELD_LIGHTS;
+                Vector2 w = CombatPhysics.toWorld(e.value, per.cx + (sw.cx[k] - per.cx) * SHIELD_LIGHT_OUT,
+                        per.cy + (sw.cy[k] - per.cy) * SHIELD_LIGHT_OUT, at);
+                light.add(w.x, w.y, SHIELD, SHIELD_LIGHT_REACH * mean, SHIELD_LIGHT * held);
+            }
+        }
+    }
+
     /** Forgets the craft not collected since {@link #begin}. */
     public void end() {
         for (ObjectMap.Entries<Entity, Swarm> it = swarms.entries(); it.hasNext; ) {
@@ -663,8 +699,7 @@ public final class ShieldParticles implements Disposable {
 
     /**
      * The flecks of every craft collected this frame into {@code batch} (begun, normal blending):
-     * those behind the hull's plane with {@code behind}, else those in front; those behind a craft
-     * on its deck are left to {@link #drawGlow}, which keeps them off the deck. They fade out as the
+     * those behind the hull's plane with {@code behind}, else those in front. They fade out as the
      * view zooms out ({@link #zoomFade}), and stay {@link #MIN_PIXELS} across while they show.
      */
     public void drawFlecks(Batch batch, boolean behind, float metersPerPixel) {
@@ -673,7 +708,6 @@ public final class ShieldParticles implements Disposable {
         if (fade <= 0f) return;
         textures();
         for (ObjectMap.Entry<Entity, Body> e : drawn) {
-            if (behind && decked.contains(e.key)) continue;
             Swarm sw = swarms.get(e.key);
             if (sw == null) continue;
             flecks(batch, e.value, sw, behind, metersPerPixel, fade);
@@ -701,33 +735,18 @@ public final class ShieldParticles implements Disposable {
     }
 
     /**
-     * The shield's own light, into {@code batch} (not begun, its projection set), additively: the
-     * bottom infill, kept off the hulls ({@code maskHulls} marks every collected craft's hull with 1
-     * in the stencil buffer; null draws it unmasked), and with it the flecks below a deck craft's
-     * plane; the top infill of craft not on their decks; the bubble's outline; packed flecks glowing
-     * by how dense their region is (those below the plane off the hull too); hits' flashes; and the
-     * emitters' projectors.
+     * What is below the hull's plane, into {@code batch} (not begun, its projection set), before
+     * the hulls and decks are drawn over it: the flecks behind the hull, then additively the bottom
+     * infill and the glow of the flecks behind. The light map dims it with the rest of space, and
+     * the shield's own {@link #light} brightens it again.
      */
-    public void drawGlow(Batch batch, float metersPerPixel, Runnable maskHulls) {
+    public void drawUnder(Batch batch, float metersPerPixel) {
         if (drawn.size == 0) return;
         textures();
         float fade = zoomFade(metersPerPixel);
-        boolean masked = maskHulls != null;
-        if (masked) {
-            maskHulls.run();
-            Gdx.gl.glEnable(GL20.GL_STENCIL_TEST);
-            Gdx.gl.glStencilFunc(GL20.GL_EQUAL, 0, 0xFF);
-            Gdx.gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
-        }
-        // Below the hull's plane: the flecks under a deck, then the light under every hull
-        if (fade > 0f && decked.size > 0) {
-            batch.begin();
-            for (ObjectMap.Entry<Entity, Body> e : drawn) {
-                Swarm sw = swarms.get(e.key);
-                if (sw != null && decked.contains(e.key)) flecks(batch, e.value, sw, true, metersPerPixel, fade);
-            }
-            batch.end();
-        }
+        batch.begin();
+        drawFlecks(batch, true, metersPerPixel);
+        batch.end();
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
         batch.begin();
         for (ObjectMap.Entry<Entity, Body> e : drawn) {
@@ -737,8 +756,23 @@ public final class ShieldParticles implements Disposable {
             infill(batch, e.value, cloud, sw, INFILL_BOTTOM);
             if (fade > 0f) glowFlecks(batch, e.value, sw, true, metersPerPixel, fade);
         }
-        batch.flush();
-        if (masked) Gdx.gl.glDisable(GL20.GL_STENCIL_TEST);
+        batch.end();
+        batch.setColor(Color.WHITE);
+        batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    /**
+     * The shield's own light over the hulls, into {@code batch} (not begun, its projection set),
+     * additively: the top infill of craft not on their decks; the bubble's outline; packed flecks
+     * in front of the hull glowing by how dense their region is; hits' flashes; and the emitters'
+     * projectors. What is below the hull's plane was drawn already ({@link #drawUnder}).
+     */
+    public void drawGlow(Batch batch, float metersPerPixel) {
+        if (drawn.size == 0) return;
+        textures();
+        float fade = zoomFade(metersPerPixel);
+        batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
+        batch.begin();
         for (ObjectMap.Entry<Entity, Body> e : drawn) {
             Swarm sw = swarms.get(e.key);
             ShieldCloudComponent cloud = e.key.getComponent(ShieldCloudComponent.class);

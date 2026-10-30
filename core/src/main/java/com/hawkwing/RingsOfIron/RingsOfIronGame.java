@@ -1610,18 +1610,22 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private void drawInterior(float delta) {
         Entity aboard = world.avatar.getAvatarShip();
         OrthographicCamera camera = viewports.getWorldCamera();
-        // The stars and the snow behind the decks; the decks' light map keeps to the decks
+        // The stars and the snow behind everything; the decks' light map keeps to the decks
         drawBackdrop(camera);
-        deckRenderer.draw(DeckRenderer.decksAround(aboard == null ? game.player : aboard, decks), camera, delta);
-        // Over the decks' light map, which would darken them to the dim deck ambient: lit as
-        // outside, the outside light map kept off the decks, which it would darken in turn
-        int glowFrom = lighting.glowSpots().size();
+        // Every other craft over the decks' light map, which would darken them to the dim deck
+        // ambient: lit as outside, the outside light map kept off the decks, which it would darken
+        // in turn. The decks themselves go down over their shields' undersides, under the rest
+        Array<Entity> around = DeckRenderer.decksAround(aboard == null ? game.player : aboard, decks);
+        int[] glowFrom = {0};
         exteriorLighting.age(delta);
-        exterior.drawBodies(camera, delta, decks, () -> deckRenderer.footprints(decks, camera));
+        exterior.drawBodies(camera, delta, decks, () -> deckRenderer.footprints(decks, camera), () -> {
+            deckRenderer.draw(around, camera, delta);
+            glowFrom[0] = lighting.glowSpots().size();
+        });
         // ...and the crew out on EVA from those other craft
         deckRenderer.drawOutside(decks, camera, delta);
         // Their navigation lights and running systems glow as outside; the decks' glowed already
-        lighting.renderGlow(batch, camera, 2.5f * viewports.getViewMeters() / 400f, glowFrom);
+        lighting.renderGlow(batch, camera, 2.5f * viewports.getViewMeters() / 400f, glowFrom[0]);
     }
 
     /** Where the avatar stands, world meters, or null when it is aboard nothing in the bubble. */

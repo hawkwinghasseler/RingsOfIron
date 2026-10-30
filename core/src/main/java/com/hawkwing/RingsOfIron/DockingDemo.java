@@ -139,7 +139,6 @@ public class DockingDemo extends ApplicationAdapter {
         Gdx.gl.glClearColor(0.02f, 0.02f, 0.05f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         shapes.setProjectionMatrix(camera.combined);
-        drawDecks();
         drawBodies();
         drawPorts();
         drawDoors();
@@ -225,12 +224,12 @@ public class DockingDemo extends ApplicationAdapter {
     }
 
     /**
-     * Hulls and everything in flight as the game draws them; on deck, every hull as its outline
-     * over the decks instead of its art.
+     * Hulls and everything in flight as the game draws them, over the decks ({@link #drawDecks})
+     * and the shields' undersides; on deck, every hull as its outline over the decks instead of its art.
      */
     private void drawBodies() {
         exterior.setHullArt(!demo.deckView);
-        exterior.draw(camera, viewMeters * camera.zoom / 400f, Math.min(Gdx.graphics.getDeltaTime(), 0.25f));
+        exterior.draw(camera, viewMeters * camera.zoom / 400f, Math.min(Gdx.graphics.getDeltaTime(), 0.25f), this::drawDecks);
     }
 
     /**
