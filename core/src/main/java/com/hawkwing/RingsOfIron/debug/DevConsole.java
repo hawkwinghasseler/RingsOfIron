@@ -93,6 +93,7 @@ public final class DevConsole {
         this.actions = new DebugActions(world, tools != null ? tools : new WorldDebug(world));
         this.console = reuse != null ? reuse : new ScriptConsole(DevConsole.class.getClassLoader());
         console.addStarImports("com.badlogic.ashley.core", "com.hawkwing.RingsOfIron.game", "com.hawkwing.RingsOfIron.debug",
+                "com.hawkwing.RingsOfIron.app",
                 "com.ringsofiron.aicrew", "com.ringsofiron.interiorgrid",
                 // Packages that took classes out of game in the refactor, so scripts still reach them
                 "com.hawkwing.RingsOfIron.render", "com.hawkwing.RingsOfIron.wiring", "com.ringsofiron.coreengine",
