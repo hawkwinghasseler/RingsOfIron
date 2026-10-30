@@ -32,6 +32,7 @@ import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.GridLink;
+import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -98,6 +99,8 @@ public final class DeckRenderer {
     private final SpriteBatch batch;
     private final DeckArt deckArt;
     private final SceneLighting lighting;
+    /** How the decks' light gives way to the light outside at the hull; null for a hard edge. */
+    private DeckEdgeBlend edgeBlend;
     private Style style;
     private Pose pose;
     private boolean lightsOn = true;
@@ -465,6 +468,14 @@ public final class DeckRenderer {
      * Without a stencil buffer the map covers the view, as it did before.
      */
     private void renderLights(Array<Entity> decks, OrthographicCamera camera, boolean withPower) {
+        // Blended at the hull's edge: the map laid on by the weights, which the outside's pass uses after
+        if (edgeBlend != null && edgeBlend.begin()) {
+            edgeWeights(decks, camera);
+            edgeBlend.end();
+            lighting.prepareLights(camera, withPower);
+            edgeBlend.apply(lighting.lightMapTexture(), SceneLighting.ambient(withPower), true);
+            return;
+        }
         if (Gdx.graphics.getBufferFormat().stencil == 0) {
             lighting.renderLights(camera, withPower);
             return;
@@ -523,6 +534,61 @@ public final class DeckRenderer {
     /** Whether tile ({@code tx}, {@code ty}) of {@code g} is in its deck's {@link #footprints}. */
     private static boolean onFootprint(ShipGridComponent g, int tx, int ty) {
         return g.getTile(tx, ty) != null && !g.getTile(tx, ty).isVoid() && !EngineLayout.isCasing(g, tx, ty);
+    }
+
+    /** Sets how the decks' light gives way to the light outside at the hull ({@link DeckEdgeBlend}); null for a hard edge. */
+    public void setEdgeBlend(DeckEdgeBlend edgeBlend) {
+        this.edgeBlend = edgeBlend;
+    }
+
+    /**
+     * The weights of the decks' light against the light outside under {@code camera}, in red, into
+     * the buffer {@link DeckEdgeBlend#begin} bound: each half tile of every deck shaded between the
+     * weights at its corners ({@link DeckEdgeBlend#cornerWeights}). Sloped armor is left out of the
+     * footprint here, so it is lit from outside and the blend starts at the tiles behind it.
+     */
+    private void edgeWeights(Array<Entity> decks, OrthographicCamera camera) {
+        DeckEdgeBlend.Mode mode = DeckEdgeBlend.mode;
+        int n = DeckEdgeBlend.SUBDIVISIONS;
+        shapes.setProjectionMatrix(camera.combined);
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        for (Entity ship : decks) {
+            ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+            if (g == null || !pose.of(ship, at, angle)) continue;
+            boolean[][] on = new boolean[g.height][g.width];
+            for (int ty = 0; ty < g.height; ty++) {
+                for (int tx = 0; tx < g.width; tx++) {
+                    com.ringsofiron.interiorgrid.Tile t = g.getTile(tx, ty);
+                    on[ty][tx] = onFootprint(g, tx, ty) && (t.piece == null || t.piece.shape != HullPiece.Shape.WEDGE);
+                }
+            }
+            float[] w = DeckEdgeBlend.cornerWeights(on, mode.inset, mode.width);
+            int cw = g.width * n + 1;
+            float step = g.tileSize / n, ox = g.gridOriginLocal.x, oy = g.gridOriginLocal.y;
+            shapes.identity();
+            shapes.translate(at.x, at.y, 0f);
+            shapes.rotate(0f, 0f, 1f, angle[0] * MathUtils.radiansToDegrees);
+            for (int cy = 0; cy < g.height * n; cy++) {
+                for (int cx = 0; cx < g.width * n; cx++) {
+                    if (!on[cy / n][cx / n]) continue;
+                    float x0 = ox + cx * step, y0 = oy + cy * step, x1 = x0 + step, y1 = y0 + step;
+                    weightColor(c00, w[cy * cw + cx]);
+                    weightColor(c10, w[cy * cw + cx + 1]);
+                    weightColor(c01, w[(cy + 1) * cw + cx]);
+                    weightColor(c11, w[(cy + 1) * cw + cx + 1]);
+                    shapes.triangle(x0, y0, x1, y0, x1, y1, c00, c10, c11);
+                    shapes.triangle(x0, y0, x1, y1, x0, y1, c00, c11, c01);
+                }
+            }
+        }
+        shapes.end();
+        shapes.identity();
+    }
+
+    private final Color c00 = new Color(), c10 = new Color(), c01 = new Color(), c11 = new Color();
+
+    private static void weightColor(Color c, float w) {
+        c.set(w, w, w, 1f);
     }
 
     /** How far a tile's footprint reaches into the filled tiles beside it, in tiles. */

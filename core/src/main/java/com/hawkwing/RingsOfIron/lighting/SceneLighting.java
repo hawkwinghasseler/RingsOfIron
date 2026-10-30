@@ -209,6 +209,33 @@ public final class SceneLighting implements Disposable {
      * decks ({@code DeckRenderer}).
      */
     public void renderLights(OrthographicCamera camera, boolean withPower) {
+        setUpLights(withPower);
+        handler.setCombinedMatrix(camera);
+        handler.updateAndRender();
+    }
+
+    /**
+     * As {@link #renderLights}, but only into the light map, not over the screen: the caller lays
+     * {@link #lightMapTexture} on with {@link #ambient} itself (the deck edge's blend).
+     */
+    public void prepareLights(OrthographicCamera camera, boolean withPower) {
+        setUpLights(withPower);
+        handler.setCombinedMatrix(camera);
+        handler.update();
+        handler.prepareRender();
+    }
+
+    /** The light map {@link #prepareLights} drew, the lights only (no ambient). */
+    public com.badlogic.gdx.graphics.Texture lightMapTexture() {
+        return handler.getLightMapTexture();
+    }
+
+    /** The ambient under the light map, for a craft {@code withPower} or not. */
+    public static Color ambient(boolean withPower) {
+        return withPower ? AMBIENT_POWERED : AMBIENT_DARK;
+    }
+
+    private void setUpLights(boolean withPower) {
         ensureHandler();
         for (Iterator<Deck> it = decks.values().iterator(); it.hasNext(); ) {
             Deck d = it.next();
@@ -240,8 +267,6 @@ public final class SceneLighting implements Disposable {
         }
         for (int i = p; i < points.size; i++) points.get(i).setActive(false);
         for (int i = c; i < cones.size; i++) cones.get(i).setActive(false);
-        handler.setCombinedMatrix(camera);
-        handler.updateAndRender();
     }
 
     /**

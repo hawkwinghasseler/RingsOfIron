@@ -196,6 +196,35 @@ public final class ExteriorLighting implements Disposable {
     }
 
     /**
+     * As {@link #render(OrthographicCamera)}, but only into the light map, not over the screen:
+     * the caller lays {@link #lightMapTexture} on with {@link #ambient} itself (the deck edge's blend).
+     */
+    public void prepare(OrthographicCamera camera) {
+        prepare();
+        handler.setCombinedMatrix(camera);
+        handler.update();
+        handler.prepareRender();
+    }
+
+    /** As {@link #render(Matrix4, float, float, float)}, but only into the light map ({@link #prepare(OrthographicCamera)}). */
+    public void prepare(Matrix4 view, float x, float y, float radius) {
+        prepare();
+        handler.setCombinedMatrix(view, x, y, 2f * radius, 2f * radius);
+        handler.update();
+        handler.prepareRender();
+    }
+
+    /** The light map {@link #prepare(OrthographicCamera)} drew, the lights only (no ambient). */
+    public com.badlogic.gdx.graphics.Texture lightMapTexture() {
+        return handler.getLightMapTexture();
+    }
+
+    /** The ambient under the light map. */
+    public Color ambient() {
+        return ambient;
+    }
+
+    /**
      * Draws the light map under {@code view}, a projection that may turn (a view in one body's
      * frame); everything within {@code radius} meters of ({@code x}, {@code y}) is kept.
      */

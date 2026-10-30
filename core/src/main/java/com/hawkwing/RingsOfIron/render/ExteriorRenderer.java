@@ -113,6 +113,7 @@ public final class ExteriorRenderer implements Disposable {
     private final float[] polygon = new float[16];
     private final ThrusterFlames flames;
     private final ShieldParticles shields = new ShieldParticles();
+    private DeckEdgeBlend edgeBlend;
     /** Craft drawn with their hull art this frame, whose flames are drawn with art too. */
     private final ObjectSet<Entity> withArt = new ObjectSet<>();
     /** This frame's craft drawn as their decks instead (the deck view), with their hulls' bodies. */
@@ -146,6 +147,15 @@ public final class ExteriorRenderer implements Disposable {
     /** Whether craft with hull art are drawn with it (else every body is drawn as its outline). */
     public ExteriorRenderer setHullArt(boolean on) {
         hullArtOn = on;
+        return this;
+    }
+
+    /**
+     * Sets how the outside light map fades in at the edge of the deck view's decks, by the weights
+     * {@code DeckRenderer} drew this frame ({@link DeckEdgeBlend}); null for a hard edge.
+     */
+    public ExteriorRenderer setEdgeBlend(DeckEdgeBlend edgeBlend) {
+        this.edgeBlend = edgeBlend;
         return this;
     }
 
@@ -404,6 +414,21 @@ public final class ExteriorRenderer implements Disposable {
      * {@code unlit} draws (null for nothing).
      */
     private void renderLightMap(OrthographicCamera camera, Matrix4 view, Runnable unlit) {
+        // The decks drew this frame's weights: laid on by what of them is left, fading in at the hull's edge
+        if (unlit != null && edgeBlend != null && edgeBlend.ready()) {
+            Body body = frame == null ? null : frame.get();
+            if (body == null) {
+                exteriorLighting.prepare(camera);
+            } else {
+                Vector2 at = PhysicsManager.getPosition(body, tmp2);
+                float half = 0.5f * camera.zoom * (float) Math.hypot(camera.viewportWidth, camera.viewportHeight);
+                float cos = MathUtils.cos(body.getAngle()), sin = MathUtils.sin(body.getAngle());
+                float cx = camera.position.x, cy = camera.position.y;
+                exteriorLighting.prepare(view, at.x + cos * cx - sin * cy, at.y + sin * cx + cos * cy, half);
+            }
+            edgeBlend.apply(exteriorLighting.lightMapTexture(), exteriorLighting.ambient(), false);
+            return;
+        }
         if (unlit == null) {
             renderLightMap(camera, view);
             return;
