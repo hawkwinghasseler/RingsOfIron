@@ -138,7 +138,7 @@ public class DockingDemoScene {
         port(player, 0).active = next == Scene.ACTIVE;
         int[] home = insidePort(player, 0);
         avatar = CrewFactory.spawnPlayer(world.crew, player, "You", home[0], home[1]);
-        docking = new PlayerDocking(world, () -> player, message -> notice = message);
+        docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> player, message -> notice = message);
 
         switch (next) {
             case PASSIVE:

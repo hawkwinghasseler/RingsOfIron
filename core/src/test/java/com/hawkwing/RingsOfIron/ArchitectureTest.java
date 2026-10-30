@@ -43,12 +43,13 @@ class ArchitectureTest {
             Map.entry("Autopilot", Set.of("com.hawkwing.RingsOfIron.shell")),
             Map.entry("BerthVenting", Set.of("com.hawkwing.RingsOfIron.shell")),
             Map.entry("CaptainSafety", Set.of("com.hawkwing.RingsOfIron.shell")),
+            // GameWorld's prisoners hint, moved with the career wiring (Phase 1); Phase 2 moves KeyBindings.Action
+            Map.entry("CareerInstaller", Set.of("com.hawkwing.RingsOfIron.shell")),
             Map.entry("CrewMedical", Set.of("com.hawkwing.RingsOfIron.shell")),
             Map.entry("DamageControl", Set.of("com.hawkwing.RingsOfIron.shell")),
             Map.entry("DeckView", Set.of("com.badlogic.gdx.graphics")),
             Map.entry("FireArcOverlay", Set.of("com.badlogic.gdx.graphics")),
             Map.entry("FirstPlay", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("GameWorld", Set.of("com.hawkwing.RingsOfIron.shell")),
             Map.entry("HelmOrders", Set.of("com.hawkwing.RingsOfIron.shell")),
             Map.entry("HintRegistry", Set.of("com.hawkwing.RingsOfIron.shell")),
             Map.entry("NavOverlay", Set.of("com.badlogic.gdx.graphics")),
@@ -95,24 +96,14 @@ class ArchitectureTest {
             Map.entry("art-pipeline", Set.of()));
 
     /**
-     * Classes whose constructor takes the whole GameWorld today. Phase 1 narrows them to the
-     * collaborators they use, leaving about ten top-level coordinators; no class joins this list.
+     * The top-level coordinators whose constructor still takes the whole GameWorld: the debug tools,
+     * the HUD, the scenario, navigation (which builds its parts from it) and rescue. Everything else
+     * takes the services it uses (Phase 1); no class joins this list. GameWorld's own installers
+     * ({@code game.*Installer}), the constructor split by area, are not counted.
      */
     static final Set<String> TAKES_GAME_WORLD = Set.of(
-            "debug.DebugActions", "debug.DebugPicker", "debug.DevConsole", "debug.ScenarioSetup",
-            "game.AirWatch", "game.AudioLab", "game.Autopilot", "game.BerthVenting", "game.BoardingWork",
-            "game.Bridge", "game.BurnPlanner", "game.CaptainSafety", "game.CombatThreats", "game.ContractBoard",
-            "game.ContractMissions", "game.CrewCareer", "game.CrewHiring", "game.CrewMedical", "game.CrewRoster",
-            "game.DamageControl", "game.DeckTools", "game.Derelicts", "game.DistressBeacon", "game.ExteriorPick",
-            "game.FactionTension", "game.FieldRefits", "game.FireArcOverlay", "game.FirstPlay", "game.FlightField",
-            "game.FlightWarnings", "game.FreighterTraffic", "game.FurnishingPlacement", "game.FurnishingStore",
-            "game.GameHud", "game.GameScenario", "game.GunCrews", "game.HelmOrders", "game.HostileTraffic",
-            "game.JammedCollars", "game.LoopWiring", "game.MapManeuvers", "game.MarketTrade", "game.NavOverlay",
-            "game.NavTarget", "game.Navigation", "game.OpeningGuide", "game.PirateBase", "game.PirateBoarding",
-            "game.PirateSightings", "game.PirateUpkeep", "game.PlayerDocking", "game.PlayerGunnery",
-            "game.PlayerOrbitPath", "game.PlayerTransfer", "game.Prisoners", "game.RailsTrafficMap", "game.Rescue",
-            "game.ShieldDocking", "game.Shipyard", "game.ShipyardWork", "game.SilencedMarkers", "game.Spacewalks",
-            "game.StationInfirmary", "game.StationTraffic", "game.WorldDebug", "game.WorldEvents", "game.YardWork");
+            "debug.DebugActions", "debug.DebugPicker", "debug.DevConsole", "debug.ScenarioSetup", "game.AudioLab",
+            "game.GameHud", "game.GameScenario", "game.Navigation", "game.Rescue", "game.WorldDebug");
 
     @Test
     void gameLogicDoesNotUseTheShellRenderingOrGraphics() throws IOException {
@@ -189,6 +180,8 @@ class ArchitectureTest {
             String name = classes.relativize(file).toString().replace('\\', '/').replace('/', '.');
             name = name.substring(0, name.length() - ".class".length());
             if (!name.startsWith(base) || name.startsWith(base + "game.GameWorld")) continue;
+            // The world's constructor split by area: they wire the world they are given
+            if (name.startsWith(base + "game.") && name.endsWith("Installer")) continue;
             Class<?> c = Class.forName(name, false, GameWorld.class.getClassLoader());
             // Anonymous and local classes take the world only as a captured variable of their outer one
             if (c.isAnonymousClass() || c.isLocalClass() || c.isSynthetic()) continue;

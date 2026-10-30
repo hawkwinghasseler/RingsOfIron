@@ -27,11 +27,6 @@ public class BurnPlanner {
     private final PlayerOrbitInfo orbits;
     private ManeuverNodeComponent.Node selected;
 
-    public BurnPlanner(GameWorld world) {
-        this(world.universe, world.orbitalEvents, world::getPlayer,
-                new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
-    }
-
     public BurnPlanner(RailsUniverse universe, OrbitalEventSystem events, Supplier<Entity> player, PlayerOrbitInfo orbits) {
         this.universe = universe;
         this.events = events;

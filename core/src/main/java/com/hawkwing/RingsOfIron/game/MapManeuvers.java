@@ -10,6 +10,8 @@ import com.ringsofiron.uihud.providers.ManeuverPlannerProvider;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.orbital.rails.RailsUniverse;
 
 /**
  * ui-hud's orbit map planning over the game's {@link BurnPlanner} and {@link Navigation}: a click on the
@@ -26,18 +28,26 @@ public class MapManeuvers implements ManeuverPlannerProvider {
     /** Samples per span of path when finding the time nearest a point; refined after. */
     static final int SAMPLES = 360;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final PhysicsManager physics;
+    private final RailsUniverse universe;
+    private final BurnPlanner burnPlanner;
+    private final Navigation nav;
     private final PlayerOrbitPath path;
     private final PlayerOrbitInfo orbits;
     private final MapTrajectory trajectory;
     private final StateVector s = new StateVector();
     private final StateVector moon = new StateVector();
 
-    public MapManeuvers(GameWorld world, PlayerOrbitPath path) {
-        this.world = world;
+    public MapManeuvers(GameContext ctx, PhysicsManager physics, RailsUniverse universe, BurnPlanner burnPlanner, Navigation nav, PlayerOrbitPath path) {
+        this.ctx = ctx;
+        this.physics = physics;
+        this.universe = universe;
+        this.burnPlanner = burnPlanner;
+        this.nav = nav;
         this.path = path;
-        orbits = new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer);
-        trajectory = new MapTrajectory(world.universe);
+        orbits = new PlayerOrbitInfo(universe, physics, ctx::player);
+        trajectory = new MapTrajectory(universe);
     }
 
     // ------------------------------------------------------------------ planning
@@ -71,7 +81,7 @@ public class MapManeuvers implements ManeuverPlannerProvider {
         List<Span> out = new ArrayList<>();
         KeplerOrbit k = orbits.currentConic();
         if (k == null) return out;
-        double t = world.universe.now();
+        double t = universe.now();
         List<ManeuverNodeComponent.Node> nodes = shown();
         for (ManeuverNodeComponent.Node n : nodes) {
             out.add(new Span(k, t, n.time));
@@ -107,7 +117,7 @@ public class MapManeuvers implements ManeuverPlannerProvider {
                 out.add(new Span(leg.conic, leg.from, to, leg.frame, 0, 0));
             } else {
                 // Caught by the moon: its orbit there, drawn about where the moon is at the periapsis
-                world.universe.stateInFrame(leg.frame, frame, PlayerOrbitPath.ghostTime(leg), moon);
+                universe.stateInFrame(leg.frame, frame, PlayerOrbitPath.ghostTime(leg), moon);
                 out.add(new Span(leg.conic, leg.from, to, null, moon.x, moon.y));
             }
         }
@@ -121,9 +131,9 @@ public class MapManeuvers implements ManeuverPlannerProvider {
     /** The burns the map draws, soonest first: those not yet due. */
     List<ManeuverNodeComponent.Node> shown() {
         List<ManeuverNodeComponent.Node> out = new ArrayList<>();
-        ManeuverNodeComponent m = world.burns.nodes();
+        ManeuverNodeComponent m = burnPlanner.nodes();
         if (m == null) return out;
-        double now = world.universe.now();
+        double now = universe.now();
         for (ManeuverNodeComponent.Node n : m.nodes) if (n.time >= now) out.add(n);
         return out;
     }
@@ -162,7 +172,7 @@ public class MapManeuvers implements ManeuverPlannerProvider {
         k.conic.stateAt(t, s);
         double px = s.x + k.ox, py = s.y + k.oy;
         if (k.moving != null) {
-            world.universe.stateInFrame(k.moving, orbits.parent(), t, moon);
+            universe.stateInFrame(k.moving, orbits.parent(), t, moon);
             px += moon.x;
             py += moon.y;
         }
@@ -172,7 +182,7 @@ public class MapManeuvers implements ManeuverPlannerProvider {
     /** The time on the spans, no sooner than a burn can be planned, nearest (x, y), and how near; NaN with none. */
     private double[] nearest(List<Span> spans, double x, double y) {
         double[] best = {Double.NaN, Double.POSITIVE_INFINITY};
-        double earliest = world.universe.now() + BurnPlanner.MIN_LEAD;
+        double earliest = universe.now() + BurnPlanner.MIN_LEAD;
         for (Span span : spans) {
             if (span.to < earliest) continue;
             double[] r = nearest(span, Math.max(span.from, earliest), span.to, x, y);
@@ -185,19 +195,19 @@ public class MapManeuvers implements ManeuverPlannerProvider {
     public boolean addBurnNear(double x, double y, double tolerance) {
         double[] best = nearest(spans(), x, y);
         if (Double.isNaN(best[0]) || best[1] > tolerance) return false;
-        world.burns.addNodeAt(best[0]);
+        burnPlanner.addNodeAt(best[0]);
         return true;
     }
 
     @Override
     public void selectBurn(int index) {
         List<ManeuverNodeComponent.Node> nodes = shown();
-        if (index >= 0 && index < nodes.size()) world.burns.select(nodes.get(index));
+        if (index >= 0 && index < nodes.size()) burnPlanner.select(nodes.get(index));
     }
 
     @Override
     public boolean selectedBurn(double[] out) {
-        ManeuverNodeComponent.Node n = world.burns.selected();
+        ManeuverNodeComponent.Node n = burnPlanner.selected();
         if (n == null) return false;
         out[0] = n.prograde;
         out[1] = n.radial;
@@ -206,17 +216,17 @@ public class MapManeuvers implements ManeuverPlannerProvider {
 
     @Override
     public void setSelectedBurn(double prograde, double radial) {
-        world.burns.set(prograde, radial);
+        burnPlanner.set(prograde, radial);
     }
 
     @Override
     public void moveSelectedNear(double x, double y) {
-        ManeuverNodeComponent.Node n = world.burns.selected();
+        ManeuverNodeComponent.Node n = burnPlanner.selected();
         if (n == null) return;
         // Along the path the burns before it leave, from the last of them: through any moon it meets
         KeplerOrbit k = orbits.currentConic();
         if (k == null) return;
-        double from = world.universe.now();
+        double from = universe.now();
         List<ManeuverNodeComponent.Node> nodes = shown();
         int before = 0;
         for (ManeuverNodeComponent.Node b : nodes) {
@@ -228,65 +238,65 @@ public class MapManeuvers implements ManeuverPlannerProvider {
         List<Span> spans = new ArrayList<>();
         path(k, from, nodes, before, spans);
         double t = nearest(spans, x, y)[0];
-        if (!Double.isNaN(t)) world.burns.setTime(t);
+        if (!Double.isNaN(t)) burnPlanner.setTime(t);
     }
 
     @Override
     public void deleteSelected() {
-        world.burns.deleteSelected();
+        burnPlanner.deleteSelected();
     }
 
     @Override
     public void clearBurns() {
-        world.burns.clear();
-        world.notices.post("Every planned burn cleared");
+        burnPlanner.clear();
+        ctx.notices.post("Every planned burn cleared");
     }
 
     // ------------------------------------------------------------------ orders
 
     @Override
     public void warpToBurn() {
-        world.notices.post(world.nav.warpToNextBurn());
+        ctx.notices.post(nav.warpToNextBurn());
     }
 
     @Override
     public void helmFlyBurns() {
-        world.notices.post(world.nav.helm.give(HelmOrderComponent.Mode.FLY_BURNS));
+        ctx.notices.post(nav.helm.give(HelmOrderComponent.Mode.FLY_BURNS));
     }
 
     @Override
     public void autopilot() {
-        world.notices.post(world.nav.autopilot.toggle());
+        ctx.notices.post(nav.autopilot.toggle());
     }
 
     @Override
     public void nextTarget() {
-        world.notices.replace("Navigation target", world.nav.target.cycle(1));
+        ctx.notices.replace("Navigation target", nav.target.cycle(1));
     }
 
     @Override
     public void planToTarget() {
-        world.notices.post(world.nav.transfer.plan());
+        ctx.notices.post(nav.transfer.plan());
     }
 
     @Override
     public void acceptPlan() {
-        if (world.nav.transfer.proposal() != null) world.notices.post(world.nav.transfer.accept(world.burns));
+        if (nav.transfer.proposal() != null) ctx.notices.post(nav.transfer.accept(burnPlanner));
     }
 
     @Override
     public void discardPlan() {
-        if (world.nav.transfer.proposal() != null) world.notices.post(world.nav.transfer.discard());
+        if (nav.transfer.proposal() != null) ctx.notices.post(nav.transfer.discard());
     }
 
     @Override
     public boolean hasTarget() {
-        return world.nav.target.uuid() != null;
+        return nav.target.uuid() != null;
     }
 
     @Override
     public boolean hasProposal() {
-        return world.nav.transfer.proposal() != null;
+        return nav.transfer.proposal() != null;
     }
 
     // ------------------------------------------------------------------ the panel
@@ -296,7 +306,7 @@ public class MapManeuvers implements ManeuverPlannerProvider {
         KeplerOrbit k = orbits.currentConic();
         CelestialBodyComponent body = orbits.body();
         if (k == null || body == null) return "No orbit";
-        double now = world.universe.now();
+        double now = universe.now();
         StateVector at = orbits.state();
         StringBuilder out = new StringBuilder();
         out.append(String.format(Locale.ROOT, "Around %s: altitude %s, %,.0f m/s%n", body.name,
@@ -317,11 +327,11 @@ public class MapManeuvers implements ManeuverPlannerProvider {
 
     @Override
     public String burnText() {
-        ManeuverNodeComponent.Node n = world.burns.selected();
+        ManeuverNodeComponent.Node n = burnPlanner.selected();
         KeplerOrbit k = orbits.currentConic();
         CelestialBodyComponent body = orbits.body();
         if (n == null || k == null || body == null) return "";
-        double now = world.universe.now();
+        double now = universe.now();
         List<ManeuverNodeComponent.Node> nodes = shown();
         KeplerOrbit after = k;
         for (ManeuverNodeComponent.Node b : nodes) {
@@ -329,7 +339,7 @@ public class MapManeuvers implements ManeuverPlannerProvider {
             if (b == n) break;
         }
         double dv = Math.hypot(n.prograde, n.radial);
-        double accel = world.nav.mainEngineAccel();
+        double accel = nav.mainEngineAccel();
         StringBuilder out = new StringBuilder();
         out.append(String.format(Locale.ROOT, "Burn %d of %d in %s%n", nodes.indexOf(n) + 1, nodes.size(),
                 Navigation.formatTime(n.time - now)));
@@ -347,7 +357,7 @@ public class MapManeuvers implements ManeuverPlannerProvider {
         StringBuilder out = new StringBuilder();
         String trajectory = path.trajectorySummary();
         if (!trajectory.isEmpty()) out.append(trajectory);
-        for (String line : world.nav.readout()) {
+        for (String line : nav.readout()) {
             if (out.length() > 0) out.append('\n');
             out.append(line);
         }

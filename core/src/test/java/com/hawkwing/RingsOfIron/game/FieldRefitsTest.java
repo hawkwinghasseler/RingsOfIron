@@ -53,7 +53,7 @@ class FieldRefitsTest {
         run(60 * 5);
         hold = game.player.getComponent(CargoHoldComponent.class);
         assertEquals(1.0, hold.load(StationYard.PART + RAILGUN, 1, Salvage.CRATE_VOLUME, Salvage.CRATE_MASS), 1e-9);
-        yard = new YardWork(world);
+        yard = new YardWork(world.context, world.docking, world.combatDefs, world.yard, world.fieldRefits, world.furnishings);
         YardProvider.YardBoard board = new YardProvider.YardBoard();
         yard.collect(board);
         assertTrue(board.field, "no yard here: the crew's own refit");

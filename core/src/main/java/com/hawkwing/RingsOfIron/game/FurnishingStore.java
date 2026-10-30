@@ -20,6 +20,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Supplier;
+import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.stationsdocking.DockingSystem;
 
 /**
  * A station yard's furnishings counter: furniture and decor ({@code furnishings.toml}) the player
@@ -67,15 +69,21 @@ public class FurnishingStore extends EntitySystem {
         }
     }
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crew;
+    private final DockingSystem docking;
+    private final StationYard yard;
     private final Supplier<ModContext> content;
     private FurnishingCatalog catalog;
     private ModContext catalogFrom;
     private final List<Order> orders = new ArrayList<>();
     private double lastTime = Double.NaN;
 
-    public FurnishingStore(GameWorld world, Supplier<ModContext> content) {
-        this.world = world;
+    public FurnishingStore(GameContext ctx, CrewService crew, DockingSystem docking, StationYard yard, Supplier<ModContext> content) {
+        this.ctx = ctx;
+        this.crew = crew;
+        this.docking = docking;
+        this.yard = yard;
         this.content = content;
     }
 
@@ -101,7 +109,7 @@ public class FurnishingStore extends EntitySystem {
 
     /** What {@code station} asks for a new {@code type}. */
     public double price(FurnishingType type, Entity station) {
-        return type.price * world.yard.priceFactor.applyAsDouble(station);
+        return type.price * yard.priceFactor.applyAsDouble(station);
     }
 
     /** The pieces on their way to {@code ship}. */
@@ -129,7 +137,7 @@ public class FurnishingStore extends EntitySystem {
     public String order(Entity ship, Entity station, String typeId, float x, float y, float rotation) {
         FurnishingType type = catalog().get(typeId);
         if (type == null) return "The yard doesn't sell that";
-        if (station == null || !world.yard.canWork(ship, station)) return "No yard here";
+        if (station == null || !yard.canWork(ship, station)) return "No yard here";
         double price = price(type, station);
         TraderComponent trader = ship.getComponent(TraderComponent.class);
         double owed = price;
@@ -143,7 +151,7 @@ public class FurnishingStore extends EntitySystem {
 
     /** Moves {@code f}, aboard {@code ship}, to ({@code x}, {@code y}) turned {@code rotation}, for nothing; returns what the yard says. */
     public String move(Entity ship, Entity station, Furnishing f, float x, float y, float rotation) {
-        if (station == null || !world.yard.canWork(ship, station)) return "No yard here";
+        if (station == null || !yard.canWork(ship, station)) return "No yard here";
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
         if (grid == null || !Furnishings.all(grid).contains(f, true)) return "That isn't aboard";
         Furnishing moved = Furnishing.at(f.type, x, y, rotation);
@@ -173,7 +181,7 @@ public class FurnishingStore extends EntitySystem {
 
     /** The yard takes {@code f} off {@code ship} and pays for it; returns what the yard says. */
     public String sell(Entity ship, Entity station, Furnishing f) {
-        if (station == null || !world.yard.canWork(ship, station)) return "No yard here";
+        if (station == null || !yard.canWork(ship, station)) return "No yard here";
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
         if (grid == null || !Furnishings.remove(grid, f)) return "That isn't aboard";
         double paid = buyBack(f);
@@ -191,7 +199,7 @@ public class FurnishingStore extends EntitySystem {
 
     @Override
     public void update(float deltaTime) {
-        double now = world.engine.getSimSeconds();
+        double now = ctx.engine.getSimSeconds();
         double dt = Double.isNaN(lastTime) ? 0 : Math.max(0, now - lastTime);
         lastTime = now;
         Iterator<Order> it = orders.iterator();
@@ -201,19 +209,19 @@ public class FurnishingStore extends EntitySystem {
             if (o.done) it.remove();
         }
         // A fire aboard the player's ship that burned a furnishing away says so
-        Entity player = world.getPlayer();
+        Entity player = ctx.player();
         ShipGridComponent grid = player == null ? null : player.getComponent(ShipGridComponent.class);
         if (grid != null) {
             for (Furnishing f : grid.burntFurnishings) {
-                world.notices.post(capitalized(f.type.the()) + " burned", NoticeLog.Kind.WARNING);
+                ctx.notices.post(capitalized(f.type.the()) + " burned", NoticeLog.Kind.WARNING);
             }
             grid.burntFurnishings.clear();
         }
     }
 
     private void step(Order o, double dt) {
-        if (!world.docking.docked(o.ship, o.station)) {
-            world.notices.post("The yard kept " + o.furnishing.type.the() + ": you left before it came aboard");
+        if (!docking.docked(o.ship, o.station)) {
+            ctx.notices.post("The yard kept " + o.furnishing.type.the() + ": you left before it came aboard");
             close(o);
             return;
         }
@@ -234,10 +242,10 @@ public class FurnishingStore extends EntitySystem {
             CargoHoldComponent hold = o.station.getComponent(CargoHoldComponent.class);
             int x = hold != null && hold.bayTileCount() > 0 ? hold.bayX[0] : 0;
             int y = hold != null && hold.bayTileCount() > 0 ? hold.bayY[0] : 0;
-            boolean[][] reach = StationYard.reachable(grid, world.crew, o.station);
+            boolean[][] reach = StationYard.reachable(grid, crew, o.station);
             int[] drop = StationYard.nearest(reach, o.furnishing.tileX, o.furnishing.tileY);
             o.trip = new CarryTask(o.station, x, y, o.ship, drop[0], drop[1], new Trip(o));
-            ShipTaskBoardComponent board = world.crew.board(o.station);
+            ShipTaskBoardComponent board = crew.board(o.station);
             if (board == null || !board.post(o.trip)) o.trip = null;
         }
     }
@@ -250,12 +258,12 @@ public class FurnishingStore extends EntitySystem {
         close(o);
         if (grid == null) return;
         if (trader != null && trader.credits < o.price) {
-            world.notices.post("Can't pay for " + type.the() + ": the yard keeps it");
+            ctx.notices.post("Can't pay for " + type.the() + ": the yard keeps it");
             return;
         }
         String no = Furnishings.place(grid, o.furnishing);
         if (no != null) {
-            world.notices.post("The yard took " + type.the() + " back. " + no);
+            ctx.notices.post("The yard took " + type.the() + " back. " + no);
             return;
         }
         // A suit locker comes full
@@ -263,13 +271,13 @@ public class FurnishingStore extends EntitySystem {
             o.furnishing.suits.add(com.ringsofiron.interiorgrid.crew.Suit.full(type.holds));
         }
         if (trader != null) trader.credits -= o.price;
-        world.notices.post(String.format(Locale.ROOT, "%s is in place (%s)", capitalized(type.the()), credits(o.price)));
+        ctx.notices.post(String.format(Locale.ROOT, "%s is in place (%s)", capitalized(type.the()), credits(o.price)));
     }
 
     private void close(Order o) {
         o.done = true;
         if (o.trip != null && o.trip.isActive()) {
-            ShipTaskBoardComponent board = world.crew.board(o.station);
+            ShipTaskBoardComponent board = crew.board(o.station);
             if (board != null) board.cancel(o.trip);
         }
     }

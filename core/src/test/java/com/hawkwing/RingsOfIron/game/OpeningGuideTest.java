@@ -40,7 +40,7 @@ class OpeningGuideTest {
 
     @Test
     void walksFromTheBoardToTakingAJobAndThenStops() {
-        OpeningGuide guide = new OpeningGuide(world, () -> boardOpen, OpeningGuide.Step.OPEN_BOARD);
+        OpeningGuide guide = new OpeningGuide(world.contracts, world.guides, () -> boardOpen, OpeningGuide.Step.OPEN_BOARD);
         assertEquals("OPEN_BOARD", world.guides.openingStep, "a new game saves where it is");
         assertFalse(guide.update(), "nothing done yet");
 
@@ -76,7 +76,7 @@ class OpeningGuideTest {
     void guideTextNamesTheKeysThePlayerBound() {
         KeyBindings bindings = new KeyBindings();
         Function<Action, String> keys = HintRegistry.keyNames(bindings);
-        OpeningGuide guide = new OpeningGuide(world, () -> boardOpen, OpeningGuide.Step.OPEN_BOARD);
+        OpeningGuide guide = new OpeningGuide(world.contracts, world.guides, () -> boardOpen, OpeningGuide.Step.OPEN_BOARD);
         assertTrue(guide.text(keys).contains("J opens its mission board"), guide.text(keys));
         bindings.bind(Action.MISSIONS, Input.Keys.M);
         assertTrue(guide.text(keys).contains("M opens its mission board"), guide.text(keys));

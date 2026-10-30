@@ -18,6 +18,8 @@ import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 
 import java.util.function.Function;
+import com.ringsofiron.coreengine.GameEngine;
+import com.ringsofiron.stationsdocking.DockingSystem;
 
 /**
  * A short scripted first play over the starting scenario, one objective at a time: the ship starts
@@ -61,21 +63,41 @@ public final class FirstPlay {
     /** How far from Highport counts as clear of it, meters. */
     public static final float CLEAR_DISTANCE = 2_000f;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final DockingSystem docking;
+    private final BurnPlanner burns;
+    private final Navigation nav;
+    private final ContractBoard contracts;
+    private final StationYard yard;
+    private final Boarding boarding;
+    private final GuideProgress guides;
     private final GameScenario game;
     private Step step = Step.ACCEPT;
     private boolean logOpened;
     private final Vector2 a = new Vector2(), b = new Vector2();
 
-    private FirstPlay(GameWorld world, GameScenario game) {
-        this.world = world;
+    private FirstPlay(GameContext ctx, DockingSystem docking, BurnPlanner burns, Navigation nav, ContractBoard contracts,
+                      StationYard yard, Boarding boarding, GuideProgress guides, GameScenario game) {
+        this.ctx = ctx;
+        this.docking = docking;
+        this.burns = burns;
+        this.nav = nav;
+        this.contracts = contracts;
+        this.yard = yard;
+        this.boarding = boarding;
+        this.guides = guides;
         this.game = game;
+    }
+
+    private static FirstPlay in(GameWorld world, GameScenario game) {
+        return new FirstPlay(world.context, world.docking, world.burns, world.nav, world.contracts, world.yard, world.boarding,
+                world.guides, game);
     }
 
     /** Starts the first play on a new game: the player's ship latched to a free port of its size at Highport. */
     public static FirstPlay start(GameWorld world, GameScenario game) {
         game.beginCareer();
-        FirstPlay f = new FirstPlay(world, game);
+        FirstPlay f = in(world, game);
         world.guides.firstPlayStep = f.step.name();
         return f;
     }
@@ -84,7 +106,7 @@ public final class FirstPlay {
     public static FirstPlay resume(GameWorld world, GameScenario game) {
         String saved = world.guides.firstPlayStep;
         if (saved == null) return null;
-        FirstPlay f = new FirstPlay(world, game);
+        FirstPlay f = in(world, game);
         try {
             f.step = Step.valueOf(saved);
         } catch (IllegalArgumentException e) {
@@ -125,18 +147,18 @@ public final class FirstPlay {
         Step next = next();
         if (next == step) return null;
         step = next;
-        world.guides.firstPlayStep = step.name();
+        guides.firstPlayStep = step.name();
         if (step == Step.FIGHT) game.provokeRaider();
         return objective();
     }
 
     private Step next() {
-        Entity highport = world.engine.getEntity(game.highport);
-        boolean docked = highport != null && world.docking.dockedTo(game.player) == highport;
+        Entity highport = ctx.engine.getEntity(game.highport);
+        boolean docked = highport != null && docking.dockedTo(game.player) == highport;
         switch (step) {
             case ACCEPT:
                 if (!docked) return Step.FLY_CLEAR;
-                return world.contracts.active().isEmpty() ? step : Step.UNDOCK;
+                return contracts.active().isEmpty() ? step : Step.UNDOCK;
             case UNDOCK:
                 return docked ? step : Step.FLY_CLEAR;
             case FLY_CLEAR:
@@ -146,19 +168,19 @@ public final class FirstPlay {
                 return raiderBeaten() ? Step.BOARD : step;
             case BOARD:
                 if (docked) return Step.REPAIR;
-                if (game.raider == null || world.engine.getEcsEngine().getEntities().indexOf(game.raider, true) < 0
-                        || world.boarding.takenBy(game.raider, game.player)) return Step.DOCK;
+                if (game.raider == null || ctx.engine.getEcsEngine().getEntities().indexOf(game.raider, true) < 0
+                        || boarding.takenBy(game.raider, game.player)) return Step.DOCK;
                 return step;
             case DOCK:
                 return docked ? Step.REPAIR : step;
             case REPAIR:
                 if (!docked) return step;
-                return world.yard.repairing(game.player) || world.yard.damage(game.player).isEmpty() ? Step.NOTICES : step;
+                return yard.repairing(game.player) || yard.damage(game.player).isEmpty() ? Step.NOTICES : step;
             case NOTICES:
                 return logOpened ? Step.PLAN : step;
             case PLAN:
-                ManeuverNodeComponent nodes = world.burns.nodes();
-                return world.nav.transfer.proposal() != null || (nodes != null && nodes.nodes.size > 0) ? Step.DONE : step;
+                ManeuverNodeComponent nodes = burns.nodes();
+                return nav.transfer.proposal() != null || (nodes != null && nodes.nodes.size > 0) ? Step.DONE : step;
             default:
                 return step;
         }
@@ -166,7 +188,7 @@ public final class FirstPlay {
 
     /** True once the raider can no longer fight: gone, disabled or surrendered, its reactor down, or every gun silenced. */
     boolean raiderBeaten() {
-        return beaten(world, game.raider);
+        return beaten(ctx.engine, game.raider);
     }
 
     /**
@@ -175,7 +197,12 @@ public final class FirstPlay {
      * by itself), unless it has surrendered, been abandoned or wrecked, nor while its crew are about to reset a short.
      */
     public static boolean beaten(GameWorld world, Entity ship) {
-        if (ship == null || world.engine.getEcsEngine().getEntities().indexOf(ship, true) < 0) return true;
+        return beaten(world.engine, ship);
+    }
+
+    /** {@link #beaten(GameWorld, Entity)}, in {@code engine}'s world. */
+    public static boolean beaten(GameEngine engine, Entity ship) {
+        if (ship == null || engine.getEcsEngine().getEntities().indexOf(ship, true) < 0) return true;
         DisabledComponent.Reason why = ShipDisablement.reason(ship);
         if (why != null && why.sticky()) return true;
         // A stun passes, so a ship dark only for it isn't beaten; a broken hull or a downed crew is,
@@ -217,7 +244,7 @@ public final class FirstPlay {
     }
 
     private float distance(Entity ship, Entity station) {
-        Body s = bodyOf(ship), t = station == null ? null : world.docking.bodyOf(station);
+        Body s = bodyOf(ship), t = station == null ? null : docking.bodyOf(station);
         if (s == null || t == null) return 0f;
         return PhysicsManager.getPosition(s, a).dst(PhysicsManager.getPosition(t, b));
     }

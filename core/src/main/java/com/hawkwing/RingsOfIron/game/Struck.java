@@ -15,13 +15,23 @@ final class Struck {
 
     /** True if {@code ship} has struck its colours: surrendered, or a fallen base's silenced battery. */
     static boolean struck(GameWorld world, Entity ship) {
+        return struck(world.pirateBase, ship);
+    }
+
+    /** {@link #struck(GameWorld, Entity)}, with the pirates' base, or null before there is one. */
+    static boolean struck(PirateBase base, Entity ship) {
         if (ship == null) return false;
-        return ShipDisablement.reason(ship) == DisabledComponent.Reason.SURRENDERED || silencedBattery(world, ship);
+        return ShipDisablement.reason(ship) == DisabledComponent.Reason.SURRENDERED || silencedBattery(base, ship);
     }
 
     /** True if {@code ship} is one of a fallen base's gun platforms. */
     static boolean silencedBattery(GameWorld world, Entity ship) {
+        return silencedBattery(world.pirateBase, ship);
+    }
+
+    /** {@link #silencedBattery(GameWorld, Entity)}, with the pirates' base, or null before there is one. */
+    static boolean silencedBattery(PirateBase base, Entity ship) {
         HostileComponent h = ship == null ? null : ship.getComponent(HostileComponent.class);
-        return h != null && world.pirateBase != null && world.pirateBase.silenced(h.displayName);
+        return h != null && base != null && base.silenced(h.displayName);
     }
 }

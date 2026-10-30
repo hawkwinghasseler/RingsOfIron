@@ -220,7 +220,7 @@ public class InteriorDemo extends ApplicationAdapter {
             }
         });
         DeckTools.Tool was = tools == null ? DeckTools.Tool.WOUND : tools.tool;
-        tools = new DeckTools(lab.world, lab.debug);
+        tools = new DeckTools(lab.world.crew, lab.debug);
         tools.tool = was;
         // Where a warhead went off or a missile was shot down, a flash as in the game
         lab.world.combatEvents.detonations.add((signal, boom) -> exterior.explode(boom.worldPoint.x, boom.worldPoint.y));

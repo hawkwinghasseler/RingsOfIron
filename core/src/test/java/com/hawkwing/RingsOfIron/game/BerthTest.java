@@ -79,7 +79,7 @@ class BerthTest {
         run(60);
         String said = world.yard.orderRepairs(game.player, highport);
         assertTrue(world.yard.repairing(game.player), said);
-        PlayerDocking docking = new PlayerDocking(world, () -> game.player, s -> {});
+        PlayerDocking docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, s -> {});
         assertTrue(docking.undock().startsWith("Undocked from Highport"), "U undocks");
         assertFalse(world.yard.repairing(game.player), "undocking on purpose calls the work off at once");
         assertTrue(yardSaid("Undocked: the yard work is called off"));

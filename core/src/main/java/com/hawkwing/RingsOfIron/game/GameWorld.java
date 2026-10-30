@@ -1,28 +1,16 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
-import com.badlogic.ashley.core.EntityListener;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Disposable;
-import com.ringsofiron.aicrew.CrewDoors;
-import com.ringsofiron.aicrew.CrewFactory;
-import com.ringsofiron.aicrew.CrewSaveParticipant;
 import com.ringsofiron.aicrew.CrewService;
-import com.ringsofiron.aicrew.GridPositionComponent;
-import com.ringsofiron.aicrew.pilot.NpcCombatSystem;
-import com.ringsofiron.aicrew.pilot.NpcPilotSystem;
 import com.ringsofiron.aicrew.pilot.PilotReference;
 import com.ringsofiron.audiospatial.AudioManager;
-import com.ringsofiron.audiospatial.ImpactAudio;
 import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
 import com.ringsofiron.audiospatial.backend.SoundEventDef;
-import com.ringsofiron.audiospatial.systems.AcousticOcclusionSystem;
-import com.ringsofiron.audiospatial.systems.AudioUpdateSystem;
-import com.ringsofiron.audiospatial.systems.InteriorHazardAudioSystem;
 import com.ringsofiron.combatsys.defs.CombatDefs;
-import com.ringsofiron.combatsys.save.CombatSaveParticipant;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.modding.ShipWeaponsAssembler;
 import com.ringsofiron.combatsys.systems.BallisticsSystem;
@@ -36,58 +24,31 @@ import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.TickProfiler;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
-import com.ringsofiron.interiorgrid.CargoHoldComponent;
-import com.ringsofiron.interiorgrid.GridHazardSystem;
 import com.ringsofiron.interiorgrid.InteriorGridData;
-import com.ringsofiron.interiorgrid.InteriorGridSaveParticipant;
-import com.ringsofiron.interiorgrid.InteriorHazardWarpGuard;
-import com.ringsofiron.interiorgrid.LifeSupportSystem;
 import com.ringsofiron.interiorgrid.MaterialTable;
-import com.ringsofiron.interiorgrid.PowerRoutingSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
-import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
-import com.ringsofiron.interiorgrid.SubsystemComponent;
-import com.ringsofiron.interiorgrid.TankSupply;
-import com.ringsofiron.macrosim.MacroSaveParticipant;
-import com.ringsofiron.macrosim.MacroSimSystem;
 import com.ringsofiron.macrosim.MacroSimulation;
 import com.ringsofiron.macrosim.economy.DefRegistryCommodityCatalog;
 import com.ringsofiron.macrosim.economy.DefaultCommodityCatalog;
-import com.ringsofiron.macrosim.rails.orbital.OrbitalRailsModel;
-import com.ringsofiron.moddingdata.DefRegistry;
 import com.ringsofiron.moddingdata.ModContext;
 import com.ringsofiron.moddingdata.ModTrustPolicy;
 import com.ringsofiron.moddingdata.ModdingBootstrap;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.events.OrbitalEvent;
 import com.ringsofiron.moddingdata.defs.SoundEventData;
-import com.ringsofiron.orbital.events.OrbitalEventQueue;
 import com.ringsofiron.orbital.events.OrbitalEventSystem;
 import com.ringsofiron.orbital.rails.RailsUniverse;
 import com.ringsofiron.orbital.warp.BubbleHandoff;
-import com.ringsofiron.orbital.warp.EncounterPredictor;
 import com.ringsofiron.orbital.warp.TimeWarpController;
-import com.ringsofiron.physicsexterior.CollisionCategories;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.physicsexterior.OrbitalAnchorBridge;
-import com.ringsofiron.physicsexterior.PhysicsSaveParticipant;
 import com.ringsofiron.physicsexterior.RailsBubbleHandoff;
 import com.ringsofiron.physicsexterior.anchor.KeplerAnchor;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
-import com.ringsofiron.physicsexterior.modding.ShipPhysicsAssembler;
-import com.ringsofiron.physicsexterior.systems.FlightControlSystem;
-import com.ringsofiron.physicsexterior.systems.FloatingOriginSystem;
-import com.ringsofiron.physicsexterior.systems.KinematicTransientSystem;
-import com.ringsofiron.physicsexterior.systems.PhysicsUpdateSystem;
-import com.ringsofiron.physicsexterior.systems.TidalGravitySystem;
 import com.ringsofiron.stationsdocking.BerthingSystem;
-import com.ringsofiron.stationsdocking.DockingBubbleHandoff;
 import com.ringsofiron.stationsdocking.DockingData;
 import com.ringsofiron.stationsdocking.DockingSystem;
-import com.ringsofiron.stationsdocking.StationBodies;
-import com.ringsofiron.stationsdocking.StationComponent;
-import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -233,6 +194,8 @@ public class GameWorld implements Disposable {
     public final CrewAudio crewAudio;
     /** What the game tells the player: post here rather than keeping a list of your own. */
     public final NoticeLog notices;
+    /** The engine, the player's ship, the notices and the key hints: what most managers read. */
+    public final GameContext context;
     /** Key hints by context, for the bottom line and the F1 controls panel. */
     public final HintRegistry hints = HintRegistry.withDefaults();
     /** Low propellant and inbound missiles, as notices. */
@@ -256,17 +219,17 @@ public class GameWorld implements Disposable {
     /** A station's infirmary, treating the player's wounded at its berth (round 8). */
     public final StationInfirmary infirmary;
     /** The distress beacon: a stranded ship towed home. */
-    public final DistressBeacon beacon = new DistressBeacon(this);
+    public final DistressBeacon beacon;
     /** First Play's and the opening walkthrough's progress, saved with the game. */
     public final GuideProgress guides = new GuideProgress();
 
     private final ImmutableArray<Entity> players;
     private final OrbitalAnchorBridge anchorBridge;
     private final Modules modules;
-    private final SwitchableCommodityCatalog commodities = new SwitchableCommodityCatalog(new DefaultCommodityCatalog());
+    final SwitchableCommodityCatalog commodities = new SwitchableCommodityCatalog(new DefaultCommodityCatalog());
     private ModContext content;
-    /** What ships collide on, once content has loaded. */
-    private ShipHulls hulls;
+    /** Ships' bodies and mass from their layouts and the loaded data. */
+    private final ShipFactory ships;
     private Crash crash;
     /** Frames after a load that rails warp still waits for the player's latch to weld again. */
     static final int LOAD_SETTLE_FRAMES = 120;
@@ -279,8 +242,6 @@ public class GameWorld implements Disposable {
     /** What a load starts again from scratch before the save is read, in the order registered. */
     private final List<Resettable> resettables = new ArrayList<>();
     private final double[] trueState = new double[4];
-    /** Materials from the loaded data, for ships' mass. */
-    private MaterialTable materials;
 
     public GameWorld() {
         this(new Modules());
@@ -294,336 +255,83 @@ public class GameWorld implements Disposable {
         notices = new NoticeLog(engine::getSimSeconds);
         // The old game's notices are not this one's (the log is not saved)
         addResettable(notices::clear);
-        warnings = new FlightWarnings(this);
-
+        context = new GameContext(engine, this::getPlayer, this::getContent, notices, hints);
+        warnings = new FlightWarnings(context);
         physics = new PhysicsManager();
-
-        // ai-crew's NPC pilot sets flight controls before physics reads them.
-        PilotReference pilotFrame = modules.pilotReference != null
-                ? modules.pilotReference : new TrueStatePilotReference(physics, engine::getSimSeconds);
-        engine.addSystem(new NpcPilotSystem(pilotFrame));
-        // ... and its combat pilot flies NPC ships in a fight, dodging combat-sys missiles.
-        NpcCombatSystem npcCombat = new NpcCombatSystem();
-        npcCombat.setThreatSensor(new CombatThreatSensor(engine.getEcsEngine()));
-        engine.addSystem(npcCombat);
-
-        // physics-exterior
-        engine.addSystem(new FlightControlSystem(physics));
-        // The anchor carries the planet's main pull; bubble bodies feel only the tidal difference.
-        engine.addSystem(new TidalGravitySystem(physics));
-        engine.addSystem(new PhysicsUpdateSystem(physics));
-        // Fast passes and stations: drawn and swept for collisions while they stay on rails.
-        // Stations with an interior get a kinematic body shaped like it, which ships dock with.
-        KinematicTransientSystem transients = new KinematicTransientSystem(physics);
-        transients.setBodyFactory(new StationBodies(physics));
-        engine.addSystem(transients);
-        engine.addSystem(new FloatingOriginSystem(physics));
-
-        // stations-docking: magnets, collars and latches, after the bodies exist.
-        docking = new DockingSystem(physics, engine.getUuidRegistry());
-        engine.addSystem(docking);
-        // A collar still drawing a ship in, or a latch still settling, holds rails warp back.
-        engine.addRailsWarpGuard(docking::railsWarpBlockedReason);
-        // A loaded game's ships get their bodies back in its first frame and a docked ship its weld in
-        // the next; warping before then pulled the pair apart and let the air out of both
-        engine.addRailsWarpGuard(this::loadingRefusal);
-        // Craft that fly themselves in to dock and away again, on their own thrusters
-        berthing = new BerthingSystem(docking, engine.getUuidRegistry());
-        engine.addSystem(berthing);
-        // ... and ships crossing the bubble on their rails plan keep out of the stations and berths
-        engine.addSystem(new TransitClearance(docking));
-
-        // orbital-mechanics
-        universe = new RailsUniverse(engine);
-        orbitalEvents = new OrbitalEventSystem(universe, new OrbitalEventQueue());
-        engine.addSystem(orbitalEvents);
-        engine.getSerializationService().addParticipant(orbitalEvents);
-        // Keeps orbital's copy of the bubble anchor in step with physics, both ways.
-        anchorBridge = new OrbitalAnchorBridge(physics, orbitalEvents);
-        EncounterPredictor encounters = new EncounterPredictor(engine.getEcsEngine(), universe);
-        // A docked pair goes onto the rails as one body and comes back latched.
-        BubbleHandoff bubble = new DockingBubbleHandoff(modules.bubble != null
-                ? modules.bubble : new RailsBubbleHandoff(physics, engine.getEcsEngine()),
-                docking, physics, engine.getEcsEngine(), engine.getUuidRegistry());
-        timeWarp = new TimeWarpController(engine, bubble, orbitalEvents,
-                universe, encounters, this::getPlayer);
-        orbitalEvents.impacts.add((signal, event) -> onImpact(event));
-        // Planned burns: the event system fires them on rails, this system in the bubble.
-        engine.addSystem(new BubbleBurnSystem(physics, universe));
-        burns = new BurnPlanner(this);
-
-        // macro-sim, on the same rails and event system. Prediction runs inline so warp drop-out
-        // always sees a current forecast; the bubble pauses while rails warp has it collapsed.
-        GameBubbleGateway bubbleGateway = new GameBubbleGateway(physics, engine.getUuidRegistry());
-        // Pirates and patrols come into the bubble on their own layouts
-        bubbleGateway.setShipBodies(this::buildShipBody);
-        macroSim = new MacroSimulation(engine, new OrbitalRailsModel(engine, universe, orbitalEvents),
-                bubbleGateway, commodities, null, engine.getSimSeconds());
-        macroSim.bubble().addListener(new NpcBubblePilots(engine.getUuidRegistry()));
-        // Freighters in the bubble dock at their stations under their own power, and leave the same way
-        FreighterTraffic traffic = new FreighterTraffic(this);
-        macroSim.bubble().addListener(traffic);
-        engine.addSystem(traffic);
-        // Economy, fleet and bubble state; restores its own components on load.
-        MacroSaveParticipant.register(macroSim, engine.getSerializationService());
-        engine.addSystem(new MacroSimSystem(macroSim, engine));
-        timeWarp.addDropOutSource(macroSim::nextDropOutTime);
-        timeWarp.changes.add((signal, change) -> macroSim.setBubbleSuspended(change.rails));
-
-        // interior-grid
-        engine.addSystem(new GridHazardSystem());
-        engine.addSystem(new PowerRoutingSystem());
-        engine.addSystem(new LifeSupportSystem());
-        // Thrust and planned burns burn propellant from the tanks piped to the engines
-        engine.addSystem(new PropellantFeed());
-        // ...and the engines themselves set how hard the ship can push, less as they take damage
-        engine.addSystem(new EngineThrust(this::getContent));
-        // ...and the RCS blocks on the hull how hard it turns, strafes and backs up
-        engine.addSystem(new RcsThrust());
-        orbitalEvents.burnBudget = (ship, dv) -> {
-            ShipGridComponent.MassProperties m = shipMass(ship);
-            return m == null ? dv : PropellantFeed.payForBurn(ship, m.mass, dv);
-        };
-        engine.getSerializationService().addParticipant(new InteriorGridSaveParticipant(engine));
-        // Traded goods sit in the ships' cargo bays and weigh them down
-        engine.addSystem(new ShipCargo(this::shipMass));
-        // ...and so do the tanks, lighter as they run down
-        engine.addSystem(new TankMass(this::shipMass));
-        // Watches whichever ship the player is flying now.
-        InteriorHazardWarpGuard hazards = new InteriorHazardWarpGuard(null);
-        engine.addRailsWarpGuard(() -> {
-            Entity player = getPlayer();
-            hazards.setGrid(player == null ? null : player.getComponent(ShipGridComponent.class));
-            return hazards.railsWarpBlockedReason();
-        });
-
-        // ai-crew
-        crew = CrewFactory.install(engine.getEcsEngine());
-        CrewSaveParticipant.install(crew, engine);
-        // A ship taken out of the world (crashed on the rails, lost, wrecked) takes whoever is aboard
-        // and its systems with it, so no crew go on working on a ship that is gone
-        engine.getEcsEngine().addEntityListener(Family.all(ShipGridComponent.class).get(), new EntityListener() {
-            @Override
-            public void entityAdded(Entity entity) {
-            }
-
-            @Override
-            public void entityRemoved(Entity ship) {
-                if (!ship.isRemoving() && !ship.isScheduledForRemoval()) return; // only its layout went (a refit)
-                ImmutableArray<Entity> all = crew.crewEntities();
-                List<Entity> aboard = new ArrayList<>();
-                for (int i = 0; i < all.size(); i++) {
-                    GridPositionComponent p = crew.position(all.get(i));
-                    if (p != null && p.ship == ship) aboard.add(all.get(i));
-                }
-                for (Entity e : aboard) {
-                    crew.releaseTask(e);
-                    engine.getEcsEngine().removeEntity(e);
-                }
-                // Only those still in the world: one already taken out (Shipyard.retire) went back to
-                // the engine's pool, and removing it again would hand it out twice
-                ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
-                if (registry == null) return;
-                ImmutableArray<Entity> systems = engine.getEcsEngine().getEntitiesFor(Family.all(SubsystemComponent.class).get());
-                for (Entity system : registry.subsystems) {
-                    if (system != null && !system.isScheduledForRemoval() && systems.contains(system, true)) {
-                        engine.getEcsEngine().removeEntity(system);
-                    }
-                }
-            }
-        });
-        // Crews fight by their factions' wars and the player's standing; the career saves with the game
-        standing = new FactionStanding(this::getPlayer);
-        standing.clock = engine::getSimSeconds;
-        engine.getSerializationService().addParticipant(standing);
-        // A save from before the career was saved loads as a new one: rank 0 with the sponsor
-        addResettable(standing);
-        budget = new ServiceBudget(standing, this::getPlayer, engine::getSimSeconds);
-        engine.addSystem(budget);
-        crew.hostility = standing::hostile;
-        docking.events.add((signal, e) -> standing.onDockingEvent(e));
-        // A port door held shut for pressure opens for crew walking through it
-        docking.crossing = link -> CrewDoors.crossingPort(crew, link);
-        docking.clearance = (station, vessel) -> {
-            if (!station.getComponent(StationComponent.class).grantsClearance) return "";
-            String refused = standing.refusal(station, vessel);
-            return refused != null ? refused : tensionRefusal(station, vessel);
-        };
-        forcing = new DoorForcing(docking, crew, engine::getSimSeconds);
-        engine.addSystem(forcing);
-        cargoSettlement = new SalvageSettlement(new MarketCargo(macroSim), commodities,
-                this::partPrice);
-        // Freighters' loads only move goods: macro-sim settles their trades
-        cargo = new CargoLoading(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds,
-                new FreighterCargo(cargoSettlement, commodities));
-        engine.addSystem(cargo);
-        avatar = new AvatarInteractor(engine.getEcsEngine());
-        // Who sits at the player's consoles, and who flies the ship when the player isn't at the helm
-        bridge = new Bridge(this);
-        engine.addSystem(bridge);
-
-        // combat-sys
-        combatEvents = new CombatEvents();
-        combatDefs = CombatDefs.createDefault();
-        ballistics = new BallisticsSystem(physics, combatEvents);
-        // Rounds and missiles fall through the same tidal field as the Box2D bodies.
-        ballistics.setTidalField(physics.getTidalField()::accelAt);
-        engine.getSerializationService().addParticipant(new CombatSaveParticipant(engine));
-        // stations-docking: the yards fit weapons from combat-sys's defs
-        yard = new StationYard(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, combatDefs);
-        engine.addSystem(yard);
-        // Mission boards, and the player's contracts checked against the world; saved with the game
-        contracts = new ContractBoard(this);
-        engine.addSystem(contracts);
-        engine.getSerializationService().addParticipant(contracts);
-        addResettable(contracts);
-        engine.getSerializationService().addParticipant(guides);
-        // ...outside First Play and the opening walkthrough
-        addResettable(guides);
-        // Pods and wrecks on the rails, for rescues and recoveries; saved with the game
-        derelicts = new Derelicts(this);
-        addResettable(derelicts);
-        // NPC freighters fill their tanks wherever they dock
-        engine.addSystem(new FreighterRefueling(docking::dockedTo));
-        // Each physics tick: sensors fix, gunners aim and fire, missiles steer, then rounds fly
-        // and hit, then hits resolve and beams burn. Their step listeners run in the order added here.
-        sensors = new SensorTrackingSystem(physics, modules.combatSeed + 1);
-        missiles = new MissileGuidanceSystem(physics, combatEvents, combatDefs, ballistics, sensors);
-        weaponControl = new WeaponControlSystem(physics, combatEvents, combatDefs, ballistics, missiles, sensors,
-                modules.combatSeed + 2);
-        // The crew aboard set each ship's gunnery and tracking skill; on the player's ship, gun by gun,
-        // with whoever mans each gun or the weapons console, and those guns fire by themselves
-        CrewStationSync stations = new CrewStationSync();
-        stations.gunsByGun = ship -> ship == getPlayer();
-        engine.addSystem(stations);
-        gunCrews = new GunCrews(this);
-        engine.addSystem(gunCrews);
-        engine.addSystem(sensors);
-        // Shots and beams draw on the ship's power circuits.
-        weaponControl.setPower(new ShipWeaponPower());
-        // Round 7: other ships' gunners hold fire with a ship in the way (a pirate emptied its
-        // magazine into a surrendered wingmate); the player's crew, firing at will, hold for any
-        // but a hostile one
-        weaponControl.setHoldFire((shooter, blocker) -> shooter != getPlayer() || !GunCrews.hostile(this, blocker));
-        // Round 9: the player's guns firing at will (point defense, crewed guns) never take a struck ship;
-        // round 10: nor a fallen base's silenced battery (they went on hitting Den batteries 23 and 24)
-        weaponControl.setSpared((shooter, target) -> shooter == getPlayer() && Struck.struck(this, target));
-        // A struck ship gives way to whoever docks: no clearance to ask, and no door to force before boarding
-        docking.yields = e -> e != getPlayer() && Struck.struck(this, e);
-        // Round 10: nor do its missiles' seekers lock a fallen base's battery they weren't fired at
-        // (part 6's window: a heavy missile fired at a raider burst on Den battery 23). Only the
-        // batteries: sparing surrendered ships too moved fights before the frigate (seed 2026's ace)
-        missiles.setSpared((shooter, target) -> shooter == getPlayer() && Struck.silencedBattery(this, target));
-        engine.addSystem(weaponControl);
-        engine.addSystem(missiles);
-        engine.addSystem(ballistics);
-        // Shield clouds gather where rounds in flight will cross them, before this tick's hits resolve
-        engine.addSystem(new com.ringsofiron.combatsys.shields.ShieldSystem(physics));
-        // Shields go down for docking, and back up after
-        engine.addSystem(new ShieldDocking(this));
-        impacts = new ImpactResolutionSystem(physics, combatEvents, combatDefs, ballistics,
-                MaterialTable.createDefault(), modules.combatSeed);
-        impacts.setCrew(new CrewDamageAdapter(crew, crew));
-        impacts.setEntityIds(engine.getEntityIds());
-        engine.addSystem(impacts);
-        // Hulls that meet too fast damage each other
-        collisionDamage = new CollisionDamageSystem(physics, combatEvents, impacts);
-        engine.addSystem(collisionDamage);
-        // Hits beside a docking port wear its collar
-        CollarWear.install(combatEvents);
-        beams = new BeamSystem(physics, impacts);
-        engine.addSystem(beams);
-        // Ships out of power, crew or hull, or beaten, stop fighting
-        disablement = new ShipDisablement(engine::getSimSeconds);
-        engine.addSystem(disablement);
-        // ... and their crews take to the pods; the player's pod ends in a rescue
-        abandon = new AbandonShip(crew, disablement, engine::getSimSeconds, docking::dockedTo);
-        engine.addSystem(abandon);
-        rescue = new Rescue(this, bubble);
-        // Beaten ships are boarded, taken and stripped
-        boarding = new Boarding(docking, crew, forcing, standing, disablement, engine.getUuidRegistry(), engine::getSimSeconds);
-        engine.addSystem(boarding);
-        // A craft being stormed fights its boarders, whatever the player's standing with its owners
-        crew.hostility = (a, b) -> standing.hostile(a, b) || boarding.storming(a, b);
-        salvage = new Salvage(docking, crew, boarding, cargo, engine.getUuidRegistry(), combatDefs);
-        engine.addSystem(salvage);
-        // Ships bought at faction yards, and taken ships towed home as prizes
-        shipyard = new Shipyard(this);
-        engine.addSystem(shipyard);
-        // ... and furnishings for the crew's downtime, carried aboard by the yards' loaders
-        furnishings = new FurnishingStore(this, this::getContent);
-        engine.addSystem(furnishings);
-
-        // audio-spatial
-        audio = modules.audio != null ? modules.audio : AudioManager.createDefault();
-        audioListener = new AudioListenerSync(this::getPlayer, avatar);
-        engine.addSystem(audioListener);
-        engineAudio = new EngineAudio(this::getPlayer);
-        engine.addSystem(engineAudio);
-        crewAudio = new CrewAudio();
-        engine.addSystem(crewAudio);
-        // Fires, breaches, alarms and doors aboard every ship
-        engine.addSystem(new InteriorHazardAudioSystem());
-        engine.addSystem(new AcousticOcclusionSystem(audio.getCatalog()));
-        AudioUpdateSystem audioUpdate = new AudioUpdateSystem(audio);
-        engine.addSystem(audioUpdate);
-        new ImpactAudio(audio).attach(physics);
-        CombatAudio.install(engine.getEcsEngine(), combatEvents, combatDefs, audio, this::getContent);
-        NoticeAudio.install(notices, audio);
-        physics.worldShifts.add(audioUpdate.worldShiftListener());
-
-        // Bubble bodies are saved as true states, never as live Box2D bodies.
-        PhysicsSaveParticipant.install(physics, engine);
-        // Pirates and faction patrols, on the rails and in the bubble
-        hostiles = HostileTraffic.install(this);
-        // Hostile traffic's own state starts again from the load
-        addResettable(hostiles);
-        pirateBoarding = new PirateBoarding(this);
-        engine.getSerializationService().addParticipant(pirateBoarding);
-        addResettable(pirateBoarding);
-        pirateBase = new PirateBase(this);
-        engine.addSystem(pirateBase);
-        engine.getSerializationService().addParticipant(pirateBase);
-        hostiles.extraRaiders = pirateBase::extraRaiders;
-        tension = new FactionTension(this);
-        engine.addSystem(tension);
-        engine.getSerializationService().addParticipant(tension);
-        // ...with no strain between the factions
-        addResettable(tension);
-        yard.priceFactor = tension::priceFactor;
+        // Each area in run order: the order systems, step listeners and save participants are added
+        // is the order they run (SystemOrderTest pins it). Each area reads the fields set before it.
+        FlightInstaller.install(this, modules);
+        DockingInstaller dock = new DockingInstaller(this);
+        docking = dock.docking;
+        berthing = dock.berthing;
+        OrbitInstaller orbit = new OrbitInstaller(this, modules);
+        universe = orbit.universe;
+        orbitalEvents = orbit.orbitalEvents;
+        anchorBridge = orbit.anchorBridge;
+        timeWarp = orbit.timeWarp;
+        burns = orbit.burns;
+        macroSim = MacroSimInstaller.install(this);
+        InteriorInstaller.install(this);
+        CrewInstaller crews = new CrewInstaller(this);
+        crew = crews.crew;
+        standing = crews.standing;
+        budget = crews.budget;
+        forcing = crews.forcing;
+        cargoSettlement = crews.cargoSettlement;
+        cargo = crews.cargo;
+        avatar = crews.avatar;
+        bridge = crews.bridge;
+        ships = new ShipFactory(physics, this::getContent, standing, crew, macroSim);
+        CombatInstaller combat = new CombatInstaller(this, modules);
+        combatEvents = combat.combatEvents;
+        combatDefs = combat.combatDefs;
+        ballistics = combat.ballistics;
+        yard = combat.yard;
+        contracts = combat.contracts;
+        derelicts = combat.derelicts;
+        sensors = combat.sensors;
+        missiles = combat.missiles;
+        weaponControl = combat.weaponControl;
+        gunCrews = combat.gunCrews;
+        impacts = combat.impacts;
+        collisionDamage = combat.collisionDamage;
+        beams = combat.beams;
+        disablement = combat.disablement;
+        abandon = combat.abandon;
+        AftermathInstaller aftermath = new AftermathInstaller(this, orbit.bubble);
+        rescue = aftermath.rescue;
+        beacon = aftermath.beacon;
+        boarding = aftermath.boarding;
+        salvage = aftermath.salvage;
+        shipyard = aftermath.shipyard;
+        furnishings = aftermath.furnishings;
+        AudioInstaller sound = new AudioInstaller(this, modules);
+        audio = sound.audio;
+        audioListener = sound.audioListener;
+        engineAudio = sound.engineAudio;
+        crewAudio = sound.crewAudio;
+        PirateInstaller pirates = new PirateInstaller(this);
+        hostiles = pirates.hostiles;
+        pirateBoarding = pirates.pirateBoarding;
+        pirateBase = pirates.pirateBase;
+        tension = pirates.tension;
         nav = Navigation.install(this);
-        // The navigation target is the craft boarded on EVA, when it is in reach
-        boarding.preferred = nav.target::entity;
-        // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
-        loop = LoopWiring.install(this);
-        // Things that happen on their own, a day at a time, with jobs on the boards
-        events = new WorldEvents(this);
-        // A save with no events has the default seed (a new game keeps its own, so reset() keeps it)
-        addResettable(() -> {
-            events.reset();
-            events.seed = WorldEvents.DEFAULT_SEED;
-        });
-        // The player's crew: hired at stations, paid weekly, learning from what they do
-        crewCareer = new CrewCareer(this);
-        engine.addSystem(crewCareer);
-        // Crew morale drifts from the loaded time on
-        addResettable(crewCareer::restartClock);
-        crewHiring = new CrewHiring(this);
-        engine.getSerializationService().addParticipant(crewHiring);
-        // ...and nobody is hired from today's pools
-        addResettable(crewHiring);
-        prisoners = new Prisoners(this);
-        hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, KeyBindings.Action.CREW)
-                .onlyWhen(() -> prisoners.takenAlongside() != null);
-        damageControl = new DamageControl(this);
-        medical = new CrewMedical(this);
-        berthVenting = new BerthVenting(this);
-        spacewalks = new Spacewalks(this);
-        jammedCollars = new JammedCollars(this);
-        fieldRefits = new FieldRefits(this);
-        captain = new CaptainSafety(this);
-        air = new AirWatch(this);
-        infirmary = new StationInfirmary(this);
+        CareerInstaller career = new CareerInstaller(this);
+        loop = career.loop;
+        events = career.events;
+        crewCareer = career.crewCareer;
+        crewHiring = career.crewHiring;
+        prisoners = career.prisoners;
+        CrewManagersInstaller managers = new CrewManagersInstaller(this);
+        damageControl = managers.damageControl;
+        medical = managers.medical;
+        berthVenting = managers.berthVenting;
+        spacewalks = managers.spacewalks;
+        jammedCollars = managers.jammedCollars;
+        fieldRefits = managers.fieldRefits;
+        captain = managers.captain;
+        air = managers.air;
+        infirmary = managers.infirmary;
         // The managers that keep time or set what the crew act on run every sim tick, after the
         // tick's other systems, not once a frame after however many ticks the frame ran
         engine.addSystem(new TickManagers());
@@ -684,8 +392,7 @@ public class GameWorld implements Disposable {
         // Docking ports come from the chassis the interior was built from.
         bootstrap.beforeScripts(DockingData::install);
         // Ships collide on their hull art's collision layer, else on their layout
-        bootstrap.beforeScripts(ctx -> ShipPhysicsAssembler.register(ctx.factory, physics, gridMass(ctx),
-                hulls = new ShipHulls(assetsDir, ctx)));
+        bootstrap.beforeScripts(ctx -> ships.registerAssembler(ctx, assetsDir));
         // Weapons after the interior: each hardpoint is wired to the nearest weapon system.
         bootstrap.beforeScripts(ctx -> ShipWeaponsAssembler.register(ctx.factory, combatDefs));
         for (Consumer<ModContext> step : modules.contentRegistrations) bootstrap.beforeScripts(step);
@@ -719,7 +426,7 @@ public class GameWorld implements Disposable {
     }
 
     /** Clearance refused for tension between the factions (built after docking's clearance check is). */
-    private String tensionRefusal(Entity station, Entity vessel) {
+    String tensionRefusal(Entity station, Entity vessel) {
         return tension.refusal(station, vessel);
     }
 
@@ -793,7 +500,7 @@ public class GameWorld implements Disposable {
     }
 
     /** Why rails warp waits after a load: until a frame has run and the player's ship is welded to its dock again. */
-    private String loadingRefusal() {
+    String loadingRefusal() {
         return loadSettling > 0 ? "the game is still loading" : null;
     }
 
@@ -844,7 +551,7 @@ public class GameWorld implements Disposable {
      * A ship on rails reached a body's surface. The player's ends the game; any other is removed
      * after the frame, unless macro-sim owns it: macro-sim handles the loss of its own stations and freighters.
      */
-    private void onImpact(OrbitalEvent event) {
+    void onImpact(OrbitalEvent event) {
         Entity ship = universe.entity(event.entityUuid);
         if (ship == null) return;
         if (ship == getPlayer()) {
@@ -911,64 +618,21 @@ public class GameWorld implements Disposable {
      * cargo in its bays and what its tanks hold. Null for a ship without a grid, or before content has loaded.
      */
     public ShipGridComponent.MassProperties shipMass(Entity ship) {
-        return content == null ? null : shipMass(ship, content.defs);
+        return ships.shipMass(ship);
     }
 
-    private ShipGridComponent.MassProperties shipMass(Entity ship, DefRegistry defs) {
-        ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
-        if (grid == null) return null;
-        if (materials == null) materials = InteriorGridData.toMaterialTable(defs);
-        ShipGridComponent.MassProperties m = grid.computeMassProperties(materials);
-        CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
-        if (hold != null) hold.addMassTo(grid, m);
-        ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
-        if (registry != null) TankSupply.addMassTo(grid, registry, m);
-        return m;
-    }
-
-    /**
-     * Gives a ship's body the collision shape of its current layout (see {@link ShipHulls}), as after
-     * a yard rebuilds its decks. Its mass is left to the caller. Returns false if nothing changed:
-     * no body, no grid, or content not loaded.
-     */
+    /** {@link ShipFactory#rebuildHull}: a ship's body shaped as its current layout, after a yard rebuilds its decks. */
     public boolean rebuildHull(Entity ship) {
-        PhysicsBodyComponent pb = ship.getComponent(PhysicsBodyComponent.class);
-        if (hulls == null || pb == null || pb.body == null) return false;
-        return PhysicsManager.replacePolygonFixtures(pb.body, hulls.hullFor(ship, null));
+        return ships.rebuildHull(ship);
     }
 
-    /**
-     * A Box2D body for a ship with a layout, at the bubble origin: shaped as the physics assembler
-     * shapes it ({@link ShipHulls}) and weighing what {@link #shipMass} says. A freighter macro-sim
-     * made without one is built into a Hauler first ({@link FreighterShips#outfit}). Null for any
-     * other craft without a grid, or before content has loaded.
-     */
+    /** {@link ShipFactory#buildShipBody}: a Box2D body for a ship with a layout, at the bubble origin. */
     public Body buildShipBody(Entity ship) {
-        FreighterShips.outfit(this, ship);
-        ShipGridComponent.MassProperties m = shipMass(ship);
-        java.util.List<float[]> hull = hulls == null || m == null ? null : hulls.hullFor(ship, null);
-        if (hull == null || hull.isEmpty()) return null;
-        Body body = physics.createPolygonBody(ship, 0f, 0f, 0f, hull, 1f,
-                CollisionCategories.CATEGORY_SHIP, CollisionCategories.MASK_ALL);
-        PhysicsManager.setMassData(body, m.mass, m.center.x, m.center.y, m.inertia);
-        return body;
-    }
-
-    /** A ship's mass for the physics assembler, from {@link #shipMass}. */
-    private ShipPhysicsAssembler.MassSource gridMass(ModContext ctx) {
-        return (entity, def, out) -> {
-            ShipGridComponent.MassProperties m = shipMass(entity, ctx.defs);
-            if (m == null) return false;
-            out[0] = m.mass;
-            out[1] = m.center.x;
-            out[2] = m.center.y;
-            out[3] = m.inertia;
-            return true;
-        };
+        return ships.buildShipBody(ship);
     }
 
     /** What a station pays for a salvaged part. */
-    private double partPrice(String part) {
+    double partPrice(String part) {
         return salvage == null ? 0 : salvage.salePrice(part);
     }
 

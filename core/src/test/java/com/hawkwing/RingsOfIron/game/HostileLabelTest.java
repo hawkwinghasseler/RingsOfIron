@@ -61,7 +61,7 @@ class HostileLabelTest {
         List<String> guns = world.pirateBase.guns();
         assertFalse(guns.isEmpty(), "the base manned its guns");
         for (String name : guns) assertEquals(HostileLabel.FIT, HostileLabel.of(world, ship(name)), name + " while the base stands");
-        SilencedMarkers markers = new SilencedMarkers(world);
+        SilencedMarkers markers = new SilencedMarkers(world.engine, world.macroSim, world.pirateBase);
         markers.update();
         String label = ship(guns.get(0)).getComponent(HudMarkerComponent.class).label;
         assertFalse(label.endsWith(SilencedMarkers.SUFFIX), "red and unmarked while the base stands");

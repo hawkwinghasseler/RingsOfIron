@@ -105,7 +105,7 @@ class FirstHourBalanceBenchmark {
         assertTrue(game.raiderHostile());
 
         // The player locks it and holds the guns from 4 km in, with a missile whenever one is loaded
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(game.raider);
         float openedFire = -1f;
         boolean heldOut = true;

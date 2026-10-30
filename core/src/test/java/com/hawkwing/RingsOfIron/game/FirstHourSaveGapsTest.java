@@ -103,7 +103,7 @@ class FirstHourSaveGapsTest {
 
     @Test
     void withTheWalkthroughOffALoadDropsItsSavedStep(@TempDir Path dir) {
-        new OpeningGuide(world, () -> false, OpeningGuide.Step.TAKE_JOB);
+        new OpeningGuide(world.contracts, world.guides, () -> false, OpeningGuide.Step.TAKE_JOB);
         FileHandle file = new FileHandle(dir.resolve("opening.json").toFile());
         assertNull(game.quickSave(file));
 

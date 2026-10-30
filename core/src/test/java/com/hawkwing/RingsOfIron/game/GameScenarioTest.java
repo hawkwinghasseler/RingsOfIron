@@ -315,7 +315,7 @@ class GameScenarioTest {
 
     @Test
     void theGunsFireWhenThePlayerPullsTheTrigger() {
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         assertNotNull(gun.primary());
         gun.setTarget(null);
         List<ShotFiredEvent> shots = new ArrayList<>();
@@ -339,7 +339,7 @@ class GameScenarioTest {
 
     @Test
     void theGunsGoQuietWhenTheReactorIsKnockedOut() {
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(null);
         int[] shots = new int[1];
         world.combatEvents.shots.add((s, shot) -> {
@@ -374,7 +374,7 @@ class GameScenarioTest {
 
     @Test
     void shootingTheRaiderStartsAFightWithMissilesAndPointDefense() {
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(game.raider);
         int[] raiderShots = new int[1], intercepts = new int[1];
         boolean[] launched = new boolean[1];
@@ -398,7 +398,7 @@ class GameScenarioTest {
     void aProvokedRaiderManeuversToFightAndDodgesMissiles() {
         // The player's crew hold fire, or their guns would end the fight before it is watched
         world.gunCrews.holdFire = true;
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(game.raider);
         for (int i = 0; i < 60; i++) world.update(FRAME);
         game.provokeRaider();
@@ -678,7 +678,7 @@ class GameScenarioTest {
         assertNotSame(prize, game.firstTarget(), "a new fight still never starts on one");
 
         // The player chose it: the trigger fires on it after the grace, and that brings it back
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(prize);
         for (int i = 0; i < 10 / FRAME && world.macroSim.hostiles().get(id).surrendered; i++) {
             gun.fireGuns();

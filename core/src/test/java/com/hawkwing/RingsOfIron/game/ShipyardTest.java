@@ -123,7 +123,7 @@ class ShipyardTest {
     @Test
     void theShipyardWindowListsThemWithTheTradeInAndWhatsLocked() {
         com.ringsofiron.uihud.providers.ShipyardProvider.Yard yard = new com.ringsofiron.uihud.providers.ShipyardProvider.Yard();
-        new ShipyardWork(world).collect(yard);
+        new ShipyardWork(world.context, world.standing, world.shipyard).collect(yard);
         assertEquals("Anvil Yards", yard.stationName);
         assertTrue(yard.current.startsWith("Your Patrol Corvette: trade-in "), yard.current);
         assertEquals(5, yard.ships.size);
@@ -136,7 +136,7 @@ class ShipyardTest {
         world.docking.undock(game.player);
         run(60);
         yard.clear();
-        new ShipyardWork(world).collect(yard);
+        new ShipyardWork(world.context, world.standing, world.shipyard).collect(yard);
         assertFalse(yard.isOpen());
     }
 

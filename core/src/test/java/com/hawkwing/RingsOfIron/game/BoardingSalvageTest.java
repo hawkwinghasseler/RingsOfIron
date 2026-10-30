@@ -163,7 +163,7 @@ class BoardingSalvageTest {
         }
         world.update(FRAME);
         parkAlongside(game.raider, 0.6f);
-        PlayerDocking docking = new PlayerDocking(world, () -> game.player, s -> { });
+        PlayerDocking docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, s -> { });
         try {
             assertEquals("Port armed", docking.toggleArm());
             assertTrue(runUntil(30, () -> world.docking.dockedTo(game.player) == game.raider), "latched");
@@ -196,7 +196,7 @@ class BoardingSalvageTest {
         world.disablement.set(game.raider, DisabledComponent.Reason.SURRENDERED);
         world.update(FRAME);
         parkAlongside(game.raider, 0.6f);
-        PlayerDocking docking = new PlayerDocking(world, () -> game.player, s -> { });
+        PlayerDocking docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, s -> { });
         try {
             assertEquals("Raider (surrendered) opens its port to you; port armed", docking.toggleArm());
             assertTrue(runUntil(30, () -> world.docking.dockedTo(game.player) == game.raider), "latched");
@@ -221,7 +221,7 @@ class BoardingSalvageTest {
         }
         world.update(FRAME);
         parkAlongside(game.raider, 0.6f);
-        PlayerDocking docking = new PlayerDocking(world, () -> game.player, s -> { });
+        PlayerDocking docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, s -> { });
         try {
             assertEquals("Port armed", docking.toggleArm());
             assertTrue(runUntil(30, () -> world.docking.dockedTo(game.player) == game.raider), "latched");

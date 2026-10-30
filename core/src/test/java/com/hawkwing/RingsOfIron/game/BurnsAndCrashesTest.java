@@ -50,7 +50,8 @@ class BurnsAndCrashesTest {
 
     @Test
     void theMapShowsTheOrbitNowAndAfterTheBurn() {
-        PlayerOrbitPath map = new PlayerOrbitPath(world, world.burns);
+        PlayerOrbitPath map = new PlayerOrbitPath(world.context, world.physics, world.universe, world.macroSim, world.pirateBase, world.nav,
+                world.burns);
         OrbitPathProvider.OrbitPath path = new OrbitPathProvider.OrbitPath();
         assertTrue(map.getPlayerPath(path));
         assertEquals("Earth", path.bodyName);
@@ -154,7 +155,8 @@ class BurnsAndCrashesTest {
     @Test
     void theMapShowsTheMoonAndItsOrbit() {
         OrbitPathProvider.OrbitPath path = new OrbitPathProvider.OrbitPath();
-        assertTrue(new PlayerOrbitPath(world, world.burns).getPlayerPath(path));
+        assertTrue(new PlayerOrbitPath(world.context, world.physics, world.universe, world.macroSim, world.pirateBase, world.nav,
+                world.burns).getPlayerPath(path));
         assertEquals(1, path.bodies.size);
         OrbitPathProvider.MapBody moon = path.bodies.first();
         assertEquals("Moon", moon.name);

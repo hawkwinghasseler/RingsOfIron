@@ -105,7 +105,8 @@ public final class OrbitScenario implements DebugScenario {
         earth = world.universe.entity(GameScenario.EARTH);
         moon = world.universe.entity(GameScenario.MOON);
         orbitInfo = new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer);
-        path = new PlayerOrbitPath(world, world.burns);
+        path = new PlayerOrbitPath(world.context, world.physics, world.universe, world.macroSim, world.pirateBase, world.nav,
+                world.burns);
 
         double now = world.universe.now(), mu = GameScenario.MU_EARTH, rEarth = GameScenario.R_EARTH, leo = GameScenario.ORBIT_RADIUS;
         // The player is at phase 0. Slightly lower, a little behind: catches up and drops warp a few hours in

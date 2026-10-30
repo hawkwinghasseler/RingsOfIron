@@ -28,7 +28,7 @@ public final class FlightWarnings {
     /** What the missile warning's notice starts with. */
     public static final String MISSILE_WARNING = "MISSILE WARNING";
 
-    private final GameWorld world;
+    private final GameContext ctx;
     private final PlayerShipStatus status;
     private final CombatThreats threats;
     private final ThreatProvider.ThreatFrame frame = new ThreatProvider.ThreatFrame();
@@ -47,15 +47,15 @@ public final class FlightWarnings {
     /** This salvo's warning, revised in place as the count climbs; null while the sky is clear. */
     private NoticeLog.Notice salvo;
 
-    public FlightWarnings(GameWorld world) {
-        this.world = world;
-        this.status = new PlayerShipStatus(world::getPlayer);
-        this.threats = new CombatThreats(world);
+    public FlightWarnings(GameContext ctx) {
+        this.ctx = ctx;
+        this.status = new PlayerShipStatus(ctx::player);
+        this.threats = new CombatThreats(ctx);
     }
 
     /** Once a frame. */
     public void update() {
-        if (world.getPlayer() == null) return;
+        if (ctx.player() == null) return;
         ShipStatusProvider.ShipStatus s = status.getShipStatus();
         if (++sinceEstimate >= RETURN_REFRESH) {
             sinceEstimate = 0;
@@ -81,8 +81,8 @@ public final class FlightWarnings {
             peak = n;
             String text = String.format(Locale.ROOT, MISSILE_WARNING + ": %d inbound%s", n,
                     Float.isNaN(soonest) ? "" : String.format(Locale.ROOT, ", impact in %.0f s", soonest));
-            salvo = salvo == null ? world.notices.replace(MISSILE_WARNING, text, NoticeLog.Kind.WARNING)
-                    : world.notices.revise(salvo, text);
+            salvo = salvo == null ? ctx.notices.replace(MISSILE_WARNING, text, NoticeLog.Kind.WARNING)
+                    : ctx.notices.revise(salvo, text);
         }
         inbound = n;
     }
@@ -107,7 +107,7 @@ public final class FlightWarnings {
         String said = String.format(Locale.ROOT, "Propellant low: %.0f%% (%,.0f kg) left", share * 100f, kg);
         if (known) said += kg < home ? String.format(Locale.ROOT, ", short of the %,.0f kg the trip home takes", home)
                 : String.format(Locale.ROOT, ", little more than the %,.0f kg the trip home takes", home);
-        world.notices.post(said, NoticeLog.Kind.WARNING);
+        ctx.notices.post(said, NoticeLog.Kind.WARNING);
     }
 
     /** Navigation's estimate of the trip home, kg, or NaN when there is none or it isn't finite. */

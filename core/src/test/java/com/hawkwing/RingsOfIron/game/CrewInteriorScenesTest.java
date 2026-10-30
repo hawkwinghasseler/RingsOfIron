@@ -128,7 +128,7 @@ class CrewInteriorScenesTest {
     @Test
     void theDeckToolsWoundSpawnAndBurnThroughTheGame() {
         InteriorScene scene = new InteriorScene(game, null, null);
-        DeckTools tools = new DeckTools(world, scene.debug);
+        DeckTools tools = new DeckTools(world.crew, scene.debug);
         Entity ship = game.player;
         ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
         Entity someone = scene.debug.crewAboard(ship).get(1);

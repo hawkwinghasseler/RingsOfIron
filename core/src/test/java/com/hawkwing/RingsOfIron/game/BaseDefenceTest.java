@@ -131,7 +131,7 @@ class BaseDefenceTest {
         Entity other = world.missiles.launch(dart, world.engine.getEntity(world.pirateBase.uuid()), null, game.player,
                 at.x, at.y + 3_000, 0, -100, (float) -Math.PI / 2);
         run(1);
-        CombatThreats threats = new CombatThreats(world);
+        CombatThreats threats = new CombatThreats(world.context);
         var frame = new com.ringsofiron.uihud.providers.ThreatProvider.ThreatFrame();
         threats.collect(frame);
         assertTrue(frame.incoming() >= 2, "both darts inbound, with any the defence has fired");

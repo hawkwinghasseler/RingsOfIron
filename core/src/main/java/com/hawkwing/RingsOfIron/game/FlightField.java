@@ -19,6 +19,8 @@ import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import java.util.Locale;
 import java.util.Random;
 import java.util.function.Consumer;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.coreengine.GameEngine;
 
 /**
  * What the flight scenario adds to a game's world: a field of drifting, tumbling asteroids around
@@ -39,7 +41,9 @@ public class FlightField {
     /** The ship's drift and tumble when the field is set up, m/s and rad/s, relative to the bubble. */
     static final float START_VX = 25f, START_VY = 8f, START_SPIN = 0.35f;
 
-    public final GameWorld world;
+    private final GameEngine engine;
+    private final PhysicsManager physics;
+    private final DockingSystem docking;
     public final Entity player;
     public final Array<Entity> asteroids = new Array<>();
     /** Rocks crossing the bubble at km/s, swept for hits rather than simulated by Box2D. */
@@ -47,21 +51,23 @@ public class FlightField {
     private final Array<float[]> fastPassAges = new Array<>();
     private final Random dice = new Random(7);
 
-    /** A field around {@code player}'s ship in {@code world}; {@code impacts} hears "IMPACT 3.2 m/s" when something hits it. */
-    public FlightField(GameWorld world, Entity player, Consumer<String> impacts) {
-        this.world = world;
+    /** A field around {@code player}'s ship in {@code engine}'s world; {@code impacts} hears "IMPACT 3.2 m/s" when something hits it. */
+    public FlightField(GameEngine engine, PhysicsManager physics, DockingSystem docking, Entity player, Consumer<String> impacts) {
+        this.engine = engine;
+        this.physics = physics;
+        this.docking = docking;
         this.player = player;
-        world.physics.collisions.add((signal, hit) -> {
+        physics.collisions.add((signal, hit) -> {
             if (hit.entityA == player || hit.entityB == player) impacts.accept(impact("IMPACT", Math.abs(hit.approachSpeed)));
         });
-        world.physics.fastPassImpacts.add((signal, hit) -> {
+        physics.fastPassImpacts.add((signal, hit) -> {
             if (hit.target == player) impacts.accept(impact("FAST PASS HIT", hit.relativeSpeed));
         });
     }
 
     /** The player's ship's body. */
     public Body body() {
-        return world.docking.bodyOf(player);
+        return docking.bodyOf(player);
     }
 
     /**
@@ -80,8 +86,8 @@ public class FlightField {
 
     /** Takes away the field's rocks and fast passes. */
     public void clear() {
-        for (Entity e : asteroids) world.engine.removeEntity(e);
-        for (Entity e : fastPasses) world.engine.removeEntity(e);
+        for (Entity e : asteroids) engine.removeEntity(e);
+        for (Entity e : fastPasses) engine.removeEntity(e);
         asteroids.clear();
         fastPasses.clear();
         fastPassAges.clear();
@@ -93,7 +99,7 @@ public class FlightField {
             float[] age = fastPassAges.get(i);
             age[0] += simDelta;
             if (age[0] > FAST_PASS_LIFETIME) {
-                world.engine.removeEntity(fastPasses.removeIndex(i));
+                engine.removeEntity(fastPasses.removeIndex(i));
                 fastPassAges.removeIndex(i);
             }
         }
@@ -106,7 +112,7 @@ public class FlightField {
      */
     public Entity spawnFastPass() {
         double[] ship = new double[4];
-        world.physics.getTrueState(body(), ship);
+        physics.getTrueState(body(), ship);
         float angle = dice.nextFloat() * MathUtils.PI2;
         float dirX = MathUtils.cos(angle), dirY = MathUtils.sin(angle);
         float miss = -12f + dice.nextFloat() * 24f;
@@ -114,15 +120,15 @@ public class FlightField {
         double startY = ship[1] - dirY * FAST_PASS_START + dirX * miss;
         double vx = ship[2] + dirX * FAST_PASS_SPEED;
         double vy = ship[3] + dirY * FAST_PASS_SPEED;
-        double now = world.physics.getSimSeconds();
-        AnchorModel anchor = world.physics.getAnchorModel();
+        double now = physics.getSimSeconds();
+        AnchorModel anchor = physics.getAnchorModel();
         TrueTrajectory path = anchor instanceof KeplerAnchor
                 ? new KeplerAnchor(KeplerOrbit.fromState(startX, startY, vx, vy, ((KeplerAnchor) anchor).getMu(), now))::stateAt
                 : new LinearTrajectory(startX, startY, vx, vy, now);
-        Entity rock = world.engine.createEntity();
+        Entity rock = engine.createEntity();
         rock.add(new TransformComponent());
         rock.add(new KinematicTransientComponent(path, 4f));
-        world.engine.addEntity(rock);
+        engine.addEntity(rock);
         fastPasses.add(rock);
         fastPassAges.add(new float[]{0f});
         return rock;
@@ -139,18 +145,18 @@ public class FlightField {
             x = range * (dice.nextFloat() * 2f - 1f);
             y = range * (dice.nextFloat() * 2f - 1f);
         } while (Vector2.len(x, y) < ASTEROID_CLEARANCE);
-        Entity rock = world.engine.createEntity();
+        Entity rock = engine.createEntity();
         rock.add(new TransformComponent());
         float size = 6f + dice.nextFloat() * 29f;
         Body body = dice.nextBoolean()
-                ? world.physics.createCircleBody(rock, x0 + x, y0 + y, size, 200f,
+                ? physics.createCircleBody(rock, x0 + x, y0 + y, size, 200f,
                         CollisionCategories.CATEGORY_ASTEROID, CollisionCategories.MASK_ALL)
-                : world.physics.createPolygonBody(rock, x0 + x, y0 + y, dice.nextFloat() * MathUtils.PI2, lumpyPolygon(size), 200f,
+                : physics.createPolygonBody(rock, x0 + x, y0 + y, dice.nextFloat() * MathUtils.PI2, lumpyPolygon(size), 200f,
                         CollisionCategories.CATEGORY_ASTEROID, CollisionCategories.MASK_ALL);
         PhysicsManager.setVelocity(body, -6f + dice.nextFloat() * 12f, -6f + dice.nextFloat() * 12f);
         body.setAngularVelocity(-0.4f + dice.nextFloat() * 0.8f);
         rock.add(new PhysicsBodyComponent(body));
-        world.engine.addEntity(rock);
+        engine.addEntity(rock);
         asteroids.add(rock);
     }
 

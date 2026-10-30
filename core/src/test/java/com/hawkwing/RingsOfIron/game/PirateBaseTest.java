@@ -136,7 +136,7 @@ class PirateBaseTest {
 
     private boolean onMap() {
         TrafficMapProvider.TrafficFrame frame = new TrafficMapProvider.TrafficFrame();
-        new RailsTrafficMap(world).collect(frame);
+        new RailsTrafficMap(world.context, world.physics, world.universe, world.macroSim, world.nav, world.contracts, world.derelicts, world.pirateBase, world.tension).collect(frame);
         for (TrafficMapProvider.Contact c : frame.contacts) if (GameScenario.PIRATE_BASE_NAME.equals(c.name)) return true;
         return false;
     }

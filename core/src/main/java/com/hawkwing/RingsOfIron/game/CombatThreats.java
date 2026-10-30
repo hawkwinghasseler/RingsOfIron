@@ -24,18 +24,18 @@ public class CombatThreats implements ThreatProvider {
     private static final ComponentMapper<MissileComponent> MISSILES = ComponentMapper.getFor(MissileComponent.class);
     private static final ComponentMapper<ProjectileComponent> PROJECTILES = ComponentMapper.getFor(ProjectileComponent.class);
 
-    private final GameWorld world;
+    private final GameContext ctx;
     private final ImmutableArray<Entity> missiles;
     private final Vector2 targetPos = new Vector2(), targetVel = new Vector2();
 
-    public CombatThreats(GameWorld world) {
-        this.world = world;
-        this.missiles = world.engine.getEcsEngine().getEntitiesFor(Family.all(MissileComponent.class, ProjectileComponent.class).get());
+    public CombatThreats(GameContext ctx) {
+        this.ctx = ctx;
+        this.missiles = ctx.engine.getEcsEngine().getEntitiesFor(Family.all(MissileComponent.class, ProjectileComponent.class).get());
     }
 
     @Override
     public void collect(ThreatFrame out) {
-        Entity player = world.getPlayer();
+        Entity player = ctx.player();
         for (Entity e : missiles) {
             MissileComponent m = MISSILES.get(e);
             ProjectileComponent p = PROJECTILES.get(e);

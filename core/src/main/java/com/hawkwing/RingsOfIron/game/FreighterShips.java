@@ -20,6 +20,9 @@ import com.ringsofiron.physicsexterior.modding.ShipPhysicsAssembler;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import com.ringsofiron.macrosim.MacroSimulation;
+import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.physicsexterior.PhysicsManager;
 
 /**
  * macro-sim's freighters as real ships: each is built into a {@link GameScenario#FREIGHTER_SHIP}
@@ -46,7 +49,12 @@ public final class FreighterShips {
      * its crew. Its bays are stocked with the cargo it carries. True if it was built.
      */
     public static boolean outfit(GameWorld world, Entity freighter) {
-        ModContext content = world.getContent();
+        return outfit(world.getContent(), world.physics, world.standing, world.crew, world.macroSim, freighter);
+    }
+
+    /** {@link #outfit(GameWorld, Entity)}, from the loaded {@code content}, crewed as {@code standing}'s factions crew ships. */
+    static boolean outfit(ModContext content, PhysicsManager physics, FactionStanding standing, CrewService crewService,
+                          MacroSimulation macroSim, Entity freighter) {
         FreighterComponent f = freighter.getComponent(FreighterComponent.class);
         if (f == null || content == null || freighter.getComponent(ShipGridComponent.class) != null) return false;
         DefEntry def = content.defs.entry("ship", GameScenario.FREIGHTER_SHIP);
@@ -66,26 +74,26 @@ public final class FreighterShips {
             standIn.add(freighter.getComponent(DefRefComponent.class));
             assembler.assemble(standIn, def, content.factory);
             PhysicsBodyComponent pb = standIn.getComponent(PhysicsBodyComponent.class);
-            if (pb != null && pb.body != null) world.physics.destroyBody(pb.body);
+            if (pb != null && pb.body != null) physics.destroyBody(pb.body);
             ThrusterComponent thrusters = standIn.getComponent(ThrusterComponent.class);
             FlightControlComponent controls = standIn.getComponent(FlightControlComponent.class);
             if (thrusters != null) freighter.add(thrusters);
             if (controls != null) freighter.add(controls);
         }
         ShipConsoles.install(freighter);
-        int faction = world.standing.factions().index(TRADERS);
+        int faction = standing.factions().index(TRADERS);
         if (faction < 0) faction = Factions.FIRST;
         CrewFactory.ensureBoard(freighter).faction = faction;
-        world.standing.factions().crewHabits(CrewFactory.ensureBoard(freighter));
+        standing.factions().crewHabits(CrewFactory.ensureBoard(freighter));
         ShipDef ship = content.defs.get("ship", GameScenario.FREIGHTER_SHIP, ShipDef.class);
         List<int[]> floor = GameScenario.floorTiles(freighter.getComponent(ShipGridComponent.class));
         int crew = ship == null ? 0 : Math.min(ship.crew, floor.size());
         for (int i = 0; i < crew; i++) {
             int[] t = floor.get(i * floor.size() / crew);
-            CrewFactory.spawn(world.crew, freighter, "Crew " + (i + 1), CREW_ROLES[i % CREW_ROLES.length], faction,
+            CrewFactory.spawn(crewService, freighter, "Crew " + (i + 1), CREW_ROLES[i % CREW_ROLES.length], faction,
                     t[0], t[1]);
         }
-        stow(world, freighter);
+        stow(macroSim, freighter);
         return true;
     }
 
@@ -94,6 +102,11 @@ public final class FreighterShips {
      * else unloaded, its cargo loaded or unloaded to the amount. Nothing for a ship without bays.
      */
     public static void stow(GameWorld world, Entity freighter) {
+        stow(world.macroSim, freighter);
+    }
+
+    /** {@link #stow(GameWorld, Entity)}, from {@code macroSim}'s catalog. */
+    public static void stow(MacroSimulation macroSim, Entity freighter) {
         FreighterComponent f = freighter.getComponent(FreighterComponent.class);
         CargoHoldComponent hold = freighter.getComponent(CargoHoldComponent.class);
         if (f == null || hold == null) return;
@@ -104,7 +117,7 @@ public final class FreighterShips {
         if (have > want) {
             hold.unload(f.cargoCommodity, have - want);
         } else if (have < want) {
-            CommodityType c = world.macroSim.economy().catalog().commodity(f.cargoCommodity);
+            CommodityType c = macroSim.economy().catalog().commodity(f.cargoCommodity);
             if (c != null) hold.load(f.cargoCommodity, want - have, c.unitVolume, c.unitMass);
         }
     }
