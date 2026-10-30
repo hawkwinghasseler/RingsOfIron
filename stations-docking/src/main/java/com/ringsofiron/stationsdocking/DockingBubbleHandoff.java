@@ -59,7 +59,7 @@ public class DockingBubbleHandoff implements BubbleHandoff {
     @Override
     public void collapseToRails() {
         docking.setSuspended(true);
-        for (DockingSystem.Link link : docking.links()) noteRide(link);
+        for (LatchLink link : docking.links()) noteRide(link);
         delegate.collapseToRails();
         double t = physics.getSimSeconds();
         for (Entity e : engine.getEntitiesFor(RIDERS)) buffer.add(e);
@@ -100,7 +100,7 @@ public class DockingBubbleHandoff implements BubbleHandoff {
     }
 
     /** Puts a ride on the follower of a docked pair that both have bodies. */
-    private void noteRide(DockingSystem.Link link) {
+    private void noteRide(LatchLink link) {
         Body ba = docking.bodyOf(link.a), bb = docking.bodyOf(link.b);
         if (ba == null || bb == null) return;
         boolean aDynamic = ba.getType() == BodyDef.BodyType.DynamicBody;
