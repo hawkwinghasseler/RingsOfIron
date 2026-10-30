@@ -145,7 +145,7 @@ The game starts at a main menu (`com.hawkwing.RingsOfIron.shell.GameShell` in co
 | `KeyBindings`, `RemappedInput` | Rebinding. The game still asks for its default keys; `RemappedInput` stands in `Gdx.input` and answers with the key the player bound. Binding a key that is already used swaps the two actions. Esc can't be bound |
 | `GamepadKeys` | A gamepad through libGDX Controllers, read as the game's keys (below) |
 
-Gamepad (standard mapping): left stick thrust and turn, or walk on deck; right stick left/right or the bumpers strafe; right stick click rotation assist; A or the right trigger fire (A also uses a console); B missile; X decoy or force a door; Y deck or outside view; left trigger next target; d-pad up/down time warp, left arm port and ask clearance, right undock; Start pause menu; Back the map (orbits and traffic). Sticks count past 40%.
+Gamepad (standard mapping): left stick thrust and turn, or walk on deck; right stick left/right or the bumpers strafe; right stick click rotation assist; A or the right trigger fire (A also uses a console); B missile; X decoy or force a door; Y deck or outside view; left trigger next target; d-pad up/down time warp, left arm port and ask clearance, right undock; Start pause menu; Back the map (orbits and traffic). The left stick's push is analog (thrust and turn throttle outside, walking pace on deck), as is the right stick's strafe, from just past 15% to full at the rim; where a stick is read as a key (menus, a single press) it counts past 40%.
 
 The `shell` smoke test (`gradlew :lwjgl3:smokeTestShell`) drives a session through the menu: new game, pause, save to a slot, quit to the menu, continue that save, settings, resume. With `-PsmokeShots=<dir>` it saves the screenshots above.
 

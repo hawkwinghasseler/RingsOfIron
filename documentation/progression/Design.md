@@ -170,7 +170,7 @@ When the player's pod launches, `Rescue` takes over:
 
 A notice tells the player where they woke and how long they were out.
 
-**Crashing** still ends the game ("SHIP LOST", F9 to reload); the rescue path does not yet cover it.
+**Crashing** ends the game ("SHIP LOST", F9 to reload) unless the crew were ordered to the pods before impact and the player reached one: then the pods launch and it is a rescue (`GameWorld.crash`, `AbandonShip`).
 
 ## Boarding and Salvage
 Boarding is crew work across a ship-to-ship dock: the corvette's port is active and can latch onto another ship's port (`claude/r2-bridge-helm-1buzuu`). The details are in `ai-crew` and `stations-docking`. The progression side:
@@ -238,7 +238,7 @@ A new game (the main menu's New game, and First Play) starts docked at Highport 
 - **The combined round trip:** `Round2SaveRoundTripTest` saves one game holding all of these at once and loads it into a fresh one: a Lieutenant Commander's career, the raider surrendered and taken with two prisoners, the player's old ship abandoned as a derelict, the gunship requisitioned at rescue and docked at the sponsor station, and a contract taken there. Each feature's own save edges are in `CareerEdgesTest`, `ContractEdgesTest`, `BoardingSaveTest`, `RescueEdgesTest` and `HostileEdgesTest`.
 
 ## Open Questions
-Round 3 (`planning/round3-plan.md`) answers most of these with defaults, chosen without Joe while he was away and marked so here. Each stays open to his call; the branch named builds it.
+Round 3 (its plan was kept outside the repository) answers most of these with defaults, chosen without Joe while he was away and marked so here. Each stays open to his call; the branch named builds it.
 - **Choosing a sponsor** (default, chosen without Joe): a New game offers the Terran Patrol or the Selene Combine, each with its own ladder names and stations. The sponsor is fixed for the career; changing sides stays open. Category 5, `claude/r3-world`.
 - **Standing recovering** (default, chosen without Joe): negative standing drifts toward zero by 1 a week; positive standing doesn't decay. Buying it back stays open. Category 5.
 - **What a rescue costs** (default, chosen without Joe): 5 standing with the sponsor, and any active contracts fail, on top of the lost ship, cargo and crew. Category 6, `claude/r3-contracts-events`.

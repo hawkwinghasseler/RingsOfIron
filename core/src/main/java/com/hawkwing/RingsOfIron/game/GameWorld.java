@@ -46,6 +46,7 @@ import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.PowerRoutingSystem;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.macrosim.MacroSaveParticipant;
 import com.ringsofiron.macrosim.MacroSimSystem;
@@ -400,7 +401,7 @@ public class GameWorld implements Disposable {
         crew = CrewFactory.install(engine.getEcsEngine());
         CrewSaveParticipant.install(crew, engine);
         // A ship taken out of the world (crashed on the rails, lost, wrecked) takes whoever is aboard
-        // with it, so no crew go on working on a ship that is gone
+        // and its systems with it, so no crew go on working on a ship that is gone
         engine.getEcsEngine().addEntityListener(Family.all(ShipGridComponent.class).get(), new EntityListener() {
             @Override
             public void entityAdded(Entity entity) {
@@ -418,6 +419,16 @@ public class GameWorld implements Disposable {
                 for (Entity e : aboard) {
                     crew.releaseTask(e);
                     engine.getEcsEngine().removeEntity(e);
+                }
+                // Only those still in the world: one already taken out (Shipyard.retire) went back to
+                // the engine's pool, and removing it again would hand it out twice
+                ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
+                if (registry == null) return;
+                ImmutableArray<Entity> systems = engine.getEcsEngine().getEntitiesFor(Family.all(SubsystemComponent.class).get());
+                for (Entity system : registry.subsystems) {
+                    if (system != null && !system.isScheduledForRemoval() && systems.contains(system, true)) {
+                        engine.getEcsEngine().removeEntity(system);
+                    }
                 }
             }
         });
