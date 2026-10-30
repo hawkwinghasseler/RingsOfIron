@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # How the deck view's light inside gives way to the light outside at the hull: a new game, the
 # player's ship swapped for a gunship (or SHIP, e.g. surveyor_selene for sloped armor) and
-# undocked so its shield is up, then the deck view at two zooms, and close each fade lit and as its light mask. Needs Xvfb, xdotool and ImageMagick's import.
+# undocked so its shield is up, then the deck view at two zooms, and close, lit and as its light mask. Needs Xvfb, xdotool and ImageMagick's import.
 #   [SHIP=id] tools/playtest/deck-edge.sh [out-dir]   (default build/playtest-screens-deck-edge)
 # Run from the repository root.
 set -u
@@ -23,14 +23,10 @@ wheel 4 12
 key v; pause 2
 shot deck-edge
 wheel 4 6
-# Each fade (deckFade), lit and as the light mask overlay: red where the decks' light is used,
-# blue the light outside
-for fade in ${FADES:-linear eased soft soft_eased hybrid}; do
-  cmd dev "deckFade '$fade'"; pause 1
-  shot "deck-edge-close-$fade"
-  cmd dev "overlay 'lightMask' true"; pause 1
-  shot "deck-edge-mask-$fade"
-  cmd dev "overlay 'lightMask' false"; pause 1
-done
+shot deck-edge-close
+# The light mask overlay: red where the decks' light is used, blue the light outside
+cmd dev "overlay 'lightMask' true"; pause 1
+shot deck-edge-mask
+cmd dev "overlay 'lightMask' false"; pause 1
 grep 'PLAYTEST \(dev\|away\)' "$OUT/game.log"
 finish

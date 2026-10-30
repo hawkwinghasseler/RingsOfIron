@@ -4,8 +4,6 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.IntArray;
 import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.WeightClass;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -13,19 +11,6 @@ import static org.junit.jupiter.api.Assertions.*;
 /** The deck edge's weights: 0 at the hull's edge, rising inward across the outermost tile, 1 deep in the decks. */
 class DeckEdgeBlendTest {
     private static final int N = DeckEdgeBlend.SUBDIVISIONS;
-    private DeckEdgeBlend.Fade was;
-
-    /** The weights below are the sharp fade's, whatever the game's default. */
-    @BeforeEach
-    void sharpFade() {
-        was = DeckEdgeBlend.fade;
-        DeckEdgeBlend.fade = DeckEdgeBlend.Fade.LINEAR;
-    }
-
-    @AfterEach
-    void restoreFade() {
-        DeckEdgeBlend.fade = was;
-    }
 
     /** A solid block of {@code w} by {@code h} tiles. */
     private static boolean[][] block(int w, int h) {
@@ -35,7 +20,7 @@ class DeckEdgeBlendTest {
     }
 
     private static float[] weights(boolean[][] on) {
-        return new DeckEdgeBlend.Outline(on, new IntArray()).cornerWeights();
+        return new DeckEdgeBlend.Outline(on, new IntArray()).sharpWeights();
     }
 
     /** The weight at the corner {@code tilesX}, {@code tilesY} tiles from the grid's bottom-left (half tiles allowed). */
@@ -105,7 +90,7 @@ class DeckEdgeBlendTest {
         IntArray wedges = new IntArray(DeckEdgeBlend.wedge(wedge(2, 2, 1, 1, 0)));
         DeckEdgeBlend.Outline edge = new DeckEdgeBlend.Outline(on, wedges);
         assertEquals(0f, edge.distance(2.5f, 2.5f), 1e-6f, "on the slope");
-        float[] w = edge.cornerWeights();
+        float[] w = edge.sharpWeights();
         assertEquals(1f, at(w, 3, 2f, 2f), 1e-6f, "the corner behind the slope: the fade ends there");
         assertEquals(0.5f, at(w, 3, 2f, 2.5f), 1e-6f, "on a leg, nearer the slope than the hull's top");
     }
@@ -120,7 +105,7 @@ class DeckEdgeBlendTest {
         IntArray wedges = new IntArray(DeckEdgeBlend.wedge(wedge(1, 0, 1, 1, 3)));
         wedges.addAll(DeckEdgeBlend.wedge(wedge(2, 1, 1, 1, 3)));
         DeckEdgeBlend.Outline edge = new DeckEdgeBlend.Outline(on, wedges);
-        float[] w = edge.cornerWeights();
+        float[] w = edge.sharpWeights();
         assertEquals(0f, at(w, 4, 2f, 1f), 1e-6f, "the corner on the edge");
         assertEquals(1f, at(w, 4, 1.5f, 1.5f), 1e-6f, "its middle, half its diagonal in");
         assertEquals(1f, at(w, 4, 1f, 2f), 1e-6f, "its far corner");
@@ -134,46 +119,14 @@ class DeckEdgeBlendTest {
     }
 
     @Test
-    void softCornersKeepWhereTheFadeStartsAndEnds() {
-        // A bevelled block with a notch: convex and concave corners, flat and sloped
+    void roundedTheFadeStartsWhereItDidAndEndsNoFurtherIn() {
         boolean[][] on = block(8, 6);
         on[0][0] = on[5][7] = false;
         on[3][0] = on[3][1] = false;
         IntArray wedges = new IntArray(DeckEdgeBlend.wedge(wedge(0, 0, 1, 1, 2)));
         wedges.addAll(DeckEdgeBlend.wedge(wedge(7, 5, 1, 1, 0)));
         DeckEdgeBlend.Outline edge = new DeckEdgeBlend.Outline(on, wedges);
-        float[] linear = edge.cornerWeights();
-        DeckEdgeBlend.fade = DeckEdgeBlend.Fade.SOFT;
-        float[] soft = edge.cornerWeights();
-        boolean rounded = false;
-        int cw = 8 * N + 1;
-        for (int i = 0; i < linear.length; i++) {
-            // Where the whole tiles are drawn (the slopes' far sides are off the footprint)
-            int vx = i % cw, vy = i / cw;
-            boolean drawn = false;
-            for (int ty = 0; ty < 6; ty++) {
-                for (int tx = 0; tx < 8; tx++) {
-                    drawn |= on[ty][tx] && vx >= tx * N && vx <= (tx + 1) * N && vy >= ty * N && vy <= (ty + 1) * N;
-                }
-            }
-            if (!drawn) continue;
-            assertEquals(linear[i] >= 1f, soft[i] >= 1f, "all inside at corner " + i);
-            assertEquals(linear[i] <= 0f, soft[i] <= 0f, "all outside at corner " + i);
-            rounded |= Math.abs(linear[i] - soft[i]) > 0.01f;
-        }
-        assertTrue(rounded, "rounded somewhere between");
-    }
-
-    @Test
-    void theHybridKeepsWhereTheFadeStartsAndLetsItsEndComeOut() {
-        boolean[][] on = block(8, 6);
-        on[0][0] = on[5][7] = false;
-        on[3][0] = on[3][1] = false;
-        IntArray wedges = new IntArray(DeckEdgeBlend.wedge(wedge(0, 0, 1, 1, 2)));
-        wedges.addAll(DeckEdgeBlend.wedge(wedge(7, 5, 1, 1, 0)));
-        DeckEdgeBlend.Outline edge = new DeckEdgeBlend.Outline(on, wedges);
-        float[] linear = edge.cornerWeights();
-        DeckEdgeBlend.fade = DeckEdgeBlend.Fade.HYBRID;
+        float[] linear = edge.sharpWeights();
         float[] hybrid = edge.cornerWeights();
         boolean cameOut = false;
         int cw = 8 * N + 1;
