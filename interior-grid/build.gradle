@@ -1,4 +1,3 @@
-[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-interior-grid'
 
 dependencies {
@@ -6,7 +5,9 @@ dependencies {
   api project(':core-engine')
   api project(':modding-data')
 
-  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  // The game's data, to check the chassis defs against the real blueprint loader (InteriorGridDataTest)
+  testImplementation testFixtures(project(':modding-data'))
+  testImplementation "org.junit.jupiter:junit-jupiter"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 

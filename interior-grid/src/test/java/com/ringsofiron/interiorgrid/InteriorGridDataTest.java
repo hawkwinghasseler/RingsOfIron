@@ -1,14 +1,8 @@
-package com.ringsofiron.moddingdata;
+package com.ringsofiron.interiorgrid;
 
-import com.ringsofiron.coreengine.GameEngine;
-import com.ringsofiron.interiorgrid.ChassisBlueprint;
-import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
-import com.ringsofiron.interiorgrid.InteriorGridData;
-import com.ringsofiron.interiorgrid.MaterialTable;
-import com.ringsofiron.interiorgrid.MountFootprint;
-import com.ringsofiron.interiorgrid.ShipPartCatalog;
-import com.ringsofiron.interiorgrid.SubsystemComponent;
-import com.ringsofiron.interiorgrid.WeightClass;
+import com.ringsofiron.moddingdata.DefRegistry;
+import com.ringsofiron.moddingdata.ModContext;
+import com.ringsofiron.moddingdata.ModdingTestData;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.moddingdata.defs.MaterialDef;
 import com.ringsofiron.moddingdata.defs.StationTypeDef;
@@ -19,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Proves the chassis, tile, component and material data feed interior-grid's real loader.
- * interior-grid is only a test dependency here, so modding-data stays independent of it.
+ * The data comes from modding-data's test fixtures, so modding-data's own tests need no interior-grid.
  */
 class InteriorGridDataTest {
 
@@ -27,7 +21,7 @@ class InteriorGridDataTest {
 
     @BeforeAll
     static void load() {
-        ctx = new ModdingBootstrap(ModdingBootstrapTest.ASSETS, ModdingBootstrapTest.EXAMPLE_MODS).load(new GameEngine());
+        ctx = ModdingTestData.withExampleMods();
     }
 
     /** The blueprint for a chassis, drawn with the loaded data's tile types and components. */
@@ -56,7 +50,7 @@ class InteriorGridDataTest {
                 e.add(new SubsystemComponent(p.footprint, p.type));
                 p.footprint.installed = e;
             }
-            com.ringsofiron.interiorgrid.ShipGridComponent g = r.grid;
+            ShipGridComponent g = r.grid;
             int[] all = regions(g, false), round = regions(g, true);
             // Every two floor tiles joined with the systems ignored are still joined going round them
             java.util.Map<Integer, Integer> seen = new java.util.HashMap<>();
@@ -70,7 +64,7 @@ class InteriorGridDataTest {
     }
 
     /** Each open tile's region (doors counted open), going round obstacles if {@code obstacles}; -1 for none. */
-    private static int[] regions(com.ringsofiron.interiorgrid.ShipGridComponent g, boolean obstacles) {
+    private static int[] regions(ShipGridComponent g, boolean obstacles) {
         int[] label = new int[g.width * g.height];
         java.util.Arrays.fill(label, -1);
         int next = 0;
@@ -97,7 +91,7 @@ class InteriorGridDataTest {
         return label;
     }
 
-    private static boolean floor(com.ringsofiron.interiorgrid.ShipGridComponent g, int x, int y, boolean obstacles) {
+    private static boolean floor(ShipGridComponent g, int x, int y, boolean obstacles) {
         com.ringsofiron.interiorgrid.Tile t = g.getTile(x, y);
         return t != null && t.isOpen() && !(obstacles && com.ringsofiron.interiorgrid.CrewObstacles.blocks(g, null, x, y));
     }
