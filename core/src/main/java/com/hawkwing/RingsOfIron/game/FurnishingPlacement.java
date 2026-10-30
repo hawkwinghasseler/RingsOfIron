@@ -22,7 +22,8 @@ public final class FurnishingPlacement {
     /** Degrees a fine turn (with Shift) turns it. */
     public static final float FINE_STEP = 1f;
 
-    private final GameWorld world;
+    private final FurnishingStore furnishings;
+    private final StationYard yard;
     private final Entity ship, station;
     /** The kind being bought; null while arranging. */
     private final FurnishingType buying;
@@ -31,8 +32,10 @@ public final class FurnishingPlacement {
     private float x = Float.NaN, y = Float.NaN, rotation;
     private boolean done;
 
-    private FurnishingPlacement(GameWorld world, Entity ship, Entity station, FurnishingType buying) {
-        this.world = world;
+    private FurnishingPlacement(FurnishingStore furnishings, StationYard yard, Entity ship, Entity station,
+                                FurnishingType buying) {
+        this.furnishings = furnishings;
+        this.yard = yard;
         this.ship = ship;
         this.station = station;
         this.buying = buying;
@@ -40,12 +43,12 @@ public final class FurnishingPlacement {
 
     /** Placing a new {@code type} on {@code ship}, docked at {@code station}. */
     public static FurnishingPlacement buy(GameWorld world, Entity ship, Entity station, FurnishingType type) {
-        return new FurnishingPlacement(world, ship, station, type);
+        return new FurnishingPlacement(world.furnishings, world.yard, ship, station, type);
     }
 
     /** Moving the pieces aboard {@code ship} about. */
     public static FurnishingPlacement arrange(GameWorld world, Entity ship, Entity station) {
-        return new FurnishingPlacement(world, ship, station, null);
+        return new FurnishingPlacement(world.furnishings, world.yard, ship, station, null);
     }
 
     public Entity ship() {
@@ -119,14 +122,14 @@ public final class FurnishingPlacement {
     /** A left click: order the piece here, pick one up, or put the one in hand down. Returns what to tell the player, or null. */
     public String click() {
         if (Float.isNaN(x) || !stillDocked()) return null;
-        if (buying != null) return world.furnishings.order(ship, station, buying.id, x, y, rotation);
+        if (buying != null) return furnishings.order(ship, station, buying.id, x, y, rotation);
         if (held == null) {
             held = hovered();
             if (held == null) return "Click a piece aboard to move it";
             rotation = held.rotation;
             return "Moving " + held.type.the() + ": click where it goes";
         }
-        String said = world.furnishings.move(ship, station, held, x, y, rotation);
+        String said = furnishings.move(ship, station, held, x, y, rotation);
         if (said.endsWith(" moved")) held = null;
         return said;
     }
@@ -137,7 +140,7 @@ public final class FurnishingPlacement {
         Furnishing f = held != null ? held : hovered();
         if (f == null) return null;
         held = null;
-        return world.furnishings.sell(ship, station, f);
+        return furnishings.sell(ship, station, f);
     }
 
     /** Right click or Esc: puts back what is in hand, or stops. Returns what to tell the player, or null. */
@@ -155,7 +158,7 @@ public final class FurnishingPlacement {
         Furnishing hover = buying == null && held == null ? hovered() : null;
         if (buying != null) {
             return String.format(Locale.ROOT, "Placing %s (%,.0f cr): click to order it there, wheel or Q/E turns it (Shift: finely), right click or Esc stops",
-                    buying.the(), world.furnishings.price(buying, station));
+                    buying.the(), furnishings.price(buying, station));
         }
         if (held != null) return "Moving " + held.type.the() + ": click to put it down, wheel or Q/E turns it, right click puts it back";
         if (hover != null) {
@@ -167,7 +170,7 @@ public final class FurnishingPlacement {
 
     /** Ends placing once the ship leaves the yard. */
     public boolean stillDocked() {
-        boolean docked = station != null && world.yard.canWork(ship, station);
+        boolean docked = station != null && yard.canWork(ship, station);
         if (!docked) done = true;
         return docked;
     }
@@ -178,7 +181,7 @@ public final class FurnishingPlacement {
 
     private java.util.List<Furnishing> spots() {
         java.util.List<Furnishing> out = new java.util.ArrayList<>();
-        for (FurnishingStore.Order o : world.furnishings.pending(ship)) out.add(o.furnishing);
+        for (FurnishingStore.Order o : furnishings.pending(ship)) out.add(o.furnishing);
         return out;
     }
 

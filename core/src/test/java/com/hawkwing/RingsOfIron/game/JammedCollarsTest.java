@@ -94,7 +94,7 @@ class JammedCollarsTest {
 
     @Test
     void heldInFromTheCrewWindowNobodyGoesOutTillOneIsSent() {
-        CrewRoster roster = new CrewRoster(world);
+        CrewRoster roster = new CrewRoster(world.context, world.crew, world.macroSim, world.standing, world.crewCareer, world.crewHiring, world.medical, world.prisoners, world.spacewalks);
         CrewProvider.CrewSheet sheet = new CrewProvider.CrewSheet();
         assertEquals("Nobody goes out on EVA unless sent, and anyone out is called back in", roster.toggleEva());
         roster.collect(sheet);

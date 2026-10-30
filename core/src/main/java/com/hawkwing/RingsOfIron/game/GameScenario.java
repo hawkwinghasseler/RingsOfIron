@@ -253,7 +253,7 @@ public class GameScenario {
             }
         });
         // A freighter at a station when it comes into the bubble is latched to a port there.
-        world.macroSim.bubble().addListener(new StationTraffic(world));
+        world.macroSim.bubble().addListener(new StationTraffic(world.engine, world.physics, world.macroSim, world.docking));
         // Stations are marked while they are in the bubble.
         world.engine.getEcsEngine().addEntityListener(
                 Family.all(StationComponent.class, KinematicTransientComponent.class).get(), new EntityListener() {

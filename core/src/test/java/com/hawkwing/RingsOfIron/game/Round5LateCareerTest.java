@@ -318,7 +318,7 @@ class Round5LateCareerTest {
         assertTrue(game.dockAtHighport());
         world.update(FRAME);
         MissionProvider.MissionBoard out = new MissionProvider.MissionBoard();
-        new ContractMissions(world).collect(out);
+        new ContractMissions(world.context, world.docking, world.macroSim, world.standing, world.tension, world.contracts).collect(out);
         assertTrue(out.tension.startsWith("Tension: "), out.tension);
         assertTrue(out.tension.contains("Selene Mining Combine 34"), out.tension);
         assertTrue(out.tension.contains("Free Traders 60 HIGH"), out.tension);

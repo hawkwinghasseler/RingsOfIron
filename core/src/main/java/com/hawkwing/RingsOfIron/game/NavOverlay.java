@@ -24,7 +24,9 @@ public class NavOverlay {
     private static final Color FAST = new Color(1f, 0.7f, 0.2f, 0.9f);
     private static final Color DANGER = new Color(1f, 0.25f, 0.2f, 1f);
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final DockingSystem dockingSystem;
+    private final Navigation nav;
     private final PlayerDocking docking;
     private final com.badlogic.gdx.utils.FloatArray burns = new com.badlogic.gdx.utils.FloatArray();
     private final Vector2 at = new Vector2();
@@ -32,8 +34,10 @@ public class NavOverlay {
     final com.badlogic.gdx.utils.FloatArray labelAt = new com.badlogic.gdx.utils.FloatArray();
     final com.badlogic.gdx.utils.Array<String> labels = new com.badlogic.gdx.utils.Array<>();
 
-    public NavOverlay(GameWorld world, PlayerDocking docking) {
-        this.world = world;
+    public NavOverlay(GameContext ctx, DockingSystem dockingSystem, Navigation nav, PlayerDocking docking) {
+        this.ctx = ctx;
+        this.dockingSystem = dockingSystem;
+        this.nav = nav;
         this.docking = docking;
     }
 
@@ -42,12 +46,12 @@ public class NavOverlay {
      * pixel, so marks keep their size on screen. Begins and ends its own batch of lines.
      */
     public void draw(ShapeRenderer shapes, float px) {
-        Entity ship = world.getPlayer();
-        Body body = ship == null ? null : world.docking.bodyOf(ship);
+        Entity ship = ctx.player();
+        Body body = ship == null ? null : dockingSystem.bodyOf(ship);
         if (body == null) return;
         PhysicsManager.getPosition(body, at);
         shapes.begin(ShapeRenderer.ShapeType.Line);
-        world.nav.plannedBurnMarkers(burns);
+        nav.plannedBurnMarkers(burns);
         labelAt.clear();
         labels.clear();
         for (int i = burns.size / 4 - 1; i >= 0; i--) {

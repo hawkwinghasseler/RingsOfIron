@@ -100,7 +100,7 @@ class WeaponDuelBenchmark {
             world.combatEvents.hullHits.add((s, h) -> {
                 if (h.ship == game.raider) d.hits++;
             });
-            PlayerGunnery gun = new PlayerGunnery(world, game.player);
+            PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
             gun.setTarget(game.raider);
             Vector2 raider = new Vector2(), ours = new Vector2();
             float t = 0f;

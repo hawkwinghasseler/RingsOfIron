@@ -7,6 +7,7 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
+import com.ringsofiron.aicrew.CrewService;
 
 /**
  * The interior tools: the damage sources and crew tools a click on a ship's deck can use, each
@@ -43,7 +44,7 @@ public final class DeckTools {
         }
     }
 
-    private final GameWorld world;
+    private final CrewService crewService;
     private final WorldDebug debug;
     public Tool tool = Tool.WOUND;
     private int woundAmount = 4, cause, weapon, warhead, ramSpeed = 1, ramMass = 1, role, damageAmount = 1;
@@ -51,8 +52,8 @@ public final class DeckTools {
     /** The crew member the last use hurt or spawned, for a screen to follow; null if none. */
     public Entity touched;
 
-    public DeckTools(GameWorld world, WorldDebug debug) {
-        this.world = world;
+    public DeckTools(CrewService crewService, WorldDebug debug) {
+        this.crewService = crewService;
         this.debug = debug;
     }
 
@@ -137,7 +138,7 @@ public final class DeckTools {
                 }
                 debug.hurt(crew, WOUND_AMOUNTS[woundAmount], CAUSES[cause]);
                 touched = crew;
-                result = String.format("%s: %.0f %s", world.crew.crew(crew).name, WOUND_AMOUNTS[woundAmount],
+                result = String.format("%s: %.0f %s", crewService.crew(crew).name, WOUND_AMOUNTS[woundAmount],
                         cause(CAUSES[cause]));
                 break;
             case WEAPON: {
@@ -175,10 +176,10 @@ public final class DeckTools {
                 result = debug.damage(ship, x, y, DAMAGE_AMOUNTS[damageAmount]);
                 break;
             case SPAWN: {
-                int own = world.crew.board(ship).faction;
+                int own = crewService.board(ship).faction;
                 Entity e = boarder ? debug.spawnCrew(ship, ROLES[role], own == BOARDERS ? own + 1 : BOARDERS, x, y)
                         : debug.spawnCrew(ship, ROLES[role], x, y);
-                result = e == null ? "Spawn on open deck" : world.crew.crew(e).name + (boarder ? " boards" : " comes aboard");
+                result = e == null ? "Spawn on open deck" : crewService.crew(e).name + (boarder ? " boards" : " comes aboard");
                 touched = e;
                 break;
             }
@@ -187,7 +188,7 @@ public final class DeckTools {
                     result = "Click a crew member";
                     break;
                 }
-                result = world.crew.crew(crew).name + " taken off";
+                result = crewService.crew(crew).name + " taken off";
                 debug.removeCrew(crew);
                 break;
             default:

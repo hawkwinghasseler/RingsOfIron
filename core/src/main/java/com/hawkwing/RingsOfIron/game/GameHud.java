@@ -36,29 +36,30 @@ public class GameHud implements Disposable {
         hud.addTo(world.engine.getEcsEngine());
         hud.setPhysics(world.physics);
         hud.setOrbitInfo(new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
-        PlayerOrbitPath orbitPath = new PlayerOrbitPath(world, world.burns);
+        PlayerOrbitPath orbitPath = new PlayerOrbitPath(world.context, world.physics, world.universe, world.macroSim, world.pirateBase, world.nav,
+                world.burns);
         hud.setOrbitPath(orbitPath);
         // The full-screen orbit map's mouse planning and its buttons: the burn planner and navigation
-        hud.setManeuverPlanner(new MapManeuvers(world, orbitPath));
+        hud.setManeuverPlanner(new MapManeuvers(world.context, world.physics, world.universe, world.burns, world.nav, orbitPath));
         // interior-grid's tanks, hull and power circuits on the ship gauges.
         hud.setShipStatus(new PlayerShipStatus(world::getPlayer));
         hud.setInteractor(world.avatar);
         hud.getViewMode().addListener((previous, current) -> world.audioListener.setMode(toListenerMode(current)));
         world.audioListener.setMode(toListenerMode(hud.getViewMode().getMode()));
         // macro-sim's traffic on rails for the [M] map.
-        hud.setTrafficMap(new RailsTrafficMap(world));
+        hud.setTrafficMap(new RailsTrafficMap(world.context, world.physics, world.universe, world.macroSim, world.nav, world.contracts, world.derelicts, world.pirateBase, world.tension));
         // macro-sim's station markets for the [T] trade window.
-        hud.setTrade(new MarketTrade(world));
+        hud.setTrade(new MarketTrade(world.context, world.docking, world.macroSim, world.cargo, world.cargoSettlement, world.salvage));
         // The docked station's yard for the [Y] yard window: repairs and refits.
-        hud.setYard(yard = new YardWork(world));
+        hud.setYard(yard = new YardWork(world.context, world.docking, world.combatDefs, world.yard, world.fieldRefits, world.furnishings));
         // The station's mission board and the contracts held, for the [J] mission window.
-        hud.setMissions(new ContractMissions(world));
+        hud.setMissions(new ContractMissions(world.context, world.docking, world.macroSim, world.standing, world.tension, world.contracts));
         // Ships for sale at the docked station and the prize in tow, for the shipyard window (the [Y] yard's Ships for sale).
-        hud.setShipyard(new ShipyardWork(world));
+        hud.setShipyard(new ShipyardWork(world.context, world.standing, world.shipyard));
         // The ship latched to, for the [K] boarding window: boarding it, then stripping it.
-        hud.setBoarding(new BoardingWork(world));
+        hud.setBoarding(new BoardingWork(world.context, world.docking, world.boarding, world.salvage));
         // The player's crew, the station's hires and the prisoners, for the [I] crew window.
-        hud.setCrew(new CrewRoster(world));
+        hud.setCrew(new CrewRoster(world.context, world.crew, world.macroSim, world.standing, world.crewCareer, world.crewHiring, world.medical, world.prisoners, world.spacewalks));
         hullHits = (signal, hit) -> {
             if (hit.ship != null && hit.ship == world.getPlayer()) hud.flashHullHit(hit.tileX, hit.tileY);
         };

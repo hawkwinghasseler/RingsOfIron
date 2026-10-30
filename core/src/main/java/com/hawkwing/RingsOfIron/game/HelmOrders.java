@@ -25,6 +25,9 @@ import com.ringsofiron.coreengine.EntityRef;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.orbital.rails.RailsUniverse;
+import com.ringsofiron.combatsys.events.CombatEvents;
 
 /**
  * The helm's autopilot: orders the player gives the helmsman, flown whenever the player is not at
@@ -82,7 +85,13 @@ public class HelmOrders {
     /** The berthing pilot the dock order flies by; its state lives on {@link HelmOrderComponent}. */
     private final BerthingComponent pilot = new BerthingComponent();
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final PhysicsManager physics;
+    private final RailsUniverse universe;
+    private final DockingSystem docking;
+    private final BerthingSystem berthing;
+    private final Bridge bridge;
+    private final CombatEvents combatEvents;
     private final NavTarget target;
     /** What the player should hear of: orders dropped, burns flown. */
     public final List<String> notices = new ArrayList<>();
@@ -93,21 +102,27 @@ public class HelmOrders {
 
     private final java.util.function.Function<Action, String> keys;
 
-    public HelmOrders(GameWorld world, NavTarget target, java.util.function.Function<Action, String> keys) {
-        this.world = world;
+    public HelmOrders(GameContext ctx, PhysicsManager physics, RailsUniverse universe, DockingSystem docking, BerthingSystem berthing, Bridge bridge, CombatEvents combatEvents, NavTarget target, java.util.function.Function<Action, String> keys) {
+        this.ctx = ctx;
+        this.physics = physics;
+        this.universe = universe;
+        this.docking = docking;
+        this.berthing = berthing;
+        this.bridge = bridge;
+        this.combatEvents = combatEvents;
         this.target = target;
         this.keys = keys;
-        world.combatEvents.shots.add((signal, shot) -> {
-            if (shot.target != null && shot.target == world.getPlayer()) threat("shots fired at us");
+        combatEvents.shots.add((signal, shot) -> {
+            if (shot.target != null && shot.target == ctx.player()) threat("shots fired at us");
         });
-        world.combatEvents.impacts.add((signal, hit) -> {
-            if (hit.target != null && hit.target == world.getPlayer()) threat("we're hit");
+        combatEvents.impacts.add((signal, hit) -> {
+            if (hit.target != null && hit.target == ctx.player()) threat("we're hit");
         });
     }
 
     /** The standing order, never null. */
     public HelmOrderComponent order() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         HelmOrderComponent o = ship == null ? null : ship.getComponent(HelmOrderComponent.class);
         if (o == null) {
             o = new HelmOrderComponent();
@@ -125,7 +140,7 @@ public class HelmOrders {
      * {@link #APPROACH_DISTANCES}. Returns what to tell the player.
      */
     public String give(HelmOrderComponent.Mode mode) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (ship == null) return "No ship";
         HelmOrderComponent o = order();
         if (mode == HelmOrderComponent.Mode.NONE) {
@@ -195,36 +210,36 @@ public class HelmOrders {
             case DOCK: what = "docking at " + who + (o.dockStatus.isEmpty() ? "" : ": " + Character.toLowerCase(o.dockStatus.charAt(0)) + o.dockStatus.substring(1)); break;
             default: return null;
         }
-        if (world.bridge.playerAtHelm()) return "Helm order (" + what + ") waits: you have the helm (" + keys.apply(Action.VIEW) + " hands it over)";
-        if (world.bridge.helmsman(world.getPlayer()) == null) return "Helm order (" + what + ") waits for a helmsman";
+        if (bridge.playerAtHelm()) return "Helm order (" + what + ") waits: you have the helm (" + keys.apply(Action.VIEW) + " hands it over)";
+        if (bridge.helmsman(ctx.player()) == null) return "Helm order (" + what + ") waits for a helmsman";
         return "Helm: " + what;
     }
 
     /** Why rails warp must wait, or null: a burn half flown can't be. */
     public String railsWarpBlockedReason() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         HelmOrderComponent o = ship == null ? null : ship.getComponent(HelmOrderComponent.class);
         return o != null && o.burning ? "the helm is flying a burn" : null;
     }
 
     /** Once a frame: drops an order nobody has come to fly, or whose target is gone. */
     public void update() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         HelmOrderComponent o = ship == null ? null : ship.getComponent(HelmOrderComponent.class);
         if (o == null || o.mode == HelmOrderComponent.Mode.NONE) return;
-        if (o.targetUuid != null && world.engine.getEntity(o.targetUuid) == null) {
+        if (o.targetUuid != null && ctx.engine.getEntity(o.targetUuid) == null) {
             drop(o, "the target is gone");
             return;
         }
-        if (o.mode == HelmOrderComponent.Mode.DOCK && world.docking.docked(ship, world.engine.getEntity(o.targetUuid))) {
+        if (o.mode == HelmOrderComponent.Mode.DOCK && docking.docked(ship, ctx.engine.getEntity(o.targetUuid))) {
             String at = target.name(o.targetUuid);
             clear(o);
             notices.add("Helm: docked at " + at);
             return;
         }
-        if (world.universe.orbit(ship) != null || world.bridge.playerAtHelm()) return;
-        double now = world.universe.now();
-        if (world.bridge.helmsman(ship) != null || o.mannedAt < 0) o.mannedAt = now;
+        if (universe.orbit(ship) != null || bridge.playerAtHelm()) return;
+        double now = universe.now();
+        if (bridge.helmsman(ship) != null || o.mannedAt < 0) o.mannedAt = now;
         else if (now - o.mannedAt > UNMANNED_LIMIT) drop(o, "nobody took the helm");
     }
 
@@ -244,8 +259,8 @@ public class HelmOrders {
         controls.rotationAssist = true;
         if (o.mode == HelmOrderComponent.Mode.FLY_BURNS) return flyBurns(ship, o, helm, controls, body, thruster, fwd, lat, dt);
 
-        Entity other = world.engine.getEntity(o.targetUuid);
-        if (o.mode == HelmOrderComponent.Mode.DOCK && world.docking.bodyOf(other) != null) return dock(ship, other, o, controls, dt);
+        Entity other = ctx.engine.getEntity(o.targetUuid);
+        if (o.mode == HelmOrderComponent.Mode.DOCK && docking.bodyOf(other) != null) return dock(ship, other, o, controls, dt);
         if (!relative(ship, other, rel)) return false;
         double rx = rel[0], ry = rel[1], wx = rel[2], wy = rel[3];
         // The relative velocity wanted
@@ -290,7 +305,7 @@ public class HelmOrders {
         pilot.phase = o.dockPhase;
         pilot.status = o.dockStatus;
         pilot.uninvited = other.getComponent(StationComponent.class) == null;
-        world.berthing.pilot(ship, pilot, controls, dt);
+        berthing.pilot(ship, pilot, controls, dt);
         o.dockPort = pilot.port;
         o.dockPhase = pilot.phase;
         o.dockStatus = pilot.status;
@@ -300,7 +315,7 @@ public class HelmOrders {
     /** Why the ship can't dock at {@code other} with its selected port, or null when it can. */
     private String dockRefusal(Entity ship, Entity other) {
         DockingPortsComponent own = ship.getComponent(DockingPortsComponent.class);
-        if (world.docking.dockedTo(ship) != null) return "Already docked: undock first (" + keys.apply(Action.UNDOCK) + ")";
+        if (docking.dockedTo(ship) != null) return "Already docked: undock first (" + keys.apply(Action.UNDOCK) + ")";
         if (own == null || own.ports.length == 0) return "This ship has no docking port";
         DockingPort port = own.selectedPort();
         if (!port.intact()) return "The selected docking port's collar is torn off (" + keys.apply(Action.NEXT_PORT) + " picks another)";
@@ -314,7 +329,7 @@ public class HelmOrders {
     private boolean flyBurns(Entity ship, HelmOrderComponent o, HelmComponent helm, FlightControlComponent controls,
                              Body body, ThrusterComponent thruster, double fwd, double lat, float dt) {
         ManeuverNodeComponent m = ship.getComponent(ManeuverNodeComponent.class);
-        double now = world.universe.now();
+        double now = universe.now();
         if (o.burning) {
             // What the engine gave since last tick: the change in velocity less the parent's pull
             if (!Double.isNaN(lastVx)) {
@@ -393,7 +408,7 @@ public class HelmOrders {
     }
 
     private void threat(String why) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         HelmOrderComponent o = ship == null ? null : ship.getComponent(HelmOrderComponent.class);
         if (o != null && o.mode != HelmOrderComponent.Mode.NONE && !survivesThreat(o.mode)) drop(o, why);
     }
@@ -422,7 +437,7 @@ public class HelmOrders {
     }
 
     private String handOver() {
-        return world.bridge.playerAtHelm() ? ". Hand over the helm (" + keys.apply(Action.VIEW) + ") for the helmsman to fly it" : "";
+        return bridge.playerAtHelm() ? ". Hand over the helm (" + keys.apply(Action.VIEW) + ") for the helmsman to fly it" : "";
     }
 
     /** How far a craft's hull reaches from its center, m: half its deck plan's diagonal; 0 without one. */
@@ -441,7 +456,7 @@ public class HelmOrders {
 
     /** A conscious crew member other than the player aboard {@code ship}, who could take the helm. */
     boolean hasCrewForHelm(Entity ship) {
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+        for (Entity e : ctx.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
             if (e.getComponent(PlayerAvatarComponent.class) != null) continue;
             GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
@@ -459,7 +474,7 @@ public class HelmOrders {
      * from the ship's true state and the other's rails or conic. False if the other can't be placed.
      */
     private boolean relative(Entity ship, Entity other, double[] out) {
-        Body a = world.docking.bodyOf(ship), b = other == null ? null : world.docking.bodyOf(other);
+        Body a = docking.bodyOf(ship), b = other == null ? null : docking.bodyOf(other);
         if (a != null && b != null) {
             PhysicsManager.getPosition(a, v1).sub(PhysicsManager.getPosition(b, v2));
             out[0] = v1.x;
@@ -470,7 +485,7 @@ public class HelmOrders {
             return true;
         }
         Entity frame = frame();
-        if (frame == null || !target.stateOf(other, frame, world.universe.now(), q)) return false;
+        if (frame == null || !target.stateOf(other, frame, universe.now(), q)) return false;
         out[0] = trueState[0] - q.x;
         out[1] = trueState[1] - q.y;
         out[2] = trueState[2] - q.vx;
@@ -480,20 +495,20 @@ public class HelmOrders {
 
     /** The body the bubble falls around, or null. */
     private Entity frame() {
-        String anchor = world.physics.getAnchorParentUuid();
-        return anchor == null ? null : world.universe.entity(anchor);
+        String anchor = physics.getAnchorParentUuid();
+        return anchor == null ? null : universe.entity(anchor);
     }
 
     private CelestialBodyComponent parentBody() {
         Entity f = frame();
-        return f == null ? null : world.universe.celestial(f);
+        return f == null ? null : universe.celestial(f);
     }
 
     /** The ship's true state into {@link #trueState}; false off the bubble. */
     private boolean trueState(Entity ship) {
         PhysicsBodyComponent pb = ship.getComponent(PhysicsBodyComponent.class);
-        if (pb == null || pb.body == null || world.universe.orbit(ship) != null) return false;
-        world.physics.getTrueState(pb.body, trueState);
+        if (pb == null || pb.body == null || universe.orbit(ship) != null) return false;
+        physics.getTrueState(pb.body, trueState);
         return true;
     }
 }

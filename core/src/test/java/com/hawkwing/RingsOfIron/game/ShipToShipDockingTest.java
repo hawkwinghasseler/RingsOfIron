@@ -40,7 +40,7 @@ class ShipToShipDockingTest {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         world = new GameWorld();
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
-        docking = new PlayerDocking(world, () -> game.player, notices::add);
+        docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, notices::add);
     }
 
     @AfterEach

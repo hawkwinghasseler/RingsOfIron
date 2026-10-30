@@ -64,7 +64,7 @@ class PrizeTraceProbe {
             if (d.owner != game.player || !struckAt.containsKey(d.target)) return;
             log("DETONATION at struck " + name(d.target) + " aimedAt=" + name(d.aimedAt));
         });
-        gun = new PlayerGunnery(world, game.player);
+        gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         if (bounty) bounty();
         else if ("career".equals(System.getenv("PRIZE_TRACE_MODE"))) career();
         else window();

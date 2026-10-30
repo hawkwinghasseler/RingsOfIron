@@ -59,11 +59,14 @@ public class Navigation extends EntitySystem implements DropOutSource {
     private Navigation(GameWorld world) {
         this.world = world;
         orbits = new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer);
-        sightings = new PirateSightings(world);
-        target = new NavTarget(world, sightings);
-        transfer = new PlayerTransfer(world, target, orbits, this::key);
-        helm = new HelmOrders(world, target, this::key);
-        autopilot = new Autopilot(world, this, this::key);
+        sightings = new PirateSightings(world.context, world.physics, world.universe, world.macroSim, world.contracts);
+        target = new NavTarget(world.context, world.physics, world.universe, world.macroSim, world.contracts, world.pirateBase,
+                sightings);
+        transfer = new PlayerTransfer(world.context, world.universe, world.macroSim, world::shipMass, target, orbits, this::key);
+        helm = new HelmOrders(world.context, world.physics, world.universe, world.docking, world.berthing, world.bridge,
+                world.combatEvents, target, this::key);
+        autopilot = new Autopilot(world.context, () -> world.getCrash() != null, world.universe, world.orbitalEvents,
+                world.timeWarp, world.docking, world.burns, world.hostiles, this, this::key);
     }
 
     PlayerOrbitInfo orbits() {
@@ -84,6 +87,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
         registerHints(world.hints, () -> nav.transfer.proposal() != null);
         // The low-propellant warning keeps quiet while there is enough to get home
         world.warnings.returnPropellantKg = nav::returnPropellantKg;
+        // The navigation target is the craft boarded on EVA, when it is in reach
+        world.boarding.preferred = nav.target::entity;
         return nav;
     }
 

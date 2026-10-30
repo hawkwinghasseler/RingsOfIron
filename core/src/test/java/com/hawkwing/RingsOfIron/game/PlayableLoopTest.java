@@ -142,7 +142,7 @@ class PlayableLoopTest {
 
         // The fight: guns and missiles until it gives up; it fights back
         game.provokeRaider();
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(game.raider);
         assertTrue(runUntil(240f, () -> {
             gun.fireGuns();

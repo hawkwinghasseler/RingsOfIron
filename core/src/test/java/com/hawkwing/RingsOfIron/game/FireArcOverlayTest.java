@@ -38,7 +38,7 @@ class FireArcOverlayTest {
         world = new GameWorld();
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
         world.update(FRAME);
-        arcs = new FireArcOverlay(world);
+        arcs = new FireArcOverlay(world.context, world.bridge, world.docking, world.sensors, world.weaponControl);
         sensor = game.player.getComponent(SensorComponent.class);
     }
 

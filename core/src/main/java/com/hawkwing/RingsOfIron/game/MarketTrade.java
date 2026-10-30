@@ -8,6 +8,8 @@ import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.economy.MarketQuote;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.uihud.providers.TradeProvider;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * ui-hud's market window from macro-sim: the station the player's ship is docked at, its board, and
@@ -22,12 +24,22 @@ import com.ringsofiron.uihud.providers.TradeProvider;
  * {@link Salvage#SALE_SHARE} of their price, and never sells them.
  */
 public class MarketTrade implements TradeProvider {
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final DockingSystem docking;
+    private final MacroSimulation macroSim;
+    private final CargoLoading cargo;
+    private final SalvageSettlement cargoSettlement;
+    private final Salvage salvage;
     private final CargoLoading.Settlement settlement;
 
-    public MarketTrade(GameWorld world) {
-        this.world = world;
-        this.settlement = world.cargoSettlement;
+    public MarketTrade(GameContext ctx, DockingSystem docking, MacroSimulation macroSim, CargoLoading cargo, SalvageSettlement cargoSettlement, Salvage salvage) {
+        this.ctx = ctx;
+        this.docking = docking;
+        this.macroSim = macroSim;
+        this.cargo = cargo;
+        this.cargoSettlement = cargoSettlement;
+        this.salvage = salvage;
+        this.settlement = cargoSettlement;
     }
 
     @Override
@@ -36,9 +48,9 @@ public class MarketTrade implements TradeProvider {
         if (station == null) return;
         out.stationName = station.displayName == null ? "Station" : station.displayName;
         TraderComponent trader = trader();
-        Entity player = world.getPlayer(), dock = stationEntity();
+        Entity player = ctx.player(), dock = stationEntity();
         out.hasHold = trader != null;
-        out.carried = world.cargo.canCarry(player, dock);
+        out.carried = cargo.canCarry(player, dock);
         CargoOrdersComponent orders = player.getComponent(CargoOrdersComponent.class);
         EntityRef ref = dock == null ? null : EntityRef.of(dock);
         if (trader != null) {
@@ -46,7 +58,7 @@ public class MarketTrade implements TradeProvider {
             out.cargoUsed = trader.cargoUsed();
             out.cargoCapacity = trader.cargoCapacity;
         }
-        for (MarketQuote q : world.macroSim.market().quotes(station)) {
+        for (MarketQuote q : macroSim.market().quotes(station)) {
             TradeLine l = out.addLine();
             l.commodityId = q.commodityId;
             l.name = q.displayName == null ? q.commodityId : q.displayName;
@@ -62,14 +74,14 @@ public class MarketTrade implements TradeProvider {
         if (hold == null) return;
         java.util.Set<String> parts = new java.util.TreeSet<>();
         for (CargoHoldComponent.CargoStack s : hold.stacks) {
-            if (s != null && SalvageSettlement.isPart(s.commodity) && world.salvage.salePrice(s.commodity) > 0) parts.add(s.commodity);
+            if (s != null && SalvageSettlement.isPart(s.commodity) && salvage.salePrice(s.commodity) > 0) parts.add(s.commodity);
         }
         for (String part : parts) {
             TradeLine l = out.addLine();
             l.commodityId = part;
-            l.name = "Salvaged " + world.salvage.partName(part).toLowerCase(java.util.Locale.ROOT);
+            l.name = "Salvaged " + salvage.partName(part).toLowerCase(java.util.Locale.ROOT);
             l.held = hold.amount(part);
-            l.sellPrice = world.salvage.salePrice(part);
+            l.sellPrice = salvage.salePrice(part);
             l.stationBuys = true;
             l.onOrder = orders == null || ref == null ? 0 : orders.pending(ref, part);
         }
@@ -80,9 +92,9 @@ public class MarketTrade implements TradeProvider {
         EconomyNode station = dockedStation();
         TraderComponent trader = trader();
         if (station == null || trader == null) return 0;
-        Entity player = world.getPlayer(), dock = stationEntity();
-        if (world.cargo.canCarry(player, dock)) return order(player, dock, commodityId, units, true);
-        return world.macroSim.market().buy(station, trader, commodityId, units);
+        Entity player = ctx.player(), dock = stationEntity();
+        if (cargo.canCarry(player, dock)) return order(player, dock, commodityId, units, true);
+        return macroSim.market().buy(station, trader, commodityId, units);
     }
 
     @Override
@@ -90,14 +102,14 @@ public class MarketTrade implements TradeProvider {
         EconomyNode station = dockedStation();
         TraderComponent trader = trader();
         if (station == null || trader == null) return 0;
-        Entity player = world.getPlayer(), dock = stationEntity();
+        Entity player = ctx.player(), dock = stationEntity();
         boolean part = SalvageSettlement.isPart(commodityId);
-        if (world.cargo.canCarry(player, dock)) {
-            if (!part && !world.macroSim.market().stationBuys(station, commodityId)) return 0;
+        if (cargo.canCarry(player, dock)) {
+            if (!part && !macroSim.market().stationBuys(station, commodityId)) return 0;
             return order(player, dock, commodityId, units, false);
         }
-        if (part) return world.cargoSettlement.sellParts(player, commodityId, units);
-        return world.macroSim.market().sell(station, trader, commodityId, units);
+        if (part) return cargoSettlement.sellParts(player, commodityId, units);
+        return macroSim.market().sell(station, trader, commodityId, units);
     }
 
     /**
@@ -111,23 +123,23 @@ public class MarketTrade implements TradeProvider {
         double room = settlement.available(player, dock, probe) - (open == null ? 0 : open.units);
         double qty = Math.min(units, room);
         if (qty <= 1e-6) return 0;
-        return world.cargo.order(player, dock, commodityId, qty, toShip);
+        return cargo.order(player, dock, commodityId, qty, toShip);
     }
 
     private EconomyNode dockedStation() {
         Entity station = stationEntity();
         UuidComponent id = station == null ? null : station.getComponent(UuidComponent.class);
-        return id == null ? null : world.macroSim.station(id.id);
+        return id == null ? null : macroSim.station(id.id);
     }
 
     private Entity stationEntity() {
-        Entity player = world.getPlayer();
+        Entity player = ctx.player();
         // A station that refused clearance does not trade with a ship that latched on anyway.
-        return player == null || !world.docking.dockedWithClearance(player) ? null : world.docking.dockedTo(player);
+        return player == null || !docking.dockedWithClearance(player) ? null : docking.dockedTo(player);
     }
 
     private TraderComponent trader() {
-        Entity player = world.getPlayer();
+        Entity player = ctx.player();
         return player == null ? null : player.getComponent(TraderComponent.class);
     }
 }

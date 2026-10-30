@@ -136,7 +136,7 @@ class GunCrewsTest {
         game.avatar.getComponent(GridPositionComponent.class).setTile(console.footprint.originX - 1, console.footprint.originY);
         assertNull(world.bridge.sit(SubsystemType.WEAPONS));
         assertFalse(PlayerGunnery.inHand(world, pd), "point defense stays automatic at the console");
-        PlayerGunnery gunnery = new PlayerGunnery(world, game.player);
+        PlayerGunnery gunnery = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gunnery.aim(pd.muzzle.x + 500f, pd.muzzle.y, 1f);
         gunnery.fireGuns();
         assertFalse(pd.manualAim);
@@ -154,7 +154,7 @@ class GunCrewsTest {
         assertNull(world.bridge.sit(SubsystemType.TURRET_MOUNT));
         assertSame(pd.subsystem, world.bridge.seatedGun());
         for (WeaponMountComponent m : weapons.mounts) assertEquals(m == pd, PlayerGunnery.inHand(world, m), m.def.id);
-        PlayerGunnery gunnery = new PlayerGunnery(world, game.player);
+        PlayerGunnery gunnery = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         com.badlogic.gdx.physics.box2d.Body body = world.docking.bodyOf(game.player);
         // A spot off its rest facing, inside its arc
         float a = body.getAngle() + pd.facing + 0.3f;

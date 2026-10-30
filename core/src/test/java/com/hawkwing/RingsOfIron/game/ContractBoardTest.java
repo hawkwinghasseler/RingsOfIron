@@ -300,7 +300,7 @@ class ContractBoardTest {
 
     @Test
     void theMissionWindowShowsTheDockedBoardAndTheContractsHeld() {
-        ContractMissions missions = new ContractMissions(world);
+        ContractMissions missions = new ContractMissions(world.context, world.docking, world.macroSim, world.standing, world.tension, world.contracts);
         MissionProvider.MissionBoard out = new MissionProvider.MissionBoard();
         missions.collect(out);
         assertFalse(out.isOpen(), "not docked and holding nothing");

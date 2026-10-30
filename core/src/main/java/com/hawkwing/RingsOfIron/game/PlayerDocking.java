@@ -31,22 +31,28 @@ public class PlayerDocking {
     /** Fastest closing speed counted safe however far out, m/s. */
     public static final float MAX_SAFE_SPEED = 50f;
 
-    private final GameWorld world;
+    private final AvatarInteractor avatar;
+    private final DockingSystem docking;
+    private final CargoLoading cargo;
+    private final StationYard yard;
     private final Supplier<Entity> ship;
     private final Consumer<String> notices;
     private final DockingSystem.Approach approach = new DockingSystem.Approach();
     private final Listener<DockingEvent> listener;
 
-    public PlayerDocking(GameWorld world, Supplier<Entity> ship, Consumer<String> notices) {
-        this.world = world;
+    public PlayerDocking(AvatarInteractor avatar, DockingSystem docking, CargoLoading cargo, StationYard yard, Supplier<Entity> ship, Consumer<String> notices) {
+        this.avatar = avatar;
+        this.docking = docking;
+        this.cargo = cargo;
+        this.yard = yard;
         this.ship = ship;
         this.notices = notices;
         listener = (signal, e) -> onEvent(e);
-        world.docking.events.add(listener);
+        docking.events.add(listener);
     }
 
     public void dispose() {
-        world.docking.events.remove(listener);
+        docking.events.remove(listener);
     }
 
     /**
@@ -59,17 +65,17 @@ public class PlayerDocking {
         if (ports == null) return "No docking port";
         DockingPort port = ports.selectedPort();
         if (port.armed) {
-            world.docking.disarm(player, ports.selected);
+            docking.disarm(player, ports.selected);
             return "Port disarmed";
         }
-        String refused = world.docking.arm(player, ports.selected);
+        String refused = docking.arm(player, ports.selected);
         if (refused != null) return "Can't arm the port: " + refused;
         // The nearest port is a struck ship's: it does not refuse, so no station is asked
-        Entity near = world.docking.approach(player, ports.selected, READOUT_RANGE, approach).target;
-        if (near != null && world.docking.yields.test(near)) {
+        Entity near = docking.approach(player, ports.selected, READOUT_RANGE, approach).target;
+        if (near != null && docking.yields.test(near)) {
             return name(near) + " opens its port to you; port armed";
         }
-        DockingSystem.Clearance c = world.docking.requestClearance(player, ports.selected);
+        DockingSystem.Clearance c = docking.requestClearance(player, ports.selected);
         String station = c.station == null ? null : name(c.station);
         switch (c.outcome) {
             case GRANTED:
@@ -93,22 +99,22 @@ public class PlayerDocking {
 
     public String undock() {
         Entity player = ship.get();
-        Entity from = player == null ? null : world.docking.dockedTo(player);
+        Entity from = player == null ? null : docking.dockedTo(player);
         if (from == null) return "Not docked";
-        Entity aboard = world.avatar.getAvatarShip();
+        Entity aboard = avatar.getAvatarShip();
         if (aboard != null && aboard != player) return "You're aboard " + name(aboard) + ": walk back to your ship first";
-        if (world.cargo.visitorsAboard(player) > 0) {
+        if (cargo.visitorsAboard(player) > 0) {
             // Not flying off with them: the loading stops and they head home
-            world.cargo.callOff(player);
+            cargo.callOff(player);
             return name(from) + "'s dock hands are still aboard: the loading is called off, undock once they're off";
         }
-        if (world.cargo.crewAway(player) > 0) {
+        if (cargo.crewAway(player) > 0) {
             // Nor leaving our own behind
-            world.cargo.callOff(player);
+            cargo.callOff(player);
             return "Your crew are still aboard " + name(from) + ": the loading is called off, undock once they're back";
         }
-        if (!world.docking.undock(player)) return "Not docked";
-        world.yard.undocked(player);
+        if (!docking.undock(player)) return "Not docked";
+        yard.undocked(player);
         return "Undocked from " + name(from);
     }
 
@@ -121,13 +127,13 @@ public class PlayerDocking {
         String first = String.format(Locale.ROOT, "Dock port %d/%d: %s%s", ports.selected + 1, ports.ports.length,
                 describe(port), port.armed ? ", armed" : "");
         if (port.state == DockingPort.State.DOCKED) {
-            Entity other = world.docking.dockedTo(player);
+            Entity other = docking.dockedTo(player);
             return new String[]{first, String.format(Locale.ROOT, "Docked at %s%s   strain %.0f%%",
-                    other == null ? "?" : name(other), world.docking.isRigid(player) ? "" : " (settling)",
-                    100f * world.docking.strain(player))};
+                    other == null ? "?" : name(other), docking.isRigid(player) ? "" : " (settling)",
+                    100f * docking.strain(player))};
         }
         if (port.state == DockingPort.State.CAPTURED) return new String[]{first, "Collar has hold: drawing in"};
-        world.docking.approach(player, ports.selected, READOUT_RANGE, approach);
+        docking.approach(player, ports.selected, READOUT_RANGE, approach);
         if (approach.target == null) return new String[]{first, String.format(Locale.ROOT, "No free %s port within %,d m",
                 port.size, (int) READOUT_RANGE)};
         float safe = safeSpeed(approach.distance);
@@ -155,7 +161,7 @@ public class PlayerDocking {
         if (ports == null) return approach;
         DockingPort port = ports.selectedPort();
         if (port.state != DockingPort.State.IDLE) return approach;
-        return world.docking.approach(player, ports.selected, READOUT_RANGE, approach);
+        return docking.approach(player, ports.selected, READOUT_RANGE, approach);
     }
 
     private void onEvent(DockingEvent e) {

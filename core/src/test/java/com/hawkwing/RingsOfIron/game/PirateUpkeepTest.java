@@ -59,7 +59,7 @@ class PirateUpkeepTest {
         Entity ship = world.engine.getEntity(id);
         assertNull(ship.getComponent(PhysicsBodyComponent.class), "out on the rails");
         empty(ship);
-        PirateUpkeep upkeep = new PirateUpkeep(world);
+        PirateUpkeep upkeep = new PirateUpkeep(world.engine);
         double t0 = 1_000;
         upkeep.update(hostiles.all(), t0);
         assertEquals(0, PirateUpkeep.fuelShare(ship), 1e-9, "the first call only starts the clock");
@@ -75,7 +75,7 @@ class PirateUpkeepTest {
         Entity ship = bringIn(id, 3_000, 0);
         ship.add(new NpcCombatComponent(game.player));
         empty(ship);
-        PirateUpkeep upkeep = new PirateUpkeep(world);
+        PirateUpkeep upkeep = new PirateUpkeep(world.engine);
         upkeep.update(hostiles.all(), 0);
         upkeep.update(hostiles.all(), PirateUpkeep.DAY);
         assertEquals(0, PirateUpkeep.fuelShare(ship), 1e-9);
@@ -87,7 +87,7 @@ class PirateUpkeepTest {
         Entity ship = bringIn(id, 3_000, 0);
         ship.remove(NpcCombatComponent.class);
         empty(ship);
-        PirateUpkeep upkeep = new PirateUpkeep(world);
+        PirateUpkeep upkeep = new PirateUpkeep(world.engine);
         upkeep.update(hostiles.all(), 0);
         upkeep.update(hostiles.all(), PirateUpkeep.DAY);
         assertEquals(1 / PirateUpkeep.RAILS_REFUEL_DAYS, PirateUpkeep.fuelShare(ship), 1e-6);

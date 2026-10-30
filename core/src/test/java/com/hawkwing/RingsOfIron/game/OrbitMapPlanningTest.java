@@ -40,8 +40,9 @@ class OrbitMapPlanningTest {
         world = new GameWorld();
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
         for (int i = 0; i < 60; i++) world.update(FRAME);
-        path = new PlayerOrbitPath(world, world.burns);
-        maneuvers = new MapManeuvers(world, path);
+        path = new PlayerOrbitPath(world.context, world.physics, world.universe, world.macroSim, world.pirateBase, world.nav,
+                world.burns);
+        maneuvers = new MapManeuvers(world.context, world.physics, world.universe, world.burns, world.nav, path);
         orbits = new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer);
     }
 

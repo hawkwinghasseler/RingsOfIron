@@ -39,7 +39,7 @@ final class FlightScenario implements DebugScenario {
         Body body = world.docking.bodyOf(setup.game.player);
         Vector2 at = PhysicsManager.getPosition(body, new Vector2());
         PhysicsManager.setPosition(body, at.x + AWAY, at.y, body.getAngle());
-        field = new FlightField(world, setup.game.player, setup::notice);
+        field = new FlightField(world.engine, world.physics, world.docking, setup.game.player, setup::notice);
         field.scatter();
         setup.overlay(ROCKS, "the scenario's asteroids, outlined in stone: the game has no rock art, and the light map hides"
                 + " bare outlines", new DebugOverlay() {

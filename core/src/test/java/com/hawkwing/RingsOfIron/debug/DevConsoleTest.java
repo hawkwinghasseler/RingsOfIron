@@ -210,9 +210,9 @@ class DevConsoleTest {
         world.docking.undock(world.getPlayer());
         for (int i = 0; i < 120; i++) world.update(1f / 60f);
         // The gunnery the game rebuilds on a deal: the new hull's, not the one traded in
-        com.hawkwing.RingsOfIron.game.PlayerGunnery stale = new com.hawkwing.RingsOfIron.game.PlayerGunnery(world, old);
+        com.hawkwing.RingsOfIron.game.PlayerGunnery stale = new com.hawkwing.RingsOfIron.game.PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, old);
         assertNull(stale.weapons(), "the old hull is gone, and its gunnery with it");
-        com.hawkwing.RingsOfIron.game.PlayerGunnery gun = new com.hawkwing.RingsOfIron.game.PlayerGunnery(world, world.getPlayer());
+        com.hawkwing.RingsOfIron.game.PlayerGunnery gun = new com.hawkwing.RingsOfIron.game.PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, world.getPlayer());
         assertEquals("cannon_heavy", gun.primary().def.id);
         assertTrue(gun.gunsReady(), "the heavy cannon is loaded");
         assertTrue(gun.missilesLeft() != 0, "the harpoon launchers have missiles: " + gun.missilesLeft());

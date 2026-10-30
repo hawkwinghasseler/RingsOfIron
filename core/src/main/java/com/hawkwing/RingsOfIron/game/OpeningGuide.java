@@ -25,7 +25,8 @@ public final class OpeningGuide {
         }
     }
 
-    private final GameWorld world;
+    private final ContractBoard contracts;
+    private final GuideProgress guides;
     private final BooleanSupplier boardOpen;
     private Step step;
 
@@ -33,11 +34,12 @@ public final class OpeningGuide {
      * @param boardOpen whether the mission board window is open
      * @param step      where to start: {@link Step#OPEN_BOARD} for a new game, or the saved step
      */
-    public OpeningGuide(GameWorld world, BooleanSupplier boardOpen, Step step) {
-        this.world = world;
+    public OpeningGuide(ContractBoard contracts, GuideProgress guides, BooleanSupplier boardOpen, Step step) {
+        this.contracts = contracts;
+        this.guides = guides;
         this.boardOpen = boardOpen;
         this.step = step;
-        world.guides.openingStep = step.name();
+        guides.openingStep = step.name();
     }
 
     /** The walkthrough a loaded game was saved in, or null when it had finished or was off. */
@@ -54,7 +56,7 @@ public final class OpeningGuide {
         if (!wanted) world.guides.openingStep = null;
         if (saved == null || !wanted) return null;
         try {
-            return new OpeningGuide(world, boardOpen, Step.valueOf(saved));
+            return new OpeningGuide(world.contracts, world.guides, boardOpen, Step.valueOf(saved));
         } catch (IllegalArgumentException e) {
             world.guides.openingStep = null;
             return null;
@@ -77,7 +79,7 @@ public final class OpeningGuide {
     /** Moves on when the step is met; true when it did, and the new step should be shown. */
     public boolean update() {
         Step next = step;
-        boolean holding = !world.contracts.active().isEmpty();
+        boolean holding = !contracts.active().isEmpty();
         switch (step) {
             case OPEN_BOARD:
                 if (holding) next = Step.DONE;
@@ -92,13 +94,13 @@ public final class OpeningGuide {
         if (next == step) return false;
         step = next;
         // Once the last word is said there is nothing left to save
-        world.guides.openingStep = step == Step.DONE ? null : step.name();
+        guides.openingStep = step == Step.DONE ? null : step.name();
         return true;
     }
 
     /** Stops it: turned off in the settings, or the player left the station first. */
     public void stop() {
         step = Step.DONE;
-        world.guides.openingStep = null;
+        guides.openingStep = null;
     }
 }

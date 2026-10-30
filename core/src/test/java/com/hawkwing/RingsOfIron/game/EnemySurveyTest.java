@@ -304,7 +304,7 @@ class EnemySurveyTest {
             }
             if (INTERCEPT.equals(start)) r.entry = hunt(world, game.player, ids);
             Entity player = game.player;
-            PlayerGunnery gun = new PlayerGunnery(world, player);
+            PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, player);
             int[] fired = new int[1], hits = new int[1];
             world.combatEvents.shots.add((sig, shot) -> { if (ships.contains(shot.shooter)) fired[0]++; });
             world.combatEvents.impacts.add((sig, hit) -> { if (ships.contains(hit.owner) && hit.target == player) hits[0]++; });

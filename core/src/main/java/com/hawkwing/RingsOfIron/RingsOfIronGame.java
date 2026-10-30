@@ -303,7 +303,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gameHud = new GameHud(world, hud);
         // The camera on the ship before the HUD places its markers, not after (flickering prograde markers)
         hud.setCameraFollow(this::follow);
-        silencedMarkers = new com.hawkwing.RingsOfIron.game.SilencedMarkers(world);
+        silencedMarkers = new com.hawkwing.RingsOfIron.game.SilencedMarkers(world.engine, world.macroSim, world.pirateBase);
         EmissiveLights emissive = EmissiveLights.load(assetsDir);
         lighting = new SceneLighting(emissive);
         exteriorLighting = new ExteriorLighting(emissive);
@@ -328,12 +328,12 @@ public class RingsOfIronGame extends ApplicationAdapter {
         hud.getHudRenderSystem().setPickListener(this::selectContact);
         snow = new SpaceSnow(() -> world, () -> game.player);
 
-        gun = new PlayerGunnery(world, game.player);
+        gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(game.firstTarget());
         hud.setTargeting(new CombatTargetingProvider(gun));
-        docking = new PlayerDocking(world, () -> game.player, this::show);
-        navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world, docking);
-        fireArcs = new com.hawkwing.RingsOfIron.game.FireArcOverlay(world);
+        docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, this::show);
+        navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world.context, world.docking, world.nav, docking);
+        fireArcs = new com.hawkwing.RingsOfIron.game.FireArcOverlay(world.context, world.bridge, world.docking, world.sensors, world.weaponControl);
         world.nav.keyNames = this::key;
         // A click on the traffic map makes that station or ship the navigation target
         // Off-screen marker names by the right edge keep clear of the status column, which is drawn
@@ -436,7 +436,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         else if (firstPlayMode) firstPlay = FirstPlay.start(world, game);
         else game.beginCareer();
         if (scenario == null && !firstPlayMode && openingWanted) {
-            opening = new OpeningGuide(world, () -> hud.getMissionWindow().isOpen(),
+            opening = new OpeningGuide(world.contracts, world.guides, () -> hud.getMissionWindow().isOpen(),
                     OpeningGuide.Step.OPEN_BOARD);
         }
         if (scenario == null) matchViewToSeat();
@@ -820,7 +820,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
 
     /** The player's (new) ship's own weapons, and the view for where the avatar sits on it. */
     private void rearm() {
-        gun = new PlayerGunnery(world, game.player);
+        gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(game.firstTarget());
         hud.setTargeting(new CombatTargetingProvider(gun));
         matchViewToSeat();
@@ -970,7 +970,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
             viewports.getWorldViewport().unproject(at.set(screenX, screenY));
             mpp = viewports.metersPerPixel();
         }
-        Entity picked = new ExteriorPick(world).at(at.x, at.y, mpp, game.player);
+        Entity picked = new ExteriorPick(world.engine, world.physics, world.docking).at(at.x, at.y, mpp, game.player);
         if (picked == null) return false;
         selectContact(picked);
         return true;
@@ -1357,7 +1357,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     /** Points the gunnery, HUD, view and guides at the game's entities, after they were replaced. */
     private void rebindAfterLoad() {
         // The loaded ship's own weapons; its sensor lock comes back with the save.
-        gun = new PlayerGunnery(world, game.player);
+        gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         if (gun.getTarget() == null) gun.setTarget(game.firstTarget());
         hud.setTargeting(new CombatTargetingProvider(gun));
         matchViewToSeat();

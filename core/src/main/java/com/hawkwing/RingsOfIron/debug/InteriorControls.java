@@ -56,7 +56,7 @@ final class InteriorControls implements ScenarioPointer {
     InteriorControls(ScenarioSetup setup, InteriorScene scene) {
         this.setup = setup;
         this.scene = scene;
-        this.tools = new DeckTools(setup.world, scene.debug);
+        this.tools = new DeckTools(setup.world.crew, scene.debug);
         scene.shipChanged = ship -> {
             setup.world.bridge.stand();
             setup.playerShipChanged();

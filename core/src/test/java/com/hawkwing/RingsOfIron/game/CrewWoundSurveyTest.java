@@ -148,7 +148,7 @@ class CrewWoundSurveyTest {
             t.aceCrew = aboard(world, ship, false);
             List<Entity> ours = world.crewCareer.ownCrew(game.player);
             t.crew = ours.size();
-            PlayerGunnery gun = new PlayerGunnery(world, game.player);
+            PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
             gun.setTarget(ship);
             double t0 = world.engine.getSimSeconds();
             HostileComponent ace = h;

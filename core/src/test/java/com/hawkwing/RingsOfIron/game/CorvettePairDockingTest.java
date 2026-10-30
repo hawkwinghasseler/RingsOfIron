@@ -95,7 +95,7 @@ class CorvettePairDockingTest {
 
     /** Arms the player's port as G does and runs until the pair is welded (30 s at most). */
     private boolean armAndWeld() {
-        PlayerDocking docking = new PlayerDocking(world, () -> game.player, msg -> { });
+        PlayerDocking docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, msg -> { });
         try {
             docking.toggleArm();
             for (int i = 0; i < 60 * 30; i++) {

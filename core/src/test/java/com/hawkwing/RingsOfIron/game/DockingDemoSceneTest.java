@@ -457,7 +457,7 @@ class DockingDemoSceneTest {
     @Test
     void theYardWindowListsTheDamageAndTheHardpoints() {
         demo.load(DockingDemoScene.Scene.YARD);
-        YardWork yard = new YardWork(demo.world);
+        YardWork yard = new YardWork(demo.world.context, demo.world.docking, demo.world.combatDefs, demo.world.yard, demo.world.fieldRefits, demo.world.furnishings);
         com.ringsofiron.uihud.providers.YardProvider.YardBoard board = new com.ringsofiron.uihud.providers.YardProvider.YardBoard();
         yard.collect(board);
         assertTrue(board.isOpen(), "docked at a yard");

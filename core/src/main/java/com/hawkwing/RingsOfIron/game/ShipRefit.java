@@ -32,6 +32,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import com.ringsofiron.stationsdocking.DockingSystem;
 
 /**
  * A station yard rebuilds a docked ship to a new interior layout, as drawn in the ship editor:
@@ -67,8 +68,13 @@ public final class ShipRefit {
 
     /** Why the yard can't rebuild {@code ship} right now, or null when it can. */
     public static String refused(GameWorld world, Entity ship) {
-        Entity station = ship == null ? null : world.docking.dockedTo(ship);
-        if (station == null || !world.yard.canWork(ship, station)) return "Dock at a station's yard first";
+        return refused(world.docking, world.yard, ship);
+    }
+
+    /** {@link #refused(GameWorld, Entity)}, at the station {@code docking} has it at, by {@code yard}. */
+    static String refused(DockingSystem docking, StationYard yard, Entity ship) {
+        Entity station = ship == null ? null : docking.dockedTo(ship);
+        if (station == null || !yard.canWork(ship, station)) return "Dock at a station's yard first";
         CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
         if (hold != null && hold.usedVolume() > 1e-6) return "Unload the cargo before the yard rebuilds the decks";
         YardOrdersComponent orders = ship.getComponent(YardOrdersComponent.class);

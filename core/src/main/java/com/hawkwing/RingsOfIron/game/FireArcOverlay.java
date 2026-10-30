@@ -19,6 +19,8 @@ import com.ringsofiron.combatsys.fire.HitChance;
 import com.ringsofiron.combatsys.fire.Track;
 import com.ringsofiron.combatsys.systems.WeaponControlSystem;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
 
 /**
  * The guns the player fires, drawn over the outside view in world meters: those in hand at the
@@ -46,7 +48,11 @@ public class FireArcOverlay {
     private static final Color YELLOW = new Color(1f, 0.85f, 0.25f, 1f);
     private static final Color GREEN = new Color(0.35f, 1f, 0.45f, 1f);
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final Bridge bridge;
+    private final DockingSystem docking;
+    private final SensorTrackingSystem sensors;
+    private final WeaponControlSystem weaponControl;
     private final Array<WeaponMountComponent> shown = new Array<>();
     private final Color color = new Color();
     private final Dodge dodge = new Dodge();
@@ -54,8 +60,12 @@ public class FireArcOverlay {
     private final Vector2 shipVel = new Vector2();
     private final Vector2 muzzle = new Vector2();
 
-    public FireArcOverlay(GameWorld world) {
-        this.world = world;
+    public FireArcOverlay(GameContext ctx, Bridge bridge, DockingSystem docking, SensorTrackingSystem sensors, WeaponControlSystem weaponControl) {
+        this.ctx = ctx;
+        this.bridge = bridge;
+        this.docking = docking;
+        this.sensors = sensors;
+        this.weaponControl = weaponControl;
     }
 
     /** One gun's dodge lines on a target: where they end, and the chance to hit that colors them. */
@@ -70,7 +80,7 @@ public class FireArcOverlay {
 
     /** The player's locked target, or null. */
     private Entity locked() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         SensorComponent sensor = ship == null ? null : ship.getComponent(SensorComponent.class);
         return sensor == null ? null : sensor.lockedTarget;
     }
@@ -78,14 +88,14 @@ public class FireArcOverlay {
     /** The guns drawn now, into {@code out}. */
     void shown(Array<WeaponMountComponent> out) {
         out.clear();
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         WeaponsComponent weapons = ship == null ? null : ship.getComponent(WeaponsComponent.class);
         if (weapons == null) return;
-        boolean onGuns = world.bridge.playerOnGuns();
-        boolean flyingArmed = !onGuns && world.bridge.playerAtHelm() && locked() != null;
+        boolean onGuns = bridge.playerOnGuns();
+        boolean flyingArmed = !onGuns && bridge.playerAtHelm() && locked() != null;
         if (!onGuns && !flyingArmed) return;
         for (WeaponMountComponent m : weapons.mounts) {
-            if (onGuns ? PlayerGunnery.inHand(world, m) && m.def.mount != WeaponDef.MountType.LAUNCHER
+            if (onGuns ? PlayerGunnery.inHand(bridge, m) && m.def.mount != WeaponDef.MountType.LAUNCHER
                     : PlayerGunnery.isMainGun(m)) out.add(m);
         }
     }
@@ -97,7 +107,7 @@ public class FireArcOverlay {
     public void draw(ShapeRenderer shapes, float px) {
         shown(shown);
         if (shown.size == 0) return;
-        Body body = world.docking.bodyOf(world.getPlayer());
+        Body body = docking.bodyOf(ctx.player());
         if (body == null) return;
         Entity target = locked();
         PhysicsManager.getVelocity(body, shipVel);
@@ -128,14 +138,14 @@ public class FireArcOverlay {
      * line of fire, by the target's half-width plus how far its best burn takes it in the flight time.
      */
     boolean dodge(WeaponMountComponent m, Vector2 muzzle, Entity target, Vector2 shipVel, Dodge out) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         SensorComponent sensor = ship == null ? null : ship.getComponent(SensorComponent.class);
         Track track = sensor == null ? null : sensor.trackFor(target);
         if (track == null) return false;
-        WeaponControlSystem control = world.weaponControl;
+        WeaponControlSystem control = weaponControl;
         WeaponDef def = m.def;
         ProjectileDef round = control.roundOf(def);
-        float age = world.sensors.ageOf(track);
+        float age = sensors.ageOf(track);
         Vector2 at = track.positionAt(age, out.left).sub(muzzle);
         Vector2 closing = track.velocityAt(age, out.right).sub(shipVel);
         float speed = round == null ? 0f : round.muzzleSpeed;

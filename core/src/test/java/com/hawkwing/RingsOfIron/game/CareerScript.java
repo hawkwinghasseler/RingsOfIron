@@ -260,7 +260,7 @@ abstract class CareerScript {
         flyTo(game.raider, 1_500f);
         run(2);
         game.provokeRaider();
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(game.raider);
         double t0 = world.engine.getSimSeconds();
         assertTrue(runUntil(300f, () -> {
@@ -410,7 +410,7 @@ abstract class CareerScript {
 
     /** Fights {@code ship} with every gun and missile until one side is beaten; true if it was. */
     boolean fight(Entity ship, HostileComponent h, String what) {
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(ship);
         int[] fired = new int[1], hits = new int[1], landed = new int[1];
         world.combatEvents.shots.add((sig, shot) -> { if (shot.shooter == ship) fired[0]++; });

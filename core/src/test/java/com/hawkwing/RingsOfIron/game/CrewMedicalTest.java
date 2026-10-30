@@ -121,7 +121,7 @@ class CrewMedicalTest {
 
     @Test
     void theCrewWindowTurnsSuitsAtBattleStationsOff() {
-        CrewRoster roster = new CrewRoster(world);
+        CrewRoster roster = new CrewRoster(world.context, world.crew, world.macroSim, world.standing, world.crewCareer, world.crewHiring, world.medical, world.prisoners, world.spacewalks);
         CrewProvider.CrewSheet sheet = new CrewProvider.CrewSheet();
         roster.collect(sheet);
         assertEquals("Suits at battle stations: on", sheet.suits);
