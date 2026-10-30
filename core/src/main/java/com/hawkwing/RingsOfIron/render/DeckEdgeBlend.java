@@ -37,8 +37,9 @@ import java.util.Arrays;
  * side does. How far is measured along the grid, across plus up ({@link #toSegment}): square to
  * a side that is a tile, but square to a slope only half a tile's diagonal, so the fade behind a
  * slope ends on the line through the inner corners of the outermost tiles, and a wall block that
- * touches the edge at one corner alone is lit from inside from its middle on. Where the shader won't compile, the decks keep a hard edge at the hull, drawn with
- * the stencil buffer instead.
+ * touches the edge at one corner alone is lit from inside from its middle on. {@link #fade} sets
+ * how the fade runs between (for comparing). Where the shader won't compile, the decks keep a
+ * hard edge at the hull, drawn with the stencil buffer instead.
  *
  * <p>Each frame in the deck view: {@link #begin} with the weights ({@code DeckRenderer}), then
  * {@link #apply} the decks' light map inside, then the outside's ({@code ExteriorRenderer}).
@@ -54,7 +55,49 @@ public final class DeckEdgeBlend implements Disposable {
     static final float WIDTH = 1f;
 
     /** How each tile is split for the weights, per side. */
-    static final int SUBDIVISIONS = 2;
+    static final int SUBDIVISIONS = 4;
+
+    /** How the fade runs across the outer tile: straight or eased, its corners sharp or soft. */
+    public enum Fade {
+        /** Straight from the edge to a tile in, creased where two faces' fades meet. */
+        LINEAR(false, false),
+        /** Eased in and out (smoothstep), so it starts and ends gently. */
+        EASED(true, false),
+        /** Straight, but where two faces' fades meet the crease is rounded ({@link #SOFT_CORNER}). */
+        SOFT(false, true),
+        /** Both. */
+        SOFT_EASED(true, true);
+
+        public final boolean eased, soft;
+
+        Fade(boolean eased, boolean soft) {
+            this.eased = eased;
+            this.soft = soft;
+        }
+
+        public String label() {
+            return "Deck fade: " + (soft ? "soft corners, " : "sharp corners, ") + (eased ? "eased" : "straight");
+        }
+
+        /** The fade named {@code name} (any case), or null. */
+        public static Fade named(String name) {
+            try {
+                return name == null ? null : valueOf(name.trim().toUpperCase(java.util.Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+    }
+
+    /** How the fade runs, for every deck; the developer console's {@code deckFade} changes it. */
+    public static Fade fade = Fade.LINEAR;
+
+    /**
+     * How far round a crease the fade is rounded, {@link Fade#soft}, in tiles: the distances to
+     * the edge are smoothed over about this far (a binomial filter across the split grid), which
+     * leaves them as they were along a straight face and rounds them where faces meet.
+     */
+    static final float SOFT_CORNER = 0.25f;
 
     /** The weight {@code d} tiles in from the edge: 0 there, rising to 1 {@link #WIDTH} tiles in. */
     static float weight(float d) {
@@ -80,9 +123,11 @@ public final class DeckEdgeBlend implements Disposable {
             + "uniform vec3 u_ambient;\n"
             + "uniform vec3 u_innerAmbient;\n"
             + "uniform float u_inside;\n"
+            + "uniform float u_ease;\n"
             + "varying vec2 v_uv;\n"
             + "void main() {\n"
             + "  float w = texture2D(u_weight, v_uv).r;\n"
+            + "  w = mix(w, w * w * (3.0 - 2.0 * w), u_ease);\n"
             + "  vec3 light = min(u_ambient + texture2D(u_light, v_uv).rgb, vec3(1.0));\n"
             + "  if (u_inside > 0.5) {\n"
             + "    gl_FragColor = vec4(mix(vec3(1.0), light, w), 1.0);\n"
@@ -101,15 +146,17 @@ public final class DeckEdgeBlend implements Disposable {
     private static final String MASK = "#ifdef GL_ES\nprecision mediump float;\n#endif\n"
             + "uniform sampler2D u_weight;\n"
             + "uniform vec2 u_texel;\n"
+            + "uniform float u_ease;\n"
             + "varying vec2 v_uv;\n"
-            + "float at(vec2 uv, float t) { return step(t, texture2D(u_weight, uv).r); }\n"
+            + "float weight(vec2 uv) { float w = texture2D(u_weight, uv).r; return mix(w, w * w * (3.0 - 2.0 * w), u_ease); }\n"
+            + "float at(vec2 uv, float t) { return step(t, weight(uv)); }\n"
             + "float line(float t) {\n"
             + "  float around = max(max(at(v_uv + vec2(u_texel.x, 0.0), t), at(v_uv - vec2(u_texel.x, 0.0), t)),\n"
             + "      max(at(v_uv + vec2(0.0, u_texel.y), t), at(v_uv - vec2(0.0, u_texel.y), t)));\n"
             + "  return around * (1.0 - at(v_uv, t));\n"
             + "}\n"
             + "void main() {\n"
-            + "  float w = texture2D(u_weight, v_uv).r;\n"
+            + "  float w = weight(v_uv);\n"
             + "  float lines = max(max(line(0.998), line(0.5)), line(0.002));\n"
             + "  gl_FragColor = vec4(mix(vec3(w, 0.0, 1.0 - w), vec3(1.0, 0.9, 0.0), lines), 1.0);\n"
             + "}\n";
@@ -189,6 +236,7 @@ public final class DeckEdgeBlend implements Disposable {
         weights.getColorBufferTexture().bind(0);
         maskShader.bind();
         maskShader.setUniformi("u_weight", 0);
+        maskShader.setUniformf("u_ease", fade.eased ? 1f : 0f);
         maskShader.setUniformf("u_texel", 1f / weights.getWidth(), 1f / weights.getHeight());
         quad.render(maskShader, GL20.GL_TRIANGLE_FAN);
     }
@@ -218,6 +266,7 @@ public final class DeckEdgeBlend implements Disposable {
         shader.setUniformf("u_ambient", ambient.r, ambient.g, ambient.b);
         shader.setUniformf("u_innerAmbient", innerAmbient.r, innerAmbient.g, innerAmbient.b);
         shader.setUniformf("u_inside", inside ? 1f : 0f);
+        shader.setUniformf("u_ease", fade.eased ? 1f : 0f);
         quad.render(shader, GL20.GL_TRIANGLE_FAN);
         gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         if (!inside) {
@@ -293,12 +342,47 @@ public final class DeckEdgeBlend implements Disposable {
             }
             java.util.HashSet<Long> all = new java.util.HashSet<>();
             for (int i = 0; i < sides.size; i++) all.add(sides.get(i));
+            // What is left is the edge; each run of it along one line is one face, so faces meet
+            // only at the hull's corners
+            java.util.HashMap<Long, Long> from = new java.util.HashMap<>(), to = new java.util.HashMap<>();
             for (int i = 0; i < sides.size; i++) {
                 long s = sides.get(i);
-                int x0 = (int) (s >>> 48 & 0xffff), y0 = (int) (s >>> 32 & 0xffff), x1 = (int) (s >>> 16 & 0xffff), y1 = (int) (s & 0xffff);
-                if (all.contains(side(x1, y1, x0, y0))) continue;
-                edge.add(x0, y0, x1, y1);
+                if (all.contains(side(x1(s), y1(s), x0(s), y0(s)))) continue;
+                from.put(point(x0(s), y0(s)) << 3 | heading(s), s);
+                to.put(point(x1(s), y1(s)) << 3 | heading(s), s);
             }
+            for (long s : from.values()) {
+                // A face starts where no stretch along its line ends
+                int h = heading(s);
+                Long before = to.get(point(x0(s), y0(s)) << 3 | h);
+                if (before != null && parallel(before, s)) continue;
+                long end = s;
+                for (Long next = from.get(point(x1(end), y1(end)) << 3 | h); next != null; next = from.get(point(x1(end), y1(end)) << 3 | h)) {
+                    if (!parallel(next, s)) break;
+                    end = next;
+                }
+                edge.add(x0(s), y0(s), x1(end), y1(end));
+            }
+        }
+
+        private static int x0(long s) { return (int) (s >>> 48 & 0xffff); }
+        private static int y0(long s) { return (int) (s >>> 32 & 0xffff); }
+        private static int x1(long s) { return (int) (s >>> 16 & 0xffff); }
+        private static int y1(long s) { return (int) (s & 0xffff); }
+
+        private static long point(int x, int y) {
+            return (long) x << 16 | y;
+        }
+
+        /** Which of the eight ways round {@code s} heads, 0 to 7. */
+        private static int heading(long s) {
+            int dx = Integer.signum(x1(s) - x0(s)), dy = Integer.signum(y1(s) - y0(s));
+            return (dx + 1) * 3 + dy + 1 - ((dx + 1) * 3 + dy + 1 > 4 ? 1 : 0);
+        }
+
+        /** Whether {@code a} and {@code b} run along one line the same way. */
+        private static boolean parallel(long a, long b) {
+            return (long) (x1(a) - x0(a)) * (y1(b) - y0(b)) == (long) (y1(a) - y0(a)) * (x1(b) - x0(b));
         }
 
         private static long side(int x0, int y0, int x1, int y1) {
@@ -331,7 +415,7 @@ public final class DeckEdgeBlend implements Disposable {
             Arrays.fill(d, Float.MAX_VALUE);
             // Past this far from the edge the weight is 1 whatever the distance: each stretch
             // reaches only the corners within it
-            float reach = WIDTH;
+            float reach = WIDTH + (fade.soft ? 2f * SOFT_CORNER : 0f);
             for (int i = 0; i < edge.size; i += 4) {
                 int x0 = edge.get(i), y0 = edge.get(i + 1), x1 = edge.get(i + 2), y1 = edge.get(i + 3);
                 int vx0 = Math.max(0, MathUtils.floor((Math.min(x0, x1) - reach) * n));
@@ -345,8 +429,71 @@ public final class DeckEdgeBlend implements Disposable {
                     }
                 }
             }
+            if (fade.soft) soften(d, cw, ch, reach);
             for (int i = 0; i < d.length; i++) d[i] = weight(d[i]);
             return d;
+        }
+
+        /**
+         * Smooths the distances {@code d} at the split grid's corners ({@code cw} by {@code ch})
+         * over about {@link #SOFT_CORNER}: negative off the footprint first, so they run straight
+         * through the edge, and no further than {@code reach}, past which they are all alike to the
+         * weight. Along a straight face they stay as they were; where faces meet they round.
+         */
+        private void soften(float[] d, int cw, int ch, float reach) {
+            int n = SUBDIVISIONS;
+            boolean[] in = new boolean[cw * ch];
+            for (int vy = 0; vy < ch; vy++) {
+                for (int vx = 0; vx < cw; vx++) {
+                    in[vy * cw + vx] = cell(vx - 1, vy - 1) || cell(vx, vy - 1) || cell(vx - 1, vy) || cell(vx, vy);
+                }
+            }
+            for (int i = 0; i < wedges.size; i += 6) {
+                int ax = wedges.get(i), ay = wedges.get(i + 1), bx = wedges.get(i + 2), by = wedges.get(i + 3);
+                int cx = wedges.get(i + 4), cy = wedges.get(i + 5);
+                for (int vy = Math.min(ay, Math.min(by, cy)) * n; vy <= Math.max(ay, Math.max(by, cy)) * n; vy++) {
+                    for (int vx = Math.min(ax, Math.min(bx, cx)) * n; vx <= Math.max(ax, Math.max(bx, cx)) * n; vx++) {
+                        float px = vx / (float) n, py = vy / (float) n;
+                        if ((cx - bx) * (py - by) - (cy - by) * (px - bx) >= 0f) in[vy * cw + vx] = true;
+                    }
+                }
+            }
+            for (int i = 0; i < d.length; i++) d[i] = in[i] ? Math.min(d[i], reach) : -Math.min(d[i], reach);
+            // A binomial filter (1 4 6 4 1 across a quarter-tile grid) each way: spread about SOFT_CORNER
+            int r = Math.max(1, Math.round(SOFT_CORNER * n));
+            float[] kernel = binomial(4 * r);
+            float[] t = new float[d.length];
+            for (int pass = 0; pass < 2; pass++) {
+                for (int vy = 0; vy < ch; vy++) {
+                    for (int vx = 0; vx < cw; vx++) {
+                        float sum = 0f;
+                        for (int k = 0; k < kernel.length; k++) {
+                            int o = k - kernel.length / 2;
+                            int x = pass == 0 ? MathUtils.clamp(vx + o, 0, cw - 1) : vx, y = pass == 1 ? MathUtils.clamp(vy + o, 0, ch - 1) : vy;
+                            sum += kernel[k] * d[y * cw + x];
+                        }
+                        t[vy * cw + vx] = sum;
+                    }
+                }
+                System.arraycopy(t, 0, d, 0, d.length);
+            }
+        }
+
+        /** Whether cell ({@code cx}, {@code cy}) of the split grid lies on a whole tile of the footprint. */
+        private boolean cell(int cx, int cy) {
+            int tx = Math.floorDiv(cx, SUBDIVISIONS), ty = Math.floorDiv(cy, SUBDIVISIONS);
+            return ty >= 0 && ty < height && tx >= 0 && tx < width && on[ty][tx];
+        }
+
+        /** The binomial weights of {@code order} + 1 taps, summing to 1. */
+        private static float[] binomial(int order) {
+            float[] k = new float[order + 1];
+            k[0] = 1f;
+            for (int i = 1; i <= order; i++) for (int j = i; j > 0; j--) k[j] += k[j - 1];
+            float sum = 0f;
+            for (float v : k) sum += v;
+            for (int i = 0; i < k.length; i++) k[i] /= sum;
+            return k;
         }
 
         /**
@@ -359,9 +506,19 @@ public final class DeckEdgeBlend implements Disposable {
             int n = SUBDIVISIONS, cw = width * n + 1;
             float[] w = cornerWeights();
             float step = size / n;
+            boolean[][] whole = new boolean[height][width];
+            for (int ty = 0; ty < height; ty++) for (int tx = 0; tx < width; tx++) whole[ty][tx] = on[ty][tx] && whole(w, cw, tx, ty);
             for (int cy = 0; cy < height * n; cy++) {
                 for (int cx = 0; cx < width * n; cx++) {
-                    if (!on[cy / n][cx / n]) continue;
+                    int tx = cx / n, ty = cy / n;
+                    if (!on[ty][tx]) continue;
+                    // A tile lit wholly from inside, in one piece
+                    if (cx % n == 0 && cy % n == 0 && whole[ty][tx]) {
+                        float tx0 = x + tx * size, ty0 = y + ty * size;
+                        shapes.triangle(tx0, ty0, tx0 + size, ty0, tx0 + size, ty0 + size, Color.WHITE, Color.WHITE, Color.WHITE);
+                        shapes.triangle(tx0, ty0, tx0 + size, ty0 + size, tx0, ty0 + size, Color.WHITE, Color.WHITE, Color.WHITE);
+                    }
+                    if (whole[ty][tx]) continue;
                     float x0 = x + cx * step, y0 = y + cy * step, x1 = x0 + step, y1 = y0 + step;
                     float w00 = w[cy * cw + cx], w10 = w[cy * cw + cx + 1], w01 = w[(cy + 1) * cw + cx], w11 = w[(cy + 1) * cw + cx + 1];
                     shade(c00, w00);
@@ -403,6 +560,15 @@ public final class DeckEdgeBlend implements Disposable {
                     }
                 }
             }
+        }
+
+        /** Whether every corner in tile ({@code tx}, {@code ty}) of the split grid has weight 1. */
+        private boolean whole(float[] w, int cw, int tx, int ty) {
+            int n = SUBDIVISIONS;
+            for (int vy = ty * n; vy <= ty * n + n; vy++) {
+                for (int vx = tx * n; vx <= tx * n + n; vx++) if (w[vy * cw + vx] < 1f) return false;
+            }
+            return true;
         }
 
         /** The corners of what is drawn, in tiles, and their weights, for {@link #cut}. */

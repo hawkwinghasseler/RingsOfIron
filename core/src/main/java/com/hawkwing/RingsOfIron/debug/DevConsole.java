@@ -471,6 +471,16 @@ public final class DevConsole {
             if (c == null) return "No shield emitters aboard";
             return "Shields trimmed " + c.trim.label;
         });
+        console.define("deckFade", "deckFade([fade])", "how the decks' light fades into the light outside across the hull's"
+                + " outer tile: linear, eased, soft or soft_eased; deckFade() steps to the next", decks, args -> {
+            com.hawkwing.RingsOfIron.render.DeckEdgeBlend.Fade f = args.length == 0 || args[0] == null
+                    ? com.hawkwing.RingsOfIron.render.DeckEdgeBlend.Fade.values()[(com.hawkwing.RingsOfIron.render.DeckEdgeBlend.fade.ordinal() + 1)
+                            % com.hawkwing.RingsOfIron.render.DeckEdgeBlend.Fade.values().length]
+                    : com.hawkwing.RingsOfIron.render.DeckEdgeBlend.Fade.named(String.valueOf(args[0]));
+            if (f == null) throw new ConsoleException("deckFade(fade): linear, eased, soft or soft_eased");
+            com.hawkwing.RingsOfIron.render.DeckEdgeBlend.fade = f;
+            return f.label();
+        });
         console.define("doors", "doors([ship])", "seals every door aboard, or opens them all", decks, args ->
                 actions.tools.toggleDoors(shipTarget(args, 0)) ? "Doors sealed" : "Doors open");
 
