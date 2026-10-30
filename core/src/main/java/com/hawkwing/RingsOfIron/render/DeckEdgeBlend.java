@@ -47,7 +47,8 @@ public final class DeckEdgeBlend implements Disposable {
     /** The developer overlay of the weights, in the developer console. */
     public static final String NAME = "lightMask";
     /** What the overlay shows, for the console's overlay list and the debug menu. */
-    public static final String DESCRIPTION = "the deck view's light mask alone: red where the decks' light is used, blue the light outside";
+    public static final String DESCRIPTION = "the deck view's light mask alone: red where the decks' light is used, blue the light"
+            + " outside, yellow lines at all inside, half and half, and all outside";
 
     /** How far in from the hull's edge the decks' light has wholly taken over from the light outside, in tiles. */
     static final float WIDTH = 1f;
@@ -93,20 +94,24 @@ public final class DeckEdgeBlend implements Disposable {
             + "}\n";
     /**
      * The weights alone, for the overlay: red for the decks' light, blue for the light outside,
-     * mixed between, and yellow where the decks' light stops being all there is (the first pixel
-     * short of it, beside one wholly lit from inside).
+     * mixed between, and yellow lines where the decks' light stops being all there is, where the
+     * two are half and half, and where the light outside stops being all there is (each the first
+     * pixel short of the weight, beside one at it).
      */
     private static final String MASK = "#ifdef GL_ES\nprecision mediump float;\n#endif\n"
             + "uniform sampler2D u_weight;\n"
             + "uniform vec2 u_texel;\n"
             + "varying vec2 v_uv;\n"
-            + "float inside(vec2 at) { return step(0.998, texture2D(u_weight, at).r); }\n"
+            + "float at(vec2 uv, float t) { return step(t, texture2D(u_weight, uv).r); }\n"
+            + "float line(float t) {\n"
+            + "  float around = max(max(at(v_uv + vec2(u_texel.x, 0.0), t), at(v_uv - vec2(u_texel.x, 0.0), t)),\n"
+            + "      max(at(v_uv + vec2(0.0, u_texel.y), t), at(v_uv - vec2(0.0, u_texel.y), t)));\n"
+            + "  return around * (1.0 - at(v_uv, t));\n"
+            + "}\n"
             + "void main() {\n"
             + "  float w = texture2D(u_weight, v_uv).r;\n"
-            + "  float around = max(max(inside(v_uv + vec2(u_texel.x, 0.0)), inside(v_uv - vec2(u_texel.x, 0.0))),\n"
-            + "      max(inside(v_uv + vec2(0.0, u_texel.y)), inside(v_uv - vec2(0.0, u_texel.y))));\n"
-            + "  float line = around * (1.0 - inside(v_uv));\n"
-            + "  gl_FragColor = vec4(mix(vec3(w, 0.0, 1.0 - w), vec3(1.0, 0.9, 0.0), line), 1.0);\n"
+            + "  float lines = max(max(line(0.998), line(0.5)), line(0.002));\n"
+            + "  gl_FragColor = vec4(mix(vec3(w, 0.0, 1.0 - w), vec3(1.0, 0.9, 0.0), lines), 1.0);\n"
             + "}\n";
 
     private FrameBuffer weights;
