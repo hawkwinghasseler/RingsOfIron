@@ -41,6 +41,11 @@ import java.util.Arrays;
  * {@link #apply} the decks' light map inside, then the outside's ({@code ExteriorRenderer}).
  */
 public final class DeckEdgeBlend implements Disposable {
+    /** The developer overlay of the weights, in the developer console. */
+    public static final String NAME = "lightMask";
+    /** What the overlay shows, for the console's overlay list and the debug menu. */
+    public static final String DESCRIPTION = "the deck view's light mask alone: red where the decks' light is used, blue the light outside";
+
     /** How far in from the hull's edge the decks' light has wholly taken over from the light outside, in tiles. */
     static final float WIDTH = 1f;
 
@@ -83,8 +88,19 @@ public final class DeckEdgeBlend implements Disposable {
             + "    gl_FragColor = vec4(mix(light, inner, w) / max(laid, vec3(0.004)), 1.0);\n"
             + "  }\n"
             + "}\n";
+    /** The weights alone, for the overlay: red for the decks' light, blue for the light outside, mixed between. */
+    private static final String MASK = "#ifdef GL_ES\nprecision mediump float;\n#endif\n"
+            + "uniform sampler2D u_weight;\n"
+            + "varying vec2 v_uv;\n"
+            + "void main() {\n"
+            + "  float w = texture2D(u_weight, v_uv).r;\n"
+            + "  gl_FragColor = vec4(w, 0.0, 1.0 - w, 1.0);\n"
+            + "}\n";
 
     private FrameBuffer weights;
+    private ShaderProgram maskShader;
+    /** Whether the overlay of the weights is drawn ({@link #drawMask}), and whether this frame has weights to draw. */
+    private boolean maskShown, drawn;
     private ShaderProgram shader;
     private Mesh quad;
     private boolean ready;
@@ -106,6 +122,7 @@ public final class DeckEdgeBlend implements Disposable {
      */
     public boolean begin() {
         ready = false;
+        drawn = false;
         inner = null;
         if (!compiled()) return false;
         Gdx.gl.glGetIntegerv(GL20.GL_VIEWPORT, viewport);
@@ -127,6 +144,35 @@ public final class DeckEdgeBlend implements Disposable {
     public void end() {
         weights.end(saved[0], saved[1], saved[2], saved[3]);
         ready = true;
+        drawn = true;
+    }
+
+    /** Whether the developer overlay of the weights is shown. */
+    public boolean maskShown() {
+        return maskShown;
+    }
+
+    public void setMaskShown(boolean shown) {
+        maskShown = shown;
+    }
+
+    /**
+     * The developer overlay, when it is shown: this frame's weights alone over the whole view,
+     * red where the decks' light is used and blue where the light outside is, mixed between.
+     * Drawn over the deck view's world, in its viewport; nothing where there were no weights this
+     * frame (another view, or the shader would not compile).
+     */
+    public void drawMask() {
+        boolean fresh = drawn;
+        drawn = false;
+        if (!maskShown || !fresh) return;
+        if (maskShader == null) maskShader = new ShaderProgram(VERTEX, MASK);
+        if (!maskShader.isCompiled()) return;
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+        weights.getColorBufferTexture().bind(0);
+        maskShader.bind();
+        maskShader.setUniformi("u_weight", 0);
+        quad.render(maskShader, GL20.GL_TRIANGLE_FAN);
     }
 
     /**
@@ -382,9 +428,11 @@ public final class DeckEdgeBlend implements Disposable {
     public void dispose() {
         if (weights != null) weights.dispose();
         if (shader != null) shader.dispose();
+        if (maskShader != null) maskShader.dispose();
         if (quad != null) quad.dispose();
         weights = null;
         shader = null;
+        maskShader = null;
         quad = null;
     }
 }

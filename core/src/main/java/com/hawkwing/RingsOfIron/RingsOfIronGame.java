@@ -715,6 +715,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         dev.addOverlay(HeatOverlay.NAME, HeatOverlay.DESCRIPTION,
                 deckRenderer::heatShown, deckRenderer::setHeatShown);
         builtInOverlays.install(dev.overlays);
+        dev.addOverlay(com.hawkwing.RingsOfIron.render.DeckEdgeBlend.NAME, com.hawkwing.RingsOfIron.render.DeckEdgeBlend.DESCRIPTION,
+                deckEdge::maskShown, deckEdge::setMaskShown);
         dev.addOverlay(SpaceSnow.NAME, SpaceSnow.DESCRIPTION, snow::isShown, snow::setShown);
         dev.addOverlay(StarField.NAME, StarField.DESCRIPTION, stars::isShown, stars::setShown);
         dev.setScenarioLoader(this::loadScenario);
@@ -1629,6 +1631,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         deckRenderer.drawOutside(decks, camera, delta);
         // Their navigation lights and running systems glow as outside; the decks' glowed already
         lighting.renderGlow(batch, camera, 2.5f * viewports.getViewMeters() / 400f, glowFrom[0]);
+        deckEdge.drawMask();
     }
 
     /** Where the avatar stands, world meters, or null when it is aboard nothing in the bubble. */
