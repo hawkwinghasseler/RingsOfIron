@@ -4,6 +4,8 @@ dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
   api project(':core-engine')
   api project(':modding-data')
+  // The editor's Defs read and write the def files
+  implementation "com.google.code.gson:gson:$gsonVersion"
 
   // The game's data, to check the chassis defs against the real blueprint loader (InteriorGridDataTest)
   testImplementation testFixtures(project(':modding-data'))

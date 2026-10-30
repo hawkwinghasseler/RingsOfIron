@@ -13,14 +13,15 @@ dependencies {
   api project(':modding-data')
   api project(':stations-docking')
 
-  api "com.badlogicgames.gdx-controllers:gdx-controllers-core:$gdxControllersVersion"
-  api "com.badlogicgames.gdx:gdx-ai:$aiVersion"
   api "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
-  api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
-  api "com.badlogicgames.box2dlights:box2dlights:$box2dlightsVersion"
-  api "org.apache.groovy:groovy-all:$groovyVersion"
   api "com.badlogicgames.ashley:ashley:$ashleyVersion"
+  // Used inside core only: no public type of core's names them
+  implementation "com.badlogicgames.gdx-controllers:gdx-controllers-core:$gdxControllersVersion"
+  implementation "com.badlogicgames.gdx:gdx-ai:$aiVersion"
+  implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+  implementation "com.badlogicgames.box2dlights:box2dlights:$box2dlightsVersion"
+  implementation "org.apache.groovy:groovy-all:$groovyVersion"
 
   if(enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"

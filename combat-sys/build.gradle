@@ -8,6 +8,8 @@ dependencies {
   api project(':interior-grid')
   // Def classes are filled from TOML by modding-data's DefRegistry (and its Gson mapping).
   api project(':modding-data')
+  // @SerializedName on the public def classes, which javac reads wherever they are used
+  api "com.google.code.gson:gson:$gsonVersion"
 
   testImplementation "org.junit.jupiter:junit-jupiter"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"

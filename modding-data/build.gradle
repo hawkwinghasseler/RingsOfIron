@@ -4,12 +4,13 @@ apply plugin: 'java-test-fixtures'
 
 dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
-  api "org.apache.groovy:groovy-all:$groovyVersion"
+  // Only modding-data and core (the dev console) use Groovy, so it stays off the other modules' compile path
+  implementation "org.apache.groovy:groovy-all:$groovyVersion"
   api project(':core-engine')
   // TOML 1.0 parser for data files and manifests.
   implementation "org.tomlj:tomlj:1.1.1"
   // Maps parsed TOML/JSON trees onto definition POJOs (snake_case keys -> camelCase fields).
-  api "com.google.code.gson:gson:2.11.0"
+  implementation "com.google.code.gson:gson:$gsonVersion"
 
   testImplementation "org.junit.jupiter:junit-jupiter"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"
