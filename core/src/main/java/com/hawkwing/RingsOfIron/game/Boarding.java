@@ -17,6 +17,7 @@ import com.ringsofiron.aicrew.EvaSystem;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.coreengine.EntityRef;
 import com.ringsofiron.coreengine.UuidRegistry;
 import com.ringsofiron.interiorgrid.Airlock;

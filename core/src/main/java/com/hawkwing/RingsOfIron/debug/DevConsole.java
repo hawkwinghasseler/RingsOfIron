@@ -98,7 +98,7 @@ public final class DevConsole {
                 "com.hawkwing.RingsOfIron.render", "com.hawkwing.RingsOfIron.wiring", "com.ringsofiron.coreengine",
                 "com.ringsofiron.coreengine.input", "com.ringsofiron.uihud", "com.ringsofiron.macrosim.bubble",
                 "com.ringsofiron.macrosim.economy", "com.ringsofiron.orbital.math", "com.ringsofiron.aicrew.pilot",
-                "com.ringsofiron.audiospatial.systems", "com.ringsofiron.shipsystems");
+                "com.ringsofiron.audiospatial.systems", "com.ringsofiron.shipsystems", "com.ringsofiron.career");
         console.addImports("com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause");
         console.setFormatter(DevConsole::format);
         console.setScriptDir(scriptDir != null ? scriptDir : defaultScriptDir());

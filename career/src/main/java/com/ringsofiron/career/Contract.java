@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.career;
 
 /**
  * One job off a station's mission board (GDD section 4), offered or taken. Plain fields, so the

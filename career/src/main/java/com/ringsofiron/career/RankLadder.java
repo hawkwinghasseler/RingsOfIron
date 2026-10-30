@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.career;
 
 import com.ringsofiron.moddingdata.DefRegistry;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
@@ -91,7 +91,7 @@ public final class RankLadder {
     }
 
     /** Tiles of chassis {@code id} that are not void, or -1 if there is no such chassis. */
-    int chassisSize(String id) {
+    public int chassisSize(String id) {
         ChassisDef c = id == null ? null : defs.get("chassis", id, ChassisDef.class);
         if (c == null || c.rows == null) return -1;
         int n = 0;

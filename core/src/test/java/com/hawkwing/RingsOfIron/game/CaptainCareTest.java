@@ -8,6 +8,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.btree.CrewTasks;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;

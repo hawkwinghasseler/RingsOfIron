@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.career;
 
 /**
  * The player's career, saved with the game by {@link FactionStanding} rather than on a ship, so it

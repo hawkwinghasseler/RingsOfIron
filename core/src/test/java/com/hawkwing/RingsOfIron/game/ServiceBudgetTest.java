@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.ServiceBudget;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;

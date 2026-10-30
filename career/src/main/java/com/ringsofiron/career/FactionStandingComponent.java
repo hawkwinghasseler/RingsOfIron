@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.career;
 
 import com.badlogic.ashley.core.Component;
 

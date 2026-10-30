@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
+import com.ringsofiron.career.Contract;
 import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.uihud.HintRegistry;
 import org.junit.jupiter.api.AfterEach;

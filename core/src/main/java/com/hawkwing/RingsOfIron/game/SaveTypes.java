@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStandingComponent;
 import com.ringsofiron.coreengine.SerializationService;
 
 /**

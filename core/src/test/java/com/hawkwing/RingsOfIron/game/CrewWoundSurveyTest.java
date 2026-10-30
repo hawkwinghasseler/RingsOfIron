@@ -8,6 +8,8 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.Wound;
+import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.combatsys.defs.LoadoutDef;
 import com.ringsofiron.combatsys.modding.Loadouts;
 import com.ringsofiron.interiorgrid.ShipGridComponent;

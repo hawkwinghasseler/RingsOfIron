@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.career;
 
 import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
@@ -89,7 +89,7 @@ public final class NewGame {
     }
 
     /** SplitMix64 of {@code seed} and {@code part}. */
-    static long mix(long seed, long part) {
+    public static long mix(long seed, long part) {
         long z = seed + 0x9E3779B97F4A7C15L * (part + 1);
         z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
         z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;

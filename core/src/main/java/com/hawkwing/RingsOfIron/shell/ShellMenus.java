@@ -199,7 +199,7 @@ class ShellMenus {
         t.add(note("The Patrol starts you at Highport in Earth orbit; the Combine at Shackleton Ice above the Moon")).width(440f)
                 .colspan(3).padBottom(10f).row();
         Table buttons = new Table();
-        buttons.add(button("Start", () -> shell.newGame(com.hawkwing.RingsOfIron.game.NewGame.fromText(seed.getText(), sponsor[0]))))
+        buttons.add(button("Start", () -> shell.newGame(com.ringsofiron.career.NewGame.fromText(seed.getText(), sponsor[0]))))
                 .padRight(10f);
         buttons.add(button("Back", shell::back));
         t.add(buttons).colspan(3).padTop(10f).row();

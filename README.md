@@ -136,6 +136,7 @@ The art in `assets/art` is SVG. The `art-pipeline` module rasterizes it into a t
 | `audio-spatial` | Positional sound with wall and door muffling |
 | `modding-data` | TOML/JSON data loading, mods and Groovy mod scripts |
 | `ship-systems` | Propellant feed, engine and RCS thrust, tank mass, weapon power, transit clearance and burns on rails |
+| `career` | Factions, standing, rank, the service record and budget, contracts and the new-game choices |
 | `art-pipeline` | Rasterizes the SVG art into the game's texture atlas |
 | `core` | The game itself, the demos and the ship editor, wiring the modules together |
 | `lwjgl3` | Desktop launchers |

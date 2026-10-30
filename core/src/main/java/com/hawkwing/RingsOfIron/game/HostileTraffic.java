@@ -13,6 +13,8 @@ import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
+import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;

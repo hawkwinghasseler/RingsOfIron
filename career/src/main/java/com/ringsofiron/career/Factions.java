@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.career;
 
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.moddingdata.DefRegistry;
@@ -23,7 +23,7 @@ import java.util.Map;
  */
 public final class Factions {
     /** The crew faction number of the first faction in the data: the sponsor's. */
-    public static final int FIRST = StationCrew.FACTION;
+    public static final int FIRST = 2;
 
     private final List<FactionDef> factions;
     private final Map<String, Integer> byId = new HashMap<>();

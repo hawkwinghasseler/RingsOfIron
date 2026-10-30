@@ -11,6 +11,7 @@ import com.badlogic.gdx.utils.JsonWriter;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;

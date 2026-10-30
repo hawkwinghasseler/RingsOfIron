@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.career.Contract;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;

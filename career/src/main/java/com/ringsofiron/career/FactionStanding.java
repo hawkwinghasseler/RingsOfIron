@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.ringsofiron.career;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
@@ -55,7 +55,7 @@ public class FactionStanding implements SaveParticipant, Resettable {
     /** The player's own crew. */
     public static final int PLAYER = 0;
     /** An in-game day, in sim seconds. */
-    static final double DAY = 86_400;
+    public static final double DAY = 86_400;
 
     /** A hostile act the player did, for the screen. */
     public static final class Act {

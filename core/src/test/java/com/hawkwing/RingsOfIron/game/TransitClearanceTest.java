@@ -8,6 +8,7 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
 import com.ringsofiron.aicrew.pilot.PilotBurn;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;

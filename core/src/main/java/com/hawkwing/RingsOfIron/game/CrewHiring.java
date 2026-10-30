@@ -10,6 +10,8 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.coreengine.Resettable;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.components.UuidComponent;

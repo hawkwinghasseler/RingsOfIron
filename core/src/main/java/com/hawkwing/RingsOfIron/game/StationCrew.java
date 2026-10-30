@@ -6,6 +6,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
+import com.ringsofiron.career.Factions;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
@@ -22,7 +23,7 @@ import java.util.List;
  */
 public final class StationCrew {
     /** The faction of a station's crew when no other is given: the sponsor's ({@link Factions#FIRST}). */
-    public static final int FACTION = 2;
+    public static final int FACTION = Factions.FIRST;
     /** Fewest loaders a station keeps, however few ports it has. */
     static final int MIN_LOADERS = 2;
     /** Technicians every station's yard keeps. */

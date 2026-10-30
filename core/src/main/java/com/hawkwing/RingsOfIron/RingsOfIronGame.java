@@ -26,7 +26,7 @@ import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.DeckArt;
 import com.hawkwing.RingsOfIron.game.AbandonShip;
 import com.hawkwing.RingsOfIron.game.FlightWarnings;
-import com.hawkwing.RingsOfIron.game.NewGame;
+import com.ringsofiron.career.NewGame;
 import com.hawkwing.RingsOfIron.game.Bridge;
 import com.hawkwing.RingsOfIron.game.OpeningGuide;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
@@ -41,7 +41,7 @@ import com.hawkwing.RingsOfIron.game.ShipRefit;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.hawkwing.RingsOfIron.game.DoorForcing;
 import com.hawkwing.RingsOfIron.game.ExteriorPick;
-import com.hawkwing.RingsOfIron.game.FactionStanding;
+import com.ringsofiron.career.FactionStanding;
 import com.hawkwing.RingsOfIron.game.DisabledComponent;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
@@ -1740,7 +1740,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         for (String line : world.nav.readout()) below = statusLine(line, left, below);
         // The contracts held: what, how long left and how far
         font.setColor(Color.GOLD);
-        for (com.hawkwing.RingsOfIron.game.Contract c : world.contracts.active()) below = statusLine(world.contracts.describe(c), left, below);
+        for (com.ringsofiron.career.Contract c : world.contracts.active()) below = statusLine(world.contracts.describe(c), left, below);
         // The objective stays up under the notices, once its own notice has gone from above them
         if (firstPlay != null) {
             String objective = firstPlay.objective(this::key);

@@ -8,6 +8,7 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.Wound;
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
 
