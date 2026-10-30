@@ -7,6 +7,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.Input;
+import com.hawkwing.RingsOfIron.game.ShipNames;
 import com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.InputMultiplexer;
@@ -988,7 +989,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         String uuid = world.universe.uuidOf(picked);
         String nav = uuid == null ? null : world.nav.target.select(uuid);
         HudMarkerComponent marker = MARKERS.get(picked);
-        String name = marker != null && marker.label != null && !marker.label.isEmpty() ? marker.label : PlayerDocking.name(picked);
+        String name = marker != null && marker.label != null && !marker.label.isEmpty() ? marker.label : ShipNames.name(picked);
         if (lock) world.notices.replace("Target locked", "Target locked: " + name);
         else if (nav != null) world.notices.replace("Navigation target", nav);
     }

@@ -6,6 +6,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.TaskRules;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
 import java.util.List;
@@ -35,7 +36,7 @@ final class StationHands {
 
     private static void putAboard(CrewService crew, Entity e, GridPositionComponent p, Entity station) {
         ShipGridComponent grid = crew.grid(station);
-        List<int[]> floor = GameScenario.floorTiles(grid);
+        List<int[]> floor = FloorTiles.of(grid);
         if (floor.isEmpty()) return;
         int[] to = floor.get(0);
         for (int[] t : floor) {

@@ -10,6 +10,7 @@ import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -49,7 +50,7 @@ class PrizeTowingTest {
         highport = world.engine.getEntity(game.highport);
         // Two pirates crew the raider
         int pirates = world.standing.factions().index(GameScenario.PIRATES);
-        List<int[]> floor = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(game.raider.getComponent(ShipGridComponent.class));
         for (int i = 0; i < 2; i++) {
             int[] t = floor.get(floor.size() - 1 - i);
             raiderCrew.add(CrewFactory.spawn(world.crew, game.raider, "Pirate " + i, CrewRole.CREWMAN, pirates, t[0], t[1]));
@@ -232,7 +233,7 @@ class PrizeTowingTest {
         towTo(800f);
         Entity hand = CrewFactory.spawn(world.crew, game.player, "Dee", CrewRole.CREWMAN, 0, 8, 2);
         world.crew.position(hand).setShip(game.raider);
-        int[] t = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class)).get(0);
+        int[] t = FloorTiles.of(game.raider.getComponent(ShipGridComponent.class)).get(0);
         world.crew.position(hand).setTile(t[0], t[1]);
         assertEquals("1 of your crew are still aboard: recall them first", world.shipyard.prizeRefusal(false));
         assertEquals("1 of your crew are still aboard: recall them first", world.shipyard.sellPrize());

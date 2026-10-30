@@ -280,7 +280,7 @@ class CareerSweepTest {
                 }
                 Entity at = world.docking.dockedTo(career.game.player);
                 dead.add(String.format(Locale.ROOT, "%s, day %.2f, %s, %s", name, world.engine.getSimSeconds() / 86_400, cause,
-                        at == null ? "undocked" : "docked at " + PlayerDocking.name(at)));
+                        at == null ? "undocked" : "docked at " + ShipNames.name(at)));
             });
         }
 

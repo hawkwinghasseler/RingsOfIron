@@ -241,7 +241,7 @@ class PrizeTraceProbe {
         if (h != null) return h.displayName;
         if (e.getComponent(MissileComponent.class) != null) return "a missile from " + name(e.getComponent(MissileComponent.class).launcher);
         if (e == game.player) return "us";
-        return PlayerDocking.name(e);
+        return ShipNames.name(e);
     }
 
     private long range(Entity e) {

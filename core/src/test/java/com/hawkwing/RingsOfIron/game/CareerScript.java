@@ -11,6 +11,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.Wound;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
@@ -246,7 +247,7 @@ abstract class CareerScript {
         // First Play's raider flies with nobody aboard; two pirates crew it here, as in PrizeTowingTest,
         // so the prize comes home with prisoners if they live through the fight
         int pirates = world.standing.factions().index(GameScenario.PIRATES);
-        List<int[]> floor = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(game.raider.getComponent(ShipGridComponent.class));
         for (int i = 0; i < 2; i++) {
             int[] t = floor.get(floor.size() - 1 - i);
             com.ringsofiron.aicrew.CrewFactory.spawn(world.crew, game.raider, "Pirate " + i,
@@ -593,7 +594,7 @@ abstract class CareerScript {
         }
         log("  repaired in %.1f h for %.0f cr, ordered %d time(s); hull %.2f; docked at %s.", (world.engine.getSimSeconds() - r0) / 3_600,
                 paid - credits(), again + 1, hull(game.player), world.docking.dockedTo(game.player) == null ? "nothing"
-                        : PlayerDocking.name(world.docking.dockedTo(game.player)));
+                        : ShipNames.name(world.docking.dockedTo(game.player)));
         for (String n : world.yard.notices) log("  yard: %s", n);
         world.yard.notices.clear();
         assertTrue(world.yard.repairCost(game.player) <= 0.5,
@@ -701,7 +702,7 @@ abstract class CareerScript {
         if (bounty != null && world.contracts.locked(bounty) == null && world.contracts.accept(bounty.id) == null) {
             log("  took its bounty: %s, %.0f cr, %+.0f standing.", bounty.heading(), bounty.reward, bounty.standing);
         } else {
-            log("  no bounty on it that we may take at %s.", PlayerDocking.name(at));
+            log("  no bounty on it that we may take at %s.", ShipNames.name(at));
             bounty = null;
         }
         world.docking.undock(game.player);
@@ -755,9 +756,9 @@ abstract class CareerScript {
         // ship loose, and warp gave up two weeks short. A player docks again and waits out the rest
         for (int again = 0; again < 3 && berth != null && world.docking.dockedTo(game.player) == null
                 && world.engine.getSimSeconds() < until && world.getCrash() == null; again++) {
-            log("  came loose of %s's berth on day %.2f (hull %.2f): docked again.", PlayerDocking.name(berth),
+            log("  came loose of %s's berth on day %.2f (hull %.2f): docked again.", ShipNames.name(berth),
                     world.engine.getSimSeconds() / 86_400, hull(game.player));
-            assertTrue(game.dockAt(world.universe.uuidOf(berth)), "a port free at " + PlayerDocking.name(berth));
+            assertTrue(game.dockAt(world.universe.uuidOf(berth)), "a port free at " + ShipNames.name(berth));
             run(120);
             warpFor(until - world.engine.getSimSeconds());
         }
@@ -859,7 +860,7 @@ abstract class CareerScript {
         } else {
             // Round 9, seed 9: a long chase took the fight, and the bubble with it, 25 km past
             // Highport, out of the bubble. Where it is from the bubble's anchor, off the rails
-            log("  towing in from %.0f km: %s is out of the bubble.", distance(game.player, station) / 1000, PlayerDocking.name(station));
+            log("  towing in from %.0f km: %s is out of the bubble.", distance(game.player, station) / 1000, ShipNames.name(station));
             double now = world.universe.now();
             var gateway = world.macroSim.gateway();
             Entity frame = world.universe.entity(gateway.anchorParentUuid());

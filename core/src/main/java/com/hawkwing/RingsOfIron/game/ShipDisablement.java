@@ -251,7 +251,7 @@ public class ShipDisablement extends EntitySystem {
             }
             // The player's main guns wait for the trigger again (round 8: power back after a loss, they
             // opened fire by themselves at the locked target, and the recoil shook the ship off its berth)
-            if (isPlayer(ship)) PlayerGunnery.holdMainGuns(ship.getComponent(WeaponsComponent.class));
+            if (isPlayer(ship)) WeaponsComponent.holdMainGuns(ship.getComponent(WeaponsComponent.class));
             else holdFire(ship, false);
         } else {
             if (current == null) {

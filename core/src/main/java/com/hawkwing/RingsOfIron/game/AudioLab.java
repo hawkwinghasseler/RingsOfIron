@@ -9,6 +9,7 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
 import com.ringsofiron.audiospatial.components.AudioEmitterComponent;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
@@ -183,7 +184,7 @@ public class AudioLab {
             if (link.otherShip == game.player && craft != game.player) tile = new int[]{link.x, link.y};
         }
         if (tile == null) {
-            List<int[]> floor = GameScenario.floorTiles(grid);
+            List<int[]> floor = FloorTiles.of(grid);
             tile = craft == game.player ? GameScenario.besideHelm(craft, floor) : floor.isEmpty() ? null : floor.get(0);
         }
         world.crew.releaseTask(avatar);

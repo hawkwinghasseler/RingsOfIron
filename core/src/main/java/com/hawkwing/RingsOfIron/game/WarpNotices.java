@@ -45,7 +45,7 @@ public final class WarpNotices {
                 }
                 break;
             case ENCOUNTER:
-                why = (change.encounter == null ? "a craft" : PlayerDocking.name(change.encounter)) + " is coming within 20 km";
+                why = (change.encounter == null ? "a craft" : ShipNames.name(change.encounter)) + " is coming within 20 km";
                 break;
             default:
                 break;

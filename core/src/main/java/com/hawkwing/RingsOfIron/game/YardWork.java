@@ -44,7 +44,7 @@ public class YardWork implements YardProvider {
             field(ship, out);
             return;
         }
-        out.stationName = PlayerDocking.name(station);
+        out.stationName = ShipNames.name(station);
         TraderComponent trader = ship.getComponent(TraderComponent.class);
         out.credits = trader == null ? 0 : trader.credits;
         out.damaged = world.yard.damage(ship).size();

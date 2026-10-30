@@ -15,6 +15,7 @@ import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -309,7 +310,7 @@ public class Shipyard extends EntitySystem {
         String deal = cost >= 0 ? String.format(Locale.ROOT, "paid %,.0f cr", cost)
                 : String.format(Locale.ROOT, "%,.0f cr to you", -cost);
         String message = String.format(Locale.ROOT, "Bought the %s at %s: %s, with %,.0f cr for the %s", listing.name,
-                PlayerDocking.name(station), deal, tradeIn, oldName);
+                ShipNames.name(station), deal, tradeIn, oldName);
         world.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.BOUGHT, old, ship, station, cost, 0f));
         return message;
@@ -403,7 +404,7 @@ public class Shipyard extends EntitySystem {
     /** Everyone who calls {@code from} home, and everyone aboard it, goes aboard {@code to} and calls it home. */
     void moveCrew(Entity from, Entity to) {
         Array<Entity> crew = crewOf(from);
-        List<int[]> floor = GameScenario.floorTiles(to.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(to.getComponent(ShipGridComponent.class));
         CrewFactory.ensureBoard(to);
         world.crew.clearPathfinders();
         sendStaffHome(from);
@@ -435,7 +436,7 @@ public class Shipyard extends EntitySystem {
             GridPositionComponent p = world.crew.position(e);
             if (c == null || p == null || p.ship != ship || c.home == null || c.home == ship
                     || c.home.getComponent(StationComponent.class) == null) continue;
-            List<int[]> floor = GameScenario.floorTiles(c.home.getComponent(ShipGridComponent.class));
+            List<int[]> floor = FloorTiles.of(c.home.getComponent(ShipGridComponent.class));
             if (floor.isEmpty()) continue;
             world.crew.releaseTask(e);
             p.stop();
@@ -570,7 +571,7 @@ public class Shipyard extends EntitySystem {
         TraderComponent trader = world.getPlayer().getComponent(TraderComponent.class);
         if (trader != null) trader.credits += paid;
         int held = handOver(prize);
-        String message = String.format(Locale.ROOT, "%s's tugs took the %s in: +%,.0f cr%s", PlayerDocking.name(station), name,
+        String message = String.format(Locale.ROOT, "%s's tugs took the %s in: +%,.0f cr%s", ShipNames.name(station), name,
                 paid, held > 0 ? ", " + held + " prisoners handed over" : "");
         world.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.PRIZE_SOLD, prize, null, station, paid, 0f));
@@ -590,7 +591,7 @@ public class Shipyard extends EntitySystem {
         int held = handOver(prize);
         world.standing.reward(world.standing.sponsor(), standing, "turned in a prize");
         String message = String.format(Locale.ROOT, "Turned the %s in at %s: standing %+.0f with the %s%s", name,
-                PlayerDocking.name(station), standing, world.standing.factions().name(world.standing.sponsor()),
+                ShipNames.name(station), standing, world.standing.factions().name(world.standing.sponsor()),
                 held > 0 ? ", " + held + " prisoners handed over"
                         + (forPrisoners > 0 ? String.format(Locale.ROOT, " (+%,.0f cr)", forPrisoners) : "") : "");
         world.notices.post(message, NoticeLog.Kind.IMPORTANT);

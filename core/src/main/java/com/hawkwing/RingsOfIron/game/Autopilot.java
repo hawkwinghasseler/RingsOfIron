@@ -236,7 +236,7 @@ public class Autopilot implements DropOutSource {
                 break;
             case ENCOUNTER:
                 if (change.encounter != null && change.encounter != world.engine.getEntity(a.targetUuid)) {
-                    hold(a, PlayerDocking.name(change.encounter) + " is coming close");
+                    hold(a, ShipNames.name(change.encounter) + " is coming close");
                 }
                 break;
             case EXTERNAL:

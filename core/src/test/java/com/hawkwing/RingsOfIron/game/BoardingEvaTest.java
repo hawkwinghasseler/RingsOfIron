@@ -10,6 +10,7 @@ import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.EvaSystem;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -50,14 +51,14 @@ class BoardingEvaTest {
         world = new GameWorld();
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
         CrewFactory.ensureBoard(game.raider).faction = RAIDERS;
-        List<int[]> floor = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(game.raider.getComponent(ShipGridComponent.class));
         int[] t = floor.get(floor.size() - 1);
         CrewFactory.spawn(world.crew, game.raider, "Raider", CrewRole.CREWMAN, RAIDERS, t[0], t[1]);
         for (Entity e : world.crewCareer.ownCrew(game.player)) {
             if (world.crew.crew(e).role == CrewRole.MARINE) marines.add(e);
         }
         if (marines.isEmpty()) {
-            int[] o = GameScenario.floorTiles(game.player.getComponent(ShipGridComponent.class)).get(0);
+            int[] o = FloorTiles.of(game.player.getComponent(ShipGridComponent.class)).get(0);
             marines.add(CrewFactory.spawn(world.crew, game.player, "Dag", CrewRole.MARINE, 0, o[0], o[1]));
         }
     }

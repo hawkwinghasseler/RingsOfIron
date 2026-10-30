@@ -9,6 +9,7 @@ import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -78,7 +79,7 @@ class Round2SaveRoundTripTest {
         // The raider beaten and taken, with two of its crew held
         String raiderId = id(game.raider);
         CrewFactory.ensureBoard(game.raider).faction = RAIDERS;
-        List<int[]> floor = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(game.raider.getComponent(ShipGridComponent.class));
         for (int i = 0; i < 2; i++) {
             int[] t = floor.get(floor.size() - 1 - i);
             CrewFactory.spawn(world.crew, game.raider, "Raider " + i, CrewRole.CREWMAN, RAIDERS, t[0], t[1]);

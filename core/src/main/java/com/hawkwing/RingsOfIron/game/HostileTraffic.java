@@ -23,6 +23,7 @@ import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.rails.StateVector;
@@ -1255,7 +1256,7 @@ public class HostileTraffic extends EntitySystem implements BubbleTransitionList
         CrewFactory.ensureBoard(ship).faction = crewFaction;
         world.standing.factions().crewHabits(CrewFactory.ensureBoard(ship));
         ShipDef def = content.defs.get("ship", shipId, ShipDef.class);
-        List<int[]> floor = GameScenario.floorTiles(ship.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(ship.getComponent(ShipGridComponent.class));
         int crew = def == null ? 0 : Math.min(def.crew, floor.size());
         for (int i = 0; i < crew; i++) {
             int[] t = floor.get(i * floor.size() / crew);

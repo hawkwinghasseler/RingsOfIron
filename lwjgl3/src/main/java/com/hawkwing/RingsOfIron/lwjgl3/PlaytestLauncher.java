@@ -10,7 +10,7 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
-import com.hawkwing.RingsOfIron.game.PlayerDocking;
+import com.hawkwing.RingsOfIron.game.ShipNames;
 import com.ringsofiron.stationsdocking.DockingEvent;
 import com.hawkwing.RingsOfIron.shell.GameShell;
 import com.hawkwing.RingsOfIron.shell.SaveSummary;
@@ -145,7 +145,7 @@ public class PlaytestLauncher {
                     "PLAYTEST hull hit on %s: %s %s at tile %d,%d, severity %.2f, shields took %.0f J", label(h.ship), h.damageType,
                     h.outcome, h.tileX, h.tileY, h.severity, h.shielded)));
             world.docking.events.add((sig, e) -> {
-                System.out.println("PLAYTEST docking " + e.kind + " " + PlayerDocking.name(e.vessel) + " / " + PlayerDocking.name(e.other)
+                System.out.println("PLAYTEST docking " + e.kind + " " + ShipNames.name(e.vessel) + " / " + ShipNames.name(e.other)
                         + " at " + world.engine.getSimSeconds());
                 if (e.kind != DockingEvent.Kind.TORN) return;
                 for (com.badlogic.gdx.physics.box2d.Contact c : world.physics.getWorld().getContactList()) {
@@ -170,7 +170,7 @@ public class PlaytestLauncher {
         }
 
         private static String label(Object o) {
-            return o instanceof Entity ? PlayerDocking.name((Entity) o) : String.valueOf(o);
+            return o instanceof Entity ? ShipNames.name((Entity) o) : String.valueOf(o);
         }
 
         private void readCommands() {
@@ -269,13 +269,13 @@ public class PlaytestLauncher {
                     // The ports of the station the ship is at, and what is at each, for a script's log
                     Entity at = world.docking.dockedTo(s.player);
                     if (at == null) return "not docked";
-                    StringBuilder out = new StringBuilder(PlayerDocking.name(at));
+                    StringBuilder out = new StringBuilder(ShipNames.name(at));
                     com.ringsofiron.stationsdocking.DockingPortsComponent ports = at.getComponent(com.ringsofiron.stationsdocking.DockingPortsComponent.class);
                     for (int i = 0; i < ports.ports.length; i++) {
                         com.ringsofiron.stationsdocking.DockingPort p = ports.ports[i];
                         Entity other = p.partnerUuid == null ? null : world.engine.getEntity(p.partnerUuid);
                         out.append(String.format(java.util.Locale.ROOT, "%n  #%d %s at (%.1f, %.1f) facing (%.0f, %.0f) %s %s", i, p.size,
-                                p.edgeX, p.edgeY, p.normalX, p.normalY, p.state, other == null ? "" : PlayerDocking.name(other)));
+                                p.edgeX, p.edgeY, p.normalX, p.normalY, p.state, other == null ? "" : ShipNames.name(other)));
                     }
                     return out.toString();
                 }
@@ -288,7 +288,7 @@ public class PlaytestLauncher {
                             com.hawkwing.RingsOfIron.game.ShipDisablement.hullIntegrity(s.player.getComponent(ShipGridComponent.class)),
                             com.hawkwing.RingsOfIron.game.ShipDisablement.isDisabled(s.player) ? ", we are beaten" : "",
                             target == null ? "none" : com.hawkwing.RingsOfIron.game.FirstPlay.beaten(world, target)
-                                    ? "beaten" : PlayerDocking.name(target)));
+                                    ? "beaten" : ShipNames.name(target)));
                     // How far the base is, for the log
                     Entity base = world.pirateBase.uuid() == null ? null : world.engine.getEntity(world.pirateBase.uuid());
                     PhysicsBodyComponent bb = base == null ? null : base.getComponent(PhysicsBodyComponent.class);
@@ -338,7 +338,7 @@ public class PlaytestLauncher {
                     Body ours = s.player.getComponent(PhysicsBodyComponent.class).body;
                     String at = pb == null || pb.body == null || ours == null ? "" : String.format(java.util.Locale.ROOT, " at %.0f m",
                             PhysicsManager.getPosition(pb.body, new Vector2()).dst(PhysicsManager.getPosition(ours, new Vector2())));
-                    return (boarder == null ? "no boarder" : "boarder " + PlayerDocking.name(boarder) + at)
+                    return (boarder == null ? "no boarder" : "boarder " + ShipNames.name(boarder) + at)
                             + (robbed == null ? "" : ", " + robbed);
                 }
                 case "crew": {
@@ -396,7 +396,7 @@ public class PlaytestLauncher {
                     return String.format(java.util.Locale.ROOT, "day %.2f, credits %.0f, rank %s, ship %s, hull %.2f",
                             world.engine.getSimSeconds() / 86_400,
                             s.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class).credits,
-                            world.standing.describeRank(), PlayerDocking.name(s.player),
+                            world.standing.describeRank(), ShipNames.name(s.player),
                             com.hawkwing.RingsOfIron.game.ShipDisablement.hullIntegrity(s.player.getComponent(ShipGridComponent.class)));
                 case "captain": {
                     // Only reads: the captain's wound, suit and air, and which craft the figure stands in
@@ -408,7 +408,7 @@ public class PlaytestLauncher {
                     return String.format(java.util.Locale.ROOT, "%s, %s, %s, in %s (%s) at %s", com.hawkwing.RingsOfIron.game.CrewMedical.condition(c),
                             c.isAlive() ? (c.isConscious() ? "conscious" : "down") : "dead",
                             c.suited ? String.format(java.util.Locale.ROOT, "suited (%.0f s of air)", c.suitAir) : "unsuited",
-                            pos == null ? "nowhere" : pos.ship == s.player ? "our ship" : PlayerDocking.name(pos.ship),
+                            pos == null ? "nowhere" : pos.ship == s.player ? "our ship" : ShipNames.name(pos.ship),
                             grid == null ? "?" : com.ringsofiron.aicrew.TaskRules.isBreathable(grid, pos.tileX(), pos.tileY()) ? "air" : "no air",
                             pos == null ? "-" : String.format(java.util.Locale.ROOT, "(%.1f, %.1f)", pos.x, pos.y));
                 }
@@ -456,7 +456,7 @@ public class PlaytestLauncher {
                         body.setLinearVelocity(near.getLinearVelocity());
                         body.setAngularVelocity(0f);
                     }
-                    return PlayerDocking.name(spawned) + " at " + m + " m";
+                    return ShipNames.name(spawned) + " at " + m + " m";
                 }
                 case "shoot": {
                     // shoot <weapon> <x> <y> [m]: the dev console's shoot() at that tile of the spawned ship;

@@ -77,7 +77,7 @@ class StationTrafficTest {
         for (int i = 0; i < 600; i++) world.update(1f / 60f);
         List<String> torn = new ArrayList<>();
         world.docking.events.add((sig, e) -> {
-            if (e.kind == DockingEvent.Kind.TORN) torn.add(PlayerDocking.name(e.vessel) + " / " + PlayerDocking.name(e.other));
+            if (e.kind == DockingEvent.Kind.TORN) torn.add(ShipNames.name(e.vessel) + " / " + ShipNames.name(e.other));
         });
         Entity deepwell = null;
         for (EconomyNode n : world.macroSim.stations()) {

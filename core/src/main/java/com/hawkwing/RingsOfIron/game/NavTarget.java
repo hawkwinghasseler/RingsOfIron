@@ -123,7 +123,7 @@ public class NavTarget {
         HostileComponent h = world.macroSim.hostiles().get(uuid);
         if (h != null && h.displayName != null) return h.displayName;
         Entity e = world.engine.getEntity(uuid);
-        return e == null ? "?" : PlayerDocking.name(e);
+        return e == null ? "?" : ShipNames.name(e);
     }
 
     /** True while the target is on the rails rather than flying in the bubble. */

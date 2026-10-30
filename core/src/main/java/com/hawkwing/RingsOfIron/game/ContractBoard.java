@@ -474,7 +474,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant, Rese
         if (world.docking.dockedWithClearance(player) && world.macroSim.station(world.universe.uuidOf(world.docking.dockedTo(player))) != null) {
             int n = landSurvivors(player, -1);
             if (n > 0) notices.add(n + (n == 1 ? " survivor goes" : " survivors go") + " ashore at "
-                    + PlayerDocking.name(world.docking.dockedTo(player)));
+                    + ShipNames.name(world.docking.dockedTo(player)));
         }
         updateMarkers();
     }

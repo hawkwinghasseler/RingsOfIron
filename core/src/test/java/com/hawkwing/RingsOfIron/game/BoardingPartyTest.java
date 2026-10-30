@@ -9,6 +9,7 @@ import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -46,7 +47,7 @@ class BoardingPartyTest {
         world = new GameWorld();
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
         CrewFactory.ensureBoard(game.raider).faction = RAIDERS;
-        List<int[]> floor = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(game.raider.getComponent(ShipGridComponent.class));
         for (int i = 0; i < 2; i++) {
             int[] t = floor.get(floor.size() - 1 - i);
             CrewFactory.spawn(world.crew, game.raider, "Raider " + i, CrewRole.CREWMAN, RAIDERS, t[0], t[1]);
@@ -64,7 +65,7 @@ class BoardingPartyTest {
 
     @Test
     void everyMarineGetsAnOrderOfTheirOwnAndNobodyElseBoards() {
-        int[] t = GameScenario.floorTiles(game.player.getComponent(ShipGridComponent.class)).get(0);
+        int[] t = FloorTiles.of(game.player.getComponent(ShipGridComponent.class)).get(0);
         Entity second = CrewFactory.spawn(world.crew, game.player, "Dag", CrewRole.MARINE, 0, t[0], t[1]);
         for (Entity e : game.raider.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {
             SubsystemComponent s = e.getComponent(SubsystemComponent.class);

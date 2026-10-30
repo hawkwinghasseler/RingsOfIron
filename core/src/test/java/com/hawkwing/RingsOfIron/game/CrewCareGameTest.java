@@ -12,6 +12,7 @@ import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
 import com.ringsofiron.interiorgrid.FloorCovering;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
@@ -63,7 +64,7 @@ class CrewCareGameTest {
     void aPatientInTheMedbayStaysThereThroughASave(@TempDir Path dir) {
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
         // A bed laid in the starter corvette, far from the crew, for the test
-        List<int[]> floors = GameScenario.floorTiles(grid);
+        List<int[]> floors = FloorTiles.of(grid);
         int[] bed = floors.get(floors.size() - 1);
         grid.getTile(bed[0], bed[1]).covering = FloorCovering.MEDBAY;
         Entity bea = crewNamed(world, game.player, "Bea");

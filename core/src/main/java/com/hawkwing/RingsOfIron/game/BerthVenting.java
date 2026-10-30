@@ -5,6 +5,7 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.interiorgrid.AirflowEdge;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
@@ -56,7 +57,7 @@ public final class BerthVenting {
         ShipGridComponent grid = player.getComponent(ShipGridComponent.class);
         if (world.yard.repairing(player)) return REFUSAL + ": the yard is repairing it";
         if (LeakPatches.leaks(grid).size > 0 && grid.patchKits > 0) return REFUSAL + ": the crew are patching it";
-        return REFUSAL + ": order repairs at " + PlayerDocking.name(station) + "'s yard";
+        return REFUSAL + ": order repairs at " + ShipNames.name(station) + "'s yard";
     }
 
     /** Once a sim tick: the station's warning, once each time the ship starts venting at a berth. */
@@ -70,7 +71,7 @@ public final class BerthVenting {
         }
         if (warned || ++ventingTicks < WARN_AFTER_TICKS) return;
         warned = true;
-        world.notices.post(PlayerDocking.name(station) + ": your ship is venting at the berth. "
+        world.notices.post(ShipNames.name(station) + ": your ship is venting at the berth. "
                 + "Time warp waits until it is patched or repaired", NoticeLog.Kind.WARNING);
     }
 
@@ -92,7 +93,7 @@ public final class BerthVenting {
         if (ashore.isEmpty()) return;
         ShipGridComponent grid = player.getComponent(ShipGridComponent.class);
         List<int[]> safe = new ArrayList<>();
-        for (int[] t : GameScenario.floorTiles(grid)) if (TaskRules.isSafe(grid, t[0], t[1])) safe.add(t);
+        for (int[] t : FloorTiles.of(grid)) if (TaskRules.isSafe(grid, t[0], t[1])) safe.add(t);
         if (safe.isEmpty()) return;
         int n = 0;
         for (Entity e : ashore) {

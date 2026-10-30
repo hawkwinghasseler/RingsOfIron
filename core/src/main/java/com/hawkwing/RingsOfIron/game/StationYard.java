@@ -276,7 +276,7 @@ public class StationYard extends EntitySystem {
         ShipTaskBoardComponent board = crew.board(station);
         if (board == null || !crew.friendlyTo(board.faction, ship)) return false;
         if (StationCrew.replaceTechnicians(crew, station).isEmpty()) return false;
-        notices.add(PlayerDocking.name(station) + "'s yard took on new technicians");
+        notices.add(ShipNames.name(station) + "'s yard took on new technicians");
         return true;
     }
 
@@ -717,7 +717,7 @@ public class StationYard extends EntitySystem {
             double budget = trader == null ? Double.POSITIVE_INFINITY : trader.credits / factor;
             charge(trader, orders, topUpAir(ship.getComponent(ShipGridComponent.class), budget) * factor);
             notices.add(String.format(Locale.ROOT, "%s's yard finished the repairs: %,.0f cr",
-                    PlayerDocking.name(station), orders.repairsPaid));
+                    ShipNames.name(station), orders.repairsPaid));
             return;
         }
         TraderComponent trader = ship.getComponent(TraderComponent.class);
@@ -880,7 +880,7 @@ public class StationYard extends EntitySystem {
         double credit = old == null || old == def ? 0 : old.price * TRADE_IN;
         TraderComponent trader = ship.getComponent(TraderComponent.class);
         if (trader != null) trader.credits += credit;
-        notices.add(String.format(Locale.ROOT, "%s fitted %s with a %s%s", PlayerDocking.name(station), hardpointName(mount),
+        notices.add(String.format(Locale.ROOT, "%s fitted %s with a %s%s", ShipNames.name(station), hardpointName(mount),
                 def.displayName(), credit > 0 ? String.format(Locale.ROOT, "; %,.0f cr for the old %s", credit, old.displayName()) : ""));
     }
 

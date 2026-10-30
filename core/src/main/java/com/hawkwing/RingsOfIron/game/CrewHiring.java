@@ -12,6 +12,7 @@ import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.moddingdata.defs.FactionDef;
@@ -196,7 +197,7 @@ public class CrewHiring implements SaveParticipant, Resettable {
 
     /** An open deck tile of {@code ship} with no one standing on it, else any open deck tile; null if it has none. */
     int[] freeTile(Entity ship) {
-        List<int[]> floor = GameScenario.floorTiles(ship.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(ship.getComponent(ShipGridComponent.class));
         if (floor.isEmpty()) return null;
         ImmutableArray<Entity> all = world.crew.crewEntities();
         for (int[] t : floor) {

@@ -9,6 +9,7 @@ import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.btree.CrewTasks;
 import com.ringsofiron.interiorgrid.Compartment;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
@@ -139,7 +140,7 @@ class CaptainCareTest {
             walker.moveX = walker.moveY = 0f;
             world.update(FRAME);
         }
-        assertSame(game.player, where().ship, () -> "still aboard: on " + PlayerDocking.name(where().ship));
+        assertSame(game.player, where().ship, () -> "still aboard: on " + ShipNames.name(where().ship));
         assertEquals(x, where().tileX());
         assertEquals(y, where().tileY());
         assertTrue(you().isAlive());
@@ -153,7 +154,7 @@ class CaptainCareTest {
         Entity highport = world.docking.dockedTo(game.player);
         ShipGridComponent station = world.crew.grid(highport);
         List<int[]> safe = new ArrayList<>();
-        for (int[] t : GameScenario.floorTiles(station)) if (com.ringsofiron.aicrew.TaskRules.isSafe(station, t[0], t[1])) safe.add(t);
+        for (int[] t : FloorTiles.of(station)) if (com.ringsofiron.aicrew.TaskRules.isSafe(station, t[0], t[1])) safe.add(t);
         List<Entity> crew = new ArrayList<>(world.crewCareer.ownCrew(game.player));
         for (int i = 0; i < crew.size(); i++) {
             world.crew.releaseTask(crew.get(i));
@@ -176,7 +177,7 @@ class CaptainCareTest {
         GridPositionComponent p = where();
         ShipGridComponent there = world.crew.grid(p.ship);
         assertTrue(com.ringsofiron.aicrew.TaskRules.isSafe(there, p.tileX(), p.tileY()),
-                "laid where they can breathe: on " + PlayerDocking.name(p.ship));
+                "laid where they can breathe: on " + ShipNames.name(p.ship));
         assertSame(highport, p.ship, "ashore, where the crew shelter");
     }
 

@@ -121,7 +121,7 @@ public class DoorForcing extends EntitySystem {
         GridPositionComponent pos = crew.position(member);
         jobs.add(new Job(member, pos.ship, pos.tileX(), pos.tileY(), t.craft, t.port, how));
         return Character.toUpperCase(how.doing.charAt(0)) + how.doing.substring(1) + " the door of "
-                + PlayerDocking.name(t.craft) + " (" + (int) how.seconds + " s)";
+                + ShipNames.name(t.craft) + " (" + (int) how.seconds + " s)";
     }
 
     /**
@@ -144,7 +144,7 @@ public class DoorForcing extends EntitySystem {
             ForceMethod how = cut ? ForceMethod.CUT : state == ForceMethod.DoorState.UNPOWERED ? ForceMethod.PRY : ForceMethod.HACK;
             if (alreadyOrdered(board, l.otherShip, port)) continue;
             board.post(new ForceDoorTask(ship, l.x, l.y, new Order(l.otherShip, port, how)));
-            name = PlayerDocking.name(l.otherShip);
+            name = ShipNames.name(l.otherShip);
             ordered++;
             break; // one opening is enough: the door is one door
         }
@@ -189,7 +189,7 @@ public class DoorForcing extends EntitySystem {
 
         @Override
         public String what() {
-            return how.doing + " the door of " + PlayerDocking.name(craft);
+            return how.doing + " the door of " + ShipNames.name(craft);
         }
 
         @Override
@@ -244,7 +244,7 @@ public class DoorForcing extends EntitySystem {
             showProgress(j.crew, -1f);
             String refused = docking.forceDoor(crew.homeOf(j.crew), j.craft, j.port, j.method);
             lastOutcome = refused != null ? "Couldn't " + j.method.verb + " the door: " + refused
-                    : "The door of " + PlayerDocking.name(j.craft) + " is forced open";
+                    : "The door of " + ShipNames.name(j.craft) + " is forced open";
         }
     }
 

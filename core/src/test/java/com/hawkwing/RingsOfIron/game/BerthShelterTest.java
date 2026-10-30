@@ -7,6 +7,7 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.interiorgrid.Compartment;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
@@ -91,7 +92,7 @@ class BerthShelterTest {
         // The crew sheltering aboard the station, as they went ashore while the cabin vented
         ShipGridComponent station = world.crew.grid(highport);
         List<int[]> safe = new ArrayList<>();
-        for (int[] t : GameScenario.floorTiles(station)) if (com.ringsofiron.aicrew.TaskRules.isSafe(station, t[0], t[1])) safe.add(t);
+        for (int[] t : FloorTiles.of(station)) if (com.ringsofiron.aicrew.TaskRules.isSafe(station, t[0], t[1])) safe.add(t);
         for (int i = 0; i < crew.size(); i++) {
             Entity e = crew.get(i);
             world.crew.releaseTask(e);
@@ -148,7 +149,7 @@ class BerthShelterTest {
         assertNotNull(link, "a link to the station");
         Entity hand = world.crewCareer.ownCrew(game.player).get(0);
         int[] away = null;
-        for (int[] t : GameScenario.floorTiles(grid)) {
+        for (int[] t : FloorTiles.of(grid)) {
             if (Math.abs(t[0] - link.x) + Math.abs(t[1] - link.y) > 4) away = t;
         }
         assertNotNull(away, "somewhere away from the link");
@@ -181,9 +182,9 @@ class BerthShelterTest {
         Entity highport = world.docking.dockedTo(game.player);
         ShipGridComponent station = world.crew.grid(highport);
         List<int[]> safe = new ArrayList<>();
-        for (int[] t : GameScenario.floorTiles(station)) if (com.ringsofiron.aicrew.TaskRules.isSafe(station, t[0], t[1])) safe.add(t);
+        for (int[] t : FloorTiles.of(station)) if (com.ringsofiron.aicrew.TaskRules.isSafe(station, t[0], t[1])) safe.add(t);
         int[] vented = null;
-        for (int[] t : GameScenario.floorTiles(grid)) if (!com.ringsofiron.aicrew.TaskRules.isBreathable(grid, t[0], t[1])) vented = t;
+        for (int[] t : FloorTiles.of(grid)) if (!com.ringsofiron.aicrew.TaskRules.isBreathable(grid, t[0], t[1])) vented = t;
         assertNotNull(vented, "somewhere aboard without air");
         for (int i = 0; i < crew.size(); i++) {
             Entity e = crew.get(i);

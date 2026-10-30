@@ -10,6 +10,7 @@ import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.modding.ShipWeaponsAssembler;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.Furnishings;
@@ -173,7 +174,7 @@ public final class ShipRefit {
         }
         refurnish(world, ship, oldGrid, grid);
         world.crew.clearPathfinders();
-        List<int[]> floor = GameScenario.floorTiles(grid);
+        List<int[]> floor = FloorTiles.of(grid);
         for (Entity e : crew) {
             GridPositionComponent pos = world.crew.position(e);
             int[] at = nearest(floor, pos.tileX(), pos.tileY());

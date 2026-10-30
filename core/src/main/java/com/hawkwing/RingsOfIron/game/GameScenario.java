@@ -11,6 +11,7 @@ import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
@@ -188,7 +189,7 @@ public class GameScenario {
         Bridge.install(player);
 
         ShipGridComponent grid = player.getComponent(ShipGridComponent.class);
-        List<int[]> floor = floorTiles(grid);
+        List<int[]> floor = FloorTiles.of(grid);
         // The player starts seated at the helm, so the game opens on the ship from outside
         int[] seat = besideHelm(player, floor);
         avatar = seat == null ? null : CrewFactory.spawnPlayer(world.crew, player, "You", seat[0], seat[1]);
@@ -417,7 +418,7 @@ public class GameScenario {
     private void seatAtHelm() {
         Bridge.install(player);
         if (avatar == null) return;
-        int[] seat = besideHelm(player, floorTiles(player.getComponent(ShipGridComponent.class)));
+        int[] seat = besideHelm(player, FloorTiles.of(player.getComponent(ShipGridComponent.class)));
         GridPositionComponent at = avatar.getComponent(GridPositionComponent.class);
         if (seat == null || at == null || at.ship != player) return;
         at.stop();
@@ -755,18 +756,4 @@ public class GameScenario {
         return best;
     }
 
-    /** Open deck tiles clear of mounted systems, scanning from the middle row outwards. */
-    static List<int[]> floorTiles(ShipGridComponent grid) {
-        List<int[]> out = new java.util.ArrayList<>();
-        if (grid == null) return out;
-        for (int dy = 0; dy < grid.height; dy++) {
-            int y = grid.height / 2 + ((dy % 2 == 0) ? dy / 2 : -(dy / 2 + 1));
-            if (y < 0 || y >= grid.height) continue;
-            for (int x = 0; x < grid.width; x++) {
-                Tile t = grid.getTile(x, y);
-                if (t != null && t.isFloor() && t.isOpen() && t.mount == null) out.add(new int[]{x, y});
-            }
-        }
-        return out;
-    }
 }

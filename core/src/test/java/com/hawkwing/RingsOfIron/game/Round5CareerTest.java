@@ -135,7 +135,7 @@ class Round5CareerTest extends CareerScript {
             }
             if (best == null) continue;
             String said = world.contracts.accept(best.id);
-            log("Operation %s (%s) at %s: %s", best.operationName, why, PlayerDocking.name(world.engine.getEntity(station)),
+            log("Operation %s (%s) at %s: %s", best.operationName, why, ShipNames.name(world.engine.getEntity(station)),
                     said == null ? "taken" : said);
             if (said != null) continue;
             String id = best.operationId;
@@ -254,7 +254,7 @@ class Round5CareerTest extends CareerScript {
                 offers.add(String.format(java.util.Locale.ROOT, "%s %.0f cr %+.0f", c.targetName, c.reward, c.standing));
                 if (best == null || (payFirst ? c.reward > best.reward : c.standing > best.standing)) best = c;
             }
-            if (!offers.isEmpty()) log("  bounties at %s (%s): %s", PlayerDocking.name(world.engine.getEntity(station)),
+            if (!offers.isEmpty()) log("  bounties at %s (%s): %s", ShipNames.name(world.engine.getEntity(station)),
                     payFirst ? "pay first" : "standing first", String.join("; ", offers));
             if (best == null || world.contracts.accept(best.id) != null) continue;
             log("Took %s: %.0f cr, %+.0f standing.", best.heading(), best.reward, best.standing);
@@ -525,7 +525,7 @@ class Round5CareerTest extends CareerScript {
             orders++;
             if (orders <= 3 || world.yard.repairCost(game.player) > 0.5 && orders == yardTries) {
                 log("  order %d: %s (docked at %s, hull %.2f)", orders, said, world.docking.dockedTo(game.player) == null ? "nothing"
-                        : PlayerDocking.name(world.docking.dockedTo(game.player)), hull(game.player));
+                        : ShipNames.name(world.docking.dockedTo(game.player)), hull(game.player));
             }
             if (!runUntil(3_600f, () -> !world.yard.repairing(game.player))) {
                 log("  the yard is still at it after an hour: %s (career over: %s, crash: %s)", said, world.getCareerOver(), world.getCrash());
@@ -536,7 +536,7 @@ class Round5CareerTest extends CareerScript {
         world.yard.notices.clear();
         repairsLeft += world.yard.repairCost(game.player);
         log("Yard at %s: quoted %.0f cr, paid %.0f, ordered %d time(s) in %.1f h; %.0f cr left undone; hull %.2f.",
-                PlayerDocking.name(station), cost, paid - credits(), orders, (world.engine.getSimSeconds() - r0) / 3_600,
+                ShipNames.name(station), cost, paid - credits(), orders, (world.engine.getSimSeconds() - r0) / 3_600,
                 world.yard.repairCost(game.player), hull(game.player));
         if (world.docking.dockedTo(game.player) != station) {
             game.dockAt(uuid);

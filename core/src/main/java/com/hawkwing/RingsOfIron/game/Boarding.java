@@ -23,6 +23,7 @@ import com.ringsofiron.interiorgrid.Airlock;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.GridLink;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -499,7 +500,7 @@ public class Boarding extends EntitySystem {
      */
     private void bringDownedHome(Entity target, Entity home) {
         ShipGridComponent grid = home.getComponent(ShipGridComponent.class);
-        List<int[]> floor = grid == null ? null : GameScenario.floorTiles(grid);
+        List<int[]> floor = grid == null ? null : FloorTiles.of(grid);
         if (floor == null || floor.isEmpty()) return;
         ImmutableArray<Entity> all = crew.crewEntities();
         int n = 0;
@@ -660,7 +661,7 @@ public class Boarding extends EntitySystem {
     public static String name(Entity craft) {
         DisabledComponent d = craft == null ? null : craft.getComponent(DisabledComponent.class);
         if (d != null && d.markerLabel != null && !d.markerLabel.isEmpty()) return d.markerLabel;
-        return craft == null ? "the other ship" : PlayerDocking.name(craft);
+        return craft == null ? "the other ship" : ShipNames.name(craft);
     }
 
     /** A boarder's order to sweep one room, getting in by an airlock from outside if they go over on EVA. */

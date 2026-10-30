@@ -74,7 +74,7 @@ class TransitClearanceTest {
 
         List<String> torn = new ArrayList<>();
         world.docking.events.add((sig, e) -> {
-            if (e.kind == DockingEvent.Kind.TORN) torn.add(PlayerDocking.name(e.vessel) + " / " + PlayerDocking.name(e.other));
+            if (e.kind == DockingEvent.Kind.TORN) torn.add(ShipNames.name(e.vessel) + " / " + ShipNames.name(e.other));
         });
         float nearest = Float.MAX_VALUE;
         Vector2 a = new Vector2(), b = new Vector2();

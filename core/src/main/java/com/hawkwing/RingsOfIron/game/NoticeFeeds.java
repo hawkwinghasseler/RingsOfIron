@@ -22,7 +22,7 @@ public final class NoticeFeeds {
         for (FactionStanding.Act act : world.standing.acts) {
             boolean refused = act.standing < FactionStanding.REFUSE_BELOW;
             log.post(String.format(Locale.ROOT, "%s takes that as a hostile act: standing %+.0f%s",
-                    PlayerDocking.name(act.victim), act.standing,
+                    ShipNames.name(act.victim), act.standing,
                     refused ? "; its stations will refuse you clearance" : ""),
                     refused ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
         }
