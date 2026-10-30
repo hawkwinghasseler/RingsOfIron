@@ -12,6 +12,7 @@ import com.ringsofiron.aicrew.EvaSystem;
 public class TaskBranch extends Sequence<CrewAgent> {
 
     @SafeVarargs
+    @SuppressWarnings("varargs") // gdx-ai's Sequence(Task...) only reads the children
     public TaskBranch(Task<CrewAgent>... children) {
         super(children);
     }

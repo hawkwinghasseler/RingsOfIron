@@ -20,7 +20,7 @@ import com.badlogic.gdx.utils.IdentityMap;
  */
 public final class CrewIndex {
 
-    private static final ImmutableArray<Entity> NONE = new ImmutableArray<>(new Array<>(Entity.class));
+    private static final ImmutableArray<Entity> NONE = new ImmutableArray<>(new Array<Entity>());
 
     private final ComponentMapper<GridPositionComponent> posM = ComponentMapper.getFor(GridPositionComponent.class);
     private final ImmutableArray<Entity> crew;
@@ -64,12 +64,12 @@ public final class CrewIndex {
             Entity e = crew.get(i);
             Entity ship = posM.get(e).ship;
             if (ship == null) {
-                if (none == null) none = new Array<>(Entity.class);
+                if (none == null) none = new Array<>();
                 none.add(e);
                 continue;
             }
             Array<Entity> list = lists.get(ship);
-            if (list == null) lists.put(ship, list = new Array<>(Entity.class));
+            if (list == null) lists.put(ship, list = new Array<>());
             list.add(e);
         }
         byShip.clear();

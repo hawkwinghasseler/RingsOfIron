@@ -112,6 +112,8 @@ public class ScriptConsole {
      * "Select a crew member first".
      */
     public static class ConsoleException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
         public ConsoleException(String message) {
             super(message);
         }
@@ -762,7 +764,8 @@ public class ScriptConsole {
         });
         define("vars", "vars()", "every variable set, with its value", args -> {
             StringBuilder sb = new StringBuilder();
-            for (Object k : new TreeSet<>(binding.getVariables().keySet())) {
+            Set<?> names = binding.getVariables().keySet();
+            for (Object k : new TreeSet<Object>(names)) {
                 Object v = binding.getVariable(String.valueOf(k));
                 if (k.equals("out") || v instanceof CommandClosure) continue;
                 if (sb.length() > 0) sb.append('\n');
@@ -796,6 +799,7 @@ public class ScriptConsole {
     }
 
     /** A command in the binding: calling it runs the command's body. */
+    @SuppressWarnings("serial") // Closure is Serializable, but a command is never serialized
     static final class CommandClosure extends Closure<Object> {
         final CommandInfo info;
 

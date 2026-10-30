@@ -428,11 +428,13 @@ public class SerializationService {
 
     private class EntityRefSerializer implements Json.Serializer<EntityRef> {
         @Override
+        @SuppressWarnings("rawtypes") // Json.Serializer's own signature
         public void write(Json json, EntityRef ref, Class knownType) {
             json.writeValue(ref == null ? null : ref.getUuid());
         }
 
         @Override
+        @SuppressWarnings("rawtypes") // Json.Serializer's own signature
         public EntityRef read(Json json, JsonValue data, Class type) {
             if (data == null || data.isNull()) return null;
             EntityRef ref = new EntityRef(data.asString());

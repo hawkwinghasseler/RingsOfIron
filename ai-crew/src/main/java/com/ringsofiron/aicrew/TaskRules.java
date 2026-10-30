@@ -155,6 +155,7 @@ public final class TaskRules {
     }
 
     /** True if a crew member standing on (x, y) can work the task. */
+    @SuppressWarnings("fallthrough") // a short in a system is worked like a repair
     public static boolean isWorkSpot(CrewTask task, ShipGridComponent grid, GridNavGraph nav, CrewService crew, int x, int y) {
         if (!nav.isWalkable(x, y)) return false;
         int tx = targetX(task, crew), ty = targetY(task, crew);

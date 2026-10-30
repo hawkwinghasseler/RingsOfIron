@@ -1689,7 +1689,7 @@ public class EvaSystem extends FixedLogicSystem {
 
     private void shift(WorldShiftEvent s) {
         if (crew == null) return;
-        float dx = (float) s.deltaX, dy = (float) s.deltaY, dvx = (float) s.deltaVx, dvy = (float) s.deltaVy;
+        float dx = s.deltaX, dy = s.deltaY, dvx = s.deltaVx, dvy = s.deltaVy;
         for (int i = 0; i < crew.size(); i++) {
             EvaComponent eva = evaM.get(crew.get(i));
             if (eva == null) continue;

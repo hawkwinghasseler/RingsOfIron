@@ -1,4 +1,3 @@
-[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-audio-spatial'
 
 dependencies {
@@ -10,7 +9,7 @@ dependencies {
   // OpenAL Soft, the same OpenAL libGDX's desktop backend plays through; see OpenAlAudioBackend.
   implementation "org.lwjgl:lwjgl-openal:$lwjgl3Version"
 
-  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testImplementation "org.junit.jupiter:junit-jupiter"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"
   // OpenAL Soft natives, so the OpenAL backend's tests render through a real (loopback) device
   ["natives-linux", "natives-linux-arm64", "natives-windows", "natives-macos", "natives-macos-arm64"].each {
