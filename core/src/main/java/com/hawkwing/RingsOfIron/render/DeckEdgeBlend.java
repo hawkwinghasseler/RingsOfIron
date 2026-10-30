@@ -63,7 +63,10 @@ public final class DeckEdgeBlend implements Disposable {
         LINEAR(false, false),
         /** Eased in and out (smoothstep), so it starts and ends gently. */
         EASED(true, false),
-        /** Straight, but where two faces' fades meet the crease is rounded ({@link #SOFT_CORNER}). */
+        /**
+         * Straight, but where two faces' fades meet the crease is rounded ({@link #SOFT_CORNER})
+         * through the middle of the fade: where it starts and ends stay as {@link #LINEAR} has them.
+         */
         SOFT(false, true),
         /** Both. */
         SOFT_EASED(true, true);
@@ -90,7 +93,7 @@ public final class DeckEdgeBlend implements Disposable {
     }
 
     /** How the fade runs, for every deck; the developer console's {@code deckFade} changes it. */
-    public static Fade fade = Fade.LINEAR;
+    public static Fade fade = Fade.SOFT;
 
     /**
      * How far round a crease the fade is rounded, {@link Fade#soft}, in tiles: the distances to
@@ -429,8 +432,18 @@ public final class DeckEdgeBlend implements Disposable {
                     }
                 }
             }
-            if (fade.soft) soften(d, cw, ch, reach);
-            for (int i = 0; i < d.length; i++) d[i] = weight(d[i]);
+            if (!fade.soft) {
+                for (int i = 0; i < d.length; i++) d[i] = weight(d[i]);
+                return d;
+            }
+            // Rounded through the middle of the fade, and less so toward its ends, so where it
+            // starts and where it ends stay where the sharp fade has them
+            float[] soft = d.clone();
+            soften(soft, cw, ch, reach);
+            for (int i = 0; i < d.length; i++) {
+                float sharp = weight(d[i]);
+                d[i] = sharp + (weight(soft[i]) - sharp) * 4f * sharp * (1f - sharp);
+            }
             return d;
         }
 

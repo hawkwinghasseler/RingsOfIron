@@ -119,6 +119,43 @@ class DeckEdgeBlendTest {
     }
 
     @Test
+    void softCornersKeepWhereTheFadeStartsAndEnds() {
+        // A bevelled block with a notch: convex and concave corners, flat and sloped
+        boolean[][] on = block(8, 6);
+        on[0][0] = on[5][7] = false;
+        on[3][0] = on[3][1] = false;
+        IntArray wedges = new IntArray(DeckEdgeBlend.wedge(wedge(0, 0, 1, 1, 2)));
+        wedges.addAll(DeckEdgeBlend.wedge(wedge(7, 5, 1, 1, 0)));
+        DeckEdgeBlend.Outline edge = new DeckEdgeBlend.Outline(on, wedges);
+        float[] linear = edge.cornerWeights();
+        float[] soft;
+        DeckEdgeBlend.Fade was = DeckEdgeBlend.fade;
+        try {
+            DeckEdgeBlend.fade = DeckEdgeBlend.Fade.SOFT;
+            soft = edge.cornerWeights();
+        } finally {
+            DeckEdgeBlend.fade = was;
+        }
+        boolean rounded = false;
+        int cw = 8 * N + 1;
+        for (int i = 0; i < linear.length; i++) {
+            // Where the whole tiles are drawn (the slopes' far sides are off the footprint)
+            int vx = i % cw, vy = i / cw;
+            boolean drawn = false;
+            for (int ty = 0; ty < 6; ty++) {
+                for (int tx = 0; tx < 8; tx++) {
+                    drawn |= on[ty][tx] && vx >= tx * N && vx <= (tx + 1) * N && vy >= ty * N && vy <= (ty + 1) * N;
+                }
+            }
+            if (!drawn) continue;
+            assertEquals(linear[i] >= 1f, soft[i] >= 1f, "all inside at corner " + i);
+            assertEquals(linear[i] <= 0f, soft[i] <= 0f, "all outside at corner " + i);
+            rounded |= Math.abs(linear[i] - soft[i]) > 0.01f;
+        }
+        assertTrue(rounded, "rounded somewhere between");
+    }
+
+    @Test
     void twoWedgesBackToBackMakeNoEdgeBetweenThem() {
         boolean[][] on = block(3, 3);
         on[1][1] = false;
