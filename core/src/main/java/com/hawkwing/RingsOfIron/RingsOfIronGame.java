@@ -1579,8 +1579,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
     // -----------------------------------------------------------------------
     private void drawBodies() {
         float px = viewports.getViewMeters() / 400f;
-        stars.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
-        snow.draw(shapes, viewports.getWorldCamera(), viewports.metersPerPixel());
+        drawBackdrop(viewports.getWorldCamera());
         exterior.drawBodies(viewports.getWorldCamera());
         exterior.drawFlight(viewports.getWorldCamera(), px, Gdx.graphics.getDeltaTime());
         // Crew out on EVA, on the hulls and off them
@@ -1593,6 +1592,13 @@ public class RingsOfIronGame extends ApplicationAdapter {
         lighting.renderGlow(batch, viewports.getWorldCamera(), 2.5f * px);
     }
 
+    /** The distant starfield, then the space snow over it, in either view. */
+    private void drawBackdrop(OrthographicCamera camera) {
+        shapes.setProjectionMatrix(camera.combined);
+        stars.draw(shapes, camera, viewports.metersPerPixel());
+        snow.draw(shapes, camera, viewports.metersPerPixel());
+    }
+
     /**
      * The deck plan of the craft the avatar is aboard, and of any craft docked to it, each at its
      * own pose, with its smoke and flames, the cargo and everyone aboard; every other craft in view
@@ -1601,6 +1607,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private void drawInterior(float delta) {
         Entity aboard = world.avatar.getAvatarShip();
         OrthographicCamera camera = viewports.getWorldCamera();
+        // The stars and the snow behind the decks; the decks' light map keeps to the decks
+        drawBackdrop(camera);
         deckRenderer.draw(DeckRenderer.decksAround(aboard == null ? game.player : aboard, decks), camera, delta);
         // Over the decks' light map, which would darken them to the dim deck ambient: lit as
         // outside, the outside light map kept off the decks, which it would darken in turn
