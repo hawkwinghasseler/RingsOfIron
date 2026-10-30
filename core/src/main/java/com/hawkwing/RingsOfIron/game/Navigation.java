@@ -2,8 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
-import com.hawkwing.RingsOfIron.shell.KeyBindings;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.fleet.RoutePlanner;
@@ -47,7 +46,7 @@ public class Navigation extends EntitySystem implements DropOutSource {
     /** Flies an accepted transfer under time warp and hands over to the helm to dock on arrival. */
     public final Autopilot autopilot;
     /** What the player's keys are called, for messages naming them; the screen points it at its bindings. */
-    public Function<Action, String> keyNames = a -> KeyBindings.keyName(a.defaultKey);
+    public Function<Action, String> keyNames = Action::defaultKeyName;
 
     private final GameWorld world;
     private final PlayerOrbitInfo orbits;

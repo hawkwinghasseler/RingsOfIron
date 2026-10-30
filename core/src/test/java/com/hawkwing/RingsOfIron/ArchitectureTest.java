@@ -40,24 +40,10 @@ class ArchitectureTest {
 
     /** Game classes that use a forbidden package today, and which; Phase 2 empties this. */
     static final Map<String, Set<String>> GAME_ALLOWED = Map.ofEntries(
-            Map.entry("Autopilot", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("BerthVenting", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("CaptainSafety", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("CrewMedical", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("DamageControl", Set.of("com.hawkwing.RingsOfIron.shell")),
             Map.entry("DeckView", Set.of("com.badlogic.gdx.graphics")),
             Map.entry("FireArcOverlay", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("FirstPlay", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("GameWorld", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("HelmOrders", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("HintRegistry", Set.of("com.hawkwing.RingsOfIron.shell")),
             Map.entry("NavOverlay", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("Navigation", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("OpeningGuide", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("PlayerOrbitPath", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("PlayerTransfer", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("ShipDisablement", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("Shipyard", Set.of("com.hawkwing.RingsOfIron.shell")));
+            Map.entry("ShipDisablement", Set.of("com.badlogic.gdx.graphics")));
 
     /** Each module's source package under com.ringsofiron, and its folder. */
     static final Map<String, String> MODULE_PACKAGES = Map.ofEntries(

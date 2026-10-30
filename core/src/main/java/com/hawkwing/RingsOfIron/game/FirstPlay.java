@@ -14,8 +14,7 @@ import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
-import com.hawkwing.RingsOfIron.shell.KeyBindings;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 
 import java.util.function.Function;
 
@@ -110,7 +109,7 @@ public final class FirstPlay {
 
     /** "2/7: ...", the objective now, with the default keys. */
     public String objective() {
-        return objective(HintRegistry.keyNames(new KeyBindings()));
+        return objective(Action::defaultKeyName);
     }
 
     /** "2/7: ...", the objective now, naming the player's keys. */

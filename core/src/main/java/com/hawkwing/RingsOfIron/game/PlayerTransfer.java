@@ -1,7 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.macrosim.fleet.RoutePlanner;
 import com.ringsofiron.macrosim.fleet.TransferPlanner;
 import com.ringsofiron.macrosim.rails.RailsModel;

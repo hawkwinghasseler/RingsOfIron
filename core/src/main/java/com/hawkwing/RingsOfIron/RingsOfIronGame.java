@@ -63,7 +63,7 @@ import com.hawkwing.RingsOfIron.render.PictureInPicture;
 import com.hawkwing.RingsOfIron.render.SpaceSnow;
 import com.hawkwing.RingsOfIron.render.StarField;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 import com.hawkwing.RingsOfIron.shell.RemappedInput;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
 import com.hawkwing.RingsOfIron.shell.SaveSummary;

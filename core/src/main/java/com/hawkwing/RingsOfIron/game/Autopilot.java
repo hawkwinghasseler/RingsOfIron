@@ -1,7 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.orbital.events.OrbitalEvent;
 import com.ringsofiron.orbital.math.StateVector;

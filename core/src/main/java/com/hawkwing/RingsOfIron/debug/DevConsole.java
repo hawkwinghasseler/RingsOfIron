@@ -93,6 +93,7 @@ public final class DevConsole {
         this.actions = new DebugActions(world, tools != null ? tools : new WorldDebug(world));
         this.console = reuse != null ? reuse : new ScriptConsole(DevConsole.class.getClassLoader());
         console.addStarImports("com.badlogic.ashley.core", "com.hawkwing.RingsOfIron.game", "com.hawkwing.RingsOfIron.debug",
+                "com.ringsofiron.coreengine.input",
                 "com.ringsofiron.aicrew", "com.ringsofiron.interiorgrid");
         console.addImports("com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause");
         console.setFormatter(DevConsole::format);

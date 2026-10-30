@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.shell;
 
+import com.ringsofiron.coreengine.input.Action;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -387,7 +388,7 @@ class ShellMenus {
         Table keys = new Table();
         keys.top().left();
         Array<TextButton> keyButtons = new Array<>();
-        for (KeyBindings.Action a : KeyBindings.Action.values()) {
+        for (Action a : Action.values()) {
             keys.add(new Label(a.label, skin, "dim")).left().expandX().padRight(12f);
             TextButton b = new TextButton(KeyBindings.keyName(shell.bindings().keyOf(a)), skin, "menu");
             keyButtons.add(b);
@@ -428,12 +429,12 @@ class ShellMenus {
      * Waits for the key to bind {@code a} to. A key another action has asks first: the same key
      * again swaps the two, another key is taken as the choice instead, Esc cancels.
      */
-    private void capture(KeyBindings.Action a, Array<TextButton> keyButtons) {
+    private void capture(Action a, Array<TextButton> keyButtons) {
         shell.captureKey(key -> choose(a, key, keyButtons));
     }
 
-    private void choose(KeyBindings.Action a, int key, Array<TextButton> keyButtons) {
-        KeyBindings.Action other = key < 0 ? null : shell.bindings().actionOn(key);
+    private void choose(Action a, int key, Array<TextButton> keyButtons) {
+        Action other = key < 0 ? null : shell.bindings().actionOn(key);
         if (other == null || other == a) {
             if (key >= 0) bindAndSay(a, key);
             else showMessage("");
@@ -453,14 +454,14 @@ class ShellMenus {
         });
     }
 
-    private void bindAndSay(KeyBindings.Action a, int key) {
-        KeyBindings.Action moved = shell.bindings().bind(a, key);
+    private void bindAndSay(Action a, int key) {
+        Action moved = shell.bindings().bind(a, key);
         showMessage(moved == null ? (KeyBindings.reserved(key) ? KeyBindings.keyName(key) + " can't be bound" : "")
                 : moved.label + " moved to " + KeyBindings.keyName(shell.bindings().keyOf(moved)));
     }
 
     private void refreshKeys(Array<TextButton> buttons) {
-        KeyBindings.Action[] actions = KeyBindings.Action.values();
+        Action[] actions = Action.values();
         for (int i = 0; i < buttons.size; i++) buttons.get(i).setText(KeyBindings.keyName(shell.bindings().keyOf(actions[i])));
     }
 

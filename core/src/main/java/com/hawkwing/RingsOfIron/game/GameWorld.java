@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.coreengine.input.Action;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntityListener;
 import com.badlogic.ashley.core.Family;
@@ -87,7 +88,6 @@ import com.ringsofiron.stationsdocking.DockingData;
 import com.ringsofiron.stationsdocking.DockingSystem;
 import com.ringsofiron.stationsdocking.StationBodies;
 import com.ringsofiron.stationsdocking.StationComponent;
-import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -613,7 +613,7 @@ public class GameWorld implements Disposable {
         // ...and nobody is hired from today's pools
         addResettable(crewHiring);
         prisoners = new Prisoners(this);
-        hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, KeyBindings.Action.CREW)
+        hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, Action.CREW)
                 .onlyWhen(() -> prisoners.takenAlongside() != null);
         damageControl = new DamageControl(this);
         medical = new CrewMedical(this);

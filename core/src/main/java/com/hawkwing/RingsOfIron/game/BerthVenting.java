@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.coreengine.input.Action;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -38,7 +39,7 @@ public final class BerthVenting {
         this.world = world;
         world.engine.addRailsWarpGuard(this::railsWarpBlockedReason);
         world.hints.register(HintRegistry.Context.DOCKED, "station yard (venting at the berth)", 4,
-                com.hawkwing.RingsOfIron.shell.KeyBindings.Action.YARD).onlyWhen(() -> station() != null);
+                Action.YARD).onlyWhen(() -> station() != null);
     }
 
     /** The station the player's ship is docked at while something aboard is open to space, or null. */

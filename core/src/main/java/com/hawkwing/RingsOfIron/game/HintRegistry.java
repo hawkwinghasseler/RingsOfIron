@@ -1,7 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
-import com.hawkwing.RingsOfIron.shell.KeyBindings;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -182,11 +181,6 @@ public final class HintRegistry {
             i = close + 1;
         }
         return out.toString();
-    }
-
-    /** Key names from {@code bindings}. */
-    public static Function<Action, String> keyNames(KeyBindings bindings) {
-        return a -> KeyBindings.keyName(bindings.keyOf(a));
     }
 
     /** The game's own hints; the screen adds Esc, which opens a menu or quits depending on how it runs. */

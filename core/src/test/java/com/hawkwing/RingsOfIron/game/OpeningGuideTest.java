@@ -3,7 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,14 +75,14 @@ class OpeningGuideTest {
     @Test
     void guideTextNamesTheKeysThePlayerBound() {
         KeyBindings bindings = new KeyBindings();
-        Function<Action, String> keys = HintRegistry.keyNames(bindings);
+        Function<Action, String> keys = bindings.keyNames();
         OpeningGuide guide = new OpeningGuide(world, () -> boardOpen, OpeningGuide.Step.OPEN_BOARD);
         assertTrue(guide.text(keys).contains("J opens its mission board"), guide.text(keys));
         bindings.bind(Action.MISSIONS, Input.Keys.M);
         assertTrue(guide.text(keys).contains("M opens its mission board"), guide.text(keys));
 
         assertEquals("press {NOT_AN_ACTION} or J", HintRegistry.withKeys("press {NOT_AN_ACTION} or {MISSIONS}",
-                HintRegistry.keyNames(new KeyBindings())), "unknown names stay as written");
+                new KeyBindings().keyNames()), "unknown names stay as written");
         assertEquals("open { brace", HintRegistry.withKeys("open { brace", keys));
         assertFalse(FirstPlay.start(world, game).objective(keys).contains("{"), "First Play names keys too");
     }
