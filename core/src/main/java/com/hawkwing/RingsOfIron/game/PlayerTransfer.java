@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
 import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.macrosim.fleet.RoutePlanner;
 import com.ringsofiron.macrosim.fleet.TransferPlanner;

@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.hawkwing.RingsOfIron.wiring.PlayerShipStatus;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.uihud.providers.ShipStatusProvider;
 

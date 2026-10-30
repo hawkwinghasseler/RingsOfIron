@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.hawkwing.RingsOfIron.wiring.PlayerShipStatus;
 import com.ringsofiron.interiorgrid.Airlock;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.LifeSupportSystem;

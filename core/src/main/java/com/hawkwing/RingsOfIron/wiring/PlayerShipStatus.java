@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.hawkwing.RingsOfIron.wiring;
 
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
@@ -38,7 +38,7 @@ public class PlayerShipStatus implements ShipStatusProvider {
     }
 
     /** Fills {@code out} with {@code ship}'s gauges. */
-    static ShipStatus read(Entity ship, ShipStatus out, ShipAlerts alerts) {
+    public static ShipStatus read(Entity ship, ShipStatus out, ShipAlerts alerts) {
         out.clear();
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
         if (grid != null) {

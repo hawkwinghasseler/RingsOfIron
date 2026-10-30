@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.hawkwing.RingsOfIron.wiring;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;

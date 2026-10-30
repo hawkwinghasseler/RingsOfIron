@@ -1,4 +1,4 @@
-package com.hawkwing.RingsOfIron.game;
+package com.hawkwing.RingsOfIron.wiring;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
@@ -31,7 +31,7 @@ public class CrewDamageAdapter implements CrewDamageBridge {
         sink.applyDamage(crew, amount, toDamageCause(cause));
     }
 
-    static CrewDamageSink.DamageCause toDamageCause(HitCause cause) {
+    public static CrewDamageSink.DamageCause toDamageCause(HitCause cause) {
         if (cause == null) return CrewDamageSink.DamageCause.OTHER;
         switch (cause) {
             case PENETRATOR: return CrewDamageSink.DamageCause.PENETRATOR;

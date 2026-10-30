@@ -15,7 +15,7 @@ import com.hawkwing.RingsOfIron.game.GameWorld;
 import com.hawkwing.RingsOfIron.game.Navigation;
 import com.hawkwing.RingsOfIron.game.NoticeLog;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
-import com.hawkwing.RingsOfIron.game.PlayerOrbitInfo;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
 import com.hawkwing.RingsOfIron.game.PlayerOrbitPath;
 import com.hawkwing.RingsOfIron.game.ShipNames;
 import com.ringsofiron.coreengine.components.UuidComponent;

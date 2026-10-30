@@ -1,5 +1,6 @@
-package com.hawkwing.RingsOfIron.game;
+package com.hawkwing.RingsOfIron.wiring;
 
+import com.hawkwing.RingsOfIron.game.NoticeLog;
 import com.ringsofiron.audiospatial.AudioManager;
 import com.ringsofiron.audiospatial.backend.AudioEventCatalog;
 
