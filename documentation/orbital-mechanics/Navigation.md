@@ -1,11 +1,11 @@
 # Navigation and Flight Aids
 
-Round 3, category 2. The player can pick a navigation target, see the closest approach to it on the orbit map, have a transfer to it planned with the same planners the freighters use, warp to the next burn, and give the helmsman orders to fly while away from the helm. Docking guidance starts 5 km out, and known rails pirates show on the traffic map. Everything hangs off `Navigation`, an `EntitySystem` installed in `GameWorld` as `world.nav`.
+Round 3, category 2. The player can pick a navigation target, see the closest approach to it on the orbit map, have a transfer to it planned with the same planners the freighters use, warp to the next burn, and give the helmsman orders to fly while away from the helm. Docking guidance starts 5 km out, and known rails pirates show on the map. Everything hangs off `Navigation`, an `EntitySystem` installed in `GameWorld` as `world.nav`.
 
 ## Implemented
 
 ### Navigation target (`NavTarget`)
-- Q (`Action.NAV_TARGET`) cycles through the candidates and Shift+Q goes back; the list wraps round to "none". A click on a contact on the traffic map (`TrafficMap.setPickListener`, within 14 px) also selects it.
+- Q (`Action.NAV_TARGET`) cycles through the candidates and Shift+Q goes back; the list wraps round to "none". A click on a contact on the map (`ManeuverMap.setPickListener`, within 14 px) also selects it.
 - Candidates, in order: active contract waypoints, every station, pirates the player knows of, marked craft in the bubble, then the freighters on the rails. The player's own ship is never one.
 - The target is stored by uuid on the ship in a `NavTargetComponent`. A target whose entity is gone is cleared on the next read.
 - `NavTarget.stateAt` places a rails craft from its orbit and a bubble craft by carrying it along the conic it is on now.

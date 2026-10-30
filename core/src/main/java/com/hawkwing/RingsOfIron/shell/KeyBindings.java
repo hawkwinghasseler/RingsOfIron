@@ -36,7 +36,7 @@ public final class KeyBindings {
         VIEW("Deck / outside view", Input.Keys.V),
         USE("Use console", Input.Keys.E),
         LIGHTS("Lighting", Input.Keys.O),
-        MAP("Traffic map", Input.Keys.M),
+        MAP("Map: orbits, burns and traffic", Input.Keys.M),
         TRADE("Station market", Input.Keys.T),
         YARD("Station yard", Input.Keys.Y),
         CREW("Crew roster", Input.Keys.I),

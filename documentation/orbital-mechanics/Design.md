@@ -209,7 +209,7 @@ Every step below is built; the list is kept for the reasoning behind the order.
 Done: `physics-exterior`, `macro-sim` and `core-engine` design docs now match this plan (bubble-frame `TransformComponent`, long-tick sim time and warp rules, velocity-aware floating origin with a planned free-falling anchor, analytic rails movement with anchor-based entry/exit and fast passes). `combat-sys` is maintained by the combat design work and already handles fast projectiles by raycast.
 
 ## Settled Defaults
-- **Map view:** a few discrete zoom levels, each with its own camera unit (e.g. km, Mm, AU), rather than a logarithmic zoom.
+- **Map view:** built as the orbit map (M; `ManeuverMap` in ui-hud, see its design doc) with a continuous zoom rather than discrete levels. Precision holds without a camera unit per level because every point is worked out in doubles relative to the map body and only the difference is cast to float, as above. Its path past a change of sphere of influence comes from `SoiPredictor` (core's `MapTrajectory`), so the map shows what the rails will fly.
 - **Planetary surfaces and atmospheres:** out of scope for now. No drag and no surface colliders in the bubble.
 - **NPC burns:** NPC AI plans maneuvers as rails maneuver nodes; inside the bubble a controller flies the same plan with real thrust, so there is one planner.
 - **Single bubble:** one bubble, around the player. No off-screen Box2D battles.
