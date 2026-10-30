@@ -5,10 +5,10 @@ import com.ringsofiron.aicrew.BoardTask;
 /**
  * Goes aboard {@link BoardTask#ship} to the task's tile, suited (no one boards a hostile craft
  * without a suit if there is one to be had: a pressure suit from a locker, or an EVA suit), and
- * reports arriving to the job. With no dock to walk across, over on EVA ({@link EvaTasks.Departure}).
+ * reports arriving to the job. With no dock to walk across, over on EVA ({@link Departure}).
  */
 public class Board extends CrewLeaf {
-    private final EvaTasks.Departure departure = new EvaTasks.Departure();
+    private final Departure departure = new Departure();
 
     @Override
     public void end() {

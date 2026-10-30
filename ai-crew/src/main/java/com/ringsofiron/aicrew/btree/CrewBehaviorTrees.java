@@ -59,9 +59,9 @@ public final class CrewBehaviorTrees {
                         new CompleteTask()),
                 new Sequence<>(new IsTaskKind(CrewTask.Kind.BOARD), new Board(),
                         new CompleteTask()),
-                new Sequence<>(new EvaTasks.IsEvaJob(), new EvaTasks.FetchPart(), new EvaTasks.SuitUpForEva(),
-                        new EvaTasks.GoOutside()),
-                new Sequence<>(new IsTaskKind(CrewTask.Kind.RESCUE, true), new EvaTasks.IsEvaJob(true),
+                new Sequence<>(new IsEvaJob(), new FetchPart(), new SuitUpForEva(),
+                        new GoOutside()),
+                new Sequence<>(new IsTaskKind(CrewTask.Kind.RESCUE, true), new IsEvaJob(true),
                         new IsTaskKind(CrewTask.Kind.CARRY, true),
                         new IsTaskKind(CrewTask.Kind.YARD, true),
                         new IsTaskKind(CrewTask.Kind.FORCE_DOOR, true),
@@ -74,11 +74,11 @@ public final class CrewBehaviorTrees {
         Task<CrewAgent> refill = new RefillSuit();
         refill.setGuard(new SuitAirLow());
 
-        Task<CrewAgent> spacewalk = new EvaTasks.Spacewalk();
-        spacewalk.setGuard(new EvaTasks.OnEva());
+        Task<CrewAgent> spacewalk = new Spacewalk();
+        spacewalk.setGuard(new OnEva());
 
-        Task<CrewAgent> stow = new EvaTasks.StowCrate();
-        stow.setGuard(new EvaTasks.CrateToStow());
+        Task<CrewAgent> stow = new StowCrate();
+        stow.setGuard(new CrateToStow());
 
         Task<CrewAgent> root = new DynamicGuardSelector<>(spacewalk, engage, refill, stow, work, new Idle());
         return new BehaviorTree<>(root, agent);
