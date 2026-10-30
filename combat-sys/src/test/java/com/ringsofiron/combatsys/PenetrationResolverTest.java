@@ -8,6 +8,7 @@ import com.ringsofiron.combatsys.damage.CrewDamageBridge;
 import com.ringsofiron.combatsys.damage.HitCause;
 import com.ringsofiron.combatsys.damage.PenetrationResolver;
 import com.ringsofiron.combatsys.damage.PenetrationResolver.BurnResult;
+import com.ringsofiron.combatsys.damage.PenetrationResolver.CrushResult;
 import com.ringsofiron.combatsys.damage.PenetrationResolver.Result;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.defs.DamageType;
@@ -339,6 +340,86 @@ class PenetrationResolverTest {
         for (int i = 0; i < 4; i++) shootFromLeft(grid, 2, 2e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
         assertEquals(0f, grid.getTile(1, 2).getIntegrity(), 1e-6f);
         assertTrue(grid.gridDirty);
+    }
+
+    // ------------------------------------------------------------------
+    // Collisions
+    // ------------------------------------------------------------------
+
+    /** A collision pressing along +x into the left hull of a box at row y. */
+    private CrushResult crushFromLeft(ShipGridComponent grid, int row, float energy, float spread) {
+        report.clear();
+        Vector2 point = new Vector2(grid.gridOriginLocal.x, grid.gridOriginLocal.y + (row + 0.5f) * TILE);
+        return resolver.crush(grid, ship, point, new Vector2(1, 0), energy, spread, new RandomXS128(1), report, new CrushResult());
+    }
+
+    private float hullHitPoints(WeightClass weightClass) {
+        return materials.get(MaterialTable.DEFAULT_MATERIAL, weightClass).hitPoints;
+    }
+
+    @Test
+    void aLightKnockDamagesAPatchOfHullMostWhereTheyMet() {
+        ShipGridComponent grid = TestShips.box(8, 7, TILE, WeightClass.MEDIUM);
+        float energy = 0.5f * hullHitPoints(WeightClass.MEDIUM);
+        CrushResult c = crushFromLeft(grid, 3, energy, 1f);
+        assertEquals(0, c.entryX);
+        assertEquals(3, c.entryY);
+        assertEquals(energy, c.absorbed, energy * 1e-4f, "the hull took all of it");
+        assertTrue(c.tilesDamaged > 1, "a patch, not one tile: " + c.tilesDamaged);
+        float met = 1f - grid.getTile(0, 3).getIntegrity();
+        assertEquals(met, c.worstLoss, 1e-5f, "the worst where they met");
+        assertTrue(1f - grid.getTile(0, 2).getIntegrity() < met, "less beside it");
+        assertTrue(1f - grid.getTile(0, 1).getIntegrity() < 1f - grid.getTile(0, 2).getIntegrity(), "and less further off");
+        assertFalse(grid.getTile(0, 3).isHullBreach());
+        assertEquals(0, report.breaches.size);
+    }
+
+    @Test
+    void aHardHitCrushesAColumnInwardAndBreachesTheHull() {
+        ShipGridComponent grid = TestShips.box(8, 7, TILE, WeightClass.MEDIUM);
+        float energy = 3f * hullHitPoints(WeightClass.MEDIUM);
+        CrushResult c = crushFromLeft(grid, 3, energy, 0.3f);
+        assertEquals(0f, grid.getTile(0, 3).getIntegrity(), 1e-6f, "the hull where they met crushed");
+        assertTrue(grid.getTile(0, 3).isHullBreach());
+        assertTrue(report.breaches.size >= 1);
+        assertTrue(report.structureChanged);
+        assertTrue(grid.getTile(1, 3).getIntegrity() < 1f, "and pushed on into the deck behind it");
+        assertTrue(c.absorbed <= energy * (1f + 1e-4f), "never more than it brought: " + c.absorbed);
+        assertEquals(1f, c.worstLoss, 1e-5f);
+    }
+
+    @Test
+    void aCollisionThatMeetsNothingSolidDoesNothing() {
+        ShipGridComponent grid = TestShips.box(8, 7, TILE, WeightClass.MEDIUM);
+        report.clear();
+        Vector2 far = new Vector2(grid.gridOriginLocal.x - 40f, grid.gridOriginLocal.y + 7f);
+        CrushResult c = resolver.crush(grid, ship, far, new Vector2(1, 0), 1e9f, 1f, new RandomXS128(1), report, new CrushResult());
+        assertEquals(-1, c.entryX);
+        assertEquals(0f, c.absorbed);
+        assertEquals(0, c.tilesDamaged);
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) assertEquals(1f, grid.getTile(x, y).getIntegrity(), 1e-6f);
+        }
+    }
+
+    @Test
+    void crewWhereTheHullsMeetAreHurt() {
+        ShipGridComponent grid = TestShips.box(8, 7, TILE, WeightClass.MEDIUM);
+        Entity person = new Entity();
+        float[] hurt = new float[1];
+        resolver.setCrew(new CrewDamageBridge() {
+            @Override
+            public void occupantsAt(Entity s, int x, int y, Array<Entity> out) {
+                if (x == 1 && y == 3) out.add(person);
+            }
+
+            @Override
+            public void applyDamage(Entity crewMember, float healthPoints, HitCause cause) {
+                hurt[0] += healthPoints;
+            }
+        });
+        crushFromLeft(grid, 3, 3f * hullHitPoints(WeightClass.MEDIUM), 0.3f);
+        assertTrue(hurt[0] > 0f, "crushed with the deck they stood on");
     }
 
     // ------------------------------------------------------------------
