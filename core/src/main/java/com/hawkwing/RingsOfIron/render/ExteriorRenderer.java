@@ -261,6 +261,16 @@ public final class ExteriorRenderer implements Disposable {
      * hulls, the light map and the shields' glow.
      */
     public void drawBodies(OrthographicCamera camera, float delta, Array<Entity> without, Runnable unlit, Runnable under) {
+        drawBodies(camera, delta, without, unlit, under, null);
+    }
+
+    /**
+     * {@link #drawBodies(OrthographicCamera, float, Array, Runnable, Runnable)}, with what
+     * {@code over} draws (null for nothing: the deck view's glow, where the decks' light blends
+     * into this) over the light map, under the flames and the shields' glow.
+     */
+    public void drawBodies(OrthographicCamera camera, float delta, Array<Entity> without, Runnable unlit, Runnable under,
+                           Runnable over) {
         GameWorld w = world.get();
         Matrix4 view = view(camera);
         w.physics.getWorld().getBodies(bodies);
@@ -340,6 +350,7 @@ public final class ExteriorRenderer implements Disposable {
             batch.end();
         }
         if (lit) renderLightMap(camera, view, unlit);
+        if (over != null) over.run();
         // The flames give off their own light: over the light map, not darkened by it
         batch.setProjectionMatrix(view);
         flames.draw(batch, withArt);

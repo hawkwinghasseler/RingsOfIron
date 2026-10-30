@@ -283,12 +283,21 @@ public final class SceneLighting implements Disposable {
      * an earlier glow pass drew the rest.
      */
     public void renderGlow(SpriteBatch batch, OrthographicCamera camera, float minSize, int from) {
-        if (glowSpots.size() <= from) return;
+        renderGlow(batch, camera, minSize, from, glowSpots.size());
+    }
+
+    /**
+     * {@link #renderGlow(SpriteBatch, OrthographicCamera, float, int)} for the glowing parts from
+     * {@code from} up to {@code to} of them: what a glow pass left for later, before what was added since.
+     */
+    public void renderGlow(SpriteBatch batch, OrthographicCamera camera, float minSize, int from, int to) {
+        int end = Math.min(to, glowSpots.size());
+        if (end <= from) return;
         if (glow == null) glow = glowTexture();
         batch.setProjectionMatrix(camera.combined);
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
         batch.begin();
-        for (int i = from; i < glowSpots.size(); i++) {
+        for (int i = from; i < end; i++) {
             LightSpot s = glowSpots.get(i);
             if (!s.on) continue;
             float size = Math.max(minSize, s.glow * GLOW_SCALE);

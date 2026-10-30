@@ -471,15 +471,6 @@ public final class DevConsole {
             if (c == null) return "No shield emitters aboard";
             return "Shields trimmed " + c.trim.label;
         });
-        console.define("deckEdge", "deckEdge([mode])", "how the decks' light gives way to the light outside at the hull"
-                + " in the deck view: hard, half, tile, wide or inset; deckEdge() steps to the next", decks, args -> {
-            com.hawkwing.RingsOfIron.render.DeckEdgeBlend.Mode m = args.length == 0 || args[0] == null
-                    ? com.hawkwing.RingsOfIron.render.DeckEdgeBlend.mode.next()
-                    : com.hawkwing.RingsOfIron.render.DeckEdgeBlend.Mode.named(String.valueOf(args[0]));
-            if (m == null) throw new ConsoleException("deckEdge(mode): hard, half, tile, wide or inset");
-            com.hawkwing.RingsOfIron.render.DeckEdgeBlend.mode = m;
-            return m.label();
-        });
         console.define("doors", "doors([ship])", "seals every door aboard, or opens them all", decks, args ->
                 actions.tools.toggleDoors(shipTarget(args, 0)) ? "Doors sealed" : "Doors open");
 

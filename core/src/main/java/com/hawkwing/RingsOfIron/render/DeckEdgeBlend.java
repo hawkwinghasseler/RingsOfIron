@@ -10,86 +10,46 @@ import com.badlogic.gdx.graphics.VertexAttribute;
 import com.badlogic.gdx.graphics.VertexAttributes;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.Disposable;
+import com.badlogic.gdx.utils.IntArray;
+import com.badlogic.gdx.utils.LongArray;
+import com.ringsofiron.interiorgrid.HullPiece;
 
 import java.nio.IntBuffer;
-import java.util.ArrayDeque;
-import java.util.Locale;
+import java.util.Arrays;
 
 /**
  * How the deck view's light inside the decks gives way to the light outside (starlight, the
  * shield's own light, engines) at the hull. A weight map, 1 deep in the decks and 0 off them,
- * lays the decks' light map on with its weight and the outside one with the rest, so at the hull's
- * edge the one fades into the other instead of meeting it at a hard line.
+ * mixes the two light maps: the decks' where it is 1, the outside's where it is 0, and between
+ * them in proportion, so at the hull's edge the one fades into the other instead of meeting it at
+ * a hard line.
  *
- * <p>The weight is set at the corners of a grid of half tiles by how far each lies from the edge
- * of the footprint (tiles that are neither void, an engine's casing nor sloped armor), in tiles,
- * and runs smoothly across each half tile between them. {@link Mode#HARD} keeps the old hard edge
- * at the hull, drawn with the stencil buffer instead.
+ * <p>The weight rises from 0 at the hull's edge to 1 a tile in ({@link #WIDTH}), so the
+ * outermost tile (a hull wall block, say) is lit from outside on its outer side and from inside
+ * on its inner side. It is set by how far each point lies from the edge, in tiles, at the corners
+ * of a grid of half tiles and on the slopes of sloped armor, and runs smoothly between them. The
+ * edge is the outline of the footprint (tiles that are neither void nor an engine's casing), with
+ * sloped armor as its triangle, so a slope is lit from outside and fades in behind it as a flat
+ * side does. Where the shader won't compile, the decks keep a hard edge at the hull, drawn with
+ * the stencil buffer instead.
  *
  * <p>Each frame in the deck view: {@link #begin} with the weights ({@code DeckRenderer}), then
  * {@link #apply} the decks' light map inside, then the outside's ({@code ExteriorRenderer}).
  */
 public final class DeckEdgeBlend implements Disposable {
-    /** Where the decks' light gives way to the light outside, in tiles from the hull's edge. */
-    public enum Mode {
-        /** Hard at the hull's edge (the stencil buffer), as before. */
-        HARD(0f, 0f),
-        /** Across the outer half of the outermost tile. */
-        HALF(0f, 0.5f),
-        /** Across the outermost tile: its outer edge lit from outside, its inner edge from inside. */
-        TILE(0f, 1f),
-        /** Across the two outermost tiles. */
-        WIDE(0f, 2f),
-        /** The outermost tile lit from outside, the gradient across the tile within it. */
-        INSET(1f, 1f);
-
-        /** How far in from the edge the gradient starts, and how wide it is, in tiles. */
-        public final float inset, width;
-
-        Mode(float inset, float width) {
-            this.inset = inset;
-            this.width = width;
-        }
-
-        public Mode next() {
-            return values()[(ordinal() + 1) % values().length];
-        }
-
-        public String label() {
-            switch (this) {
-                case HARD: return "Deck edge: hard at the hull";
-                case HALF: return "Deck edge: blended across the outer half tile";
-                case TILE: return "Deck edge: blended across the outer tile";
-                case WIDE: return "Deck edge: blended across the outer two tiles";
-                default: return "Deck edge: outer tile lit outside, blended across the next";
-            }
-        }
-
-        /** The mode named {@code name} (any case), or null. */
-        public static Mode named(String name) {
-            try {
-                return name == null ? null : valueOf(name.trim().toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException e) {
-                return null;
-            }
-        }
-    }
+    /** How far in from the hull's edge the decks' light has wholly taken over from the light outside, in tiles. */
+    static final float WIDTH = 1f;
 
     /** How each tile is split for the weights, per side. */
     static final int SUBDIVISIONS = 2;
 
-    /**
-     * How the deck edge is drawn, for every renderer; {@code -Ddeck.edgeBlend=hard|half|tile|wide|inset}
-     * sets it at start, and the dev console's {@code deckEdge} changes it.
-     */
-    public static Mode mode = fromProperty();
-
-    private static Mode fromProperty() {
-        Mode m = Mode.named(System.getProperty("deck.edgeBlend"));
-        return m == null ? Mode.HARD : m;
+    /** The weight {@code d} tiles in from the edge: 0 there, rising to 1 {@link #WIDTH} tiles in. */
+    static float weight(float d) {
+        return MathUtils.clamp(d / WIDTH, 0f, 1f);
     }
 
     private static final String VERTEX = "attribute vec4 a_position;\n"
@@ -99,24 +59,38 @@ public final class DeckEdgeBlend implements Disposable {
             + "  v_uv = a_texCoord0;\n"
             + "  gl_Position = a_position;\n"
             + "}\n";
-    /** A light map with its ambient (as box2dlights' diffuse pass), laid on at the weight: none of it where the weight is 0. */
+    /**
+     * A light map with its ambient (as box2dlights' diffuse pass) laid on at the weight. Inside,
+     * the decks' at the weight and none where it is 0. Outside, what turns that into the two
+     * mixed by the weight: the outside's alone where it is 0, and nothing where it is 1.
+     */
     private static final String FRAGMENT = "#ifdef GL_ES\nprecision mediump float;\n#endif\n"
             + "uniform sampler2D u_light;\n"
             + "uniform sampler2D u_weight;\n"
+            + "uniform sampler2D u_inner;\n"
             + "uniform vec3 u_ambient;\n"
+            + "uniform vec3 u_innerAmbient;\n"
             + "uniform float u_inside;\n"
             + "varying vec2 v_uv;\n"
             + "void main() {\n"
-            + "  vec3 light = u_ambient + texture2D(u_light, v_uv).rgb;\n"
             + "  float w = texture2D(u_weight, v_uv).r;\n"
-            + "  if (u_inside < 0.5) w = 1.0 - w;\n"
-            + "  gl_FragColor = vec4(mix(vec3(1.0), light, w), 1.0);\n"
+            + "  vec3 light = min(u_ambient + texture2D(u_light, v_uv).rgb, vec3(1.0));\n"
+            + "  if (u_inside > 0.5) {\n"
+            + "    gl_FragColor = vec4(mix(vec3(1.0), light, w), 1.0);\n"
+            + "  } else {\n"
+            + "    vec3 inner = min(u_innerAmbient + texture2D(u_inner, v_uv).rgb, vec3(1.0));\n"
+            + "    vec3 laid = mix(vec3(1.0), inner, w);\n"
+            + "    gl_FragColor = vec4(mix(light, inner, w) / max(laid, vec3(0.004)), 1.0);\n"
+            + "  }\n"
             + "}\n";
 
     private FrameBuffer weights;
     private ShaderProgram shader;
     private Mesh quad;
     private boolean ready;
+    /** The decks' light map and ambient this frame, for the outside's pass to mix with. */
+    private Texture inner;
+    private final Color innerAmbient = new Color();
     private final IntBuffer viewport = BufferUtils.newIntBuffer(16);
     private final int[] saved = new int[4];
 
@@ -128,11 +102,12 @@ public final class DeckEdgeBlend implements Disposable {
     /**
      * Starts the weights for this frame: binds a buffer the size of the current viewport, cleared
      * to 0, for the caller to fill (red: the weight) under its camera; {@link #end} then puts the
-     * viewport back. False, with nothing bound, in {@link Mode#HARD} or where the shader won't compile.
+     * viewport back. False, with nothing bound, where the shader won't compile.
      */
     public boolean begin() {
         ready = false;
-        if (mode == Mode.HARD || !compiled()) return false;
+        inner = null;
+        if (!compiled()) return false;
         Gdx.gl.glGetIntegerv(GL20.GL_VIEWPORT, viewport);
         for (int i = 0; i < 4; i++) saved[i] = viewport.get(i);
         int w = Math.max(1, saved[2]), h = Math.max(1, saved[3]);
@@ -156,24 +131,35 @@ public final class DeckEdgeBlend implements Disposable {
 
     /**
      * Lays {@code light} (a box2dlights light map) with {@code ambient} over what is drawn, in the
-     * current viewport: at the weight {@code inside} (the decks' map), else at the rest of it (the
-     * outside's). The outside's pass ends the frame's weights.
+     * current viewport: the decks' map ({@code inside}) at the weight, then the outside's so that
+     * together the two are mixed by the weight. The outside's pass ends the frame's weights; the
+     * decks' map must stand until then.
      */
     public void apply(Texture light, Color ambient, boolean inside) {
-        if (!ready) return;
+        if (!ready || (!inside && inner == null)) return;
+        if (inside) {
+            inner = light;
+            innerAmbient.set(ambient);
+        }
         GL20 gl = Gdx.gl;
         gl.glEnable(GL20.GL_BLEND);
         gl.glBlendFunc(GL20.GL_DST_COLOR, GL20.GL_ZERO);
+        inner.bind(2);
         weights.getColorBufferTexture().bind(1);
         light.bind(0);
         shader.bind();
         shader.setUniformi("u_light", 0);
         shader.setUniformi("u_weight", 1);
+        shader.setUniformi("u_inner", 2);
         shader.setUniformf("u_ambient", ambient.r, ambient.g, ambient.b);
+        shader.setUniformf("u_innerAmbient", innerAmbient.r, innerAmbient.g, innerAmbient.b);
         shader.setUniformf("u_inside", inside ? 1f : 0f);
         quad.render(shader, GL20.GL_TRIANGLE_FAN);
         gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-        if (!inside) ready = false;
+        if (!inside) {
+            ready = false;
+            inner = null;
+        }
     }
 
     private boolean compiled() {
@@ -191,49 +177,205 @@ public final class DeckEdgeBlend implements Disposable {
     }
 
     /**
-     * The weights at the corners of the {@link #SUBDIVISIONS}-split cells of a grid whose tiles
-     * {@code on} ([y][x]) are in the footprint: {@code (w * n + 1) * (h * n + 1)} of them, row by
-     * row from the bottom. A corner touching any cell off the footprint (or past the grid) is at
-     * the edge, 0 tiles in; the rest are as far in as the fewest steps to an edge corner, a step
-     * to any of the eight round it being 1/n tile. The weight rises from 0 at {@code inset} tiles
-     * in to 1 at {@code inset + width}.
+     * Sloped armor {@code p} as a triangle in tiles from its grid's bottom-left corner: the corner
+     * of its footprint where its legs meet, then the ends of its slope, counter-clockwise. At
+     * rotation 0 the legs meet at the bottom left; each quarter turn moves them a corner on,
+     * counter-clockwise (as {@code HullShape} collides on it).
      */
-    static float[] cornerWeights(boolean[][] on, float inset, float width) {
-        int n = SUBDIVISIONS, h = on.length, w = h == 0 ? 0 : on[0].length;
-        int cw = w * n + 1, ch = h * n + 1;
-        int[] steps = new int[cw * ch];
-        java.util.Arrays.fill(steps, Integer.MAX_VALUE);
-        ArrayDeque<Integer> queue = new ArrayDeque<>();
-        for (int vy = 0; vy < ch; vy++) {
-            for (int vx = 0; vx < cw; vx++) {
-                if (cell(on, vx - 1, vy - 1) && cell(on, vx, vy - 1) && cell(on, vx - 1, vy) && cell(on, vx, vy)) continue;
-                steps[vy * cw + vx] = 0;
-                queue.add(vy * cw + vx);
+    static int[] wedge(HullPiece p) {
+        int x0 = p.originX, y0 = p.originY, x1 = x0 + p.width(), y1 = y0 + p.height();
+        int[] corners = {x0, y0, x1, y0, x1, y1, x0, y1};
+        int a = p.rotation, b = (a + 1) % 4, c = (a + 3) % 4;
+        return new int[]{corners[2 * a], corners[2 * a + 1], corners[2 * b], corners[2 * b + 1], corners[2 * c], corners[2 * c + 1]};
+    }
+
+    /**
+     * A deck's footprint as the weights see it, in tiles from its grid's bottom-left corner: its
+     * whole tiles {@code on} ([y][x]) and its sloped armor, each a {@link #wedge} triangle. Its
+     * edge is every side of them that does not lie against another of them, and every slope.
+     */
+    static final class Outline {
+        private final boolean[][] on;
+        private final int width, height;
+        /** The wedges' corners, six to each. */
+        private final IntArray wedges;
+        /** x0, y0, x1, y1 of each stretch of the edge. */
+        private final IntArray edge = new IntArray();
+
+        Outline(boolean[][] on, IntArray wedges) {
+            this.on = on;
+            this.height = on.length;
+            this.width = height == 0 ? 0 : on[0].length;
+            this.wedges = wedges;
+            // Every side of every piece, counter-clockwise round it: a side that two pieces share
+            // runs one way for each, and is not the edge
+            LongArray sides = new LongArray();
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    if (!on[y][x]) continue;
+                    sides.add(side(x, y, x + 1, y));
+                    sides.add(side(x + 1, y, x + 1, y + 1));
+                    sides.add(side(x + 1, y + 1, x, y + 1));
+                    sides.add(side(x, y + 1, x, y));
+                }
+            }
+            for (int i = 0; i < wedges.size; i += 6) {
+                int ax = wedges.get(i), ay = wedges.get(i + 1), bx = wedges.get(i + 2), by = wedges.get(i + 3);
+                int cx = wedges.get(i + 4), cy = wedges.get(i + 5);
+                // The legs a tile at a time, to meet the tiles beside them; the slope whole
+                leg(sides, ax, ay, bx, by);
+                sides.add(side(bx, by, cx, cy));
+                leg(sides, cx, cy, ax, ay);
+            }
+            java.util.HashSet<Long> all = new java.util.HashSet<>();
+            for (int i = 0; i < sides.size; i++) all.add(sides.get(i));
+            for (int i = 0; i < sides.size; i++) {
+                long s = sides.get(i);
+                int x0 = (int) (s >>> 48 & 0xffff), y0 = (int) (s >>> 32 & 0xffff), x1 = (int) (s >>> 16 & 0xffff), y1 = (int) (s & 0xffff);
+                if (all.contains(side(x1, y1, x0, y0))) continue;
+                edge.add(x0, y0, x1, y1);
             }
         }
-        while (!queue.isEmpty()) {
-            int i = queue.poll(), vx = i % cw, vy = i / cw;
-            for (int dy = -1; dy <= 1; dy++) {
-                for (int dx = -1; dx <= 1; dx++) {
-                    int x = vx + dx, y = vy + dy;
-                    if (x < 0 || y < 0 || x >= cw || y >= ch || steps[y * cw + x] <= steps[i] + 1) continue;
-                    steps[y * cw + x] = steps[i] + 1;
-                    queue.add(y * cw + x);
+
+        private static long side(int x0, int y0, int x1, int y1) {
+            return (long) x0 << 48 | (long) y0 << 32 | (long) x1 << 16 | y1;
+        }
+
+        /** The side from ({@code x0}, {@code y0}) to ({@code x1}, {@code y1}), along a row or column, a tile at a time. */
+        private static void leg(LongArray sides, int x0, int y0, int x1, int y1) {
+            int dx = Integer.signum(x1 - x0), dy = Integer.signum(y1 - y0);
+            for (int x = x0, y = y0; x != x1 || y != y1; x += dx, y += dy) sides.add(side(x, y, x + dx, y + dy));
+        }
+
+        /** How far ({@code x}, {@code y}) lies from the edge, in tiles. */
+        float distance(float x, float y) {
+            float best = Float.MAX_VALUE;
+            for (int i = 0; i < edge.size; i += 4) {
+                best = Math.min(best, toSegment(x, y, edge.get(i), edge.get(i + 1), edge.get(i + 2), edge.get(i + 3)));
+            }
+            return best;
+        }
+
+        /**
+         * The weights at the corners of the grid's tiles split {@link #SUBDIVISIONS}
+         * ways each side: {@code (width * n + 1) * (height * n + 1)} of them, row by row from the
+         * bottom. Each is as far in as the nearest point of the edge.
+         */
+        float[] cornerWeights() {
+            int n = SUBDIVISIONS, cw = width * n + 1, ch = height * n + 1;
+            float[] d = new float[cw * ch];
+            Arrays.fill(d, Float.MAX_VALUE);
+            // Past this far from the edge the weight is 1 whatever the distance: each stretch
+            // reaches only the corners within it
+            float reach = WIDTH;
+            for (int i = 0; i < edge.size; i += 4) {
+                int x0 = edge.get(i), y0 = edge.get(i + 1), x1 = edge.get(i + 2), y1 = edge.get(i + 3);
+                int vx0 = Math.max(0, MathUtils.floor((Math.min(x0, x1) - reach) * n));
+                int vx1 = Math.min(cw - 1, MathUtils.ceil((Math.max(x0, x1) + reach) * n));
+                int vy0 = Math.max(0, MathUtils.floor((Math.min(y0, y1) - reach) * n));
+                int vy1 = Math.min(ch - 1, MathUtils.ceil((Math.max(y0, y1) + reach) * n));
+                for (int vy = vy0; vy <= vy1; vy++) {
+                    for (int vx = vx0; vx <= vx1; vx++) {
+                        int at = vy * cw + vx;
+                        d[at] = Math.min(d[at], toSegment(vx / (float) n, vy / (float) n, x0, y0, x1, y1));
+                    }
+                }
+            }
+            for (int i = 0; i < d.length; i++) d[i] = weight(d[i]);
+            return d;
+        }
+
+        /**
+         * Fills the footprint with its weights, in red, with {@code shapes} (begun
+         * to fill, in the deck's frame), the grid's bottom-left corner at ({@code x}, {@code y})
+         * and its tiles {@code size} across: each half tile shaded between the weights at its
+         * corners, those under sloped armor cut along the slope.
+         */
+        void fill(ShapeRenderer shapes, float x, float y, float size) {
+            int n = SUBDIVISIONS, cw = width * n + 1;
+            float[] w = cornerWeights();
+            float step = size / n;
+            for (int cy = 0; cy < height * n; cy++) {
+                for (int cx = 0; cx < width * n; cx++) {
+                    if (!on[cy / n][cx / n]) continue;
+                    float x0 = x + cx * step, y0 = y + cy * step, x1 = x0 + step, y1 = y0 + step;
+                    shade(c00, w[cy * cw + cx]);
+                    shade(c10, w[cy * cw + cx + 1]);
+                    shade(c01, w[(cy + 1) * cw + cx]);
+                    shade(c11, w[(cy + 1) * cw + cx + 1]);
+                    shapes.triangle(x0, y0, x1, y0, x1, y1, c00, c10, c11);
+                    shapes.triangle(x0, y0, x1, y1, x0, y1, c00, c11, c01);
+                }
+            }
+            for (int i = 0; i < wedges.size; i += 6) {
+                int ax = wedges.get(i), ay = wedges.get(i + 1), bx = wedges.get(i + 2), by = wedges.get(i + 3);
+                int cx = wedges.get(i + 4), cy = wedges.get(i + 5);
+                int left = Math.min(ax, Math.min(bx, cx)), right = Math.max(ax, Math.max(bx, cx));
+                int bottom = Math.min(ay, Math.min(by, cy)), top = Math.max(ay, Math.max(by, cy));
+                for (int sy = bottom * n; sy < top * n; sy++) {
+                    for (int sx = left * n; sx < right * n; sx++) {
+                        int k = cut(sx, sy, bx, by, cx, cy);
+                        for (int j = 0; j < k; j++) {
+                            float px = cut[2 * j], py = cut[2 * j + 1];
+                            float gx = px * n, gy = py * n;
+                            // A corner of the half tiles has its weight; a point on the slope is measured
+                            cutWeight[j] = gx == (int) gx && gy == (int) gy ? w[(int) gy * cw + (int) gx] : weight(distance(px, py));
+                        }
+                        for (int j = 1; j + 1 < k; j++) {
+                            shade(c00, cutWeight[0]);
+                            shade(c10, cutWeight[j]);
+                            shade(c11, cutWeight[j + 1]);
+                            shapes.triangle(x + cut[0] * size, y + cut[1] * size, x + cut[2 * j] * size, y + cut[2 * j + 1] * size,
+                                    x + cut[2 * j + 2] * size, y + cut[2 * j + 3] * size, c00, c10, c11);
+                        }
+                    }
                 }
             }
         }
-        float[] out = new float[cw * ch];
-        for (int i = 0; i < out.length; i++) {
-            float d = steps[i] / (float) n;
-            out[i] = width <= 0f ? (d > inset ? 1f : 0f) : MathUtils.clamp((d - inset) / width, 0f, 1f);
+
+        /** The corners of what is drawn, in tiles, and their weights, for {@link #cut}. */
+        private final float[] cut = new float[10], cutWeight = new float[5];
+        private final Color c00 = new Color(), c10 = new Color(), c01 = new Color(), c11 = new Color();
+
+        /**
+         * Half tile ({@code sx}, {@code sy}) cut to the side of the slope from ({@code bx},
+         * {@code by}) to ({@code cx}, {@code cy}) that its armor lies on (the left, going along
+         * it): its corners, counter-clockwise, into {@link #cut}. How many there are, 0 to 5.
+         */
+        private int cut(int sx, int sy, int bx, int by, int cx, int cy) {
+            float h = 1f / SUBDIVISIONS;
+            float[] square = {sx * h, sy * h, (sx + 1) * h, sy * h, (sx + 1) * h, (sy + 1) * h, sx * h, (sy + 1) * h};
+            int k = 0;
+            for (int i = 0; i < 4; i++) {
+                float px = square[2 * i], py = square[2 * i + 1], qx = square[(2 * i + 2) % 8], qy = square[(2 * i + 3) % 8];
+                float fp = (cx - bx) * (py - by) - (cy - by) * (px - bx);
+                float fq = (cx - bx) * (qy - by) - (cy - by) * (qx - bx);
+                if (fp >= 0f) {
+                    cut[2 * k] = px;
+                    cut[2 * k + 1] = py;
+                    k++;
+                }
+                if (fp > 0f && fq < 0f || fp < 0f && fq > 0f) {
+                    float t = fp / (fp - fq);
+                    cut[2 * k] = px + (qx - px) * t;
+                    cut[2 * k + 1] = py + (qy - py) * t;
+                    k++;
+                }
+            }
+            return k;
         }
-        return out;
+
+        private static void shade(Color c, float w) {
+            c.set(w, w, w, 1f);
+        }
     }
 
-    /** Whether cell ({@code cx}, {@code cy}) of the split grid lies on a footprint tile. */
-    private static boolean cell(boolean[][] on, int cx, int cy) {
-        int tx = Math.floorDiv(cx, SUBDIVISIONS), ty = Math.floorDiv(cy, SUBDIVISIONS);
-        return ty >= 0 && ty < on.length && tx >= 0 && tx < on[ty].length && on[ty][tx];
+    /** How far ({@code x}, {@code y}) lies from the segment ({@code x0}, {@code y0}) to ({@code x1}, {@code y1}). */
+    private static float toSegment(float x, float y, float x0, float y0, float x1, float y1) {
+        float dx = x1 - x0, dy = y1 - y0, len = dx * dx + dy * dy;
+        float t = len == 0f ? 0f : MathUtils.clamp(((x - x0) * dx + (y - y0) * dy) / len, 0f, 1f);
+        float ex = x - (x0 + dx * t), ey = y - (y0 + dy * t);
+        return (float) Math.sqrt(ex * ex + ey * ey);
     }
 
     @Override

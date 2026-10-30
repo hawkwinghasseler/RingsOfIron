@@ -1624,7 +1624,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         exterior.drawBodies(camera, delta, decks, () -> deckRenderer.footprints(decks, camera), () -> {
             deckRenderer.draw(around, camera, delta);
             glowFrom[0] = lighting.glowSpots().size();
-        });
+        }, () -> deckRenderer.drawGlow(around, camera, glowFrom[0]));
         // ...and the crew out on EVA from those other craft
         deckRenderer.drawOutside(decks, camera, delta);
         // Their navigation lights and running systems glow as outside; the decks' glowed already

@@ -1,10 +1,14 @@
 package com.hawkwing.RingsOfIron.render;
 
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.IntArray;
+import com.ringsofiron.interiorgrid.HullPiece;
+import com.ringsofiron.interiorgrid.WeightClass;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** The deck edge's weights: 0 at the hull's edge, rising inward across the mode's width, 1 deep in the decks. */
+/** The deck edge's weights: 0 at the hull's edge, rising inward across the outermost tile, 1 deep in the decks. */
 class DeckEdgeBlendTest {
     private static final int N = DeckEdgeBlend.SUBDIVISIONS;
 
@@ -15,15 +19,23 @@ class DeckEdgeBlendTest {
         return on;
     }
 
+    private static float[] weights(boolean[][] on) {
+        return new DeckEdgeBlend.Outline(on, new IntArray()).cornerWeights();
+    }
+
     /** The weight at the corner {@code tilesX}, {@code tilesY} tiles from the grid's bottom-left (half tiles allowed). */
     private static float at(float[] w, int tilesWide, float tilesX, float tilesY) {
         int cw = tilesWide * N + 1;
         return w[Math.round(tilesY * N) * cw + Math.round(tilesX * N)];
     }
 
+    private static HullPiece wedge(int x, int y, int w, int h, int rotation) {
+        return new HullPiece(HullPiece.Shape.WEDGE, x, y, w, h, rotation, WeightClass.MEDIUM, "hull_steel");
+    }
+
     @Test
     void acrossTheOuterTileTheWeightRisesFromTheEdgeToItsInnerSide() {
-        float[] w = DeckEdgeBlend.cornerWeights(block(6, 6), 0f, 1f);
+        float[] w = weights(block(6, 6));
         assertEquals(0f, at(w, 6, 0f, 3f), 1e-6f, "the hull's edge");
         assertEquals(0.5f, at(w, 6, 0.5f, 3f), 1e-6f, "halfway across the outer tile");
         assertEquals(1f, at(w, 6, 1f, 3f), 1e-6f, "the outer tile's inner side");
@@ -31,32 +43,64 @@ class DeckEdgeBlendTest {
     }
 
     @Test
-    void halfAndWideAndInsetSetWhereTheGradientLies() {
-        float[] half = DeckEdgeBlend.cornerWeights(block(8, 8), 0f, 0.5f);
-        assertEquals(1f, at(half, 8, 0.5f, 4f), 1e-6f, "half: the outer tile's inner half is all inside light");
-        float[] wide = DeckEdgeBlend.cornerWeights(block(8, 8), 0f, 2f);
-        assertEquals(0.5f, at(wide, 8, 1f, 4f), 1e-6f, "wide: halfway after one tile");
-        float[] inset = DeckEdgeBlend.cornerWeights(block(8, 8), 1f, 1f);
-        assertEquals(0f, at(inset, 8, 1f, 4f), 1e-6f, "inset: the outer tile all outside light");
-        assertEquals(0.5f, at(inset, 8, 1.5f, 4f), 1e-6f);
-        assertEquals(1f, at(inset, 8, 2f, 4f), 1e-6f);
-    }
-
-    @Test
     void aHoleInTheFootprintIsAnEdgeToo() {
         boolean[][] on = block(7, 7);
         on[3][3] = false;
-        float[] w = DeckEdgeBlend.cornerWeights(on, 0f, 1f);
+        float[] w = weights(on);
         assertEquals(0f, at(w, 7, 3f, 3f), 1e-6f, "the hole's corner");
         assertEquals(1f, at(w, 7, 2f, 3f), 1e-6f, "a tile from the hole and from the hull's edge");
+        assertEquals((float) Math.sqrt(0.5), at(w, 7, 2.5f, 2.5f), 1e-5f, "across from the hole's corner, as the crow flies");
     }
 
     @Test
     void aCornerTilesOuterCornersAreAllAtTheEdge() {
-        float[] w = DeckEdgeBlend.cornerWeights(block(4, 4), 0f, 1f);
+        float[] w = weights(block(4, 4));
         assertEquals(0f, at(w, 4, 0f, 0f), 1e-6f);
         assertEquals(0f, at(w, 4, 1f, 0f), 1e-6f);
         assertEquals(0f, at(w, 4, 0f, 1f), 1e-6f);
         assertEquals(1f, at(w, 4, 1f, 1f), 1e-6f, "the corner tile's inner corner");
+    }
+
+    @Test
+    void aWedgesCornersRunRoundItWithTheSlopeFacingOut() {
+        for (int[] size : new int[][]{{1, 1}, {1, 2}, {2, 1}}) {
+            for (int r = 0; r < 4; r++) {
+                HullPiece p = wedge(3, 5, size[0], size[1], r);
+                int[] c = DeckEdgeBlend.wedge(p);
+                // Counter-clockwise, its legs along the footprint's sides
+                float area = (c[2] - c[0]) * (c[5] - c[1]) - (c[3] - c[1]) * (c[4] - c[0]);
+                assertEquals(p.width() * p.height(), area, 1e-6f, "twice its area, turning left");
+                assertTrue(c[0] == c[2] || c[1] == c[3], "a leg along a side");
+                assertTrue(c[0] == c[4] || c[1] == c[5], "the other leg along a side");
+                // The slope, b to c, faces out to its right: the way the collision shape faces
+                Vector2 out = new Vector2(c[5] - c[3], -(c[4] - c[2])).nor();
+                Vector2 face = p.faceNormal();
+                assertEquals(face.x, out.x, 1e-5f, "rotation " + r + " " + size[0] + "x" + size[1]);
+                assertEquals(face.y, out.y, 1e-5f, "rotation " + r + " " + size[0] + "x" + size[1]);
+            }
+        }
+    }
+
+    @Test
+    void aSlopeIsAnEdgeAndItsLegsAgainstTheTilesAreNot() {
+        // A block bevelled at its top right corner, the slope facing up and right
+        boolean[][] on = block(3, 3);
+        on[2][2] = false;
+        IntArray wedges = new IntArray(DeckEdgeBlend.wedge(wedge(2, 2, 1, 1, 0)));
+        DeckEdgeBlend.Outline edge = new DeckEdgeBlend.Outline(on, wedges);
+        assertEquals(0f, edge.distance(2.5f, 2.5f), 1e-6f, "on the slope");
+        float[] w = edge.cornerWeights();
+        assertEquals((float) Math.sqrt(0.5), at(w, 3, 2f, 2f), 1e-5f, "the corner behind the slope, measured square to it");
+        assertEquals((float) Math.sqrt(0.125), at(w, 3, 2f, 2.5f), 1e-5f, "on a leg, nearer the slope than the hull's top");
+    }
+
+    @Test
+    void twoWedgesBackToBackMakeNoEdgeBetweenThem() {
+        boolean[][] on = block(3, 3);
+        on[1][1] = false;
+        IntArray wedges = new IntArray(DeckEdgeBlend.wedge(wedge(1, 1, 1, 1, 0)));
+        wedges.addAll(DeckEdgeBlend.wedge(wedge(1, 1, 1, 1, 2)));
+        DeckEdgeBlend.Outline edge = new DeckEdgeBlend.Outline(on, wedges);
+        assertEquals(1.5f, edge.distance(1.5f, 1.5f), 1e-6f, "as far in as a whole tile's middle");
     }
 }

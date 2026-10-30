@@ -101,6 +101,8 @@ public final class DeckRenderer {
     private final SceneLighting lighting;
     /** How the decks' light gives way to the light outside at the hull; null for a hard edge. */
     private DeckEdgeBlend edgeBlend;
+    /** Whether this frame's {@link #draw} left the glow for {@link #drawGlow}. */
+    private boolean glowOwed;
     private Style style;
     private Pose pose;
     private boolean lightsOn = true;
@@ -269,6 +271,7 @@ public final class DeckRenderer {
      */
     public void draw(Array<Entity> decks, OrthographicCamera camera, float delta) {
         clock = (clock + delta) % BLINK;
+        glowOwed = false;
         GameWorld current = world.get();
         impacts.listen(current == null ? null : current.combatEvents.hullHits);
         impacts.update(delta);
@@ -443,8 +446,29 @@ public final class DeckRenderer {
         // The light map over the decks, dark when the craft aboard has no power; then the glow on top
         ShipGridComponent aboard = decks.first().getComponent(ShipGridComponent.class);
         renderLights(decks, camera, aboard != null && DeckLightRig.hasPower(aboard));
+        // Blended into the light outside at the hull: the glow waits for that light, which would dim it
+        if (edgeBlend != null && edgeBlend.ready()) {
+            glowOwed = true;
+            return;
+        }
+        glow(decks, camera, lighting.glowSpots().size());
+    }
+
+    /**
+     * The glow {@link #draw} left for later this frame, when the decks' light blends into the
+     * light outside at the hull: over that light, so neither dims it. {@code spots} is how many
+     * of the glowing parts were the decks' ({@code glowSpots().size()} after the draw).
+     */
+    public void drawGlow(Array<Entity> decks, OrthographicCamera camera, int spots) {
+        if (!glowOwed) return;
+        glowOwed = false;
+        glow(decks, camera, spots);
+    }
+
+    /** What on {@code decks} gives off light, over the light map, with the first {@code spots} of the glowing parts. */
+    private void glow(Array<Entity> decks, OrthographicCamera camera, int spots) {
         glowingImpacts(decks, camera);
-        if (withArt) {
+        if (deckArt.available()) {
             // What gives off light shows lit whatever light falls on it
             batch.setProjectionMatrix(camera.combined);
             for (Entity ship : decks) {
@@ -457,7 +481,7 @@ public final class DeckRenderer {
             }
             batch.setTransformMatrix(IDENTITY);
         }
-        lighting.renderGlow(batch, camera, 0f);
+        lighting.renderGlow(batch, camera, 0f, 0, spots);
         progressBars(decks, camera, false);
     }
 
@@ -543,13 +567,10 @@ public final class DeckRenderer {
 
     /**
      * The weights of the decks' light against the light outside under {@code camera}, in red, into
-     * the buffer {@link DeckEdgeBlend#begin} bound: each half tile of every deck shaded between the
-     * weights at its corners ({@link DeckEdgeBlend#cornerWeights}). Sloped armor is left out of the
-     * footprint here, so it is lit from outside and the blend starts at the tiles behind it.
+     * the buffer {@link DeckEdgeBlend#begin} bound: each deck's footprint, its sloped armor as its
+     * triangle, shaded by how far in from its edge each point lies ({@link DeckEdgeBlend.Outline}).
      */
     private void edgeWeights(Array<Entity> decks, OrthographicCamera camera) {
-        DeckEdgeBlend.Mode mode = DeckEdgeBlend.mode;
-        int n = DeckEdgeBlend.SUBDIVISIONS;
         shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (Entity ship : decks) {
@@ -562,33 +583,17 @@ public final class DeckRenderer {
                     on[ty][tx] = onFootprint(g, tx, ty) && (t.piece == null || t.piece.shape != HullPiece.Shape.WEDGE);
                 }
             }
-            float[] w = DeckEdgeBlend.cornerWeights(on, mode.inset, mode.width);
-            int cw = g.width * n + 1;
-            float step = g.tileSize / n, ox = g.gridOriginLocal.x, oy = g.gridOriginLocal.y;
+            com.badlogic.gdx.utils.IntArray wedges = new com.badlogic.gdx.utils.IntArray();
+            for (HullPiece p : g.hullPieces) {
+                if (p.shape == HullPiece.Shape.WEDGE && onFootprint(g, p.originX, p.originY)) wedges.addAll(DeckEdgeBlend.wedge(p));
+            }
             shapes.identity();
             shapes.translate(at.x, at.y, 0f);
             shapes.rotate(0f, 0f, 1f, angle[0] * MathUtils.radiansToDegrees);
-            for (int cy = 0; cy < g.height * n; cy++) {
-                for (int cx = 0; cx < g.width * n; cx++) {
-                    if (!on[cy / n][cx / n]) continue;
-                    float x0 = ox + cx * step, y0 = oy + cy * step, x1 = x0 + step, y1 = y0 + step;
-                    weightColor(c00, w[cy * cw + cx]);
-                    weightColor(c10, w[cy * cw + cx + 1]);
-                    weightColor(c01, w[(cy + 1) * cw + cx]);
-                    weightColor(c11, w[(cy + 1) * cw + cx + 1]);
-                    shapes.triangle(x0, y0, x1, y0, x1, y1, c00, c10, c11);
-                    shapes.triangle(x0, y0, x1, y1, x0, y1, c00, c11, c01);
-                }
-            }
+            new DeckEdgeBlend.Outline(on, wedges).fill(shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, g.tileSize);
         }
         shapes.end();
         shapes.identity();
-    }
-
-    private final Color c00 = new Color(), c10 = new Color(), c01 = new Color(), c11 = new Color();
-
-    private static void weightColor(Color c, float w) {
-        c.set(w, w, w, 1f);
     }
 
     /** How far a tile's footprint reaches into the filled tiles beside it, in tiles. */
