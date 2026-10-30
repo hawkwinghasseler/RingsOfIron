@@ -59,6 +59,8 @@ test {
   if (project.hasProperty('surveyStart')) systemProperty 'enemy.survey.start', project.property('surveyStart')
   if (project.hasProperty('enemyDebug')) systemProperty 'enemy.debug', 'true'
   if (project.hasProperty('enemyProbe')) systemProperty 'enemy.probe', project.property('enemyProbe')
+  // ./gradlew :core:test --tests '*SystemOrderTest' -PpinSystemOrder rewrites src/test/resources/system-order.txt from the wired game
+  if (project.hasProperty('pinSystemOrder')) systemProperty 'pin.systemOrder', 'true'
   // A failing test says why in the CI log, not only in the report (the build logs at quiet, see gradle.properties)
   testLogging {
     showStandardStreams = project.hasProperty('enemySurvey') || project.hasProperty('enemyDebug') || project.hasProperty('enemyProbe')

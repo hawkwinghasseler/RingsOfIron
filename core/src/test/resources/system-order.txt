@@ -1,0 +1,103 @@
+# The wired game's run order, pinned by SystemOrderTest. Regenerate with
+# ./gradlew :core:test --tests '*SystemOrderTest' -PpinSystemOrder
+
+[systems] priority, fixed (F) or frame (-), class
+-10 F NpcPilotSystem
+-9 F NpcCombatSystem
+-9 F TransitClearance
+-1 F Bridge
+0 - FlightControlSystem
+0 - TidalGravitySystem
+0 - KinematicTransientSystem
+0 - DockingSystem
+0 - BerthingSystem
+0 - BubbleBurnSystem
+0 - FreighterTraffic
+0 - ShipCargo
+0 F ServiceBudget
+0 - DoorForcing
+0 - CargoLoading
+0 - StationYard
+0 - ContractBoard
+0 - FreighterRefueling
+0 F CrewStationSync
+0 F GunCrews
+0 - SensorTrackingSystem
+0 - WeaponControlSystem
+0 - MissileGuidanceSystem
+0 - BallisticsSystem
+0 - ShieldSystem
+0 - ShieldDocking
+0 - ImpactResolutionSystem
+0 - CollisionDamageSystem
+0 - BeamSystem
+0 - ShipDisablement
+0 - AbandonShip
+0 - Boarding
+0 - Salvage
+0 - Shipyard
+0 - FurnishingStore
+0 - HostileTraffic
+0 - PirateBase
+0 - FactionTension
+0 - PirateSightings
+0 - Navigation
+0 F CrewCareer
+1 F ShipHazardScanSystem
+5 - OrbitalEventSystem
+5 F CrewDecisionSystem
+10 F PhysicsUpdateSystem
+10 F CrewMovementSystem
+11 F EvaSystem
+15 F CrewHealthSystem
+16 F SuitLockerSystem
+20 - FloatingOriginSystem
+25 F MacroSimSystem
+30 F PowerRoutingSystem
+31 F GridHazardSystem
+32 F LifeSupportSystem
+33 - PropellantFeed
+33 - EngineThrust
+33 - RcsThrust
+34 - TankMass
+41 F InteriorHazardAudioSystem
+500 F GameWorld$TickManagers
+890 - AudioListenerSync
+890 - EngineAudio
+890 - CrewAudio
+899 - CombatAudio$MissileMotors
+900 - AcousticOcclusionSystem
+999 - Spacewalks$PlaceMarkers
+1000 - AudioUpdateSystem
+
+[physics step listeners]
+FlightControlSystem
+TidalGravitySystem
+KinematicTransientSystem
+DockingSystem
+SensorTrackingSystem
+WeaponControlSystem
+MissileGuidanceSystem
+BallisticsSystem
+ShieldSystem
+ImpactResolutionSystem
+BeamSystem
+
+[save participants]
+EntityIds
+OrbitalEventSystem
+MacroSaveParticipant
+InteriorGridSaveParticipant
+CrewSaveParticipant
+FactionStanding
+CombatSaveParticipant
+ContractBoard
+GuideProgress
+Derelicts
+PhysicsSaveParticipant
+HostileTraffic
+PirateBoarding
+PirateBase
+FactionTension
+WorldEvents
+CrewHiring
