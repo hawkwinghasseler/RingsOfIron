@@ -5,7 +5,7 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
-import com.hawkwing.RingsOfIron.game.DeckView;
+import com.hawkwing.RingsOfIron.render.DeckView;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.EdgeConduit;
 import com.ringsofiron.interiorgrid.EdgeWall;

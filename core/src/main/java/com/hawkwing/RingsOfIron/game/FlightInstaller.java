@@ -1,5 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.hawkwing.RingsOfIron.wiring.CombatThreatSensor;
+import com.ringsofiron.aicrew.pilot.TrueStatePilotReference;
 import com.ringsofiron.aicrew.pilot.NpcCombatSystem;
 import com.ringsofiron.aicrew.pilot.NpcPilotSystem;
 import com.ringsofiron.aicrew.pilot.PilotReference;

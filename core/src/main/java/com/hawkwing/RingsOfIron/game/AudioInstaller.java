@@ -1,5 +1,10 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.hawkwing.RingsOfIron.wiring.CombatAudio;
+import com.hawkwing.RingsOfIron.wiring.NoticeAudio;
+import com.hawkwing.RingsOfIron.wiring.AudioListenerSync;
+import com.hawkwing.RingsOfIron.wiring.CrewAudio;
+import com.ringsofiron.audiospatial.systems.EngineAudio;
 import com.ringsofiron.audiospatial.AudioManager;
 import com.ringsofiron.audiospatial.ImpactAudio;
 import com.ringsofiron.audiospatial.systems.AcousticOcclusionSystem;

@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.shipsystems.TransitClearance;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.stationsdocking.BerthingSystem;
 import com.ringsofiron.stationsdocking.DockingSystem;

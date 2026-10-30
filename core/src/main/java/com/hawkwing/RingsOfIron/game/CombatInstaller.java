@@ -1,5 +1,13 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.shipops.CollarWear;
+import com.hawkwing.RingsOfIron.wiring.CrewDamageAdapter;
+import com.hawkwing.RingsOfIron.wiring.CrewStationSync;
+import com.ringsofiron.shipops.FreighterRefueling;
+import com.ringsofiron.shipsystems.ShipWeaponPower;
+import com.ringsofiron.shipops.AbandonShip;
+import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.shipops.StationYard;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.combatsys.defs.CombatDefs;
 import com.ringsofiron.combatsys.events.CombatEvents;

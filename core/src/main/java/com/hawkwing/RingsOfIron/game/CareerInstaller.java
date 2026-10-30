@@ -1,6 +1,8 @@
 package com.hawkwing.RingsOfIron.game;
 
-import com.hawkwing.RingsOfIron.shell.KeyBindings;
+import com.ringsofiron.uihud.HintRegistry;
+import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.macrosim.MacroSimulation;
@@ -45,7 +47,7 @@ final class CareerInstaller {
         // ...and nobody is hired from today's pools
         world.addResettable(crewHiring);
         prisoners = new Prisoners(context, crew, docking, macroSim, standing, crewHiring);
-        world.hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, KeyBindings.Action.CREW)
+        world.hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, Action.CREW)
                 .onlyWhen(() -> prisoners.takenAlongside() != null);
     }
 }

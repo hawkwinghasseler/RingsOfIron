@@ -4,6 +4,7 @@ import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.interiorgrid.EscapePodLayout;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.shipops.AbandonShip;
 
 /**
  * Puts the player's figure in the bay of {@code ship}'s first usable escape pod, as the player would

@@ -54,7 +54,7 @@ public final class SilencedMarkers {
                 if (marker == null || greyed.containsKey(ship)) continue;
                 greyed.put(ship, marker.label);
                 if (!marker.label.endsWith(SUFFIX)) marker.label += SUFFIX;
-                marker.color.set(ShipDisablement.DISABLED_COLOR);
+                marker.color.set(HudMarkerComponent.DISABLED_COLOR);
             }
         }
     }

@@ -6,6 +6,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.Wound;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import java.nio.file.Path;

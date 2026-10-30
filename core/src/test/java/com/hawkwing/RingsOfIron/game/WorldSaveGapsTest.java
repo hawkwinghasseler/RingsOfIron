@@ -7,6 +7,8 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.JsonWriter;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.macrosim.economy.TradeOrder;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import java.nio.file.Path;

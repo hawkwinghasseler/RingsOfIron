@@ -1,7 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
@@ -11,6 +11,7 @@ import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SuitLockers;
 import com.ringsofiron.interiorgrid.crew.Suit;
+import com.ringsofiron.uihud.HintRegistry;
 import com.ringsofiron.uihud.systems.InteractPromptSystem;
 import com.ringsofiron.aicrew.CrewService;
 

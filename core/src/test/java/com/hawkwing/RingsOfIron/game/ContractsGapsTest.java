@@ -1,6 +1,8 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.RankLadder;
 import com.ringsofiron.macrosim.economy.CommodityType;
 import com.ringsofiron.macrosim.economy.TradeOrder;
 import com.ringsofiron.macrosim.economy.TraderComponent;

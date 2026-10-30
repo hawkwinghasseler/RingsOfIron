@@ -1,6 +1,8 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStanding;
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.uihud.providers.ShipyardProvider;
 
 import java.util.Locale;
@@ -26,7 +28,7 @@ public class ShipyardWork implements ShipyardProvider {
         Entity ship = ctx.player();
         Entity station = yard.dockedStation();
         if (ship != null && station != null && yard.sellsShips(station)) {
-            out.stationName = PlayerDocking.name(station);
+            out.stationName = ShipNames.name(station);
             out.current = String.format(Locale.ROOT, "Your %s: trade-in %,.0f cr (condition %.0f%%).  %s", yard.name(ship),
                     Shipyard.tradeIn(ship), 100 * Shipyard.condition(ship), standing.describeRank());
             for (Shipyard.Listing l : yard.listings(station)) {
@@ -45,7 +47,7 @@ public class ShipyardWork implements ShipyardProvider {
         }
         Entity prize = yard.prize();
         if (prize != null && yard.prizeStation() != null) {
-            out.prize = yard.name(prize) + " (taken), off " + PlayerDocking.name(yard.prizeStation());
+            out.prize = yard.name(prize) + " (taken), off " + ShipNames.name(yard.prizeStation());
             out.sellTerms = String.format(Locale.ROOT, "%+,.0f cr", Shipyard.prizeValue(prize));
             out.turnInTerms = String.format(Locale.ROOT, "%+.0f standing with the %s", yard.prizeStanding(prize),
                     standing.factions().name(standing.sponsor()));

@@ -2,12 +2,13 @@ package com.ringsofiron.uihud.components;
 
 import com.badlogic.ashley.core.Component;
 import com.badlogic.gdx.graphics.Color;
+import com.ringsofiron.coreengine.components.Nameplate;
 
 /**
  * Tags an entity (with a {@code TransformComponent}) for an on-screen marker: corner brackets
  * and a nameplate while it is on screen, an edge arrow pointing at it while it is off screen.
  */
-public class HudMarkerComponent implements Component {
+public class HudMarkerComponent implements Component, Nameplate {
 
     public enum Kind {
         HOSTILE(new Color(1f, 0.3f, 0.25f, 1f)),
@@ -22,6 +23,9 @@ public class HudMarkerComponent implements Component {
             this.defaultColor = defaultColor;
         }
     }
+
+    /** A disabled ship's marker tint. */
+    public static final Color DISABLED_COLOR = new Color(0.6f, 0.6f, 0.62f, 1f);
 
     public String label = "";
     public Kind kind = Kind.NEUTRAL;
@@ -45,5 +49,20 @@ public class HudMarkerComponent implements Component {
     public HudMarkerComponent radius(float radius) {
         this.radius = radius;
         return this;
+    }
+
+    @Override
+    public String getLabel() {
+        return label;
+    }
+
+    @Override
+    public void setLabel(String label) {
+        this.label = label;
+    }
+
+    @Override
+    public void setDisabled(boolean disabled) {
+        color.set(disabled ? DISABLED_COLOR : kind.defaultColor);
     }
 }

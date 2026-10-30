@@ -39,26 +39,7 @@ class ArchitectureTest {
             "\\bcom\\.hawkwing\\.RingsOfIron\\.(shell|render|debug)\\b|\\bcom\\.badlogic\\.gdx\\.graphics\\b");
 
     /** Game classes that use a forbidden package today, and which; Phase 2 empties this. */
-    static final Map<String, Set<String>> GAME_ALLOWED = Map.ofEntries(
-            Map.entry("Autopilot", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("BerthVenting", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("CaptainSafety", Set.of("com.hawkwing.RingsOfIron.shell")),
-            // GameWorld's prisoners hint, moved with the career wiring (Phase 1); Phase 2 moves KeyBindings.Action
-            Map.entry("CareerInstaller", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("CrewMedical", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("DamageControl", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("DeckView", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("FireArcOverlay", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("FirstPlay", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("HelmOrders", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("HintRegistry", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("NavOverlay", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("Navigation", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("OpeningGuide", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("PlayerOrbitPath", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("PlayerTransfer", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("ShipDisablement", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("Shipyard", Set.of("com.hawkwing.RingsOfIron.shell")));
+    static final Map<String, Set<String>> GAME_ALLOWED = Map.of();
 
     /** Each module's source package under com.ringsofiron, and its folder. */
     static final Map<String, String> MODULE_PACKAGES = Map.ofEntries(
@@ -73,7 +54,8 @@ class ArchitectureTest {
             Map.entry("audiospatial", "audio-spatial"),
             Map.entry("moddingdata", "modding-data"),
             Map.entry("stationsdocking", "stations-docking"),
-            Map.entry("artpipeline", "art-pipeline"));
+            Map.entry("artpipeline", "art-pipeline"),
+            Map.entry("shipsystems", "ship-systems"));
 
     /**
      * Which modules each module's main code may use. The layering as it stands: each module uses
@@ -93,7 +75,9 @@ class ArchitectureTest {
             Map.entry("modding-data", Set.of("core-engine")),
             Map.entry("stations-docking",
                     Set.of("core-engine", "interior-grid", "modding-data", "orbital-mechanics", "physics-exterior")),
-            Map.entry("art-pipeline", Set.of()));
+            Map.entry("art-pipeline", Set.of()),
+            Map.entry("ship-systems",
+                    Set.of("ai-crew", "combat-sys", "core-engine", "interior-grid", "modding-data", "orbital-mechanics", "physics-exterior", "stations-docking")));
 
     /**
      * The top-level coordinators whose constructor still takes the whole GameWorld: the debug tools,

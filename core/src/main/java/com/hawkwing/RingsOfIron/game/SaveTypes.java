@@ -1,6 +1,15 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStandingComponent;
 import com.ringsofiron.coreengine.SerializationService;
+import com.ringsofiron.shipops.AbandonOrderComponent;
+import com.ringsofiron.shipops.BoardedComponent;
+import com.ringsofiron.shipops.CargoOrdersComponent;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.MoraleComponent;
+import com.ringsofiron.shipops.SalvageOrdersComponent;
+import com.ringsofiron.shipops.SalvagedComponent;
+import com.ringsofiron.shipops.YardOrdersComponent;
 
 /**
  * The stable type id each saved component is written under, in place of its Java class name, so a

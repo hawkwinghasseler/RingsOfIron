@@ -7,6 +7,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.Input;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.InputMultiplexer;
@@ -23,29 +24,29 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.DeckArt;
-import com.hawkwing.RingsOfIron.game.AbandonShip;
+import com.ringsofiron.shipops.AbandonShip;
 import com.hawkwing.RingsOfIron.game.FlightWarnings;
-import com.hawkwing.RingsOfIron.game.NewGame;
+import com.ringsofiron.career.NewGame;
 import com.hawkwing.RingsOfIron.game.Bridge;
 import com.hawkwing.RingsOfIron.game.OpeningGuide;
 import com.hawkwing.RingsOfIron.game.BurnPlanner;
 import com.hawkwing.RingsOfIron.game.Rescue;
 import com.hawkwing.RingsOfIron.game.WarpNotices;
 import com.hawkwing.RingsOfIron.game.CombatTargetingProvider;
-import com.hawkwing.RingsOfIron.game.DeckView;
+import com.hawkwing.RingsOfIron.render.DeckView;
 import com.hawkwing.RingsOfIron.game.FirstPlay;
 import com.hawkwing.RingsOfIron.game.FurnishingPlacement;
-import com.hawkwing.RingsOfIron.game.ShipDisablement;
+import com.ringsofiron.shipops.ShipDisablement;
 import com.hawkwing.RingsOfIron.game.ShipRefit;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
-import com.hawkwing.RingsOfIron.game.DoorForcing;
+import com.ringsofiron.shipops.DoorForcing;
 import com.hawkwing.RingsOfIron.game.ExteriorPick;
-import com.hawkwing.RingsOfIron.game.FactionStanding;
-import com.hawkwing.RingsOfIron.game.DisabledComponent;
+import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
-import com.hawkwing.RingsOfIron.game.HintRegistry;
+import com.ringsofiron.uihud.HintRegistry;
 import com.hawkwing.RingsOfIron.game.NoticeFeeds;
 import com.hawkwing.RingsOfIron.game.NoticeLog;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
@@ -62,7 +63,7 @@ import com.hawkwing.RingsOfIron.render.PictureInPicture;
 import com.hawkwing.RingsOfIron.render.SpaceSnow;
 import com.hawkwing.RingsOfIron.render.StarField;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 import com.hawkwing.RingsOfIron.shell.RemappedInput;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
 import com.hawkwing.RingsOfIron.shell.SaveSummary;
@@ -176,9 +177,9 @@ public class RingsOfIronGame extends ApplicationAdapter {
     private ViewportManager viewports;
     private PlayerGunnery gun;
     private PlayerDocking docking;
-    private com.hawkwing.RingsOfIron.game.NavOverlay navOverlay;
+    private com.hawkwing.RingsOfIron.render.NavOverlay navOverlay;
     /** The guns' firing arcs, tinted by their chance to hit. */
-    private com.hawkwing.RingsOfIron.game.FireArcOverlay fireArcs;
+    private com.hawkwing.RingsOfIron.render.FireArcOverlay fireArcs;
 
     private ShapeRenderer shapes;
     private SpriteBatch batch;
@@ -332,8 +333,8 @@ public class RingsOfIronGame extends ApplicationAdapter {
         gun.setTarget(game.firstTarget());
         hud.setTargeting(new CombatTargetingProvider(gun));
         docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, this::show);
-        navOverlay = new com.hawkwing.RingsOfIron.game.NavOverlay(world.context, world.docking, world.nav, docking);
-        fireArcs = new com.hawkwing.RingsOfIron.game.FireArcOverlay(world.context, world.bridge, world.docking, world.sensors, world.weaponControl);
+        navOverlay = new com.hawkwing.RingsOfIron.render.NavOverlay(world.context, world.docking, world.nav, docking);
+        fireArcs = new com.hawkwing.RingsOfIron.render.FireArcOverlay(world.context, world.bridge, world.docking, world.sensors, world.weaponControl);
         world.nav.keyNames = this::key;
         // A click on the traffic map makes that station or ship the navigation target
         // Off-screen marker names by the right edge keep clear of the status column, which is drawn
@@ -988,7 +989,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         String uuid = world.universe.uuidOf(picked);
         String nav = uuid == null ? null : world.nav.target.select(uuid);
         HudMarkerComponent marker = MARKERS.get(picked);
-        String name = marker != null && marker.label != null && !marker.label.isEmpty() ? marker.label : PlayerDocking.name(picked);
+        String name = marker != null && marker.label != null && !marker.label.isEmpty() ? marker.label : ShipNames.name(picked);
         if (lock) world.notices.replace("Target locked", "Target locked: " + name);
         else if (nav != null) world.notices.replace("Navigation target", nav);
     }
@@ -1739,7 +1740,7 @@ public class RingsOfIronGame extends ApplicationAdapter {
         for (String line : world.nav.readout()) below = statusLine(line, left, below);
         // The contracts held: what, how long left and how far
         font.setColor(Color.GOLD);
-        for (com.hawkwing.RingsOfIron.game.Contract c : world.contracts.active()) below = statusLine(world.contracts.describe(c), left, below);
+        for (com.ringsofiron.career.Contract c : world.contracts.active()) below = statusLine(world.contracts.describe(c), left, below);
         // The objective stays up under the notices, once its own notice has gone from above them
         if (firstPlay != null) {
             String objective = firstPlay.objective(this::key);

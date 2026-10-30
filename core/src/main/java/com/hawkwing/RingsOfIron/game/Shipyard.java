@@ -1,5 +1,8 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.shipops.Boarding;
+import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.shipops.StationYard;
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
@@ -7,7 +10,9 @@ import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.signals.Signal;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Array;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.RankLadder;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -15,6 +20,7 @@ import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -30,9 +36,16 @@ import com.ringsofiron.moddingdata.defs.ShipSaleDef;
 import com.ringsofiron.moddingdata.defs.ShipyardDef;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.AbandonShip;
+import com.ringsofiron.shipops.SalvagedComponent;
+import com.ringsofiron.shipops.ShipCargo;
+import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.shipops.ShipNames;
+import com.ringsofiron.shipops.YardOrdersComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
+import com.ringsofiron.uihud.HintRegistry;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
 import java.util.ArrayList;
@@ -332,7 +345,7 @@ public class Shipyard extends EntitySystem {
         String deal = cost >= 0 ? String.format(Locale.ROOT, "paid %,.0f cr", cost)
                 : String.format(Locale.ROOT, "%,.0f cr to you", -cost);
         String message = String.format(Locale.ROOT, "Bought the %s at %s: %s, with %,.0f cr for the %s", listing.name,
-                PlayerDocking.name(station), deal, tradeIn, oldName);
+                ShipNames.name(station), deal, tradeIn, oldName);
         ctx.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.BOUGHT, old, ship, station, cost, 0f));
         return message;
@@ -426,7 +439,7 @@ public class Shipyard extends EntitySystem {
     /** Everyone who calls {@code from} home, and everyone aboard it, goes aboard {@code to} and calls it home. */
     void moveCrew(Entity from, Entity to) {
         Array<Entity> crew = crewOf(from);
-        List<int[]> floor = GameScenario.floorTiles(to.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(to.getComponent(ShipGridComponent.class));
         CrewFactory.ensureBoard(to);
         this.crew.clearPathfinders();
         sendStaffHome(from);
@@ -458,7 +471,7 @@ public class Shipyard extends EntitySystem {
             GridPositionComponent p = crew.position(e);
             if (c == null || p == null || p.ship != ship || c.home == null || c.home == ship
                     || c.home.getComponent(StationComponent.class) == null) continue;
-            List<int[]> floor = GameScenario.floorTiles(c.home.getComponent(ShipGridComponent.class));
+            List<int[]> floor = FloorTiles.of(c.home.getComponent(ShipGridComponent.class));
             if (floor.isEmpty()) continue;
             crew.releaseTask(e);
             p.stop();
@@ -593,7 +606,7 @@ public class Shipyard extends EntitySystem {
         TraderComponent trader = ctx.player().getComponent(TraderComponent.class);
         if (trader != null) trader.credits += paid;
         int held = handOver(prize);
-        String message = String.format(Locale.ROOT, "%s's tugs took the %s in: +%,.0f cr%s", PlayerDocking.name(station), name,
+        String message = String.format(Locale.ROOT, "%s's tugs took the %s in: +%,.0f cr%s", ShipNames.name(station), name,
                 paid, held > 0 ? ", " + held + " prisoners handed over" : "");
         ctx.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.PRIZE_SOLD, prize, null, station, paid, 0f));
@@ -613,7 +626,7 @@ public class Shipyard extends EntitySystem {
         int held = handOver(prize);
         this.standing.reward(this.standing.sponsor(), standing, "turned in a prize");
         String message = String.format(Locale.ROOT, "Turned the %s in at %s: standing %+.0f with the %s%s", name,
-                PlayerDocking.name(station), standing, this.standing.factions().name(this.standing.sponsor()),
+                ShipNames.name(station), standing, this.standing.factions().name(this.standing.sponsor()),
                 held > 0 ? ", " + held + " prisoners handed over"
                         + (forPrisoners > 0 ? String.format(Locale.ROOT, " (+%,.0f cr)", forPrisoners) : "") : "");
         ctx.notices.post(message, NoticeLog.Kind.IMPORTANT);

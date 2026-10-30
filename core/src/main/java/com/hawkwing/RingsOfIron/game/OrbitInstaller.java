@@ -1,5 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.shipsystems.BubbleBurnSystem;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.orbital.events.OrbitalEventQueue;
 import com.ringsofiron.orbital.events.OrbitalEventSystem;

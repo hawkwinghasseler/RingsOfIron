@@ -14,10 +14,17 @@ import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.shipops.Boarding;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.Salvage;
+import com.ringsofiron.shipops.SalvageOrdersComponent;
+import com.ringsofiron.shipops.SalvagedComponent;
+import com.ringsofiron.shipops.ShipDisablement;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -56,7 +63,7 @@ class BoardingSaveTest {
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
         raiderId = game.raider.getComponent(UuidComponent.class).id;
         CrewFactory.ensureBoard(game.raider).faction = RAIDERS;
-        List<int[]> floor = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(game.raider.getComponent(ShipGridComponent.class));
         for (int i = 0; i < 2; i++) {
             int[] t = floor.get(floor.size() - 1 - i);
             raiderCrew.add(CrewFactory.spawn(world.crew, game.raider, "Raider " + i, CrewRole.CREWMAN, RAIDERS, t[0], t[1]));

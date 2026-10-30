@@ -17,4 +17,10 @@ public class WeaponsComponent implements Component {
     public WeaponMountComponent selectedMount() {
         return mounts.size == 0 ? null : mounts.get(Math.min(selected, mounts.size - 1));
     }
+
+    /** The main guns wait for the player; point defense is weapons free. */
+    public static void holdMainGuns(WeaponsComponent weapons) {
+        if (weapons == null) return;
+        for (WeaponMountComponent m : weapons.mounts) m.weaponsFree = m.def != null && m.def.pointDefense;
+    }
 }

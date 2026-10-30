@@ -1,13 +1,18 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.shipops.StationYard;
+import com.ringsofiron.coreengine.input.Action;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.interiorgrid.AirflowEdge;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.StationComponent;
+import com.ringsofiron.uihud.HintRegistry;
 import java.util.ArrayList;
 import java.util.List;
 import com.ringsofiron.aicrew.CrewService;
@@ -45,7 +50,7 @@ public final class BerthVenting {
         this.yard = yard;
         ctx.engine.addRailsWarpGuard(this::railsWarpBlockedReason);
         ctx.hints.register(HintRegistry.Context.DOCKED, "station yard (venting at the berth)", 4,
-                com.hawkwing.RingsOfIron.shell.KeyBindings.Action.YARD).onlyWhen(() -> station() != null);
+                com.ringsofiron.coreengine.input.Action.YARD).onlyWhen(() -> station() != null);
     }
 
     /** The station the player's ship is docked at while something aboard is open to space, or null. */
@@ -64,7 +69,7 @@ public final class BerthVenting {
         ShipGridComponent grid = player.getComponent(ShipGridComponent.class);
         if (yard.repairing(player)) return REFUSAL + ": the yard is repairing it";
         if (LeakPatches.leaks(grid).size > 0 && grid.patchKits > 0) return REFUSAL + ": the crew are patching it";
-        return REFUSAL + ": order repairs at " + PlayerDocking.name(station) + "'s yard";
+        return REFUSAL + ": order repairs at " + ShipNames.name(station) + "'s yard";
     }
 
     /** Once a sim tick: the station's warning, once each time the ship starts venting at a berth. */
@@ -78,7 +83,7 @@ public final class BerthVenting {
         }
         if (warned || ++ventingTicks < WARN_AFTER_TICKS) return;
         warned = true;
-        ctx.notices.post(PlayerDocking.name(station) + ": your ship is venting at the berth. "
+        ctx.notices.post(ShipNames.name(station) + ": your ship is venting at the berth. "
                 + "Time warp waits until it is patched or repaired", NoticeLog.Kind.WARNING);
     }
 
@@ -100,7 +105,7 @@ public final class BerthVenting {
         if (ashore.isEmpty()) return;
         ShipGridComponent grid = player.getComponent(ShipGridComponent.class);
         List<int[]> safe = new ArrayList<>();
-        for (int[] t : GameScenario.floorTiles(grid)) if (TaskRules.isSafe(grid, t[0], t[1])) safe.add(t);
+        for (int[] t : FloorTiles.of(grid)) if (TaskRules.isSafe(grid, t[0], t[1])) safe.add(t);
         if (safe.isEmpty()) return;
         int n = 0;
         for (Entity e : ashore) {

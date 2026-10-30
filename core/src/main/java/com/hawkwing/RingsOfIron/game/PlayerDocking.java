@@ -1,15 +1,16 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.hawkwing.RingsOfIron.wiring.AvatarInteractor;
+import com.ringsofiron.shipops.CargoLoading;
+import com.ringsofiron.shipops.StationYard;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.signals.Listener;
 import com.badlogic.gdx.math.MathUtils;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.DockingEvent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.DockingSystem;
-import com.ringsofiron.stationsdocking.StationComponent;
-import com.ringsofiron.uihud.components.HudMarkerComponent;
-import com.ringsofiron.macrosim.fleet.FreighterComponent;
 
 import java.util.Locale;
 import java.util.function.Consumer;
@@ -73,10 +74,10 @@ public class PlayerDocking {
         // The nearest port is a struck ship's: it does not refuse, so no station is asked
         Entity near = docking.approach(player, ports.selected, READOUT_RANGE, approach).target;
         if (near != null && docking.yields.test(near)) {
-            return name(near) + " opens its port to you; port armed";
+            return ShipNames.name(near) + " opens its port to you; port armed";
         }
         DockingSystem.Clearance c = docking.requestClearance(player, ports.selected);
-        String station = c.station == null ? null : name(c.station);
+        String station = c.station == null ? null : ShipNames.name(c.station);
         switch (c.outcome) {
             case GRANTED:
                 return station + " gives clearance: port " + (c.port + 1) + " is armed for you";
@@ -102,20 +103,20 @@ public class PlayerDocking {
         Entity from = player == null ? null : docking.dockedTo(player);
         if (from == null) return "Not docked";
         Entity aboard = avatar.getAvatarShip();
-        if (aboard != null && aboard != player) return "You're aboard " + name(aboard) + ": walk back to your ship first";
+        if (aboard != null && aboard != player) return "You're aboard " + ShipNames.name(aboard) + ": walk back to your ship first";
         if (cargo.visitorsAboard(player) > 0) {
             // Not flying off with them: the loading stops and they head home
             cargo.callOff(player);
-            return name(from) + "'s dock hands are still aboard: the loading is called off, undock once they're off";
+            return ShipNames.name(from) + "'s dock hands are still aboard: the loading is called off, undock once they're off";
         }
         if (cargo.crewAway(player) > 0) {
             // Nor leaving our own behind
             cargo.callOff(player);
-            return "Your crew are still aboard " + name(from) + ": the loading is called off, undock once they're back";
+            return "Your crew are still aboard " + ShipNames.name(from) + ": the loading is called off, undock once they're back";
         }
         if (!docking.undock(player)) return "Not docked";
         yard.undocked(player);
-        return "Undocked from " + name(from);
+        return "Undocked from " + ShipNames.name(from);
     }
 
     /** Lines for the screen: the port, what it is doing, and how it lines up or how hard the latch strains. */
@@ -129,7 +130,7 @@ public class PlayerDocking {
         if (port.state == DockingPort.State.DOCKED) {
             Entity other = docking.dockedTo(player);
             return new String[]{first, String.format(Locale.ROOT, "Docked at %s%s   strain %.0f%%",
-                    other == null ? "?" : name(other), docking.isRigid(player) ? "" : " (settling)",
+                    other == null ? "?" : ShipNames.name(other), docking.isRigid(player) ? "" : " (settling)",
                     100f * docking.strain(player))};
         }
         if (port.state == DockingPort.State.CAPTURED) return new String[]{first, "Collar has hold: drawing in"};
@@ -139,7 +140,7 @@ public class PlayerDocking {
         float safe = safeSpeed(approach.distance);
         return new String[]{first, String.format(Locale.ROOT,
                 "To %s #%d: %,.1f m  off %.1f m  turn %+.0f deg  in %.2f m/s",
-                name(approach.target), approach.port + 1, approach.distance, approach.lateral,
+                ShipNames.name(approach.target), approach.port + 1, approach.distance, approach.lateral,
                 approach.angle * MathUtils.radiansToDegrees, Math.round(approach.closing * 100f) / 100f + 0f),
                 String.format(Locale.ROOT, "Safe closing speed here: up to %.1f m/s%s", safe,
                         approach.closing > safe ? "   SLOW DOWN" : "")};
@@ -171,14 +172,14 @@ public class PlayerDocking {
         switch (e.kind) {
             case CAPTURED:
                 // Whose collar it is: the one that caught the other
-                notices.accept(e.vessel == player ? "Your collar has hold of " + name(other) + "; drawing in"
-                        : name(other) + "'s collar has you; drawing in");
+                notices.accept(e.vessel == player ? "Your collar has hold of " + ShipNames.name(other) + "; drawing in"
+                        : ShipNames.name(other) + "'s collar has you; drawing in");
                 break;
             case DOCKED:
-                notices.accept("Docked at " + name(other) + (e.permitted ? "" : " (without clearance)"));
+                notices.accept("Docked at " + ShipNames.name(other) + (e.permitted ? "" : " (without clearance)"));
                 break;
             case TORN:
-                notices.accept("Torn loose from " + name(other) + ": the collar is gone and the hull damaged");
+                notices.accept("Torn loose from " + ShipNames.name(other) + ": the collar is gone and the hull damaged");
                 break;
             default:
                 break;
@@ -195,13 +196,4 @@ public class PlayerDocking {
         return p.size + (p.active ? " active" : " passive") + ", " + (!p.intact() ? "collar torn off" : p.jammed ? "collar jammed" : state);
     }
 
-    /** What the player calls a station or ship. */
-    public static String name(Entity e) {
-        StationComponent s = e.getComponent(StationComponent.class);
-        if (s != null && s.name != null) return s.name;
-        FreighterComponent f = e.getComponent(FreighterComponent.class);
-        if (f != null && f.displayName != null) return f.displayName;
-        HudMarkerComponent m = e.getComponent(HudMarkerComponent.class);
-        return m != null && m.label != null && !m.label.isEmpty() ? m.label : "the other ship";
-    }
 }

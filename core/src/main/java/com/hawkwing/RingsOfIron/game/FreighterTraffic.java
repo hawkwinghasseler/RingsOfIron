@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.shipops.CargoLoading;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
@@ -10,6 +11,7 @@ import com.ringsofiron.macrosim.bubble.BubbleTransitionListener;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.fleet.FreighterController;
 import com.ringsofiron.macrosim.rails.RailsModel;
+import com.ringsofiron.shipops.CargoOrdersComponent;
 import com.ringsofiron.stationsdocking.BerthingComponent;
 import com.ringsofiron.stationsdocking.BerthingSystem;
 import com.ringsofiron.stationsdocking.StationComponent;

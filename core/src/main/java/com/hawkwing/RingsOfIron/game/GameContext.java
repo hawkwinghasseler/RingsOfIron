@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.uihud.HintRegistry;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.moddingdata.ModContext;

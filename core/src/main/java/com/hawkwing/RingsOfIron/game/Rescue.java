@@ -17,6 +17,7 @@ import com.ringsofiron.coreengine.EntityRemovalListener;
 import com.ringsofiron.coreengine.SimClock;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -29,6 +30,9 @@ import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.orbital.warp.BubbleHandoff;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.AbandonShip;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.ShipCargo;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
@@ -204,7 +208,7 @@ public class Rescue {
         if (oldShip.getComponent(HudMarkerComponent.class) == null) {
             if (oldShip.getComponent(TransformComponent.class) == null) oldShip.add(new TransformComponent());
             HudMarkerComponent m = new HudMarkerComponent("Your old ship (abandoned)", HudMarkerComponent.Kind.NEUTRAL).radius(10f);
-            m.color.set(ShipDisablement.DISABLED_COLOR);
+            m.color.set(HudMarkerComponent.DISABLED_COLOR);
             oldShip.add(m);
         }
         int lost = crewAboard(oldShip);
@@ -305,7 +309,7 @@ public class Rescue {
         // waking where they fell, in a vented room, they'd go down again at once
         boolean safeWhereTheyLie = p.ship == ship && TaskRules.isSafe(grid, p.tileX(), p.tileY());
         if (!safeWhereTheyLie) {
-            List<int[]> floor = GameScenario.floorTiles(grid);
+            List<int[]> floor = FloorTiles.of(grid);
             int[] to = null;
             for (int[] t : floor) {
                 if (TaskRules.isSafe(grid, t[0], t[1])) {
@@ -364,7 +368,7 @@ public class Rescue {
     private int[] safeTile(Entity craft) {
         ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
         if (grid == null) return null;
-        for (int[] t : GameScenario.floorTiles(grid)) {
+        for (int[] t : FloorTiles.of(grid)) {
             boolean port = false;
             for (com.ringsofiron.interiorgrid.GridLink l : grid.links) port |= l.x == t[0] && l.y == t[1];
             if (!port && TaskRules.isSafe(grid, t[0], t[1])) return t;
@@ -375,7 +379,7 @@ public class Rescue {
     /** Puts the avatar and the survivors aboard {@code ship}, on its open deck tiles. */
     private void crewShip(Entity ship, Entity avatar, List<AbandonShip.Survivor> survivors) {
         CrewService crew = world.crew;
-        List<int[]> floor = GameScenario.floorTiles(ship.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(ship.getComponent(ShipGridComponent.class));
         CrewFactory.ensureBoard(ship);
         if (avatar != null && !floor.isEmpty()) {
             GridPositionComponent p = avatar.getComponent(GridPositionComponent.class);

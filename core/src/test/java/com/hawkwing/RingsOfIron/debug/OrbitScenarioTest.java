@@ -5,7 +5,7 @@ import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
 import com.hawkwing.RingsOfIron.game.NoticeLog;
 import com.hawkwing.RingsOfIron.game.PlayerOrbitPath;
-import com.hawkwing.RingsOfIron.game.PropellantFeed;
+import com.ringsofiron.shipsystems.PropellantFeed;
 import com.hawkwing.RingsOfIron.game.WarpNotices;
 import com.ringsofiron.orbital.components.OrbitComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;

@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.nio.file.Path;

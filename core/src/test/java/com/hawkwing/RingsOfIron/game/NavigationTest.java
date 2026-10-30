@@ -12,6 +12,7 @@ import com.ringsofiron.combatsys.events.ShotFiredEvent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
+import com.ringsofiron.orbital.math.ClosestApproach;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;

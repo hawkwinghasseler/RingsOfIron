@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -74,7 +75,7 @@ class HostileLabelTest {
             HudMarkerComponent marker = ship(name).getComponent(HudMarkerComponent.class);
             assertTrue(marker.label.endsWith(SilencedMarkers.SUFFIX), marker.label);
             assertFalse(marker.label.endsWith(SilencedMarkers.SUFFIX + SilencedMarkers.SUFFIX), marker.label);
-            assertEquals(ShipDisablement.DISABLED_COLOR, marker.color);
+            assertEquals(HudMarkerComponent.DISABLED_COLOR, marker.color);
         }
         world.pirateBase.rise();
         markers.update();

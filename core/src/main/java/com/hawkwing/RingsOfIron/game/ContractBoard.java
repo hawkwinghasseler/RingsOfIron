@@ -7,7 +7,12 @@ import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.Wound;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.career.NewGame;
+import com.ringsofiron.career.RankLadder;
 import com.ringsofiron.coreengine.EntityRemovalListener;
+import com.ringsofiron.coreengine.Resettable;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
@@ -22,6 +27,7 @@ import com.ringsofiron.moddingdata.defs.RankDef;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
@@ -506,7 +512,7 @@ public class ContractBoard extends EntitySystem implements SaveParticipant, Rese
         if (docking.dockedWithClearance(player) && macroSim.station(universe.uuidOf(docking.dockedTo(player))) != null) {
             int n = landSurvivors(player, -1);
             if (n > 0) notices.add(n + (n == 1 ? " survivor goes" : " survivors go") + " ashore at "
-                    + PlayerDocking.name(docking.dockedTo(player)));
+                    + ShipNames.name(docking.dockedTo(player)));
         }
         updateMarkers();
     }

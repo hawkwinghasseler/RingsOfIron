@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.macrosim.MacroSimulation;
 import com.ringsofiron.physicsexterior.PhysicsSaveParticipant;

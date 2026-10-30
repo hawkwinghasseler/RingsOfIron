@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.hawkwing.RingsOfIron.wiring.AvatarInteractor;
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.Vector2;
@@ -17,6 +18,7 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.stationsdocking.DockingSystem;
 import java.util.function.Supplier;

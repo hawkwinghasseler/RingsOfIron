@@ -11,8 +11,10 @@ import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.Wound;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.providers.CrewProvider;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -202,7 +204,7 @@ class CrewMedicalTest {
         Entity cole = crewNamed(world, game.player, "Cole");
         world.crew.applyDamage(cole, 100f, DamageCause.PENETRATOR);
         world.crew.crew(cole).stabilised = true;
-        int[] t = GameScenario.floorTiles(game.player.getComponent(ShipGridComponent.class)).get(0);
+        int[] t = FloorTiles.of(game.player.getComponent(ShipGridComponent.class)).get(0);
         Entity prisoner = CrewFactory.spawn(world.crew, game.player, "Held", CrewRole.CREWMAN,
                 world.standing.factions().index(GameScenario.PIRATES), t[0], t[1]);
         world.crew.crew(prisoner).held = true;

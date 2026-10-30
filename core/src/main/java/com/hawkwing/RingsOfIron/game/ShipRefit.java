@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.shipops.StationYard;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
@@ -10,6 +11,7 @@ import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.modding.ShipWeaponsAssembler;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.Furnishings;
@@ -24,6 +26,8 @@ import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.moddingdata.defs.ShipComponentDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.ShipCargo;
+import com.ringsofiron.shipops.YardOrdersComponent;
 import com.ringsofiron.stationsdocking.DockingData;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
@@ -179,7 +183,7 @@ public final class ShipRefit {
         }
         refurnish(world, ship, oldGrid, grid);
         world.crew.clearPathfinders();
-        List<int[]> floor = GameScenario.floorTiles(grid);
+        List<int[]> floor = FloorTiles.of(grid);
         for (Entity e : crew) {
             GridPositionComponent pos = world.crew.position(e);
             int[] at = nearest(floor, pos.tileX(), pos.tileY());

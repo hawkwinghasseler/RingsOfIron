@@ -1,5 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.macrosim.bubble.GameBubbleGateway;
+import com.hawkwing.RingsOfIron.wiring.NpcBubblePilots;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.macrosim.MacroSaveParticipant;
 import com.ringsofiron.macrosim.MacroSimSystem;

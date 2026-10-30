@@ -10,6 +10,7 @@ import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
+import com.ringsofiron.shipops.ShipDisablement;
 import java.util.Map;
 import com.ringsofiron.coreengine.GameEngine;
 

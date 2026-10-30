@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;

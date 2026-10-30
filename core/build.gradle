@@ -13,6 +13,9 @@ dependencies {
   api project(':audio-spatial')
   api project(':modding-data')
   api project(':stations-docking')
+  api project(':ship-ops')
+  api project(':career')
+  api project(':ship-systems')
 
   api "com.badlogicgames.gdx-controllers:gdx-controllers-core:$gdxControllersVersion"
   api "com.badlogicgames.gdx:gdx-ai:$aiVersion"

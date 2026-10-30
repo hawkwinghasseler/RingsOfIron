@@ -12,6 +12,7 @@ import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.EngineExhaust;
 import com.ringsofiron.aicrew.EvaComponent;
 import com.ringsofiron.aicrew.EvaSystem;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.interiorgrid.Airlock;
 import com.ringsofiron.interiorgrid.DockingPortLayout;

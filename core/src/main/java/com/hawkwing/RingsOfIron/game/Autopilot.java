@@ -1,12 +1,15 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.orbital.events.OrbitalEvent;
+import com.ringsofiron.orbital.math.ClosestApproach;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.orbital.warp.DropOutSource;
 import com.ringsofiron.orbital.warp.TimeWarpController;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 
 import java.util.Locale;
@@ -254,7 +257,7 @@ public class Autopilot implements DropOutSource {
                 break;
             case ENCOUNTER:
                 if (change.encounter != null && change.encounter != ctx.engine.getEntity(a.targetUuid)) {
-                    hold(a, PlayerDocking.name(change.encounter) + " is coming close");
+                    hold(a, ShipNames.name(change.encounter) + " is coming close");
                 }
                 break;
             case EXTERNAL:

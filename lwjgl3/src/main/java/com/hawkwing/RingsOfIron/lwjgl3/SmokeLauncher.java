@@ -122,7 +122,7 @@ public class SmokeLauncher {
             switch (frame++) {
                 case 10: shell.openNewGame(); break;
                 // A seeded career in the Combine's service, starting above the Moon
-                case 20: shell.newGame(com.hawkwing.RingsOfIron.game.NewGame.seeded(7, "selene")); break;
+                case 20: shell.newGame(com.ringsofiron.career.NewGame.seeded(7, "selene")); break;
                 case 100: check(shell.isPlaying(), "new game started"); shell.openPauseMenu(); break;
                 case 110: {
                     String failed = shell.saveGame("Smoke slot");

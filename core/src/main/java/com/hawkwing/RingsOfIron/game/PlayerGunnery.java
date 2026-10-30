@@ -59,14 +59,9 @@ public class PlayerGunnery {
         this.weaponControl = weaponControl;
         this.missiles = missiles;
         this.ship = ship;
-        holdMainGuns(weapons());
+        WeaponsComponent.holdMainGuns(weapons());
     }
 
-    /** The main guns wait for the player; point defense is weapons free. */
-    static void holdMainGuns(WeaponsComponent weapons) {
-        if (weapons == null) return;
-        for (WeaponMountComponent m : weapons.mounts) m.weaponsFree = m.def != null && m.def.pointDefense;
-    }
 
     public Entity ship() {
         return ship;

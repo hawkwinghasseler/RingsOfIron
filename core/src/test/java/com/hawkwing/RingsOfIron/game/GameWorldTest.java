@@ -2,6 +2,8 @@ package com.hawkwing.RingsOfIron.game;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.hawkwing.RingsOfIron.wiring.CrewDamageAdapter;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;

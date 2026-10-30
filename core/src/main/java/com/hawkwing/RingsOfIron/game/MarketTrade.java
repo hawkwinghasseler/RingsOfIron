@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.shipops.Salvage;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.coreengine.EntityRef;
 import com.ringsofiron.coreengine.components.UuidComponent;
@@ -7,6 +8,9 @@ import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.economy.MarketQuote;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.shipops.CargoLoading;
+import com.ringsofiron.shipops.CargoOrdersComponent;
+import com.ringsofiron.shipops.SalvageSettlement;
 import com.ringsofiron.uihud.providers.TradeProvider;
 import com.ringsofiron.stationsdocking.DockingSystem;
 import com.ringsofiron.macrosim.MacroSimulation;
