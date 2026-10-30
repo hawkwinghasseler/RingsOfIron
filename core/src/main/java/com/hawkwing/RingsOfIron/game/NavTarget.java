@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
+import com.ringsofiron.career.Contract;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
@@ -9,6 +10,7 @@ import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
@@ -123,7 +125,7 @@ public class NavTarget {
         HostileComponent h = world.macroSim.hostiles().get(uuid);
         if (h != null && h.displayName != null) return h.displayName;
         Entity e = world.engine.getEntity(uuid);
-        return e == null ? "?" : PlayerDocking.name(e);
+        return e == null ? "?" : ShipNames.name(e);
     }
 
     /** True while the target is on the rails rather than flying in the bubble. */

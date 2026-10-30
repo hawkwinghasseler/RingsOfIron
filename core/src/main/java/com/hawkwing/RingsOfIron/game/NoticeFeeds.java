@@ -1,5 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.shipops.ShipNames;
 import java.util.List;
 import java.util.Locale;
 
@@ -22,7 +24,7 @@ public final class NoticeFeeds {
         for (FactionStanding.Act act : world.standing.acts) {
             boolean refused = act.standing < FactionStanding.REFUSE_BELOW;
             log.post(String.format(Locale.ROOT, "%s takes that as a hostile act: standing %+.0f%s",
-                    PlayerDocking.name(act.victim), act.standing,
+                    ShipNames.name(act.victim), act.standing,
                     refused ? "; its stations will refuse you clearance" : ""),
                     refused ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
         }

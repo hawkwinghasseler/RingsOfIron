@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.shell;
 
+import com.ringsofiron.coreengine.input.Action;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.files.FileHandle;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,7 @@ class GameSettingsTest {
         s.windowHeight = 1080;
         s.gamepad = false;
         KeyBindings keys = new KeyBindings();
-        keys.bind(KeyBindings.Action.FIRE, Input.Keys.J);
+        keys.bind(Action.FIRE, Input.Keys.J);
         s.setBindings(keys);
         s.save(file);
 
@@ -37,7 +38,7 @@ class GameSettingsTest {
         assertEquals(1920, read.windowWidth);
         assertEquals(1080, read.windowHeight);
         assertFalse(read.gamepad);
-        assertEquals(Input.Keys.J, read.bindings().keyOf(KeyBindings.Action.FIRE));
+        assertEquals(Input.Keys.J, read.bindings().keyOf(Action.FIRE));
     }
 
     @Test

@@ -39,25 +39,7 @@ class ArchitectureTest {
             "\\bcom\\.hawkwing\\.RingsOfIron\\.(shell|render|debug)\\b|\\bcom\\.badlogic\\.gdx\\.graphics\\b");
 
     /** Game classes that use a forbidden package today, and which; Phase 2 empties this. */
-    static final Map<String, Set<String>> GAME_ALLOWED = Map.ofEntries(
-            Map.entry("Autopilot", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("BerthVenting", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("CaptainSafety", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("CrewMedical", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("DamageControl", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("DeckView", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("FireArcOverlay", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("FirstPlay", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("GameWorld", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("HelmOrders", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("HintRegistry", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("NavOverlay", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("Navigation", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("OpeningGuide", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("PlayerOrbitPath", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("PlayerTransfer", Set.of("com.hawkwing.RingsOfIron.shell")),
-            Map.entry("ShipDisablement", Set.of("com.badlogic.gdx.graphics")),
-            Map.entry("Shipyard", Set.of("com.hawkwing.RingsOfIron.shell")));
+    static final Map<String, Set<String>> GAME_ALLOWED = Map.of();
 
     /** Each module's source package under com.ringsofiron, and its folder. */
     static final Map<String, String> MODULE_PACKAGES = Map.ofEntries(
@@ -72,7 +54,8 @@ class ArchitectureTest {
             Map.entry("audiospatial", "audio-spatial"),
             Map.entry("moddingdata", "modding-data"),
             Map.entry("stationsdocking", "stations-docking"),
-            Map.entry("artpipeline", "art-pipeline"));
+            Map.entry("artpipeline", "art-pipeline"),
+            Map.entry("shipsystems", "ship-systems"));
 
     /**
      * Which modules each module's main code may use. The layering as it stands: each module uses
@@ -92,7 +75,9 @@ class ArchitectureTest {
             Map.entry("modding-data", Set.of("core-engine")),
             Map.entry("stations-docking",
                     Set.of("core-engine", "interior-grid", "modding-data", "orbital-mechanics", "physics-exterior")),
-            Map.entry("art-pipeline", Set.of()));
+            Map.entry("art-pipeline", Set.of()),
+            Map.entry("ship-systems",
+                    Set.of("ai-crew", "combat-sys", "core-engine", "interior-grid", "modding-data", "orbital-mechanics", "physics-exterior", "stations-docking")));
 
     /**
      * Classes whose constructor takes the whole GameWorld today. Phase 1 narrows them to the
@@ -100,14 +85,15 @@ class ArchitectureTest {
      */
     static final Set<String> TAKES_GAME_WORLD = Set.of(
             "debug.DebugActions", "debug.DebugPicker", "debug.DevConsole", "debug.ScenarioSetup",
+            "render.FireArcOverlay", "render.NavOverlay",
             "game.AirWatch", "game.AudioLab", "game.Autopilot", "game.BerthVenting", "game.BoardingWork",
             "game.Bridge", "game.BurnPlanner", "game.CaptainSafety", "game.CombatThreats", "game.ContractBoard",
             "game.ContractMissions", "game.CrewCareer", "game.CrewHiring", "game.CrewMedical", "game.CrewRoster",
             "game.DamageControl", "game.DeckTools", "game.Derelicts", "game.DistressBeacon", "game.ExteriorPick",
-            "game.FactionTension", "game.FieldRefits", "game.FireArcOverlay", "game.FirstPlay", "game.FlightField",
+            "game.FactionTension", "game.FieldRefits", "game.FirstPlay", "game.FlightField",
             "game.FlightWarnings", "game.FreighterTraffic", "game.FurnishingPlacement", "game.FurnishingStore",
             "game.GameHud", "game.GameScenario", "game.GunCrews", "game.HelmOrders", "game.HostileTraffic",
-            "game.JammedCollars", "game.LoopWiring", "game.MapManeuvers", "game.MarketTrade", "game.NavOverlay",
+            "game.JammedCollars", "game.LoopWiring", "game.MapManeuvers", "game.MarketTrade",
             "game.NavTarget", "game.Navigation", "game.OpeningGuide", "game.PirateBase", "game.PirateBoarding",
             "game.PirateSightings", "game.PirateUpkeep", "game.PlayerDocking", "game.PlayerGunnery",
             "game.PlayerOrbitPath", "game.PlayerTransfer", "game.Prisoners", "game.RailsTrafficMap", "game.Rescue",

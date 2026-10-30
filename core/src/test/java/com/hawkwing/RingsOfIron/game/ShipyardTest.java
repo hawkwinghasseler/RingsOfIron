@@ -10,7 +10,9 @@ import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.career.RankLadder;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
@@ -20,6 +22,7 @@ import com.ringsofiron.moddingdata.defs.ShipSaleDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
+import com.ringsofiron.shipops.AbandonShip;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -261,7 +264,7 @@ class ShipyardTest {
         }
         assertNotNull(tech, "Anvil Yards has a technician");
         // Walking back from the yard's work, still aboard when the deal is struck
-        int[] tile = GameScenario.floorTiles(old.getComponent(ShipGridComponent.class)).get(0);
+        int[] tile = FloorTiles.of(old.getComponent(ShipGridComponent.class)).get(0);
         GridPositionComponent pos = tech.getComponent(GridPositionComponent.class);
         pos.setShip(old);
         pos.setTile(tile[0], tile[1]);

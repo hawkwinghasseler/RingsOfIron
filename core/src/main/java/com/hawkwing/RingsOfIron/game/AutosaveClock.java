@@ -1,6 +1,8 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.shipops.AbandonShip;
+import com.ringsofiron.shipops.ShipDisablement;
 
 /**
  * When to autosave: on docking at a station, and every {@link #FLIGHT_INTERVAL} sim seconds of

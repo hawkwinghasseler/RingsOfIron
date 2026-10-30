@@ -13,6 +13,9 @@ import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.shipops.StationCrew;
 import java.util.ArrayList;
 import java.util.List;
 

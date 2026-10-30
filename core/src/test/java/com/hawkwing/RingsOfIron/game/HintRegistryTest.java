@@ -1,9 +1,10 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.gdx.Input;
-import com.hawkwing.RingsOfIron.game.HintRegistry.Context;
+import com.ringsofiron.uihud.HintRegistry.Context;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
+import com.ringsofiron.uihud.HintRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
@@ -19,25 +20,25 @@ class HintRegistryTest {
     void theLineFollowsRebinding() {
         KeyBindings keys = new KeyBindings();
         HintRegistry r = HintRegistry.withDefaults();
-        String before = r.line(EnumSet.of(Context.HELM, Context.ANY), HintRegistry.keyNames(keys));
+        String before = r.line(EnumSet.of(Context.HELM, Context.ANY), keys.keyNames());
         assertTrue(before.startsWith("W/S thrust   A/D turn   Space guns   M map"), before);
         assertTrue(before.endsWith("F1 controls"), before);
         keys.bind(Action.THRUST, Input.Keys.I);
-        String after = r.line(EnumSet.of(Context.HELM, Context.ANY), HintRegistry.keyNames(keys));
+        String after = r.line(EnumSet.of(Context.HELM, Context.ANY), keys.keyNames());
         assertTrue(after.startsWith("I/S thrust"), after);
     }
 
     @Test
     void docked_theStationsKeysComeFirst() {
         HintRegistry r = HintRegistry.withDefaults();
-        String line = r.line(EnumSet.of(Context.HELM, Context.DOCKED, Context.ANY), HintRegistry.keyNames(new KeyBindings()));
+        String line = r.line(EnumSet.of(Context.HELM, Context.DOCKED, Context.ANY), new KeyBindings().keyNames());
         assertTrue(line.startsWith("J mission board   U undock   T market   Y yard"), line);
     }
 
     @Test
     void theLineShowsAFewHintsAndEachActionOnce() {
         HintRegistry r = HintRegistry.withDefaults();
-        String line = r.line(EnumSet.of(Context.DOCKED, Context.LATCHED, Context.ANY), HintRegistry.keyNames(new KeyBindings()));
+        String line = r.line(EnumSet.of(Context.DOCKED, Context.LATCHED, Context.ANY), new KeyBindings().keyNames());
         assertEquals(HintRegistry.LINE_HINTS + 1, line.split(" {3}").length, line);
         assertEquals(line.indexOf("U "), line.lastIndexOf("U "), "undock and cast off are one key: " + line);
     }
@@ -80,7 +81,7 @@ class HintRegistryTest {
 
     private static StringBuilder describe(List<HintRegistry.Hint> hints) {
         StringBuilder sb = new StringBuilder();
-        for (HintRegistry.Hint h : hints) sb.append(h.describe(HintRegistry.keyNames(new KeyBindings()))).append('|');
+        for (HintRegistry.Hint h : hints) sb.append(h.describe(new KeyBindings().keyNames())).append('|');
         return sb;
     }
 }

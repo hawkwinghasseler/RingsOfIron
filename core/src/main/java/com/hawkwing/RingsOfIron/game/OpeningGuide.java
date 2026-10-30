@@ -1,7 +1,8 @@
 package com.hawkwing.RingsOfIron.game;
 
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 
+import com.ringsofiron.uihud.HintRegistry;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 

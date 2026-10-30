@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.hawkwing.RingsOfIron.render.NavOverlay;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import java.nio.file.Path;

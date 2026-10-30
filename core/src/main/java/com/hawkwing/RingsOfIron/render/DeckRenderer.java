@@ -16,7 +16,6 @@ import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.HazardParticles;
 import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
-import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.GameWorld;
 import com.hawkwing.RingsOfIron.lighting.DeckLightRig;
 import com.hawkwing.RingsOfIron.lighting.SceneLighting;

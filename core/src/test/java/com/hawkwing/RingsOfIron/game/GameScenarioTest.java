@@ -1,5 +1,10 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
+import com.ringsofiron.audiospatial.systems.EngineAudio;
+import com.ringsofiron.interiorgrid.FloorTiles;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.ShipDisablement;
 import org.junit.jupiter.api.io.TempDir;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.badlogic.gdx.files.FileHandle;
@@ -156,7 +161,7 @@ class GameScenarioTest {
     @Test
     void theCrewPutOutAFireAboard() {
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
-        List<int[]> floor = GameScenario.floorTiles(grid);
+        List<int[]> floor = FloorTiles.of(grid);
         int[] spot = floor.get(floor.size() / 2);
         Tile tile = grid.getTile(spot[0], spot[1]);
         tile.fuel = 10f;

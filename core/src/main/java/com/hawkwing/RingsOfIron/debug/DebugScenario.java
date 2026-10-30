@@ -1,6 +1,6 @@
 package com.hawkwing.RingsOfIron.debug;
 
-import com.hawkwing.RingsOfIron.game.NewGame;
+import com.ringsofiron.career.NewGame;
 
 /**
  * A test setup the debug menu (F3) loads into the real game: a fresh {@link com.hawkwing.RingsOfIron.game.GameScenario}

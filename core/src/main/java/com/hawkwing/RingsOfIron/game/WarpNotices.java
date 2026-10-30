@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.warp.TimeWarpController;
+import com.ringsofiron.shipops.ShipNames;
 
 /**
  * What time warp tells the player, as notices: a step refused, and why warp dropped out ("Dropped
@@ -45,7 +46,7 @@ public final class WarpNotices {
                 }
                 break;
             case ENCOUNTER:
-                why = (change.encounter == null ? "a craft" : PlayerDocking.name(change.encounter)) + " is coming within 20 km";
+                why = (change.encounter == null ? "a craft" : ShipNames.name(change.encounter)) + " is coming within 20 km";
                 break;
             default:
                 break;

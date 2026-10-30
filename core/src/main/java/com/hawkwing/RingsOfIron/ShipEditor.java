@@ -16,7 +16,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.art.ArtNames;
 import com.hawkwing.RingsOfIron.art.DeckArt;
-import com.hawkwing.RingsOfIron.game.EngineThrust;
+import com.ringsofiron.shipsystems.EngineThrust;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.Fluid;

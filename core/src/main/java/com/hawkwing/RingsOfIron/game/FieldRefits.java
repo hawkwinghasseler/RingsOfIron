@@ -24,6 +24,8 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
 
+import com.ringsofiron.shipops.Salvage;
+import com.ringsofiron.shipops.StationYard;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Locale;

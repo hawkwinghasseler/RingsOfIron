@@ -9,7 +9,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.hawkwing.RingsOfIron.game.GameWorld;
-import com.hawkwing.RingsOfIron.game.PlayerOrbitInfo;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.StateVector;

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.RandomXS128;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.Compartment;

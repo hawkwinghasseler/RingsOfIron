@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.macrosim.bubble.GameBubbleGateway;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.macrosim.rails.Trajectory;
 import com.ringsofiron.physicsexterior.components.BodyShapeComponent;

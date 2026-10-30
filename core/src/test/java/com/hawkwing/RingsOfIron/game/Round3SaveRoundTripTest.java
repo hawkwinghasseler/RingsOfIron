@@ -8,12 +8,16 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.shipops.DisabledComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -104,7 +108,7 @@ class Round3SaveRoundTripTest {
 
         // The scenario's raider surrendered, taken, and latched on: the prize in tow
         int pirates = world.standing.factions().index(GameScenario.PIRATES);
-        List<int[]> floor = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(game.raider.getComponent(ShipGridComponent.class));
         int[] t = floor.get(floor.size() - 1);
         CrewFactory.spawn(world.crew, game.raider, "Pirate", CrewRole.CREWMAN, pirates, t[0], t[1]);
         for (Entity e : game.raider.getComponent(ShipSubsystemRegistryComponent.class).subsystems) {

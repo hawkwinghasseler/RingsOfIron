@@ -17,6 +17,7 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
 /**

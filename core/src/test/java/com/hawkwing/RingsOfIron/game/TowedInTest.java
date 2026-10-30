@@ -6,6 +6,7 @@ import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.DockingEvent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
@@ -51,10 +52,10 @@ class TowedInTest extends CareerScript {
         run(60);
         List<String> hits = new ArrayList<>(), torn = new ArrayList<>();
         world.combatEvents.impacts.add((sig, e) -> {
-            if (e.target == game.player) hits.add(String.format("%s%s, mass %.0f", PlayerDocking.name(e.owner), e.ram ? " (ram)" : "", e.mass));
+            if (e.target == game.player) hits.add(String.format("%s%s, mass %.0f", ShipNames.name(e.owner), e.ram ? " (ram)" : "", e.mass));
         });
         world.docking.events.add((sig, e) -> {
-            if (e.kind == DockingEvent.Kind.TORN) torn.add(PlayerDocking.name(e.vessel) + " from " + PlayerDocking.name(e.other));
+            if (e.kind == DockingEvent.Kind.TORN) torn.add(ShipNames.name(e.vessel) + " from " + ShipNames.name(e.other));
         });
         String said = world.beacon.call();
         log("%s", said);
@@ -67,9 +68,9 @@ class TowedInTest extends CareerScript {
         List<String> berthed = new ArrayList<>();
         for (DockingPort p : station.getComponent(DockingPortsComponent.class).ports) {
             Entity other = p.partnerUuid == null ? null : world.engine.getEntity(p.partnerUuid);
-            if (other != null && other != game.player) berthed.add(PlayerDocking.name(other));
+            if (other != null && other != game.player) berthed.add(ShipNames.name(other));
         }
-        log("Towed in to %s; 30 s later docked beside %s. Hits: %s. Torn: %s.", PlayerDocking.name(station), berthed, hits, torn);
+        log("Towed in to %s; 30 s later docked beside %s. Hits: %s. Torn: %s.", ShipNames.name(station), berthed, hits, torn);
         assertEquals(List.of(), hits, "nothing hit the ship at the station");
         assertEquals(List.of(), torn, "nobody was torn off it (Free Trader Mira was, from the other port)");
         assertEquals(hull, hull(game.player), 1e-6f, "no hull lost");

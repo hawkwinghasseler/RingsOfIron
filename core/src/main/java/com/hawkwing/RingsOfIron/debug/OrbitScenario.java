@@ -15,8 +15,9 @@ import com.hawkwing.RingsOfIron.game.GameWorld;
 import com.hawkwing.RingsOfIron.game.Navigation;
 import com.hawkwing.RingsOfIron.game.NoticeLog;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
-import com.hawkwing.RingsOfIron.game.PlayerOrbitInfo;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
 import com.hawkwing.RingsOfIron.game.PlayerOrbitPath;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
@@ -210,7 +211,7 @@ public final class OrbitScenario implements DebugScenario {
         if (e == null) return "?";
         if (e == world.getPlayer()) return "You";
         CelestialBodyComponent c = e.getComponent(CelestialBodyComponent.class);
-        return c != null ? c.name : PlayerDocking.name(e);
+        return c != null ? c.name : ShipNames.name(e);
     }
 
     private boolean watched(OrbitalEvent event) {

@@ -8,6 +8,7 @@ import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.Fluid;
 import com.ringsofiron.interiorgrid.PipeNetwork;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -122,7 +123,7 @@ class ShipRosterTest {
         assertTrue(ship.getComponent(CargoHoldComponent.class) != null
                 && ship.getComponent(CargoHoldComponent.class).bayTileCount() > 0, "a hold for loot");
         assertNotNull(ship.getComponent(DockingPortsComponent.class), "a port to be boarded through");
-        assertTrue(GameScenario.floorTiles(grid).size() >= def.crew, "room for its crew");
+        assertTrue(FloorTiles.of(grid).size() >= def.crew, "room for its crew");
     }
 
     @Test

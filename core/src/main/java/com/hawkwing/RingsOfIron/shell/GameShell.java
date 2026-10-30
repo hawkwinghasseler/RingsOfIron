@@ -17,7 +17,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
-import com.hawkwing.RingsOfIron.game.NewGame;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.audiospatial.AudioManager;
 import com.ringsofiron.audiospatial.backend.MixLevels;
 import com.ringsofiron.uihud.HudSkin;

@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.hawkwing.RingsOfIron.wiring.PlayerShipStatus;
 import com.ringsofiron.uihud.providers.ShipStatusProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider;
 

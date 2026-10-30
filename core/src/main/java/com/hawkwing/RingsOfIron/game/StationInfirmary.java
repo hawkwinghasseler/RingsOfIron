@@ -8,7 +8,9 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.Wound;
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.StationComponent;
 
 import java.util.Locale;
@@ -77,7 +79,7 @@ public final class StationInfirmary {
     private void treat(Entity e, CrewMemberComponent c, Entity station, float dt) {
         if (c.wound == Wound.CRITICAL && !c.stabilised) {
             c.stabilised = true;
-            world.notices.post(c.name + " is taken into " + PlayerDocking.name(station) + "'s infirmary", NoticeLog.Kind.INFO);
+            world.notices.post(c.name + " is taken into " + ShipNames.name(station) + "'s infirmary", NoticeLog.Kind.INFO);
         }
         float left = dt * CrewDef.MEDBAY_CARE;
         while (c.wound != Wound.NONE && !c.isConscious() && left > 0f) {
@@ -95,7 +97,7 @@ public final class StationInfirmary {
         GridPositionComponent p = crew.position(e);
         if (!c.wound.disabling() && !c.isConscious() && TaskRules.isSafe(crew.grid(p.ship), p.tileX(), p.tileY())) {
             crew.heal(e, c.def.maxHealth);
-            world.notices.post(c.name + " is back on their feet after " + PlayerDocking.name(station) + "'s infirmary",
+            world.notices.post(c.name + " is back on their feet after " + ShipNames.name(station) + "'s infirmary",
                     NoticeLog.Kind.INFO);
         }
     }
@@ -105,7 +107,7 @@ public final class StationInfirmary {
         double price = price(was) * world.yard.priceFactor.applyAsDouble(station);
         if (trader != null) trader.credits = Math.max(0, trader.credits - price);
         world.notices.post(String.format(Locale.ROOT, "%s's infirmary treated %s's %s wound: %.0f cr",
-                PlayerDocking.name(station), c.name, was.name().toLowerCase(Locale.ROOT), price), NoticeLog.Kind.INFO);
+                ShipNames.name(station), c.name, was.name().toLowerCase(Locale.ROOT), price), NoticeLog.Kind.INFO);
     }
 
     /** Credits for bringing {@code wound} down a level. */

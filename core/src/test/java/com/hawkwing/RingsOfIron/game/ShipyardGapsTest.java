@@ -11,6 +11,7 @@ import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -18,6 +19,7 @@ import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -93,7 +95,7 @@ class ShipyardGapsTest {
     /** As in {@code PrizeTowingTest}: the raider, crewed by two pirates, surrenders and is taken while latched. */
     private void takeTheRaider() {
         int pirates = world.standing.factions().index(GameScenario.PIRATES);
-        java.util.List<int[]> floor = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class));
+        java.util.List<int[]> floor = FloorTiles.of(game.raider.getComponent(ShipGridComponent.class));
         for (int i = 0; i < 2; i++) {
             int[] t = floor.get(floor.size() - 1 - i);
             CrewFactory.spawn(world.crew, game.raider, "Pirate " + i, CrewRole.CREWMAN, pirates, t[0], t[1]);

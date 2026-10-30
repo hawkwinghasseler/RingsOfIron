@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
+import com.ringsofiron.career.Contract;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.orbital.math.StateVector;
 

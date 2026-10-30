@@ -1,0 +1,25 @@
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-ship-systems'
+
+dependencies {
+  api "com.badlogicgames.gdx:gdx:$gdxVersion"
+  api "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
+  api "com.badlogicgames.ashley:ashley:$ashleyVersion"
+  api project(':core-engine')
+  api project(':orbital-mechanics')
+  api project(':physics-exterior')
+  api project(':modding-data')
+  api project(':interior-grid')
+  api project(':ai-crew')
+  api project(':combat-sys')
+  api project(':stations-docking')
+
+  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
+}
+
+test {
+  useJUnitPlatform()
+}

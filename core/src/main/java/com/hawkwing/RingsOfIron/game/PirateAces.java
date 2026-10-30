@@ -6,6 +6,8 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.defs.CombatDefs;
@@ -15,6 +17,8 @@ import com.ringsofiron.combatsys.modding.Loadouts;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 
+import com.ringsofiron.shipops.Salvage;
+import com.ringsofiron.shipops.ShipDisablement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;

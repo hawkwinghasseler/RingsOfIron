@@ -3,8 +3,10 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.career.Factions;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.CommodityType;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
@@ -78,7 +80,7 @@ public final class FreighterShips {
         CrewFactory.ensureBoard(freighter).faction = faction;
         world.standing.factions().crewHabits(CrewFactory.ensureBoard(freighter));
         ShipDef ship = content.defs.get("ship", GameScenario.FREIGHTER_SHIP, ShipDef.class);
-        List<int[]> floor = GameScenario.floorTiles(freighter.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(freighter.getComponent(ShipGridComponent.class));
         int crew = ship == null ? 0 : Math.min(ship.crew, floor.size());
         for (int i = 0; i < crew; i++) {
             int[] t = floor.get(i * floor.size() / crew);

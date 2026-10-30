@@ -13,6 +13,9 @@ import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.shipops.ShipNames;
+import com.ringsofiron.shipops.StationYard;
+import com.ringsofiron.shipops.YardOrdersComponent;
 import com.ringsofiron.uihud.providers.YardProvider;
 
 import java.util.List;
@@ -44,7 +47,7 @@ public class YardWork implements YardProvider {
             field(ship, out);
             return;
         }
-        out.stationName = PlayerDocking.name(station);
+        out.stationName = ShipNames.name(station);
         TraderComponent trader = ship.getComponent(TraderComponent.class);
         out.credits = trader == null ? 0 : trader.credits;
         out.damaged = world.yard.damage(ship).size();
