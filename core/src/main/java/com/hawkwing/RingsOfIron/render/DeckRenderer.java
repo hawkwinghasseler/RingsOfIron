@@ -296,8 +296,7 @@ public final class DeckRenderer {
                 batch.setTransformMatrix(IDENTITY);
             }
             // The batch's end turned blending off; the walkways drawn below are translucent
-            Gdx.gl.glEnable(GL20.GL_BLEND);
-            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+            GlPass.alphaBlend();
             shapes.setProjectionMatrix(camera.combined);
             shapes.begin(ShapeRenderer.ShapeType.Filled);
             shapes.identity();
@@ -308,9 +307,8 @@ public final class DeckRenderer {
                 // The firing RCS light the hull outside and glow; the walls keep it out of the rooms
                 nozzles.jets(ship, world.get().docking.bodyOf(ship), x, y, radians, lighting::addThruster);
                 float cos = MathUtils.cos(radians), sin = MathUtils.sin(radians);
-                for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                for (Entity e : world.get().crew.aboard(ship)) {
                     GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                    if (pos.ship != ship) continue;
                     Vector2 l = pos.toShipLocal(g, local);
                     float wx = x + cos * l.x - sin * l.y, wy = y + sin * l.x + cos * l.y;
                     lighting.addCrew(wx, wy, CrewBody.RADIUS * g.tileSize);
@@ -386,9 +384,8 @@ public final class DeckRenderer {
             shapes.rotate(0f, 0f, 1f, degrees);
             // Under everyone, the tethers of those out on EVA and the puffs of their jetpacks
             spacewalkers.draw(shapes, world.get(), ship, g, delta);
-            for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            for (Entity e : world.get().crew.aboard(ship)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                if (pos.ship != ship) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                 Vector2 l = pos.toShipLocal(g, local);
                 boolean posed = figures && deckArt.hasCrew(ArtNames.CrewPose.of(c));
@@ -418,9 +415,8 @@ public final class DeckRenderer {
             if (figures) {
                 batch.setTransformMatrix(transform);
                 batch.begin();
-                for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                for (Entity e : world.get().crew.aboard(ship)) {
                     GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                    if (pos.ship != ship) continue;
                     CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                     ArtNames.CrewPose pose = ArtNames.CrewPose.of(c);
                     boolean posed = deckArt.hasCrew(pose);
@@ -436,7 +432,7 @@ public final class DeckRenderer {
         }
         hazards.keySet().retainAll(hazardsDrawn.keySet());
         shapes.identity();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
         if (!lit) {
             glowingImpacts(decks, camera);
             progressBars(decks, camera, false);
@@ -503,21 +499,13 @@ public final class DeckRenderer {
             lighting.renderLights(camera, withPower);
             return;
         }
-        GL20 gl = Gdx.gl;
         // 1 on the decks; the map's own framebuffer has no stencil, so its lights draw there as
         // ever and only its pass onto the screen is kept to the marks
-        gl.glClearStencil(0);
-        gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
-        gl.glEnable(GL20.GL_STENCIL_TEST);
-        gl.glColorMask(false, false, false, false);
-        gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xff);
-        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
+        GlPass.markStencil(1);
         footprints(decks, camera);
-        gl.glColorMask(true, true, true, true);
-        gl.glStencilFunc(GL20.GL_EQUAL, 1, 0xff);
-        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
+        GlPass.keepWhere(GL20.GL_EQUAL, 1);
         lighting.renderLights(camera, withPower);
-        gl.glDisable(GL20.GL_STENCIL_TEST);
+        GlPass.endStencil();
     }
 
     /**
@@ -636,18 +624,18 @@ public final class DeckRenderer {
             ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
             if (g == null || !pose.of(ship, at, angle)) continue;
             float s = g.tileSize, degrees = angle[0] * MathUtils.radiansToDegrees;
-            Gdx.gl.glEnable(GL20.GL_BLEND);
-            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+            GlPass.alphaBlend();
             shapes.begin(ShapeRenderer.ShapeType.Filled);
             shapes.identity();
             shapes.translate(at.x, at.y, 0f);
             shapes.rotate(0f, 0f, 1f, degrees);
             spacewalkers.draw(shapes, current, ship, g, delta);
             if (!figures) {
-                for (int i = 0; i < crew.size(); i++) {
-                    Entity e = crew.get(i);
+                ImmutableArray<Entity> aboard = current.crew.aboard(ship);
+                for (int i = 0; i < aboard.size(); i++) {
+                    Entity e = aboard.get(i);
                     GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                    if (pos.ship != ship || !EvaSystem.outside(e)) continue;
+                    if (!EvaSystem.outside(e)) continue;
                     CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                     Vector2 l = pos.toShipLocal(g, local);
                     Color dot = crewColor.set(style.dot(e, c));
@@ -659,10 +647,11 @@ public final class DeckRenderer {
             if (!figures) continue;
             batch.setTransformMatrix(transform.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, degrees));
             batch.begin();
-            for (int i = 0; i < crew.size(); i++) {
-                Entity e = crew.get(i);
+            ImmutableArray<Entity> aboard = current.crew.aboard(ship);
+            for (int i = 0; i < aboard.size(); i++) {
+                Entity e = aboard.get(i);
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                if (pos.ship != ship || !EvaSystem.outside(e)) continue;
+                if (!EvaSystem.outside(e)) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                 ArtNames.CrewPose pose = ArtNames.CrewPose.of(c);
                 boolean posed = deckArt.hasCrew(pose);
@@ -675,7 +664,7 @@ public final class DeckRenderer {
             batch.setTransformMatrix(IDENTITY);
         }
         shapes.identity();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
         progressBars(outside, camera, true);
     }
 
@@ -692,17 +681,16 @@ public final class DeckRenderer {
         float degrees = MathUtils.atan2(-upX, upY) * MathUtils.radiansToDegrees;
         // World units to a screen pixel, so the bar keeps a readable size zoomed out
         float pixel = Gdx.graphics.getWidth() > 0 ? camera.zoom * camera.viewportWidth / Gdx.graphics.getWidth() : 0f;
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        GlPass.alphaBlend();
         shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (Entity ship : ships) {
             ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
             if (g == null || !pose.of(ship, at, angle)) continue;
             float cos = MathUtils.cos(angle[0]), sin = MathUtils.sin(angle[0]), s = g.tileSize;
-            for (Entity e : current.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            for (Entity e : current.crew.aboard(ship)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                if (pos.ship != ship || (outsideOnly && !EvaSystem.outside(e))) continue;
+                if ((outsideOnly && !EvaSystem.outside(e))) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                 if (c.progress < 0f || c.state == CrewState.DEAD) continue;
                 Vector2 l = pos.toShipLocal(g, local);
@@ -722,7 +710,7 @@ public final class DeckRenderer {
         }
         shapes.end();
         shapes.identity();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
     }
 
     /** The sparks, flashes and fire of hits on {@code decks}' hulls, over the light map so it does not dim them. */
@@ -737,7 +725,7 @@ public final class DeckRenderer {
             impacts.drawGlowing(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, g.tileSize);
         }
         shapes.identity();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
     }
 
     /** A job's progress bar over a crew member, in tiles: its length, thickness and how far above them. */

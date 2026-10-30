@@ -658,7 +658,7 @@ public class UiHud implements Disposable {
 
     /** Where {@code a} is drawn on the stage, or an empty box while it is hidden. */
     private static com.badlogic.gdx.math.Rectangle stageBounds(com.badlogic.gdx.scenes.scene2d.Actor a) {
-        if (a.getStage() == null || !a.ancestorsVisible()) return new com.badlogic.gdx.math.Rectangle();
+        if (a.getStage() == null || !a.ascendantsVisible()) return new com.badlogic.gdx.math.Rectangle();
         com.badlogic.gdx.math.Vector2 at = a.localToStageCoordinates(new com.badlogic.gdx.math.Vector2());
         return new com.badlogic.gdx.math.Rectangle(at.x, at.y, a.getWidth(), a.getHeight());
     }

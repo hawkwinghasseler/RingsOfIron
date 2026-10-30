@@ -1,17 +1,3 @@
-buildscript {
-  repositories {
-    mavenCentral()
-    gradlePluginPortal()
-    mavenLocal()
-    google()
-    maven { url = 'https://central.sonatype.com/repository/maven-snapshots/' }
-  }
-  dependencies {
-
-
-  }
-}
-
 allprojects {
   apply plugin: 'eclipse'
   apply plugin: 'idea'
@@ -28,31 +14,20 @@ allprojects {
 configure(subprojects) {
   apply plugin: 'java-library'
   apply plugin: 'groovy'
-  java.sourceCompatibility = 11
-  java.targetCompatibility = 11
+  java.sourceCompatibility = 21
+  java.targetCompatibility = 21
 
-  // From https://lyze.dev/2021/04/29/libGDX-Internal-Assets-List/
-  // The article can be helpful when using assets.txt in your project.
-  tasks.register('generateAssetList') {
-    inputs.dir("${project.rootDir}/assets/")
-    // projectFolder/assets
-    File assetsFolder = new File("${project.rootDir}/assets/")
-    // projectFolder/assets/assets.txt
-    File assetsFile = new File(assetsFolder, "assets.txt")
-    // delete that file in case we've already created it
-    assetsFile.delete()
-
-    // iterate through all files inside that folder
-    // convert it to a relative path
-    // and append it to the file assets.txt
-    fileTree(assetsFolder).collect { assetsFolder.relativePath(it) }.sort().each {
-      assetsFile.append(it + "\n")
-    }
+  tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    // Every warning but this-escape (constructors handing out `this`, which the ECS wiring does on
+    // purpose) fails the build, so the code stays as clean as it is
+    options.compilerArgs += ['-Xlint:all,-this-escape', '-Werror']
   }
-  processResources.dependsOn 'generateAssetList'
 
-  compileJava {
-    options.incremental = true
+  // One JUnit for every module; each names its JUnit artifacts without a version
+  dependencies {
+    testImplementation platform("org.junit:junit-bom:$junitVersion")
   }
 
   // Tests tagged @Tag("slow") (whole careers, surveys, replays played twice) stay out of test and
@@ -124,9 +99,6 @@ subprojects {
   ext.appName = 'RingsOfIron'
   repositories {
     mavenCentral()
-    // You may want to remove the following line if you have errors downloading dependencies.
-    mavenLocal()
-    maven { url = 'https://central.sonatype.com/repository/maven-snapshots/' }
   }
 }
 

@@ -511,6 +511,8 @@ public class GameScenario {
 
     /** Why {@link #quickLoad} failed, and what state it left the game in. */
     public static final class LoadFailedException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
         /** True when the game was rebuilt (from the snapshot, or part loaded): its entities are new ones. */
         public final boolean replaced;
         /** True when the game is as it was before the load: never touched, or put back from the snapshot. */

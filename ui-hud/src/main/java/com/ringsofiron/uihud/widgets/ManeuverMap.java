@@ -396,6 +396,7 @@ public class ManeuverMap extends Table {
         return true;
     }
 
+    @SuppressWarnings("fallthrough") // a press that moves far enough becomes a pan
     private void dragTo(float x, float y) {
         dragX = x;
         dragY = y;

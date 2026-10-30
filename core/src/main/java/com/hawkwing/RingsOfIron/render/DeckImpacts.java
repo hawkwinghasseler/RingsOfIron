@@ -460,8 +460,7 @@ public final class DeckImpacts {
      */
     public void drawDebris(ShipGridComponent grid, ShapeRenderer shapes, float offX, float offY, float tile) {
         if (debris.count == 0 && smoke.count == 0) return;
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        GlPass.alphaBlend();
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (int i = 0; i < smoke.count; i++) {
             if (smoke.grid[i] != grid) continue;
