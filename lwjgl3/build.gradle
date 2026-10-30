@@ -348,6 +348,11 @@ def smokeTasks = smokeApps.collect { app ->
     if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
     // -PsmokeShots=<dir>: the shell run saves screenshots of its menus and HUD there
     if (project.hasProperty('smokeShots')) systemProperty 'smoke.shots', project.property('smokeShots').toString()
+    // Shots of the menu, HUD, deck and editor are compared with golden/ (SmokeLauncher.GOLDEN), with a
+    // tolerance; a miss leaves the shot and a diff in build/smoke-golden. -PupdateGolden rewrites them
+    systemProperty 'smoke.golden', file('golden').absolutePath
+    if (project.hasProperty('updateGolden')) systemProperty 'smoke.updateGolden', 'true'
+    inputs.dir('golden').optional()
   }
 }
 tasks.register('smokeTest') {
