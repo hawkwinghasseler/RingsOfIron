@@ -166,11 +166,11 @@ public final class CrewMedical {
     private boolean criticalAboard() {
         Entity ship = ctx.player();
         if (ship == null) return false;
-        ImmutableArray<Entity> all = crew.crewEntities();
+        ImmutableArray<Entity> all = crew.aboard(ship);
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
             CrewMemberComponent c = crew.crew(e);
-            if (c.isAlive() && c.wound == Wound.CRITICAL && crew.position(e).ship == ship) return true;
+            if (c.isAlive() && c.wound == Wound.CRITICAL) return true;
         }
         return false;
     }

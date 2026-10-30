@@ -7,7 +7,6 @@ import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
-import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.rails.StateVector;
@@ -596,10 +595,9 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         Entity station = ctx.engine.getEntity(uuid);
         if (station == null) return true;
         int pirates = standing.factions().index(HostileTraffic.PIRATES);
-        for (Entity e : ctx.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
-            GridPositionComponent at = e.getComponent(GridPositionComponent.class);
+        for (Entity e : crew.aboard(station)) {
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-            if (at != null && at.ship == station && c != null && c.faction == pirates && c.isAlive()) return true;
+            if (c != null && c.faction == pirates && c.isAlive()) return true;
         }
         return false;
     }

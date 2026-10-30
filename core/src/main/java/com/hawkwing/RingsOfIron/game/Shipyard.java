@@ -466,10 +466,10 @@ public class Shipyard extends EntitySystem {
 
     /** A station's technicians or loaders still aboard {@code ship} step back aboard their station before it goes. */
     private void sendStaffHome(Entity ship) {
-        for (Entity e : crew.crewEntities()) {
+        for (Entity e : crew.aboard(ship)) {
             CrewMemberComponent c = crew.crew(e);
             GridPositionComponent p = crew.position(e);
-            if (c == null || p == null || p.ship != ship || c.home == null || c.home == ship
+            if (c == null || p == null || c.home == null || c.home == ship
                     || c.home.getComponent(StationComponent.class) == null) continue;
             List<int[]> floor = FloorTiles.of(c.home.getComponent(ShipGridComponent.class));
             if (floor.isEmpty()) continue;
@@ -585,10 +585,9 @@ public class Shipyard extends EntitySystem {
         }
         int aboard = 0;
         Entity ship = ctx.player();
-        for (Entity e : crew.crewEntities()) {
+        for (Entity e : crew.aboard(prize)) {
             CrewMemberComponent c = crew.crew(e);
-            GridPositionComponent p = crew.position(e);
-            if (c != null && p != null && c.isAlive() && !c.held && p.ship == prize && c.home == ship) aboard++;
+            if (c != null && c.isAlive() && !c.held && c.home == ship) aboard++;
         }
         if (aboard > 0) return aboard + " of your crew are still aboard: recall them first";
         return null;
@@ -649,10 +648,7 @@ public class Shipyard extends EntitySystem {
     void retire(Entity ship) {
         Engine ecs = ctx.engine.getEcsEngine();
         Array<Entity> gone = new Array<>();
-        for (Entity e : crew.crewEntities()) {
-            GridPositionComponent p = crew.position(e);
-            if (p != null && p.ship == ship) gone.add(e);
-        }
+        for (Entity e : crew.aboard(ship)) gone.add(e);
         for (Entity e : gone) {
             crew.releaseTask(e);
             ecs.removeEntity(e);

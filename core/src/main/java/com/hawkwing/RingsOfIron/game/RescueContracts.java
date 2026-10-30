@@ -162,12 +162,12 @@ final class RescueContracts {
      */
     int landSurvivors(Entity ship, long contract) {
         int alive = 0;
-        var all = crew.crewEntities();
+        var all = crew.aboard(ship);
         List<Entity> ashore = new ArrayList<>();
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
             SurvivorComponent s = e.getComponent(SurvivorComponent.class);
-            if (s == null || crew.position(e).ship != ship) continue;
+            if (s == null) continue;
             if (contract >= 0 ? s.contract != contract : held(s.contract)) continue;
             ashore.add(e);
         }
@@ -187,11 +187,10 @@ final class RescueContracts {
     /** Survivors aboard {@code ship} picked up for a rescue, alive. */
     int survivorsAboard(Entity ship) {
         int n = 0;
-        var all = crew.crewEntities();
+        var all = crew.aboard(ship);
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
-            if (e.getComponent(SurvivorComponent.class) != null && crew.position(e).ship == ship
-                    && crew.crew(e).isAlive()) n++;
+            if (e.getComponent(SurvivorComponent.class) != null && crew.crew(e).isAlive()) n++;
         }
         return n;
     }

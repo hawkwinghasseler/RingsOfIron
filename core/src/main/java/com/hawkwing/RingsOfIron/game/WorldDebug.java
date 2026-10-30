@@ -191,10 +191,7 @@ public final class WorldDebug implements PhysicsManager.StepListener {
     /** Everyone aboard {@code ship}, alive or dead, in the order they joined the world. */
     public List<Entity> crewAboard(Entity ship) {
         List<Entity> out = new ArrayList<>();
-        for (Entity e : world.crew.crewEntities()) {
-            GridPositionComponent p = world.crew.position(e);
-            if (p != null && p.ship == ship) out.add(e);
-        }
+        for (Entity e : world.crew.aboard(ship)) out.add(e);
         return out;
     }
 

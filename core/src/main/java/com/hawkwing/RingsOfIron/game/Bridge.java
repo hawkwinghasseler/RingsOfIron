@@ -229,9 +229,10 @@ public class Bridge extends FixedLogicSystem {
     /** The crew member (not the player) manning {@code ship}'s helm, or null. */
     public Entity helmsman(Entity ship) {
         if (crew == null || ship == null) return null;
-        for (int i = 0; i < crew.size(); i++) {
-            Entity e = crew.get(i);
-            if (POSITIONS.get(e).ship != ship || e.getComponent(PlayerAvatarComponent.class) != null) continue;
+        ImmutableArray<Entity> aboard = crewService.aboard(ship);
+        for (int i = 0; i < aboard.size(); i++) {
+            Entity e = aboard.get(i);
+            if (e.getComponent(PlayerAvatarComponent.class) != null) continue;
             if (CrewQueries.isManning(e, SubsystemType.HELM)) return e;
         }
         return null;

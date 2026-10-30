@@ -97,9 +97,9 @@ public final class BerthVenting {
         Entity other = player == null ? null : docking.dockedTo(player);
         if (other == null) return;
         List<Entity> ashore = new ArrayList<>();
-        for (Entity e : crew.crewEntities()) {
+        for (Entity e : crew.aboard(other)) {
             CrewMemberComponent c = crew.crew(e);
-            if (crew.position(e).ship == other && crew.homeOf(e) == player && c.isAlive() && !c.isConscious()
+            if (crew.homeOf(e) == player && c.isAlive() && !c.isConscious()
                     && !c.held && c.carriedBy == null) ashore.add(e);
         }
         if (ashore.isEmpty()) return;

@@ -85,10 +85,10 @@ final class CombatInstaller {
                 modules.combatSeed + 2);
         // The crew aboard set each ship's gunnery and tracking skill; on the player's ship, gun by gun,
         // with whoever mans each gun or the weapons console, and those guns fire by themselves
-        CrewStationSync stations = new CrewStationSync();
+        CrewStationSync stations = new CrewStationSync(crew);
         stations.gunsByGun = ship -> ship == world.getPlayer();
         engine.addSystem(stations);
-        gunCrews = new GunCrews(context, world.avatar, world.bridge, docking, sensors, weaponControl,
+        gunCrews = new GunCrews(context, crew, world.avatar, world.bridge, docking, sensors, weaponControl,
                 () -> world.pirateBase);
         engine.addSystem(gunCrews);
         engine.addSystem(sensors);

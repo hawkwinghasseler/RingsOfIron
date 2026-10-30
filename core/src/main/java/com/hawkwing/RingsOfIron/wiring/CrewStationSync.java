@@ -5,6 +5,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.aicrew.CrewQueries;
+import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.CrewQueries.Station;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
@@ -29,22 +30,21 @@ public class CrewStationSync extends FixedLogicSystem {
     /** Ships whose guns other than point defense {@link GunCrews} crews gun by gun; null for none. */
     public java.util.function.Predicate<Entity> gunsByGun;
 
-    private Engine engine;
+    private final CrewService crew;
     private ImmutableArray<Entity> ships;
 
-    public CrewStationSync() {
+    public CrewStationSync(CrewService crew) {
         super(INTERVAL);
+        this.crew = crew;
     }
 
     @Override
     public void addedToEngine(Engine engine) {
-        this.engine = engine;
         ships = engine.getEntitiesFor(ARMED);
     }
 
     @Override
     public void removedFromEngine(Engine engine) {
-        this.engine = null;
         ships = null;
     }
 
@@ -53,18 +53,18 @@ public class CrewStationSync extends FixedLogicSystem {
         if (ships == null) return;
         for (int i = 0; i < ships.size(); i++) {
             Entity ship = ships.get(i);
-            sync(engine, ship, gunsByGun != null && gunsByGun.test(ship));
+            sync(crew, ship, gunsByGun != null && gunsByGun.test(ship));
         }
     }
 
     /** Copies the crew's skill onto one ship's weapons and sensors. */
-    public static void sync(Engine engine, Entity ship) {
-        sync(engine, ship, false);
+    public static void sync(CrewService crew, Entity ship) {
+        sync(crew, ship, false);
     }
 
-    /** As {@link #sync(Engine, Entity)}; with {@code pointDefenseOnly}, of its guns only point defense. */
-    static void sync(Engine engine, Entity ship, boolean pointDefenseOnly) {
-        float gunnery = CrewQueries.bestSkill(engine, ship, Station.GUNNERY);
+    /** As {@link #sync(CrewService, Entity)}; with {@code pointDefenseOnly}, of its guns only point defense. */
+    static void sync(CrewService crew, Entity ship, boolean pointDefenseOnly) {
+        float gunnery = CrewQueries.bestSkill(crew, ship, Station.GUNNERY);
         if (gunnery != CrewQueries.NO_CREW) {
             WeaponsComponent weapons = ship.getComponent(WeaponsComponent.class);
             if (weapons != null) for (WeaponMountComponent m : weapons.mounts) {
@@ -73,7 +73,7 @@ public class CrewStationSync extends FixedLogicSystem {
             WeaponMountComponent single = ship.getComponent(WeaponMountComponent.class);
             if (single != null) single.gunnerySkill = gunnery;
         }
-        float tracking = CrewQueries.bestSkill(engine, ship, Station.TRACKING);
+        float tracking = CrewQueries.bestSkill(crew, ship, Station.TRACKING);
         SensorComponent sensor = ship.getComponent(SensorComponent.class);
         if (tracking != CrewQueries.NO_CREW && sensor != null) sensor.trackingSkill = tracking;
     }

@@ -16,7 +16,6 @@ import com.ringsofiron.aicrew.CrewDoors;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewSaveParticipant;
 import com.ringsofiron.aicrew.CrewService;
-import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
@@ -55,12 +54,9 @@ final class CrewInstaller {
             @Override
             public void entityRemoved(Entity ship) {
                 if (!ship.isRemoving() && !ship.isScheduledForRemoval()) return; // only its layout went (a refit)
-                ImmutableArray<Entity> all = crew.crewEntities();
+                ImmutableArray<Entity> all = crew.aboard(ship);
                 List<Entity> aboard = new ArrayList<>();
-                for (int i = 0; i < all.size(); i++) {
-                    GridPositionComponent p = crew.position(all.get(i));
-                    if (p != null && p.ship == ship) aboard.add(all.get(i));
-                }
+                for (int i = 0; i < all.size(); i++) aboard.add(all.get(i));
                 for (Entity e : aboard) {
                     crew.releaseTask(e);
                     engine.getEcsEngine().removeEntity(e);

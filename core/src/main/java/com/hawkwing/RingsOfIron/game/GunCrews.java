@@ -1,11 +1,11 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.hawkwing.RingsOfIron.wiring.AvatarInteractor;
-import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.Vector2;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewQueries;
+import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
@@ -55,6 +55,7 @@ public class GunCrews extends FixedLogicSystem {
     public boolean holdFire;
 
     private final GameContext ctx;
+    private final CrewService crew;
     private final AvatarInteractor avatar;
     private final Bridge bridge;
     private final DockingSystem docking;
@@ -64,10 +65,11 @@ public class GunCrews extends FixedLogicSystem {
     private final Supplier<PirateBase> pirateBase;
     private float restockClock;
 
-    public GunCrews(GameContext ctx, AvatarInteractor avatar, Bridge bridge, DockingSystem docking,
+    public GunCrews(GameContext ctx, CrewService crew, AvatarInteractor avatar, Bridge bridge, DockingSystem docking,
                     SensorTrackingSystem sensors, WeaponControlSystem weaponControl, Supplier<PirateBase> pirateBase) {
         super(INTERVAL);
         this.ctx = ctx;
+        this.crew = crew;
         this.avatar = avatar;
         this.bridge = bridge;
         this.docking = docking;
@@ -93,15 +95,14 @@ public class GunCrews extends FixedLogicSystem {
 
     /** {@link #man(GameWorld, Entity, WeaponsComponent, boolean)}. */
     void man(Entity ship, WeaponsComponent weapons, boolean hold) {
-        Engine engine = ctx.engine.getEcsEngine();
-        float console = CrewQueries.gunneryAt(engine, ship, weaponsConsole(ship));
+        float console = CrewQueries.gunneryAt(crew, ship, weaponsConsole(ship));
         Entity seatedGun = bridge.seatedGun();
         float player = playerSkill();
         SensorComponent sensor = ship.getComponent(SensorComponent.class);
         for (WeaponMountComponent m : weapons.mounts) {
             WeaponDef def = m.def;
             if (def == null || def.pointDefense) continue;
-            float gunner = isGun(m.subsystem) ? CrewQueries.gunneryAt(engine, ship, m.subsystem) : CrewQueries.NO_CREW;
+            float gunner = isGun(m.subsystem) ? CrewQueries.gunneryAt(crew, ship, m.subsystem) : CrewQueries.NO_CREW;
             if (PlayerGunnery.inHand(bridge, m)) {
                 m.weaponsFree = false;
                 m.gunnerySkill = seatedGun != null ? player

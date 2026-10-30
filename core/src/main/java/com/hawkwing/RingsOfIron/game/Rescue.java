@@ -524,20 +524,18 @@ public class Rescue {
         Entity docked = world.docking.dockedTo(ship);
         if (docked == null) return 0;
         int n = 0;
-        for (Entity e : world.crew.crewEntities()) {
-            GridPositionComponent p = e.getComponent(GridPositionComponent.class);
+        for (Entity e : world.crew.aboard(docked)) {
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-            if (p.ship == docked && c.home == ship && c.isAlive() && !c.held && e.getComponent(PlayerAvatarComponent.class) == null) n++;
+            if (c.home == ship && c.isAlive() && !c.held && e.getComponent(PlayerAvatarComponent.class) == null) n++;
         }
         return n;
     }
 
     private int crewAboard(Entity ship) {
         int n = 0;
-        for (Entity e : world.crew.crewEntities()) {
-            GridPositionComponent p = e.getComponent(GridPositionComponent.class);
+        for (Entity e : world.crew.aboard(ship)) {
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-            if (p.ship == ship && c.isAlive() && !c.held && e.getComponent(PlayerAvatarComponent.class) == null
+            if (c.isAlive() && !c.held && e.getComponent(PlayerAvatarComponent.class) == null
                     && (c.home == null || c.home == ship)) n++;
         }
         return n;

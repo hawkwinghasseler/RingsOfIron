@@ -219,12 +219,12 @@ public class CrewHiring implements SaveParticipant, Resettable {
     int[] freeTile(Entity ship) {
         List<int[]> floor = FloorTiles.of(ship.getComponent(ShipGridComponent.class));
         if (floor.isEmpty()) return null;
-        ImmutableArray<Entity> all = crew.crewEntities();
+        ImmutableArray<Entity> all = crew.aboard(ship);
         for (int[] t : floor) {
             boolean taken = false;
             for (int i = 0; i < all.size() && !taken; i++) {
                 GridPositionComponent p = crew.position(all.get(i));
-                taken = p.ship == ship && p.tileX() == t[0] && p.tileY() == t[1];
+                taken = p.tileX() == t[0] && p.tileY() == t[1];
             }
             if (!taken) return t;
         }

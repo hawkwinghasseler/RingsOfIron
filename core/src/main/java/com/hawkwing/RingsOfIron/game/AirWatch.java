@@ -79,10 +79,10 @@ public final class AirWatch {
         float least = Float.MAX_VALUE;
         if (!fillable) {
             Entity avatar = captain.avatar();
-            for (Entity e : crew.crewEntities()) {
+            for (Entity e : crew.aboard(ship)) {
                 CrewMemberComponent c = crew.crew(e);
                 GridPositionComponent p = crew.position(e);
-                if (p.ship != ship || !c.isAlive() || !c.suited || c.held) continue;
+                if (!c.isAlive() || !c.suited || c.held) continue;
                 ShipGridComponent grid = crew.grid(p.ship);
                 if (grid == null || TaskRules.isBreathable(grid, p.tileX(), p.tileY())) continue;
                 if (c.suitAir < least) {

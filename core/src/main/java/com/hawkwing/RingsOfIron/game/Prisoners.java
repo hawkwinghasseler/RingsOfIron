@@ -67,12 +67,12 @@ public class Prisoners {
     public List<Entity> aboard(Entity ship) {
         List<Entity> out = new ArrayList<>();
         if (ship == null) return out;
-        ImmutableArray<Entity> all = crew.crewEntities();
+        ImmutableArray<Entity> all = crew.aboard(ship);
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
             CrewMemberComponent c = crew.crew(e);
             // Survivors of a rescue are carried, not held
-            if (c.held && c.isAlive() && crew.position(e).ship == ship && e.getComponent(SurvivorComponent.class) == null) out.add(e);
+            if (c.held && c.isAlive() && e.getComponent(SurvivorComponent.class) == null) out.add(e);
         }
         return out;
     }

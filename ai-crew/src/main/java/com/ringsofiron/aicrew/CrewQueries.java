@@ -41,17 +41,16 @@ public final class CrewQueries {
      *     console; {@link #NO_CREW} when the ship has no crew aboard at all, e.g. an NPC ship whose
      *     crew is not simulated
      */
-    public static float bestSkill(Engine engine, Entity ship, Station station) {
+    public static float bestSkill(CrewService service, Entity ship, Station station) {
         ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
         int faction = board == null ? 0 : board.faction;
         boolean console = hasConsole(ship, SubsystemComponent.SubsystemType.WEAPONS);
-        ImmutableArray<Entity> crew = engine.getEntitiesFor(CrewService.CREW);
+        ImmutableArray<Entity> crew = service.aboard(ship);
         float best = NO_CREW;
         for (int i = 0; i < crew.size(); i++) {
             Entity e = crew.get(i);
-            GridPositionComponent p = e.getComponent(GridPositionComponent.class);
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-            if (p.ship != ship || c.faction != faction) continue;
+            if (c.faction != faction) continue;
             boolean counts = c.isConscious() && (!console || e.getComponent(PlayerAvatarComponent.class) != null
                     || isManning(e, SubsystemComponent.SubsystemType.WEAPONS)
                     || station == Station.GUNNERY && isManning(e, SubsystemComponent.SubsystemType.TURRET_MOUNT));
@@ -89,17 +88,16 @@ public final class CrewQueries {
      * {@code console} (a gun's turret mount, or a weapons console), the player's avatar left out;
      * {@link #NO_CREW} when nobody mans it.
      */
-    public static float gunneryAt(Engine engine, Entity ship, Entity console) {
+    public static float gunneryAt(CrewService service, Entity ship, Entity console) {
         if (console == null) return NO_CREW;
         ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
         int faction = board == null ? 0 : board.faction;
-        ImmutableArray<Entity> crew = engine.getEntitiesFor(CrewService.CREW);
+        ImmutableArray<Entity> crew = service.aboard(ship);
         float best = NO_CREW;
         for (int i = 0; i < crew.size(); i++) {
             Entity e = crew.get(i);
-            GridPositionComponent p = e.getComponent(GridPositionComponent.class);
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-            if (p.ship != ship || c.faction != faction || e.getComponent(PlayerAvatarComponent.class) != null) continue;
+            if (c.faction != faction || e.getComponent(PlayerAvatarComponent.class) != null) continue;
             if (isManning(e, console)) best = Math.max(best, c.def.gunnerySkill);
         }
         return best;
