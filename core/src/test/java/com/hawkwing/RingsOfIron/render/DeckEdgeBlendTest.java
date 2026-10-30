@@ -4,6 +4,8 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.IntArray;
 import com.ringsofiron.interiorgrid.HullPiece;
 import com.ringsofiron.interiorgrid.WeightClass;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -11,6 +13,19 @@ import static org.junit.jupiter.api.Assertions.*;
 /** The deck edge's weights: 0 at the hull's edge, rising inward across the outermost tile, 1 deep in the decks. */
 class DeckEdgeBlendTest {
     private static final int N = DeckEdgeBlend.SUBDIVISIONS;
+    private DeckEdgeBlend.Fade was;
+
+    /** The weights below are the sharp fade's, whatever the game's default. */
+    @BeforeEach
+    void sharpFade() {
+        was = DeckEdgeBlend.fade;
+        DeckEdgeBlend.fade = DeckEdgeBlend.Fade.LINEAR;
+    }
+
+    @AfterEach
+    void restoreFade() {
+        DeckEdgeBlend.fade = was;
+    }
 
     /** A solid block of {@code w} by {@code h} tiles. */
     private static boolean[][] block(int w, int h) {
@@ -128,14 +143,8 @@ class DeckEdgeBlendTest {
         wedges.addAll(DeckEdgeBlend.wedge(wedge(7, 5, 1, 1, 0)));
         DeckEdgeBlend.Outline edge = new DeckEdgeBlend.Outline(on, wedges);
         float[] linear = edge.cornerWeights();
-        float[] soft;
-        DeckEdgeBlend.Fade was = DeckEdgeBlend.fade;
-        try {
-            DeckEdgeBlend.fade = DeckEdgeBlend.Fade.SOFT;
-            soft = edge.cornerWeights();
-        } finally {
-            DeckEdgeBlend.fade = was;
-        }
+        DeckEdgeBlend.fade = DeckEdgeBlend.Fade.SOFT;
+        float[] soft = edge.cornerWeights();
         boolean rounded = false;
         int cw = 8 * N + 1;
         for (int i = 0; i < linear.length; i++) {
