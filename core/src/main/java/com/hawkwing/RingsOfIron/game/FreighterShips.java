@@ -20,6 +20,7 @@ import com.ringsofiron.physicsexterior.modding.ShipPhysicsAssembler;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * macro-sim's freighters as real ships: each is built into a {@link GameScenario#FREIGHTER_SHIP}
@@ -94,6 +95,11 @@ public final class FreighterShips {
      * else unloaded, its cargo loaded or unloaded to the amount. Nothing for a ship without bays.
      */
     public static void stow(GameWorld world, Entity freighter) {
+        stow(world.macroSim, freighter);
+    }
+
+    /** {@link #stow(GameWorld, Entity)}, from {@code macroSim}'s catalog. */
+    public static void stow(MacroSimulation macroSim, Entity freighter) {
         FreighterComponent f = freighter.getComponent(FreighterComponent.class);
         CargoHoldComponent hold = freighter.getComponent(CargoHoldComponent.class);
         if (f == null || hold == null) return;
@@ -104,7 +110,7 @@ public final class FreighterShips {
         if (have > want) {
             hold.unload(f.cargoCommodity, have - want);
         } else if (have < want) {
-            CommodityType c = world.macroSim.economy().catalog().commodity(f.cargoCommodity);
+            CommodityType c = macroSim.economy().catalog().commodity(f.cargoCommodity);
             if (c != null) hold.load(f.cargoCommodity, want - have, c.unitVolume, c.unitMass);
         }
     }

@@ -16,6 +16,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import java.util.IdentityHashMap;
 import java.util.Locale;
 import java.util.Map;
+import com.ringsofiron.combatsys.events.CombatEvents;
 
 /**
  * Wounds, medics and suits in the game (round 5 part 2). ai-crew wounds the crew and treats them;
@@ -42,8 +43,11 @@ public final class CrewMedical {
     private static final Family BOARDS = Family.all(ShipTaskBoardComponent.class).get();
     private static final Family FIGHTERS = Family.all(NpcCombatComponent.class).get();
 
-    private final GameWorld world;
+    private final GameContext ctx;
     private final CrewService crew;
+    private final Boarding boarding;
+    private final CombatEvents combatEvents;
+    private final Prisoners prisoners;
     private final ImmutableArray<Entity> boards, fighters;
     /** Sim time of each ship's last shot fired or taken. */
     private final Map<Entity, Double> lastShot = new IdentityHashMap<>();
@@ -54,25 +58,28 @@ public final class CrewMedical {
     /** Each one's last wound notice, revised in place while it is still on screen. */
     private final Map<Entity, NoticeLog.Notice> told = new IdentityHashMap<>();
 
-    public CrewMedical(GameWorld world) {
-        this.world = world;
-        this.crew = world.crew;
-        this.boards = world.engine.getEcsEngine().getEntitiesFor(BOARDS);
-        this.fighters = world.engine.getEcsEngine().getEntitiesFor(FIGHTERS);
+    public CrewMedical(GameContext ctx, CrewService crew, Boarding boarding, CombatEvents combatEvents, Prisoners prisoners) {
+        this.ctx = ctx;
+        this.crew = crew;
+        this.boarding = boarding;
+        this.combatEvents = combatEvents;
+        this.prisoners = prisoners;
+        this.boards = ctx.engine.getEcsEngine().getEntitiesFor(BOARDS);
+        this.fighters = ctx.engine.getEcsEngine().getEntitiesFor(FIGHTERS);
         // Fire at a ship already beaten doesn't keep the shooter at battle stations (round 8): a
         // ship whose power came back fires on at the wreck by itself, which held the crew there
-        world.combatEvents.shots.add((signal, shot) -> {
+        combatEvents.shots.add((signal, shot) -> {
             if (!beaten(shot.target)) shot(shot.shooter);
         });
-        world.combatEvents.impacts.add((signal, hit) -> {
+        combatEvents.impacts.add((signal, hit) -> {
             if (!beaten(hit.target)) shot(hit.owner);
             shot(hit.target);
         });
-        world.boarding.taken.add((signal, ship) -> taken(ship));
-        world.hints.register(HintRegistry.Context.ANY, "crew (wounded need a medic)", 4, Action.CREW)
+        boarding.taken.add((signal, ship) -> taken(ship));
+        ctx.hints.register(HintRegistry.Context.ANY, "crew (wounded need a medic)", 4, Action.CREW)
                 .onlyWhen(this::criticalAboard);
         // The engine hands a removed entity out again as a new one, which must not inherit its entries
-        world.engine.getEcsEngine().addEntityListener((EntityRemovalListener) e -> {
+        ctx.engine.getEcsEngine().addEntityListener((EntityRemovalListener) e -> {
             lastShot.remove(e);
             seen.remove(e);
             clocks.remove(e);
@@ -85,12 +92,12 @@ public final class CrewMedical {
     }
 
     void shot(Entity ship) {
-        if (ship != null) lastShot.put(ship, world.engine.getSimSeconds());
+        if (ship != null) lastShot.put(ship, ctx.engine.getSimSeconds());
     }
 
     /** Once a sim tick ({@link GameWorld#tickManagers}). */
     public void update() {
-        double now = world.engine.getSimSeconds();
+        double now = ctx.engine.getSimSeconds();
         for (int i = 0; i < boards.size(); i++) {
             Entity ship = boards.get(i);
             ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
@@ -120,14 +127,14 @@ public final class CrewMedical {
 
     /** Whether the player's ship is at battle stations now. */
     public boolean atBattleStations() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         ShipTaskBoardComponent b = ship == null ? null : ship.getComponent(ShipTaskBoardComponent.class);
         return b != null && b.battleStations;
     }
 
     /** Turns suits at battle stations on or off for the player's ship; returns what it says. */
     public String toggleSuits() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         ShipTaskBoardComponent b = ship == null ? null : ship.getComponent(ShipTaskBoardComponent.class);
         if (b == null) return "No ship";
         b.suitsAtBattleStations = !b.suitsAtBattleStations;
@@ -137,7 +144,7 @@ public final class CrewMedical {
 
     /** "Suits at battle stations: on", for the crew window; empty with no ship. */
     public String suitsLine() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         ShipTaskBoardComponent b = ship == null ? null : ship.getComponent(ShipTaskBoardComponent.class);
         if (b == null) return "";
         return "Suits at battle stations: " + (b.suitsAtBattleStations ? "on" : "off") + (b.battleStations ? " (at battle stations)" : "");
@@ -145,14 +152,14 @@ public final class CrewMedical {
 
     /** Medical stores aboard the player's ship. */
     public int stores() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         ShipGridComponent grid = ship == null ? null : ship.getComponent(ShipGridComponent.class);
         return grid == null ? 0 : grid.medicalStores;
     }
 
     /** True while one of the player's crew, or a prisoner aboard, is critically wounded. */
     private boolean criticalAboard() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (ship == null) return false;
         ImmutableArray<Entity> all = crew.crewEntities();
         for (int i = 0; i < all.size(); i++) {
@@ -165,7 +172,7 @@ public final class CrewMedical {
 
     /** Tells the player of each of their crew, or prisoner aboard, whose wound has got worse. */
     private void noticeWounds() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         ImmutableArray<Entity> all = crew.crewEntities();
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
@@ -187,8 +194,8 @@ public final class CrewMedical {
             // While the last notice is still up, the new one takes its place: a burst of hits cut Ivo
             // Castell's clock nine times in a second, nine lines in the log (round 9, real window)
             NoticeLog.Notice last = told.get(e);
-            told.put(e, last != null && world.notices.showing().contains(last)
-                    ? world.notices.revise(last, describe(who, c), kind) : world.notices.post(describe(who, c), kind));
+            told.put(e, last != null && ctx.notices.showing().contains(last)
+                    ? ctx.notices.revise(last, describe(who, c), kind) : ctx.notices.post(describe(who, c), kind));
         }
         told.keySet().removeIf(e -> crew.crew(e) == null || !crew.crew(e).isAlive());
         seen.keySet().removeIf(e -> crew.crew(e) == null);
@@ -212,13 +219,13 @@ public final class CrewMedical {
 
     /** A ship is taken: if any of its prisoners will die untreated, say so. */
     private void taken(Entity ship) {
-        Entity player = world.getPlayer();
+        Entity player = ctx.player();
         BoardedComponent b = ship.getComponent(BoardedComponent.class);
-        if (player == null || b == null || b.by == null || b.by.get(world.engine.getUuidRegistry()) != player) return;
+        if (player == null || b == null || b.by == null || b.by.get(ctx.engine.getUuidRegistry()) != player) return;
         int critical = 0;
-        for (Entity e : world.prisoners.aboard(ship)) if (crew.crew(e).wound == Wound.CRITICAL) critical++;
+        for (Entity e : prisoners.aboard(ship)) if (crew.crew(e).wound == Wound.CRITICAL) critical++;
         if (critical == 0) return;
-        world.notices.post(String.format(Locale.ROOT, "%d of the prisoners %s critically wounded: bring them aboard to treat them",
+        ctx.notices.post(String.format(Locale.ROOT, "%d of the prisoners %s critically wounded: bring them aboard to treat them",
                 critical, critical == 1 ? "is" : "are"), NoticeLog.Kind.WARNING);
     }
 

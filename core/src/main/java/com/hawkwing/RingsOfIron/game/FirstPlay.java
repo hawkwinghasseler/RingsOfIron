@@ -18,6 +18,7 @@ import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
 
 import java.util.function.Function;
+import com.ringsofiron.coreengine.GameEngine;
 
 /**
  * A short scripted first play over the starting scenario, one objective at a time: the ship starts
@@ -175,7 +176,12 @@ public final class FirstPlay {
      * by itself), unless it has surrendered, been abandoned or wrecked, nor while its crew are about to reset a short.
      */
     public static boolean beaten(GameWorld world, Entity ship) {
-        if (ship == null || world.engine.getEcsEngine().getEntities().indexOf(ship, true) < 0) return true;
+        return beaten(world.engine, ship);
+    }
+
+    /** {@link #beaten(GameWorld, Entity)}, in {@code engine}'s world. */
+    public static boolean beaten(GameEngine engine, Entity ship) {
+        if (ship == null || engine.getEcsEngine().getEntities().indexOf(ship, true) < 0) return true;
         DisabledComponent.Reason why = ShipDisablement.reason(ship);
         if (why != null && why.sticky()) return true;
         // A stun passes, so a ship dark only for it isn't beaten; a broken hull or a downed crew is,

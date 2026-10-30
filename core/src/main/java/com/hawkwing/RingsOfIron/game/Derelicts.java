@@ -19,6 +19,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import com.ringsofiron.orbital.rails.RailsUniverse;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * Escape pods and wrecks drifting on the rails: what a freighter leaves behind when pirates rob or
@@ -71,16 +73,24 @@ public class Derelicts implements SaveParticipant, Resettable {
         }
     }
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final PhysicsManager physics;
+    private final RailsUniverse universe;
+    private final MacroSimulation macroSim;
+    private final ContractBoard contracts;
     private final List<Derelict> all = new ArrayList<>();
     private long nextId = 1;
     private final StateVector a = new StateVector(), b = new StateVector();
     private final double[] trueState = new double[4];
     private final float[] local = new float[4];
 
-    Derelicts(GameWorld world) {
-        this.world = world;
-        world.engine.getSerializationService().addParticipant(this);
+    Derelicts(GameContext ctx, PhysicsManager physics, RailsUniverse universe, MacroSimulation macroSim, ContractBoard contracts) {
+        this.ctx = ctx;
+        this.physics = physics;
+        this.universe = universe;
+        this.macroSim = macroSim;
+        this.contracts = contracts;
+        ctx.engine.getSerializationService().addParticipant(this);
     }
 
     /** Every pod and wreck still drifting, oldest first. */
@@ -102,16 +112,16 @@ public class Derelicts implements SaveParticipant, Resettable {
      */
     public Derelict castOff(Entity from, Kind kind, String name, int survivors, String commodity, double quantity,
                             Random rnd) {
-        double t = world.engine.getSimSeconds();
+        double t = ctx.engine.getSimSeconds();
         String parent;
-        OrbitComponent orbit = from == null ? null : world.universe.orbit(from);
+        OrbitComponent orbit = from == null ? null : universe.orbit(from);
         PhysicsBodyComponent pb = from == null ? null : from.getComponent(PhysicsBodyComponent.class);
         if (orbit != null) {
             parent = orbit.parentUuid;
             orbit.stateAt(t, a);
-        } else if (pb != null && pb.body != null && world.physics.getAnchorParentUuid() != null) {
-            parent = world.physics.getAnchorParentUuid();
-            world.physics.getTrueState(pb.body, trueState);
+        } else if (pb != null && pb.body != null && physics.getAnchorParentUuid() != null) {
+            parent = physics.getAnchorParentUuid();
+            physics.getTrueState(pb.body, trueState);
             a.set(trueState[0], trueState[1], trueState[2], trueState[3]);
         } else {
             return null;
@@ -155,10 +165,10 @@ public class Derelicts implements SaveParticipant, Resettable {
     /** Where {@code d} is at sim second {@code t}, relative to the root body; false if its body is gone. */
     public boolean position(Derelict d, double t, StateVector out) {
         KeplerOrbit k = orbitOf(d);
-        Entity parent = world.universe.entity(d.parentUuid);
+        Entity parent = universe.entity(d.parentUuid);
         if (k == null || parent == null) return false;
         k.stateAt(t, out);
-        world.universe.absoluteState(parent, t, b);
+        universe.absoluteState(parent, t, b);
         out.x += b.x;
         out.y += b.y;
         out.vx += b.vx;
@@ -169,7 +179,7 @@ public class Derelicts implements SaveParticipant, Resettable {
     /** True if the player's ship is within {@link #PICKUP_RANGE} of {@code d}, at under {@link #PICKUP_SPEED} relative. */
     public boolean closeTo(Entity player, Derelict d) {
         StateVector p = new StateVector();
-        if (d == null || !playerState(player, p) || !position(d, world.engine.getSimSeconds(), a)) return false;
+        if (d == null || !playerState(player, p) || !position(d, ctx.engine.getSimSeconds(), a)) return false;
         return Math.hypot(p.x - a.x, p.y - a.y) <= PICKUP_RANGE && Math.hypot(p.vx - a.vx, p.vy - a.vy) <= PICKUP_SPEED;
     }
 
@@ -181,7 +191,7 @@ public class Derelicts implements SaveParticipant, Resettable {
     }
 
     String commodityName(String id) {
-        var c = world.macroSim.economy().catalog().commodity(id);
+        var c = macroSim.economy().catalog().commodity(id);
         return c == null || c.displayName == null ? id : c.displayName;
     }
 
@@ -190,7 +200,7 @@ public class Derelicts implements SaveParticipant, Resettable {
      * the engine's update, so markers come and go outside it.
      */
     void update() {
-        double t = world.engine.getSimSeconds();
+        double t = ctx.engine.getSimSeconds();
         for (Derelict d : new ArrayList<>(all)) {
             if (t > d.expires) {
                 remove(d.id);
@@ -203,9 +213,9 @@ public class Derelicts implements SaveParticipant, Resettable {
     // ------------------------------------------------------------------ markers
 
     private void mark(Derelict d, double t) {
-        Entity player = world.getPlayer();
+        Entity player = ctx.player();
         PhysicsBodyComponent pb = player == null ? null : player.getComponent(PhysicsBodyComponent.class);
-        String anchor = world.physics.getAnchorParentUuid();
+        String anchor = physics.getAnchorParentUuid();
         KeplerOrbit k = orbitOf(d);
         if (pb == null || pb.body == null || anchor == null || !anchor.equals(d.parentUuid) || k == null) {
             dropMarker(d);
@@ -216,24 +226,24 @@ public class Derelicts implements SaveParticipant, Resettable {
         trueState[1] = a.y;
         trueState[2] = a.vx;
         trueState[3] = a.vy;
-        world.physics.trueToLocal(trueState, local);
-        world.physics.getTrueState(pb.body, trueState);
+        physics.trueToLocal(trueState, local);
+        physics.getTrueState(pb.body, trueState);
         if (Math.hypot(trueState[0] - a.x, trueState[1] - a.y) > MARKER_RANGE) {
             dropMarker(d);
             return;
         }
         if (d.marker == null) {
-            d.marker = world.engine.createEntity();
+            d.marker = ctx.engine.createEntity();
             d.marker.add(new TransformComponent());
             d.marker.add(new TransientComponent());
             d.marker.add(new HudMarkerComponent(d.name, HudMarkerComponent.Kind.NEUTRAL).radius(5f));
-            world.engine.addEntity(d.marker);
+            ctx.engine.addEntity(d.marker);
         }
         TransformComponent tr = d.marker.getComponent(TransformComponent.class);
         tr.x = local[0] * PhysicsManager.UNITS_PER_METER;
         tr.y = local[1] * PhysicsManager.UNITS_PER_METER;
         HudMarkerComponent m = d.marker.getComponent(HudMarkerComponent.class);
-        boolean waypoint = world.contracts.isWaypoint(d.id);
+        boolean waypoint = contracts.isWaypoint(d.id);
         String label = waypoint ? d.name + ContractBoard.MARKER_SUFFIX : d.name;
         if (!label.equals(m.label)) m.label = label;
         m.color.set(waypoint ? HudMarkerComponent.Kind.WAYPOINT.defaultColor : m.kind.defaultColor);
@@ -241,7 +251,7 @@ public class Derelicts implements SaveParticipant, Resettable {
 
     private void dropMarker(Derelict d) {
         if (d.marker == null) return;
-        world.engine.removeEntity(d.marker);
+        ctx.engine.removeEntity(d.marker);
         d.marker = null;
     }
 
@@ -254,8 +264,8 @@ public class Derelicts implements SaveParticipant, Resettable {
 
     private KeplerOrbit orbitOf(Derelict d) {
         if (d.orbit != null) return d.orbit;
-        Entity parent = world.universe.entity(d.parentUuid);
-        CelestialBodyComponent body = parent == null ? null : world.universe.celestial(parent);
+        Entity parent = universe.entity(d.parentUuid);
+        CelestialBodyComponent body = parent == null ? null : universe.celestial(parent);
         if (body == null) return null;
         d.orbit = KeplerOrbit.fromState(d.x, d.y, d.vx, d.vy, body.mu, d.epoch);
         return d.orbit;
@@ -264,16 +274,16 @@ public class Derelicts implements SaveParticipant, Resettable {
     /** The player's ship's absolute state, on the rails or in the bubble. */
     private boolean playerState(Entity player, StateVector out) {
         if (player == null) return false;
-        double t = world.engine.getSimSeconds();
-        if (world.universe.orbit(player) != null) {
-            world.universe.absoluteState(player, t, out);
+        double t = ctx.engine.getSimSeconds();
+        if (universe.orbit(player) != null) {
+            universe.absoluteState(player, t, out);
             return true;
         }
         PhysicsBodyComponent pb = player.getComponent(PhysicsBodyComponent.class);
-        Entity parent = world.universe.entity(world.physics.getAnchorParentUuid());
+        Entity parent = universe.entity(physics.getAnchorParentUuid());
         if (pb == null || pb.body == null || parent == null) return false;
-        world.physics.getTrueState(pb.body, trueState);
-        world.universe.absoluteState(parent, t, out);
+        physics.getTrueState(pb.body, trueState);
+        universe.absoluteState(parent, t, out);
         out.x += trueState[0];
         out.y += trueState[1];
         out.vx += trueState[2];

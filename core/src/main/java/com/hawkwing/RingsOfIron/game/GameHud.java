@@ -64,7 +64,7 @@ public class GameHud implements Disposable {
         };
         world.combatEvents.hullHits.add(hullHits);
         // combat-sys's missiles and point-defense hits on the threat overlay.
-        hud.setThreats(new CombatThreats(world));
+        hud.setThreats(new CombatThreats(world.context));
         intercepts = (signal, hit) -> hud.flashIntercept(hit.point.x, hit.point.y, hit.destroyed);
         world.combatEvents.intercepts.add(intercepts);
     }

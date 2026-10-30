@@ -11,6 +11,7 @@ import com.ringsofiron.moddingdata.defs.TensionDef;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * How strained things are between each pair of the data's factions (pirates aside, who are at war
@@ -50,17 +51,23 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
     /** Faction whose patrols watch the lanes between two strained sides. */
     public static final String WATCHERS = HostileTraffic.TRADERS;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final MacroSimulation macroSim;
+    private final FactionStanding standing;
+    private final HostileTraffic hostiles;
     /** Tension by pair, "a|b" with the ids in order. */
     private final Map<String, Float> tension = new TreeMap<>();
     /** Pairs whose patrols have been reinforced this time tension ran high. */
     private final Map<String, Boolean> reinforced = new TreeMap<>();
     private double nextWeek = Double.NaN;
 
-    FactionTension(GameWorld world) {
-        this.world = world;
-        world.standing.hostileActs = (faction, cost) -> {
-            int sponsor = world.standing.sponsor();
+    FactionTension(GameContext ctx, MacroSimulation macroSim, FactionStanding standing, HostileTraffic hostiles) {
+        this.ctx = ctx;
+        this.macroSim = macroSim;
+        this.standing = standing;
+        this.hostiles = hostiles;
+        standing.hostileActs = (faction, cost) -> {
+            int sponsor = standing.sponsor();
             if (faction != sponsor) raise(sponsor, faction, cost * DEED_SHARE, null);
         };
     }
@@ -90,19 +97,19 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
 
     /** Raises tension between the factions {@code a} and {@code b} by id. */
     public void raise(String a, String b, float amount, String why) {
-        Factions f = world.standing.factions();
+        Factions f = standing.factions();
         raise(f.index(a), f.index(b), amount, why);
     }
 
     private void runsHigh(int a, int b, String key, String why) {
-        Factions f = world.standing.factions();
+        Factions f = standing.factions();
         if (!reinforced.getOrDefault(key, false)) {
             reinforced.put(key, true);
-            world.hostiles.reinforce(f.id(a));
-            world.hostiles.reinforce(f.id(b));
+            hostiles.reinforce(f.id(a));
+            hostiles.reinforce(f.id(b));
             watch(a, b);
         }
-        world.notices.post(String.format(Locale.ROOT, "%sTension between the %s and the %s runs high: more patrols, and their stations clear only friends",
+        ctx.notices.post(String.format(Locale.ROOT, "%sTension between the %s and the %s runs high: more patrols, and their stations clear only friends",
                 why == null ? "" : why + ". ", f.name(a), f.name(b)), NoticeLog.Kind.WARNING);
     }
 
@@ -111,13 +118,13 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
      * of their own, if they have stations and are neither side.
      */
     private void watch(int a, int b) {
-        Factions f = world.standing.factions();
+        Factions f = standing.factions();
         int watchers = f.index(WATCHERS);
         if (watchers < 0 || watchers == a || watchers == b) return;
         String home = firstStation(watchers), sa = firstStation(a), sb = firstStation(b);
         if (home == null || sa == null || sb == null) return;
-        if (world.hostiles.patrol(WATCHERS, home, sa, sb)) {
-            world.notices.post(String.format(Locale.ROOT, "The %s send a patrol to watch the lanes between the %s and the %s",
+        if (hostiles.patrol(WATCHERS, home, sa, sb)) {
+            ctx.notices.post(String.format(Locale.ROOT, "The %s send a patrol to watch the lanes between the %s and the %s",
                     f.name(watchers), f.name(a), f.name(b)), NoticeLog.Kind.INFO);
         }
     }
@@ -125,8 +132,8 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
     /** The station of {@code faction} first by name (not by the economy's order, which a load may change). */
     private String firstStation(int faction) {
         String best = null, bestName = null;
-        for (var n : world.macroSim.stations()) {
-            if (world.standing.factionOf(world.engine.getEntity(n.stationUuid)) != faction) continue;
+        for (var n : macroSim.stations()) {
+            if (standing.factionOf(ctx.engine.getEntity(n.stationUuid)) != faction) continue;
             String name = n.displayName == null ? n.stationUuid : n.displayName;
             if (bestName == null || name.compareTo(bestName) < 0) {
                 best = n.stationUuid;
@@ -150,7 +157,7 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
      * and each other lawful faction, for the mission board; empty if there is none to show.
      */
     public String describe(int faction) {
-        Factions f = world.standing.factions();
+        Factions f = standing.factions();
         FactionDef own = f.def(faction);
         if (own == null || own.hostileToAll) return "";
         StringBuilder out = new StringBuilder();
@@ -171,15 +178,15 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
      * {@link #RIVAL_CLEARANCE}.
      */
     public String refusal(Entity station, Entity vessel) {
-        if (vessel != world.getPlayer()) return null;
-        int owner = world.standing.factionOf(station), sponsor = world.standing.sponsor();
-        if (owner == sponsor || !high(owner, sponsor) || world.standing.standing(owner) >= RIVAL_CLEARANCE) return null;
-        return "tension with the " + world.standing.factions().name(sponsor) + " is high; they clear only friends";
+        if (vessel != ctx.player()) return null;
+        int owner = standing.factionOf(station), sponsor = standing.sponsor();
+        if (owner == sponsor || !high(owner, sponsor) || standing.standing(owner) >= RIVAL_CLEARANCE) return null;
+        return "tension with the " + standing.factions().name(sponsor) + " is high; they clear only friends";
     }
 
     @Override
     public void update(float deltaTime) {
-        double now = world.macroSim.now();
+        double now = macroSim.now();
         if (Double.isNaN(nextWeek)) nextWeek = now + WEEK;
         // A long warp can pass several weeks in one frame
         while (now >= nextWeek) {
@@ -195,8 +202,8 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
             e.setValue(v);
             if (v < HIGH) reinforced.remove(e.getKey());
         }
-        ServiceRecord record = world.standing.record();
-        for (FactionDef f : world.standing.factions().all()) {
+        ServiceRecord record = standing.record();
+        for (FactionDef f : standing.factions().all()) {
             float s = record.get(f.id);
             if (s < 0f) record.set(f.id, Math.min(0f, s + RECOVERY_PER_WEEK));
         }
@@ -207,7 +214,7 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
     /** The data's tuning, {@code [tension.default]}; the class's defaults if the data has none. */
     public TensionDef tuning() {
         if (tuning == null) {
-            var content = world.getContent();
+            var content = ctx.content();
             tuning = content != null && content.defs.has("tension", "default")
                     ? content.defs.get("tension", "default", TensionDef.class) : new TensionDef();
         }
@@ -221,7 +228,7 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
      * 0 for the pirates, who are at war with everyone anyway, and for unknowns.
      */
     public float regional(int faction) {
-        Factions f = world.standing.factions();
+        Factions f = standing.factions();
         float most = 0f;
         for (int i = 0; i < f.all().size(); i++) most = Math.max(most, get(faction, Factions.FIRST + i));
         return most;
@@ -239,7 +246,7 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
      */
     public double priceFactor(Entity station) {
         if (station == null) return 1;
-        return 1 + tuning().priceRise * regional(world.standing.factionOf(station)) / MAX;
+        return 1 + tuning().priceRise * regional(standing.factionOf(station)) / MAX;
     }
 
     /** Combat jobs (escorts and bounties) a board of {@code owner} posts beyond its usual number. */
@@ -256,8 +263,8 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
      */
     public int offersFor(int owner, int n) {
         TensionDef t = tuning();
-        int sponsor = world.standing.sponsor();
-        if (owner == sponsor || world.standing.standing(owner) >= t.trustedStanding || t.distrustPerJob <= 0) return n;
+        int sponsor = standing.sponsor();
+        if (owner == sponsor || standing.standing(owner) >= t.trustedStanding || t.distrustPerJob <= 0) return n;
         int cut = (int) Math.floor(get(owner, sponsor) / t.distrustPerJob);
         return Math.max(Math.min(n, t.fewestOffers), n - cut);
     }
@@ -268,7 +275,7 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
      * with whether it is {@link #HIGH}.
      */
     public void regions(java.util.function.BiConsumer<String, Boolean> out) {
-        Factions f = world.standing.factions();
+        Factions f = standing.factions();
         for (int i = 0; i < f.all().size(); i++) {
             int faction = Factions.FIRST + i;
             FactionDef def = f.def(faction);
@@ -282,7 +289,7 @@ public class FactionTension extends EntitySystem implements SaveParticipant, Res
 
     /** "a|b" for two of the data's factions that may grow strained, or null. */
     private String key(int a, int b) {
-        Factions f = world.standing.factions();
+        Factions f = standing.factions();
         FactionDef fa = f.def(a), fb = f.def(b);
         if (fa == null || fb == null || a == b || fa.hostileToAll || fb.hostileToAll) return null;
         return fa.id.compareTo(fb.id) < 0 ? fa.id + "|" + fb.id : fb.id + "|" + fa.id;

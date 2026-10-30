@@ -20,6 +20,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import com.ringsofiron.combatsys.events.CombatEvents;
 
 /**
  * What the player's crew make of their service ({@link CrewRecord}): experience from what they do,
@@ -65,34 +66,44 @@ public class CrewCareer extends FixedLogicSystem {
     public static final float LEISURE_CEILING = 0.9f;
     static final double DAY = 86_400;
 
-    private final GameWorld world;
+    private final GameContext ctx;
     private final CrewService crew;
+    private final CombatEvents combatEvents;
+    private final Boarding boarding;
+    private final ServiceBudget budget;
+    private final Rescue rescue;
+    private final LoopWiring loop;
     /** Who was alive at the last update, so a death is noticed once. */
     private final Map<Entity, Boolean> alive = new IdentityHashMap<>();
     private double last = Double.NaN;
 
-    CrewCareer(GameWorld world) {
+    CrewCareer(GameContext ctx, CrewService crew, CombatEvents combatEvents, Boarding boarding, ServiceBudget budget, Rescue rescue, LoopWiring loop) {
         super(INTERVAL);
-        this.world = world;
-        this.crew = world.crew;
-        world.combatEvents.impacts.add((signal, hit) -> {
-            if (hit.owner != null && hit.owner == world.getPlayer()) gunnersHit(hit.owner);
+        this.ctx = ctx;
+        this.crew = crew;
+        this.combatEvents = combatEvents;
+        this.boarding = boarding;
+        this.budget = budget;
+        this.rescue = rescue;
+        this.loop = loop;
+        combatEvents.impacts.add((signal, hit) -> {
+            if (hit.owner != null && hit.owner == ctx.player()) gunnersHit(hit.owner);
         });
-        world.loop.beaten.add((signal, ship) -> {
-            for (Entity e : ownCrew(world.getPlayer())) {
+        loop.beaten.add((signal, ship) -> {
+            for (Entity e : ownCrew(ctx.player())) {
                 CrewRecord r = record(e);
                 r.shipsBeaten++;
                 r.changeMorale(WIN_MORALE);
             }
         });
-        world.boarding.taken.add((signal, target) -> taken(target));
-        world.budget.paydays.add(this::payWages);
-        world.rescue.rescues.add((signal, r) -> {
+        boarding.taken.add((signal, target) -> taken(target));
+        budget.paydays.add(this::payWages);
+        rescue.rescues.add((signal, r) -> {
             if (r.lost <= 0) return;
             for (Entity e : ownCrew(r.newShip)) record(e).changeMorale(LOST_MORALE * r.lost);
         });
         // A removed crew member's entity comes back from the engine's pool as someone new
-        world.engine.getEcsEngine().addEntityListener((EntityRemovalListener) alive::remove);
+        ctx.engine.getEcsEngine().addEntityListener((EntityRemovalListener) alive::remove);
     }
 
     @Override
@@ -107,10 +118,10 @@ public class CrewCareer extends FixedLogicSystem {
 
     /** Drains the crew's experience, moves morale and notices deaths. */
     public void update() {
-        double now = world.engine.getSimSeconds();
+        double now = ctx.engine.getSimSeconds();
         double days = Double.isNaN(last) ? 0 : Math.max(0, now - last) / DAY;
         last = now;
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         List<Entity> own = ownCrew(ship);
         for (Entity e : own) {
             CrewMemberComponent c = crew.crew(e);
@@ -173,7 +184,7 @@ public class CrewCareer extends FixedLogicSystem {
         for (Entity e : died) {
             CrewMemberComponent c = crew.crew(e);
             boolean ofWounds = c.lastDamageCause != null && CrewService.wounds(c.lastDamageCause);
-            world.notices.post(c.name + (ofWounds ? " has died of wounds" : " is dead"), NoticeLog.Kind.WARNING);
+            ctx.notices.post(c.name + (ofWounds ? " has died of wounds" : " is dead"), NoticeLog.Kind.WARNING);
             Entity home = crew.homeOf(e);
             for (Entity other : ownCrew(home)) record(other).changeMorale(DEATH_MORALE);
         }
@@ -191,9 +202,9 @@ public class CrewCareer extends FixedLogicSystem {
 
     /** A craft is taken: the player's crew aboard it, or on their way in the boarding party, boarded it. */
     private void taken(Entity target) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         BoardedComponent b = target.getComponent(BoardedComponent.class);
-        if (ship == null || b == null || b.by == null || b.by.get(world.engine.getUuidRegistry()) != ship) return;
+        if (ship == null || b == null || b.by == null || b.by.get(ctx.engine.getUuidRegistry()) != ship) return;
         for (Entity e : ownCrew(ship)) {
             CrewMemberComponent c = crew.crew(e);
             boolean party = c.task instanceof BoardTask && ((BoardTask) c.task).ship == target;
@@ -208,7 +219,7 @@ public class CrewCareer extends FixedLogicSystem {
 
     /** Pays the week's wages from the player's ship, as far as its credits go. Returns what was paid. */
     public double payWages() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         TraderComponent account = ship == null ? null : ship.getComponent(TraderComponent.class);
         if (account == null) return 0;
         double paid = 0;
@@ -226,9 +237,9 @@ public class CrewCareer extends FixedLogicSystem {
                 r.applyTo(crew.crew(e));
             }
         }
-        if (paid > 0) world.notices.post(String.format(Locale.ROOT, "Crew wages: -%,.0f cr", paid));
+        if (paid > 0) ctx.notices.post(String.format(Locale.ROOT, "Crew wages: -%,.0f cr", paid));
         if (unpaid > 0) {
-            world.notices.post(unpaid + (unpaid == 1 ? " crew member" : " crew") + " went unpaid: morale falls",
+            ctx.notices.post(unpaid + (unpaid == 1 ? " crew member" : " crew") + " went unpaid: morale falls",
                     NoticeLog.Kind.WARNING);
         }
         return paid;

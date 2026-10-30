@@ -10,6 +10,8 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
 import java.util.ArrayList;
 import java.util.List;
+import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.stationsdocking.DockingSystem;
 
 /**
  * A ship docked at a station with a hole to space aboard. Out in the black the hazard guard holds
@@ -22,7 +24,10 @@ public final class BerthVenting {
     /** Start of every refusal, for tests and the screen. */
     public static final String REFUSAL = "Your ship is venting at the berth";
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crew;
+    private final DockingSystem docking;
+    private final StationYard yard;
     /**
      * Sim ticks in a row a berth must vent before the station warns: just after a load or a latch
      * the dock's opening counts as open to space for a few ticks, until its link is rebuilt.
@@ -33,17 +38,20 @@ public final class BerthVenting {
     private boolean warned;
     private int ventingTicks;
 
-    public BerthVenting(GameWorld world) {
-        this.world = world;
-        world.engine.addRailsWarpGuard(this::railsWarpBlockedReason);
-        world.hints.register(HintRegistry.Context.DOCKED, "station yard (venting at the berth)", 4,
+    public BerthVenting(GameContext ctx, CrewService crew, DockingSystem docking, StationYard yard) {
+        this.ctx = ctx;
+        this.crew = crew;
+        this.docking = docking;
+        this.yard = yard;
+        ctx.engine.addRailsWarpGuard(this::railsWarpBlockedReason);
+        ctx.hints.register(HintRegistry.Context.DOCKED, "station yard (venting at the berth)", 4,
                 com.hawkwing.RingsOfIron.shell.KeyBindings.Action.YARD).onlyWhen(() -> station() != null);
     }
 
     /** The station the player's ship is docked at while something aboard is open to space, or null. */
     public Entity station() {
-        Entity player = world.getPlayer();
-        Entity other = player == null ? null : world.docking.dockedTo(player);
+        Entity player = ctx.player();
+        Entity other = player == null ? null : docking.dockedTo(player);
         if (other == null || other.getComponent(StationComponent.class) == null) return null;
         return openToSpace(player.getComponent(ShipGridComponent.class)) ? other : null;
     }
@@ -52,9 +60,9 @@ public final class BerthVenting {
     public String railsWarpBlockedReason() {
         Entity station = station();
         if (station == null) return null;
-        Entity player = world.getPlayer();
+        Entity player = ctx.player();
         ShipGridComponent grid = player.getComponent(ShipGridComponent.class);
-        if (world.yard.repairing(player)) return REFUSAL + ": the yard is repairing it";
+        if (yard.repairing(player)) return REFUSAL + ": the yard is repairing it";
         if (LeakPatches.leaks(grid).size > 0 && grid.patchKits > 0) return REFUSAL + ": the crew are patching it";
         return REFUSAL + ": order repairs at " + PlayerDocking.name(station) + "'s yard";
     }
@@ -70,7 +78,7 @@ public final class BerthVenting {
         }
         if (warned || ++ventingTicks < WARN_AFTER_TICKS) return;
         warned = true;
-        world.notices.post(PlayerDocking.name(station) + ": your ship is venting at the berth. "
+        ctx.notices.post(PlayerDocking.name(station) + ": your ship is venting at the berth. "
                 + "Time warp waits until it is patched or repaired", NoticeLog.Kind.WARNING);
     }
 
@@ -80,13 +88,13 @@ public final class BerthVenting {
      * left behind at the berth; those who come to walk back by themselves.
      */
     private void bringShelteredHome() {
-        Entity player = world.getPlayer();
-        Entity other = player == null ? null : world.docking.dockedTo(player);
+        Entity player = ctx.player();
+        Entity other = player == null ? null : docking.dockedTo(player);
         if (other == null) return;
         List<Entity> ashore = new ArrayList<>();
-        for (Entity e : world.crew.crewEntities()) {
-            CrewMemberComponent c = world.crew.crew(e);
-            if (world.crew.position(e).ship == other && world.crew.homeOf(e) == player && c.isAlive() && !c.isConscious()
+        for (Entity e : crew.crewEntities()) {
+            CrewMemberComponent c = crew.crew(e);
+            if (crew.position(e).ship == other && crew.homeOf(e) == player && c.isAlive() && !c.isConscious()
                     && !c.held && c.carriedBy == null) ashore.add(e);
         }
         if (ashore.isEmpty()) return;
@@ -96,14 +104,14 @@ public final class BerthVenting {
         if (safe.isEmpty()) return;
         int n = 0;
         for (Entity e : ashore) {
-            world.crew.releaseTask(e);
-            GridPositionComponent p = world.crew.position(e);
+            crew.releaseTask(e);
+            GridPositionComponent p = crew.position(e);
             p.stop();
             p.crossing = null;
             p.setShip(player);
             int[] t = safe.get(n++ % safe.size());
             p.setTile(t[0], t[1]);
-            world.notices.post(world.crew.crew(e).name + " is carried back aboard", NoticeLog.Kind.INFO);
+            ctx.notices.post(crew.crew(e).name + " is carried back aboard", NoticeLog.Kind.INFO);
         }
     }
 

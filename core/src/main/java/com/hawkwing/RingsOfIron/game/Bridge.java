@@ -22,6 +22,8 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import java.util.function.Supplier;
 
 /**
  * The player's ship's bridge: who sits at which console, and who has the helm.
@@ -70,12 +72,20 @@ public class Bridge extends FixedLogicSystem {
     /** For testing ({@code -Dview.anywhere=true}): the player has the helm wherever they are, as before seats. */
     public boolean playerAlwaysAtHelm;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final AvatarInteractor avatar;
+    private final CrewService crewService;
+    private final DockingSystem docking;
+    private final Supplier<Navigation> nav;
     private ImmutableArray<Entity> crew;
 
-    public Bridge(GameWorld world) {
+    public Bridge(GameContext ctx, AvatarInteractor avatar, CrewService crewService, DockingSystem docking, Supplier<Navigation> nav) {
         super(PRIORITY, PhysicsManager.TIME_STEP);
-        this.world = world;
+        this.ctx = ctx;
+        this.avatar = avatar;
+        this.crewService = crewService;
+        this.docking = docking;
+        this.nav = nav;
     }
 
     @Override
@@ -108,8 +118,8 @@ public class Bridge extends FixedLogicSystem {
 
     /** Sits the avatar at the console of {@code type} (HELM, WEAPONS or TURRET_MOUNT; null for the nearest) beside it. */
     public String sit(SubsystemType type) {
-        Entity avatar = world.avatar.getAvatar();
-        Entity ship = world.getPlayer();
+        Entity avatar = this.avatar.getAvatar();
+        Entity ship = ctx.player();
         if (avatar == null || ship == null) return "You're not aboard";
         GridPositionComponent pos = POSITIONS.get(avatar);
         if (pos.ship != ship) return "Your ship's consoles are aboard your ship";
@@ -150,7 +160,7 @@ public class Bridge extends FixedLogicSystem {
 
     /** Stands the avatar up from its console, if it is seated. */
     public void stand() {
-        Entity avatar = world.avatar.getAvatar();
+        Entity avatar = this.avatar.getAvatar();
         if (avatar == null) return;
         avatar.remove(SeatComponent.class);
         PlayerAvatarComponent figure = avatar.getComponent(PlayerAvatarComponent.class);
@@ -159,7 +169,7 @@ public class Bridge extends FixedLogicSystem {
 
     /** The console the avatar sits at, or null. */
     public SubsystemType seat() {
-        Entity avatar = world.avatar.getAvatar();
+        Entity avatar = this.avatar.getAvatar();
         SeatComponent seat = avatar == null ? null : SEATS.get(avatar);
         return seat == null ? null : seat.console;
     }
@@ -186,9 +196,9 @@ public class Bridge extends FixedLogicSystem {
 
     /** The turret mount (its subsystem entity) of the gun the player sits at, or null. */
     public Entity seatedGun() {
-        Entity avatar = world.avatar.getAvatar();
+        Entity avatar = this.avatar.getAvatar();
         SeatComponent seat = avatar == null ? null : SEATS.get(avatar);
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (seat == null || seat.console != SubsystemType.TURRET_MOUNT || ship == null) return null;
         return gunAt(ship, seat.gunX, seat.gunY);
     }
@@ -247,17 +257,17 @@ public class Bridge extends FixedLogicSystem {
     @Override
     protected void updateFixed(float deltaTime) {
         checkSeat();
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         // Flying with the player away from the helm, a crewman takes it ahead of a patient
-        ShipTaskBoardComponent board = ship == null ? null : world.crew.board(ship);
-        if (board != null) board.helmWanted = !playerAtHelm() && world.docking.dockedTo(ship) == null;
+        ShipTaskBoardComponent board = ship == null ? null : crewService.board(ship);
+        if (board != null) board.helmWanted = !playerAtHelm() && docking.dockedTo(ship) == null;
         HelmComponent helm = ship == null ? null : HELMS.get(ship);
         if (helm != null) steer(ship, helm, deltaTime);
     }
 
     /** Stands the avatar up if it can no longer stay at its console. */
     private void checkSeat() {
-        Entity avatar = world.avatar.getAvatar();
+        Entity avatar = this.avatar.getAvatar();
         SeatComponent seat = avatar == null ? null : SEATS.get(avatar);
         PlayerAvatarComponent figure = avatar == null ? null : avatar.getComponent(PlayerAvatarComponent.class);
         if (figure != null) figure.seated = seat != null;
@@ -267,7 +277,7 @@ public class Bridge extends FixedLogicSystem {
                 : seat.console == SubsystemType.TURRET_MOUNT ? "the gun" : "the weapons console";
         GridPositionComponent pos = POSITIONS.get(avatar);
         CrewMemberComponent c = CREW.get(avatar);
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         Entity gun = ship == null || seat.console != SubsystemType.TURRET_MOUNT ? null : gunAt(ship, seat.gunX, seat.gunY);
         SubsystemComponent console = ship == null ? null
                 : seat.console == SubsystemType.TURRET_MOUNT ? (gun == null ? null : SUBSYSTEMS.get(gun))
@@ -309,7 +319,7 @@ public class Bridge extends FixedLogicSystem {
             }
         }
         controls.clear();
-        if (world.docking.dockedTo(ship) != null) return;
+        if (docking.dockedTo(ship) != null) return;
         boolean manned = helmFault(ship) == null && helmsman(ship) != null;
         controls.rotationAssist = manned;
         if (!manned || body == null) return;
@@ -318,7 +328,7 @@ public class Bridge extends FixedLogicSystem {
             helm.holding = true;
         }
         // A standing order from the player: the autopilot
-        if (world.nav != null && world.nav.helm.steer(ship, helm, controls, body, deltaTime)) return;
+        if (nav.get() != null && nav.get().helm.steer(ship, helm, controls, body, deltaTime)) return;
         controls.turn = holdTurn(body, ship.getComponent(ThrusterComponent.class), helm.heldAngle);
     }
 

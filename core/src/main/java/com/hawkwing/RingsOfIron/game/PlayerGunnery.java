@@ -111,9 +111,14 @@ public class PlayerGunnery {
      * that gun, point defense or not.
      */
     public static boolean inHand(GameWorld world, WeaponMountComponent mount) {
+        return inHand(world.bridge, mount);
+    }
+
+    /** {@link #inHand(GameWorld, WeaponMountComponent)}, from where the player sits on {@code bridge}. */
+    public static boolean inHand(Bridge bridge, WeaponMountComponent mount) {
         if (mount.def == null) return false;
-        if (world.bridge.playerAtWeapons()) return !mount.def.pointDefense;
-        Entity gun = world.bridge.seatedGun();
+        if (bridge.playerAtWeapons()) return !mount.def.pointDefense;
+        Entity gun = bridge.seatedGun();
         return gun != null && mount.subsystem == gun;
     }
 

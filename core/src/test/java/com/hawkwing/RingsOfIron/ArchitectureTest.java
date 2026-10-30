@@ -99,20 +99,15 @@ class ArchitectureTest {
      * collaborators they use, leaving about ten top-level coordinators; no class joins this list.
      */
     static final Set<String> TAKES_GAME_WORLD = Set.of(
-            "debug.DebugActions", "debug.DebugPicker", "debug.DevConsole", "debug.ScenarioSetup",
-            "game.AirWatch", "game.AudioLab", "game.Autopilot", "game.BerthVenting", "game.BoardingWork",
-            "game.Bridge", "game.BurnPlanner", "game.CaptainSafety", "game.CombatThreats", "game.ContractBoard",
-            "game.ContractMissions", "game.CrewCareer", "game.CrewHiring", "game.CrewMedical", "game.CrewRoster",
-            "game.DamageControl", "game.DeckTools", "game.Derelicts", "game.DistressBeacon", "game.ExteriorPick",
-            "game.FactionTension", "game.FieldRefits", "game.FireArcOverlay", "game.FirstPlay", "game.FlightField",
-            "game.FlightWarnings", "game.FreighterTraffic", "game.FurnishingPlacement", "game.FurnishingStore",
-            "game.GameHud", "game.GameScenario", "game.GunCrews", "game.HelmOrders", "game.HostileTraffic",
-            "game.JammedCollars", "game.LoopWiring", "game.MapManeuvers", "game.MarketTrade", "game.NavOverlay",
-            "game.NavTarget", "game.Navigation", "game.OpeningGuide", "game.PirateBase", "game.PirateBoarding",
-            "game.PirateSightings", "game.PirateUpkeep", "game.PlayerDocking", "game.PlayerGunnery",
-            "game.PlayerOrbitPath", "game.PlayerTransfer", "game.Prisoners", "game.RailsTrafficMap", "game.Rescue",
-            "game.ShieldDocking", "game.Shipyard", "game.ShipyardWork", "game.SilencedMarkers", "game.Spacewalks",
-            "game.StationInfirmary", "game.StationTraffic", "game.WorldDebug", "game.WorldEvents", "game.YardWork");
+            "debug.DebugActions", "debug.DebugPicker", "debug.DevConsole", "debug.ScenarioSetup", "game.AudioLab",
+            "game.Autopilot", "game.BoardingWork", "game.ContractMissions", "game.CrewRoster", "game.DeckTools",
+            "game.ExteriorPick", "game.FireArcOverlay", "game.FirstPlay", "game.FlightField",
+            "game.FurnishingPlacement", "game.GameHud", "game.GameScenario", "game.HelmOrders",
+            "game.HostileTraffic", "game.LoopWiring", "game.MapManeuvers", "game.MarketTrade", "game.NavOverlay",
+            "game.NavTarget", "game.Navigation", "game.OpeningGuide", "game.PirateSightings", "game.PirateUpkeep",
+            "game.PlayerDocking", "game.PlayerGunnery", "game.PlayerOrbitPath", "game.PlayerTransfer",
+            "game.RailsTrafficMap", "game.Rescue", "game.ShipyardWork", "game.SilencedMarkers",
+            "game.StationTraffic", "game.WorldDebug", "game.YardWork");
 
     @Test
     void gameLogicDoesNotUseTheShellRenderingOrGraphics() throws IOException {

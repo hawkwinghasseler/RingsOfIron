@@ -11,6 +11,7 @@ import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.TankSupply;
 import java.util.Locale;
+import com.ringsofiron.aicrew.CrewService;
 
 /**
  * Warns before the player's people run out of air (round 8 part 5). A burst oxygen tank left a
@@ -35,19 +36,23 @@ public final class AirWatch {
     /** Sim seconds between updates of the running-out warning's time. */
     static final double REFRESH = 15;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crew;
+    private final CaptainSafety captain;
     private boolean dryWarned;
     private double lastWarned = Double.NEGATIVE_INFINITY;
     /** The running-out warning while it holds, revised in place; null otherwise. */
     private NoticeLog.Notice warning;
 
-    public AirWatch(GameWorld world) {
-        this.world = world;
+    public AirWatch(GameContext ctx, CrewService crew, CaptainSafety captain) {
+        this.ctx = ctx;
+        this.crew = crew;
+        this.captain = captain;
     }
 
     /** Once a frame. */
     public void update() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         ShipSubsystemRegistryComponent registry = ship == null ? null : ship.getComponent(ShipSubsystemRegistryComponent.class);
         if (registry == null) return;
         double tanks = 0, reserve = 0;
@@ -64,7 +69,7 @@ public final class AirWatch {
         }
         boolean dry = anyTank && tanks <= CrewDef.SUIT_OXYGEN_KG;
         if (dry && !dryWarned && reserve > 0) {
-            world.notices.post(String.format(Locale.ROOT, "%s (%.0f kg). A station's yard refills both", TANKS_DRY, reserve),
+            ctx.notices.post(String.format(Locale.ROOT, "%s (%.0f kg). A station's yard refills both", TANKS_DRY, reserve),
                     NoticeLog.Kind.WARNING);
         }
         dryWarned = dry;
@@ -73,12 +78,12 @@ public final class AirWatch {
         String who = null;
         float least = Float.MAX_VALUE;
         if (!fillable) {
-            Entity avatar = world.captain.avatar();
-            for (Entity e : world.crew.crewEntities()) {
-                CrewMemberComponent c = world.crew.crew(e);
-                GridPositionComponent p = world.crew.position(e);
+            Entity avatar = captain.avatar();
+            for (Entity e : crew.crewEntities()) {
+                CrewMemberComponent c = crew.crew(e);
+                GridPositionComponent p = crew.position(e);
                 if (p.ship != ship || !c.isAlive() || !c.suited || c.held) continue;
-                ShipGridComponent grid = world.crew.grid(p.ship);
+                ShipGridComponent grid = crew.grid(p.ship);
                 if (grid == null || TaskRules.isBreathable(grid, p.tileX(), p.tileY())) continue;
                 if (c.suitAir < least) {
                     least = c.suitAir;
@@ -86,7 +91,7 @@ public final class AirWatch {
                 }
             }
         }
-        double now = world.engine.getSimSeconds();
+        double now = ctx.engine.getSimSeconds();
         if (who == null || least >= WARN_AT) {
             warning = null;
             return;
@@ -98,6 +103,6 @@ public final class AirWatch {
                 "%s: %s suit has %d:%02d of air left and nothing aboard can fill it. Get to a station or pressurised air",
                 RUNNING_OUT, who, s / 60, s % 60);
         // One line kept up to date, not a new one every few seconds
-        warning = warning == null ? world.notices.post(text, NoticeLog.Kind.WARNING) : world.notices.revise(warning, text);
+        warning = warning == null ? ctx.notices.post(text, NoticeLog.Kind.WARNING) : ctx.notices.revise(warning, text);
     }
 }

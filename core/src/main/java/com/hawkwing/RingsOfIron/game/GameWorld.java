@@ -233,6 +233,8 @@ public class GameWorld implements Disposable {
     public final CrewAudio crewAudio;
     /** What the game tells the player: post here rather than keeping a list of your own. */
     public final NoticeLog notices;
+    /** The engine, the player's ship, the notices and the key hints: what most managers read. */
+    public final GameContext context;
     /** Key hints by context, for the bottom line and the F1 controls panel. */
     public final HintRegistry hints = HintRegistry.withDefaults();
     /** Low propellant and inbound missiles, as notices. */
@@ -256,7 +258,7 @@ public class GameWorld implements Disposable {
     /** A station's infirmary, treating the player's wounded at its berth (round 8). */
     public final StationInfirmary infirmary;
     /** The distress beacon: a stranded ship towed home. */
-    public final DistressBeacon beacon = new DistressBeacon(this);
+    public final DistressBeacon beacon;
     /** First Play's and the opening walkthrough's progress, saved with the game. */
     public final GuideProgress guides = new GuideProgress();
 
@@ -288,13 +290,16 @@ public class GameWorld implements Disposable {
 
     public GameWorld(Modules modules) {
         this.modules = modules;
+        // Built later than some that use them: read through it once they are
+        GameWorld world = this;
         engine = new GameEngine();
         SaveTypes.register(engine.getSerializationService());
         players = engine.getEcsEngine().getEntitiesFor(PLAYER);
         notices = new NoticeLog(engine::getSimSeconds);
         // The old game's notices are not this one's (the log is not saved)
         addResettable(notices::clear);
-        warnings = new FlightWarnings(this);
+        context = new GameContext(engine, this::getPlayer, this::getContent, notices, hints);
+        warnings = new FlightWarnings(context);
 
         physics = new PhysicsManager();
 
@@ -350,7 +355,8 @@ public class GameWorld implements Disposable {
         orbitalEvents.impacts.add((signal, event) -> onImpact(event));
         // Planned burns: the event system fires them on rails, this system in the bubble.
         engine.addSystem(new BubbleBurnSystem(physics, universe));
-        burns = new BurnPlanner(this);
+        burns = new BurnPlanner(universe, orbitalEvents, this::getPlayer,
+                new PlayerOrbitInfo(universe, physics, this::getPlayer));
 
         // macro-sim, on the same rails and event system. Prediction runs inline so warp drop-out
         // always sees a current forecast; the bubble pauses while rails warp has it collapsed.
@@ -361,7 +367,7 @@ public class GameWorld implements Disposable {
                 bubbleGateway, commodities, null, engine.getSimSeconds());
         macroSim.bubble().addListener(new NpcBubblePilots(engine.getUuidRegistry()));
         // Freighters in the bubble dock at their stations under their own power, and leave the same way
-        FreighterTraffic traffic = new FreighterTraffic(this);
+        FreighterTraffic traffic = new FreighterTraffic(engine, macroSim, docking, berthing, timeWarp, () -> world.cargo);
         macroSim.bubble().addListener(traffic);
         engine.addSystem(traffic);
         // Economy, fleet and bubble state; restores its own components on load.
@@ -459,7 +465,7 @@ public class GameWorld implements Disposable {
         engine.addSystem(cargo);
         avatar = new AvatarInteractor(engine.getEcsEngine());
         // Who sits at the player's consoles, and who flies the ship when the player isn't at the helm
-        bridge = new Bridge(this);
+        bridge = new Bridge(context, avatar, crew, docking, () -> world.nav);
         engine.addSystem(bridge);
 
         // combat-sys
@@ -473,7 +479,9 @@ public class GameWorld implements Disposable {
         yard = new StationYard(docking, crew, engine.getUuidRegistry(), engine::getSimSeconds, combatDefs);
         engine.addSystem(yard);
         // Mission boards, and the player's contracts checked against the world; saved with the game
-        contracts = new ContractBoard(this);
+        contracts = new ContractBoard(context, () -> world.crash != null, crew, physics, universe, macroSim, docking,
+                standing, this::stationDice, () -> world.crewHiring, () -> world.derelicts, () -> world.pirateBase,
+                () -> world.tension);
         engine.addSystem(contracts);
         engine.getSerializationService().addParticipant(contracts);
         addResettable(contracts);
@@ -481,7 +489,7 @@ public class GameWorld implements Disposable {
         // ...outside First Play and the opening walkthrough
         addResettable(guides);
         // Pods and wrecks on the rails, for rescues and recoveries; saved with the game
-        derelicts = new Derelicts(this);
+        derelicts = new Derelicts(context, physics, universe, macroSim, contracts);
         addResettable(derelicts);
         // NPC freighters fill their tanks wherever they dock
         engine.addSystem(new FreighterRefueling(docking::dockedTo));
@@ -496,7 +504,7 @@ public class GameWorld implements Disposable {
         CrewStationSync stations = new CrewStationSync();
         stations.gunsByGun = ship -> ship == getPlayer();
         engine.addSystem(stations);
-        gunCrews = new GunCrews(this);
+        gunCrews = new GunCrews(context, avatar, bridge, docking, sensors, weaponControl, () -> world.pirateBase);
         engine.addSystem(gunCrews);
         engine.addSystem(sensors);
         // Shots and beams draw on the ship's power circuits.
@@ -504,23 +512,23 @@ public class GameWorld implements Disposable {
         // Round 7: other ships' gunners hold fire with a ship in the way (a pirate emptied its
         // magazine into a surrendered wingmate); the player's crew, firing at will, hold for any
         // but a hostile one
-        weaponControl.setHoldFire((shooter, blocker) -> shooter != getPlayer() || !GunCrews.hostile(this, blocker));
+        weaponControl.setHoldFire((shooter, blocker) -> shooter != getPlayer() || !GunCrews.hostile(getPlayer(), world.pirateBase, blocker));
         // Round 9: the player's guns firing at will (point defense, crewed guns) never take a struck ship;
         // round 10: nor a fallen base's silenced battery (they went on hitting Den batteries 23 and 24)
-        weaponControl.setSpared((shooter, target) -> shooter == getPlayer() && Struck.struck(this, target));
+        weaponControl.setSpared((shooter, target) -> shooter == getPlayer() && Struck.struck(world.pirateBase, target));
         // A struck ship gives way to whoever docks: no clearance to ask, and no door to force before boarding
-        docking.yields = e -> e != getPlayer() && Struck.struck(this, e);
+        docking.yields = e -> e != getPlayer() && Struck.struck(world.pirateBase, e);
         // Round 10: nor do its missiles' seekers lock a fallen base's battery they weren't fired at
         // (part 6's window: a heavy missile fired at a raider burst on Den battery 23). Only the
         // batteries: sparing surrendered ships too moved fights before the frigate (seed 2026's ace)
-        missiles.setSpared((shooter, target) -> shooter == getPlayer() && Struck.silencedBattery(this, target));
+        missiles.setSpared((shooter, target) -> shooter == getPlayer() && Struck.silencedBattery(world.pirateBase, target));
         engine.addSystem(weaponControl);
         engine.addSystem(missiles);
         engine.addSystem(ballistics);
         // Shield clouds gather where rounds in flight will cross them, before this tick's hits resolve
         engine.addSystem(new com.ringsofiron.combatsys.shields.ShieldSystem(physics));
         // Shields go down for docking, and back up after
-        engine.addSystem(new ShieldDocking(this));
+        engine.addSystem(new ShieldDocking(context, docking));
         impacts = new ImpactResolutionSystem(physics, combatEvents, combatDefs, ballistics,
                 MaterialTable.createDefault(), modules.combatSeed);
         impacts.setCrew(new CrewDamageAdapter(crew, crew));
@@ -540,6 +548,7 @@ public class GameWorld implements Disposable {
         abandon = new AbandonShip(crew, disablement, engine::getSimSeconds, docking::dockedTo);
         engine.addSystem(abandon);
         rescue = new Rescue(this, bubble);
+        beacon = new DistressBeacon(context, () -> world.crash != null, this::playerStation, rescue, standing, warnings);
         // Beaten ships are boarded, taken and stripped
         boarding = new Boarding(docking, crew, forcing, standing, disablement, engine.getUuidRegistry(), engine::getSimSeconds);
         engine.addSystem(boarding);
@@ -548,10 +557,11 @@ public class GameWorld implements Disposable {
         salvage = new Salvage(docking, crew, boarding, cargo, engine.getUuidRegistry(), combatDefs);
         engine.addSystem(salvage);
         // Ships bought at faction yards, and taken ships towed home as prizes
-        shipyard = new Shipyard(this);
+        shipyard = new Shipyard(context, crew, physics, macroSim, docking, standing, yard, contracts, boarding,
+                () -> world.prisoners);
         engine.addSystem(shipyard);
         // ... and furnishings for the crew's downtime, carried aboard by the yards' loaders
-        furnishings = new FurnishingStore(this, this::getContent);
+        furnishings = new FurnishingStore(context, crew, docking, yard, this::getContent);
         engine.addSystem(furnishings);
 
         // audio-spatial
@@ -578,14 +588,15 @@ public class GameWorld implements Disposable {
         hostiles = HostileTraffic.install(this);
         // Hostile traffic's own state starts again from the load
         addResettable(hostiles);
-        pirateBoarding = new PirateBoarding(this);
+        pirateBoarding = new PirateBoarding(context, docking, combatEvents, rescue);
         engine.getSerializationService().addParticipant(pirateBoarding);
         addResettable(pirateBoarding);
-        pirateBase = new PirateBase(this);
+        pirateBase = new PirateBase(context, crew, macroSim, standing, contracts, hostiles, disablement, missiles,
+                () -> world.tension);
         engine.addSystem(pirateBase);
         engine.getSerializationService().addParticipant(pirateBase);
         hostiles.extraRaiders = pirateBase::extraRaiders;
-        tension = new FactionTension(this);
+        tension = new FactionTension(context, macroSim, standing, hostiles);
         engine.addSystem(tension);
         engine.getSerializationService().addParticipant(tension);
         // ...with no strain between the factions
@@ -597,33 +608,34 @@ public class GameWorld implements Disposable {
         // The loop: the career sets encounters, rescues and what boarding and beating ships are worth
         loop = LoopWiring.install(this);
         // Things that happen on their own, a day at a time, with jobs on the boards
-        events = new WorldEvents(this);
+        events = new WorldEvents(context, () -> world.crash != null, universe, macroSim, standing, tension, contracts,
+                derelicts, hostiles, shipyard);
         // A save with no events has the default seed (a new game keeps its own, so reset() keeps it)
         addResettable(() -> {
             events.reset();
             events.seed = WorldEvents.DEFAULT_SEED;
         });
         // The player's crew: hired at stations, paid weekly, learning from what they do
-        crewCareer = new CrewCareer(this);
+        crewCareer = new CrewCareer(context, crew, combatEvents, boarding, budget, rescue, loop);
         engine.addSystem(crewCareer);
         // Crew morale drifts from the loaded time on
         addResettable(crewCareer::restartClock);
-        crewHiring = new CrewHiring(this);
+        crewHiring = new CrewHiring(context, crew, docking, macroSim, standing, crewCareer, this::stationDice);
         engine.getSerializationService().addParticipant(crewHiring);
         // ...and nobody is hired from today's pools
         addResettable(crewHiring);
-        prisoners = new Prisoners(this);
+        prisoners = new Prisoners(context, crew, docking, macroSim, standing, crewHiring);
         hints.register(HintRegistry.Context.LATCHED, "prisoners", 3, KeyBindings.Action.CREW)
                 .onlyWhen(() -> prisoners.takenAlongside() != null);
-        damageControl = new DamageControl(this);
-        medical = new CrewMedical(this);
-        berthVenting = new BerthVenting(this);
-        spacewalks = new Spacewalks(this);
-        jammedCollars = new JammedCollars(this);
-        fieldRefits = new FieldRefits(this);
-        captain = new CaptainSafety(this);
-        air = new AirWatch(this);
-        infirmary = new StationInfirmary(this);
+        damageControl = new DamageControl(context);
+        medical = new CrewMedical(context, crew, boarding, combatEvents, prisoners);
+        berthVenting = new BerthVenting(context, crew, docking, yard);
+        spacewalks = new Spacewalks(context, crew, crewCareer, physics);
+        jammedCollars = new JammedCollars(context, crew);
+        fieldRefits = new FieldRefits(context, crew, combatDefs);
+        captain = new CaptainSafety(context, crew);
+        air = new AirWatch(context, crew, captain);
+        infirmary = new StationInfirmary(context, crew, docking, yard);
         // The managers that keep time or set what the crew act on run every sim tick, after the
         // tick's other systems, not once a frame after however many ticks the frame ran
         engine.addSystem(new TickManagers());

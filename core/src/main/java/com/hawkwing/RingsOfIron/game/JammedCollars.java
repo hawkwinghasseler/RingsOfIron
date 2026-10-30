@@ -18,6 +18,7 @@ import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Map;
+import com.ringsofiron.aicrew.CrewService;
 
 /**
  * Docking collars jammed by hits ({@link CollarWear}): the port can't arm or latch until its crew
@@ -31,14 +32,16 @@ import java.util.Map;
 public final class JammedCollars {
     private static final Family SHIPS = Family.all(DockingPortsComponent.class, ShipGridComponent.class, ShipTaskBoardComponent.class).get();
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crew;
     private final ImmutableArray<Entity> ships;
     /** The job of each port jammed, while it is. */
     private final Map<DockingPort, Free> jobs = new IdentityHashMap<>();
 
-    public JammedCollars(GameWorld world) {
-        this.world = world;
-        ships = world.engine.getEcsEngine().getEntitiesFor(SHIPS);
+    public JammedCollars(GameContext ctx, CrewService crew) {
+        this.ctx = ctx;
+        this.crew = crew;
+        ships = ctx.engine.getEcsEngine().getEntitiesFor(SHIPS);
     }
 
     /** Once a frame: each jammed port's job on its craft's board, and the jobs of ports freed or gone dropped. */
@@ -59,8 +62,8 @@ public final class JammedCollars {
                 if (job == null) {
                     job = new Free(ship, k, p, m);
                     jobs.put(p, job);
-                    if (ship == world.getPlayer()) {
-                        world.notices.post("Port " + (k + 1) + "'s docking collar is jammed: it won't arm till the crew free it on EVA",
+                    if (ship == ctx.player()) {
+                        ctx.notices.post("Port " + (k + 1) + "'s docking collar is jammed: it won't arm till the crew free it on EVA",
                                 NoticeLog.Kind.WARNING);
                     }
                 }
@@ -112,9 +115,9 @@ public final class JammedCollars {
         @Override
         public void done(Entity worker) {
             port.jammed = false;
-            if (ship != world.getPlayer()) return;
-            CrewMemberComponent c = worker == null ? null : world.crew.crew(worker);
-            world.notices.post((c == null ? "The crew have" : c.name + " has") + " freed port " + (index + 1) + "'s jammed docking collar",
+            if (ship != ctx.player()) return;
+            CrewMemberComponent c = worker == null ? null : crew.crew(worker);
+            ctx.notices.post((c == null ? "The crew have" : c.name + " has") + " freed port " + (index + 1) + "'s jammed docking collar",
                     NoticeLog.Kind.INFO);
         }
 

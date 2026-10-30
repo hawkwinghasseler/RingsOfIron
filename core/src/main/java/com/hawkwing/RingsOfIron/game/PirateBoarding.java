@@ -21,6 +21,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.combatsys.events.CombatEvents;
 
 /**
  * Pirates who board a beaten player (round 7 part 4). Kept small: a pirate that has beaten the
@@ -95,7 +97,10 @@ public class PirateBoarding implements SaveParticipant, Resettable {
     /** A boarding is over: the pirate is away with what it took. */
     public final Signal<Take> robbed = new Signal<>();
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final DockingSystem docking;
+    private final CombatEvents combatEvents;
+    private final Rescue rescue;
     /** Uuid of the pirate boarding now, or null. */
     private String boarder;
     /** Seconds it has been latched on. */
@@ -111,13 +116,16 @@ public class PirateBoarding implements SaveParticipant, Resettable {
     /** Uuids of pirates driven off under fire: none boards again while the player stays beaten. */
     private final Set<String> drivenOff = new LinkedHashSet<>();
 
-    PirateBoarding(GameWorld world) {
-        this.world = world;
-        world.combatEvents.impacts.add((signal, hit) -> hit(hit.owner, hit.target, hit.sinceFired));
-        world.combatEvents.detonations.add((signal, d) -> hit(d.owner, d.target, d.sinceFired));
+    PirateBoarding(GameContext ctx, DockingSystem docking, CombatEvents combatEvents, Rescue rescue) {
+        this.ctx = ctx;
+        this.docking = docking;
+        this.combatEvents = combatEvents;
+        this.rescue = rescue;
+        combatEvents.impacts.add((signal, hit) -> hit(hit.owner, hit.target, hit.sinceFired));
+        combatEvents.detonations.add((signal, d) -> hit(d.owner, d.target, d.sinceFired));
         // The tug takes the player away from whoever was alongside
-        world.rescue.tows.add((signal, tow) -> {
-            if (tow.ship == world.getPlayer()) castOff("casts off as you are taken in tow");
+        rescue.tows.add((signal, tow) -> {
+            if (tow.ship == ctx.player()) castOff("casts off as you are taken in tow");
         });
     }
 
@@ -144,10 +152,10 @@ public class PirateBoarding implements SaveParticipant, Resettable {
             latched = 0;
             aboard = false;
             hits = 0;
-            began = world.engine.getSimSeconds();
-            world.notices.post(h.displayName + " is coming alongside to board you", NoticeLog.Kind.WARNING);
+            began = ctx.engine.getSimSeconds();
+            ctx.notices.post(h.displayName + " is coming alongside to board you", NoticeLog.Kind.WARNING);
         }
-        asked = world.engine.getSimSeconds();
+        asked = ctx.engine.getSimSeconds();
         // Alongside, guns cold: it wants the cargo, not a wreck
         SensorComponent sensor = pirate.getComponent(SensorComponent.class);
         if (sensor != null) sensor.lockedTarget = null;
@@ -159,13 +167,13 @@ public class PirateBoarding implements SaveParticipant, Resettable {
         if (range(pirate, player) > LATCH_RANGE) return true;
         if (!aboard) {
             aboard = true;
-            world.notices.post(h.displayName + " has latched on: pirates are aboard", NoticeLog.Kind.WARNING);
+            ctx.notices.post(h.displayName + " has latched on: pirates are aboard", NoticeLog.Kind.WARNING);
         }
         latched += seconds;
         if (latched < BOARD_SECONDS) return true;
         Take take = take(pirate, h.displayName, player);
         reset();
-        world.notices.post("The boarders from " + take.pirateName + " took " + take.describe() + ", and cast off",
+        ctx.notices.post("The boarders from " + take.pirateName + " took " + take.describe() + ", and cast off",
                 NoticeLog.Kind.WARNING);
         robbed.dispatch(take);
         return false;
@@ -188,7 +196,7 @@ public class PirateBoarding implements SaveParticipant, Resettable {
 
     /** At a berth, or being brought in by a tug: no place for a boarding. */
     boolean atBerth(Entity player) {
-        return world.docking.dockedTo(player) != null || world.rescue.bringingIn();
+        return docking.dockedTo(player) != null || rescue.bringingIn();
     }
 
     /**
@@ -197,14 +205,14 @@ public class PirateBoarding implements SaveParticipant, Resettable {
      * {@link #BREAK_OFF_RANGE}.
      */
     private void hit(Entity owner, Entity target, float sinceFired) {
-        if (boarder == null || owner == null || owner != world.getPlayer() || target == null || target != boarder()) return;
-        if (world.engine.getSimSeconds() - sinceFired < began) return;
+        if (boarder == null || owner == null || owner != ctx.player() || target == null || target != boarder()) return;
+        if (ctx.engine.getSimSeconds() - sinceFired < began) return;
         if (range(target, owner) > BREAK_OFF_RANGE) return;
         if (++hits < BREAK_OFF_HITS) return;
         HostileComponent h = target.getComponent(HostileComponent.class);
         drivenOff.add(boarder);
         reset();
-        world.notices.post((h == null ? "The pirate" : h.displayName) + " breaks off its boarding under fire", NoticeLog.Kind.IMPORTANT);
+        ctx.notices.post((h == null ? "The pirate" : h.displayName) + " breaks off its boarding under fire", NoticeLog.Kind.IMPORTANT);
     }
 
     /** Ends a boarding in progress with nothing taken, saying {@code why} after the pirate's name. */
@@ -213,8 +221,8 @@ public class PirateBoarding implements SaveParticipant, Resettable {
         Entity pirate = boarder();
         HostileComponent h = pirate == null ? null : pirate.getComponent(HostileComponent.class);
         reset();
-        world.notices.post((h == null ? "The pirate" : h.displayName) + " " + why, NoticeLog.Kind.INFO);
-        if (pirate != null) standDown(world.getPlayer(), pirate);
+        ctx.notices.post((h == null ? "The pirate" : h.displayName) + " " + why, NoticeLog.Kind.INFO);
+        if (pirate != null) standDown(ctx.player(), pirate);
     }
 
     /**
@@ -232,7 +240,7 @@ public class PirateBoarding implements SaveParticipant, Resettable {
 
     /** The pirate boarding the player now, or null. */
     public Entity boarder() {
-        return boarder == null ? null : world.engine.getEntity(boarder);
+        return boarder == null ? null : ctx.engine.getEntity(boarder);
     }
 
     /**
@@ -240,7 +248,7 @@ public class PirateBoarding implements SaveParticipant, Resettable {
      * beaten, or the pirate is beaten itself or gone from the bubble).
      */
     public void update() {
-        Entity player = world.getPlayer();
+        Entity player = ctx.player();
         // A fight over: a pirate driven off may board another day
         if (!drivenOff.isEmpty() && (player == null || !ShipDisablement.isDisabled(player))) drivenOff.clear();
         if (boarder == null) return;
@@ -248,14 +256,14 @@ public class PirateBoarding implements SaveParticipant, Resettable {
             castOff("casts off: you are at a berth");
             return;
         }
-        double now = world.engine.getSimSeconds();
+        double now = ctx.engine.getSimSeconds();
         if (Double.isNaN(asked)) asked = now;
         Entity pirate = boarder();
         if (pirate != null && pirate.getComponent(PhysicsBodyComponent.class) != null && now - asked <= STALE_SECONDS) return;
-        if (aboard && pirate != null) world.notices.post("The boarders cast off", NoticeLog.Kind.INFO);
+        if (aboard && pirate != null) ctx.notices.post("The boarders cast off", NoticeLog.Kind.INFO);
         else if (pirate != null && pirate.getComponent(HostileComponent.class) != null) {
             // Told it was coming alongside, the player hears it isn't
-            world.notices.post(pirate.getComponent(HostileComponent.class).displayName + " turns away without boarding", NoticeLog.Kind.INFO);
+            ctx.notices.post(pirate.getComponent(HostileComponent.class).displayName + " turns away without boarding", NoticeLog.Kind.INFO);
         }
         reset();
     }
