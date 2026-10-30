@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
-import com.ringsofiron.aicrew.btree.CrewTasks;
+import com.ringsofiron.aicrew.btree.Idle;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.ChassisBlueprint;
@@ -249,7 +249,7 @@ class CrewWoundTest {
         s.run(30f);
         assertTrue(s.c(e).suited, "and kept it on");
         s.board.battleStations = false;
-        s.run(CrewTasks.Idle.SUIT_OFF_DELAY + s.c(e).def.suitTime + 1f);
+        s.run(Idle.SUIT_OFF_DELAY + s.c(e).def.suitTime + 1f);
         assertFalse(s.c(e).suited, "the fight over, off it comes");
 
         s.board.suitsAtBattleStations = false;
