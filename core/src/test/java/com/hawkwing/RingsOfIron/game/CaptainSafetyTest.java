@@ -7,7 +7,7 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
-import com.ringsofiron.aicrew.btree.CrewTasks;
+import com.ringsofiron.aicrew.btree.Idle;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.shipops.DisabledComponent;
@@ -78,7 +78,7 @@ class CaptainSafetyTest {
         world.disablement.set(game.raider, DisabledComponent.Reason.SURRENDERED);
         for (int i = 0; i < (CrewMedical.BATTLE_HOLD + 30) / FRAME && board().battleStations; i++) world.update(FRAME);
         assertFalse(board().battleStations);
-        runSeconds(CrewTasks.Idle.SUIT_OFF_DELAY + you().def.suitTime + 5);
+        runSeconds(Idle.SUIT_OFF_DELAY + you().def.suitTime + 5);
         assertTrue(you().suited, "the suit stays on until the player hangs it up");
     }
 

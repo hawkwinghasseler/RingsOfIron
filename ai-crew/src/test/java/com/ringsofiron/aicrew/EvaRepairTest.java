@@ -229,4 +229,36 @@ class EvaRepairTest {
         assertTrue(DockingPortLayout.isOpening(port(s), s.p(e).tileX(), s.p(e).tileY()), "lying in the chamber");
         assertTrue(Airlock.of(s.grid, port(s)).isIn());
     }
+
+    @Test
+    void theirAirRunningLowOnTheHullTheyComeBackInWithTheWorkUndone() {
+        TestShips s = ship();
+        Entity e = s.spawn(CrewRole.ENGINEER, 0, 9, 2);
+        for (int i = 0; i < 3000 && !(EvaSystem.outside(e) && EvaSystem.of(e).phase == EvaComponent.Phase.ON_HULL); i++) s.run(0.1f);
+        assertTrue(EvaSystem.outside(e), "out on the hull");
+        // Less than the way back and the margin it keeps: no time for the work
+        s.c(e).suitAir = EvaTasks.AIR_MARGIN * 0.5f;
+        s.run(0.5f);
+        assertTrue(EvaSystem.of(e).returning, "headed back at once");
+        assertTrue(s.c(e).task == null || s.c(e).task.kind != CrewTask.Kind.REPAIR_RCS, "the job put down");
+        for (int i = 0; i < 3000 && EvaSystem.of(e) != null; i++) s.run(0.1f);
+        assertNull(EvaSystem.of(e), "back in");
+        assertFalse(block(s).works(s.grid), "the block still wrecked");
+        assertTrue(posted(s), "the job back on the board");
+    }
+
+    @Test
+    void aJobDoneWhileTheyAreOutSendsThemBackIn() {
+        TestShips s = ship();
+        Entity e = s.spawn(CrewRole.ENGINEER, 0, 9, 2);
+        for (int i = 0; i < 3000 && !(EvaSystem.outside(e) && EvaSystem.of(e).phase == EvaComponent.Phase.ON_HULL); i++) s.run(0.1f);
+        assertTrue(EvaSystem.outside(e), "out on the hull");
+        // Mended meanwhile by other hands: nothing left out here for them
+        s.grid.getTile(9, 0).setIntegrity(1f);
+        assertTrue(block(s).works(s.grid));
+        for (int i = 0; i < 3000 && EvaSystem.of(e) != null; i++) s.run(0.1f);
+        assertNull(EvaSystem.of(e), "back in");
+        assertNull(s.c(e).task, "with no job");
+        assertFalse(posted(s), "and none on the board");
+    }
 }

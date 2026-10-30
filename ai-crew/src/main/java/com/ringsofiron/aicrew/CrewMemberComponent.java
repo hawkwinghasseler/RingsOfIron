@@ -98,11 +98,11 @@ public class CrewMemberComponent implements Component {
         IN
     }
     /**
-     * Seconds spent so far taking their suit off at work ({@code CrewTasks.DoWork}), so a save
+     * Seconds spent so far taking their suit off at work ({@code DoWork}), so a save
      * part way through doesn't start it again (round 9).
      */
     public float unsuiting;
-    /** Seconds spent so far putting their suit on at a post ({@code CrewTasks.DoWork}); saved, as {@link #unsuiting}. */
+    /** Seconds spent so far putting their suit on at a post ({@code DoWork}); saved, as {@link #unsuiting}. */
     public float suiting;
 
     /** Seconds until this crew member can fire again. */

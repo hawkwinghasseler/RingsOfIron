@@ -97,7 +97,7 @@ class SpaceSuitTest {
     }
 
     private static float CrewTasksIdleDelay() {
-        return com.ringsofiron.aicrew.btree.CrewTasks.Idle.SUIT_OFF_DELAY + 0.5f;
+        return com.ringsofiron.aicrew.btree.Idle.SUIT_OFF_DELAY + 0.5f;
     }
 
     @Test

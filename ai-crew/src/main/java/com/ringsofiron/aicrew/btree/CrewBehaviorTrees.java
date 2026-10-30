@@ -44,43 +44,43 @@ public final class CrewBehaviorTrees {
 
     @SuppressWarnings("unchecked")
     public static BehaviorTree<CrewAgent> standard(CrewAgent agent) {
-        Task<CrewAgent> engage = new CrewTasks.EngageHostile();
-        engage.setGuard(new CrewTasks.HostileInSight());
+        Task<CrewAgent> engage = new EngageHostile();
+        engage.setGuard(new HostileInSight());
 
         Task<CrewAgent> doTask = new Selector<>(
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.RESCUE), new CrewTasks.SuitUp(),
-                        new CrewTasks.MoveToWorkSpot(),
-                        new CrewTasks.PickUpCasualty(), new CrewTasks.CarryToSafety(), new CrewTasks.PutDownCasualty()),
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.CARRY), new CrewTasks.SuitUp(), new CrewTasks.PickUpLoad(),
-                        new CrewTasks.DeliverLoad(), new CrewTasks.CompleteTask()),
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.YARD), new CrewTasks.SuitUp(), new CrewTasks.WorkOnTile(),
-                        new CrewTasks.CompleteTask()),
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.FORCE_DOOR), new CrewTasks.ForceDoor(),
-                        new CrewTasks.CompleteTask()),
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.BOARD), new CrewTasks.Board(),
-                        new CrewTasks.CompleteTask()),
-                new Sequence<>(new EvaTasks.IsEvaJob(), new EvaTasks.FetchPart(), new EvaTasks.SuitUpForEva(),
-                        new EvaTasks.GoOutside()),
-                new Sequence<>(new CrewTasks.IsTaskKind(CrewTask.Kind.RESCUE, true), new EvaTasks.IsEvaJob(true),
-                        new CrewTasks.IsTaskKind(CrewTask.Kind.CARRY, true),
-                        new CrewTasks.IsTaskKind(CrewTask.Kind.YARD, true),
-                        new CrewTasks.IsTaskKind(CrewTask.Kind.FORCE_DOOR, true),
-                        new CrewTasks.IsTaskKind(CrewTask.Kind.BOARD, true), new CrewTasks.SuitUp(),
-                        new CrewTasks.MoveToWorkSpot(),
-                        new CrewTasks.DoWork(), new CrewTasks.CompleteTask()));
-        Task<CrewAgent> work = new TaskBranch(new CrewTasks.ClaimTask(), doTask);
-        work.setGuard(new CrewTasks.HasWork());
+                new Sequence<>(new IsTaskKind(CrewTask.Kind.RESCUE), new SuitUp(),
+                        new MoveToWorkSpot(),
+                        new PickUpCasualty(), new CarryToSafety(), new PutDownCasualty()),
+                new Sequence<>(new IsTaskKind(CrewTask.Kind.CARRY), new SuitUp(), new PickUpLoad(),
+                        new DeliverLoad(), new CompleteTask()),
+                new Sequence<>(new IsTaskKind(CrewTask.Kind.YARD), new SuitUp(), new WorkOnTile(),
+                        new CompleteTask()),
+                new Sequence<>(new IsTaskKind(CrewTask.Kind.FORCE_DOOR), new ForceDoor(),
+                        new CompleteTask()),
+                new Sequence<>(new IsTaskKind(CrewTask.Kind.BOARD), new Board(),
+                        new CompleteTask()),
+                new Sequence<>(new IsEvaJob(), new FetchPart(), new SuitUpForEva(),
+                        new GoOutside()),
+                new Sequence<>(new IsTaskKind(CrewTask.Kind.RESCUE, true), new IsEvaJob(true),
+                        new IsTaskKind(CrewTask.Kind.CARRY, true),
+                        new IsTaskKind(CrewTask.Kind.YARD, true),
+                        new IsTaskKind(CrewTask.Kind.FORCE_DOOR, true),
+                        new IsTaskKind(CrewTask.Kind.BOARD, true), new SuitUp(),
+                        new MoveToWorkSpot(),
+                        new DoWork(), new CompleteTask()));
+        Task<CrewAgent> work = new TaskBranch(new ClaimTask(), doTask);
+        work.setGuard(new HasWork());
 
-        Task<CrewAgent> refill = new CrewTasks.RefillSuit();
-        refill.setGuard(new CrewTasks.SuitAirLow());
+        Task<CrewAgent> refill = new RefillSuit();
+        refill.setGuard(new SuitAirLow());
 
-        Task<CrewAgent> spacewalk = new EvaTasks.Spacewalk();
-        spacewalk.setGuard(new EvaTasks.OnEva());
+        Task<CrewAgent> spacewalk = new Spacewalk();
+        spacewalk.setGuard(new OnEva());
 
-        Task<CrewAgent> stow = new EvaTasks.StowCrate();
-        stow.setGuard(new EvaTasks.CrateToStow());
+        Task<CrewAgent> stow = new StowCrate();
+        stow.setGuard(new CrateToStow());
 
-        Task<CrewAgent> root = new DynamicGuardSelector<>(spacewalk, engage, refill, stow, work, new CrewTasks.Idle());
+        Task<CrewAgent> root = new DynamicGuardSelector<>(spacewalk, engage, refill, stow, work, new Idle());
         return new BehaviorTree<>(root, agent);
     }
 }
