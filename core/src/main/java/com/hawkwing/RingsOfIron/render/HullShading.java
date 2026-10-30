@@ -341,13 +341,7 @@ public final class HullShading implements Disposable {
     public void shadows(Batch batch, ArtLibrary.Info info, float px, float py, float angle, Drawer drawRoof) {
         if (info.relief == null || info.relief.length == 0 || !stencil()) return;
         batch.flush();
-        GL20 gl = Gdx.gl;
-        gl.glClearStencil(0);
-        gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
-        gl.glEnable(GL20.GL_STENCIL_TEST);
-        gl.glColorMask(false, false, false, false);
-        gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xff);
-        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
+        GlPass.markStencil(1);
         float cos = MathUtils.cos(angle), sin = MathUtils.sin(angle);
         float[][] tris = trianglesOf(info.relief);
         for (int k = 0; k < info.relief.length; k++) sweep(batch, info.relief[k], tris[k], info.relief[k][0], px, py, cos, sin);
@@ -372,32 +366,24 @@ public final class HullShading implements Disposable {
         levels.sort();
         float[][] tris = trianglesOf(relief);
         float cos = MathUtils.cos(angle), sin = MathUtils.sin(angle);
-        GL20 gl = Gdx.gl;
         // The tallest level has nothing over it to cast on it
         for (int l = 0; l < levels.size - 1; l++) {
             float at = levels.get(l);
             batch.flush();
-            gl.glClearStencil(0);
-            gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
-            gl.glEnable(GL20.GL_STENCIL_TEST);
-            gl.glColorMask(false, false, false, false);
             // 1 where a taller part's shadow falls at this height
-            gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xff);
-            gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
+            GlPass.markStencil(1);
             for (int k = 0; k < relief.length; k++) {
                 if (level(relief[k][0]) > at) sweep(batch, relief[k], tris[k], relief[k][0] - at, px, py, cos, sin);
             }
             batch.flush();
             // 2 where that falls on a part at this height
-            gl.glStencilFunc(GL20.GL_EQUAL, 1, 0xff);
-            gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_INCR);
+            GlPass.stencilWrite(GL20.GL_EQUAL, 1, GL20.GL_INCR);
             for (int k = 0; k < relief.length; k++) {
                 if (level(relief[k][0]) == at) foot(batch, tris[k], 0f, 0f, px, py, cos, sin);
             }
             batch.flush();
             // and not where a taller part stands over it: its own top is lit
-            gl.glStencilFunc(GL20.GL_ALWAYS, 0, 0xff);
-            gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
+            GlPass.stencilWrite(GL20.GL_ALWAYS, 0, GL20.GL_REPLACE);
             for (int k = 0; k < relief.length; k++) {
                 if (level(relief[k][0]) > at) foot(batch, tris[k], 0f, 0f, px, py, cos, sin);
             }
@@ -441,17 +427,14 @@ public final class HullShading implements Disposable {
 
     /** Ends a stencil pass: draws {@code art} in black at {@link #shadowStrength} where the stencil is {@code mark}. */
     private void darken(Batch batch, int mark, Drawer art) {
-        GL20 gl = Gdx.gl;
         batch.flush();
-        gl.glColorMask(true, true, true, true);
-        gl.glStencilFunc(GL20.GL_EQUAL, mark, 0xff);
-        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
+        GlPass.keepWhere(GL20.GL_EQUAL, mark);
         Color was = batch.getColor().cpy();
         batch.setColor(0f, 0f, 0f, shadowStrength);
         art.draw();
         batch.flush();
         batch.setColor(was);
-        gl.glDisable(GL20.GL_STENCIL_TEST);
+        GlPass.endStencil();
     }
 
     /** Whether what is drawn to has a stencil buffer, which the shadows are cut out with (the window's back buffer must ask for one). */

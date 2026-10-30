@@ -297,8 +297,7 @@ public final class DeckRenderer {
                 batch.setTransformMatrix(IDENTITY);
             }
             // The batch's end turned blending off; the walkways drawn below are translucent
-            Gdx.gl.glEnable(GL20.GL_BLEND);
-            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+            GlPass.alphaBlend();
             shapes.setProjectionMatrix(camera.combined);
             shapes.begin(ShapeRenderer.ShapeType.Filled);
             shapes.identity();
@@ -434,7 +433,7 @@ public final class DeckRenderer {
         }
         hazards.keySet().retainAll(hazardsDrawn.keySet());
         shapes.identity();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
         if (!lit) {
             glowingImpacts(decks, camera);
             progressBars(decks, camera, false);
@@ -501,21 +500,13 @@ public final class DeckRenderer {
             lighting.renderLights(camera, withPower);
             return;
         }
-        GL20 gl = Gdx.gl;
         // 1 on the decks; the map's own framebuffer has no stencil, so its lights draw there as
         // ever and only its pass onto the screen is kept to the marks
-        gl.glClearStencil(0);
-        gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
-        gl.glEnable(GL20.GL_STENCIL_TEST);
-        gl.glColorMask(false, false, false, false);
-        gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xff);
-        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
+        GlPass.markStencil(1);
         footprints(decks, camera);
-        gl.glColorMask(true, true, true, true);
-        gl.glStencilFunc(GL20.GL_EQUAL, 1, 0xff);
-        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
+        GlPass.keepWhere(GL20.GL_EQUAL, 1);
         lighting.renderLights(camera, withPower);
-        gl.glDisable(GL20.GL_STENCIL_TEST);
+        GlPass.endStencil();
     }
 
     /**
@@ -634,8 +625,7 @@ public final class DeckRenderer {
             ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
             if (g == null || !pose.of(ship, at, angle)) continue;
             float s = g.tileSize, degrees = angle[0] * MathUtils.radiansToDegrees;
-            Gdx.gl.glEnable(GL20.GL_BLEND);
-            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+            GlPass.alphaBlend();
             shapes.begin(ShapeRenderer.ShapeType.Filled);
             shapes.identity();
             shapes.translate(at.x, at.y, 0f);
@@ -675,7 +665,7 @@ public final class DeckRenderer {
             batch.setTransformMatrix(IDENTITY);
         }
         shapes.identity();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
         progressBars(outside, camera, true);
     }
 
@@ -692,8 +682,7 @@ public final class DeckRenderer {
         float degrees = MathUtils.atan2(-upX, upY) * MathUtils.radiansToDegrees;
         // World units to a screen pixel, so the bar keeps a readable size zoomed out
         float pixel = Gdx.graphics.getWidth() > 0 ? camera.zoom * camera.viewportWidth / Gdx.graphics.getWidth() : 0f;
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        GlPass.alphaBlend();
         shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (Entity ship : ships) {
@@ -722,7 +711,7 @@ public final class DeckRenderer {
         }
         shapes.end();
         shapes.identity();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
     }
 
     /** The sparks, flashes and fire of hits on {@code decks}' hulls, over the light map so it does not dim them. */
@@ -737,7 +726,7 @@ public final class DeckRenderer {
             impacts.drawGlowing(g, shapes, g.gridOriginLocal.x, g.gridOriginLocal.y, g.tileSize);
         }
         shapes.identity();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
     }
 
     /** A job's progress bar over a crew member, in tiles: its length, thickness and how far above them. */

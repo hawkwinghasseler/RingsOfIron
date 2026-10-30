@@ -444,21 +444,13 @@ public final class ExteriorRenderer implements Disposable {
             renderLightMap(camera, view);
             return;
         }
-        GL20 gl = Gdx.gl;
         // 1 where the light map must not fall; the map's own framebuffer has no stencil, so its
         // lights draw there as ever and only its pass onto the screen is kept off the marks
-        gl.glClearStencil(0);
-        gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
-        gl.glEnable(GL20.GL_STENCIL_TEST);
-        gl.glColorMask(false, false, false, false);
-        gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xff);
-        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
+        GlPass.markStencil(1);
         unlit.run();
-        gl.glColorMask(true, true, true, true);
-        gl.glStencilFunc(GL20.GL_EQUAL, 0, 0xff);
-        gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_KEEP);
+        GlPass.keepWhere(GL20.GL_EQUAL, 0);
         renderLightMap(camera, view);
-        gl.glDisable(GL20.GL_STENCIL_TEST);
+        GlPass.endStencil();
     }
 
     /** The light map over the hull art, in the frame's body when there is one. */
@@ -488,8 +480,7 @@ public final class ExteriorRenderer implements Disposable {
         if (exteriorLighting != null) exteriorLighting.age(delta);
         Matrix4 view = view(camera);
         Entity me = player.get();
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        GlPass.alphaBlend();
         drawFastPasses(view, px);
         boolean beamArt = drawCombatArt(view, px);
         Gdx.gl.glEnable(GL20.GL_BLEND);
@@ -544,7 +535,7 @@ public final class ExteriorRenderer implements Disposable {
             shapes.circle(x[0], x[1], Math.max(5f, 20f * px) * (0.3f + x[2]), 20);
         }
         shapes.end();
-        Gdx.gl.glDisable(GL20.GL_BLEND);
+        GlPass.endBlend();
     }
 
     /**
