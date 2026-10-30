@@ -29,8 +29,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -79,7 +77,6 @@ class CollisionDamageTest {
             DamageReport copy = new DamageReport();
             copy.ship = r.ship;
             copy.breaches.addAll(r.breaches);
-            copy.crushed.addAll(r.crushed);
             reports.add(copy);
         });
     }
@@ -126,12 +123,6 @@ class CollisionDamageTest {
         return n;
     }
 
-    private static int crushed(ShipGridComponent g) {
-        int n = 0;
-        for (int y = 0; y < g.height; y++) for (int x = 0; x < g.width; x++) if (g.getTile(x, y).isCrushed()) n++;
-        return n;
-    }
-
     private static float worst(ShipGridComponent g) {
         float w = 1f;
         for (int y = 0; y < g.height; y++) for (int x = 0; x < g.width; x++) w = Math.min(w, g.getTile(x, y).getIntegrity());
@@ -143,7 +134,6 @@ class CollisionDamageTest {
         Entity[] s = headOn(24f);
         for (Entity e : s) {
             assertEquals(0, damaged(grid(e)), "no tile scratched");
-            assertTrue(grid(e).dents == null, "no dent");
         }
         assertTrue(hits.isEmpty());
         // They bounced apart, as Box2D does
@@ -156,10 +146,8 @@ class CollisionDamageTest {
         for (Entity e : s) {
             ShipGridComponent g = grid(e);
             assertTrue(damaged(g) >= 5, "several tiles round where they met: " + damaged(g));
-            assertEquals(0, crushed(g), "nothing crushed");
             float worst = worst(g);
             assertTrue(worst > 0.15f && worst < Tile.LEAK_START, "light: the worst tile lost " + worst);
-            assertTrue(g.dents != null, "the hull art shows a dent");
         }
         assertEquals(2, hits.size, "one hull hit on each");
         assertTrue(hits.first().ram);
@@ -168,26 +156,23 @@ class CollisionDamageTest {
     }
 
     @Test
-    void atAHundredTilesCrushAndTheHullsOverlapWhereTheyWere() {
+    void atAHundredTheBowIsWreckedButTheHullKeepsItsShape() {
         Entity[] s = headOn(100f);
         for (Entity e : s) {
             ShipGridComponent g = grid(e);
-            assertTrue(crushed(g) >= 2, "a few tiles crushed: " + crushed(g));
-            assertTrue(damaged(g) >= 8, "and more round them dented: " + damaged(g));
-            assertFalse(g.hullShapeDirty, "the hull was reshaped");
+            assertTrue(damaged(g) >= 8, "the bow and the tiles round it damaged: " + damaged(g));
+            assertEquals(1f, worst(g), 1e-4f, "the worst tile wrecked");
         }
-        // Where the bows met no longer collides: the other ship's nose sits inside the old hull line
+        // The hull collides where it was built: the bow is still solid
         for (Entity e : s) {
             Vector2 bow = body(e).getWorldPoint(new Vector2(7.5f, 0.5f).scl(PhysicsManager.UNITS_PER_METER));
-            for (Fixture f : body(e).getFixtureList()) assertFalse(f.testPoint(bow), "the crushed bow is not solid");
-            Vector2 aft = body(e).getWorldPoint(new Vector2(-7.5f, 0.5f).scl(PhysicsManager.UNITS_PER_METER));
             boolean solid = false;
-            for (Fixture f : body(e).getFixtureList()) solid |= f.testPoint(aft);
-            assertTrue(solid, "the stern still is");
+            for (Fixture f : body(e).getFixtureList()) solid |= f.testPoint(bow);
+            assertTrue(solid, "the bow still collides");
         }
         boolean breached = false;
-        for (DamageReport r : reports) breached |= r.crushed.size > 0 && r.breaches.size >= r.crushed.size;
-        assertTrue(breached, "crushed tiles are open to space");
+        for (DamageReport r : reports) breached |= r.breaches.size > 0;
+        assertTrue(breached, "the wrecked hull is open to space");
     }
 
     @Test
@@ -204,8 +189,8 @@ class CollisionDamageTest {
             for (int y = 0; y < g.height; y++) for (int x = 0; x < g.width; x++) total += 1f - g.getTile(x, y).getIntegrity();
             assertTrue(total > last, speed + " m/s did more than the speed before: " + total + " vs " + last);
             last = total;
-            System.out.printf("%.0f m/s: damaged %d, crushed %d, worst %.2f, lost %.1f tiles%n", speed, damaged(g),
-                    crushed(g), worst(g), total);
+            System.out.printf("%.0f m/s: damaged %d, worst %.2f, lost %.1f tiles%n", speed, damaged(g),
+                    worst(g), total);
         }
     }
 
@@ -219,20 +204,6 @@ class CollisionDamageTest {
                 + PhysicsManager.getMass(body(b)) * PhysicsManager.getVelocity(body(b), new Vector2()).x;
         assertEquals(before, after, before * 0.01f, "momentum kept");
         assertTrue(PhysicsManager.getVelocity(body(b), new Vector2()).x > 20f, "the struck ship was shoved away");
-        assertEquals(CORVETTE_MASS, PhysicsManager.getMass(body(a)), 1f, "reshaping keeps the mass");
-    }
-
-    @Test
-    void aHullWithCrushedTilesCollidesWithoutThem() {
-        ShipGridComponent g = TestShips.box(4, 3, 1f, WeightClass.MEDIUM);
-        List<float[]> whole = HullShape.pieces(g);
-        g.getTile(3, 1).setIntegrity(0f);
-        g.getTile(3, 1).setCrushed(true);
-        List<float[]> pieces = HullShape.pieces(g);
-        float area = 0f;
-        for (float[] p : pieces) area += (p[2] - p[0]) * (p[5] - p[1]);
-        assertEquals(11f, area, 1e-4f, "the crushed tile is left out");
-        assertEquals(1, whole.size());
-        assertTrue(g.getTile(3, 1).isHullBreach() && !g.getTile(3, 1).isOpen());
+        assertEquals(CORVETTE_MASS, PhysicsManager.getMass(body(a)), 1f, "the mass is kept");
     }
 }

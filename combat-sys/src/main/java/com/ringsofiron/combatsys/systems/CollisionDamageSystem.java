@@ -4,15 +4,12 @@ import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
-import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.signals.Listener;
 import com.badlogic.ashley.signals.Signal;
-import com.badlogic.ashley.utils.ImmutableArray;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
-import com.badlogic.gdx.physics.box2d.MassData;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.combatsys.CombatPhysics;
 import com.ringsofiron.combatsys.damage.CrewDamageBridge;
@@ -22,18 +19,12 @@ import com.ringsofiron.combatsys.defs.DamageType;
 import com.ringsofiron.combatsys.events.CombatEvents;
 import com.ringsofiron.combatsys.events.DamageReport;
 import com.ringsofiron.combatsys.events.HullHitEvent;
-import com.ringsofiron.interiorgrid.HullShape;
 import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.WeightClass;
 import com.ringsofiron.physicsexterior.PhysicsManager;
-import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
-import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.physicsexterior.events.CrashEvent;
-
-import java.util.List;
-import java.util.function.Function;
 
 /**
  * Hull-on-hull collisions (combat-sys/Design.md section 5.12). Two bodies meeting faster than
@@ -47,26 +38,25 @@ import java.util.function.Function;
  *   the hulls then meets as Box2D would. A body with no say in its motion (a station, kinematic)
  *   counts as infinitely heavy.</li>
  *   <li><b>Energy.</b> That impulse takes {@code E = mu (v^2 - v0^2) / 2} out of their motion.
- *   {@link #DAMAGE_SHARE} of it crushes structure; the rest is the hulls' frames flexing, heat,
+ *   {@link #DAMAGE_SHARE} of it damages structure; the rest is the hulls' frames flexing, heat,
  *   noise and spin. The two hulls split it by how hard they are where they met: the softer one
  *   takes the bigger share, and a body with no grid counts as medium steel.</li>
  *   <li><b>Crush.</b> Each hull's share spreads from the contact over the tiles round it
- *   ({@link PenetrationResolver#crush}); what a tile can't take pushes inward and crushes it
- *   flat. Crushed tiles leave the hull's collision shape, which is rebuilt before the next step,
- *   so the hulls end up inside where they used to be.</li>
+ *   ({@link PenetrationResolver#crush}); what a tile can't take pushes on into the tile behind.
+ *   The hull's collision shape never changes.</li>
  *   <li><b>Jolt.</b> Everyone aboard is thrown about by the ship's change of speed {@code J / m}:
  *   {@link #JOLT_WOUND_PER_MPS} injury for each m/s past {@link #JOLT_SAFE_SPEED}.</li>
  * </ul>
  *
  * Between two starter corvettes (195 t) head on: 25 m/s does nothing; 50 m/s takes 30% off the
  * tiles where the bows met and less off some twenty round them, with no breach and nobody hurt;
- * 100 m/s crushes three tiles on each, wrecks the bow and lightly wounds everyone aboard; 200 m/s
- * crushes a third of each and leaves the crews critical.
+ * 100 m/s wrecks the bow, breaching it, and lightly wounds everyone aboard; 200 m/s wrecks much
+ * more and leaves the crews critical. The hulls keep their shape throughout.
  */
-public class CollisionDamageSystem extends EntitySystem implements PhysicsManager.StepListener {
+public class CollisionDamageSystem extends EntitySystem {
     /** Closing speed along the contact normal at or under which hulls just bump, m/s. */
     public static final float NO_DAMAGE_SPEED = 25f;
-    /** Share of the energy a crash takes out of the hulls' motion that goes into crushing them. */
+    /** Share of the energy a crash takes out of the hulls' motion that goes into damaging them. */
     public static final float DAMAGE_SHARE = 0.2f;
     /** Width of the patch of tiles a crash spreads over, tiles (the kernel's sigma). */
     public static final float SPREAD_TILES = 1.25f;
@@ -76,18 +66,11 @@ public class CollisionDamageSystem extends EntitySystem implements PhysicsManage
     public static final float JOLT_WOUND_PER_MPS = 1.5f;
 
     private final ComponentMapper<ShipGridComponent> gridMapper = ComponentMapper.getFor(ShipGridComponent.class);
-    private final ComponentMapper<PhysicsBodyComponent> bodyMapper = ComponentMapper.getFor(PhysicsBodyComponent.class);
-    private final ComponentMapper<KinematicTransientComponent> transientMapper = ComponentMapper.getFor(KinematicTransientComponent.class);
 
     private final PhysicsManager physics;
     private final CombatEvents events;
     private final ImpactResolutionSystem impacts;
     private final Listener<CrashEvent> crashListener = this::onCrash;
-    private Function<Entity, List<float[]>> hullSource = e -> {
-        ShipGridComponent grid = e.getComponent(ShipGridComponent.class);
-        return grid == null ? null : HullShape.pieces(grid);
-    };
-    private ImmutableArray<Entity> grids;
 
     private final PenetrationResolver.CrushResult crushResult = new PenetrationResolver.CrushResult();
     private final DamageReport report = new DamageReport();
@@ -96,7 +79,6 @@ public class CollisionDamageSystem extends EntitySystem implements PhysicsManage
     private final Vector2 worldA = new Vector2(), worldB = new Vector2();
     private final Vector2 local = new Vector2(), localDir = new Vector2();
     private final Vector2 center = new Vector2();
-    private final MassData keptMass = new MassData();
 
     /** What the last crash did, for tests, demos and the console. */
     public final Outcome last = new Outcome();
@@ -109,8 +91,8 @@ public class CollisionDamageSystem extends EntitySystem implements PhysicsManage
         public float impulse;
         /** Energy taken out of the pair's motion, and the part of it that went into the hulls, J. */
         public float energy, damageEnergy;
-        /** Tiles each hull lost integrity on and had crushed. */
-        public int damagedA, damagedB, crushedA, crushedB;
+        /** Tiles each hull lost integrity on. */
+        public int damagedA, damagedB;
         /** Most integrity any one tile of each hull lost. */
         public float worstA, worstB;
     }
@@ -121,28 +103,16 @@ public class CollisionDamageSystem extends EntitySystem implements PhysicsManage
         this.impacts = impacts;
     }
 
-    /**
-     * Where a hull's collision shape comes from once a crash has changed it: by default its
-     * layout less its crushed tiles ({@link HullShape}). The game's source also knows the hull art.
-     */
-    public void setHullSource(Function<Entity, List<float[]>> source) {
-        this.hullSource = source;
-    }
-
     @Override
     public void addedToEngine(Engine engine) {
-        grids = engine.getEntitiesFor(Family.all(ShipGridComponent.class).get());
-        physics.addStepListener(this);
         physics.crashes.add(crashListener);
         physics.setCrashHandling(NO_DAMAGE_SPEED, this::canCrash);
     }
 
     @Override
     public void removedFromEngine(Engine engine) {
-        physics.removeStepListener(this);
         physics.crashes.remove(crashListener);
         physics.setCrashHandling(Float.POSITIVE_INFINITY, null);
-        grids = null;
     }
 
     /** Two bodies crash when at least one is a craft with a grid; rocks and debris just bounce off each other. */
@@ -157,41 +127,7 @@ public class CollisionDamageSystem extends EntitySystem implements PhysicsManage
 
     @Override
     public void update(float deltaTime) {
-        // Work happens on the physics tick.
-    }
-
-    /** Reshapes every hull a crash (or a repair) changed, before the world steps with it. */
-    @Override
-    public void beforeStep(float deltaTime) {
-        if (grids == null) return;
-        for (int i = 0; i < grids.size(); i++) {
-            Entity e = grids.get(i);
-            ShipGridComponent grid = gridMapper.get(e);
-            if (!grid.hullShapeDirty) continue;
-            grid.hullShapeDirty = false;
-            reshape(e);
-        }
-    }
-
-    /** Gives {@code craft}'s body the shape of its hull as it now stands, keeping its mass. */
-    public boolean reshape(Entity craft) {
-        Body body = bodyOf(craft);
-        List<float[]> pieces = body == null ? null : hullSource.apply(craft);
-        if (pieces == null || pieces.isEmpty()) return false;
-        MassData mass = body.getMassData();
-        keptMass.mass = mass.mass;
-        keptMass.center.set(mass.center);
-        keptMass.I = mass.I;
-        if (!PhysicsManager.replacePolygonFixtures(body, pieces)) return false;
-        if (body.getType() == BodyDef.BodyType.DynamicBody) body.setMassData(keptMass);
-        return true;
-    }
-
-    private Body bodyOf(Entity e) {
-        PhysicsBodyComponent pb = bodyMapper.get(e);
-        if (pb != null && pb.body != null) return pb.body;
-        KinematicTransientComponent kt = transientMapper.get(e);
-        return kt == null ? null : kt.body;
+        // Work happens when physics reports a crash.
     }
 
     private void onCrash(Signal<CrashEvent> signal, CrashEvent crash) {
@@ -223,19 +159,17 @@ public class CollisionDamageSystem extends EntitySystem implements PhysicsManage
         last.impulse = impulse;
         last.energy = energy;
         last.damageEnergy = damage;
-        last.damagedA = last.damagedB = last.crushedA = last.crushedB = 0;
+        last.damagedA = last.damagedB = 0;
         last.worstA = last.worstB = 0f;
         if (ga != null) {
             crushInto(ea, a, ga, crash.localPointA, -nx, -ny, damage * hardB / (hardA + hardB), worldA);
             last.damagedA = crushResult.tilesDamaged;
-            last.crushedA = crushResult.tilesCrushed;
             last.worstA = crushResult.worstLoss;
             jolt(ea, ga, impulse * kickOf(a));
         }
         if (gb != null) {
             crushInto(eb, b, gb, crash.localPointB, nx, ny, damage * hardA / (hardA + hardB), worldB);
             last.damagedB = crushResult.tilesDamaged;
-            last.crushedB = crushResult.tilesCrushed;
             last.worstB = crushResult.worstLoss;
             jolt(eb, gb, impulse * kickOf(b));
         }
@@ -293,7 +227,7 @@ public class CollisionDamageSystem extends EntitySystem implements PhysicsManage
             hullHit.tileX = crushResult.entryX;
             hullHit.tileY = crushResult.entryY;
             hullHit.worldPoint.set(worldPoint);
-            hullHit.outcome = crushResult.tilesCrushed > 0 ? HullHitEvent.Outcome.PENETRATED : HullHitEvent.Outcome.STOPPED;
+            hullHit.outcome = report.breaches.size > 0 ? HullHitEvent.Outcome.PENETRATED : HullHitEvent.Outcome.STOPPED;
             hullHit.energyAbsorbed = crushResult.absorbed;
             hullHit.severity = MathUtils.clamp(crushResult.absorbed / ImpactResolutionSystem.SEVERITY_SCALE, 0f, 1f);
             hullHit.ram = true;

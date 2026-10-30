@@ -85,8 +85,8 @@ Every job outside is a task on the ship's board (`CrewTask.Kind.isEva`):
 
 | Job | Posted by, when | Worked from | Work, at the EVA suit's pace |
 |---|---|---|---|
-| Frame an RCS block's wrecked hull tile back up (`REPAIR_RCS`) | `ShipHazardScanSystem`: the tile wrecked (integrity 0) but not crushed flat (that is yard work) | the ring beyond the edge the block sits on | `rcsRepairTime`, 40 s: framed back up so the block fires and, while the ship has patch kits, plated airtight as below |
-| Plate over a holed hull tile (`PATCH_HULL`) | `ShipHazardScanSystem`: any other hull tile wrecked, not crushed, with a side open to space | the ring beside it | `hullPatchTime`, 30 s: framed back up and, while the ship has patch kits, plated airtight (`HullPlating`) |
+| Frame an RCS block's wrecked hull tile back up (`REPAIR_RCS`) | `ShipHazardScanSystem`: the tile wrecked (integrity 0) | the ring beyond the edge the block sits on | `rcsRepairTime`, 40 s: framed back up so the block fires and, while the ship has patch kits, plated airtight as below |
+| Plate over a holed hull tile (`PATCH_HULL`) | `ShipHazardScanSystem`: any other hull tile wrecked, with a side open to space | the ring beside it | `hullPatchTime`, 30 s: framed back up and, while the ship has patch kits, plated airtight (`HullPlating`) |
 | Free a jammed docking collar (`FREE_COLLAR`) | `JammedCollars`: a port whose collar a hit jammed | the ring outside the port's door | `collarTime`, 60 s |
 | Mount a salvaged weapon (`MOUNT_PART`) | `FieldRefits`: the player's order | the ring tile nearest the hardpoint's turret mount | `mountTime`, 45 s for each tile of the mount |
 | Fetch a shipmate adrift (`RETRIEVE`) | `EvaSystem`: one adrift who can't get back alone, within reach | the ring tile nearest them, then out to them on the jetpack | until they have hold of them |
@@ -474,8 +474,8 @@ Bea has hold of her and brings her in on the line:
   held open on a line, a load mid-cycle, the port keeping its power with the hatch shut.
 - `EvaRepairTest` (ai-crew): the whole job on a ship standing still, the block's tile plated with
   a kit (framed and leaking with none), called back by a fight, never at battle stations, crewmen
-  leave it to engineers, no suit aboard, a port that can't cycle, a crushed tile, one knocked out on
-  the hull winched in, a suit with its pack spent changed for a full one, and nobody out till a
+  leave it to engineers, no suit aboard, a port that can't cycle, one knocked out on the hull
+  winched in, a suit with its pack spent changed for a full one, and nobody out till a
   locker has filled a pack halfway.
 - `EvaPhysicsTest` (ai-crew): the ship as a Box2D body: a gentle burn held through, a hard one into
   them only pressing them on, one past their grip throwing them off to swing on the line and jet

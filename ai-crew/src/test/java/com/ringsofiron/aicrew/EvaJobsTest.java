@@ -105,13 +105,10 @@ class EvaJobsTest {
     }
 
     @Test
-    void aCrushedTileOrOneDeepInTheHullIsNoJobOutside() {
+    void aTileDeepInTheHullIsNoJobOutside() {
         TestShips s = ship();
-        s.grid.getTile(2, 0).setIntegrity(0f);
-        s.grid.getTile(2, 0).setCrushed(true);
         // The inner skin of the double bottom: no side open to space
         s.grid.getTile(4, 1).setIntegrity(0f);
-        assertFalse(HullPlating.plateable(s.grid, 2, 0), "crushed is yard work");
         assertFalse(HullPlating.plateable(s.grid, 4, 1), "out of reach from outside");
         s.spawn(CrewRole.ENGINEER, 0, 9, 2);
         s.run(20f);
