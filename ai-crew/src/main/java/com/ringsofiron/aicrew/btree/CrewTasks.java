@@ -1239,13 +1239,17 @@ public final class CrewTasks {
         // crew order, instead of scanning every crew member in the game for each observer.
         Array<Entity> aboard = a.aboardScratch;
         aboard.clear();
-        ImmutableArray<Entity> all = a.service.crewEntities();
-        boolean docked = grid.links.size > 0;
-        for (int i = 0; i < all.size(); i++) {
-            Entity e = all.get(i);
-            Entity ship = a.service.position(e).ship;
-            // Same craft first: looking up a docked craft's grid only matters while docked
-            if (ship == a.pos.ship || docked && a.service.joined(a.pos.ship, ship)) aboard.add(e);
+        if (grid.links.size == 0) {
+            ImmutableArray<Entity> on = a.service.aboard(a.pos.ship);
+            for (int i = 0; i < on.size(); i++) aboard.add(on.get(i));
+        } else {
+            // Docked: those aboard any joined craft, still in crew order
+            ImmutableArray<Entity> all = a.service.crewEntities();
+            for (int i = 0; i < all.size(); i++) {
+                Entity e = all.get(i);
+                Entity ship = a.service.position(e).ship;
+                if (ship == a.pos.ship || a.service.joined(a.pos.ship, ship)) aboard.add(e);
+            }
         }
         Entity seen = nearestVisibleHostile(a, a.entity, aboard, grid);
         if (seen != null || a.crew.role != CrewRole.MARINE) return seen;

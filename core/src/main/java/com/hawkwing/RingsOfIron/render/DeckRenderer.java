@@ -309,9 +309,8 @@ public final class DeckRenderer {
                 // The firing RCS light the hull outside and glow; the walls keep it out of the rooms
                 nozzles.jets(ship, world.get().docking.bodyOf(ship), x, y, radians, lighting::addThruster);
                 float cos = MathUtils.cos(radians), sin = MathUtils.sin(radians);
-                for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                for (Entity e : world.get().crew.aboard(ship)) {
                     GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                    if (pos.ship != ship) continue;
                     Vector2 l = pos.toShipLocal(g, local);
                     float wx = x + cos * l.x - sin * l.y, wy = y + sin * l.x + cos * l.y;
                     lighting.addCrew(wx, wy, CrewBody.RADIUS * g.tileSize);
@@ -387,9 +386,8 @@ public final class DeckRenderer {
             shapes.rotate(0f, 0f, 1f, degrees);
             // Under everyone, the tethers of those out on EVA and the puffs of their jetpacks
             spacewalkers.draw(shapes, world.get(), ship, g, delta);
-            for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            for (Entity e : world.get().crew.aboard(ship)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                if (pos.ship != ship) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                 Vector2 l = pos.toShipLocal(g, local);
                 boolean posed = figures && deckArt.hasCrew(ArtNames.CrewPose.of(c));
@@ -419,9 +417,8 @@ public final class DeckRenderer {
             if (figures) {
                 batch.setTransformMatrix(transform);
                 batch.begin();
-                for (Entity e : world.get().engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+                for (Entity e : world.get().crew.aboard(ship)) {
                     GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                    if (pos.ship != ship) continue;
                     CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                     ArtNames.CrewPose pose = ArtNames.CrewPose.of(c);
                     boolean posed = deckArt.hasCrew(pose);
@@ -645,10 +642,11 @@ public final class DeckRenderer {
             shapes.rotate(0f, 0f, 1f, degrees);
             spacewalkers.draw(shapes, current, ship, g, delta);
             if (!figures) {
-                for (int i = 0; i < crew.size(); i++) {
-                    Entity e = crew.get(i);
+                ImmutableArray<Entity> aboard = current.crew.aboard(ship);
+                for (int i = 0; i < aboard.size(); i++) {
+                    Entity e = aboard.get(i);
                     GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                    if (pos.ship != ship || !EvaSystem.outside(e)) continue;
+                    if (!EvaSystem.outside(e)) continue;
                     CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                     Vector2 l = pos.toShipLocal(g, local);
                     Color dot = crewColor.set(style.dot(e, c));
@@ -660,10 +658,11 @@ public final class DeckRenderer {
             if (!figures) continue;
             batch.setTransformMatrix(transform.idt().translate(at.x, at.y, 0f).rotate(0f, 0f, 1f, degrees));
             batch.begin();
-            for (int i = 0; i < crew.size(); i++) {
-                Entity e = crew.get(i);
+            ImmutableArray<Entity> aboard = current.crew.aboard(ship);
+            for (int i = 0; i < aboard.size(); i++) {
+                Entity e = aboard.get(i);
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                if (pos.ship != ship || !EvaSystem.outside(e)) continue;
+                if (!EvaSystem.outside(e)) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                 ArtNames.CrewPose pose = ArtNames.CrewPose.of(c);
                 boolean posed = deckArt.hasCrew(pose);
@@ -701,9 +700,9 @@ public final class DeckRenderer {
             ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
             if (g == null || !pose.of(ship, at, angle)) continue;
             float cos = MathUtils.cos(angle[0]), sin = MathUtils.sin(angle[0]), s = g.tileSize;
-            for (Entity e : current.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            for (Entity e : current.crew.aboard(ship)) {
                 GridPositionComponent pos = e.getComponent(GridPositionComponent.class);
-                if (pos.ship != ship || (outsideOnly && !EvaSystem.outside(e))) continue;
+                if ((outsideOnly && !EvaSystem.outside(e))) continue;
                 CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
                 if (c.progress < 0f || c.state == CrewState.DEAD) continue;
                 Vector2 l = pos.toShipLocal(g, local);

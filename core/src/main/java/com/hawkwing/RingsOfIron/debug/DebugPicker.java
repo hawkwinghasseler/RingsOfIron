@@ -8,7 +8,6 @@ import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.utils.Array;
 import com.hawkwing.RingsOfIron.game.GameWorld;
 import com.ringsofiron.aicrew.CrewBody;
-import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.combatsys.components.DecoyComponent;
 import com.ringsofiron.combatsys.components.MissileComponent;
@@ -158,9 +157,8 @@ public final class DebugPicker {
             float lx = local.x, ly = local.y;
             // The crew first: they stand on the tile, and are what a click there most likely means
             float reach = CrewBody.RADIUS * g.tileSize + slack;
-            for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
+            for (Entity e : world.crew.aboard(ship)) {
                 GridPositionComponent p = e.getComponent(GridPositionComponent.class);
-                if (p.ship != ship) continue;
                 Vector2 at = p.toShipLocal(g, tmp);
                 if (at.dst2(lx, ly) <= reach * reach) out.add(DebugTarget.crew(e, ship));
             }

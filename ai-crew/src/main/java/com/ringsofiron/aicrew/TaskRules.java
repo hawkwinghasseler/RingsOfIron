@@ -374,13 +374,13 @@ public final class TaskRules {
 
     /** True if someone other than {@code patient} lies down on (x, y) aboard {@code ship}. */
     public static boolean bedTaken(CrewService crew, Entity ship, Entity patient, int x, int y) {
-        ImmutableArray<Entity> all = crew.crewEntities();
-        for (int i = 0; i < all.size(); i++) {
-            Entity e = all.get(i);
+        ImmutableArray<Entity> aboard = crew.aboard(ship);
+        for (int i = 0; i < aboard.size(); i++) {
+            Entity e = aboard.get(i);
             if (e == patient) continue;
             CrewMemberComponent c = crew.crew(e);
             GridPositionComponent p = crew.position(e);
-            if (c.state == CrewState.UNCONSCIOUS && c.carriedBy == null && p.ship == ship && p.tileX() == x && p.tileY() == y) {
+            if (c.state == CrewState.UNCONSCIOUS && c.carriedBy == null && p.tileX() == x && p.tileY() == y) {
                 return true;
             }
         }
