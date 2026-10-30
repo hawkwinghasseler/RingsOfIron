@@ -14,6 +14,7 @@ import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.providers.CrewProvider;
 import java.nio.file.Path;
 import java.nio.file.Paths;

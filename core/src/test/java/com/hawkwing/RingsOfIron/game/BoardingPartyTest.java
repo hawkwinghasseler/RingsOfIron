@@ -14,6 +14,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
+import com.ringsofiron.shipops.ShipDisablement;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;

@@ -27,6 +27,7 @@ import com.ringsofiron.moddingdata.defs.RankDef;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 

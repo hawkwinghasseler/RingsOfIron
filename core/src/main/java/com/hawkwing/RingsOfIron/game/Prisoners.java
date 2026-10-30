@@ -10,6 +10,7 @@ import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.moddingdata.defs.FactionDef;
 
+import com.ringsofiron.shipops.BoardedComponent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;

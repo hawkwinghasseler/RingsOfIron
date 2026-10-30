@@ -19,6 +19,8 @@ import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.SalvagedComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;

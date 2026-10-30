@@ -17,6 +17,8 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.shipops.Boarding;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.providers.CrewProvider;
 import java.nio.file.Path;
 import java.nio.file.Paths;

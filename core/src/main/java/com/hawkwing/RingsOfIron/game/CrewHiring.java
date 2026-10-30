@@ -20,6 +20,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.moddingdata.defs.FactionDef;
 
+import com.ringsofiron.shipops.AbandonShip;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;

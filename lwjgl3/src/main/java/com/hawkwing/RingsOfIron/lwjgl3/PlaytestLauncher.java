@@ -10,7 +10,7 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.hawkwing.RingsOfIron.RingsOfIronGame;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
-import com.hawkwing.RingsOfIron.game.ShipNames;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.DockingEvent;
 import com.hawkwing.RingsOfIron.shell.GameShell;
 import com.hawkwing.RingsOfIron.shell.SaveSummary;
@@ -237,7 +237,7 @@ public class PlaytestLauncher {
                         }
                     }
                     grid.gridDirty = true;
-                    return String.format(java.util.Locale.ROOT, "hull %.2f", com.hawkwing.RingsOfIron.game.ShipDisablement.hullIntegrity(grid));
+                    return String.format(java.util.Locale.ROOT, "hull %.2f", com.ringsofiron.shipops.ShipDisablement.hullIntegrity(grid));
                 }
                 case "latch":
                     world.docking.dockInPlace(s.player, 0, s.raider, 0);
@@ -285,8 +285,8 @@ public class PlaytestLauncher {
                     Entity target = game.getGun() == null ? null : game.getGun().getTarget();
                     StringBuilder out = new StringBuilder(String.format(java.util.Locale.ROOT,
                             "base %s, hull %.2f%s, target %s", world.pirateBase.standing() ? "standing" : "fallen",
-                            com.hawkwing.RingsOfIron.game.ShipDisablement.hullIntegrity(s.player.getComponent(ShipGridComponent.class)),
-                            com.hawkwing.RingsOfIron.game.ShipDisablement.isDisabled(s.player) ? ", we are beaten" : "",
+                            com.ringsofiron.shipops.ShipDisablement.hullIntegrity(s.player.getComponent(ShipGridComponent.class)),
+                            com.ringsofiron.shipops.ShipDisablement.isDisabled(s.player) ? ", we are beaten" : "",
                             target == null ? "none" : com.hawkwing.RingsOfIron.game.FirstPlay.beaten(world, target)
                                     ? "beaten" : ShipNames.name(target)));
                     // How far the base is, for the log
@@ -376,9 +376,9 @@ public class PlaytestLauncher {
                         com.ringsofiron.interiorgrid.CargoHoldComponent hold = e.getComponent(com.ringsofiron.interiorgrid.CargoHoldComponent.class);
                         out.append(String.format(java.util.Locale.ROOT, "%n  %s: carries %.1f %s, bays hold %.1f", f.displayName,
                                 f.cargoQuantity, f.cargoCommodity, hold == null || f.cargoCommodity == null ? 0.0 : hold.amount(f.cargoCommodity)));
-                        com.hawkwing.RingsOfIron.game.CargoOrdersComponent orders = e.getComponent(com.hawkwing.RingsOfIron.game.CargoOrdersComponent.class);
+                        com.ringsofiron.shipops.CargoOrdersComponent orders = e.getComponent(com.ringsofiron.shipops.CargoOrdersComponent.class);
                         if (orders != null) {
-                            for (com.hawkwing.RingsOfIron.game.CargoOrdersComponent.CargoOrder o : orders.orders) {
+                            for (com.ringsofiron.shipops.CargoOrdersComponent.CargoOrder o : orders.orders) {
                                 out.append(String.format(java.util.Locale.ROOT, "%n    %s %.1f %s, %.1f in hand%s", o.toShip ? "load" : "unload",
                                         o.units, o.commodity, o.inHand, o.closed ? ", done" : ""));
                             }
@@ -397,7 +397,7 @@ public class PlaytestLauncher {
                             world.engine.getSimSeconds() / 86_400,
                             s.player.getComponent(com.ringsofiron.macrosim.economy.TraderComponent.class).credits,
                             world.standing.describeRank(), ShipNames.name(s.player),
-                            com.hawkwing.RingsOfIron.game.ShipDisablement.hullIntegrity(s.player.getComponent(ShipGridComponent.class)));
+                            com.ringsofiron.shipops.ShipDisablement.hullIntegrity(s.player.getComponent(ShipGridComponent.class)));
                 case "captain": {
                     // Only reads: the captain's wound, suit and air, and which craft the figure stands in
                     Entity avatar = world.avatar.getAvatar();

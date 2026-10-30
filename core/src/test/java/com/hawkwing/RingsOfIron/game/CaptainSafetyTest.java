@@ -10,6 +10,7 @@ import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.btree.CrewTasks;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.HintRegistry;
 import java.nio.file.Path;
 import java.nio.file.Paths;

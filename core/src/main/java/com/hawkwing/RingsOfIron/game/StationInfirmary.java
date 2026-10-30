@@ -10,6 +10,7 @@ import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.StationComponent;
 
 import java.util.Locale;

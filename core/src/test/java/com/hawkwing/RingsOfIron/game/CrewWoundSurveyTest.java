@@ -16,6 +16,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.ShipDisablement;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

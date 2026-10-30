@@ -14,6 +14,7 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
+import com.ringsofiron.shipops.ShipCargo;
 import java.util.ArrayList;
 import java.util.List;
 

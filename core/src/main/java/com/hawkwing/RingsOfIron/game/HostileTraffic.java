@@ -41,6 +41,10 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.BodyShapeComponent;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.shipops.StationCrew;
+import com.ringsofiron.shipops.Tactics;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
 import java.util.ArrayList;

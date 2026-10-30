@@ -10,6 +10,7 @@ import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.shipops.StationYard;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;

@@ -11,6 +11,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.moddingdata.components.DefRefComponent;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.ShipNames;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Tag;

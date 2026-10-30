@@ -18,6 +18,8 @@ import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.Salvage;
+import com.ringsofiron.shipops.ShipDisablement;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;

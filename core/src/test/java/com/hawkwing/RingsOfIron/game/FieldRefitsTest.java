@@ -13,6 +13,8 @@ import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.shipops.Salvage;
+import com.ringsofiron.shipops.StationYard;
 import com.ringsofiron.uihud.providers.YardProvider;
 import java.nio.file.Path;
 import java.nio.file.Paths;

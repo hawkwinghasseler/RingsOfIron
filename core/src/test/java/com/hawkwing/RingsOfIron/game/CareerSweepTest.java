@@ -9,6 +9,7 @@ import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.CrewState;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.shipops.ShipNames;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;

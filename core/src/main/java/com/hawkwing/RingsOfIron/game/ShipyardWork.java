@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.uihud.providers.ShipyardProvider;
 
 import java.util.Locale;

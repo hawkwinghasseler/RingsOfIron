@@ -25,6 +25,8 @@ import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.moddingdata.defs.ShipComponentDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.ShipCargo;
+import com.ringsofiron.shipops.YardOrdersComponent;
 import com.ringsofiron.stationsdocking.DockingData;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;

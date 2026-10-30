@@ -13,6 +13,7 @@ dependencies {
   api project(':audio-spatial')
   api project(':modding-data')
   api project(':stations-docking')
+  api project(':ship-ops')
   api project(':career')
   api project(':ship-systems')
 

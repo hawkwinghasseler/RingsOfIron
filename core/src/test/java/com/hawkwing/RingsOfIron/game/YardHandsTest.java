@@ -11,6 +11,7 @@ import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.career.NewGame;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.shipops.StationCrew;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;

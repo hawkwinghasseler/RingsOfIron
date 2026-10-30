@@ -11,6 +11,8 @@ import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.moddingdata.defs.OperationDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.ShipDisablement;
 import com.ringsofiron.uihud.providers.MissionProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;

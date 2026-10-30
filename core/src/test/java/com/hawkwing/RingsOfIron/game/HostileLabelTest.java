@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;

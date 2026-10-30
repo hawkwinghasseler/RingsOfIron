@@ -3,6 +3,8 @@ package com.hawkwing.RingsOfIron.game;
 import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
 import com.ringsofiron.audiospatial.systems.EngineAudio;
 import com.ringsofiron.interiorgrid.FloorTiles;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.ShipDisablement;
 import org.junit.jupiter.api.io.TempDir;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.badlogic.gdx.files.FileHandle;

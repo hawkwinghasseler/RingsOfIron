@@ -16,6 +16,7 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 
+import com.ringsofiron.shipops.BoardedComponent;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;

@@ -15,6 +15,7 @@ import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.hostile.HostileTrafficController;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.Tactics;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;

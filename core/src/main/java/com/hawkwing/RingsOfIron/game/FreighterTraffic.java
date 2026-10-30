@@ -10,6 +10,7 @@ import com.ringsofiron.macrosim.bubble.BubbleTransitionListener;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.fleet.FreighterController;
 import com.ringsofiron.macrosim.rails.RailsModel;
+import com.ringsofiron.shipops.CargoOrdersComponent;
 import com.ringsofiron.stationsdocking.BerthingComponent;
 import com.ringsofiron.stationsdocking.BerthingSystem;
 import com.ringsofiron.stationsdocking.StationComponent;

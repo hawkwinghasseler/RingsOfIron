@@ -3,6 +3,13 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.coreengine.EntityRef;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.shipops.BoardedComponent;
+import com.ringsofiron.shipops.Boarding;
+import com.ringsofiron.shipops.CargoOrdersComponent;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.Salvage;
+import com.ringsofiron.shipops.SalvageOrdersComponent;
+import com.ringsofiron.shipops.ShipDisablement;
 import com.ringsofiron.uihud.providers.BoardingProvider;
 
 import java.util.Locale;

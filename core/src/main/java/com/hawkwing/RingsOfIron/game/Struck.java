@@ -2,6 +2,8 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.ShipDisablement;
 
 /**
  * Round 10: which ships have struck, for the player's guns firing at will and for Tab. A ship has

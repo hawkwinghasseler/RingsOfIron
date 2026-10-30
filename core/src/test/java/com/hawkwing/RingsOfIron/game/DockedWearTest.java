@@ -9,6 +9,8 @@ import com.ringsofiron.career.NewGame;
 import com.ringsofiron.combatsys.events.HullHitEvent;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.shipops.CollarWear;
+import com.ringsofiron.shipops.StationYard;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import java.nio.file.Path;

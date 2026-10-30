@@ -12,6 +12,8 @@ import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.shipops.StationYard;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
