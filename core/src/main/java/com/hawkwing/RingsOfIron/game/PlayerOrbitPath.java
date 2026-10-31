@@ -54,6 +54,8 @@ public class PlayerOrbitPath implements OrbitPathProvider {
     private final MapTrajectory trajectory;
     private final StringBuilder summary = new StringBuilder();
     private final double[] off = new double[2];
+    /** Refines the curves where they cross the map's view, and measures them from its middle. */
+    private final MapSampler sampler = new MapSampler();
 
     public PlayerOrbitPath(GameContext ctx, PhysicsManager physics, RailsUniverse universe, MacroSimulation macroSim,
                            PirateBase pirateBase, Navigation nav, BurnPlanner planner) {
@@ -84,11 +86,12 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         if (k == null) return false;
         Entity frame = orbits.parent();
         double now = clock.getAsDouble();
+        sampler.setView(out);
         out.bodyName = body.name == null ? "" : body.name;
         out.bodyRadius = body.radius;
         out.shipX = orbits.state().x;
         out.shipY = orbits.state().y;
-        sample(k, now, body, out.current);
+        sample(sampler, k, now, Double.NaN, body, 0, 0, out.current);
         addBodies(now, out);
 
         ManeuverNodeComponent m = planner.nodes();
@@ -101,7 +104,7 @@ public class PlayerOrbitPath implements OrbitPathProvider {
             for (ManeuverNodeComponent.Node n : m.nodes) {
                 if (n.time < now) continue;
                 after.stateAt(n.time, s);
-                out.nodes.add((float) s.x, (float) s.y);
+                sampler.add(s.x, s.y, out.nodes);
                 // The burn's axes: along the velocity there, and radially out as withBurn reads it
                 double speed = Math.hypot(s.vx, s.vy);
                 float ux = (float) (s.vx / speed), uy = (float) (s.vy / speed);
@@ -141,7 +144,7 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         summary.setLength(0);
         FloatArray first = planned ? out.planned : out.current;
         if (frame == null) {
-            if (planned) sample(k, from, body, first);
+            if (planned) sample(sampler, k, from, Double.NaN, body, 0, 0, first);
             return;
         }
         java.util.List<MapTrajectory.Leg> legs = trajectory.legs(k, frame, from, plan);
@@ -153,11 +156,11 @@ public class PlayerOrbitPath implements OrbitPathProvider {
             FloatArray points = i == 0 ? first : out.addLeg(planned).points;
             points.clear();
             if (leg.frame == frame) {
-                sample(leg.conic, leg.from, leg.to, around, 0, 0, points);
+                sample(sampler, leg.conic, leg.from, leg.to, around, 0, 0, points);
             } else if (Double.isNaN(leg.to)) {
                 // Caught by the moon: its orbit there, drawn about where the moon is at the periapsis
                 offset(leg, frame, ghostTime(leg), off);
-                sample(leg.conic, leg.from, leg.to, around, off[0], off[1], points);
+                sample(sampler, leg.conic, leg.from, leg.to, around, off[0], off[1], points);
             } else {
                 // Through a moon's sphere: where the ship really is, the moon moving on under it, so the
                 // path runs on unbroken from the leg before into the one after
@@ -224,14 +227,14 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         double a0 = c.anomalyAt(leg.from), a1 = c.anomalyAt(leg.to);
         if (c.isElliptic() && a1 <= a0) a1 += 2 * Math.PI;
         double m0 = meanAnomaly(c, a0);
-        for (int i = 0; i <= SEGMENTS; i++) {
-            double anomaly = a0 + (a1 - a0) * i / SEGMENTS;
+        sampler.sample((anomaly, xy) -> {
             double t = leg.from + (meanAnomaly(c, anomaly) - m0) / c.meanMotion();
             c.positionAtAnomaly(anomaly, s);
             double x = s.x, y = s.y;
             universe.stateInFrame(leg.frame, frame, t, s);
-            out.add((float) (x + s.x), (float) (y + s.y));
-        }
+            xy[0] = x + s.x;
+            xy[1] = y + s.y;
+        }, a0, a1, SEGMENTS, out);
     }
 
     /** Mean anomaly at an eccentric (or hyperbolic) anomaly, unwrapped. */
@@ -285,11 +288,11 @@ public class PlayerOrbitPath implements OrbitPathProvider {
             for (double[] b : p.burns) {
                 if (b[0] < now) continue;
                 after.stateAt(b[0], s);
-                out.proposedNodes.add((float) s.x, (float) s.y);
+                sampler.add(s.x, s.y, out.proposedNodes);
                 after = after.withBurn(b[0], b[1], b[2]);
                 from = b[0];
             }
-            sample(after, from, body, out.proposed);
+            sample(sampler, after, from, Double.NaN, body, 0, 0, out.proposed);
             out.caption.append("\nProposed: ").append(nav.transfer.describe(p)).append("\n")
                     .append(nav.key(Action.ACCEPT_PLAN)).append(" accepts  ").append(nav.key(Action.DISCARD_PLAN)).append(" discards");
         }
@@ -316,17 +319,13 @@ public class PlayerOrbitPath implements OrbitPathProvider {
                 ox = s.x;
                 oy = s.y;
             }
-            KeplerOrbit t = o.getOrbit();
-            for (int i = 0; i <= SEGMENTS; i++) {
-                t.positionAtAnomaly(2 * Math.PI * i / SEGMENTS, s);
-                out.targetOrbit.add((float) (s.x + ox), (float) (s.y + oy));
-            }
+            ellipse(o.getOrbit(), ox, oy, out.targetOrbit);
         }
         ClosestApproach.Result a = nav.approach();
         out.caption.append("\nTarget ").append(nav.target.name());
         if (a != null) {
-            out.approach.add((float) a.ship.x, (float) a.ship.y);
-            out.approach.add((float) a.target.x, (float) a.target.y);
+            sampler.add(a.ship.x, a.ship.y, out.approach);
+            sampler.add(a.target.x, a.target.y, out.approach);
             out.caption.append(": closest ").append(Navigation.formatDistance(a.distance))
                     .append(" in ").append(Navigation.formatTime(a.time - now));
         }
@@ -342,15 +341,20 @@ public class PlayerOrbitPath implements OrbitPathProvider {
             MapBody b = addBody(child, parent, now, out);
             OrbitComponent o = universe.orbit(child);
             KeplerOrbit k = o.getOrbit();
-            if (k.isElliptic()) {
-                for (int i = 0; i <= SEGMENTS; i++) {
-                    k.positionAtAnomaly(2 * Math.PI * i / SEGMENTS, s);
-                    b.orbit.add((float) s.x, (float) s.y);
-                }
-            }
+            if (k.isElliptic()) ellipse(k, 0, 0, b.orbit);
         }
         Entity grandparent = universe.parentOf(parent);
         if (grandparent != null) addBody(grandparent, parent, now, out);
+    }
+
+    /** The whole of elliptic {@code k}, moved by ({@code ox}, {@code oy}). */
+    private void ellipse(KeplerOrbit k, double ox, double oy, FloatArray out) {
+        StateVector p = new StateVector();
+        sampler.sample((anomaly, xy) -> {
+            k.positionAtAnomaly(anomaly, p);
+            xy[0] = p.x + ox;
+            xy[1] = p.y + oy;
+        }, 0, 2 * Math.PI, SEGMENTS, out);
     }
 
     private MapBody addBody(Entity body, Entity frame, double now, OrbitPath out) {
@@ -370,7 +374,7 @@ public class PlayerOrbitPath implements OrbitPathProvider {
      * {@link #OPEN_SPAN} on, or {@link #OPEN_RADII} radii out).
      */
     public static void sample(KeplerOrbit k, double t, CelestialBodyComponent body, FloatArray out) {
-        sample(k, t, Double.NaN, body, 0, 0, out);
+        sample(MapSampler.NONE, k, t, Double.NaN, body, 0, 0, out);
     }
 
     /**
@@ -380,6 +384,12 @@ public class PlayerOrbitPath implements OrbitPathProvider {
      */
     public static void sample(KeplerOrbit k, double t, double to, CelestialBodyComponent body, double ox, double oy,
                               FloatArray out) {
+        sample(MapSampler.NONE, k, t, to, body, ox, oy, out);
+    }
+
+    /** As above, refined where it crosses {@code sampler}'s view and measured from its origin. */
+    static void sample(MapSampler sampler, KeplerOrbit k, double t, double to, CelestialBodyComponent body, double ox,
+                       double oy, FloatArray out) {
         StateVector s = new StateVector();
         double from, end;
         if (k.isElliptic() && (Double.isNaN(to) || to - t >= k.period())) {
@@ -399,10 +409,11 @@ public class PlayerOrbitPath implements OrbitPathProvider {
             from = k.anomalyAt(t);
             end = k.anomalyAt(to);
         }
-        for (int i = 0; i <= SEGMENTS; i++) {
-            k.positionAtAnomaly(from + (end - from) * i / SEGMENTS, s);
-            out.add((float) (s.x + ox), (float) (s.y + oy));
-        }
+        sampler.sample((anomaly, xy) -> {
+            k.positionAtAnomaly(anomaly, s);
+            xy[0] = s.x + ox;
+            xy[1] = s.y + oy;
+        }, from, end, SEGMENTS, out);
     }
 
     private static void caption(StringBuilder out, ManeuverNodeComponent.Node n, int index, int count, double now,

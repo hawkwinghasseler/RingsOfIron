@@ -20,14 +20,14 @@ import java.util.Locale;
  * as squares, haulers as diamonds, known pirates as red triangles (hollow where only a last known
  * position is held), derelicts and the like as grey diamonds. A contract's waypoint is ringed in gold
  * and the navigation target bracketed. Haulers sitting at a station are counted on its label. The
- * tension readout goes in a corner. Refreshed from a {@link TrafficMapProvider} a few times a second;
- * {@link #pick} finds the contact under a click.
+ * tension readout goes in a corner. Refreshed from a {@link TrafficMapProvider} every frame the map is
+ * open, so contacts move smoothly rather than lurching from one refresh to the next; {@link #pick} finds
+ * the contact under a click.
  *
  * <p>The orbit map draws the body, the moons and the ship itself, so the frame's bodies and the player's
  * own contact are left to it.
  */
 public class TrafficLayer {
-    public static final float REFRESH_INTERVAL = 0.25f;
     private static final Color STATION = new Color(0.4f, 0.75f, 1f, 1f);
     private static final Color HAULER = new Color(1f, 0.85f, 0.25f, 1f);
     private static final Color OBJECTIVE = new Color(1f, 0.7f, 0.1f, 1f);
@@ -45,7 +45,6 @@ public class TrafficLayer {
     private final BitmapFont font;
     private final TrafficFrame frame = new TrafficFrame();
     private TrafficMapProvider provider;
-    private float refreshTimer;
     private final Color tmp = new Color();
     /** Where each pickable contact was drawn last frame: x, y, index into the frame's contacts. */
     private final FloatArray picks = new FloatArray();
@@ -57,7 +56,6 @@ public class TrafficLayer {
 
     public void setProvider(TrafficMapProvider provider) {
         this.provider = provider;
-        refreshTimer = 0f;
     }
 
     public boolean hasProvider() {
@@ -68,13 +66,12 @@ public class TrafficLayer {
         return frame;
     }
 
-    /** Counts down to the next refresh; call each frame the map is open. */
+    /**
+     * Refreshes the picture; call each frame the map is open. Every frame: the map follows the ship, and
+     * a picture a quarter of a second old has everything lurch against it four times a second.
+     */
     public void act(float delta) {
-        refreshTimer -= delta;
-        if (refreshTimer <= 0f) {
-            refreshTimer = REFRESH_INTERVAL;
-            refresh();
-        }
+        refresh();
     }
 
     /** Pulls a fresh picture from the provider now. */
